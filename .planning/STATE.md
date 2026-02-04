@@ -5,7 +5,7 @@
 - **Current Phase:** 2 — Integrations & Updates
 - **Status:** 🔄 In Progress
 - **Last Updated:** 2026-02-04
-- **Last Activity:** Completed 02-02 GitHub Issues Adapter
+- **Last Activity:** Completed 02-03 Jira REST Adapter
 
 ## Progress
 
@@ -82,6 +82,8 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 | AdapterResult<T> discriminated union | Type-safe error handling without exceptions | 2026-02-04 |
 | Optional contract methods | createBranch/linkPR/validate optional; check before calling | 2026-02-04 |
 | Placeholder adapter never fails | Fallback for untracked work always returns synthetic data | 2026-02-04 |
+| Jira env vars read at call time | Runtime flexibility for configuration changes | 2026-02-04 |
+| ADF extraction best-effort | Return empty string for malformed content, don't fail | 2026-02-04 |
 
 ## Blockers
 
@@ -90,7 +92,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Session Continuity
 
 - **Last session:** 2026-02-04
-- **Stopped at:** Completed 02-02-PLAN.md
+- **Stopped at:** Completed 02-03-PLAN.md
 - **Resume file:** None
 
 ## Next Actions
