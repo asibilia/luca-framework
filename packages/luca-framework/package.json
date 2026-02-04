@@ -1,0 +1,35 @@
+{
+  "name": "luca-framework",
+  "version": "0.0.1",
+  "description": "Luca - Agentic development framework for Cursor IDE",
+  "type": "module",
+  "bin": {
+    "luca": "./bin/luca.js"
+  },
+  "files": ["bin", "dist", "templates"],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./commands/*": {
+      "import": "./dist/commands/*.mjs"
+    }
+  },
+  "scripts": {
+    "build": "unbuild"
+  },
+  "dependencies": {
+    "citty": "^0.2.1",
+    "consola": "^3.4.0",
+    "@clack/prompts": "^0.10.0",
+    "pathe": "^2.0.3",
+    "defu": "^6.1.4",
+    "pkg-types": "^2.1.0",
+    "fs-extra": "^11.3.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4"
+  },
+  "keywords": ["luca", "cli", "ai", "cursor", "agent", "framework"]
+}
