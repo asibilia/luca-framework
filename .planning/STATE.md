@@ -51,6 +51,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Phase 1 Results
 
 **Deliverables:**
+
 - `packages/create-luca/` — Thin scaffolder (108 B)
 - `packages/luca-framework/` — Main CLI (41.4 kB)
 - Interactive wizard with @clack/prompts
@@ -74,7 +75,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 | consola tagged logger | Consistent [luca] prefix on all CLI output | 2026-02-04 |
 | Stack detection from deps | Check react/typescript in package.json for auto-detection | 2026-02-04 |
 | EJS strict: false | Graceful degradation for undefined template variables | 2026-02-04 |
-| __variable__ for filenames | Different syntax from EJS content for clarity | 2026-02-04 |
+| **variable** for filenames | Different syntax from EJS content for clarity | 2026-02-04 |
 | Filter undefined before merge | Spread operator includes undefined, breaking defaults | 2026-02-04 |
 | Detect dist vs src context | Bundled output in dist/ needs different template path | 2026-02-04 |
 | Track paths for cleanup | SIGINT and errors must clean up partial installations | 2026-02-04 |
