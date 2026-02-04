@@ -1,0 +1,231 @@
+import { rm } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'pathe';
+import { ensureDir } from 'fs-extra';
+import * as p from '@clack/prompts';
+import { copyTemplates, getTemplatesDir } from './template';
+import { createManifest, writeManifest } from './manifest';
+import { logger } from './logger';
+import type { LucaConfig, LucaManifest } from '../types';
+
+// Track created files for cleanup on error
+const createdPaths: string[] = [];
+
+/**
+ * Register a created path for potential cleanup.
+ *
+ * Called internally when files/directories are created during installation.
+ * Paths are tracked in creation order for proper reverse cleanup.
+ *
+ * @param path - Absolute path to track
+ */
+function trackCreated(path: string) {
+  createdPaths.push(path);
+}
+
+/**
+ * Cleanup all created paths (on error or SIGINT).
+ *
+ * Removes files and directories in reverse order (deepest first).
+ * Silently ignores cleanup errors to ensure best-effort cleanup.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   // ... create files
+ * } catch (error) {
+ *   await cleanupFiles();
+ *   throw error;
+ * }
+ * ```
+ */
+export async function cleanupFiles() {
+  if (createdPaths.length === 0) return;
+
+  logger.warn('Cleaning up partial installation...');
+
+  // Remove in reverse order (deepest first)
+  for (const path of createdPaths.reverse()) {
+    try {
+      await rm(path, { recursive: true, force: true });
+      logger.debug(`Removed: ${path}`);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  createdPaths.length = 0;
+}
+
+/**
+ * Setup SIGINT handler for cleanup.
+ *
+ * Registers a process handler that:
+ * 1. Shows cancellation message via @clack/prompts
+ * 2. Cleans up any partially created files
+ * 3. Exits with code 1
+ *
+ * Call early in the init command before any file operations.
+ *
+ * @example
+ * ```typescript
+ * async run({ args }) {
+ *   setupCleanupHandler();
+ *   // ... rest of init command
+ * }
+ * ```
+ */
+export function setupCleanupHandler() {
+  process.on('SIGINT', async () => {
+    p.cancel('\nInstallation cancelled.');
+    await cleanupFiles();
+    process.exit(1);
+  });
+}
+
+/**
+ * Generate all Luca files from templates.
+ *
+ * Creates directory structure and copies templates with branding substitution.
+ * Tracks all created paths for cleanup on error.
+ *
+ * Directory structure created:
+ * - `.planning/` - Planning artifacts
+ * - `.cursor/luca/` - Framework files
+ * - `.cursor/agents/` - Agent definitions
+ * - `.cursor/rules/` - Cursor rules
+ * - `.cursor/skills/` - Luca skills
+ *
+ * @param options - Generation options
+ * @param options.config - Luca configuration with branding
+ * @param options.cwd - Working directory (default: process.cwd())
+ * @returns Result with success status, manifest if successful, error if failed
+ *
+ * @example
+ * ```typescript
+ * const result = await generateFiles({
+ *   config: {
+ *     branding: { frameworkName: 'Luca', commandPrefix: 'lu', ... },
+ *     stack: 'react-ts',
+ *     workTracker: 'github'
+ *   }
+ * });
+ *
+ * if (result.success) {
+ *   console.log('Installed', Object.keys(result.manifest.files).length, 'files');
+ * }
+ * ```
+ */
+export async function generateFiles(options: {
+  config: LucaConfig;
+  cwd?: string;
+}): Promise<{ success: boolean; manifest?: LucaManifest; error?: string }> {
+  const { config, cwd = process.cwd() } = options;
+  const templatesDir = getTemplatesDir();
+
+  const spinner = p.spinner();
+
+  try {
+    // Step 1: Create directories
+    spinner.start('Creating directories...');
+
+    const planningDir = join(cwd, '.planning');
+    const cursorDir = join(cwd, '.cursor');
+    const lucaDir = join(cursorDir, 'luca');
+    const agentsDir = join(cursorDir, 'agents');
+    const rulesDir = join(cursorDir, 'rules');
+    const skillsDir = join(cursorDir, 'skills');
+
+    for (const dir of [planningDir, lucaDir, agentsDir, rulesDir, skillsDir]) {
+      if (!existsSync(dir)) {
+        await ensureDir(dir);
+        trackCreated(dir);
+      }
+    }
+
+    spinner.stop('Directories created');
+
+    // Step 2: Copy base templates
+    spinner.start('Copying base templates...');
+
+    const baseTemplatesDir = join(templatesDir, 'base');
+    const { processed: baseProcessed } = await copyTemplates({
+      sourceDir: baseTemplatesDir,
+      destDir: cwd,
+      config,
+    });
+
+    for (const file of baseProcessed) {
+      trackCreated(join(cwd, file));
+    }
+
+    spinner.stop(`Copied ${baseProcessed.length} base files`);
+
+    // Step 3: Copy stack-specific templates (if not custom)
+    if (config.stack !== 'custom') {
+      spinner.start(`Copying ${config.stack} stack templates...`);
+
+      const stackTemplatesDir = join(templatesDir, 'stacks', config.stack);
+      if (existsSync(stackTemplatesDir)) {
+        const { processed: stackProcessed } = await copyTemplates({
+          sourceDir: stackTemplatesDir,
+          destDir: cwd,
+          config,
+        });
+
+        for (const file of stackProcessed) {
+          trackCreated(join(cwd, file));
+        }
+
+        spinner.stop(`Copied ${stackProcessed.length} stack files`);
+      } else {
+        spinner.stop(`Stack template ${config.stack} not found, using base only`);
+      }
+    }
+
+    // Step 4: Copy framework files (.cursor/luca/)
+    spinner.start('Installing framework files...');
+
+    const frameworkTemplatesDir = join(templatesDir, 'framework');
+    if (existsSync(frameworkTemplatesDir)) {
+      const { processed: frameworkProcessed, copied: frameworkCopied } = await copyTemplates({
+        sourceDir: frameworkTemplatesDir,
+        destDir: lucaDir,
+        config,
+      });
+
+      spinner.stop(`Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`);
+    } else {
+      spinner.stop('Framework templates not found');
+    }
+
+    // Step 5: Create manifest
+    spinner.start('Creating manifest...');
+
+    const manifest = await createManifest({
+      config,
+      cwd,
+      createdFiles: createdPaths,
+    });
+
+    await writeManifest(manifest, cwd);
+    trackCreated(join(cwd, '.planning', 'manifest.json'));
+
+    spinner.stop('Manifest created');
+
+    // Clear tracking (success - don't cleanup)
+    createdPaths.length = 0;
+
+    return { success: true, manifest };
+  } catch (error) {
+    spinner.stop('Error during file generation');
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`File generation failed: ${errorMessage}`);
+
+    // Cleanup on error
+    await cleanupFiles();
+
+    return { success: false, error: errorMessage };
+  }
+}
