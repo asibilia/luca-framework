@@ -1,0 +1,44 @@
+export interface ProjectContext {
+  /** Whether package.json exists */
+  hasPackageJson: boolean;
+  /** Whether .git directory exists */
+  hasGit: boolean;
+  /** Whether Luca is already installed */
+  hasLuca: boolean;
+  /** Detected stack from dependencies */
+  detectedStack: 'react-ts' | 'react' | 'node-ts' | 'node' | 'unknown';
+  /** Whether TypeScript is configured */
+  hasTypeScript: boolean;
+  /** Project name from package.json */
+  projectName: string | null;
+}
+
+export interface BrandingConfig {
+  /** Display name for the framework (e.g., "Luca") */
+  frameworkName: string;
+  /** Command prefix for skills (e.g., "lu") */
+  commandPrefix: string;
+  /** Regex pattern for ticket IDs (e.g., "[A-Z]+-\\d+") */
+  ticketPattern: string;
+  /** Placeholder ticket ID (e.g., "PROJ-0000") */
+  placeholderTicket: string;
+}
+
+export interface LucaConfig {
+  branding: BrandingConfig;
+  stack: string;
+  workTracker: 'jira' | 'github' | 'none';
+}
+
+export interface LucaManifest {
+  version: string;
+  installedAt: string;
+  updatedAt: string;
+  branding: BrandingConfig;
+  stack: string;
+  workTracker: string;
+  files: Record<string, {
+    originalHash: string;
+    source: 'framework' | 'user';
+  }>;
+}
