@@ -169,6 +169,7 @@ export function createBrandingContext(branding: BrandingConfig) {
  * Merge user branding with defaults.
  *
  * Any missing fields are filled in from defaultBranding.
+ * Undefined values are filtered out to prevent overriding defaults.
  *
  * @param userBranding - Partial user branding config
  * @returns Complete branding configuration
@@ -180,8 +181,13 @@ export function createBrandingContext(branding: BrandingConfig) {
  * ```
  */
 export function mergeBranding(userBranding: Partial<BrandingConfig>): BrandingConfig {
+  // Filter out undefined values to prevent overriding defaults
+  const definedUserBranding = Object.fromEntries(
+    Object.entries(userBranding).filter(([, value]) => value !== undefined)
+  ) as Partial<BrandingConfig>;
+
   return {
     ...defaultBranding,
-    ...userBranding,
+    ...definedUserBranding,
   };
 }
