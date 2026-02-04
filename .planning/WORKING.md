@@ -3,40 +3,36 @@
 ## Session Info
 
 - **Started**: 2026-02-04
-- **Workflow**: /lu-new-project
-- **Task**: Package Luca framework as distributable CLI-installable agent framework
+- **Workflow**: /lu-plan-phase
+- **Phase**: 1 — Core CLI & Foundation
 
 ## Memory Recall
 
-- **Patterns**: Parallel codebase mapping (4 agents), questioning before planning
-- **Decisions**: CLI installer, branded skin, React+TS template only
-- **Pitfalls**: Hardcoded paths, company references need abstraction
+### Patterns
+- **Codebase mapping with parallel agents**: Proven effective for comprehensive analysis
+- **Questioning before planning**: Used in discuss-phase, surfaced wizard flow, output, defaults, and file structure decisions
 
-## Findings
+### Decisions
+- CLI installer over npm (better UX for setup wizard)
+- Branded skin over rebrand (Cursor file name limitations, enables upgradability)
+- React+TS template only v1 (ship one excellent template, prove pattern)
+- UnJS ecosystem for CLI (citty, @clack/prompts, consola, unbuild)
+- Luca/User separation (.cursor/luca/ for framework, .cursor/agents/ + .cursor/rules/ for user)
 
-### From Codebase Mapping
+### Pitfalls
+- **Hardcoded paths**: 10+ locations with PT-/ENG- prefixes need abstraction
+- Framework file structure already exists — need to reorganize, not create from scratch
 
-- 7 codebase documents created in `.planning/codebase/`
-- CONCERNS.md identified 10 categories of packageability risks
-- Key blockers: hardcoded prefixes, no installation script, no version management
+## Intuition Flags
 
-### From Questioning
+- OPPORTUNITY: Strong patterns exist from research (UnJS ecosystem, @clack/prompts, origin/user separation)
+- CAUTION: File restructuring may break existing installations
+- CAUTION: Branding replacement scope may be larger than expected
 
-- Target: Enterprise teams with compliance/security needs
-- Distribution: CLI installer (`npx luca init`)
-- Branding: Configurable skin (names in config, framework stays "Luca")
-- Features v1: Pluggable work tracking, configurable approvals
-- Stack templates v1: React + TypeScript only
-- Updates: Notify on init, manual update
+## Planning Notes
 
-## Candidates
-
-### For MEMORY.md (after verification)
-
-- Pattern: "Codebase mapping before project init surfaces packageability risks early"
-- Decision: "Enterprise-first means secure defaults with configurable overrides"
+<!-- Log planning decisions as they're made -->
 
 ---
 
 *Session started: 2026-02-04*
-*Clear after learning extraction*
