@@ -1,7 +1,10 @@
 import { defineCommand, runMain } from 'citty';
+import * as p from '@clack/prompts';
 import { logger } from '../utils/logger';
-import { detectProjectContext, formatStack } from '../utils/detect';
-import type { ProjectContext, LucaConfig } from '../types';
+import { detectProjectContext } from '../utils/detect';
+import { runWizard, createConfigFromArgs, loadConfigFromFile } from '../utils/wizard';
+import { generateFiles, setupCleanupHandler } from '../utils/files';
+import type { LucaConfig } from '../types';
 
 export const initCommand = defineCommand({
   meta: {
@@ -38,7 +41,8 @@ export const initCommand = defineCommand({
     },
   },
   async run({ args }) {
-    logger.start('Initializing Luca...');
+    // Setup cleanup handler for SIGINT
+    setupCleanupHandler();
 
     // Detect project context
     const context = await detectProjectContext();
@@ -50,40 +54,59 @@ export const initCommand = defineCommand({
       process.exit(1);
     }
 
-    // Log detection results
-    if (context.hasPackageJson) {
-      logger.info(`Detected existing project: ${context.projectName || 'unnamed'}`);
-      if (context.detectedStack !== 'unknown') {
-        logger.info(`Detected stack: ${formatStack(context.detectedStack)}`);
+    let config: LucaConfig;
+
+    // Determine mode and get config
+    if (args.config) {
+      // Config file mode
+      logger.info(`Reading config from ${args.config}`);
+      try {
+        config = await loadConfigFromFile(args.config);
+      } catch (error) {
+        logger.error(`Failed to read config file: ${error}`);
+        process.exit(1);
       }
+    } else if (args.quick || args.name || args.prefix || args.stack || args.tracker) {
+      // Quick mode or explicit args
+      logger.info('Using provided arguments / defaults');
+      config = createConfigFromArgs({
+        name: args.name,
+        prefix: args.prefix,
+        stack: args.stack,
+        tracker: args.tracker,
+      });
     } else {
-      logger.info('No package.json detected - creating fresh project');
+      // Interactive mode
+      const wizardResult = await runWizard(context);
+      if (!wizardResult) {
+        process.exit(0);
+      }
+      config = wizardResult;
     }
 
-    if (context.hasGit) {
-      logger.info('Git repository detected');
+    // Generate files
+    const result = await generateFiles({ config });
+
+    if (!result.success) {
+      logger.error('Installation failed');
+      process.exit(1);
     }
 
-    // Placeholder for wizard (implemented in Plan 04)
-    if (args.quick) {
-      logger.info('Quick mode: using defaults');
-      // TODO: Run file generation with defaults
-    } else if (args.config) {
-      logger.info(`Config mode: reading from ${args.config}`);
-      // TODO: Read config file and generate
-    } else {
-      logger.info('Interactive wizard coming in Plan 04...');
-      // TODO: Run interactive wizard
-    }
+    // Success output
+    p.outro(`✅ ${config.branding.frameworkName} initialized!`);
 
-    logger.success('Context detection complete');
     logger.box(`
-Next: Plan 04 will implement the interactive wizard.
+Next steps:
 
-Detected:
-- Package.json: ${context.hasPackageJson ? 'Yes' : 'No'}
-- Git: ${context.hasGit ? 'Yes' : 'No'}
-- Stack: ${formatStack(context.detectedStack)}
+1. Review .planning/BRAIN.md and customize for your project
+2. Run /${config.branding.commandPrefix} to get started
+3. Use /${config.branding.commandPrefix}-help for command reference
+
+Files created:
+- .planning/config.json (workflow configuration)
+- .planning/BRAIN.md (project identity)
+- .planning/manifest.json (installation tracking)
+- .cursor/luca/ (framework files)
     `);
   },
 });
