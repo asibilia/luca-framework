@@ -1,0 +1,32 @@
+{
+  "mode": "interactive",
+  "depth": "standard",
+  "model_profile": "balanced",
+  "branding": {
+    "frameworkName": "<%= branding.frameworkName %>",
+    "commandPrefix": "<%= branding.commandPrefix %>",
+    "ticketPattern": "<%= branding.ticketPattern %>",
+    "placeholderTicket": "<%= branding.placeholderTicket %>"
+  },
+  "cognitive": {
+    "enabled": true,
+    "memory_recall": true,
+    "working_memory": true,
+    "intuition_check": true,
+    "routing": "auto"
+  },
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "code_review": true,
+    "uat_required": true,
+    "always_verify": true,
+    "capture_learnings": true
+  },
+  "parallelization": {
+    "enabled": true,
+    "plan_level": true,
+    "task_level": false
+  }
+}
