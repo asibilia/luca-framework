@@ -1,5 +1,6 @@
 import { defineCommand, runMain as cittyRunMain } from 'citty';
 import { initCommand, runInit } from './commands/init';
+import { updateCommand } from './commands/update';
 
 const main = defineCommand({
   meta: {
@@ -9,6 +10,7 @@ const main = defineCommand({
   },
   subCommands: {
     init: initCommand,
+    update: updateCommand,
   },
 });
 
@@ -16,4 +18,4 @@ export const runMain = () => cittyRunMain(main);
 export { runInit };
 
 // Re-export types for consumers
-export type { ProjectContext, BrandingConfig, LucaConfig, LucaManifest } from './types';
+export type { ProjectContext, BrandingConfig, LucaConfig, LucaManifest, FileComparison } from './types';
