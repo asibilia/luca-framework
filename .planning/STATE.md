@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Phase:** 1 — Core CLI & Foundation
-- **Status:** ready_for_planning
+- **Status:** planned
 - **Last Updated:** 2026-02-04
 
 ## Project Reference
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
-| 1 | Core CLI & Foundation | ready_for_planning | REQ-001, REQ-002, REQ-006 |
+| 1 | Core CLI & Foundation | planned (5 plans, 4 waves) | REQ-001, REQ-002, REQ-006 |
 | 2 | Integrations & Updates | pending | REQ-003, REQ-004, REQ-005 |
 | 3 | Enterprise Readiness | pending | REQ-007, REQ-008 |
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 | Branded skin over rebrand | Cursor file limitations, upgradability | 2026-02-04 |
 | React+TS template only v1 | Ship one excellent, prove pattern | 2026-02-04 |
 | UnJS ecosystem for CLI | Modern, TypeScript-first, lightweight | 2026-02-04 |
-| Origin/User separation | Enables updates without breaking customizations | 2026-02-04 |
+| Luca/User separation | Enables updates without breaking customizations | 2026-02-04 |
 
 ## Blockers
 
@@ -44,8 +44,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 
 ## Next Actions
 
-1. `/lu-discuss-phase 1` — Gather context for CLI implementation
-2. `/lu-plan-phase 1` — Create execution plans
+1. `/lu-execute-phase 1` — Execute all 5 plans (4 waves)
 
 ---
 
