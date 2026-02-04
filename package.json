@@ -1,15 +1,15 @@
 {
-  "name": "luca-framework",
+  "name": "luca-monorepo",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "commit": "bunx --bun @alecsibilia/commit"
+  },
   "devDependencies": {
     "@alecsibilia/commit": "^1.0.8",
-    "@types/bun": "latest"
-  },
-  "module": "index.ts",
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "scripts": {
-    "commit": "bunx --bun @alecsibilia/commit"
+    "@types/bun": "latest",
+    "unbuild": "^3.5.0"
   },
   "type": "module"
 }
