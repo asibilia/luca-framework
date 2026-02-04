@@ -16,8 +16,8 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Git Context
 
 - **Jira Ticket:** (none — project initialization)
-- **GitHub Issue:** (pending — offer after roadmap)
-- **Branch:** main
+- **GitHub Issue:** #1
+- **Branch:** `1--luca-framework-packaging`
 - **Base Branch:** main
 
 ## Phase Progress
