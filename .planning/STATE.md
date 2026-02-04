@@ -2,28 +2,28 @@
 
 ## Current Position
 
-- **Current Phase:** 1 — Core CLI & Foundation
-- **Status:** ✅ Complete
+- **Current Phase:** 2 — Integrations & Updates
+- **Status:** 📋 Planned
 - **Last Updated:** 2026-02-04
-- **Last Activity:** Phase 1 verified and learnings captured
+- **Last Activity:** Phase 2 planning complete — 5 plans across 3 waves
 
 ## Progress
 
 ```
 Phase 1: █████████████████████ 100% COMPLETE
 
-Wave 1: █████████████████████ COMPLETE
-  01-01 Monorepo Package Structure ✓
+Phase 2: ░░░░░░░░░░░░░░░░░░░░░ 0% PLANNED
 
-Wave 2: █████████████████████ COMPLETE
-  01-02 CLI Framework & Command Structure ✓
-  01-03 Template Infrastructure & Branding System ✓
+Wave 1: ░░░░░░░░░░░░░░░░░░░░░ PENDING
+  02-01 Work Tracker Foundation ○
 
-Wave 3: █████████████████████ COMPLETE
-  01-04 Init Wizard & File Generation ✓
+Wave 2: ░░░░░░░░░░░░░░░░░░░░░ PENDING (parallel)
+  02-02 GitHub Issues Adapter ○
+  02-03 Jira REST Adapter ○
+  02-04 Update Mechanism ○
 
-Wave 4: █████████████████████ COMPLETE
-  01-05 React+TS Stack Template & Integration ✓
+Wave 3: ░░░░░░░░░░░░░░░░░░░░░ PENDING
+  02-05 Version Check & Approvals ○
 ```
 
 ## Project Reference
@@ -45,7 +45,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
 | 1 | Core CLI & Foundation | ✅ complete | REQ-001, REQ-002, REQ-006 |
-| 2 | Integrations & Updates | pending | REQ-003, REQ-004, REQ-005 |
+| 2 | Integrations & Updates | 📋 planned | REQ-003, REQ-004, REQ-005 |
 | 3 | Enterprise Readiness | pending | REQ-007, REQ-008 |
 
 ## Phase 1 Results
@@ -91,8 +91,8 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 
 ## Next Actions
 
-1. `/lu-plan-phase 2` — Plan Phase 2: Integrations & Updates
-2. Review `ROADMAP.md` for Phase 2 scope
+1. `/lu-execute-phase 2` — Execute Phase 2: Integrations & Updates
+2. Start with Wave 1 (02-01) then parallel execution of Wave 2
 
 ---
 

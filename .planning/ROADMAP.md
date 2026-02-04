@@ -66,34 +66,14 @@ Plans:
 | REQ-004 | Configurable Approvals | Medium |
 | REQ-005 | Update Mechanism | High |
 
-### Key Tasks
+**Plans:** 5 plans
 
-1. **Work Tracker Interface**
-   - Define `WorkTrackerContract` TypeScript interface
-   - Create adapter base class/factory
-   - Integration point in workflows
-
-2. **Built-in Adapters**
-   - Jira adapter (Atlassian MCP)
-   - GitHub Issues adapter (gh CLI)
-   - Placeholder adapter (no external system)
-
-3. **Update Command**
-   - `npx luca update` implementation
-   - manifest.json hash comparison
-   - Conflict detection algorithm
-   - Backup before update
-   - Conflict resolution directory
-
-4. **Version Notification**
-   - Check npm registry on init
-   - Non-blocking notification
-   - Link to changelog
-
-5. **Approval Configuration**
-   - Extend config.json schema
-   - Hook into existing gate system
-   - Audit trail for approval decisions
+Plans:
+- [ ] 02-01-PLAN.md — Work tracker foundation: contract, factory, placeholder (Wave 1)
+- [ ] 02-02-PLAN.md — GitHub Issues adapter via gh CLI (Wave 2)
+- [ ] 02-03-PLAN.md — Jira REST API adapter (Wave 2, parallel)
+- [ ] 02-04-PLAN.md — Update mechanism: manifest comparison & command (Wave 2, parallel)
+- [ ] 02-05-PLAN.md — Version notifications & approval configuration (Wave 3)
 
 ### Dependencies
 
