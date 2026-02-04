@@ -15,7 +15,7 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 1. **Check current version:**
 
    ```bash
-   cat .cursor/origin/VERSION 2>/dev/null || echo "unknown"
+   cat .cursor/luca/VERSION 2>/dev/null || echo "unknown"
    ```
 
 2. **Check latest version:**
@@ -77,5 +77,6 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 This is a terminal action. The update is complete.
 
 **Common follow-ups:**
+
 - `/lu-help` — See updated command reference
 - `/lu-progress` — Continue your work

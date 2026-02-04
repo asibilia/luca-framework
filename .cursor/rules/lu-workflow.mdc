@@ -447,7 +447,7 @@ Complexity Classification (Step 2)
 
 ## File References
 
-Luca files are located in `.cursor/origin/`:
+Luca files are located in `.cursor/luca/`:
 
 - `workflows/` — Execution workflows
 - `templates/` — Document templates (includes BRAIN.md, MEMORY.md, WORKING.md)

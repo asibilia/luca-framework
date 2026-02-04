@@ -11,7 +11,7 @@ Restore complete project context and resume work seamlessly from previous sessio
 
 Read this reference file before executing:
 
-- `.cursor/origin/workflows/resume-project.md`
+- `.cursor/luca/workflows/resume-project.md`
 
 ## Process
 
@@ -65,5 +65,6 @@ Follow the resume-project workflow which handles:
 **Primary:** `/lu-progress` — See current state and smart routing
 
 **Also available:**
+
 - `/lu-execute-phase {phase}` — Continue execution directly
 - `/lu-help` — Review available commands

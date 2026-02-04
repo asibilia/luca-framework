@@ -11,7 +11,7 @@ Instantly restore full project context so "Where were we?" has an immediate, com
 </purpose>
 
 <required_reading>
-@./.cursor/origin/references/continuation-format.md
+@./.cursor/luca/references/continuation-format.md
 </required_reading>
 
 <process>

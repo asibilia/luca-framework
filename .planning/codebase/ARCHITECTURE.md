@@ -7,6 +7,7 @@
 **Overall:** Orchestrator/Sub-Agent Delegation Pattern
 
 **Key Characteristics:**
+
 - Lean orchestrators coordinate work, delegate execution to specialized sub-agents
 - Sub-agents operate with fresh context windows (no context bleed)
 - Template-driven document generation for consistency
@@ -17,6 +18,7 @@
 ## Layers
 
 **Orchestration Layer:**
+
 - Purpose: Coordinates workflows, spawns sub-agents, handles checkpoints
 - Location: `.cursor/skills/` (SKILL.md files)
 - Contains: Workflow definitions, agent spawning logic, result aggregation
@@ -24,6 +26,7 @@
 - Used by: User commands (e.g., `/lu-plan-phase`, `/lu-execute-phase`)
 
 **Agent Layer:**
+
 - Purpose: Specialized agents for specific tasks (planning, execution, verification, learning)
 - Location: `.cursor/agents/` (agent definition files)
 - Contains: Agent role definitions, execution flows, success criteria
@@ -31,20 +34,23 @@
 - Used by: Orchestrators via Task() spawning
 
 **Template Layer:**
+
 - Purpose: Standardized document structures for plans, summaries, state tracking
-- Location: `.cursor/origin/templates/`
+- Location: `.cursor/luca/templates/`
 - Contains: PLAN.md, SUMMARY.md, STATE.md, PROJECT.md, ROADMAP.md templates
 - Depends on: None (pure templates)
 - Used by: Agents when generating documents
 
 **Reference Layer:**
+
 - Purpose: Shared knowledge and patterns for agents to reference
-- Location: `.cursor/origin/references/`
+- Location: `.cursor/luca/references/`
 - Contains: Checkpoint patterns, TDD guidelines, planning config, verification patterns
 - Depends on: None
 - Used by: Agents during execution
 
 **Planning Data Layer:**
+
 - Purpose: Project state, plans, summaries, codebase analysis
 - Location: `.planning/`
 - Contains: PROJECT.md, ROADMAP.md, STATE.md, phases/, codebase/
@@ -109,30 +115,35 @@
 ## Key Abstractions
 
 **Agent Definition:**
+
 - Purpose: Encapsulates specialized behavior for a specific task domain
 - Examples: `lu-planner.md`, `lu-executor.md`, `lu-verifier.md`, `lu-router.md`
 - Pattern: YAML frontmatter (name, description, tools, color) + role definition + execution flow
 - Location: `.cursor/agents/`
 
 **Workflow Orchestration:**
+
 - Purpose: Coordinates multi-step processes with agent delegation
 - Examples: `execute-phase.md`, `map-codebase.md`, `plan-phase.md`
 - Pattern: Step-by-step process with agent spawning, checkpoint handling, result aggregation
-- Location: `.cursor/origin/workflows/`
+- Location: `.cursor/luca/workflows/`
 
 **Plan Structure:**
+
 - Purpose: Executable task breakdown optimized for parallel execution
 - Examples: `{phase}-{plan}-PLAN.md` files
 - Pattern: Frontmatter (wave, depends_on, files_modified, must_haves) + XML task definitions
 - Location: `.planning/phases/XX-name/`
 
 **Summary Structure:**
+
 - Purpose: Completion documentation with dependency graph metadata
 - Examples: `{phase}-{plan}-SUMMARY.md` files
 - Pattern: Frontmatter (requires, provides, affects, tech-stack) + execution details
 - Location: `.planning/phases/XX-name/`
 
 **Checkpoint System:**
+
 - Purpose: Pause execution for user interaction (verification, decisions, manual actions)
 - Examples: `checkpoint:human-verify`, `checkpoint:decision`, `checkpoint:human-action`
 - Pattern: Agent executes until checkpoint, returns structured state, fresh continuation agent spawned
@@ -141,16 +152,19 @@
 ## Entry Points
 
 **User Commands (Skills):**
+
 - Location: `.cursor/skills/lu-*/SKILL.md`
 - Triggers: User types `/lu-*` command in Cursor
 - Responsibilities: Parse arguments, spawn orchestrator workflow, present results
 
 **Orchestrator Workflows:**
-- Location: `.cursor/origin/workflows/*.md`
+
+- Location: `.cursor/luca/workflows/*.md`
 - Triggers: Spawned by skills or other orchestrators
 - Responsibilities: Coordinate multi-agent workflows, handle checkpoints, aggregate results
 
 **Agent Execution:**
+
 - Location: `.cursor/agents/*.md`
 - Triggers: Spawned by orchestrators via Task() tool
 - Responsibilities: Execute specific domain tasks (plan, execute, verify, learn)
@@ -160,6 +174,7 @@
 **Strategy:** Automatic deviation handling with tracking
 
 **Patterns:**
+
 - **Auto-fix bugs**: Fix immediately, track in SUMMARY.md deviations section
 - **Missing critical**: Add required work (security, validation), track as deviation
 - **Blocking dependencies**: Install missing packages, add required files, track as deviation

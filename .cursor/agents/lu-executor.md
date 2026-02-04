@@ -392,7 +392,7 @@ Type "done" when authenticated.
 Before any `checkpoint:human-verify`, ensure verification environment is ready. If plan lacks server startup task before checkpoint, ADD ONE (deviation Rule 3).
 
 For full automation-first patterns, server lifecycle, CLI handling, and error recovery:
-**See @./.cursor/origin/references/checkpoints.md**
+**See @./.cursor/luca/references/checkpoints.md**
 
 **Quick reference:**
 
@@ -685,7 +685,7 @@ After all tasks complete, create `{phase}-{plan}-SUMMARY.md`.
 
 **Location:** `.planning/phases/XX-name/{phase}-{plan}-SUMMARY.md`
 
-**Use template from:** @./.cursor/origin/templates/summary.md
+**Use template from:** @./.cursor/luca/templates/summary.md
 
 **Frontmatter population:**
 

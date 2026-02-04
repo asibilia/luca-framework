@@ -23,7 +23,7 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 - [ ] React + TypeScript BRAIN.md template with conventions
 - [ ] Version notification on init (check for updates)
 - [ ] Remove hardcoded company references (PT-, ENG-, Percent)
-- [ ] Abstract `.cursor/origin/` path dependencies
+- [ ] Abstract `.cursor/luca/` path dependencies
 
 ### Out of Scope
 
@@ -42,7 +42,7 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 - 10+ locations with hardcoded PT-/ENG- ticket prefixes
 - Company-specific references (Percent, percent-ui, mypercent.atlassian.net)
 - Hardcoded GitHub repository references
-- Absolute path dependencies to `.cursor/origin/`
+- Absolute path dependencies to `.cursor/luca/`
 - No npm package or installation script
 - No version management
 

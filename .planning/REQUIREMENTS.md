@@ -21,7 +21,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - `npx luca init` starts interactive setup wizard
 - Setup completes in under 5 minutes
 - Wizard prompts for: project name, branding, work tracker, stack template
-- Creates `.cursor/origin/` with framework files
+- Creates `.cursor/luca/` with framework files
 - Creates `.planning/` with initialized state
 - Generates `manifest.json` for update tracking
 - No postinstall scripts (explicit user invocation only)
@@ -62,7 +62,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 
 **Acceptance Criteria:**
 
-- TypeScript interface `WorkTrackerContract` defined in `.cursor/origin/contracts/`
+- TypeScript interface `WorkTrackerContract` defined in `.cursor/luca/contracts/`
 - Contract includes: `getTicket`, `createBranch` (optional), `linkPR` (optional)
 - Built-in adapters:
   - `jira-adapter.ts` — Jira via Atlassian MCP
@@ -125,7 +125,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
   - New files → Add
   - Unchanged files → Update
   - User-modified files → Flag conflict, preserve user version
-- Conflicts written to `.cursor/origin/conflicts/` for manual review
+- Conflicts written to `.cursor/luca/conflicts/` for manual review
 - Backup created before update
 
 **Technical Notes:**

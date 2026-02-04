@@ -47,7 +47,7 @@ cat .planning/MEMORY.md 2>/dev/null
 If MEMORY.md doesn't exist, create from template:
 
 ```bash
-cp .cursor/origin/templates/MEMORY.md .planning/MEMORY.md
+cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 ```
 
 ### Step 3: Extract Pattern Candidates
@@ -250,7 +250,7 @@ Then reset for next session:
 Create from template before writing:
 
 ```bash
-cp .cursor/origin/templates/MEMORY.md .planning/MEMORY.md
+cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 ```
 
 ### Empty WORKING.md

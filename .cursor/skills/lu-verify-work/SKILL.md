@@ -25,7 +25,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to diagnose, plan, or review code yourself. Spawn the appropriate agents.
 
-**Reference:** See `.cursor/origin/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -68,8 +68,8 @@ reviewer_model = (omit)
 
 Read these reference files before executing:
 
-- `.cursor/origin/workflows/verify-work.md`
-- `.cursor/origin/templates/UAT.md`
+- `.cursor/luca/workflows/verify-work.md`
+- `.cursor/luca/templates/UAT.md`
 
 ## Process
 
@@ -354,5 +354,6 @@ Manual intervention required
 **Primary:** `/lu-progress` — Check status and get smart routing
 
 **Also available:**
+
 - `/lu-plan-phase {N} --gaps` — Create fix plans for failures
 - `/lu-audit-milestone` — Complete the milestone

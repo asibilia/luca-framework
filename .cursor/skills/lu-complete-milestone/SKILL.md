@@ -18,9 +18,9 @@ Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUI
 
 Read these reference files before executing:
 
-- `.cursor/origin/workflows/complete-milestone.md`
-- `.cursor/origin/templates/milestone-archive.md`
-- `.cursor/origin/workflows/learning-capture.md`
+- `.cursor/luca/workflows/complete-milestone.md`
+- `.cursor/luca/templates/milestone-archive.md`
+- `.cursor/luca/workflows/learning-capture.md`
 
 ## Learning Consolidation (NEW)
 
@@ -64,7 +64,7 @@ After archiving:
 
 ```bash
 # Clear WORKING.md for next milestone
-cp .cursor/origin/templates/WORKING.md .planning/WORKING.md
+cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
 ```
 
 MEMORY.md persists across milestones - it's the long-term project memory.
@@ -147,5 +147,6 @@ MEMORY.md persists across milestones - it's the long-term project memory.
 **Primary:** `/lu-new-milestone` — Start the next milestone cycle
 
 **Also available:**
+
 - `/lu-progress` — Review completed work
 - `/lu-help` — See all available commands

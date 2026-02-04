@@ -6,7 +6,10 @@
   "bin": {
     "create-luca": "./bin/create-luca.js"
   },
-  "files": ["bin", "dist"],
+  "files": [
+    "bin",
+    "dist"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -19,5 +22,11 @@
   "dependencies": {
     "luca-framework": "workspace:*"
   },
-  "keywords": ["luca", "cli", "scaffolding", "cursor", "ai"]
+  "keywords": [
+    "luca",
+    "cli",
+    "scaffolding",
+    "cursor",
+    "ai"
+  ]
 }

@@ -10,6 +10,7 @@ This workflow is executed by a verification subagent spawned from execute-phase.
 A task "create chat component" can be marked complete when the component is a placeholder. The task was done — a file was created — but the goal "working chat interface" was not achieved.
 
 Goal-backward verification starts from the outcome and works backwards:
+
 1. What must be TRUE for the goal to be achieved?
 2. What must EXIST for those truths to hold?
 3. What must be WIRED for those artifacts to function?
@@ -18,8 +19,8 @@ Then verify each level against the actual codebase.
 </core_principle>
 
 <required_reading>
-@./.cursor/origin/references/verification-patterns.md
-@./.cursor/origin/templates/verification-report.md
+@./.cursor/luca/references/verification-patterns.md
+@./.cursor/luca/templates/verification-report.md
 </required_reading>
 
 <process>
@@ -62,6 +63,7 @@ grep -l "must_haves:" "$PHASE_DIR"/*-PLAN.md 2>/dev/null
 ```
 
 If found, extract and use:
+
 ```yaml
 must_haves:
   truths:
@@ -105,6 +107,7 @@ If no must_haves in frontmatter, derive using goal-backward process:
 A truth is achievable if the supporting artifacts exist, are substantive, and are wired correctly.
 
 **Verification status:**
+
 - ✓ VERIFIED: All supporting artifacts pass all checks
 - ✗ FAILED: One or more supporting artifacts missing, stub, or unwired
 - ? UNCERTAIN: Can't verify programmatically (needs human)
@@ -121,6 +124,7 @@ A truth is achievable if the supporting artifacts exist, are substantive, and ar
 Truth: "User can see existing messages"
 
 Supporting artifacts:
+
 - Chat.tsx (renders messages)
 - /api/chat GET (provides messages)
 - Message model (defines schema)
@@ -155,6 +159,7 @@ If MISSING → artifact fails, record and continue to next artifact.
 Check that the file has real implementation, not a stub.
 
 **Line count check:**
+
 ```bash
 check_length() {
   local path="$1"
@@ -165,12 +170,14 @@ check_length() {
 ```
 
 Minimum lines by type:
+
 - Component: 15+ lines
 - API route: 10+ lines
 - Hook/util: 10+ lines
 - Schema model: 5+ lines
 
 **Stub pattern check:**
+
 ```bash
 check_stubs() {
   local path="$1"
@@ -190,6 +197,7 @@ check_stubs() {
 ```
 
 **Export check (for components/hooks):**
+
 ```bash
 check_exports() {
   local path="$1"
@@ -198,6 +206,7 @@ check_exports() {
 ```
 
 **Combine level 2 results:**
+
 - SUBSTANTIVE: Adequate length + no stubs + has exports
 - STUB: Too short OR has stub patterns OR no exports
 - PARTIAL: Mixed signals (length OK but has some stubs)
@@ -207,6 +216,7 @@ check_exports() {
 Check that the artifact is connected to the system.
 
 **Import check (is it used?):**
+
 ```bash
 check_imported() {
   local artifact_name="$1"
@@ -220,6 +230,7 @@ check_imported() {
 ```
 
 **Usage check (is it called?):**
+
 ```bash
 check_used() {
   local artifact_name="$1"
@@ -233,6 +244,7 @@ check_used() {
 ```
 
 **Combine level 3 results:**
+
 - WIRED: Imported AND used
 - ORPHANED: Exists but not imported/used
 - PARTIAL: Imported but not used (or vice versa)
@@ -370,6 +382,7 @@ verify_state_render_link() {
 ### Aggregate key link results
 
 For each key link in must_haves:
+
 - Run appropriate verification function
 - Record status and evidence
 - WIRED / PARTIAL / STUB / NOT_WIRED
@@ -384,11 +397,13 @@ grep -E "Phase ${PHASE_NUM}" .planning/REQUIREMENTS.md 2>/dev/null
 ```
 
 For each requirement:
+
 1. Parse requirement description
 2. Identify which truths/artifacts support it
 3. Determine status based on supporting infrastructure
 
 **Requirement status:**
+
 - ✓ SATISFIED: All supporting truths verified
 - ✗ BLOCKED: One or more supporting truths failed
 - ? NEEDS HUMAN: Can't verify requirement programmatically
@@ -398,12 +413,14 @@ For each requirement:
 **Scan for anti-patterns across phase files.**
 
 Identify files modified in this phase:
+
 ```bash
 # Extract files from SUMMARY.md
 grep -E "^\- \`" "$PHASE_DIR"/*-SUMMARY.md | sed 's/.*`\([^`]*\)`.*/\1/' | sort -u
 ```
 
 Run anti-pattern detection:
+
 ```bash
 scan_antipatterns() {
   local files="$@"
@@ -438,6 +455,7 @@ scan_antipatterns() {
 ```
 
 Categorize findings:
+
 - 🛑 Blocker: Prevents goal achievement (placeholder renders, empty handlers)
 - ⚠️ Warning: Indicates incomplete (TODO comments, console.log)
 - ℹ️ Info: Notable but not problematic
@@ -449,6 +467,7 @@ Categorize findings:
 Some things can't be verified programmatically:
 
 **Always needs human:**
+
 - Visual appearance (does it look right?)
 - User flow completion (can you do the full task?)
 - Real-time behavior (WebSocket, SSE updates)
@@ -457,11 +476,13 @@ Some things can't be verified programmatically:
 - Error message clarity
 
 **Needs human if uncertain:**
+
 - Complex wiring that grep can't trace
 - Dynamic behavior depending on state
 - Edge cases and error states
 
 **Format for human verification:**
+
 ```markdown
 ## Human Verification Required
 
@@ -470,12 +491,14 @@ Some things can't be verified programmatically:
 **Expected:** {What should happen}
 **Why human:** {Why can't verify programmatically}
 ```
+
 </step>
 
 <step name="determine_status">
 **Calculate overall verification status.**
 
 **Status: passed**
+
 - All truths VERIFIED
 - All artifacts pass level 1-3
 - All key links WIRED
@@ -483,20 +506,24 @@ Some things can't be verified programmatically:
 - (Human verification items are OK — will be prompted)
 
 **Status: gaps_found**
+
 - One or more truths FAILED
 - OR one or more artifacts MISSING/STUB
 - OR one or more key links NOT_WIRED
 - OR blocker anti-patterns found
 
 **Status: human_needed**
+
 - All automated checks pass
 - BUT items flagged for human verification
 - Can't determine goal achievement without human
 
 **Calculate score:**
+
 ```
 score = (verified_truths / total_truths)
 ```
+
 </step>
 
 <step name="generate_fix_plans">
@@ -534,12 +561,12 @@ Group related gaps into fix plans:
 **Estimated scope:** {Small / Medium}
 ```
 
-3. **Keep plans focused:**
+1. **Keep plans focused:**
    - 2-3 tasks per plan
    - Single concern per plan
    - Include verification task
 
-4. **Order by dependency:**
+2. **Order by dependency:**
    - Fix missing artifacts before wiring
    - Fix stubs before integration
    - Verify after all fixes
@@ -553,6 +580,7 @@ REPORT_PATH="$PHASE_DIR/${PHASE_NUM}-VERIFICATION.md"
 ```
 
 Fill template sections:
+
 1. **Frontmatter:** phase, verified timestamp, status, score
 2. **Goal Achievement:** Truth verification table
 3. **Required Artifacts:** Artifact verification table
@@ -564,7 +592,7 @@ Fill template sections:
 9. **Recommended Fix Plans:** If gaps_found
 10. **Verification Metadata:** Approach, timing, counts
 
-See ./.cursor/origin/templates/verification-report.md for complete template.
+See ./.cursor/luca/templates/verification-report.md for complete template.
 </step>
 
 <step name="return_to_orchestrator">
@@ -606,6 +634,7 @@ Automated checks passed. Awaiting human verification.
 ```
 
 The orchestrator will:
+
 - If `passed`: Continue to update_roadmap
 - If `gaps_found`: Create and execute fix plans, then re-verify
 - If `human_needed`: Present items to user, collect responses
@@ -614,6 +643,7 @@ The orchestrator will:
 </process>
 
 <success_criteria>
+
 - [ ] Must-haves established (from frontmatter or derived)
 - [ ] All truths verified with status and evidence
 - [ ] All artifacts checked at all three levels

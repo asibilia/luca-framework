@@ -111,7 +111,7 @@ When prompted, choose `PT-0000` placeholder for work not tied to a Jira ticket.
 ├── skills/
 │   ├── lu/                   # Unified entry point (with git integration)
 │   └── lu-*/                 # Individual commands
-├── origin/                    # Framework config
+├── luca/                    # Framework config
 │   ├── templates/            # Document templates
 │   ├── workflows/            # Workflow definitions
 │   └── references/           # Configuration references

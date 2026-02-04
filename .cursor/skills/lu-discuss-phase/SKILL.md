@@ -23,8 +23,8 @@ Extract implementation decisions that downstream agents need — researcher and 
 
 Read these reference files before executing:
 
-- `.cursor/origin/workflows/discuss-phase.md`
-- `.cursor/origin/templates/context.md`
+- `.cursor/luca/workflows/discuss-phase.md`
+- `.cursor/luca/templates/context.md`
 
 ## Process
 

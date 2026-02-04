@@ -64,9 +64,9 @@ Rename `.cursor/rules/pt-og-workflow.mdc` to `.cursor/rules/lu-workflow.mdc`
 
 - All `.cursor/agents/lu-*.md` files
 - All `.cursor/skills/lu-*/SKILL.md` files
-- All `.cursor/origin/workflows/*.md` files
-- All `.cursor/origin/templates/*.md` files
-- All `.cursor/origin/references/*.md` files
+- All `.cursor/luca/workflows/*.md` files
+- All `.cursor/luca/templates/*.md` files
+- All `.cursor/luca/references/*.md` files
 - `.cursor/rules/lu-workflow.mdc`
 - `docs/agent-framework/luca/*.md`
 - `docs/agent-framework/README.md`

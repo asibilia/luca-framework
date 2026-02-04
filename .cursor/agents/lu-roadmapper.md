@@ -302,7 +302,7 @@ After roadmap creation, REQUIREMENTS.md gets updated with phase mappings:
 
 ## ROADMAP.md Structure
 
-Use template from `./.cursor/origin/templates/roadmap.md`.
+Use template from `./.cursor/luca/templates/roadmap.md`.
 
 Key sections:
 
@@ -312,7 +312,7 @@ Key sections:
 
 ## STATE.md Structure
 
-Use template from `./.cursor/origin/templates/state.md`.
+Use template from `./.cursor/luca/templates/state.md`.
 
 Key sections:
 

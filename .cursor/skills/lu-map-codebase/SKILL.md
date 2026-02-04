@@ -24,7 +24,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to analyze the codebase yourself. Spawn the mapper agents.
 
-**Reference:** See `.cursor/origin/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -49,7 +49,7 @@ mapper_model = "fast"
 
 Read this reference file before executing:
 
-- `.cursor/origin/workflows/map-codebase.md`
+- `.cursor/luca/workflows/map-codebase.md`
 
 ## When to Use
 
@@ -75,7 +75,7 @@ Read this reference file before executing:
 mkdir -p .planning/codebase
 ```
 
-3. Spawn 4 parallel lu-codebase-mapper agents:
+1. Spawn 4 parallel lu-codebase-mapper agents:
 
 **MANDATORY**: You MUST spawn 4 lu-codebase-mapper agents in PARALLEL. Do NOT analyze the codebase yourself.
 
@@ -208,10 +208,10 @@ Analyze the codebase for concerns, tech debt, and risks.
 
 **Do NOT proceed until ALL 4 Tasks return.**
 
-4. Wait for agents to complete, collect confirmations (NOT document contents)
-5. Verify all 7 documents exist with line counts
-6. Commit codebase map
-7. Offer next steps (typically: `/lu-new-project` or `/lu-plan-phase`)
+1. Wait for agents to complete, collect confirmations (NOT document contents)
+2. Verify all 7 documents exist with line counts
+3. Commit codebase map
+4. Offer next steps (typically: `/lu-new-project` or `/lu-plan-phase`)
 
 ## Success Criteria
 
@@ -225,5 +225,6 @@ Analyze the codebase for concerns, tech debt, and risks.
 **Primary:** `/lu-progress` — Check project status with codebase context
 
 **Also available:**
+
 - `/lu-new-milestone` — Start a new milestone using codebase knowledge
 - `/lu-discuss-phase {N}` — Discuss a phase with codebase awareness

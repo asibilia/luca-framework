@@ -9,7 +9,8 @@
 This document synthesizes architectural patterns for building a pluggable, updatable agent framework. The core challenge: enabling zero-friction adoption with `npx luca init` while supporting extensive customization and seamless updates that don't break user modifications.
 
 **Key architectural decisions:**
-1. **Origin/User separation** - Framework files vs user customizations in distinct directories
+
+1. **Luca/User separation** - Framework files vs user customizations in distinct directories
 2. **Adapter-based integrations** - Interface contracts for work tracking, approvals, etc.
 3. **Convention over configuration** - Sensible defaults with explicit override paths
 4. **Layered configuration** - Global → project → local with clear precedence
@@ -23,7 +24,7 @@ This document synthesizes architectural patterns for building a pluggable, updat
 
 ```
 .cursor/
-├── origin/                    # FRAMEWORK (managed, updatable)
+├── luca/                    # FRAMEWORK (managed, updatable)
 │   ├── agents/               # Agent definitions
 │   ├── workflows/            # Orchestration workflows
 │   ├── templates/            # Document templates
@@ -53,20 +54,21 @@ This document synthesizes architectural patterns for building a pluggable, updat
 
 | Component | Responsibility | Communicates With |
 |-----------|---------------|-------------------|
-| `origin/` | Framework core (agents, workflows, templates) | Config, Integrations |
-| `agents/` | User-defined agent extensions | Origin agents (extension) |
-| `skills/` | User-defined skills/commands | Origin workflows |
+| `luca/` | Framework core (agents, workflows, templates) | Config, Integrations |
+| `agents/` | User-defined agent extensions | Luca agents (extension) |
+| `skills/` | User-defined skills/commands | Luca workflows |
 | `integrations/` | Adapter implementations for external services | Framework via contracts |
 | `config.json` | Configuration layering | All components |
 
 ### Data Flow
 
 **Initialization Flow:**
+
 ```
 npx luca init
     │
     ├── 1. Prompt for configuration (branding, integrations)
-    ├── 2. Write .cursor/origin/ (framework files)
+    ├── 2. Write .cursor/luca/ (framework files)
     ├── 3. Write .cursor/config.json (user config)
     ├── 4. Write .planning/config.json (project config)
     ├── 5. Generate manifest.json (file hashes for updates)
@@ -74,13 +76,14 @@ npx luca init
 ```
 
 **Update Flow:**
+
 ```
 npx luca update
     │
     ├── 1. Fetch latest framework version
     ├── 2. Compare manifest.json (current vs new)
     ├── 3. Identify: unchanged, user-modified, framework-updated
-    ├── 4. Update unchanged origin/ files
+    ├── 4. Update unchanged luca/ files
     ├── 5. Flag conflicts for user-modified files
     └── 6. Update manifest.json
 ```
@@ -89,13 +92,14 @@ npx luca update
 
 ## Patterns to Follow
 
-### Pattern 1: Origin/User Separation
+### Pattern 1: Luca/User Separation
 
 **What:** Strict separation between framework-managed files and user customizations.
 
 **When:** Always. This is the core pattern enabling updates without breaking customizations.
 
-**Rationale:** 
+**Rationale:**
+
 - VS Code extension model proves this works at scale
 - Create React App's ejection problem shows the alternative doesn't work
 - Users can customize without fear of losing changes during updates
@@ -104,7 +108,7 @@ npx luca update
 
 ```
 .cursor/
-├── origin/                    # ⚠️ FRAMEWORK MANAGED - DO NOT EDIT
+├── luca/                    # ⚠️ FRAMEWORK MANAGED - DO NOT EDIT
 │   ├── agents/
 │   │   ├── lu-planner.md     # Framework agent
 │   │   └── lu-executor.md    # Framework agent
@@ -117,9 +121,10 @@ npx luca update
 ```
 
 **Resolution order (highest priority first):**
+
 1. `.cursor/agents/overrides/{name}.md` (user override)
 2. `.cursor/agents/{name}.md` (user custom)
-3. `.cursor/origin/agents/{name}.md` (framework default)
+3. `.cursor/luca/agents/{name}.md` (framework default)
 
 **Sources:** VS Code extension architecture, Laravel vendor directory pattern
 
@@ -132,6 +137,7 @@ npx luca update
 **When:** Work tracking (Jira, Linear, GitHub Issues), approvals, notifications.
 
 **Rationale:**
+
 - Adapter pattern is proven for bridging incompatible interfaces
 - Interface segregation allows minimal implementation for simple cases
 - New integrations don't require framework changes
@@ -139,7 +145,7 @@ npx luca update
 **Example:**
 
 ```typescript
-// .cursor/origin/contracts/work-tracker.ts
+// .cursor/luca/contracts/work-tracker.ts
 export interface WorkTrackerContract {
   // Required methods
   getTicket(id: string): Promise<Ticket>;
@@ -158,7 +164,7 @@ export interface Ticket {
 }
 
 // .planning/integrations/jira-adapter.ts (USER IMPLEMENTED)
-import type { WorkTrackerContract, Ticket } from '../.cursor/origin/contracts/work-tracker';
+import type { WorkTrackerContract, Ticket } from '../.cursor/luca/contracts/work-tracker';
 
 export const JiraAdapter: WorkTrackerContract = {
   async getTicket(id: string): Promise<Ticket> {
@@ -184,6 +190,7 @@ export const JiraAdapter: WorkTrackerContract = {
 ```
 
 **Built-in adapters provided:**
+
 - `jira-adapter.ts` - Jira via Atlassian MCP
 - `linear-adapter.ts` - Linear via API
 - `github-issues-adapter.ts` - GitHub Issues via `gh` CLI
@@ -200,6 +207,7 @@ export const JiraAdapter: WorkTrackerContract = {
 **When:** File locations, naming conventions, workflow behaviors.
 
 **Rationale:**
+
 - Ruby on Rails proved this reduces boilerplate dramatically
 - New developers understand patterns by examining existing code
 - Fewer configuration files to maintain and conflict
@@ -208,7 +216,7 @@ export const JiraAdapter: WorkTrackerContract = {
 
 | Convention | Default | Override |
 |------------|---------|----------|
-| Agent location | `.cursor/origin/agents/` | `config.agentPaths` |
+| Agent location | `.cursor/luca/agents/` | `config.agentPaths` |
 | Skill location | `.cursor/skills/` | `config.skillPaths` |
 | Planning directory | `.planning/` | `config.planningDir` |
 | Ticket pattern | `[A-Z]+-\d+` | `config.ticketPattern` |
@@ -223,7 +231,7 @@ function discoverAgents(): Agent[] {
   const agents: Agent[] = [];
   
   // 1. Framework agents (always available)
-  agents.push(...loadFromDir('.cursor/origin/agents/'));
+  agents.push(...loadFromDir('.cursor/luca/agents/'));
   
   // 2. User agents (extend/add)
   agents.push(...loadFromDir('.cursor/agents/'));
@@ -245,6 +253,7 @@ function discoverAgents(): Agent[] {
 **When:** Any configurable behavior (branding, integrations, workflow toggles).
 
 **Rationale:**
+
 - Enterprise teams need project-level defaults with user-level overrides
 - Cosmiconfig pattern is proven across ESLint, Prettier, Babel
 - Avoids configuration sprawl while enabling customization
@@ -256,7 +265,7 @@ function discoverAgents(): Agent[] {
 2. Local config              .planning/config.local.json (gitignored)
 3. Project config            .planning/config.json (committed)
 4. User config               ~/.luca/config.json (global)
-5. Framework defaults        .cursor/origin/defaults.json
+5. Framework defaults        .cursor/luca/defaults.json
 ```
 
 **Example configuration:**
@@ -309,6 +318,7 @@ function loadConfig(): Config {
 **When:** `npx luca update` or version notification.
 
 **Rationale:**
+
 - Git merge strategies alone can't distinguish framework vs user changes
 - Hash-based comparison enables precise conflict detection
 - Users can accept/reject individual file updates
@@ -316,7 +326,7 @@ function loadConfig(): Config {
 **Manifest structure:**
 
 ```json
-// .cursor/origin/manifest.json
+// .cursor/luca/manifest.json
 {
   "version": "1.2.0",
   "generatedAt": "2026-02-04T10:30:00Z",
@@ -354,7 +364,7 @@ For each file in new manifest:
   
   ELSE:
     → CONFLICT (both changed)
-    → Create .cursor/origin/conflicts/{file}.md with diff
+    → Create .cursor/luca/conflicts/{file}.md with diff
     → User resolves manually
 ```
 
@@ -369,6 +379,7 @@ For each file in new manifest:
 **When:** Agents, integrations, heavy processing.
 
 **Rationale:**
+
 - VS Code proves this scales to thousands of extensions
 - Faster startup time
 - Lower memory footprint
@@ -415,6 +426,7 @@ function getAgent(name: string): Agent | null {
 **When:** Workflow events (pre-plan, post-execute, pre-commit).
 
 **Rationale:**
+
 - oclif proves hooks enable inter-plugin communication
 - Non-invasive extension mechanism
 - Multiple plugins can respond to same event
@@ -461,6 +473,7 @@ registerHook('on:error', async (context) => {
 **What:** Single massive config file controlling everything.
 
 **Why bad:**
+
 - Hard to understand what's framework vs user config
 - Merge conflicts on every update
 - No layering or environment-specific overrides
@@ -471,14 +484,15 @@ registerHook('on:error', async (context) => {
 
 ### Anti-Pattern 2: Direct Framework Modification
 
-**What:** Telling users to edit files in `origin/` directory.
+**What:** Telling users to edit files in `luca/` directory.
 
 **Why bad:**
+
 - Updates will overwrite user changes
 - No way to distinguish customizations from framework
 - Creates update fear (users avoid updating)
 
-**Instead:** Origin/User separation with override directories.
+**Instead:** Luca/User separation with override directories.
 
 ---
 
@@ -487,6 +501,7 @@ registerHook('on:error', async (context) => {
 **What:** Requiring users to "eject" (copy all framework files) to customize.
 
 **Why bad:**
+
 - Create React App proved this leads to unmaintainable forks
 - Users lose all update capabilities
 - Customization becomes all-or-nothing
@@ -500,6 +515,7 @@ registerHook('on:error', async (context) => {
 **What:** Hardcoding Jira/GitHub/Linear API calls throughout framework.
 
 **Why bad:**
+
 - Can't swap integrations without code changes
 - Testing requires real service connections
 - Enterprise teams may have different tools
@@ -513,6 +529,7 @@ registerHook('on:error', async (context) => {
 **What:** Using string identifiers that aren't validated.
 
 **Why bad:**
+
 - Typos cause silent failures
 - No autocomplete or type safety
 - Runtime errors instead of compile-time
@@ -534,6 +551,7 @@ registerHook('on:error', async (context) => {
 ### Enterprise Considerations
 
 **Audit trail:**
+
 ```typescript
 interface AuditEvent {
   timestamp: string;
@@ -557,6 +575,7 @@ registerHook('post:execute', async (context) => {
 ```
 
 **Approval gates:**
+
 ```typescript
 interface ApprovalConfig {
   require: ('destructive' | 'external' | 'security' | 'all')[];
@@ -582,7 +601,7 @@ if (requiresApproval(action, config.approvals)) {
 
 ```
 .cursor/
-├── origin/                    # Framework (updatable)
+├── luca/                    # Framework (updatable)
 │   ├── agents/               # 26+ agent definitions
 │   ├── workflows/            # Orchestration workflows
 │   ├── templates/            # Document templates
@@ -611,7 +630,7 @@ if (requiresApproval(action, config.approvals)) {
 
 ```
 .cursor/
-├── origin/                    # Framework (updatable)
+├── luca/                    # Framework (updatable)
 │   └── [same as above]
 │
 ├── agents/                    # User agent space
@@ -666,7 +685,7 @@ async function checkVersion(): Promise<void> {
 ```
 npx luca update [--dry-run] [--force]
     │
-    ├── 1. Backup current .cursor/origin/
+    ├── 1. Backup current .cursor/luca/
     │
     ├── 2. Download new framework version
     │
@@ -680,7 +699,7 @@ npx luca update [--dry-run] [--force]
     ├── 4. Apply non-conflicting updates
     │
     ├── 5. Report conflicts:
-    │      "3 files have conflicts. Review in .cursor/origin/conflicts/"
+    │      "3 files have conflicts. Review in .cursor/luca/conflicts/"
     │
     ├── 6. Update manifest.json
     │

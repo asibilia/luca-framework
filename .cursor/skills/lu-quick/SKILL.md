@@ -28,7 +28,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to plan or execute yourself. Spawn the appropriate agents.
 
-**Reference:** See `.cursor/origin/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
 ## Process
 
@@ -304,5 +304,6 @@ Ready for next task: /lu-quick
 **Primary:** `/lu-progress` — See project status after quick task
 
 **Also available:**
+
 - `/lu-quick` — Run another quick task
 - `/lu-help` — See all available commands

@@ -471,8 +471,8 @@ Output: [What artifacts will be created]
 </objective>
 
 <execution_context>
-@./.cursor/origin/workflows/execute-plan.md
-@./.cursor/origin/templates/summary.md
+@./.cursor/luca/workflows/execute-plan.md
+@./.cursor/luca/templates/summary.md
 </execution_context>
 
 <context>

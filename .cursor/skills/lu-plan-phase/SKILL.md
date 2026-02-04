@@ -24,14 +24,14 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to research, plan, or verify plans yourself. Spawn the appropriate agents.
 
-**Reference:** See `.cursor/origin/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
 ## Execution Context
 
 Read this reference file before executing:
 
-- `.cursor/origin/references/ui-brand.md`
-- `.cursor/origin/workflows/cognitive-preflight.md`
+- `.cursor/luca/references/ui-brand.md`
+- `.cursor/luca/workflows/cognitive-preflight.md`
 
 ## Cognitive Pre-Flight (NEW)
 

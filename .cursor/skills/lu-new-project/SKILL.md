@@ -22,7 +22,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to research, synthesize, or create roadmaps yourself. Spawn the appropriate agents.
 
-**Reference:** See `.cursor/origin/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -77,7 +77,7 @@ After gathering project context through questioning, create BRAIN.md:
 
 ```bash
 # Use template
-cp .cursor/origin/templates/BRAIN.md .planning/BRAIN.md
+cp .cursor/luca/templates/BRAIN.md .planning/BRAIN.md
 ```
 
 Then populate from questioning answers:
@@ -93,7 +93,7 @@ Then populate from questioning answers:
 Create empty long-term memory:
 
 ```bash
-cp .cursor/origin/templates/MEMORY.md .planning/MEMORY.md
+cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 ```
 
 This will accumulate:
@@ -107,7 +107,7 @@ This will accumulate:
 Create session working memory:
 
 ```bash
-cp .cursor/origin/templates/WORKING.md .planning/WORKING.md
+cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
 ```
 
 Initialize with session info for this setup workflow.
@@ -116,10 +116,10 @@ Initialize with session info for this setup workflow.
 
 Read these reference files before executing:
 
-- `.cursor/origin/references/questioning.md`
-- `.cursor/origin/references/ui-brand.md`
-- `.cursor/origin/templates/project.md`
-- `.cursor/origin/templates/requirements.md`
+- `.cursor/luca/references/questioning.md`
+- `.cursor/luca/references/ui-brand.md`
+- `.cursor/luca/templates/project.md`
+- `.cursor/luca/templates/requirements.md`
 
 ## Process
 
@@ -616,5 +616,6 @@ Present completion with next steps:
 **Primary:** `/lu-discuss-phase 1` — Gather context for first phase
 
 **Also available:**
+
 - `/lu-plan-phase 1` — Skip discussion, plan directly
 - `/lu-map-codebase` — Map existing codebase first (brownfield)

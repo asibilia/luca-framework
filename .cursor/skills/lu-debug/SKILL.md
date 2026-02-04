@@ -24,7 +24,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to debug or investigate issues yourself. Spawn the debugger agent.
 
-**Reference:** See `.cursor/origin/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
 ## Process
 
@@ -247,5 +247,6 @@ Loop back to Step 4 to handle the return.
 **Primary:** `/lu-progress` — Check project status after debugging
 
 **Also available:**
+
 - `/lu-plan-phase {phase} --gaps` — Plan systematic fix
 - `/lu-quick` — Execute quick fix directly

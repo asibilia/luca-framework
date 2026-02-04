@@ -22,7 +22,7 @@
 - **Structure**:
   - `.cursor/agents/` — Sub-agent definitions
   - `.cursor/skills/` — User-invokable skills (commands)
-  - `.cursor/origin/` — Templates, workflows, references
+  - `.cursor/luca/` — Templates, workflows, references
   - `.cursor/rules/` — Cursor rules for consistent behavior
   - `.planning/` — Runtime artifacts (BRAIN, MEMORY, WORKING, STATE)
 - **Key Modules**:

@@ -20,6 +20,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### Stack Research: Technology Foundation
 
 **Core Stack Decisions:**
+
 - **CLI Framework:** citty (UnJS ecosystem, zero deps, TypeScript-native)
 - **Prompts:** @clack/prompts (80% smaller than Inquirer, async-native)
 - **Logging:** consola + picocolors (UnJS ecosystem, 14x smaller than chalk)
@@ -28,6 +29,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 - **Package Pattern:** `create-luca` + `luca-framework` dual package
 
 **Key Constraints:**
+
 - Node.js 18+ requirement (native fetch, ESM)
 - Avoid postinstall scripts (security risk)
 - Explicit `npx luca init` pattern over auto-execution
@@ -39,16 +41,19 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### Features Research: Market Landscape
 
 **Market Position:**
+
 - **Table Stakes:** Multi-model support, MCP (80%+ coverage), Git awareness, project-level config
 - **Differentiators:** CLI-based agent distribution, semantic versioning, composable agents, Cursor-first design
 - **Anti-Features:** Don't build IDE, don't train models, don't replace MCP, don't go IDE-agnostic day 1
 
 **Competitive Gap:**
+
 - No standardized distribution for Cursor agent configs
 - Fragmented solutions: `@mrzacsmith/cursor-rules`, `cursor-rules-downloader`, CursorRules.org
 - Opportunity: npm-style `bun add @luca/agent-security-reviewer` pattern
 
 **Enterprise Requirements:**
+
 - SSO/SAML (standard in enterprise tiers)
 - SOC 2 Type II (79% of tools lack public attestation)
 - No training on customer code (legal/IP requirement)
@@ -61,7 +66,8 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### Architecture Research: System Design
 
 **Core Patterns:**
-1. **Origin/User Separation:** `.cursor/origin/` (framework, updatable) vs `.cursor/agents/` (user, preserved)
+
+1. **Luca/User Separation:** `.cursor/luca/` (framework, updatable) vs `.cursor/agents/` (user, preserved)
 2. **Adapter-Based Integrations:** Interface contracts for work tracking (Jira, Linear, GitHub Issues)
 3. **Convention Over Configuration:** Sensible defaults with explicit override paths
 4. **Layered Configuration:** Global → project → local with clear precedence
@@ -69,9 +75,10 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 6. **Hook-Based Extensibility:** Lifecycle events for customization
 
 **File Structure:**
+
 ```
 .cursor/
-├── origin/          # Framework (updatable)
+├── luca/          # Framework (updatable)
 ├── agents/          # User (customizable)
 ├── skills/          # User (customizable)
 └── config.json      # User configuration
@@ -83,6 +90,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ```
 
 **Update Strategy:**
+
 - Manifest tracks file hashes + versions
 - Compare current vs new manifest
 - Update unchanged files automatically
@@ -119,12 +127,12 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 
 **Moderate Risks:**
 
-5. **Time-to-First-Value Exceeds Tolerance**
+1. **Time-to-First-Value Exceeds Tolerance**
    - **Benchmark:** ~1 day 12 hours expected, 70-minute achievable
    - **Goal:** Working in 5 minutes (from PROJECT.md)
    - **Action:** Zero-config default path, delay optional config until after first success
 
-6. **Breaking Changes Without Migration Path**
+2. **Breaking Changes Without Migration Path**
    - **Risk:** Users freeze versions, fragmented ecosystem
    - **Mitigation:** Strict semver, automated migration (`luca upgrade` with codemods)
    - **Action:** Test upgrades from previous versions in CI
@@ -138,8 +146,9 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### Phase 1: Foundation (MVP - Weeks 1-4)
 
 **Must Have (Table Stakes):**
+
 1. ✅ **CLI Installation** - `npx create-luca` with zero-config default
-2. ✅ **Origin/User Separation** - Framework files vs user customizations
+2. ✅ **Luca/User Separation** - Framework files vs user customizations
 3. ✅ **Basic Agent Library** - 5-10 pre-built agents (planner, executor, verifier, etc.)
 4. ✅ **Cursor Integration** - Work with existing `.cursor/rules` structure
 5. ✅ **MCP Compatibility** - Don't reinvent, extend existing MCP patterns
@@ -147,6 +156,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 7. ✅ **Manifest System** - Track framework files for updates
 
 **Success Criteria:**
+
 - `npx create-luca` produces working state in <5 minutes
 - First command (`/lu-help`) works immediately
 - Framework files updatable without breaking user customizations
@@ -156,6 +166,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### Phase 2: Distribution & Updates (Weeks 5-8)
 
 **Must Have:**
+
 1. ✅ **Agent Versioning** - Semantic versions, changelog
 2. ✅ **Update Mechanism** - `npx luca update` with conflict detection
 3. ✅ **Diagnostic Tooling** - `luca doctor` for MCP/configuration issues
@@ -163,6 +174,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 5. ✅ **Hook System** - Lifecycle events for extensibility
 
 **Success Criteria:**
+
 - Users can update framework without losing customizations
 - Conflicts detected and reported clearly
 - MCP issues diagnosed automatically
@@ -172,6 +184,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### Phase 3: Enterprise Readiness (Weeks 9-12)
 
 **Must Have:**
+
 1. ✅ **Security Documentation** - Supply chain posture, audit trail capabilities
 2. ✅ **Migration Tooling** - Automated upgrades with codemods
 3. ✅ **Config Validation** - `luca config validate` for team consistency
@@ -179,12 +192,14 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 5. ✅ **Documentation** - Security questionnaire template, SOC 2 guidance
 
 **Defer to Post-MVP:**
+
 - SSO/SAML integration (wait for demand)
 - Cloud sync/team features (start with git-based sharing)
 - Multi-IDE support (focus on Cursor first)
 - Custom model training (use existing LLM APIs)
 
 **Success Criteria:**
+
 - Enterprise security teams can evaluate Luca independently
 - Upgrades don't break existing installations
 - Team config drift prevented
@@ -196,10 +211,12 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### 1. Package Naming Strategy
 
 **Options:**
+
 - **Option A:** `create-luca` + `luca-framework` (dual package, follows ecosystem conventions)
 - **Option B:** Single `luca` package (simpler, but less flexible)
 
 **Recommendation:** Option A (dual package)
+
 - Follows `create-vite`, `create-next-app` patterns
 - Allows standalone CLI without scaffolding
 - Better separation of concerns
@@ -211,11 +228,13 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### 2. Agent Distribution Model
 
 **Options:**
+
 - **Option A:** Scoped packages (`@luca/agent-planner`, `@luca/agent-executor`)
 - **Option B:** Monorepo with agent registry (`luca add agent-planner`)
 - **Option C:** Git-based distribution (clone repos, symlink)
 
 **Recommendation:** Option A (scoped packages)
+
 - npm ecosystem integration
 - Semantic versioning per agent
 - Team can pin specific agent versions
@@ -227,11 +246,13 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### 3. Configuration Format
 
 **Options:**
+
 - **Option A:** JSON only (static config)
 - **Option B:** JSON + TypeScript (dynamic/validated config)
 - **Option C:** YAML (human-readable, but less tooling)
 
 **Recommendation:** Option B (JSON + TypeScript)
+
 - JSON for static config (`.planning/config.json`)
 - TypeScript for dynamic adapters (`.planning/integrations/*.ts`)
 - Best of both worlds
@@ -243,11 +264,13 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### 4. Update Strategy Granularity
 
 **Options:**
+
 - **Option A:** Framework-level updates only (`npx luca update`)
 - **Option B:** Agent-level updates (`luca update agent-planner`)
 - **Option C:** Both (framework + individual agents)
 
 **Recommendation:** Option C (both)
+
 - Framework updates for core functionality
 - Agent updates for individual improvements
 - Users can update what they need
@@ -259,11 +282,13 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### 5. Enterprise Features Timeline
 
 **Options:**
+
 - **Option A:** Build enterprise features in v1 (SSO, audit logging)
 - **Option B:** Defer to v2, focus on core functionality first
 - **Option C:** Document enterprise requirements, build on demand
 
 **Recommendation:** Option C (document first, build on demand)
+
 - Focus on core functionality for v1
 - Document enterprise requirements clearly
 - Build features when enterprise customers commit
@@ -326,7 +351,7 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 | **Prompts** | @clack/prompts | 80% smaller, async-native, beautiful UI |
 | **Config System** | cosmiconfig + zod | Industry standard, runtime validation |
 | **Bundling** | unbuild | Active development, better than deprecated tsup |
-| **File Structure** | Origin/User separation | Enables updates without breaking customizations |
+| **File Structure** | Luca/User separation | Enables updates without breaking customizations |
 | **Update Strategy** | Manifest-driven | Hash-based conflict detection |
 | **Integration Pattern** | Adapter-based | Swappable implementations, interface contracts |
 | **Distribution** | npm packages | Standardized, versioned, composable |
@@ -338,17 +363,20 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ### v1 Launch Criteria
 
 **Technical:**
+
 - ✅ `npx create-luca` works in <5 minutes
 - ✅ Framework updates don't break user customizations
 - ✅ MCP issues diagnosed automatically
 - ✅ Zero-config default produces working state
 
 **Market:**
+
 - ✅ 10+ pre-built agents available
 - ✅ Documentation enables self-service adoption
 - ✅ Security posture documented for enterprise evaluation
 
 **User Experience:**
+
 - ✅ First command works immediately after init
 - ✅ Error messages include remediation steps
 - ✅ Upgrade path clear and automated
@@ -368,15 +396,19 @@ This document synthesizes research across four critical areas—**Stack**, **Fea
 ## Sources
 
 ### Stack Research
+
 - npm documentation, UnJS ecosystem, citty, cosmiconfig
 
 ### Features Research
+
 - Cursor docs, Continue.dev, Claude Code, VS Code Custom Agents, GitHub Copilot Enterprise
 
 ### Architecture Research
+
 - VS Code extension architecture, Rails conventions, cosmiconfig patterns, oclif hooks
 
 ### Pitfalls Research
+
 - Wiz Research (VSCode Marketplace Supply Chain Risk), Snyk AI Adoption Security Report, npm security advisories
 
 ---

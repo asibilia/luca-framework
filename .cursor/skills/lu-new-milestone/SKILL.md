@@ -26,10 +26,10 @@ This is the brownfield equivalent of new-project. The project exists, PROJECT.md
 
 Read these reference files before executing:
 
-- `.cursor/origin/references/questioning.md`
-- `.cursor/origin/references/ui-brand.md`
-- `.cursor/origin/templates/project.md`
-- `.cursor/origin/templates/requirements.md`
+- `.cursor/luca/references/questioning.md`
+- `.cursor/luca/references/ui-brand.md`
+- `.cursor/luca/templates/project.md`
+- `.cursor/luca/templates/requirements.md`
 
 ## Process
 
@@ -103,5 +103,6 @@ How should this milestone be tracked on GitHub?
 **Primary:** `/lu-discuss-phase {N}` — Gather context for first phase of milestone
 
 **Also available:**
+
 - `/lu-plan-phase {N}` — Skip discussion, plan directly
 - `/lu-progress` — Check milestone setup
