@@ -3,15 +3,15 @@
 ## Current Position
 
 - **Current Phase:** 1 — Core CLI & Foundation
-- **Current Plan:** 01-03 complete, ready for 01-04
-- **Status:** In progress (3/5 plans complete)
+- **Current Plan:** 01-04 complete, ready for 01-05
+- **Status:** In progress (4/5 plans complete)
 - **Last Updated:** 2026-02-04
-- **Last Activity:** Completed 01-03-PLAN.md (Template Infrastructure & Branding System)
+- **Last Activity:** Completed 01-04-PLAN.md (Init Wizard & File Generation)
 
 ## Progress
 
 ```
-Phase 1: ████████████░░░░░░░░ 60% (3/5 plans)
+Phase 1: ████████████████░░░░ 80% (4/5 plans)
 
 Wave 1: █████████████████████ COMPLETE
   01-01 Monorepo Package Structure ✓
@@ -20,8 +20,8 @@ Wave 2: █████████████████████ COMPLETE
   01-02 CLI Framework & Command Structure ✓
   01-03 Template Infrastructure & Branding System ✓
 
-Wave 3: ░░░░░░░░░░░░░░░░░░░░░ PENDING
-  01-04 Template Scaffolding
+Wave 3: █████████████████████ COMPLETE
+  01-04 Init Wizard & File Generation ✓
 
 Wave 4: ░░░░░░░░░░░░░░░░░░░░░ PENDING
   01-05 Polish & Documentation
@@ -45,7 +45,7 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
-| 1 | Core CLI & Foundation | in progress (3/5 plans) | REQ-001, REQ-002, REQ-006 |
+| 1 | Core CLI & Foundation | in progress (4/5 plans) | REQ-001, REQ-002, REQ-006 |
 | 2 | Integrations & Updates | pending | REQ-003, REQ-004, REQ-005 |
 | 3 | Enterprise Readiness | pending | REQ-007, REQ-008 |
 
@@ -64,6 +64,9 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 | Stack detection from deps | Check react/typescript in package.json for auto-detection | 2026-02-04 |
 | EJS strict: false | Graceful degradation for undefined template variables | 2026-02-04 |
 | __variable__ for filenames | Different syntax from EJS content for clarity | 2026-02-04 |
+| Filter undefined before merge | Spread operator includes undefined, breaking defaults | 2026-02-04 |
+| Detect dist vs src context | Bundled output in dist/ needs different template path | 2026-02-04 |
+| Track paths for cleanup | SIGINT and errors must clean up partial installations | 2026-02-04 |
 
 ## Blockers
 
@@ -72,12 +75,12 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Session Continuity
 
 - **Last session:** 2026-02-04
-- **Stopped at:** Completed 01-03-PLAN.md
-- **Resume file:** None (continue with 01-04)
+- **Stopped at:** Completed 01-04-PLAN.md
+- **Resume file:** None (continue with 01-05)
 
 ## Next Actions
 
-1. Continue Phase 1 execution — Wave 3 (Plan 01-04: Template Scaffolding)
+1. Continue Phase 1 execution — Wave 4 (Plan 01-05: Polish & Documentation)
 
 ---
 
