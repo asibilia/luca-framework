@@ -8,6 +8,7 @@
  */
 
 import type { WorkTrackerContract, WorkTrackerType } from '../contracts/work-tracker'
+import { createGitHubAdapter } from './github-adapter'
 import { createPlaceholderAdapter } from './placeholder-adapter'
 
 /**
@@ -34,20 +35,24 @@ export interface WorkTrackerConfig {
  *
  * Factory function that returns the appropriate adapter implementation:
  * - `'none'`: Placeholder adapter (synthetic data, never fails)
- * - `'github'`: GitHub Issues adapter (via gh CLI) - NOT YET IMPLEMENTED
+ * - `'github'`: GitHub Issues adapter (via gh CLI)
  * - `'jira'`: Jira REST API adapter - NOT YET IMPLEMENTED
  *
  * @param type - The type of work tracker to create
  * @param config - Configuration options (varies by adapter type)
  * @returns A WorkTrackerContract implementation
  *
- * @throws {Error} When requesting an unimplemented adapter type
+ * @throws {Error} When requesting an unimplemented adapter type (jira)
  *
  * @example
  * ```typescript
  * // Create placeholder adapter (always works)
  * const adapter = createWorkTrackerAdapter('none')
  * const result = await adapter.getTicket('TEST-123')
+ *
+ * // Create GitHub adapter (requires gh CLI)
+ * const github = createWorkTrackerAdapter('github')
+ * const issue = await github.getTicket('#123')
  *
  * // Will throw until implemented
  * const jira = createWorkTrackerAdapter('jira', {
@@ -67,8 +72,10 @@ export function createWorkTrackerAdapter(
       throw new Error('Jira adapter not yet implemented')
 
     case 'github':
-      // Will be implemented in 02-02
-      throw new Error('GitHub adapter not yet implemented')
+      return createGitHubAdapter({
+        owner: config.githubOwner,
+        repo: config.githubRepo,
+      })
 
     case 'none':
     default:
@@ -82,3 +89,4 @@ export function createWorkTrackerAdapter(
 export type { WorkTrackerContract, WorkTrackerType } from '../contracts/work-tracker'
 export type { WorkTicket, AdapterResult } from '../contracts/work-tracker'
 export { createPlaceholderAdapter } from './placeholder-adapter'
+export { createGitHubAdapter } from './github-adapter'
