@@ -27,39 +27,14 @@
 | REQ-002 | Configurable Branding | High |
 | REQ-006 | Stack Templates (React+TS) | Medium |
 
-### Key Tasks
+**Plans:** 5 plans
 
-1. **Package Setup**
-   - Create `create-luca` npm package (scaffolding)
-   - Create `luca-framework` npm package (core CLI)
-   - Configure unbuild for bundling
-   - Set up package.json bin fields
-
-2. **CLI Framework**
-   - Implement citty command structure
-   - Add @clack/prompts for interactive wizard
-   - Configure consola for logging/output
-
-3. **Init Command**
-   - Interactive setup wizard
-   - Project name, branding, stack selection
-   - File generation from templates
-   - manifest.json creation
-
-4. **Origin/User Separation**
-   - Restructure existing files into `.cursor/origin/`
-   - Define user override directories
-   - Update all file references
-
-5. **Branding System**
-   - Config schema with branding section
-   - Replace hardcoded PT-/ENG- with config lookups
-   - Template variable substitution in outputs
-
-6. **Stack Templates**
-   - React+TypeScript template
-   - BRAIN.md with conventions
-   - Recommended rules files
+Plans:
+- [ ] 01-01-PLAN.md — Monorepo package structure (Wave 1)
+- [ ] 01-02-PLAN.md — CLI framework & command structure (Wave 2)
+- [ ] 01-03-PLAN.md — Template infrastructure & branding (Wave 2, parallel)
+- [ ] 01-04-PLAN.md — Init wizard & file generation (Wave 3)
+- [ ] 01-05-PLAN.md — React+TS stack & integration verification (Wave 4)
 
 ### Dependencies
 
