@@ -9,6 +9,7 @@
 
 import type { WorkTrackerContract, WorkTrackerType } from '../contracts/work-tracker'
 import { createGitHubAdapter } from './github-adapter'
+import { createJiraAdapter } from './jira-adapter'
 import { createPlaceholderAdapter } from './placeholder-adapter'
 
 /**
@@ -36,13 +37,11 @@ export interface WorkTrackerConfig {
  * Factory function that returns the appropriate adapter implementation:
  * - `'none'`: Placeholder adapter (synthetic data, never fails)
  * - `'github'`: GitHub Issues adapter (via gh CLI)
- * - `'jira'`: Jira REST API adapter - NOT YET IMPLEMENTED
+ * - `'jira'`: Jira REST API adapter (via REST API v3)
  *
  * @param type - The type of work tracker to create
  * @param config - Configuration options (varies by adapter type)
  * @returns A WorkTrackerContract implementation
- *
- * @throws {Error} When requesting an unimplemented adapter type (jira)
  *
  * @example
  * ```typescript
@@ -54,12 +53,9 @@ export interface WorkTrackerConfig {
  * const github = createWorkTrackerAdapter('github')
  * const issue = await github.getTicket('#123')
  *
- * // Will throw until implemented
- * const jira = createWorkTrackerAdapter('jira', {
- *   jiraBaseUrl: 'https://company.atlassian.net',
- *   jiraApiToken: 'token',
- *   jiraUserEmail: 'user@company.com'
- * })
+ * // Create Jira adapter (requires JIRA_* env vars)
+ * const jira = createWorkTrackerAdapter('jira')
+ * const ticket = await jira.getTicket('PROJ-123')
  * ```
  */
 export function createWorkTrackerAdapter(
@@ -68,8 +64,11 @@ export function createWorkTrackerAdapter(
 ): WorkTrackerContract {
   switch (type) {
     case 'jira':
-      // Will be implemented in 02-03
-      throw new Error('Jira adapter not yet implemented')
+      return createJiraAdapter({
+        baseUrl: config.jiraBaseUrl,
+        userEmail: config.jiraUserEmail,
+        apiToken: config.jiraApiToken,
+      })
 
     case 'github':
       return createGitHubAdapter({
@@ -90,3 +89,4 @@ export type { WorkTrackerContract, WorkTrackerType } from '../contracts/work-tra
 export type { WorkTicket, AdapterResult } from '../contracts/work-tracker'
 export { createPlaceholderAdapter } from './placeholder-adapter'
 export { createGitHubAdapter } from './github-adapter'
+export { createJiraAdapter } from './jira-adapter'
