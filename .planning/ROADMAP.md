@@ -13,6 +13,7 @@
 **Goal:** Working CLI installer that scaffolds a functional Luca project.
 
 **Success Criteria:**
+
 - `npx luca init` creates working Luca installation
 - Time-to-first-value under 5 minutes
 - Branding customizable via config
@@ -76,6 +77,7 @@
 **Goal:** Pluggable work tracking and intelligent framework updates.
 
 **Success Criteria:**
+
 - Work tracker adapter interface defined
 - Jira and GitHub Issues adapters functional
 - `npx luca update` safely updates framework
@@ -134,6 +136,7 @@
 **Goal:** Enterprise adoption requirements met with security documentation and diagnostics.
 
 **Success Criteria:**
+
 - `npx luca doctor` provides clear health status
 - Security posture documented
 - Enterprise teams can evaluate and adopt

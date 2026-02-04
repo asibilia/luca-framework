@@ -19,13 +19,13 @@
 ## Architecture
 
 - **Pattern**: Orchestrator/sub-agent model with memory system
-- **Structure**: 
+- **Structure**:
   - `.cursor/agents/` — Sub-agent definitions
   - `.cursor/skills/` — User-invokable skills (commands)
   - `.cursor/origin/` — Templates, workflows, references
   - `.cursor/rules/` — Cursor rules for consistent behavior
   - `.planning/` — Runtime artifacts (BRAIN, MEMORY, WORKING, STATE)
-- **Key Modules**: 
+- **Key Modules**:
   - Memory system (BRAIN.md → MEMORY.md → WORKING.md)
   - Workflow engine (skills → agents → verification → learning)
   - Git integration (Jira → GitHub Issue → Branch → PR)

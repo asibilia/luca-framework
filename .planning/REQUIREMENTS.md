@@ -17,6 +17,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Zero-friction installation via npx with interactive setup wizard.
 
 **Acceptance Criteria:**
+
 - `npx luca init` starts interactive setup wizard
 - Setup completes in under 5 minutes
 - Wizard prompts for: project name, branding, work tracker, stack template
@@ -26,6 +27,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - No postinstall scripts (explicit user invocation only)
 
 **Technical Notes:**
+
 - Use UnJS ecosystem: citty, @clack/prompts, consola
 - Dual package: `create-luca` (scaffolding) + `luca-framework` (CLI)
 - Node.js 18+ requirement
@@ -37,6 +39,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Teams can customize command prefixes, ticket patterns, and output headers.
 
 **Acceptance Criteria:**
+
 - `config.json` contains branding section:
   - `commandPrefix`: default "lu", configurable (e.g., "acme")
   - `ticketPattern`: regex for ticket IDs (default: `[A-Z]+-\\d+`)
@@ -47,6 +50,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - README generation uses configured branding
 
 **Technical Notes:**
+
 - Replace all hardcoded PT-, ENG- references with config lookups
 - Use template syntax: `${config.branding.commandPrefix}`
 
@@ -57,6 +61,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Adapter interface for work tracking systems (Jira, Linear, GitHub Issues).
 
 **Acceptance Criteria:**
+
 - TypeScript interface `WorkTrackerContract` defined in `.cursor/origin/contracts/`
 - Contract includes: `getTicket`, `createBranch` (optional), `linkPR` (optional)
 - Built-in adapters:
@@ -67,6 +72,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - Config stores selected adapter and adapter-specific settings
 
 **Technical Notes:**
+
 - Adapters in `.planning/integrations/`
 - Interface segregation: minimal required methods, optional extensions
 
@@ -77,7 +83,9 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Config-driven approval triggers for plans, destructive actions, and external actions.
 
 **Acceptance Criteria:**
+
 - Config schema for approvals:
+
   ```json
   {
     "approvals": {
@@ -88,12 +96,14 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
     }
   }
   ```
+
 - Default: all three enabled (secure defaults)
 - Framework checks approval config before executing actions
 - Clear prompts when approval required
 - Approval decisions logged to audit trail
 
 **Technical Notes:**
+
 - Hook into existing interactive/yolo mode system
 - Extend existing gate system in config.json
 
@@ -104,6 +114,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Manifest-driven updates with conflict detection and user control.
 
 **Acceptance Criteria:**
+
 - `npx luca update` command available
 - Version notification on any luca command (non-blocking)
 - `manifest.json` tracks:
@@ -118,6 +129,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - Backup created before update
 
 **Technical Notes:**
+
 - Use crypto module for SHA-256 hashing
 - Semantic versioning (strict semver)
 - Migration scripts for breaking changes
@@ -129,6 +141,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** React + TypeScript BRAIN.md template with conventions and patterns.
 
 **Acceptance Criteria:**
+
 - Setup wizard includes stack selection (React+TS for v1)
 - Template generates:
   - BRAIN.md with stack-specific conventions
@@ -142,6 +155,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
   - Component patterns
 
 **Technical Notes:**
+
 - Templates stored in `luca-framework` package under `/templates/`
 - Use giget for template extraction
 
@@ -152,6 +166,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Health checks and troubleshooting for common issues.
 
 **Acceptance Criteria:**
+
 - `npx luca doctor` command available
 - Checks include:
   - Node.js version (18+ required)
@@ -164,6 +179,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - Exit code reflects health status (0 = healthy)
 
 **Technical Notes:**
+
 - MCP health check via `.cursor/mcp.json` validation
 - Config validation via Zod schema
 
@@ -174,6 +190,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 **Description:** Security posture documentation for enterprise adoption.
 
 **Acceptance Criteria:**
+
 - SECURITY.md document covering:
   - Supply chain security posture
   - Data handling (what leaves the machine)
@@ -186,6 +203,7 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 - Security questionnaire template
 
 **Technical Notes:**
+
 - Target security practitioners, not just leadership
 - Reference research findings (Wiz, Koi Security incidents)
 

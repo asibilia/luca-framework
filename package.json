@@ -1,0 +1,15 @@
+{
+  "name": "luca-framework",
+  "devDependencies": {
+    "@alecsibilia/commit": "^1.0.8",
+    "@types/bun": "latest"
+  },
+  "module": "index.ts",
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "commit": "bunx --bun @alecsibilia/commit"
+  },
+  "type": "module"
+}

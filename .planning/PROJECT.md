@@ -38,6 +38,7 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 **Current state:** The Luca framework exists and works well in the Percent codebase. It has 26+ agents, 30+ skills, comprehensive workflow documentation, and a two-tier memory system (BRAIN/MEMORY/WORKING). However, it's heavily coupled to Percent-specific conventions.
 
 **Packageability concerns identified:**
+
 - 10+ locations with hardcoded PT-/ENG- ticket prefixes
 - Company-specific references (Percent, percent-ui, mypercent.atlassian.net)
 - Hardcoded GitHub repository references
