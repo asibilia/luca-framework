@@ -1,7 +1,8 @@
 import { readFile, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, relative } from 'pathe';
-import type { LucaConfig, LucaManifest } from '../types';
+import type { LucaConfig, LucaManifest, FileComparison } from '../types';
 
 // Package version - will be updated by build process
 const LUCA_VERSION = '0.0.1';
@@ -126,4 +127,121 @@ export async function readManifest(cwd: string): Promise<LucaManifest | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Calculate SHA-256 hash of string content.
+ *
+ * Used for comparing file contents without reading files from disk.
+ * Useful when you already have the content in memory.
+ *
+ * @param content - String content to hash
+ * @returns SHA-256 hash as hex string
+ *
+ * @example
+ * ```typescript
+ * const hash = hashContent('Hello, World!');
+ * // Returns: 'dffd6021bb2bd5b0af676290809ec3a5...'
+ * ```
+ */
+export function hashContent(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+/**
+ * Compare manifest files with current filesystem and new content.
+ *
+ * Implements three-way comparison algorithm for safe updates:
+ * - unchanged: originalHash === currentHash → safe to update
+ * - user-modified: originalHash !== currentHash → conflict (user changed file)
+ * - new: no originalHash in manifest → add file (didn't exist before)
+ * - deleted: file missing from filesystem → conflict (user deleted file)
+ *
+ * @param manifest - Existing manifest from project
+ * @param newFiles - Map of path → content from new framework version
+ * @param cwd - Working directory
+ * @returns Array of FileComparison results
+ *
+ * @example
+ * ```typescript
+ * const comparisons = await compareFiles(manifest, newFiles, process.cwd());
+ *
+ * const unchanged = comparisons.filter(c => c.status === 'unchanged');
+ * const conflicts = comparisons.filter(c => c.status === 'user-modified');
+ * const newFiles = comparisons.filter(c => c.status === 'new');
+ * ```
+ */
+export async function compareFiles(
+  manifest: LucaManifest,
+  newFiles: Map<string, string>,
+  cwd: string
+): Promise<FileComparison[]> {
+  const comparisons: FileComparison[] = [];
+
+  for (const [relativePath, newContent] of newFiles) {
+    const absolutePath = join(cwd, relativePath);
+    const newHash = hashContent(newContent);
+    const manifestEntry = manifest.files[relativePath];
+
+    // Check if file exists in manifest (was previously installed)
+    if (manifestEntry) {
+      const originalHash = manifestEntry.originalHash;
+
+      // Check if file exists on disk
+      if (existsSync(absolutePath)) {
+        try {
+          const currentHash = await hashFile(absolutePath);
+
+          if (originalHash === currentHash) {
+            // File unchanged since installation → safe to update
+            comparisons.push({
+              path: relativePath,
+              status: 'unchanged',
+              originalHash,
+              currentHash,
+              newHash,
+            });
+          } else {
+            // User modified the file → conflict
+            comparisons.push({
+              path: relativePath,
+              status: 'user-modified',
+              originalHash,
+              currentHash,
+              newHash,
+            });
+          }
+        } catch {
+          // Can't read file - treat as deleted
+          comparisons.push({
+            path: relativePath,
+            status: 'deleted',
+            originalHash,
+            currentHash: null,
+            newHash,
+          });
+        }
+      } else {
+        // File was deleted from filesystem → conflict
+        comparisons.push({
+          path: relativePath,
+          status: 'deleted',
+          originalHash,
+          currentHash: null,
+          newHash,
+        });
+      }
+    } else {
+      // File not in manifest → new file to add
+      comparisons.push({
+        path: relativePath,
+        status: 'new',
+        originalHash: null,
+        currentHash: null,
+        newHash,
+      });
+    }
+  }
+
+  return comparisons;
 }

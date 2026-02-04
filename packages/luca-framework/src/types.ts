@@ -42,3 +42,25 @@ export interface LucaManifest {
     source: 'framework' | 'user';
   }>;
 }
+
+/**
+ * Result of comparing a file between manifest, filesystem, and new version.
+ *
+ * Used during update operations to determine safe update strategy:
+ * - unchanged: Safe to update (original === current)
+ * - user-modified: Conflict - user changed the file
+ * - new: Safe to add (not in original manifest)
+ * - deleted: Conflict - file was removed from filesystem
+ */
+export interface FileComparison {
+  /** Relative path to the file */
+  path: string;
+  /** Comparison result status */
+  status: 'unchanged' | 'user-modified' | 'new' | 'deleted';
+  /** Hash from original manifest (null if new file) */
+  originalHash: string | null;
+  /** Hash of current file on disk (null if deleted) */
+  currentHash: string | null;
+  /** Hash of new framework version content */
+  newHash: string;
+}
