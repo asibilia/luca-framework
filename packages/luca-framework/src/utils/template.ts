@@ -198,12 +198,21 @@ export async function copyTemplates(options: {
  * Get the templates directory path from package.
  *
  * Works both in development (src/) and production (dist/) contexts.
+ * In source: src/utils/ → ../../templates
+ * In bundle: dist/ → ../templates
  *
  * @returns Absolute path to templates directory
  */
 export function getTemplatesDir(): string {
   // In ES modules, use import.meta.url to get current file path
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  // Templates are sibling to src/dist at package root
+
+  // Check if we're in bundled context (dist/) or source context (src/utils/)
+  if (currentDir.endsWith('dist')) {
+    // Bundled: dist/ → ../templates
+    return join(currentDir, '..', 'templates');
+  }
+
+  // Source: src/utils/ → ../../templates
   return join(currentDir, '..', '..', 'templates');
 }
