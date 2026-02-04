@@ -84,6 +84,9 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 | Placeholder adapter never fails | Fallback for untracked work always returns synthetic data | 2026-02-04 |
 | Jira env vars read at call time | Runtime flexibility for configuration changes | 2026-02-04 |
 | ADF extraction best-effort | Return empty string for malformed content, don't fail | 2026-02-04 |
+| Three-way hash comparison | Compare original→current→new for safe updates | 2026-02-04 |
+| Conflict write to conflicts/ | .new extension for manual merge resolution | 2026-02-04 |
+| Backup before update | Restore on failure, delete on success | 2026-02-04 |
 
 ## Blockers
 
@@ -92,13 +95,13 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Session Continuity
 
 - **Last session:** 2026-02-04
-- **Stopped at:** Completed 02-03-PLAN.md
+- **Stopped at:** Completed 02-04-PLAN.md (Update Mechanism)
 - **Resume file:** None
 
 ## Next Actions
 
-1. Execute Wave 2 plans (parallel): 02-02, 02-03, 02-04
-2. Then Wave 3: 02-05 Version Check & Approvals
+1. Wave 2 complete (02-02, 02-03, 02-04 all done)
+2. Execute Wave 3: 02-05 Version Check & Approvals
 
 ---
 
