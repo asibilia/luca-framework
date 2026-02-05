@@ -1,6 +1,7 @@
 import { defineCommand, runMain as cittyRunMain } from 'citty';
 import { initCommand, runInit } from './commands/init';
 import { updateCommand } from './commands/update';
+import { checkForUpdates } from './utils/version-check';
 
 const main = defineCommand({
   meta: {
@@ -14,8 +15,13 @@ const main = defineCommand({
   },
 });
 
-export const runMain = () => cittyRunMain(main);
+export const runMain = () => {
+  // Non-blocking version check runs in background
+  checkForUpdates();
+  return cittyRunMain(main);
+};
+
 export { runInit };
 
 // Re-export types for consumers
-export type { ProjectContext, BrandingConfig, LucaConfig, LucaManifest, FileComparison } from './types';
+export type { ProjectContext, BrandingConfig, LucaConfig, LucaManifest, FileComparison, ApprovalConfig } from './types';

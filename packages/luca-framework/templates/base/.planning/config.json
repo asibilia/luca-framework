@@ -28,5 +28,11 @@
     "enabled": true,
     "plan_level": true,
     "task_level": false
+  },
+  "approvals": {
+    "plans": true,
+    "destructive": true,
+    "external": true,
+    "custom_triggers": []
   }
 }
