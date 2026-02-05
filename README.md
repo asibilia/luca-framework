@@ -1,15 +1,67 @@
-# luca-framework
+# Luca Framework
 
-To install dependencies:
+The zero-friction framework for building structured AI coding agents.
+
+## Overview
+
+Luca is a lightweight framework designed to help developers build, manage, and execute structured AI coding tasks. It bridges the gap between high-level planning and atomic code execution, providing a robust workflow for AI-driven development.
+
+## Key Features
+
+- **🚀 Zero-Friction Scaffolding**: Get started in seconds with `create-luca`.
+- **📋 Structured Planning**: Define work in `PLAN.md` files with clear objectives and tasks.
+- **🤖 Atomic Execution**: Execute tasks with automatic commits and deviation handling.
+- **🔄 Smart Updates**: Keep your project structure up-to-date with non-destructive updates.
+- **🛠️ Extensible Adapters**: Integrate with GitHub, Jira, and more.
+
+## Quickstart
+
+### 1. Initialize a new project
+
+```bash
+npx create-luca my-agent-project
+cd my-agent-project
+```
+
+### 2. Install dependencies
 
 ```bash
 bun install
 ```
 
-To run:
+### 3. Create your first plan
+
+Luca projects use a `.planning/` directory to manage state and plans.
 
 ```bash
-bun run index.ts
+# Example structure
+.planning/
+  phases/
+    01-foundation/
+      01-01-PLAN.md
 ```
 
-This project was created using `bun init` in bun v1.2.18. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+### 4. Execute a plan
+
+```bash
+npx luca execute .planning/phases/01-foundation/01-01-PLAN.md
+```
+
+## Documentation
+
+- [Getting Started](docs/getting-started.md)
+- [Architecture](docs/agent-framework/luca/architecture-plan.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Coding Standards](docs/style-guide/coding-standards.md)
+
+## Upgrade
+
+To update your project to the latest Luca framework version:
+
+```bash
+npx luca update
+```
+
+## License
+
+MIT
