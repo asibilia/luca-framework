@@ -16,6 +16,7 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 The Luca framework is now a distributable, CLI-installable package.
 
 **Capabilities:**
+
 - **Zero-friction setup**: `npx luca init` scaffolds projects in < 5 minutes
 - **Pluggable tracking**: Adapters for Jira, GitHub Issues, and Placeholder
 - **Enterprise readiness**: `npx luca doctor`, security docs, and approval workflows
