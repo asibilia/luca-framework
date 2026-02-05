@@ -24,10 +24,29 @@ export interface BrandingConfig {
   placeholderTicket: string;
 }
 
+/**
+ * Configuration for approval gates.
+ * 
+ * Controls when Luca asks for user confirmation before
+ * executing operations. Secure defaults: all enabled.
+ */
+export interface ApprovalConfig {
+  /** Require approval before executing generated plans */
+  plans: boolean;
+  /** Require approval for destructive operations (file deletion, git force) */
+  destructive: boolean;
+  /** Require approval for external API calls */
+  external: boolean;
+  /** Custom approval triggers (regex patterns matching operation names) */
+  custom_triggers: string[];
+}
+
 export interface LucaConfig {
   branding: BrandingConfig;
   stack: string;
   workTracker: 'jira' | 'github' | 'none';
+  /** Approval gate configuration */
+  approvals?: ApprovalConfig;
 }
 
 export interface LucaManifest {
