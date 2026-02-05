@@ -19,6 +19,13 @@ Luca Framework provides the scaffolding, state management, and cognitive pattern
 bun x create-luca
 ```
 
+## Core Workflow
+
+1. **Initialize**: `luca init`
+2. **Plan**: Create structured `PLAN.md` files in `.planning/phases/`
+3. **Execute**: `luca execute <plan-path>`
+4. **Learn**: Automatic extraction of findings to `MEMORY.md`
+
 ## Security
 
 Security is a core pillar of the Luca Framework. We ensure that AI-driven development doesn't compromise your organization's security posture.
@@ -29,14 +36,6 @@ Security is a core pillar of the Luca Framework. We ensure that AI-driven develo
 - **Auditability**: Every action is traceable through atomic Git commits and execution summaries.
 - **Supply Chain**: Minimal, pinned dependencies with automated vulnerability scanning.
 - **Transparency**: Clear documentation of data handling and privacy principles.
-
-For detailed information on our security practices, please refer to the [SECURITY.md](../../SECURITY.md) file in the repository root.
-
-### Security Questionnaire
-
-For enterprise procurement and security teams, we provide a self-service security questionnaire template to accelerate the evaluation process.
-
-**See:** [.planning/SECURITY_QUESTIONNAIRE.md](../../.planning/SECURITY_QUESTIONNAIRE.md)
 
 ## License
 
