@@ -32,6 +32,7 @@
 **Plans:** 5/5 complete
 
 Plans:
+
 - [x] 01-01-PLAN.md — Monorepo package structure (Wave 1)
 - [x] 01-02-PLAN.md — CLI framework & command structure (Wave 2)
 - [x] 01-03-PLAN.md — Template infrastructure & branding (Wave 2, parallel)
@@ -73,6 +74,7 @@ Plans:
 **Plans:** 5/5 complete
 
 Plans:
+
 - [x] 02-01-PLAN.md — Work tracker foundation: contract, factory, placeholder (Wave 1)
 - [x] 02-02-PLAN.md — GitHub Issues adapter via gh CLI (Wave 2)
 - [x] 02-03-PLAN.md — Jira REST API adapter (Wave 2, parallel)
@@ -94,6 +96,8 @@ Plans:
 
 **Goal:** Enterprise adoption requirements met with security documentation and diagnostics.
 
+**Status:** 📋 Planned (2026-02-04)
+
 **Success Criteria:**
 
 - `npx luca doctor` provides clear health status
@@ -102,42 +106,23 @@ Plans:
 
 ### Requirements Delivered
 
-| REQ | Description | Priority |
-|-----|-------------|----------|
-| REQ-007 | Diagnostic Tooling | Medium |
-| REQ-008 | Enterprise Security Docs | High |
+| REQ | Description | Priority | Status |
+|-----|-------------|----------|--------|
+| REQ-007 | Diagnostic Tooling | Medium | 📋 Planned |
+| REQ-008 | Enterprise Security Docs | High | 📋 Planned |
 
-### Key Tasks
+**Plans:** 4 plans
 
-1. **Doctor Command**
-   - Node.js version check
-   - Cursor IDE detection
-   - MCP server status
-   - Config validation
-   - Framework version check
-   - Clear remediation suggestions
+Plans:
 
-2. **Security Documentation**
-   - SECURITY.md with posture details
-   - Data handling documentation
-   - Supply chain security
-   - Audit trail capabilities
-   - Version pinning guidance
-
-3. **Enterprise Support**
-   - Security questionnaire template
-   - SOC 2 alignment documentation
-   - Offline/air-gapped considerations
-
-4. **Polish & Documentation**
-   - README.md for npm packages
-   - Getting Started guide
-   - Troubleshooting guide
-   - Migration guide from existing Luca
+- [ ] 03-01-PLAN.md — Doctor command foundation: basic checks & secret redaction (Wave 1)
+- [ ] 03-02-PLAN.md — Doctor advanced checks: MCP, version, config, network (Wave 2)
+- [ ] 03-03-PLAN.md — Security documentation: SECURITY.md with OSSF template (Wave 2)
+- [ ] 03-04-PLAN.md — Enterprise support materials: questionnaire & offline guide (Wave 2)
 
 ### Dependencies
 
-- Phase 1 & 2 complete
+- Phase 1 & 2 complete ✅
 
 ### Risks
 
