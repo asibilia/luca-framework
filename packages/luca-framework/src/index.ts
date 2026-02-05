@@ -1,6 +1,7 @@
 import { defineCommand, runMain as cittyRunMain } from 'citty';
 import { initCommand, runInit } from './commands/init';
 import { updateCommand } from './commands/update';
+import doctorCommand from './commands/doctor';
 import { checkForUpdates } from './utils/version-check';
 
 const main = defineCommand({
@@ -12,6 +13,7 @@ const main = defineCommand({
   subCommands: {
     init: initCommand,
     update: updateCommand,
+    doctor: doctorCommand,
   },
 });
 
