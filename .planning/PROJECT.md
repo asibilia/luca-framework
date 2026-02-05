@@ -8,6 +8,26 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
+## Current State (v1.0.0)
+
+**Shipped:** 2026-02-05
+**Version:** 1.0.0
+
+The Luca framework is now a distributable, CLI-installable package.
+
+**Capabilities:**
+- **Zero-friction setup**: `npx luca init` scaffolds projects in < 5 minutes
+- **Pluggable tracking**: Adapters for Jira, GitHub Issues, and Placeholder
+- **Enterprise readiness**: `npx luca doctor`, security docs, and approval workflows
+- **Safe updates**: `npx luca update` with conflict detection
+
+## Next Milestone Goals (v1.1.0)
+
+- **Additional Stack Templates**: Python, Node.js, Next.js
+- **Multi-project Support**: Support monorepos with multiple projects
+- **Cross-IDE Support**: VS Code extension
+- **Agent Marketplace**: Registry for sharing agents and skills
+
 ## Requirements
 
 ### Validated
