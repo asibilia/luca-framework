@@ -238,8 +238,8 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 | REQ-004 | 2 | Medium | Medium | ✅ Complete |
 | REQ-005 | 2 | High | High | ✅ Complete |
 | REQ-006 | 1 | Medium | Medium | ✅ Complete |
-| REQ-007 | 3 | Medium | Medium | Pending |
-| REQ-008 | 3 | High | Low | Pending |
+| REQ-007 | 3 | Medium | Medium | ✅ Complete |
+| REQ-008 | 3 | High | Low | ✅ Complete |
 
 ---
 

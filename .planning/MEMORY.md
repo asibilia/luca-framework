@@ -15,6 +15,9 @@
 - **Branding context pattern**: `createBrandingContext()` adds computed helpers like `commandSlash: "/${prefix}"` for template convenience. Centralizes branding logic with computed properties
 - **Manifest-based tracking**: SHA-256 hashes enable update conflict detection. `source: 'framework' | 'user'` distinguishes file origins for safe merging
 - **Template architecture separation**: Three-tier structure: `base/` (minimal scaffold) + `stacks/` (stack-specific) + `framework/` (full Luca framework). EJS for content substitution (`<%= branding.frameworkName %>`), `__variable__` pattern for filename substitution
+- **Discriminated union for adapter results**: Use `{ success: true, data: T } | { success: false, error: string }` for consistent error handling across different work tracker implementations. Validated in Phase 2
+- **Optional method checking**: Check for optional adapter methods with `if (adapter.method)` before invocation to support heterogeneous feature sets across work trackers. Validated in Phase 2
+- **Infrastructure-first doctor pattern**: Implement `doctor` command with a registry of independent checks. Enables easy extension and comprehensive system validation. Validated in Phase 3
 
 ### Established Conventions
 
@@ -34,6 +37,8 @@
 | Branded skin over rebrand | Customization approach | Cursor file name limitations, enables upgradability | 2026-02-04 |
 | React+TS template only v1 | Stack templates | Ship one excellent template, prove pattern | 2026-02-04 |
 | UnJS ecosystem for CLI | Tooling stack | citty, consola, unbuild, pathe, @clack/prompts all worked seamlessly. Validated in Phase 1 execution | 2026-02-04 |
+| Adapter factory pattern | Multi-tracker support | Type-based switch returns appropriate implementation, decoupling CLI from specific tracker logic | 2026-02-04 |
+| Security-first documentation | Enterprise readiness | Created SECURITY.md and SECURITY_QUESTIONNAIRE.md early to establish compliance baseline | 2026-02-05 |
 
 ### Trade-offs Made
 
@@ -80,10 +85,10 @@
 
 _Memory Statistics_
 
-- Total patterns: 7
-- Total decisions: 4
+- Total patterns: 10
+- Total decisions: 6
 - Total pitfalls: 5
-- Last updated: 2026-02-04
+- Last updated: 2026-02-05
 
 *Entries added by: lu-learner*
 *Last curated: 2026-02-04*
