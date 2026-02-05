@@ -230,16 +230,16 @@ Requirements for packaging the Luca framework as a distributable, CLI-installabl
 
 ## Traceability
 
-| REQ | Phase | Priority | Complexity |
-|-----|-------|----------|------------|
-| REQ-001 | 1 | High | High |
-| REQ-002 | 1 | High | Medium |
-| REQ-003 | 2 | High | High |
-| REQ-004 | 2 | Medium | Medium |
-| REQ-005 | 2 | High | High |
-| REQ-006 | 1 | Medium | Medium |
-| REQ-007 | 3 | Medium | Medium |
-| REQ-008 | 3 | High | Low |
+| REQ | Phase | Priority | Complexity | Status |
+|-----|-------|----------|------------|--------|
+| REQ-001 | 1 | High | High | ✅ Complete |
+| REQ-002 | 1 | High | Medium | ✅ Complete |
+| REQ-003 | 2 | High | High | ✅ Complete |
+| REQ-004 | 2 | Medium | Medium | ✅ Complete |
+| REQ-005 | 2 | High | High | ✅ Complete |
+| REQ-006 | 1 | Medium | Medium | ✅ Complete |
+| REQ-007 | 3 | Medium | Medium | Pending |
+| REQ-008 | 3 | High | Low | Pending |
 
 ---
 
