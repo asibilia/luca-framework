@@ -24,9 +24,10 @@ set -euo pipefail
 INPUT=$(cat)
 
 # Extract the Bash command being executed
+# Claude Code: tool_input.command, Cursor: command (top-level)
 COMMAND=$(printf '%s' "$INPUT" | bun -e "
   const data = JSON.parse(await Bun.stdin.text());
-  const cmd = data.tool_input?.command || '';
+  const cmd = data.tool_input?.command ?? data.command ?? '';
   process.stdout.write(cmd);
 ")
 
@@ -95,15 +96,14 @@ if [ $HAS_ERRORS -ne 0 ]; then
   REASON="Commit blocked by pre-commit quality gate. Fix the following issues before committing:
 ${ERRORS}"
 
-  # Output JSON decision to stdout for PreToolUse
+  # Output JSON decision to stdout
+  # Claude Code: hookSpecificOutput.permissionDecision, Cursor: permission + user_message
   printf '%s' "$REASON" | bun -e "
     const reason = await Bun.stdin.text();
-    const output = {
-      hookSpecificOutput: {
-        permissionDecision: 'deny',
-        permissionDecisionReason: reason.trim()
-      }
-    };
+    const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
+    const output = isClaude
+      ? { hookSpecificOutput: { permissionDecision: 'deny', permissionDecisionReason: reason.trim() } }
+      : { permission: 'deny', user_message: reason.trim() };
     process.stdout.write(JSON.stringify(output));
   "
 

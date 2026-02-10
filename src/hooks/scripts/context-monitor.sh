@@ -23,11 +23,12 @@ set -euo pipefail
 # Read stdin JSON
 INPUT=$(cat)
 
-# Check stop_hook_active to prevent infinite loops
-# If this Stop was triggered by a previous Stop hook blocking, exit immediately
+# Check stop_hook_active (Claude) or loop_count (Cursor) to prevent infinite loops
+# If this Stop was triggered by a previous Stop hook, exit immediately
 IS_ACTIVE=$(printf '%s' "$INPUT" | bun -e "
   const data = JSON.parse(await Bun.stdin.text());
-  process.stdout.write(String(data.stop_hook_active || false));
+  const active = data.stop_hook_active || (data.loop_count > 0) || false;
+  process.stdout.write(String(active));
 ")
 
 if [ "$IS_ACTIVE" = "true" ]; then
@@ -77,12 +78,15 @@ else
   exit 0
 fi
 
-# Output systemMessage for Claude to see
+# Output warning message
+# Claude Code: systemMessage, Cursor: followup_message
 # Pass variables via env to avoid shell interpolation in JS strings
 HOOK_LEVEL="$LEVEL" HOOK_MSG="$MESSAGE" bun -e "
   const level = process.env.HOOK_LEVEL;
   const message = process.env.HOOK_MSG;
-  const msg = { systemMessage: '[Context Monitor: ' + level + '] ' + message };
+  const text = '[Context Monitor: ' + level + '] ' + message;
+  const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
+  const msg = isClaude ? { systemMessage: text } : { followup_message: text };
   process.stdout.write(JSON.stringify(msg));
 "
 

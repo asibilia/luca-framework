@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'bun:test';
 import { readdirSync } from 'fs';
 import path from 'path';
-import { hookRegistry, generateHooksConfig } from '../../../src/hooks/index';
+import { hookRegistry, generateHooksConfig, generateCursorHooksConfig } from '../../../src/hooks/index';
 
 const HOOK_SCRIPTS_DIR = path.join(import.meta.dir, '../../../src/hooks/scripts');
 
@@ -85,5 +85,72 @@ describe('hookRegistry', () => {
     const config = generateHooksConfig(hookRegistry);
     const events = Object.keys(config).sort();
     expect(events).toEqual(['PostToolUse', 'PreToolUse', 'SessionEnd', 'Stop']);
+  });
+
+  test('every hook has a cursorEvent field', () => {
+    for (const [name, def] of Object.entries(hookRegistry)) {
+      expect(def.cursorEvent).toBeDefined();
+      expect(typeof def.cursorEvent).toBe('string');
+      expect(def.cursorEvent.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('generateCursorHooksConfig', () => {
+  test('produces valid Cursor hooks.json format with version 1', () => {
+    const config = generateCursorHooksConfig(hookRegistry) as { version: number; hooks: Record<string, unknown> };
+    expect(config.version).toBe(1);
+    expect(config.hooks).toBeDefined();
+    expect(typeof config.hooks).toBe('object');
+  });
+
+  test('uses camelCase Cursor event names', () => {
+    const config = generateCursorHooksConfig(hookRegistry) as { hooks: Record<string, unknown> };
+    expect(config.hooks).toHaveProperty('afterFileEdit');
+    expect(config.hooks).toHaveProperty('beforeShellExecution');
+    expect(config.hooks).toHaveProperty('stop');
+    expect(config.hooks).toHaveProperty('sessionEnd');
+    // Should NOT have Claude Code event names
+    expect(config.hooks).not.toHaveProperty('PostToolUse');
+    expect(config.hooks).not.toHaveProperty('PreToolUse');
+  });
+
+  test('command paths use relative .cursor/hooks/ prefix', () => {
+    const config = generateCursorHooksConfig(hookRegistry) as {
+      hooks: Record<string, Array<{ command: string }>>;
+    };
+    for (const [_event, entries] of Object.entries(config.hooks)) {
+      for (const entry of entries) {
+        expect(entry.command).toMatch(/^\.cursor\/hooks\//);
+        expect(entry.command).not.toContain('$CLAUDE_PROJECT_DIR');
+      }
+    }
+  });
+
+  test('does not include async or statusMessage fields', () => {
+    const config = generateCursorHooksConfig(hookRegistry) as {
+      hooks: Record<string, Array<Record<string, unknown>>>;
+    };
+    for (const [_event, entries] of Object.entries(config.hooks)) {
+      for (const entry of entries) {
+        expect(entry).not.toHaveProperty('async');
+        expect(entry).not.toHaveProperty('statusMessage');
+      }
+    }
+  });
+
+  test('beforeShellExecution has matcher for commit commands', () => {
+    const config = generateCursorHooksConfig(hookRegistry) as {
+      hooks: Record<string, Array<Record<string, unknown>>>;
+    };
+    const shellHooks = config.hooks.beforeShellExecution;
+    expect(shellHooks).toBeDefined();
+    expect(shellHooks.some((h) => typeof h.matcher === 'string' && h.matcher.includes('git commit'))).toBe(true);
+  });
+
+  test('produces 4 Cursor event types', () => {
+    const config = generateCursorHooksConfig(hookRegistry) as { hooks: Record<string, unknown> };
+    const events = Object.keys(config.hooks).sort();
+    expect(events).toEqual(['afterFileEdit', 'beforeShellExecution', 'sessionEnd', 'stop']);
   });
 });

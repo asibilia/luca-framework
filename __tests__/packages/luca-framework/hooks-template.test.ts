@@ -5,6 +5,7 @@ import path from 'path';
 const TEMPLATES_DIR = path.join(import.meta.dir, '../../../packages/luca-framework/templates');
 const HOOKS_SCRIPTS_DIR = path.join(TEMPLATES_DIR, 'hooks', 'scripts');
 const HOOKS_SETTINGS = path.join(TEMPLATES_DIR, 'hooks', 'settings-hooks.json');
+const CURSOR_HOOKS = path.join(TEMPLATES_DIR, 'hooks', 'cursor-hooks.json');
 
 describe('hook templates for luca init', () => {
   test('hooks template directory exists', () => {
@@ -30,6 +31,17 @@ describe('hook templates for luca init', () => {
     expect(parsed).toHaveProperty('hooks');
     expect(Object.keys(parsed.hooks).sort()).toEqual([
       'PostToolUse', 'PreToolUse', 'SessionEnd', 'Stop'
+    ]);
+  });
+
+  test('cursor-hooks.json exists and is valid', () => {
+    expect(existsSync(CURSOR_HOOKS)).toBe(true);
+    const content = readFileSync(CURSOR_HOOKS, 'utf-8');
+    const parsed = JSON.parse(content);
+    expect(parsed).toHaveProperty('version', 1);
+    expect(parsed).toHaveProperty('hooks');
+    expect(Object.keys(parsed.hooks).sort()).toEqual([
+      'afterFileEdit', 'beforeShellExecution', 'sessionEnd', 'stop'
     ]);
   });
 

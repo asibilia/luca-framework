@@ -17,10 +17,10 @@ set -euo pipefail
 INPUT=$(cat)
 
 # Extract file path using bun -e (no jq dependency)
+# Claude Code: tool_input.file_path, Cursor: file_path (top-level)
 FILE_PATH=$(printf '%s' "$INPUT" | bun -e "
   const data = JSON.parse(await Bun.stdin.text());
-  // Edit tool uses tool_input.file_path, Write tool uses tool_input.file_path
-  const filePath = data.tool_input?.file_path;
+  const filePath = data.tool_input?.file_path ?? data.file_path;
   if (filePath) process.stdout.write(filePath);
 ")
 

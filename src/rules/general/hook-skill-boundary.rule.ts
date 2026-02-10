@@ -7,7 +7,7 @@ import type { RuleConfig } from '../types/rule.types';
 const HookSkillBoundaryConfig: RuleConfig = {
   frontmatter: {
     description: 'Hook/Skill boundary: when to use deterministic hooks vs interactive skills',
-    globs: ['*.ts', '*.sh', '.claude/settings.json'],
+    globs: ['*.ts', '*.sh', '.claude/settings.json', '.cursor/hooks.json'],
     alwaysApply: true,
   },
   sections: [
@@ -17,7 +17,7 @@ const HookSkillBoundaryConfig: RuleConfig = {
 
 ## Core Distinction
 
-- **Hooks** = Deterministic enforcement. Always run. No judgment. Fast. Claude Code only.
+- **Hooks** = Deterministic enforcement. Always run. No judgment. Fast. Both Claude Code and Cursor.
 - **Skills** = Interactive workflows. Run on demand. Require judgment. Can be slow. Cross-platform.
 
 ## Decision Matrix
@@ -31,7 +31,7 @@ const HookSkillBoundaryConfig: RuleConfig = {
 | Must it complete in < 2 seconds? | Yes | No |
 | Does it involve multi-step reasoning? | No | Yes |
 | Can Claude choose to skip it? | No (deterministic) | Yes (advisory) |
-| Does it work in Cursor IDE? | No (Claude Code only) | Yes (cross-platform) |
+| Does it work in Cursor IDE? | Yes (both platforms) | Yes (cross-platform) |
 
 ## Current Hook/Skill Mapping
 
@@ -57,13 +57,12 @@ const HookSkillBoundaryConfig: RuleConfig = {
 - Complex decision-making that requires context understanding
 - Operations that need user confirmation or input
 - Long-running processes (> 30 seconds) that would block editing
-- Cursor IDE compatibility is required
 
 ## Platform Behavior
 
-- **Claude Code**: Hooks provide deterministic enforcement. Skills remain available for interactive use.
-- **Cursor IDE**: No hook equivalent. Skills provide advisory enforcement (AI remembers to check, but can skip).
-- **Both**: Rules provide always-loaded instructions. Rules work on both platforms.`,
+- **Claude Code**: Hooks via .claude/settings.json. Scripts in .claude/hooks/. Supports async hooks and statusMessage.
+- **Cursor IDE**: Hooks via .cursor/hooks.json. Scripts in .cursor/hooks/. Different event names (camelCase) and JSON formats.
+- **Both**: Same shell scripts with dual-format stdin/stdout parsing. Rules and skills work on both platforms.`,
       order: 1,
     },
   ],

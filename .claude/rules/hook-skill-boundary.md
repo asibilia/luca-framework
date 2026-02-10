@@ -6,7 +6,7 @@
 
 ## Core Distinction
 
-- **Hooks** = Deterministic enforcement. Always run. No judgment. Fast. Claude Code only.
+- **Hooks** = Deterministic enforcement. Always run. No judgment. Fast. Both Claude Code and Cursor.
 - **Skills** = Interactive workflows. Run on demand. Require judgment. Can be slow. Cross-platform.
 
 ## Decision Matrix
@@ -20,7 +20,7 @@
 | Must it complete in < 2 seconds? | Yes | No |
 | Does it involve multi-step reasoning? | No | Yes |
 | Can Claude choose to skip it? | No (deterministic) | Yes (advisory) |
-| Does it work in Cursor IDE? | No (Claude Code only) | Yes (cross-platform) |
+| Does it work in Cursor IDE? | Yes (both platforms) | Yes (cross-platform) |
 
 ## Current Hook/Skill Mapping
 
@@ -46,10 +46,9 @@
 - Complex decision-making that requires context understanding
 - Operations that need user confirmation or input
 - Long-running processes (> 30 seconds) that would block editing
-- Cursor IDE compatibility is required
 
 ## Platform Behavior
 
-- **Claude Code**: Hooks provide deterministic enforcement. Skills remain available for interactive use.
-- **Cursor IDE**: No hook equivalent. Skills provide advisory enforcement (AI remembers to check, but can skip).
-- **Both**: Rules provide always-loaded instructions. Rules work on both platforms.
+- **Claude Code**: Hooks via .claude/settings.json. Scripts in .claude/hooks/. Supports async hooks and statusMessage.
+- **Cursor IDE**: Hooks via .cursor/hooks.json. Scripts in .cursor/hooks/. Different event names (camelCase) and JSON formats.
+- **Both**: Same shell scripts with dual-format stdin/stdout parsing. Rules and skills work on both platforms.

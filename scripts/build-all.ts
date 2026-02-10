@@ -25,7 +25,7 @@
 import { agentRegistry } from '../src/agents/index';
 import { ruleRegistry } from '../src/rules/index';
 import { skillRegistry } from '../src/skills/index';
-import { hookRegistry, generateHooksConfig } from '../src/hooks/index';
+import { hookRegistry, generateHooksConfig, generateCursorHooksConfig } from '../src/hooks/index';
 import type { BaseAgent } from '../src/agents/types/agent.types';
 import type { BaseSkill } from '../src/skills/types/skill.types';
 import type { BaseRule } from '../src/rules/types/rule.types';
@@ -183,8 +183,7 @@ async function main() {
   console.log('✓ Generated rules/lu-workflow (Cursor .mdc + Claude .md)');
   ruleCount++;
 
-  // --- Hooks (Claude-only) ---
-  // Hooks are Claude Code-specific -- no Cursor equivalent
+  // --- Hooks (Claude) ---
 
   const claudeHooksDir = path.join(claudeDir, 'hooks');
   await ensureDir(claudeHooksDir);
@@ -244,13 +243,55 @@ async function main() {
   await Bun.write(settingsPath, JSON.stringify(existingSettings, null, 2) + '\n');
   console.log(`✓ Generated .claude/settings.json with ${hookCount} hook(s)`);
 
+  // --- Hooks (Cursor) ---
+
+  const cursorHooksDir = path.join(cursorDir, 'hooks');
+  await ensureDir(cursorHooksDir);
+
+  const removedCursorHooks = await cleanDirectory(cursorHooksDir, ['.sh']);
+  if (removedCursorHooks.length) console.log(`Cleaned ${removedCursorHooks.length} stale Cursor hook scripts`);
+
+  let cursorHookCount = 0;
+
+  for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
+    try {
+      const srcPath = path.join(hookScriptsDir, hookDef.script);
+      const destPath = path.join(cursorHooksDir, hookDef.script);
+
+      const srcFile = Bun.file(srcPath);
+      if (!(await srcFile.exists())) {
+        console.error(`✗ Hook script not found: src/hooks/scripts/${hookDef.script}`);
+        continue;
+      }
+
+      await Bun.write(destPath, srcFile);
+      const { exitCode } = Bun.spawnSync(['chmod', '+x', destPath]);
+      if (exitCode !== 0) {
+        console.error(`✗ Failed to chmod +x ${destPath}`);
+      }
+
+      console.log(`✓ Generated .cursor/hooks/${hookDef.script}`);
+      cursorHookCount++;
+    } catch (error) {
+      console.error(`✗ Failed to generate .cursor/hooks/${hookDef.script}:`, error);
+    }
+  }
+
+  // Generate .cursor/hooks.json
+  const cursorHooksConfig = generateCursorHooksConfig(hookRegistry);
+  await Bun.write(
+    path.join(cursorDir, 'hooks.json'),
+    JSON.stringify(cursorHooksConfig, null, 2) + '\n'
+  );
+  console.log(`✓ Generated .cursor/hooks.json with ${cursorHookCount} hook(s)`);
+
   // Summary
   console.log(`\n=== Build All Summary ===`);
   console.log(`Agents: ${agentCount} (x2 formats = ${agentCount * 2} files)`);
   console.log(`Skills: ${skillCount} (x2 formats = ${skillCount * 2} files)`);
   console.log(`Rules:  ${ruleCount} (x2 formats = ${ruleCount * 2} files)`);
-  console.log(`Hooks:  ${hookCount} (Claude-only)`);
-  console.log(`Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount} files`);
+  console.log(`Hooks:  ${hookCount} (Claude) + ${cursorHookCount} (Cursor)`);
+  console.log(`Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount} files`);
 }
 
 main().catch((error) => {

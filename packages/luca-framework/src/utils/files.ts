@@ -277,6 +277,55 @@ export async function generateFiles(options: {
       spinner.stop('Hook templates not found, skipping hooks');
     }
 
+    // Step 4.6: Install Cursor hooks
+    spinner.start('Installing Cursor hooks...');
+
+    const cursorHooksDir = join(cursorDir, 'hooks');
+
+    if (!existsSync(cursorHooksDir)) {
+      await mkdir(cursorHooksDir, { recursive: true });
+      trackCreated(cursorHooksDir);
+    }
+
+    if (existsSync(hookTemplatesDir)) {
+      const hookScriptsDirCursor = join(hookTemplatesDir, 'scripts');
+      if (existsSync(hookScriptsDirCursor)) {
+        const cursorHookFiles = await readdir(hookScriptsDirCursor);
+        let cursorHooksCopied = 0;
+
+        for (const hookFile of cursorHookFiles) {
+          const srcPath = join(hookScriptsDirCursor, hookFile);
+          const destPath = join(cursorHooksDir, hookFile);
+
+          await copyFile(srcPath, destPath);
+          trackCreated(destPath);
+
+          try {
+            await chmod(destPath, 0o755);
+          } catch {
+            // chmod may fail on Windows
+          }
+
+          cursorHooksCopied++;
+        }
+
+        // Copy cursor-hooks.json to .cursor/hooks.json
+        const cursorHooksJsonSrc = join(hookTemplatesDir, 'cursor-hooks.json');
+        const cursorHooksJsonDest = join(cursorDir, 'hooks.json');
+
+        if (existsSync(cursorHooksJsonSrc)) {
+          await copyFile(cursorHooksJsonSrc, cursorHooksJsonDest);
+          trackCreated(cursorHooksJsonDest);
+        }
+
+        spinner.stop(`Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`);
+      } else {
+        spinner.stop('Hook scripts directory not found, skipping Cursor hooks');
+      }
+    } else {
+      spinner.stop('Hook templates not found, skipping Cursor hooks');
+    }
+
     // Step 5: Create manifest
     spinner.start('Creating manifest...');
 

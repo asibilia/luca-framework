@@ -22,6 +22,7 @@
 import { agentRegistry } from '../src/agents/index';
 import { ruleRegistry } from '../src/rules/index';
 import { skillRegistry } from '../src/skills/index';
+import { hookRegistry, generateCursorHooksConfig } from '../src/hooks/index';
 import type { BaseAgent } from '../src/agents/types/agent.types';
 import type { BaseSkill } from '../src/skills/types/skill.types';
 import type { BaseRule } from '../src/rules/types/rule.types';
@@ -134,11 +135,55 @@ async function main() {
   console.log('✓ Generated .cursor/rules/lu-workflow.mdc');
   ruleCount++;
 
+  // --- Hooks ---
+
+  const cursorHooksDir = path.join(cursorDir, 'hooks');
+  await ensureDir(cursorHooksDir);
+
+  const removedHooks = await cleanDirectory(cursorHooksDir, ['.sh']);
+  if (removedHooks.length) console.log(`Cleaned ${removedHooks.length} stale hook scripts`);
+
+  let hookCount = 0;
+
+  // Copy hook scripts from src/hooks/scripts/ to .cursor/hooks/
+  const hookScriptsDir = path.join(process.cwd(), 'src', 'hooks', 'scripts');
+  for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
+    try {
+      const srcPath = path.join(hookScriptsDir, hookDef.script);
+      const destPath = path.join(cursorHooksDir, hookDef.script);
+
+      const srcFile = Bun.file(srcPath);
+      if (!(await srcFile.exists())) {
+        console.error(`✗ Hook script not found: src/hooks/scripts/${hookDef.script}`);
+        continue;
+      }
+
+      await Bun.write(destPath, srcFile);
+
+      const { exitCode } = Bun.spawnSync(['chmod', '+x', destPath]);
+      if (exitCode !== 0) {
+        console.error(`✗ Failed to chmod +x ${destPath}`);
+      }
+
+      console.log(`✓ Generated .cursor/hooks/${hookDef.script}`);
+      hookCount++;
+    } catch (error) {
+      console.error(`✗ Failed to generate .cursor/hooks/${hookDef.script}:`, error);
+    }
+  }
+
+  // Generate .cursor/hooks.json
+  const cursorHooksConfig = generateCursorHooksConfig(hookRegistry);
+  const cursorHooksJsonPath = path.join(cursorDir, 'hooks.json');
+  await Bun.write(cursorHooksJsonPath, JSON.stringify(cursorHooksConfig, null, 2) + '\n');
+  console.log(`✓ Generated .cursor/hooks.json with ${hookCount} hook(s)`);
+
   // Summary
   console.log(`\n=== Cursor Build Summary ===`);
   console.log(`Agents: ${agentCount}`);
   console.log(`Skills: ${skillCount}`);
   console.log(`Rules:  ${ruleCount}`);
+  console.log(`Hooks:  ${hookCount}`);
 }
 
 main().catch((error) => {
