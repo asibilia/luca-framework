@@ -52,6 +52,10 @@ export { agentRegistry } from './src/agents/index';
 export { skillRegistry } from './src/skills/index';
 export { ruleRegistry } from './src/rules/index';
 
+// Hook registry and types (for build scripts and consumers)
+export { hookRegistry, generateHooksConfig } from './src/hooks/index';
+export type { HookDefinition } from './src/hooks/index';
+
 // Validation utilities (public-facing)
 export {
   sanitizeJsonParse,
