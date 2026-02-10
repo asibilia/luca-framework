@@ -429,6 +429,25 @@ For each requirement:
 - ✗ BLOCKED: One or more supporting truths failed
 - ? NEEDS HUMAN: Can't verify requirement programmatically
 
+## Step 6.5: Incorporate Harness Results
+
+If harness results are provided in the verification context:
+
+**If harness status = "passed":**
+- Add to report: "All automated checks passed (test, typecheck, lint, build)"
+- This is a positive signal -- the codebase is mechanically sound
+- Focus your verification on semantic concerns (goal achievement, wiring, stubs)
+
+**If harness status = "failed_after_fixes":**
+- The automated fix loop attempted to repair failures but some remain
+- Include each remaining error as a mechanical gap:
+  - Map harness errors to the truth/artifact they affect
+  - Severity: errors are blockers, warnings are informational
+- These mechanical failures should be reported in the gaps section
+
+**If no harness results provided:**
+- Skip this step (backward-compatible with pre-harness workflow)
+
 ## Step 7: Scan for Anti-Patterns
 
 Identify files modified in this phase:
@@ -643,6 +662,15 @@ human_verification: # Only include if status: human_needed
 
 | Requirement | Status | Blocking Issue |
 | ----------- | ------ | -------------- |
+
+### Automated Checks (Harness)
+
+| Check     | Status | Errors | Duration |
+|-----------|--------|--------|----------|
+| {name}    | {status} | {N} | {duration} |
+
+**Overall:** {passed/failed}
+{If failed: list remaining errors with file, line, message}
 
 ### Anti-Patterns Found
 
