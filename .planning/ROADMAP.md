@@ -14,32 +14,34 @@ Establish the enforcement and verification foundation that all future workflow i
 
 **Goal:** Create agent and rule registries so the build compiles all entities from `src/` to both `.cursor/` and `.claude/`. Close the dogfooding gap where this repo is a first-party consumer of its own framework output.
 
-**Status:** Pending
+**Status:** Complete
 
 **Success Criteria:**
 
-- `agentRegistry` in `src/agents/index.ts` exports all 23 general agents (luca-specific agents handled separately by build scripts)
-- `ruleRegistry` in `src/rules/index.ts` exports all 20 general rules (luca-specific rules handled separately by build scripts)
-- Build scripts iterate all three registries (agents, skills, rules)
-- `bun run build:cursor` produces all agents, skills, and rules in `.cursor/`
-- `bun run build:claude` produces all agents, skills, and rules in `.claude/`
-- No stale output files — generated output matches source definitions
+- [x] `agentRegistry` in `src/agents/index.ts` exports all 23 general agents (luca-specific agents handled separately by build scripts)
+- [x] `ruleRegistry` in `src/rules/index.ts` exports all 20 general rules (luca-specific rules handled separately by build scripts)
+- [x] Build scripts iterate all three registries (agents, skills, rules)
+- [x] `bun run build:cursor` produces all agents, skills, and rules in `.cursor/`
+- [x] `bun run build:claude` produces all agents, skills, and rules in `.claude/`
+- [x] No stale output files — generated output matches source definitions
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| BUILD-01 | Agent registry | Critical | Pending |
-| BUILD-02 | Rule registry | Critical | Pending |
-| BUILD-03 | Registry-based build scripts | Critical | Pending |
-| BUILD-04 | Full Cursor output | Critical | Pending |
-| BUILD-05 | Full Claude output | Critical | Pending |
-| BUILD-06 | No stale output files | High | Pending |
+| BUILD-01 | Agent registry | Critical | **Complete** |
+| BUILD-02 | Rule registry | Critical | **Complete** |
+| BUILD-03 | Registry-based build scripts | Critical | **Complete** |
+| BUILD-04 | Full Cursor output | Critical | **Complete** |
+| BUILD-05 | Full Claude output | Critical | **Complete** |
+| BUILD-06 | No stale output files | High | **Complete** |
 
-### Risks
+### Verification
 
-- Existing hand-placed files in `.cursor/` may have manual edits not captured in `src/`
-- Need to decide `.gitignore` policy for generated output directories
+- Verification report: `.planning/phases/10-build-pipeline/10-VERIFICATION.md`
+- Score: 6/6 must-haves verified
+- 29 new tests (all passing)
+- Commits: `a16ed5a`, `09e1cf7`, `a3bf90e`, `8eac628`, `8dc9b30`, `4cf506a`
 
 ---
 
@@ -166,7 +168,7 @@ Establish the enforcement and verification foundation that all future workflow i
 
 | Phase | Scope | Sequence | Status |
 |-------|-------|----------|--------|
-| Phase 10 | Build Pipeline | First | Pending |
+| Phase 10 | Build Pipeline | First | **Complete** |
 | Phase 11 | Hooks | After Phase 10 | Pending |
 | Phase 12 | Verification Harness | After Phase 11 | Pending |
 | Phase 13 | Complexity Gates | After Phase 12 | Pending |
@@ -178,9 +180,9 @@ Establish the enforcement and verification foundation that all future workflow i
 ## Success Metrics
 
 ### Phase 10
-- [ ] `bun run build:all` compiles all 25 agents, 38 skills, 21 rules
-- [ ] `.cursor/` and `.claude/` output is fully generated, not hand-placed
-- [ ] Build runs without errors
+- [x] `bun run build:all` compiles all 25 agents, 37 skills, 20 rules (per output directory)
+- [x] `.cursor/` and `.claude/` output is fully generated, not hand-placed
+- [x] Build runs without errors
 
 ### Phase 11
 - [ ] Post-edit hooks execute within 2 seconds

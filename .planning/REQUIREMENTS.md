@@ -13,12 +13,12 @@ Establish the enforcement and verification foundation for all future workflow im
 
 ### Build Pipeline
 
-- [ ] **BUILD-01**: Agent registry exports all general agents from `src/agents/general/` (luca-specific agents handled separately by build scripts, matching `skillRegistry` pattern)
-- [ ] **BUILD-02**: Rule registry exports all general rules from `src/rules/general/` (luca-specific rules handled separately by build scripts, matching `skillRegistry` pattern)
-- [ ] **BUILD-03**: Build scripts iterate over agent, skill, and rule registries (no hardcoded entities)
-- [ ] **BUILD-04**: `bun run build:cursor` generates all agents, skills, and rules in `.cursor/`
-- [ ] **BUILD-05**: `bun run build:claude` generates all agents, skills, and rules in `.claude/`
-- [ ] **BUILD-06**: Build output matches source — no stale files in `.cursor/` or `.claude/`
+- [x] **BUILD-01**: Agent registry exports all general agents from `src/agents/general/` (luca-specific agents handled separately by build scripts, matching `skillRegistry` pattern)
+- [x] **BUILD-02**: Rule registry exports all general rules from `src/rules/general/` (luca-specific rules handled separately by build scripts, matching `skillRegistry` pattern)
+- [x] **BUILD-03**: Build scripts iterate over agent, skill, and rule registries (no hardcoded entities)
+- [x] **BUILD-04**: `bun run build:cursor` generates all agents, skills, and rules in `.cursor/`
+- [x] **BUILD-05**: `bun run build:claude` generates all agents, skills, and rules in `.claude/`
+- [x] **BUILD-06**: Build output matches source — no stale files in `.cursor/` or `.claude/`
 
 ### Hooks
 
@@ -66,12 +66,12 @@ Establish the enforcement and verification foundation for all future workflow im
 
 | Requirement | Phase | Priority | Status |
 |-------------|-------|----------|--------|
-| BUILD-01 | Phase 10 (Build Pipeline) | Critical | Pending |
-| BUILD-02 | Phase 10 (Build Pipeline) | Critical | Pending |
-| BUILD-03 | Phase 10 (Build Pipeline) | Critical | Pending |
-| BUILD-04 | Phase 10 (Build Pipeline) | Critical | Pending |
-| BUILD-05 | Phase 10 (Build Pipeline) | Critical | Pending |
-| BUILD-06 | Phase 10 (Build Pipeline) | High | Pending |
+| BUILD-01 | Phase 10 (Build Pipeline) | Critical | **Complete** |
+| BUILD-02 | Phase 10 (Build Pipeline) | Critical | **Complete** |
+| BUILD-03 | Phase 10 (Build Pipeline) | Critical | **Complete** |
+| BUILD-04 | Phase 10 (Build Pipeline) | Critical | **Complete** |
+| BUILD-05 | Phase 10 (Build Pipeline) | Critical | **Complete** |
+| BUILD-06 | Phase 10 (Build Pipeline) | High | **Complete** |
 | HOOK-01 | Phase 11 (Hooks) | Critical | Pending |
 | HOOK-02 | Phase 11 (Hooks) | High | Pending |
 | HOOK-03 | Phase 11 (Hooks) | High | Pending |
