@@ -57,5 +57,16 @@
       "alert": 200000,
       "critical": 300000
     }
+  },
+  "harness": {
+    "enabled": true,
+    "maxFixIterations": 3,
+    "failFast": false,
+    "checks": [
+      { "name": "test", "command": "bun test", "enabled": true, "timeout": 120, "parser": "bun-test" },
+      { "name": "typecheck", "command": "bunx --bun tsc --noEmit", "enabled": true, "timeout": 60, "parser": "tsc" },
+      { "name": "lint", "command": "bunx --bun eslint . --format json", "enabled": false, "timeout": 60, "parser": "eslint" },
+      { "name": "build", "command": "bun run build:all", "enabled": false, "timeout": 120, "parser": "generic" }
+    ]
   }
 }
