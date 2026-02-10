@@ -1,9 +1,10 @@
 ---
-name: lu-pause-work
-description: Create context handoff when pausing work mid-phase. Use when user wants to stop work, mentions /lu-pause-work, or needs to save current state.
+name: "lu-pause-work"
+description: "Create context handoff when pausing work mid-phase. Use when user wants to stop work, mentions /lu-pause-work, or needs to save current state."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Pause Work
 
 Create `.continue-here.md` handoff file to preserve complete work state across sessions.
@@ -117,3 +118,4 @@ This skill creates a handoff for resuming later. No immediate action needed.
 
 **Common follow-ups:**
 - `/lu-help` — Review commands before stepping away
+</main>

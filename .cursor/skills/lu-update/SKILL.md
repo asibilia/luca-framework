@@ -1,9 +1,10 @@
 ---
-name: lu-update
-description: Update Luca to latest version with changelog preview. Use when user wants to update Luca, mentions /lu-update, or needs the latest features.
+name: "lu-update"
+description: "Update Luca to latest version with changelog preview. Use when user wants to update Luca, mentions /lu-update, or needs the latest features."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Update
 
 Update Luca to latest version with changelog preview.
@@ -80,3 +81,4 @@ This is a terminal action. The update is complete.
 
 - `/lu-help` — See updated command reference
 - `/lu-progress` — Continue your work
+</main>

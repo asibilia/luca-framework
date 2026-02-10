@@ -1,9 +1,10 @@
 ---
-name: lu-insert-phase
-description: Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution.
+name: "lu-insert-phase"
+description: "Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Insert Phase
 
 Insert a decimal phase for urgent work discovered mid-milestone that must be completed between existing integer phases.
@@ -97,3 +98,4 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 
 - `/lu-discuss-phase {N.1}` — Gather context before planning
 - `/lu-progress` — Check overall project status
+</main>

@@ -1,9 +1,10 @@
 ---
-name: lu-audit-milestone
-description: Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.
+name: "lu-audit-milestone"
+description: "Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Audit Milestone
 
 Audit milestone completion against original intent with cross-phase code review.
@@ -74,7 +75,7 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 First, read the phase context:
 
 ```bash
-VERIFICATION_FILES=$(find .planning/phases -name "VERIFICATION.md" -exec cat {} \;)
+VERIFICATION_FILES=$(find .planning/phases -name "VERIFICATION.md" -exec cat {} ;)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 ```
@@ -420,3 +421,4 @@ Code quality: {N} issues found
 **Also available:**
 - `/lu-plan-milestone-gaps` — Create phases to close gaps
 - `/lu-progress` — Review audit results
+</main>

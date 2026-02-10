@@ -1,8 +1,9 @@
 ---
-name: lu-progress
-description: Check Luca project progress, show context, and route to next action. Use when the user asks what's next, wants to check status, or returns to a Luca project after a break.
+name: "lu-progress"
+description: "Check Luca project progress, show context, and route to next action. Use when the user asks what's next, wants to check status, or returns to a Luca project after a break."
 ---
 
+<main>
 # Luca Progress
 
 Check project progress, summarize recent work and what's ahead, then intelligently route to the next action - either executing an existing plan or creating the next one.
@@ -49,7 +50,7 @@ This means a milestone was completed and archived. Go to **Route F** (between mi
 
 ### Step 4: Parse Current Position
 
-- From STATE.md: git context (Jira, issue, branch), current phase, plan number, status, task complexity
+- From STATE.md: git context (ticket, issue, branch), current phase, plan number, status, task complexity
 - Calculate: total plans, completed plans, remaining plans
 - Note any blockers or concerns
 - Check for CONTEXT.md: For phases without PLAN.md files, check if `{phase}-CONTEXT.md` exists
@@ -90,8 +91,8 @@ fi
 **Complexity:** [TRIVIAL/MODERATE/COMPLEX] (if active task)
 
 ## Git Context
-- **Jira:** [PT-#### or None]
-- **Branch:** [PT-####--description] → [ENG-####--release]
+- **Ticket:** [TICKET-ID or None]
+- **Branch:** [TICKET-ID--description] → [RELEASE-ID--release]
 - **Issue:** [#123 or None]
 
 ## PR Status (if open PR exists)
@@ -251,7 +252,7 @@ Ready to plan the next milestone.
 - [ ] What's next clearly explained
 - [ ] Smart routing: /lu-execute-phase if plans exist, /lu-plan-phase if not
 - [ ] User confirms before any action
-- [ ] Seamless handoff to appropriate vlcn command
+- [ ] Seamless handoff to appropriate command
 
 ## Next Steps
 
@@ -262,3 +263,4 @@ This skill provides intelligent routing based on project state. The "Route" sect
 - `/lu-help` — See all available commands
 - `/lu-settings` — Adjust workflow configuration
 - `/lu-pause-work` — Create handoff if stopping work
+</main>

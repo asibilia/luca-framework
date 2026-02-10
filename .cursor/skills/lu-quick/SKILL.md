@@ -1,9 +1,10 @@
 ---
-name: lu-quick
-description: Execute a quick ad-hoc task with Luca guarantees but skip optional agents. Use when user wants to do a quick task, mentions /lu-quick, or needs a simple one-off change.
+name: "lu-quick"
+description: "Execute a quick ad-hoc task with Luca guarantees but skip optional agents. Use when user wants to do a quick task, mentions /lu-quick, or needs a simple one-off change."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Quick
 
 Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
@@ -307,3 +308,4 @@ Ready for next task: /lu-quick
 
 - `/lu-quick` — Run another quick task
 - `/lu-help` — See all available commands
+</main>

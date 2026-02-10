@@ -1,9 +1,10 @@
 ---
-name: lu-plan-milestone-gaps
-description: Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps.
+name: "lu-plan-milestone-gaps"
+description: "Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Plan Milestone Gaps
 
 Create phases to close gaps identified by milestone audit.
@@ -57,3 +58,4 @@ Create phases to close gaps identified by milestone audit.
 **Also available:**
 - `/lu-progress` — Review gap closure phases
 - `/lu-audit-milestone` — Re-audit after fixes
+</main>

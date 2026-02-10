@@ -6,7 +6,7 @@ This directory contains documentation for the AI agent framework in percent-ui.
 
 **The active framework** for spec-driven development with cognitive memory and integrated git workflow:
 
-- **Jira-to-PR workflow**: Single command handles Jira → GitHub issue → branch → execute → PR
+- **Ticket-to-PR workflow**: Single command handles ticket → GitHub issue → branch → execute → PR
 - Spec-driven architecture and verification
 - Cognitive analysis and learning
 - **Two-tier memory**: WORKING.md (session) + MEMORY.md (long-term)
@@ -18,12 +18,12 @@ This directory contains documentation for the AI agent framework in percent-ui.
 ## Quick Start
 
 ```bash
-# Jira-driven work (most common)
-/lu PT-1234                                    # Pass Jira ticket ID
-/lu https://mypercent.atlassian.net/browse/PT-1234  # Or full URL
+# Ticket-driven work (most common)
+/lu [TICKET-ID]                                    # Pass ticket ID
+/lu $JIRA_BASE_URL/browse/[TICKET-ID]              # Or full URL
 
-# Ad-hoc work (no Jira ticket)
-/lu "fix the typo in readme"                   # Prompted for PT-0000
+# Ad-hoc work (no ticket)
+/lu "fix the typo in readme"                       # Prompted for placeholder
 
 # For new projects
 /lu-new-project
@@ -37,7 +37,7 @@ This directory contains documentation for the AI agent framework in percent-ui.
 ```mermaid
 flowchart LR
     subgraph PercentOrigin["🎯 Luca"]
-        PO["/lu<br/>PT-1234"] --> GIT["Git Setup"]
+        PO["/lu<br/>[TICKET-ID]"] --> GIT["Git Setup"]
         GIT --> COG["Cognitive Pre-Flight"]
         COG --> ROUTE["Router"]
         ROUTE --> PLAN["Plan"]
@@ -62,7 +62,7 @@ Luca uses `.planning/` for state:
 ```
 .planning/
 ├── BRAIN.md      # Project identity (persistent)
-├── STATE.md      # Session state + git context (Jira, issue, branch)
+├── STATE.md      # Session state + git context (ticket, issue, branch)
 ├── MEMORY.md     # Long-term learnings (persistent)
 ├── WORKING.md    # Session memory (cleared after learning capture)
 ├── PROJECT.md    # Vision & scope
@@ -79,17 +79,17 @@ Luca uses `.planning/` for state:
 ```markdown
 ## Git Context
 
-- Jira Ticket: PT-1234
+- Ticket: [TICKET-ID]
 - GitHub Issue: #456
-- Branch: PT-1234--fix-description
-- Base Branch: ENG-1353--release
+- Branch: [TICKET-ID]--fix-description
+- Base Branch: [RELEASE-ID]--release
 ```
 
 ## Key Commands
 
 | Command                                | Purpose                                             |
 | -------------------------------------- | --------------------------------------------------- |
-| `/lu <task \| PT-#### \| Jira-URL>` | Unified entry: git setup → routing → execution → PR |
+| `/lu <task \| [TICKET-ID] \| Jira-URL>` | Unified entry: git setup → routing → execution → PR |
 | `/lu-new-project`                   | Initialize project                                  |
 | `/lu-map-codebase`                  | Analyze existing code                               |
 | `/lu-new-milestone`                 | Start new milestone cycle                           |

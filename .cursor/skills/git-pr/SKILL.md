@@ -1,8 +1,9 @@
 ---
-name: git-pr
-description: Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.
+name: "git-pr"
+description: "Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge."
 ---
 
+<main>
 # Git Pull Request
 
 Create a pull request with proper formatting.
@@ -50,3 +51,4 @@ Generated with [Claude Code](https://claude.ai/claude-code)
 - Feature branches typically target the **main** branch (or a release branch)
 - Include "Closes PROJ-####" or "Fixes #issue" when applicable
 - Adjust base branch based on your team's workflow
+</main>

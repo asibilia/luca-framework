@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
     subgraph Entry["Entry Points"]
-        SINGLE["/lu<br/>Task | PT-#### | Jira-URL"]
+        SINGLE["/lu<br/>Task | [TICKET-ID] | Jira-URL"]
         SPECIFIC["/lu-*<br/>Specific commands"]
     end
 
@@ -78,9 +78,9 @@ Not a separate agent - handled by the `/lu` unified entry skill:
 
 | Step            | Purpose                | Inputs                  | Outputs                     |
 | --------------- | ---------------------- | ----------------------- | --------------------------- |
-| Jira Detection  | Parse input for ticket | Task, PT-####, Jira URL | Jira ticket ID              |
+| Jira Detection  | Parse input for ticket | Task, [TICKET-ID], Jira URL | Jira ticket ID              |
 | Issue Creation  | Create GitHub issue    | Jira details, MCP tools | GitHub issue #number        |
-| Branch Creation | Create feature branch  | Ticket, ENG base branch | PT-####--description branch |
+| Branch Creation | Create feature branch  | Ticket, ENG base branch | [TICKET-ID]--description branch |
 | State Update    | Track git context      | All above               | Updated STATE.md            |
 
 ### Tier 1: Cognitive Agents
@@ -144,14 +144,14 @@ Not a separate agent - handled by the `/lu` unified entry skill:
 ### Primary Entry Point
 
 ```
-/lu <task | PT-#### | Jira-URL> [--force-complex] [--skip-memory] [--skip-branch]
+/lu <task | [TICKET-ID] | Jira-URL> [--force-complex] [--skip-memory] [--skip-branch]
 ```
 
 Full workflow with git integration:
 
 ```mermaid
 flowchart TB
-    REQ["/lu PT-1234"]
+    REQ["/lu [TICKET-ID]"]
 
     subgraph Git["Step 0: Git Context"]
         JIRA["Fetch Jira Details"]
@@ -197,11 +197,11 @@ flowchart TB
 
 | Input      | Example                                          | Behavior                           |
 | ---------- | ------------------------------------------------ | ---------------------------------- |
-| Jira URL   | `https://mypercent.atlassian.net/browse/PT-1234` | Extracts PT-1234, fetches details  |
-| Ticket ID  | `PT-1234`                                        | Fetches details from Jira          |
-| Plain task | `"fix the button"`                               | Prompts for Jira ticket or PT-0000 |
+| Jira URL   | `https://mypercent.atlassian.net/browse/[TICKET-ID]` | Extracts [TICKET-ID], fetches details  |
+| Ticket ID  | `[TICKET-ID]`                                        | Fetches details from Jira          |
+| Plain task | `"fix the button"`                               | Prompts for Jira ticket or [PLACEHOLDER] |
 
-### PT-0000 Placeholder
+### [PLACEHOLDER] Placeholder
 
 For work without a Jira ticket:
 
@@ -210,7 +210,7 @@ For work without a Jira ticket:
 - GitHub Issues not from Jira
 - Documentation updates
 
-**Key principle:** If no Jira ticket, use PT-0000. Don't create Jira tickets just to have a number.
+**Key principle:** If no Jira ticket, use [PLACEHOLDER]. Don't create Jira tickets just to have a number.
 
 ### Specific Commands
 
@@ -269,7 +269,7 @@ For work without a Jira ticket:
 │   ├── Recent activity
 │   ├── Next steps
 │   ├── Git context           # NEW - Jira/GitHub integration
-│   │   ├── Jira Ticket
+│   │   ├── Ticket
 │   │   ├── GitHub Issue
 │   │   ├── Branch
 │   │   ├── Base Branch

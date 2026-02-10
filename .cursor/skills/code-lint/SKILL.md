@@ -1,8 +1,9 @@
 ---
-name: code-lint
-description: Run ESLint with auto-fix on the codebase or specific path. Use when the user wants to lint code, fix linting errors, run eslint, or check code style.
+name: "code-lint"
+description: "Run ESLint with auto-fix on the codebase or specific path. Use when the user wants to lint code, fix linting errors, run eslint, or check code style."
 ---
 
+<main>
 # Code Lint
 
 Run ESLint with auto-fix on the codebase.
@@ -22,3 +23,5 @@ Run ESLint with auto-fix on the codebase.
 bun run --cwd apps/admin-ui lint
 bun run --cwd packages-ui/components lint
 ```
+
+</main>

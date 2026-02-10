@@ -1,9 +1,10 @@
 ---
-name: lu-new-milestone
-description: Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.
+name: "lu-new-milestone"
+description: "Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca New Milestone
 
 Start a new milestone through unified flow: questioning → research (optional) → requirements → roadmap.
@@ -106,3 +107,4 @@ How should this milestone be tracked on GitHub?
 
 - `/lu-plan-phase {N}` — Skip discussion, plan directly
 - `/lu-progress` — Check milestone setup
+</main>

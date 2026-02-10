@@ -1,9 +1,10 @@
 ---
-name: lu-address-pr
-description: Address PR review comments by swarming reviewer agents, validating concerns, planning fixes, executing, verifying, and responding to comments. Use when user wants to address PR feedback, handle review comments, mentions /lu-address-pr, or needs to respond to PR reviewers.
+name: "lu-address-pr"
+description: "Address PR review comments by swarming reviewer agents, validating concerns, planning fixes, executing, verifying, and responding to comments. Use when user wants to address PR feedback, handle review comments, mentions /lu-address-pr, or needs to respond to PR reviewers."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Address PR
 
 Address pull request review comments through a coordinated agent swarm that validates concerns, plans fixes, executes changes, verifies updates, and responds to GitHub comments.
@@ -517,15 +518,13 @@ EOF
 )"
 
 # Reply to specific review comment
-gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
-  -f body="Fixed in ${COMMIT_HASH}. ${EXPLANATION}"
+gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies"   -f body="Fixed in ${COMMIT_HASH}. ${EXPLANATION}"
 ```
 
 For disputed concerns:
 
 ```bash
-gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
-  -f body="${DISAGREE_RESPONSE}"
+gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies"   -f body="${DISAGREE_RESPONSE}"
 ```
 
 ### Step 9: Push and Summary
@@ -644,3 +643,4 @@ This skill can be invoked:
 
 - `/lu-progress` — Check overall project status
 - `/lu-help` — Review available commands
+</main>

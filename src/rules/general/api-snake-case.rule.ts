@@ -1,0 +1,367 @@
+/**
+ * API payloads must use snake_case for consistency with backend conventions
+ */
+import { BaseRuleImpl } from './base/base-rule';
+import { RuleConfig } from './types/rule.types';
+
+// Define the API-payloads-must-us rule configuration
+const APIpayloadsmustusConfig: RuleConfig = {
+  frontmatter: {
+    description: `API payloads must use snake_case for consistency with backend conventions`,
+    globs: ['**/*.ts', '**/*.tsx'],
+    alwaysApply: true,
+  },
+  sections: [
+    {
+      title: 'rule',
+      content: `# API Snake Case Convention
+
+**CRITICAL**: All API request/response payloads MUST use \`snake_case\` property names for consistency with backend conventions, even though internal TypeScript code uses \`camelCase\`.
+
+## **Why This Rule Exists**
+
+- **Backend Consistency**: Most backend frameworks (Django, Rails, Go, etc.) use snake_case by default
+- **API Contract Clarity**: Clear distinction between API layer and internal TypeScript layer
+- **Prevention of Bugs**: Avoids runtime errors from mismatched property names
+- **Team Standards**: Maintains consistency across frontend and backend teams
+
+## **Naming Convention Standards**
+
+### **✅ DO: API Schemas - Use snake_case**
+
+\`\`\`typescript
+// ✅ API Request/Response schemas
+export const UserValidationRequestSchema = z.object({
+  user_id: z.string(), // ✅ snake_case
+  email_address: z.string(), // ✅ snake_case
+  first_name: z.string(), // ✅ snake_case
+  last_name: z.string(), // ✅ snake_case
+  is_active: z.boolean(), // ✅ snake_case
+  created_at: z.string(), // ✅ snake_case
+})
+\`\`\`
+
+### **✅ DO: Internal TypeScript - Use camelCase**
+
+\`\`\`typescript
+// ✅ Internal TypeScript types/interfaces
+interface UserState {
+  userId: string // ✅ camelCase
+  emailAddress: string // ✅ camelCase
+  firstName: string // ✅ camelCase
+  lastName: string // ✅ camelCase
+  isActive: boolean // ✅ camelCase
+  createdAt: Date // ✅ camelCase
+}
+\`\`\`
+
+### **❌ DON'T: Mix Conventions**
+
+\`\`\`typescript
+// ❌ WRONG: camelCase in API schema
+export const WrongApiSchema = z.object({
+  userId: z.string(), // ❌ Should be user_id
+  emailAddress: z.string(), // ❌ Should be email_address
+  isValid: z.boolean(), // ❌ Should be is_valid
+})
+
+// ❌ WRONG: snake_case in internal TypeScript
+interface WrongInternalType {
+  user_id: string // ❌ Should be userId
+  email_address: string // ❌ Should be emailAddress
+  is_active: boolean // ❌ Should be isActive
+}
+\`\`\`
+
+## **Schema Naming Convention**
+
+### **API-Facing Schemas**
+
+Schemas that represent API payloads should be clearly named and documented:
+
+\`\`\`typescript
+/**
+ * API Request: User validation payload.
+ *
+ * Sent to backend for user validation.
+ * Uses snake_case for API compatibility.
+ */
+export const UserValidationRequestSchema = z.object({
+  user_id: z.string(),
+  email: z.string().email(),
+  // ... all properties in snake_case
+})
+
+/**
+ * API Response: User validation result.
+ *
+ * Returned from backend after validation.
+ * Uses snake_case for API compatibility.
+ */
+export const UserValidationResponseSchema = z.object({
+  is_valid: z.boolean(),
+  error_message: z.string().optional(),
+  // ... all properties in snake_case
+})
+\`\`\`
+
+### **Internal Domain Schemas**
+
+Schemas for internal use (not sent to API) can use camelCase if they match TypeScript conventions, but **prefer snake_case for consistency**:
+
+\`\`\`typescript
+// Option 1: Prefer snake_case for consistency (RECOMMENDED)
+export const GridStateSchema = z.object({
+  row_data: z.array(z.any()),
+  column_defs: z.array(z.any()),
+  is_loading: z.boolean(),
+})
+
+// Option 2: camelCase allowed for internal-only schemas
+export const GridStateSchema = z.object({
+  rowData: z.array(z.any()),
+  columnDefs: z.array(z.any()),
+  isLoading: z.boolean(),
+})
+\`\`\`
+
+## **Transformation Patterns**
+
+### **Converting Between Conventions**
+
+When you need to transform between API (snake_case) and internal (camelCase):
+
+\`\`\`typescript
+// ✅ DO: Explicit transformation utilities
+const toSnakeCase = (obj: Record<string, any>) => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/([A-Z])/g, '_$1').toLowerCase(),
+      value,
+    ])
+  )
+}
+
+const toCamelCase = (obj: Record<string, any>) => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
+      value,
+    ])
+  )
+}
+
+// Usage
+const apiPayload = toSnakeCase({
+  userId: '123',
+  emailAddress: 'user@example.com',
+  isActive: true,
+})
+// Result: { user_id: '123', email_address: 'user@example.com', is_active: true }
+\`\`\`
+
+### **Using Zod for Transformation**
+
+\`\`\`typescript
+// ✅ DO: Use Zod transform for automatic conversion
+const UserApiSchema = z
+  .object({
+    user_id: z.string(),
+    email_address: z.string(),
+  })
+  .transform((data) => ({
+    userId: data.user_id,
+    emailAddress: data.email_address,
+  }))
+
+// API response is automatically converted to camelCase
+const user = UserApiSchema.parse(apiResponse)
+// user: { userId: string, emailAddress: string }
+\`\`\`
+
+## **Common Patterns**
+
+### **Validation API Payloads**
+
+\`\`\`typescript
+// ✅ Cell validation request
+const CellValidationRequestSchema = z.object({
+  type: z.literal('cell'),
+  row_id: z.string(), // ✅ snake_case
+  field_id: z.string(), // ✅ snake_case
+  value: z.any(),
+  row_data: z.record(z.any()), // ✅ snake_case
+  metadata: z
+    .object({
+      user_id: z.string(), // ✅ snake_case
+      timestamp: z.number(),
+    })
+    .optional(),
+})
+
+// ✅ Validation response
+const ValidationResponseSchema = z.object({
+  is_valid: z.boolean(), // ✅ snake_case
+  error_message: z.string().optional(), // ✅ snake_case
+  errors: z.array(z.string()),
+  severity: z.enum(['error', 'warning', 'info']),
+})
+\`\`\`
+
+### **Pagination API Payloads**
+
+\`\`\`typescript
+// ✅ Pagination request
+const PaginationRequestSchema = z.object({
+  page_number: z.number(), // ✅ snake_case
+  page_size: z.number(), // ✅ snake_case
+  sort_by: z.string().optional(), // ✅ snake_case
+  sort_order: z.enum(['asc', 'desc']).optional(), // ✅ snake_case
+})
+
+// ✅ Pagination response
+const PaginationResponseSchema = z.object({
+  total_count: z.number(), // ✅ snake_case
+  page_count: z.number(), // ✅ snake_case
+  current_page: z.number(), // ✅ snake_case
+  items: z.array(z.any()),
+})
+\`\`\`
+
+### **Error Response Payloads**
+
+\`\`\`typescript
+// ✅ Standard error response
+const ErrorResponseSchema = z.object({
+  error_code: z.string(), // ✅ snake_case
+  error_message: z.string(), // ✅ snake_case
+  field_errors: z
+    .array(
+      // ✅ snake_case
+      z.object({
+        field_id: z.string(), // ✅ snake_case
+        message: z.string(),
+        error_code: z.string(), // ✅ snake_case
+      })
+    )
+    .optional(),
+  timestamp: z.number(),
+  request_id: z.string(), // ✅ snake_case
+})
+\`\`\`
+
+## **Documentation Requirements**
+
+All API schemas MUST include documentation specifying:
+
+1. **Purpose**: What the schema is for
+2. **Direction**: Request or Response
+3. **Convention**: Explicit mention of snake_case usage
+
+\`\`\`\`typescript
+/**
+ * API Request: Payment schedule validation.
+ *
+ * Sent to backend to validate payment schedule data before submission.
+ * **CRITICAL**: Uses snake_case for all properties per API conventions.
+ *
+ * @example
+ * \`\`\`typescript
+ * const payload: PaymentValidationRequest = {
+ *   payment_id: '123',
+ *   payment_date: '2024-01-15T00:00:00Z',
+ *   amount_cents: 50000,
+ *   is_recurring: false,
+ * }
+ * \`\`\`
+ */
+export const PaymentValidationRequestSchema = z.object({
+  payment_id: z.string(),
+  payment_date: z.string().datetime(),
+  amount_cents: z.number().int().positive(),
+  is_recurring: z.boolean(),
+})
+\`\`\`\`
+
+## **Testing Requirements**
+
+When writing tests for API schemas:
+
+\`\`\`typescript
+// ✅ Test snake_case property names
+describe('PaymentValidationRequestSchema', () => {
+  it('should accept valid snake_case properties', () => {
+    const payload = {
+      payment_id: '123',
+      payment_date: '2024-01-15T00:00:00Z',
+      amount_cents: 50000,
+      is_recurring: false,
+    }
+
+    const result = PaymentValidationRequestSchema.safeParse(payload)
+    expect(result.success).toBe(true)
+  })
+
+  it('should reject camelCase properties', () => {
+    const payload = {
+      paymentId: '123', // ❌ camelCase
+      paymentDate: '2024-01-15', // ❌ camelCase
+      amountCents: 50000, // ❌ camelCase
+      isRecurring: false, // ❌ camelCase
+    }
+
+    // Schema expects snake_case, so this should fail
+    const result = PaymentValidationRequestSchema.safeParse(payload)
+    expect(result.success).toBe(false)
+  })
+})
+\`\`\`
+
+## **Code Review Checklist**
+
+When reviewing API-related code:
+
+- [ ] All API request schemas use snake_case
+- [ ] All API response schemas use snake_case
+- [ ] Schema documentation explicitly mentions snake_case usage
+- [ ] No camelCase properties in API schemas
+- [ ] Transformation utilities (if needed) are correct
+- [ ] Tests verify snake_case property names
+- [ ] Internal TypeScript types use camelCase (or snake_case for consistency)
+
+## **Migration Guidelines**
+
+When updating existing API schemas:
+
+1. **Identify API schemas**: Find schemas used for fetch/axios requests
+2. **Update property names**: Change camelCase to snake_case
+3. **Update documentation**: Add snake_case notice
+4. **Update call sites**: Ensure API calls use new property names
+5. **Add tests**: Verify snake_case properties work correctly
+6. **Update transformers**: If using transformation utilities, update them
+
+## **Exceptions**
+
+**NONE.** This rule has no exceptions for API-facing schemas. All API payloads must use snake_case.
+
+Internal-only schemas can use camelCase, but snake_case is preferred for consistency.
+
+## **Benefits**
+
+- **✅ Backend Compatibility**: Works seamlessly with Python, Ruby, Go backends
+- **✅ API Contract Clarity**: Clear distinction between layers
+- **✅ Fewer Bugs**: No runtime property mismatch errors
+- **✅ Team Consistency**: Frontend and backend teams use same conventions
+- **✅ Type Safety**: Zod validation catches property name errors at dev time
+
+Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards and [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization.`,
+      order: 1
+    }
+  ]
+};
+
+export class APIpayloadsmustusRule extends BaseRuleImpl {
+  constructor() {
+    super(APIpayloadsmustusConfig);
+  }
+}

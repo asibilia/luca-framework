@@ -1,8 +1,9 @@
 ---
-name: jira-issue
-description: Create a GitHub issue from a Jira ticket. Use when the user wants to import a Jira ticket, create GitHub issue from Jira, sync Jira to GitHub, or link Jira ticket.
+name: "jira-issue"
+description: "Create a GitHub issue from a Jira ticket. Use when the user wants to import a Jira ticket, create GitHub issue from Jira, sync Jira to GitHub, or link Jira ticket."
 ---
 
+<main>
 # Jira to GitHub Issue
 
 Create a GitHub issue from a Jira ticket.
@@ -31,8 +32,8 @@ Must be set in shell environment or `.env`:
 3. **Fetch Jira issue**:
 
    ```bash
-   curl -s -u "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
-     "$JIRA_BASE_URL/rest/api/3/issue/PROJ-1234?fields=summary,description,issuetype,priority,status,assignee"
+   curl -s -u "\$JIRA_USER_EMAIL:\$JIRA_API_TOKEN" \
+     "\$JIRA_BASE_URL/rest/api/3/issue/PROJ-1234?fields=summary,description,issuetype,priority,status,assignee"
    ```
 
 4. **Map labels**:
@@ -60,7 +61,7 @@ Must be set in shell environment or `.env`:
 ## GitHub Issue Body Template
 
 ```markdown
-> **Jira Ticket:** [PROJ-1234]($JIRA_BASE_URL/browse/PROJ-1234)
+> **Jira Ticket:** [PROJ-1234](\$JIRA_BASE_URL/browse/PROJ-1234)
 
 ## Details
 
@@ -83,3 +84,4 @@ _Created from Jira using jira-issue skill_
 - **401 Unauthorized**: Check JIRA_USER_EMAIL and JIRA_API_TOKEN
 - **404 Not Found**: Verify ticket exists and you have access
 - **Connection error**: Check JIRA_BASE_URL (no trailing slash)
+</main>

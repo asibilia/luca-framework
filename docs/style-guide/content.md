@@ -72,11 +72,11 @@ Use the typography system to reinforce meaning:
 
 ## 4. Structural Templates
 
-These templates provide consistent patterns for common content blocks. See [Layout & Spacing](./layout-spacing.md) for corresponding layout patterns.
+These templates provide consistent patterns for common content blocks.
 
 ### A. Hero Template
 
-*Layout: See "Editorial + Artifact" in layout-spacing.md*
+*Layout: Use "Editorial + Artifact" pattern*
 
 **Kicker** (IBM Plex Mono)
 ```
@@ -101,7 +101,7 @@ One sentence that clarifies the claim (80-120 characters):
 
 ### B. Chapter Header Template
 
-*Layout: See section header pattern in layout-spacing.md*
+*Layout: Use section header pattern*
 
 **Eyebrow** (IBM Plex Mono)
 ```
@@ -120,7 +120,7 @@ One sentence (60-100 characters):
 
 ### C. Project Summary Template
 
-*Layout: See "Featured Grid" in layout-spacing.md*
+*Layout: Use "Featured Grid" pattern*
 
 **Title** (Sora)
 Project name
@@ -145,7 +145,7 @@ STACK: Next.js • Postgres • Convex • Tailwind
 
 ### D. Case Study Template
 
-*Layout: See "Editorial + Artifact" and "Timeline" in layout-spacing.md*
+*Layout: Use "Editorial + Artifact" and "Timeline" patterns*
 
 | Section | Content |
 |---------|---------|

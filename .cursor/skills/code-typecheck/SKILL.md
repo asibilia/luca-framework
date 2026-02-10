@@ -1,8 +1,9 @@
 ---
-name: code-typecheck
-description: Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript.
+name: "code-typecheck"
+description: "Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript."
 ---
 
+<main>
 # Code Typecheck
 
 Run TypeScript type checking on the codebase.
@@ -19,3 +20,5 @@ Run TypeScript type checking on the codebase.
 
 - Turborepo parallelizes type checking across all workspaces
 - Use specific workspace path to check only that package
+
+</main>

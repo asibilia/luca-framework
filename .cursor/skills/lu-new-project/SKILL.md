@@ -1,9 +1,10 @@
 ---
-name: lu-new-project
-description: Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization.
+name: "lu-new-project"
+description: "Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca New Project
 
 Initialize a new project through unified flow: questioning → research (optional) → requirements → roadmap.
@@ -528,9 +529,7 @@ Use AskQuestion tool:
 1. **Create GitHub issue** using `gh issue create`:
 
    ```bash
-   gh issue create \
-     --title "feat([scope]): [project one-liner from PROJECT.md]" \
-     --body "[Generated from PROJECT.md, REQUIREMENTS.md, ROADMAP.md summary]"
+   gh issue create      --title "feat([scope]): [project one-liner from PROJECT.md]"      --body "[Generated from PROJECT.md, REQUIREMENTS.md, ROADMAP.md summary]"
    ```
 
    Issue body should include:
@@ -553,7 +552,7 @@ Use AskQuestion tool:
    Add to Project Reference section:
 
    - `**GitHub Issue:** #{issue_number}`
-   - `**Branch:** \`{issue_number}--{project-slug}\``
+   - `**Branch:** \\`{issue_number}--{project-slug}\\``
 
 4. **Commit and push:**
 
@@ -619,3 +618,4 @@ Present completion with next steps:
 
 - `/lu-plan-phase 1` — Skip discussion, plan directly
 - `/lu-map-codebase` — Map existing codebase first (brownfield)
+</main>

@@ -22,29 +22,29 @@ Luca is the AI agent framework for spec-driven development. It combines structur
 
 ```bash
 # Pass a Jira ticket - handles everything automatically
-/lu PT-1234
+/lu [TICKET-ID]
 
 # Or use full Jira URL
-/lu https://mypercent.atlassian.net/browse/PT-1234
+/lu https://mypercent.atlassian.net/browse/[TICKET-ID]
 ```
 
 This single command:
 
 1. Fetches Jira ticket details
 2. Creates GitHub issue linked to Jira
-3. Creates feature branch (`PT-1234--description`)
+3. Creates feature branch (`[TICKET-ID]--description`)
 4. Runs cognitive pre-flight
 5. Executes the task
 6. Offers to commit and create PR
 
-### Ad-Hoc Work (No Jira Ticket)
+### Ad-Hoc Work (No Ticket)
 
 ```bash
 # Describe the task - you'll be prompted for Jira or placeholder
 /lu "fix the typo in the readme"
 ```
 
-When prompted, choose `PT-0000` placeholder for work not tied to a Jira ticket.
+When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ticket.
 
 ### New Projects
 
@@ -90,11 +90,11 @@ When prompted, choose `PT-0000` placeholder for work not tied to a Jira ticket.
 
 ### Git Integration
 
-- **Jira Detection**: Accepts ticket ID (`PT-1234`) or full URL
+- **Jira Detection**: Accepts ticket ID (`[TICKET-ID]`) or full URL
 - **GitHub Issue Creation**: Auto-creates linked issue via MCP Atlassian tools
-- **Branch Management**: Creates `PT-####--description` branches off ENG release branches
+- **Branch Management**: Creates `[TICKET-ID]--description` branches off ENG release branches
 - **Commit & PR**: Offers to commit with proper format and create PR after verification
-- **Placeholder Support**: Use `PT-0000` for ad-hoc work without Jira tickets
+- **Placeholder Support**: Use `[PLACEHOLDER]` for ad-hoc work without Jira tickets
 
 ## Directory Structure
 
@@ -140,9 +140,9 @@ STATE.md now tracks git workflow context:
 ```markdown
 ## Git Context
 
-- Jira Ticket: PT-1234
+- Ticket: [TICKET-ID]
 - GitHub Issue: #456
-- Branch: PT-1234--fix-performance-issue
+- Branch: [TICKET-ID]--fix-performance-issue
 - Base Branch: ENG-1353--release
 - Task Complexity: MODERATE
 ```
@@ -151,7 +151,7 @@ STATE.md now tracks git workflow context:
 
 | Command                                | Purpose                                                                       |
 | -------------------------------------- | ----------------------------------------------------------------------------- |
-| `/lu <task \| PT-#### \| Jira-URL>` | **Unified entry** - git setup, routing, execution, verification, learning, PR |
+| `/lu <task \| [TICKET-ID] \| Jira-URL>` | **Unified entry** - git setup, routing, execution, verification, learning, PR |
 | `/lu-new-project`                   | Initialize project with BRAIN.md, MEMORY.md                                   |
 | `/lu-map-codebase`                  | Analyze existing code (parallel agents)                                       |
 | `/lu-new-milestone`                 | Start new milestone cycle                                                     |
@@ -193,7 +193,7 @@ STATE.md now tracks git workflow context:
 ## Workflow
 
 ```
-/lu "task" | PT-#### | Jira-URL
+/lu "task" | [TICKET-ID] | Jira-URL
     │
     ▼
 ┌──────────────────────────┐

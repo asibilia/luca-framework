@@ -1,18 +1,28 @@
----
-name: lu-map-codebase
-description: Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.
-disable-model-invocation: true
----
+/**
+ * lu-map-codebase Skill - Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.
+ */
+import { BaseSkillImpl } from '../base/base-skill';
+import { SkillConfig } from '../types/skill.types';
 
-# Luca Map Codebase
+// Define the lu-map-codebase skill configuration
+const lumapcodebaseConfig: SkillConfig = {
+  frontmatter: {
+    name: 'lu-map-codebase',
+    description: `Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.`,
+    'disable-model-invocation': true,
+  },
+  sections: [
+    {
+      title: 'main',
+      content: `# Luca Map Codebase
 
 Analyze existing codebase using parallel lu-codebase-mapper agents to produce structured codebase documents.
 
-Each mapper agent explores a focus area and **writes documents directly** to `.planning/codebase/`. The orchestrator only receives confirmations, keeping context usage minimal.
+Each mapper agent explores a focus area and **writes documents directly** to \`.planning/codebase/\`. The orchestrator only receives confirmations, keeping context usage minimal.
 
-**Arguments:** `[optional: specific area to map, e.g., 'api' or 'auth']`
+**Arguments:** \`[optional: specific area to map, e.g., 'api' or 'auth']\`
 
-**Output:** `.planning/codebase/` folder with 7 structured documents about the codebase state.
+**Output:** \`.planning/codebase/\` folder with 7 structured documents about the codebase state.
 
 ## Sub-agent Delegation Requirements
 
@@ -20,36 +30,36 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `lu-codebase-mapper` - Analyzes codebase and writes documents (4 parallel agents)
+- \`lu-codebase-mapper\` - Analyzes codebase and writes documents (4 parallel agents)
 
 **DO NOT** attempt to analyze the codebase yourself. Spawn the mapper agents.
 
-**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
 
 ### Model Resolution
 
-```bash
+\`\`\`bash
 MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-```
+\`\`\`
 
 | Agent                 | quality | balanced | budget |
 | --------------------- | ------- | -------- | ------ |
 | lu-codebase-mapper | opus    | sonnet   | haiku  |
 
-> **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
+> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
 
 **Current model variable values:**
 
-```
+\`\`\`
 # Lightweight file scanning → use "fast"
 mapper_model = "fast"
-```
+\`\`\`
 
 ## Execution Context
 
 Read this reference file before executing:
 
-- `.cursor/luca/workflows/map-codebase.md`
+- \`.cursor/luca/workflows/map-codebase.md\`
 
 ## When to Use
 
@@ -68,18 +78,18 @@ Read this reference file before executing:
 
 ## Process
 
-1. Check if `.planning/codebase/` already exists (offer to refresh or skip)
-2. Create `.planning/codebase/` directory structure
+1. Check if \`.planning/codebase/\` already exists (offer to refresh or skip)
+2. Create \`.planning/codebase/\` directory structure
 
-```bash
+\`\`\`bash
 mkdir -p .planning/codebase
-```
+\`\`\`
 
 1. Spawn 4 parallel lu-codebase-mapper agents:
 
 **MANDATORY**: You MUST spawn 4 lu-codebase-mapper agents in PARALLEL. Do NOT analyze the codebase yourself.
 
-```python
+\`\`\`python
 # Agent 1: Tech Focus - STACK.md, INTEGRATIONS.md
 Task(
   prompt="""
@@ -204,14 +214,14 @@ Analyze the codebase for concerns, tech debt, and risks.
   model="{mapper_model}",
   description="Map: concerns focus"
 )
-```
+\`\`\`
 
 **Do NOT proceed until ALL 4 Tasks return.**
 
 1. Wait for agents to complete, collect confirmations (NOT document contents)
 2. Verify all 7 documents exist with line counts
 3. Commit codebase map
-4. Offer next steps (typically: `/lu-new-project` or `/lu-plan-phase`)
+4. Offer next steps (typically: \`/lu-new-project\` or \`/lu-plan-phase\`)
 
 ## Success Criteria
 
@@ -222,9 +232,19 @@ Analyze the codebase for concerns, tech debt, and risks.
 
 ## Next Steps
 
-**Primary:** `/lu-progress` — Check project status with codebase context
+**Primary:** \`/lu-progress\` — Check project status with codebase context
 
 **Also available:**
 
-- `/lu-new-milestone` — Start a new milestone using codebase knowledge
-- `/lu-discuss-phase {N}` — Discuss a phase with codebase awareness
+- \`/lu-new-milestone\` — Start a new milestone using codebase knowledge
+- \`/lu-discuss-phase {N}\` — Discuss a phase with codebase awareness`,
+      order: 1
+    }
+  ]
+};
+
+export class LumapcodebaseSkill extends BaseSkillImpl {
+  constructor() {
+    super(lumapcodebaseConfig);
+  }
+}

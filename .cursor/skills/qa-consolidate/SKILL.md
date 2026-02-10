@@ -1,16 +1,17 @@
 ---
-name: qa-consolidate
-description: Consolidate QA testing plans from merged PT PRs onto the parent ENG PR. Use when the user wants to consolidate QA, update QA plan, update testing plan on ENG PR, merge QA plans, prepare release QA, generate missing QA plans, or retroactively create QA plans for merged PRs.
+name: "qa-consolidate"
+description: "Consolidate QA testing plans from merged feature PRs onto the parent release PR. Use when the user wants to consolidate QA, update QA plan, update testing plan on release PR, merge QA plans, prepare release QA, generate missing QA plans, or retroactively create QA plans for merged PRs."
 ---
 
+<main>
 # QA Plan Consolidation
 
-Consolidate QA testing plans from merged PT PRs onto the parent ENG PR to main.
+Consolidate QA testing plans from merged feature PRs onto the parent release PR to main.
 
 ## Prerequisites
 
 - `gh` CLI authenticated (`gh auth status`)
-- On a PT branch or know the ENG branch name
+- On a feature branch or know the release branch name
 
 ## Instructions
 
@@ -22,27 +23,27 @@ CURRENT_BRANCH=$(git branch --show-current)
 echo "Current branch: $CURRENT_BRANCH"
 ```
 
-If on a PT branch, extract the ENG branch it targets. If not on a PT branch, prompt the user for the ENG branch name.
+If on a feature branch, extract the release branch it targets. If not on a feature branch, prompt the user for the release branch name.
 
-### Step 2: Find the ENG PR to Main
+### Step 2: Find the Release PR to Main
 
 ```bash
-# Replace ENG_BRANCH with actual branch name
-gh pr list --head ENG_BRANCH --base main --state open --json number,url,title
+# Replace RELEASE_BRANCH with actual branch name
+gh pr list --head RELEASE_BRANCH --base main --state open --json number,url,title
 ```
 
-If no ENG PR exists, stop and inform the user: "No open ENG PR found for branch [ENG_BRANCH] to main."
+If no release PR exists, stop and inform the user: "No open release PR found for branch [RELEASE_BRANCH] to main."
 
-### Step 3: Fetch All Merged PT PRs
+### Step 3: Fetch All Merged Feature PRs
 
 ```bash
-# Get all merged PT PRs into the ENG branch
-gh pr list --base ENG_BRANCH --state merged --json number,title,body,comments
+# Get all merged feature PRs into the release branch
+gh pr list --base RELEASE_BRANCH --state merged --json number,title,body,comments
 ```
 
 ### Step 4: Extract QA Comments
 
-For each merged PT PR:
+For each merged feature PR:
 
 1. Check PR comments for content containing "Manual QA Testing Plan" or "Testing Plan"
 2. If no QA comment found, check the PR body
@@ -51,10 +52,10 @@ For each merged PT PR:
 ### Step 5: Check for Existing Consolidated Comment
 
 ```bash
-# Get the ENG PR number first, then check its comments
+# Get the release PR number first, then check its comments
 # Replace OWNER/REPO with your repository (or use $(gh repo view --json nameWithOwner -q .nameWithOwner))
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-gh api repos/$REPO/issues/[ENG_PR_NUMBER]/comments --jq '.[] | select(.body | contains("CONSOLIDATED-QA-PLAN")) | {id: .id, url: .html_url}'
+gh api repos/$REPO/issues/[RELEASE_PR_NUMBER]/comments --jq '.[] | select(.body | contains("CONSOLIDATED-QA-PLAN")) | {id: .id, url: .html_url}'
 ```
 
 ### Step 6: Build Consolidated QA Markdown
@@ -63,7 +64,7 @@ Use this exact format:
 
 ```markdown
 <!-- CONSOLIDATED-QA-PLAN -->
-## Release QA Testing Plan - [ENG-TICKET]
+## Release QA Testing Plan - [RELEASE-ID]
 
 This release includes the following features and fixes. Each section contains the QA testing plan from the original PR.
 
@@ -73,22 +74,22 @@ This release includes the following features and fixes. Each section contains th
 
 | PR | Title | Type |
 |----|-------|------|
-| #123 | PT-5678: Feature A | Feature |
-| #124 | PT-5679: Fix B | Fix |
+| #123 | FEATURE-5678: Feature A | Feature |
+| #124 | FIX-5679: Fix B | Fix |
 
 ---
 
 ### Individual QA Plans
 
-#### PT-5678: Feature A (#123)
+#### FEATURE-5678: Feature A (#123)
 
-[Copy the full QA plan content from the PT PR comment here]
+[Copy the full QA plan content from the feature PR comment here]
 
 ---
 
-#### PT-5679: Fix B (#124)
+#### FIX-5679: Fix B (#124)
 
-[Copy the full QA plan content from the PT PR comment here]
+[Copy the full QA plan content from the feature PR comment here]
 
 ---
 
@@ -103,10 +104,10 @@ This release includes the following features and fixes. Each section contains th
 *Last updated: [timestamp] after merging #[latest_merged_pr]*
 ```
 
-For PT PRs without QA plans:
+For feature PRs without QA plans:
 
 ```markdown
-#### PT-XXXX: Title (#NNN)
+#### FEATURE-XXXX: Title (#NNN)
 
 **QA plan pending** - No QA testing plan was found for this PR.
 ```
@@ -123,7 +124,7 @@ gh api repos/$REPO/issues/comments/[COMMENT_ID] -X PATCH -f body='[NEW_BODY]'
 **If no existing comment:**
 
 ```bash
-gh pr comment [ENG_PR_NUMBER] --body '[BODY]'
+gh pr comment [RELEASE_PR_NUMBER] --body '[BODY]'
 ```
 
 ## Determining PR Type
@@ -141,15 +142,15 @@ Map PR title prefixes to types:
 
 ## Retroactive QA Plan Generation
 
-When merged PT PRs are missing QA plans, use this workflow to generate them retroactively before consolidating.
+When merged feature PRs are missing QA plans, use this workflow to generate them retroactively before consolidating.
 
 ### Step 1: Identify PRs Missing QA Plans
 
 After Step 4 (Extract QA Comments), note which PRs have no QA content. Filter out automated PRs:
 
 ```bash
-# Get merged PT PRs (exclude automated bump PRs)
-gh pr list --base ENG_BRANCH --state merged --json number,title | jq '[.[] | select(.title | test("^(fix|feat|chore|refactor|docs)\\(") and (test("automated") | not))]'
+# Get merged feature PRs (exclude automated bump PRs)
+gh pr list --base RELEASE_BRANCH --state merged --json number,title | jq '[.[] | select(.title | test("^(fix|feat|chore|refactor|docs)\(") and (test("automated") | not))]'
 ```
 
 ### Step 2: Fetch PR Diff for Each Missing PR
@@ -178,7 +179,7 @@ Follow the qa-plan-generator format and include:
 - Regression risks"
 ```
 
-### Step 4: Post Generated QA Plan to Original PT PR
+### Step 4: Post Generated QA Plan to Original Feature PR
 
 ```bash
 gh pr comment [PR_NUMBER] --body '[GENERATED_QA_PLAN]'
@@ -199,10 +200,10 @@ For multiple PRs missing QA plans:
    ```bash
    # This outputs PR numbers and titles for PRs without QA comments
    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-   for pr in $(gh pr list --base ENG_BRANCH --state merged --json number -q '.[].number'); do
+   for pr in $(gh pr list --base RELEASE_BRANCH --state merged --json number -q '.[].number'); do
      has_qa=$(gh api repos/$REPO/issues/$pr/comments --jq '[.[] | select(.body | contains("Testing Plan"))] | length')
      if [ "$has_qa" = "0" ]; then
-       gh pr view $pr --json number,title -q '"\(.number): \(.title)"'
+       gh pr view $pr --json number,title -q '"(.number): (.title)"'
      fi
    done
    ```
@@ -212,7 +213,7 @@ For multiple PRs missing QA plans:
    - Each handles one PR's diff
 
 3. **Post all generated plans:**
-   - Post each generated QA plan to its respective PT PR
+   - Post each generated QA plan to its respective feature PR
    - Verify with `gh pr view [PR_NUMBER] --comments`
 
 4. **Run final consolidation:**
@@ -235,7 +236,7 @@ When generating retroactive QA plans, prefix them to indicate they were created 
 
 | Error | Resolution |
 |-------|------------|
-| No ENG PR found | Ensure the ENG branch has an open PR to main |
+| No release PR found | Ensure the release branch has an open PR to main |
 | gh not authenticated | Run `gh auth login` |
 | API rate limit | Wait and retry, or use `--limit` on queries |
 | Comment too long | Summarize individual QA plans if needed |
@@ -253,7 +254,7 @@ Invoke it with:
 
 ```
 Task with subagent_type="qa-plan-generator":
-"Generate QA testing plan for PT PR #[NUMBER] based on its changes"
+"Generate QA testing plan for feature PR #[NUMBER] based on its changes"
 ```
 
 The subagent will:
@@ -267,21 +268,22 @@ The subagent will:
 
 ### Standard Consolidation
 
-User says: "consolidate QA plans for ENG-1345"
+User says: "consolidate QA plans for RELEASE-1345"
 
-1. Find ENG PR: `gh pr list --head ENG-1345--release --base main --state open`
-2. Get merged PT PRs: `gh pr list --base ENG-1345--release --state merged`
+1. Find release PR: `gh pr list --head RELEASE-1345--release --base main --state open`
+2. Get merged feature PRs: `gh pr list --base RELEASE-1345--release --state merged`
 3. Extract QA comments from each
 4. Build and post consolidated comment
 
 ### Retroactive Generation + Consolidation
 
-User says: "generate missing QA plans and consolidate for ENG-1345"
+User says: "generate missing QA plans and consolidate for RELEASE-1345"
 
-1. Find ENG PR and list merged PT PRs
-2. Check each PT PR for QA plan comments
+1. Find release PR and list merged feature PRs
+2. Check each feature PR for QA plan comments
 3. For PRs missing QA plans:
    - Fetch diff: `gh pr diff [PR_NUMBER]`
    - Invoke `qa-plan-generator` subagent with the diff
-   - Post generated QA plan to original PT PR
+   - Post generated QA plan to original feature PR
 4. Build and post consolidated comment with all QA plans
+</main>

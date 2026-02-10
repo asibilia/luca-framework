@@ -1,8 +1,9 @@
 ---
-name: lu-check-todos
-description: List pending todos and select one to work on. Use when user wants to review todos, mentions /lu-check-todos, or needs to see captured ideas.
+name: "lu-check-todos"
+description: "List pending todos and select one to work on. Use when user wants to review todos, mentions /lu-check-todos, or needs to see captured ideas."
 ---
 
+<main>
 # Luca Check Todos
 
 List pending todos and select one to work on.
@@ -71,3 +72,4 @@ List pending todos and select one to work on.
 **Also available:**
 - `/lu-progress` — Return to planned work
 - `/lu-add-todo` — Capture additional todos
+</main>

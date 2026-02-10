@@ -7,7 +7,7 @@ This document walks through how Luca works from start to finish.
 ```mermaid
 flowchart LR
     subgraph Start["🚀 Start"]
-        USER["User Request<br/>PT-1234 | Jira URL | Task"]
+        USER["User Request<br/>[TICKET-ID] | Jira URL | Task"]
     end
 
     subgraph Git["🔗 Git Setup"]
@@ -62,7 +62,7 @@ flowchart LR
 **User has a Jira ticket and wants to implement it.**
 
 ```
-User: /lu PT-1234
+User: /lu [TICKET-ID]
 ```
 
 **What happens:**
@@ -77,15 +77,15 @@ sequenceDiagram
     participant E as Executor
     participant L as Learner
 
-    U->>S: /lu PT-1234
+    U->>S: /lu [TICKET-ID]
 
     rect rgb(255, 240, 230)
         Note over S,G: Step 0: Git Context Setup
-        S->>J: jira_get_issue(PT-1234)
+        S->>J: jira_get_issue([TICKET-ID])
         J-->>S: Summary, description, type, priority
-        S->>G: gh issue create --title "[PT-1234] ..."
+        S->>G: gh issue create --title "[[TICKET-ID]] ..."
         G-->>S: Issue #456 created
-        S->>G: git checkout -b PT-1234--fix-description
+        S->>G: git checkout -b [TICKET-ID]--fix-description
         G-->>S: Branch created
         S->>S: Update STATE.md with git context
     end
@@ -128,9 +128,9 @@ sequenceDiagram
 ```markdown
 ## Git Context
 
-- Jira Ticket: PT-1234
+- Ticket: [TICKET-ID]
 - GitHub Issue: #456
-- Branch: PT-1234--fix-performance-issue
+- Branch: [TICKET-ID]--fix-performance-issue
 - Base Branch: ENG-1353--release
 - Task Complexity: MODERATE (classified 2026-02-03 10:45)
 ```
@@ -155,18 +155,18 @@ sequenceDiagram
 
     U->>S: /lu "fix typo in readme"
 
-    S->>U: No Jira ticket provided.<br/>1. Provide ticket ID<br/>2. Use placeholder (PT-0000)
-    U->>S: "Use PT-0000"
+    S->>U: No Jira ticket provided.<br/>1. Provide ticket ID<br/>2. Use placeholder ([PLACEHOLDER])
+    U->>S: "Use [PLACEHOLDER]"
 
     Note over S: Skip GitHub issue creation
-    S->>G: git checkout -b PT-0000--fix-typo-in-readme
+    S->>G: git checkout -b [PLACEHOLDER]--fix-typo-in-readme
     G-->>S: Branch created
-    S->>S: Update STATE.md (Jira: PT-0000 placeholder)
+    S->>S: Update STATE.md (Jira: [PLACEHOLDER] placeholder)
 
     Note over S: Continue normal workflow...
 ```
 
-**When to use PT-0000:**
+**When to use [PLACEHOLDER]:**
 
 - Quick fixes, typos, minor improvements
 - Tech debt identified during development
@@ -397,9 +397,9 @@ sequenceDiagram
 
     rect rgb(255, 240, 230)
         Note over R: Step 0: Jira Prompt
-        R->>U: No Jira ticket. Provide one or use PT-0000?
-        U->>R: "PT-0000"
-        R->>G: Create branch PT-0000--add-loading-spinner
+        R->>U: No Jira ticket. Provide one or use [PLACEHOLDER]?
+        U->>R: "[PLACEHOLDER]"
+        R->>G: Create branch [PLACEHOLDER]--add-loading-spinner
     end
 
     rect rgb(230, 240, 255)

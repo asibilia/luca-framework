@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
     subgraph Entry["Entry Points"]
-        UNIFIED["/lu<br/>Task | PT-#### | Jira URL"]
+        UNIFIED["/lu<br/>Task | [TICKET-ID] | Jira URL"]
         SPECIFIC["/lu-*<br/>Direct Commands"]
     end
 
@@ -82,7 +82,7 @@ flowchart LR
         G1["Jira → GitHub Issue"]
         G2["Branch Management"]
         G3["Commit & PR"]
-        G4["PT-0000 Placeholders"]
+        G4["[PLACEHOLDER] Placeholders"]
     end
 
     subgraph Cognitive["🧠 Cognitive Features"]
@@ -119,21 +119,21 @@ flowchart TB
     REQ["User Input"]
 
     subgraph Detect["0.1 Detect Input Type"]
-        URL["Jira URL?<br/>atlassian.net/browse/PT-1234"]
-        TICKET["Ticket ID?<br/>PT-1234"]
+        URL["Jira URL?<br/>atlassian.net/browse/[TICKET-ID]"]
+        TICKET["Ticket ID?<br/>[TICKET-ID]"]
         TASK["Plain task?<br/>'fix the bug'"]
     end
 
-    subgraph Jira["0.2 If Jira Ticket"]
+    subgraph Jira["0.2 If Ticket"]
         FETCH["Fetch via MCP<br/>jira_get_issue"]
         ISSUE["Create GitHub Issue<br/>gh issue create"]
-        BRANCH["Create Branch<br/>PT-####--description"]
+        BRANCH["Create Branch<br/>[TICKET-ID]--description"]
         STATE["Update STATE.md"]
     end
 
     subgraph Prompt["0.3 If No Jira"]
-        ASK["Prompt for ticket<br/>or PT-0000"]
-        PLACEHOLDER["PT-0000<br/>Skip issue creation"]
+        ASK["Prompt for ticket<br/>or [PLACEHOLDER]"]
+        PLACEHOLDER["[PLACEHOLDER]<br/>Skip issue creation"]
     end
 
     subgraph Display["0.4 Display Context"]
@@ -145,7 +145,7 @@ flowchart TB
     TICKET --> Jira
     TASK --> Prompt
     Prompt -->|"User provides"| Jira
-    Prompt -->|"PT-0000"| PLACEHOLDER --> BRANCH
+    Prompt -->|"[PLACEHOLDER]"| PLACEHOLDER --> BRANCH
     Jira --> SHOW
     PLACEHOLDER --> SHOW
 ```
@@ -238,7 +238,7 @@ flowchart TB
 
     subgraph PR["5.3 Offer PR"]
         ASK["Create PR now?"]
-        YES["gh pr create<br/>--base ENG-####<br/>--title 'type(scope): PT-#### desc'"]
+        YES["gh pr create<br/>--base [RELEASE-ID]####<br/>--title 'type(scope): [TICKET-ID] desc'"]
         NO["More work to do"]
     end
 
@@ -303,7 +303,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph Unified["Unified Entry"]
-        PTOG["/lu<br/>━━━━━━━━━<br/>Task | PT-#### | Jira URL<br/>Git setup → Routing<br/>→ Execute → PR"]
+        PTOG["/lu<br/>━━━━━━━━━<br/>Task | [TICKET-ID] | Jira URL<br/>Git setup → Routing<br/>→ Execute → PR"]
     end
 
     subgraph Project["Project Lifecycle"]
@@ -454,7 +454,7 @@ flowchart TB
         end
 
         subgraph Session["Session State"]
-            STATE["STATE.md<br/>━━━━━━━━━<br/>Focus<br/>Git Context (NEW)<br/>• Jira Ticket<br/>• GitHub Issue<br/>• Branch<br/>• Base Branch<br/>Cognitive state"]
+            STATE["STATE.md<br/>━━━━━━━━━<br/>Focus<br/>Git Context (NEW)<br/>• Ticket<br/>• GitHub Issue<br/>• Branch<br/>• Base Branch<br/>Cognitive state"]
             CONFIG["config.json<br/>━━━━━━━━━<br/>Workflow<br/>Cognitive<br/>Gates"]
         end
 
@@ -542,7 +542,7 @@ flowchart TB
 flowchart TB
     subgraph Input["Input Types"]
         JIRA_URL["Jira URL"]
-        TICKET["PT-####"]
+        TICKET["[TICKET-ID]"]
         TASK["Plain task"]
     end
 

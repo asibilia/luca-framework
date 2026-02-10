@@ -1,15 +1,26 @@
 {
   "name": "luca-monorepo",
-  "private": true,
-  "workspaces": ["packages/*"],
-  "scripts": {
-    "build": "bun run --filter '*' build",
-    "commit": "bunx --bun @alecsibilia/commit"
+  "dependencies": {
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@alecsibilia/commit": "^1.0.8",
     "@types/bun": "latest",
-    "unbuild": "^3.5.0"
+    "unbuild": "^3.5.0",
+    "typescript": "^5.0.0"
   },
-  "type": "module"
+  "private": true,
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "build:all": "bun run ./scripts/build-all.ts",
+    "build:claude": "bun run ./scripts/build-claude.ts",
+    "build:cursor": "bun run ./scripts/build-cursor.ts",
+    "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
+    "compile:to-cursor": "bun run ./scripts/compile-all-to-cursor.ts",
+    "commit": "bunx --bun @alecsibilia/commit"
+  },
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ]
 }

@@ -1,9 +1,10 @@
 ---
-name: lu-set-profile
-description: Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff.
+name: "lu-set-profile"
+description: "Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Set Profile
 
 Quick switch model profile for Luca agents.
@@ -68,3 +69,4 @@ Profile updated to `{profile}`. Takes effect on next agent invocation.
 **Common follow-ups:**
 - `/lu-progress` — Continue your work
 - `/lu-settings` — Adjust other settings
+</main>

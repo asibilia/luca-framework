@@ -1,8 +1,9 @@
 ---
-name: lu-resume-work
-description: Resume work from previous session with full context restoration. Use when user returns to a Luca project, mentions /lu-resume-work, or wants to continue where they left off.
+name: "lu-resume-work"
+description: "Resume work from previous session with full context restoration. Use when user returns to a Luca project, mentions /lu-resume-work, or wants to continue where they left off."
 ---
 
+<main>
 # Luca Resume Work
 
 Restore complete project context and resume work seamlessly from previous session.
@@ -68,3 +69,4 @@ Follow the resume-project workflow which handles:
 
 - `/lu-execute-phase {phase}` — Continue execution directly
 - `/lu-help` — Review available commands
+</main>

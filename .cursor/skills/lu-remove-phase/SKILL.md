@@ -1,9 +1,10 @@
 ---
-name: lu-remove-phase
-description: Remove a future phase from roadmap and renumber subsequent phases. Use when user wants to remove a phase, mentions /lu-remove-phase, or decides not to do planned work.
+name: "lu-remove-phase"
+description: "Remove a future phase from roadmap and renumber subsequent phases. Use when user wants to remove a phase, mentions /lu-remove-phase, or decides not to do planned work."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Remove Phase
 
 Remove an unstarted future phase from the roadmap and renumber all subsequent phases to maintain a clean, linear sequence.
@@ -107,3 +108,4 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
 - `/lu-plan-phase {next}` — Plan the next phase
 - `/lu-execute-phase {current}` — Continue current execution
+</main>

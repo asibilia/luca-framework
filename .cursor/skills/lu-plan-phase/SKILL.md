@@ -1,9 +1,10 @@
 ---
-name: lu-plan-phase
-description: Create detailed execution plans for a Luca phase. Use when user wants to plan a phase, asks about /lu-plan-phase, or needs to create PLAN.md files.
+name: "lu-plan-phase"
+description: "Create detailed execution plans for a Luca phase. Use when user wants to plan a phase, asks about /lu-plan-phase, or needs to create PLAN.md files."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Plan Phase
 
 Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research and verification.
@@ -143,7 +144,7 @@ Extract from arguments:
 ```bash
 if [[ "$PHASE" =~ ^[0-9]+$ ]]; then
   PHASE=$(printf "%02d" "$PHASE")
-elif [[ "$PHASE" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+elif [[ "$PHASE" =~ ^([0-9]+).([0-9]+)$ ]]; then
   PHASE=$(printf "%02d.%s" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
 fi
 ```
@@ -176,7 +177,7 @@ fi
 **Check config for research setting:**
 
 ```bash
-WORKFLOW_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "true")
+WORKFLOW_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true|false' || echo "true")
 ```
 
 **MANDATORY**: If research is needed, you MUST spawn a lu-phase-researcher sub-agent. Do NOT attempt to research yourself.
@@ -357,7 +358,7 @@ Display:
 First, read the created plans:
 
 ```bash
-PLANS_CONTENT=$(find "${PHASE_DIR}" -name "*-PLAN.md" -exec cat {} \;)
+PLANS_CONTENT=$(find "${PHASE_DIR}" -name "*-PLAN.md" -exec cat {} ;)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 ```
@@ -467,3 +468,4 @@ If issues found and iteration_count < 3:
 
 - `/lu-progress` — See plan details before executing
 - `/lu-discuss-phase {phase}` — Gather more context if plans seem off
+</main>

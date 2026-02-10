@@ -1,8 +1,9 @@
 ---
-name: git-commit
-description: Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code.
+name: "git-commit"
+description: "Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code."
 ---
 
+<main>
 # Git Commit
 
 Create commits using the project's custom CLI tool.
@@ -32,11 +33,11 @@ bun run commit --message="description" --type=fix --scope=apps --no-push
 1. **ALWAYS** use `bun run commit` instead of `git commit -m` directly
 2. **ALWAYS** use `git add .` to stage ALL files before committing
 3. **NEVER** do partial commits in standard workflow - partial commits are only for fixing errors
-4. The tool handles Jira ticket extraction from branch names automatically
+4. The tool handles ticket extraction from branch names automatically
 
 ## What the tool handles
 
-- Commit message formatting with Jira ticket extraction from branch names
+- Commit message formatting with ticket extraction from branch names
 - Changeset creation for deployable packages
 - Pre-commit validation (lint, build, test)
 
@@ -52,4 +53,7 @@ This prompts for commit details interactively.
 
 ## Branch Naming Convention
 
-`[JIRA-TICKET]--[description]` (e.g., `PT-1234--my-cool-feature`)
+`[TICKET-ID]--[description]` (e.g., `[TICKET-ID]--my-cool-feature`)
+
+> **Note:** Replace `[TICKET-ID]` with your project's configured ticket pattern (e.g., `PROJ-123`, `PT-456`, or your custom `ticketPattern` from `.planning/config.json`).
+</main>

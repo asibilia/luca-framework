@@ -1,9 +1,10 @@
 ---
-name: lu-complete-milestone
-description: Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done.
+name: "lu-complete-milestone"
+description: "Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Complete Milestone
 
 Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
@@ -150,3 +151,4 @@ MEMORY.md persists across milestones - it's the long-term project memory.
 
 - `/lu-progress` — Review completed work
 - `/lu-help` — See all available commands
+</main>

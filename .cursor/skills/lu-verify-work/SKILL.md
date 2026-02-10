@@ -1,9 +1,10 @@
 ---
-name: lu-verify-work
-description: Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work.
+name: "lu-verify-work"
+description: "Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Verify Work
 
 Validate built features through conversational testing with persistent state.
@@ -357,3 +358,4 @@ Manual intervention required
 
 - `/lu-plan-phase {N} --gaps` — Create fix plans for failures
 - `/lu-audit-milestone` — Complete the milestone
+</main>

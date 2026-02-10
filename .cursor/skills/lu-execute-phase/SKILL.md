@@ -1,9 +1,10 @@
 ---
-name: lu-execute-phase
-description: Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.
+name: "lu-execute-phase"
+description: "Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase."
 disable-model-invocation: true
 ---
 
+<main>
 # Luca Execute Phase
 
 Execute all plans in a phase using wave-based parallel execution, then verify with code review and UAT.
@@ -219,8 +220,8 @@ Commits will not reference issues and PR creation will require manual setup.
 
 ### 2. Discover Plans
 
-- List all \*-PLAN.md files in phase directory
-- Check which have \*-SUMMARY.md (already complete)
+- List all *-PLAN.md files in phase directory
+- Check which have *-SUMMARY.md (already complete)
 - If `--gaps-only`: filter to only plans with `gap_closure: true`
 - Build list of incomplete plans
 
@@ -356,7 +357,7 @@ PHASE_DIR=".planning/phases/{phase_number}-*"
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 STATE_CONTENT=$(cat .planning/STATE.md)
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
-SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
+SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} ;)
 ```
 
 Then spawn the verifier:
@@ -872,3 +873,4 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 - `/lu-verify-work {phase}` — Run UAT separately
 - `/lu-pause-work` — Create handoff if stopping mid-work
+</main>

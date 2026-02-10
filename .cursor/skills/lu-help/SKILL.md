@@ -1,8 +1,9 @@
 ---
-name: lu-help
-description: Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.
+name: "lu-help"
+description: "Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do."
 ---
 
+<main>
 # Luca Help
 
 Display the complete Luca command reference.
@@ -20,27 +21,27 @@ Display the complete Luca command reference.
 
 ### Quick Start
 
-**For Jira-driven work:**
+**For ticket-driven work:**
 
 ```
-/lu PT-1234
+/lu [TICKET-ID]
 ```
 
 or
 
 ```
-/lu https://mypercent.atlassian.net/browse/PT-1234
+/lu $JIRA_BASE_URL/browse/[TICKET-ID]
 ```
 
-This automatically: fetches Jira → creates GitHub issue → creates branch → executes → offers PR
+This automatically: fetches ticket details → creates GitHub issue (if using Jira) → creates branch → executes → offers PR
 
-**For ad-hoc work (no Jira ticket):**
+**For ad-hoc work (no ticket):**
 
 ```
 /lu fix the typo in the readme
 ```
 
-You'll be prompted to provide a Jira ticket or use the `PT-0000` placeholder.
+You'll be prompted to provide a ticket ID or use your configured placeholder (default: `PROJ-0000`).
 
 **For new projects:**
 
@@ -56,10 +57,10 @@ You'll be prompted to provide a Jira ticket or use the `PT-0000` placeholder.
 
 ### Unified Entry Point
 
-**`/lu <task | Jira-URL | PT-####>`**
+**`/lu <task | Jira-URL | [TICKET-ID]>`**
 The single entry point for all development work. Handles:
 
-- Git context setup (Jira → GitHub issue → feature branch)
+- Git context setup (ticket → GitHub issue → feature branch)
 - Cognitive pre-flight (memory recall, intuition flags)
 - Complexity classification (TRIVIAL/MODERATE/COMPLEX)
 - Automatic routing to appropriate execution path
@@ -67,6 +68,8 @@ The single entry point for all development work. Handles:
 - Commit and PR creation
 
 Flags: `--force-complex`, `--skip-memory`, `--skip-branch`
+
+> **Note:** Replace `[TICKET-ID]` with your project's configured ticket pattern (e.g., `PROJ-123`, `PT-456`, or your custom `ticketPattern` from `.planning/config.json`). Default pattern: `[A-Z]+-\\d+`
 
 ### Project Initialization
 
@@ -212,28 +215,28 @@ Join the Luca Discord community
 
 **STATE.md** tracks git context:
 
-- Jira Ticket (PT-####)
-- GitHub Issue (#123)
-- Branch (PT-####--description)
-- Base Branch (ENG-####--release)
+- Ticket: `[TICKET-ID]` or `None`
+- GitHub Issue: `#123`
+- Branch: `[TICKET-ID]--description`
+- Base Branch: `[RELEASE-ID]--release`
 
 ## Common Workflows
 
-**Working on a Jira ticket (most common):**
+**Working on a ticket (most common):**
 
 ```
-/lu PT-1234
+/lu PROJ-123
 ```
 
-This single command handles everything: Jira fetch → GitHub issue → branch creation → execution → PR.
+This single command handles everything: ticket fetch → GitHub issue → branch creation → execution → PR.
 
-**Ad-hoc work without Jira ticket:**
+**Ad-hoc work without ticket:**
 
 ```
 /lu fix typo in component
 ```
 
-When prompted, choose "Use placeholder (PT-0000)" for work not tied to a Jira ticket.
+When prompted, choose your configured placeholder (default: `PROJ-0000`) for work not tied to a ticket.
 
 **Starting a new project:**
 
@@ -295,4 +298,5 @@ This is a reference command. Common follow-ups:
 
 - `/lu-progress` — Check project status
 - `/lu-new-project` — Start a new project
-- `/lu PT-####` — Work on a Jira ticket
+- `/lu [TICKET-ID]` — Work on a ticket
+</main>
