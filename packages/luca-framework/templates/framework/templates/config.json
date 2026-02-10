@@ -43,5 +43,19 @@
   "safety": {
     "always_confirm_destructive": true,
     "always_confirm_external_services": true
+  },
+  "hooks": {
+    "enabled": true,
+    "formatter": "bunx --bun prettier --write",
+    "formatterExtensions": [".ts", ".tsx", ".js", ".jsx", ".css", ".json", ".md", ".yaml", ".yml", ".html"],
+    "typeChecker": "bunx --bun tsc --noEmit",
+    "typeCheckExtensions": [".ts", ".tsx"],
+    "preCommitChecks": ["bun test", "bunx --bun tsc --noEmit"],
+    "commitPatterns": ["git commit", "git merge", "bun run commit"],
+    "contextThresholds": {
+      "warn": 100000,
+      "alert": 200000,
+      "critical": 300000
+    }
   }
 }
