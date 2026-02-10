@@ -56,6 +56,10 @@ export { ruleRegistry } from './src/rules/index';
 export { hookRegistry, generateHooksConfig, generateCursorHooksConfig } from './src/hooks/index';
 export type { HookDefinition } from './src/hooks/index';
 
+// Harness API and types (for build scripts and consumers)
+export { runHarness, loadHarnessConfig, parserRegistry, DEFAULT_HARNESS_CONFIG } from './src/harness/index';
+export type { HarnessConfig, CheckConfig, ParsedError, CheckResult, HarnessResult, OutputParser } from './src/harness/index';
+
 // Validation utilities (public-facing)
 export {
   sanitizeJsonParse,
