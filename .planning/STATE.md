@@ -3,10 +3,10 @@
 ## Current Position
 
 - **Current Milestone:** v1.0.1 — Code Hardening
-- **Current Phase:** 9 — DX
-- **Status:** pending
+- **Current Phase:** 9 — DX (FINAL)
+- **Status:** complete — awaiting UAT
 - **Last Updated:** 2026-02-10
-- **Last Activity:** Phase 8 (Performance) complete — 3 plans, 2 waves, all verified
+- **Last Activity:** Phase 9 (DX) executed — 5 plans, all complete, verification PASSED
 
 ## Progress
 
@@ -16,7 +16,7 @@ Phase 5: █████████████████████ 100% CO
 Phase 6: █████████████████████ 100% COMPLETE
 Phase 7: █████████████████████ 100% COMPLETE
 Phase 8: █████████████████████ 100% COMPLETE
-Phase 9: ░░░░░░░░░░░░░░░░░░░░░ 0% PENDING
+Phase 9: █████████████████████ 100% COMPLETE
 ```
 
 ## Project Reference
@@ -42,7 +42,7 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 | 6 | Security | ✅ complete | REQ-103 |
 | 7 | Architecture | ✅ complete | REQ-104 |
 | 8 | Performance | ✅ complete | REQ-105 |
-| 9 | DX | Pending | REQ-106 |
+| 9 | DX | ✅ complete | REQ-106 |
 
 ## Previous Milestone (v1.0.0)
 
@@ -68,6 +68,8 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 | Lazy dynamic imports | CLI commands loaded on-demand via dynamic import() for fast startup | 2026-02-10 |
 | Native fs over fs-extra | mkdir({recursive:true}) replaces ensureDir — one fewer production dep | 2026-02-10 |
 | process.once for SIGINT | Prevents handler accumulation in repeated invocations | 2026-02-10 |
+| ticketPatternJson for EJS | Double-escape backslashes in regex patterns for valid JSON output | 2026-02-10 |
+| Actionable error pattern | Every CLI error: what failed → why → what to do next | 2026-02-10 |
 
 ## Pending Todos (14)
 
@@ -114,12 +116,13 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Session Continuity
 
 - **Last session:** 2026-02-10
-- **Stopped at:** Phase 8 complete, ready for Phase 9
+- **Stopped at:** Phase 9 complete, awaiting UAT
 - **Resume file:** None
 
 ## Next Actions
 
-1. Discuss Phase 9 (DX) — `/lu-discuss-phase 9`
+1. Phase 9 UAT — verify DX improvements in real project
+2. If UAT passes → v1.0.1 milestone complete
 
 ---
 

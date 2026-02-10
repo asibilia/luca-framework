@@ -4,7 +4,7 @@ const main = defineCommand({
   meta: {
     name: 'luca',
     version: '0.0.1',
-    description: 'Luca - Agentic development framework for Cursor IDE',
+    description: 'Luca CLI — scaffold and manage AI-powered development workflows',
   },
   subCommands: {
     init: () => import('./commands/init').then(m => m.initCommand),

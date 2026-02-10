@@ -5,7 +5,7 @@ Welcome to Luca! This guide will walk you through setting up your first project 
 ## Prerequisites
 
 - **Bun**: v1.0 or higher (Recommended)
-- **Node.js**: v20 or higher
+- **Node.js**: v18 or higher
 - **Git**: For version control and task tracking
 
 ## Installation
@@ -13,8 +13,8 @@ Welcome to Luca! This guide will walk you through setting up your first project 
 The easiest way to start a new Luca project is using `create-luca`:
 
 ```bash
-npx create-luca my-new-project
-cd my-new-project
+mkdir my-new-project && cd my-new-project
+npx create-luca
 bun install
 ```
 
@@ -22,8 +22,10 @@ bun install
 
 ### 1. The `.planning` Directory
 All Luca projects have a `.planning/` directory at the root. This is where your project's "brain" lives.
-- `STATE.md`: Tracks overall project progress and decisions.
-- `PROJECT.md`: High-level project definition.
+- `config.json`: Project configuration and settings.
+- `BRAIN.md`: Project identity, stack, architecture patterns, and conventions.
+- `MEMORY.md`: Long-term learning — patterns, decisions, pitfalls, and preferences.
+- `WORKING.md`: Session memory for active task context.
 - `phases/`: Contains your development plans and summaries.
 
 ### 2. Plans (`PLAN.md`)
@@ -47,17 +49,14 @@ mkdir -p .planning/phases/01-init
 Create `.planning/phases/01-init/01-01-PLAN.md`. You can use the templates in the framework directory as a starting point.
 
 ### Step 3: Execute the Plan
-Run the execution command:
-```bash
-npx luca execute .planning/phases/01-init/01-01-PLAN.md
-```
+Open your plan file in your IDE and use the `/lu` command to execute it. Luca plans are designed to be executed through your AI-powered IDE (Cursor, Claude Code, etc.) rather than a standalone CLI command.
 
 ## Common Commands
 
 | Command | Description |
 |---------|-------------|
 | `luca init` | Initialize a new Luca project in the current directory |
-| `luca execute <path>` | Execute a specific plan file |
+| `/lu` | Execute a plan via your AI-powered IDE |
 | `luca update` | Update the framework and templates to the latest version |
 | `luca doctor` | Check your environment for common issues |
 

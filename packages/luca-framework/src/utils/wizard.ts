@@ -82,7 +82,7 @@ export async function runWizard(context: ProjectContext): Promise<LucaConfig | n
     {
       onCancel: () => {
         p.cancel('Setup cancelled.');
-        return null;
+        process.exit(0);
       },
     }
   );
@@ -166,6 +166,9 @@ export async function runWizard(context: ProjectContext): Promise<LucaConfig | n
  * });
  * ```
  */
+export const VALID_STACKS = ['react-ts', 'custom'] as const;
+export const VALID_TRACKERS = ['jira', 'github', 'none'] as const;
+
 export function createConfigFromArgs(args: {
   name?: string;
   prefix?: string;
@@ -183,6 +186,20 @@ export function createConfigFromArgs(args: {
       .map(([field, error]) => `${field}: ${error}`)
       .join('; ');
     throw new Error(`Invalid branding arguments: ${errorMessages}`);
+  }
+
+  // Validate --stack argument
+  if (args.stack && !VALID_STACKS.includes(args.stack as typeof VALID_STACKS[number])) {
+    throw new Error(
+      `Invalid --stack value "${args.stack}". Valid options: ${VALID_STACKS.join(', ')}`
+    );
+  }
+
+  // Validate --tracker argument
+  if (args.tracker && !VALID_TRACKERS.includes(args.tracker as typeof VALID_TRACKERS[number])) {
+    throw new Error(
+      `Invalid --tracker value "${args.tracker}". Valid options: ${VALID_TRACKERS.join(', ')}`
+    );
   }
 
   return {
@@ -236,9 +253,24 @@ export async function loadConfigFromFile(configPath: string): Promise<LucaConfig
     throw new Error(`Invalid branding in config file: ${errorMessages}`);
   }
 
+  // Validate stack and workTracker values (same rules as createConfigFromArgs)
+  const stack = (parsed.stack as string) || 'custom';
+  if (!VALID_STACKS.includes(stack as typeof VALID_STACKS[number])) {
+    throw new Error(
+      `Invalid stack in config file "${stack}". Valid options: ${VALID_STACKS.join(', ')}`
+    );
+  }
+
+  const workTracker = (parsed.workTracker as string) || 'none';
+  if (!VALID_TRACKERS.includes(workTracker as typeof VALID_TRACKERS[number])) {
+    throw new Error(
+      `Invalid workTracker in config file "${workTracker}". Valid options: ${VALID_TRACKERS.join(', ')}`
+    );
+  }
+
   return {
     branding: mergeBranding(brandingInput),
-    stack: (parsed.stack as string) || 'custom',
-    workTracker: (parsed.workTracker as string) || 'none',
+    stack,
+    workTracker: workTracker as 'jira' | 'github' | 'none',
   };
 }

@@ -23,7 +23,7 @@ bun x create-luca
 
 1. **Initialize**: `luca init`
 2. **Plan**: Create structured `PLAN.md` files in `.planning/phases/`
-3. **Execute**: `luca execute <plan-path>`
+3. **Execute**: Open a plan in your IDE and use the `/lu` command
 4. **Learn**: Automatic extraction of findings to `MEMORY.md`
 
 ## Security

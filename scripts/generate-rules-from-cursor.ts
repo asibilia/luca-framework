@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import fs from 'fs/promises';
+import { mkdir, readdir } from 'fs/promises';
 import path from 'path';
 
 interface RuleData {
@@ -11,7 +11,7 @@ interface RuleData {
 }
 
 async function parseRuleMarkdown(filePath: string): Promise<RuleData> {
-  const content = await fs.readFile(filePath, 'utf-8');
+  const content = await Bun.file(filePath).text();
   
   // Extract frontmatter
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -128,10 +128,10 @@ async function generateRulesFromCursor() {
   const srcRulesDir = path.join(process.cwd(), 'src', 'rules', 'general');
   
   // Create the general rules directory if it doesn't exist
-  await fs.mkdir(srcRulesDir, { recursive: true });
-  
+  await mkdir(srcRulesDir, { recursive: true });
+
   // Read all .mdc files from .cursor/rules
-  const ruleFiles = await fs.readdir(cursorRulesDir);
+  const ruleFiles = await readdir(cursorRulesDir);
   const mdcFiles = ruleFiles.filter(file => file.endsWith('.mdc'));
   
   console.log(`Found ${mdcFiles.length} rule files in .cursor/rules`);
@@ -146,7 +146,7 @@ async function generateRulesFromCursor() {
       const tsFilePath = path.join(srcRulesDir, tsFileName);
       
       const tsContent = generateRuleTsContent(ruleData);
-      await fs.writeFile(tsFilePath, tsContent);
+      await Bun.write(tsFilePath, tsContent);
       
       console.log(`Generated ${tsFilePath}`);
     } catch (error) {
@@ -155,12 +155,12 @@ async function generateRulesFromCursor() {
   }
   
   // Also process any rules in subdirectories (like taskmaster/)
-  const allItems = await fs.readdir(cursorRulesDir, { withFileTypes: true });
+  const allItems = await readdir(cursorRulesDir, { withFileTypes: true });
   const subdirs = allItems.filter(dirent => dirent.isDirectory()).map(dirent => dirent.name);
 
   for (const subdir of subdirs) {
     const subDirPath = path.join(cursorRulesDir, subdir);
-    const subFiles = await fs.readdir(subDirPath);
+    const subFiles = await readdir(subDirPath);
     const subMdcFiles = subFiles.filter(file => file.endsWith('.mdc'));
     
     for (const file of subMdcFiles) {
@@ -173,7 +173,7 @@ async function generateRulesFromCursor() {
         const tsFilePath = path.join(srcRulesDir, tsFileName);
         
         const tsContent = generateRuleTsContent(ruleData);
-        await fs.writeFile(tsFilePath, tsContent);
+        await Bun.write(tsFilePath, tsContent);
         
         console.log(`Generated ${tsFilePath}`);
       } catch (error) {
@@ -183,7 +183,7 @@ async function generateRulesFromCursor() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   generateRulesFromCursor()
     .then(() => console.log('Rule generation completed'))
     .catch(error => console.error('Error:', error));

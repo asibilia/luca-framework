@@ -1,7 +1,8 @@
 import { logger } from '../logger';
 import type { CheckResult, DoctorCheck } from './types';
 
-export async function executeDoctor(): Promise<number> {
+export async function executeDoctor(options: { verbose?: boolean } = {}): Promise<number> {
+  const { verbose = false } = options;
   logger.info('Running environment diagnostics...\n');
 
   // Import all checks
@@ -35,7 +36,7 @@ export async function executeDoctor(): Promise<number> {
       logger.warn(logLine);
     }
     
-    if (result.details) {
+    if (result.details && (verbose || result.status !== 'pass')) {
       logger.info(`  ${result.details}`);
     }
   }
@@ -64,7 +65,11 @@ export async function executeDoctor(): Promise<number> {
 
   // Return exit code
   if (failCount > 0) {
-    logger.error('Some checks failed. Run with --verbose for more details.');
+    if (!verbose) {
+      logger.error('Some checks failed. Run with --verbose for more details.');
+    } else {
+      logger.error('Some checks failed.');
+    }
     return 1;
   }
 

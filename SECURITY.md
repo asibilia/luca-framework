@@ -54,4 +54,4 @@ If you discover a security vulnerability, please follow these steps:
 
 For enterprise procurement and security teams, we provide a self-service security questionnaire template.
 
-**See:** [.planning/SECURITY_QUESTIONNAIRE.md](.planning/SECURITY_QUESTIONNAIRE.md)
+> **Note:** The security questionnaire is generated during project initialization and is available in your local `.planning/` directory after running `luca init`. It is not published to the repository by default.

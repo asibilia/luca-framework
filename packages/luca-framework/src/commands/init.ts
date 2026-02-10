@@ -50,7 +50,12 @@ export const initCommand = defineCommand({
     // Check for existing installation
     if (context.hasLuca) {
       logger.error('Luca is already installed in this project.');
-      logger.info('Run `npx luca update` to update to the latest version.');
+      logger.info('');
+      logger.info('To update to the latest version:');
+      logger.info('  npx luca update');
+      logger.info('');
+      logger.info('To reinitialize from scratch (this will overwrite existing config):');
+      logger.info('  rm -rf .planning/ .cursor/luca/ && npx luca init');
       process.exit(1);
     }
 
@@ -63,7 +68,15 @@ export const initCommand = defineCommand({
       try {
         config = await loadConfigFromFile(args.config);
       } catch (error) {
-        logger.error(`Failed to read config file: ${error}`);
+        const reason = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed to read config file "${args.config}": ${reason}`);
+        logger.info('');
+        logger.info('Ensure the config file:');
+        logger.info('  - Exists at the specified path');
+        logger.info('  - Contains valid JSON');
+        logger.info('  - Matches the expected schema (see docs for format)');
+        logger.info('');
+        logger.info('Example: npx luca init --config ./luca-config.json');
         process.exit(1);
       }
     } else if (args.quick || args.name || args.prefix || args.stack || args.tracker) {
@@ -88,7 +101,15 @@ export const initCommand = defineCommand({
     const result = await generateFiles({ config });
 
     if (!result.success) {
-      logger.error('Installation failed');
+      const reason = result.error instanceof Error ? result.error.message : String(result.error ?? 'Unknown error');
+      logger.error(`Installation failed: ${reason}`);
+      logger.info('');
+      logger.info('To recover, try the following:');
+      logger.info('  1. Check file permissions in the current directory');
+      logger.info('  2. Ensure sufficient disk space is available');
+      logger.info('  3. Run `npx luca init` again');
+      logger.info('');
+      logger.info('If the problem persists, report a bug at: https://github.com/alecsibilia/luca-framework/issues');
       process.exit(1);
     }
 

@@ -47,11 +47,17 @@ bun run ./scripts/generate-rules-from-cursor.ts
 
 ### Compilation Scripts
 
-Compile TypeScript definitions back to .cursor format:
+Compile TypeScript definitions to Cursor and Claude formats:
 
 ```bash
-# Create build system for compilation
-bun run compile:to-cursor
+# Build all output formats (Cursor + Claude)
+bun run build:all
+
+# Build Cursor format only
+bun run build:cursor
+
+# Build Claude format only
+bun run build:claude
 ```
 
 ## Usage

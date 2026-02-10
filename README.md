@@ -19,8 +19,8 @@ Luca is a lightweight framework designed to help developers build, manage, and e
 ### 1. Initialize a new project
 
 ```bash
-npx create-luca my-agent-project
-cd my-agent-project
+mkdir my-agent-project && cd my-agent-project
+npx create-luca
 ```
 
 ### 2. Install dependencies
@@ -43,9 +43,7 @@ Luca projects use a `.planning/` directory to manage state and plans.
 
 ### 4. Execute a plan
 
-```bash
-npx luca execute .planning/phases/01-foundation/01-01-PLAN.md
-```
+Open a plan file in your IDE and use the `/lu` command to execute it. Luca plans are designed to be executed through your AI-powered IDE (Cursor, Claude Code, etc.) rather than a standalone CLI command.
 
 ## Documentation
 

@@ -352,7 +352,12 @@ export const updateCommand = defineCommand({
 
     // Validate conflicting options
     if (args['accept-theirs'] && args['accept-mine']) {
-      logger.error('Cannot use both --accept-theirs and --accept-mine');
+      logger.error('Cannot use both --accept-theirs and --accept-mine. Choose one conflict resolution strategy:');
+      logger.info('');
+      logger.info('  --accept-theirs  Overwrite your local changes with the new framework versions');
+      logger.info('  --accept-mine    Keep your local changes and skip conflicting framework files');
+      logger.info('');
+      logger.info('Or omit both flags to resolve conflicts interactively.');
       process.exit(1);
     }
 
@@ -482,7 +487,15 @@ ${conflicted.length > 0 ? 'Review conflicts in .cursor/luca/conflicts/ and resol
       await restoreBackup(backupDir, cwd);
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`Error: ${errorMessage}`);
+      logger.error(`Update failed: ${errorMessage}`);
+      logger.info('');
+      logger.info('Your files have been restored to their pre-update state.');
+      logger.info('');
+      logger.info('To recover, try the following:');
+      logger.info('  1. Run `npx luca doctor` to check your installation');
+      logger.info('  2. Run `npx luca update --dry-run` to preview changes without applying them');
+      logger.info('  3. If the issue persists, report a bug at:');
+      logger.info('     https://github.com/alecsibilia/luca-framework/issues');
       process.exit(1);
     }
   },

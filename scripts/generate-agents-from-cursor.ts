@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import fs from 'fs/promises';
+import { mkdir, readdir } from 'fs/promises';
 import path from 'path';
 
 interface AgentData {
@@ -14,7 +14,7 @@ interface AgentData {
 }
 
 async function parseAgentMarkdown(filePath: string): Promise<AgentData> {
-  const content = await fs.readFile(filePath, 'utf-8');
+  const content = await Bun.file(filePath).text();
   
   // Extract frontmatter
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -115,10 +115,10 @@ async function generateAgentsFromCursor() {
   const srcAgentsDir = path.join(process.cwd(), 'src', 'agents', 'general');
   
   // Create the general agents directory if it doesn't exist
-  await fs.mkdir(srcAgentsDir, { recursive: true });
-  
+  await mkdir(srcAgentsDir, { recursive: true });
+
   // Read all .md files from .cursor/agents
-  const agentFiles = await fs.readdir(cursorAgentsDir);
+  const agentFiles = await readdir(cursorAgentsDir);
   const mdFiles = agentFiles.filter(file => file.endsWith('.md'));
   
   console.log(`Found ${mdFiles.length} agent files in .cursor/agents`);
@@ -133,7 +133,7 @@ async function generateAgentsFromCursor() {
       const tsFilePath = path.join(srcAgentsDir, tsFileName);
       
       const tsContent = generateAgentTsContent(agentData);
-      await fs.writeFile(tsFilePath, tsContent);
+      await Bun.write(tsFilePath, tsContent);
       
       console.log(`Generated ${tsFilePath}`);
     } catch (error) {
@@ -142,7 +142,7 @@ async function generateAgentsFromCursor() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   generateAgentsFromCursor()
     .then(() => console.log('Agent generation completed'))
     .catch(error => console.error('Error:', error));

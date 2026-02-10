@@ -118,7 +118,7 @@ describe('configValidationCheck', () => {
     const result = await configValidationCheck.run();
     expect(result.status).toBe('warning');
     expect(result.message).toContain('manifest.json missing');
-    expect(result.fixCommand).toContain('--repair');
+    expect(result.fixCommand).toContain('npx luca update');
   });
 
   test('all valid (config + manifest)', async () => {

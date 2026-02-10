@@ -161,6 +161,9 @@ export function createBrandingContext(branding: BrandingConfig) {
       commandSlash: `/${branding.commandPrefix}`,
       nameUppercase: branding.frameworkName.toUpperCase(),
       nameLowercase: branding.frameworkName.toLowerCase(),
+      // JSON-safe ticket pattern: double-escape backslashes so the
+      // rendered config.json contains valid JSON string escapes.
+      ticketPatternJson: branding.ticketPattern.replace(/\\/g, '\\\\'),
     },
   };
 }

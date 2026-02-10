@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import fs from 'fs/promises';
+import { mkdir, readdir, stat, access } from 'fs/promises';
 import path from 'path';
 
 interface SkillData {
@@ -11,7 +11,7 @@ interface SkillData {
 }
 
 async function parseSkillMarkdown(filePath: string): Promise<SkillData> {
-  const content = await fs.readFile(filePath, 'utf-8');
+  const content = await Bun.file(filePath).text();
   
   // Extract frontmatter
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -108,17 +108,17 @@ async function generateSkillsFromCursor() {
   const srcSkillsDir = path.join(process.cwd(), 'src', 'skills', 'general');
   
   // Create the general skills directory if it doesn't exist
-  await fs.mkdir(srcSkillsDir, { recursive: true });
-  
+  await mkdir(srcSkillsDir, { recursive: true });
+
   // Read all skill directories from .cursor/skills
-  const skillDirs = await fs.readdir(cursorSkillsDir);
+  const skillDirs = await readdir(cursorSkillsDir);
   
   // Filter only directories (each skill has its own directory with SKILL.md)
   const validSkillDirs = [];
   for (const dir of skillDirs) {
     const dirPath = path.join(cursorSkillsDir, dir);
-    const stat = await fs.stat(dirPath);
-    if (stat.isDirectory()) {
+    const dirStat = await stat(dirPath);
+    if (dirStat.isDirectory()) {
       validSkillDirs.push(dir);
     }
   }
@@ -131,7 +131,7 @@ async function generateSkillsFromCursor() {
       
       // Check if SKILL.md exists in the directory
       try {
-        await fs.access(skillMdPath);
+        await access(skillMdPath);
       } catch {
         console.log(`SKILL.md not found in ${dir}, skipping...`);
         continue;
@@ -144,7 +144,7 @@ async function generateSkillsFromCursor() {
       const tsFilePath = path.join(srcSkillsDir, tsFileName);
       
       const tsContent = generateSkillTsContent(skillData);
-      await fs.writeFile(tsFilePath, tsContent);
+      await Bun.write(tsFilePath, tsContent);
       
       console.log(`Generated ${tsFilePath}`);
     } catch (error) {
@@ -153,7 +153,7 @@ async function generateSkillsFromCursor() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   generateSkillsFromCursor()
     .then(() => console.log('Skill generation completed'))
     .catch(error => console.error('Error:', error));

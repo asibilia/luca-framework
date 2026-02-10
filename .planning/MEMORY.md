@@ -27,6 +27,11 @@
 - **Dynamic dependency loading for optional features**: Lazy-load heavy optional dependencies (e.g., update-notifier 1.0MB) only when needed. Use dynamic `import()` for optional commands/features. Enables smaller default bundle without sacrificing functionality. Validated in Phase 8 (reduced startup path)
 - **SIGINT handler safety with process.once**: Use `process.once()` instead of `process.on()` to prevent handler accumulation when module re-imported. Reset mutable module state (e.g., `createdPaths`) at function entry. Validated in Phase 8 (fixed handler accumulation)
 - **Constant extraction for repeated values**: Extract repeated magic strings/arrays into named constants (e.g., `TEMPLATE_EXTENSIONS`). Enables single-point-of-truth for validation values and reduces duplication. Validated in Phase 8 code review
+- **EJS + JSON regex escaping**: When EJS templates output regex patterns into JSON strings, backslashes need double-escaping. Solution: computed `ticketPatternJson` property via `.replace(/\\/g, '\\\\')` to produce valid JSON. Validated in Phase 9 (init wizard fix)
+- **Actionable error messages (three-part pattern)**: Every CLI error should include: (1) what failed, (2) why/cause, (3) what to do next. This is a DX multiplier — users never hit a dead end. Validated in Phase 9 (CLI error messages overhaul)
+- **Validation parity across config entry points**: If `createConfigFromArgs` validates stack/tracker values, `loadConfigFromFile` must too. All config entry points need identical validation to prevent invalid configs from slipping through file-based paths. Validated in Phase 9 (code review HIGH fix)
+- **Documentation as code debt**: Stale docs (non-existent commands, wrong env vars, outdated coding standards) accumulate silently across milestones. Treat docs accuracy as a DX concern and audit during DX phases. Validated in Phase 9 (7 doc accuracy issues caught)
+- **Parallel agent execution without conflicts**: File-disjoint plans enable safe parallelism. 5 agents ran in parallel on non-overlapping file sets with zero merge conflicts. Key: ensure plan scope boundaries don't overlap at the file level. Validated in Phase 9 (5 parallel plans)
 
 ### Established Conventions
 
@@ -55,6 +60,7 @@
 | EJS restriction (escaped only) | Template safety | Unescaped output (`<%-`) enables XSS; code blocks (`<%`) enable arbitrary code execution. Restrict to `<%=` only | 2026-02-10 |
 | Native mkdir over fs-extra | Dependency minimization | fs-extra was used only for `ensureDir({recursive:true})`. Node.js/Bun native APIs suffice. 99KB saved, reduced distribution size | 2026-02-10 |
 | Lazy loading for optional commands | Bundle optimization | Heavy optional features (update-notifier 1.0MB) loaded dynamically. Reduces default startup path without sacrificing features. Tradeoff: adds dynamic import wrapper | 2026-02-10 |
+| import.meta.main over require.main | Bun ESM compatibility | Bun ESM files should use `import.meta.main` (boolean) instead of CJS `require.main === module` pattern. Consistent with ESM module system and Bun runtime conventions | 2026-02-10 |
 
 ### Trade-offs Made
 
@@ -79,6 +85,9 @@
 - **Pre-existing test failures mask new ones**: The 6 pre-existing failures in executeDoctor/configValidationCheck are caused by process.cwd() mocking issues in concurrent test runs. Track these separately to avoid masking new regressions
 - **Module-level mutable state in CLIs**: Exporting command modules from index creates mutable `createdPaths` at module scope. Reusing the module in tests/scripts causes state to persist across invocations. Always reset mutable state at function entry point, not module load time
 - **Code review false-positives on intentional patterns**: Static analysis flagged 3 high-severity issues in optimized CLI code (guard clauses without explicit else, aggressive string joining, conditional imports). These were intentional architectural choices, not defects. Document intent comments for static analysis tools
+- **Declared but unwired CLI flags**: citty allows declaring `args` without wiring them to the `run()` function body. The `--verbose` flag existed for months without working because `run({ args })` destructuring was missing. Always verify flag wiring by testing CLI flags end-to-end after declaration
+- **Non-existent commands in fix suggestions**: Doctor check suggested `--force` and `--repair` flags that don't exist in the CLI. Fix suggestions must reference actual working commands — never suggest flags or subcommands that haven't been implemented
+- **validateBranding skips undefined fields by design**: `validateBranding()` only validates fields that are present (for partial validation support). For installed configs where required branding subfields are mandatory, check field presence separately before calling validateBranding. Validated in Phase 9 (code review HIGH fix)
 
 ### Anti-patterns
 
@@ -111,13 +120,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 18 (+4 from Phase 8)
-- Total decisions: 11 (+2 from Phase 8)
-- Total pitfalls: 10 (+2 from Phase 8)
+- Total patterns: 23 (+5 from Phase 9)
+- Total decisions: 12 (+1 from Phase 9)
+- Total pitfalls: 13 (+3 from Phase 9)
 - Total conventions: 3
 - Total anti-patterns: 3
-- Total preferences: 4 (+2 from Phase 8)
+- Total preferences: 4
 - Last updated: 2026-02-10
 
-*Entries added by: lu-learner (Phase 8)*
+*Entries added by: lu-learner (Phase 9)*
 *Last curated: 2026-02-10*

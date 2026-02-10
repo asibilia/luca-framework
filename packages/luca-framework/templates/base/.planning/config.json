@@ -5,7 +5,7 @@
   "branding": {
     "frameworkName": "<%= branding.frameworkName %>",
     "commandPrefix": "<%= branding.commandPrefix %>",
-    "ticketPattern": "<%= branding.ticketPattern %>",
+    "ticketPattern": "<%= branding.ticketPatternJson %>",
     "placeholderTicket": "<%= branding.placeholderTicket %>"
   },
   "cognitive": {

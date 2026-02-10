@@ -14,8 +14,8 @@ export default defineCommand({
       default: false,
     },
   },
-  async run() {
-    const exitCode = await executeDoctor();
+  async run({ args }) {
+    const exitCode = await executeDoctor({ verbose: args.verbose });
     process.exit(exitCode);
   },
 });
