@@ -96,8 +96,8 @@ function generateRuleTsContent(ruleData: RuleData): string {
   return `/**
  * ${ruleData.description}
  */
-import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the ${ruleName} rule configuration
 const ${configName}: RuleConfig = {

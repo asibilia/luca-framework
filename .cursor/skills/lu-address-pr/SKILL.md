@@ -1,6 +1,6 @@
 ---
-name: "lu-address-pr"
-description: "Address PR review comments by swarming reviewer agents, validating concerns, planning fixes, executing, verifying, and responding to comments. Use when user wants to address PR feedback, handle review comments, mentions /lu-address-pr, or needs to respond to PR reviewers."
+name: lu-address-pr
+description: Address PR review comments by swarming reviewer agents, validating concerns, planning fixes, executing, verifying, and responding to comments. Use when user wants to address PR feedback, handle review comments, mentions /lu-address-pr, or needs to respond to PR reviewers.
 disable-model-invocation: true
 ---
 

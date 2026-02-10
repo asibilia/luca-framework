@@ -1,6 +1,6 @@
 ---
-name: "lu-executor"
-description: "Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command."
+name: lu-executor
+description: Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
 tools:
   - Read
   - Write
@@ -8,7 +8,7 @@ tools:
   - Bash
   - Grep
   - Glob
-color: "yellow"
+color: yellow
 ---
 
 <role>

@@ -1,6 +1,6 @@
 ---
-name: "git-pr"
-description: "Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge."
+name: git-pr
+description: Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.
 ---
 
 <main>

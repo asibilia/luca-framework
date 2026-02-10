@@ -1,11 +1,11 @@
 /**
  * Use Bun instead of Node.js, npm, pnpm, or vite.
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the Use-Bun-instead-of-N rule configuration
-const useBunInsteadOfNodeViteNpmPnpmConfig: RuleConfig = {
+const UseBuninsteadofNConfig: RuleConfig = {
   frontmatter: {
     description: `Use Bun instead of Node.js, npm, pnpm, or vite.`,
     globs: ['*.ts', '*.tsx', '*.html', '*.css', '*.js', '*.jsx', 'package.json'],
@@ -124,8 +124,8 @@ For more information, read the Bun API docs in \`node_modules/bun-types/docs/**.
   ]
 };
 
-export class UseBunInsteadOfNodeViteNpmPnpmRule extends BaseRuleImpl {
+export class UseBuninsteadofNRule extends BaseRuleImpl {
   constructor() {
-    super(useBunInsteadOfNodeViteNpmPnpmConfig);
+    super(UseBuninsteadofNConfig);
   }
 }

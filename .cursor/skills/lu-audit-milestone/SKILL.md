@@ -1,6 +1,6 @@
 ---
-name: "lu-audit-milestone"
-description: "Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone."
+name: lu-audit-milestone
+description: Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.
 disable-model-invocation: true
 ---
 

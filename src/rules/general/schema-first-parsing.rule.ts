@@ -1,11 +1,11 @@
 /**
  * Enforce Zod schema-first parsing patterns over manual destructuring and default values
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the Enforce-Zod-schema-f rule configuration
-const schemaFirstParsingConfig: RuleConfig = {
+const EnforceZodschemafConfig: RuleConfig = {
   frontmatter: {
     description: `Enforce Zod schema-first parsing patterns over manual destructuring and default values`,
     globs: [''**/*.{ts,tsx}''],
@@ -299,7 +299,7 @@ const safeParseWithLogging = <T>(
   if (!result.success) {
     // Development: Detailed logging
     if (process.env.NODE_ENV === 'development') {
-      console.error(\`\${componentName} validation failed:\`, {
+      console.error(\`${componentName} validation failed:\`, {
         errors: result.error.issues,
         data,
       })
@@ -308,7 +308,7 @@ const safeParseWithLogging = <T>(
     // Production: Clean error message
     return {
       success: false,
-      error: \`Invalid ${componentName} configuration`,
+      error: \`Invalid ${componentName} configuration\`,
     }
   }
 
@@ -468,8 +468,8 @@ Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import
   ]
 };
 
-export class SchemaFirstParsingRule extends BaseRuleImpl {
+export class EnforceZodschemafRule extends BaseRuleImpl {
   constructor() {
-    super(schemaFirstParsingConfig);
+    super(EnforceZodschemafConfig);
   }
 }

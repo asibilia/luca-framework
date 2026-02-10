@@ -8,6 +8,8 @@ import { LuPlannerAgent } from '../src/agents/luca/lu-planner.agent';
 import { LuSkill } from '../src/skills/luca/lu.skill';
 import { LuWorkflowRule } from '../src/rules/lu-workflow.rule';
 import { CursorCompiler } from '../src/compilers/cursor.compiler';
+import { skillRegistry } from '../src/skills/index';
+import type { BaseSkill } from '../src/skills/types/skill.types';
 import fs from 'fs';
 import path from 'path';
 
@@ -52,6 +54,32 @@ const skillOutputPath = path.join(skillDir, 'SKILL.md');
 fs.writeFileSync(skillOutputPath, cursorSkillContent);
 
 console.log(`✓ Generated .cursor/skills/lu/SKILL.md`);
+
+// Compile and write all general skills from the registry
+console.log('Generating Cursor format for all general skills...');
+let skillCount = 0;
+
+for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+  try {
+    const skillInstance = new (SkillClass as new () => BaseSkill)();
+    const cursorGeneralSkillContent = compiler.compileSkill(skillInstance, 'CURSOR');
+
+    const generalSkillDir = path.join(cursorDir, 'skills', skillName);
+    if (!fs.existsSync(generalSkillDir)) {
+      fs.mkdirSync(generalSkillDir, { recursive: true });
+    }
+
+    const generalSkillOutputPath = path.join(generalSkillDir, 'SKILL.md');
+    fs.writeFileSync(generalSkillOutputPath, cursorGeneralSkillContent);
+
+    console.log(`✓ Generated .cursor/skills/${skillName}/SKILL.md`);
+    skillCount++;
+  } catch (error) {
+    console.error(`✗ Failed to generate .cursor/skills/${skillName}/SKILL.md:`, error);
+  }
+}
+
+console.log(`✓ Generated Cursor format for ${skillCount} general skills`);
 
 // Compile and write the lu-workflow rule
 const luWorkflowRule = new LuWorkflowRule();

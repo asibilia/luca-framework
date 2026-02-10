@@ -1,11 +1,11 @@
 /**
  * Functional API Reuse & Architecture Rule
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the Functional-API-Reuse rule configuration
-const functionalApiReuseConfig: RuleConfig = {
+const FunctionalAPIReuseConfig: RuleConfig = {
   frontmatter: {
     description: `Functional API Reuse & Architecture Rule`,
     
@@ -64,11 +64,11 @@ function processInitialValuesTemplates(initialValues, context) {
         if (result.success) {
           processedValues[key] = result.result
         } else {
-          logError(\`Template processing failed: \${result.error}\`)
+          logError(\`Template processing failed: ${result.error}\`)
           processedValues[key] = value
         }
       } catch (error) {
-        logError(\`Error: \${error}\`)
+        logError(\`Error: ${error}\`)
         processedValues[key] = value
       }
     } else if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -266,8 +266,8 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
   ]
 };
 
-export class FunctionalApiReuseRule extends BaseRuleImpl {
+export class FunctionalAPIReuseRule extends BaseRuleImpl {
   constructor() {
-    super(functionalApiReuseConfig);
+    super(FunctionalAPIReuseConfig);
   }
 }

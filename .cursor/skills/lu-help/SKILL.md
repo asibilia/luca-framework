@@ -1,6 +1,6 @@
 ---
-name: "lu-help"
-description: "Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do."
+name: lu-help
+description: Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.
 ---
 
 <main>

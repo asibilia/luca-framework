@@ -1,6 +1,6 @@
 ---
-name: "lu-plan-milestone-gaps"
-description: "Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps."
+name: lu-plan-milestone-gaps
+description: Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps.
 disable-model-invocation: true
 ---
 

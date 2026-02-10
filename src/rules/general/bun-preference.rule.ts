@@ -1,11 +1,11 @@
 /**
  * Use Bun package manager and runtime over npm or yarn where applicable
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the Use-Bun-package-mana rule configuration
-const bunPreferenceConfig: RuleConfig = {
+const UseBunpackagemanaConfig: RuleConfig = {
   frontmatter: {
     description: `Use Bun package manager and runtime over npm or yarn where applicable`,
     globs: ['package.json', '*.sh', '*.ts', '*.js', '*.md'],
@@ -190,8 +190,8 @@ Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding sta
   ]
 };
 
-export class BunPreferenceRule extends BaseRuleImpl {
+export class UseBunpackagemanaRule extends BaseRuleImpl {
   constructor() {
-    super(bunPreferenceConfig);
+    super(UseBunpackagemanaConfig);
   }
 }

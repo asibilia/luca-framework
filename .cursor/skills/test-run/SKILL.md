@@ -1,6 +1,6 @@
 ---
-name: "test-run"
-description: "Run tests with optional filter pattern. Use when the user wants to run tests, test code, execute test suite, check test coverage, or verify tests pass."
+name: test-run
+description: Run tests with optional filter pattern. Use when the user wants to run tests, test code, execute test suite, check test coverage, or verify tests pass.
 ---
 
 <main>

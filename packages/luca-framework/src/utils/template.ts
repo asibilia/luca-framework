@@ -1,7 +1,6 @@
-import { readFile, writeFile, readdir, copyFile } from 'fs/promises';
+import { readFile, writeFile, readdir, copyFile, mkdir } from 'fs/promises';
 import { join, dirname, relative, resolve } from 'pathe';
 import { render } from 'ejs';
-import { ensureDir } from 'fs-extra';
 import { fileURLToPath } from 'url';
 import { createBrandingContext } from './branding';
 import type { LucaConfig } from '../types';
@@ -101,7 +100,7 @@ export function processFilename(
  * @param baseDir - Base directory for relative path calculation
  * @returns Array of relative file paths
  */
-async function getAllFiles(dir: string, baseDir: string = dir): Promise<string[]> {
+export async function getAllFiles(dir: string, baseDir: string = dir): Promise<string[]> {
   const files: string[] = [];
   const entries = await readdir(dir, { withFileTypes: true });
 
@@ -126,7 +125,7 @@ async function getAllFiles(dir: string, baseDir: string = dir): Promise<string[]
  * @param filename - Filename to check
  * @returns true if file should be processed as template
  */
-function isTemplateFile(filename: string): boolean {
+export function isTemplateFile(filename: string): boolean {
   const templateExtensions = [
     '.md',
     '.json',
@@ -207,7 +206,7 @@ export async function copyTemplates(options: {
     assertWithinDirectory(destPath, destDir);
 
     // Ensure destination directory exists
-    await ensureDir(dirname(destPath));
+    await mkdir(dirname(destPath), { recursive: true });
 
     if (isTemplateFile(relPath)) {
       // Process as template

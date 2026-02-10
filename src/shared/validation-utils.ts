@@ -8,6 +8,7 @@ import { ruleConfigSchema } from '../rules/types/rule.schemas';
 import type { AgentConfig } from '../agents/types/agent.types';
 import type { SkillConfig } from '../skills/types/skill.types';
 import type { RuleConfig } from '../rules/types/rule.types';
+import type { Result } from './types';
 
 // ---------------------------------------------------------------------------
 // Prototype Pollution Protection
@@ -61,6 +62,11 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * // data === { name: "safe" }  (__proto__ stripped)
  * ```
  */
+/**
+ * NOTE: This function is intentionally duplicated in packages/luca-framework/src/utils/sanitize.ts
+ * The two domains (src/ and packages/) are isolated by design and cannot cross-import.
+ * If you modify this function, update the other copy as well.
+ */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);
   return stripPrototypeKeys(parsed);
@@ -85,7 +91,7 @@ export function sanitizeJsonParse(json: string): unknown {
  * }
  * ```
  */
-export function safeSanitizeJsonParse(json: string): { success: boolean; data?: unknown; error?: string } {
+export function safeSanitizeJsonParse(json: string): Result<unknown> {
   try {
     const data = sanitizeJsonParse(json);
     return { success: true, data };
@@ -107,7 +113,7 @@ export function validateRuleConfig(config: RuleConfig): RuleConfig {
 }
 
 // Helper function to validate with error handling
-export function safeValidateAgentConfig(config: AgentConfig): { success: boolean; data?: AgentConfig; error?: string } {
+export function safeValidateAgentConfig(config: AgentConfig): Result<AgentConfig> {
   try {
     const data = agentConfigSchema.parse(config);
     return { success: true, data };
@@ -116,7 +122,7 @@ export function safeValidateAgentConfig(config: AgentConfig): { success: boolean
   }
 }
 
-export function safeValidateSkillConfig(config: SkillConfig): { success: boolean; data?: SkillConfig; error?: string } {
+export function safeValidateSkillConfig(config: SkillConfig): Result<SkillConfig> {
   try {
     const data = skillConfigSchema.parse(config);
     return { success: true, data };
@@ -125,7 +131,7 @@ export function safeValidateSkillConfig(config: SkillConfig): { success: boolean
   }
 }
 
-export function safeValidateRuleConfig(config: RuleConfig): { success: boolean; data?: RuleConfig; error?: string } {
+export function safeValidateRuleConfig(config: RuleConfig): Result<RuleConfig> {
   try {
     const data = ruleConfigSchema.parse(config);
     return { success: true, data };

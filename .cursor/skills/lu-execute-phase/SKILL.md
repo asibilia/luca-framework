@@ -1,6 +1,6 @@
 ---
-name: "lu-execute-phase"
-description: "Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase."
+name: lu-execute-phase
+description: Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.
 disable-model-invocation: true
 ---
 

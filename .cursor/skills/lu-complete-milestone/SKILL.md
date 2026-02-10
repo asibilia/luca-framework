@@ -1,6 +1,6 @@
 ---
-name: "lu-complete-milestone"
-description: "Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done."
+name: lu-complete-milestone
+description: Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done.
 disable-model-invocation: true
 ---
 

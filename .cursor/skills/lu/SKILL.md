@@ -1,6 +1,6 @@
 ---
-name: "lu"
-description: "Unified entry point for Luca framework. Handles cognitive pre-flight, complexity routing, and workflow orchestration. Use for any development task."
+name: lu
+description: Unified entry point for Luca framework. Handles cognitive pre-flight, complexity routing, and workflow orchestration. Use for any development task.
 disable-model-invocation: true
 ---
 

@@ -84,7 +84,7 @@ describe('generateFiles', () => {
     expect(result).toBeDefined();
     expect(typeof result.success).toBe('boolean');
     if (result.success) {
-      expect(result.manifest).toBeDefined();
+      expect(result.data).toBeDefined();
     } else {
       expect(result.error).toBeDefined();
     }
@@ -103,9 +103,9 @@ describe('generateFiles', () => {
 
     // If templates are found, should succeed
     if (result.success) {
-      expect(result.manifest).toBeDefined();
-      expect(result.manifest!.version).toBeDefined();
-      expect(result.manifest!.branding).toBeDefined();
+      expect(result.data).toBeDefined();
+      expect(result.data.version).toBeDefined();
+      expect(result.data.branding).toBeDefined();
     }
     // If templates are not found, should fail gracefully
     if (!result.success) {

@@ -146,6 +146,8 @@ beforeEach(() => {
     getTemplatesDir: mockGetTemplatesDir,
     processTemplate: mockProcessTemplate,
     processFilename: mockProcessFilename,
+    getAllFiles: mock(async () => []),
+    isTemplateFile: mock(() => true),
   }));
 
   mock.module('../../../../../packages/luca-framework/src/utils/branding', () => ({
@@ -180,10 +182,6 @@ beforeEach(() => {
     createReadStream: _createReadStream,
     createWriteStream: _createWriteStream,
     existsSync: mock(() => false),
-  }));
-
-  mock.module('fs-extra', () => ({
-    ensureDir: mock(async () => {}),
   }));
 
   mock.module('@clack/prompts', () => ({

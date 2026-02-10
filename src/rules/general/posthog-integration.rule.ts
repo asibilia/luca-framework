@@ -1,11 +1,11 @@
 /**
  * apply when interacting with PostHog/analytics tasks
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the apply-when-interacti rule configuration
-const posthogIntegrationConfig: RuleConfig = {
+const applywheninteractiConfig: RuleConfig = {
   frontmatter: {
     description: `apply when interacting with PostHog/analytics tasks`,
     
@@ -38,8 +38,8 @@ Before creating any new event or property names, consult with the developer for 
   ]
 };
 
-export class PosthogIntegrationRule extends BaseRuleImpl {
+export class ApplywheninteractiRule extends BaseRuleImpl {
   constructor() {
-    super(posthogIntegrationConfig);
+    super(applywheninteractiConfig);
   }
 }

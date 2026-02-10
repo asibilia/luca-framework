@@ -1,6 +1,6 @@
 ---
-name: "lu-choose"
-description: "Help users decide between issue-driven vs Luca workflow. Use when the user is unsure which development approach to use, asks about workflow selection, or mentions /lu-choose."
+name: lu-choose
+description: Help users decide between issue-driven vs Luca workflow. Use when the user is unsure which development approach to use, asks about workflow selection, or mentions /lu-choose.
 ---
 
 <main>

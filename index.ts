@@ -1,32 +1,60 @@
 /**
  * Main entry point for the Luca Framework compiler system
+ *
+ * This file defines the intentional public API surface.
+ * Only symbols listed here are part of the public contract.
  */
 
-// Export types
-export * from './src/agents/types/agent.types';
-export * from './src/skills/types/skill.types';
-export * from './src/rules/types/rule.types';
+// Type interfaces
+export type {
+  AgentFrontmatter,
+  AgentSection,
+  AgentConfig,
+  BaseAgent,
+} from './src/agents/types/agent.types';
 
-// Export base classes
-export * from './src/agents/base/base-agent';
-export * from './src/skills/base/base-skill';
-export * from './src/rules/base/base-rule';
+export type {
+  SkillFrontmatter,
+  SkillSection,
+  SkillConfig,
+  BaseSkill,
+} from './src/skills/types/skill.types';
 
-// Export compilers
-export * from './src/compilers/base.compiler';
-export * from './src/compilers/cursor.compiler';
-export * from './src/compilers/claude.compiler';
+export type {
+  RuleFrontmatter,
+  RuleSection,
+  RuleConfig,
+  BaseRule,
+} from './src/rules/types/rule.types';
 
-// Export agents
-export * from './src/agents/luca/lu-executor.agent';
-export * from './src/agents/luca/lu-planner.agent';
+// Shared types
+export type { Result } from './src/shared/types';
 
-// Export skills
-export * from './src/skills/luca/lu.skill';
+// Base class implementations
+export { BaseAgentImpl } from './src/agents/base/base-agent';
+export { BaseSkillImpl } from './src/skills/base/base-skill';
+export { BaseRuleImpl } from './src/rules/base/base-rule';
 
-// Export rules
-export * from './src/rules/lu-workflow.rule';
+// Compilers
+export { BaseCompiler } from './src/compilers/base.compiler';
+export type { SupportedFormat } from './src/compilers/base.compiler';
+export { CursorCompiler } from './src/compilers/cursor.compiler';
+export { ClaudeCompiler } from './src/compilers/claude.compiler';
 
-// Export utils
-export * from './src/shared/utils';
-export * from './src/shared/validation-utils';
+// Luca-specific entities
+export { LuExecutorAgent } from './src/agents/luca/lu-executor.agent';
+export { LuPlannerAgent } from './src/agents/luca/lu-planner.agent';
+export { LuSkill } from './src/skills/luca/lu.skill';
+export { LuWorkflowRule } from './src/rules/lu-workflow.rule';
+
+// Validation utilities (public-facing)
+export {
+  sanitizeJsonParse,
+  safeSanitizeJsonParse,
+  validateAgentConfig,
+  validateSkillConfig,
+  validateRuleConfig,
+  safeValidateAgentConfig,
+  safeValidateSkillConfig,
+  safeValidateRuleConfig,
+} from './src/shared/validation-utils';

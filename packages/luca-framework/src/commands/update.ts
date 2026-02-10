@@ -2,8 +2,7 @@ import { defineCommand } from 'citty';
 import * as p from '@clack/prompts';
 import { readFile, writeFile, cp, rm, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, dirname, relative } from 'pathe';
-import { ensureDir } from 'fs-extra';
+import { join, dirname } from 'pathe';
 import { logger } from '../utils/logger';
 import {
   readManifest,
@@ -11,52 +10,9 @@ import {
   compareFiles,
   hashContent,
 } from '../utils/manifest';
-import { getTemplatesDir, processTemplate, processFilename } from '../utils/template';
+import { getTemplatesDir, processTemplate, processFilename, getAllFiles, isTemplateFile } from '../utils/template';
 import { createBrandingContext } from '../utils/branding';
 import type { LucaConfig, LucaManifest, FileComparison } from '../types';
-
-/**
- * Recursively get all files in a directory.
- */
-async function getAllFiles(dir: string, baseDir: string = dir): Promise<string[]> {
-  const { readdir } = await import('fs/promises');
-  const files: string[] = [];
-  const entries = await readdir(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await getAllFiles(fullPath, baseDir)));
-    } else {
-      files.push(relative(baseDir, fullPath));
-    }
-  }
-
-  return files;
-}
-
-/**
- * Check if file should be processed as template.
- */
-function isTemplateFile(filename: string): boolean {
-  const templateExtensions = [
-    '.md',
-    '.json',
-    '.ts',
-    '.tsx',
-    '.js',
-    '.jsx',
-    '.mdc',
-    '.yaml',
-    '.yml',
-    '.txt',
-    '.html',
-    '.css',
-    '.gitkeep',
-    '.gitignore',
-  ];
-  return templateExtensions.some((ext) => filename.endsWith(ext));
-}
 
 /**
  * Get new framework files from templates directory.
@@ -214,7 +170,7 @@ async function createBackup(
     const destPath = join(backupDir, relativePath);
 
     if (existsSync(sourcePath)) {
-      await ensureDir(dirname(destPath));
+      await mkdir(dirname(destPath), { recursive: true });
       await cp(sourcePath, destPath);
     }
   }
@@ -236,7 +192,7 @@ async function restoreBackup(backupDir: string, cwd: string): Promise<void> {
     const sourcePath = join(backupDir, relativePath);
     const destPath = join(cwd, relativePath);
 
-    await ensureDir(dirname(destPath));
+    await mkdir(dirname(destPath), { recursive: true });
     await cp(sourcePath, destPath);
   }
 
@@ -254,13 +210,13 @@ async function handleConflicts(
   if (conflicts.length === 0) return;
 
   const conflictsDir = join(cwd, '.cursor', 'luca', 'conflicts');
-  await ensureDir(conflictsDir);
+  await mkdir(conflictsDir, { recursive: true });
 
   for (const conflict of conflicts) {
     const newContent = newFiles.get(conflict.path);
     if (newContent) {
       const conflictPath = join(conflictsDir, conflict.path + '.new');
-      await ensureDir(dirname(conflictPath));
+      await mkdir(dirname(conflictPath), { recursive: true });
       await writeFile(conflictPath, newContent);
     }
   }
@@ -315,7 +271,7 @@ async function applyUpdates(
       case 'unchanged':
       case 'new':
         // Safe to update/add
-        await ensureDir(dirname(destPath));
+        await mkdir(dirname(destPath), { recursive: true });
         await writeFile(destPath, newContent);
         updated.push(comparison.path);
         break;
@@ -324,7 +280,7 @@ async function applyUpdates(
       case 'deleted':
         if (options.force || options.acceptTheirs) {
           // Overwrite user changes
-          await ensureDir(dirname(destPath));
+          await mkdir(dirname(destPath), { recursive: true });
           await writeFile(destPath, newContent);
           updated.push(comparison.path);
         } else if (options.acceptMine) {

@@ -1,7 +1,6 @@
-import { rm } from 'fs/promises';
+import { rm, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'pathe';
-import { ensureDir } from 'fs-extra';
 import * as p from '@clack/prompts';
 import { copyTemplates, getTemplatesDir } from './template';
 import { createManifest, writeManifest } from './manifest';
@@ -76,7 +75,7 @@ export async function cleanupFiles() {
  * ```
  */
 export function setupCleanupHandler() {
-  process.on('SIGINT', async () => {
+  process.once('SIGINT', async () => {
     p.cancel('\nInstallation cancelled.');
     await cleanupFiles();
     process.exit(1);
@@ -112,14 +111,17 @@ export function setupCleanupHandler() {
  * });
  *
  * if (result.success) {
- *   console.log('Installed', Object.keys(result.manifest.files).length, 'files');
+ *   console.log('Installed', Object.keys(result.data.files).length, 'files');
  * }
  * ```
  */
 export async function generateFiles(options: {
   config: LucaConfig;
   cwd?: string;
-}): Promise<{ success: boolean; manifest?: LucaManifest; error?: string }> {
+}): Promise<{ success: true; data: LucaManifest } | { success: false; error: string }> {
+  // Reset tracked paths from any previous invocation
+  createdPaths.length = 0;
+
   const { config, cwd = process.cwd() } = options;
   const templatesDir = getTemplatesDir();
 
@@ -138,7 +140,7 @@ export async function generateFiles(options: {
 
     for (const dir of [planningDir, lucaDir, agentsDir, rulesDir, skillsDir]) {
       if (!existsSync(dir)) {
-        await ensureDir(dir);
+        await mkdir(dir, { recursive: true });
         trackCreated(dir);
       }
     }
@@ -216,7 +218,7 @@ export async function generateFiles(options: {
     // Clear tracking (success - don't cleanup)
     createdPaths.length = 0;
 
-    return { success: true, manifest };
+    return { success: true, data: manifest };
   } catch (error) {
     spinner.stop('Error during file generation');
 

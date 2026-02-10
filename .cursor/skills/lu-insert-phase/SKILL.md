@@ -1,6 +1,6 @@
 ---
-name: "lu-insert-phase"
-description: "Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution."
+name: lu-insert-phase
+description: Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution.
 disable-model-invocation: true
 ---
 

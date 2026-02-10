@@ -1,6 +1,6 @@
 ---
-name: "lu-add-phase"
-description: "Add a new phase to end of current milestone. Use when user wants to add a phase, mentions /lu-add-phase, or needs to extend the roadmap."
+name: lu-add-phase
+description: Add a new phase to end of current milestone. Use when user wants to add a phase, mentions /lu-add-phase, or needs to extend the roadmap.
 disable-model-invocation: true
 ---
 

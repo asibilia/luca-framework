@@ -1,11 +1,11 @@
 /**
  * Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the Atlassian-MCP-integr rule configuration
-const atlassianMcpConfig: RuleConfig = {
+const AtlassianMCPintegrConfig: RuleConfig = {
   frontmatter: {
     description: `Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow`,
     globs: ['**/*.ts', '**/*.tsx', '**/*.md'],
@@ -188,8 +188,8 @@ When reviewing code that interacts with Jira:
   ]
 };
 
-export class AtlassianMcpRule extends BaseRuleImpl {
+export class AtlassianMCPintegrRule extends BaseRuleImpl {
   constructor() {
-    super(atlassianMcpConfig);
+    super(AtlassianMCPintegrConfig);
   }
 }

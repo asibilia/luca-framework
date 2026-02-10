@@ -41,6 +41,11 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * @returns Parsed and sanitized value
  * @throws {SyntaxError} If the input is not valid JSON
  */
+/**
+ * NOTE: This function is intentionally duplicated in src/shared/validation-utils.ts
+ * The two domains (src/ and packages/) are isolated by design and cannot cross-import.
+ * If you modify this function, update the other copy as well.
+ */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);
   return stripPrototypeKeys(parsed);
@@ -52,7 +57,7 @@ export function sanitizeJsonParse(json: string): unknown {
  * @param json - The JSON string to parse
  * @returns Object with success, optional data, and optional error
  */
-export function safeSanitizeJsonParse(json: string): { success: boolean; data?: unknown; error?: string } {
+export function safeSanitizeJsonParse(json: string): { success: true; data: unknown } | { success: false; error: string } {
   try {
     const data = sanitizeJsonParse(json);
     return { success: true, data };

@@ -1,13 +1,13 @@
 ---
-name: "lu-planner"
-description: "Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill."
+name: lu-planner
+description: Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.
 tools:
   - Read
   - Write
   - Edit
   - Grep
   - Glob
-color: "blue"
+color: blue
 ---
 
 <role>

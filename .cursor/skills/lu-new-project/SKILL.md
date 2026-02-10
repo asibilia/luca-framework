@@ -1,6 +1,6 @@
 ---
-name: "lu-new-project"
-description: "Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization."
+name: lu-new-project
+description: Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization.
 disable-model-invocation: true
 ---
 

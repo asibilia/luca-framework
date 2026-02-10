@@ -1,11 +1,11 @@
 /**
  * Generic rule description
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from '../base/base-rule';
+import type { RuleConfig } from '../types/rule.types';
 
 // Define the Generic-rule-descrip rule configuration
-const lodashPreferenceConfig: RuleConfig = {
+const GenericruledescripConfig: RuleConfig = {
   frontmatter: {
     description: `Generic rule description`,
     
@@ -208,8 +208,8 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
   ]
 };
 
-export class LodashPreferenceRule extends BaseRuleImpl {
+export class GenericruledescripRule extends BaseRuleImpl {
   constructor() {
-    super(lodashPreferenceConfig);
+    super(GenericruledescripConfig);
   }
 }

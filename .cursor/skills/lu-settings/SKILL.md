@@ -1,6 +1,6 @@
 ---
-name: "lu-settings"
-description: "Configure Luca workflow toggles and model profile. Use when user wants to change Luca settings, mentions /lu-settings, or needs to toggle workflow agents."
+name: lu-settings
+description: Configure Luca workflow toggles and model profile. Use when user wants to change Luca settings, mentions /lu-settings, or needs to toggle workflow agents.
 disable-model-invocation: true
 ---
 

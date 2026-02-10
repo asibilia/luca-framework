@@ -18,7 +18,6 @@
     "build:claude": "bun run ./scripts/build-claude.ts",
     "build:cursor": "bun run ./scripts/build-cursor.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
-    "compile:to-cursor": "bun run ./scripts/compile-all-to-cursor.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "test:watch": "bun test --watch",
