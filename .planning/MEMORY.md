@@ -23,6 +23,10 @@
 - **Self-contained cross-package modules**: When root `src/shared/` utilities need to be used in `packages/*/`, create a self-contained copy in the package rather than cross-package imports. Validated in Phase 6 (sanitize.ts)
 - **Defense-in-depth validation**: Apply validation at both config ingestion (checkConfig) AND usage site (inline checks). Prevents regressions from future refactoring that might bypass config validation. Validated in Phase 6 (HTTPS enforcement)
 - **Credential sanitization pattern**: Use regex chain to strip `Basic`, `Bearer`, long Base64 (40+ chars), and `token=` patterns from error messages before returning to callers. Prevents credential leakage in error paths
+- **Surgical performance optimization**: For small CLI tools already meeting performance targets (23ms startup), apply targeted fixes rather than broad refactoring. Prioritize: lazy command loading (biggest gain) > dependency removal (if already small) > memory safety fixes. Avoid complex optimization unless bottleneck confirmed. Validated in Phase 8 (CLI already at 23ms)
+- **Dynamic dependency loading for optional features**: Lazy-load heavy optional dependencies (e.g., update-notifier 1.0MB) only when needed. Use dynamic `import()` for optional commands/features. Enables smaller default bundle without sacrificing functionality. Validated in Phase 8 (reduced startup path)
+- **SIGINT handler safety with process.once**: Use `process.once()` instead of `process.on()` to prevent handler accumulation when module re-imported. Reset mutable module state (e.g., `createdPaths`) at function entry. Validated in Phase 8 (fixed handler accumulation)
+- **Constant extraction for repeated values**: Extract repeated magic strings/arrays into named constants (e.g., `TEMPLATE_EXTENSIONS`). Enables single-point-of-truth for validation values and reduces duplication. Validated in Phase 8 code review
 
 ### Established Conventions
 
@@ -49,6 +53,8 @@
 | js-yaml over manual YAML | Template safety | Manual string concatenation breaks on special chars (quotes, colons, newlines). js-yaml handles all edge cases | 2026-02-10 |
 | Zod for API response validation | Runtime safety | TypeScript `as` casts provide zero runtime protection. Zod safeParse catches malformed responses before they propagate | 2026-02-10 |
 | EJS restriction (escaped only) | Template safety | Unescaped output (`<%-`) enables XSS; code blocks (`<%`) enable arbitrary code execution. Restrict to `<%=` only | 2026-02-10 |
+| Native mkdir over fs-extra | Dependency minimization | fs-extra was used only for `ensureDir({recursive:true})`. Node.js/Bun native APIs suffice. 99KB saved, reduced distribution size | 2026-02-10 |
+| Lazy loading for optional commands | Bundle optimization | Heavy optional features (update-notifier 1.0MB) loaded dynamically. Reduces default startup path without sacrificing features. Tradeoff: adds dynamic import wrapper | 2026-02-10 |
 
 ### Trade-offs Made
 
@@ -71,6 +77,8 @@
 - **js-yaml quoting change propagation**: Switching from manual YAML (always quotes strings) to js-yaml (only quotes when needed) affects ALL downstream tests that assert on frontmatter output. Search for `": "` patterns in test assertions when changing YAML generation
 - **Cross-package import failures**: TypeScript resolves `src/shared/` imports from `packages/luca-framework/` at compile time but module resolution fails at runtime. Always use self-contained modules or npm package imports
 - **Pre-existing test failures mask new ones**: The 6 pre-existing failures in executeDoctor/configValidationCheck are caused by process.cwd() mocking issues in concurrent test runs. Track these separately to avoid masking new regressions
+- **Module-level mutable state in CLIs**: Exporting command modules from index creates mutable `createdPaths` at module scope. Reusing the module in tests/scripts causes state to persist across invocations. Always reset mutable state at function entry point, not module load time
+- **Code review false-positives on intentional patterns**: Static analysis flagged 3 high-severity issues in optimized CLI code (guard clauses without explicit else, aggressive string joining, conditional imports). These were intentional architectural choices, not defects. Document intent comments for static analysis tools
 
 ### Anti-patterns
 
@@ -94,6 +102,8 @@
 
 - **Enterprise focus**: Prioritize compliance, security, configurability over convenience
 - **Notify don't auto-update**: Teams control when they update framework
+- **Surgical optimization over broad refactoring**: For performance work, target specific bottlenecks (lazy loading, unused dependencies) rather than redesigning systems. CLI is already performant at 23ms startup — avoid gold-plating
+- **Extract repeated values to constants**: Use named constants for validation sets (TEMPLATE_EXTENSIONS), magic strings, and repeated literals. Single point of truth, aids readability and maintenance
 
 ---
 
@@ -101,12 +111,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 14
-- Total decisions: 9
-- Total pitfalls: 8
+- Total patterns: 18 (+4 from Phase 8)
+- Total decisions: 11 (+2 from Phase 8)
+- Total pitfalls: 10 (+2 from Phase 8)
 - Total conventions: 3
 - Total anti-patterns: 3
+- Total preferences: 4 (+2 from Phase 8)
 - Last updated: 2026-02-10
 
-*Entries added by: lu-learner*
-*Last curated: 2026-02-04*
+*Entries added by: lu-learner (Phase 8)*
+*Last curated: 2026-02-10*
