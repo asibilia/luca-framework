@@ -32,6 +32,9 @@
 - **Validation parity across config entry points**: If `createConfigFromArgs` validates stack/tracker values, `loadConfigFromFile` must too. All config entry points need identical validation to prevent invalid configs from slipping through file-based paths. Validated in Phase 9 (code review HIGH fix)
 - **Documentation as code debt**: Stale docs (non-existent commands, wrong env vars, outdated coding standards) accumulate silently across milestones. Treat docs accuracy as a DX concern and audit during DX phases. Validated in Phase 9 (7 doc accuracy issues caught)
 - **Parallel agent execution without conflicts**: File-disjoint plans enable safe parallelism. 5 agents ran in parallel on non-overlapping file sets with zero merge conflicts. Key: ensure plan scope boundaries don't overlap at the file level. Validated in Phase 9 (5 parallel plans)
+- **Metadata registry for non-class entities**: When registry entries aren't class constructors (e.g. shell scripts), use metadata objects (`HookDefinition`) with platform-specific fields (`event`/`cursorEvent`, `matcher`/`cursorMatcher`). Config generators transform metadata into platform-specific output formats. Validated in Phase 11 (hookRegistry → settings.json + hooks.json)
+- **Dual-format stdin/stdout for cross-platform hooks**: Shell scripts can handle both Claude Code and Cursor stdin JSON by using nullish coalescing fallbacks (`data.tool_input?.file_path ?? data.file_path`). Platform detection via `!!process.env.CLAUDE_PROJECT_DIR` enables dual-format output. Validated in Phase 11 (5 hooks, 2 platforms)
+- **Plan-checker bug prevention**: Running lu-plan-checker before execution caught 2 critical bugs (`|| true` swallowing exit codes) and 5 medium issues (echo vs printf, shell interpolation, wrong APIs). The checker pays for itself by preventing non-functional hooks from being deployed. Validated in Phase 11
 
 ### Established Conventions
 
@@ -40,6 +43,7 @@
 - **No raw JSON.parse on external data**: Use `sanitizeJsonParse()` for all user/external data to prevent prototype pollution. Internal data (own package.json) can use raw `JSON.parse()`
 - **EJS restricted to safe output only**: All EJS templates sanitized before rendering — `<%- %>` auto-converted to `<%= %>`, `<% %>` stripped. Only `<%= %>` (escaped output) is supported
 - **YAML generation via js-yaml**: All YAML frontmatter generation uses `js-yaml` `dump()` for proper escaping. No manual string concatenation for YAML
+- **Shell script conventions for hooks**: Use `printf '%s'` (not `echo`) for JSON piping, `set +e`/`set -e` (not `|| true`) for exit code capture, env vars (not shell interpolation) for passing values to `bun -e`, `${CLAUDE_PROJECT_DIR:-.}` for project dir fallback
 
 ## Decisions
 
@@ -61,6 +65,9 @@
 | Native mkdir over fs-extra | Dependency minimization | fs-extra was used only for `ensureDir({recursive:true})`. Node.js/Bun native APIs suffice. 99KB saved, reduced distribution size | 2026-02-10 |
 | Lazy loading for optional commands | Bundle optimization | Heavy optional features (update-notifier 1.0MB) loaded dynamically. Reduces default startup path without sacrificing features. Tradeoff: adds dynamic import wrapper | 2026-02-10 |
 | import.meta.main over require.main | Bun ESM compatibility | Bun ESM files should use `import.meta.main` (boolean) instead of CJS `require.main === module` pattern. Consistent with ESM module system and Bun runtime conventions | 2026-02-10 |
+| Hooks on both Claude Code and Cursor | Cross-platform enforcement | Both platforms now support hooks with similar semantics (stdin JSON, exit codes, matchers). Different config formats (settings.json vs hooks.json) and event names (PascalCase vs camelCase) but same shell scripts with dual-format parsing | 2026-02-10 |
+| Metadata registry over class registry for hooks | Hook architecture | Hooks are shell scripts, not TypeScript classes. Using HookDefinition metadata objects with platform-specific fields (event/cursorEvent) and separate config generators per platform. Cleaner than forcing class pattern on non-class entities | 2026-02-10 |
+| Transcript file size as context proxy | Context monitoring | Claude Code doesn't expose context window usage %. Transcript file size (bytes) is a reasonable proxy with configurable thresholds (100KB/200KB/300KB). Imperfect but functional | 2026-02-10 |
 
 ### Trade-offs Made
 
@@ -88,6 +95,10 @@
 - **Declared but unwired CLI flags**: citty allows declaring `args` without wiring them to the `run()` function body. The `--verbose` flag existed for months without working because `run({ args })` destructuring was missing. Always verify flag wiring by testing CLI flags end-to-end after declaration
 - **Non-existent commands in fix suggestions**: Doctor check suggested `--force` and `--repair` flags that don't exist in the CLI. Fix suggestions must reference actual working commands — never suggest flags or subcommands that haven't been implemented
 - **validateBranding skips undefined fields by design**: `validateBranding()` only validates fields that are present (for partial validation support). For installed configs where required branding subfields are mandatory, check field presence separately before calling validateBranding. Validated in Phase 9 (code review HIGH fix)
+- **`|| true` swallows exit codes**: `TSC_OUTPUT=$(cmd) || true; TSC_EXIT=$?` always sets `TSC_EXIT=0` because `$?` captures exit code of `true`, not `cmd`. Must use `set +e; TSC_OUTPUT=$(cmd); TSC_EXIT=$?; set -e` instead. Caught by plan checker, would have produced non-functional pre-commit gate
+- **`echo` corrupts JSON on some platforms**: `echo "$INPUT"` can interpret backslash sequences differently across shells. Always use `printf '%s' "$INPUT"` for piping JSON data through shell scripts
+- **Shell variable interpolation in bun -e strings**: `${FILE_PATH}` inside `bun -e "..."` JS strings breaks if path contains quotes or backslashes. Pass values via env vars: `HOOK_FILE_PATH="$FILE_PATH" bun -e "const fp = process.env.HOOK_FILE_PATH;"`
+- **Assuming platform exclusivity for features**: Phase 11 initially assumed hooks were Claude Code-only. Cursor added hooks support with a similar API. Always verify competitor/alternative platform capabilities before declaring features platform-exclusive
 
 ### Anti-patterns
 
@@ -96,6 +107,8 @@
 - **TypeScript `as` casts for external data**: Never use `as TypeName` to cast data from external APIs, user input, or file reads. Use Zod schemas with `.safeParse()` instead
 - **Raw JSON.parse for user data**: Never use raw `JSON.parse()` on user-provided or external data without `sanitizeJsonParse()` wrapper
 - **Shell string interpolation**: Never interpolate user values into shell commands. Use array-form arguments with `--` end-of-options markers
+- **`|| true` for exit code capture**: Never use `cmd || true; EXIT=$?` — it always yields `EXIT=0`. Use `set +e; cmd; EXIT=$?; set -e` instead
+- **`echo` for JSON piping**: Never use `echo "$VAR"` to pipe JSON. Use `printf '%s' "$VAR"` to prevent backslash interpretation
 
 ## Preferences
 
@@ -120,13 +133,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 23 (+5 from Phase 9)
-- Total decisions: 12 (+1 from Phase 9)
-- Total pitfalls: 13 (+3 from Phase 9)
-- Total conventions: 3
-- Total anti-patterns: 3
+- Total patterns: 26 (+3 from Phase 11)
+- Total decisions: 15 (+3 from Phase 11)
+- Total pitfalls: 17 (+4 from Phase 11)
+- Total conventions: 4 (+1 from Phase 11)
+- Total anti-patterns: 5 (+2 from Phase 11)
 - Total preferences: 4
 - Last updated: 2026-02-10
 
-*Entries added by: lu-learner (Phase 9)*
+*Entries added by: lu-learner (Phase 11)*
 *Last curated: 2026-02-10*
