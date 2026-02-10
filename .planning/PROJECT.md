@@ -22,7 +22,24 @@ The Luca framework is now a distributable, CLI-installable package.
 - **Enterprise readiness**: `npx luca doctor`, security docs, and approval workflows
 - **Safe updates**: `npx luca update` with conflict detection
 
-## Next Milestone Goals (v1.1.0)
+## Current Milestone (v1.0.1) — Code Hardening
+
+**Goal:** Comprehensive review and hardening of the v1.0.0 implementation. Every source file passes through specialized review agents (security, architecture, performance, DX, testing, code quality) with findings fixed in-place.
+
+**Surface area:** 133 TypeScript source files, 27 agents, 42 skills, 21 rules, 3 compilers, 3 CLI commands, 4 adapters, 9 build scripts, 70+ templates.
+
+**Key finding from initial audit:** Zero dedicated test files exist. Test coverage is the top priority.
+
+**Phases:**
+
+1. **Testing** — Add test infrastructure and coverage across all packages
+2. **Code Quality** — Lint, type strictness, dead code removal, consistency
+3. **Security** — Input validation, secrets handling, injection surfaces, dependency audit
+4. **Architecture** — Coupling, error handling patterns, module boundaries, abstractions
+5. **Performance** — Bundle size, startup time, memory usage, template rendering
+6. **DX** — CLI UX, error messages, documentation accuracy, onboarding flow
+
+## Future Milestone Goals (v1.1.0)
 
 - **Additional Stack Templates**: Python, Node.js, Next.js
 - **Multi-project Support**: Support monorepos with multiple projects
