@@ -1,0 +1,60 @@
+/**
+ * Main entry point for the Luca Framework compiler system
+ *
+ * This file defines the intentional public API surface.
+ * Only symbols listed here are part of the public contract.
+ */
+
+// Type interfaces
+export type {
+  AgentFrontmatter,
+  AgentSection,
+  AgentConfig,
+  BaseAgent,
+} from './src/agents/types/agent.types';
+
+export type {
+  SkillFrontmatter,
+  SkillSection,
+  SkillConfig,
+  BaseSkill,
+} from './src/skills/types/skill.types';
+
+export type {
+  RuleFrontmatter,
+  RuleSection,
+  RuleConfig,
+  BaseRule,
+} from './src/rules/types/rule.types';
+
+// Shared types
+export type { Result } from './src/shared/types';
+
+// Base class implementations
+export { BaseAgentImpl } from './src/agents/base/base-agent';
+export { BaseSkillImpl } from './src/skills/base/base-skill';
+export { BaseRuleImpl } from './src/rules/base/base-rule';
+
+// Compilers
+export { BaseCompiler } from './src/compilers/base.compiler';
+export type { SupportedFormat } from './src/compilers/base.compiler';
+export { CursorCompiler } from './src/compilers/cursor.compiler';
+export { ClaudeCompiler } from './src/compilers/claude.compiler';
+
+// Luca-specific entities
+export { LuExecutorAgent } from './src/agents/luca/lu-executor.agent';
+export { LuPlannerAgent } from './src/agents/luca/lu-planner.agent';
+export { LuSkill } from './src/skills/luca/lu.skill';
+export { LuWorkflowRule } from './src/rules/lu-workflow.rule';
+
+// Validation utilities (public-facing)
+export {
+  sanitizeJsonParse,
+  safeSanitizeJsonParse,
+  validateAgentConfig,
+  validateSkillConfig,
+  validateRuleConfig,
+  safeValidateAgentConfig,
+  safeValidateSkillConfig,
+  safeValidateRuleConfig,
+} from './src/shared/validation-utils';

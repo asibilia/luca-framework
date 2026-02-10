@@ -1,0 +1,32 @@
+{
+  "name": "create-luca",
+  "description": "Create a new Luca project",
+  "version": "0.0.1",
+  "bin": {
+    "create-luca": "./bin/create-luca.js"
+  },
+  "dependencies": {
+    "luca-framework": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "keywords": [
+    "ai",
+    "cli",
+    "cursor",
+    "luca",
+    "scaffolding"
+  ],
+  "scripts": {
+    "build": "unbuild"
+  },
+  "type": "module"
+}

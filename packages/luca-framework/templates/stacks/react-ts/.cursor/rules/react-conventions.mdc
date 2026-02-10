@@ -1,0 +1,26 @@
+---
+description: React component and hook conventions for this project
+globs: "**/*.tsx, **/*.ts"
+alwaysApply: true
+---
+
+# React Conventions
+
+## Components
+
+- **Functional only**: No class components
+- **Single object props**: `function Button({ label, onClick }: ButtonProps)`
+- **No prop spreading**: Explicit props only
+- **Composition**: Prefer children over render props
+
+## Hooks
+
+- **Custom hooks**: Extract shared logic to `use*` functions
+- **Dependencies**: Keep effect dependencies minimal
+- **Cleanup**: Always cleanup subscriptions/timers
+
+## Events
+
+- Handle events in parent components
+- Pass callbacks down, not event objects
+- Use specific event types

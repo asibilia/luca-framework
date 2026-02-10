@@ -1,0 +1,9 @@
+{
+  "description": "Luca framework files - installed to .cursor/luca/",
+  "version": "0.0.1",
+  "contents": [
+    "workflows/",
+    "references/",
+    "templates/"
+  ]
+}
