@@ -55,6 +55,22 @@ export const hookRegistry: Record<string, HookDefinition> = {
     async: false,
     statusMessage: 'Running pre-commit checks...',
   },
+  'context-monitor': {
+    event: 'Stop',
+    matcher: undefined,
+    script: 'context-monitor.sh',
+    timeout: 5,
+    async: false,
+    statusMessage: 'Checking context usage...',
+  },
+  'session-persist': {
+    event: 'SessionEnd',
+    matcher: undefined,
+    script: 'session-persist.sh',
+    timeout: 10,
+    async: false,
+    statusMessage: 'Saving session state...',
+  },
 };
 
 /**

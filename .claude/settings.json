@@ -32,6 +32,30 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-monitor.sh",
+            "timeout": 5,
+            "statusMessage": "Checking context usage..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-persist.sh",
+            "timeout": 10,
+            "statusMessage": "Saving session state..."
+          }
+        ]
+      }
     ]
   }
 }
