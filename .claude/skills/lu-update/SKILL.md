@@ -4,6 +4,7 @@ Update Luca to latest version with changelog preview. Use when user wants to upd
 
 ## main
 
+<main>
 # Luca Update
 
 Update Luca to latest version with changelog preview.
@@ -80,3 +81,4 @@ This is a terminal action. The update is complete.
 
 - `/lu-help` — See updated command reference
 - `/lu-progress` — Continue your work
+</main>

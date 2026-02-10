@@ -4,6 +4,7 @@ Run ESLint with auto-fix on the codebase or specific path. Use when the user wan
 
 ## main
 
+<main>
 # Code Lint
 
 Run ESLint with auto-fix on the codebase.
@@ -23,3 +24,4 @@ Run ESLint with auto-fix on the codebase.
 bun run --cwd apps/admin-ui lint
 bun run --cwd packages-ui/components lint
 ```
+</main>

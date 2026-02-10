@@ -59,7 +59,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 6. **Create phase directory:**
 
    \`\`\`bash
-   mkdir -p ".planning/phases/${decimal_phase}-${slug}"
+   mkdir -p ".planning/phases/\${decimal_phase}-\${slug}"
    \`\`\`
 
 7. **Update roadmap:**

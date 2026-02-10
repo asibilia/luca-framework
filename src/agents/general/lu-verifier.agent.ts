@@ -268,7 +268,7 @@ Check that the artifact is connected to the system.
 \`\`\`bash
 check_imported() {
   local artifact_name="$1"
-  local search_path="${2:-src/}"
+  local search_path="\${2:-src/}"
   local imports=$(grep -r "import.*$artifact_name" "$search_path" --include="*.ts" --include="*.tsx" 2>/dev/null | wc -l)
   [ "$imports" -gt 0 ] && echo "IMPORTED ($imports times)" || echo "NOT_IMPORTED"
 }
@@ -279,7 +279,7 @@ check_imported() {
 \`\`\`bash
 check_used() {
   local artifact_name="$1"
-  local search_path="${2:-src/}"
+  local search_path="\${2:-src/}"
   local uses=$(grep -r "$artifact_name" "$search_path" --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v "import" | wc -l)
   [ "$uses" -gt 0 ] && echo "USED ($uses times)" || echo "NOT_USED"
 }

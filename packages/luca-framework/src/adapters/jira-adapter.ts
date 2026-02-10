@@ -8,6 +8,7 @@
  * @module adapters/jira-adapter
  */
 
+import { z } from 'zod'
 import type {
   WorkTrackerContract,
   WorkTicket,
@@ -15,6 +16,31 @@ import type {
   WorkTicketPriority,
   AdapterResult,
 } from '../contracts/work-tracker'
+
+// ---------------------------------------------------------------------------
+// Zod schemas for environment variable format validation
+// ---------------------------------------------------------------------------
+
+/** Validates that the base URL is a well-formed HTTPS URL */
+const jiraBaseUrlSchema = z
+  .string()
+  .url('JIRA_BASE_URL must be a valid URL')
+  .refine((url) => url.startsWith('https://'), {
+    message: 'JIRA_BASE_URL must use HTTPS',
+  })
+
+/** Validates that the user email is a valid email address */
+const jiraEmailSchema = z
+  .string()
+  .email('JIRA_USER_EMAIL must be a valid email address')
+
+/** Validates that the API token is a non-empty string */
+const jiraTokenSchema = z
+  .string()
+  .min(1, 'JIRA_API_TOKEN must not be empty')
+
+/** Pattern for valid Jira issue keys (e.g., PROJ-123) */
+const JIRA_TICKET_ID_PATTERN = /^[A-Z][A-Z0-9]+-\d+$/
 
 /**
  * Configuration options for the Jira adapter.
@@ -28,19 +54,35 @@ export interface JiraAdapterConfig {
   apiToken?: string
 }
 
+/** Runtime validation schema for Jira REST API issue response */
+const jiraIssueResponseSchema = z.object({
+  key: z.string(),
+  fields: z.object({
+    summary: z.string(),
+    description: z.unknown(),
+    issuetype: z.object({ name: z.string() }).optional(),
+    priority: z.object({ name: z.string() }).optional(),
+    status: z.object({ name: z.string() }).optional(),
+    assignee: z.object({ displayName: z.string() }).optional(),
+  }),
+})
+
 /**
- * Jira Issue response shape from REST API v3.
+ * Jira Issue response shape derived from Zod schema.
  */
-interface JiraIssueResponse {
-  key: string
-  fields: {
-    summary: string
-    description: unknown // ADF format
-    issuetype?: { name: string }
-    priority?: { name: string }
-    status?: { name: string }
-    assignee?: { displayName: string }
-  }
+type JiraIssueResponse = z.infer<typeof jiraIssueResponseSchema>
+
+/**
+ * Sanitize error messages to prevent credential leakage.
+ * Strips Authorization header values, Base64 strings, and API tokens.
+ */
+function sanitizeJiraError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message
+    .replace(/Basic\s+[A-Za-z0-9+/=]+/g, 'Basic [REDACTED]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]')
+    .replace(/[A-Za-z0-9+/]{40,}={0,2}/g, '[REDACTED]')
+    .replace(/token[=:]\s*\S+/gi, 'token=[REDACTED]')
 }
 
 /**
@@ -164,6 +206,7 @@ export function createJiraAdapter(
     const userEmail = getUserEmail()
     const apiToken = getApiToken()
 
+    // Step 1: Presence check
     if (!baseUrl || !userEmail || !apiToken) {
       const missing: string[] = []
       if (!baseUrl) missing.push('JIRA_BASE_URL')
@@ -171,6 +214,28 @@ export function createJiraAdapter(
       if (!apiToken) missing.push('JIRA_API_TOKEN')
 
       return `Jira not configured. Missing: ${missing.join(', ')}. Set these environment variables to enable Jira integration.`
+    }
+
+    // Step 2: Format validation
+    const formatErrors: string[] = []
+
+    const urlResult = jiraBaseUrlSchema.safeParse(baseUrl)
+    if (!urlResult.success) {
+      formatErrors.push(urlResult.error.issues[0].message)
+    }
+
+    const emailResult = jiraEmailSchema.safeParse(userEmail)
+    if (!emailResult.success) {
+      formatErrors.push(emailResult.error.issues[0].message)
+    }
+
+    const tokenResult = jiraTokenSchema.safeParse(apiToken)
+    if (!tokenResult.success) {
+      formatErrors.push(tokenResult.error.issues[0].message)
+    }
+
+    if (formatErrors.length > 0) {
+      return `Jira config validation failed: ${formatErrors.join('; ')}`
     }
 
     return null
@@ -209,6 +274,17 @@ export function createJiraAdapter(
 
       const baseUrl = getBaseUrl()!
 
+      if (!JIRA_TICKET_ID_PATTERN.test(ticketId)) {
+        return {
+          success: false,
+          error: `Invalid Jira ticket ID format: "${ticketId}". Expected format: PROJ-123`,
+        }
+      }
+
+      if (!baseUrl.startsWith('https://')) {
+        return { success: false, error: 'JIRA_BASE_URL must use HTTPS' }
+      }
+
       // Build API URL with selected fields
       const apiUrl = `${baseUrl}/rest/api/3/issue/${ticketId}?fields=summary,description,issuetype,priority,status,assignee`
 
@@ -243,8 +319,16 @@ export function createJiraAdapter(
           }
         }
 
-        // Parse response
-        const data: JiraIssueResponse = await response.json()
+        // Parse and validate response
+        const rawData = await response.json()
+        const parseResult = jiraIssueResponseSchema.safeParse(rawData)
+        if (!parseResult.success) {
+          return {
+            success: false,
+            error: `Jira API returned unexpected response format: ${parseResult.error.message}`,
+          }
+        }
+        const data = parseResult.data
 
         // Map to WorkTicket
         const ticket: WorkTicket = {
@@ -260,11 +344,9 @@ export function createJiraAdapter(
 
         return { success: true, data: ticket }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error)
         return {
           success: false,
-          error: `Jira API request failed: ${errorMessage}`,
+          error: `Jira API request failed: ${sanitizeJiraError(error)}`,
         }
       }
     },
@@ -285,6 +367,10 @@ export function createJiraAdapter(
       }
 
       const baseUrl = getBaseUrl()!
+
+      if (!baseUrl.startsWith('https://')) {
+        return { success: false, error: 'JIRA_BASE_URL must use HTTPS' }
+      }
 
       try {
         // Test API connectivity with /myself endpoint
@@ -312,11 +398,9 @@ export function createJiraAdapter(
 
         return { success: true, data: true }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error)
         return {
           success: false,
-          error: `Jira API connection failed: ${errorMessage}`,
+          error: `Jira API connection failed: ${sanitizeJiraError(error)}`,
         }
       }
     },

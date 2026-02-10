@@ -35,9 +35,9 @@ Must be set in shell environment or \`.env\`:
 2. **Verify environment**:
 
    \`\`\`bash
-   echo "JIRA_BASE_URL: ${JIRA_BASE_URL:-NOT SET}"
-   echo "JIRA_USER_EMAIL: ${JIRA_USER_EMAIL:-NOT SET}"
-   echo "JIRA_API_TOKEN: ${JIRA_API_TOKEN:+SET}"
+   echo "JIRA_BASE_URL: \${JIRA_BASE_URL:-NOT SET}"
+   echo "JIRA_USER_EMAIL: \${JIRA_USER_EMAIL:-NOT SET}"
+   echo "JIRA_API_TOKEN: \${JIRA_API_TOKEN:+SET}"
    \`\`\`
 
 3. **Fetch Jira issue**:

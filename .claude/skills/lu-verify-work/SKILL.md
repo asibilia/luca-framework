@@ -4,6 +4,7 @@ Validate built features through conversational UAT testing. Use when user wants 
 
 ## main
 
+<main>
 # Luca Verify Work
 
 Validate built features through conversational testing with persistent state.
@@ -357,3 +358,4 @@ Manual intervention required
 
 - `/lu-plan-phase {N} --gaps` — Create fix plans for failures
 - `/lu-audit-milestone` — Complete the milestone
+</main>

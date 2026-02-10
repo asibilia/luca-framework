@@ -4,6 +4,7 @@ description: "Help users decide between issue-driven vs Luca workflow. Use when 
 ---
 
 <main>
+<main>
 # Luca Choose Workflow
 
 Help users select the right development workflow for their task.
@@ -121,4 +122,5 @@ This skill helps you decide between workflows. After choosing:
 **Common follow-ups:**
 - `/lu-help` — Review all available commands
 - `/lu-progress` — Check existing project status
+</main>
 </main>

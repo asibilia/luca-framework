@@ -4,6 +4,7 @@ Execute a quick ad-hoc task with Luca guarantees but skip optional agents. Use w
 
 ## main
 
+<main>
 # Luca Quick
 
 Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
@@ -307,3 +308,4 @@ Ready for next task: /lu-quick
 
 - `/lu-quick` — Run another quick task
 - `/lu-help` — See all available commands
+</main>

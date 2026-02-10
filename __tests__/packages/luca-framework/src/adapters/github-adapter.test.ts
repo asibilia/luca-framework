@@ -63,11 +63,15 @@ describe('GitHubAdapter', () => {
         expect(result.data.url).toBe('https://github.com/org/repo/issues/42');
       }
 
-      // Verify execa was called with correct args (# stripped)
+      // Verify execa was called with correct args (# stripped, -- before issue number)
       const calls = execaMock.getCalls();
       expect(calls.length).toBe(1);
       expect(calls[0]!.command).toBe('gh');
       expect(calls[0]!.args).toContain('42');
+      // Verify --json comes before --, and -- comes before the issue number
+      const args = calls[0]!.args;
+      expect(args.indexOf('--json')).toBeLessThan(args.indexOf('--'));
+      expect(args.indexOf('--')).toBeLessThan(args.indexOf('42'));
     });
 
     test('returns ticket for valid issue without # prefix', async () => {
@@ -462,7 +466,7 @@ describe('GitHubAdapter', () => {
       const calls = execaMock.getCalls();
       expect(calls.length).toBe(2);
       expect(calls[1]!.command).toBe('git');
-      expect(calls[1]!.args).toEqual(['checkout', '-b', 'feat/fallback']);
+      expect(calls[1]!.args).toEqual(['checkout', '-b', '--', 'feat/fallback']);
     });
 
     test('returns error when both gh and git fail', async () => {

@@ -21,7 +21,7 @@ The single entry point for all Luca workflows. Handles git context setup, cognit
 
 **Arguments:** \`<task-description | Jira-URL | [TICKET-ID]> [--force-complex] [--skip-memory] [--skip-branch]\`
 
-> **Note:** Replace `[TICKET-ID]` with your project's configured ticket pattern (e.g., `PROJ-123`, `PT-123`, or your custom `ticketPattern` from `.planning/config.json`). Default pattern: `[A-Z]+-\\d+`
+> **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-123\`, or your custom \`ticketPattern\` from \`.planning/config.json\`). Default pattern: \`[A-Z]+-\\d+\`
 
 `
     },

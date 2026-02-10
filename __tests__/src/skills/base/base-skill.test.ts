@@ -81,7 +81,7 @@ describe('BaseSkillImpl - toCursorFormat', () => {
     const skill = new TestSkill(validSkillConfig);
     const output = skill.toCursorFormat();
     expect(output.startsWith('---\n')).toBe(true);
-    expect(output).toContain('name: "test-skill"');
+    expect(output).toContain('name: test-skill');
     expect(output).toContain('<instructions>');
     expect(output).toContain('</instructions>');
   });

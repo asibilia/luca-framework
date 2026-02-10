@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca Research Phase
 
 Comprehensive ecosystem research for niche/complex domains.
@@ -78,4 +79,5 @@ Goes beyond "which library" to ecosystem knowledge:
 
 - `/lu-list-phase-assumptions {phase}` — Review what AI plans to do
 - `/lu-progress` — Check overall project status
+</main>
 </main>

@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { createHash } from 'crypto';
 import { join, relative } from 'pathe';
+import { sanitizeJsonParse } from './sanitize';
 import type { LucaConfig, LucaManifest, FileComparison } from '../types';
 
 // Package version - will be updated by build process
@@ -123,7 +124,7 @@ export async function readManifest(cwd: string): Promise<LucaManifest | null> {
   const manifestPath = join(cwd, '.planning', 'manifest.json');
   try {
     const content = await readFile(manifestPath, 'utf-8');
-    return JSON.parse(content) as LucaManifest;
+    return sanitizeJsonParse(content) as LucaManifest;
   } catch {
     return null;
   }

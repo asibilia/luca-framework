@@ -2,10 +2,6 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 // Dynamic module discovery and compilation
 async function compileAllToCursor() {
@@ -109,26 +105,27 @@ async function compileRules() {
 // A more practical approach: Create a build script that compiles TypeScript to JS first
 async function createBuildSystem() {
   // Create a build script that can compile TypeScript to JavaScript
-  const buildScript = `#!/usr/bin/env node
+  const buildScript = `#!/usr/bin/env bun
 
 // Build script to compile TypeScript agents, skills, and rules to JavaScript
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 console.log('Building TypeScript files...');
 
-// Compile TypeScript to JavaScript
-try {
-  execSync('npx tsc --outDir dist --module commonjs --target es2020 --esModuleInterop --skipLibCheck', {
-    stdio: 'inherit',
-    cwd: process.cwd()
-  });
-  console.log('TypeScript compilation completed.');
-} catch (error) {
-  console.error('TypeScript compilation failed:', error.message);
+// Compile TypeScript to JavaScript using Bun.spawnSync
+const result = Bun.spawnSync(['bunx', 'tsc', '--outDir', 'dist', '--module', 'commonjs', '--target', 'es2020', '--esModuleInterop', '--skipLibCheck'], {
+  cwd: process.cwd(),
+  stdout: 'inherit',
+  stderr: 'inherit',
+});
+
+if (result.exitCode !== 0) {
+  console.error('TypeScript compilation failed with exit code:', result.exitCode);
   process.exit(1);
 }
+
+console.log('TypeScript compilation completed.');
 
 // After compilation, we can dynamically import the modules and compile them to .cursor format
 const agentsDir = path.join(__dirname, 'dist', 'agents');

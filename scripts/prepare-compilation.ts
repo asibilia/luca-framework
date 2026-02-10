@@ -2,16 +2,19 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 // Function to compile TypeScript to JavaScript temporarily to import modules
 async function compileAndRun() {
   // First, let's build the TypeScript files to JavaScript
   try {
-    await execAsync('bun run build', { cwd: process.cwd() });
+    const result = Bun.spawnSync(['bun', 'run', 'build'], {
+      cwd: process.cwd(),
+      stdout: 'inherit',
+      stderr: 'inherit',
+    });
+    if (result.exitCode !== 0) {
+      console.log('Build failed or not defined, proceeding with direct compilation...');
+    }
   } catch (error) {
     console.log('Build failed or not defined, proceeding with direct compilation...');
   }
@@ -29,15 +32,26 @@ async function compileAndRun() {
   
   // Since we can't dynamically import TypeScript files directly,
   // let's create a build script that compiles all TypeScript to JS first
-  const buildScript = `
-    #!/bin/bash
-    # Build TypeScript files to JavaScript for dynamic import
-    npx tsc --outDir dist --module commonjs --target es2020 --esModuleInterop --skipLibCheck
-  `;
-  
-  await fs.writeFile(path.join(process.cwd(), 'scripts', 'build-for-compilation.sh'), buildScript);
-  await fs.chmod(path.join(process.cwd(), 'scripts', 'build-for-compilation.sh'), 0o755);
-  
+  const buildScript = `#!/usr/bin/env bun
+
+// Build TypeScript files to JavaScript for dynamic import
+const result = Bun.spawnSync(['bunx', 'tsc', '--outDir', 'dist', '--module', 'commonjs', '--target', 'es2020', '--esModuleInterop', '--skipLibCheck'], {
+  cwd: process.cwd(),
+  stdout: 'inherit',
+  stderr: 'inherit',
+});
+
+if (result.exitCode !== 0) {
+  console.error('TypeScript compilation failed with exit code:', result.exitCode);
+  process.exit(1);
+}
+
+console.log('TypeScript compilation completed.');
+`;
+
+  await fs.writeFile(path.join(process.cwd(), 'scripts', 'build-for-compilation.ts'), buildScript);
+  await fs.chmod(path.join(process.cwd(), 'scripts', 'build-for-compilation.ts'), 0o755);
+
   console.log('Created build script for compilation. Run it to compile TypeScript to JavaScript.');
   console.log('Then run the dynamic compilation script to generate .cursor files from TypeScript definitions.');
 }

@@ -1,9 +1,10 @@
 import * as p from '@clack/prompts';
 import { logger } from './logger';
 import { detectProjectContext, formatStack } from './detect';
-import { validateBrandingField, defaultBranding, mergeBranding } from './branding';
+import { validateBrandingField, validateBranding, defaultBranding, mergeBranding } from './branding';
 import type { LucaConfig, BrandingConfig, ProjectContext } from '../types';
 import { readFile } from 'fs/promises';
+import { sanitizeJsonParse } from './sanitize';
 
 /**
  * Run the interactive setup wizard.
@@ -171,6 +172,19 @@ export function createConfigFromArgs(args: {
   stack?: string;
   tracker?: string;
 }): LucaConfig {
+  // Validate provided branding fields before merging with defaults
+  const providedBranding: Record<string, string> = {};
+  if (args.name) providedBranding.frameworkName = args.name;
+  if (args.prefix) providedBranding.commandPrefix = args.prefix;
+
+  const validation = validateBranding(providedBranding);
+  if (!validation.valid) {
+    const errorMessages = Object.entries(validation.errors)
+      .map(([field, error]) => `${field}: ${error}`)
+      .join('; ');
+    throw new Error(`Invalid branding arguments: ${errorMessages}`);
+  }
+
   return {
     branding: mergeBranding({
       frameworkName: args.name,
@@ -210,11 +224,21 @@ export function createConfigFromArgs(args: {
  */
 export async function loadConfigFromFile(configPath: string): Promise<LucaConfig> {
   const content = await readFile(configPath, 'utf-8');
-  const parsed = JSON.parse(content);
+  const parsed = sanitizeJsonParse(content) as Record<string, unknown>;
+
+  // Validate branding fields from config file
+  const brandingInput = (parsed.branding || {}) as Record<string, string>;
+  const validation = validateBranding(brandingInput);
+  if (!validation.valid) {
+    const errorMessages = Object.entries(validation.errors)
+      .map(([field, error]) => `${field}: ${error}`)
+      .join('; ');
+    throw new Error(`Invalid branding in config file: ${errorMessages}`);
+  }
 
   return {
-    branding: mergeBranding(parsed.branding || {}),
-    stack: parsed.stack || 'custom',
-    workTracker: parsed.workTracker || 'none',
+    branding: mergeBranding(brandingInput),
+    stack: (parsed.stack as string) || 'custom',
+    workTracker: (parsed.workTracker as string) || 'none',
   };
 }

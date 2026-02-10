@@ -150,7 +150,7 @@ fi
 ### Step 4: Create Quick Task Directory
 
 \`\`\`bash
-QUICK_DIR=".planning/quick/${next_num}-${slug}"
+QUICK_DIR=".planning/quick/\${next_num}-\${slug}"
 mkdir -p "$QUICK_DIR"
 \`\`\`
 
@@ -215,7 +215,7 @@ Create a quick plan for this task.
 First, read the plan:
 
 \`\`\`bash
-PLAN_CONTENT=$(cat "${QUICK_DIR}/${next_num}-PLAN.md")
+PLAN_CONTENT=$(cat "\${QUICK_DIR}/\${next_num}-PLAN.md")
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
 
@@ -265,14 +265,14 @@ Execute this quick task plan.
 Add row to "Quick Tasks Completed" table:
 
 \`\`\`markdown
-| ${next_num} | ${DESCRIPTION} | $(date +%Y-%m-%d) | ${commit_hash} | [${next_num}-${slug}](./quick/${next_num}-${slug}/) |
+| \${next_num} | \${DESCRIPTION} | $(date +%Y-%m-%d) | \${commit_hash} | [\${next_num}-\${slug}](./quick/\${next_num}-\${slug}/) |
 \`\`\`
 
 ### Step 8: Final Commit and Completion
 
 \`\`\`bash
 git add .
-bun run commit --message="${DESCRIPTION}" --type=docs --scope=quick-${next_num} --no-push --skip-checks
+bun run commit --message="\${DESCRIPTION}" --type=docs --scope=quick-\${next_num} --no-push --skip-checks
 \`\`\`
 
 Display completion:
@@ -282,10 +282,10 @@ Display completion:
  Luca ► QUICK TASK COMPLETE ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Quick Task ${next_num}: ${DESCRIPTION}
+Quick Task \${next_num}: \${DESCRIPTION}
 
-Summary: ${QUICK_DIR}/${next_num}-SUMMARY.md
-Commit: ${commit_hash}
+Summary: \${QUICK_DIR}/\${next_num}-SUMMARY.md
+Commit: \${commit_hash}
 
 Ready for next task: /lu-quick
 \`\`\`
@@ -298,8 +298,8 @@ Ready for next task: /lu-quick
 - [ ] Slug generated (lowercase, hyphens, max 40 chars)
 - [ ] Next number calculated (001, 002, 003...)
 - [ ] Directory created at \`.planning/quick/NNN-slug/\`
-- [ ] \`${next_num}-PLAN.md\` created by planner
-- [ ] \`${next_num}-SUMMARY.md\` created by executor
+- [ ] \`\${next_num}-PLAN.md\` created by planner
+- [ ] \`\${next_num}-SUMMARY.md\` created by executor
 - [ ] STATE.md updated with quick task row
 - [ ] Artifacts committed
 

@@ -115,8 +115,8 @@ describe('BaseAgentImpl - toCursorFormat', () => {
   test('frontmatter includes name and description', () => {
     const agent = new TestAgent(validAgentConfig);
     const output = agent.toCursorFormat();
-    expect(output).toContain('name: "test-agent"');
-    expect(output).toContain('description: "A test agent for unit tests"');
+    expect(output).toContain('name: test-agent');
+    expect(output).toContain('description: A test agent for unit tests');
   });
 
   test('sections with titles are wrapped in XML-like tags', () => {

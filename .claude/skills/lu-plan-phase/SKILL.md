@@ -4,6 +4,7 @@ Create detailed execution plans for a Luca phase. Use when user wants to plan a 
 
 ## main
 
+<main>
 # Luca Plan Phase
 
 Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research and verification.
@@ -467,3 +468,4 @@ If issues found and iteration_count < 3:
 
 - `/lu-progress` — See plan details before executing
 - `/lu-discuss-phase {phase}` — Gather more context if plans seem off
+</main>

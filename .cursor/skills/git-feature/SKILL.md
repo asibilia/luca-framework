@@ -4,6 +4,7 @@ description: "Create a new feature branch linked to a ticket. Use when the user 
 ---
 
 <main>
+<main>
 # Git Feature Branch
 
 Create a new feature branch linked to a ticket.
@@ -46,4 +47,5 @@ Examples (adjust to your project's ticket pattern):
 - `PROJ-0000--refactor-auth-hooks` (tech debt)
 
 **Key principle:** No ticket? Use your configured placeholder ticket (default: `PROJ-0000`).
+</main>
 </main>

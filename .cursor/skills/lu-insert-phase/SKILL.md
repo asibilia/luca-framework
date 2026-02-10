@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca Insert Phase
 
 Insert a decimal phase for urgent work discovered mid-milestone that must be completed between existing integer phases.
@@ -98,4 +99,5 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 
 - `/lu-discuss-phase {N.1}` — Gather context before planning
 - `/lu-progress` — Check overall project status
+</main>
 </main>

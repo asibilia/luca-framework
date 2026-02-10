@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca Debug
 
 Debug issues using scientific method with subagent isolation.
@@ -251,4 +252,5 @@ Loop back to Step 4 to handle the return.
 
 - `/lu-plan-phase {phase} --gaps` — Plan systematic fix
 - `/lu-quick` — Execute quick fix directly
+</main>
 </main>

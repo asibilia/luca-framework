@@ -4,6 +4,7 @@ Add a new phase to end of current milestone. Use when user wants to add a phase,
 
 ## main
 
+<main>
 # Luca Add Phase
 
 Add a new integer phase to the end of the current milestone in the roadmap.
@@ -89,3 +90,4 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 - [ ] STATE.md updated with roadmap evolution note
 - [ ] New phase appears at end of current milestone
 - [ ] Next phase number calculated correctly
+</main>

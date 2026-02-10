@@ -4,6 +4,7 @@ Help users decide between issue-driven vs Luca workflow. Use when the user is un
 
 ## main
 
+<main>
 # Luca Choose Workflow
 
 Help users select the right development workflow for their task.
@@ -15,7 +16,7 @@ This project supports two complementary workflows:
 | Workflow | Best For | Commands |
 |----------|----------|----------|
 | **Issue-Driven** | Quick fixes, single features | `/project:git/feature`, `bun commit` |
-| **Luca (Luca)** | Complex initiatives, multi-phase | `/lu-new-project`, `/lu-execute-phase` |
+| **Luca** | Complex initiatives, multi-phase | `/lu-new-project`, `/lu-execute-phase` |
 
 ## Decision Matrix
 
@@ -76,7 +77,7 @@ This task is well-suited for the issue workflow.
 **For Luca Workflow:**
 
 ```
-## Recommended: Luca (Luca) Workflow
+## Recommended: Luca Workflow
 
 This task benefits from structured planning and phased execution.
 
@@ -114,10 +115,11 @@ This skill helps you decide between workflows. After choosing:
 
 | Choice | Next Command |
 |--------|--------------|
-| Issue-driven | `/lu PT-####` or `/lu {task}` |
+| Issue-driven | `/lu [TICKET-ID]` or `/lu {task}` |
 | Luca | `/lu-new-project` |
 | Quick task | `/lu-quick` |
 
 **Common follow-ups:**
 - `/lu-help` — Review all available commands
 - `/lu-progress` — Check existing project status
+</main>

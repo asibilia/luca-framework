@@ -99,7 +99,7 @@ For each phase's exports, verify they're imported and used.
 check_export_used() {
   local export_name="$1"
   local source_phase="$2"
-  local search_path="${3:-src/}"
+  local search_path="\${3:-src/}"
 
   # Find imports
   local imports=$(grep -r "import.*$export_name" "$search_path" \
@@ -154,7 +154,7 @@ done
 \`\`\`bash
 check_api_consumed() {
   local route="$1"
-  local search_path="${2:-src/}"
+  local search_path="\${2:-src/}"
 
   # Search for fetch/axios calls to this route
   local fetches=$(grep -r "fetch.*['\"]$route\|axios.*['\"]$route" "$search_path" \

@@ -55,7 +55,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 6. **Create phase directory:**
 
    \`\`\`bash
-   mkdir -p ".planning/phases/${phase_num}-${slug}"
+   mkdir -p ".planning/phases/\${phase_num}-\${slug}"
    \`\`\`
 
 7. **Update roadmap:**

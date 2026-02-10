@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca Execute Phase
 
 Execute all plans in a phase using wave-based parallel execution, then verify with code review and UAT.
@@ -873,4 +874,5 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 - `/lu-verify-work {phase}` — Run UAT separately
 - `/lu-pause-work` — Create handoff if stopping mid-work
+</main>
 </main>

@@ -114,7 +114,7 @@ describe('BaseRuleImpl - toCursorFormat', () => {
     const rule = new TestRule(validRuleConfig);
     const output = rule.toCursorFormat();
     expect(output.startsWith('---\n')).toBe(true);
-    expect(output).toContain('description: "A test rule for unit tests"');
+    expect(output).toContain('description: A test rule for unit tests');
     expect(output).toContain('<guidelines>');
     expect(output).toContain('</guidelines>');
   });

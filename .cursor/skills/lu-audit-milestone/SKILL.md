@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca Audit Milestone
 
 Audit milestone completion against original intent with cross-phase code review.
@@ -421,4 +422,5 @@ Code quality: {N} issues found
 **Also available:**
 - `/lu-plan-milestone-gaps` — Create phases to close gaps
 - `/lu-progress` — Review audit results
+</main>
 </main>

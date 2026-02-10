@@ -4,6 +4,7 @@ Gather phase context through adaptive questioning before planning. Use when user
 
 ## main
 
+<main>
 # Luca Discuss Phase
 
 Extract implementation decisions that downstream agents need — researcher and planner will use CONTEXT.md to know what to investigate and what choices are locked.
@@ -91,3 +92,4 @@ Generate 3-4 **phase-specific** gray areas, not generic categories.
 
 - `/lu-research-phase {phase}` — Deep research for niche/complex domains
 - `/lu-progress` — Check overall project status
+</main>

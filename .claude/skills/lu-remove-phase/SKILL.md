@@ -4,6 +4,7 @@ Remove a future phase from roadmap and renumber subsequent phases. Use when user
 
 ## main
 
+<main>
 # Luca Remove Phase
 
 Remove an unstarted future phase from the roadmap and renumber all subsequent phases to maintain a clean, linear sequence.
@@ -107,3 +108,4 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
 - `/lu-plan-phase {next}` — Plan the next phase
 - `/lu-execute-phase {current}` — Continue current execution
+</main>

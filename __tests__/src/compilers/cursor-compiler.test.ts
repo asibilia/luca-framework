@@ -55,6 +55,6 @@ describe('CursorCompiler', () => {
     const agent = new TestAgent(validAgentConfig);
     const result = compiler.compileAgent(agent, 'CURSOR');
     expect(result).toContain('---');
-    expect(result).toContain('name: "test-agent"');
+    expect(result).toContain('name: test-agent');
   });
 });

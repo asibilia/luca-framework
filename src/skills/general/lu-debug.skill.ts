@@ -97,7 +97,7 @@ First, create debug session file:
 
 \`\`\`bash
 SESSION_ID=$(date +%Y%m%d-%H%M%S)
-DEBUG_FILE=".planning/debug/session-${SESSION_ID}.md"
+DEBUG_FILE=".planning/debug/session-\${SESSION_ID}.md"
 mkdir -p .planning/debug
 \`\`\`
 
@@ -189,7 +189,7 @@ Investigate this issue using scientific method. Document all findings.
 First, read the checkpoint state:
 
 \`\`\`bash
-DEBUG_FILE_CONTENT=$(cat "${DEBUG_FILE}")
+DEBUG_FILE_CONTENT=$(cat "\${DEBUG_FILE}")
 USER_RESPONSE="[response from user about checkpoint question]"
 \`\`\`
 

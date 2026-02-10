@@ -375,13 +375,13 @@ After verification passes, post responses to GitHub:
 # Reply to review comment
 gh api -X POST \
   "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies" \
-  -f body="Fixed in ${COMMIT_HASH}.
+  -f body="Fixed in \${COMMIT_HASH}.
 
-${FIX_DESCRIPTION}
+\${FIX_DESCRIPTION}
 
 Changes:
-- ${CHANGE_1}
-- ${CHANGE_2}"
+- \${CHANGE_1}
+- \${CHANGE_2}"
 \`\`\`
 
 ### For Disagreements
@@ -389,7 +389,7 @@ Changes:
 \`\`\`bash
 gh api -X POST \
   "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies" \
-  -f body="${DISAGREE_RESPONSE}"
+  -f body="\${DISAGREE_RESPONSE}"
 \`\`\`
 
 ### For Informational
@@ -398,7 +398,7 @@ gh api -X POST \
 # Acknowledge but no action needed
 gh api -X POST \
   "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies" \
-  -f body="Thanks for the feedback! ${ACKNOWLEDGMENT}"
+  -f body="Thanks for the feedback! \${ACKNOWLEDGMENT}"
 \`\`\`
 
 ### Summary Comment
@@ -406,7 +406,7 @@ gh api -X POST \
 Post a summary to the PR:
 
 \`\`\`bash
-gh pr comment ${PR_NUMBER} --body "## PR Feedback Addressed
+gh pr comment \${PR_NUMBER} --body "## PR Feedback Addressed
 
 ### Fixes Implemented
 

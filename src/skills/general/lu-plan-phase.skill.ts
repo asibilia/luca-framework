@@ -64,7 +64,7 @@ Before planning begins, run cognitive pre-flight:
 
    \`\`\`bash
    # Extract phase description and search MEMORY.md
-   PHASE_DESC=$(grep -A5 "Phase ${PHASE}:" .planning/ROADMAP.md)
+   PHASE_DESC=$(grep -A5 "Phase \${PHASE}:" .planning/ROADMAP.md)
    \`\`\`
 
    Look for: relevant patterns, past decisions, known pitfalls
@@ -155,14 +155,14 @@ Extract from arguments:
 if [[ "$PHASE" =~ ^[0-9]+$ ]]; then
   PHASE=$(printf "%02d" "$PHASE")
 elif [[ "$PHASE" =~ ^([0-9]+).([0-9]+)$ ]]; then
-  PHASE=$(printf "%02d.%s" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
+  PHASE=$(printf "%02d.%s" "\${BASH_REMATCH[1]}" "\${BASH_REMATCH[2]}")
 fi
 \`\`\`
 
 ### 3. Validate Phase
 
 \`\`\`bash
-grep -A5 "Phase ${PHASE}:" .planning/ROADMAP.md 2>/dev/null
+grep -A5 "Phase \${PHASE}:" .planning/ROADMAP.md 2>/dev/null
 \`\`\`
 
 If not found: Error with available phases. If found: Extract phase number, name, description.
@@ -170,11 +170,11 @@ If not found: Error with available phases. If found: Extract phase number, name,
 ### 4. Ensure Phase Directory Exists
 
 \`\`\`bash
-PHASE_DIR=$(ls -d .planning/phases/${PHASE}-* 2>/dev/null | head -1)
+PHASE_DIR=$(ls -d .planning/phases/\${PHASE}-* 2>/dev/null | head -1)
 if [ -z "$PHASE_DIR" ]; then
-  PHASE_NAME=$(grep "Phase ${PHASE}:" .planning/ROADMAP.md | sed 's/.*Phase [0-9]*: //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-  mkdir -p ".planning/phases/${PHASE}-${PHASE_NAME}"
-  PHASE_DIR=".planning/phases/${PHASE}-${PHASE_NAME}"
+  PHASE_NAME=$(grep "Phase \${PHASE}:" .planning/ROADMAP.md | sed 's/.*Phase [0-9]*: //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+  mkdir -p ".planning/phases/\${PHASE}-\${PHASE_NAME}"
+  PHASE_DIR=".planning/phases/\${PHASE}-\${PHASE_NAME}"
 fi
 \`\`\`
 
@@ -251,7 +251,7 @@ Research how to implement this phase. Analyze the codebase, identify patterns, a
 ### 6. Check Existing Plans
 
 \`\`\`bash
-ls "${PHASE_DIR}"/*-PLAN.md 2>/dev/null
+ls "\${PHASE_DIR}"/*-PLAN.md 2>/dev/null
 \`\`\`
 
 If exists: Offer to continue planning, view existing, or replan from scratch.
@@ -284,8 +284,8 @@ First, read all context files (already done in step 7):
 STATE_CONTENT=$(cat .planning/STATE.md)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
-RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
-VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
+RESEARCH_CONTENT=$(cat "\${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
+VERIFICATION_CONTENT=$(cat "\${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 \`\`\`
 
@@ -368,7 +368,7 @@ Display:
 First, read the created plans:
 
 \`\`\`bash
-PLANS_CONTENT=$(find "${PHASE_DIR}" -name "*-PLAN.md" -exec cat {} ;)
+PLANS_CONTENT=$(find "\${PHASE_DIR}" -name "*-PLAN.md" -exec cat {} ;)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 \`\`\`

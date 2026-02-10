@@ -4,6 +4,7 @@ description: "Create a commit using the interactive commit tool. Use when the us
 ---
 
 <main>
+<main>
 # Git Commit
 
 Create commits using the project's custom CLI tool.
@@ -55,5 +56,6 @@ This prompts for commit details interactively.
 
 `[TICKET-ID]--[description]` (e.g., `[TICKET-ID]--my-cool-feature`)
 
-> **Note:** Replace `[TICKET-ID]` with your project's configured ticket pattern (e.g., `PROJ-123`, `PT-456`, or your custom `ticketPattern` from `.planning/config.json`).
+> **Note:** Replace `[TICKET-ID]` with your project's configured ticket pattern (e.g., `PROJ-123`, `PT-456`, or your custom `ticketPattern` from `.planning/config.json`). Default pattern: `[A-Z]+-\d+`
+</main>
 </main>

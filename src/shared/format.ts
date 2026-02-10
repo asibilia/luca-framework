@@ -10,6 +10,24 @@ interface Section {
 }
 
 /**
+ * Sanitize a string for use as an XML tag name.
+ * Allows only [a-z0-9_-], replaces other characters with hyphens,
+ * collapses consecutive hyphens, and ensures the result starts with a letter.
+ */
+function sanitizeTagName(name: string): string {
+  const sanitized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  if (!sanitized || /^[0-9]/.test(sanitized)) {
+    return `section-${sanitized || 'unknown'}`
+  }
+  return sanitized
+}
+
+/**
  * Converts a config to Cursor-compatible format (Markdown with YAML frontmatter + XML-tagged sections)
  */
 export function toCursorFormat(frontmatter: Record<string, unknown>, sections: Section[]): string {
@@ -18,7 +36,8 @@ export function toCursorFormat(frontmatter: Record<string, unknown>, sections: S
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .map(section => {
       if (section.title) {
-        return `\n<${section.title.toLowerCase()}>\n${section.content}\n</${section.title.toLowerCase()}>\n`;
+        const tagName = sanitizeTagName(section.title)
+        return `\n<${tagName}>\n${section.content}\n</${tagName}>\n`;
       }
       return section.content;
     })

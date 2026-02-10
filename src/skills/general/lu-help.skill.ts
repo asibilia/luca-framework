@@ -80,7 +80,7 @@ The single entry point for all development work. Handles:
 
 Flags: \`--force-complex\`, \`--skip-memory\`, \`--skip-branch\`
 
-> **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-456\`, or your custom \`ticketPattern\` from `.planning/config.json`). Default pattern: \`[A-Z]+-\\\\d+\`
+> **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-456\`, or your custom \`ticketPattern\` from \`.planning/config.json\`). Default pattern: \`[A-Z]+-\\\\d+\`
 
 ### Project Initialization
 

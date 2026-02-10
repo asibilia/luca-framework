@@ -1,11 +1,13 @@
 {
   "name": "luca-monorepo",
   "dependencies": {
+    "js-yaml": "^4.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@alecsibilia/commit": "^1.0.8",
     "@types/bun": "latest",
+    "@types/js-yaml": "^4.0.9",
     "unbuild": "^3.5.0",
     "typescript": "^5.0.0"
   },

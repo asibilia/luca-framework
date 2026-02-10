@@ -64,11 +64,11 @@ function processInitialValuesTemplates(initialValues, context) {
         if (result.success) {
           processedValues[key] = result.result
         } else {
-          logError(\`Template processing failed: ${result.error}\`)
+          logError(\`Template processing failed: \${result.error}\`)
           processedValues[key] = value
         }
       } catch (error) {
-        logError(\`Error: ${error}\`)
+        logError(\`Error: \${error}\`)
         processedValues[key] = value
       }
     } else if (value && typeof value === 'object' && !Array.isArray(value)) {

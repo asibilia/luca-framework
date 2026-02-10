@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { join } from 'pathe';
+import { sanitizeJsonParse } from '../../sanitize';
 import type { CheckResult, DoctorCheck } from '../types';
 
 export const configValidationCheck: DoctorCheck = {
@@ -23,7 +24,7 @@ export const configValidationCheck: DoctorCheck = {
 
     try {
       const configContent = await readFile(configPath, 'utf-8');
-      const config = JSON.parse(configContent);
+      const config = sanitizeJsonParse(configContent) as Record<string, unknown>;
 
       // Basic validation
       const requiredFields = ['branding', 'stack', 'workTracker'];

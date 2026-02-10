@@ -104,13 +104,13 @@ Fetch all comment types from the PR:
 REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
 
 # Fetch PR review comments (inline code comments)
-gh api "/repos/${REPO}/pulls/${PR_NUMBER}/comments" > /tmp/pr_review_comments.json
+gh api "/repos/\${REPO}/pulls/\${PR_NUMBER}/comments" > /tmp/pr_review_comments.json
 
 # Fetch PR issue comments (general PR discussion)
-gh api "/repos/${REPO}/issues/${PR_NUMBER}/comments" > /tmp/pr_issue_comments.json
+gh api "/repos/\${REPO}/issues/\${PR_NUMBER}/comments" > /tmp/pr_issue_comments.json
 
 # Fetch PR reviews with their comments
-gh api "/repos/${REPO}/pulls/${PR_NUMBER}/reviews" > /tmp/pr_reviews.json
+gh api "/repos/\${REPO}/pulls/\${PR_NUMBER}/reviews" > /tmp/pr_reviews.json
 \`\`\`
 
 Parse and consolidate comments:
@@ -145,7 +145,7 @@ First, read the code context for each comment:
 
 \`\`\`bash
 # Get PR diff for context
-PR_DIFF=$(gh pr diff ${PR_NUMBER})
+PR_DIFF=$(gh pr diff \${PR_NUMBER})
 \`\`\`
 
 Then spawn ALL applicable reviewers in PARALLEL (same message, multiple Task calls):
@@ -516,25 +516,25 @@ For each addressed comment:
 
 \`\`\`bash
 # For fixes implemented
-gh pr comment ${PR_NUMBER} --body "$(cat <<'EOF'
-**Addressed in ${COMMIT_HASH}**
+gh pr comment \${PR_NUMBER} --body "$(cat <<'EOF'
+**Addressed in \${COMMIT_HASH}**
 
-${FIX_DESCRIPTION}
+\${FIX_DESCRIPTION}
 
 Changes:
-- ${CHANGE_1}
-- ${CHANGE_2}
+- \${CHANGE_1}
+- \${CHANGE_2}
 EOF
 )"
 
 # Reply to specific review comment
-gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies"   -f body="Fixed in ${COMMIT_HASH}. ${EXPLANATION}"
+gh api -X POST "/repos/\${REPO}/pulls/\${PR_NUMBER}/comments/\${COMMENT_ID}/replies"   -f body="Fixed in \${COMMIT_HASH}. \${EXPLANATION}"
 \`\`\`
 
 For disputed concerns:
 
 \`\`\`bash
-gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies"   -f body="${DISAGREE_RESPONSE}"
+gh api -X POST "/repos/\${REPO}/pulls/\${PR_NUMBER}/comments/\${COMMENT_ID}/replies"   -f body="\${DISAGREE_RESPONSE}"
 \`\`\`
 
 ### Step 9: Push and Summary
@@ -544,21 +544,21 @@ gh api -X POST "/repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies
 git push
 
 # Post summary comment on PR
-gh pr comment ${PR_NUMBER} --body "$(cat <<'EOF'
+gh pr comment \${PR_NUMBER} --body "$(cat <<'EOF'
 ## PR Feedback Addressed
 
 ### Fixes Implemented
 | Concern | Fix | Commit |
 |---------|-----|--------|
-| ${CONCERN_1} | ${FIX_1} | ${HASH_1} |
+| \${CONCERN_1} | \${FIX_1} | \${HASH_1} |
 
 ### Responses Posted
 | Comment | Response |
 |---------|----------|
-| ${COMMENT_2} | Respectfully disagree because... |
+| \${COMMENT_2} | Respectfully disagree because... |
 
 ### No Action Needed
-- ${INFO_COMMENT_1}
+- \${INFO_COMMENT_1}
 
 ---
 *Addressed via Luca \`/lu-address-pr\`*

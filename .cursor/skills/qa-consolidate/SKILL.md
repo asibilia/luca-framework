@@ -4,6 +4,7 @@ description: "Consolidate QA testing plans from merged feature PRs onto the pare
 ---
 
 <main>
+<main>
 # QA Plan Consolidation
 
 Consolidate QA testing plans from merged feature PRs onto the parent release PR to main.
@@ -150,7 +151,7 @@ After Step 4 (Extract QA Comments), note which PRs have no QA content. Filter ou
 
 ```bash
 # Get merged feature PRs (exclude automated bump PRs)
-gh pr list --base RELEASE_BRANCH --state merged --json number,title | jq '[.[] | select(.title | test("^(fix|feat|chore|refactor|docs)\(") and (test("automated") | not))]'
+gh pr list --base RELEASE_BRANCH --state merged --json number,title | jq '[.[] | select(.title | test("^(fix|feat|chore|refactor|docs)(") and (test("automated") | not))]'
 ```
 
 ### Step 2: Fetch PR Diff for Each Missing PR
@@ -286,4 +287,5 @@ User says: "generate missing QA plans and consolidate for RELEASE-1345"
    - Invoke `qa-plan-generator` subagent with the diff
    - Post generated QA plan to original feature PR
 4. Build and post consolidated comment with all QA plans
+</main>
 </main>

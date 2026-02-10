@@ -4,6 +4,7 @@ Archive completed milestone and prepare for next version. Use when user wants to
 
 ## main
 
+<main>
 # Luca Complete Milestone
 
 Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
@@ -150,3 +151,4 @@ MEMORY.md persists across milestones - it's the long-term project memory.
 
 - `/lu-progress` — Review completed work
 - `/lu-help` — See all available commands
+</main>

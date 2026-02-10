@@ -9,6 +9,7 @@
  */
 
 import { execa } from 'execa'
+import { z } from 'zod'
 
 import type {
   WorkTrackerContract,
@@ -29,17 +30,25 @@ export interface GitHubAdapterConfig {
 }
 
 /**
- * GitHub Issue response shape from gh CLI --json output.
+ * Zod schema for validating GitHub Issue response from gh CLI --json output.
+ *
+ * Ensures the response structure matches what we expect before processing,
+ * preventing issues from malformed or unexpected API responses.
  */
-interface GitHubIssueResponse {
-  number: number
-  title: string
-  body: string | null
-  state: string
-  labels: Array<{ name: string }>
-  assignees: Array<{ login: string }>
-  url: string
-}
+const githubIssueResponseSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+  body: z.string().nullable(),
+  state: z.string(),
+  labels: z.array(z.object({ name: z.string() })).optional().default([]),
+  assignees: z.array(z.object({ login: z.string() })).optional().default([]),
+  url: z.string().optional(),
+})
+
+/**
+ * GitHub Issue response shape derived from Zod schema.
+ */
+type GitHubIssueResponse = z.infer<typeof githubIssueResponseSchema>
 
 /**
  * Infer WorkTicket type from GitHub issue labels.
@@ -119,8 +128,52 @@ function parseGhError(error: unknown, issueNumber: string): string {
     return 'GitHub CLI not authenticated. Run: gh auth login'
   }
 
-  // Return the original error if no pattern matched
-  return `GitHub CLI error: ${errorMessage}`
+  // Sanitize token/bearer patterns before returning error to prevent credential leaks
+  const sanitized = errorMessage.replace(
+    /(?:token|bearer|ghp_|gho_|github_pat_)\s*\S+/gi,
+    '[REDACTED]'
+  )
+
+  // Return the sanitized error if no pattern matched
+  return `GitHub CLI error: ${sanitized}`
+}
+
+/**
+ * Validate a git branch name against git's naming rules.
+ *
+ * Rejects patterns that could cause shell injection or are invalid per git-check-ref-format:
+ * - Empty/blank names
+ * - Names starting with '-' (interpreted as flags)
+ * - Names containing '..' (traversal)
+ * - Names with whitespace, NUL, ~, ^, :, or backslash
+ * - Names ending with '.lock' or '.'
+ * - Names containing '//'
+ *
+ * @param name - Branch name to validate
+ * @returns Validation result with optional error message
+ */
+function validateBranchName(name: string): { valid: boolean; error?: string } {
+  if (!name || name.trim() === '') return { valid: false, error: 'Branch name is required' }
+  if (name.startsWith('-')) return { valid: false, error: 'Branch name cannot start with -' }
+  if (name.includes('..')) return { valid: false, error: 'Branch name cannot contain ..' }
+  if (/[\s\0~^:\\]/.test(name)) return { valid: false, error: 'Branch name contains invalid characters' }
+  if (name.endsWith('.lock')) return { valid: false, error: 'Branch name cannot end with .lock' }
+  if (name.endsWith('.')) return { valid: false, error: 'Branch name cannot end with .' }
+  if (name.includes('//')) return { valid: false, error: 'Branch name cannot contain //' }
+  return { valid: true }
+}
+
+/**
+ * Validate that an issue number is a positive numeric string.
+ *
+ * Prevents injection of flags or special characters into gh CLI commands.
+ *
+ * @param num - Issue number string to validate
+ * @returns Validation result with optional error message
+ */
+function validateIssueNumber(num: string): { valid: boolean; error?: string } {
+  if (!/^\d+$/.test(num)) return { valid: false, error: 'Issue number must be numeric' }
+  return { valid: true }
 }
 
 /**
@@ -172,16 +225,33 @@ export function createGitHubAdapter(
       // Extract issue number (remove # prefix if present)
       const issueNumber = ticketId.replace(/^#/, '')
 
+      // Validate issue number is numeric to prevent injection
+      const issueValidation = validateIssueNumber(issueNumber)
+      if (!issueValidation.valid) {
+        return { success: false, error: issueValidation.error! }
+      }
+
       try {
         const { stdout } = await execa('gh', [
           'issue',
           'view',
-          issueNumber,
           '--json',
           'number,title,body,state,labels,assignees,url',
+          '--',
+          issueNumber,
         ])
 
-        const issue: GitHubIssueResponse = JSON.parse(stdout)
+        const raw = JSON.parse(stdout)
+        const parsed = githubIssueResponseSchema.safeParse(raw)
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            error: `Invalid GitHub API response: ${parsed.error.message}`,
+          }
+        }
+
+        const issue = parsed.data
 
         const ticket: WorkTicket = {
           id: `#${issue.number}`,
@@ -216,14 +286,25 @@ export function createGitHubAdapter(
     ): Promise<AdapterResult<string>> {
       const issueNumber = ticketId.replace(/^#/, '')
 
+      // Validate inputs to prevent injection
+      const issueValidation = validateIssueNumber(issueNumber)
+      if (!issueValidation.valid) {
+        return { success: false, error: issueValidation.error! }
+      }
+
+      const branchValidation = validateBranchName(branchName)
+      if (!branchValidation.valid) {
+        return { success: false, error: branchValidation.error! }
+      }
+
       try {
         // Try gh issue develop first (creates linked branch)
         await execa('gh', ['issue', 'develop', issueNumber, '--name', branchName])
         return { success: true, data: branchName }
       } catch {
-        // Fallback to standard git checkout
+        // Fallback to standard git checkout with -- to separate flags from branch name
         try {
-          await execa('git', ['checkout', '-b', branchName])
+          await execa('git', ['checkout', '-b', '--', branchName])
           return { success: true, data: branchName }
         } catch (gitError) {
           const errorMessage =

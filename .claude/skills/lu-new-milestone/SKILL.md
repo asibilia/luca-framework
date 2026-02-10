@@ -4,6 +4,7 @@ Start a new milestone cycle with requirements and roadmap. Use when user wants t
 
 ## main
 
+<main>
 # Luca New Milestone
 
 Start a new milestone through unified flow: questioning → research (optional) → requirements → roadmap.
@@ -106,3 +107,4 @@ How should this milestone be tracked on GitHub?
 
 - `/lu-plan-phase {N}` — Skip discussion, plan directly
 - `/lu-progress` — Check milestone setup
+</main>

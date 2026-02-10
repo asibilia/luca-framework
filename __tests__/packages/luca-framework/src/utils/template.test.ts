@@ -40,28 +40,31 @@ describe('processTemplate', () => {
     expect(result).toBe('TestBot');
   });
 
-  test('handles EJS code blocks', async () => {
+  test('strips EJS code execution blocks', async () => {
     const result = await processTemplate(
       '<% if (show) { %>visible<% } %>',
       { show: true }
     );
+    // Code blocks stripped, leaving only the text between them
     expect(result).toBe('visible');
   });
 
-  test('returns empty for false conditional', async () => {
+  test('strips code blocks regardless of variables', async () => {
     const result = await processTemplate(
       '<% if (show) { %>visible<% } %>',
       { show: false }
     );
-    expect(result).toBe('');
+    // Code blocks are stripped, leaving 'visible' regardless of show value
+    expect(result).toBe('visible');
   });
 
-  test('handles unescaped output', async () => {
+  test('converts unescaped output to escaped output', async () => {
     const result = await processTemplate(
       '<%- raw %>',
       { raw: '<b>bold</b>' }
     );
-    expect(result).toBe('<b>bold</b>');
+    // <%- converted to <%=, so HTML is escaped
+    expect(result).toBe('&lt;b&gt;bold&lt;/b&gt;');
   });
 
   test('preserves text with no EJS tags', async () => {

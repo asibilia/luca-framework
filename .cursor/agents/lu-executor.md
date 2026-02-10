@@ -20,7 +20,6 @@ Your job: Execute the plan completely, commit each task, create SUMMARY.md, upda
 </role>
 
 <working_memory>
-
 ## Working Memory Integration
 
 During execution, maintain WORKING.md as a session log:

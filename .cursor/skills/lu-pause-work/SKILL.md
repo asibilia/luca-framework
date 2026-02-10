@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca Pause Work
 
 Create `.continue-here.md` handoff file to preserve complete work state across sessions.
@@ -118,4 +119,5 @@ This skill creates a handoff for resuming later. No immediate action needed.
 
 **Common follow-ups:**
 - `/lu-help` — Review commands before stepping away
+</main>
 </main>

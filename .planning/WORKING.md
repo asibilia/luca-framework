@@ -5,63 +5,100 @@
 ## Session Info
 
 - **Started**: 2026-02-10
-- **Workflow**: /lu-execute-phase 5
-- **Phase**: 5 (Code Quality)
+- **Workflow**: /lu-plan-phase 7
+- **Phase**: 7 (Architecture)
 
 ## Memory Recall
 
 ### Relevant Patterns
 
 - **Wave-based parallelization**: Execute independent plans in parallel waves (validated in Phase 1)
-- **Discriminated union for adapter results**: `{ success: true, data: T } | { success: false, error: string }`
-- **Adapter factory pattern**: Type-based switch for multi-tracker support
-- **Infrastructure-first doctor pattern**: Registry of independent checks
+- **Zod schemas are pure**: Trivially testable — good for adding security validation schemas
+- **Schema-first parsing**: Zod schemas for all data parsing (BRAIN.md convention)
 
 ### Relevant Decisions
 
-- UnJS ecosystem for CLI (citty, consola, unbuild, @clack/prompts)
-- Adapter factory pattern for multi-tracker support
+- Zod already in project as dependency — no new deps needed for validation
+- Template literal escaping issues discovered in Phase 5 — extra care with template.ts changes
+- `unknown` vs `any` already applied in Phase 5 — type safety foundation in place
 
 ### Flagged Pitfalls
 
-- Package version mismatches — verify versions before committing
-- Undefined values override defaults in mergeBranding()
-- Template paths break in bundled context (__dirname vs import.meta.url)
-- Side effects on import (version-check.ts, logger.ts, files.ts)
+- Template paths break in bundled context (__dirname vs import.meta.url) — relevant for template.ts
+- Undefined values override defaults in mergeBranding() — relevant for validation
+- Build scripts had escaping issues — test carefully after modifying
 
 ## Intuition Flags
 
-- **CAUTION**: No DI patterns — module-level mocking required throughout
-- **CAUTION**: Side effects on import — tests may need isolation
-- **OPPORTUNITY**: Zod schemas are pure — trivially testable
-- **OPPORTUNITY**: Wave-based parallelization pattern — apply to plan structure
+- **RISK**: Build scripts already had template literal escaping issues in Phase 5 — extra care needed when modifying template.ts
+- **OPPORTUNITY**: Zod already in project — no new dependency for validation schemas
+- **CAUTION**: js-yaml will be a new dependency — need to install it
+- **CAUTION**: EJS restriction changes must preserve existing template behavior for valid templates
 
-## Findings
+## Planning Notes
 
-### Phase 5 Execution (Code Quality)
+### Phase 6 Discussion Decisions (16 total)
 
-**Wave 1 (05-01): Dead Code & Duplicates**
-- Removed `escapeMarkdown()` and `generateFileName()` from `src/shared/utils.ts` (zero references)
-- Deleted `src/shared/constants.ts` entirely — `FRAMEWORK_NAME`, `CURSOR_DIR`, `AGENT_DIR`, `SKILL_DIR`, `RULE_DIR`, `LUCA_SUBDIR`, `SUPPORTED_FORMATS` all had zero consumers
-- Fixed compiler imports: `SupportedFormat` was imported from `../shared/constants` but defined in `base.compiler.ts` — redirected to correct source
-- Deleted 4 duplicate content files: `agents/general/lu-executor.agent.ts`, `agents/general/lu-planner.agent.ts`, `rules/general/lu-workflow.rule.ts`, `skills/general/lu.skill.ts` (canonical versions live in `luca/` dirs)
-- Removed `src/shared/validation/index.ts` indirection — main barrel imports `validation-utils` directly
+**Area 1 - Input Validation:** Zod at config boundaries, env var format validation, CLI arg validation, prototype pollution guards
+**Area 2 - Shell Hardening:** Branch name validation, Bun.spawn migration, -- end-of-options, error sanitization
+**Area 3 - HTTP & Credentials:** Ticket ID regex, HTTPS enforcement, credential-stripped errors, Zod response schemas
+**Area 4 - Template Rendering:** EJS restricted to <%=%> only, YAML via js-yaml, XML tag sanitization, no content escaping
 
-**Wave 2 (05-02): Type Safety**
-- Changed `[key: string]: any` → `[key: string]: unknown` in `AgentFrontmatter`, `SkillFrontmatter`, `RuleFrontmatter`
-- Changed `formatFrontmatter(frontmatter: Record<string, any>)` → `Record<string, unknown>`
-- `any` remaining in content files is in code example strings (not actual TypeScript)
+### Wave Dependencies
 
-**Wave 3 (05-03): Base Class Consolidation**
-- Created `src/shared/format.ts` with `toCursorFormat()` and `toClaudeFormat()`
-- All three base classes now delegate to shared formatting functions
-- Output format verified identical by existing tests (73 pass, 0 fail)
+Waves 1-4 are largely independent — each touches different files:
+- Wave 1: validation-utils.ts, config parsing, CLI commands
+- Wave 2: github-adapter.ts, build scripts
+- Wave 3: jira-adapter.ts
+- Wave 4: template.ts, utils.ts, format.ts
 
-**Wave 4 (05-04): Content Files Cleanup**
-- Fixed 76 class names from broken concatenation to proper PascalCase (e.g., `CodelintSkill` → `CodeLintSkill`)
-- Added `import type` to 82 content files for type-only imports
-- No content files import `AgentConfig`/`SkillConfig`/`RuleConfig` as runtime values anymore
+## Execution Summary
 
-**Pre-existing issues (not introduced by Phase 5):**
-- Build script fails on `lu.skill.ts` template literal parsing (backticks in markdown content)
-- 6 doctor tests fail in full suite due to `mock.module` cross-contamination
+### Phase 6 Execution Results
+
+**Wave 1 (06-01)** — Input Validation & Prototype Pollution ✅
+- Added `sanitizeJsonParse()` / `safeSanitizeJsonParse()` to strip `__proto__`, `constructor`, `prototype` recursively
+- Added Zod schemas for Jira env var validation (HTTPS URL, email format, non-empty token)
+- Applied sanitizeJsonParse to wizard.ts, manifest.ts, config-validation.ts
+- Fixed CLI arg validation gaps in createConfigFromArgs() and loadConfigFromFile()
+- Created self-contained `packages/luca-framework/src/utils/sanitize.ts` for cross-package use
+- 20 new tests (security-validation.test.ts, jira-config-validation.test.ts)
+
+**Wave 2 (06-02)** — Shell Command Hardening ✅
+- Added validateBranchName(), validateIssueNumber() to github-adapter.ts
+- Added `--` end-of-options markers in execa calls
+- Migrated build scripts from child_process to Bun.spawnSync
+- Added githubIssueResponseSchema Zod schema, replaced TypeScript cast
+- Sanitized parseGhError() to redact credential patterns
+- 16 new tests (github-security.test.ts)
+
+**Wave 3 (06-03)** — HTTP & Credential Safety ✅
+- Added JIRA_TICKET_ID_PATTERN regex validation before URL construction
+- Added defense-in-depth HTTPS enforcement in getTicket() and validate()
+- Added sanitizeJiraError() stripping Basic auth, Bearer tokens, Base64, token= patterns
+- Added jiraIssueResponseSchema Zod schema, replaced TypeScript `as` cast with safeParse
+- 21 new tests (jira-security.test.ts)
+
+**Wave 4 (06-04)** — Template Rendering Hardening ✅
+- Installed js-yaml dependency for proper YAML escaping
+- Added sanitizeTemplate() restricting EJS to `<%= %>` only
+- Replaced manual formatFrontmatter() with js-yaml dump()
+- Added sanitizeTagName() for XML tag name sanitization in toCursorFormat()
+- Added assertWithinDirectory() path traversal prevention in copyTemplates()
+- Fixed 4 downstream test assertions for js-yaml string quoting change
+- 19 new tests (template-security.test.ts, format-security.test.ts, utils-yaml-security.test.ts)
+
+**Wave 5 (06-05)** — Dependency Audit ✅
+- `bun audit` reports "No vulnerabilities found"
+- `bun outdated` reports no outdated packages
+
+### Test Results
+- **433 pass** / 6 fail (all pre-existing in executeDoctor and configValidationCheck)
+- **76 new security tests** added across Phase 6
+- Total tests grew from ~393 (end of Wave 2) to 439
+
+### Candidate Learnings
+- Cross-package imports (src/shared → packages/luca-framework) don't work; need self-contained modules
+- js-yaml quoting changes propagate widely — any string formatting change needs downstream test search
+- Wave-parallel execution works well when file ownership is clearly separated
+- Zod v4 `.safeParse()` pattern is clean for runtime validation at API boundaries

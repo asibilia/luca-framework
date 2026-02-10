@@ -33,7 +33,7 @@ Create a new feature branch linked to a ticket.
 - Quick fixes, refactoring, documentation updates
 - Any work not tied to a specific ticket
 
-Configure your project's ticket pattern in `.planning/config.json` or during setup with \`luca init\`.
+Configure your project's ticket pattern in \`.planning/config.json\` or during setup with \`luca init\`.
 
 ## Instructions
 

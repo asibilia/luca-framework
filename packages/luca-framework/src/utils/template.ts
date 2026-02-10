@@ -1,5 +1,5 @@
 import { readFile, writeFile, readdir, copyFile } from 'fs/promises';
-import { join, dirname, relative } from 'pathe';
+import { join, dirname, relative, resolve } from 'pathe';
 import { render } from 'ejs';
 import { ensureDir } from 'fs-extra';
 import { fileURLToPath } from 'url';
@@ -7,12 +7,29 @@ import { createBrandingContext } from './branding';
 import type { LucaConfig } from '../types';
 
 /**
+ * Sanitize EJS template content to only allow safe output tags.
+ *
+ * - Converts <%- %> (unescaped output) to <%= %> (escaped output)
+ * - Strips <% %> (code execution) tags entirely
+ * - Leaves <%= %> (safe output) unchanged
+ */
+function sanitizeTemplate(content: string): string {
+  // Step 1: Convert <%- (unescaped) to <%= (escaped)
+  let sanitized = content.replace(/<%-([\s\S]*?)%>/g, '<%=$1%>')
+  // Step 2: Strip <% %> code execution tags (NOT <%= output tags)
+  sanitized = sanitized.replace(/<%(?!=)([\s\S]*?)%>/g, '')
+  return sanitized
+}
+
+/**
  * Process template content - replace EJS variables.
  *
  * Uses EJS syntax for variable substitution:
- * - `<%= var %>` - Output escaped value
- * - `<%- var %>` - Output unescaped value
- * - `<% code %>` - Execute code
+ * - `<%= var %>` - Output escaped value (safe, HTML-escaped)
+ *
+ * For security, only `<%= %>` output tags are supported:
+ * - `<%- %>` (unescaped output) is automatically converted to `<%= %>`
+ * - `<% %>` (code execution) tags are stripped entirely
  *
  * @param templateContent - Raw template string with EJS syntax
  * @param context - Context object with variables to substitute
@@ -31,10 +48,10 @@ export async function processTemplate(
   templateContent: string,
   context: Record<string, unknown>
 ): Promise<string> {
-  return render(templateContent, context, {
-    // Strict mode - throw on undefined variables
+  const safeContent = sanitizeTemplate(templateContent)
+  return render(safeContent, context, {
     strict: false,
-  });
+  })
 }
 
 /**
@@ -130,6 +147,19 @@ function isTemplateFile(filename: string): boolean {
 }
 
 /**
+ * Verify that a resolved path is within the expected base directory.
+ * Prevents path traversal via '../' in variable values.
+ */
+function assertWithinDirectory(filePath: string, baseDir: string): void {
+  const resolved = resolve(filePath)
+  const base = resolve(baseDir)
+  const rel = relative(base, resolved)
+  if (rel.startsWith('..') || resolve(base, rel) !== resolved) {
+    throw new Error(`Path traversal detected: ${filePath} escapes ${baseDir}`)
+  }
+}
+
+/**
  * Copy and process templates from source to destination.
  *
  * Processes template files with EJS substitution and copies
@@ -174,6 +204,7 @@ export async function copyTemplates(options: {
     const sourcePath = join(sourceDir, relPath);
     const processedRelPath = processFilename(relPath, context);
     const destPath = join(destDir, processedRelPath);
+    assertWithinDirectory(destPath, destDir);
 
     // Ensure destination directory exists
     await ensureDir(dirname(destPath));

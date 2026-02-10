@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 <main>
+<main>
 # Luca New Project
 
 Initialize a new project through unified flow: questioning → research (optional) → requirements → roadmap.
@@ -552,7 +553,7 @@ Use AskQuestion tool:
    Add to Project Reference section:
 
    - `**GitHub Issue:** #{issue_number}`
-   - `**Branch:** \\`{issue_number}--{project-slug}\\``
+   - `**Branch:** \`{issue_number}--{project-slug}\``
 
 4. **Commit and push:**
 
@@ -618,4 +619,5 @@ Present completion with next steps:
 
 - `/lu-plan-phase 1` — Skip discussion, plan directly
 - `/lu-map-codebase` — Map existing codebase first (brownfield)
+</main>
 </main>

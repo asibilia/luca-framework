@@ -4,6 +4,7 @@ Preview AI planning assumptions before execution. Use when user wants to see wha
 
 ## main
 
+<main>
 # Luca List Phase Assumptions
 
 See what AI is planning to do before it starts.
@@ -89,3 +90,4 @@ Shows AI's intended approach for a phase so you can course-correct if needed.
 **Also available:**
 - `/lu-discuss-phase {phase}` — Clarify vision if assumptions seem off
 - `/lu-progress` — Check overall project status
+</main>

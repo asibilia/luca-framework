@@ -4,6 +4,7 @@ description: "Check Luca project progress, show context, and route to next actio
 ---
 
 <main>
+<main>
 # Luca Progress
 
 Check project progress, summarize recent work and what's ahead, then intelligently route to the next action - either executing an existing plan or creating the next one.
@@ -252,7 +253,7 @@ Ready to plan the next milestone.
 - [ ] What's next clearly explained
 - [ ] Smart routing: /lu-execute-phase if plans exist, /lu-plan-phase if not
 - [ ] User confirms before any action
-- [ ] Seamless handoff to appropriate command
+- [ ] Seamless handoff to appropriate vlcn command
 
 ## Next Steps
 
@@ -263,4 +264,5 @@ This skill provides intelligent routing based on project state. The "Route" sect
 - `/lu-help` — See all available commands
 - `/lu-settings` — Adjust workflow configuration
 - `/lu-pause-work` — Create handoff if stopping work
+</main>
 </main>

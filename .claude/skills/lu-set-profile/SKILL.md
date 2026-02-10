@@ -4,6 +4,7 @@ Quick switch model profile for Luca agents. Use when user wants to change model 
 
 ## main
 
+<main>
 # Luca Set Profile
 
 Quick switch model profile for Luca agents.
@@ -68,3 +69,4 @@ Profile updated to `{profile}`. Takes effect on next agent invocation.
 **Common follow-ups:**
 - `/lu-progress` — Continue your work
 - `/lu-settings` — Adjust other settings
+</main>

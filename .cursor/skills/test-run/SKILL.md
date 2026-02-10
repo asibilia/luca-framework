@@ -4,6 +4,7 @@ description: "Run tests with optional filter pattern. Use when the user wants to
 ---
 
 <main>
+<main>
 # Test Run
 
 Run tests using Bun's built-in test runner.
@@ -32,4 +33,5 @@ bun test --cwd packages-dev/task-archive
 
 - Coverage reporting enabled by default
 - Setup file: `scripts/bun-test-setup.ts`
+</main>
 </main>

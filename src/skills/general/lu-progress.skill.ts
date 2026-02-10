@@ -81,8 +81,8 @@ if [ -n "$PR_JSON" ]; then
 
   # Count comments
   REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
-  REVIEW_COMMENTS=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}/comments" --jq 'length' 2>/dev/null || echo "0")
-  ISSUE_COMMENTS=$(gh api "/repos/${REPO}/issues/${PR_NUMBER}/comments" --jq '[.[] | select(.user.type != "Bot")] | length' 2>/dev/null || echo "0")
+  REVIEW_COMMENTS=$(gh api "/repos/\${REPO}/pulls/\${PR_NUMBER}/comments" --jq 'length' 2>/dev/null || echo "0")
+  ISSUE_COMMENTS=$(gh api "/repos/\${REPO}/issues/\${PR_NUMBER}/comments" --jq '[.[] | select(.user.type != "Bot")] | length' 2>/dev/null || echo "0")
 
   TOTAL_PR_COMMENTS=$((REVIEW_COMMENTS + ISSUE_COMMENTS))
   HAS_PR_COMMENTS=$( [ "$TOTAL_PR_COMMENTS" -gt 0 ] && echo "true" || echo "false" )

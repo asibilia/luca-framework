@@ -1,25 +1,18 @@
 /**
  * Shared utilities for Luca Framework
  */
-export function formatFrontmatter(frontmatter: Record<string, unknown>): string {
-  const yamlLines: string[] = ['---'];
+import yaml from 'js-yaml'
 
-  for (const [key, value] of Object.entries(frontmatter)) {
-    if (Array.isArray(value)) {
-      yamlLines.push(`${key}:`);
-      value.forEach(item => yamlLines.push(`  - ${item}`));
-    } else if (typeof value === 'object' && value !== null) {
-      yamlLines.push(`${key}:`);
-      for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
-        yamlLines.push(`  ${subKey}: ${subValue}`);
-      }
-    } else if (typeof value === 'boolean') {
-      yamlLines.push(`${key}: ${value}`);
-    } else {
-      yamlLines.push(`${key}: "${value}"`);
-    }
+export function formatFrontmatter(frontmatter: Record<string, unknown>): string {
+  if (Object.keys(frontmatter).length === 0) {
+    return '---\n---'
   }
-  
-  yamlLines.push('---');
-  return yamlLines.join('\n');
+  const yamlContent = yaml.dump(frontmatter, {
+    indent: 2,
+    lineWidth: -1,
+    quotingType: '"',
+    forceQuotes: false,
+    sortKeys: false,
+  })
+  return `---\n${yamlContent.trimEnd()}\n---`
 }

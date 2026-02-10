@@ -4,6 +4,7 @@ Check Luca project progress, show context, and route to next action. Use when th
 
 ## main
 
+<main>
 # Luca Progress
 
 Check project progress, summarize recent work and what's ahead, then intelligently route to the next action - either executing an existing plan or creating the next one.
@@ -50,7 +51,7 @@ This means a milestone was completed and archived. Go to **Route F** (between mi
 
 ### Step 4: Parse Current Position
 
-- From STATE.md: git context (Jira, issue, branch), current phase, plan number, status, task complexity
+- From STATE.md: git context (ticket, issue, branch), current phase, plan number, status, task complexity
 - Calculate: total plans, completed plans, remaining plans
 - Note any blockers or concerns
 - Check for CONTEXT.md: For phases without PLAN.md files, check if `{phase}-CONTEXT.md` exists
@@ -91,8 +92,8 @@ fi
 **Complexity:** [TRIVIAL/MODERATE/COMPLEX] (if active task)
 
 ## Git Context
-- **Jira:** [PT-#### or None]
-- **Branch:** [PT-####--description] → [ENG-####--release]
+- **Ticket:** [TICKET-ID or None]
+- **Branch:** [TICKET-ID--description] → [RELEASE-ID--release]
 - **Issue:** [#123 or None]
 
 ## PR Status (if open PR exists)
@@ -263,3 +264,4 @@ This skill provides intelligent routing based on project state. The "Route" sect
 - `/lu-help` — See all available commands
 - `/lu-settings` — Adjust workflow configuration
 - `/lu-pause-work` — Create handoff if stopping work
+</main>

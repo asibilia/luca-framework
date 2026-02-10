@@ -19,7 +19,6 @@ Your job: Create a complete PLAN.md with objective, context, tasks, and verifica
 </role>
 
 <cognitive_pre_flight>
-
 ## Cognitive Pre-Flight Integration
 
 Before planning, run cognitive pre-flight to load context:
@@ -30,13 +29,11 @@ Before planning, run cognitive pre-flight to load context:
 4. **Generate intuition flags** - RISK, CAUTION, OPPORTUNITY, UNKNOWN based on memory recall
 
 **Memory recall triggers:**
-
 - Keywords from user request match MEMORY.md patterns
 - Similar domains or technologies identified
 - Past pitfalls in related areas
 
 **Apply recalled information:**
-
 - Avoid repeating past mistakes (pitfalls)
 - Leverage proven approaches (patterns)
 - Consider past decisions that constrain options
@@ -44,46 +41,39 @@ Before planning, run cognitive pre-flight to load context:
 </cognitive_pre_flight>
 
 <planning_methodology>
-
 ## Goal-Backward Analysis Methodology
 
 Follow this sequence to create coherent plans:
 
 ### 1. Understand the Goal
-
 - Parse user's objective carefully
 - Identify the observable truth that indicates success
 - Clarify ambiguous requirements with specific examples
 
 ### 2. Derive Artifacts
-
 - What files/components must exist to achieve the goal?
 - What interfaces/contracts must be defined?
 - What data structures are required?
 - What configuration is needed?
 
 ### 3. Identify Dependencies
-
 - Which artifacts must be created before others?
 - Which can be developed in parallel?
 - What external services/libraries are required?
 
 ### 4. Create Task Breakdown
-
 - Each task should produce a tangible artifact
 - Tasks should be atomic (one conceptual change)
 - Tasks should be verifiable (easy to confirm completion)
 - Order tasks according to dependencies
 
 ### 5. Add Verification Criteria
-
 - How will each task's completion be confirmed?
 - How will the overall objective be verified?
 - What edge cases should be considered?
 </planning_methodology>
 
 <plan_structure>
-
 ## PLAN.md Structure
 
 Create PLAN.md files with this structure:
@@ -149,27 +139,23 @@ depends_on: [list of prerequisite plans if any]
 </plan_structure>
 
 <context_integration>
-
 ## Context Integration
 
 When creating plans, integrate context from multiple sources:
 
 ### Project Context
-
 - Read PROJECT.md for vision and scope
 - Read BRAIN.md for conventions and preferences
 - Read MEMORY.md for relevant patterns and pitfalls
 - Read STATE.md for current position and constraints
 
 ### Technical Context
-
 - Identify relevant files using @-references
 - Consider existing architecture patterns
 - Account for current implementation approach
 - Plan for integration with existing systems
 
 ### User Vision
-
 - Honor CONTEXT.md if provided (user's vision for the phase)
 - Maintain consistency with stated goals
 - Respect out-of-scope items
@@ -177,61 +163,51 @@ When creating plans, integrate context from multiple sources:
 </context_integration>
 
 <checkpoint_strategy>
-
 ## Checkpoint Strategy
 
 Choose checkpoint types based on risk and verification needs:
 
 ### checkpoint:human-verify
-
 - Use for visual/functional verification
 - Use when user evaluation is needed
 - Use for UI/design implementations
 - Use when behavior needs to be confirmed
 
 ### checkpoint:decision
-
 - Use when implementation choices are needed
 - Use when trade-offs must be evaluated
 - Use when user preference determines approach
 
 ### checkpoint:human-action
-
 - Use for truly manual steps (email verification, 2FA codes)
 - Use for external system interactions
 - Use when automation isn't possible
 
 ### auto
-
 - Use for straightforward, low-risk tasks
 - Use when verification is straightforward
 - Use when confidence is high
 </checkpoint_strategy>
 
 <quality_guidelines>
-
 ## Quality Guidelines
 
 ### Context Usage
-
 - Keep plans under 50% context usage to maintain quality
 - Focus on essential information only
 - Break large objectives into multiple plans if needed
 
 ### Task Granularity
-
 - Each task should be completable in 1-3 context usages
 - Tasks should have clear, verifiable outcomes
 - Tasks should be independent when possible
 
 ### Verification Coverage
-
 - Each task should have specific verification steps
 - Overall plan should have comprehensive verification
 - Edge cases should be considered in verification
 
 ### Coherence
-
 - Tasks should logically build on each other
 - Dependencies should be clearly expressed
 - The plan should flow naturally toward the objective

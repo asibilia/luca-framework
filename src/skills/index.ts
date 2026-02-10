@@ -4,42 +4,42 @@
  */
 
 // Import all general skills
-import { CodelintSkill } from './general/code-lint.skill';
-import { CodetypecheckSkill } from './general/code-typecheck.skill';
-import { GitcommitSkill } from './general/git-commit.skill';
-import { GitfeatureSkill } from './general/git-feature.skill';
-import { GitprSkill } from './general/git-pr.skill';
-import { JiraissueSkill } from './general/jira-issue.skill';
-import { LuaddphaseSkill } from './general/lu-add-phase.skill';
-import { LuaddtodoSkill } from './general/lu-add-todo.skill';
-import { LuaddressprSkill } from './general/lu-address-pr.skill';
-import { LuauditmilestoneSkill } from './general/lu-audit-milestone.skill';
-import { LuchecktodosSkill } from './general/lu-check-todos.skill';
-import { LuchooseSkill } from './general/lu-choose.skill';
-import { LucompletemilestoneSkill } from './general/lu-complete-milestone.skill';
-import { LudebugSkill } from './general/lu-debug.skill';
-import { LudiscussphaseSkill } from './general/lu-discuss-phase.skill';
-import { LuexecutephaseSkill } from './general/lu-execute-phase.skill';
-import { LuhelpSkill } from './general/lu-help.skill';
-import { LuinsertphaseSkill } from './general/lu-insert-phase.skill';
-import { LupauseworkSkill } from './general/lu-pause-work.skill';
-import { LuresumeworkSkill } from './general/lu-resume-work.skill';
-import { LuresearchphaseSkill } from './general/lu-research-phase.skill';
-import { LusetprofileSkill } from './general/lu-set-profile.skill';
-import { LuquickSkill } from './general/lu-quick.skill';
-import { LuplanmilestonegapsSkill } from './general/lu-plan-milestone-gaps.skill';
-import { LuplanphaseSkill } from './general/lu-plan-phase.skill';
-import { LuprogressSkill } from './general/lu-progress.skill';
-import { LulistphaseassumptionsSkill } from './general/lu-list-phase-assumptions.skill';
-import { LuverifyworkSkill } from './general/lu-verify-work.skill';
-import { LusettingsSkill } from './general/lu-settings.skill';
-import { LunewmilestoneSkill } from './general/lu-new-milestone.skill';
-import { LunewprojectSkill } from './general/lu-new-project.skill';
-import { LuremovephaseSkill } from './general/lu-remove-phase.skill';
-import { WorkflowstartSkill } from './general/workflow-start.skill';
-import { TestrunSkill } from './general/test-run.skill';
-import { QaconsolidateSkill } from './general/qa-consolidate.skill';
-import { LuupdateSkill } from './general/lu-update.skill';
+import { CodeLintSkill } from './general/code-lint.skill';
+import { CodeTypecheckSkill } from './general/code-typecheck.skill';
+import { GitCommitSkill } from './general/git-commit.skill';
+import { GitFeatureSkill } from './general/git-feature.skill';
+import { GitPrSkill } from './general/git-pr.skill';
+import { JiraIssueSkill } from './general/jira-issue.skill';
+import { LuAddPhaseSkill } from './general/lu-add-phase.skill';
+import { LuAddTodoSkill } from './general/lu-add-todo.skill';
+import { LuAddressPrSkill } from './general/lu-address-pr.skill';
+import { LuAuditMilestoneSkill } from './general/lu-audit-milestone.skill';
+import { LuCheckTodosSkill } from './general/lu-check-todos.skill';
+import { LuChooseSkill } from './general/lu-choose.skill';
+import { LuCompleteMilestoneSkill } from './general/lu-complete-milestone.skill';
+import { LuDebugSkill } from './general/lu-debug.skill';
+import { LuDiscussPhaseSkill } from './general/lu-discuss-phase.skill';
+import { LuExecutePhaseSkill } from './general/lu-execute-phase.skill';
+import { LuHelpSkill } from './general/lu-help.skill';
+import { LuInsertPhaseSkill } from './general/lu-insert-phase.skill';
+import { LuPauseWorkSkill } from './general/lu-pause-work.skill';
+import { LuResumeWorkSkill } from './general/lu-resume-work.skill';
+import { LuResearchPhaseSkill } from './general/lu-research-phase.skill';
+import { LuSetProfileSkill } from './general/lu-set-profile.skill';
+import { LuQuickSkill } from './general/lu-quick.skill';
+import { LuPlanMilestoneGapsSkill } from './general/lu-plan-milestone-gaps.skill';
+import { LuPlanPhaseSkill } from './general/lu-plan-phase.skill';
+import { LuProgressSkill } from './general/lu-progress.skill';
+import { LuListPhaseAssumptionsSkill } from './general/lu-list-phase-assumptions.skill';
+import { LuVerifyWorkSkill } from './general/lu-verify-work.skill';
+import { LuSettingsSkill } from './general/lu-settings.skill';
+import { LuNewMilestoneSkill } from './general/lu-new-milestone.skill';
+import { LuNewProjectSkill } from './general/lu-new-project.skill';
+import { LuRemovePhaseSkill } from './general/lu-remove-phase.skill';
+import { WorkflowStartSkill } from './general/workflow-start.skill';
+import { TestRunSkill } from './general/test-run.skill';
+import { QaConsolidateSkill } from './general/qa-consolidate.skill';
+import { LuUpdateSkill } from './general/lu-update.skill';
 
 // Export base skill class
 export { BaseSkillImpl } from './base/base-skill';
@@ -49,40 +49,40 @@ export type { BaseSkill, SkillConfig, SkillFrontmatter, SkillSection } from './t
 
 // Registry mapping skill names to their classes for bulk processing
 export const skillRegistry = {
-  'code-lint': CodelintSkill,
-  'code-typecheck': CodetypecheckSkill,
-  'git-commit': GitcommitSkill,
-  'git-feature': GitfeatureSkill,
-  'git-pr': GitprSkill,
-  'jira-issue': JiraissueSkill,
-  'lu-add-phase': LuaddphaseSkill,
-  'lu-add-todo': LuaddtodoSkill,
-  'lu-address-pr': LuaddressprSkill,
-  'lu-audit-milestone': LuauditmilestoneSkill,
-  'lu-check-todos': LuchecktodosSkill,
-  'lu-choose': LuchooseSkill,
-  'lu-complete-milestone': LucompletemilestoneSkill,
-  'lu-debug': LudebugSkill,
-  'lu-discuss-phase': LudiscussphaseSkill,
-  'lu-execute-phase': LuexecutephaseSkill,
-  'lu-help': LuhelpSkill,
-  'lu-insert-phase': LuinsertphaseSkill,
-  'lu-pause-work': LupauseworkSkill,
-  'lu-resume-work': LuresumeworkSkill,
-  'lu-research-phase': LuresearchphaseSkill,
-  'lu-set-profile': LusetprofileSkill,
-  'lu-quick': LuquickSkill,
-  'lu-plan-milestone-gaps': LuplanmilestonegapsSkill,
-  'lu-plan-phase': LuplanphaseSkill,
-  'lu-progress': LuprogressSkill,
-  'lu-list-phase-assumptions': LulistphaseassumptionsSkill,
-  'lu-verify-work': LuverifyworkSkill,
-  'lu-settings': LusettingsSkill,
-  'lu-new-milestone': LunewmilestoneSkill,
-  'lu-new-project': LunewprojectSkill,
-  'lu-remove-phase': LuremovephaseSkill,
-  'workflow-start': WorkflowstartSkill,
-  'test-run': TestrunSkill,
-  'qa-consolidate': QaconsolidateSkill,
-  'lu-update': LuupdateSkill,
+  'code-lint': CodeLintSkill,
+  'code-typecheck': CodeTypecheckSkill,
+  'git-commit': GitCommitSkill,
+  'git-feature': GitFeatureSkill,
+  'git-pr': GitPrSkill,
+  'jira-issue': JiraIssueSkill,
+  'lu-add-phase': LuAddPhaseSkill,
+  'lu-add-todo': LuAddTodoSkill,
+  'lu-address-pr': LuAddressPrSkill,
+  'lu-audit-milestone': LuAuditMilestoneSkill,
+  'lu-check-todos': LuCheckTodosSkill,
+  'lu-choose': LuChooseSkill,
+  'lu-complete-milestone': LuCompleteMilestoneSkill,
+  'lu-debug': LuDebugSkill,
+  'lu-discuss-phase': LuDiscussPhaseSkill,
+  'lu-execute-phase': LuExecutePhaseSkill,
+  'lu-help': LuHelpSkill,
+  'lu-insert-phase': LuInsertPhaseSkill,
+  'lu-pause-work': LuPauseWorkSkill,
+  'lu-resume-work': LuResumeWorkSkill,
+  'lu-research-phase': LuResearchPhaseSkill,
+  'lu-set-profile': LuSetProfileSkill,
+  'lu-quick': LuQuickSkill,
+  'lu-plan-milestone-gaps': LuPlanMilestoneGapsSkill,
+  'lu-plan-phase': LuPlanPhaseSkill,
+  'lu-progress': LuProgressSkill,
+  'lu-list-phase-assumptions': LuListPhaseAssumptionsSkill,
+  'lu-verify-work': LuVerifyWorkSkill,
+  'lu-settings': LuSettingsSkill,
+  'lu-new-milestone': LuNewMilestoneSkill,
+  'lu-new-project': LuNewProjectSkill,
+  'lu-remove-phase': LuRemovePhaseSkill,
+  'workflow-start': WorkflowStartSkill,
+  'test-run': TestRunSkill,
+  'qa-consolidate': QaConsolidateSkill,
+  'lu-update': LuUpdateSkill,
 };
