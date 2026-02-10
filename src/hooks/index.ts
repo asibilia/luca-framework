@@ -39,6 +39,22 @@ export const hookRegistry: Record<string, HookDefinition> = {
     async: false,
     statusMessage: 'Formatting...',
   },
+  'post-edit-typecheck': {
+    event: 'PostToolUse',
+    matcher: 'Edit|Write',
+    script: 'post-edit-typecheck.sh',
+    timeout: 30,
+    async: true,
+    statusMessage: 'Type-checking...',
+  },
+  'pre-commit-gate': {
+    event: 'PreToolUse',
+    matcher: 'Bash',
+    script: 'pre-commit-gate.sh',
+    timeout: 120,
+    async: false,
+    statusMessage: 'Running pre-commit checks...',
+  },
 };
 
 /**

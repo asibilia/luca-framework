@@ -38,4 +38,36 @@ describe('hookRegistry', () => {
       }
     }
   });
+
+  test('has exactly 3 entries', () => {
+    expect(Object.keys(hookRegistry).length).toBe(3);
+  });
+
+  test('post-edit-typecheck is async', () => {
+    expect(hookRegistry['post-edit-typecheck'].async).toBe(true);
+  });
+
+  test('pre-commit-gate is synchronous', () => {
+    expect(hookRegistry['pre-commit-gate'].async).toBe(false);
+  });
+
+  test('post-edit hooks share the same event and matcher', () => {
+    const format = hookRegistry['post-edit-format'];
+    const typecheck = hookRegistry['post-edit-typecheck'];
+    expect(format.event).toBe(typecheck.event);
+    expect(format.matcher).toBe(typecheck.matcher);
+  });
+
+  test('pre-commit-gate matches Bash tool', () => {
+    expect(hookRegistry['pre-commit-gate'].event).toBe('PreToolUse');
+    expect(hookRegistry['pre-commit-gate'].matcher).toBe('Bash');
+  });
+
+  test('generateHooksConfig groups same-event-same-matcher hooks', () => {
+    const config = generateHooksConfig(hookRegistry);
+    // PostToolUse should have 1 group with 2 hooks (format + typecheck)
+    const postToolUse = config.PostToolUse as Array<{ hooks: unknown[] }>;
+    expect(postToolUse.length).toBe(1);
+    expect(postToolUse[0].hooks.length).toBe(2);
+  });
 });
