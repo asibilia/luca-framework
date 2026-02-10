@@ -346,6 +346,88 @@ git add .
 bun run commit --message="orchestrator corrections" --type=fix --scope={phase} --no-push --skip-checks
 ```
 
+### 6.5. Run Verification Harness
+
+**Run automated quality checks before agent verification.**
+
+Run the harness runner:
+
+```bash
+# Run harness (outputs JSON to stdout)
+HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+HARNESS_EXIT=$?
+echo "$HARNESS_OUTPUT"
+```
+
+Parse the JSON output:
+
+- If `status: "passed"` -- display results and continue to Step 7
+- If `status: "failed"` -- enter failure-to-fix loop (Step 6.6)
+
+Display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► VERIFICATION HARNESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Check     | Status | Errors | Duration |
+|-----------|--------|--------|----------|
+| {name}    | {pass/fail} | {N} | {Ns}  |
+
+Overall: {PASSED/FAILED}
+```
+
+### 6.6. Failure-to-Fix Loop
+
+**When harness checks fail, attempt automated repair.**
+
+Read maxFixIterations from harness config (default 3).
+
+For each iteration (up to max):
+
+1. Extract structured errors from harness JSON output
+2. Spawn lu-executor sub-agent with fix instructions:
+
+```python
+Task(
+  prompt="""
+<fix_context>
+**Harness failures (iteration {N}/{max}):**
+{structured_errors_json}
+
+**Instructions:**
+- Fix ONLY the errors listed above
+- Do NOT refactor or improve unrelated code
+- Do NOT modify test expectations to make tests pass
+- Commit fixes atomically
+</fix_context>
+
+Fix these harness failures.
+""",
+  subagent_type="lu-executor",
+  model="{executor_model}",
+  description="Fix harness failures (iteration {N})"
+)
+```
+
+3. After executor returns, re-run harness:
+
+```bash
+HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+```
+
+4. If passed: display success, continue to Step 7
+5. If still failing:
+   - Compare error count to previous iteration
+   - If errors increased or unchanged for 2 consecutive iterations: abort loop early
+   - If max iterations exhausted: log remaining failures, continue to Step 7 with harness failures as context for lu-verifier
+
+**Pass harness results to Step 7 verifier context** regardless of outcome. Include:
+- `harness_status`: passed | failed_after_fixes
+- `harness_checks`: array of check results
+- `remaining_errors`: structured errors (if any)
+
 ### 7. Verify Phase Goal
 
 **MANDATORY**: You MUST spawn a lu-verifier sub-agent. Do NOT attempt to verify yourself.
@@ -383,6 +465,11 @@ Task(
 **Working Memory:**
 {working_content}
 
+**Harness Results:**
+{harness_status}
+{harness_checks_summary}
+{remaining_errors_if_any}
+
 </verification_context>
 
 <verification_levels>
@@ -395,6 +482,8 @@ Task(
 - Create VERIFICATION.md in phase directory
 - Return status: passed | human_needed | gaps_found
 - List any gaps or issues found
+- If harness passed: Note "All automated checks passed" in your report under an "Automated Checks" section.
+- If harness failed after fix attempts: Include remaining mechanical errors as gaps in your verification.
 </output_requirements>
 
 Verify the phase goal was achieved using goal-backward analysis.

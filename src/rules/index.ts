@@ -10,6 +10,7 @@ import { AtlassianMCPintegrRule } from './general/atlassian-mcp.rule';
 import { UseBunpackagemanaRule } from './general/bun-preference.rule';
 import { GuidelinesforcreatRule } from './general/cursor_rules.rule';
 import { FunctionalAPIReuseRule } from './general/functional-api-reuse.rule';
+import { HarnessVerificationRule } from './general/harness-verification.rule';
 import { HookSkillBoundaryRule } from './general/hook-skill-boundary.rule';
 import { StandardsforimportRule } from './general/import-standards.rule';
 import { LucaworkflowsystemRule } from './general/lu-workflow.rule';
@@ -44,6 +45,7 @@ export const ruleRegistry = {
   'dev_workflow': DevWorkflowRule,
   'file-naming': FileNamingRule,
   'functional-api-reuse': FunctionalAPIReuseRule,
+  'harness-verification': HarnessVerificationRule,
   'hook-skill-boundary': HookSkillBoundaryRule,
   'import-standards': StandardsforimportRule,
   'lodash-preference': LodashPreferenceRule,
