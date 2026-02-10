@@ -30,8 +30,8 @@ describe('rule registry completeness', () => {
     }
   });
 
-  test('has exactly 20 entries', () => {
-    expect(Object.keys(ruleRegistry).length).toBe(20);
+  test('has exactly 21 entries', () => {
+    expect(Object.keys(ruleRegistry).length).toBe(21);
   });
 
   test('every entry can be instantiated', () => {
