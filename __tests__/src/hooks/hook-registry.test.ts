@@ -39,8 +39,8 @@ describe('hookRegistry', () => {
     }
   });
 
-  test('has exactly 3 entries', () => {
-    expect(Object.keys(hookRegistry).length).toBe(3);
+  test('has exactly 5 entries', () => {
+    expect(Object.keys(hookRegistry).length).toBe(5);
   });
 
   test('post-edit-typecheck is async', () => {
@@ -69,5 +69,21 @@ describe('hookRegistry', () => {
     const postToolUse = config.PostToolUse as Array<{ hooks: unknown[] }>;
     expect(postToolUse.length).toBe(1);
     expect(postToolUse[0].hooks.length).toBe(2);
+  });
+
+  test('context-monitor fires on Stop event', () => {
+    expect(hookRegistry['context-monitor'].event).toBe('Stop');
+    expect(hookRegistry['context-monitor'].matcher).toBeUndefined();
+  });
+
+  test('session-persist fires on SessionEnd event', () => {
+    expect(hookRegistry['session-persist'].event).toBe('SessionEnd');
+    expect(hookRegistry['session-persist'].matcher).toBeUndefined();
+  });
+
+  test('generateHooksConfig produces 4 event types', () => {
+    const config = generateHooksConfig(hookRegistry);
+    const events = Object.keys(config).sort();
+    expect(events).toEqual(['PostToolUse', 'PreToolUse', 'SessionEnd', 'Stop']);
   });
 });
