@@ -22,6 +22,7 @@
 import { agentRegistry } from '../src/agents/index';
 import { ruleRegistry } from '../src/rules/index';
 import { skillRegistry } from '../src/skills/index';
+import { hookRegistry, generateHooksConfig } from '../src/hooks/index';
 import type { BaseAgent } from '../src/agents/types/agent.types';
 import type { BaseSkill } from '../src/skills/types/skill.types';
 import type { BaseRule } from '../src/rules/types/rule.types';
@@ -134,11 +135,72 @@ async function main() {
   console.log('✓ Generated .claude/rules/lu-workflow.md');
   ruleCount++;
 
+  // --- Hooks (Claude-only) ---
+
+  const hooksDir = path.join(claudeDir, 'hooks');
+  await ensureDir(hooksDir);
+
+  // Clean existing hook scripts
+  const removedHooks = await cleanDirectory(hooksDir, ['.sh']);
+  if (removedHooks.length) console.log(`Cleaned ${removedHooks.length} stale hook scripts`);
+
+  let hookCount = 0;
+
+  // Copy hook scripts from src/hooks/scripts/ to .claude/hooks/
+  const hookScriptsDir = path.join(process.cwd(), 'src', 'hooks', 'scripts');
+  for (const [hookName, hookDef] of Object.entries(hookRegistry)) {
+    try {
+      const srcPath = path.join(hookScriptsDir, hookDef.script);
+      const destPath = path.join(hooksDir, hookDef.script);
+
+      const srcFile = Bun.file(srcPath);
+      if (!(await srcFile.exists())) {
+        console.error(`✗ Hook script not found: src/hooks/scripts/${hookDef.script}`);
+        continue;
+      }
+
+      await Bun.write(destPath, srcFile);
+
+      // Make script executable
+      const { exitCode } = Bun.spawnSync(['chmod', '+x', destPath]);
+      if (exitCode !== 0) {
+        console.error(`✗ Failed to chmod +x ${destPath}`);
+      }
+
+      console.log(`✓ Generated .claude/hooks/${hookDef.script}`);
+      hookCount++;
+    } catch (error) {
+      console.error(`✗ Failed to generate .claude/hooks/${hookDef.script}:`, error);
+    }
+  }
+
+  // Generate .claude/settings.json with hooks configuration
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  let existingSettings: Record<string, unknown> = {};
+
+  // Preserve any existing settings (but NOT from settings.local.json)
+  try {
+    const settingsFile = Bun.file(settingsPath);
+    if (await settingsFile.exists()) {
+      existingSettings = JSON.parse(await settingsFile.text());
+    }
+  } catch {
+    // File doesn't exist or is invalid JSON -- start fresh
+  }
+
+  // Merge hooks config into settings
+  const hooksConfig = generateHooksConfig(hookRegistry);
+  existingSettings.hooks = hooksConfig;
+
+  await Bun.write(settingsPath, JSON.stringify(existingSettings, null, 2) + '\n');
+  console.log(`✓ Generated .claude/settings.json with ${hookCount} hook(s)`);
+
   // Summary
   console.log(`\n=== Claude Build Summary ===`);
   console.log(`Agents: ${agentCount}`);
   console.log(`Skills: ${skillCount}`);
   console.log(`Rules:  ${ruleCount}`);
+  console.log(`Hooks:  ${hookCount} (Claude-only)`);
 }
 
 main().catch((error) => {
