@@ -2,7 +2,7 @@
  * Base class for all rules in the Luca Framework
  */
 import { BaseRule, RuleConfig } from '../types/rule.types';
-import { formatFrontmatter } from '../../shared/utils';
+import { toCursorFormat, toClaudeFormat } from '../../shared/format';
 import { ruleConfigSchema } from '../types/rule.schemas';
 
 export abstract class BaseRuleImpl implements BaseRule {
@@ -27,40 +27,11 @@ export abstract class BaseRuleImpl implements BaseRule {
     return this._config.frontmatter.description;
   }
 
-  /**
-   * Converts the rule to Cursor-compatible format (Markdown with frontmatter)
-   */
   toCursorFormat(): string {
-    const frontmatter = formatFrontmatter(this._config.frontmatter);
-    const sections = this._config.sections
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(section => {
-        if (section.title) {
-          return `\n<${section.title.toLowerCase()}>\n${section.content}\n</${section.title.toLowerCase()}>\n`;
-        }
-        return section.content;
-      })
-      .join('');
-
-    return `${frontmatter}\n\n${sections.trim()}`;
+    return toCursorFormat(this._config.frontmatter, this._config.sections);
   }
 
-  /**
-   * Converts the rule to Claude-compatible format
-   */
   toClaudeFormat(): string {
-    // Claude format might be different - for now, using similar structure
-    const sections = this._config.sections
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(section => {
-        if (section.title) {
-          return `## ${section.title}\n\n${section.content}\n\n`;
-        }
-        return `${section.content}\n\n`;
-      })
-      .join('')
-      .trim();
-
-    return `# ${this.description}\n\n${sections}`;
+    return toClaudeFormat(`# ${this.description}`, this._config.sections);
   }
 }

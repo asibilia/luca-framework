@@ -3,13 +3,13 @@
  */
 
 // Import Zod schemas
-export type { SkillFrontmatterSchema, SkillSectionSchema, SkillConfigSchema, BaseSkillSchema } from './skill.schemas';
+export type { SkillFrontmatterSchema, SkillSectionSchema, SkillConfigSchema } from './skill.schemas';
 
 export interface SkillFrontmatter {
   name: string;
   description: string;
   'disable-model-invocation'?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SkillSection {

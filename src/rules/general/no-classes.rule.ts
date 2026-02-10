@@ -2,10 +2,10 @@
  * Prohibit class usage in favor of functional programming patterns
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Prohibit-class-usage rule configuration
-const ProhibitclassusageConfig: RuleConfig = {
+const noClassesConfig: RuleConfig = {
   frontmatter: {
     description: `Prohibit class usage in favor of functional programming patterns`,
     globs: ['packages-ui/**/*.ts', 'packages-ui/**/*.tsx'],
@@ -192,8 +192,8 @@ Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding sta
   ]
 };
 
-export class ProhibitclassusageRule extends BaseRuleImpl {
+export class NoClassesRule extends BaseRuleImpl {
   constructor() {
-    super(ProhibitclassusageConfig);
+    super(noClassesConfig);
   }
 }

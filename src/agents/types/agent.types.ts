@@ -3,14 +3,14 @@
  */
 
 // Import Zod schemas
-export type { AgentFrontmatterSchema, AgentSectionSchema, AgentConfigSchema, BaseAgentSchema } from './agent.schemas';
+export type { AgentFrontmatterSchema, AgentSectionSchema, AgentConfigSchema } from './agent.schemas';
 
 export interface AgentFrontmatter {
   name: string;
   description: string;
   tools?: string[];
   color?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AgentSection {

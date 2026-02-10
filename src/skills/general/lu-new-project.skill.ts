@@ -2,10 +2,10 @@
  * lu-new-project Skill - Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-new-project skill configuration
-const lunewprojectConfig: SkillConfig = {
+const luNewProjectConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-new-project',
     description: `Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization.`,
@@ -634,8 +634,8 @@ Present completion with next steps:
   ]
 };
 
-export class LunewprojectSkill extends BaseSkillImpl {
+export class LuNewProjectSkill extends BaseSkillImpl {
   constructor() {
-    super(lunewprojectConfig);
+    super(luNewProjectConfig);
   }
 }

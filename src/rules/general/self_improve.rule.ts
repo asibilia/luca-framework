@@ -2,10 +2,10 @@
  * Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Guidelines-for-conti rule configuration
-const GuidelinesforcontiConfig: RuleConfig = {
+const selfImproveConfig: RuleConfig = {
   frontmatter: {
     description: `Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.`,
     globs: ['**/*'],
@@ -85,8 +85,8 @@ Follow [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc) for proper rule fo
   ]
 };
 
-export class GuidelinesforcontiRule extends BaseRuleImpl {
+export class SelfImproveRule extends BaseRuleImpl {
   constructor() {
-    super(GuidelinesforcontiConfig);
+    super(selfImproveConfig);
   }
 }

@@ -2,7 +2,7 @@
  * ui Agent - Reviews visual design, component styling, and design system consistency for UI implementations. Use when reviewing component styling.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the ui agent configuration
 const uiConfig: AgentConfig = {

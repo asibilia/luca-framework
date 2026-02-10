@@ -2,10 +2,10 @@
  * Guidelines for analyzing and updating Taskmaster projects when resuming work after manual code changes
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Guidelines-for-analy rule configuration
-const GuidelinesforanalyConfig: RuleConfig = {
+const taskAnalyzationConfig: RuleConfig = {
   frontmatter: {
     description: `Guidelines for analyzing and updating Taskmaster projects when resuming work after manual code changes`,
     globs: ['.taskmaster/**/*.json', 'src/**/*.*', 'packages*/**/*.*', 'apps/**/*.*', '*.md', '*.json', '*.ts', '*.tsx', '*.js', '*.jsx'],
@@ -181,8 +181,8 @@ This process ensures the task list accurately reflects the current project state
   ]
 };
 
-export class GuidelinesforanalyRule extends BaseRuleImpl {
+export class TaskAnalyzationRule extends BaseRuleImpl {
   constructor() {
-    super(GuidelinesforanalyConfig);
+    super(taskAnalyzationConfig);
   }
 }

@@ -2,10 +2,10 @@
  * lu-verify-work Skill - Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-verify-work skill configuration
-const luverifyworkConfig: SkillConfig = {
+const luVerifyWorkConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-verify-work',
     description: `Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work.`,
@@ -374,8 +374,8 @@ Manual intervention required
   ]
 };
 
-export class LuverifyworkSkill extends BaseSkillImpl {
+export class LuVerifyWorkSkill extends BaseSkillImpl {
   constructor() {
-    super(luverifyworkConfig);
+    super(luVerifyWorkConfig);
   }
 }

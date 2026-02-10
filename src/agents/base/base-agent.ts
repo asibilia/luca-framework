@@ -2,7 +2,7 @@
  * Base class for all agents in the Luca Framework
  */
 import { BaseAgent, AgentConfig } from '../types/agent.types';
-import { formatFrontmatter } from '../../shared/utils';
+import { toCursorFormat, toClaudeFormat } from '../../shared/format';
 import { agentConfigSchema } from '../types/agent.schemas';
 
 export abstract class BaseAgentImpl implements BaseAgent {
@@ -26,40 +26,11 @@ export abstract class BaseAgentImpl implements BaseAgent {
     return this._config.frontmatter.description;
   }
 
-  /**
-   * Converts the agent to Cursor-compatible format (Markdown with frontmatter)
-   */
   toCursorFormat(): string {
-    const frontmatter = formatFrontmatter(this._config.frontmatter);
-    const sections = this._config.sections
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(section => {
-        if (section.title) {
-          return `\n<${section.title.toLowerCase()}>\n${section.content}\n</${section.title.toLowerCase()}>\n`;
-        }
-        return section.content;
-      })
-      .join('');
-
-    return `${frontmatter}\n\n${sections.trim()}`;
+    return toCursorFormat(this._config.frontmatter, this._config.sections);
   }
 
-  /**
-   * Converts the agent to Claude-compatible format
-   */
   toClaudeFormat(): string {
-    // Claude format might be different - for now, using similar structure
-    const sections = this._config.sections
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(section => {
-        if (section.title) {
-          return `## ${section.title}\n\n${section.content}\n\n`;
-        }
-        return `${section.content}\n\n`;
-      })
-      .join('')
-      .trim();
-
-    return `# ${this.name}\n\n${this.description}\n\n${sections}`;
+    return toClaudeFormat(`# ${this.name}\n\n${this.description}`, this._config.sections);
   }
 }

@@ -2,10 +2,10 @@
  * lu-integration-checker Agent - Verifies cross-phase integration and E2E flows. Checks that phases connect properly and user workflows complete end-to-end.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-integration-checker agent configuration
-const luintegrationcheckerConfig: AgentConfig = {
+const luIntegrationCheckerConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-integration-checker',
     description: `Verifies cross-phase integration and E2E flows. Checks that phases connect properly and user workflows complete end-to-end.`,
@@ -436,8 +436,8 @@ Return structured report to milestone auditor:
   ]
 };
 
-export class LuintegrationcheckerAgent extends BaseAgentImpl {
+export class LuIntegrationCheckerAgent extends BaseAgentImpl {
   constructor() {
-    super(luintegrationcheckerConfig);
+    super(luIntegrationCheckerConfig);
   }
 }

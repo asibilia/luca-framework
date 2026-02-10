@@ -2,10 +2,10 @@
  * lu-pr-reviewer Agent - Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-pr-reviewer agent configuration
-const luprreviewerConfig: AgentConfig = {
+const luPrReviewerConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-pr-reviewer',
     description: `Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.`,
@@ -565,8 +565,8 @@ Workflow complete when:
   ]
 };
 
-export class LuprreviewerAgent extends BaseAgentImpl {
+export class LuPrReviewerAgent extends BaseAgentImpl {
   constructor() {
-    super(luprreviewerConfig);
+    super(luPrReviewerConfig);
   }
 }

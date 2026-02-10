@@ -2,10 +2,10 @@
  * lu-choose Skill - Help users decide between issue-driven vs Luca workflow. Use when the user is unsure which development approach to use, asks about workflow selection, or mentions /lu-choose.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-choose skill configuration
-const luchooseConfig: SkillConfig = {
+const luChooseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-choose',
     description: `Help users decide between issue-driven vs Luca workflow. Use when the user is unsure which development approach to use, asks about workflow selection, or mentions /lu-choose.`,
@@ -138,8 +138,8 @@ This skill helps you decide between workflows. After choosing:
   ]
 };
 
-export class LuchooseSkill extends BaseSkillImpl {
+export class LuChooseSkill extends BaseSkillImpl {
   constructor() {
-    super(luchooseConfig);
+    super(luChooseConfig);
   }
 }

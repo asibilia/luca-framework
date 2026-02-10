@@ -2,10 +2,10 @@
  * lu-debugger Agent - Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-debugger agent configuration
-const ludebuggerConfig: AgentConfig = {
+const luDebuggerConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-debugger',
     description: `Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.`,
@@ -1328,8 +1328,8 @@ Check for mode flags in prompt context:
   ]
 };
 
-export class LudebuggerAgent extends BaseAgentImpl {
+export class LuDebuggerAgent extends BaseAgentImpl {
   constructor() {
-    super(ludebuggerConfig);
+    super(luDebuggerConfig);
   }
 }

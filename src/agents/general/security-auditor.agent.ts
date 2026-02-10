@@ -2,10 +2,10 @@
  * security-auditor Agent - Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the security-auditor agent configuration
-const securityauditorConfig: AgentConfig = {
+const securityAuditorConfig: AgentConfig = {
   frontmatter: {
     name: 'security-auditor',
     description: `Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.`,
@@ -57,8 +57,8 @@ Flag vulnerabilities with severity: CRITICAL, HIGH, MEDIUM, LOW`,
   ]
 };
 
-export class SecurityauditorAgent extends BaseAgentImpl {
+export class SecurityAuditorAgent extends BaseAgentImpl {
   constructor() {
-    super(securityauditorConfig);
+    super(securityAuditorConfig);
   }
 }

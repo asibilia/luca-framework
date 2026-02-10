@@ -2,10 +2,10 @@
  * test-run Skill - Run tests with optional filter pattern. Use when the user wants to run tests, test code, execute test suite, check test coverage, or verify tests pass.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the test-run skill configuration
-const testrunConfig: SkillConfig = {
+const testRunConfig: SkillConfig = {
   frontmatter: {
     name: 'test-run',
     description: `Run tests with optional filter pattern. Use when the user wants to run tests, test code, execute test suite, check test coverage, or verify tests pass.`,
@@ -49,8 +49,8 @@ bun test --cwd packages-dev/task-archive
   ]
 };
 
-export class TestrunSkill extends BaseSkillImpl {
+export class TestRunSkill extends BaseSkillImpl {
   constructor() {
-    super(testrunConfig);
+    super(testRunConfig);
   }
 }

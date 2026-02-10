@@ -2,10 +2,10 @@
  * lu-progress Skill - Check Luca project progress, show context, and route to next action. Use when the user asks what's next, wants to check status, or returns to a Luca project after a break.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-progress skill configuration
-const luprogressConfig: SkillConfig = {
+const luProgressConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-progress',
     description: `Check Luca project progress, show context, and route to next action. Use when the user asks what's next, wants to check status, or returns to a Luca project after a break.`,
@@ -280,8 +280,8 @@ This skill provides intelligent routing based on project state. The "Route" sect
   ]
 };
 
-export class LuprogressSkill extends BaseSkillImpl {
+export class LuProgressSkill extends BaseSkillImpl {
   constructor() {
-    super(luprogressConfig);
+    super(luProgressConfig);
   }
 }

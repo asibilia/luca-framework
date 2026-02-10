@@ -2,10 +2,10 @@
  * Standards for import statements and module organization
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Standards-for-import rule configuration
-const StandardsforimportConfig: RuleConfig = {
+const importStandardsConfig: RuleConfig = {
   frontmatter: {
     description: `Standards for import statements and module organization`,
     globs: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -213,8 +213,8 @@ Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conv
   ]
 };
 
-export class StandardsforimportRule extends BaseRuleImpl {
+export class ImportStandardsRule extends BaseRuleImpl {
   constructor() {
-    super(StandardsforimportConfig);
+    super(importStandardsConfig);
   }
 }

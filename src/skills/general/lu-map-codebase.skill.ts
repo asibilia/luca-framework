@@ -2,10 +2,10 @@
  * lu-map-codebase Skill - Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-map-codebase skill configuration
-const lumapcodebaseConfig: SkillConfig = {
+const luMapCodebaseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-map-codebase',
     description: `Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.`,
@@ -243,8 +243,8 @@ Analyze the codebase for concerns, tech debt, and risks.
   ]
 };
 
-export class LumapcodebaseSkill extends BaseSkillImpl {
+export class LuMapCodebaseSkill extends BaseSkillImpl {
   constructor() {
-    super(lumapcodebaseConfig);
+    super(luMapCodebaseConfig);
   }
 }

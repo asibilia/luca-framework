@@ -2,10 +2,10 @@
  * Generic rule description
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Generic-rule-descrip rule configuration
-const GenericruledescripConfig: RuleConfig = {
+const fileNamingConfig: RuleConfig = {
   frontmatter: {
     description: `Generic rule description`,
     
@@ -80,8 +80,8 @@ const GenericruledescripConfig: RuleConfig = {
   ]
 };
 
-export class GenericruledescripRule extends BaseRuleImpl {
+export class FileNamingRule extends BaseRuleImpl {
   constructor() {
-    super(GenericruledescripConfig);
+    super(fileNamingConfig);
   }
 }

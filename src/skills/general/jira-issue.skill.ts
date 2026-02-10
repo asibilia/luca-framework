@@ -2,10 +2,10 @@
  * jira-issue Skill - Create a GitHub issue from a Jira ticket. Use when the user wants to import a Jira ticket, create GitHub issue from Jira, sync Jira to GitHub, or link Jira ticket.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the jira-issue skill configuration
-const jiraissueConfig: SkillConfig = {
+const jiraIssueConfig: SkillConfig = {
   frontmatter: {
     name: 'jira-issue',
     description: `Create a GitHub issue from a Jira ticket. Use when the user wants to import a Jira ticket, create GitHub issue from Jira, sync Jira to GitHub, or link Jira ticket.`,
@@ -101,8 +101,8 @@ _Created from Jira using jira-issue skill_
   ]
 };
 
-export class JiraissueSkill extends BaseSkillImpl {
+export class JiraIssueSkill extends BaseSkillImpl {
   constructor() {
-    super(jiraissueConfig);
+    super(jiraIssueConfig);
   }
 }

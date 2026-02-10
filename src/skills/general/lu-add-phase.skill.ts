@@ -2,10 +2,10 @@
  * lu-add-phase Skill - Add a new phase to end of current milestone. Use when user wants to add a phase, mentions /lu-add-phase, or needs to extend the roadmap.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-add-phase skill configuration
-const luaddphaseConfig: SkillConfig = {
+const luAddPhaseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-add-phase',
     description: `Add a new phase to end of current milestone. Use when user wants to add a phase, mentions /lu-add-phase, or needs to extend the roadmap.`,
@@ -106,8 +106,8 @@ Add a new integer phase to the end of the current milestone in the roadmap.
   ]
 };
 
-export class LuaddphaseSkill extends BaseSkillImpl {
+export class LuAddPhaseSkill extends BaseSkillImpl {
   constructor() {
-    super(luaddphaseConfig);
+    super(luAddPhaseConfig);
   }
 }

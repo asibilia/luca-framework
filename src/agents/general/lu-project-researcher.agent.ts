@@ -2,10 +2,10 @@
  * lu-project-researcher Agent - Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-project-researcher agent configuration
-const luprojectresearcherConfig: AgentConfig = {
+const luProjectResearcherConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-project-researcher',
     description: `Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.`,
@@ -914,8 +914,8 @@ Research quality indicators:
   ]
 };
 
-export class LuprojectresearcherAgent extends BaseAgentImpl {
+export class LuProjectResearcherAgent extends BaseAgentImpl {
   constructor() {
-    super(luprojectresearcherConfig);
+    super(luProjectResearcherConfig);
   }
 }

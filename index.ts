@@ -27,7 +27,6 @@ export * from './src/skills/luca/lu.skill';
 // Export rules
 export * from './src/rules/lu-workflow.rule';
 
-// Export constants and utils
-export * from './src/shared/constants';
+// Export utils
 export * from './src/shared/utils';
-export * from './src/shared/validation';
+export * from './src/shared/validation-utils';

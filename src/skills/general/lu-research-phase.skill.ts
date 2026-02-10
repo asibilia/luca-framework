@@ -2,10 +2,10 @@
  * lu-research-phase Skill - Comprehensive ecosystem research for niche/complex domains. Use when user needs deep domain research, mentions /lu-research-phase, or is working with specialized tech.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-research-phase skill configuration
-const luresearchphaseConfig: SkillConfig = {
+const luResearchPhaseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-research-phase',
     description: `Comprehensive ecosystem research for niche/complex domains. Use when user needs deep domain research, mentions /lu-research-phase, or is working with specialized tech.`,
@@ -94,8 +94,8 @@ Goes beyond "which library" to ecosystem knowledge:
   ]
 };
 
-export class LuresearchphaseSkill extends BaseSkillImpl {
+export class LuResearchPhaseSkill extends BaseSkillImpl {
   constructor() {
-    super(luresearchphaseConfig);
+    super(luResearchPhaseConfig);
   }
 }

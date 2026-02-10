@@ -2,10 +2,10 @@
  * lu-new-milestone Skill - Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-new-milestone skill configuration
-const lunewmilestoneConfig: SkillConfig = {
+const luNewMilestoneConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-new-milestone',
     description: `Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.`,
@@ -123,8 +123,8 @@ How should this milestone be tracked on GitHub?
   ]
 };
 
-export class LunewmilestoneSkill extends BaseSkillImpl {
+export class LuNewMilestoneSkill extends BaseSkillImpl {
   constructor() {
-    super(lunewmilestoneConfig);
+    super(luNewMilestoneConfig);
   }
 }

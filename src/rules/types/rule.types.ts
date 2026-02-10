@@ -3,13 +3,13 @@
  */
 
 // Import Zod schemas
-export type { RuleFrontmatterSchema, RuleSectionSchema, RuleConfigSchema, BaseRuleSchema } from './rule.schemas';
+export type { RuleFrontmatterSchema, RuleSectionSchema, RuleConfigSchema } from './rule.schemas';
 
 export interface RuleFrontmatter {
   description: string;
   globs?: string[];
   alwaysApply?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface RuleSection {

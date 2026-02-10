@@ -2,10 +2,10 @@
  * code-lint Skill - Run ESLint with auto-fix on the codebase or specific path. Use when the user wants to lint code, fix linting errors, run eslint, or check code style.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the code-lint skill configuration
-const codelintConfig: SkillConfig = {
+const codeLintConfig: SkillConfig = {
   frontmatter: {
     name: 'code-lint',
     description: `Run ESLint with auto-fix on the codebase or specific path. Use when the user wants to lint code, fix linting errors, run eslint, or check code style.`,
@@ -40,8 +40,8 @@ bun run --cwd packages-ui/components lint
   ]
 };
 
-export class CodelintSkill extends BaseSkillImpl {
+export class CodeLintSkill extends BaseSkillImpl {
   constructor() {
-    super(codelintConfig);
+    super(codeLintConfig);
   }
 }

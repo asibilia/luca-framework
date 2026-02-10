@@ -2,10 +2,10 @@
  * code-architect Agent - Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the code-architect agent configuration
-const codearchitectConfig: AgentConfig = {
+const codeArchitectConfig: AgentConfig = {
   frontmatter: {
     name: 'code-architect',
     description: `Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.`,
@@ -63,8 +63,8 @@ Provide actionable feedback with specific file paths and recommendations.`,
   ]
 };
 
-export class CodearchitectAgent extends BaseAgentImpl {
+export class CodeArchitectAgent extends BaseAgentImpl {
   constructor() {
-    super(codearchitectConfig);
+    super(codeArchitectConfig);
   }
 }

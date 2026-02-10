@@ -2,10 +2,10 @@
  * lu-cognition Agent - Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-cognition agent configuration
-const lucognitionConfig: AgentConfig = {
+const luCognitionConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-cognition',
     description: `Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.`,
@@ -419,8 +419,8 @@ Pre-flight complete when:
   ]
 };
 
-export class LucognitionAgent extends BaseAgentImpl {
+export class LuCognitionAgent extends BaseAgentImpl {
   constructor() {
-    super(lucognitionConfig);
+    super(luCognitionConfig);
   }
 }

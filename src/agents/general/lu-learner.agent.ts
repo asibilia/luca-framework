@@ -2,10 +2,10 @@
  * lu-learner Agent - Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-learner agent configuration
-const lulearnerConfig: AgentConfig = {
+const luLearnerConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-learner',
     description: `Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.`,
@@ -562,8 +562,8 @@ Learning extraction complete when:
   ]
 };
 
-export class LulearnerAgent extends BaseAgentImpl {
+export class LuLearnerAgent extends BaseAgentImpl {
   constructor() {
-    super(lulearnerConfig);
+    super(luLearnerConfig);
   }
 }

@@ -2,10 +2,10 @@
  * lu-verifier Agent - Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-verifier agent configuration
-const luverifierConfig: AgentConfig = {
+const luVerifierConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-verifier',
     description: `Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.`,
@@ -823,8 +823,8 @@ return <div>No messages</div>  // Always shows "no messages"
   ]
 };
 
-export class LuverifierAgent extends BaseAgentImpl {
+export class LuVerifierAgent extends BaseAgentImpl {
   constructor() {
-    super(luverifierConfig);
+    super(luVerifierConfig);
   }
 }

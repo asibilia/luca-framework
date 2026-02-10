@@ -2,10 +2,10 @@
  * lu-add-todo Skill - Capture idea or task as todo from conversation. Use when user wants to save an idea for later, mentions /lu-add-todo, or needs to capture a task without acting on it now.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-add-todo skill configuration
-const luaddtodoConfig: SkillConfig = {
+const luAddTodoConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-add-todo',
     description: `Capture idea or task as todo from conversation. Use when user wants to save an idea for later, mentions /lu-add-todo, or needs to capture a task without acting on it now.`,
@@ -98,8 +98,8 @@ source: conversation
   ]
 };
 
-export class LuaddtodoSkill extends BaseSkillImpl {
+export class LuAddTodoSkill extends BaseSkillImpl {
   constructor() {
-    super(luaddtodoConfig);
+    super(luAddTodoConfig);
   }
 }

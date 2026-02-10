@@ -2,10 +2,10 @@
  * qa-plan-generator Agent - Generates detailed QA testing plans for pull requests based on code changes and affected portals.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the qa-plan-generator agent configuration
-const qaplangeneratorConfig: AgentConfig = {
+const qaPlanGeneratorConfig: AgentConfig = {
   frontmatter: {
     name: 'qa-plan-generator',
     description: `Generates detailed QA testing plans for pull requests based on code changes and affected portals.`,
@@ -99,8 +99,8 @@ Generate a testing plan in this exact markdown format:
   ]
 };
 
-export class QaplangeneratorAgent extends BaseAgentImpl {
+export class QaPlanGeneratorAgent extends BaseAgentImpl {
   constructor() {
-    super(qaplangeneratorConfig);
+    super(qaPlanGeneratorConfig);
   }
 }

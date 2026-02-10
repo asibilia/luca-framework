@@ -44,7 +44,8 @@
     "luca"
   ],
   "scripts": {
-    "build": "unbuild"
+    "build": "unbuild",
+    "test": "bun test"
   },
   "type": "module"
 }

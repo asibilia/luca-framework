@@ -2,10 +2,10 @@
  * workflow-start Skill - Start work on a Jira ticket following the full workflow. Use when the user wants to start a ticket, begin work on Jira issue, set up for new work, or initiate the full dev workflow.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the workflow-start skill configuration
-const workflowstartConfig: SkillConfig = {
+const workflowStartConfig: SkillConfig = {
   frontmatter: {
     name: 'workflow-start',
     description: `Start work on a Jira ticket following the full workflow. Use when the user wants to start a ticket, begin work on Jira issue, set up for new work, or initiate the full dev workflow.`,
@@ -86,8 +86,8 @@ This is now fully handled by \`/lu\` when given a Jira ticket input.
   ]
 };
 
-export class WorkflowstartSkill extends BaseSkillImpl {
+export class WorkflowStartSkill extends BaseSkillImpl {
   constructor() {
-    super(workflowstartConfig);
+    super(workflowStartConfig);
   }
 }

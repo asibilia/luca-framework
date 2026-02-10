@@ -2,10 +2,10 @@
  * Comprehensive reference for Taskmaster MCP tools and CLI commands.
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Comprehensive-refere rule configuration
-const ComprehensiverefereConfig: RuleConfig = {
+const taskmasterConfig: RuleConfig = {
   frontmatter: {
     description: `Comprehensive reference for Taskmaster MCP tools and CLI commands.`,
     globs: ['**/*'],
@@ -571,8 +571,8 @@ For details on how these commands fit into the development process, see the [Dev
   ]
 };
 
-export class ComprehensiverefereRule extends BaseRuleImpl {
+export class TaskmasterRule extends BaseRuleImpl {
   constructor() {
-    super(ComprehensiverefereConfig);
+    super(taskmasterConfig);
   }
 }

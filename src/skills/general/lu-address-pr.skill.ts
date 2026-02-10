@@ -2,10 +2,10 @@
  * lu-address-pr Skill - Address PR review comments by swarming reviewer agents, validating concerns, planning fixes, executing, verifying, and responding to comments. Use when user wants to address PR feedback, handle review comments, mentions /lu-address-pr, or needs to respond to PR reviewers.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-address-pr skill configuration
-const luaddressprConfig: SkillConfig = {
+const luAddressPrConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-address-pr',
     description: `Address PR review comments by swarming reviewer agents, validating concerns, planning fixes, executing, verifying, and responding to comments. Use when user wants to address PR feedback, handle review comments, mentions /lu-address-pr, or needs to respond to PR reviewers.`,
@@ -659,8 +659,8 @@ This skill can be invoked:
   ]
 };
 
-export class LuaddressprSkill extends BaseSkillImpl {
+export class LuAddressPrSkill extends BaseSkillImpl {
   constructor() {
-    super(luaddressprConfig);
+    super(luAddressPrConfig);
   }
 }

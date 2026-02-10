@@ -1,9 +1,9 @@
 /**
  * Base compiler for converting TypeScript definitions to target formats
  */
-import { BaseAgent } from '../agents/types/agent.types';
-import { BaseSkill } from '../skills/types/skill.types';
-import { BaseRule } from '../rules/types/rule.types';
+import type { BaseAgent } from '../agents/types/agent.types';
+import type { BaseSkill } from '../skills/types/skill.types';
+import type { BaseRule } from '../rules/types/rule.types';
 
 export type SupportedFormat = 'CURSOR' | 'CLAUDE';
 

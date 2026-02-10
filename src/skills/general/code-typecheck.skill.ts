@@ -2,10 +2,10 @@
  * code-typecheck Skill - Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the code-typecheck skill configuration
-const codetypecheckConfig: SkillConfig = {
+const codeTypecheckConfig: SkillConfig = {
   frontmatter: {
     name: 'code-typecheck',
     description: `Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript.`,
@@ -37,8 +37,8 @@ Run TypeScript type checking on the codebase.
   ]
 };
 
-export class CodetypecheckSkill extends BaseSkillImpl {
+export class CodeTypecheckSkill extends BaseSkillImpl {
   constructor() {
-    super(codetypecheckConfig);
+    super(codeTypecheckConfig);
   }
 }

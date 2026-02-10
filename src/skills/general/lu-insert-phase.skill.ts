@@ -2,10 +2,10 @@
  * lu-insert-phase Skill - Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-insert-phase skill configuration
-const luinsertphaseConfig: SkillConfig = {
+const luInsertPhaseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-insert-phase',
     description: `Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution.`,
@@ -114,8 +114,8 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
   ]
 };
 
-export class LuinsertphaseSkill extends BaseSkillImpl {
+export class LuInsertPhaseSkill extends BaseSkillImpl {
   constructor() {
-    super(luinsertphaseConfig);
+    super(luInsertPhaseConfig);
   }
 }

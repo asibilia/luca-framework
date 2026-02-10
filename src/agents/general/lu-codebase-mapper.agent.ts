@@ -2,10 +2,10 @@
  * lu-codebase-mapper Agent - Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-codebase-mapper agent configuration
-const lucodebasemapperConfig: AgentConfig = {
+const luCodebaseMapperConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-codebase-mapper',
     description: `Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.`,
@@ -782,8 +782,8 @@ Ready for orchestrator summary.
   ]
 };
 
-export class LucodebasemapperAgent extends BaseAgentImpl {
+export class LuCodebaseMapperAgent extends BaseAgentImpl {
   constructor() {
-    super(lucodebasemapperConfig);
+    super(luCodebaseMapperConfig);
   }
 }

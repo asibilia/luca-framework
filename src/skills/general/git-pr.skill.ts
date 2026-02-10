@@ -2,10 +2,10 @@
  * git-pr Skill - Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the git-pr skill configuration
-const gitprConfig: SkillConfig = {
+const gitPrConfig: SkillConfig = {
   frontmatter: {
     name: 'git-pr',
     description: `Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.`,
@@ -68,8 +68,8 @@ Generated with [Claude Code](https://claude.ai/claude-code)
   ]
 };
 
-export class GitprSkill extends BaseSkillImpl {
+export class GitPrSkill extends BaseSkillImpl {
   constructor() {
-    super(gitprConfig);
+    super(gitPrConfig);
   }
 }

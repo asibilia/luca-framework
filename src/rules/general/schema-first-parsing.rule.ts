@@ -2,10 +2,10 @@
  * Enforce Zod schema-first parsing patterns over manual destructuring and default values
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Enforce-Zod-schema-f rule configuration
-const EnforceZodschemafConfig: RuleConfig = {
+const schemaFirstParsingConfig: RuleConfig = {
   frontmatter: {
     description: `Enforce Zod schema-first parsing patterns over manual destructuring and default values`,
     globs: [''**/*.{ts,tsx}''],
@@ -468,8 +468,8 @@ Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import
   ]
 };
 
-export class EnforceZodschemafRule extends BaseRuleImpl {
+export class SchemaFirstParsingRule extends BaseRuleImpl {
   constructor() {
-    super(EnforceZodschemafConfig);
+    super(schemaFirstParsingConfig);
   }
 }

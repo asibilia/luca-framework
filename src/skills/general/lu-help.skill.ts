@@ -2,10 +2,10 @@
  * lu-help Skill - Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-help skill configuration
-const luhelpConfig: SkillConfig = {
+const luHelpConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-help',
     description: `Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.`,
@@ -316,8 +316,8 @@ This is a reference command. Common follow-ups:
   ]
 };
 
-export class LuhelpSkill extends BaseSkillImpl {
+export class LuHelpSkill extends BaseSkillImpl {
   constructor() {
-    super(luhelpConfig);
+    super(luHelpConfig);
   }
 }

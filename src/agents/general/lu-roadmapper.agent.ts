@@ -2,10 +2,10 @@
  * lu-roadmapper Agent - Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /lu-new-project orchestrator.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-roadmapper agent configuration
-const luroadmapperConfig: AgentConfig = {
+const luRoadmapperConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-roadmapper',
     description: `Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /lu-new-project orchestrator.`,
@@ -649,8 +649,8 @@ Quality indicators:
   ]
 };
 
-export class LuroadmapperAgent extends BaseAgentImpl {
+export class LuRoadmapperAgent extends BaseAgentImpl {
   constructor() {
-    super(luroadmapperConfig);
+    super(luRoadmapperConfig);
   }
 }

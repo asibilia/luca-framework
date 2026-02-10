@@ -2,10 +2,10 @@
  * Functional API Reuse & Architecture Rule
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Functional-API-Reuse rule configuration
-const FunctionalAPIReuseConfig: RuleConfig = {
+const functionalApiReuseConfig: RuleConfig = {
   frontmatter: {
     description: `Functional API Reuse & Architecture Rule`,
     
@@ -266,8 +266,8 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
   ]
 };
 
-export class FunctionalAPIReuseRule extends BaseRuleImpl {
+export class FunctionalApiReuseRule extends BaseRuleImpl {
   constructor() {
-    super(FunctionalAPIReuseConfig);
+    super(functionalApiReuseConfig);
   }
 }

@@ -2,7 +2,7 @@
  * ux Agent - Reviews user flows, interaction patterns, and accessibility to ensure optimal user experience. Use when reviewing UI features.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the ux agent configuration
 const uxConfig: AgentConfig = {

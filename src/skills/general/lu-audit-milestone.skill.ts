@@ -2,10 +2,10 @@
  * lu-audit-milestone Skill - Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-audit-milestone skill configuration
-const luauditmilestoneConfig: SkillConfig = {
+const luAuditMilestoneConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-audit-milestone',
     description: `Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.`,
@@ -437,8 +437,8 @@ Code quality: {N} issues found
   ]
 };
 
-export class LuauditmilestoneSkill extends BaseSkillImpl {
+export class LuAuditMilestoneSkill extends BaseSkillImpl {
   constructor() {
-    super(luauditmilestoneConfig);
+    super(luAuditMilestoneConfig);
   }
 }

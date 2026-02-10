@@ -2,10 +2,10 @@
  * lu-plan-checker Agent - Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-plan-checker agent configuration
-const luplancheckerConfig: AgentConfig = {
+const luPlanCheckerConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-plan-checker',
     description: `Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.`,
@@ -816,8 +816,8 @@ Plan verification complete when:
   ]
 };
 
-export class LuplancheckerAgent extends BaseAgentImpl {
+export class LuPlanCheckerAgent extends BaseAgentImpl {
   constructor() {
-    super(luplancheckerConfig);
+    super(luPlanCheckerConfig);
   }
 }

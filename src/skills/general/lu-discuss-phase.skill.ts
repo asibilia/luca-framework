@@ -2,10 +2,10 @@
  * lu-discuss-phase Skill - Gather phase context through adaptive questioning before planning. Use when user wants to discuss a phase, clarify vision, or asks about /lu-discuss-phase.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-discuss-phase skill configuration
-const ludiscussphaseConfig: SkillConfig = {
+const luDiscussPhaseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-discuss-phase',
     description: `Gather phase context through adaptive questioning before planning. Use when user wants to discuss a phase, clarify vision, or asks about /lu-discuss-phase.`,
@@ -108,8 +108,8 @@ Generate 3-4 **phase-specific** gray areas, not generic categories.
   ]
 };
 
-export class LudiscussphaseSkill extends BaseSkillImpl {
+export class LuDiscussPhaseSkill extends BaseSkillImpl {
   constructor() {
-    super(ludiscussphaseConfig);
+    super(luDiscussPhaseConfig);
   }
 }

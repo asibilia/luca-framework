@@ -2,10 +2,10 @@
  * Guide for using Taskmaster to manage task-driven development workflows
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the Guide-for-using-Task rule configuration
-const GuideforusingTaskConfig: RuleConfig = {
+const taskmasterDevWorkflowConfig: RuleConfig = {
   frontmatter: {
     description: `Guide for using Taskmaster to manage task-driven development workflows`,
     globs: ['**/*'],
@@ -437,8 +437,8 @@ Once a task has been broken down into subtasks using \`expand_task\` or similar 
   ]
 };
 
-export class GuideforusingTaskRule extends BaseRuleImpl {
+export class TaskmasterDevWorkflowRule extends BaseRuleImpl {
   constructor() {
-    super(GuideforusingTaskConfig);
+    super(taskmasterDevWorkflowConfig);
   }
 }

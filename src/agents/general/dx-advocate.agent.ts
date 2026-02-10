@@ -2,10 +2,10 @@
  * dx-advocate Agent - Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the dx-advocate agent configuration
-const dxadvocateConfig: AgentConfig = {
+const dxAdvocateConfig: AgentConfig = {
   frontmatter: {
     name: 'dx-advocate',
     description: `Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.`,
@@ -65,8 +65,8 @@ Provide specific file:line references and suggested fixes.`,
   ]
 };
 
-export class DxadvocateAgent extends BaseAgentImpl {
+export class DxAdvocateAgent extends BaseAgentImpl {
   constructor() {
-    super(dxadvocateConfig);
+    super(dxAdvocateConfig);
   }
 }

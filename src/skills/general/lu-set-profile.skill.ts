@@ -2,10 +2,10 @@
  * lu-set-profile Skill - Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-set-profile skill configuration
-const lusetprofileConfig: SkillConfig = {
+const luSetProfileConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-set-profile',
     description: `Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff.`,
@@ -85,8 +85,8 @@ Profile updated to \`{profile}\`. Takes effect on next agent invocation.
   ]
 };
 
-export class LusetprofileSkill extends BaseSkillImpl {
+export class LuSetProfileSkill extends BaseSkillImpl {
   constructor() {
-    super(lusetprofileConfig);
+    super(luSetProfileConfig);
   }
 }

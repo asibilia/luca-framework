@@ -2,10 +2,10 @@
  * code-developer Agent - Implementation partner that writes production-quality code following established patterns. Use after architect approves design.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the code-developer agent configuration
-const codedeveloperConfig: AgentConfig = {
+const codeDeveloperConfig: AgentConfig = {
   frontmatter: {
     name: 'code-developer',
     description: `Implementation partner that writes production-quality code following established patterns. Use after architect approves design.`,
@@ -69,8 +69,8 @@ You WRITE code, don't just describe it. Use Write/Edit tools to implement.`,
   ]
 };
 
-export class CodedeveloperAgent extends BaseAgentImpl {
+export class CodeDeveloperAgent extends BaseAgentImpl {
   constructor() {
-    super(codedeveloperConfig);
+    super(codeDeveloperConfig);
   }
 }

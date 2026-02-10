@@ -2,10 +2,10 @@
  * git-commit Skill - Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the git-commit skill configuration
-const gitcommitConfig: SkillConfig = {
+const gitCommitConfig: SkillConfig = {
   frontmatter: {
     name: 'git-commit',
     description: `Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code.`,
@@ -73,8 +73,8 @@ This prompts for commit details interactively.
   ]
 };
 
-export class GitcommitSkill extends BaseSkillImpl {
+export class GitCommitSkill extends BaseSkillImpl {
   constructor() {
-    super(gitcommitConfig);
+    super(gitCommitConfig);
   }
 }

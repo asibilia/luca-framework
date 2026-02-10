@@ -2,10 +2,10 @@
  * lu-check-todos Skill - List pending todos and select one to work on. Use when user wants to review todos, mentions /lu-check-todos, or needs to see captured ideas.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-check-todos skill configuration
-const luchecktodosConfig: SkillConfig = {
+const luCheckTodosConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-check-todos',
     description: `List pending todos and select one to work on. Use when user wants to review todos, mentions /lu-check-todos, or needs to see captured ideas.`,
@@ -89,8 +89,8 @@ List pending todos and select one to work on.
   ]
 };
 
-export class LuchecktodosSkill extends BaseSkillImpl {
+export class LuCheckTodosSkill extends BaseSkillImpl {
   constructor() {
-    super(luchecktodosConfig);
+    super(luCheckTodosConfig);
   }
 }

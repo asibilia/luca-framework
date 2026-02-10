@@ -2,10 +2,10 @@
  * lu-remove-phase Skill - Remove a future phase from roadmap and renumber subsequent phases. Use when user wants to remove a phase, mentions /lu-remove-phase, or decides not to do planned work.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-remove-phase skill configuration
-const luremovephaseConfig: SkillConfig = {
+const luRemovePhaseConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-remove-phase',
     description: `Remove a future phase from roadmap and renumber subsequent phases. Use when user wants to remove a phase, mentions /lu-remove-phase, or decides not to do planned work.`,
@@ -124,8 +124,8 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
   ]
 };
 
-export class LuremovephaseSkill extends BaseSkillImpl {
+export class LuRemovePhaseSkill extends BaseSkillImpl {
   constructor() {
-    super(luremovephaseConfig);
+    super(luRemovePhaseConfig);
   }
 }

@@ -2,10 +2,10 @@
  * lu-update Skill - Update Luca to latest version with changelog preview. Use when user wants to update Luca, mentions /lu-update, or needs the latest features.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-update skill configuration
-const luupdateConfig: SkillConfig = {
+const luUpdateConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-update',
     description: `Update Luca to latest version with changelog preview. Use when user wants to update Luca, mentions /lu-update, or needs the latest features.`,
@@ -97,8 +97,8 @@ This is a terminal action. The update is complete.
   ]
 };
 
-export class LuupdateSkill extends BaseSkillImpl {
+export class LuUpdateSkill extends BaseSkillImpl {
   constructor() {
-    super(luupdateConfig);
+    super(luUpdateConfig);
   }
 }

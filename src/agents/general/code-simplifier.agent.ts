@@ -2,10 +2,10 @@
  * code-simplifier Agent - Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the code-simplifier agent configuration
-const codesimplifierConfig: AgentConfig = {
+const codeSimplifierConfig: AgentConfig = {
   frontmatter: {
     name: 'code-simplifier',
     description: `Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.`,
@@ -113,8 +113,8 @@ Provide before/after comparisons for significant changes.`,
   ]
 };
 
-export class CodesimplifierAgent extends BaseAgentImpl {
+export class CodeSimplifierAgent extends BaseAgentImpl {
   constructor() {
-    super(codesimplifierConfig);
+    super(codeSimplifierConfig);
   }
 }

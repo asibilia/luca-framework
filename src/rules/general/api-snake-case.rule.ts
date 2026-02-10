@@ -2,10 +2,10 @@
  * API payloads must use snake_case for consistency with backend conventions
  */
 import { BaseRuleImpl } from './base/base-rule';
-import { RuleConfig } from './types/rule.types';
+import type { RuleConfig } from './types/rule.types';
 
 // Define the API-payloads-must-us rule configuration
-const APIpayloadsmustusConfig: RuleConfig = {
+const apiSnakeCaseConfig: RuleConfig = {
   frontmatter: {
     description: `API payloads must use snake_case for consistency with backend conventions`,
     globs: ['**/*.ts', '**/*.tsx'],
@@ -360,8 +360,8 @@ Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding sta
   ]
 };
 
-export class APIpayloadsmustusRule extends BaseRuleImpl {
+export class ApiSnakeCaseRule extends BaseRuleImpl {
   constructor() {
-    super(APIpayloadsmustusConfig);
+    super(apiSnakeCaseConfig);
   }
 }

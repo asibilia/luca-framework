@@ -2,10 +2,10 @@
  * lu-router Agent - Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.
  */
 import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the lu-router agent configuration
-const lurouterConfig: AgentConfig = {
+const luRouterConfig: AgentConfig = {
   frontmatter: {
     name: 'lu-router',
     description: `Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.`,
@@ -407,8 +407,8 @@ Routing complete when:
   ]
 };
 
-export class LurouterAgent extends BaseAgentImpl {
+export class LuRouterAgent extends BaseAgentImpl {
   constructor() {
-    super(lurouterConfig);
+    super(luRouterConfig);
   }
 }

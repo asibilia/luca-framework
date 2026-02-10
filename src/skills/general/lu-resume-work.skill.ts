@@ -2,10 +2,10 @@
  * lu-resume-work Skill - Resume work from previous session with full context restoration. Use when user returns to a Luca project, mentions /lu-resume-work, or wants to continue where they left off.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-resume-work skill configuration
-const luresumeworkConfig: SkillConfig = {
+const luResumeWorkConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-resume-work',
     description: `Resume work from previous session with full context restoration. Use when user returns to a Luca project, mentions /lu-resume-work, or wants to continue where they left off.`,
@@ -86,8 +86,8 @@ Follow the resume-project workflow which handles:
   ]
 };
 
-export class LuresumeworkSkill extends BaseSkillImpl {
+export class LuResumeWorkSkill extends BaseSkillImpl {
   constructor() {
-    super(luresumeworkConfig);
+    super(luResumeWorkConfig);
   }
 }

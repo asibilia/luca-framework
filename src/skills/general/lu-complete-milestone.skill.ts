@@ -2,10 +2,10 @@
  * lu-complete-milestone Skill - Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-complete-milestone skill configuration
-const lucompletemilestoneConfig: SkillConfig = {
+const luCompleteMilestoneConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-complete-milestone',
     description: `Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done.`,
@@ -167,8 +167,8 @@ MEMORY.md persists across milestones - it's the long-term project memory.
   ]
 };
 
-export class LucompletemilestoneSkill extends BaseSkillImpl {
+export class LuCompleteMilestoneSkill extends BaseSkillImpl {
   constructor() {
-    super(lucompletemilestoneConfig);
+    super(luCompleteMilestoneConfig);
   }
 }

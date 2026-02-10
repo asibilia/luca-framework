@@ -2,10 +2,10 @@
  * lu-debug Skill - Systematic debugging with persistent state across context resets. Use when user wants to debug an issue, mentions /lu-debug, or has a bug to investigate.
  */
 import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the lu-debug skill configuration
-const ludebugConfig: SkillConfig = {
+const luDebugConfig: SkillConfig = {
   frontmatter: {
     name: 'lu-debug',
     description: `Systematic debugging with persistent state across context resets. Use when user wants to debug an issue, mentions /lu-debug, or has a bug to investigate.`,
@@ -267,8 +267,8 @@ Loop back to Step 4 to handle the return.
   ]
 };
 
-export class LudebugSkill extends BaseSkillImpl {
+export class LuDebugSkill extends BaseSkillImpl {
   constructor() {
-    super(ludebugConfig);
+    super(luDebugConfig);
   }
 }
