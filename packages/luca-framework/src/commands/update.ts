@@ -20,6 +20,39 @@ import type { LucaConfig, LucaManifest, FileComparison } from '../types';
  * Reads all template files and processes them with branding context.
  * Returns a map of relative path → processed content.
  */
+/**
+ * Read and process all files from a template directory into the output map.
+ *
+ * @param sourceDir - Template source directory
+ * @param output - Map to write results into (relative path -> content)
+ * @param context - EJS template context
+ * @param destPrefix - Optional prefix prepended to output paths (e.g. '.cursor/luca')
+ */
+async function collectTemplateFiles(
+  sourceDir: string,
+  output: Map<string, string>,
+  context: Record<string, unknown>,
+  destPrefix?: string,
+): Promise<void> {
+  if (!existsSync(sourceDir)) return;
+
+  const files = await getAllFiles(sourceDir);
+  for (const relPath of files) {
+    const sourcePath = join(sourceDir, relPath);
+    const processedRelPath = processFilename(relPath, context);
+    const destKey = destPrefix ? join(destPrefix, processedRelPath) : processedRelPath;
+
+    if (isTemplateFile(relPath)) {
+      const content = await readFile(sourcePath, 'utf-8');
+      const processedContent = await processTemplate(content, context);
+      output.set(destKey, processedContent);
+    } else {
+      const content = await readFile(sourcePath, 'utf-8');
+      output.set(destKey, content);
+    }
+  }
+}
+
 async function getNewFrameworkFiles(
   config: LucaConfig,
   cwd: string
@@ -31,65 +64,13 @@ async function getNewFrameworkFiles(
     config,
   };
 
-  // Process base templates
-  const baseDir = join(templatesDir, 'base');
-  if (existsSync(baseDir)) {
-    const baseFiles = await getAllFiles(baseDir);
-    for (const relPath of baseFiles) {
-      const sourcePath = join(baseDir, relPath);
-      const processedRelPath = processFilename(relPath, context);
+  await collectTemplateFiles(join(templatesDir, 'base'), newFiles, context);
 
-      if (isTemplateFile(relPath)) {
-        const content = await readFile(sourcePath, 'utf-8');
-        const processedContent = await processTemplate(content, context);
-        newFiles.set(processedRelPath, processedContent);
-      } else {
-        // Binary files - read as string for hashing
-        const content = await readFile(sourcePath, 'utf-8');
-        newFiles.set(processedRelPath, content);
-      }
-    }
-  }
-
-  // Process stack-specific templates
   if (config.stack !== 'custom') {
-    const stackDir = join(templatesDir, 'stacks', config.stack);
-    if (existsSync(stackDir)) {
-      const stackFiles = await getAllFiles(stackDir);
-      for (const relPath of stackFiles) {
-        const sourcePath = join(stackDir, relPath);
-        const processedRelPath = processFilename(relPath, context);
-
-        if (isTemplateFile(relPath)) {
-          const content = await readFile(sourcePath, 'utf-8');
-          const processedContent = await processTemplate(content, context);
-          newFiles.set(processedRelPath, processedContent);
-        } else {
-          const content = await readFile(sourcePath, 'utf-8');
-          newFiles.set(processedRelPath, content);
-        }
-      }
-    }
+    await collectTemplateFiles(join(templatesDir, 'stacks', config.stack), newFiles, context);
   }
 
-  // Process framework templates (go to .cursor/luca/)
-  const frameworkDir = join(templatesDir, 'framework');
-  if (existsSync(frameworkDir)) {
-    const frameworkFiles = await getAllFiles(frameworkDir);
-    for (const relPath of frameworkFiles) {
-      const sourcePath = join(frameworkDir, relPath);
-      const destRelPath = join('.cursor', 'luca', processFilename(relPath, context));
-
-      if (isTemplateFile(relPath)) {
-        const content = await readFile(sourcePath, 'utf-8');
-        const processedContent = await processTemplate(content, context);
-        newFiles.set(destRelPath, processedContent);
-      } else {
-        const content = await readFile(sourcePath, 'utf-8');
-        newFiles.set(destRelPath, content);
-      }
-    }
-  }
+  await collectTemplateFiles(join(templatesDir, 'framework'), newFiles, context, join('.cursor', 'luca'));
 
   return newFiles;
 }

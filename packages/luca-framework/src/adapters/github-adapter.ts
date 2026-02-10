@@ -51,48 +51,48 @@ const githubIssueResponseSchema = z.object({
 type GitHubIssueResponse = z.infer<typeof githubIssueResponseSchema>
 
 /**
- * Infer WorkTicket type from GitHub issue labels.
+ * Match GitHub labels to a value using a mapping table.
  *
- * Maps common GitHub labels to normalized ticket types:
- * - 'bug' → bug
- * - 'enhancement' or 'feature' → story
- * - 'epic' → epic
- * - Default → task
+ * Iterates through mappings in order, returning the value for the first
+ * label match found. Falls back to the default if no match.
  *
  * @param labels - Array of label objects from GitHub
- * @returns Normalized ticket type
+ * @param mappings - Ordered array of [labelNames[], value] pairs
+ * @param defaultValue - Fallback when no labels match
+ * @returns The matched value or default
  */
-function inferTypeFromLabels(labels: Array<{ name: string }>): WorkTicketType {
+function mapLabels<T>(
+  labels: Array<{ name: string }>,
+  mappings: Array<[string[], T]>,
+  defaultValue: T,
+): T {
   const labelNames = labels.map((l) => l.name.toLowerCase())
-  if (labelNames.includes('bug')) return 'bug'
-  if (labelNames.includes('enhancement') || labelNames.includes('feature'))
-    return 'story'
-  if (labelNames.includes('epic')) return 'epic'
-  return 'task'
+  for (const [keys, value] of mappings) {
+    if (keys.some((k) => labelNames.includes(k))) return value
+  }
+  return defaultValue
 }
 
-/**
- * Infer WorkTicket priority from GitHub issue labels.
- *
- * Maps common priority labels to normalized priority levels:
- * - 'critical' or 'urgent' → highest
- * - 'high' or 'priority' → high
- * - 'low' → low
- * - Default → medium
- *
- * @param labels - Array of label objects from GitHub
- * @returns Normalized priority level
- */
-function inferPriorityFromLabels(
-  labels: Array<{ name: string }>
-): WorkTicketPriority {
-  const labelNames = labels.map((l) => l.name.toLowerCase())
-  if (labelNames.includes('critical') || labelNames.includes('urgent'))
-    return 'highest'
-  if (labelNames.includes('high') || labelNames.includes('priority'))
-    return 'high'
-  if (labelNames.includes('low')) return 'low'
-  return 'medium'
+/** Label-to-type mappings for GitHub issues. */
+const TYPE_MAPPINGS: Array<[string[], WorkTicketType]> = [
+  [['bug'], 'bug'],
+  [['enhancement', 'feature'], 'story'],
+  [['epic'], 'epic'],
+]
+
+/** Label-to-priority mappings for GitHub issues. */
+const PRIORITY_MAPPINGS: Array<[string[], WorkTicketPriority]> = [
+  [['critical', 'urgent'], 'highest'],
+  [['high', 'priority'], 'high'],
+  [['low'], 'low'],
+]
+
+function inferTypeFromLabels(labels: Array<{ name: string }>): WorkTicketType {
+  return mapLabels(labels, TYPE_MAPPINGS, 'task')
+}
+
+function inferPriorityFromLabels(labels: Array<{ name: string }>): WorkTicketPriority {
+  return mapLabels(labels, PRIORITY_MAPPINGS, 'medium')
 }
 
 /**

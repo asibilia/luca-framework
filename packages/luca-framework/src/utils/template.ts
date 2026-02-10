@@ -125,24 +125,26 @@ export async function getAllFiles(dir: string, baseDir: string = dir): Promise<s
  * @param filename - Filename to check
  * @returns true if file should be processed as template
  */
+/** File extensions that should be processed as EJS templates (vs binary copy). */
+export const TEMPLATE_EXTENSIONS = [
+  '.md',
+  '.json',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mdc',
+  '.yaml',
+  '.yml',
+  '.txt',
+  '.html',
+  '.css',
+  '.gitkeep',
+  '.gitignore',
+] as const;
+
 export function isTemplateFile(filename: string): boolean {
-  const templateExtensions = [
-    '.md',
-    '.json',
-    '.ts',
-    '.tsx',
-    '.js',
-    '.jsx',
-    '.mdc',
-    '.yaml',
-    '.yml',
-    '.txt',
-    '.html',
-    '.css',
-    '.gitkeep',
-    '.gitignore',
-  ];
-  return templateExtensions.some(ext => filename.endsWith(ext));
+  return TEMPLATE_EXTENSIONS.some(ext => filename.endsWith(ext));
 }
 
 /**
