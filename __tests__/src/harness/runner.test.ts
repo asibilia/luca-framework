@@ -26,9 +26,14 @@ describe('loadHarnessConfig', () => {
     }
   });
 
-  test('returns defaults when config.json has no harness section', async () => {
+  test('loads harness section from project config.json', async () => {
     const config = await loadHarnessConfig(PROJECT_DIR);
-    expect(config).toEqual(DEFAULT_HARNESS_CONFIG);
+    expect(config.enabled).toBe(true);
+    expect(config.checks).toHaveLength(4);
+    expect(config.maxFixIterations).toBe(3);
+    // Project config has build enabled (differs from defaults)
+    const buildCheck = config.checks.find(c => c.name === 'build');
+    expect(buildCheck?.enabled).toBe(true);
   });
 
   test('reads harness section from config.json when present', async () => {
