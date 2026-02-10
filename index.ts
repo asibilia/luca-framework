@@ -47,6 +47,11 @@ export { LuPlannerAgent } from './src/agents/luca/lu-planner.agent';
 export { LuSkill } from './src/skills/luca/lu.skill';
 export { LuWorkflowRule } from './src/rules/lu-workflow.rule';
 
+// Registries (for build scripts and consumers)
+export { agentRegistry } from './src/agents/index';
+export { skillRegistry } from './src/skills/index';
+export { ruleRegistry } from './src/rules/index';
+
 // Validation utilities (public-facing)
 export {
   sanitizeJsonParse,
