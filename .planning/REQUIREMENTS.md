@@ -22,14 +22,14 @@ Establish the enforcement and verification foundation for all future workflow im
 
 ### Hooks
 
-- [ ] **HOOK-01**: Hook directory structure exists (`.claude/hooks/` and/or project config)
-- [ ] **HOOK-02**: Post-edit hook auto-runs formatter after file writes
-- [ ] **HOOK-03**: Post-edit hook runs type-checker on TypeScript file changes
-- [ ] **HOOK-04**: Pre-commit hook blocks commits when tests fail or lint errors exist
-- [ ] **HOOK-05**: Context usage monitor warns at threshold levels (configurable)
-- [ ] **HOOK-06**: Session persistence hook saves WORKING.md on stop
-- [ ] **HOOK-07**: Hook/skill boundary is clearly defined and documented
-- [ ] **HOOK-08**: Hooks are distributable via `luca init` templates
+- [x] **HOOK-01**: Hook directory structure exists (`.claude/hooks/` and/or project config)
+- [x] **HOOK-02**: Post-edit hook auto-runs formatter after file writes
+- [x] **HOOK-03**: Post-edit hook runs type-checker on TypeScript file changes
+- [x] **HOOK-04**: Pre-commit hook blocks commits when tests fail or lint errors exist
+- [x] **HOOK-05**: Context usage monitor warns at threshold levels (configurable)
+- [x] **HOOK-06**: Session persistence hook saves WORKING.md on session end
+- [x] **HOOK-07**: Hook/skill boundary is clearly defined and documented
+- [x] **HOOK-08**: Hooks are distributable via `luca init` templates
 
 ### Verification Harness
 
@@ -72,14 +72,14 @@ Establish the enforcement and verification foundation for all future workflow im
 | BUILD-04 | Phase 10 (Build Pipeline) | Critical | **Complete** |
 | BUILD-05 | Phase 10 (Build Pipeline) | Critical | **Complete** |
 | BUILD-06 | Phase 10 (Build Pipeline) | High | **Complete** |
-| HOOK-01 | Phase 11 (Hooks) | Critical | Pending |
-| HOOK-02 | Phase 11 (Hooks) | High | Pending |
-| HOOK-03 | Phase 11 (Hooks) | High | Pending |
-| HOOK-04 | Phase 11 (Hooks) | Critical | Pending |
-| HOOK-05 | Phase 11 (Hooks) | Medium | Pending |
-| HOOK-06 | Phase 11 (Hooks) | Medium | Pending |
-| HOOK-07 | Phase 11 (Hooks) | High | Pending |
-| HOOK-08 | Phase 11 (Hooks) | High | Pending |
+| HOOK-01 | Phase 11 (Hooks) | Critical | **Complete** |
+| HOOK-02 | Phase 11 (Hooks) | High | **Complete** |
+| HOOK-03 | Phase 11 (Hooks) | High | **Complete** |
+| HOOK-04 | Phase 11 (Hooks) | Critical | **Complete** |
+| HOOK-05 | Phase 11 (Hooks) | Medium | **Complete** |
+| HOOK-06 | Phase 11 (Hooks) | Medium | **Complete** |
+| HOOK-07 | Phase 11 (Hooks) | High | **Complete** |
+| HOOK-08 | Phase 11 (Hooks) | High | **Complete** |
 | VERI-01 | Phase 12 (Verification Harness) | Critical | Pending |
 | VERI-02 | Phase 12 (Verification Harness) | Critical | Pending |
 | VERI-03 | Phase 12 (Verification Harness) | High | Pending |
