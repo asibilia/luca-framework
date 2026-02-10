@@ -435,7 +435,7 @@ Identify files modified in this phase:
 
 \`\`\`bash
 # Extract files from SUMMARY.md
-grep -E "^\- \\`" "$PHASE_DIR"/*-SUMMARY.md | sed 's/.*\`\([^\`]*\)\`.*/\1/' | sort -u
+grep -E "^\- \\\`" "$PHASE_DIR"/*-SUMMARY.md | sed 's/.*\`\([^\`]*\)\`.*/\1/' | sort -u
 \`\`\`
 
 Run anti-pattern detection:

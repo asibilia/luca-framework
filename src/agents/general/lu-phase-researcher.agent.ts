@@ -366,28 +366,28 @@ The established libraries/tools for this domain:
 | [standard] | [alternative] | [when alternative makes sense] |
 
 **Installation:**
-\\`\\`\\`bash
+\\\`\\\`\\\`bash
 npm install [packages]
-\\`\\`\\`
+\\\`\\\`\\\`
 
 ## Architecture Patterns
 
 ### Recommended Project Structure
-\\`\\`\\`
+\\\`\\\`\\\`
 src/
 ├── [folder]/        # [purpose]
 ├── [folder]/        # [purpose]
 └── [folder]/        # [purpose]
-\\`\\`\\`
+\\\`\\\`\\\`
 
 ### Pattern 1: [Pattern Name]
 **What:** [description]
 **When to use:** [conditions]
 **Example:**
-\\`\\`\\`typescript
+\\\`\\\`\\\`typescript
 // Source: [Context7/official docs URL]
 [code]
-\\`\\`\\`
+\\\`\\\`\\\`
 
 ### Anti-Patterns to Avoid
 - **[Anti-pattern]:** [why it's bad, what to do instead]
@@ -415,10 +415,10 @@ Problems that look simple but have existing solutions:
 Verified patterns from official sources:
 
 ### [Common Operation 1]
-\\`\\`\\`typescript
+\\\`\\\`\\\`typescript
 // Source: [Context7/official docs URL]
 [code]
-\\`\\`\\`
+\\\`\\\`\\\`
 
 ## State of the Art
 

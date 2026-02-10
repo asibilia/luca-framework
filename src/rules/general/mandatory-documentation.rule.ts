@@ -8,7 +8,7 @@ import type { RuleConfig } from '../types/rule.types';
 const MandatorydocumentatConfig: RuleConfig = {
   frontmatter: {
     description: `Mandatory documentation requirements for all new functionality and modifications`,
-    globs: [''**/*.{ts,tsx,js,jsx}''],
+    globs: ['**/*.{ts,tsx,js,jsx}'],
     alwaysApply: true,
   },
   sections: [
