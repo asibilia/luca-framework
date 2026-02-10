@@ -33,12 +33,12 @@ Establish the enforcement and verification foundation for all future workflow im
 
 ### Verification Harness
 
-- [ ] **VERI-01**: Single harness command runs all checks: test, lint, typecheck, build
-- [ ] **VERI-02**: Harness integrates into `lu-execute-phase` after wave execution, before agent verification
-- [ ] **VERI-03**: Harness configuration is project-specific via `.planning/config.json`
-- [ ] **VERI-04**: Failure-to-fix pipeline: parse errors, feed to executor, re-run, loop until pass or max iterations
-- [ ] **VERI-05**: Harness output provides structured data for lu-verifier analysis
-- [ ] **VERI-06**: Lightweight checks (typecheck on changed files) run via hooks; full harness at phase boundaries
+- [x] **VERI-01**: Single harness command runs all checks: test, lint, typecheck, build
+- [x] **VERI-02**: Harness integrates into `lu-execute-phase` after wave execution, before agent verification
+- [x] **VERI-03**: Harness configuration is project-specific via `.planning/config.json`
+- [x] **VERI-04**: Failure-to-fix pipeline: parse errors, feed to executor, re-run, loop until pass or max iterations
+- [x] **VERI-05**: Harness output provides structured data for lu-verifier analysis
+- [x] **VERI-06**: Lightweight checks (typecheck on changed files) run via hooks; full harness at phase boundaries
 
 ### Complexity Gates
 
@@ -80,12 +80,12 @@ Establish the enforcement and verification foundation for all future workflow im
 | HOOK-06 | Phase 11 (Hooks) | Medium | **Complete** |
 | HOOK-07 | Phase 11 (Hooks) | High | **Complete** |
 | HOOK-08 | Phase 11 (Hooks) | High | **Complete** |
-| VERI-01 | Phase 12 (Verification Harness) | Critical | Pending |
-| VERI-02 | Phase 12 (Verification Harness) | Critical | Pending |
-| VERI-03 | Phase 12 (Verification Harness) | High | Pending |
-| VERI-04 | Phase 12 (Verification Harness) | High | Pending |
-| VERI-05 | Phase 12 (Verification Harness) | Medium | Pending |
-| VERI-06 | Phase 12 (Verification Harness) | High | Pending |
+| VERI-01 | Phase 12 (Verification Harness) | Critical | **Complete** |
+| VERI-02 | Phase 12 (Verification Harness) | Critical | **Complete** |
+| VERI-03 | Phase 12 (Verification Harness) | High | **Complete** |
+| VERI-04 | Phase 12 (Verification Harness) | High | **Complete** |
+| VERI-05 | Phase 12 (Verification Harness) | Medium | **Complete** |
+| VERI-06 | Phase 12 (Verification Harness) | High | **Complete** |
 | CPLX-01 | Phase 13 (Complexity Gates) | Critical | Pending |
 | CPLX-02 | Phase 13 (Complexity Gates) | Critical | Pending |
 | CPLX-03 | Phase 13 (Complexity Gates) | Critical | Pending |

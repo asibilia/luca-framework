@@ -99,37 +99,39 @@ Establish the enforcement and verification foundation that all future workflow i
 
 **Goal:** Build an automated verification pipeline that runs tests, lint, typecheck, and build as the primary quality signal. Integrate into `lu-execute-phase` so verification is automatic, not manual.
 
-**Status:** Pending
+**Status:** Complete
 
 **Success Criteria:**
 
-- Single orchestrated verification command runs all checks
-- Harness runs automatically after wave execution, before agent-based verification
-- Project-specific harness configuration in `.planning/config.json`
-- Failure-to-fix loop: parse errors, feed to executor, re-run, max iterations
-- Harness output provides structured data for lu-verifier
-- Lightweight checks via hooks; full harness at phase boundaries
+- [x] Single orchestrated verification command runs all checks
+- [x] Harness runs automatically after wave execution, before agent-based verification
+- [x] Project-specific harness configuration in `.planning/config.json`
+- [x] Failure-to-fix loop: parse errors, feed to executor, re-run, max iterations
+- [x] Harness output provides structured data for lu-verifier
+- [x] Lightweight checks via hooks; full harness at phase boundaries
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| VERI-01 | Single harness command | Critical | Pending |
-| VERI-02 | Integration into lu-execute-phase | Critical | Pending |
-| VERI-03 | Project-specific configuration | High | Pending |
-| VERI-04 | Failure-to-fix pipeline | High | Pending |
-| VERI-05 | Structured output for lu-verifier | Medium | Pending |
-| VERI-06 | Lightweight hooks + full harness split | High | Pending |
+| VERI-01 | Single harness command | Critical | **Complete** |
+| VERI-02 | Integration into lu-execute-phase | Critical | **Complete** |
+| VERI-03 | Project-specific configuration | High | **Complete** |
+| VERI-04 | Failure-to-fix pipeline | High | **Complete** |
+| VERI-05 | Structured output for lu-verifier | Medium | **Complete** |
+| VERI-06 | Lightweight hooks + full harness split | High | **Complete** |
+
+### Verification
+
+- Verification report: `.planning/phases/12-verification-harness/VERIFICATION.md`
+- Score: 6/6 requirements verified
+- 65 new tests (all passing), full suite: 551 pass, 6 fail (pre-existing)
+- 4 parsers (tsc, bun-test, eslint, generic), runner with CLI, 22 rules (+1 harness-verification)
+- Build output: 180 files
 
 ### Dependencies
 
 - Phase 11 (hooks provide the lightweight check layer that complements the harness)
-
-### Risks
-
-- Parsing error output from diverse toolchains (bun test, tsc, eslint) requires structured parsers
-- Max iteration loops need escape hatches to prevent infinite fix cycles
-- Harness adds execution time — must be fast enough to not frustrate workflow
 
 ---
 
@@ -179,7 +181,7 @@ Establish the enforcement and verification foundation that all future workflow i
 |-------|-------|----------|--------|
 | Phase 10 | Build Pipeline | First | **Complete** |
 | Phase 11 | Hooks | After Phase 10 | **Complete** |
-| Phase 12 | Verification Harness | After Phase 11 | Pending |
+| Phase 12 | Verification Harness | After Phase 11 | **Complete** |
 | Phase 13 | Complexity Gates | After Phase 12 | Pending |
 
 **Sequential dependency chain:** Each phase builds on the previous. Phase 10 fixes the foundation, Phase 11 adds enforcement, Phase 12 adds automated verification, Phase 13 adds intelligent routing.
@@ -199,9 +201,9 @@ Establish the enforcement and verification foundation that all future workflow i
 - [x] Hooks work in fresh `luca init` project
 
 ### Phase 12
-- [ ] Full harness runs all 4 checks (test, lint, typecheck, build)
-- [ ] Failure-to-fix loop resolves common errors within 3 iterations
-- [ ] lu-execute-phase calls harness automatically
+- [x] Full harness runs all 4 checks (test, lint, typecheck, build)
+- [x] Failure-to-fix loop resolves common errors within 3 iterations
+- [x] lu-execute-phase calls harness automatically
 
 ### Phase 13
 - [ ] 5 complexity levels with clear, documented criteria
