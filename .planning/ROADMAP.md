@@ -2,195 +2,163 @@
 
 ## Overview
 
-**Current Milestone:** v1.0.1 — Code Hardening — COMPLETE
+**Current Milestone:** v1.1.0 — Workflow Foundation
 
-6-phase comprehensive review of the v1.0.0 implementation. Each phase uses specialized review agents to audit a domain, then fixes findings in-place.
+Establish the enforcement and verification foundation that all future workflow improvements build on. The build pipeline compiles everything from source, hooks provide deterministic quality gates, an automated harness replaces manual verification, and complexity gates scale workflow with task scope.
 
-**Goal:** Production-quality codebase with test coverage, no security gaps, clean architecture, and solid DX.
-
-**Result:** All 6 phases complete. 433 tests, zero type errors, Zod at all boundaries, clean architecture, 23ms startup, actionable DX across all CLI surfaces. Completed 2026-02-10.
+**Goal:** Make quality enforcement automatic and unavoidable — advisory instructions become deterministic gates.
 
 ---
 
-## Phase 4: Testing
+## Phase 10: Build Pipeline
 
-**Goal:** Establish test infrastructure and add meaningful coverage across all packages.
+**Goal:** Create agent and rule registries so the build compiles all entities from `src/` to both `.cursor/` and `.claude/`. Close the dogfooding gap where this repo is a first-party consumer of its own framework output.
 
 **Status:** Pending
 
 **Success Criteria:**
 
-- bun test configured with project-wide settings
-- Unit tests for all utility modules in `packages/luca-framework/src/utils/`
-- Unit tests for adapters, commands, base classes, compilers, schemas
-- Integration tests for config validation and registration flows
-- Coverage reporting functional
+- `agentRegistry` in `src/agents/index.ts` exports all 23 general agents (luca-specific agents handled separately by build scripts)
+- `ruleRegistry` in `src/rules/index.ts` exports all 20 general rules (luca-specific rules handled separately by build scripts)
+- Build scripts iterate all three registries (agents, skills, rules)
+- `bun run build:cursor` produces all agents, skills, and rules in `.cursor/`
+- `bun run build:claude` produces all agents, skills, and rules in `.claude/`
+- No stale output files — generated output matches source definitions
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| REQ-101 | Test Infrastructure & Coverage | Critical | Pending |
+| BUILD-01 | Agent registry | Critical | Pending |
+| BUILD-02 | Rule registry | Critical | Pending |
+| BUILD-03 | Registry-based build scripts | Critical | Pending |
+| BUILD-04 | Full Cursor output | Critical | Pending |
+| BUILD-05 | Full Claude output | Critical | Pending |
+| BUILD-06 | No stale output files | High | Pending |
 
 ### Risks
 
-- Mocking filesystem and external CLIs (gh, Jira) may require test helpers
-- Some modules tightly coupled to runtime environment (Cursor IDE detection)
+- Existing hand-placed files in `.cursor/` may have manual edits not captured in `src/`
+- Need to decide `.gitignore` policy for generated output directories
 
 ---
 
-## Phase 5: Code Quality
+## Phase 11: Hooks
 
-**Goal:** Enforce consistent code quality standards across the entire codebase.
+**Goal:** Implement deterministic quality gates using Claude Code hooks. Replace advisory enforcement (agents remembering to check) with automatic enforcement (hooks that always run).
 
 **Status:** Pending
 
 **Success Criteria:**
 
-- Zero `tsc --noEmit` errors with strict flags
-- No `any` types in production code
-- Dead code removed
-- Consistent naming and import patterns
-- No duplicate logic
+- Hook infrastructure exists and is distributable
+- Post-edit hooks auto-format and type-check changed files
+- Pre-commit hook blocks commits with failing tests or lint errors
+- Context usage monitoring warns at configurable thresholds
+- WORKING.md persistence on session stop
+- Hook/skill boundary clearly documented
+- Hooks included in `luca init` templates for downstream projects
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| REQ-102 | Code Quality & Consistency | High | Pending |
+| HOOK-01 | Hook directory structure | Critical | Pending |
+| HOOK-02 | Post-edit formatting | High | Pending |
+| HOOK-03 | Post-edit type-checking | High | Pending |
+| HOOK-04 | Pre-commit quality gate | Critical | Pending |
+| HOOK-05 | Context usage monitor | Medium | Pending |
+| HOOK-06 | WORKING.md persistence | Medium | Pending |
+| HOOK-07 | Hook/skill boundary docs | High | Pending |
+| HOOK-08 | Distributable via luca init | High | Pending |
 
 ### Dependencies
 
-- Phase 4 (tests provide safety net for quality fixes)
+- Phase 10 (build pipeline must work so hooks can be part of compiled output)
 
 ### Risks
 
-- Strict type fixes may cascade across module boundaries
-- Dead code removal requires understanding usage across skill/agent files
+- Hook execution adds latency to every edit — lightweight checks must be fast
+- Different projects have different toolchains (not all use TypeScript, bun test, etc.)
+- Context usage monitoring requires API not available in all environments
 
 ---
 
-## Phase 6: Security
+## Phase 12: Verification Harness
 
-**Goal:** Audit and fix security vulnerabilities across all input surfaces.
+**Goal:** Build an automated verification pipeline that runs tests, lint, typecheck, and build as the primary quality signal. Integrate into `lu-execute-phase` so verification is automatic, not manual.
 
 **Status:** Pending
 
 **Success Criteria:**
 
-- All user input validated before use
-- No command injection or path traversal vectors
-- Dependency audit clean (no high/critical CVEs)
-- Secrets never logged
-- Zod schemas at all external boundaries
+- Single orchestrated verification command runs all checks
+- Harness runs automatically after wave execution, before agent-based verification
+- Project-specific harness configuration in `.planning/config.json`
+- Failure-to-fix loop: parse errors, feed to executor, re-run, max iterations
+- Harness output provides structured data for lu-verifier
+- Lightweight checks via hooks; full harness at phase boundaries
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| REQ-103 | Security Hardening | Critical | Pending |
+| VERI-01 | Single harness command | Critical | Pending |
+| VERI-02 | Integration into lu-execute-phase | Critical | Pending |
+| VERI-03 | Project-specific configuration | High | Pending |
+| VERI-04 | Failure-to-fix pipeline | High | Pending |
+| VERI-05 | Structured output for lu-verifier | Medium | Pending |
+| VERI-06 | Lightweight hooks + full harness split | High | Pending |
 
 ### Dependencies
 
-- Phase 4 (tests verify security fixes don't break functionality)
+- Phase 11 (hooks provide the lightweight check layer that complements the harness)
 
 ### Risks
 
-- EJS template rendering may have injection surface
-- Shell command construction in adapters needs careful review
+- Parsing error output from diverse toolchains (bun test, tsc, eslint) requires structured parsers
+- Max iteration loops need escape hatches to prevent infinite fix cycles
+- Harness adds execution time — must be fast enough to not frustrate workflow
 
 ---
 
-## Phase 7: Architecture
+## Phase 13: Complexity Gates
 
-**Goal:** Review module boundaries, coupling, error handling patterns, and abstraction quality.
+**Goal:** Design and implement a structured system where workflow complexity scales with task scope. Core steps always run; additional steps activate based on complexity level.
 
-**Status:** ✅ Complete
+**Status:** Pending
 
 **Success Criteria:**
 
-- ✅ No circular dependencies (confirmed in research — clean DAG)
-- ✅ Clean module boundaries (fixed rule import paths, added cross-reference comments)
-- ✅ Consistent error handling (Result<T> discriminated union, generateFiles standardized)
-- ✅ Minimal, intentional public API surface (explicit named exports, no export *)
-- ✅ Adapter contract fully enforced (confirmed in research — proper discriminated unions)
+- Clear complexity levels defined with measurable criteria
+- Always-on steps identified (verification runs for all levels)
+- Complexity-gated steps mapped per level
+- Both manual override and automatic inference supported
+- Complexity matrix documented as reference
+- Skill and rule definitions enforce gating
+- Sub-agent count, iteration limits, and review depth scale with complexity
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| REQ-104 | Architecture Review | High | ✅ Complete |
+| CPLX-01 | Complexity level definitions | Critical | Pending |
+| CPLX-02 | Always-on steps | Critical | Pending |
+| CPLX-03 | Gated step mapping | Critical | Pending |
+| CPLX-04 | Manual + automatic gating | High | Pending |
+| CPLX-05 | Complexity matrix reference | High | Pending |
+| CPLX-06 | Skill/rule enforcement | High | Pending |
+| CPLX-07 | Scaling sub-agent behavior | Medium | Pending |
 
 ### Dependencies
 
-- Phase 5 (code quality fixes simplify architecture review)
+- Phase 12 (harness provides the verification layer that complexity gates route to)
 
 ### Risks
 
-- Architectural fixes may require moving files across module boundaries
-- Base class changes ripple to all implementations
-
----
-
-## Phase 8: Performance
-
-**Goal:** Audit startup time, bundle size, memory usage, and template rendering performance.
-
-**Status:** ✅ Complete
-
-**Success Criteria:**
-
-- ✅ CLI startup < 500ms for `luca doctor` (measured: 23ms)
-- ✅ Bundle sizes documented and optimized (99KB dist, no regression)
-- ✅ No unnecessary production dependencies (fs-extra removed, 12 → 11 deps)
-- ✅ Lazy loading where beneficial (all commands + version-check dynamically imported)
-- ✅ No memory leaks in long-running operations (process.once SIGINT, createdPaths reset)
-
-### Requirements Delivered
-
-| REQ | Description | Priority | Status |
-|-----|-------------|----------|--------|
-| REQ-105 | Performance Review | Medium | ✅ Complete |
-
-### Dependencies
-
-- Phase 7 (architecture fixes may change import patterns affecting bundle)
-
-### Risks
-
-- Lazy loading may introduce complexity without meaningful gain for small CLI
-- Bundle analysis requires built output
-
----
-
-## Phase 9: Developer Experience
-
-**Goal:** Audit CLI UX, error messages, documentation accuracy, and onboarding flow.
-
-**Status:** ✅ Complete
-
-**Success Criteria:**
-
-- ✅ All error messages actionable (what failed → why → what to do next pattern across init, update, doctor)
-- ✅ Help text accurate (--verbose wired, no references to non-existent flags)
-- ✅ Documentation matches implementation (no stale refs to luca execute, GITHUB_TOKEN, compile:to-cursor)
-- ✅ Init wizard handles all edge cases (cancel → process.exit(0), stack/tracker validation, regex escaping)
-- ✅ Build scripts documented (JSDoc headers, error handling, Bun APIs)
-
-### Requirements Delivered
-
-| REQ | Description | Priority | Status |
-|-----|-------------|----------|--------|
-| REQ-106 | DX Review | Medium | ✅ Complete |
-
-### Dependencies
-
-- All previous phases (DX review validates the polished result)
-
-### Risks
-
-- Documentation drift may be extensive after all prior phases' changes
-- Template file references may need bulk updates
+- Automatic complexity inference may be unreliable — need good manual override UX
+- Over-engineering the matrix creates more ceremony than it saves
+- Gating boundaries are subjective — needs iteration with real usage
 
 ---
 
@@ -198,59 +166,44 @@
 
 | Phase | Scope | Sequence | Status |
 |-------|-------|----------|--------|
-| Phase 4 | Testing | First | Pending |
-| Phase 5 | Code Quality | After Phase 4 | Pending |
-| Phase 6 | Security | After Phase 4 | Pending |
-| Phase 7 | Architecture | After Phase 5 | Pending |
-| Phase 8 | Performance | After Phase 7 | Pending |
-| Phase 9 | DX | After all | ✅ Complete |
+| Phase 10 | Build Pipeline | First | Pending |
+| Phase 11 | Hooks | After Phase 10 | Pending |
+| Phase 12 | Verification Harness | After Phase 11 | Pending |
+| Phase 13 | Complexity Gates | After Phase 12 | Pending |
 
-**Parallelization:** Phases 5 and 6 can run concurrently (both depend only on Phase 4).
+**Sequential dependency chain:** Each phase builds on the previous. Phase 10 fixes the foundation, Phase 11 adds enforcement, Phase 12 adds automated verification, Phase 13 adds intelligent routing.
 
 ---
 
 ## Success Metrics
 
-### Phase 4
+### Phase 10
+- [ ] `bun run build:all` compiles all 25 agents, 38 skills, 21 rules
+- [ ] `.cursor/` and `.claude/` output is fully generated, not hand-placed
+- [ ] Build runs without errors
 
-- [ ] bun test runs and passes
-- [ ] Coverage > 60% for packages/luca-framework/src/
-- [ ] All adapters have unit tests
-- [ ] All CLI commands have unit tests
+### Phase 11
+- [ ] Post-edit hooks execute within 2 seconds
+- [ ] Pre-commit gate catches at least: test failures, type errors, lint errors
+- [ ] Hooks work in fresh `luca init` project
 
-### Phase 5
+### Phase 12
+- [ ] Full harness runs all 4 checks (test, lint, typecheck, build)
+- [ ] Failure-to-fix loop resolves common errors within 3 iterations
+- [ ] lu-execute-phase calls harness automatically
 
-- [ ] Zero `tsc --noEmit` errors
-- [ ] Zero `any` in production code
-- [ ] No unused exports
-
-### Phase 6
-
-- [ ] Zero high/critical dependency vulnerabilities
-- [ ] All CLI inputs validated with Zod
-- [ ] No shell injection vectors
-
-### Phase 7
-
-- [ ] Zero circular dependencies
-- [ ] Public API surface documented and intentional
-
-### Phase 8
-
-- [ ] `luca doctor` startup < 500ms
-- [ ] Bundle sizes documented
-
-### Phase 9
-
-- [x] All error messages include remediation
-- [x] README matches implementation
+### Phase 13
+- [ ] 5 complexity levels with clear, documented criteria
+- [ ] Complexity matrix covers all workflow steps
+- [ ] Manual override works for all levels
 
 ---
 
 ## History
 
 - **v1.0.0** — Core CLI, Integrations, Enterprise Readiness ([View Archive](milestones/v1.0.0-ROADMAP.md))
+- **v1.0.1** — Code Hardening: 6 phases, 433 tests, all passed ([View Archive](milestones/v1.0.1-ROADMAP.md))
 
 ---
 
-*Roadmap created: 2026-02-09*
+*Roadmap created: 2026-02-10*

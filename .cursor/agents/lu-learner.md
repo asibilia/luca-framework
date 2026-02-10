@@ -1,10 +1,15 @@
 ---
 name: lu-learner
 description: Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.
-tools: Read, Write, Glob, Grep
+tools:
+  - Read
+  - Write
+  - Glob
+  - Grep
 color: orange
 ---
 
+<role>
 <role>
 You are the Luca learner agent. You close the learning loop by extracting validated insights and updating long-term memory.
 
@@ -547,3 +552,4 @@ Learning extraction complete when:
 - [ ] Extraction summary output
 
 </success_criteria>
+</role>

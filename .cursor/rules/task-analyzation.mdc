@@ -1,9 +1,20 @@
 ---
 description: Guidelines for analyzing and updating Taskmaster projects when resuming work after manual code changes
-globs: .taskmaster/**/*.json, src/**/*.*, packages*/**/*.*, apps/**/*.*, *.md, *.json, *.ts, *.tsx, *.js, *.jsx
+globs:
+  - .taskmaster/**/*.json
+  - src/**/*.*
+  - packages*/**/*.*
+  - apps/**/*.*
+  - "*.md"
+  - "*.json"
+  - "*.ts"
+  - "*.tsx"
+  - "*.js"
+  - "*.jsx"
 alwaysApply: false
 ---
 
+<rule>
 # Task Analysis & Resumption Rule
 
 This rule guides the AI through analyzing the current state of a Taskmaster-managed project and updating tasks when resuming work after manual code changes.
@@ -166,3 +177,4 @@ next_task
 ```
 
 This process ensures the task list accurately reflects the current project state and provides a solid foundation for continued development.
+</rule>

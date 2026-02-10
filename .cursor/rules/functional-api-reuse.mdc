@@ -1,3 +1,8 @@
+---
+description: Functional API Reuse & Architecture Rule
+---
+
+<rule>
 # Functional API Reuse & Architecture Rule
 
 **CRITICAL ARCHITECTURE PRINCIPLE**: Always build on existing functionality rather than reinventing solutions. This is a mandatory architectural decision that must be followed in all code contributions.
@@ -244,3 +249,5 @@ When refactoring existing code to follow this rule:
 - **Consistent behavior** across different features
 
 Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.
+
+</rule>

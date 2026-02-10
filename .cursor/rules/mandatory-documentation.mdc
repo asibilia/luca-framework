@@ -1,9 +1,11 @@
 ---
 description: Mandatory documentation requirements for all new functionality and modifications
-globs: '**/*.{ts,tsx,js,jsx}'
+globs:
+  - "**/*.{ts,tsx,js,jsx}"
 alwaysApply: true
 ---
 
+<rule>
 - **Documentation is Mandatory**: ALL new functionality, utilities, and significant modifications MUST include comprehensive documentation
 
 - **New Function/Class Requirements**:
@@ -155,3 +157,4 @@ alwaysApply: true
   - **Future Maintenance**: Well-documented code is easier to maintain and extend
 
 Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conventions.
+</rule>

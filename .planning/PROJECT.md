@@ -22,22 +22,22 @@ The Luca framework is now a distributable, CLI-installable package.
 - **Enterprise readiness**: `npx luca doctor`, security docs, and approval workflows
 - **Safe updates**: `npx luca update` with conflict detection
 
-## Current Milestone (v1.0.1) — Code Hardening
+## Previous Milestone (v1.0.1) — Code Hardening ✅
 
-**Goal:** Comprehensive review and hardening of the v1.0.0 implementation. Every source file passes through specialized review agents (security, architecture, performance, DX, testing, code quality) with findings fixed in-place.
+**Completed:** 2026-02-10. All 6 phases done, UAT passed. 433 tests, zero type errors, Zod at all boundaries, clean architecture, 23ms startup, actionable DX.
 
-**Surface area:** 133 TypeScript source files, 27 agents, 42 skills, 21 rules, 3 compilers, 3 CLI commands, 4 adapters, 9 build scripts, 70+ templates.
+## Current Milestone (v1.1.0) — Workflow Foundation
 
-**Key finding from initial audit:** Zero dedicated test files exist. Test coverage is the top priority.
+**Goal:** Establish the enforcement and verification foundation that all future workflow improvements build on. The build pipeline compiles everything from source (closing the dogfooding gap), hooks provide deterministic quality gates, an automated harness replaces manual verification, and a complexity-gating system ensures workflow scales with task scope.
+
+**Motivation:** v1.0.1 hardened the code; v1.1.0 hardens the workflow. Currently all quality enforcement is advisory (agents remember to check), hooks don't exist, and the build pipeline only compiles a subset of entities. This milestone makes enforcement automatic and unavoidable.
 
 **Phases:**
 
-1. **Testing** — Add test infrastructure and coverage across all packages
-2. **Code Quality** — Lint, type strictness, dead code removal, consistency
-3. **Security** — Input validation, secrets handling, injection surfaces, dependency audit
-4. **Architecture** — Coupling, error handling patterns, module boundaries, abstractions
-5. **Performance** — Bundle size, startup time, memory usage, template rendering
-6. **DX** — CLI UX, error messages, documentation accuracy, onboarding flow
+1. **Build Pipeline** — Agent/rule registries, full compilation from src to .cursor/.claude
+2. **Hooks** — Deterministic quality gates (post-edit, pre-commit, context monitoring)
+3. **Verification Harness** — Automated test/lint/typecheck/build pipeline integrated into execution
+4. **Complexity Gates** — Structured system for scaling workflow steps with task scope
 
 ## Future Milestone Goals (v1.1.0)
 

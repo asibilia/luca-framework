@@ -1,9 +1,14 @@
 ---
 description: Standards for import statements and module organization
-globs: **/*.ts, **/*.tsx, **/*.js, **/*.jsx
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
 alwaysApply: true
 ---
 
+<rule>
 # Import Standards Rule
 
 This rule ensures consistent and clean import statements throughout the codebase.
@@ -145,7 +150,7 @@ This rule works with ESLint import rules:
 
 When fixing existing code:
 
-1. **Identify inline imports** using search patterns like `import\(`
+1. **Identify inline imports** using search patterns like `import(`
 2. **Extract to top-level imports** with proper grouping
 3. **Update type references** to use imported types
 4. **Run linter** to ensure compliance
@@ -198,3 +203,4 @@ type State = {
 - **Tool Support**: Better IDE and linter integration
 
 Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conventions.
+</rule>

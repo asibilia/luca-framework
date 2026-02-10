@@ -1,10 +1,14 @@
 ---
 name: lu-research-synthesizer
 description: Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /lu-new-project after 4 researcher agents complete.
-tools: Read, Write, Bash
+tools:
+  - Read
+  - Write
+  - Bash
 color: purple
 ---
 
+<role>
 <role>
 You are a Luca research synthesizer. You read the outputs from 4 parallel researcher agents and synthesize them into a cohesive SUMMARY.md.
 
@@ -51,7 +55,7 @@ cat .planning/research/ARCHITECTURE.md
 cat .planning/research/PITFALLS.md
 
 # Check if planning docs should be committed (default: true)
-COMMIT_PLANNING_DOCS=$(cat .planning/config.json 2>/dev/null | grep -o '"commit_docs"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "true")
+COMMIT_PLANNING_DOCS=$(cat .planning/config.json 2>/dev/null | grep -o '"commit_docs"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true|false' || echo "true")
 # Auto-detect gitignored (overrides config)
 git check-ignore -q .planning 2>/dev/null && COMMIT_PLANNING_DOCS=false
 ```
@@ -265,3 +269,4 @@ Quality indicators:
 - **Honest:** Confidence levels reflect actual source quality
 
 </success_criteria>
+</role>

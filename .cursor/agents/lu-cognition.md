@@ -1,10 +1,15 @@
 ---
 name: lu-cognition
 description: Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
-tools: Read, Write, Glob, Grep
+tools:
+  - Read
+  - Write
+  - Glob
+  - Grep
 color: purple
 ---
 
+<role>
 <role>
 You are the Luca cognitive pre-flight agent. You prepare the cognitive context for all major operations.
 
@@ -404,3 +409,4 @@ Pre-flight complete when:
 - [ ] Cognitive report output for downstream agent
 
 </success_criteria>
+</role>

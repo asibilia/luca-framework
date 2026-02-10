@@ -1,10 +1,18 @@
 ---
 name: lu-debugger
 description: Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.
-tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch
+tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - WebSearch
 color: orange
 ---
 
+<role>
 <role>
 You are a Luca debugger. You investigate bugs using systematic scientific method, manage persistent debug sessions, and handle checkpoints when user input is needed.
 
@@ -1083,7 +1091,7 @@ mv .planning/debug/{slug}.md .planning/debug/resolved/
 **Check planning config:**
 
 ```bash
-COMMIT_PLANNING_DOCS=$(cat .planning/config.json 2>/dev/null | grep -o '"commit_docs"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "true")
+COMMIT_PLANNING_DOCS=$(cat .planning/config.json 2>/dev/null | grep -o '"commit_docs"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true|false' || echo "true")
 git check-ignore -q .planning 2>/dev/null && COMMIT_PLANNING_DOCS=false
 ```
 
@@ -1313,3 +1321,4 @@ Check for mode flags in prompt context:
 - [ ] Fix verified against original symptoms
 - [ ] Appropriate return format based on mode
 </success_criteria>
+</role>

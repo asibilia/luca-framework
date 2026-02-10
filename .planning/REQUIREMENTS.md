@@ -1,171 +1,105 @@
-# Requirements — v1.0.1 Code Hardening
+# Requirements — v1.1.0 Workflow Foundation
 
 ## Overview
 
-Comprehensive review and hardening of the v1.0.0 implementation. Each requirement maps to a specialized review domain. Findings are fixed in-place — this milestone produces both audit reports and working fixes.
+Establish the enforcement and verification foundation for all future workflow improvements. Fix the build pipeline to compile everything from source, add deterministic hooks, automate verification, and gate workflow complexity.
 
-**Surface area:** 133 TypeScript source files, 70+ templates, 9 build scripts
-**Approach:** Specialized agent review per domain, findings + fixes per phase
-
----
-
-## v1.0.1 Requirements
-
-### REQ-101: Test Infrastructure & Coverage
-
-**Description:** Establish test infrastructure and add meaningful coverage across all packages.
-
-**Acceptance Criteria:**
-
-- Test runner configured (bun test) with project-wide settings
-- Unit tests for all utility functions in `packages/luca-framework/src/utils/`
-- Unit tests for adapter implementations (Jira, GitHub, Placeholder)
-- Unit tests for CLI commands (doctor, init, update)
-- Unit tests for base classes (`base-agent.ts`, `base-skill.ts`, `base-rule.ts`)
-- Unit tests for compilers (`base.compiler.ts`, `claude.compiler.ts`, `cursor.compiler.ts`)
-- Unit tests for shared utilities (`constants.ts`, `utils.ts`, `validation-utils.ts`)
-- Unit tests for Zod schemas (`agent.schemas.ts`, `skill.schemas.ts`, `rule.schemas.ts`)
-- Integration tests for skill/agent/rule registration and config validation
-- Coverage reporting configured
-
-**Technical Notes:**
-
-- Use `bun:test` (no external test framework)
-- Co-locate tests next to source files (`*.test.ts`)
-- Mock external dependencies (gh CLI, Jira API, filesystem)
+**Core Value:** Zero-friction adoption of structured AI workflows
+**Motivation:** v1.0.1 hardened the code; v1.1.0 hardens the workflow. All quality enforcement is currently advisory — this milestone makes it automatic and unavoidable.
 
 ---
 
-### REQ-102: Code Quality & Consistency
+## v1.1.0 Requirements
 
-**Description:** Enforce consistent code quality standards across the entire codebase.
+### Build Pipeline
 
-**Acceptance Criteria:**
+- [ ] **BUILD-01**: Agent registry exports all general agents from `src/agents/general/` (luca-specific agents handled separately by build scripts, matching `skillRegistry` pattern)
+- [ ] **BUILD-02**: Rule registry exports all general rules from `src/rules/general/` (luca-specific rules handled separately by build scripts, matching `skillRegistry` pattern)
+- [ ] **BUILD-03**: Build scripts iterate over agent, skill, and rule registries (no hardcoded entities)
+- [ ] **BUILD-04**: `bun run build:cursor` generates all agents, skills, and rules in `.cursor/`
+- [ ] **BUILD-05**: `bun run build:claude` generates all agents, skills, and rules in `.claude/`
+- [ ] **BUILD-06**: Build output matches source — no stale files in `.cursor/` or `.claude/`
 
-- All TypeScript strict mode violations resolved
-- Dead code identified and removed (unused exports, unreachable branches)
-- Consistent error handling patterns across all modules
-- Consistent naming conventions (file names, exports, types)
-- No `any` types in production code (replace with proper types)
-- No `console.log` in production code (use consola logger)
-- Import organization standardized
-- Duplicate code identified and consolidated
+### Hooks
 
-**Technical Notes:**
+- [ ] **HOOK-01**: Hook directory structure exists (`.claude/hooks/` and/or project config)
+- [ ] **HOOK-02**: Post-edit hook auto-runs formatter after file writes
+- [ ] **HOOK-03**: Post-edit hook runs type-checker on TypeScript file changes
+- [ ] **HOOK-04**: Pre-commit hook blocks commits when tests fail or lint errors exist
+- [ ] **HOOK-05**: Context usage monitor warns at threshold levels (configurable)
+- [ ] **HOOK-06**: Session persistence hook saves WORKING.md on stop
+- [ ] **HOOK-07**: Hook/skill boundary is clearly defined and documented
+- [ ] **HOOK-08**: Hooks are distributable via `luca init` templates
 
-- Run `tsc --noEmit` with strict flags to surface type issues
-- Review each `src/` subdirectory systematically
+### Verification Harness
 
----
+- [ ] **VERI-01**: Single harness command runs all checks: test, lint, typecheck, build
+- [ ] **VERI-02**: Harness integrates into `lu-execute-phase` after wave execution, before agent verification
+- [ ] **VERI-03**: Harness configuration is project-specific via `.planning/config.json`
+- [ ] **VERI-04**: Failure-to-fix pipeline: parse errors, feed to executor, re-run, loop until pass or max iterations
+- [ ] **VERI-05**: Harness output provides structured data for lu-verifier analysis
+- [ ] **VERI-06**: Lightweight checks (typecheck on changed files) run via hooks; full harness at phase boundaries
 
-### REQ-103: Security Hardening
+### Complexity Gates
 
-**Description:** Audit and fix security vulnerabilities across all input surfaces.
-
-**Acceptance Criteria:**
-
-- All user input validated before use (CLI args, config values, file paths)
-- No command injection vectors in shell executions (`execa`, `Bun.$`)
-- No path traversal vulnerabilities in template rendering or file operations
-- Dependency audit passes with no high/critical vulnerabilities
-- Secrets handling reviewed (env vars, API tokens never logged)
-- Config file parsing hardened against malformed input
-- Zod schemas validate all external data boundaries
-
-**Technical Notes:**
-
-- Focus on `packages/luca-framework/src/commands/` (user-facing CLI)
-- Focus on `packages/luca-framework/src/adapters/` (external API boundaries)
-- Review `packages/luca-framework/src/utils/template.ts` (EJS rendering)
-
----
-
-### REQ-104: Architecture Review
-
-**Description:** Review module boundaries, coupling, error handling patterns, and abstraction quality.
-
-**Acceptance Criteria:**
-
-- No circular dependencies between modules
-- Clear module boundaries (agents, skills, rules, compilers don't cross-import internals)
-- Error handling uses consistent patterns (discriminated unions where established)
-- Base classes are minimal and don't over-abstract
-- Public API surface (`index.ts` exports) is intentional — no accidental internal exposure
-- Adapter contract properly enforced across implementations
-- Build scripts follow consistent patterns
-
-**Technical Notes:**
-
-- Check import graphs for circular refs
-- Review `src/agents/base/`, `src/skills/base/`, `src/rules/base/` abstraction quality
-- Verify `packages/luca-framework/src/contracts/work-tracker.ts` contract completeness
-
----
-
-### REQ-105: Performance Review
-
-**Description:** Audit startup time, bundle size, memory usage, and template rendering performance.
-
-**Acceptance Criteria:**
-
-- CLI startup time measured and optimized (target: < 500ms for `luca doctor`)
-- Bundle sizes documented for both packages
-- No unnecessary dependencies in production builds
-- Template rendering performance profiled for large projects
-- No memory leaks in long-running operations (init wizard, update)
-- Lazy loading applied where appropriate (adapters, heavy dependencies)
-- Build scripts optimized for incremental compilation
-
-**Technical Notes:**
-
-- Use `bun build` analysis for bundle inspection
-- Profile with `--inspect` flag
-- Check `package.json` for dev-only deps in production
-
----
-
-### REQ-106: Developer Experience Review
-
-**Description:** Audit CLI UX, error messages, documentation accuracy, and onboarding flow.
-
-**Acceptance Criteria:**
-
-- All CLI error messages are actionable (tell user what to do, not just what failed)
-- Help text accurate for all commands (doctor, init, update)
-- Template documentation matches actual framework behavior
-- Onboarding flow (init wizard) handles all edge cases gracefully
-- Config validation provides clear error messages for invalid values
-- Build scripts documented with usage instructions
-- README and docs match current implementation (no stale references)
-
-**Technical Notes:**
-
-- Run through full `luca init` flow manually
-- Check all `consola.error()` and `consola.warn()` messages
-- Verify template file references match actual file structure
-
----
+- [ ] **CPLX-01**: Complexity levels defined with clear criteria (trivial, simple, moderate, complex, critical)
+- [ ] **CPLX-02**: Always-on workflow steps identified (verification runs for all levels)
+- [ ] **CPLX-03**: Complexity-gated steps mapped: which activate at which level
+- [ ] **CPLX-04**: Gating mechanism supports manual override and automatic inference
+- [ ] **CPLX-05**: Complexity matrix documented: level -> required steps -> optional steps -> skipped steps
+- [ ] **CPLX-06**: Skill and rule definitions updated to enforce gating
+- [ ] **CPLX-07**: Complexity level influences sub-agent count, iteration limits, and review depth
 
 ## Out of Scope
 
-- New features (stack templates, monorepo support, etc.) — deferred to v1.1.0
-- Refactoring architecture — fix issues, don't redesign
-- Performance rewrites — optimize hot paths, don't rewrite systems
-- CI/CD setup — document expectations, don't implement pipeline
-
----
+| Feature | Reason |
+|---------|--------|
+| New stack templates (Python, Node.js, Next.js) | Deferred to v1.2.0 — workflow foundation must be solid first |
+| Agent marketplace / sharing registry | Requires distribution infrastructure beyond current scope |
+| CI/CD pipeline implementation | Document expectations, don't implement pipeline |
+| Cross-IDE support (VS Code) | Cursor-first, expand later |
+| Ralph Wiggum iterative loops | Depends on harness completion — Phase B/D todo |
+| Writer/reviewer separation | Depends on complexity gates — Phase B todo |
+| Procedural memory layer | Depends on complexity gates — Phase C todo |
 
 ## Traceability
 
-| REQ | Phase | Priority | Complexity | Status |
-|-----|-------|----------|------------|--------|
-| REQ-101 | 1 (Testing) | Critical | High | ✅ Complete |
-| REQ-102 | 2 (Code Quality) | High | Medium | ✅ Complete |
-| REQ-103 | 3 (Security) | Critical | Medium | ✅ Complete |
-| REQ-104 | 4 (Architecture) | High | Medium | ✅ Complete |
-| REQ-105 | 5 (Performance) | Medium | Medium | ✅ Complete |
-| REQ-106 | 6 (DX) | Medium | Low | ✅ Complete |
+| Requirement | Phase | Priority | Status |
+|-------------|-------|----------|--------|
+| BUILD-01 | Phase 10 (Build Pipeline) | Critical | Pending |
+| BUILD-02 | Phase 10 (Build Pipeline) | Critical | Pending |
+| BUILD-03 | Phase 10 (Build Pipeline) | Critical | Pending |
+| BUILD-04 | Phase 10 (Build Pipeline) | Critical | Pending |
+| BUILD-05 | Phase 10 (Build Pipeline) | Critical | Pending |
+| BUILD-06 | Phase 10 (Build Pipeline) | High | Pending |
+| HOOK-01 | Phase 11 (Hooks) | Critical | Pending |
+| HOOK-02 | Phase 11 (Hooks) | High | Pending |
+| HOOK-03 | Phase 11 (Hooks) | High | Pending |
+| HOOK-04 | Phase 11 (Hooks) | Critical | Pending |
+| HOOK-05 | Phase 11 (Hooks) | Medium | Pending |
+| HOOK-06 | Phase 11 (Hooks) | Medium | Pending |
+| HOOK-07 | Phase 11 (Hooks) | High | Pending |
+| HOOK-08 | Phase 11 (Hooks) | High | Pending |
+| VERI-01 | Phase 12 (Verification Harness) | Critical | Pending |
+| VERI-02 | Phase 12 (Verification Harness) | Critical | Pending |
+| VERI-03 | Phase 12 (Verification Harness) | High | Pending |
+| VERI-04 | Phase 12 (Verification Harness) | High | Pending |
+| VERI-05 | Phase 12 (Verification Harness) | Medium | Pending |
+| VERI-06 | Phase 12 (Verification Harness) | High | Pending |
+| CPLX-01 | Phase 13 (Complexity Gates) | Critical | Pending |
+| CPLX-02 | Phase 13 (Complexity Gates) | Critical | Pending |
+| CPLX-03 | Phase 13 (Complexity Gates) | Critical | Pending |
+| CPLX-04 | Phase 13 (Complexity Gates) | High | Pending |
+| CPLX-05 | Phase 13 (Complexity Gates) | High | Pending |
+| CPLX-06 | Phase 13 (Complexity Gates) | High | Pending |
+| CPLX-07 | Phase 13 (Complexity Gates) | Medium | Pending |
+
+**Coverage:**
+- v1.1.0 requirements: 27 total
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 
-*Requirements created: 2026-02-09*
+*Requirements created: 2026-02-10*
+*Continues from v1.0.1 (REQ-101 through REQ-106, all complete)*

@@ -1,8 +1,6 @@
----
-description: Guide for using Taskmaster to manage task-driven development workflows
-globs: **/*
-alwaysApply: true
----
+# Guide for using Taskmaster to manage task-driven development workflows
+
+## rule
 
 # Taskmaster Development Workflow
 
@@ -243,8 +241,10 @@ Taskmaster offers two primary ways to interact:
 -   When implementation differs significantly from planned approach
 -   When future tasks need modification due to current implementation choices
 -   When new dependencies or requirements emerge
--   Use `update` / `task-master update --from=<futureTaskId> --prompt='<explanation>\nUpdate context...' --research` to update multiple future tasks.
--   Use `update_task` / `task-master update-task --id=<taskId> --prompt='<explanation>\nUpdate context...' --research` to update a single specific task.
+-   Use `update` / `task-master update --from=<futureTaskId> --prompt='<explanation>
+Update context...' --research` to update multiple future tasks.
+-   Use `update_task` / `task-master update-task --id=<taskId> --prompt='<explanation>
+Update context...' --research` to update a single specific task.
 
 ## Task Status Management
 
@@ -386,7 +386,9 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
 6.  **Refine and Log Progress (Iteration 2+):**
     *   As implementation progresses, you will encounter challenges, discover nuances, or confirm successful approaches.
     *   **Before appending new information**: Briefly review the *existing* details logged in the subtask (using `get_task` or recalling from context) to ensure the update adds fresh insights and avoids redundancy.
-    *   **Regularly** use `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<update details>\n- What worked...\n- What didn't work...'` to append new findings.
+    *   **Regularly** use `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<update details>
+- What worked...
+- What didn't work...'` to append new findings.
     *   **Crucially, log:**
         *   What worked ("fundamental truths" discovered).
         *   What didn't work and why (to avoid repeating mistakes).
@@ -406,7 +408,10 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
 9.  **Commit Changes (If using Git):**
     *   Stage the relevant code changes and any updated/new rule files (`git add .`).
     *   Craft a comprehensive Git commit message summarizing the work done for the subtask, including both code implementation and any rule adjustments.
-    *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>\n\n- Details about changes...\n- Updated rule Y for pattern Z'`).
+    *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>
+
+- Details about changes...
+- Updated rule Y for pattern Z'`).
     *   Consider if a Changeset is needed according to internal versioning guidelines (previously linked to `changeset.mdc`). If so, run `npm run changeset`, stage the generated file, and amend the commit or create a new one.
 
 10. **Proceed to Next Subtask:**
@@ -417,7 +422,7 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
 - **Top-Level Function Search**:
     - Useful for understanding module structure or planning refactors.
     - Use grep/ripgrep to find exported functions/constants:
-      `rg "export (async function|function|const) \w+"` or similar patterns.
+      `rg "export (async function|function|const) w+"` or similar patterns.
     - Can help compare functions between files during migrations or identify potential naming conflicts.
 
 ---

@@ -2,38 +2,47 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.0.1 — Code Hardening — COMPLETE
-- **Current Phase:** (none — milestone complete)
-- **Status:** milestone_complete
+- **Current Milestone:** v1.1.0 — Workflow Foundation
+- **Current Phase:** (none — milestone just created)
+- **Status:** milestone_created
 - **Last Updated:** 2026-02-10
-- **Last Activity:** v1.0.1 milestone marked complete — all 6 phases done, UAT passed
+- **Last Activity:** v1.1.0 milestone created — 4 phases (10-13), 27 requirements
 
 ## Progress
 
 ```
-Phase 4: █████████████████████ 100% COMPLETE
-Phase 5: █████████████████████ 100% COMPLETE
-Phase 6: █████████████████████ 100% COMPLETE
-Phase 7: █████████████████████ 100% COMPLETE
-Phase 8: █████████████████████ 100% COMPLETE
-Phase 9: █████████████████████ 100% COMPLETE
+Phase 10: ░░░░░░░░░░░░░░░░░░░░░   0% PENDING
+Phase 11: ░░░░░░░░░░░░░░░░░░░░░   0% PENDING
+Phase 12: ░░░░░░░░░░░░░░░░░░░░░   0% PENDING
+Phase 13: ░░░░░░░░░░░░░░░░░░░░░   0% PENDING
 ```
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-09)
+See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Current focus:** Milestone complete — ready for next milestone or publish
+**Current focus:** Build pipeline registries, hooks, verification harness, complexity gates
 
 ## Git Context
 
-- **Ticket:** (none — hardening milestone)
-- **GitHub Issue:** #1 (continuing)
-- **Branch:** `1--luca-framework-packaging`
+- **Ticket:** (none)
+- **GitHub Issue:** #3
+- **Branch:** `3--workflow-foundation`
 - **Base Branch:** main
 
 ## Phase Progress
+
+| Phase | Name | Status | Requirements |
+|-------|------|--------|--------------|
+| 10 | Build Pipeline | Pending | BUILD-01 through BUILD-06 |
+| 11 | Hooks | Pending | HOOK-01 through HOOK-08 |
+| 12 | Verification Harness | Pending | VERI-01 through VERI-06 |
+| 13 | Complexity Gates | Pending | CPLX-01 through CPLX-07 |
+
+## Previous Milestones
+
+### v1.0.1 — Code Hardening ✅
 
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
@@ -44,7 +53,7 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 | 8 | Performance | ✅ complete | REQ-105 |
 | 9 | DX | ✅ complete | REQ-106 |
 
-## Previous Milestone (v1.0.0)
+### v1.0.0 — Core CLI & Packaging ✅
 
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
@@ -56,34 +65,21 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| v1.0.1 patch version | Hardening is quality improvement, no new features | 2026-02-09 |
-| Findings + fixes | Each phase produces both audit report and working fixes | 2026-02-09 |
-| Testing first | Tests provide safety net for all subsequent hardening phases | 2026-02-09 |
-| 6-phase comprehensive | Full spectrum: testing, quality, security, architecture, performance, DX | 2026-02-09 |
-| Wave-parallel execution | Security waves 1+2 and 3+4 executed in parallel for efficiency | 2026-02-10 |
-| js-yaml for YAML safety | Replace manual string concatenation with js-yaml library for proper escaping | 2026-02-10 |
-| Zod for API responses | Runtime validation of GitHub and Jira API responses replacing TypeScript casts | 2026-02-10 |
-| Result<T> discriminated union | Canonical result type matching AdapterResult<T> pattern for type-safe narrowing | 2026-02-10 |
-| Explicit named exports | Replace export * in root index.ts with intentional public API surface | 2026-02-10 |
-| Lazy dynamic imports | CLI commands loaded on-demand via dynamic import() for fast startup | 2026-02-10 |
-| Native fs over fs-extra | mkdir({recursive:true}) replaces ensureDir — one fewer production dep | 2026-02-10 |
-| process.once for SIGINT | Prevents handler accumulation in repeated invocations | 2026-02-10 |
-| ticketPatternJson for EJS | Double-escape backslashes in regex patterns for valid JSON output | 2026-02-10 |
-| Actionable error pattern | Every CLI error: what failed → why → what to do next | 2026-02-10 |
+| v1.1.0 minor version | New workflow features, no breaking changes | 2026-02-10 |
+| Build pipeline as Phase 10 | Fix foundation before building new features on it | 2026-02-10 |
+| Sequential phase dependencies | Each phase builds on previous: pipeline → hooks → harness → gates | 2026-02-10 |
+| 4 todos → 4 phases | 1:1 mapping from todos to phases for clear traceability | 2026-02-10 |
 
-## Pending Todos (14)
+## Pending Todos (11)
 
 ### Workflow Engine
 - **Ralph Wiggum iterative agent loops** (workflow) — `.planning/todos/pending/ralph-wiggum-iterative-agent-loops.md`
 - **Execution & verification phase audit** (workflow) — `.planning/todos/pending/execution-verification-effectiveness-audit.md`
 - **Context-modular sub-agent architecture** (workflow) — `.planning/todos/pending/context-modularity-subagent-architecture.md`
 - **Cognition features per agent type audit** (workflow) — `.planning/todos/pending/cognition-features-per-agent-audit.md`
-- **Complexity-gated workflow architecture** (workflow) — `.planning/todos/pending/complexity-gated-workflow-architecture.md`
 
 ### Quality & Verification
-- **Hooks as deterministic quality gates** (workflow) — `.planning/todos/pending/hooks-as-deterministic-gates.md`
 - **TDD-first verification pattern** (workflow) — `.planning/todos/pending/tdd-first-verification-pattern.md`
-- **Automated verification harness** (workflow) — `.planning/todos/pending/automated-verification-harness.md`
 - **Writer/reviewer context separation** (workflow) — `.planning/todos/pending/writer-reviewer-separation.md`
 
 ### Cognition & Memory
@@ -99,16 +95,6 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ### Documentation
 - **Workflow mind map (Mermaid)** (docs) — `.planning/todos/pending/workflow-mind-map-mermaid.md`
 
-### Recommended Priority Order
-
-| Phase | Focus | Todos (in order) | Rationale |
-|-------|-------|-------------------|-----------|
-| A | Foundation | Hooks → Harness → Complexity Gates | Enforcement layer first; everything else builds on deterministic gates and structured complexity |
-| B | Quality | TDD-first → Writer/Reviewer → Checkpoint | Programmatic verification before agent-based; separation of concerns; safe iteration |
-| C | Intelligence | Progressive Disclosure → Procedural Memory → Cognition Audit | Optimize token efficiency before scaling agent count; add learning depth |
-| D | Execution | Sub-agent Architecture → Ralph Wiggum → Execution Audit | Modular agents need foundations (A-C) in place; iterative loops need verification harness |
-| E | Distribution | Plugin Packaging → Mind Map | Package after core is solid; document the final architecture |
-
 ## Blockers
 
 (None currently)
@@ -116,14 +102,13 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Session Continuity
 
 - **Last session:** 2026-02-10
-- **Stopped at:** v1.0.1 milestone complete
+- **Stopped at:** Milestone v1.1.0 created, ready for phase planning
 - **Resume file:** None
 
 ## Next Actions
 
-1. Publish v1.0.1 to npm
-2. Merge branch `1--luca-framework-packaging` → main
-3. Plan next milestone (v1.1.0 or workflow improvements from pending todos)
+1. `/lu-discuss-phase 10` or `/lu-plan-phase 10` — Start planning the Build Pipeline phase
+2. Execute phases 10 → 11 → 12 → 13 sequentially
 
 ---
 

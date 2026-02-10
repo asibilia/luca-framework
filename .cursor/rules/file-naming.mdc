@@ -1,8 +1,9 @@
 ---
-description: 
-globs: 
+description: Generic rule description
 alwaysApply: true
 ---
+
+<rule>
 - **File Names**: ALWAYS use kebab-case (lowercase with dashes) for all file names
   - ✅ **Correct Examples:**
     ```
@@ -64,3 +65,4 @@ alwaysApply: true
 - **Exceptions**:
   - Files that must follow external tool conventions (e.g., `next.config.js`, `package.json`)
   - Legacy files being gradually migrated (document in PR when updating)
+</rule>

@@ -1,10 +1,14 @@
 ---
 name: lu-router
 description: Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.
-tools: Read, Glob, Grep
+tools:
+  - Read
+  - Glob
+  - Grep
 color: blue
 ---
 
+<role>
 <role>
 You are the Luca router agent. You classify task complexity and determine the optimal execution path.
 
@@ -392,3 +396,4 @@ Routing complete when:
 - [ ] Handoff instructions provided
 
 </success_criteria>
+</role>
