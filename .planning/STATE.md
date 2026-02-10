@@ -2,11 +2,11 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.0.1 — Code Hardening
-- **Current Phase:** 9 — DX (FINAL)
-- **Status:** complete — awaiting UAT
+- **Current Milestone:** v1.0.1 — Code Hardening — COMPLETE
+- **Current Phase:** (none — milestone complete)
+- **Status:** milestone_complete
 - **Last Updated:** 2026-02-10
-- **Last Activity:** Phase 9 (DX) executed — 5 plans, all complete, verification PASSED
+- **Last Activity:** v1.0.1 milestone marked complete — all 6 phases done, UAT passed
 
 ## Progress
 
@@ -24,7 +24,7 @@ Phase 9: █████████████████████ 100% CO
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Current focus:** Code hardening — comprehensive review of v1.0.0 implementation
+**Current focus:** Milestone complete — ready for next milestone or publish
 
 ## Git Context
 
@@ -116,13 +116,14 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Session Continuity
 
 - **Last session:** 2026-02-10
-- **Stopped at:** Phase 9 complete, awaiting UAT
+- **Stopped at:** v1.0.1 milestone complete
 - **Resume file:** None
 
 ## Next Actions
 
-1. Phase 9 UAT — verify DX improvements in real project
-2. If UAT passes → v1.0.1 milestone complete
+1. Publish v1.0.1 to npm
+2. Merge branch `1--luca-framework-packaging` → main
+3. Plan next milestone (v1.1.0 or workflow improvements from pending todos)
 
 ---
 
