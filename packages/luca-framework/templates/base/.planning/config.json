@@ -2,6 +2,8 @@
   "mode": "interactive",
   "depth": "standard",
   "model_profile": "balanced",
+  "stack": "<%= config.stack %>",
+  "workTracker": "<%= config.workTracker %>",
   "branding": {
     "frameworkName": "<%= branding.frameworkName %>",
     "commandPrefix": "<%= branding.commandPrefix %>",
