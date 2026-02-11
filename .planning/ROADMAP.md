@@ -139,39 +139,41 @@ Establish the enforcement and verification foundation that all future workflow i
 
 **Goal:** Design and implement a structured system where workflow complexity scales with task scope. Core steps always run; additional steps activate based on complexity level.
 
-**Status:** Pending
+**Status:** Complete
 
 **Success Criteria:**
 
-- Clear complexity levels defined with measurable criteria
-- Always-on steps identified (verification runs for all levels)
-- Complexity-gated steps mapped per level
-- Both manual override and automatic inference supported
-- Complexity matrix documented as reference
-- Skill and rule definitions enforce gating
-- Sub-agent count, iteration limits, and review depth scale with complexity
+- [x] Clear complexity levels defined with measurable criteria
+- [x] Always-on steps identified (verification runs for all levels)
+- [x] Complexity-gated steps mapped per level
+- [x] Both manual override and automatic inference supported
+- [x] Complexity matrix documented as reference
+- [x] Skill and rule definitions enforce gating
+- [x] Sub-agent count, iteration limits, and review depth scale with complexity
 
 ### Requirements Delivered
 
 | REQ | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| CPLX-01 | Complexity level definitions | Critical | Pending |
-| CPLX-02 | Always-on steps | Critical | Pending |
-| CPLX-03 | Gated step mapping | Critical | Pending |
-| CPLX-04 | Manual + automatic gating | High | Pending |
-| CPLX-05 | Complexity matrix reference | High | Pending |
-| CPLX-06 | Skill/rule enforcement | High | Pending |
-| CPLX-07 | Scaling sub-agent behavior | Medium | Pending |
+| CPLX-01 | Complexity level definitions | Critical | **Complete** |
+| CPLX-02 | Always-on steps | Critical | **Complete** |
+| CPLX-03 | Gated step mapping | Critical | **Complete** |
+| CPLX-04 | Manual + automatic gating | High | **Complete** |
+| CPLX-05 | Complexity matrix reference | High | **Complete** |
+| CPLX-06 | Skill/rule enforcement | High | **Complete** |
+| CPLX-07 | Scaling sub-agent behavior | Medium | **Complete** |
+
+### Verification
+
+- Verification report: `.planning/phases/13-complexity-gates/VERIFICATION.md`
+- Score: 7/7 requirements verified
+- 29 new tests (all passing), full suite: 579 pass, 7 fail (pre-existing)
+- Complexity module: types, defaults, index; 21 rules (+1 complexity-gating)
+- Build output: 178 files
 
 ### Dependencies
 
 - Phase 12 (harness provides the verification layer that complexity gates route to)
-
-### Risks
-
-- Automatic complexity inference may be unreliable — need good manual override UX
-- Over-engineering the matrix creates more ceremony than it saves
-- Gating boundaries are subjective — needs iteration with real usage
 
 ---
 
@@ -182,7 +184,7 @@ Establish the enforcement and verification foundation that all future workflow i
 | Phase 10 | Build Pipeline | First | **Complete** |
 | Phase 11 | Hooks | After Phase 10 | **Complete** |
 | Phase 12 | Verification Harness | After Phase 11 | **Complete** |
-| Phase 13 | Complexity Gates | After Phase 12 | Pending |
+| Phase 13 | Complexity Gates | After Phase 12 | **Complete** |
 
 **Sequential dependency chain:** Each phase builds on the previous. Phase 10 fixes the foundation, Phase 11 adds enforcement, Phase 12 adds automated verification, Phase 13 adds intelligent routing.
 
@@ -206,9 +208,9 @@ Establish the enforcement and verification foundation that all future workflow i
 - [x] lu-execute-phase calls harness automatically
 
 ### Phase 13
-- [ ] 5 complexity levels with clear, documented criteria
-- [ ] Complexity matrix covers all workflow steps
-- [ ] Manual override works for all levels
+- [x] 5 complexity levels with clear, documented criteria
+- [x] Complexity matrix covers all workflow steps
+- [x] Manual override works for all levels
 
 ---
 

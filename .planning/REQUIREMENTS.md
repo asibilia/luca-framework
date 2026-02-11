@@ -42,13 +42,13 @@ Establish the enforcement and verification foundation for all future workflow im
 
 ### Complexity Gates
 
-- [ ] **CPLX-01**: Complexity levels defined with clear criteria (trivial, simple, moderate, complex, critical)
-- [ ] **CPLX-02**: Always-on workflow steps identified (verification runs for all levels)
-- [ ] **CPLX-03**: Complexity-gated steps mapped: which activate at which level
-- [ ] **CPLX-04**: Gating mechanism supports manual override and automatic inference
-- [ ] **CPLX-05**: Complexity matrix documented: level -> required steps -> optional steps -> skipped steps
-- [ ] **CPLX-06**: Skill and rule definitions updated to enforce gating
-- [ ] **CPLX-07**: Complexity level influences sub-agent count, iteration limits, and review depth
+- [x] **CPLX-01**: Complexity levels defined with clear criteria (trivial, simple, moderate, complex, critical)
+- [x] **CPLX-02**: Always-on workflow steps identified (verification runs for all levels)
+- [x] **CPLX-03**: Complexity-gated steps mapped: which activate at which level
+- [x] **CPLX-04**: Gating mechanism supports manual override and automatic inference
+- [x] **CPLX-05**: Complexity matrix documented: level -> required steps -> optional steps -> skipped steps
+- [x] **CPLX-06**: Skill and rule definitions updated to enforce gating
+- [x] **CPLX-07**: Complexity level influences sub-agent count, iteration limits, and review depth
 
 ## Out of Scope
 
@@ -86,13 +86,13 @@ Establish the enforcement and verification foundation for all future workflow im
 | VERI-04 | Phase 12 (Verification Harness) | High | **Complete** |
 | VERI-05 | Phase 12 (Verification Harness) | Medium | **Complete** |
 | VERI-06 | Phase 12 (Verification Harness) | High | **Complete** |
-| CPLX-01 | Phase 13 (Complexity Gates) | Critical | Pending |
-| CPLX-02 | Phase 13 (Complexity Gates) | Critical | Pending |
-| CPLX-03 | Phase 13 (Complexity Gates) | Critical | Pending |
-| CPLX-04 | Phase 13 (Complexity Gates) | High | Pending |
-| CPLX-05 | Phase 13 (Complexity Gates) | High | Pending |
-| CPLX-06 | Phase 13 (Complexity Gates) | High | Pending |
-| CPLX-07 | Phase 13 (Complexity Gates) | Medium | Pending |
+| CPLX-01 | Phase 13 (Complexity Gates) | Critical | **Complete** |
+| CPLX-02 | Phase 13 (Complexity Gates) | Critical | **Complete** |
+| CPLX-03 | Phase 13 (Complexity Gates) | Critical | **Complete** |
+| CPLX-04 | Phase 13 (Complexity Gates) | High | **Complete** |
+| CPLX-05 | Phase 13 (Complexity Gates) | High | **Complete** |
+| CPLX-06 | Phase 13 (Complexity Gates) | High | **Complete** |
+| CPLX-07 | Phase 13 (Complexity Gates) | Medium | **Complete** |
 
 **Coverage:**
 - v1.1.0 requirements: 27 total
