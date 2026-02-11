@@ -29,12 +29,12 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 
 ### Context-Modular Sub-Agent Architecture (Phase 16)
 
-- [ ] **CTXM-01**: Sub-agent context isolation — each sub-agent operates in its own context window with only task-relevant information loaded
-- [ ] **CTXM-02**: Context budget allocation — orchestrator distributes token budget across sub-agents based on task complexity (reserve 25-50% for output)
-- [ ] **CTXM-03**: Result aggregation pattern — sub-agent outputs synthesized by orchestrator without re-loading full sub-agent context
-- [ ] **CTXM-04**: Progressive context disclosure — information loaded on-demand as sub-agents need it, not all upfront
-- [ ] **CTXM-05**: Writer/reviewer separation — writing and reviewing happen in separate context windows to prevent bias
-- [ ] **CTXM-06**: Sub-agent spawning follows existing Claude Code Task tool patterns (`.claude/agents/` definitions, built-in subagent types)
+- [x] **CTXM-01**: Sub-agent context isolation — each sub-agent operates in its own context window with only task-relevant information loaded
+- [x] **CTXM-02**: Context budget allocation — orchestrator distributes token budget across sub-agents based on task complexity (reserve 25-50% for output)
+- [x] **CTXM-03**: Result aggregation pattern — sub-agent outputs synthesized by orchestrator without re-loading full sub-agent context
+- [x] **CTXM-04**: Progressive context disclosure — information loaded on-demand as sub-agents need it, not all upfront
+- [x] **CTXM-05**: Writer/reviewer separation — writing and reviewing happen in separate context windows to prevent bias
+- [x] **CTXM-06**: Sub-agent spawning follows existing Claude Code Task tool patterns (`.claude/agents/` definitions, built-in subagent types)
 
 ### Iterative Agent Loops — Ralph Wiggum (Phase 17)
 
@@ -82,12 +82,12 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 | COGN-03     | Phase 15 (Cognition Audit)   | High     | ✅ Done | cognition-features-per-agent-audit.md         |
 | COGN-04     | Phase 15 (Cognition Audit)   | High     | ✅ Done | cognition-features-per-agent-audit.md         |
 | COGN-05     | Phase 15 (Cognition Audit)   | High     | ✅ Done | cognition-features-per-agent-audit.md         |
-| CTXM-01     | Phase 16 (Context-Modular)   | Critical | Pending | context-modularity-subagent-architecture.md   |
-| CTXM-02     | Phase 16 (Context-Modular)   | High     | Pending | context-modularity-subagent-architecture.md   |
-| CTXM-03     | Phase 16 (Context-Modular)   | High     | Pending | context-modularity-subagent-architecture.md   |
-| CTXM-04     | Phase 16 (Context-Modular)   | High     | Pending | progressive-context-disclosure.md             |
-| CTXM-05     | Phase 16 (Context-Modular)   | Medium   | Pending | writer-reviewer-separation.md                 |
-| CTXM-06     | Phase 16 (Context-Modular)   | Medium   | Pending | context-modularity-subagent-architecture.md   |
+| CTXM-01     | Phase 16 (Context-Modular)   | Critical | ✅ Done | context-modularity-subagent-architecture.md   |
+| CTXM-02     | Phase 16 (Context-Modular)   | High     | ✅ Done | context-modularity-subagent-architecture.md   |
+| CTXM-03     | Phase 16 (Context-Modular)   | High     | ✅ Done | context-modularity-subagent-architecture.md   |
+| CTXM-04     | Phase 16 (Context-Modular)   | High     | ✅ Done | progressive-context-disclosure.md             |
+| CTXM-05     | Phase 16 (Context-Modular)   | Medium   | ✅ Done | writer-reviewer-separation.md                 |
+| CTXM-06     | Phase 16 (Context-Modular)   | Medium   | ✅ Done | context-modularity-subagent-architecture.md   |
 | ITER-01     | Phase 17 (Iterative Loops)   | Critical | Pending | ralph-wiggum-iterative-agent-loops.md         |
 | ITER-02     | Phase 17 (Iterative Loops)   | Critical | Pending | ralph-wiggum-iterative-agent-loops.md         |
 | ITER-03     | Phase 17 (Iterative Loops)   | High     | Pending | ralph-wiggum-iterative-agent-loops.md         |
