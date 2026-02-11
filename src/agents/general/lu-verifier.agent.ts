@@ -15,13 +15,11 @@ const luVerifierConfig: AgentConfig = {
   sections: [
     {
       title: 'role',
-      content: `<role>
-You are a Luca phase verifier. You verify that a phase achieved its GOAL, not just completed its TASKS.
+      content: `You are a Luca phase verifier. You verify that a phase achieved its GOAL, not just completed its TASKS.
 
 Your job: Goal-backward verification. Start from what the phase SHOULD deliver, verify it actually exists and works in the codebase.
 
 **Critical mindset:** Do NOT trust SUMMARY.md claims. SUMMARYs document what Claude SAID it did. You verify what ACTUALLY exists in the code. These often differ.
-</role>
 
 <always_verify>
 
@@ -251,7 +249,7 @@ check_stubs() {
   local stubs=$(grep -c -E "TODO|FIXME|placeholder|not implemented|coming soon" "$path" 2>/dev/null || echo 0)
 
   # Empty returns
-  local empty=$(grep -c -E "return null|return undefined|return \{\}|return \[\]" "$path" 2>/dev/null || echo 0)
+  local empty=$(grep -c -E "return null|return undefined|return \\{\\}|return \\[\\]" "$path" 2>/dev/null || echo 0)
 
   # Placeholder content
   local placeholder=$(grep -c -E "will be here|placeholder|lorem ipsum" "$path" 2>/dev/null || echo 0)
@@ -329,11 +327,11 @@ verify_component_api_link() {
   local api_path="$2"
 
   # Check for fetch/axios call to the API
-  local has_call=$(grep -E "fetch\(['\"].*$api_path|axios\.(get|post).*$api_path" "$component" 2>/dev/null)
+  local has_call=$(grep -E "fetch\\(['\"].*$api_path|axios\\.(get|post).*$api_path" "$component" 2>/dev/null)
 
   if [ -n "$has_call" ]; then
     # Check if response is used
-    local uses_response=$(grep -A 5 "fetch\|axios" "$component" | grep -E "await|\.then|setData|setState" 2>/dev/null)
+    local uses_response=$(grep -A 5 "fetch\\|axios" "$component" | grep -E "await|\\.then|setData|setState" 2>/dev/null)
 
     if [ -n "$uses_response" ]; then
       echo "WIRED: $component → $api_path (call + response handling)"
@@ -354,11 +352,11 @@ verify_api_db_link() {
   local model="$2"
 
   # Check for Prisma/DB call
-  local has_query=$(grep -E "prisma\.$model|db\.$model|$model\.(find|create|update|delete)" "$route" 2>/dev/null)
+  local has_query=$(grep -E "prisma\\.$model|db\\.$model|$model\\.(find|create|update|delete)" "$route" 2>/dev/null)
 
   if [ -n "$has_query" ]; then
     # Check if result is returned
-    local returns_result=$(grep -E "return.*json.*\w+|res\.json\(\w+" "$route" 2>/dev/null)
+    local returns_result=$(grep -E "return.*json.*\\w+|res\\.json\\(\\w+" "$route" 2>/dev/null)
 
     if [ -n "$returns_result" ]; then
       echo "WIRED: $route → database ($model)"
@@ -378,7 +376,7 @@ verify_form_handler_link() {
   local component="$1"
 
   # Find onSubmit handler
-  local has_handler=$(grep -E "onSubmit=\{|handleSubmit" "$component" 2>/dev/null)
+  local has_handler=$(grep -E "onSubmit=\\{|handleSubmit" "$component" 2>/dev/null)
 
   if [ -n "$has_handler" ]; then
     # Check if handler has real implementation
@@ -388,7 +386,7 @@ verify_form_handler_link() {
       echo "WIRED: form → handler (has API call)"
     else
       # Check for stub patterns
-      local is_stub=$(grep -A 5 "onSubmit" "$component" | grep -E "console\.log|preventDefault\(\)$|\{\}" 2>/dev/null)
+      local is_stub=$(grep -A 5 "onSubmit" "$component" | grep -E "console\\.log|preventDefault\\(\\)$|\\{\\}" 2>/dev/null)
       if [ -n "$is_stub" ]; then
         echo "STUB: form → handler (only logs or empty)"
       else
@@ -409,11 +407,11 @@ verify_state_render_link() {
   local state_var="$2"
 
   # Check if state variable exists
-  local has_state=$(grep -E "useState.*$state_var|\[$state_var," "$component" 2>/dev/null)
+  local has_state=$(grep -E "useState.*$state_var|\\[$state_var," "$component" 2>/dev/null)
 
   if [ -n "$has_state" ]; then
     # Check if state is used in JSX
-    local renders_state=$(grep -E "\{.*$state_var.*\}|\{$state_var\." "$component" 2>/dev/null)
+    local renders_state=$(grep -E "\\{.*$state_var.*\\}|\\{$state_var\\." "$component" 2>/dev/null)
 
     if [ -n "$renders_state" ]; then
       echo "WIRED: state → render ($state_var displayed)"
@@ -471,7 +469,7 @@ Identify files modified in this phase:
 
 \`\`\`bash
 # Extract files from SUMMARY.md
-grep -E "^\- \\\`" "$PHASE_DIR"/*-SUMMARY.md | sed 's/.*\`\([^\`]*\)\`.*/\1/' | sort -u
+grep -E "^\\- \\\`" "$PHASE_DIR"/*-SUMMARY.md | sed 's/.*\`\\([^\`]*\\)\`.*/\\1/' | sort -u
 \`\`\`
 
 Run anti-pattern detection:
@@ -490,10 +488,10 @@ scan_antipatterns() {
     grep -n -E "placeholder|coming soon|will be here" "$file" -i 2>/dev/null
 
     # Empty implementations
-    grep -n -E "return null|return \{\}|return \[\]|=> \{\}" "$file" 2>/dev/null
+    grep -n -E "return null|return \\{\\}|return \\[\\]|=> \\{\\}" "$file" 2>/dev/null
 
     # Console.log only implementations
-    grep -n -B 2 -A 2 "console\.log" "$file" 2>/dev/null | grep -E "^\s*(const|function|=>)"
+    grep -n -B 2 -A 2 "console\\.log" "$file" 2>/dev/null | grep -E "^\\s*(const|function|=>)"
   done
 }
 \`\`\`
@@ -792,8 +790,8 @@ grep -E "implement|add later|coming soon|will be" "$file" -i
 grep -E "placeholder|lorem ipsum|coming soon|under construction" "$file" -i
 
 # Empty or trivial implementations
-grep -E "return null|return undefined|return \{\}|return \[\]" "$file"
-grep -E "console\.(log|warn|error).*only" "$file"
+grep -E "return null|return undefined|return \\{\\}|return \\[\\]" "$file"
+grep -E "console\\.(log|warn|error).*only" "$file"
 
 # Hardcoded values where dynamic expected
 grep -E "id.*=.*['\"].*['\"]" "$file"

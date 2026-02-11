@@ -426,7 +426,7 @@ Once a task has been broken down into subtasks using \`expand_task\` or similar 
 - **Top-Level Function Search**:
     - Useful for understanding module structure or planning refactors.
     - Use grep/ripgrep to find exported functions/constants:
-      \`rg "export (async function|function|const) \w+"\` or similar patterns.
+      \`rg "export (async function|function|const) \\w+"\` or similar patterns.
     - Can help compare functions between files during migrations or identify potential naming conflicts.
 
 ---
