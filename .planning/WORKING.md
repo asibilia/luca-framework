@@ -4,7 +4,7 @@
 
 - **Started**: (none active)
 - **Workflow**: idle
-- **Phase**: v1.1.0 milestone complete
+- **Phase**: —
 
 ## Memory Recall
 

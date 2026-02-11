@@ -2,45 +2,42 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.1.0 — Workflow Foundation
-- **Current Phase:** Phase 13 (Complexity Gates) -- COMPLETE
-- **Status:** milestone_complete
+- **Current Milestone:** (none — planning next)
+- **Current Phase:** —
+- **Status:** idle
 - **Last Updated:** 2026-02-11
-- **Last Activity:** Phase 13 complete — complexity module (types, defaults, matrix), 5-level router expansion, --complexity override, gated skills (execute/plan/verify/discuss), agent scaling (verifier 5-mode, cognition lite), complexity-gating rule, all 7 requirements verified
+- **Last Activity:** v1.1.0 milestone archived — 4 phases, 11 plans, 27 requirements, 579 tests
 
 ## Progress
 
 ```
-Phase 10: █████████████████████ 100% COMPLETE
-Phase 11: █████████████████████ 100% COMPLETE
-Phase 12: █████████████████████ 100% COMPLETE
-Phase 13: █████████████████████ 100% COMPLETE
+v1.1.0: SHIPPED (2026-02-11)
 ```
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-10)
+See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Current focus:** Build pipeline registries, hooks, verification harness, complexity gates
+**Current focus:** Planning next milestone
 
 ## Git Context
 
 - **Ticket:** (none)
-- **GitHub Issue:** #3
-- **Branch:** `3--workflow-foundation`
+- **GitHub Issue:** —
+- **Branch:** main
 - **Base Branch:** main
 
-## Phase Progress
+## Previous Milestones
+
+### v1.1.0 — Workflow Foundation ✅
 
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
-| 10 | Build Pipeline | **Complete** | BUILD-01 through BUILD-06 (all satisfied) |
-| 11 | Hooks | **Complete** | HOOK-01 through HOOK-08 (all satisfied) |
-| 12 | Verification Harness | **Complete** | VERI-01 through VERI-06 (all satisfied) |
-| 13 | Complexity Gates | **Complete** | CPLX-01 through CPLX-07 (all satisfied) |
-
-## Previous Milestones
+| 10 | Build Pipeline | ✅ complete | BUILD-01 through BUILD-06 (all satisfied) |
+| 11 | Hooks | ✅ complete | HOOK-01 through HOOK-08 (all satisfied) |
+| 12 | Verification Harness | ✅ complete | VERI-01 through VERI-06 (all satisfied) |
+| 13 | Complexity Gates | ✅ complete | CPLX-01 through CPLX-07 (all satisfied) |
 
 ### v1.0.1 — Code Hardening ✅
 
@@ -60,15 +57,6 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 | 1 | Core CLI & Foundation | ✅ complete | REQ-001, REQ-002, REQ-006 |
 | 2 | Integrations & Updates | ✅ complete | REQ-003, REQ-004, REQ-005 |
 | 3 | Enterprise Readiness | ✅ complete | REQ-007, REQ-008 |
-
-## Key Decisions
-
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| v1.1.0 minor version | New workflow features, no breaking changes | 2026-02-10 |
-| Build pipeline as Phase 10 | Fix foundation before building new features on it | 2026-02-10 |
-| Sequential phase dependencies | Each phase builds on previous: pipeline → hooks → harness → gates | 2026-02-10 |
-| 4 todos → 4 phases | 1:1 mapping from todos to phases for clear traceability | 2026-02-10 |
 
 ## Pending Todos (12)
 
@@ -103,12 +91,12 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Session Continuity
 
 - **Last session:** 2026-02-11
-- **Stopped at:** v1.1.0 milestone complete — all 4 phases delivered
+- **Stopped at:** v1.1.0 milestone archived
 - **Resume file:** None
 
 ## Next Actions
 
-1. Plan next milestone (v1.2.0) — select from pending todos
+1. `/lu-new-milestone` — Start next milestone (v1.2.0)
 2. `/lu-check-todos` — Review pending todo backlog
 
 ---
