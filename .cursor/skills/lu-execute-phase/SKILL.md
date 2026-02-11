@@ -114,6 +114,21 @@ Extract learnings from this phase execution and update MEMORY.md.
 
 **Do NOT proceed until the Task returns.**
 
+**Complexity-gated learning depth:**
+
+| Complexity | Learning Capture |
+|------------|-----------------|
+| TRIVIAL | Skip (do not spawn lu-learner) |
+| SIMPLE | Brief (spawn with minimal context) |
+| MODERATE | Standard (current behavior) |
+| COMPLEX | Full (include all working memory) |
+| CRITICAL | Full + debrief (include retrospective analysis) |
+
+For TRIVIAL: Skip the lu-learner spawn entirely.
+For SIMPLE: Include only execution summary, not full working memory.
+For MODERATE and above: Use the current lu-learner spawn as-is.
+For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
+
 ### WORKING.md During Execution
 
 Throughout execution, log to WORKING.md:
@@ -383,7 +398,15 @@ Overall: {PASSED/FAILED}
 
 **When harness checks fail, attempt automated repair.**
 
-Read maxFixIterations from harness config (default 3).
+Read maxFixIterations from complexity matrix. Look up the current complexity level in STATE.md, then use `harnessFixIterations` from the complexity matrix in config.json. If no complexity is set, fall back to harness config maxFixIterations (default 3).
+
+| Complexity | Max Fix Iterations |
+|------------|-------------------|
+| TRIVIAL | 1 |
+| SIMPLE | 2 |
+| MODERATE | 3 |
+| COMPLEX | 3 |
+| CRITICAL | 5 |
 
 For each iteration (up to max):
 
@@ -505,7 +528,9 @@ Route by returned status:
 
 ### 7.5. Code Quality Review
 
-**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config.
+**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config OR complexity is TRIVIAL or SIMPLE.
+
+**Complexity gate:** Code review runs at MODERATE and above. TRIVIAL/SIMPLE skip code review entirely.
 
 Get changed files for this phase:
 
@@ -529,12 +554,17 @@ Display:
 
 **Determine which reviewers to spawn:**
 
-Always spawn:
+**Spawn based on complexity level** (read from STATE.md `Task Complexity:` field):
 
-- `dx-advocate` — conventions, coding standards, Lodash vs native, snake_case keys
-- `code-simplifier` — DRY violations, duplicated code, complexity
-- `code-architect` — architecture, structure, patterns, module boundaries
-- `tailwind-auditor` — dynamic color system, Tailwind patterns, shadcn anti-patterns
+| Agent | MODERATE | COMPLEX | CRITICAL |
+|-------|----------|---------|----------|
+| dx-advocate | Run | Run | Run |
+| code-simplifier | Run | Run | Run |
+| code-architect | Skip | Run | Run |
+| tailwind-auditor | If UI files | If UI files | Run |
+| security-auditor | If auth files | If auth files | Always |
+
+If complexity not set, default to spawning all reviewers (backward-compatible).
 
 Conditionally spawn `security-auditor` if files match patterns:
 
@@ -785,7 +815,17 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 ### 11. User Acceptance Testing (UAT)
 
-**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config.
+**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config OR complexity is TRIVIAL or SIMPLE.
+
+**Complexity gate:** UAT runs at MODERATE (optional) and above. For COMPLEX/CRITICAL, UAT is required.
+
+| Complexity | UAT |
+|------------|-----|
+| TRIVIAL | Skip |
+| SIMPLE | Skip |
+| MODERATE | Optional (runs unless --skip-uat) |
+| COMPLEX | Required |
+| CRITICAL | Required + thorough |
 
 **Auto-transition into UAT mode:**
 

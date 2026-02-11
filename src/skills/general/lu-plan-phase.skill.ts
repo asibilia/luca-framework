@@ -184,6 +184,18 @@ fi
 
 **If \`--skip-research\` flag:** Skip to step 6.
 
+**Complexity gate:** Research is skipped for TRIVIAL and SIMPLE levels, optional for MODERATE, required for COMPLEX and CRITICAL.
+
+| Complexity | Research |
+|------------|----------|
+| TRIVIAL | Skip |
+| SIMPLE | Skip |
+| MODERATE | Run if \`workflow.research: true\` (default) |
+| COMPLEX | Always run |
+| CRITICAL | Always run |
+
+Read complexity from STATE.md \`Task Complexity:\` field. If TRIVIAL or SIMPLE, skip to step 6 (equivalent to --skip-research).
+
 **Check config for research setting:**
 
 \`\`\`bash
@@ -363,6 +375,18 @@ Display:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \`\`\`
 
+**Complexity gate:** Plan verification is skipped for TRIVIAL and SIMPLE, runs with scaled iterations for MODERATE and above.
+
+| Complexity | Plan Verification |
+|------------|------------------|
+| TRIVIAL | Skip entirely |
+| SIMPLE | Skip entirely |
+| MODERATE | 1 iteration |
+| COMPLEX | 2 iterations |
+| CRITICAL | 3 iterations |
+
+If complexity is TRIVIAL or SIMPLE: Skip steps 10-12 entirely (no plan-checker, no revision loop). Proceed directly to step 13 (Present Final Status).
+
 **MANDATORY**: You MUST spawn a lu-plan-checker sub-agent. Do NOT attempt to verify plans yourself.
 
 First, read the created plans:
@@ -423,9 +447,17 @@ Verify these plans will achieve the phase goal when executed.
 - **VERIFICATION PASSED:** Plans verified, ready for execution
 - **ISSUES FOUND:** Send back to planner for revision
 
-### 12. Revision Loop (Max 3 Iterations)
+### 12. Revision Loop (Complexity-Scaled Iterations)
 
-If issues found and iteration_count < 3:
+Max iterations from complexity matrix (default 3 if no complexity set):
+
+| Complexity | Max Revisions |
+|------------|--------------|
+| MODERATE | 1 |
+| COMPLEX | 2 |
+| CRITICAL | 3 |
+
+If issues found and iteration_count < max_revisions:
 
 - Spawn lu-planner with revision context
 - Re-verify with checker
