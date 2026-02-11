@@ -35,6 +35,9 @@
 - **Metadata registry for non-class entities**: When registry entries aren't class constructors (e.g. shell scripts), use metadata objects (`HookDefinition`) with platform-specific fields (`event`/`cursorEvent`, `matcher`/`cursorMatcher`). Config generators transform metadata into platform-specific output formats. Validated in Phase 11 (hookRegistry → settings.json + hooks.json)
 - **Dual-format stdin/stdout for cross-platform hooks**: Shell scripts can handle both Claude Code and Cursor stdin JSON by using nullish coalescing fallbacks (`data.tool_input?.file_path ?? data.file_path`). Platform detection via `!!process.env.CLAUDE_PROJECT_DIR` enables dual-format output. Validated in Phase 11 (5 hooks, 2 platforms)
 - **Plan-checker bug prevention**: Running lu-plan-checker before execution caught 2 critical bugs (`|| true` swallowing exit codes) and 5 medium issues (echo vs printf, shell interpolation, wrong APIs). The checker pays for itself by preventing non-functional hooks from being deployed. Validated in Phase 11
+- **Layered verification (hooks + harness)**: Hooks provide lightweight, per-edit/commit verification (format, typecheck, pre-commit gate). Harness provides comprehensive verification at phase boundaries with structured output parsing and failure-to-fix loops. Two layers enforce quality at different frequencies: hooks catch problems immediately, harness catches integration issues. Validated in Phase 12 (6/6 requirements, 6/6 UAT tests)
+- **Parser registry for diverse toolchains**: Structured output parsing across different tools (tsc, bun-test, eslint, generic) requires separate `OutputParser` implementations. Registry pattern (`Record<string, OutputParser>`) follows hookRegistry/ruleRegistry, enabling extensible parser composition. Each parser handles format-specific quirks (JSON flags, field mappings, multiline output). Validated in Phase 12 (4 parsers, 65 tests)
+- **CLI entry point pattern with import.meta.main**: For standalone executables, use `if (import.meta.main) { runCLI(); }` guard instead of CJS `require.main === module`. This is the ESM equivalent and works correctly in Bun. Entry point handler receives process args and manages CLI flow independently from module exports. Validated in Phase 12 (harness runner CLI)
 
 ### Established Conventions
 
@@ -68,6 +71,9 @@
 | Hooks on both Claude Code and Cursor | Cross-platform enforcement | Both platforms now support hooks with similar semantics (stdin JSON, exit codes, matchers). Different config formats (settings.json vs hooks.json) and event names (PascalCase vs camelCase) but same shell scripts with dual-format parsing | 2026-02-10 |
 | Metadata registry over class registry for hooks | Hook architecture | Hooks are shell scripts, not TypeScript classes. Using HookDefinition metadata objects with platform-specific fields (event/cursorEvent) and separate config generators per platform. Cleaner than forcing class pattern on non-class entities | 2026-02-10 |
 | Transcript file size as context proxy | Context monitoring | Claude Code doesn't expose context window usage %. Transcript file size (bytes) is a reasonable proxy with configurable thresholds (100KB/200KB/300KB). Imperfect but functional | 2026-02-10 |
+| Two-layer verification (hooks + harness) | Quality enforcement strategy | Lightweight hooks (format, typecheck, pre-commit) run frequently. Comprehensive harness (full test suite, integration checks, structured parsing) runs at phase boundaries. Asymmetric cost model: hooks are fast/cheap, harness is thorough/expensive. Harness failures trigger failure-to-fix loops within phase execution. Validated in Phase 12 | 2026-02-10 |
+| Config fallback for optional sections | Framework configuration | Harness config is optional in framework projects. Provide DEFAULT_HARNESS_CONFIG constant and fall back to it when harness section is missing from config.json. Enables progressive adoption without requiring config updates | 2026-02-10 |
+| Bun.spawn with manual timeout implementation | Process execution | Bun.spawn has no built-in timeout like Node's child_process. Implement via `setTimeout` + `proc.kill()` + `Promise.race`. Also: (1) pass commands as `["sh", "-c", cmd]` string array (not string), (2) stdout/stderr are ReadableStreams — collect via `new Response(stream).text()`, (3) `.exited` is a Promise<number>, not synchronous | 2026-02-10 |
 
 ### Trade-offs Made
 
@@ -99,6 +105,13 @@
 - **`echo` corrupts JSON on some platforms**: `echo "$INPUT"` can interpret backslash sequences differently across shells. Always use `printf '%s' "$INPUT"` for piping JSON data through shell scripts
 - **Shell variable interpolation in bun -e strings**: `${FILE_PATH}` inside `bun -e "..."` JS strings breaks if path contains quotes or backslashes. Pass values via env vars: `HOOK_FILE_PATH="$FILE_PATH" bun -e "const fp = process.env.HOOK_FILE_PATH;"`
 - **Assuming platform exclusivity for features**: Phase 11 initially assumed hooks were Claude Code-only. Cursor added hooks support with a similar API. Always verify competitor/alternative platform capabilities before declaring features platform-exclusive
+- **Bun.spawn command passing quirk**: `Bun.spawn(cmd)` with a string fails silently. Must pass as `["sh", "-c", cmd]` to execute multi-word commands. Single-word commands like `["ls"]` work, but anything requiring shell interpretation needs the `["sh", "-c", ...]` wrapper. Caught by plan checker before deployment
+- **Bun.spawn has no built-in timeout**: Unlike Node.js child_process with `{ timeout }` option, Bun.spawn doesn't support timeouts. Implemented via `setTimeout` → `proc.kill()` → `Promise.race` pattern. Must use this pattern for all subprocess execution with timeout requirements
+- **Bun.spawn stdout/stderr are ReadableStreams**: In Node, you get buffer/string directly. In Bun, `.stdout` and `.stderr` are ReadableStreams. Must collect with `new Response(proc.stdout).text()` pattern. This is a footgun because it looks like a string property but needs streaming collection
+- **Bun.spawn .exited is async Promise**: `proc.exited` returns `Promise<number>`, not synchronous. Code checking `if (proc.exited === 0)` will fail. Must `await proc.exited` or use it in Promise chains
+- **ESLint parser requires --format json**: ESLint by default outputs human-readable format. Parser must inject `--format json` flag into the command to get JSON output that can be parsed. Generic parser can't handle ESLint output without this flag
+- **Diverse toolchain output formats require multiple parsers**: tsc outputs to stderr with line:col notation, bun-test outputs to stdout with JSON, eslint outputs JSON, generic tools may output anything. No single parser handles all. Registry pattern enables composition — add parsers incrementally for new tools
+- **Failure-to-fix loops need iteration limits**: Phase 12 runs harness, detects failures, applies fixes (e.g., format with prettier), re-runs harness. Without `maxIterations` limit (set to 3), infinite loops are possible if fix doesn't resolve failure. Always include escape hatch in retry loops
 
 ### Anti-patterns
 
@@ -126,6 +139,9 @@
 - **Notify don't auto-update**: Teams control when they update framework
 - **Surgical optimization over broad refactoring**: For performance work, target specific bottlenecks (lazy loading, unused dependencies) rather than redesigning systems. CLI is already performant at 23ms startup — avoid gold-plating
 - **Extract repeated values to constants**: Use named constants for validation sets (TEMPLATE_EXTENSIONS), magic strings, and repeated literals. Single point of truth, aids readability and maintenance
+- **Toolchain-agnostic harness**: Verification harness must support multiple tools (tsc, bun-test, eslint, generic). Use parser registry + pluggable architecture. Each tool has different output format — don't try to normalize; embrace diversity with separate parsers
+- **Layered enforcement cadence**: Hooks run at every edit/commit (fast feedback). Harness runs at phase boundaries (comprehensive validation). This asymmetry enables both speed and thoroughness. Don't run harness on every keystroke; let hooks provide fast feedback
+- **Config progressive adoption**: Optional config sections (like harness) should ship with sensible defaults. Projects without explicit config should still work — fallback to DEFAULT_HARNESS_CONFIG. Enables rollout without forcing all projects to update config immediately
 
 ---
 
@@ -133,13 +149,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 26 (+3 from Phase 11)
-- Total decisions: 15 (+3 from Phase 11)
-- Total pitfalls: 17 (+4 from Phase 11)
-- Total conventions: 4 (+1 from Phase 11)
-- Total anti-patterns: 5 (+2 from Phase 11)
-- Total preferences: 4
+- Total patterns: 29 (+3 from Phase 12)
+- Total decisions: 18 (+3 from Phase 12)
+- Total pitfalls: 25 (+8 from Phase 12)
+- Total conventions: 4 (no change)
+- Total anti-patterns: 5 (no change)
+- Total preferences: 7 (+3 from Phase 12)
 - Last updated: 2026-02-10
 
-*Entries added by: lu-learner (Phase 11)*
+*Entries added by: lu-learner (Phase 12)*
 *Last curated: 2026-02-10*
