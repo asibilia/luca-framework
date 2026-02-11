@@ -2,7 +2,110 @@
 
 ## Overview
 
-**Current Milestone:** (none — planning next)
+**Current Milestone:** v1.2.0 — Intelligent Agent Engine
+
+---
+
+## v1.2.0 — Intelligent Agent Engine
+
+**Status:** In Progress (1/5 phases complete)
+**Theme:** Make agents smarter — audit, modularize, iterate, plan
+**Phases:** 14-18
+**Requirements:** 29 — 5 done, 24 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
+**Approach:** Audit-first — audit current systems before building new features
+
+### Phase 14: Execution & Verification Audit ✅
+
+**Goal:** Audit the current lu-execute-phase and lu-verifier pipeline. Map every execution step, classify verification signals by reliability, and add goal-backward verification to check that PLAN.md objectives were actually met (not just tasks completed).
+**Depends on:** v1.1.0 (harness + hooks must exist to audit)
+**Requirements:** AUDIT-01 through AUDIT-05 (all satisfied)
+**Plans:** 3 plans, 2 waves — all complete
+
+**Delivered:**
+
+- AUDIT-REPORT.md with 38 verification signals classified T1-T4
+- lu-verifier Step 2.5 (Specification Anchoring) and Step 9.5 (Goal-Backward Objective Check)
+- lu-execute-phase Step 7 passes PLAN.md contents to verifier
+- MEMORY.md updated with 3 patterns, 2 decisions, 2 pitfalls
+
+---
+
+### Phase 15: Cognition Per-Agent Audit
+
+**Goal:** Audit every agent type's usage of the cognition system (BRAIN/MEMORY/WORKING). Create a matrix of current vs. ideal cognition features per agent. Define cognition profiles and implement selective memory recall.
+**Depends on:** Phase 14 (exec audit informs which agents need what cognition)
+**Requirements:** COGN-01 through COGN-05
+
+**Scope:**
+
+- Audit all 23+ agents for cognition feature usage
+- Gap analysis: which agents should have cognition features but don't
+- Define cognition tiers (stateless, session-aware, fully-cognitive)
+- Per-agent cognition configuration via metadata
+- Selective MEMORY recall (load task-relevant entries, not everything)
+
+---
+
+### Phase 16: Context-Modular Sub-Agent Architecture
+
+**Goal:** Design and implement context isolation for sub-agents. Each sub-agent gets its own context window with only task-relevant information. Orchestrator manages token budget allocation and result aggregation. Implements writer/reviewer separation and progressive context disclosure.
+**Depends on:** Phase 15 (cognition profiles inform context loading)
+**Requirements:** CTXM-01 through CTXM-06
+
+**Scope:**
+
+- Context isolation per sub-agent
+- Token budget allocation (orchestrator distributes budget, reserves 25-50% for output)
+- Result aggregation without full context re-loading
+- Progressive context disclosure (load on demand)
+- Writer/reviewer in separate context windows
+- Claude Code Task tool integration patterns
+
+---
+
+### Phase 17: Iterative Agent Loops (Ralph Wiggum)
+
+**Goal:** Implement the Ralph Wiggum pattern — externally-controlled iteration loops driven by Stop hooks, not LLM self-assessment. Add convergence detection, checkpoint/rollback, error classification, cost budgets, and both HITL and AFK modes.
+**Depends on:** Phase 16 (sub-agent architecture provides the execution substrate)
+**Requirements:** ITER-01 through ITER-07
+
+**Scope:**
+
+- External loop controller via Stop hook (not self-assessment)
+- Convergence detection (no-progress heuristic)
+- Configurable iteration limits per complexity level
+- Checkpoint/rollback per iteration
+- Error classification (transient/correctable/permanent)
+- Cost budget enforcement per loop
+- HITL and AFK modes
+
+---
+
+### Phase 18: Usage-Aware Sprint Planner
+
+**Goal:** Build a planner sub-agent that reads the todo backlog and produces optimized session/weekly plans respecting Claude Code's 5-hour rolling window and weekly caps. Implements WSJF scoring, quality-zone-aware scheduling, and Big Rocks First strategy.
+**Depends on:** Phase 17 (iterative loops provide the execution engine the planner schedules)
+**Requirements:** PLAN-01 through PLAN-07
+
+**Scope:**
+
+- Session planner producing ordered task lists for 5-hour windows
+- Quality-zone scheduling (complex tasks at 0-30%, simple at 50-70%)
+- WSJF prioritization (Cost of Delay / Job Size)
+- Big Rock First + WSJF tail hybrid
+- Weekly allocation across multiple sessions
+- Token cost estimation with historical calibration
+- PM agent with read-only permissions (least privilege)
+
+---
+
+## Dependency Graph
+
+```
+Phase 14 (Exec Audit) → Phase 15 (Cognition Audit) → Phase 16 (Context-Modular) → Phase 17 (Ralph Wiggum) → Phase 18 (Sprint Planner)
+```
+
+All phases are sequential — each builds on findings/infrastructure from the prior phase.
 
 ---
 
@@ -14,4 +117,4 @@
 
 ---
 
-*Roadmap updated: 2026-02-11*
+_Roadmap updated: 2026-02-11 (Phase 14 complete)_

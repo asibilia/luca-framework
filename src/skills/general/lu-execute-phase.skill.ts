@@ -1,19 +1,19 @@
 /**
  * lu-execute-phase Skill - Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-execute-phase skill configuration
 const luExecutePhaseConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-execute-phase',
+    name: "lu-execute-phase",
     description: `Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.`,
-    'disable-model-invocation': true,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Execute Phase
 
@@ -125,13 +125,13 @@ Extract learnings from this phase execution and update MEMORY.md.
 
 **Complexity-gated learning depth:**
 
-| Complexity | Learning Capture |
-|------------|-----------------|
-| TRIVIAL | Skip (do not spawn lu-learner) |
-| SIMPLE | Brief (spawn with minimal context) |
-| MODERATE | Standard (current behavior) |
-| COMPLEX | Full (include all working memory) |
-| CRITICAL | Full + debrief (include retrospective analysis) |
+| Complexity | Learning Capture                                |
+| ---------- | ----------------------------------------------- |
+| TRIVIAL    | Skip (do not spawn lu-learner)                  |
+| SIMPLE     | Brief (spawn with minimal context)              |
+| MODERATE   | Standard (current behavior)                     |
+| COMPLEX    | Full (include all working memory)               |
+| CRITICAL   | Full + debrief (include retrospective analysis) |
 
 For TRIVIAL: Skip the lu-learner spawn entirely.
 For SIMPLE: Include only execution summary, not full working memory.
@@ -164,17 +164,17 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 **Model lookup table:**
 
-| Agent              | quality | balanced | budget |
-| ------------------ | ------- | -------- | ------ |
-| lu-executor     | opus    | sonnet   | sonnet |
-| lu-verifier     | sonnet  | sonnet   | haiku  |
-| dx-advocate        | opus    | sonnet   | haiku  |
-| code-simplifier    | opus    | sonnet   | haiku  |
-| code-architect     | opus    | sonnet   | haiku  |
-| tailwind-auditor   | opus    | sonnet   | haiku  |
-| security-auditor   | opus    | sonnet   | haiku  |
-| lu-planner      | opus    | opus     | sonnet |
-| lu-plan-checker | sonnet  | sonnet   | haiku  |
+| Agent            | quality | balanced | budget |
+| ---------------- | ------- | -------- | ------ |
+| lu-executor      | opus    | sonnet   | sonnet |
+| lu-verifier      | sonnet  | sonnet   | haiku  |
+| dx-advocate      | opus    | sonnet   | haiku  |
+| code-simplifier  | opus    | sonnet   | haiku  |
+| code-architect   | opus    | sonnet   | haiku  |
+| tailwind-auditor | opus    | sonnet   | haiku  |
+| security-auditor | opus    | sonnet   | haiku  |
+| lu-planner       | opus    | opus     | sonnet |
+| lu-plan-checker  | sonnet  | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -245,8 +245,8 @@ Commits will not reference issues and PR creation will require manual setup.
 
 ### 2. Discover Plans
 
-- List all *-PLAN.md files in phase directory
-- Check which have *-SUMMARY.md (already complete)
+- List all \\*-PLAN.md files in phase directory
+- Check which have \\*-SUMMARY.md (already complete)
 - If \`--gaps-only\`: filter to only plans with \`gap_closure: true\`
 - Build list of incomplete plans
 
@@ -410,12 +410,12 @@ Overall: {PASSED/FAILED}
 Read maxFixIterations from complexity matrix. Look up the current complexity level in STATE.md, then use \`harnessFixIterations\` from the complexity matrix in config.json. If no complexity is set, fall back to harness config maxFixIterations (default 3).
 
 | Complexity | Max Fix Iterations |
-|------------|-------------------|
-| TRIVIAL | 1 |
-| SIMPLE | 2 |
-| MODERATE | 3 |
-| COMPLEX | 3 |
-| CRITICAL | 5 |
+| ---------- | ------------------ |
+| TRIVIAL    | 1                  |
+| SIMPLE     | 2                  |
+| MODERATE   | 3                  |
+| COMPLEX    | 3                  |
+| CRITICAL   | 5                  |
 
 For each iteration (up to max):
 
@@ -457,6 +457,7 @@ HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
    - If max iterations exhausted: log remaining failures, continue to Step 7 with harness failures as context for lu-verifier
 
 **Pass harness results to Step 7 verifier context** regardless of outcome. Include:
+
 - \`harness_status\`: passed | failed_after_fixes
 - \`harness_checks\`: array of check results
 - \`remaining_errors\`: structured errors (if any)
@@ -472,7 +473,8 @@ PHASE_DIR=".planning/phases/{phase_number}-*"
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 STATE_CONTENT=$(cat .planning/STATE.md)
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
-SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} ;)
+SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \\;)
+PLAN_CONTENTS=$(find $PHASE_DIR -name "*-PLAN.md" -exec cat {} \\;)
 \`\`\`
 
 Then spawn the verifier:
@@ -492,6 +494,9 @@ Task(
 **Execution Summaries:**
 {summaries}
 
+**Plan Contents (for specification anchoring):**
+{plan_contents}
+
 **Project State:**
 {state_content}
 
@@ -504,6 +509,10 @@ Task(
 {remaining_errors_if_any}
 
 </verification_context>
+
+<specification_anchoring>
+PLAN.md contents are included above. Use them in Step 2.5 (Specification Anchoring) to trace must-haves to plan objectives, and in Step 9.5 (Goal-Backward Objective Check) to confirm each plan's objective was achieved. If plan contents are empty, skip these steps gracefully.
+</specification_anchoring>
 
 <verification_levels>
 1. EXISTS: Do deliverables exist in codebase?
@@ -565,13 +574,13 @@ Display:
 
 **Spawn based on complexity level** (read from STATE.md \`Task Complexity:\` field):
 
-| Agent | MODERATE | COMPLEX | CRITICAL |
-|-------|----------|---------|----------|
-| dx-advocate | Run | Run | Run |
-| code-simplifier | Run | Run | Run |
-| code-architect | Skip | Run | Run |
-| tailwind-auditor | If UI files | If UI files | Run |
-| security-auditor | If auth files | If auth files | Always |
+| Agent            | MODERATE      | COMPLEX       | CRITICAL |
+| ---------------- | ------------- | ------------- | -------- |
+| dx-advocate      | Run           | Run           | Run      |
+| code-simplifier  | Run           | Run           | Run      |
+| code-architect   | Skip          | Run           | Run      |
+| tailwind-auditor | If UI files   | If UI files   | Run      |
+| security-auditor | If auth files | If auth files | Always   |
 
 If complexity not set, default to spawning all reviewers (backward-compatible).
 
@@ -828,13 +837,13 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 **Complexity gate:** UAT runs at MODERATE (optional) and above. For COMPLEX/CRITICAL, UAT is required.
 
-| Complexity | UAT |
-|------------|-----|
-| TRIVIAL | Skip |
-| SIMPLE | Skip |
-| MODERATE | Optional (runs unless --skip-uat) |
-| COMPLEX | Required |
-| CRITICAL | Required + thorough |
+| Complexity | UAT                               |
+| ---------- | --------------------------------- |
+| TRIVIAL    | Skip                              |
+| SIMPLE     | Skip                              |
+| MODERATE   | Optional (runs unless --skip-uat) |
+| COMPLEX    | Required                          |
+| CRITICAL   | Required + thorough               |
 
 **Auto-transition into UAT mode:**
 
@@ -998,8 +1007,8 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 ## Next Steps
 
-| Condition                      | Action                | Command                                    |
-| ------------------------------ | --------------------- | ------------------------------------------ |
+| Condition                      | Action                | Command                                 |
+| ------------------------------ | --------------------- | --------------------------------------- |
 | UAT passed, more phases        | Discuss next phase    | \`/lu-discuss-phase {N+1}\`               |
 | UAT passed, milestone complete | Audit milestone       | \`/lu-audit-milestone\`                   |
 | UAT gaps found                 | Execute gap fixes     | \`/lu-execute-phase {N} --gaps-only\`     |
@@ -1013,9 +1022,9 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 - \`/lu-verify-work {phase}\` — Run UAT separately
 - \`/lu-pause-work\` — Create handoff if stopping mid-work
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuExecutePhaseSkill extends BaseSkillImpl {
