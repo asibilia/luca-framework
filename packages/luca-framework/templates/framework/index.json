@@ -5,5 +5,15 @@
     "workflows/",
     "references/",
     "templates/"
-  ]
+  ],
+  "hooks": {
+    "description": "Claude Code hooks - installed to .claude/hooks/",
+    "scripts": [
+      "post-edit-format.sh",
+      "post-edit-typecheck.sh",
+      "pre-commit-gate.sh",
+      "context-monitor.sh",
+      "session-persist.sh"
+    ]
+  }
 }

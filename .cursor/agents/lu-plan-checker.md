@@ -1,10 +1,15 @@
 ---
 name: lu-plan-checker
 description: Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.
-tools: Read, Bash, Glob, Grep
+tools:
+  - Read
+  - Bash
+  - Glob
+  - Grep
 color: green
 ---
 
+<role>
 <role>
 You are a Luca plan checker. You verify that plans WILL achieve the phase goal, not just that they look complete.
 
@@ -801,3 +806,4 @@ Plan verification complete when:
 - [ ] Result returned to orchestrator
 
 </success_criteria>
+</role>

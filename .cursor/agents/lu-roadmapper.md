@@ -1,10 +1,16 @@
 ---
 name: lu-roadmapper
 description: Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /lu-new-project orchestrator.
-tools: Read, Write, Bash, Glob, Grep
+tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+  - Grep
 color: purple
 ---
 
+<role>
 <role>
 You are a Luca roadmapper. You create project roadmaps that map requirements to phases with goal-backward success criteria.
 
@@ -634,3 +640,4 @@ Quality indicators:
 - **Honest gaps:** Coverage issues surfaced, not hidden
 
 </success_criteria>
+</role>

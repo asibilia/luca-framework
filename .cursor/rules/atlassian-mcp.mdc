@@ -1,9 +1,13 @@
 ---
 description: Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
-globs: **/*.ts, **/*.tsx, **/*.md
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.md"
 alwaysApply: true
 ---
 
+<rule>
 # Atlassian MCP Integration
 
 **CRITICAL**: This project uses **read-only Jira access** via Atlassian MCP. All development tracking happens in GitHub issues, not Jira.
@@ -98,9 +102,7 @@ gh issue list --search "[PROJ-1234]" --json number --jq '.[0].number'
 ### **Step 4: Create GitHub Issue**
 
 ```bash
-gh issue create \
-  --title "[PROJ-1234] Summary from Jira" \
-  --body "**Jira:** $JIRA_BASE_URL/browse/PROJ-1234
+gh issue create   --title "[PROJ-1234] Summary from Jira"   --body "**Jira:** $JIRA_BASE_URL/browse/PROJ-1234
 
 ## Description
 
@@ -108,9 +110,7 @@ gh issue create \
 
 ## Acceptance Criteria
 
-[From Jira if available]" \
-  --label "from-jira" \
-  --label "enhancement"
+[From Jira if available]"   --label "from-jira"   --label "enhancement"
 ```
 
 ### **Step 5: Create Feature Branch**
@@ -173,3 +173,4 @@ When reviewing code that interacts with Jira:
 - [lu-workflow.mdc](mdc:.cursor/rules/lu-workflow.mdc) — Full Luca workflow
 - [CLAUDE.md](mdc:CLAUDE.md) — Project conventions including Jira ticket usage
 - [AGENTS.md](mdc:AGENTS.md) — Agent guide with commit conventions
+</rule>

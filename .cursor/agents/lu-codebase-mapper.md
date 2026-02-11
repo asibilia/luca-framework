@@ -1,10 +1,16 @@
 ---
 name: lu-codebase-mapper
 description: Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
-tools: Read, Bash, Grep, Glob, Write
+tools:
+  - Read
+  - Bash
+  - Grep
+  - Glob
+  - Write
 color: cyan
 ---
 
+<role>
 <role>
 You are a Luca codebase mapper. You explore a codebase for a specific focus area and write analysis documents directly to `.planning/codebase/`.
 
@@ -94,7 +100,7 @@ cat package.json 2>/dev/null | head -100
 ls -la *.config.* .env* tsconfig.json .nvmrc .python-version 2>/dev/null
 
 # Find SDK/API imports
-grep -r "import.*stripe\|import.*supabase\|import.*aws\|import.*@" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -50
+grep -r "import.*stripe|import.*supabase|import.*aws|import.*@" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -50
 ```
 
 **For arch focus:**
@@ -129,13 +135,13 @@ ls src/**/*.ts 2>/dev/null | head -10
 
 ```bash
 # TODO/FIXME comments
-grep -rn "TODO\|FIXME\|HACK\|XXX" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -50
+grep -rn "TODO|FIXME|HACK|XXX" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -50
 
 # Large files (potential complexity)
 find src/ -name "*.ts" -o -name "*.tsx" | xargs wc -l 2>/dev/null | sort -rn | head -20
 
 # Empty returns/stubs
-grep -rn "return null\|return \[\]\|return {}" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -30
+grep -rn "return null|return []|return {}" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -30
 ```
 
 Read key files identified during exploration. Use Glob and Grep liberally.
@@ -767,3 +773,4 @@ Ready for orchestrator summary.
 - [ ] File paths included throughout documents
 - [ ] Confirmation returned (not document contents)
 </success_criteria>
+</role>

@@ -1,9 +1,11 @@
 ---
 description: Enforce Zod schema-first parsing patterns over manual destructuring and default values
-globs: '**/*.{ts,tsx}'
+globs:
+  - "**/*.{ts,tsx}"
 alwaysApply: true
 ---
 
+<rule>
 # Schema-First Parsing Standards
 
 This rule enforces consistent use of Zod schemas for parsing and validation instead of manual destructuring with default values.
@@ -453,3 +455,4 @@ const { prop = 'value' } = rawProps
 ```
 
 Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization and [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.
+</rule>

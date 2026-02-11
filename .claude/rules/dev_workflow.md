@@ -1,8 +1,6 @@
----
-description: Guide for using Taskmaster to manage task-driven development workflows
-globs: **/*
-alwaysApply: true
----
+# Guide for using Taskmaster to manage task-driven development workflows
+
+## rule
 
 # Taskmaster Development Workflow
 
@@ -32,18 +30,17 @@ All your standard command executions should operate on the user's current task c
 
 For new projects or when users are getting started, operate within the `master` tag context:
 
--   Start new projects by running `initialize_project` tool / `task-master init` or `parse_prd` / `task-master parse-prd --input='<prd-file.txt>'` (see @`taskmaster.mdc`) to generate initial tasks.json with tagged structure
--   Configure rule sets during initialization with `--rules` flag (e.g., `task-master init --rules cursor,windsurf`) or manage them later with `task-master rules add/remove` commands  
--   Begin coding sessions with `get_tasks` / `task-master list` (see @`taskmaster.mdc`) to see current tasks, status, and IDs
--   Determine the next task to work on using `next_task` / `task-master next` (see @`taskmaster.mdc`)
--   Analyze task complexity with `analyze_project_complexity` / `task-master analyze-complexity --research` (see @`taskmaster.mdc`) before breaking down tasks
--   Review complexity report using `complexity_report` / `task-master complexity-report` (see @`taskmaster.mdc`)
+-   Start new projects by running `initialize_project` tool / `task-master init` or `parse_prd` / `task-master parse-prd --input='<prd-file.txt>'` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to generate initial tasks.json with tagged structure
+-   Begin coding sessions with `get_tasks` / `task-master list` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to see current tasks, status, and IDs
+-   Determine the next task to work on using `next_task` / `task-master next` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc))
+-   Analyze task complexity with `analyze_project_complexity` / `task-master analyze-complexity --research` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) before breaking down tasks
+-   Review complexity report using `complexity_report` / `task-master complexity-report` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc))
 -   Select tasks based on dependencies (all marked 'done'), priority level, and ID order
--   View specific task details using `get_task` / `task-master show <id>` (see @`taskmaster.mdc`) to understand implementation requirements
--   Break down complex tasks using `expand_task` / `task-master expand --id=<id> --force --research` (see @`taskmaster.mdc`) with appropriate flags like `--force` (to replace existing subtasks) and `--research`
+-   View specific task details using `get_task` / `task-master show <id>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to understand implementation requirements
+-   Break down complex tasks using `expand_task` / `task-master expand --id=<id> --force --research` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) with appropriate flags like `--force` (to replace existing subtasks) and `--research`
 -   Implement code following task details, dependencies, and project standards
--   Mark completed tasks with `set_task_status` / `task-master set-status --id=<id> --status=done` (see @`taskmaster.mdc`)
--   Update dependent tasks when implementation differs from original plan using `update` / `task-master update --from=<id> --prompt="..."` or `update_task` / `task-master update-task --id=<id> --prompt="..."` (see @`taskmaster.mdc`)
+-   Mark completed tasks with `set_task_status` / `task-master set-status --id=<id> --status=done` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc))
+-   Update dependent tasks when implementation differs from original plan using `update` / `task-master update --from=<id> --prompt="..."` or `update_task` / `task-master update-task --id=<id> --prompt="..."` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc))
 
 ---
 
@@ -85,8 +82,8 @@ This is a more structured approach for significant new features or epics.
 - **Your Suggested Prompt**: *"This sounds like a significant new feature. To manage this effectively, I suggest we create a dedicated task context for it. Here's the plan: I'll create a new tag called 'feature-xyz', then we can draft a Product Requirements Document (PRD) together to scope the work. Once the PRD is ready, I'll automatically generate all the necessary tasks within that new tag. How does that sound?"*
 - **Your Implementation Flow**:
     1.  **Create an empty tag**: `task-master add-tag feature-xyz --description "Tasks for the new XYZ feature"`. You can also start by creating a git branch if applicable, and then create the tag from that branch.
-    2.  **Collaborate & Create PRD**: Work with the user to create a detailed PRD file (e.g., `.taskmaster/docs/feature-xyz-prd.txt`).
-    3.  **Parse PRD into the new tag**: `task-master parse-prd .taskmaster/docs/feature-xyz-prd.txt --tag feature-xyz`
+    2.  **Collaborate & Create PRD**: Work with the user to create a detailed PRD file (e.g., `.taskmaster/docs/feature-xyz-prd.md`).
+    3.  **Parse PRD into the new tag**: `task-master parse-prd .taskmaster/docs/feature-xyz-prd.md --tag feature-xyz`
     4.  **Prepare the new task list**: Follow up by suggesting `analyze-complexity` and `expand-all` for the newly created tasks within the `feature-xyz` tag.
 
 #### Pattern 5: Version-Based Development
@@ -135,9 +132,9 @@ Once you transition to tag-based workflows, the `master` tag should ideally cont
 **For New Major Features**:
 1. **Identify the Initiative**: When user describes a significant feature
 2. **Create Dedicated Tag**: `add_tag feature-[name] --description="[Feature description]"`
-3. **Collaborative PRD Creation**: Work with user to create comprehensive PRD in `.taskmaster/docs/feature-[name]-prd.txt`
+3. **Collaborative PRD Creation**: Work with user to create comprehensive PRD in `.taskmaster/docs/feature-[name]-prd.md`
 4. **Parse & Prepare**: 
-   - `parse_prd .taskmaster/docs/feature-[name]-prd.txt --tag=feature-[name]`
+   - `parse_prd .taskmaster/docs/feature-[name]-prd.md --tag=feature-[name]`
    - `analyze_project_complexity --tag=feature-[name] --research`
    - `expand_all --tag=feature-[name] --research`
 5. **Add Master Reference**: Create a high-level task in `master` that references the feature tag
@@ -171,7 +168,7 @@ Your Response: "This sounds like a major feature that would benefit from detaile
 Actions: 
 1. add_tag feature-dashboard --description="User dashboard with analytics and management"
 2. Collaborate on PRD creation
-3. parse_prd dashboard-prd.txt --tag=feature-dashboard
+3. parse_prd dashboard-prd.md --tag=feature-dashboard
 4. Add high-level "User Dashboard" task to master
 ```
 
@@ -196,8 +193,8 @@ Taskmaster offers two primary ways to interact:
     - For AI agents and integrated development environments (like Cursor), interacting via the **MCP server is the preferred method**.
     - The MCP server exposes Taskmaster functionality through a set of tools (e.g., `get_tasks`, `add_subtask`).
     - This method offers better performance, structured data exchange, and richer error handling compared to CLI parsing.
-    - Refer to @`mcp.mdc` for details on the MCP architecture and available tools.
-    - A comprehensive list and description of MCP tools and their corresponding CLI commands can be found in @`taskmaster.mdc`.
+    - Refer to [`mcp.mdc`](mdc:.cursor/rules/mcp.mdc) for details on the MCP architecture and available tools.
+    - A comprehensive list and description of MCP tools and their corresponding CLI commands can be found in [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc).
     - **Restart the MCP server** if core logic in `scripts/modules` or MCP tool/direct function definitions change.
     - **Note**: MCP tools fully support tagged task lists with complete tag management capabilities.
 
@@ -206,7 +203,7 @@ Taskmaster offers two primary ways to interact:
     - It can also serve as a fallback if the MCP server is inaccessible or a specific function isn't exposed via MCP.
     - Install globally with `npm install -g task-master-ai` or use locally via `npx task-master-ai ...`.
     - The CLI commands often mirror the MCP tools (e.g., `task-master list` corresponds to `get_tasks`).
-    - Refer to @`taskmaster.mdc` for a detailed command reference.
+    - Refer to [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc) for a detailed command reference.
     - **Tagged Task Lists**: CLI fully supports the new tagged system with seamless migration.
 
 ## How the Tag System Works (For Your Reference)
@@ -215,14 +212,14 @@ Taskmaster offers two primary ways to interact:
 - **Silent Migration**: Existing projects automatically migrate to use a "master" tag with zero disruption.
 - **Context Isolation**: Tasks in different tags are completely separate. Changes in one tag do not affect any other tag.
 - **Manual Control**: The user is always in control. There is no automatic switching. You facilitate switching by using `use-tag <name>`.
-- **Full CLI & MCP Support**: All tag management commands are available through both the CLI and MCP tools for you to use. Refer to @`taskmaster.mdc` for a full command list.
+- **Full CLI & MCP Support**: All tag management commands are available through both the CLI and MCP tools for you to use. Refer to [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc) for a full command list.
 
 ---
 
 ## Task Complexity Analysis
 
--   Run `analyze_project_complexity` / `task-master analyze-complexity --research` (see @`taskmaster.mdc`) for comprehensive analysis
--   Review complexity report via `complexity_report` / `task-master complexity-report` (see @`taskmaster.mdc`) for a formatted, readable version.
+-   Run `analyze_project_complexity` / `task-master analyze-complexity --research` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) for comprehensive analysis
+-   Review complexity report via `complexity_report` / `task-master complexity-report` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) for a formatted, readable version.
 -   Focus on tasks with highest complexity scores (8-10) for detailed breakdown
 -   Use analysis results to determine appropriate subtask allocation
 -   Note that reports are automatically used by the `expand_task` tool/command
@@ -243,8 +240,10 @@ Taskmaster offers two primary ways to interact:
 -   When implementation differs significantly from planned approach
 -   When future tasks need modification due to current implementation choices
 -   When new dependencies or requirements emerge
--   Use `update` / `task-master update --from=<futureTaskId> --prompt='<explanation>\nUpdate context...' --research` to update multiple future tasks.
--   Use `update_task` / `task-master update-task --id=<taskId> --prompt='<explanation>\nUpdate context...' --research` to update a single specific task.
+-   Use `update` / `task-master update --from=<futureTaskId> --prompt='<explanation>
+Update context...' --research` to update multiple future tasks.
+-   Use `update_task` / `task-master update-task --id=<taskId> --prompt='<explanation>
+Update context...' --research` to update a single specific task.
 
 ## Task Status Management
 
@@ -364,7 +363,7 @@ Taskmaster supports multiple AI coding assistant rule sets that can be configure
 Once a task has been broken down into subtasks using `expand_task` or similar methods, follow this iterative process for implementation:
 
 1.  **Understand the Goal (Preparation):**
-    *   Use `get_task` / `task-master show <subtaskId>` (see @`taskmaster.mdc`) to thoroughly understand the specific goals and requirements of the subtask.
+    *   Use `get_task` / `task-master show <subtaskId>` (see [`taskmaster.mdc`](mdc:.cursor/rules/taskmaster.mdc)) to thoroughly understand the specific goals and requirements of the subtask.
 
 2.  **Initial Exploration & Planning (Iteration 1):**
     *   This is the first attempt at creating a concrete implementation plan.
@@ -386,7 +385,9 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
 6.  **Refine and Log Progress (Iteration 2+):**
     *   As implementation progresses, you will encounter challenges, discover nuances, or confirm successful approaches.
     *   **Before appending new information**: Briefly review the *existing* details logged in the subtask (using `get_task` or recalling from context) to ensure the update adds fresh insights and avoids redundancy.
-    *   **Regularly** use `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<update details>\n- What worked...\n- What didn't work...'` to append new findings.
+    *   **Regularly** use `update_subtask` / `task-master update-subtask --id=<subtaskId> --prompt='<update details>
+- What worked...
+- What didn't work...'` to append new findings.
     *   **Crucially, log:**
         *   What worked ("fundamental truths" discovered).
         *   What didn't work and why (to avoid repeating mistakes).
@@ -406,7 +407,10 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
 9.  **Commit Changes (If using Git):**
     *   Stage the relevant code changes and any updated/new rule files (`git add .`).
     *   Craft a comprehensive Git commit message summarizing the work done for the subtask, including both code implementation and any rule adjustments.
-    *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>\n\n- Details about changes...\n- Updated rule Y for pattern Z'`).
+    *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>
+
+- Details about changes...
+- Updated rule Y for pattern Z'`).
     *   Consider if a Changeset is needed according to internal versioning guidelines (previously linked to `changeset.mdc`). If so, run `npm run changeset`, stage the generated file, and amend the commit or create a new one.
 
 10. **Proceed to Next Subtask:**

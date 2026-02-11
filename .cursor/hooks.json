@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/post-edit-format.sh",
+        "timeout": 10
+      },
+      {
+        "command": ".cursor/hooks/post-edit-typecheck.sh",
+        "timeout": 30
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/pre-commit-gate.sh",
+        "timeout": 120,
+        "matcher": "git commit|git merge|bun run commit|bunx commit|bunx --bun commit"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/context-monitor.sh",
+        "timeout": 5
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": ".cursor/hooks/session-persist.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}

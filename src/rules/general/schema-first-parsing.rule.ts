@@ -8,7 +8,7 @@ import type { RuleConfig } from '../types/rule.types';
 const EnforceZodschemafConfig: RuleConfig = {
   frontmatter: {
     description: `Enforce Zod schema-first parsing patterns over manual destructuring and default values`,
-    globs: [''**/*.{ts,tsx}''],
+    globs: ['**/*.{ts,tsx}'],
     alwaysApply: true,
   },
   sections: [
@@ -299,7 +299,7 @@ const safeParseWithLogging = <T>(
   if (!result.success) {
     // Development: Detailed logging
     if (process.env.NODE_ENV === 'development') {
-      console.error(\`${componentName} validation failed:\`, {
+      console.error(\`\${componentName} validation failed:\`, {
         errors: result.error.issues,
         data,
       })
@@ -308,7 +308,7 @@ const safeParseWithLogging = <T>(
     // Production: Clean error message
     return {
       success: false,
-      error: \`Invalid ${componentName} configuration\`,
+      error: \`Invalid \${componentName} configuration\`,
     }
   }
 

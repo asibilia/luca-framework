@@ -1,9 +1,12 @@
 ---
 description: Prohibit class usage in favor of functional programming patterns
-globs: packages-ui/**/*.ts, packages-ui/**/*.tsx
+globs:
+  - packages-ui/**/*.ts
+  - packages-ui/**/*.tsx
 alwaysApply: true
 ---
 
+<rule>
 # No Classes Rule
 
 This codebase exclusively uses **functional programming patterns**. Classes are prohibited in favor of modern functional approaches.
@@ -177,3 +180,4 @@ This rule is enforced through:
 - Team consensus and standards
 
 Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards and [dev_workflow.mdc](mdc:.cursor/rules/taskmaster/dev_workflow.mdc) for development workflow integration.
+</rule>

@@ -1,19 +1,19 @@
 /**
  * Guide for using Taskmaster to manage task-driven development workflows
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 // Define the Guide-for-using-Task rule configuration
 const GuideforusingTaskConfig: RuleConfig = {
   frontmatter: {
     description: `Guide for using Taskmaster to manage task-driven development workflows`,
-    globs: ['**/*'],
+    globs: ["**/*"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Taskmaster Development Workflow
 
 This guide outlines the standard process for using Taskmaster to manage software development projects. It is written as a set of instructions for you, the AI agent.
@@ -304,6 +304,17 @@ Taskmaster configuration is managed through two main mechanisms:
 **If AI commands FAIL in MCP** verify that the API key for the selected provider is present in the \`env\` section of \`.cursor/mcp.json\`.
 **If AI commands FAIL in CLI** verify that the API key for the selected provider is present in the \`.env\` file in the root of the project.
 
+## Rules Management
+
+Taskmaster supports multiple AI coding assistant rule sets that can be configured during project initialization or managed afterward:
+
+- **Available Profiles**: Claude Code, Cline, Codex, Cursor, Roo Code, Trae, Windsurf (claude, cline, codex, cursor, roo, trae, windsurf)
+- **During Initialization**: Use \`task-master init --rules cursor,windsurf\` to specify which rule sets to include
+- **After Initialization**: Use \`task-master rules add <profiles>\` or \`task-master rules remove <profiles>\` to manage rule sets
+- **Interactive Setup**: Use \`task-master rules setup\` to launch an interactive prompt for selecting rule profiles
+- **Default Behavior**: If no \`--rules\` flag is specified during initialization, all available rule profiles are included
+- **Rule Structure**: Each profile creates its own directory (e.g., \`.cursor/rules\`, \`.roo/rules\`) with appropriate configuration files
+
 ## Determining the Next Task
 
 - Run \`next_task\` / \`task-master next\` to show the next task to work on.
@@ -415,14 +426,14 @@ Once a task has been broken down into subtasks using \`expand_task\` or similar 
 - **Top-Level Function Search**:
     - Useful for understanding module structure or planning refactors.
     - Use grep/ripgrep to find exported functions/constants:
-      \`rg "export (async function|function|const) \w+"\` or similar patterns.
+      \`rg "export (async function|function|const) \\w+"\` or similar patterns.
     - Can help compare functions between files during migrations or identify potential naming conflicts.
 
 ---
 *This workflow provides a general guideline. Adapt it based on your specific project needs and team practices.*`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class GuideforusingTaskRule extends BaseRuleImpl {

@@ -171,6 +171,20 @@ Read these reference files before executing:
 
 9. **If UAT passes:** Run code quality review
 
+   **Complexity gate:** Code review runs at MODERATE and above. If complexity is TRIVIAL or SIMPLE, skip code review entirely and proceed to step 12.
+
+   **Spawn reviewers based on complexity** (read from STATE.md \`Task Complexity:\` field):
+
+   | Agent | MODERATE | COMPLEX | CRITICAL |
+   |-------|----------|---------|----------|
+   | dx-advocate | Run | Run | Run |
+   | code-simplifier | Run | Run | Run |
+   | code-architect | Skip | Run | Run |
+   | tailwind-auditor | If UI files | If UI files | Run |
+   | security-auditor | If auth files | If auth files | Always |
+
+   If no complexity is set in STATE.md, default to spawning all reviewers (backward-compatible).
+
    **MANDATORY**: You MUST spawn reviewer agents in PARALLEL. Do NOT review code yourself.
 
    Get changed files and spawn reviewers:

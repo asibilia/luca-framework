@@ -47,6 +47,41 @@ export { LuPlannerAgent } from './src/agents/luca/lu-planner.agent';
 export { LuSkill } from './src/skills/luca/lu.skill';
 export { LuWorkflowRule } from './src/rules/lu-workflow.rule';
 
+// Registries (for build scripts and consumers)
+export { agentRegistry } from './src/agents/index';
+export { skillRegistry } from './src/skills/index';
+export { ruleRegistry } from './src/rules/index';
+
+// Hook registry and types (for build scripts and consumers)
+export { hookRegistry, generateHooksConfig, generateCursorHooksConfig } from './src/hooks/index';
+export type { HookDefinition } from './src/hooks/index';
+
+// Harness API and types (for build scripts and consumers)
+export { runHarness, loadHarnessConfig, parserRegistry, DEFAULT_HARNESS_CONFIG } from './src/harness/index';
+export type { HarnessConfig, CheckConfig, ParsedError, CheckResult, HarnessResult, OutputParser } from './src/harness/index';
+
+// Complexity API and types (for build scripts and consumers)
+export {
+  COMPLEXITY_LEVELS,
+  COMPLEXITY_ORDER,
+  COMPLEXITY_TIER,
+  meetsThreshold,
+  getTier,
+  COMPLEXITY_CLASSIFICATIONS,
+  DEFAULT_COMPLEXITY_MATRIX,
+  DEFAULT_COMPLEXITY_CONFIG,
+} from './src/complexity/index';
+export type {
+  ComplexityLevel,
+  ComplexityTier,
+  ComplexityClassification,
+  VerificationMode,
+  StepActivation,
+  ComplexityGate,
+  ComplexityMatrix,
+  ComplexityConfig,
+} from './src/complexity/index';
+
 // Validation utilities (public-facing)
 export {
   sanitizeJsonParse,

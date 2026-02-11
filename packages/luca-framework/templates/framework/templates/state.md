@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated [date])
 Phase: [X] of [Y] ([Phase name])
 Plan: [A] of [B] in current phase
 Status: [Ready to plan / Planning / Ready to execute / In progress / Phase complete]
-Task Complexity: [TRIVIAL / MODERATE / COMPLEX] (classified [YYYY-MM-DD HH:MM])
+Task Complexity: [TRIVIAL / SIMPLE / MODERATE / COMPLEX / CRITICAL] (classified [YYYY-MM-DD HH:MM])
 Last activity: [YYYY-MM-DD] — [What happened]
 
 Progress: [░░░░░░░░░░] 0%
@@ -172,7 +172,7 @@ Where we are right now:
 - Phase X of Y — which phase
 - Plan A of B — which plan within phase
 - Status — current state
-- Task Complexity — classification from cognitive pre-flight (TRIVIAL/MODERATE/COMPLEX)
+- Task Complexity — classification from cognitive pre-flight (TRIVIAL/SIMPLE/MODERATE/COMPLEX/CRITICAL)
 - Last activity — what happened most recently
 - Progress bar — visual indicator of overall completion
 

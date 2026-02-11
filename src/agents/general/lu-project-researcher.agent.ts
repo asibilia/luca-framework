@@ -476,13 +476,13 @@ Recommended technologies with versions and rationale.
 
 ## Installation
 
-\\`\\`\\`bash
+\\\`\\\`\\\`bash
 # Core
 npm install [packages]
 
 # Dev dependencies
 npm install -D [packages]
-\\`\\`\\`
+\\\`\\\`\\\`
 
 ## Sources
 
@@ -577,9 +577,9 @@ System structure patterns with component boundaries.
 **What:** [description]
 **When:** [conditions]
 **Example:**
-\\`\\`\\`typescript
+\\\`\\\`\\\`typescript
 [code]
-\\`\\`\\`
+\\\`\\\`\\\`
 
 ## Anti-Patterns to Avoid
 

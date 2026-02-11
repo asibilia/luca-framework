@@ -8,12 +8,12 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.0.0)
+## Current State (v1.1.0)
 
-**Shipped:** 2026-02-05
-**Version:** 1.0.0
+**Shipped:** 2026-02-11
+**Version:** 1.1.0
 
-The Luca framework is now a distributable, CLI-installable package.
+The Luca framework has a fully automated quality enforcement pipeline built on registry-driven compilation, deterministic hooks, an automated verification harness, and complexity-scaled workflow.
 
 **Capabilities:**
 
@@ -21,30 +21,25 @@ The Luca framework is now a distributable, CLI-installable package.
 - **Pluggable tracking**: Adapters for Jira, GitHub Issues, and Placeholder
 - **Enterprise readiness**: `npx luca doctor`, security docs, and approval workflows
 - **Safe updates**: `npx luca update` with conflict detection
+- **Registry-driven builds**: All agents, skills, and rules compiled from source via typed registries
+- **Deterministic hooks**: Post-edit formatting/typechecking, pre-commit quality gate, context monitoring, session persistence (Claude Code + Cursor)
+- **Automated verification**: 4-parser harness (tsc, bun-test, eslint, generic) with failure-to-fix loops
+- **Complexity gating**: 5-level system (TRIVIAL-CRITICAL) with 3 behavioral tiers scaling workflow steps
 
-## Current Milestone (v1.0.1) — Code Hardening
+## Previous Milestones
 
-**Goal:** Comprehensive review and hardening of the v1.0.0 implementation. Every source file passes through specialized review agents (security, architecture, performance, DX, testing, code quality) with findings fixed in-place.
+- **v1.0.0** — Core CLI & Packaging (2026-02-05). CLI installer, branding, templates, tracking adapters, enterprise readiness.
+- **v1.0.1** — Code Hardening (2026-02-10). 6 phases, 433 tests, Zod at all boundaries, clean architecture, 23ms startup.
+- **v1.1.0** — Workflow Foundation (2026-02-11). 4 phases, 11 plans, 27 requirements, 579 tests. Registry-driven builds, hooks, verification harness, complexity gates.
 
-**Surface area:** 133 TypeScript source files, 27 agents, 42 skills, 21 rules, 3 compilers, 3 CLI commands, 4 adapters, 9 build scripts, 70+ templates.
-
-**Key finding from initial audit:** Zero dedicated test files exist. Test coverage is the top priority.
-
-**Phases:**
-
-1. **Testing** — Add test infrastructure and coverage across all packages
-2. **Code Quality** — Lint, type strictness, dead code removal, consistency
-3. **Security** — Input validation, secrets handling, injection surfaces, dependency audit
-4. **Architecture** — Coupling, error handling patterns, module boundaries, abstractions
-5. **Performance** — Bundle size, startup time, memory usage, template rendering
-6. **DX** — CLI UX, error messages, documentation accuracy, onboarding flow
-
-## Future Milestone Goals (v1.1.0)
+## Next Milestone Goals
 
 - **Additional Stack Templates**: Python, Node.js, Next.js
 - **Multi-project Support**: Support monorepos with multiple projects
 - **Cross-IDE Support**: VS Code extension
 - **Agent Marketplace**: Registry for sharing agents and skills
+- **Iterative Agent Loops**: Ralph Wiggum pattern for agent self-correction
+- **Context-Modular Architecture**: Sub-agent context separation and progressive disclosure
 
 ## Requirements
 

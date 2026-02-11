@@ -113,6 +113,21 @@ Extract learnings from this phase execution and update MEMORY.md.
 
 **Do NOT proceed until the Task returns.**
 
+**Complexity-gated learning depth:**
+
+| Complexity | Learning Capture |
+|------------|-----------------|
+| TRIVIAL | Skip (do not spawn lu-learner) |
+| SIMPLE | Brief (spawn with minimal context) |
+| MODERATE | Standard (current behavior) |
+| COMPLEX | Full (include all working memory) |
+| CRITICAL | Full + debrief (include retrospective analysis) |
+
+For TRIVIAL: Skip the lu-learner spawn entirely.
+For SIMPLE: Include only execution summary, not full working memory.
+For MODERATE and above: Use the current lu-learner spawn as-is.
+For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
+
 ### WORKING.md During Execution
 
 Throughout execution, log to WORKING.md:
@@ -346,6 +361,96 @@ git add .
 bun run commit --message="orchestrator corrections" --type=fix --scope={phase} --no-push --skip-checks
 ```
 
+### 6.5. Run Verification Harness
+
+**Run automated quality checks before agent verification.**
+
+Run the harness runner:
+
+```bash
+# Run harness (outputs JSON to stdout)
+HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+HARNESS_EXIT=$?
+echo "$HARNESS_OUTPUT"
+```
+
+Parse the JSON output:
+
+- If `status: "passed"` -- display results and continue to Step 7
+- If `status: "failed"` -- enter failure-to-fix loop (Step 6.6)
+
+Display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► VERIFICATION HARNESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Check     | Status | Errors | Duration |
+|-----------|--------|--------|----------|
+| {name}    | {pass/fail} | {N} | {Ns}  |
+
+Overall: {PASSED/FAILED}
+```
+
+### 6.6. Failure-to-Fix Loop
+
+**When harness checks fail, attempt automated repair.**
+
+Read maxFixIterations from complexity matrix. Look up the current complexity level in STATE.md, then use `harnessFixIterations` from the complexity matrix in config.json. If no complexity is set, fall back to harness config maxFixIterations (default 3).
+
+| Complexity | Max Fix Iterations |
+|------------|-------------------|
+| TRIVIAL | 1 |
+| SIMPLE | 2 |
+| MODERATE | 3 |
+| COMPLEX | 3 |
+| CRITICAL | 5 |
+
+For each iteration (up to max):
+
+1. Extract structured errors from harness JSON output
+2. Spawn lu-executor sub-agent with fix instructions:
+
+```python
+Task(
+  prompt="""
+<fix_context>
+**Harness failures (iteration {N}/{max}):**
+{structured_errors_json}
+
+**Instructions:**
+- Fix ONLY the errors listed above
+- Do NOT refactor or improve unrelated code
+- Do NOT modify test expectations to make tests pass
+- Commit fixes atomically
+</fix_context>
+
+Fix these harness failures.
+""",
+  subagent_type="lu-executor",
+  model="{executor_model}",
+  description="Fix harness failures (iteration {N})"
+)
+```
+
+3. After executor returns, re-run harness:
+
+```bash
+HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+```
+
+4. If passed: display success, continue to Step 7
+5. If still failing:
+   - Compare error count to previous iteration
+   - If errors increased or unchanged for 2 consecutive iterations: abort loop early
+   - If max iterations exhausted: log remaining failures, continue to Step 7 with harness failures as context for lu-verifier
+
+**Pass harness results to Step 7 verifier context** regardless of outcome. Include:
+- `harness_status`: passed | failed_after_fixes
+- `harness_checks`: array of check results
+- `remaining_errors`: structured errors (if any)
+
 ### 7. Verify Phase Goal
 
 **MANDATORY**: You MUST spawn a lu-verifier sub-agent. Do NOT attempt to verify yourself.
@@ -383,6 +488,11 @@ Task(
 **Working Memory:**
 {working_content}
 
+**Harness Results:**
+{harness_status}
+{harness_checks_summary}
+{remaining_errors_if_any}
+
 </verification_context>
 
 <verification_levels>
@@ -395,6 +505,8 @@ Task(
 - Create VERIFICATION.md in phase directory
 - Return status: passed | human_needed | gaps_found
 - List any gaps or issues found
+- If harness passed: Note "All automated checks passed" in your report under an "Automated Checks" section.
+- If harness failed after fix attempts: Include remaining mechanical errors as gaps in your verification.
 </output_requirements>
 
 Verify the phase goal was achieved using goal-backward analysis.
@@ -415,7 +527,9 @@ Route by returned status:
 
 ### 7.5. Code Quality Review
 
-**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config.
+**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config OR complexity is TRIVIAL or SIMPLE.
+
+**Complexity gate:** Code review runs at MODERATE and above. TRIVIAL/SIMPLE skip code review entirely.
 
 Get changed files for this phase:
 
@@ -439,12 +553,17 @@ Display:
 
 **Determine which reviewers to spawn:**
 
-Always spawn:
+**Spawn based on complexity level** (read from STATE.md `Task Complexity:` field):
 
-- `dx-advocate` — conventions, coding standards, Lodash vs native, snake_case keys
-- `code-simplifier` — DRY violations, duplicated code, complexity
-- `code-architect` — architecture, structure, patterns, module boundaries
-- `tailwind-auditor` — dynamic color system, Tailwind patterns, shadcn anti-patterns
+| Agent | MODERATE | COMPLEX | CRITICAL |
+|-------|----------|---------|----------|
+| dx-advocate | Run | Run | Run |
+| code-simplifier | Run | Run | Run |
+| code-architect | Skip | Run | Run |
+| tailwind-auditor | If UI files | If UI files | Run |
+| security-auditor | If auth files | If auth files | Always |
+
+If complexity not set, default to spawning all reviewers (backward-compatible).
 
 Conditionally spawn `security-auditor` if files match patterns:
 
@@ -695,7 +814,17 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 ### 11. User Acceptance Testing (UAT)
 
-**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config.
+**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config OR complexity is TRIVIAL or SIMPLE.
+
+**Complexity gate:** UAT runs at MODERATE (optional) and above. For COMPLEX/CRITICAL, UAT is required.
+
+| Complexity | UAT |
+|------------|-----|
+| TRIVIAL | Skip |
+| SIMPLE | Skip |
+| MODERATE | Optional (runs unless --skip-uat) |
+| COMPLEX | Required |
+| CRITICAL | Required + thorough |
 
 **Auto-transition into UAT mode:**
 

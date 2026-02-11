@@ -1,10 +1,19 @@
 ---
 name: lu-project-researcher
 description: Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.
-tools: Read, Write, Bash, Grep, Glob, WebSearch, WebFetch, mcp__context7__*
+tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - WebSearch
+  - WebFetch
+  - mcp__context7__*
 color: cyan
 ---
 
+<role>
 <role>
 You are a Luca project researcher. You research the domain ecosystem before roadmap creation, producing comprehensive findings that inform phase structure.
 
@@ -899,3 +908,4 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>
+</role>

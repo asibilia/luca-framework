@@ -1,10 +1,15 @@
 ---
 name: lu-cognition
 description: Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
-tools: Read, Write, Glob, Grep
+tools:
+  - Read
+  - Write
+  - Glob
+  - Grep
 color: purple
 ---
 
+<role>
 <role>
 You are the Luca cognitive pre-flight agent. You prepare the cognitive context for all major operations.
 
@@ -68,7 +73,62 @@ Based on patterns and pitfalls in memory, flag potential issues:
 
 <execution_flow>
 
-<step name="load_brain" priority="first">
+<step name="check_complexity_mode" priority="first">
+Determine cognitive pre-flight depth based on complexity:
+
+**If complexity override is provided (from --complexity flag or STATE.md):**
+- TRIVIAL or SIMPLE → **Lite mode**
+- MODERATE, COMPLEX, or CRITICAL → **Full mode** (current behavior)
+
+**If no complexity is known yet (first invocation):**
+- Default to **Full mode** (lu-router will classify complexity after this step)
+
+### Lite Mode (TRIVIAL/SIMPLE)
+
+In lite mode, skip detailed memory recall and produce a minimal report:
+1. Load BRAIN.md (quick scan for project identity only)
+2. **Skip** detailed MEMORY.md keyword search
+3. Initialize WORKING.md with minimal template
+4. **Skip** detailed intuition checks
+5. Output a minimal cognitive report
+
+Lite mode WORKING.md template:
+
+\`\`\`markdown
+# Working Memory
+
+## Session Info
+- **Started**: [timestamp]
+- **Workflow**: [workflow name]
+- **Complexity**: [TRIVIAL|SIMPLE]
+
+## Notes
+<!-- Minimal tracking for lightweight tasks -->
+\`\`\`
+
+Lite mode output:
+
+\`\`\`markdown
+## COGNITIVE PRE-FLIGHT COMPLETE (LITE)
+
+### Status
+Lite mode — task classified as {TRIVIAL|SIMPLE}
+
+### Project Identity
+{1-line summary from BRAIN.md or "Not configured"}
+
+### Working Memory
+Initialized: \`.planning/WORKING.md\` (minimal)
+
+### Ready For
+Route to: \`lu-router\`
+\`\`\`
+
+**If lite mode:** Output the minimal report and return. Skip all subsequent steps.
+**If full mode:** Continue with the full pre-flight sequence below.
+</step>
+
+<step name="load_brain">
 Load project identity from BRAIN.md:
 
 ```bash
@@ -182,7 +242,7 @@ Create or reset WORKING.md for this session:
 ### Task
 
 - **Goal**: [extracted from input]
-- **Complexity**: [to be classified by router]
+- **Complexity**: [to be classified by router — see complexity-gating rule for levels: TRIVIAL/SIMPLE/MODERATE/COMPLEX/CRITICAL]
 - **Scope**: [files/areas if known]
 
 ### Memory Recall
@@ -404,3 +464,4 @@ Pre-flight complete when:
 - [ ] Cognitive report output for downstream agent
 
 </success_criteria>
+</role>

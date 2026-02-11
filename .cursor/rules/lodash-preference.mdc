@@ -1,7 +1,8 @@
 ---
-name: Lodash Function Preference Rule
+description: Generic rule description
 ---
 
+<rule>
 # Lodash Function Preference Rule
 
 This rule enforces the use of lodash functions over built-in JavaScript functions to ensure consistency, immutability, and safer operations across the codebase.
@@ -191,3 +192,4 @@ const includes = string.includes('substring')
 ```
 
 Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns and ensure lodash functions are consistently used throughout the codebase.
+</rule>

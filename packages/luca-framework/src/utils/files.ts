@@ -1,4 +1,4 @@
-import { rm, mkdir } from 'fs/promises';
+import { rm, mkdir, readdir, copyFile, readFile, writeFile, chmod } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'pathe';
 import * as p from '@clack/prompts';
@@ -199,6 +199,131 @@ export async function generateFiles(options: {
       spinner.stop(`Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`);
     } else {
       spinner.stop('Framework templates not found');
+    }
+
+    // Step 4.5: Install Claude Code hooks
+    spinner.start('Installing Claude Code hooks...');
+
+    const claudeDir = join(cwd, '.claude');
+    const claudeHooksDir = join(claudeDir, 'hooks');
+
+    // Create .claude/hooks/ directory
+    if (!existsSync(claudeHooksDir)) {
+      await mkdir(claudeHooksDir, { recursive: true });
+      trackCreated(claudeHooksDir);
+    }
+
+    // Copy hook scripts from templates
+    const hookTemplatesDir = join(templatesDir, 'hooks');
+    if (existsSync(hookTemplatesDir)) {
+      const hookScriptsDir = join(hookTemplatesDir, 'scripts');
+      if (existsSync(hookScriptsDir)) {
+        const hookFiles = await readdir(hookScriptsDir);
+        let hooksCopied = 0;
+
+        for (const hookFile of hookFiles) {
+          const srcPath = join(hookScriptsDir, hookFile);
+          const destPath = join(claudeHooksDir, hookFile);
+
+          await copyFile(srcPath, destPath);
+          trackCreated(destPath);
+
+          // Make script executable (using fs/promises chmod, cross-platform)
+          try {
+            await chmod(destPath, 0o755);
+          } catch {
+            // chmod may fail on some platforms (Windows), non-fatal
+          }
+
+          hooksCopied++;
+        }
+
+        // Generate .claude/settings.json from hook settings template
+        const settingsHooksPath = join(hookTemplatesDir, 'settings-hooks.json');
+        const claudeSettingsPath = join(claudeDir, 'settings.json');
+
+        if (existsSync(settingsHooksPath)) {
+          let existingSettings: Record<string, unknown> = {};
+
+          // Preserve existing settings.json content (if any)
+          if (existsSync(claudeSettingsPath)) {
+            try {
+              const existing = await readFile(claudeSettingsPath, 'utf-8');
+              existingSettings = JSON.parse(existing);
+            } catch {
+              // Invalid JSON — start fresh
+            }
+          }
+
+          // Read hook settings template
+          const hooksContent = await readFile(settingsHooksPath, 'utf-8');
+          const hooksSettings = JSON.parse(hooksContent);
+
+          // Merge hooks into settings (preserving other keys like permissions)
+          existingSettings.hooks = hooksSettings.hooks;
+
+          await writeFile(
+            claudeSettingsPath,
+            JSON.stringify(existingSettings, null, 2) + '\n'
+          );
+          trackCreated(claudeSettingsPath);
+        }
+
+        spinner.stop(`Installed ${hooksCopied} hook scripts + settings.json`);
+      } else {
+        spinner.stop('Hook scripts directory not found, skipping hooks');
+      }
+    } else {
+      spinner.stop('Hook templates not found, skipping hooks');
+    }
+
+    // Step 4.6: Install Cursor hooks
+    spinner.start('Installing Cursor hooks...');
+
+    const cursorHooksDir = join(cursorDir, 'hooks');
+
+    if (!existsSync(cursorHooksDir)) {
+      await mkdir(cursorHooksDir, { recursive: true });
+      trackCreated(cursorHooksDir);
+    }
+
+    if (existsSync(hookTemplatesDir)) {
+      const hookScriptsDirCursor = join(hookTemplatesDir, 'scripts');
+      if (existsSync(hookScriptsDirCursor)) {
+        const cursorHookFiles = await readdir(hookScriptsDirCursor);
+        let cursorHooksCopied = 0;
+
+        for (const hookFile of cursorHookFiles) {
+          const srcPath = join(hookScriptsDirCursor, hookFile);
+          const destPath = join(cursorHooksDir, hookFile);
+
+          await copyFile(srcPath, destPath);
+          trackCreated(destPath);
+
+          try {
+            await chmod(destPath, 0o755);
+          } catch {
+            // chmod may fail on Windows
+          }
+
+          cursorHooksCopied++;
+        }
+
+        // Copy cursor-hooks.json to .cursor/hooks.json
+        const cursorHooksJsonSrc = join(hookTemplatesDir, 'cursor-hooks.json');
+        const cursorHooksJsonDest = join(cursorDir, 'hooks.json');
+
+        if (existsSync(cursorHooksJsonSrc)) {
+          await copyFile(cursorHooksJsonSrc, cursorHooksJsonDest);
+          trackCreated(cursorHooksJsonDest);
+        }
+
+        spinner.stop(`Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`);
+      } else {
+        spinner.stop('Hook scripts directory not found, skipping Cursor hooks');
+      }
+    } else {
+      spinner.stop('Hook templates not found, skipping Cursor hooks');
     }
 
     // Step 5: Create manifest

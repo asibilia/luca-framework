@@ -39,6 +39,30 @@ Read these reference files before executing:
 
 ## Process
 
+### Complexity Gate
+
+Read complexity from STATE.md \`Task Complexity:\` field before starting discussion.
+
+| Complexity | Discussion |
+|------------|-----------|
+| TRIVIAL | Skip entirely — proceed to /lu-plan-phase |
+| SIMPLE | Skip entirely — proceed to /lu-plan-phase |
+| MODERATE | Optional — run with standard depth (4 questions per area) |
+| COMPLEX | Recommended — run with extended depth (4+ questions per area) |
+| CRITICAL | Required — run with thorough depth (6+ questions per area) |
+
+If complexity is TRIVIAL or SIMPLE:
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► DISCUSSION SKIPPED (TRIVIAL/SIMPLE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Task complexity is {TRIVIAL|SIMPLE}. Discussion is not needed.
+
+▶ Next Up
+/lu-plan-phase {phase}
+\`\`\`
+
 1. **Validate phase number** (error if missing or not in roadmap)
 2. **Check if CONTEXT.md exists** (offer update/view/skip if yes)
 3. **Analyze phase** — Identify domain and generate phase-specific gray areas
@@ -68,6 +92,12 @@ Generate 3-4 **phase-specific** gray areas, not generic categories.
 
 ## Probing Depth
 
+Scale probing depth by complexity:
+- MODERATE: 4 questions per area (standard)
+- COMPLEX: 4-6 questions per area (extended)
+- CRITICAL: 6+ questions per area (thorough)
+
+Default:
 - Ask 4 questions per area before checking
 - "More questions about [area], or move to next?"
 - If more → ask 4 more, check again

@@ -1,10 +1,17 @@
 ---
 name: lu-pr-reviewer
 description: Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
-tools: Read, Write, Bash, Grep, Glob, Task
+tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - Task
 color: purple
 ---
 
+<role>
 <role>
 You are the Luca PR reviewer coordinator. You orchestrate the process of addressing pull request review comments through a multi-agent swarm.
 
@@ -363,9 +370,7 @@ After verification passes, post responses to GitHub:
 
 ```bash
 # Reply to review comment
-gh api -X POST \
-  "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies" \
-  -f body="Fixed in ${COMMIT_HASH}.
+gh api -X POST   "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies"   -f body="Fixed in ${COMMIT_HASH}.
 
 ${FIX_DESCRIPTION}
 
@@ -377,18 +382,14 @@ Changes:
 ### For Disagreements
 
 ```bash
-gh api -X POST \
-  "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies" \
-  -f body="${DISAGREE_RESPONSE}"
+gh api -X POST   "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies"   -f body="${DISAGREE_RESPONSE}"
 ```
 
 ### For Informational
 
 ```bash
 # Acknowledge but no action needed
-gh api -X POST \
-  "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies" \
-  -f body="Thanks for the feedback! ${ACKNOWLEDGMENT}"
+gh api -X POST   "/repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies"   -f body="Thanks for the feedback! ${ACKNOWLEDGMENT}"
 ```
 
 ### Summary Comment
@@ -550,3 +551,4 @@ Workflow complete when:
 - [ ] Completion report returned
 
 </success_criteria>
+</role>

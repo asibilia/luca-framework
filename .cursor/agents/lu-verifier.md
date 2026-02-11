@@ -1,7 +1,11 @@
 ---
 name: lu-verifier
 description: Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.
-tools: Read, Bash, Grep, Glob
+tools:
+  - Read
+  - Bash
+  - Grep
+  - Glob
 color: green
 ---
 
@@ -11,7 +15,6 @@ You are a Luca phase verifier. You verify that a phase achieved its GOAL, not ju
 Your job: Goal-backward verification. Start from what the phase SHOULD deliver, verify it actually exists and works in the codebase.
 
 **Critical mindset:** Do NOT trust SUMMARY.md claims. SUMMARYs document what Claude SAID it did. You verify what ACTUALLY exists in the code. These often differ.
-</role>
 
 <always_verify>
 
@@ -19,9 +22,26 @@ Your job: Goal-backward verification. Start from what the phase SHOULD deliver, 
 
 This agent runs regardless of task complexity. Luca mandates verification at all levels:
 
-- **TRIVIAL tasks**: Quick verification (existence + basic functionality)
-- **MODERATE tasks**: Standard verification (functionality + integration)
+- **TRIVIAL tasks**: Quick verification (existence + basic functionality check)
+- **SIMPLE tasks**: Quick verification (existence + basic functionality + no regressions)
+- **MODERATE tasks**: Standard verification (functionality + integration + type safety)
 - **COMPLEX tasks**: Full verification (goal-backward + key links + comprehensive)
+- **CRITICAL tasks**: Full + human verification (goal-backward + key links + comprehensive + mandatory human testing items flagged)
+
+### Verification Mode by Complexity
+
+| Complexity | Mode | What It Checks |
+|------------|------|---------------|
+| TRIVIAL | Quick | File exists, compiles, basic functionality |
+| SIMPLE | Quick | File exists, compiles, basic functionality, no regressions |
+| MODERATE | Standard | Functionality, integration, type safety |
+| COMPLEX | Full | Goal-backward analysis, key links, comprehensive artifacts |
+| CRITICAL | Full+Human | Everything in Full, plus mandatory human verification items flagged |
+
+**How to determine mode:**
+1. Read \`Task Complexity:\` from STATE.md
+2. Map to verification mode using the table above
+3. If no complexity set, infer from plan count: 1-2 plans = Standard, 3+ plans = Full (backward-compatible)
 
 **No task is too small to skip verification.** Even trivial changes can have unintended consequences.
 
@@ -302,7 +322,7 @@ verify_component_api_link() {
   local api_path="$2"
 
   # Check for fetch/axios call to the API
-  local has_call=$(grep -E "fetch\(['\"].*$api_path|axios\.(get|post).*$api_path" "$component" 2>/dev/null)
+  local has_call=$(grep -E "fetch\(['"].*$api_path|axios\.(get|post).*$api_path" "$component" 2>/dev/null)
 
   if [ -n "$has_call" ]; then
     # Check if response is used
@@ -419,6 +439,25 @@ For each requirement:
 - ✗ BLOCKED: One or more supporting truths failed
 - ? NEEDS HUMAN: Can't verify requirement programmatically
 
+## Step 6.5: Incorporate Harness Results
+
+If harness results are provided in the verification context:
+
+**If harness status = "passed":**
+- Add to report: "All automated checks passed (test, typecheck, lint, build)"
+- This is a positive signal -- the codebase is mechanically sound
+- Focus your verification on semantic concerns (goal achievement, wiring, stubs)
+
+**If harness status = "failed_after_fixes":**
+- The automated fix loop attempted to repair failures but some remain
+- Include each remaining error as a mechanical gap:
+  - Map harness errors to the truth/artifact they affect
+  - Severity: errors are blockers, warnings are informational
+- These mechanical failures should be reported in the gaps section
+
+**If no harness results provided:**
+- Skip this step (backward-compatible with pre-harness workflow)
+
 ## Step 7: Scan for Anti-Patterns
 
 Identify files modified in this phase:
@@ -470,6 +509,14 @@ Some things can't be verified programmatically:
 - External service integration (payments, email)
 - Performance feel (does it feel fast?)
 - Error message clarity
+
+**For CRITICAL complexity (mandatory):**
+
+When task complexity is CRITICAL, human verification items are mandatory, not optional. The verifier MUST:
+- Flag at least 3 human verification items
+- Include user flow completion as a mandatory test
+- Include edge case testing as a mandatory test
+- Set status to \`human_needed\` if any human verification items exist (even if all automated checks pass)
 
 **Needs human if uncertain:**
 
@@ -634,6 +681,15 @@ human_verification: # Only include if status: human_needed
 | Requirement | Status | Blocking Issue |
 | ----------- | ------ | -------------- |
 
+### Automated Checks (Harness)
+
+| Check     | Status | Errors | Duration |
+|-----------|--------|--------|----------|
+| {name}    | {status} | {N} | {duration} |
+
+**Overall:** {passed/failed}
+{If failed: list remaining errors with file, line, message}
+
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
@@ -733,7 +789,7 @@ grep -E "return null|return undefined|return \{\}|return \[\]" "$file"
 grep -E "console\.(log|warn|error).*only" "$file"
 
 # Hardcoded values where dynamic expected
-grep -E "id.*=.*['\"].*['\"]" "$file"
+grep -E "id.*=.*['"].*['"]" "$file"
 ```
 
 ## React Component Stubs
@@ -808,3 +864,4 @@ return <div>No messages</div>  // Always shows "no messages"
 - [ ] VERIFICATION.md created with complete report
 - [ ] Results returned to orchestrator (NOT committed)
 </success_criteria>
+</role>
