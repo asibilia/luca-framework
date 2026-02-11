@@ -42,3 +42,23 @@ _Session Status_
 - [x] Active
 - [ ] Learnings extracted
 - [ ] Ready to clear
+- 17:48 [Wave 1 starting - Plans 15-01, 15-02]
+- Plan 15-02 executed: All 5 tasks complete. cognitionTierSchema/cognitionConfigSchema added, AgentFrontmatter extended, ComplexityGate extended with cognitionPromotions, resolveEffectiveTier created, ClaudeCompiler emits YAML frontmatter when cognition present. Typecheck clean on modified files. build:all passes (178 files). Backward compatible - no agents emit frontmatter until Plan 15-04 adds cognition config.
+- Plan 15-01 Task 1: Built current-state audit matrix for all 25 agents. 3 research corrections applied: lu-planner=T2, lu-executor=T2, lu-verifier=T1 (all listed as T0 in research).
+- Plan 15-01 Task 2: Defined ideal-state profiles. 3 agents promoted T0->T1 (phase-researcher, plan-checker, pr-reviewer). 14-tag vocabulary defined.
+- Plan 15-01 Task 3: Gap analysis complete. 3 critical gaps, 5 moderate gaps, 17 no-change.
+- Plan 15-01 Task 4: COGNITION-AUDIT.md written (9 sections, ~400 lines). Follows Phase 14 audit format.
+
+## Candidate Learnings
+
+### Pattern: Research data requires independent verification
+
+- **What**: 15-RESEARCH.md classified lu-planner, lu-executor, lu-verifier as T0. Direct grep found all three have cognition references (12% error rate on 25 agents).
+- **When to apply**: Any audit using prior research as primary data. Spot-check at least 20% of entries against source files.
+- **Confidence**: High
+
+### Pattern: N-to-M tier compression for diverse entities
+
+- **What**: 25 agents with 5 boolean features compressed into 4 tiers. Same as 5 complexity levels into 3 behavioral tiers (Phase 13). Reduces 2^5=32 combinations to 4 meaningful profiles.
+- **When to apply**: Any system with multiple boolean features per entity. Group by common access patterns.
+- **Confidence**: High
