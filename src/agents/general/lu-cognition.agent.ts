@@ -687,13 +687,18 @@ Route to: \`lu-router\`
 
 Pre-flight complete when:
 
+- [ ] Target agent's cognition tier resolved (frontmatter parsed, complexity promotion applied)
 - [ ] BRAIN.md checked (loaded or noted as missing)
 - [ ] Keywords extracted from incoming task
-- [ ] MEMORY.md searched for relevant entries
-- [ ] Relevant patterns, decisions, pitfalls identified (or none found)
+- [ ] MEMORY.md entries pre-filtered by agent's memory_tags (if T1+)
+- [ ] Relevant patterns, decisions, pitfalls identified (or none found, or skipped for T0)
+- [ ] Entry count scaled by effective tier (T1: 3-5, T2: 5-7, T3: 7-10)
 - [ ] WORKING.md initialized with session context
 - [ ] Intuition flags generated based on memory
-- [ ] Cognitive report output for downstream agent
+- [ ] Cognitive report includes Cognition Profile section
+- [ ] Report content scales by tier (T1 < T2 < T3)
+- [ ] T2+ agents receive Session Tracking instructions
+- [ ] T3 agents receive Project Identity and Learning Instructions
 
 </success_criteria>`,
       order: 1,
