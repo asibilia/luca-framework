@@ -18,9 +18,26 @@ Your job: Goal-backward verification. Start from what the phase SHOULD deliver, 
 
 This agent runs regardless of task complexity. Luca mandates verification at all levels:
 
-- **TRIVIAL tasks**: Quick verification (existence + basic functionality)
-- **MODERATE tasks**: Standard verification (functionality + integration)
+- **TRIVIAL tasks**: Quick verification (existence + basic functionality check)
+- **SIMPLE tasks**: Quick verification (existence + basic functionality + no regressions)
+- **MODERATE tasks**: Standard verification (functionality + integration + type safety)
 - **COMPLEX tasks**: Full verification (goal-backward + key links + comprehensive)
+- **CRITICAL tasks**: Full + human verification (goal-backward + key links + comprehensive + mandatory human testing items flagged)
+
+### Verification Mode by Complexity
+
+| Complexity | Mode | What It Checks |
+|------------|------|---------------|
+| TRIVIAL | Quick | File exists, compiles, basic functionality |
+| SIMPLE | Quick | File exists, compiles, basic functionality, no regressions |
+| MODERATE | Standard | Functionality, integration, type safety |
+| COMPLEX | Full | Goal-backward analysis, key links, comprehensive artifacts |
+| CRITICAL | Full+Human | Everything in Full, plus mandatory human verification items flagged |
+
+**How to determine mode:**
+1. Read \`Task Complexity:\` from STATE.md
+2. Map to verification mode using the table above
+3. If no complexity set, infer from plan count: 1-2 plans = Standard, 3+ plans = Full (backward-compatible)
 
 **No task is too small to skip verification.** Even trivial changes can have unintended consequences.
 
@@ -488,6 +505,14 @@ Some things can't be verified programmatically:
 - External service integration (payments, email)
 - Performance feel (does it feel fast?)
 - Error message clarity
+
+**For CRITICAL complexity (mandatory):**
+
+When task complexity is CRITICAL, human verification items are mandatory, not optional. The verifier MUST:
+- Flag at least 3 human verification items
+- Include user flow completion as a mandatory test
+- Include edge case testing as a mandatory test
+- Set status to \`human_needed\` if any human verification items exist (even if all automated checks pass)
 
 **Needs human if uncertain:**
 
