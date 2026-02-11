@@ -26,17 +26,21 @@ export async function cleanDirectory(dir: string, extensions: string[]): Promise
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry);
-    const stat = await lstat(fullPath);
+    try {
+      const stat = await lstat(fullPath);
 
-    if (stat.isSymbolicLink()) {
-      await unlink(fullPath);
-      removed.push(fullPath);
-    } else if (stat.isDirectory()) {
-      await rm(fullPath, { recursive: true });
-      removed.push(fullPath);
-    } else if (extensions.some(ext => entry.endsWith(ext))) {
-      await unlink(fullPath);
-      removed.push(fullPath);
+      if (stat.isSymbolicLink()) {
+        await unlink(fullPath);
+        removed.push(fullPath);
+      } else if (stat.isDirectory()) {
+        await rm(fullPath, { recursive: true });
+        removed.push(fullPath);
+      } else if (extensions.some(ext => entry.endsWith(ext))) {
+        await unlink(fullPath);
+        removed.push(fullPath);
+      }
+    } catch (error) {
+      console.warn(`⚠ Failed to clean ${fullPath}:`, error);
     }
   }
 
@@ -59,10 +63,14 @@ export async function cleanSkillsDirectory(dir: string): Promise<string[]> {
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry);
-    const stat = await lstat(fullPath);
-    if (stat.isDirectory()) {
-      await rm(fullPath, { recursive: true });
-      removed.push(fullPath);
+    try {
+      const stat = await lstat(fullPath);
+      if (stat.isDirectory()) {
+        await rm(fullPath, { recursive: true });
+        removed.push(fullPath);
+      }
+    } catch (error) {
+      console.warn(`⚠ Failed to clean ${fullPath}:`, error);
     }
   }
 

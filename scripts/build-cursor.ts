@@ -60,6 +60,7 @@ async function main() {
   let agentCount = 0;
   let skillCount = 0;
   let ruleCount = 0;
+  const failures: Array<{ type: string; name: string; error: unknown }> = [];
 
   // --- Agents ---
 
@@ -74,6 +75,7 @@ async function main() {
       agentCount++;
     } catch (error) {
       console.error(`✗ Failed to generate .cursor/agents/${agentName}.md:`, error);
+      failures.push({ type: 'agent', name: agentName, error });
     }
   }
 
@@ -102,6 +104,7 @@ async function main() {
       skillCount++;
     } catch (error) {
       console.error(`✗ Failed to generate .cursor/skills/${skillName}/SKILL.md:`, error);
+      failures.push({ type: 'skill', name: skillName, error });
     }
   }
 
@@ -126,6 +129,7 @@ async function main() {
       ruleCount++;
     } catch (error) {
       console.error(`✗ Failed to generate .cursor/rules/${ruleName}.mdc:`, error);
+      failures.push({ type: 'rule', name: ruleName, error });
     }
   }
 
@@ -169,6 +173,7 @@ async function main() {
       hookCount++;
     } catch (error) {
       console.error(`✗ Failed to generate .cursor/hooks/${hookDef.script}:`, error);
+      failures.push({ type: 'hook', name: hookDef.script, error });
     }
   }
 
@@ -184,6 +189,14 @@ async function main() {
   console.log(`Skills: ${skillCount}`);
   console.log(`Rules:  ${ruleCount}`);
   console.log(`Hooks:  ${hookCount}`);
+
+  if (failures.length > 0) {
+    console.error(`\n✗ Build completed with ${failures.length} failure(s):`);
+    for (const f of failures) {
+      console.error(`  - ${f.type}/${f.name}`);
+    }
+    process.exit(1);
+  }
 }
 
 main().catch((error) => {
