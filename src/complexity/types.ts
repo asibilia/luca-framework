@@ -9,6 +9,7 @@
  * - Group C (thorough): COMPLEX, CRITICAL
  */
 import type { CognitionTier } from "../agents/types/agent.types";
+import type { ContextTier } from "../context/types";
 
 /** The five complexity levels, ordered from least to most complex */
 export const COMPLEXITY_LEVELS = [
@@ -84,6 +85,10 @@ export interface ComplexityGate {
   /** Optional cognition tier promotions at this complexity level.
    *  Maps a default tier to a promoted tier (e.g., T1 -> T2 at COMPLEX). */
   cognitionPromotions?: Partial<Record<CognitionTier, CognitionTier>>;
+  /** Optional context tier promotions at this complexity level.
+   *  Maps a default context tier to a promoted tier. Context promotes one
+   *  level earlier than cognition in the default matrix. */
+  contextPromotions?: Partial<Record<ContextTier, ContextTier>>;
 }
 
 /** The complete complexity matrix: maps each level to its gate configuration */

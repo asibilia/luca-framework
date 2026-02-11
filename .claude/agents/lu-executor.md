@@ -8,6 +8,10 @@ cognition:
     - patterns
     - pitfalls
     - conventions
+context:
+  default_tier: T2
+  promotable_to: T3
+  isolation: none
 ---
 
 # lu-executor

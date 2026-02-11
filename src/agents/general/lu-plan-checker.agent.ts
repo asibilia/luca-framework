@@ -16,6 +16,11 @@ const luPlanCheckerConfig: AgentConfig = {
       promotable_to: "T1",
       memory_tags: ["planning", "pitfalls"],
     },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      isolation: "none",
+    },
   },
   sections: [
     {

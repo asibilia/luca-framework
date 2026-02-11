@@ -35,6 +35,27 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
+## Context-Aware Sub-Agent Spawning (Phase 16+)
+
+Each sub-agent receives only the context documents appropriate for its role and the current task complexity. The orchestrator assembles context per these rules:
+
+**Context Tiers:**
+| Tier | Documents Loaded |
+|------|-----------------|
+| T0 | Plan content only |
+| T1 | + BRAIN.md summary |
+| T2 | + STATE.md + selective MEMORY.md + WORKING.md |
+| T3 | + full BRAIN.md + full MEMORY.md + agent summaries |
+
+**Isolation Modes:**
+| Mode | Restriction | Used By |
+|------|------------|---------|
+| none | Full context per tier | lu-executor, lu-planner, lu-learner |
+| cold | Only git diff + BRAIN.md | dx-advocate, code-simplifier, code-architect |
+| warm | Plans + summaries, NO WORKING.md | lu-verifier |
+
+**Complexity promotes context:** At MODERATE+, sub-agents may receive one tier higher than their default.
+
 ## Execution Context
 
 Read these reference files before executing:
@@ -349,6 +370,28 @@ Execute this plan. Return SUMMARY when complete.
 - Collect summaries from all plans
 - Report phase completion status
 
+### 5.1 Parse Sub-Agent Results
+
+When sub-agents return, attempt to parse their output as a result envelope:
+
+```json
+{
+  "status": "success|partial|failed|timeout",
+  "summary": "Brief description of what was accomplished",
+  "artifacts": [{"path": "file.ts", "action": "created"}],
+  "issues": [{"severity": "medium", "message": "...", "source_agent": "lu-executor"}],
+  "metadata": {"agent_name": "lu-executor", "context_tier": "T2"}
+}
+```
+
+If a sub-agent returns plain text instead of JSON, wrap it as:
+- status: "partial"
+- summary: the raw text (truncated to 2000 chars)
+- artifacts: []
+- issues: []
+
+This ensures all sub-agent outputs can be uniformly aggregated.
+
 ### 6. Commit Orchestrator Corrections
 
 ```bash
@@ -491,6 +534,8 @@ Task(
 **Project State:**
 {state_content}
 
+<!-- WARM ISOLATION: Verifier does NOT receive WORKING.md to prevent bias from executor's session notes -->
+<!-- The working_content variable below should be empty or omitted when using context-aware spawning -->
 **Working Memory:**
 {working_content}
 
@@ -583,6 +628,13 @@ echo "$CHANGED_FILES" | grep -E '(auth|api|convex|mutation|query|middleware|prox
 
 **MANDATORY**: Spawn ALL applicable reviewers in a SINGLE message with multiple Task calls (PARALLEL).
 
+**Context isolation:** Code reviewers operate in COLD isolation. They receive:
+- Git diff of changed files (not full file contents)
+- BRAIN.md summary (project conventions only)
+- NO STATE.md, NO WORKING.md, NO MEMORY.md
+
+This prevents reviewer bias from executor session context.
+
 First, read project standards:
 
 ```bash
@@ -613,6 +665,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
+    source_agent: dx-advocate
 ````
 
 If no issues found, return: `issues: []`
@@ -642,6 +695,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
+    source_agent: code-simplifier
 ```
 
 If no issues found, return: `issues: []`
@@ -671,6 +725,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
+    source_agent: code-architect
 ```
 
 If no issues found, return: `issues: []`
@@ -700,6 +755,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
+    source_agent: tailwind-auditor
 ```
 
 If no issues found, return: `issues: []`
@@ -731,6 +787,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
+    source_agent: security-auditor
 ```
 
 If no issues found, return: `issues: []`

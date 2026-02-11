@@ -2,6 +2,7 @@
  * Zod schemas for Luca Framework agent types
  */
 import { z } from "zod";
+import { contextConfigSchema } from "../../context/types";
 
 /** Valid cognition tier values (T0=stateless, T1=recall, T2=contextual, T3=fully-cognitive) */
 export const cognitionTierSchema = z.enum(["T0", "T1", "T2", "T3"]);
@@ -23,6 +24,8 @@ export const agentFrontmatterSchema = z.object({
   color: z.string().optional(),
   /** Optional per-agent cognition configuration. When absent, agent defaults to T0. */
   cognition: cognitionConfigSchema.optional(),
+  /** Optional per-agent context configuration. When absent, agent defaults to T0. */
+  context: contextConfigSchema.optional(),
 });
 
 export const agentSectionSchema = z.object({

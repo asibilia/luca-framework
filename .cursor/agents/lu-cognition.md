@@ -12,6 +12,10 @@ cognition:
   promotable_to: T3
   memory_tags:
     - "*"
+context:
+  default_tier: T3
+  promotable_to: T3
+  isolation: none
 ---
 
 <role>

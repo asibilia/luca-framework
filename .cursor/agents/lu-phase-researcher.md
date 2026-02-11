@@ -17,6 +17,10 @@ cognition:
   memory_tags:
     - stack
     - architecture
+context:
+  default_tier: T1
+  promotable_to: T1
+  isolation: none
 ---
 
 <role>

@@ -8,10 +8,10 @@
 
 ## v1.2.0 — Intelligent Agent Engine
 
-**Status:** In Progress (2/5 phases complete)
+**Status:** In Progress (3/5 phases complete)
 **Theme:** Make agents smarter — audit, modularize, iterate, plan
 **Phases:** 14-18
-**Requirements:** 29 — 10 done, 19 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
+**Requirements:** 29 — 16 done, 13 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
 **Approach:** Audit-first — audit current systems before building new features
 
 ### Phase 14: Execution & Verification Audit ✅
@@ -53,20 +53,22 @@
 
 ---
 
-### Phase 16: Context-Modular Sub-Agent Architecture
+### Phase 16: Context-Modular Sub-Agent Architecture ✅
 
 **Goal:** Design and implement context isolation for sub-agents. Each sub-agent gets its own context window with only task-relevant information. Orchestrator manages token budget allocation and result aggregation. Implements writer/reviewer separation and progressive context disclosure.
 **Depends on:** Phase 15 (cognition profiles inform context loading)
-**Requirements:** CTXM-01 through CTXM-06
+**Requirements:** CTXM-01 through CTXM-06 (all satisfied)
+**Plans:** 5 plans, 4 waves — all complete
 
-**Scope:**
+**Delivered:**
 
-- Context isolation per sub-agent
-- Token budget allocation (orchestrator distributes budget, reserves 25-50% for output)
-- Result aggregation without full context re-loading
-- Progressive context disclosure (load on demand)
-- Writer/reviewer in separate context windows
-- Claude Code Task tool integration patterns
+- `src/context/` module (types, defaults, assembly, aggregation, result envelope)
+- Agent frontmatter extended with `context` config (all 27 agents)
+- ClaudeCompiler emits context in YAML frontmatter
+- ComplexityGate extended with `contextPromotions` (independent tracks)
+- lu-execute-phase skill updated with context-aware spawning patterns
+- Writer/reviewer isolation documented (5 cold, 1 warm)
+- Universal result envelope with fallback-to-raw parsing
 
 ---
 
@@ -124,4 +126,4 @@ All phases are sequential — each builds on findings/infrastructure from the pr
 
 ---
 
-_Roadmap updated: 2026-02-11 (Phase 15 complete)_
+_Roadmap updated: 2026-02-11 (Phase 16 complete)_

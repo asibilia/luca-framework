@@ -12,6 +12,10 @@ cognition:
   memory_tags:
     - architecture
     - complexity
+context:
+  default_tier: T0
+  promotable_to: T1
+  isolation: none
 ---
 
 <role>

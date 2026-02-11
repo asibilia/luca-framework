@@ -6,6 +6,10 @@ cognition:
   memory_tags:
     - conventions
     - patterns
+context:
+  default_tier: T0
+  promotable_to: T1
+  isolation: none
 ---
 
 # lu-pr-reviewer

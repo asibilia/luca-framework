@@ -16,6 +16,11 @@ const luexecutorConfig: AgentConfig = {
       promotable_to: "T3",
       memory_tags: ["coding", "patterns", "pitfalls", "conventions"],
     },
+    context: {
+      default_tier: "T2",
+      promotable_to: "T3",
+      isolation: "none",
+    },
   },
   sections: [
     {

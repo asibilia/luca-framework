@@ -12,6 +12,10 @@ cognition:
   default_tier: T0
   promotable_to: T1
   memory_tags: []
+context:
+  default_tier: T0
+  promotable_to: T1
+  isolation: none
 ---
 
 <role>

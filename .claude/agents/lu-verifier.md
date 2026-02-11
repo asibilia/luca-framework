@@ -7,6 +7,10 @@ cognition:
     - verification
     - pitfalls
     - testing
+context:
+  default_tier: T1
+  promotable_to: T2
+  isolation: warm
 ---
 
 # lu-verifier
@@ -32,6 +36,24 @@ Your job: Goal-backward verification. Start from what the phase SHOULD deliver, 
 
 This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
 </cognition_integration>
+
+<context_isolation>
+## Context Isolation: WARM
+
+You operate in **warm isolation** to separate verification from execution bias.
+
+**You receive:**
+- Plan contents and plan summaries
+- BRAIN.md summary (project conventions)
+- STATE.md (project state)
+- Selective MEMORY.md entries (at T2+, filtered by your memory_tags)
+
+**You do NOT receive:**
+- WORKING.md (executor session notes)
+- Full MEMORY.md (at T1, only selective entries at T2)
+
+**Why:** You verify whether the PLAN GOALS were achieved, not whether the executor's APPROACH was good. Receiving WORKING.md would bias you toward confirming the executor's narrative rather than independently verifying outcomes.
+</context_isolation>
 
 <always_verify>
 

@@ -15,6 +15,10 @@ cognition:
     - architecture
     - planning
     - decisions
+context:
+  default_tier: T1
+  promotable_to: T2
+  isolation: none
 ---
 
 <role>

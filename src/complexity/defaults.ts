@@ -118,6 +118,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     codeReviewAgents: ["dx-advocate", "code-simplifier"],
     uat: "optional",
     learningCapture: "standard",
+    contextPromotions: { T0: "T1", T1: "T2" },
   },
   COMPLEX: {
     cognitivePreflight: "full",
@@ -135,6 +136,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     uat: "required",
     learningCapture: "full",
     cognitionPromotions: { T1: "T2", T2: "T3" },
+    contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
   },
   CRITICAL: {
     cognitivePreflight: "full",
@@ -153,6 +155,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     uat: "required+thorough",
     learningCapture: "full+debrief",
     cognitionPromotions: { T0: "T1", T1: "T2", T2: "T3" },
+    contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
   },
 };
 

@@ -68,7 +68,10 @@ export { meetsContextThreshold, maxContextTier } from "./types";
 
 export { parseResultEnvelope } from "./result-envelope";
 
-export { resolveEffectiveContextTier } from "./resolve-context-tier";
+export {
+  resolveEffectiveContextTier,
+  resolveContextTierFromMatrix,
+} from "./resolve-context-tier";
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -82,3 +85,21 @@ export {
 } from "./defaults";
 
 export { DEFAULT_CONTEXT_PROMOTIONS } from "./resolve-context-tier";
+
+// ---------------------------------------------------------------------------
+// Assembly
+// ---------------------------------------------------------------------------
+
+export type { AssembledContext } from "./context-assembler";
+export {
+  assembleContext,
+  getRequiredDocumentKeys,
+  assembledContextSchema,
+} from "./context-assembler";
+
+// ---------------------------------------------------------------------------
+// Aggregation
+// ---------------------------------------------------------------------------
+
+export type { AggregatedResult } from "./result-aggregator";
+export { aggregateResults, aggregatedResultSchema } from "./result-aggregator";

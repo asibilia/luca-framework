@@ -3,18 +3,18 @@
 ## Current Position
 
 - **Current Milestone:** v1.2.0 — Intelligent Agent Engine
-- **Current Phase:** Phase 15 (Cognition Per-Agent Audit)
+- **Current Phase:** Phase 16 (Context-Modular Sub-Agent Architecture)
 - **Status:** complete
 - **Last Updated:** 2026-02-11
-- **Last Activity:** Phase 15 complete — 5 plans, 3 waves, 5 requirements (COGN-01..05) all satisfied
+- **Last Activity:** Phase 16 complete — 5 plans, 4 waves, 6 requirements (CTXM-01..06) all satisfied
 
 ## Progress
 
 ```
-v1.2.0: IN PROGRESS
+v1.2.0: IN PROGRESS (3/5 phases complete)
   Phase 14 (Exec & Verify Audit):    ✅ complete — AUDIT-01..05 (all satisfied)
   Phase 15 (Cognition Audit):        ✅ complete — COGN-01..05 (all satisfied)
-  Phase 16 (Context-Modular):        pending  — CTXM-01..06
+  Phase 16 (Context-Modular):        ✅ complete — CTXM-01..06 (all satisfied)
   Phase 17 (Ralph Wiggum Loops):     pending  — ITER-01..07
   Phase 18 (Sprint Planner):         pending  — PLAN-01..07
 ```
@@ -63,7 +63,7 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 | 2     | Integrations & Updates | ✅ complete | REQ-003, REQ-004, REQ-005 |
 | 3     | Enterprise Readiness   | ✅ complete | REQ-007, REQ-008          |
 
-## Pending Todos (12)
+## Pending Todos (13)
 
 ### Workflow Engine (in v1.2.0)
 
@@ -91,6 +91,10 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 - **Claude Code plugin packaging** (distribution) — `.planning/todos/pending/claude-code-plugin-packaging.md`
 
+### Developer Experience (backlog)
+
+- **Scope-oriented skill/agent naming convention** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
+
 ### Documentation (backlog)
 
 - **Workflow mind map (Mermaid)** (docs) — `.planning/todos/pending/workflow-mind-map-mermaid.md`
@@ -102,13 +106,13 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Session Continuity
 
 - **Last session:** 2026-02-11
-- **Stopped at:** Phase 15 complete — all 5 COGN requirements satisfied
+- **Stopped at:** Phase 16 complete — all 6 CTXM requirements satisfied
 - **Resume file:** None
 
 ## Next Actions
 
-1. Begin Phase 16 planning (Context-Modular Sub-Agent Architecture)
-2. `/lu` — Plan Phase 16 with CTXM-01..06 requirements
+1. Begin Phase 17 planning (Iterative Agent Loops — Ralph Wiggum)
+2. `/lu` — Plan Phase 17 with ITER-01..07 requirements
 
 ---
 

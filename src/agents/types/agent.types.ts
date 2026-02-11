@@ -1,6 +1,7 @@
 /**
  * TypeScript interfaces for Luca Framework agents
  */
+import type { ContextConfig } from "../../context/types";
 
 // Re-export Zod schema inferred types
 export type {
@@ -28,6 +29,8 @@ export interface AgentFrontmatter {
   color?: string;
   /** Optional per-agent cognition configuration. When absent, agent defaults to T0. */
   cognition?: CognitionConfig;
+  /** Optional per-agent context configuration. When absent, agent defaults to T0. */
+  context?: ContextConfig;
   [key: string]: unknown;
 }
 

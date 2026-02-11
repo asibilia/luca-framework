@@ -18,6 +18,11 @@ const luPlannerConfig: AgentConfig = {
       promotable_to: "T2",
       memory_tags: ["architecture", "planning", "decisions"],
     },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      isolation: "none",
+    },
   },
   sections: [
     {

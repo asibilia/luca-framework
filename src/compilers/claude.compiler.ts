@@ -1,11 +1,11 @@
 /**
  * Compiler for converting TypeScript definitions to Claude format.
  *
- * When an agent has cognition configuration in its frontmatter, the
- * compiler prepends YAML frontmatter with name and cognition fields
- * to the compiled markdown output. This enables lu-cognition to parse
- * compiled .md files and extract cognition config at runtime without
- * importing TypeScript modules.
+ * When an agent has cognition or context configuration in its frontmatter,
+ * the compiler prepends YAML frontmatter with name, cognition, and/or
+ * context fields to the compiled markdown output. This enables lu-cognition
+ * and lu-context to parse compiled .md files and extract config at runtime
+ * without importing TypeScript modules.
  */
 import { BaseCompiler } from "./base.compiler";
 import type { BaseAgent } from "../agents/types/agent.types";
@@ -19,17 +19,31 @@ export class ClaudeCompiler extends BaseCompiler {
     this.validateFormat(format);
     const markdown = agent.toClaudeFormat();
 
-    // If cognition config is present, prepend YAML frontmatter
     const cognition = agent.config.frontmatter.cognition;
-    if (cognition) {
+    const context = agent.config.frontmatter.context;
+
+    // Emit YAML frontmatter if cognition OR context config is present
+    if (cognition || context) {
       const frontmatterData: Record<string, unknown> = {
         name: agent.name,
-        cognition: {
+      };
+
+      if (cognition) {
+        frontmatterData.cognition = {
           default_tier: cognition.default_tier,
           promotable_to: cognition.promotable_to,
           memory_tags: cognition.memory_tags,
-        },
-      };
+        };
+      }
+
+      if (context) {
+        frontmatterData.context = {
+          default_tier: context.default_tier,
+          promotable_to: context.promotable_to,
+          isolation: context.isolation,
+        };
+      }
+
       const yamlBlock = formatFrontmatter(frontmatterData);
       return `${yamlBlock}\n\n${markdown}`;
     }
