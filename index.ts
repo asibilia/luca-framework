@@ -60,6 +60,28 @@ export type { HookDefinition } from './src/hooks/index';
 export { runHarness, loadHarnessConfig, parserRegistry, DEFAULT_HARNESS_CONFIG } from './src/harness/index';
 export type { HarnessConfig, CheckConfig, ParsedError, CheckResult, HarnessResult, OutputParser } from './src/harness/index';
 
+// Complexity API and types (for build scripts and consumers)
+export {
+  COMPLEXITY_LEVELS,
+  COMPLEXITY_ORDER,
+  COMPLEXITY_TIER,
+  meetsThreshold,
+  getTier,
+  COMPLEXITY_CLASSIFICATIONS,
+  DEFAULT_COMPLEXITY_MATRIX,
+  DEFAULT_COMPLEXITY_CONFIG,
+} from './src/complexity/index';
+export type {
+  ComplexityLevel,
+  ComplexityTier,
+  ComplexityClassification,
+  VerificationMode,
+  StepActivation,
+  ComplexityGate,
+  ComplexityMatrix,
+  ComplexityConfig,
+} from './src/complexity/index';
+
 // Validation utilities (public-facing)
 export {
   sanitizeJsonParse,
