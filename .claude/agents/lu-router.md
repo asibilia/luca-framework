@@ -1,3 +1,13 @@
+---
+name: lu-router
+cognition:
+  default_tier: T1
+  promotable_to: T2
+  memory_tags:
+    - architecture
+    - complexity
+---
+
 # lu-router
 
 Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.

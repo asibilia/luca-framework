@@ -11,6 +11,12 @@ tools:
   - WebFetch
   - mcp__context7__*
 color: cyan
+cognition:
+  default_tier: T1
+  promotable_to: T1
+  memory_tags:
+    - stack
+    - architecture
 ---
 
 <role>

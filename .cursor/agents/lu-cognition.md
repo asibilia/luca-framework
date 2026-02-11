@@ -7,6 +7,11 @@ tools:
   - Glob
   - Grep
 color: purple
+cognition:
+  default_tier: T3
+  promotable_to: T3
+  memory_tags:
+    - "*"
 ---
 
 <role>
@@ -157,18 +162,104 @@ From the incoming task/request, extract keywords for memory recall:
 Build a keyword set for selective recall.
 </step>
 
+<step name="resolve_cognition_tier">
+Before recalling memory, resolve the target agent's cognition tier.
+
+1. **Read the target agent's compiled .md file** from `.claude/agents/`:
+   ```bash
+   head -20 .claude/agents/{agent-name}.md
+   ```
+   Parse the YAML frontmatter (between `---` delimiters) for the `cognition` block.
+
+2. **Extract cognition config from frontmatter:**
+   - If no frontmatter or no `cognition` field: treat as T0 (default — stateless agent)
+   - Extract: `default_tier`, `promotable_to`, `memory_tags`
+
+3. **Read current complexity from STATE.md:**
+   ```bash
+   grep "Task Complexity:" .planning/STATE.md
+   ```
+   - If not set, default to MODERATE
+
+4. **Apply complexity-driven promotion:**
+   Using the complexity matrix's `cognitionPromotions` field:
+   - Look up the promotion mapping for the current complexity level
+   - If a promotion exists for the agent's `default_tier`, promote to the mapped tier
+   - Cap at the agent's `promotable_to` ceiling (never exceed)
+   - Result is the **effective_tier** for this invocation
+
+5. **Store effective_tier** for use in `selective_recall`:
+   ```
+   effective_tier = resolve(default_tier, promotable_to, complexity_level)
+
+   Example: lu-executor at COMPLEX complexity
+     default_tier = T2, promotable_to = T3
+     COMPLEX promotes T2 → T3
+     effective_tier = T3 (within ceiling)
+
+   Example: code-architect at COMPLEX complexity
+     default_tier = T0, promotable_to = T1
+     COMPLEX promotes T0 → T0 (no T0 mapping)
+     effective_tier = T0 (stays stateless)
+
+   Example: lu-planner at CRITICAL complexity
+     default_tier = T1, promotable_to = T2
+     CRITICAL promotes T1 → T2
+     effective_tier = T2 (within ceiling)
+   ```
+
+**Tier reference:**
+- **T0 (Stateless)**: Skip recall entirely. Agent gets no memory context.
+- **T1 (Memory-Reader)**: Agent receives recalled entries. Does not write WORKING.md.
+- **T2 (Session-Aware)**: Agent reads recalled entries AND writes to WORKING.md.
+- **T3 (Fully-Cognitive)**: Full lifecycle — BRAIN load, MEMORY recall, WORKING write, learning.
+</step>
+
 <step name="selective_recall">
-Search MEMORY.md for relevant entries with agent-aware filtering:
+Search MEMORY.md for relevant entries with tier-aware gating and tag-based filtering:
+
+**Tier Gate (check first):**
+
+```
+IF effective_tier == T0:
+    SKIP recall entirely
+    Output minimal report:
+      "Agent [name] is T0 (stateless) — no memory recall needed"
+    PROCEED directly to generate_report with T0 output
+    RETURN
+```
+
+If effective_tier is T1 or higher, proceed with recall:
 
 ```bash
 cat .planning/MEMORY.md 2>/dev/null
 ```
 
-**Agent-Aware Filtering:**
+**Tag-Based Pre-Filtering (NEW — before scoring):**
+
+```
+agent_memory_tags = agent.cognition.memory_tags (from resolve_cognition_tier)
+
+IF agent_memory_tags is empty OR agent_memory_tags contains "*":
+    candidate_entries = all_entries  # No filtering (wildcard or no tags)
+ELSE:
+    candidate_entries = entries.filter(entry =>
+        (entry has Tags field AND entry.tags intersects agent_memory_tags)
+        OR entry has NO Tags field  # Legacy backward compatibility
+    )
+```
+
+**Backward Compatibility for Tags:**
+
+- Entries WITHOUT a `Tags:` field → included in ALL agent recalls (legacy treatment)
+- Entries WITH a `Tags:` field → only included if tags intersect with agent's `memory_tags`
+- Agents with `memory_tags: ["*"]` → receive ALL entries regardless of tags (wildcard)
+
+**Agent-Aware Scoring (operates on filtered candidate set):**
 
 Determine the upcoming agent from routing decision or workflow context (e.g., `planner`, `executor`, `verifier`).
 
-For each entry in MEMORY.md (Patterns, Decisions, Pitfalls), calculate relevance score:
+For each entry in the **candidate set** (post-tag-filter), calculate relevance score:
 
 ```
 score = 0
@@ -200,21 +291,26 @@ if entry.added within 30 days:
     score += 0.5
 ```
 
-**Backward Compatibility:**
+**Backward Compatibility for Agent field:**
 
 - Entries WITHOUT `Agent:` field → treat as `Agent: general`
 - Entries WITHOUT `Relevant to:` field → empty relevance list
 - Legacy entries still recalled via keyword matching + general agent score
 
-**Selection criteria:**
+**Tier-Scaled Entry Limits (NEW — replaces fixed 5-7 limit):**
 
-- Sort by score descending
-- High confidence entries weighted
-- Recent entries have slight boost
-- **Limit to 5-7 most relevant entries** (prevent context bloat)
+```
+Sort scored entries descending, then select top entries by effective_tier:
+
+IF effective_tier == T1: select top 3-5 entries (lightweight recall)
+IF effective_tier == T2: select top 5-7 entries (standard recall)
+IF effective_tier == T3: select top 7-10 entries (comprehensive recall)
+```
+
 - Include at least 1 entry per category (Pattern, Decision, Pitfall) if any match
+- Within each tier's limit, prioritize diversity across categories
 
-For each keyword, scan:
+For each keyword, scan the **filtered candidate set**:
 
 - **Patterns section**: Do any patterns match? (check Agent field)
 - **Decisions section**: Are there relevant past decisions? (check Agent field)
@@ -349,10 +445,54 @@ Based on recalled memories, generate intuition flags:
   </step>
 
 <step name="generate_report">
-Output cognitive report for downstream agents:
+Output cognitive report for downstream agents. The report format adapts to the agent's effective tier.
+
+**Cognition Profile section (always included for T1+):**
 
 ```markdown
 ## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+- **Agent**: {agent name}
+- **Default Tier**: {T0-T3}
+- **Effective Tier**: {T0-T3} (after complexity promotion)
+- **Complexity Level**: {TRIVIAL-CRITICAL}
+- **Memory Tags**: {list of agent's memory_tags, or "*" for wildcard}
+- **Entries Recalled**: {count}
+```
+
+**T0 agents — minimal report:**
+
+```markdown
+## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+- **Agent**: {agent name}
+- **Default Tier**: T0
+- **Effective Tier**: T0 (stateless)
+- **Complexity Level**: {level}
+- **Memory Tags**: [] (none)
+- **Entries Recalled**: 0
+
+### Status
+
+Agent is T0 (stateless) — no memory recall performed.
+
+### Ready For
+
+{Downstream agent}
+```
+
+**T1 agents — include Relevant Context:**
+
+```markdown
+## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+{as above}
 
 ### Project Identity
 
@@ -362,13 +502,14 @@ Output cognitive report for downstream agents:
 
 **Target Agent:** {upcoming_agent}
 **Patterns:** {N} relevant patterns loaded ({M} agent-specific, {K} general)
-**Decisions:** {N} relevant decisions recalled  
+**Decisions:** {N} relevant decisions recalled
 **Pitfalls:** {N} cautions flagged
 
 ### Relevant Context
 
 {List of specific items recalled with brief descriptions}
 {Note which entries are agent-specific vs general}
+{Note which entries matched via tags vs legacy (no tags)}
 
 ### Intuition Flags
 
@@ -382,7 +523,51 @@ Initialized at `.planning/WORKING.md`
 
 ### Ready For
 
-{Downstream agent: router, planner, executor, debugger}
+{Downstream agent}
+```
+
+**T2 agents — everything from T1 PLUS Session Tracking instructions:**
+
+Include all T1 sections, then add:
+
+```markdown
+### Session Tracking (T2+)
+
+During execution, append findings to WORKING.md:
+
+- **Code observations**: Unexpected behaviors, interesting patterns found
+- **Decisions made**: Choices during implementation with brief rationale
+- **Candidate patterns/pitfalls**: Potential learnings for MEMORY.md extraction
+
+Write to `.planning/WORKING.md` sections:
+- `## Immediate Findings > ### Discovery` — for observations
+- `## Immediate Findings > ### Code Observations` — for code patterns
+- `## Pre-Learning Extraction` — for candidate learnings
+```
+
+**T3 agents — everything from T2 PLUS Project Identity summary and Learning Instructions:**
+
+Include all T2 sections, then add:
+
+```markdown
+### Project Identity (T3)
+
+{Full BRAIN.md summary including:}
+- Project name and purpose
+- Stack: {languages, frameworks, runtime}
+- Architecture: {key patterns}
+- Conventions: {naming, formatting, API standards}
+- Development preferences: {tooling, workflow}
+
+### Learning Instructions (T3)
+
+During execution, actively identify candidate learnings:
+
+1. **Patterns**: When an approach works well, note it in WORKING.md `## Pre-Learning Extraction > ### Candidate Patterns`
+2. **Decisions**: When choosing between alternatives, document the choice and rationale in `### Candidate Decisions`
+3. **Pitfalls**: When encountering issues, document what went wrong and how to avoid it in `### Candidate Pitfalls`
+
+After workflow completion, lu-learner will extract validated entries from WORKING.md to MEMORY.md.
 ```
 
 </step>
@@ -391,10 +576,19 @@ Initialized at `.planning/WORKING.md`
 
 <structured_returns>
 
-## Pre-Flight Complete (Normal)
+## Pre-Flight Complete (T1+ Normal)
 
 ```markdown
 ## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+- **Agent**: {name}
+- **Default Tier**: {T0-T3}
+- **Effective Tier**: {T0-T3}
+- **Complexity Level**: {level}
+- **Memory Tags**: {tags}
+- **Entries Recalled**: {count}
 
 ### Project Identity
 
@@ -416,9 +610,42 @@ Initialized at `.planning/WORKING.md`
 
 {Table of flags}
 
+### Session Tracking (T2+)
+
+{Included for T2 and T3 agents only — see generate_report step}
+
+### Learning Instructions (T3)
+
+{Included for T3 agents only — see generate_report step}
+
 ### Working Memory
 
 Initialized: `.planning/WORKING.md`
+
+### Ready For
+
+Route to: `lu-router`
+```
+
+## Pre-Flight Complete (T0 Stateless)
+
+When agent's effective tier is T0:
+
+```markdown
+## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+- **Agent**: {name}
+- **Default Tier**: T0
+- **Effective Tier**: T0 (stateless)
+- **Complexity Level**: {level}
+- **Memory Tags**: []
+- **Entries Recalled**: 0
+
+### Status
+
+Agent is T0 (stateless) — no memory recall performed.
 
 ### Ready For
 
@@ -455,13 +682,18 @@ Route to: `lu-router`
 
 Pre-flight complete when:
 
+- [ ] Target agent's cognition tier resolved (frontmatter parsed, complexity promotion applied)
 - [ ] BRAIN.md checked (loaded or noted as missing)
 - [ ] Keywords extracted from incoming task
-- [ ] MEMORY.md searched for relevant entries
-- [ ] Relevant patterns, decisions, pitfalls identified (or none found)
+- [ ] MEMORY.md entries pre-filtered by agent's memory_tags (if T1+)
+- [ ] Relevant patterns, decisions, pitfalls identified (or none found, or skipped for T0)
+- [ ] Entry count scaled by effective tier (T1: 3-5, T2: 5-7, T3: 7-10)
 - [ ] WORKING.md initialized with session context
 - [ ] Intuition flags generated based on memory
-- [ ] Cognitive report output for downstream agent
+- [ ] Cognitive report includes Cognition Profile section
+- [ ] Report content scales by tier (T1 < T2 < T3)
+- [ ] T2+ agents receive Session Tracking instructions
+- [ ] T3 agents receive Project Identity and Learning Instructions
 
 </success_criteria>
 </role>

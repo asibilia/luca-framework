@@ -1,3 +1,14 @@
+---
+name: lu-planner
+cognition:
+  default_tier: T1
+  promotable_to: T2
+  memory_tags:
+    - architecture
+    - planning
+    - decisions
+---
+
 # lu-planner
 
 Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.

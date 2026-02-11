@@ -1,3 +1,13 @@
+---
+name: lu-phase-researcher
+cognition:
+  default_tier: T1
+  promotable_to: T1
+  memory_tags:
+    - stack
+    - architecture
+---
+
 # lu-phase-researcher
 
 Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.

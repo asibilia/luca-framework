@@ -8,6 +8,10 @@ tools:
   - Glob
   - Grep
 color: purple
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags: []
 ---
 
 <role>

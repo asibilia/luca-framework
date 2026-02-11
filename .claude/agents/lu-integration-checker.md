@@ -1,3 +1,11 @@
+---
+name: lu-integration-checker
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+---
+
 # lu-integration-checker
 
 Verifies cross-phase integration and E2E flows. Checks that phases connect properly and user workflows complete end-to-end.

@@ -1,3 +1,14 @@
+---
+name: lu-verifier
+cognition:
+  default_tier: T1
+  promotable_to: T2
+  memory_tags:
+    - verification
+    - pitfalls
+    - testing
+---
+
 # lu-verifier
 
 Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.

@@ -1,3 +1,14 @@
+---
+name: lu-debugger
+cognition:
+  default_tier: T3
+  promotable_to: T3
+  memory_tags:
+    - debugging
+    - pitfalls
+    - testing
+---
+
 # lu-debugger
 
 Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.

@@ -1,3 +1,11 @@
+---
+name: code-simplifier
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+---
+
 # code-simplifier
 
 Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.

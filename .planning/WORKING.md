@@ -64,3 +64,8 @@ _Session Status_
 - **Confidence**: High
 - 17:59 [Wave 1 complete - Plans 15-01, 15-02 done]
 - 17:59 [Wave 2 starting - Plans 15-03, 15-04]
+- Plan 15-03 Task 1: TAG-VOCABULARY.md created with all 14 domain tags, descriptions, examples, lu-learner guidelines, agent-to-tag mapping, and backward compatibility notes.
+- Plan 15-03 Task 2: lu-cognition resolve_cognition_tier step added (reads frontmatter, resolves complexity promotion, caps at ceiling). selective_recall modified with T0 gate, tag-based pre-filtering, and tier-scaled entry limits (T1:3-5, T2:5-7, T3:7-10).
+- Plan 15-03 Task 3: lu-learner extraction templates updated — Tags field added to pattern, decision, and pitfall templates. tag_assignment section added with vocabulary reference, assignment rules, and common combinations.
+- Plan 15-03 Task 4: lu-cognition generate_report updated with Cognition Profile section, tier-specific output (T0 minimal, T1 context, T2 session tracking, T3 learning instructions). structured_returns and success_criteria updated.
+- Plan 15-03 build:all passes (178 files). Both .claude/ and .cursor/ outputs consistent with source.

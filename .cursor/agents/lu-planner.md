@@ -8,6 +8,13 @@ tools:
   - Grep
   - Glob
 color: blue
+cognition:
+  default_tier: T1
+  promotable_to: T2
+  memory_tags:
+    - architecture
+    - planning
+    - decisions
 ---
 
 <role>

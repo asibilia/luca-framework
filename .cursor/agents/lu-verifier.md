@@ -7,6 +7,13 @@ tools:
   - Grep
   - Glob
 color: green
+cognition:
+  default_tier: T1
+  promotable_to: T2
+  memory_tags:
+    - verification
+    - pitfalls
+    - testing
 ---
 
 <role>

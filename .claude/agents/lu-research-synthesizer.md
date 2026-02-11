@@ -1,3 +1,11 @@
+---
+name: lu-research-synthesizer
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+---
+
 # lu-research-synthesizer
 
 Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /lu-new-project after 4 researcher agents complete.

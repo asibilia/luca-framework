@@ -6,6 +6,10 @@ tools:
   - Write
   - Bash
 color: purple
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
 ---
 
 <role>

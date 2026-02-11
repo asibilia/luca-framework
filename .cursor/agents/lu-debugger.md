@@ -10,6 +10,13 @@ tools:
   - Glob
   - WebSearch
 color: orange
+cognition:
+  default_tier: T3
+  promotable_to: T3
+  memory_tags:
+    - debugging
+    - pitfalls
+    - testing
 ---
 
 <role>

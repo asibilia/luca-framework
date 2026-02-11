@@ -1,3 +1,11 @@
+---
+name: dx-advocate
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+---
+
 # dx-advocate
 
 Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.

@@ -1,3 +1,13 @@
+---
+name: lu-plan-checker
+cognition:
+  default_tier: T1
+  promotable_to: T1
+  memory_tags:
+    - planning
+    - pitfalls
+---
+
 # lu-plan-checker
 
 Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.

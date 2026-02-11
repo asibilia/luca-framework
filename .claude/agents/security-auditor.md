@@ -1,3 +1,11 @@
+---
+name: security-auditor
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags: []
+---
+
 # security-auditor
 
 Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.

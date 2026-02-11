@@ -1,3 +1,13 @@
+---
+name: lu-pr-reviewer
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags:
+    - conventions
+    - patterns
+---
+
 # lu-pr-reviewer
 
 Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.

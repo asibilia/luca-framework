@@ -1,3 +1,11 @@
+---
+name: performance-auditor
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags: []
+---
+
 # performance-auditor
 
 Identifies performance bottlenecks, reviews bundle impact, and suggests optimizations. Use proactively after implementing features.

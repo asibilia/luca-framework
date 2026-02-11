@@ -1,3 +1,11 @@
+---
+name: code-architect
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags: []
+---
+
 # code-architect
 
 Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
