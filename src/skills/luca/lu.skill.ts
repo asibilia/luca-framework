@@ -19,7 +19,7 @@ const luSkillConfig: SkillConfig = {
 
 The single entry point for all Luca workflows. Handles git context setup, cognitive pre-flight, complexity classification, and intelligent routing to the appropriate handler.
 
-**Arguments:** \`<task-description | Jira-URL | [TICKET-ID]> [--force-complex] [--skip-memory] [--skip-branch]\`
+**Arguments:** \`<task-description | Jira-URL | [TICKET-ID]> [--complexity=TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL] [--force-complex] [--skip-memory] [--skip-branch]\`
 
 > **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-123\`, or your custom \`ticketPattern\` from \`.planning/config.json\`). Default pattern: \`[A-Z]+-\\d+\`
 
@@ -100,16 +100,16 @@ User Request
 │  (lu-router)      │
 └──────────┬───────────┘
            │
-    ┌──────┴──────┬──────────┐
-    │             │          │
-    ▼             ▼          ▼
-┌────────┐  ┌────────┐  ┌────────────┐
-│TRIVIAL │  │MODERATE│  │  COMPLEX   │
-│Direct  │  │Quick   │  │Full        │
-│Execute │  │Plan    │  │Pipeline    │
-└───┬────┘  └───┬────┘  └─────┬──────┘
-    │           │             │
-    └─────┬─────┴─────────────┘
+    ┌──────┴──────┬──────────┬──────────┐
+    │             │          │          │
+    ▼             ▼          ▼          ▼
+┌────────┐  ┌────────┐  ┌────────┐ ┌──────────┐
+│TRIVIAL │  │SIMPLE  │  │MODERATE│ │COMPLEX/  │
+│Direct  │  │Direct  │  │Quick   │ │CRITICAL  │
+│Execute │  │Execute │  │Plan    │ │Full      │
+└───┬────┘  └───┬────┘  └───┬────┘ │Pipeline  │
+    │           │            │      └────┬─────┘
+    └─────┬─────┴────────────┴───────────┘
           │
           ▼
 ┌──────────────────────┐
@@ -131,6 +131,20 @@ User Request
 │      branch)         │
 └──────────────────────┘
 \`
+
+### Complexity Override
+
+If \`--complexity=<level>\` is passed:
+1. Skip lu-router classification
+2. Use the specified level directly
+3. Look up gated steps from the complexity matrix in config.json
+4. Persist to STATE.md \`Task Complexity:\` field
+
+If \`--force-complex\` is passed (backward compatibility):
+- Equivalent to \`--complexity=COMPLEX\`
+
+If neither flag is passed:
+- lu-router infers complexity from cognitive report (default behavior)
 `,
       order: 3
     }
