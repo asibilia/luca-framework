@@ -30,12 +30,20 @@ describe('agent registry completeness', () => {
     }
   });
 
-  test('has exactly 23 entries', () => {
-    expect(Object.keys(agentRegistry).length).toBe(23);
+  test('registry size matches source files minus luca-specific exclusions', async () => {
+    const files = await readdir(GENERAL_AGENTS_DIR);
+    const agentFiles = files
+      .filter(f => f.endsWith('.agent.ts'))
+      .map(f => f.replace('.agent.ts', ''));
+    // lu-executor and lu-planner live in src/agents/general/ but are imported
+    // separately by build scripts, not included in the general registry
+    const lucaSpecificInGeneral = ['lu-executor', 'lu-planner'];
+    const expectedCount = agentFiles.filter(f => !lucaSpecificInGeneral.includes(f)).length;
+    expect(Object.keys(agentRegistry).length).toBe(expectedCount);
   });
 
   test('every entry can be instantiated', () => {
-    for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
+    for (const [_agentName, AgentClass] of Object.entries(agentRegistry)) {
       const instance = new (AgentClass as new () => BaseAgent)();
       expect(instance).toBeDefined();
       expect(instance.name).toBeDefined();

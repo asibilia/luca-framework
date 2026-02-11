@@ -33,8 +33,12 @@ describe("rule registry completeness", () => {
     }
   });
 
-  test("has exactly 21 entries", () => {
-    expect(Object.keys(ruleRegistry).length).toBe(21);
+  test("registry size matches source file count", async () => {
+    const files = await readdir(GENERAL_RULES_DIR);
+    const ruleFiles = files
+      .filter((f) => f.endsWith(".rule.ts"))
+      .map((f) => f.replace(".rule.ts", ""));
+    expect(Object.keys(ruleRegistry).length).toBe(ruleFiles.length);
   });
 
   test("every entry can be instantiated", () => {

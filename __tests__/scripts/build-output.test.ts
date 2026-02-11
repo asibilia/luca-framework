@@ -1,5 +1,6 @@
 import { test, expect, describe } from 'bun:test';
 import { readdir, lstat } from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import { agentRegistry } from '../../src/agents/index';
 import { skillRegistry } from '../../src/skills/index';
@@ -11,10 +12,14 @@ const CLAUDE_DIR = path.join(ROOT, '.claude');
 
 /**
  * These tests verify post-build output correctness.
- * Run `bun run build:all` before running these tests.
+ * They are automatically skipped if build artifacts don't exist.
+ * Run `bun run build:all` to generate the artifacts first.
  */
 
-describe('build output — .cursor', () => {
+const hasBuildOutput = existsSync(path.join(CURSOR_DIR, 'agents')) &&
+  existsSync(path.join(CLAUDE_DIR, 'agents'));
+
+describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
   describe('agents', () => {
     const agentsDir = path.join(CURSOR_DIR, 'agents');
 
@@ -121,7 +126,7 @@ describe('build output — .cursor', () => {
   });
 });
 
-describe('build output — .claude', () => {
+describe.skipIf(!hasBuildOutput)('build output — .claude', () => {
   describe('agents', () => {
     const agentsDir = path.join(CLAUDE_DIR, 'agents');
 
