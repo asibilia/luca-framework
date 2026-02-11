@@ -1,20 +1,24 @@
 /**
  * security-auditor Agent - Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the security-auditor agent configuration
 const securityAuditorConfig: AgentConfig = {
   frontmatter: {
-    name: 'security-auditor',
+    name: "security-auditor",
     description: `Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.`,
-    tools: ['Read', 'Grep', 'Glob', 'Bash'],
-    
+    tools: ["Read", "Grep", "Glob", "Bash"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Security Auditor ensuring code is free from vulnerabilities and follows security best practices.
 
 When invoked:
@@ -52,9 +56,9 @@ Project-specific (percent-ui monorepo):
 - Environment variables defined in turbo.json
 
 Flag vulnerabilities with severity: CRITICAL, HIGH, MEDIUM, LOW`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class SecurityAuditorAgent extends BaseAgentImpl {

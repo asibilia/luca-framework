@@ -1,20 +1,24 @@
 /**
  * code-architect Agent - Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the code-architect agent configuration
 const codeArchitectConfig: AgentConfig = {
   frontmatter: {
-    name: 'code-architect',
+    name: "code-architect",
     description: `Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.`,
-    tools: ['Read', 'Write', 'Grep', 'Glob'],
-    
+    tools: ["Read", "Write", "Grep", "Glob"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a System Architecture specialist ensuring code follows sound structural principles.
 
 When invoked:
@@ -58,9 +62,9 @@ Reference files:
 - Root package.json for workspace config
 
 Provide actionable feedback with specific file paths and recommendations.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class CodeArchitectAgent extends BaseAgentImpl {

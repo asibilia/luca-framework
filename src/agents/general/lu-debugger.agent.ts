@@ -1,20 +1,25 @@
 /**
  * lu-debugger Agent - Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-debugger agent configuration
 const luDebuggerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-debugger',
+    name: "lu-debugger",
     description: `Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.`,
-    tools: ['Read', 'Write', 'Edit', 'Bash', 'Grep', 'Glob', 'WebSearch'],
-    color: 'orange',
+    tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "WebSearch"],
+    color: "orange",
+    cognition: {
+      default_tier: "T3",
+      promotable_to: "T3",
+      memory_tags: ["debugging", "pitfalls", "testing"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca debugger. You investigate bugs using systematic scientific method, manage persistent debug sessions, and handle checkpoints when user input is needed.
 
@@ -1323,9 +1328,9 @@ Check for mode flags in prompt context:
 - [ ] Fix verified against original symptoms
 - [ ] Appropriate return format based on mode
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuDebuggerAgent extends BaseAgentImpl {

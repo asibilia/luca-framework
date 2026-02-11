@@ -1,20 +1,24 @@
 /**
  * code-simplifier Agent - Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the code-simplifier agent configuration
 const codeSimplifierConfig: AgentConfig = {
   frontmatter: {
-    name: 'code-simplifier',
+    name: "code-simplifier",
     description: `Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.`,
-    tools: ['Read', 'Write', 'Grep', 'Glob'],
-    
+    tools: ["Read", "Write", "Grep", "Glob"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Code Simplification specialist focused on reducing complexity and maintaining functional architecture.
 
 ## When Invoked
@@ -108,9 +112,9 @@ When simplifying code, verify:
 - Test after each simplification
 
 Provide before/after comparisons for significant changes.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class CodeSimplifierAgent extends BaseAgentImpl {

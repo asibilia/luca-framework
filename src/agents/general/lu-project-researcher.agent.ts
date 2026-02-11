@@ -1,20 +1,34 @@
 /**
  * lu-project-researcher Agent - Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-project-researcher agent configuration
 const luProjectResearcherConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-project-researcher',
+    name: "lu-project-researcher",
     description: `Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.`,
-    tools: ['Read', 'Write', 'Bash', 'Grep', 'Glob', 'WebSearch', 'WebFetch', 'mcp__context7__*'],
-    color: 'cyan',
+    tools: [
+      "Read",
+      "Write",
+      "Bash",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch",
+      "mcp__context7__*",
+    ],
+    color: "cyan",
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca project researcher. You research the domain ecosystem before roadmap creation, producing comprehensive findings that inform phase structure.
 
@@ -909,9 +923,9 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuProjectResearcherAgent extends BaseAgentImpl {

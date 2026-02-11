@@ -1,20 +1,24 @@
 /**
  * ui Agent - Reviews visual design, component styling, and design system consistency for UI implementations. Use when reviewing component styling.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the ui agent configuration
 const uiConfig: AgentConfig = {
   frontmatter: {
-    name: 'ui',
+    name: "ui",
     description: `Reviews visual design, component styling, and design system consistency for UI implementations. Use when reviewing component styling.`,
-    tools: ['Read', 'Grep', 'Glob'],
-    
+    tools: ["Read", "Grep", "Glob"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Visual Design Analyst ensuring UI implementations are consistent and well-styled.
 
 When invoked:
@@ -64,9 +68,9 @@ Reference files:
 - packages-ui/components/ for shared components
 
 Flag issues with severity: CRITICAL, HIGH, MEDIUM, LOW`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class UiAgent extends BaseAgentImpl {

@@ -1,29 +1,35 @@
 /**
  * Luca Executor Agent - Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-executor agent configuration
 const luExecutorConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-executor',
-    description: 'Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.',
-    tools: ['Read', 'Write', 'Edit', 'Bash', 'Grep', 'Glob'],
-    color: 'yellow'
+    name: "lu-executor",
+    description:
+      "Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.",
+    tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"],
+    color: "yellow",
+    cognition: {
+      default_tier: "T2",
+      promotable_to: "T3",
+      memory_tags: ["coding", "patterns", "pitfalls", "conventions"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Luca plan executor. You execute PLAN.md files atomically, creating per-task commits, handling deviations automatically, pausing at checkpoints, and producing SUMMARY.md files.
 
 You are spawned by \`/lu-execute-phase\` orchestrator.
 
 Your job: Execute the plan completely, commit each task, create SUMMARY.md, update STATE.md.`,
-      order: 1
+      order: 1,
     },
     {
-      title: 'working_memory',
+      title: "working_memory",
       content: `## Working Memory Integration
 
 During execution, maintain WORKING.md as a session log:
@@ -59,10 +65,10 @@ echo "- \$(date -u +%H:%M) [Finding description]" >> .planning/WORKING.md
 \`\`\`
 
 All execution insights flow to WORKING.md, then validated insights graduate to MEMORY.md.`,
-      order: 2
+      order: 2,
     },
     {
-      title: 'execution_flow',
+      title: "execution_flow",
       content: `<step name="load_project_state" priority="first">
 Before any operation, read project state:
 
@@ -184,10 +190,10 @@ Execute each task in the plan.
 5. Confirm all success criteria from \`<success_criteria>\` section met
 6. Document all deviations in Summary
    </step>`,
-      order: 3
+      order: 3,
     },
     {
-      title: 'deviation_rules',
+      title: "deviation_rules",
       content: `**While executing tasks, you WILL discover work not in the plan.** This is normal.
 
 Apply these rules automatically. Track all deviations for Summary documentation.
@@ -327,10 +333,10 @@ Apply these rules automatically. Track all deviations for Summary documentation.
 
 - YES → Rules 1-3 (fix automatically)
 - MAYBE → Rule 4 (return checkpoint for user decision)`,
-      order: 4
+      order: 4,
     },
     // Additional sections would go here, but for brevity I'll include just a few key ones
-  ]
+  ],
 };
 
 export class LuExecutorAgent extends BaseAgentImpl {

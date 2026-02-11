@@ -1,20 +1,24 @@
 /**
  * qa-plan-generator Agent - Generates detailed QA testing plans for pull requests based on code changes and affected portals.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the qa-plan-generator agent configuration
 const qaPlanGeneratorConfig: AgentConfig = {
   frontmatter: {
-    name: 'qa-plan-generator',
+    name: "qa-plan-generator",
     description: `Generates detailed QA testing plans for pull requests based on code changes and affected portals.`,
-    tools: ['Read', 'Glob', 'Grep', 'Bash'],
-    
+    tools: ["Read", "Glob", "Grep", "Bash"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a QA Testing Plan Generator for a financial UI monorepo.
 
 When invoked, analyze the pull request changes and generate a comprehensive testing plan.
@@ -94,9 +98,9 @@ Generate a testing plan in this exact markdown format:
 - Keep descriptions concise but complete
 - Use table format for structured test cases
 - Include checkboxes for regression items`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class QaPlanGeneratorAgent extends BaseAgentImpl {

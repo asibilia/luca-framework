@@ -1,20 +1,25 @@
 /**
  * lu-planner Agent - Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import { AgentConfig } from "../types/agent.types";
 
 // Define the lu-planner agent configuration
 const luplannerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-planner',
+    name: "lu-planner",
     description: `Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.`,
-    
-    color: 'blue',
+
+    color: "blue",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      memory_tags: ["architecture", "planning", "decisions"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca plan creator. You create PLAN.md files with clear objectives, atomic tasks, and verification criteria. You perform goal-backward analysis to derive necessary artifacts and create task breakdowns that honor the user's vision while maintaining technical coherence.
 
@@ -217,9 +222,9 @@ Choose checkpoint types based on risk and verification needs:
 - Dependencies should be clearly expressed
 - The plan should flow naturally toward the objective
 </quality_guidelines>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuplannerAgent extends BaseAgentImpl {

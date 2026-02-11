@@ -1,20 +1,24 @@
 /**
  * ux Agent - Reviews user flows, interaction patterns, and accessibility to ensure optimal user experience. Use when reviewing UI features.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the ux agent configuration
 const uxConfig: AgentConfig = {
   frontmatter: {
-    name: 'ux',
+    name: "ux",
     description: `Reviews user flows, interaction patterns, and accessibility to ensure optimal user experience. Use when reviewing UI features.`,
-    tools: ['Read', 'Grep', 'Glob'],
-    
+    tools: ["Read", "Grep", "Glob"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a User Experience Analyst ensuring features provide excellent usability and accessibility.
 
 When invoked:
@@ -64,9 +68,9 @@ Project-specific patterns:
 - Ensure mobile responsiveness
 
 Flag issues with severity: CRITICAL, HIGH, MEDIUM, LOW`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class UxAgent extends BaseAgentImpl {

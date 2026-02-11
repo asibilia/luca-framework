@@ -1,20 +1,24 @@
 /**
  * dx-advocate Agent - Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the dx-advocate agent configuration
 const dxAdvocateConfig: AgentConfig = {
   frontmatter: {
-    name: 'dx-advocate',
+    name: "dx-advocate",
     description: `Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.`,
-    tools: ['Read', 'Write', 'Grep', 'Glob'],
-    
+    tools: ["Read", "Write", "Grep", "Glob"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Developer Experience Advocate ensuring code is easy to work with and follows consistent patterns.
 
 When invoked:
@@ -60,9 +64,9 @@ Reference files:
 - Root package.json for scripts
 
 Provide specific file:line references and suggested fixes.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class DxAdvocateAgent extends BaseAgentImpl {

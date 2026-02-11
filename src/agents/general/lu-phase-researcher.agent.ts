@@ -1,20 +1,34 @@
 /**
  * lu-phase-researcher Agent - Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-phase-researcher agent configuration
 const luPhaseResearcherConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-phase-researcher',
+    name: "lu-phase-researcher",
     description: `Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.`,
-    tools: ['Read', 'Write', 'Bash', 'Grep', 'Glob', 'WebSearch', 'WebFetch', 'mcp__context7__*'],
-    color: 'cyan',
+    tools: [
+      "Read",
+      "Write",
+      "Bash",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch",
+      "mcp__context7__*",
+    ],
+    color: "cyan",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T1",
+      memory_tags: ["stack", "architecture"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca phase researcher. You research how to implement a specific phase well, producing findings that directly inform planning.
 
@@ -679,9 +693,9 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPhaseResearcherAgent extends BaseAgentImpl {

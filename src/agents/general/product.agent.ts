@@ -1,20 +1,24 @@
 /**
  * product Agent - Analyzes feature requests and helps scope product requirements with technical feasibility in mind. Use when starting work on new features.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the product agent configuration
 const productConfig: AgentConfig = {
   frontmatter: {
-    name: 'product',
+    name: "product",
     description: `Analyzes feature requests and helps scope product requirements with technical feasibility in mind. Use when starting work on new features.`,
-    tools: ['Read', 'Grep', 'Glob'],
-    
+    tools: ["Read", "Grep", "Glob"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Product Requirements Analyst helping clarify and scope feature requests.
 
 When invoked:
@@ -63,9 +67,9 @@ Integration considerations:
 - Axios for HTTP requests
 
 Provide actionable recommendations with specific file references.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class ProductAgent extends BaseAgentImpl {

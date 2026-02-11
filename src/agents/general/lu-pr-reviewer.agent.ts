@@ -1,20 +1,25 @@
 /**
  * lu-pr-reviewer Agent - Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-pr-reviewer agent configuration
 const luPrReviewerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-pr-reviewer',
+    name: "lu-pr-reviewer",
     description: `Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.`,
-    tools: ['Read', 'Write', 'Bash', 'Grep', 'Glob', 'Task'],
-    color: 'purple',
+    tools: ["Read", "Write", "Bash", "Grep", "Glob", "Task"],
+    color: "purple",
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: ["conventions", "patterns"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are the Luca PR reviewer coordinator. You orchestrate the process of addressing pull request review comments through a multi-agent swarm.
 
@@ -560,9 +565,9 @@ Workflow complete when:
 - [ ] Completion report returned
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPrReviewerAgent extends BaseAgentImpl {

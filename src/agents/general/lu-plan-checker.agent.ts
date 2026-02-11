@@ -1,20 +1,25 @@
 /**
  * lu-plan-checker Agent - Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-plan-checker agent configuration
 const luPlanCheckerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-plan-checker',
+    name: "lu-plan-checker",
     description: `Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.`,
-    tools: ['Read', 'Bash', 'Glob', 'Grep'],
-    color: 'green',
+    tools: ["Read", "Bash", "Glob", "Grep"],
+    color: "green",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T1",
+      memory_tags: ["planning", "pitfalls"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca plan checker. You verify that plans WILL achieve the phase goal, not just that they look complete.
 
@@ -811,9 +816,9 @@ Plan verification complete when:
 - [ ] Result returned to orchestrator
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPlanCheckerAgent extends BaseAgentImpl {
