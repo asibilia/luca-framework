@@ -1,20 +1,25 @@
 /**
  * lu-cognition Agent - Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-cognition agent configuration
 const luCognitionConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-cognition',
+    name: "lu-cognition",
     description: `Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.`,
-    tools: ['Read', 'Write', 'Glob', 'Grep'],
-    color: 'purple',
+    tools: ["Read", "Write", "Glob", "Grep"],
+    color: "purple",
+    cognition: {
+      default_tier: "T3",
+      promotable_to: "T3",
+      memory_tags: ["*"],
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are the Luca cognitive pre-flight agent. You prepare the cognitive context for all major operations.
 
@@ -162,18 +167,104 @@ From the incoming task/request, extract keywords for memory recall:
 Build a keyword set for selective recall.
 </step>
 
+<step name="resolve_cognition_tier">
+Before recalling memory, resolve the target agent's cognition tier.
+
+1. **Read the target agent's compiled .md file** from \`.claude/agents/\`:
+   \`\`\`bash
+   head -20 .claude/agents/{agent-name}.md
+   \`\`\`
+   Parse the YAML frontmatter (between \`---\` delimiters) for the \`cognition\` block.
+
+2. **Extract cognition config from frontmatter:**
+   - If no frontmatter or no \`cognition\` field: treat as T0 (default — stateless agent)
+   - Extract: \`default_tier\`, \`promotable_to\`, \`memory_tags\`
+
+3. **Read current complexity from STATE.md:**
+   \`\`\`bash
+   grep "Task Complexity:" .planning/STATE.md
+   \`\`\`
+   - If not set, default to MODERATE
+
+4. **Apply complexity-driven promotion:**
+   Using the complexity matrix's \`cognitionPromotions\` field:
+   - Look up the promotion mapping for the current complexity level
+   - If a promotion exists for the agent's \`default_tier\`, promote to the mapped tier
+   - Cap at the agent's \`promotable_to\` ceiling (never exceed)
+   - Result is the **effective_tier** for this invocation
+
+5. **Store effective_tier** for use in \`selective_recall\`:
+   \`\`\`
+   effective_tier = resolve(default_tier, promotable_to, complexity_level)
+
+   Example: lu-executor at COMPLEX complexity
+     default_tier = T2, promotable_to = T3
+     COMPLEX promotes T2 → T3
+     effective_tier = T3 (within ceiling)
+
+   Example: code-architect at COMPLEX complexity
+     default_tier = T0, promotable_to = T1
+     COMPLEX promotes T0 → T0 (no T0 mapping)
+     effective_tier = T0 (stays stateless)
+
+   Example: lu-planner at CRITICAL complexity
+     default_tier = T1, promotable_to = T2
+     CRITICAL promotes T1 → T2
+     effective_tier = T2 (within ceiling)
+   \`\`\`
+
+**Tier reference:**
+- **T0 (Stateless)**: Skip recall entirely. Agent gets no memory context.
+- **T1 (Memory-Reader)**: Agent receives recalled entries. Does not write WORKING.md.
+- **T2 (Session-Aware)**: Agent reads recalled entries AND writes to WORKING.md.
+- **T3 (Fully-Cognitive)**: Full lifecycle — BRAIN load, MEMORY recall, WORKING write, learning.
+</step>
+
 <step name="selective_recall">
-Search MEMORY.md for relevant entries with agent-aware filtering:
+Search MEMORY.md for relevant entries with tier-aware gating and tag-based filtering:
+
+**Tier Gate (check first):**
+
+\`\`\`
+IF effective_tier == T0:
+    SKIP recall entirely
+    Output minimal report:
+      "Agent [name] is T0 (stateless) — no memory recall needed"
+    PROCEED directly to generate_report with T0 output
+    RETURN
+\`\`\`
+
+If effective_tier is T1 or higher, proceed with recall:
 
 \`\`\`bash
 cat .planning/MEMORY.md 2>/dev/null
 \`\`\`
 
-**Agent-Aware Filtering:**
+**Tag-Based Pre-Filtering (NEW — before scoring):**
+
+\`\`\`
+agent_memory_tags = agent.cognition.memory_tags (from resolve_cognition_tier)
+
+IF agent_memory_tags is empty OR agent_memory_tags contains "*":
+    candidate_entries = all_entries  # No filtering (wildcard or no tags)
+ELSE:
+    candidate_entries = entries.filter(entry =>
+        (entry has Tags field AND entry.tags intersects agent_memory_tags)
+        OR entry has NO Tags field  # Legacy backward compatibility
+    )
+\`\`\`
+
+**Backward Compatibility for Tags:**
+
+- Entries WITHOUT a \`Tags:\` field → included in ALL agent recalls (legacy treatment)
+- Entries WITH a \`Tags:\` field → only included if tags intersect with agent's \`memory_tags\`
+- Agents with \`memory_tags: ["*"]\` → receive ALL entries regardless of tags (wildcard)
+
+**Agent-Aware Scoring (operates on filtered candidate set):**
 
 Determine the upcoming agent from routing decision or workflow context (e.g., \`planner\`, \`executor\`, \`verifier\`).
 
-For each entry in MEMORY.md (Patterns, Decisions, Pitfalls), calculate relevance score:
+For each entry in the **candidate set** (post-tag-filter), calculate relevance score:
 
 \`\`\`
 score = 0
@@ -205,21 +296,26 @@ if entry.added within 30 days:
     score += 0.5
 \`\`\`
 
-**Backward Compatibility:**
+**Backward Compatibility for Agent field:**
 
 - Entries WITHOUT \`Agent:\` field → treat as \`Agent: general\`
 - Entries WITHOUT \`Relevant to:\` field → empty relevance list
 - Legacy entries still recalled via keyword matching + general agent score
 
-**Selection criteria:**
+**Tier-Scaled Entry Limits (NEW — replaces fixed 5-7 limit):**
 
-- Sort by score descending
-- High confidence entries weighted
-- Recent entries have slight boost
-- **Limit to 5-7 most relevant entries** (prevent context bloat)
+\`\`\`
+Sort scored entries descending, then select top entries by effective_tier:
+
+IF effective_tier == T1: select top 3-5 entries (lightweight recall)
+IF effective_tier == T2: select top 5-7 entries (standard recall)
+IF effective_tier == T3: select top 7-10 entries (comprehensive recall)
+\`\`\`
+
 - Include at least 1 entry per category (Pattern, Decision, Pitfall) if any match
+- Within each tier's limit, prioritize diversity across categories
 
-For each keyword, scan:
+For each keyword, scan the **filtered candidate set**:
 
 - **Patterns section**: Do any patterns match? (check Agent field)
 - **Decisions section**: Are there relevant past decisions? (check Agent field)
@@ -469,9 +565,9 @@ Pre-flight complete when:
 - [ ] Cognitive report output for downstream agent
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuCognitionAgent extends BaseAgentImpl {
