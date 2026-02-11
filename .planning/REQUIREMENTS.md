@@ -21,11 +21,11 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 
 ### Cognition Per-Agent Audit (Phase 15)
 
-- [ ] **COGN-01**: Audit matrix maps each agent type to its current cognition features (BRAIN load, MEMORY recall, WORKING usage, pre-flight, learning extraction)
-- [ ] **COGN-02**: Gap analysis identifies agents missing cognition features they should have based on their role
-- [ ] **COGN-03**: Cognition profiles defined — at least 3 tiers (stateless, session-aware, fully-cognitive) with clear criteria for each
-- [ ] **COGN-04**: Per-agent cognition configuration via agent metadata (not hardcoded conditionals)
-- [ ] **COGN-05**: Selective MEMORY recall implemented — agents load only task-relevant patterns/decisions/pitfalls, not the entire MEMORY.md
+- [x] **COGN-01**: Audit matrix maps each agent type to its current cognition features (BRAIN load, MEMORY recall, WORKING usage, pre-flight, learning extraction)
+- [x] **COGN-02**: Gap analysis identifies agents missing cognition features they should have based on their role
+- [x] **COGN-03**: Cognition profiles defined — at least 3 tiers (stateless, session-aware, fully-cognitive) with clear criteria for each
+- [x] **COGN-04**: Per-agent cognition configuration via agent metadata (not hardcoded conditionals)
+- [x] **COGN-05**: Selective MEMORY recall implemented — agents load only task-relevant patterns/decisions/pitfalls, not the entire MEMORY.md
 
 ### Context-Modular Sub-Agent Architecture (Phase 16)
 
@@ -77,11 +77,11 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 | AUDIT-03    | Phase 14 (Exec/Verify Audit) | High     | ✅ Done | execution-verification-effectiveness-audit.md |
 | AUDIT-04    | Phase 14 (Exec/Verify Audit) | High     | ✅ Done | execution-verification-effectiveness-audit.md |
 | AUDIT-05    | Phase 14 (Exec/Verify Audit) | Medium   | ✅ Done | execution-verification-effectiveness-audit.md |
-| COGN-01     | Phase 15 (Cognition Audit)   | Critical | Pending | cognition-features-per-agent-audit.md         |
-| COGN-02     | Phase 15 (Cognition Audit)   | Critical | Pending | cognition-features-per-agent-audit.md         |
-| COGN-03     | Phase 15 (Cognition Audit)   | High     | Pending | cognition-features-per-agent-audit.md         |
-| COGN-04     | Phase 15 (Cognition Audit)   | High     | Pending | cognition-features-per-agent-audit.md         |
-| COGN-05     | Phase 15 (Cognition Audit)   | High     | Pending | cognition-features-per-agent-audit.md         |
+| COGN-01     | Phase 15 (Cognition Audit)   | Critical | ✅ Done | cognition-features-per-agent-audit.md         |
+| COGN-02     | Phase 15 (Cognition Audit)   | Critical | ✅ Done | cognition-features-per-agent-audit.md         |
+| COGN-03     | Phase 15 (Cognition Audit)   | High     | ✅ Done | cognition-features-per-agent-audit.md         |
+| COGN-04     | Phase 15 (Cognition Audit)   | High     | ✅ Done | cognition-features-per-agent-audit.md         |
+| COGN-05     | Phase 15 (Cognition Audit)   | High     | ✅ Done | cognition-features-per-agent-audit.md         |
 | CTXM-01     | Phase 16 (Context-Modular)   | Critical | Pending | context-modularity-subagent-architecture.md   |
 | CTXM-02     | Phase 16 (Context-Modular)   | High     | Pending | context-modularity-subagent-architecture.md   |
 | CTXM-03     | Phase 16 (Context-Modular)   | High     | Pending | context-modularity-subagent-architecture.md   |

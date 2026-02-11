@@ -8,10 +8,10 @@
 
 ## v1.2.0 — Intelligent Agent Engine
 
-**Status:** In Progress (1/5 phases complete)
+**Status:** In Progress (2/5 phases complete)
 **Theme:** Make agents smarter — audit, modularize, iterate, plan
 **Phases:** 14-18
-**Requirements:** 29 — 5 done, 24 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
+**Requirements:** 29 — 10 done, 19 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
 **Approach:** Audit-first — audit current systems before building new features
 
 ### Phase 14: Execution & Verification Audit ✅
@@ -30,19 +30,26 @@
 
 ---
 
-### Phase 15: Cognition Per-Agent Audit
+### Phase 15: Cognition Per-Agent Audit ✅
 
 **Goal:** Audit every agent type's usage of the cognition system (BRAIN/MEMORY/WORKING). Create a matrix of current vs. ideal cognition features per agent. Define cognition profiles and implement selective memory recall.
 **Depends on:** Phase 14 (exec audit informs which agents need what cognition)
-**Requirements:** COGN-01 through COGN-05
+**Requirements:** COGN-01 through COGN-05 (all satisfied)
+**Plans:** 5 plans, 3 waves — all complete
 
-**Scope:**
+**Delivered:**
 
-- Audit all 23+ agents for cognition feature usage
-- Gap analysis: which agents should have cognition features but don't
-- Define cognition tiers (stateless, session-aware, fully-cognitive)
-- Per-agent cognition configuration via metadata
-- Selective MEMORY recall (load task-relevant entries, not everything)
+- COGNITION-AUDIT.md with 25-agent audit matrix and 4-tier system (T0-T3)
+- TAG-VOCABULARY.md with 14 domain tags for selective MEMORY recall
+- Cognition schemas (cognitionTierSchema, cognitionConfigSchema) and types
+- resolveEffectiveTier() function with complexity-driven tier promotion
+- ComplexityGate.cognitionPromotions for COMPLEX and CRITICAL levels
+- YAML frontmatter emission in compiled .md files for runtime discovery
+- lu-cognition tier-aware selective recall with tag-based pre-filtering
+- lu-learner tag assignment in extraction templates
+- All 27 agent .ts files wired with cognition metadata
+- 107 MEMORY.md entries retroactively tagged
+- 11 new MEMORY.md entries (4 patterns, 3 decisions, 4 pitfalls)
 
 ---
 
@@ -117,4 +124,4 @@ All phases are sequential — each builds on findings/infrastructure from the pr
 
 ---
 
-_Roadmap updated: 2026-02-11 (Phase 14 complete)_
+_Roadmap updated: 2026-02-11 (Phase 15 complete)_
