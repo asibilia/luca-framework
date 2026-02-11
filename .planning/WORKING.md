@@ -40,7 +40,7 @@
 _Session Status_
 
 - [x] Active
-- [ ] Learnings extracted
+- [x] Learnings extracted
 - [ ] Ready to clear
 - 17:48 [Wave 1 starting - Plans 15-01, 15-02]
 - Plan 15-02 executed: All 5 tasks complete. cognitionTierSchema/cognitionConfigSchema added, AgentFrontmatter extended, ComplexityGate extended with cognitionPromotions, resolveEffectiveTier created, ClaudeCompiler emits YAML frontmatter when cognition present. Typecheck clean on modified files. build:all passes (178 files). Backward compatible - no agents emit frontmatter until Plan 15-04 adds cognition config.
@@ -51,17 +51,8 @@ _Session Status_
 
 ## Candidate Learnings
 
-### Pattern: Research data requires independent verification
+_Extracted to MEMORY.md by Plan 15-05 (2026-02-11). 4 patterns, 3 decisions, 4 pitfalls captured._
 
-- **What**: 15-RESEARCH.md classified lu-planner, lu-executor, lu-verifier as T0. Direct grep found all three have cognition references (12% error rate on 25 agents).
-- **When to apply**: Any audit using prior research as primary data. Spot-check at least 20% of entries against source files.
-- **Confidence**: High
-
-### Pattern: N-to-M tier compression for diverse entities
-
-- **What**: 25 agents with 5 boolean features compressed into 4 tiers. Same as 5 complexity levels into 3 behavioral tiers (Phase 13). Reduces 2^5=32 combinations to 4 meaningful profiles.
-- **When to apply**: Any system with multiple boolean features per entity. Group by common access patterns.
-- **Confidence**: High
 - 17:59 [Wave 1 complete - Plans 15-01, 15-02 done]
 - 17:59 [Wave 2 starting - Plans 15-03, 15-04]
 - Plan 15-03 Task 1: TAG-VOCABULARY.md created with all 14 domain tags, descriptions, examples, lu-learner guidelines, agent-to-tag mapping, and backward compatibility notes.
@@ -74,3 +65,11 @@ _Session Status_
 - Plan 15-04 Task 3: All 107 MEMORY.md entries retroactively tagged with domain tags from 14-tag vocabulary. 84 bullet entries + 23 table rows.
 - Plan 15-04 Task 4: build:all passes (178 files). No new type errors. Verification: 27/27 cognition frontmatter, 16/16 cognition_integration tags, 107 tagged memory entries.
 - Plan 15-04 COMPLETE. 15-04-SUMMARY.md written.
+- 18:21 [Wave 2 complete - Plans 15-03, 15-04 done]
+- 18:21 [Wave 3 starting - Plan 15-05]
+- Plan 15-05 Task 1: Findings extracted from COGNITION-AUDIT.md (4-tier profiling, metadata-driven config, context bloat risk).
+- Plan 15-05 Task 2: Findings extracted from code changes (tag-based recall, retroactive migration, YAML frontmatter, dual source of truth).
+- Plan 15-05 Task 3: MEMORY.md updated with 4 patterns, 3 decisions, 4 pitfalls. Statistics updated (40/26/35). Candidate learnings cleared.
+- Plan 15-05 COMPLETE. 15-05-SUMMARY.md written.
+- [Wave 3 complete - Plan 15-05 done]
+- [Phase 15 COMPLETE - All 5 plans across 3 waves done]
