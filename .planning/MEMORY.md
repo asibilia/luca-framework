@@ -9,51 +9,91 @@
 <!-- Patterns that worked well — recall when similar tasks arise -->
 
 - **Codebase mapping with parallel agents**: Spawn 4 lu-codebase-mapper agents in parallel (tech, arch, quality, concerns) — produces comprehensive analysis in ~1 minute
+  Tags: [patterns, architecture]
 - **Questioning before planning**: Deep questioning surfaces hidden requirements and constraints before committing to implementation
+  Tags: [patterns, planning]
 - **Wave-based parallelization**: Execute independent plans in parallel waves to reduce total execution time. Wave 2 (01-02 + 01-03) executed concurrently without conflicts, validated in Phase 1
+  Tags: [patterns, planning, performance]
 - **Dual-package CLI pattern**: Thin `create-*` scaffolder package delegates to main `*-framework` package. Enables separate versioning and smaller initial download. Pattern: `create-luca` → `luca-framework`
+  Tags: [patterns, architecture]
 - **Branding context pattern**: `createBrandingContext()` adds computed helpers like `commandSlash: "/${prefix}"` for template convenience. Centralizes branding logic with computed properties
+  Tags: [patterns, conventions]
 - **Manifest-based tracking**: SHA-256 hashes enable update conflict detection. `source: 'framework' | 'user'` distinguishes file origins for safe merging
+  Tags: [patterns, architecture]
 - **Template architecture separation**: Three-tier structure: `base/` (minimal scaffold) + `stacks/` (stack-specific) + `framework/` (full Luca framework). EJS for content substitution (`<%= branding.frameworkName %>`), `__variable__` pattern for filename substitution
+  Tags: [patterns, architecture]
 - **Discriminated union for adapter results**: Use `{ success: true, data: T } | { success: false, error: string }` for consistent error handling across different work tracker implementations. Validated in Phase 2
+  Tags: [patterns, coding]
 - **Optional method checking**: Check for optional adapter methods with `if (adapter.method)` before invocation to support heterogeneous feature sets across work trackers. Validated in Phase 2
+  Tags: [patterns, coding]
 - **Infrastructure-first doctor pattern**: Implement `doctor` command with a registry of independent checks. Enables easy extension and comprehensive system validation. Validated in Phase 3
+  Tags: [patterns, architecture]
 
 - **Zod safeParse at API boundaries**: Replace `as TypeName` casts with `zodSchema.safeParse()` for runtime validation of external API responses. Returns discriminated union matching AdapterResult pattern. Validated in Phase 6 (GitHub + Jira adapters)
+  Tags: [patterns, coding, security]
 - **Self-contained cross-package modules**: When root `src/shared/` utilities need to be used in `packages/*/`, create a self-contained copy in the package rather than cross-package imports. Validated in Phase 6 (sanitize.ts)
+  Tags: [patterns, architecture]
 - **Defense-in-depth validation**: Apply validation at both config ingestion (checkConfig) AND usage site (inline checks). Prevents regressions from future refactoring that might bypass config validation. Validated in Phase 6 (HTTPS enforcement)
+  Tags: [patterns, security]
 - **Credential sanitization pattern**: Use regex chain to strip `Basic`, `Bearer`, long Base64 (40+ chars), and `token=` patterns from error messages before returning to callers. Prevents credential leakage in error paths
+  Tags: [patterns, security]
 - **Surgical performance optimization**: For small CLI tools already meeting performance targets (23ms startup), apply targeted fixes rather than broad refactoring. Prioritize: lazy command loading (biggest gain) > dependency removal (if already small) > memory safety fixes. Avoid complex optimization unless bottleneck confirmed. Validated in Phase 8 (CLI already at 23ms)
+  Tags: [patterns, performance]
 - **Dynamic dependency loading for optional features**: Lazy-load heavy optional dependencies (e.g., update-notifier 1.0MB) only when needed. Use dynamic `import()` for optional commands/features. Enables smaller default bundle without sacrificing functionality. Validated in Phase 8 (reduced startup path)
+  Tags: [patterns, performance]
 - **SIGINT handler safety with process.once**: Use `process.once()` instead of `process.on()` to prevent handler accumulation when module re-imported. Reset mutable module state (e.g., `createdPaths`) at function entry. Validated in Phase 8 (fixed handler accumulation)
+  Tags: [patterns, coding, debugging]
 - **Constant extraction for repeated values**: Extract repeated magic strings/arrays into named constants (e.g., `TEMPLATE_EXTENSIONS`). Enables single-point-of-truth for validation values and reduces duplication. Validated in Phase 8 code review
+  Tags: [patterns, conventions, coding]
 - **EJS + JSON regex escaping**: When EJS templates output regex patterns into JSON strings, backslashes need double-escaping. Solution: computed `ticketPatternJson` property via `.replace(/\\/g, '\\\\')` to produce valid JSON. Validated in Phase 9 (init wizard fix)
+  Tags: [patterns, coding, debugging]
 - **Actionable error messages (three-part pattern)**: Every CLI error should include: (1) what failed, (2) why/cause, (3) what to do next. This is a DX multiplier — users never hit a dead end. Validated in Phase 9 (CLI error messages overhaul)
+  Tags: [patterns, conventions]
 - **Validation parity across config entry points**: If `createConfigFromArgs` validates stack/tracker values, `loadConfigFromFile` must too. All config entry points need identical validation to prevent invalid configs from slipping through file-based paths. Validated in Phase 9 (code review HIGH fix)
+  Tags: [patterns, coding, security]
 - **Documentation as code debt**: Stale docs (non-existent commands, wrong env vars, outdated coding standards) accumulate silently across milestones. Treat docs accuracy as a DX concern and audit during DX phases. Validated in Phase 9 (7 doc accuracy issues caught)
+  Tags: [patterns, conventions]
 - **Parallel agent execution without conflicts**: File-disjoint plans enable safe parallelism. 5 agents ran in parallel on non-overlapping file sets with zero merge conflicts. Key: ensure plan scope boundaries don't overlap at the file level. Validated in Phase 9 (5 parallel plans)
+  Tags: [patterns, planning, performance]
 - **Metadata registry for non-class entities**: When registry entries aren't class constructors (e.g. shell scripts), use metadata objects (`HookDefinition`) with platform-specific fields (`event`/`cursorEvent`, `matcher`/`cursorMatcher`). Config generators transform metadata into platform-specific output formats. Validated in Phase 11 (hookRegistry → settings.json + hooks.json)
+  Tags: [patterns, architecture]
 - **Dual-format stdin/stdout for cross-platform hooks**: Shell scripts can handle both Claude Code and Cursor stdin JSON by using nullish coalescing fallbacks (`data.tool_input?.file_path ?? data.file_path`). Platform detection via `!!process.env.CLAUDE_PROJECT_DIR` enables dual-format output. Validated in Phase 11 (5 hooks, 2 platforms)
+  Tags: [patterns, coding]
 - **Plan-checker bug prevention**: Running lu-plan-checker before execution caught 2 critical bugs (`|| true` swallowing exit codes) and 5 medium issues (echo vs printf, shell interpolation, wrong APIs). The checker pays for itself by preventing non-functional hooks from being deployed. Validated in Phase 11
+  Tags: [patterns, verification, planning]
 - **Layered verification (hooks + harness)**: Hooks provide lightweight, per-edit/commit verification (format, typecheck, pre-commit gate). Harness provides comprehensive verification at phase boundaries with structured output parsing and failure-to-fix loops. Two layers enforce quality at different frequencies: hooks catch problems immediately, harness catches integration issues. Validated in Phase 12 (6/6 requirements, 6/6 UAT tests)
+  Tags: [patterns, verification, architecture]
 - **Parser registry for diverse toolchains**: Structured output parsing across different tools (tsc, bun-test, eslint, generic) requires separate `OutputParser` implementations. Registry pattern (`Record<string, OutputParser>`) follows hookRegistry/ruleRegistry, enabling extensible parser composition. Each parser handles format-specific quirks (JSON flags, field mappings, multiline output). Validated in Phase 12 (4 parsers, 65 tests)
+  Tags: [patterns, architecture, coding]
 - **CLI entry point pattern with import.meta.main**: For standalone executables, use `if (import.meta.main) { runCLI(); }` guard instead of CJS `require.main === module`. This is the ESM equivalent and works correctly in Bun. Entry point handler receives process args and manages CLI flow independently from module exports. Validated in Phase 12 (harness runner CLI)
+  Tags: [patterns, coding, stack]
 - **[Phase 13] N-level to M-tier compression**: Map N granular levels to M behavioral tiers (N > M) to preserve classification precision while reducing implementation complexity. Phase 13: 5 complexity levels mapped to 3 behavioral tiers (lightweight, standard, thorough). Code gates on tier, not level, avoiding 5-way branches in every gated location. Pattern: `const as const` for levels + `Record<Level, Tier>` for mapping
+  Tags: [patterns, architecture, complexity]
 - **[Phase 13] Always-on vs gated step separation**: Explicitly categorize pipeline steps as always-on (cannot be disabled) vs gated (activate at complexity thresholds). Always-on steps form the safety floor; gated steps provide the scaling dimension. Prevents accidental disabling of critical pipeline infrastructure. Validated in Phase 13 (9 always-on, 8 gated steps)
+  Tags: [patterns, architecture, complexity]
 - **[Phase 13] Self-gating agents via always-apply rules**: Instead of wiring complexity checks into agent code, create an `alwaysApply: true` rule containing the full gating matrix. Agents read the rule and self-gate. This is "soft enforcement" but avoids hard-coded conditionals scattered across many agents. Backward-compatible: when no complexity is set, behavior defaults to pre-gating
+  Tags: [patterns, architecture, complexity]
 - **[Phase 13] Wave restructuring from dependency analysis**: Plan checker identified dependency conflicts in original wave structure (Wave 1 had plans with mutual dependency). Restructuring from 2 waves to 3 waves resolved the conflict. Always validate wave assignments against inter-plan dependencies before execution
+  Tags: [patterns, planning]
 - **[Phase 14] Verification signal taxonomy (T1-T4)**: Classify every verification signal by reliability tier: T1 (Deterministic — tests, tsc, file existence), T2 (Schema/Structural — grep, line count, export checks), T3 (LLM-Judge — code review, verifier reasoning), T4 (Self-Assessment — executor claims). This taxonomy enables systematic identification of verification blind spots and prioritization of improvements toward higher-tier signals
+  Tags: [patterns, verification]
 - **[Phase 14] Specification anchoring prevents goal drift**: Re-inject PLAN.md objectives at verification checkpoints (Step 2.5) and re-evaluate them after verification (Step 9.5). Without anchoring, the verifier derives must-haves from ROADMAP goal only, which can drift from individual plan objectives. Pattern: compare derived must-haves ↔ plan objectives, flag untraced/uncovered items, enrich must-haves
+  Tags: [patterns, verification, planning]
 - **[Phase 14] Additive verification steps (insert-between pattern)**: When extending a verification pipeline, insert new steps between existing ones using decimal numbering (2.5, 9.5) rather than renumbering. This preserves backward compatibility — existing documentation, references, and training data remain valid. New steps degrade gracefully when their inputs are absent (e.g., no PLAN.md → skip with note)
+  Tags: [patterns, architecture, verification]
 
 ### Established Conventions
 
 <!-- Conventions to maintain consistency -->
 
 - **No raw JSON.parse on external data**: Use `sanitizeJsonParse()` for all user/external data to prevent prototype pollution. Internal data (own package.json) can use raw `JSON.parse()`
+  Tags: [conventions, security]
 - **EJS restricted to safe output only**: All EJS templates sanitized before rendering — `<%- %>` auto-converted to `<%= %>`, `<% %>` stripped. Only `<%= %>` (escaped output) is supported
+  Tags: [conventions, security]
 - **YAML generation via js-yaml**: All YAML frontmatter generation uses `js-yaml` `dump()` for proper escaping. No manual string concatenation for YAML
+  Tags: [conventions, coding]
 - **Shell script conventions for hooks**: Use `printf '%s'` (not `echo`) for JSON piping, `set +e`/`set -e` (not `|| true`) for exit code capture, env vars (not shell interpolation) for passing values to `bun -e`, `${CLAUDE_PROJECT_DIR:-.}` for project dir fallback
+  Tags: [conventions, coding]
 
 ## Decisions
 
@@ -61,31 +101,31 @@
 
 <!-- Past decisions with rationale — recall to avoid re-debating -->
 
-| Decision                                              | Context                      | Rationale                                                                                                                                                                                                                                                                                                                                           | Date       |
-| ----------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| CLI installer over npm                                | Distribution model           | Better UX for setup wizard, can prompt for config                                                                                                                                                                                                                                                                                                   | 2026-02-04 |
-| Branded skin over rebrand                             | Customization approach       | Cursor file name limitations, enables upgradability                                                                                                                                                                                                                                                                                                 | 2026-02-04 |
-| React+TS template only v1                             | Stack templates              | Ship one excellent template, prove pattern                                                                                                                                                                                                                                                                                                          | 2026-02-04 |
-| UnJS ecosystem for CLI                                | Tooling stack                | citty, consola, unbuild, pathe, @clack/prompts all worked seamlessly. Validated in Phase 1 execution                                                                                                                                                                                                                                                | 2026-02-04 |
-| Adapter factory pattern                               | Multi-tracker support        | Type-based switch returns appropriate implementation, decoupling CLI from specific tracker logic                                                                                                                                                                                                                                                    | 2026-02-04 |
-| Security-first documentation                          | Enterprise readiness         | Created SECURITY.md and SECURITY_QUESTIONNAIRE.md early to establish compliance baseline                                                                                                                                                                                                                                                            | 2026-02-05 |
-| js-yaml over manual YAML                              | Template safety              | Manual string concatenation breaks on special chars (quotes, colons, newlines). js-yaml handles all edge cases                                                                                                                                                                                                                                      | 2026-02-10 |
-| Zod for API response validation                       | Runtime safety               | TypeScript `as` casts provide zero runtime protection. Zod safeParse catches malformed responses before they propagate                                                                                                                                                                                                                              | 2026-02-10 |
-| EJS restriction (escaped only)                        | Template safety              | Unescaped output (`<%-`) enables XSS; code blocks (`<%`) enable arbitrary code execution. Restrict to `<%=` only                                                                                                                                                                                                                                    | 2026-02-10 |
-| Native mkdir over fs-extra                            | Dependency minimization      | fs-extra was used only for `ensureDir({recursive:true})`. Node.js/Bun native APIs suffice. 99KB saved, reduced distribution size                                                                                                                                                                                                                    | 2026-02-10 |
-| Lazy loading for optional commands                    | Bundle optimization          | Heavy optional features (update-notifier 1.0MB) loaded dynamically. Reduces default startup path without sacrificing features. Tradeoff: adds dynamic import wrapper                                                                                                                                                                                | 2026-02-10 |
-| import.meta.main over require.main                    | Bun ESM compatibility        | Bun ESM files should use `import.meta.main` (boolean) instead of CJS `require.main === module` pattern. Consistent with ESM module system and Bun runtime conventions                                                                                                                                                                               | 2026-02-10 |
-| Hooks on both Claude Code and Cursor                  | Cross-platform enforcement   | Both platforms now support hooks with similar semantics (stdin JSON, exit codes, matchers). Different config formats (settings.json vs hooks.json) and event names (PascalCase vs camelCase) but same shell scripts with dual-format parsing                                                                                                        | 2026-02-10 |
-| Metadata registry over class registry for hooks       | Hook architecture            | Hooks are shell scripts, not TypeScript classes. Using HookDefinition metadata objects with platform-specific fields (event/cursorEvent) and separate config generators per platform. Cleaner than forcing class pattern on non-class entities                                                                                                      | 2026-02-10 |
-| Transcript file size as context proxy                 | Context monitoring           | Claude Code doesn't expose context window usage %. Transcript file size (bytes) is a reasonable proxy with configurable thresholds (100KB/200KB/300KB). Imperfect but functional                                                                                                                                                                    | 2026-02-10 |
-| Two-layer verification (hooks + harness)              | Quality enforcement strategy | Lightweight hooks (format, typecheck, pre-commit) run frequently. Comprehensive harness (full test suite, integration checks, structured parsing) runs at phase boundaries. Asymmetric cost model: hooks are fast/cheap, harness is thorough/expensive. Harness failures trigger failure-to-fix loops within phase execution. Validated in Phase 12 | 2026-02-10 |
-| Config fallback for optional sections                 | Framework configuration      | Harness config is optional in framework projects. Provide DEFAULT_HARNESS_CONFIG constant and fall back to it when harness section is missing from config.json. Enables progressive adoption without requiring config updates                                                                                                                       | 2026-02-10 |
-| Bun.spawn with manual timeout implementation          | Process execution            | Bun.spawn has no built-in timeout like Node's child_process. Implement via `setTimeout` + `proc.kill()` + `Promise.race`. Also: (1) pass commands as `["sh", "-c", cmd]` string array (not string), (2) stdout/stderr are ReadableStreams — collect via `new Response(stream).text()`, (3) `.exited` is a Promise<number>, not synchronous          | 2026-02-10 |
-| [Phase 13] 5-level complexity with 3 behavioral tiers | Complexity gating            | 5 levels (TRIVIAL-CRITICAL) provide classification precision; 3 tiers (lightweight/standard/thorough) reduce implementation branching. Levels for routing decisions, tiers for behavioral gating. Avoids N-way switches in every gated step                                                                                                         | 2026-02-11 |
-| [Phase 13] Backward-compatible flag aliasing          | CLI flag migration           | `--force-complex` retained as alias for `--complexity=COMPLEX`. New `--complexity=<level>` flag added alongside, not replacing, the old flag. Users with existing workflows are not broken                                                                                                                                                          | 2026-02-11 |
-| [Phase 13] Soft enforcement via self-gating rules     | Gating architecture          | Rather than hard-coding complexity conditionals into every agent/skill, a single `alwaysApply: true` rule provides the full matrix. Agents read and self-gate. Reduces implementation surface, enables matrix updates without touching multiple files                                                                                               | 2026-02-11 |
-| [Phase 14] Specification anchoring via additive steps | Verification extension       | Extended lu-verifier with Steps 2.5 and 9.5 (decimal numbering) rather than renumbering existing steps. PLAN.md content re-injected at verification time via lu-execute-phase Step 7. Chose additive insertion to preserve all existing references, documentation, and backward compatibility                                                       | 2026-02-11 |
-| [Phase 14] Signal taxonomy as audit framework         | Verification audit           | Created 4-tier reliability taxonomy (T1 Deterministic → T4 Self-Assessment) to systematically classify 38 verification signals. Taxonomy enables gap analysis: if a step relies only on T3/T4 signals, it's a blind spot. Framework reusable for future audit phases                                                                                | 2026-02-11 |
+| Decision                                              | Context                      | Tags                                    | Rationale                                                                                                                                                                                                                                                                                                                                           | Date       |
+| ----------------------------------------------------- | ---------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| CLI installer over npm                                | Distribution model           | [decisions, architecture]               | Better UX for setup wizard, can prompt for config                                                                                                                                                                                                                                                                                                   | 2026-02-04 |
+| Branded skin over rebrand                             | Customization approach       | [decisions, architecture]               | Cursor file name limitations, enables upgradability                                                                                                                                                                                                                                                                                                 | 2026-02-04 |
+| React+TS template only v1                             | Stack templates              | [decisions, stack]                      | Ship one excellent template, prove pattern                                                                                                                                                                                                                                                                                                          | 2026-02-04 |
+| UnJS ecosystem for CLI                                | Tooling stack                | [decisions, stack]                      | citty, consola, unbuild, pathe, @clack/prompts all worked seamlessly. Validated in Phase 1 execution                                                                                                                                                                                                                                                | 2026-02-04 |
+| Adapter factory pattern                               | Multi-tracker support        | [decisions, architecture]               | Type-based switch returns appropriate implementation, decoupling CLI from specific tracker logic                                                                                                                                                                                                                                                    | 2026-02-04 |
+| Security-first documentation                          | Enterprise readiness         | [decisions, security]                   | Created SECURITY.md and SECURITY_QUESTIONNAIRE.md early to establish compliance baseline                                                                                                                                                                                                                                                            | 2026-02-05 |
+| js-yaml over manual YAML                              | Template safety              | [decisions, coding, security]           | Manual string concatenation breaks on special chars (quotes, colons, newlines). js-yaml handles all edge cases                                                                                                                                                                                                                                      | 2026-02-10 |
+| Zod for API response validation                       | Runtime safety               | [decisions, coding, security]           | TypeScript `as` casts provide zero runtime protection. Zod safeParse catches malformed responses before they propagate                                                                                                                                                                                                                              | 2026-02-10 |
+| EJS restriction (escaped only)                        | Template safety              | [decisions, security]                   | Unescaped output (`<%-`) enables XSS; code blocks (`<%`) enable arbitrary code execution. Restrict to `<%=` only                                                                                                                                                                                                                                    | 2026-02-10 |
+| Native mkdir over fs-extra                            | Dependency minimization      | [decisions, performance]                | fs-extra was used only for `ensureDir({recursive:true})`. Node.js/Bun native APIs suffice. 99KB saved, reduced distribution size                                                                                                                                                                                                                    | 2026-02-10 |
+| Lazy loading for optional commands                    | Bundle optimization          | [decisions, performance]                | Heavy optional features (update-notifier 1.0MB) loaded dynamically. Reduces default startup path without sacrificing features. Tradeoff: adds dynamic import wrapper                                                                                                                                                                                | 2026-02-10 |
+| import.meta.main over require.main                    | Bun ESM compatibility        | [decisions, stack, coding]              | Bun ESM files should use `import.meta.main` (boolean) instead of CJS `require.main === module` pattern. Consistent with ESM module system and Bun runtime conventions                                                                                                                                                                               | 2026-02-10 |
+| Hooks on both Claude Code and Cursor                  | Cross-platform enforcement   | [decisions, architecture]               | Both platforms now support hooks with similar semantics (stdin JSON, exit codes, matchers). Different config formats (settings.json vs hooks.json) and event names (PascalCase vs camelCase) but same shell scripts with dual-format parsing                                                                                                        | 2026-02-10 |
+| Metadata registry over class registry for hooks       | Hook architecture            | [decisions, architecture]               | Hooks are shell scripts, not TypeScript classes. Using HookDefinition metadata objects with platform-specific fields (event/cursorEvent) and separate config generators per platform. Cleaner than forcing class pattern on non-class entities                                                                                                      | 2026-02-10 |
+| Transcript file size as context proxy                 | Context monitoring           | [decisions, architecture]               | Claude Code doesn't expose context window usage %. Transcript file size (bytes) is a reasonable proxy with configurable thresholds (100KB/200KB/300KB). Imperfect but functional                                                                                                                                                                    | 2026-02-10 |
+| Two-layer verification (hooks + harness)              | Quality enforcement strategy | [decisions, verification, architecture] | Lightweight hooks (format, typecheck, pre-commit) run frequently. Comprehensive harness (full test suite, integration checks, structured parsing) runs at phase boundaries. Asymmetric cost model: hooks are fast/cheap, harness is thorough/expensive. Harness failures trigger failure-to-fix loops within phase execution. Validated in Phase 12 | 2026-02-10 |
+| Config fallback for optional sections                 | Framework configuration      | [decisions, architecture]               | Harness config is optional in framework projects. Provide DEFAULT_HARNESS_CONFIG constant and fall back to it when harness section is missing from config.json. Enables progressive adoption without requiring config updates                                                                                                                       | 2026-02-10 |
+| Bun.spawn with manual timeout implementation          | Process execution            | [decisions, stack, coding]              | Bun.spawn has no built-in timeout like Node's child_process. Implement via `setTimeout` + `proc.kill()` + `Promise.race`. Also: (1) pass commands as `["sh", "-c", cmd]` string array (not string), (2) stdout/stderr are ReadableStreams — collect via `new Response(stream).text()`, (3) `.exited` is a Promise<number>, not synchronous          | 2026-02-10 |
+| [Phase 13] 5-level complexity with 3 behavioral tiers | Complexity gating            | [decisions, architecture, complexity]   | 5 levels (TRIVIAL-CRITICAL) provide classification precision; 3 tiers (lightweight/standard/thorough) reduce implementation branching. Levels for routing decisions, tiers for behavioral gating. Avoids N-way switches in every gated step                                                                                                         | 2026-02-11 |
+| [Phase 13] Backward-compatible flag aliasing          | CLI flag migration           | [decisions, conventions]                | `--force-complex` retained as alias for `--complexity=COMPLEX`. New `--complexity=<level>` flag added alongside, not replacing, the old flag. Users with existing workflows are not broken                                                                                                                                                          | 2026-02-11 |
+| [Phase 13] Soft enforcement via self-gating rules     | Gating architecture          | [decisions, architecture, complexity]   | Rather than hard-coding complexity conditionals into every agent/skill, a single `alwaysApply: true` rule provides the full matrix. Agents read and self-gate. Reduces implementation surface, enables matrix updates without touching multiple files                                                                                               | 2026-02-11 |
+| [Phase 14] Specification anchoring via additive steps | Verification extension       | [decisions, verification, architecture] | Extended lu-verifier with Steps 2.5 and 9.5 (decimal numbering) rather than renumbering existing steps. PLAN.md content re-injected at verification time via lu-execute-phase Step 7. Chose additive insertion to preserve all existing references, documentation, and backward compatibility                                                       | 2026-02-11 |
+| [Phase 14] Signal taxonomy as audit framework         | Verification audit           | [decisions, verification]               | Created 4-tier reliability taxonomy (T1 Deterministic → T4 Self-Assessment) to systematically classify 38 verification signals. Taxonomy enables gap analysis: if a step relies only on T3/T4 signals, it's a blind spot. Framework reusable for future audit phases                                                                                | 2026-02-11 |
 
 ### Trade-offs Made
 
@@ -100,46 +140,81 @@
 <!-- Problems encountered — recall to prevent repetition -->
 
 - **Hardcoded paths break packageability**: Found 10+ locations with hardcoded PT-/ENG- prefixes, company references, absolute paths — all need abstraction
+  Tags: [pitfalls, coding]
 - **Package version mismatches**: Always verify package versions exist before committing. citty ^0.2.1 doesn't exist (use ^0.2.0), @clack/prompts ^0.10.0 doesn't exist (use ^1.0.0). Check npm registry before specifying versions
+  Tags: [pitfalls, stack]
 - **Undefined values override defaults**: In `mergeBranding()`, undefined values can override schema defaults. Filter out undefined values before merging to preserve defaults
+  Tags: [pitfalls, coding]
 - **Template paths break in bundled context**: `__dirname` doesn't work in bundled executables. Use `import.meta.url` with `fileURLToPath()` and `dirname()` to resolve template directories correctly
+  Tags: [pitfalls, coding, stack]
 - **Missing leading dots on directory names**: Template directories like `.planning` and `.cursor` must include leading dots in their names. Rename template directories to match expected hidden directory pattern
+  Tags: [pitfalls, conventions]
 
 - **js-yaml quoting change propagation**: Switching from manual YAML (always quotes strings) to js-yaml (only quotes when needed) affects ALL downstream tests that assert on frontmatter output. Search for `": "` patterns in test assertions when changing YAML generation
+  Tags: [pitfalls, testing]
 - **Cross-package import failures**: TypeScript resolves `src/shared/` imports from `packages/luca-framework/` at compile time but module resolution fails at runtime. Always use self-contained modules or npm package imports
+  Tags: [pitfalls, architecture, coding]
 - **Pre-existing test failures mask new ones**: The 6 pre-existing failures in executeDoctor/configValidationCheck are caused by process.cwd() mocking issues in concurrent test runs. Track these separately to avoid masking new regressions
+  Tags: [pitfalls, testing, debugging]
 - **Module-level mutable state in CLIs**: Exporting command modules from index creates mutable `createdPaths` at module scope. Reusing the module in tests/scripts causes state to persist across invocations. Always reset mutable state at function entry point, not module load time
+  Tags: [pitfalls, coding, debugging]
 - **Code review false-positives on intentional patterns**: Static analysis flagged 3 high-severity issues in optimized CLI code (guard clauses without explicit else, aggressive string joining, conditional imports). These were intentional architectural choices, not defects. Document intent comments for static analysis tools
+  Tags: [pitfalls, conventions, verification]
 - **Declared but unwired CLI flags**: citty allows declaring `args` without wiring them to the `run()` function body. The `--verbose` flag existed for months without working because `run({ args })` destructuring was missing. Always verify flag wiring by testing CLI flags end-to-end after declaration
+  Tags: [pitfalls, coding, testing]
 - **Non-existent commands in fix suggestions**: Doctor check suggested `--force` and `--repair` flags that don't exist in the CLI. Fix suggestions must reference actual working commands — never suggest flags or subcommands that haven't been implemented
+  Tags: [pitfalls, conventions]
 - **validateBranding skips undefined fields by design**: `validateBranding()` only validates fields that are present (for partial validation support). For installed configs where required branding subfields are mandatory, check field presence separately before calling validateBranding. Validated in Phase 9 (code review HIGH fix)
+  Tags: [pitfalls, coding]
 - **`|| true` swallows exit codes**: `TSC_OUTPUT=$(cmd) || true; TSC_EXIT=$?` always sets `TSC_EXIT=0` because `$?` captures exit code of `true`, not `cmd`. Must use `set +e; TSC_OUTPUT=$(cmd); TSC_EXIT=$?; set -e` instead. Caught by plan checker, would have produced non-functional pre-commit gate
+  Tags: [pitfalls, coding, debugging]
 - **`echo` corrupts JSON on some platforms**: `echo "$INPUT"` can interpret backslash sequences differently across shells. Always use `printf '%s' "$INPUT"` for piping JSON data through shell scripts
+  Tags: [pitfalls, coding]
 - **Shell variable interpolation in bun -e strings**: `${FILE_PATH}` inside `bun -e "..."` JS strings breaks if path contains quotes or backslashes. Pass values via env vars: `HOOK_FILE_PATH="$FILE_PATH" bun -e "const fp = process.env.HOOK_FILE_PATH;"`
+  Tags: [pitfalls, coding, security]
 - **Assuming platform exclusivity for features**: Phase 11 initially assumed hooks were Claude Code-only. Cursor added hooks support with a similar API. Always verify competitor/alternative platform capabilities before declaring features platform-exclusive
+  Tags: [pitfalls, decisions]
 - **Bun.spawn command passing quirk**: `Bun.spawn(cmd)` with a string fails silently. Must pass as `["sh", "-c", cmd]` to execute multi-word commands. Single-word commands like `["ls"]` work, but anything requiring shell interpretation needs the `["sh", "-c", ...]` wrapper. Caught by plan checker before deployment
+  Tags: [pitfalls, stack, coding]
 - **Bun.spawn has no built-in timeout**: Unlike Node.js child_process with `{ timeout }` option, Bun.spawn doesn't support timeouts. Implemented via `setTimeout` → `proc.kill()` → `Promise.race` pattern. Must use this pattern for all subprocess execution with timeout requirements
+  Tags: [pitfalls, stack, coding]
 - **Bun.spawn stdout/stderr are ReadableStreams**: In Node, you get buffer/string directly. In Bun, `.stdout` and `.stderr` are ReadableStreams. Must collect with `new Response(proc.stdout).text()` pattern. This is a footgun because it looks like a string property but needs streaming collection
+  Tags: [pitfalls, stack, coding]
 - **Bun.spawn .exited is async Promise**: `proc.exited` returns `Promise<number>`, not synchronous. Code checking `if (proc.exited === 0)` will fail. Must `await proc.exited` or use it in Promise chains
+  Tags: [pitfalls, stack, coding]
 - **ESLint parser requires --format json**: ESLint by default outputs human-readable format. Parser must inject `--format json` flag into the command to get JSON output that can be parsed. Generic parser can't handle ESLint output without this flag
+  Tags: [pitfalls, coding]
 - **Diverse toolchain output formats require multiple parsers**: tsc outputs to stderr with line:col notation, bun-test outputs to stdout with JSON, eslint outputs JSON, generic tools may output anything. No single parser handles all. Registry pattern enables composition — add parsers incrementally for new tools
+  Tags: [pitfalls, architecture, coding]
 - **Failure-to-fix loops need iteration limits**: Phase 12 runs harness, detects failures, applies fixes (e.g., format with prettier), re-runs harness. Without `maxIterations` limit (set to 3), infinite loops are possible if fix doesn't resolve failure. Always include escape hatch in retry loops
+  Tags: [pitfalls, coding, verification]
 - **[Phase 13] Plan checker catches wave dependency conflicts**: Original Phase 13 plan had plans 13-01 and 13-02 both in Wave 1 despite 13-02 depending on 13-01's types. Plan checker caught this before execution. Always run plan checker when plans have cross-references or shared file targets
+  Tags: [pitfalls, planning, verification]
 - **[Phase 13] Registry entries are class constructors, not instances**: When checking registry entries (e.g., ruleRegistry), `entry.slug` doesn't work because the registry stores constructors, not instantiated objects. Must check by registry key name or instantiate first. Caught during test assertion for rule count validation
+  Tags: [pitfalls, coding, architecture]
 - **[Phase 13] Executor modifying orchestrator-owned files**: Plan 13-04 executor modified STATE.md with formatting changes and a new todo. STATE.md is managed by the orchestrator (Step 8). Had to reset STATE.md since executor changes would be overwritten. Executors should never modify orchestrator-owned files (STATE.md, WORKING.md)
+  Tags: [pitfalls, conventions, planning]
 - **[Phase 13] Wrong assertion counts from stale analysis**: Plan checker flagged wrong rule count assertion (expected 23 rules but actual was 20, becoming 21 after adding the new rule). Stale counts from earlier analysis propagate into plan assertions. Always verify current counts at execution time, not planning time
+  Tags: [pitfalls, testing, verification]
 - **[Phase 14] Verifier goal drift when must-haves derived from ROADMAP only**: lu-verifier derived must-haves from the ROADMAP goal text, not from individual PLAN.md objectives. This means individual plan objectives could be missed if the ROADMAP goal is a higher-level summary. The fix (Steps 2.5 + 9.5) re-injects PLAN.md and checks per-objective achievement. Always anchor verification to the most specific specification available, not a summary
+  Tags: [pitfalls, verification, planning]
 - **[Phase 14] Self-assessment gap between executor and verifier**: Executor writes SUMMARY.md claiming task completion (T4 signal), but nothing validates these claims until the harness/verifier runs at phase boundary. In the gap, the orchestrator trusts T4 signals to proceed. Mitigation: harness runs immediately after wave completion, but the gap still exists within wave execution
+  Tags: [pitfalls, verification]
 
 ### Anti-patterns
 
 <!-- What NOT to do — recall when approaching similar areas -->
 
 - **TypeScript `as` casts for external data**: Never use `as TypeName` to cast data from external APIs, user input, or file reads. Use Zod schemas with `.safeParse()` instead
+  Tags: [pitfalls, coding, security]
 - **Raw JSON.parse for user data**: Never use raw `JSON.parse()` on user-provided or external data without `sanitizeJsonParse()` wrapper
+  Tags: [pitfalls, coding, security]
 - **Shell string interpolation**: Never interpolate user values into shell commands. Use array-form arguments with `--` end-of-options markers
+  Tags: [pitfalls, coding, security]
 - **`|| true` for exit code capture**: Never use `cmd || true; EXIT=$?` — it always yields `EXIT=0`. Use `set +e; cmd; EXIT=$?; set -e` instead
+  Tags: [pitfalls, coding]
 - **`echo` for JSON piping**: Never use `echo "$VAR"` to pipe JSON. Use `printf '%s' "$VAR"` to prevent backslash interpretation
+  Tags: [pitfalls, coding]
 
 ## Preferences
 
@@ -154,14 +229,23 @@
 <!-- Project-specific patterns — recall for consistency -->
 
 - **Enterprise focus**: Prioritize compliance, security, configurability over convenience
+  Tags: [conventions, security]
 - **Notify don't auto-update**: Teams control when they update framework
+  Tags: [conventions, decisions]
 - **Surgical optimization over broad refactoring**: For performance work, target specific bottlenecks (lazy loading, unused dependencies) rather than redesigning systems. CLI is already performant at 23ms startup — avoid gold-plating
+  Tags: [conventions, performance]
 - **Extract repeated values to constants**: Use named constants for validation sets (TEMPLATE_EXTENSIONS), magic strings, and repeated literals. Single point of truth, aids readability and maintenance
+  Tags: [conventions, coding]
 - **Toolchain-agnostic harness**: Verification harness must support multiple tools (tsc, bun-test, eslint, generic). Use parser registry + pluggable architecture. Each tool has different output format — don't try to normalize; embrace diversity with separate parsers
+  Tags: [conventions, verification, architecture]
 - **Layered enforcement cadence**: Hooks run at every edit/commit (fast feedback). Harness runs at phase boundaries (comprehensive validation). This asymmetry enables both speed and thoroughness. Don't run harness on every keystroke; let hooks provide fast feedback
+  Tags: [conventions, verification]
 - **Config progressive adoption**: Optional config sections (like harness) should ship with sensible defaults. Projects without explicit config should still work — fallback to DEFAULT_HARNESS_CONFIG. Enables rollout without forcing all projects to update config immediately
+  Tags: [conventions, architecture]
 - **[Phase 13] Module pattern consistency**: New domain modules (complexity, harness, etc.) follow identical structure: `types.ts` (types + constants + utilities), `defaults.ts` (default configuration), `index.ts` (public API barrel). Maintain this pattern for all new `src/<domain>/` modules
+  Tags: [conventions, architecture]
 - **[Phase 13] Mirror changes across skill variants**: When updating `src/skills/general/lu.skill.ts`, always mirror changes to `src/skills/luca/lu.skill.ts`. The two variants must stay in sync for consistent behavior across branded deployments
+  Tags: [conventions, coding]
 
 ---
 

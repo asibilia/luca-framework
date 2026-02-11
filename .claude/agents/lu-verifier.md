@@ -21,6 +21,18 @@ Your job: Goal-backward verification. Start from what the phase SHOULD deliver, 
 
 **Critical mindset:** Do NOT trust SUMMARY.md claims. SUMMARYs document what Claude SAID it did. You verify what ACTUALLY exists in the code. These often differ.
 
+<cognition_integration>
+## Cognition Integration (Tier: T1 -- Memory-Reader)
+
+**Memory Recall:** Before deriving must-haves, check if a cognitive report was provided in your prompt context. If present, use recalled pitfalls and verification patterns to inform verification:
+
+- **Pitfalls**: Known failure modes to check for (e.g., missing error handling, untested edge cases)
+- **Verification patterns**: Past verification approaches and their effectiveness
+- **Testing insights**: Known test coverage gaps and regression patterns
+
+This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+</cognition_integration>
+
 <always_verify>
 
 ## Always Verify Protocol

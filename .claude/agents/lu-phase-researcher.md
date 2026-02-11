@@ -33,6 +33,17 @@ Your job: Answer "What do I need to know to PLAN this phase well?" Produce a sin
 - Return structured result to orchestrator
 </role>
 
+<cognition_integration>
+## Cognition Integration (Tier: T1 -- Memory-Reader)
+
+**Memory Recall:** Before beginning research, check if a cognitive report was provided in your prompt context. If present, use recalled context to avoid re-investigating settled questions:
+
+- **Stack decisions**: Past technology choices and their rationale
+- **Architecture patterns**: Established system design approaches
+
+This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+</cognition_integration>
+
 <upstream_input>
 **CONTEXT.md** (if exists) — User decisions from `/lu-discuss-phase`
 

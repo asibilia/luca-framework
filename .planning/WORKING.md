@@ -69,3 +69,8 @@ _Session Status_
 - Plan 15-03 Task 3: lu-learner extraction templates updated — Tags field added to pattern, decision, and pitfall templates. tag_assignment section added with vocabulary reference, assignment rules, and common combinations.
 - Plan 15-03 Task 4: lu-cognition generate_report updated with Cognition Profile section, tier-specific output (T0 minimal, T1 context, T2 session tracking, T3 learning instructions). structured_returns and success_criteria updated.
 - Plan 15-03 build:all passes (178 files). Both .claude/ and .cursor/ outputs consistent with source.
+- Plan 15-04 Task 1: Cognition metadata added to all 27 agent .ts files (completed by prior agent, commit 9f164ad).
+- Plan 15-04 Task 2: cognition_integration sections added to 8 agent source files (1 by prior agent, 7 in this session). Tier-appropriate instructions for T0, T1, and T2 agents.
+- Plan 15-04 Task 3: All 107 MEMORY.md entries retroactively tagged with domain tags from 14-tag vocabulary. 84 bullet entries + 23 table rows.
+- Plan 15-04 Task 4: build:all passes (178 files). No new type errors. Verification: 27/27 cognition frontmatter, 16/16 cognition_integration tags, 107 tagged memory entries.
+- Plan 15-04 COMPLETE. 15-04-SUMMARY.md written.
