@@ -38,6 +38,10 @@
 - **Layered verification (hooks + harness)**: Hooks provide lightweight, per-edit/commit verification (format, typecheck, pre-commit gate). Harness provides comprehensive verification at phase boundaries with structured output parsing and failure-to-fix loops. Two layers enforce quality at different frequencies: hooks catch problems immediately, harness catches integration issues. Validated in Phase 12 (6/6 requirements, 6/6 UAT tests)
 - **Parser registry for diverse toolchains**: Structured output parsing across different tools (tsc, bun-test, eslint, generic) requires separate `OutputParser` implementations. Registry pattern (`Record<string, OutputParser>`) follows hookRegistry/ruleRegistry, enabling extensible parser composition. Each parser handles format-specific quirks (JSON flags, field mappings, multiline output). Validated in Phase 12 (4 parsers, 65 tests)
 - **CLI entry point pattern with import.meta.main**: For standalone executables, use `if (import.meta.main) { runCLI(); }` guard instead of CJS `require.main === module`. This is the ESM equivalent and works correctly in Bun. Entry point handler receives process args and manages CLI flow independently from module exports. Validated in Phase 12 (harness runner CLI)
+- **[Phase 13] N-level to M-tier compression**: Map N granular levels to M behavioral tiers (N > M) to preserve classification precision while reducing implementation complexity. Phase 13: 5 complexity levels mapped to 3 behavioral tiers (lightweight, standard, thorough). Code gates on tier, not level, avoiding 5-way branches in every gated location. Pattern: `const as const` for levels + `Record<Level, Tier>` for mapping
+- **[Phase 13] Always-on vs gated step separation**: Explicitly categorize pipeline steps as always-on (cannot be disabled) vs gated (activate at complexity thresholds). Always-on steps form the safety floor; gated steps provide the scaling dimension. Prevents accidental disabling of critical pipeline infrastructure. Validated in Phase 13 (9 always-on, 8 gated steps)
+- **[Phase 13] Self-gating agents via always-apply rules**: Instead of wiring complexity checks into agent code, create an `alwaysApply: true` rule containing the full gating matrix. Agents read the rule and self-gate. This is "soft enforcement" but avoids hard-coded conditionals scattered across many agents. Backward-compatible: when no complexity is set, behavior defaults to pre-gating
+- **[Phase 13] Wave restructuring from dependency analysis**: Plan checker identified dependency conflicts in original wave structure (Wave 1 had plans with mutual dependency). Restructuring from 2 waves to 3 waves resolved the conflict. Always validate wave assignments against inter-plan dependencies before execution
 
 ### Established Conventions
 
@@ -74,6 +78,9 @@
 | Two-layer verification (hooks + harness) | Quality enforcement strategy | Lightweight hooks (format, typecheck, pre-commit) run frequently. Comprehensive harness (full test suite, integration checks, structured parsing) runs at phase boundaries. Asymmetric cost model: hooks are fast/cheap, harness is thorough/expensive. Harness failures trigger failure-to-fix loops within phase execution. Validated in Phase 12 | 2026-02-10 |
 | Config fallback for optional sections | Framework configuration | Harness config is optional in framework projects. Provide DEFAULT_HARNESS_CONFIG constant and fall back to it when harness section is missing from config.json. Enables progressive adoption without requiring config updates | 2026-02-10 |
 | Bun.spawn with manual timeout implementation | Process execution | Bun.spawn has no built-in timeout like Node's child_process. Implement via `setTimeout` + `proc.kill()` + `Promise.race`. Also: (1) pass commands as `["sh", "-c", cmd]` string array (not string), (2) stdout/stderr are ReadableStreams — collect via `new Response(stream).text()`, (3) `.exited` is a Promise<number>, not synchronous | 2026-02-10 |
+| [Phase 13] 5-level complexity with 3 behavioral tiers | Complexity gating | 5 levels (TRIVIAL-CRITICAL) provide classification precision; 3 tiers (lightweight/standard/thorough) reduce implementation branching. Levels for routing decisions, tiers for behavioral gating. Avoids N-way switches in every gated step | 2026-02-11 |
+| [Phase 13] Backward-compatible flag aliasing | CLI flag migration | `--force-complex` retained as alias for `--complexity=COMPLEX`. New `--complexity=<level>` flag added alongside, not replacing, the old flag. Users with existing workflows are not broken | 2026-02-11 |
+| [Phase 13] Soft enforcement via self-gating rules | Gating architecture | Rather than hard-coding complexity conditionals into every agent/skill, a single `alwaysApply: true` rule provides the full matrix. Agents read and self-gate. Reduces implementation surface, enables matrix updates without touching multiple files | 2026-02-11 |
 
 ### Trade-offs Made
 
@@ -112,6 +119,10 @@
 - **ESLint parser requires --format json**: ESLint by default outputs human-readable format. Parser must inject `--format json` flag into the command to get JSON output that can be parsed. Generic parser can't handle ESLint output without this flag
 - **Diverse toolchain output formats require multiple parsers**: tsc outputs to stderr with line:col notation, bun-test outputs to stdout with JSON, eslint outputs JSON, generic tools may output anything. No single parser handles all. Registry pattern enables composition — add parsers incrementally for new tools
 - **Failure-to-fix loops need iteration limits**: Phase 12 runs harness, detects failures, applies fixes (e.g., format with prettier), re-runs harness. Without `maxIterations` limit (set to 3), infinite loops are possible if fix doesn't resolve failure. Always include escape hatch in retry loops
+- **[Phase 13] Plan checker catches wave dependency conflicts**: Original Phase 13 plan had plans 13-01 and 13-02 both in Wave 1 despite 13-02 depending on 13-01's types. Plan checker caught this before execution. Always run plan checker when plans have cross-references or shared file targets
+- **[Phase 13] Registry entries are class constructors, not instances**: When checking registry entries (e.g., ruleRegistry), `entry.slug` doesn't work because the registry stores constructors, not instantiated objects. Must check by registry key name or instantiate first. Caught during test assertion for rule count validation
+- **[Phase 13] Executor modifying orchestrator-owned files**: Plan 13-04 executor modified STATE.md with formatting changes and a new todo. STATE.md is managed by the orchestrator (Step 8). Had to reset STATE.md since executor changes would be overwritten. Executors should never modify orchestrator-owned files (STATE.md, WORKING.md)
+- **[Phase 13] Wrong assertion counts from stale analysis**: Plan checker flagged wrong rule count assertion (expected 23 rules but actual was 20, becoming 21 after adding the new rule). Stale counts from earlier analysis propagate into plan assertions. Always verify current counts at execution time, not planning time
 
 ### Anti-patterns
 
@@ -142,6 +153,8 @@
 - **Toolchain-agnostic harness**: Verification harness must support multiple tools (tsc, bun-test, eslint, generic). Use parser registry + pluggable architecture. Each tool has different output format — don't try to normalize; embrace diversity with separate parsers
 - **Layered enforcement cadence**: Hooks run at every edit/commit (fast feedback). Harness runs at phase boundaries (comprehensive validation). This asymmetry enables both speed and thoroughness. Don't run harness on every keystroke; let hooks provide fast feedback
 - **Config progressive adoption**: Optional config sections (like harness) should ship with sensible defaults. Projects without explicit config should still work — fallback to DEFAULT_HARNESS_CONFIG. Enables rollout without forcing all projects to update config immediately
+- **[Phase 13] Module pattern consistency**: New domain modules (complexity, harness, etc.) follow identical structure: `types.ts` (types + constants + utilities), `defaults.ts` (default configuration), `index.ts` (public API barrel). Maintain this pattern for all new `src/<domain>/` modules
+- **[Phase 13] Mirror changes across skill variants**: When updating `src/skills/general/lu.skill.ts`, always mirror changes to `src/skills/luca/lu.skill.ts`. The two variants must stay in sync for consistent behavior across branded deployments
 
 ---
 
@@ -149,13 +162,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 29 (+3 from Phase 12)
-- Total decisions: 18 (+3 from Phase 12)
-- Total pitfalls: 25 (+8 from Phase 12)
+- Total patterns: 33 (+4 from Phase 13)
+- Total decisions: 21 (+3 from Phase 13)
+- Total pitfalls: 29 (+4 from Phase 13)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 5 (no change)
-- Total preferences: 7 (+3 from Phase 12)
-- Last updated: 2026-02-10
+- Total preferences: 9 (+2 from Phase 13)
+- Last updated: 2026-02-11
 
-*Entries added by: lu-learner (Phase 12)*
-*Last curated: 2026-02-10*
+*Entries added by: lu-learner (Phase 13)*
+*Last curated: 2026-02-11*
