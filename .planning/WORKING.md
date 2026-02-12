@@ -5,9 +5,9 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: /lu-plan-phase 21
+- **Workflow**: /lu-execute-phase 21
 - **Phase**: 21 (Hooks & Runtime)
-- **Plan**: Planning phase — research, plan, verify
+- **Plan**: Execution complete — all 4 plans, 2 waves
 
 ---
 
@@ -19,32 +19,23 @@
 - **Complexity**: COMPLEX
 - **Scope**: src/hooks/, scripts/build-plugin.ts, dist/plugin/hooks/, dist/plugin/scripts/
 
-### Memory Recall
+### Execution Results
 
-- **Patterns loaded**: Source-of-Truth Build Pipeline, Metadata registry for hooks, Dual-format stdin/stdout, Command exclusion set, Plugin compiler via format delegation, Platform-specific path generators
-- **Decisions recalled**: Hooks on both Claude Code and Cursor, Metadata registry over class registry, Two-layer verification
-- **Pitfalls flagged**: Cognition config dual source of truth, || true swallows exit codes, Shell variable interpolation in bun -e, Bun.spawn quirks
+- **Wave 1**: Plans 21-01 (hook registry + build pipeline) and 21-02 (runtime detection) — both complete
+- **Wave 2**: Plans 21-03 (SessionStart hook) and 21-04 (context monitor adaptation) — both complete
+- **Tests**: 877 pass, 0 fail, 6 skip
+- **Build**: 308 files generated across all formats
+- **Requirements**: HOOK-01 through HOOK-05 all satisfied
 
-### Context Decisions (from 21-CONTEXT.md)
+### Learnings Captured
 
-- 5 hooks in plugin (exclude drift-check), plus new session-start
-- SessionStart: validate & repair, full scaffold, auto-detect BRAIN.md
-- Bun availability check with warning (prerequisite, not fallback)
-- Runtime detection via config.json (SessionStart writes, pre-commit-gate reads)
-- Context monitor: WORKING.md size as fallback when transcript_path unavailable
-- Standard Luca config defaults (same as luca init)
-
-### Intuition Flags
-
-- OPPORTUNITY: Hook registry pattern well-established — extend with session-start
-- CAUTION: SessionStart auto-detection adds complexity — keep lightweight
-- RISK: Config.json runtime field coordination between hooks
-
----
-
-## Planning Notes
-
-<!-- Log planning decisions as they're made -->
+- **Pattern**: bash+bun hybrid scripts — bash for file existence/mkdir, bun -e for JSON operations. Single bun invocation per logical block minimizes subprocess overhead.
+- **Pattern**: HOOK\_\* env var prefix for passing data to bun -e blocks. Avoids stdin conflicts when bun reads stdin for other purposes.
+- **Pattern**: read_runtime() shell function duplicated across scripts (not sourced) because hook scripts must be self-contained in plugin context.
+- **Decision**: PLUGIN_EXCLUDED_HOOKS follows COMMAND_EXCLUDED_SKILLS pattern — ReadonlySet<string> with JSDoc documenting exclusion reasons.
+- **Decision**: SessionStart config.json creation vs update — new files get full template, existing files only patch the runtime field (idempotent).
+- **Pitfall**: Executors may encounter git commit permission issues in subagents — break into separate git add + git commit calls.
+- **Pitfall**: Wave 2 executor may see unstaged changes from Wave 1 executor's build outputs — scope commits to only the files relevant to the current plan.
 
 ---
 
@@ -53,11 +44,16 @@
 | Time | Action               | Result                                        |
 | ---- | -------------------- | --------------------------------------------- |
 | --   | Cognitive pre-flight | BRAIN, MEMORY, WORKING, STATE, CONTEXT loaded |
+| --   | Wave 1 execution     | Plans 21-01, 21-02 complete in parallel       |
+| --   | Wave 2 execution     | Plans 21-03, 21-04 complete in parallel       |
+| --   | Verification harness | 877 pass, 0 fail                              |
+| --   | Phase goal verified  | HOOK-01..05 all satisfied                     |
+| --   | State updates        | STATE, ROADMAP, REQUIREMENTS updated          |
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [ ] Learnings extracted
+- [x] Learnings extracted
 - [ ] Ready to clear
