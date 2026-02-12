@@ -92,6 +92,8 @@ export const resultIssueSchema = z.object({
   line: z.number().int().positive().optional(),
   /** Name of the agent that reported the issue */
   source_agent: z.string(),
+  /** Plan number that this issue traces to (for verifier gap attribution) */
+  source_plan: z.string().optional(),
   /** Optional suggestion for how to fix the issue */
   suggestion: z.string().optional(),
 });

@@ -145,6 +145,27 @@
   - **Confidence**: High
   - **Added**: 2026-02-11
 
+### Pattern: Ralph Wiggum Decision-Support Architecture
+
+**Tags:** [iteration, workflow, architecture]
+**Phase:** 17
+**Insight:** The lu-execute-phase skill IS the loop controller; src/iteration/ provides CLI-callable decision-support utilities (convergence, classification, checkpoint, budget). This avoids building a standalone TypeScript loop orchestrator that would be hard to debug and modify. The skill text is the "program" and Claude is the "runtime."
+**When to apply:** Any time iteration behavior needs to change -- modify the skill text, not TypeScript code. TypeScript handles computation (fingerprinting, Jaccard similarity); the skill handles flow control (when to stop, rollback, or proceed).
+
+### Pattern: Multi-Signal Convergence with 2-of-3 Stale Rule
+
+**Tags:** [iteration, verification]
+**Phase:** 17
+**Insight:** No single signal reliably detects "stuck" iterations. Error count can stay constant while the set changes (churn). Fingerprint overlap can be high for coincidental reasons. Artifact delta can be zero when only non-code files change. Requiring 2 of 3 signals to agree prevents false positive convergence declarations.
+**When to apply:** Any convergence or no-progress detection system. The 2-of-N composite pattern generalizes beyond iteration loops.
+
+### Pattern: Error Fingerprint Normalization
+
+**Tags:** [iteration, harness]
+**Phase:** 17
+**Insight:** Normalizing numbers in error messages (replacing digits with "N") before fingerprinting catches "same error, different line number" across iterations. The fingerprint combines file:line:code:normalizedMessage to balance specificity (same file+code) with generality (line numbers change as code is edited).
+**When to apply:** Any error deduplication or tracking across time. The file:line:code triple is the strongest grouping signal.
+
 ### Established Conventions
 
 <!-- Conventions to maintain consistency -->
@@ -195,6 +216,24 @@
 | [Phase 16] Advisory budget, not enforced               | Token budget allocation      | [decisions, architecture]               | Token budget allocation is documented as advisory guidance (25-50% output reservation) rather than hard enforcement. Enforcement requires runtime token counting infrastructure that does not exist yet. Avoids premature optimization                                                                                                                                                                                                             | 2026-02-11 |
 | [Phase 16] Keep all findings, tag with source          | Multi-reviewer aggregation   | [decisions, architecture]               | When multiple reviewers find overlapping issues, keep all findings tagged with source_agent rather than auto-resolving conflicts. Auto-resolution risks discarding valid but differently-phrased findings                                                                                                                                                                                                                                          | 2026-02-11 |
 | [Phase 16] Context assembly in orchestrator, not agent | Context responsibility       | [decisions, architecture]               | Clean separation where agents define WHAT context they need (frontmatter config) but the orchestrator assembles HOW to provide it (document assembly). Agents never load their own context documents. Keeps agents focused on their task domain                                                                                                                                                                                                    | 2026-02-11 |
+
+### Decision: Verify Loop Limits Lower Than Harness Loop
+
+**Tags:** [iteration, complexity]
+**Phase:** 17
+**Context:** Phase 17 added verifyFixIterations alongside harnessFixIterations in ComplexityGate.
+**Choice:** Verify limits are intentionally 40-60% lower than harness limits (e.g., COMPLEX: harness=3, verify=2; CRITICAL: harness=5, verify=3).
+**Rationale:** Semantic gaps (verifier Loop B) are harder and more expensive to auto-fix than mechanical failures (harness Loop A). Each verify iteration re-runs the full verifier + targeted executor, consuming significantly more tokens. If the verifier still finds gaps after 2-3 tries, human intervention is more effective than burning budget.
+**Alternatives rejected:** Same limits for both (too expensive for verify), verify = harness/2 (too aggressive for TRIVIAL/SIMPLE).
+
+### Decision: Iteration Count as Budget Proxy
+
+**Tags:** [iteration, workflow]
+**Phase:** 17
+**Context:** Claude Code has no API for querying remaining token budget or exact consumption.
+**Choice:** Use iteration count divided by max iterations as the cost proxy. Soft stop at 80%.
+**Rationale:** Without token counting, iterations-completed/iterations-allowed is the best available approximation. The 80% threshold leaves 20% headroom for the final iteration to complete cleanly. More sophisticated duration-based estimation can be added later without changing the BudgetState schema.
+**Alternatives rejected:** Duration-based estimation (unreliable, varies by task complexity), no budget enforcement (risks hitting hard limits mid-iteration).
 
 ### Trade-offs Made
 
@@ -312,6 +351,22 @@
   - **Confidence**: High
   - **Added**: 2026-02-11
 
+### Pitfall: Git Detached HEAD from git checkout <tag>
+
+**Tags:** [iteration, checkpoint]
+**Phase:** 17
+**Issue:** Using `git checkout <tag>` for rollback puts the repository in detached HEAD state. Subsequent commits would be on no branch, easily lost.
+**Solution:** Use `git reset --hard <tag>` instead, which moves the current branch pointer back to the tagged commit. This keeps the branch association intact and avoids the detached HEAD problem.
+**Impact:** Critical -- would break all subsequent git operations (commits, pushes) if not caught.
+
+### Pitfall: Convergence False Positive on First Iteration
+
+**Tags:** [iteration, verification]
+**Phase:** 17
+**Issue:** Convergence detection comparing current errors to "previous" errors on the first iteration would always show perfect overlap (both empty or current vs empty = 0.0 overlap), producing misleading signals.
+**Solution:** Skip convergence check on iteration 1. Only assess convergence from iteration 2 onward, when a meaningful previous exists.
+**Impact:** Medium -- would cause premature loop termination or incorrect stale counts if not handled.
+
 ### Anti-patterns
 
 <!-- What NOT to do — recall when approaching similar areas -->
@@ -364,13 +419,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 45 (+5 from Phase 16)
-- Total decisions: 29 (+3 from Phase 16)
-- Total pitfalls: 38 (+3 from Phase 16)
+- Total patterns: 48 (+3 from Phase 17)
+- Total decisions: 31 (+2 from Phase 17)
+- Total pitfalls: 40 (+2 from Phase 17)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 5 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-11
 
-_Entries added by: lu-executor (Phase 16, Plan 16-05)_
+_Entries added by: lu-executor (Phase 17, Plan 17-06)_
 _Last curated: 2026-02-11_

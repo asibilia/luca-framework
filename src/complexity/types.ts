@@ -72,8 +72,10 @@ export interface ComplexityGate {
   discussion: StepActivation;
   /** Plan verification iterations (lu-plan-checker loop count) */
   planVerificationIterations: number;
-  /** Harness fix iterations (failure-to-fix loop max) */
+  /** Harness fix iterations (Loop A: mechanical failure fix loop max) */
   harnessFixIterations: number;
+  /** Verify fix iterations (Loop B: semantic gap fix loop max) */
+  verifyFixIterations: number;
   /** Verification mode for lu-verifier */
   verificationMode: VerificationMode;
   /** Code review agents to spawn (by agent name) */

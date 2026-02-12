@@ -49,11 +49,41 @@
     "maxFixIterations": 3,
     "failFast": false,
     "checks": [
-      { "name": "test", "command": "bun test", "enabled": true, "timeout": 120, "parser": "bun-test" },
-      { "name": "typecheck", "command": "bunx --bun tsc --noEmit", "enabled": true, "timeout": 60, "parser": "tsc" },
-      { "name": "lint", "command": "bunx --bun eslint . --format json", "enabled": false, "timeout": 60, "parser": "eslint" },
-      { "name": "build", "command": "bun run build:all", "enabled": true, "timeout": 120, "parser": "generic" }
+      {
+        "name": "test",
+        "command": "bun test",
+        "enabled": true,
+        "timeout": 120,
+        "parser": "bun-test"
+      },
+      {
+        "name": "typecheck",
+        "command": "bunx --bun tsc --noEmit",
+        "enabled": true,
+        "timeout": 60,
+        "parser": "tsc"
+      },
+      {
+        "name": "lint",
+        "command": "bunx --bun eslint . --format json",
+        "enabled": false,
+        "timeout": 60,
+        "parser": "eslint"
+      },
+      {
+        "name": "build",
+        "command": "bun run build:all",
+        "enabled": true,
+        "timeout": 120,
+        "parser": "generic"
+      }
     ]
+  },
+  "iteration": {
+    "default_mode": "afk",
+    "soft_stop_percent": 80,
+    "stale_threshold": 2,
+    "promotion_threshold": 3
   },
   "complexity": {
     "defaultLevel": "auto",
@@ -64,6 +94,7 @@
         "discussion": "skip",
         "planVerificationIterations": 0,
         "harnessFixIterations": 1,
+        "verifyFixIterations": 0,
         "verificationMode": "quick",
         "codeReviewAgents": [],
         "uat": "skip",
@@ -75,6 +106,7 @@
         "discussion": "skip",
         "planVerificationIterations": 0,
         "harnessFixIterations": 2,
+        "verifyFixIterations": 1,
         "verificationMode": "quick",
         "codeReviewAgents": [],
         "uat": "skip",
@@ -86,6 +118,7 @@
         "discussion": "optional",
         "planVerificationIterations": 1,
         "harnessFixIterations": 3,
+        "verifyFixIterations": 1,
         "verificationMode": "standard",
         "codeReviewAgents": ["dx-advocate", "code-simplifier"],
         "uat": "optional",
@@ -97,8 +130,14 @@
         "discussion": "run",
         "planVerificationIterations": 2,
         "harnessFixIterations": 3,
+        "verifyFixIterations": 2,
         "verificationMode": "full",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier", "code-architect", "tailwind-auditor"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier",
+          "code-architect",
+          "tailwind-auditor"
+        ],
         "uat": "required",
         "learningCapture": "full"
       },
@@ -108,8 +147,15 @@
         "discussion": "required",
         "planVerificationIterations": 3,
         "harnessFixIterations": 5,
+        "verifyFixIterations": 3,
         "verificationMode": "full+human",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier", "code-architect", "tailwind-auditor", "security-auditor"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier",
+          "code-architect",
+          "tailwind-auditor",
+          "security-auditor"
+        ],
         "uat": "required+thorough",
         "learningCapture": "full+debrief"
       }

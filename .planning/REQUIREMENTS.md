@@ -38,13 +38,13 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 
 ### Iterative Agent Loops — Ralph Wiggum (Phase 17)
 
-- [ ] **ITER-01**: Ralph Wiggum loop controller — external script drives iteration using Stop hook, not LLM self-assessment of completion
-- [ ] **ITER-02**: Convergence detection — loop detects when iterations stop making progress (same errors repeated, no delta between runs)
-- [ ] **ITER-03**: Hard iteration limits configurable per complexity level (default: 3 for standard, 5 for complex, 10 for critical)
-- [ ] **ITER-04**: Checkpoint/rollback — each iteration saves state so failed iterations can be rolled back without losing prior progress
-- [ ] **ITER-05**: Error classification — failures classified as transient (retry), correctable (retry with feedback), or permanent (escalate)
-- [ ] **ITER-06**: Cost budget enforcement — iteration loops respect per-task token budget and halt when budget exhausted
-- [ ] **ITER-07**: Both HITL (human-in-the-loop) and AFK (autonomous) modes supported with configurable approval gates
+- [x] **ITER-01**: Ralph Wiggum loop controller — decision-support utilities in src/iteration/ drive iteration, skill orchestrates loop protocol
+- [x] **ITER-02**: Convergence detection — 2-of-3 stale rule with fingerprint overlap, error count delta, and artifact change delta
+- [x] **ITER-03**: Hard iteration limits configurable per complexity level via ComplexityGate (harnessFixIterations + verifyFixIterations)
+- [x] **ITER-04**: Checkpoint/rollback — each iteration saves lightweight git tag + JSON metadata, rollback via git reset --hard
+- [x] **ITER-05**: Error classification — rule-based transient/correctable/permanent with source patterns and 3-iteration promotion
+- [x] **ITER-06**: Cost budget enforcement — iteration count proxy with 80% soft stop threshold
+- [x] **ITER-07**: Both HITL (human-in-the-loop) and AFK (autonomous) modes with 4-choice decision menu and config.json default_mode
 
 ### Usage-Aware Sprint Planner (Phase 18)
 
@@ -88,13 +88,13 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 | CTXM-04     | Phase 16 (Context-Modular)   | High     | ✅ Done | progressive-context-disclosure.md             |
 | CTXM-05     | Phase 16 (Context-Modular)   | Medium   | ✅ Done | writer-reviewer-separation.md                 |
 | CTXM-06     | Phase 16 (Context-Modular)   | Medium   | ✅ Done | context-modularity-subagent-architecture.md   |
-| ITER-01     | Phase 17 (Iterative Loops)   | Critical | Pending | ralph-wiggum-iterative-agent-loops.md         |
-| ITER-02     | Phase 17 (Iterative Loops)   | Critical | Pending | ralph-wiggum-iterative-agent-loops.md         |
-| ITER-03     | Phase 17 (Iterative Loops)   | High     | Pending | ralph-wiggum-iterative-agent-loops.md         |
-| ITER-04     | Phase 17 (Iterative Loops)   | High     | Pending | checkpoint-and-rollback-system.md             |
-| ITER-05     | Phase 17 (Iterative Loops)   | High     | Pending | ralph-wiggum-iterative-agent-loops.md         |
-| ITER-06     | Phase 17 (Iterative Loops)   | Medium   | Pending | ralph-wiggum-iterative-agent-loops.md         |
-| ITER-07     | Phase 17 (Iterative Loops)   | Medium   | Pending | ralph-wiggum-iterative-agent-loops.md         |
+| ITER-01     | Phase 17 (Iterative Loops)   | Critical | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
+| ITER-02     | Phase 17 (Iterative Loops)   | Critical | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
+| ITER-03     | Phase 17 (Iterative Loops)   | High     | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
+| ITER-04     | Phase 17 (Iterative Loops)   | High     | ✅ Done | checkpoint-and-rollback-system.md             |
+| ITER-05     | Phase 17 (Iterative Loops)   | High     | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
+| ITER-06     | Phase 17 (Iterative Loops)   | Medium   | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
+| ITER-07     | Phase 17 (Iterative Loops)   | Medium   | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
 | PLAN-01     | Phase 18 (Sprint Planner)    | Critical | Pending | usage-aware-sprint-planner.md                 |
 | PLAN-02     | Phase 18 (Sprint Planner)    | Critical | Pending | usage-aware-sprint-planner.md                 |
 | PLAN-03     | Phase 18 (Sprint Planner)    | High     | Pending | usage-aware-sprint-planner.md                 |

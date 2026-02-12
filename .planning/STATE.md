@@ -3,19 +3,19 @@
 ## Current Position
 
 - **Current Milestone:** v1.2.0 — Intelligent Agent Engine
-- **Current Phase:** Phase 16 (Context-Modular Sub-Agent Architecture)
-- **Status:** complete
+- **Current Phase:** Phase 18 (Usage-Aware Sprint Planner)
+- **Status:** pending
 - **Last Updated:** 2026-02-11
-- **Last Activity:** Phase 16 complete — 5 plans, 4 waves, 6 requirements (CTXM-01..06) all satisfied
+- **Last Activity:** Phase 17 complete — 6 plans, 4 waves, 7 requirements (ITER-01..07) all satisfied
 
 ## Progress
 
 ```
-v1.2.0: IN PROGRESS (3/5 phases complete)
+v1.2.0: IN PROGRESS (4/5 phases complete)
   Phase 14 (Exec & Verify Audit):    ✅ complete — AUDIT-01..05 (all satisfied)
   Phase 15 (Cognition Audit):        ✅ complete — COGN-01..05 (all satisfied)
   Phase 16 (Context-Modular):        ✅ complete — CTXM-01..06 (all satisfied)
-  Phase 17 (Ralph Wiggum Loops):     pending  — ITER-01..07
+  Phase 17 (Ralph Wiggum Loops):     ✅ complete — ITER-01..07 (all satisfied)
   Phase 18 (Sprint Planner):         pending  — PLAN-01..07
 ```
 
@@ -106,13 +106,13 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Session Continuity
 
 - **Last session:** 2026-02-11
-- **Stopped at:** Phase 16 complete — all 6 CTXM requirements satisfied
+- **Stopped at:** Phase 17 complete — all 7 ITER requirements satisfied
 - **Resume file:** None
 
 ## Next Actions
 
-1. Begin Phase 17 planning (Iterative Agent Loops — Ralph Wiggum)
-2. `/lu` — Plan Phase 17 with ITER-01..07 requirements
+1. Begin Phase 18 planning (Usage-Aware Sprint Planner)
+2. `/lu` — Plan Phase 18 with PLAN-01..07 requirements
 
 ---
 

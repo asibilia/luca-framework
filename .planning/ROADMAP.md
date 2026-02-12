@@ -8,10 +8,10 @@
 
 ## v1.2.0 — Intelligent Agent Engine
 
-**Status:** In Progress (3/5 phases complete)
+**Status:** In Progress (4/5 phases complete)
 **Theme:** Make agents smarter — audit, modularize, iterate, plan
 **Phases:** 14-18
-**Requirements:** 29 — 22 done, 7 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
+**Requirements:** 29 — 29 done, 0 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
 **Approach:** Audit-first — audit current systems before building new features
 
 ### Phase 14: Execution & Verification Audit ✅
@@ -72,21 +72,25 @@
 
 ---
 
-### Phase 17: Iterative Agent Loops (Ralph Wiggum)
+### Phase 17: Iterative Agent Loops (Ralph Wiggum) ✅
 
-**Goal:** Implement the Ralph Wiggum pattern — externally-controlled iteration loops driven by Stop hooks, not LLM self-assessment. Add convergence detection, checkpoint/rollback, error classification, cost budgets, and both HITL and AFK modes.
+**Goal:** Implement the Ralph Wiggum pattern -- externally-controlled iteration loops driven by decision-support utilities, not LLM self-assessment. Add convergence detection, checkpoint/rollback, error classification, cost budgets, and both HITL and AFK modes.
 **Depends on:** Phase 16 (sub-agent architecture provides the execution substrate)
-**Requirements:** ITER-01 through ITER-07
+**Requirements:** ITER-01 through ITER-07 (all satisfied)
+**Plans:** 6 plans, 4 waves -- all complete
 
-**Scope:**
+**Delivered:**
 
-- External loop controller via Stop hook (not self-assessment)
-- Convergence detection (no-progress heuristic)
-- Configurable iteration limits per complexity level
-- Checkpoint/rollback per iteration
-- Error classification (transient/correctable/permanent)
-- Cost budget enforcement per loop
-- HITL and AFK modes
+- `src/iteration/` module (types, convergence, classifier, checkpoint, budget)
+- Two-loop pipeline: Loop A (harness mechanical) + Loop B (verifier semantic)
+- Multi-signal convergence detection (2-of-3 stale rule with fingerprinting)
+- Rule-based error classification with 3-iteration promotion to permanent
+- Git tag checkpoints + JSON metadata with full-iteration rollback
+- 80% soft stop budget enforcement using iteration count proxy
+- HITL/AFK mode support with 4-choice decision menu
+- verifyFixIterations added to ComplexityGate (asymmetric, lower than harness)
+- source_plan gap attribution in verifier and result envelope
+- lu-execute-phase skill updated with Loop A (Step 6.6) and Loop B (Step 7.5)
 
 ---
 
@@ -126,4 +130,4 @@ All phases are sequential — each builds on findings/infrastructure from the pr
 
 ---
 
-_Roadmap updated: 2026-02-11 (Phase 16 complete)_
+_Roadmap updated: 2026-02-11 (Phase 17 complete)_
