@@ -1,19 +1,18 @@
 /**
- * code-typecheck Skill - Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript.
+ * code-typecheck Skill - Run TypeScript type checking on the codebase or a specific workspace.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the code-typecheck skill configuration
 const codeTypecheckConfig: SkillConfig = {
   frontmatter: {
-    name: 'code-typecheck',
+    name: "code-typecheck",
     description: `Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript.`,
-    
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Code Typecheck
 
@@ -32,9 +31,9 @@ Run TypeScript type checking on the codebase.
 - Turborepo parallelizes type checking across all workspaces
 - Use specific workspace path to check only that package
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class CodeTypecheckSkill extends BaseSkillImpl {
