@@ -769,9 +769,21 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
   );
   console.log("  Generated .claude-plugin/marketplace.json");
 
+  // --- README ---
+
+  const readmeContent = generateReadme(
+    skillNames,
+    agentNames,
+    commandCount,
+    hookCount,
+  );
+
+  await Bun.write(path.join(pluginDir, "README.md"), readmeContent);
+  console.log("  Generated README.md");
+
   // --- Summary ---
 
-  const totalFiles = agentCount + skillCount + commandCount + hookCount + 3; // +3 for hooks.json, plugin.json, and marketplace.json
+  const totalFiles = agentCount + skillCount + commandCount + hookCount + 4; // +4 for hooks.json, plugin.json, marketplace.json, and README.md
 
   console.log("\n=== Plugin Build Summary ===");
   console.log(`Agents:   ${agentCount}`);
@@ -779,6 +791,7 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
   console.log(`Commands: ${commandCount}`);
   console.log(`Hooks:    ${hookCount}`);
   console.log(`Manifests:   plugin.json + marketplace.json`);
+  console.log(`Docs:        README.md`);
   console.log(`Total:    ${totalFiles} files`);
   console.log(`Output:   dist/plugin/`);
 
