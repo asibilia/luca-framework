@@ -32,10 +32,8 @@ import { ClaudeCompiler } from "../src/compilers/claude.compiler";
 import { PluginCompiler } from "../src/compilers/plugin.compiler";
 import { generatePluginManifest } from "../src/compilers/plugin.types";
 import {
-  COMMAND_EXCLUDED_SKILLS,
   PLUGIN_EXCLUDED_HOOKS,
   generatePluginHooksConfig,
-  generateCommandMarkdown,
   readVersion,
   generateReadme,
 } from "./build-shared";
@@ -530,43 +528,6 @@ describe("Plugin Output Freshness", () => {
     expect(drifted).toEqual([]);
   });
 
-  test("plugin command outputs match source", () => {
-    const drifted: string[] = [];
-
-    // Registry commands (excluding non-command skills)
-    for (const [name, SkillClass] of Object.entries(skillRegistry)) {
-      if (COMMAND_EXCLUDED_SKILLS.has(name)) continue;
-      const instance = new (SkillClass as new () => BaseSkill)();
-      const expected = generateCommandMarkdown(name, instance.description);
-      const relPath = `dist/plugin/commands/${name}.md`;
-      const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
-        drifted.push(`${relPath}: missing`);
-      }
-    }
-
-    // Lu command
-    const luSkill = new LuSkill();
-    const expected = generateCommandMarkdown("lu", luSkill.description);
-    const relPath = "dist/plugin/commands/lu.md";
-    const absPath = path.join(ROOT, relPath);
-    try {
-      const actual = require("fs").readFileSync(absPath, "utf8");
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    } catch {
-      drifted.push(`${relPath}: missing`);
-    }
-
-    expect(drifted).toEqual([]);
-  });
-
   test("plugin hook scripts match source", () => {
     const drifted: string[] = [];
 
@@ -696,18 +657,11 @@ describe("Plugin Output Freshness", () => {
       "lu-executor",
       "lu-planner",
     ];
-    const pluginCommandNames = [
-      ...Object.keys(skillRegistry).filter(
-        (s) => !COMMAND_EXCLUDED_SKILLS.has(s),
-      ),
-      "lu",
-    ];
     const pluginHookNames = Object.keys(pluginHookRegistry);
 
     const expectedReadme = generateReadme(
       pluginSkillNames,
       pluginAgentNames,
-      pluginCommandNames.length,
       pluginHookNames.length,
     );
 
@@ -729,12 +683,6 @@ describe("Plugin No Orphan Outputs", () => {
     "lu-planner",
   ]);
   const validPluginSkillNames = new Set([...Object.keys(skillRegistry), "lu"]);
-  const validPluginCommandNames = new Set([
-    ...Object.keys(skillRegistry).filter(
-      (s) => !COMMAND_EXCLUDED_SKILLS.has(s),
-    ),
-    "lu",
-  ]);
   const pluginHookRegistry = Object.fromEntries(
     Object.entries(hookRegistry).filter(
       ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
@@ -759,15 +707,6 @@ describe("Plugin No Orphan Outputs", () => {
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     const orphans = dirs.filter((d) => !validPluginSkillNames.has(d));
-    expect(orphans).toEqual([]);
-  });
-
-  test("no orphan command outputs in dist/plugin/commands/", () => {
-    const dir = path.join(ROOT, "dist", "plugin", "commands");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
-    const orphans = files.filter(
-      (f) => !validPluginCommandNames.has(f.replace(".md", "")),
-    );
     expect(orphans).toEqual([]);
   });
 

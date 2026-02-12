@@ -36,10 +36,8 @@ import { ClaudeCompiler } from "../src/compilers/claude.compiler";
 import { PluginCompiler } from "../src/compilers/plugin.compiler";
 import { generatePluginManifest } from "../src/compilers/plugin.types";
 import {
-  COMMAND_EXCLUDED_SKILLS,
   PLUGIN_EXCLUDED_HOOKS,
   generatePluginHooksConfig,
-  generateCommandMarkdown,
   readVersion,
   generateReadme,
 } from "./build-shared";
@@ -207,22 +205,6 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
     pluginCompiler.compileSkill(luSkillPlugin, "CLAUDE"),
   );
 
-  // --- Plugin commands ---
-  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
-    if (COMMAND_EXCLUDED_SKILLS.has(skillName)) continue;
-    const instance = new (SkillClass as new () => BaseSkill)();
-    generated.set(
-      `dist/plugin/commands/${skillName}.md`,
-      generateCommandMarkdown(skillName, instance.description),
-    );
-  }
-
-  // Lu command
-  generated.set(
-    "dist/plugin/commands/lu.md",
-    generateCommandMarkdown("lu", luSkillPlugin.description),
-  );
-
   // --- Plugin hooks ---
   const pluginHookRegistry = Object.fromEntries(
     Object.entries(hookRegistry).filter(
@@ -254,12 +236,6 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
     "lu-planner",
   ];
   const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
-  const pluginCommandNames = [
-    ...Object.keys(skillRegistry).filter(
-      (s) => !COMMAND_EXCLUDED_SKILLS.has(s),
-    ),
-    "lu",
-  ];
   const pluginHookNames = Object.keys(pluginHookRegistry);
 
   const manifest = generatePluginManifest({
@@ -311,7 +287,6 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
   const readmeContent = generateReadme(
     pluginSkillNames,
     pluginAgentNames,
-    pluginCommandNames.length,
     pluginHookNames.length,
   );
   generated.set("dist/plugin/README.md", readmeContent);

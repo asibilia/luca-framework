@@ -5,8 +5,8 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: /lu-execute-phase 22
-- **Phase**: 22 (Distribution & Marketplace)
+- **Workflow**: /lu-plan-phase 23
+- **Phase**: 23 (Integration Testing)
 - **Complexity**: COMPLEX
 - **Branch**: 7--claude-code-plugin-distribution
 - **Issue**: #7
@@ -15,38 +15,21 @@
 
 ## Memory Recall
 
-- **Patterns**: Source-of-Truth Build Pipeline (Phase 17), Exported build function + import.meta.main guard (Phase 19), Platform-specific path generators from shared registry (Phase 19), Command exclusion set over opt-in flags (Phase 20)
-- **Decisions**: Third compiler target (not replacing .claude/), GitHub marketplace over npm, Plugin name "luca", 38 commands from 44 skills (exclusion set)
-- **Pitfalls**: Editing .claude/ or .cursor/ directly causes drift, Dual source of truth between .agent.ts and compiled .md, Background executor permission loops
+- **Patterns**: Source-of-Truth Build Pipeline (Phase 17), Shared build module for single source of truth (Phase 22), Checksum-based before/after verification (Phase 22), Plugin compiler via format delegation (Phase 19), Layered verification (hooks + harness) (Phase 12)
+- **Decisions**: Third compiler target (not replacing .claude/), GitHub marketplace over npm, Marketplace manifest follows Anthropic reference (Phase 22), Inline plugin generation over separate build-plugin.ts (Phase 22)
+- **Pitfalls**: Marketplace manifest duplication between build and drift check (Phase 22), Editing .claude/ or .cursor/ directly causes drift, Wrong assertion counts from stale analysis (Phase 13)
 
-## Execution Context
+## Planning Notes
 
-- 4 plans across 3 waves
-- Wave 1: 22-01 (marketplace.json) → 22-02 (README) — sequential
-- Wave 2: 22-03 (build consolidation) — depends on 22-01 + 22-02
-- Wave 3: 22-04 (drift detection) — depends on 22-03
-- All plans verified by lu-plan-checker (2 iterations, passed)
-
----
-
-## Session Log
-
-| Time | Action                | Result                                                        |
-| ---- | --------------------- | ------------------------------------------------------------- |
-| --   | Cognitive pre-flight  | BRAIN, MEMORY, WORKING, STATE loaded                          |
-| --   | Environment validated | Branch 7--, Issue #7, 4 plans, 3 waves                        |
-| --   | Wave 1: 22-01         | marketplace.json generated, 877 tests                         |
-| --   | Wave 1: 22-02         | README.md generated, 877 tests                                |
-| --   | Wave 2: 22-03         | Build consolidated, 877 tests, SHA-256 verified               |
-| --   | Wave 3: 22-04         | Drift detection extended, 889 tests (12 new)                  |
-| --   | Harness               | test PASS, tsc PASS (pre-existing only), build PASS           |
-| --   | Verification          | 14/14 checks PASS                                             |
-| --   | Code review           | architect APPROVE, dx 3 suggestions, simplifier 6 suggestions |
+- Phase 23 has 3 plans across 2 waves (from ROADMAP)
+- CONTEXT.md decisions: spec-first no duplication, static validation only, structural + schema depth
+- Existing drift tests already cover file existence, content parity, orphan detection
+- Phase 23 adds spec-conformance validation layer on top
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [x] Learnings extracted
+- [ ] Learnings extracted
 - [ ] Ready to clear

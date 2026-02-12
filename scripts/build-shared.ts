@@ -9,33 +9,15 @@
  * - check-drift.test.ts (drift detection tests)
  *
  * Exports:
- * - COMMAND_EXCLUDED_SKILLS: Skills that don't generate slash commands
  * - PLUGIN_EXCLUDED_HOOKS: Hooks excluded from plugin packaging
  * - SKILL_CATEGORIES: Skill-to-category mapping for README generation
  * - AGENT_CATEGORIES: Agent-to-category mapping for README generation
  * - generatePluginHooksConfig(): Plugin hooks.json builder
- * - generateCommandMarkdown(): Command .md file builder
  * - readVersion(): Package version reader
  * - generateReadme(): Plugin README.md builder
  */
 import type { HookDefinition } from "../src/hooks/index";
 import path from "path";
-
-/**
- * Skills excluded from command generation.
- *
- * These skills are not exposed as slash commands because they are either:
- * - Internal orchestrator redirects (workflow-start)
- * - Reference/guidance skills for auto-invocation only (rule-* skills)
- */
-export const COMMAND_EXCLUDED_SKILLS: ReadonlySet<string> = new Set([
-  "workflow-start",
-  "rule-lu-workflow",
-  "rule-complexity-gating",
-  "rule-harness-verification",
-  "rule-hook-skill-boundary",
-  "rule-file-naming",
-]);
 
 /**
  * Hooks excluded from plugin builds.
@@ -200,25 +182,6 @@ export function generatePluginHooksConfig(
 }
 
 /**
- * Generate a command markdown file for a skill.
- *
- * Commands are lightweight markdown files that register a skill as a
- * user-invokable slash command. The file contains YAML frontmatter with
- * the command description, which Claude Code uses for command listing
- * and discovery.
- *
- * @param skillName - The skill name (used as the command name)
- * @param description - The skill description (used as command description)
- * @returns Markdown string for the command file
- */
-export function generateCommandMarkdown(
-  skillName: string,
-  description: string,
-): string {
-  return `---\ndescription: ${description}\n---\n`;
-}
-
-/**
  * Read the package version from the luca-framework package.
  *
  * Falls back to the root package.json, then to "0.0.1" if no version
@@ -264,14 +227,12 @@ export async function readVersion(): Promise<string> {
  *
  * @param skillNames - Array of skill names included in the plugin
  * @param agentNames - Array of agent names included in the plugin
- * @param commandCount - Number of commands generated
  * @param hookCount - Number of hooks generated
  * @returns Markdown string for the README.md file
  */
 export function generateReadme(
   skillNames: string[],
   agentNames: string[],
-  commandCount: number,
   hookCount: number,
 ): string {
   // Count skills by category
@@ -387,10 +348,6 @@ ${skillLines}
 ### Agents (${agentNames.length} total)
 
 ${agentLines}
-
-### Commands (${commandCount} total)
-
-All non-reference skills are available as slash commands.
 
 ### Hooks (${hookCount} active)
 
