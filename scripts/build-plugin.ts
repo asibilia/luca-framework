@@ -92,6 +92,243 @@ const PLUGIN_EXCLUDED_HOOKS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Skill category assignments for README generation.
+ *
+ * Maps skill names to high-level categories for the "What's Included"
+ * section. Categories are human-curated; counts auto-update from
+ * registry sizes. Skills not in this map are counted as "Other".
+ */
+const SKILL_CATEGORIES: Record<string, string> = {
+  // Workflow
+  lu: "Workflow",
+  "lu-execute-phase": "Workflow",
+  "lu-plan-phase": "Workflow",
+  "lu-discuss-phase": "Workflow",
+  "lu-research-phase": "Workflow",
+  "lu-verify-work": "Workflow",
+  "lu-quick": "Workflow",
+  "lu-choose": "Workflow",
+  "workflow-start": "Workflow",
+  // Git
+  "git-commit": "Git",
+  "git-feature": "Git",
+  "git-pr": "Git",
+  // Project Management
+  "lu-new-project": "Project Management",
+  "lu-new-milestone": "Project Management",
+  "lu-complete-milestone": "Project Management",
+  "lu-audit-milestone": "Project Management",
+  "lu-add-phase": "Project Management",
+  "lu-insert-phase": "Project Management",
+  "lu-remove-phase": "Project Management",
+  "lu-plan-milestone-gaps": "Project Management",
+  "lu-plan-session": "Project Management",
+  "lu-progress": "Project Management",
+  "lu-add-todo": "Project Management",
+  "lu-check-todos": "Project Management",
+  "lu-list-phase-assumptions": "Project Management",
+  // Code Quality
+  "code-lint": "Code Quality",
+  "code-typecheck": "Code Quality",
+  "test-run": "Code Quality",
+  "qa-consolidate": "Code Quality",
+  // Collaboration
+  "jira-issue": "Collaboration",
+  "lu-address-pr": "Collaboration",
+  // Configuration
+  "lu-settings": "Configuration",
+  "lu-set-profile": "Configuration",
+  "lu-help": "Configuration",
+  "lu-update": "Configuration",
+  "lu-map-codebase": "Configuration",
+  // Session Management
+  "lu-pause-work": "Session",
+  "lu-resume-work": "Session",
+  // Debug
+  "lu-debug": "Debug",
+  // Reference (auto-invoked rules)
+  "rule-lu-workflow": "Reference",
+  "rule-complexity-gating": "Reference",
+  "rule-harness-verification": "Reference",
+  "rule-hook-skill-boundary": "Reference",
+  "rule-file-naming": "Reference",
+};
+
+/**
+ * Agent category assignments for README generation.
+ */
+const AGENT_CATEGORIES: Record<string, string> = {
+  // Development
+  "code-architect": "Development",
+  "code-developer": "Development",
+  "code-simplifier": "Development",
+  "dx-advocate": "Development",
+  // Workflow
+  "lu-executor": "Workflow",
+  "lu-planner": "Workflow",
+  "lu-router": "Workflow",
+  "lu-verifier": "Workflow",
+  "lu-learner": "Workflow",
+  "lu-cognition": "Workflow",
+  // Quality
+  "lu-pr-reviewer": "Quality",
+  "lu-integration-checker": "Quality",
+  "lu-plan-checker": "Quality",
+  "qa-plan-generator": "Quality",
+  "performance-auditor": "Quality",
+  "security-auditor": "Quality",
+  // Research
+  "lu-phase-researcher": "Research",
+  "lu-project-researcher": "Research",
+  "lu-research-synthesizer": "Research",
+  "lu-codebase-mapper": "Research",
+  // Specialty
+  "lu-roadmapper": "Specialty",
+  "lu-pm-planner": "Specialty",
+  "lu-debugger": "Specialty",
+  product: "Specialty",
+  ui: "Specialty",
+  ux: "Specialty",
+};
+
+/**
+ * Generate plugin README.md content from registry counts and categories.
+ */
+function generateReadme(
+  skillNames: string[],
+  agentNames: string[],
+  commandCount: number,
+  hookCount: number,
+): string {
+  // Count skills by category
+  const skillCounts: Record<string, number> = {};
+  for (const name of skillNames) {
+    const category = SKILL_CATEGORIES[name] ?? "Other";
+    skillCounts[category] = (skillCounts[category] ?? 0) + 1;
+  }
+
+  // Count agents by category
+  const agentCounts: Record<string, number> = {};
+  for (const name of agentNames) {
+    const category = AGENT_CATEGORIES[name] ?? "Other";
+    agentCounts[category] = (agentCounts[category] ?? 0) + 1;
+  }
+
+  // Build skill category lines
+  const skillCategoryOrder = [
+    "Workflow",
+    "Git",
+    "Project Management",
+    "Code Quality",
+    "Collaboration",
+    "Configuration",
+    "Session",
+    "Debug",
+    "Reference",
+    "Other",
+  ];
+  const skillCategoryDescriptions: Record<string, string> = {
+    Workflow: "Phase planning, execution, research, discussion, verification",
+    Git: "Commits, feature branches, pull requests",
+    "Project Management":
+      "Milestones, todos, roadmaps, session planning, phase management",
+    "Code Quality": "Linting, type checking, test running, QA consolidation",
+    Collaboration: "Jira integration, PR reviews",
+    Configuration: "Help, settings, profiles, updates, codebase mapping",
+    Session: "Pause and resume work sessions",
+    Debug: "Debugging workflows",
+    Reference: "Auto-invoked rule guidance (not user commands)",
+    Other: "Additional skills",
+  };
+
+  const skillLines = skillCategoryOrder
+    .filter((cat) => (skillCounts[cat] ?? 0) > 0)
+    .map(
+      (cat) =>
+        `- **${cat}** (${skillCounts[cat]}): ${skillCategoryDescriptions[cat]}`,
+    )
+    .join("\n");
+
+  // Build agent category lines
+  const agentCategoryOrder = [
+    "Development",
+    "Workflow",
+    "Quality",
+    "Research",
+    "Specialty",
+    "Other",
+  ];
+  const agentCategoryDescriptions: Record<string, string> = {
+    Development: "Code architect, developer, simplifier, DX advocate",
+    Workflow: "Executor, planner, router, verifier, learner, cognition",
+    Quality:
+      "PR reviewer, integration checker, plan checker, QA generator, auditors",
+    Research:
+      "Phase researcher, project researcher, research synthesizer, codebase mapper",
+    Specialty: "Roadmapper, PM planner, debugger, product, UI, UX",
+    Other: "Additional agents",
+  };
+
+  const agentLines = agentCategoryOrder
+    .filter((cat) => (agentCounts[cat] ?? 0) > 0)
+    .map(
+      (cat) =>
+        `- **${cat}** (${agentCounts[cat]}): ${agentCategoryDescriptions[cat]}`,
+    )
+    .join("\n");
+
+  return `# Luca
+
+Agentic development framework with cognitive memory and spec-driven workflow.
+
+## Installation
+
+\`\`\`bash
+# From the Luca marketplace
+/plugin marketplace add alecsibilia/luca-framework
+
+# Install the plugin
+/plugin install luca@luca-marketplace
+\`\`\`
+
+## Quick Start
+
+\`\`\`bash
+# Start a new project
+/lu-new-project
+
+# Begin working on a phase
+/lu
+
+# Check progress
+/lu-progress
+\`\`\`
+
+## What's Included
+
+### Skills (${skillNames.length} total)
+
+${skillLines}
+
+### Agents (${agentNames.length} total)
+
+${agentLines}
+
+### Commands (${commandCount} total)
+
+All non-reference skills are available as slash commands.
+
+### Hooks (${hookCount} active)
+
+Automated code formatting, type checking, pre-commit validation, context monitoring, and session management.
+
+## License
+
+MIT
+`;
+}
+
+/**
  * Generate the plugin hooks.json configuration.
  *
  * Produces a hooks configuration identical in structure to
