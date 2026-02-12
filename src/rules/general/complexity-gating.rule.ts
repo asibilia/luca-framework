@@ -1,18 +1,19 @@
 /**
  * Complexity gating: which workflow steps activate at which complexity level
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 const ComplexityGatingConfig: RuleConfig = {
   frontmatter: {
-    description: 'Complexity gating: which workflow steps activate at which complexity level',
-    globs: ['*.ts', '*.md', '.planning/config.json'],
+    description:
+      "Complexity gating: which workflow steps activate at which complexity level",
+    globs: ["*.ts", "*.md", ".planning/config.json"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Complexity Gating
 
 ## Five Complexity Levels
@@ -50,6 +51,7 @@ These steps run regardless of complexity:
 | Discussion | Skip | Skip | Optional | Run | Required |
 | Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
 | Harness fix iterations | 1 | 2 | 3 | 3 | 5 |
+| Verify fix iterations | 0 | 1 | 1 | 2 | 3 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
 | Code review: dx-advocate | Skip | Skip | Run | Run | Run |
 | Code review: code-simplifier | Skip | Skip | Run | Run | Run |

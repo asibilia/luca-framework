@@ -692,6 +692,7 @@ gaps:
   - truth: "User can see existing messages"
     status: failed
     reason: "Chat.tsx exists but doesn't fetch from API"
+    source_plan: "01"
     artifacts:
       - path: "src/components/Chat.tsx"
         issue: "No useEffect with fetch call"
@@ -702,6 +703,7 @@ gaps:
   - truth: "User can send a message"
     status: failed
     reason: "Form exists but onSubmit is stub"
+    source_plan: "01"
     artifacts:
       - path: "src/components/Chat.tsx"
         issue: "onSubmit only calls preventDefault()"
@@ -716,8 +718,13 @@ gaps:
 - `truth`: The observable truth that failed verification
 - `status`: failed | partial
 - `reason`: Brief explanation of why it failed
+- `source_plan`: Plan number this gap traces to (from Specification Anchoring traceability matrix)
 - `artifacts`: Which files have issues and what's wrong
 - `missing`: Specific things that need to be added/fixed
+
+**Determining source_plan:**
+
+Use the traceability matrix from Step 2.5 (Specification Anchoring). Each must-have truth was traced to one or more plan objectives. When a truth fails, set `source_plan` to the plan number whose objective it traces to. If a truth traces to multiple plans, set `source_plan` to the primary plan (the one whose objective most directly covers the truth). If no traceability exists (specification anchoring was skipped), omit source_plan.
 
 The planner (`/lu-plan-phase --gaps`) reads this gap analysis and creates appropriate plans.
 
@@ -748,6 +755,7 @@ gaps: # Only include if status: gaps_found
   - truth: "Observable truth that failed"
     status: failed
     reason: "Why it failed"
+    source_plan: "01"
     artifacts:
       - path: "src/path/to/file.tsx"
         issue: "What's wrong with this file"

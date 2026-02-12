@@ -29,6 +29,12 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-gate.sh",
             "timeout": 120,
             "statusMessage": "Running pre-commit checks..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-drift-check.sh",
+            "timeout": 60,
+            "statusMessage": "Checking output drift..."
           }
         ]
       }

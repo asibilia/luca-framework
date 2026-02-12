@@ -36,55 +36,67 @@ export interface HookDefinition {
 }
 
 export const hookRegistry: Record<string, HookDefinition> = {
-  'post-edit-format': {
-    event: 'PostToolUse',
-    cursorEvent: 'afterFileEdit',
-    matcher: 'Edit|Write',
+  "post-edit-format": {
+    event: "PostToolUse",
+    cursorEvent: "afterFileEdit",
+    matcher: "Edit|Write",
     cursorMatcher: undefined,
-    script: 'post-edit-format.sh',
+    script: "post-edit-format.sh",
     timeout: 10,
     async: false,
-    statusMessage: 'Formatting...',
+    statusMessage: "Formatting...",
   },
-  'post-edit-typecheck': {
-    event: 'PostToolUse',
-    cursorEvent: 'afterFileEdit',
-    matcher: 'Edit|Write',
+  "post-edit-typecheck": {
+    event: "PostToolUse",
+    cursorEvent: "afterFileEdit",
+    matcher: "Edit|Write",
     cursorMatcher: undefined,
-    script: 'post-edit-typecheck.sh',
+    script: "post-edit-typecheck.sh",
     timeout: 30,
     async: true,
-    statusMessage: 'Type-checking...',
+    statusMessage: "Type-checking...",
   },
-  'pre-commit-gate': {
-    event: 'PreToolUse',
-    cursorEvent: 'beforeShellExecution',
-    matcher: 'Bash',
-    cursorMatcher: 'git commit|git merge|bun run commit|bunx commit|bunx --bun commit',
-    script: 'pre-commit-gate.sh',
+  "pre-commit-gate": {
+    event: "PreToolUse",
+    cursorEvent: "beforeShellExecution",
+    matcher: "Bash",
+    cursorMatcher:
+      "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
+    script: "pre-commit-gate.sh",
     timeout: 120,
     async: false,
-    statusMessage: 'Running pre-commit checks...',
+    statusMessage: "Running pre-commit checks...",
   },
-  'context-monitor': {
-    event: 'Stop',
-    cursorEvent: 'stop',
+  "pre-commit-drift-check": {
+    event: "PreToolUse",
+    cursorEvent: "beforeShellExecution",
+    matcher: "Bash",
+    cursorMatcher:
+      "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
+    script: "pre-commit-drift-check.sh",
+    timeout: 60,
+    async: false,
+    statusMessage: "Checking output drift...",
+  },
+  "context-monitor": {
+    event: "Stop",
+    cursorEvent: "stop",
     matcher: undefined,
     cursorMatcher: undefined,
-    script: 'context-monitor.sh',
+    script: "context-monitor.sh",
     timeout: 5,
     async: false,
-    statusMessage: 'Checking context usage...',
+    statusMessage: "Checking context usage...",
   },
-  'session-persist': {
-    event: 'SessionEnd',
-    cursorEvent: 'sessionEnd',
+  "session-persist": {
+    event: "SessionEnd",
+    cursorEvent: "sessionEnd",
     matcher: undefined,
     cursorMatcher: undefined,
-    script: 'session-persist.sh',
+    script: "session-persist.sh",
     timeout: 10,
     async: false,
-    statusMessage: 'Saving session state...',
+    statusMessage: "Saving session state...",
   },
 };
 
@@ -92,8 +104,13 @@ export const hookRegistry: Record<string, HookDefinition> = {
  * Generate the "hooks" section for .claude/settings.json
  * from the hook registry.
  */
-export function generateHooksConfig(registry: Record<string, HookDefinition>): Record<string, unknown> {
-  const config: Record<string, Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>> = {};
+export function generateHooksConfig(
+  registry: Record<string, HookDefinition>,
+): Record<string, unknown> {
+  const config: Record<
+    string,
+    Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>
+  > = {};
 
   for (const [_name, def] of Object.entries(registry)) {
     if (!config[def.event]) {
@@ -101,9 +118,9 @@ export function generateHooksConfig(registry: Record<string, HookDefinition>): R
     }
 
     // Find existing matcher group or create new one
-    const matcherKey = def.matcher ?? '__no_matcher__';
+    const matcherKey = def.matcher ?? "__no_matcher__";
     let group = config[def.event].find((g) => {
-      if (matcherKey === '__no_matcher__') return !g.matcher;
+      if (matcherKey === "__no_matcher__") return !g.matcher;
       return g.matcher === def.matcher;
     });
 
@@ -113,7 +130,7 @@ export function generateHooksConfig(registry: Record<string, HookDefinition>): R
     }
 
     const hookEntry: Record<string, unknown> = {
-      type: 'command',
+      type: "command",
       command: `"$CLAUDE_PROJECT_DIR"/.claude/hooks/${def.script}`,
       timeout: def.timeout,
     };
@@ -137,7 +154,9 @@ export function generateHooksConfig(registry: Record<string, HookDefinition>): R
  * - Relative command paths (.cursor/hooks/<script>)
  * - No async or statusMessage fields
  */
-export function generateCursorHooksConfig(registry: Record<string, HookDefinition>): Record<string, unknown> {
+export function generateCursorHooksConfig(
+  registry: Record<string, HookDefinition>,
+): Record<string, unknown> {
   const hooks: Record<string, Array<Record<string, unknown>>> = {};
 
   for (const [_name, def] of Object.entries(registry)) {

@@ -387,13 +387,16 @@ When sub-agents return, attempt to parse their output as a result envelope:
 {
   "status": "success|partial|failed|timeout",
   "summary": "Brief description of what was accomplished",
-  "artifacts": [{"path": "file.ts", "action": "created"}],
-  "issues": [{"severity": "medium", "message": "...", "source_agent": "lu-executor"}],
-  "metadata": {"agent_name": "lu-executor", "context_tier": "T2"}
+  "artifacts": [{ "path": "file.ts", "action": "created" }],
+  "issues": [
+    { "severity": "medium", "message": "...", "source_agent": "lu-executor" }
+  ],
+  "metadata": { "agent_name": "lu-executor", "context_tier": "T2" }
 }
 \`\`\`
 
 If a sub-agent returns plain text instead of JSON, wrap it as:
+
 - status: "partial"
 - summary: the raw text (truncated to 2000 chars)
 - artifacts: []
@@ -446,34 +449,214 @@ Display:
 Overall: {PASSED/FAILED}
 \`\`\`
 
-### 6.6. Failure-to-Fix Loop
+### 6.6. Loop A: Harness Fix Loop
 
-**When harness checks fail, attempt automated repair.**
+**When harness checks fail (Step 6.5), run the unified iteration loop for mechanical failures.**
 
-Read maxFixIterations from complexity matrix. Look up the current complexity level in STATE.md, then use \`harnessFixIterations\` from the complexity matrix in config.json. If no complexity is set, fall back to harness config maxFixIterations (default 3).
+**This loop uses decision-support utilities from \`src/iteration/\`. You (the orchestrator) ARE the loop controller. Call the CLI utilities for convergence detection, error classification, checkpoint management, and budget tracking.**
 
-| Complexity | Max Fix Iterations |
-| ---------- | ------------------ |
-| TRIVIAL    | 1                  |
-| SIMPLE     | 2                  |
-| MODERATE   | 3                  |
-| COMPLEX    | 3                  |
-| CRITICAL   | 5                  |
+#### 6.6.1. Initialize Loop A
 
-For each iteration (up to max):
+Read iteration configuration:
 
-1. Extract structured errors from harness JSON output
-2. Spawn lu-executor sub-agent with fix instructions:
+\`\`\`bash
+# Read complexity level from STATE.md
+COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}')
+
+# Read iteration config
+CONFIG=$(cat .planning/config.json)
+
+# Extract limits: harnessFixIterations from complexity matrix
+MAX_ITERATIONS=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  const level = '\${COMPLEXITY}' || 'MODERATE';
+  console.log(c.complexity?.matrix?.[level]?.harnessFixIterations ?? 3);
+")
+
+# Extract iteration settings
+DEFAULT_MODE=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.default_mode ?? 'afk');
+")
+SOFT_STOP=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.soft_stop_percent ?? 80);
+")
+STALE_THRESHOLD=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.stale_threshold ?? 2);
+")
+PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.promotion_threshold ?? 3);
+")
+
+# Override mode if --mode flag was passed
+MODE="\${MODE_FLAG:-$DEFAULT_MODE}"
+\`\`\`
+
+Initialize tracking state:
+
+\`\`\`bash
+# Create initial budget state
+BUDGET=$(bun run src/iteration/budget.ts create \\
+  --max-iterations="$MAX_ITERATIONS" \\
+  --soft-stop-percent="$SOFT_STOP")
+
+# Initialize empty fingerprint ledger for error classification
+LEDGER='{}'
+
+# Initialize previous errors as empty (first iteration has no previous)
+PREVIOUS_ERRORS='[]'
+STALE_COUNT=0
+PHASE_NUM={phase_number}
+\`\`\`
+
+Display loop start:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ITER ► LOOP A: HARNESS FIX (max {MAX_ITERATIONS} iterations, mode: {MODE})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+#### 6.6.2. Loop A Iteration Cycle
+
+For each iteration, follow these steps IN ORDER:
+
+**Step A: Budget Pre-Check**
+
+\`\`\`bash
+BUDGET_CHECK=$(bun run src/iteration/budget.ts should-start --state="$BUDGET")
+ALLOWED=$(echo "$BUDGET_CHECK" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).allowed)")
+REASON=$(echo "$BUDGET_CHECK" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).reason)")
+\`\`\`
+
+If \`ALLOWED\` is false: display reason, exit loop with outcome "budget_exhausted".
+
+**Step B: Classify Errors**
+
+Classify the harness errors from the most recent harness run:
+
+\`\`\`bash
+CLASSIFIED=$(bun run src/iteration/classifier.ts \\
+  --harness-result="$HARNESS_OUTPUT" \\
+  --ledger="$LEDGER" \\
+  --promotion-threshold="$PROMOTION_THRESHOLD")
+
+# Extract classified errors and updated ledger
+CURRENT_ERRORS=$(echo "$CLASSIFIED" | bun -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).classified))")
+LEDGER=$(echo "$CLASSIFIED" | bun -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).updated_ledger))")
+\`\`\`
+
+Check for permanent errors. If any errors were newly promoted to permanent, log them:
+
+\`\`\`
+◆ Permanent errors (excluded from convergence):
+  - {file}:{line} — {message} (seen {N} iterations)
+\`\`\`
+
+**Step C: Convergence Check** (skip for iteration 1 — no previous to compare)
+
+If this is iteration 2+:
+
+\`\`\`bash
+# Get artifact delta from previous checkpoint
+PREV_TAG="iter/\${PHASE_NUM}/harness/$((ITERATION - 1))"
+ARTIFACT_DELTA=$(bun run src/iteration/checkpoint.ts artifact-delta --from-ref="$PREV_TAG")
+
+# Assess convergence
+CONVERGENCE=$(bun run src/iteration/convergence.ts \\
+  --current="$CURRENT_ERRORS" \\
+  --previous="$PREVIOUS_ERRORS" \\
+  --artifact-delta="$ARTIFACT_DELTA" \\
+  --previous-stale-count="$STALE_COUNT" \\
+  --stale-threshold="$STALE_THRESHOLD")
+
+CONV_STATUS=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).status)")
+SHOULD_HALT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).should_halt)")
+STALE_COUNT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).consecutive_stale)")
+\`\`\`
+
+If \`SHOULD_HALT\` is true: display convergence failure, exit loop with outcome "convergence_failure".
+
+Display convergence status:
+
+\`\`\`
+◆ Convergence: {CONV_STATUS} (stale count: {STALE_COUNT}/{STALE_THRESHOLD})
+\`\`\`
+
+**Step D: Create Checkpoint**
+
+\`\`\`bash
+COMMIT_HASH=$(bun run src/iteration/checkpoint.ts commit-hash)
+TAG="iter/\${PHASE_NUM}/harness/\${ITERATION}"
+
+# Build iteration record JSON and create checkpoint
+RECORD='{ "tag": "'$TAG'", "phase": '$PHASE_NUM', "loop": "harness", "iteration": '$ITERATION', ... }'
+bun run src/iteration/checkpoint.ts create --record="$RECORD"
+\`\`\`
+
+Fill in the full IterationRecord fields: error_count, error_delta, error_fingerprints, convergence_status, stale_count, permanent_errors, correctable_errors, transient_errors, artifacts_delta, commit_hash, agent_invoked, duration_ms, timestamp.
+
+**Step E: HITL/AFK Decision Point**
+
+If \`MODE\` is "hitl":
+
+Display iteration summary table:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ITER ► ITERATION {N} COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric          | Previous | Current | Delta |
+|-----------------|----------|---------|-------|
+| Active errors   | {N}      | {N}     | {+/-} |
+| Files changed   | {N}      | {N}     | {+/-} |
+| Permanent       | {N}      | {N}     | {+/-} |
+
+Status: {improved / stalled / regressed}
+Budget: {N}/{MAX} iterations ({percent}%)
+
+Options:
+  1. Continue — Proceed to iteration {N+1}
+  2. Rollback — Revert to iteration {N-1} checkpoint
+  3. Abort — Stop loop, keep current state
+  4. Skip — Skip remaining iterations, proceed to verification
+\`\`\`
+
+Wait for user input. Route by choice:
+
+- **Continue**: Proceed to Step F
+- **Rollback**: Run \`bun run src/iteration/checkpoint.ts rollback --tag="iter/\${PHASE_NUM}/harness/$((ITERATION-1))"\`. Decrement iteration counter. Re-run harness. Return to Step A.
+- **Abort**: Exit loop with outcome "user_abort"
+- **Skip**: Exit loop with outcome "user_skip"
+
+If \`MODE\` is "afk": Skip to Step F (no pause).
+
+**Step F: Spawn Executor with Fix Context**
+
+Prepare fix context from classified errors. Include only correctable and transient errors (permanent are skipped):
 
 \`\`\`python
 Task(
   prompt="""
 <fix_context>
-**Harness failures (iteration {N}/{max}):**
-{structured_errors_json}
+**Harness failures (Loop A, iteration {N}/{MAX}):**
+
+**Correctable errors (retry with context):**
+{correctable_errors_json}
+
+**Transient errors (retry):**
+{transient_errors_json}
+
+**Permanent errors (SKIP — do not attempt to fix):**
+{permanent_errors_summary}
 
 **Instructions:**
-- Fix ONLY the errors listed above
+- Fix ONLY the correctable and transient errors listed above
+- Do NOT attempt to fix permanent errors — they have been tried {N}+ times
 - Do NOT refactor or improve unrelated code
 - Do NOT modify test expectations to make tests pass
 - Commit fixes atomically
@@ -483,27 +666,49 @@ Fix these harness failures.
 """,
   subagent_type="lu-executor",
   model="{executor_model}",
-  description="Fix harness failures (iteration {N})"
+  description="Fix harness failures (Loop A, iteration {N})"
 )
 \`\`\`
 
-3. After executor returns, re-run harness:
+**Step G: Re-run Harness**
 
 \`\`\`bash
 HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+HARNESS_EXIT=$?
 \`\`\`
 
-4. If passed: display success, continue to Step 7
-5. If still failing:
-   - Compare error count to previous iteration
-   - If errors increased or unchanged for 2 consecutive iterations: abort loop early
-   - If max iterations exhausted: log remaining failures, continue to Step 7 with harness failures as context for lu-verifier
+If harness passes (status: "passed"): Exit loop with outcome "all_passed".
 
-**Pass harness results to Step 7 verifier context** regardless of outcome. Include:
+If harness fails: Update \`PREVIOUS_ERRORS = CURRENT_ERRORS\`, advance budget:
 
-- \`harness_status\`: passed | failed_after_fixes
-- \`harness_checks\`: array of check results
-- \`remaining_errors\`: structured errors (if any)
+\`\`\`bash
+BUDGET=$(bun run src/iteration/budget.ts advance --state="$BUDGET")
+\`\`\`
+
+Return to Step A for next iteration.
+
+#### 6.6.3. Loop A Termination
+
+When the loop exits (any outcome), display:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ITER ► LOOP A COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Outcome: {outcome}
+Iterations: {N}/{MAX}
+Active errors remaining: {count}
+Permanent errors: {count}
+\`\`\`
+
+Pass results to Step 7 (verifier context):
+
+- \`harness_status\`: "passed" if outcome is "all_passed", else "failed_after_fixes"
+- \`harness_checks\`: from last harness run
+- \`remaining_errors\`: classified errors still active
+- \`loop_a_outcome\`: the outcome string
+- \`loop_a_iterations\`: count
 
 ### 7. Verify Phase Goal
 
@@ -585,11 +790,173 @@ Verify the phase goal was achieved using goal-backward analysis.
 
 Route by returned status:
 
-- \`passed\` → continue to code review
-- \`human_needed\` → present items, get approval, then continue
-- \`gaps_found\` → offer \`/lu-plan-phase {X} --gaps\` (skip remaining steps)
+- \`passed\` → continue to Step 8 (Code Quality Review)
+- \`human_needed\` → present items, get approval, then continue to Step 8
+- \`gaps_found\` → proceed to Step 7.5 (Loop B: Verify Fix Loop)
 
-### 7.5. Code Quality Review
+**Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered \`/lu-plan-phase {X} --gaps\`.
+
+### 7.5. Loop B: Verify Fix Loop
+
+**When the verifier finds gaps (status: gaps_found), run the unified iteration loop for semantic gaps.**
+
+**This loop re-executes ONLY the plans identified by the verifier's \`source_plan\` attribution.** Plans without gaps are NOT re-executed.
+
+**Skip this step if:**
+
+- Verifier status is "passed" or "human_needed"
+- \`verifyFixIterations\` for the current complexity is 0 (e.g., TRIVIAL)
+- \`--skip-verify-loop\` flag was passed
+
+#### 7.5.1. Initialize Loop B
+
+\`\`\`bash
+# Extract verifyFixIterations from complexity matrix
+VERIFY_MAX=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  const level = '\${COMPLEXITY}' || 'MODERATE';
+  console.log(c.complexity?.matrix?.[level]?.verifyFixIterations ?? 1);
+")
+\`\`\`
+
+If \`VERIFY_MAX\` is 0: Skip Loop B, proceed to Step 8.
+
+\`\`\`bash
+# Create budget state for Loop B
+VERIFY_BUDGET=$(bun run src/iteration/budget.ts create \\
+  --max-iterations="$VERIFY_MAX" \\
+  --soft-stop-percent="$SOFT_STOP")
+
+VERIFY_STALE_COUNT=0
+VERIFY_ITERATION=0
+\`\`\`
+
+Display:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ITER ► LOOP B: VERIFY FIX (max {VERIFY_MAX} iterations, mode: {MODE})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+#### 7.5.2. Extract Gap-Targeted Plans
+
+Parse the verifier's VERIFICATION.md frontmatter to extract gaps with source_plan attribution:
+
+\`\`\`bash
+# Read VERIFICATION.md and extract gaps with source_plan
+VERIFICATION_MD=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md)
+\`\`\`
+
+From the YAML frontmatter, extract unique \`source_plan\` values from the gaps. These are the plans that need re-execution.
+
+If no \`source_plan\` fields are present (verifier did not attribute gaps to plans): Re-execute ALL plans in the last wave with gap context. This is the backward-compatible fallback.
+
+#### 7.5.3. Loop B Iteration Cycle
+
+Follow the same pre-check/execute/evaluate cycle as Loop A, with these differences:
+
+**Step B-A: Budget Pre-Check**
+
+Same as Loop A Step A, using \`VERIFY_BUDGET\`.
+
+**Step B-B: Spawn Targeted Executors**
+
+For each plan with gaps, spawn a fix executor with gap-targeted instructions:
+
+\`\`\`python
+Task(
+  prompt="""
+<gap_fix_context>
+**Verify Loop B (iteration {N}/{MAX}):**
+**Plan:** {plan_name}
+
+**Verifier Gaps for this plan:**
+{gap_details_for_this_plan}
+
+**Original Plan Content:**
+{plan_content}
+
+**Instructions:**
+- Address ONLY the gaps listed above
+- The verifier found that the plan's objectives were not fully met
+- Refer to the original plan for context on what was intended
+- Do NOT refactor or change unrelated code
+- Commit fixes atomically
+</gap_fix_context>
+
+Fix the verification gaps for this plan.
+""",
+  subagent_type="lu-executor",
+  model="{executor_model}",
+  description="Fix verify gaps for {plan_name} (Loop B, iteration {N})"
+)
+\`\`\`
+
+Spawn all gap-targeted executors in PARALLEL (same message, multiple Task calls).
+
+**Step B-C: Re-run Harness**
+
+After executors return, re-run the harness to ensure fixes didn't break mechanical checks:
+
+\`\`\`bash
+HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+\`\`\`
+
+If harness fails: Enter Loop A mini-loop (1 iteration only) to fix mechanical breakage, then continue Loop B.
+
+**Step B-D: Re-run Verifier**
+
+Spawn the verifier again (same context as Step 7, updated with new summaries):
+
+\`\`\`python
+Task(
+  prompt="""
+<verification_context>
+**Phase:** {phase_number}
+**Phase Directory:** {phase_dir}
+**Mode:** full (re-verification after gap fixes)
+...same context as Step 7...
+</verification_context>
+
+Re-verify the phase goal after gap fix iteration {N}.
+""",
+  subagent_type="lu-verifier",
+  model="{verifier_model}",
+  description="Re-verify Phase {phase_number} (Loop B, iteration {N})"
+)
+\`\`\`
+
+If verifier returns "passed": Exit Loop B with outcome "all_passed".
+If verifier returns "gaps_found": Continue to convergence check.
+If verifier returns "human_needed": Exit Loop B, proceed to human verification.
+
+**Step B-E: Convergence Check**
+
+Compare current gaps to previous gaps. Use gap count as the error signal:
+
+- \`error_count_delta\`: current gap count - previous gap count
+- \`fingerprint_overlap\`: Compare gap truth strings (hashed) for identity
+- \`artifact_change_delta\`: from git diff --stat
+
+Assess convergence same as Loop A. If should_halt: exit with "convergence_failure".
+
+**Step B-F: Checkpoint & HITL**
+
+Create checkpoint (same as Loop A, using "verify" loop type).
+If HITL mode: display iteration summary and 4-choice menu.
+Advance budget.
+
+Return to Step B-A for next iteration.
+
+#### 7.5.4. Loop B Termination
+
+When Loop B exits, display summary same as Loop A.
+
+If outcome is "all_passed": Continue to Step 8 (Code Quality Review).
+If outcome is anything else: Display remaining gaps and offer \`/lu-plan-phase {X} --gaps\` to the user.
+
+### 8. Code Quality Review
 
 **Skip if:** \`--skip-review\` flag passed OR \`workflow.code_review: false\` in config OR complexity is TRIVIAL or SIMPLE.
 
@@ -603,7 +970,7 @@ CHANGED_FILES=$(git diff --name-only main...HEAD -- '*.ts' '*.tsx' 2>/dev/null |
 FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' || echo "0")
 \`\`\`
 
-**If no changed files:** Skip to step 8.
+**If no changed files:** Skip to step 9.
 
 Display:
 
@@ -638,6 +1005,7 @@ echo "$CHANGED_FILES" | grep -E '(auth|api|convex|mutation|query|middleware|prox
 **MANDATORY**: Spawn ALL applicable reviewers in a SINGLE message with multiple Task calls (PARALLEL).
 
 **Context isolation:** Code reviewers operate in COLD isolation. They receive:
+
 - Git diff of changed files (not full file contents)
 - BRAIN.md summary (project conventions only)
 - NO STATE.md, NO WORKING.md, NO MEMORY.md
@@ -812,7 +1180,7 @@ description="Security review"
 
 **Merge findings:** Combine all issues, deduplicate by file:line.
 
-### 7.6. Handle Code Review Results
+### 8.1. Handle Code Review Results
 
 **Route based on findings:**
 
@@ -871,24 +1239,35 @@ Luca ► CODE REVIEW WARNINGS ⚠
 
 Wait for user response, then proceed accordingly.
 
-**If clean (or LOW only):** Continue to step 8.
+**If clean (or LOW only):** Continue to step 9.
 
-### 8. Update Roadmap and State
+### 9. Update Roadmap and State
 
 Update ROADMAP.md, STATE.md
 
-### 9. Update Requirements
+### 10. Update Requirements
 
 Mark phase requirements as Complete in REQUIREMENTS.md traceability table.
 
-### 10. Commit Phase Completion
+### 10.5. Checkpoint Cleanup
+
+After the phase passes verification (Loop A + Loop B both succeeded or were not needed):
+
+\`\`\`bash
+# Prune all iteration checkpoints for this phase
+bun run src/iteration/checkpoint.ts prune --phase={phase_number}
+\`\`\`
+
+This removes all \`iter/{phase}/*\` git tags and \`.planning/checkpoints/iter-{phase}-*.json\` metadata files, keeping the git tag namespace and checkpoint directory clean for future phases.
+
+### 11. Commit Phase Completion
 
 \`\`\`bash
 git add .
 bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
 \`\`\`\`
 
-### 11. User Acceptance Testing (UAT)
+### 12. User Acceptance Testing (UAT)
 
 **Skip if:** \`--skip-uat\` flag passed OR \`workflow.uat_required: false\` in config OR complexity is TRIVIAL or SIMPLE.
 
@@ -932,7 +1311,7 @@ Read \`.cursor/luca/workflows/verify-work.md\` for detailed UAT process.
    - Anything else → issue (severity inferred)
 6. **Update UAT.md** after each response
 
-### 12. Handle UAT Results
+### 13. Handle UAT Results
 
 **Route A: All tests pass, more phases remain**
 
@@ -1078,7 +1457,8 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 
 - \`/lu-verify-work {phase}\` — Run UAT separately
 - \`/lu-pause-work\` — Create handoff if stopping mid-work
-</main>`,
+</main>
+`,
       order: 1,
     },
   ],

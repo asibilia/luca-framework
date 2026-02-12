@@ -166,6 +166,13 @@
 **Insight:** Normalizing numbers in error messages (replacing digits with "N") before fingerprinting catches "same error, different line number" across iterations. The fingerprint combines file:line:code:normalizedMessage to balance specificity (same file+code) with generality (line numbers change as code is edited).
 **When to apply:** Any error deduplication or tracking across time. The file:line:code triple is the strongest grouping signal.
 
+### Pattern: Source-of-Truth Build Pipeline
+
+**Tags:** [architecture, conventions, drift]
+**Phase:** 17
+**Insight:** `src/` is the single source of truth for all compiled output files. The pipeline is: `src/(agents|skills|rules|hooks)/` → `bun run build:all` (via `scripts/build-all.ts`) → `.claude/` + `.cursor/` output directories (182+ files). Registries in `src/*/index.ts` map entity names to TypeScript classes/metadata. The compiler reads registries and emits platform-specific output (markdown for agents/skills/rules, shell scripts for hooks, JSON configs for settings). Additionally, `packages/luca-framework/templates/hooks/` mirrors `src/hooks/scripts/` for the `luca init` scaffolder.
+**When to apply:** ANY time you need to modify content in `.claude/` or `.cursor/` directories. NEVER edit output files directly — always modify the corresponding `src/` source file and run `bun run build:all`. The drift detection system (`bun run check:drift`, pre-commit hook, drift test suite in `scripts/check-drift.test.ts`) will block commits that bypass this pipeline.
+
 ### Established Conventions
 
 <!-- Conventions to maintain consistency -->
@@ -351,6 +358,14 @@
   - **Confidence**: High
   - **Added**: 2026-02-11
 
+### Pitfall: Editing .claude/ or .cursor/ Directly Causes Three-Way Drift
+
+**Tags:** [architecture, conventions, drift]
+**Phase:** 17
+**Issue:** Editing files in `.claude/` or `.cursor/` directly (instead of their `src/` source) causes three-way divergence: source tells one story, Claude output tells another, Cursor output tells a third. The next `bun run build:all` overwrites manual changes with whatever is in `src/`, silently losing work.
+**Solution:** ALWAYS edit `src/` source files and run `bun run build:all`. Three drift prevention layers exist: (1) `pre-commit-drift-check.sh` hook blocks commits with drifted outputs, (2) `bun run check:drift` for manual verification, (3) `scripts/check-drift.test.ts` runs in `bun test` CI. If drift is detected, run `bun run build:all` to regenerate from source.
+**Impact:** Critical — Phase 17 lost ~465 lines of lu-execute-phase iteration content and a complexity-gating row because they were edited in `.claude/` output files instead of `src/` source files.
+
 ### Pitfall: Git Detached HEAD from git checkout <tag>
 
 **Tags:** [iteration, checkpoint]
@@ -381,6 +396,8 @@
   Tags: [pitfalls, coding]
 - **`echo` for JSON piping**: Never use `echo "$VAR"` to pipe JSON. Use `printf '%s' "$VAR"` to prevent backslash interpretation
   Tags: [pitfalls, coding]
+- **Editing .claude/ or .cursor/ output files directly**: Never modify compiled output files. Always edit the `src/` source and run `bun run build:all`. Output files are generated artifacts — manual edits will be overwritten on next build and cause drift detection failures
+  Tags: [pitfalls, architecture, conventions, drift]
 
 ## Preferences
 
@@ -419,11 +436,11 @@
 
 _Memory Statistics_
 
-- Total patterns: 48 (+3 from Phase 17)
-- Total decisions: 31 (+2 from Phase 17)
-- Total pitfalls: 40 (+2 from Phase 17)
+- Total patterns: 49 (+1 build pipeline)
+- Total decisions: 31 (no change)
+- Total pitfalls: 42 (+1 drift pitfall, +1 anti-pattern)
 - Total conventions: 4 (no change)
-- Total anti-patterns: 5 (no change)
+- Total anti-patterns: 6 (+1 direct output editing)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-11
 

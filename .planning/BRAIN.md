@@ -19,16 +19,22 @@
 ## Architecture
 
 - **Pattern**: Orchestrator/sub-agent model with memory system
+- **Source of Truth**: `src/` directory contains all agent, skill, rule, and hook source files
+- **Build Pipeline**: `src/` → `bun run build:all` → `.claude/` + `.cursor/` (generated outputs, NEVER edit directly)
+- **Drift Prevention**: Pre-commit hook + `bun run check:drift` + CI test suite detect output/source divergence
 - **Structure**:
-  - `.cursor/agents/` — Sub-agent definitions
-  - `.cursor/skills/` — User-invokable skills (commands)
-  - `.cursor/luca/` — Templates, workflows, references
-  - `.cursor/rules/` — Cursor rules for consistent behavior
+  - `src/agents/` — Agent source (.agent.ts) → compiled to `.claude/agents/` + `.cursor/agents/`
+  - `src/skills/` — Skill source (.skill.ts) → compiled to `.claude/skills/` + `.cursor/skills/`
+  - `src/rules/` — Rule source (.rule.ts) → compiled to `.claude/rules/` + `.cursor/rules/`
+  - `src/hooks/` — Hook registry + shell scripts → compiled to `.claude/hooks/` + `.cursor/hooks/`
+  - `src/*/index.ts` — Registries mapping entity names to classes/metadata
   - `.planning/` — Runtime artifacts (BRAIN, MEMORY, WORKING, STATE)
+  - `packages/luca-framework/templates/` — Scaffolding templates for `luca init`
 - **Key Modules**:
   - Memory system (BRAIN.md → MEMORY.md → WORKING.md)
   - Workflow engine (skills → agents → verification → learning)
   - Git integration (Jira → GitHub Issue → Branch → PR)
+  - Iteration engine (src/iteration/ — budget, classifier, convergence, checkpoint)
 
 ## Conventions
 
@@ -82,5 +88,5 @@
 
 ---
 
-*Last updated: 2026-02-04*
-*Updated by: lu-new-project*
+_Last updated: 2026-02-11_
+_Updated by: drift-prevention (Phase 17)_
