@@ -5,9 +5,9 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: /lu-plan-phase 20
+- **Workflow**: /lu-execute-phase 20
 - **Phase**: 20 (Skills & Agents Packaging)
-- **Plan**: Planning phase — creating PLAN.md files
+- **Plan**: Executing phase — Wave 1 (20-01, 20-02 parallel), then Wave 2 (20-03, 20-04)
 
 ---
 
