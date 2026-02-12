@@ -239,6 +239,16 @@
   - **Tags**: [patterns, documentation, architecture]
   - **Confidence**: High
   - **Added**: 2026-02-12
+- **[Phase 23] Spec-conformance layer separate from drift detection**: Two complementary test layers — drift tests verify compiler output matches source (parity), spec tests verify plugin format matches what Claude Code expects (conformance). Neither duplicates the other. Enables catching two distinct failure modes: "output drifted from source" vs "output doesn't match external spec." Drift catches internal regression; spec catches external incompatibility. Validated in Phase 23 (41 spec tests + 720 drift tests, zero overlap)
+  - **When to use**: When output files must satisfy both an internal build pipeline AND an external consumer specification
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 23] Comprehensive E2E summary test as final gate**: A single "load readiness" test that aggregates ALL validation checks (manifest, structure, frontmatter, hooks, marketplace consistency) into one pass/fail with structured issue reporting provides a definitive answer. Individual tests catch specific issues in isolation; the summary test catches integration-level failures across components. The structured issues array enables detailed debugging when the gate fails
+  - **When to use**: When multiple component-level tests exist but a single integration-level confidence gate is also needed
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
 
 ### Established Conventions
 
@@ -507,6 +517,12 @@
   - **Tags**: [pitfalls, architecture, conventions]
   - **Confidence**: Medium
   - **Added**: 2026-02-12
+- **[Phase 23] hooks.json wrapper key mismatch**: hooks.json has a `{"hooks": {...}}` wrapper — the actual event types are under `.hooks`, not at the root. Forgetting this level causes tests to validate the wrong structure (finding just one key "hooks" instead of event types). Always access `hooksFile.hooks` before iterating event types. This is easy to miss because the file is named hooks.json and you expect the root to be the hooks config
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, lu-verifier]
+  - **Tags**: [pitfalls, testing, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
 
 ### Anti-patterns
 
@@ -562,13 +578,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 61 (+3 Phase 22: shared build module, checksum verification, category README)
-- Total decisions: 37 (+2 Phase 22: inline plugin generation, marketplace manifest structure)
-- Total pitfalls: 45 (+1 Phase 22: marketplace manifest duplication)
+- Total patterns: 63 (+2 Phase 23: spec-conformance layer, E2E summary gate)
+- Total decisions: 37 (no change)
+- Total pitfalls: 46 (+1 Phase 23: hooks.json wrapper key)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-12
 
-_Entries added by: lu-execute-phase (Phase 22 learning extraction)_
+_Entries added by: lu-execute-phase (Phase 23 learning extraction)_
 _Last curated: 2026-02-12_

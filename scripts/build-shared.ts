@@ -144,26 +144,26 @@ export const AGENT_CATEGORIES: Record<string, string> = {
 export function generatePluginHooksConfig(
   registry: Record<string, HookDefinition>,
 ): Record<string, unknown> {
-  const config: Record<
+  const events: Record<
     string,
     Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>
   > = {};
 
   for (const [_name, def] of Object.entries(registry)) {
-    if (!config[def.event]) {
-      config[def.event] = [];
+    if (!events[def.event]) {
+      events[def.event] = [];
     }
 
     // Find existing matcher group or create new one
     const matcherKey = def.matcher ?? "__no_matcher__";
-    let group = config[def.event].find((g) => {
+    let group = events[def.event].find((g) => {
       if (matcherKey === "__no_matcher__") return !g.matcher;
       return g.matcher === def.matcher;
     });
 
     if (!group) {
       group = def.matcher ? { matcher: def.matcher, hooks: [] } : { hooks: [] };
-      config[def.event].push(group);
+      events[def.event].push(group);
     }
 
     const hookEntry: Record<string, unknown> = {
@@ -178,7 +178,7 @@ export function generatePluginHooksConfig(
     group.hooks.push(hookEntry);
   }
 
-  return config;
+  return { hooks: events };
 }
 
 /**
