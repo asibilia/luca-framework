@@ -29,6 +29,7 @@ import { LuSetProfileSkill } from "./general/lu-set-profile.skill";
 import { LuQuickSkill } from "./general/lu-quick.skill";
 import { LuPlanMilestoneGapsSkill } from "./general/lu-plan-milestone-gaps.skill";
 import { LuPlanPhaseSkill } from "./general/lu-plan-phase.skill";
+import { LuPlanSessionSkill } from "./general/lu-plan-session.skill";
 import { LuProgressSkill } from "./general/lu-progress.skill";
 import { LuListPhaseAssumptionsSkill } from "./general/lu-list-phase-assumptions.skill";
 import { LuMapCodebaseSkill } from "./general/lu-map-codebase.skill";
@@ -80,6 +81,7 @@ export const skillRegistry = {
   "lu-quick": LuQuickSkill,
   "lu-plan-milestone-gaps": LuPlanMilestoneGapsSkill,
   "lu-plan-phase": LuPlanPhaseSkill,
+  "lu-plan-session": LuPlanSessionSkill,
   "lu-progress": LuProgressSkill,
   "lu-list-phase-assumptions": LuListPhaseAssumptionsSkill,
   "lu-map-codebase": LuMapCodebaseSkill,
