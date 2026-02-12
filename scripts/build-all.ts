@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 /**
- * build-all.ts — Unified build script for Cursor + Claude output
+ * build-all.ts — Unified build script for Cursor + Claude + Plugin output
  *
  * Compiles every agent, skill, and rule definition in src/ into
  * platform-specific markdown files under .cursor/, .claude/, and dist/plugin/.
@@ -40,8 +40,17 @@ import { LuSkill } from "../src/skills/luca/lu.skill";
 import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
 import { CursorCompiler } from "../src/compilers/cursor.compiler";
 import { ClaudeCompiler } from "../src/compilers/claude.compiler";
+import { PluginCompiler } from "../src/compilers/plugin.compiler";
+import { generatePluginManifest } from "../src/compilers/plugin.types";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
-import { buildPlugin } from "./build-plugin";
+import {
+  COMMAND_EXCLUDED_SKILLS,
+  PLUGIN_EXCLUDED_HOOKS,
+  generatePluginHooksConfig,
+  generateCommandMarkdown,
+  readVersion,
+  generateReadme,
+} from "./build-shared";
 import path from "path";
 
 async function main() {
@@ -360,29 +369,388 @@ async function main() {
 
   // --- Plugin ---
   console.log("\n--- Plugin ---");
-  const pluginSummary = await buildPlugin();
-  console.log(
-    `✓ Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.commands} commands, ${pluginSummary.hooks} hooks`,
-  );
 
-  if (pluginSummary.failures.length > 0) {
-    for (const f of pluginSummary.failures) {
-      failures.push({ type: "plugin", name: f, error: new Error(f) });
+  const pluginCompiler = new PluginCompiler();
+
+  // Define plugin output directories
+  const pluginDir = path.join(process.cwd(), "dist", "plugin");
+  const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
+  const pluginAgentsDir = path.join(pluginDir, "agents");
+  const pluginSkillsDir = path.join(pluginDir, "skills");
+  const pluginCommandsDir = path.join(pluginDir, "commands");
+  const pluginHooksDir = path.join(pluginDir, "hooks");
+  const pluginScriptsDir = path.join(pluginDir, "scripts");
+
+  // Ensure all plugin output directories exist
+  await Promise.all([
+    ensureDir(pluginManifestDir),
+    ensureDir(pluginAgentsDir),
+    ensureDir(pluginSkillsDir),
+    ensureDir(pluginCommandsDir),
+    ensureDir(pluginHooksDir),
+    ensureDir(pluginScriptsDir),
+  ]);
+
+  // Clean stale plugin files before writing
+  const [
+    removedPluginAgents,
+    removedPluginSkills,
+    removedPluginCommands,
+    removedPluginHooks,
+    removedPluginScripts,
+  ] = await Promise.all([
+    cleanDirectory(pluginAgentsDir, [".md"]),
+    cleanSkillsDirectory(pluginSkillsDir),
+    cleanDirectory(pluginCommandsDir, [".md"]),
+    cleanDirectory(pluginHooksDir, [".json"]),
+    cleanDirectory(pluginScriptsDir, [".sh"]),
+  ]);
+
+  const totalPluginRemoved =
+    removedPluginAgents.length +
+    removedPluginSkills.length +
+    removedPluginCommands.length +
+    removedPluginHooks.length +
+    removedPluginScripts.length;
+
+  if (totalPluginRemoved)
+    console.log(`Cleaned ${totalPluginRemoved} stale files/directories`);
+
+  let pluginAgentCount = 0;
+  let pluginSkillCount = 0;
+  let pluginCommandCount = 0;
+  let pluginHookCount = 0;
+  const pluginAgentNames: string[] = [];
+  const pluginSkillNames: string[] = [];
+  const pluginCommandNames: string[] = [];
+  const pluginHookNames: string[] = [];
+
+  // --- Plugin Agents ---
+
+  // General agents from registry
+  for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
+    try {
+      const instance = new (AgentClass as new () => BaseAgent)();
+      const content = pluginCompiler.compileAgent(instance, "CLAUDE");
+
+      await Bun.write(path.join(pluginAgentsDir, `${agentName}.md`), content);
+
+      console.log(`  Generated agents/${agentName}.md`);
+      pluginAgentNames.push(agentName);
+      pluginAgentCount++;
+    } catch (error) {
+      console.error(`  Failed to generate agents/${agentName}.md:`, error);
+      failures.push({ type: "plugin-agent", name: agentName, error });
     }
   }
 
-  // Summary
+  // Luca-specific agents
+  try {
+    const pluginLuExecutor = new LuExecutorAgent();
+    await Bun.write(
+      path.join(pluginAgentsDir, "lu-executor.md"),
+      pluginCompiler.compileAgent(pluginLuExecutor, "CLAUDE"),
+    );
+    console.log("  Generated agents/lu-executor.md");
+    pluginAgentNames.push("lu-executor");
+    pluginAgentCount++;
+  } catch (error) {
+    console.error("  Failed to generate agents/lu-executor.md:", error);
+    failures.push({ type: "plugin-agent", name: "lu-executor", error });
+  }
+
+  try {
+    const pluginLuPlanner = new LuPlannerAgent();
+    await Bun.write(
+      path.join(pluginAgentsDir, "lu-planner.md"),
+      pluginCompiler.compileAgent(pluginLuPlanner, "CLAUDE"),
+    );
+    console.log("  Generated agents/lu-planner.md");
+    pluginAgentNames.push("lu-planner");
+    pluginAgentCount++;
+  } catch (error) {
+    console.error("  Failed to generate agents/lu-planner.md:", error);
+    failures.push({ type: "plugin-agent", name: "lu-planner", error });
+  }
+
+  // --- Plugin Skills ---
+
+  // General skills from registry
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    try {
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const content = pluginCompiler.compileSkill(instance, "CLAUDE");
+
+      const pluginSkillDir = path.join(pluginSkillsDir, skillName);
+      await ensureDir(pluginSkillDir);
+      await Bun.write(path.join(pluginSkillDir, "SKILL.md"), content);
+
+      console.log(`  Generated skills/${skillName}/SKILL.md`);
+      pluginSkillNames.push(skillName);
+      pluginSkillCount++;
+    } catch (error) {
+      console.error(
+        `  Failed to generate skills/${skillName}/SKILL.md:`,
+        error,
+      );
+      failures.push({ type: "plugin-skill", name: skillName, error });
+    }
+  }
+
+  // Luca-specific skill
+  try {
+    const pluginLuSkill = new LuSkill();
+    const pluginLuSkillDir = path.join(pluginSkillsDir, "lu");
+    await ensureDir(pluginLuSkillDir);
+    await Bun.write(
+      path.join(pluginLuSkillDir, "SKILL.md"),
+      pluginCompiler.compileSkill(pluginLuSkill, "CLAUDE"),
+    );
+    console.log("  Generated skills/lu/SKILL.md");
+    pluginSkillNames.push("lu");
+    pluginSkillCount++;
+  } catch (error) {
+    console.error("  Failed to generate skills/lu/SKILL.md:", error);
+    failures.push({ type: "plugin-skill", name: "lu", error });
+  }
+
+  // --- Plugin Commands ---
+
+  // Generate commands from general skills (excluding non-command skills)
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    if (COMMAND_EXCLUDED_SKILLS.has(skillName)) {
+      continue;
+    }
+
+    try {
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const commandContent = generateCommandMarkdown(
+        skillName,
+        instance.description,
+      );
+
+      await Bun.write(
+        path.join(pluginCommandsDir, `${skillName}.md`),
+        commandContent,
+      );
+
+      console.log(`  Generated commands/${skillName}.md`);
+      pluginCommandNames.push(skillName);
+      pluginCommandCount++;
+    } catch (error) {
+      console.error(`  Failed to generate commands/${skillName}.md:`, error);
+      failures.push({ type: "plugin-command", name: skillName, error });
+    }
+  }
+
+  // Generate command for luca-specific lu skill
+  try {
+    const pluginLuSkillForCmd = new LuSkill();
+    const luCommandContent = generateCommandMarkdown(
+      "lu",
+      pluginLuSkillForCmd.description,
+    );
+
+    await Bun.write(path.join(pluginCommandsDir, "lu.md"), luCommandContent);
+
+    console.log("  Generated commands/lu.md");
+    pluginCommandNames.push("lu");
+    pluginCommandCount++;
+  } catch (error) {
+    console.error("  Failed to generate commands/lu.md:", error);
+    failures.push({ type: "plugin-command", name: "lu", error });
+  }
+
+  // --- Plugin Hook Scripts ---
+
+  // Filter hooks for plugin context (exclude development-only hooks)
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+
+  if (PLUGIN_EXCLUDED_HOOKS.size > 0) {
+    console.log(
+      `  Excluded ${PLUGIN_EXCLUDED_HOOKS.size} hook(s): ${[...PLUGIN_EXCLUDED_HOOKS].join(", ")}`,
+    );
+  }
+
+  for (const [hookName, hookDef] of Object.entries(pluginHookRegistry)) {
+    try {
+      const srcPath = path.join(hookScriptsDir, hookDef.script);
+      const destPath = path.join(pluginScriptsDir, hookDef.script);
+
+      const srcFile = Bun.file(srcPath);
+      if (!(await srcFile.exists())) {
+        console.error(
+          `  Hook script not found: src/hooks/scripts/${hookDef.script}`,
+        );
+        failures.push({
+          type: "plugin-hook",
+          name: hookName,
+          error: new Error(`Script not found: ${hookDef.script}`),
+        });
+        continue;
+      }
+
+      await Bun.write(destPath, srcFile);
+
+      // Make script executable
+      const { exitCode } = Bun.spawnSync(["chmod", "+x", destPath]);
+      if (exitCode !== 0) {
+        console.error(`  Failed to chmod +x ${destPath}`);
+      }
+
+      console.log(`  Generated scripts/${hookDef.script}`);
+      pluginHookNames.push(hookName);
+      pluginHookCount++;
+    } catch (error) {
+      console.error(`  Failed to copy hook script ${hookDef.script}:`, error);
+      failures.push({ type: "plugin-hook", name: hookName, error });
+    }
+  }
+
+  // --- Plugin Hooks Configuration ---
+
+  const pluginHooksConfig = generatePluginHooksConfig(pluginHookRegistry);
+  await Bun.write(
+    path.join(pluginHooksDir, "hooks.json"),
+    JSON.stringify(pluginHooksConfig, null, 2) + "\n",
+  );
+  console.log("  Generated hooks/hooks.json");
+
+  // --- Plugin Manifest ---
+
+  const version = await readVersion();
+
+  const manifest = generatePluginManifest({
+    name: "luca",
+    version,
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    author: {
+      name: "Alec Sibilia",
+    },
+    keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+    commands: pluginCommandNames,
+    agents: pluginAgentNames,
+    skills: pluginSkillNames,
+    hooks: pluginHookNames,
+  });
+
+  await Bun.write(
+    path.join(pluginManifestDir, "plugin.json"),
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
+  console.log("  Generated .claude-plugin/plugin.json");
+
+  // --- Plugin Marketplace Manifest ---
+
+  const marketplaceManifest = {
+    $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
+    name: "luca-marketplace",
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    owner: {
+      name: "Alec Sibilia",
+    },
+    plugins: [
+      {
+        name: "luca",
+        description:
+          "Agentic development framework with cognitive memory and spec-driven workflow",
+        source: ".",
+        category: "development",
+        version,
+        author: {
+          name: "Alec Sibilia",
+        },
+        homepage: "https://github.com/alecsibilia/luca-framework",
+        repository: "https://github.com/alecsibilia/luca-framework",
+        license: "MIT",
+        keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+      },
+    ],
+  };
+
+  await Bun.write(
+    path.join(pluginManifestDir, "marketplace.json"),
+    JSON.stringify(marketplaceManifest, null, 2) + "\n",
+  );
+  console.log("  Generated .claude-plugin/marketplace.json");
+
+  // --- Plugin README ---
+
+  const readmeContent = generateReadme(
+    pluginSkillNames,
+    pluginAgentNames,
+    pluginCommandCount,
+    pluginHookCount,
+  );
+
+  await Bun.write(path.join(pluginDir, "README.md"), readmeContent);
+  console.log("  Generated README.md");
+
+  // --- Plugin Summary ---
+
+  const pluginTotalFiles =
+    pluginAgentCount +
+    pluginSkillCount +
+    pluginCommandCount +
+    pluginHookCount +
+    4; // +4 for hooks.json, plugin.json, marketplace.json, README.md
+
+  console.log("\n=== Plugin Build Summary ===");
+  console.log(`Agents:   ${pluginAgentCount}`);
+  console.log(`Skills:   ${pluginSkillCount}`);
+  console.log(`Commands: ${pluginCommandCount}`);
+  console.log(`Hooks:    ${pluginHookCount}`);
+  console.log(`Manifests:   plugin.json + marketplace.json`);
+  console.log(`Docs:        README.md`);
+  console.log(`Total:    ${pluginTotalFiles} files`);
+  console.log(`Output:   dist/plugin/`);
+
+  // --- Unified Summary ---
+
   console.log(`\n=== Build All Summary ===`);
   console.log(`Agents: ${agentCount} (x2 formats = ${agentCount * 2} files)`);
   console.log(`Skills: ${skillCount} (x2 formats = ${skillCount * 2} files)`);
   console.log(`Rules:  ${ruleCount} (x2 formats = ${ruleCount * 2} files)`);
   console.log(`Hooks:  ${hookCount} (Claude) + ${cursorHookCount} (Cursor)`);
   console.log(
-    `Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.commands} commands, ${pluginSummary.hooks} hooks + plugin.json + marketplace.json`,
+    `Plugin: ${pluginAgentCount} agents, ${pluginSkillCount} skills, ${pluginCommandCount} commands, ${pluginHookCount} hooks + plugin.json + marketplace.json`,
   );
-  console.log(
-    `Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount + pluginSummary.agents + pluginSummary.skills + pluginSummary.commands + pluginSummary.hooks + 3} files`,
-  );
+
+  const claudeCursorFiles =
+    (agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount;
+  const pluginFiles =
+    pluginAgentCount +
+    pluginSkillCount +
+    pluginCommandCount +
+    pluginHookCount +
+    4;
+  console.log(`Total:  ${claudeCursorFiles + pluginFiles} files`);
+
+  console.log("\n--- .claude/ ---");
+  console.log(`  Agents: ${agentCount}`);
+  console.log(`  Skills: ${skillCount}`);
+  console.log(`  Rules:  ${ruleCount}`);
+  console.log(`  Hooks:  ${hookCount}`);
+
+  console.log("\n--- .cursor/ ---");
+  console.log(`  Agents: ${agentCount}`);
+  console.log(`  Skills: ${skillCount}`);
+  console.log(`  Rules:  ${ruleCount}`);
+  console.log(`  Hooks:  ${cursorHookCount}`);
+
+  console.log("\n--- dist/plugin/ ---");
+  console.log(`  Agents:   ${pluginAgentCount}`);
+  console.log(`  Skills:   ${pluginSkillCount}`);
+  console.log(`  Commands: ${pluginCommandCount}`);
+  console.log(`  Hooks:    ${pluginHookCount}`);
+  console.log(`  Manifests: plugin.json + marketplace.json`);
+  console.log(`  Docs:      README.md`);
 
   if (failures.length > 0) {
     console.error(`\n✗ Build completed with ${failures.length} failure(s):`);
