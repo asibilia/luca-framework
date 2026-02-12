@@ -20,14 +20,11 @@ import { ProhibitclassusageRule } from "./general/no-classes.rule";
 import { ApplywheninteractiRule } from "./general/posthog-integration.rule";
 import { EnforceZodschemafRule } from "./general/schema-first-parsing.rule";
 import { GuidelinesforcontiRule } from "./general/self_improve.rule";
-import { GuidelinesforanalyRule } from "./general/task-analyzation.rule";
 import { UseBuninsteadofNRule } from "./general/use-bun-instead-of-node-vite-npm-pnpm.rule";
 
-// -- Duplicate class names requiring aliases (4 rules, 2 pairs)
+// -- Duplicate class names requiring aliases (2 rules)
 import { GenericruledescripRule as FileNamingRule } from "./general/file-naming.rule";
 import { GenericruledescripRule as LodashPreferenceRule } from "./general/lodash-preference.rule";
-import { GuideforusingTaskRule as DevWorkflowRule } from "./general/dev_workflow.rule";
-import { ComprehensiverefereRule as TaskmasterRule } from "./general/taskmaster.rule";
 
 // Export base rule class
 export { BaseRuleImpl } from "./base/base-rule";
@@ -46,7 +43,6 @@ export const ruleRegistry = {
   "atlassian-mcp": AtlassianMCPintegrRule,
   "bun-preference": UseBunpackagemanaRule,
   cursor_rules: GuidelinesforcreatRule,
-  dev_workflow: DevWorkflowRule,
   "file-naming": FileNamingRule,
   "functional-api-reuse": FunctionalAPIReuseRule,
   "harness-verification": HarnessVerificationRule,
@@ -60,7 +56,5 @@ export const ruleRegistry = {
   "posthog-integration": ApplywheninteractiRule,
   "schema-first-parsing": EnforceZodschemafRule,
   self_improve: GuidelinesforcontiRule,
-  "task-analyzation": GuidelinesforanalyRule,
-  taskmaster: TaskmasterRule,
   "use-bun-instead-of-node-vite-npm-pnpm": UseBuninsteadofNRule,
 };

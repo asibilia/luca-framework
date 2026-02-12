@@ -173,6 +173,27 @@
 **Insight:** `src/` is the single source of truth for all compiled output files. The pipeline is: `src/(agents|skills|rules|hooks)/` → `bun run build:all` (via `scripts/build-all.ts`) → `.claude/` + `.cursor/` output directories (182+ files). Registries in `src/*/index.ts` map entity names to TypeScript classes/metadata. The compiler reads registries and emits platform-specific output (markdown for agents/skills/rules, shell scripts for hooks, JSON configs for settings). Additionally, `packages/luca-framework/templates/hooks/` mirrors `src/hooks/scripts/` for the `luca init` scaffolder.
 **When to apply:** ANY time you need to modify content in `.claude/` or `.cursor/` directories. NEVER edit output files directly — always modify the corresponding `src/` source file and run `bun run build:all`. The drift detection system (`bun run check:drift`, pre-commit hook, drift test suite in `scripts/check-drift.test.ts`) will block commits that bypass this pipeline.
 
+### Pattern: Skill Source Files Required for Build Pipeline
+
+**Tags:** [architecture, conventions, drift]
+**Phase:** 18
+**Insight:** Skills MUST have source files in `src/skills/` for the build pipeline (`bun run build:all`) to compile them. If a skill is created directly as a compiled output (e.g., `.claude/skills/name/SKILL.md`) without a corresponding source file, `build:all` will delete it on next run because the pipeline regenerates ALL outputs from source. The build pipeline treats `src/skills/` as the single source of truth.
+**When to apply:** Any time a new skill is created. Always create the source `.skill.ts` file first, register it in `src/skills/index.ts`, then run `build:all`.
+
+### Pattern: Big Rock Selection Requires Minimum Effort Threshold
+
+**Tags:** [planner, scheduling]
+**Phase:** 18
+**Insight:** Big Rock First scheduling must filter by minimum effort (>= 3, i.e., MODERATE or above) in addition to dependency-free status. Without the effort threshold, TRIVIAL (effort=1) or SIMPLE (effort=2) items can be selected as the session's Big Rock, defeating the purpose of anchoring the session around a meaningful piece of work.
+**When to apply:** Any scheduling algorithm that uses Big Rock First strategy. The threshold ensures the anchor task is substantive enough to justify the focused session slot.
+
+### Pattern: Token Cost Calibration with Rolling Average
+
+**Tags:** [planner, performance]
+**Phase:** 18
+**Insight:** Cold-start cost estimates for different complexity levels can be calibrated over time using a rolling average: `(estimated * count + actual) / (count + 1)`. This handles the cold-start problem gracefully — initial estimates from config are used until real data accumulates, then the model self-corrects. The `formatCostTableForMemory()` function produces a table suitable for MEMORY.md storage.
+**When to apply:** Any estimation system that starts with configured defaults but should improve with actual usage data.
+
 ### Established Conventions
 
 <!-- Conventions to maintain consistency -->
@@ -223,6 +244,24 @@
 | [Phase 16] Advisory budget, not enforced               | Token budget allocation      | [decisions, architecture]               | Token budget allocation is documented as advisory guidance (25-50% output reservation) rather than hard enforcement. Enforcement requires runtime token counting infrastructure that does not exist yet. Avoids premature optimization                                                                                                                                                                                                             | 2026-02-11 |
 | [Phase 16] Keep all findings, tag with source          | Multi-reviewer aggregation   | [decisions, architecture]               | When multiple reviewers find overlapping issues, keep all findings tagged with source_agent rather than auto-resolving conflicts. Auto-resolution risks discarding valid but differently-phrased findings                                                                                                                                                                                                                                          | 2026-02-11 |
 | [Phase 16] Context assembly in orchestrator, not agent | Context responsibility       | [decisions, architecture]               | Clean separation where agents define WHAT context they need (frontmatter config) but the orchestrator assembles HOW to provide it (document assembly). Agents never load their own context documents. Keeps agents focused on their task domain                                                                                                                                                                                                    | 2026-02-11 |
+
+### Decision: WSJF Scoring with LLM-Inferred Inputs (T3 Signal)
+
+**Tags:** [planner, decisions, architecture]
+**Phase:** 18
+**Context:** WSJF scoring requires Business Value (BV), Time Criticality (TC), and Risk Reduction (RR) inputs for each backlog item.
+**Choice:** PM agent (lu-pm-planner) infers BV/TC/RR from todo context, ROADMAP, and dependency graph using LLM judgment (T3 signal). These are advisory, not deterministic.
+**Rationale:** No automated source of truth for business value exists. LLM inference from project context produces reasonable relative ordering. The planner output is advisory (session plan suggestions), not enforced, so T3 signal quality is acceptable. More accurate than random or uniform scoring.
+**Alternatives rejected:** Manual scoring by user (too slow for automated planning), uniform scoring (defeats purpose of prioritization), dependency count as proxy (doesn't capture business value).
+
+### Decision: Read-Only Agent Archetype via Tools Whitelist
+
+**Tags:** [planner, decisions, architecture]
+**Phase:** 18
+**Context:** lu-pm-planner needs to read backlog, roadmap, and state files but must never modify them.
+**Choice:** Enforce read-only behavior via tools whitelist: `["Read", "Glob", "Grep", "WebFetch"]` only. Orchestrator handles all file writes based on agent output.
+**Rationale:** Output-only enforcement at the tools level is the most reliable mechanism available. The agent literally cannot call Write/Edit/Bash tools. Combined with ResultEnvelope for structured output, the orchestrator receives the plan and decides what to persist.
+**Alternatives rejected:** Honor system (unreliable), post-hoc validation (too late), separate process sandbox (over-engineered for advisory agent).
 
 ### Decision: Verify Loop Limits Lower Than Harness Loop
 
@@ -382,6 +421,14 @@
 **Solution:** Skip convergence check on iteration 1. Only assess convergence from iteration 2 onward, when a meaningful previous exists.
 **Impact:** Medium -- would cause premature loop termination or incorrect stale counts if not handled.
 
+### Pitfall: Big Rock Selection Without Effort Filter
+
+**Tags:** [planner, scheduling, verification]
+**Phase:** 18
+**Issue:** `selectBigRock()` initially filtered only by `dependency_free === true` without checking effort size. This allowed TRIVIAL (effort=1) or SIMPLE (effort=2) items to be selected as the session's Big Rock anchor, defeating the scheduling strategy.
+**Solution:** Added `BIG_ROCK_MIN_EFFORT = 3` constant and `item.wsjf_inputs.effort_points >= BIG_ROCK_MIN_EFFORT` filter. Caught by lu-verifier during PLAN-04 requirements check.
+**Impact:** Medium — would produce suboptimal session plans with trivial items in the anchor slot.
+
 ### Anti-patterns
 
 <!-- What NOT to do — recall when approaching similar areas -->
@@ -436,13 +483,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 49 (+1 build pipeline)
-- Total decisions: 31 (no change)
-- Total pitfalls: 42 (+1 drift pitfall, +1 anti-pattern)
+- Total patterns: 52 (+3 Phase 18: skill source, big rock threshold, rolling average calibration)
+- Total decisions: 33 (+2 Phase 18: WSJF T3 signal, read-only agent archetype)
+- Total pitfalls: 43 (+1 Phase 18: big rock effort filter)
 - Total conventions: 4 (no change)
-- Total anti-patterns: 6 (+1 direct output editing)
+- Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
-- Last updated: 2026-02-11
+- Last updated: 2026-02-12
 
-_Entries added by: lu-executor (Phase 17, Plan 17-06)_
-_Last curated: 2026-02-11_
+_Entries added by: lu-complete-milestone (Phase 18 learning extraction)_
+_Last curated: 2026-02-12_
