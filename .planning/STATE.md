@@ -3,18 +3,18 @@
 ## Current Position
 
 - **Current Milestone:** v1.3.0 — Claude Code Plugin Distribution
-- **Current Phase:** Phase 20/21 (Skills & Agents Packaging / Hooks & Runtime)
-- **Status:** Phase 19 complete, ready to execute Phases 20+21 (parallel)
+- **Current Phase:** Phase 21 (Hooks & Runtime) — next to execute
+- **Status:** Phase 20 complete, ready to execute Phase 21
 - **Task Complexity:** COMPLEX
 - **Last Updated:** 2026-02-12
-- **Last Activity:** Phase 19 (Plugin Infrastructure) complete. 4 plans executed, all verified. Plugin compiler, build script, and build:all integration done.
+- **Last Activity:** Phase 20 (Skills & Agents Packaging) complete. 4 plans executed across 2 waves. 44 skills, 38 commands, 5 rule-as-skills, /lu routing rewrite. 877 tests pass.
 
 ## Progress
 
 ```
 v1.3.0: IN PROGRESS
   Phase 19 (Plugin Infrastructure):       ✅ complete — PLUG-01..05 satisfied
-  Phase 20 (Skills & Agents Packaging):   ⬜ pending — PACK-01..05
+  Phase 20 (Skills & Agents Packaging):   ✅ complete — PACK-01..05 satisfied
   Phase 21 (Hooks & Runtime):             ⬜ pending — HOOK-01..05
   Phase 22 (Distribution & Marketplace):  ⬜ pending — DIST-01..05
   Phase 23 (Integration Testing):         ⬜ pending — TEST-01..05
@@ -99,13 +99,13 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Session Continuity
 
 - **Last session:** 2026-02-12
-- **Stopped at:** Phase 19 complete, ready for Phases 20+21
+- **Stopped at:** Phase 20 complete, ready for Phase 21
 - **Resume file:** None
 
 ## Next Actions
 
-1. Discuss/plan Phase 20 (Skills & Agents Packaging) and Phase 21 (Hooks & Runtime)
-2. Execute Phases 20+21 in parallel
+1. Discuss/plan Phase 21 (Hooks & Runtime)
+2. Execute Phase 21
 3. Execute Phase 22 (Distribution) then Phase 23 (Integration Testing)
 
 ---

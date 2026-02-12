@@ -209,6 +209,21 @@
   - **Tags**: [patterns, architecture]
   - **Confidence**: High
   - **Added**: 2026-02-12
+- **[Phase 20] Command exclusion set over opt-in flags**: When most registry entries qualify for a compilation target but a few don't, maintain a small `ReadonlySet<string>` exclusion set rather than adding opt-in boolean flags to every entry. Simpler to reason about, fewer source files to modify, and the exclusion list documents intent explicitly. Validated in Phase 20 (COMMAND_EXCLUDED_SKILLS: 6 entries from 44 skills, `!COMMAND_EXCLUDED_SKILLS.has(name)` filter)
+  - **When to use**: When filtering a registry for a compilation target and the majority of entries qualify
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 20] Routing skill pattern (Skill tool + Task tool delegation)**: A routing skill that classifies input and delegates to sub-skills (via `Skill(skill: "name", args: "...")`) and sub-agents (via `Task(agent: "name", prompt: "...")`) keeps the router lightweight and each sub-skill self-contained with its own SKILL.md. The router never executes workflow steps itself. Validated in Phase 20 (/lu rewrite: 18 Skill tool invocations, 5 Task tool invocations, 9 routing scenarios)
+  - **When to use**: When building a unified entry point that needs to dispatch to multiple specialized workflows
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 20] Rules-as-skills conversion for plugin distribution**: Plugins can't inject rules into the host IDE. Convert critical framework rules to skills with `disable-model-invocation: true` frontmatter. Prefix with `rule-` for discoverability. The skill body contains the full rule text, making it available via lazy-loaded skill discovery. Validated in Phase 20 (5 rules converted: complexity-gating, file-naming, harness-verification, hook-skill-boundary, lu-workflow)
+  - **When to use**: When distributing rules via a plugin system that only supports skills/commands/agents
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
 
 ### Established Conventions
 
@@ -260,6 +275,8 @@
 | [Phase 16] Advisory budget, not enforced               | Token budget allocation      | [decisions, architecture]               | Token budget allocation is documented as advisory guidance (25-50% output reservation) rather than hard enforcement. Enforcement requires runtime token counting infrastructure that does not exist yet. Avoids premature optimization                                                                                                                                                                                                             | 2026-02-11 |
 | [Phase 16] Keep all findings, tag with source          | Multi-reviewer aggregation   | [decisions, architecture]               | When multiple reviewers find overlapping issues, keep all findings tagged with source_agent rather than auto-resolving conflicts. Auto-resolution risks discarding valid but differently-phrased findings                                                                                                                                                                                                                                          | 2026-02-11 |
 | [Phase 16] Context assembly in orchestrator, not agent | Context responsibility       | [decisions, architecture]               | Clean separation where agents define WHAT context they need (frontmatter config) but the orchestrator assembles HOW to provide it (document assembly). Agents never load their own context documents. Keeps agents focused on their task domain                                                                                                                                                                                                    | 2026-02-11 |
+| [Phase 20] 38 commands from 44 skills (exclusion set)  | Command compilation scope    | [decisions, architecture]               | 6 skills excluded from command generation: `workflow-start` (internal), 5 `rule-*` skills (informational, not invocable). Exclusion set pattern chosen over per-skill opt-in flag to minimize source changes. Commands use YAML frontmatter format with `allowed_tools: []` and `disable_model_invocation: true` for non-interactive skills                                                                                                        | 2026-02-12 |
+| [Phase 20] /lu as routing orchestrator, not executor   | Skill architecture           | [decisions, architecture]               | /lu rewritten from monolithic inline workflow to lightweight router using two delegation mechanisms: Skill tool for sub-skills (lu-discuss-phase, etc.) and Task tool for agents (lu-cognition, lu-router, etc.). Router never executes workflow steps itself. Each sub-skill loads its own SKILL.md. Enables independent sub-skill iteration without touching the router                                                                          | 2026-02-12 |
 
 ### Decision: WSJF Scoring with LLM-Inferred Inputs (T3 Signal)
 
@@ -445,6 +462,13 @@
 **Solution:** Added `BIG_ROCK_MIN_EFFORT = 3` constant and `item.wsjf_inputs.effort_points >= BIG_ROCK_MIN_EFFORT` filter. Caught by lu-verifier during PLAN-04 requirements check.
 **Impact:** Medium — would produce suboptimal session plans with trivial items in the anchor slot.
 
+- **[Phase 20] Background executor agent permission loops**: Background executor agents (spawned via `Task(run_in_background: true)`) can enter permission denial loops when their Bash tool calls are auto-denied (prompts unavailable). The agent retries the same command indefinitely. Impact: agent appears stuck despite all substantive work being complete. Mitigation: orchestrator should check agent output periodically and manually complete any remaining administrative tasks (summary files, state updates) if the agent is stuck on non-critical operations
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, lu-execute-phase]
+  - **Tags**: [pitfalls, planning, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+
 ### Anti-patterns
 
 <!-- What NOT to do — recall when approaching similar areas -->
@@ -499,13 +523,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 55 (+3 Phase 19: format delegation, exported build function, platform-specific path generators)
-- Total decisions: 33 (no change)
-- Total pitfalls: 43 (no change)
+- Total patterns: 58 (+3 Phase 20: command exclusion set, routing skill, rules-as-skills)
+- Total decisions: 35 (+2 Phase 20: exclusion set scope, routing orchestrator)
+- Total pitfalls: 44 (+1 Phase 20: background executor permission loops)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-12
 
-_Entries added by: lu-execute-phase (Phase 19 learning extraction)_
+_Entries added by: lu-execute-phase (Phase 20 learning extraction)_
 _Last curated: 2026-02-12_

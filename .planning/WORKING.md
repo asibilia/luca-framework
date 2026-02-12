@@ -54,11 +54,17 @@
 | --   | Planning              | 4 PLAN.md files created (2 waves)             |
 | --   | Plan checker (iter 1) | 2 medium issues fixed (01-PLAN, 03-PLAN)      |
 | --   | Plan checker (iter 2) | 4 low issues, 2 fixed (01-PLAN, 02-PLAN)      |
+| --   | Wave 1 execution      | 20-01 + 20-02 parallel, 6 commits, all pass   |
+| --   | Wave 2 execution      | 20-03 + 20-04 parallel, 3 commits, all pass   |
+| --   | Verification harness  | test PASS, build PASS, typecheck pre-existing |
+| --   | Phase verification    | All PACK-01..05 deliverables verified         |
+| --   | State updates         | STATE.md, WORKING.md updated                  |
+| --   | Learning capture      | 3 patterns, 2 decisions, 1 pitfall → MEMORY   |
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [ ] Learnings extracted
-- [ ] Ready to clear
+- [x] Learnings extracted
+- [x] Ready to clear
