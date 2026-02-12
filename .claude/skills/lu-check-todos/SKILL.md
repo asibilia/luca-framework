@@ -1,6 +1,6 @@
 # lu-check-todos
 
-List pending todos and select one to work on. Use when user wants to review todos, mentions /lu-check-todos, or needs to see captured ideas.
+List pending todos and select one to work on next.
 
 ## main
 

@@ -1,6 +1,6 @@
 # lu-verify-work
 
-Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work.
+Validate built features through conversational UAT testing against acceptance criteria.
 
 ## main
 

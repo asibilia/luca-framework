@@ -1,6 +1,6 @@
 # lu-help
 
-Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.
+Show available Luca commands, usage guide, and workflow overview.
 
 ## main
 

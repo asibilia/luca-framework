@@ -1,6 +1,6 @@
 # lu-debug
 
-Systematic debugging with persistent state across context resets. Use when user wants to debug an issue, mentions /lu-debug, or has a bug to investigate.
+Systematic debugging workflow with persistent hypothesis state across context resets.
 
 ## main
 

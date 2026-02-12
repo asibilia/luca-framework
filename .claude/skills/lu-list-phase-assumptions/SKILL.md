@@ -1,6 +1,6 @@
 # lu-list-phase-assumptions
 
-Preview AI planning assumptions before execution. Use when user wants to see what AI will do, mentions /lu-list-phase-assumptions, or wants to course-correct before planning.
+Preview AI planning assumptions for a phase before committing to execution.
 
 ## main
 

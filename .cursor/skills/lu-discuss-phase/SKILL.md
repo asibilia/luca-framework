@@ -1,6 +1,6 @@
 ---
 name: lu-discuss-phase
-description: Gather phase context through adaptive questioning before planning. Use when user wants to discuss a phase, clarify vision, or asks about /lu-discuss-phase.
+description: Gather phase context through adaptive questioning before creating execution plans.
 disable-model-invocation: true
 ---
 

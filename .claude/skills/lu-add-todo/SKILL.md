@@ -1,6 +1,6 @@
 # lu-add-todo
 
-Capture idea or task as todo from conversation. Use when user wants to save an idea for later, mentions /lu-add-todo, or needs to capture a task without acting on it now.
+Capture an idea or task as a todo for later without acting on it now.
 
 ## main
 

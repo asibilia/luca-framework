@@ -1,6 +1,6 @@
 # lu-set-profile
 
-Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff.
+Switch the model profile (quality/balanced/budget) for Luca agent delegation.
 
 ## main
 

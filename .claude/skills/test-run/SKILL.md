@@ -1,6 +1,6 @@
 # test-run
 
-Run tests with optional filter pattern. Use when the user wants to run tests, test code, execute test suite, check test coverage, or verify tests pass.
+Run the project test suite with optional filter pattern and coverage reporting.
 
 ## main
 

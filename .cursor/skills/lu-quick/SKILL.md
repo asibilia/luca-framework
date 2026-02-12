@@ -1,6 +1,6 @@
 ---
 name: lu-quick
-description: Execute a quick ad-hoc task with Luca guarantees but skip optional agents. Use when user wants to do a quick task, mentions /lu-quick, or needs a simple one-off change.
+description: Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.
 disable-model-invocation: true
 ---
 

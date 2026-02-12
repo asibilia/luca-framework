@@ -1,6 +1,6 @@
 # qa-consolidate
 
-Consolidate QA testing plans from merged feature PRs onto the parent release PR. Use when the user wants to consolidate QA, update QA plan, update testing plan on release PR, merge QA plans, prepare release QA, generate missing QA plans, or retroactively create QA plans for merged PRs.
+Consolidate QA testing plans from merged feature PRs onto a parent release PR.
 
 ## main
 

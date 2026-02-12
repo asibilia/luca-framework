@@ -1,6 +1,6 @@
 # lu-audit-milestone
 
-Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.
+Audit milestone completion against original requirements and acceptance criteria.
 
 ## main
 

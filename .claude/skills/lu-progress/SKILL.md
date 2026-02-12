@@ -1,6 +1,6 @@
 # lu-progress
 
-Check Luca project progress, show context, and route to next action. Use when the user asks what's next, wants to check status, or returns to a Luca project after a break.
+Check project progress, show current state, and suggest the next action to take.
 
 ## main
 

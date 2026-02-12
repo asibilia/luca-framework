@@ -1,6 +1,6 @@
 ---
 name: lu-map-codebase
-description: Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.
+description: Analyze an existing codebase with parallel mapper agents to build a structural overview.
 disable-model-invocation: true
 ---
 

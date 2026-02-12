@@ -1,6 +1,6 @@
 # lu-new-milestone
 
-Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.
+Start a new milestone cycle with requirements gathering and roadmap generation.
 
 ## main
 

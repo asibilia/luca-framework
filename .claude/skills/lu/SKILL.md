@@ -1,6 +1,6 @@
 # lu
 
-Unified entry point for Luca framework. Handles cognitive pre-flight, complexity routing, and workflow orchestration. Use for any development task.
+Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.
 
 ## main
 

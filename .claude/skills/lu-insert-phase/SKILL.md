@@ -1,6 +1,6 @@
 # lu-insert-phase
 
-Insert urgent work as a decimal phase between existing phases. Use when user needs to add urgent work mid-milestone, mentions /lu-insert-phase, or needs to handle discoveries during execution.
+Insert urgent work as a decimal phase between existing phases mid-milestone.
 
 ## main
 

@@ -1,6 +1,6 @@
 # lu-update
 
-Update Luca to latest version with changelog preview. Use when user wants to update Luca, mentions /lu-update, or needs the latest features.
+Update Luca to the latest version with changelog preview and migration notes.
 
 ## main
 

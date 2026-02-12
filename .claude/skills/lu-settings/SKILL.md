@@ -1,6 +1,6 @@
 # lu-settings
 
-Configure Luca workflow toggles and model profile. Use when user wants to change Luca settings, mentions /lu-settings, or needs to toggle workflow agents.
+Configure Luca workflow toggles, model profile, and agent settings.
 
 ## main
 
