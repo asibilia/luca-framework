@@ -1,19 +1,19 @@
 /**
- * lu-pause-work Skill - Create context handoff when pausing work mid-phase. Use when user wants to stop work, mentions /lu-pause-work, or needs to save current state.
+ * lu-pause-work Skill - Create a context handoff snapshot when pausing work mid-phase for later resumption.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-pause-work skill configuration
 const luPauseWorkConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-pause-work',
-    description: `Create context handoff when pausing work mid-phase. Use when user wants to stop work, mentions /lu-pause-work, or needs to save current state.`,
-    'disable-model-invocation': true,
+    name: "lu-pause-work",
+    description: `Create a context handoff snapshot when pausing work mid-phase for later resumption.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Pause Work
 
@@ -129,9 +129,9 @@ This skill creates a handoff for resuming later. No immediate action needed.
 **Common follow-ups:**
 - \`/lu-help\` — Review commands before stepping away
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPauseWorkSkill extends BaseSkillImpl {

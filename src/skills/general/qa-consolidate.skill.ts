@@ -1,19 +1,18 @@
 /**
- * qa-consolidate Skill - Consolidate QA testing plans from merged feature PRs onto the parent release PR. Use when the user wants to consolidate QA, update QA plan, update testing plan on release PR, merge QA plans, prepare release QA, generate missing QA plans, or retroactively create QA plans for merged PRs.
+ * qa-consolidate Skill - Consolidate QA testing plans from merged feature PRs onto a parent release PR.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the qa-consolidate skill configuration
 const qaConsolidateConfig: SkillConfig = {
   frontmatter: {
-    name: 'qa-consolidate',
-    description: `Consolidate QA testing plans from merged feature PRs onto the parent release PR. Use when the user wants to consolidate QA, update QA plan, update testing plan on release PR, merge QA plans, prepare release QA, generate missing QA plans, or retroactively create QA plans for merged PRs.`,
-
+    name: "qa-consolidate",
+    description: `Consolidate QA testing plans from merged feature PRs onto a parent release PR.`,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # QA Plan Consolidation
 
@@ -298,9 +297,9 @@ User says: "generate missing QA plans and consolidate for RELEASE-1345"
    - Post generated QA plan to original feature PR
 4. Build and post consolidated comment with all QA plans
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class QaConsolidateSkill extends BaseSkillImpl {

@@ -1,6 +1,6 @@
 # code-lint
 
-Run ESLint with auto-fix on the codebase or specific path. Use when the user wants to lint code, fix linting errors, run eslint, or check code style.
+Run ESLint with auto-fix on the codebase or a specific path.
 
 ## main
 

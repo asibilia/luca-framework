@@ -1,19 +1,19 @@
 /**
- * lu-new-project Skill - Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization.
+ * lu-new-project Skill - Initialize a new Luca project with deep context gathering and BRAIN.md creation.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-new-project skill configuration
 const luNewProjectConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-new-project',
-    description: `Initialize a new Luca project with deep context gathering. Use when the user wants to start a new project, asks about /lu-new-project, or mentions Luca project initialization.`,
-    'disable-model-invocation': true,
+    name: "lu-new-project",
+    description: `Initialize a new Luca project with deep context gathering and BRAIN.md creation.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca New Project
 
@@ -629,9 +629,9 @@ Present completion with next steps:
 - \`/lu-plan-phase 1\` — Skip discussion, plan directly
 - \`/lu-map-codebase\` — Map existing codebase first (brownfield)
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuNewProjectSkill extends BaseSkillImpl {

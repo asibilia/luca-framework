@@ -1,19 +1,19 @@
 /**
- * lu-set-profile Skill - Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff.
+ * lu-set-profile Skill - Switch the model profile (quality/balanced/budget) for Luca agent delegation.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-set-profile skill configuration
 const luSetProfileConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-set-profile',
-    description: `Quick switch model profile for Luca agents. Use when user wants to change model profile, mentions /lu-set-profile, or needs to adjust cost/quality tradeoff.`,
-    'disable-model-invocation': true,
+    name: "lu-set-profile",
+    description: `Switch the model profile (quality/balanced/budget) for Luca agent delegation.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Set Profile
 
@@ -80,9 +80,9 @@ Profile updated to \`{profile}\`. Takes effect on next agent invocation.
 - \`/lu-progress\` — Continue your work
 - \`/lu-settings\` — Adjust other settings
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuSetProfileSkill extends BaseSkillImpl {

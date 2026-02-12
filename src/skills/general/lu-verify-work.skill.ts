@@ -1,19 +1,19 @@
 /**
- * lu-verify-work Skill - Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work.
+ * lu-verify-work Skill - Validate built features through conversational UAT testing against acceptance criteria.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-verify-work skill configuration
 const luVerifyWorkConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-verify-work',
-    description: `Validate built features through conversational UAT testing. Use when user wants to verify work, test a phase, or asks about /lu-verify-work.`,
-    'disable-model-invocation': true,
+    name: "lu-verify-work",
+    description: `Validate built features through conversational UAT testing against acceptance criteria.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Verify Work
 
@@ -383,9 +383,9 @@ Manual intervention required
 - \`/lu-plan-phase {N} --gaps\` — Create fix plans for failures
 - \`/lu-audit-milestone\` — Complete the milestone
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuVerifyWorkSkill extends BaseSkillImpl {

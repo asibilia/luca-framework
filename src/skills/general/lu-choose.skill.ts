@@ -1,19 +1,18 @@
 /**
- * lu-choose Skill - Help users decide between issue-driven vs Luca workflow. Use when the user is unsure which development approach to use, asks about workflow selection, or mentions /lu-choose.
+ * lu-choose Skill - Choose between issue-driven development and Luca spec-driven workflow for a task.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-choose skill configuration
 const luChooseConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-choose',
-    description: `Help users decide between issue-driven vs Luca workflow. Use when the user is unsure which development approach to use, asks about workflow selection, or mentions /lu-choose.`,
-
+    name: "lu-choose",
+    description: `Choose between issue-driven development and Luca spec-driven workflow for a task.`,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Choose Workflow
 
@@ -133,9 +132,9 @@ This skill helps you decide between workflows. After choosing:
 - \`/lu-help\` — Review all available commands
 - \`/lu-progress\` — Check existing project status
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuChooseSkill extends BaseSkillImpl {

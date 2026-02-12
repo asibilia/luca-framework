@@ -1,19 +1,19 @@
 /**
- * lu-quick Skill - Execute a quick ad-hoc task with Luca guarantees but skip optional agents. Use when user wants to do a quick task, mentions /lu-quick, or needs a simple one-off change.
+ * lu-quick Skill - Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-quick skill configuration
 const luQuickConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-quick',
-    description: `Execute a quick ad-hoc task with Luca guarantees but skip optional agents. Use when user wants to do a quick task, mentions /lu-quick, or needs a simple one-off change.`,
-    'disable-model-invocation': true,
+    name: "lu-quick",
+    description: `Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Quick
 
@@ -319,9 +319,9 @@ Ready for next task: /lu-quick
 - \`/lu-quick\` — Run another quick task
 - \`/lu-help\` — See all available commands
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuQuickSkill extends BaseSkillImpl {

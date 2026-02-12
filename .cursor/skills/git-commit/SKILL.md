@@ -1,6 +1,6 @@
 ---
 name: git-commit
-description: Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code.
+description: Stage and commit changes using the project's conventional commit CLI with ticket extraction.
 ---
 
 <main>

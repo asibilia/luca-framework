@@ -1,19 +1,19 @@
 /**
- * lu-list-phase-assumptions Skill - Preview AI planning assumptions before execution. Use when user wants to see what AI will do, mentions /lu-list-phase-assumptions, or wants to course-correct before planning.
+ * lu-list-phase-assumptions Skill - Preview AI planning assumptions for a phase before committing to execution.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-list-phase-assumptions skill configuration
 const luListPhaseAssumptionsConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-list-phase-assumptions',
-    description: `Preview AI planning assumptions before execution. Use when user wants to see what AI will do, mentions /lu-list-phase-assumptions, or wants to course-correct before planning.`,
-    'disable-model-invocation': true,
+    name: "lu-list-phase-assumptions",
+    description: `Preview AI planning assumptions for a phase before committing to execution.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca List Phase Assumptions
 
@@ -101,9 +101,9 @@ Shows AI's intended approach for a phase so you can course-correct if needed.
 - \`/lu-discuss-phase {phase}\` — Clarify vision if assumptions seem off
 - \`/lu-progress\` — Check overall project status
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuListPhaseAssumptionsSkill extends BaseSkillImpl {

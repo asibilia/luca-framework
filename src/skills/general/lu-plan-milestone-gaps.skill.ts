@@ -1,19 +1,19 @@
 /**
- * lu-plan-milestone-gaps Skill - Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps.
+ * lu-plan-milestone-gaps Skill - Create phases to close gaps identified by a milestone audit.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-plan-milestone-gaps skill configuration
 const luPlanMilestoneGapsConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-plan-milestone-gaps',
-    description: `Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps.`,
-    'disable-model-invocation': true,
+    name: "lu-plan-milestone-gaps",
+    description: `Create phases to close gaps identified by a milestone audit.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Plan Milestone Gaps
 
@@ -69,9 +69,9 @@ Create phases to close gaps identified by milestone audit.
 - \`/lu-progress\` — Review gap closure phases
 - \`/lu-audit-milestone\` — Re-audit after fixes
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPlanMilestoneGapsSkill extends BaseSkillImpl {
