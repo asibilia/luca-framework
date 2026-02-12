@@ -160,5 +160,26 @@
         "learningCapture": "full+debrief"
       }
     }
+  },
+  "planner": {
+    "session_cap_minutes": 180,
+    "weekly_allocation": {
+      "needle_movers": 60,
+      "quick_wins": 25,
+      "maintenance": 10,
+      "reserve": 5
+    },
+    "zone_boundaries": {
+      "peak_end": 30,
+      "good_end": 50,
+      "degrading_end": 70
+    },
+    "cold_start_costs": {
+      "TRIVIAL": 5,
+      "SIMPLE": 10,
+      "MODERATE": 20,
+      "COMPLEX": 35,
+      "CRITICAL": 50
+    }
   }
 }

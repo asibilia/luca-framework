@@ -81,3 +81,19 @@ export {
   scheduleSession,
   generateMermaidGantt,
 } from "./scheduler";
+
+// Weekly planning
+export {
+  classifyBucket,
+  partitionIntoBuckets,
+  distributeWeekly,
+} from "./weekly";
+
+// Token cost model
+export {
+  getColdStartCost,
+  createCostEstimate,
+  calibrateCost,
+  buildCostTable,
+  formatCostTableForMemory,
+} from "./cost-model";

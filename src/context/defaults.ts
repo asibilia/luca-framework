@@ -144,6 +144,11 @@ export const DEFAULT_AGENT_CONTEXT_PROFILES: Record<string, ContextConfig> = {
     promotable_to: "T2",
     isolation: "none",
   },
+  "lu-pm-planner": {
+    default_tier: "T1",
+    promotable_to: "T2",
+    isolation: "warm",
+  },
 };
 
 /**
