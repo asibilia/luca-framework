@@ -362,7 +362,7 @@ async function main() {
   console.log("\n--- Plugin ---");
   const pluginSummary = await buildPlugin();
   console.log(
-    `✓ Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.hooks} hooks`,
+    `✓ Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.commands} commands, ${pluginSummary.hooks} hooks`,
   );
 
   if (pluginSummary.failures.length > 0) {
@@ -378,10 +378,10 @@ async function main() {
   console.log(`Rules:  ${ruleCount} (x2 formats = ${ruleCount * 2} files)`);
   console.log(`Hooks:  ${hookCount} (Claude) + ${cursorHookCount} (Cursor)`);
   console.log(
-    `Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.hooks} hooks`,
+    `Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.commands} commands, ${pluginSummary.hooks} hooks`,
   );
   console.log(
-    `Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount + pluginSummary.agents + pluginSummary.skills + pluginSummary.hooks + 2} files`,
+    `Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount + pluginSummary.agents + pluginSummary.skills + pluginSummary.commands + pluginSummary.hooks + 2} files`,
   );
 
   if (failures.length > 0) {

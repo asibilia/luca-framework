@@ -27,6 +27,9 @@
  *   │   ├── git-commit/
  *   │   │   └── SKILL.md
  *   │   └── ... (all skills)
+ *   ├── commands/
+ *   │   ├── git-commit.md
+ *   │   └── ... (all commands)
  *   ├── hooks/
  *   │   └── hooks.json
  *   └── scripts/
@@ -56,9 +59,26 @@ import path from "path";
 export interface BuildPluginResult {
   agents: number;
   skills: number;
+  commands: number;
   hooks: number;
   failures: string[];
 }
+
+/**
+ * Skills excluded from command generation.
+ *
+ * These skills are not exposed as slash commands because they are either:
+ * - Internal orchestrator redirects (workflow-start)
+ * - Reference/guidance skills for auto-invocation only (rule-* skills)
+ */
+const COMMAND_EXCLUDED_SKILLS: ReadonlySet<string> = new Set([
+  "workflow-start",
+  "rule-lu-workflow",
+  "rule-complexity-gating",
+  "rule-harness-verification",
+  "rule-hook-skill-boundary",
+  "rule-file-naming",
+]);
 
 /**
  * Generate the plugin hooks.json configuration.
@@ -112,6 +132,25 @@ function generatePluginHooksConfig(
 }
 
 /**
+ * Generate a command markdown file for a skill.
+ *
+ * Commands are lightweight markdown files that register a skill as a
+ * user-invokable slash command. The file contains YAML frontmatter with
+ * the command description, which Claude Code uses for command listing
+ * and discovery.
+ *
+ * @param skillName - The skill name (used as the command name)
+ * @param description - The skill description (used as command description)
+ * @returns Markdown string for the command file
+ */
+function generateCommandMarkdown(
+  skillName: string,
+  description: string,
+): string {
+  return `---\ndescription: ${description}\n---\n`;
+}
+
+/**
  * Read the package version from the luca-framework package.
  *
  * Falls back to the root package.json, then to "0.0.1" if no version
@@ -159,9 +198,10 @@ async function readVersion(): Promise<string> {
  * 2. Cleans stale files from previous builds
  * 3. Compiles all agents from agentRegistry + Luca-specific agents
  * 4. Compiles all skills from skillRegistry + Luca-specific skill
- * 5. Copies hook scripts from src/hooks/scripts/
- * 6. Generates hooks/hooks.json with ${CLAUDE_PLUGIN_ROOT} paths
- * 7. Generates .claude-plugin/plugin.json manifest
+ * 5. Generates command .md files for all command-eligible skills
+ * 6. Copies hook scripts from src/hooks/scripts/
+ * 7. Generates hooks/hooks.json with ${CLAUDE_PLUGIN_ROOT} paths
+ * 8. Generates .claude-plugin/plugin.json manifest
  *
  * @returns Build result with counts and any failure details
  *
@@ -182,6 +222,7 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
   const manifestDir = path.join(pluginDir, ".claude-plugin");
   const agentsDir = path.join(pluginDir, "agents");
   const skillsDir = path.join(pluginDir, "skills");
+  const commandsDir = path.join(pluginDir, "commands");
   const hooksDir = path.join(pluginDir, "hooks");
   const scriptsDir = path.join(pluginDir, "scripts");
 
@@ -190,22 +231,30 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
     ensureDir(manifestDir),
     ensureDir(agentsDir),
     ensureDir(skillsDir),
+    ensureDir(commandsDir),
     ensureDir(hooksDir),
     ensureDir(scriptsDir),
   ]);
 
   // Clean stale files before writing
-  const [removedAgents, removedSkills, removedHooks, removedScripts] =
-    await Promise.all([
-      cleanDirectory(agentsDir, [".md"]),
-      cleanSkillsDirectory(skillsDir),
-      cleanDirectory(hooksDir, [".json"]),
-      cleanDirectory(scriptsDir, [".sh"]),
-    ]);
+  const [
+    removedAgents,
+    removedSkills,
+    removedCommands,
+    removedHooks,
+    removedScripts,
+  ] = await Promise.all([
+    cleanDirectory(agentsDir, [".md"]),
+    cleanSkillsDirectory(skillsDir),
+    cleanDirectory(commandsDir, [".md"]),
+    cleanDirectory(hooksDir, [".json"]),
+    cleanDirectory(scriptsDir, [".sh"]),
+  ]);
 
   const totalRemoved =
     removedAgents.length +
     removedSkills.length +
+    removedCommands.length +
     removedHooks.length +
     removedScripts.length;
 
@@ -214,10 +263,12 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
 
   let agentCount = 0;
   let skillCount = 0;
+  let commandCount = 0;
   let hookCount = 0;
   const failures: string[] = [];
   const agentNames: string[] = [];
   const skillNames: string[] = [];
+  const commandNames: string[] = [];
   const hookNames: string[] = [];
 
   // --- Agents ---
@@ -309,6 +360,50 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
     failures.push("skill/lu");
   }
 
+  // --- Commands ---
+
+  // Generate commands from general skills (excluding non-command skills)
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    if (COMMAND_EXCLUDED_SKILLS.has(skillName)) {
+      continue;
+    }
+
+    try {
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const commandContent = generateCommandMarkdown(
+        skillName,
+        instance.description,
+      );
+
+      await Bun.write(
+        path.join(commandsDir, `${skillName}.md`),
+        commandContent,
+      );
+
+      console.log(`  Generated commands/${skillName}.md`);
+      commandNames.push(skillName);
+      commandCount++;
+    } catch (error) {
+      console.error(`  Failed to generate commands/${skillName}.md:`, error);
+      failures.push(`command/${skillName}`);
+    }
+  }
+
+  // Generate command for luca-specific lu skill
+  try {
+    const luSkill = new LuSkill();
+    const luCommandContent = generateCommandMarkdown("lu", luSkill.description);
+
+    await Bun.write(path.join(commandsDir, "lu.md"), luCommandContent);
+
+    console.log("  Generated commands/lu.md");
+    commandNames.push("lu");
+    commandCount++;
+  } catch (error) {
+    console.error("  Failed to generate commands/lu.md:", error);
+    failures.push("command/lu");
+  }
+
   // --- Hook Scripts ---
 
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
@@ -366,6 +461,7 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
       name: "Alec Sibilia",
     },
     keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+    commands: commandNames,
     agents: agentNames,
     skills: skillNames,
     hooks: hookNames,
@@ -379,14 +475,15 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
 
   // --- Summary ---
 
-  const totalFiles = agentCount + skillCount + hookCount + 2; // +2 for hooks.json and plugin.json
+  const totalFiles = agentCount + skillCount + commandCount + hookCount + 2; // +2 for hooks.json and plugin.json
 
   console.log("\n=== Plugin Build Summary ===");
-  console.log(`Agents: ${agentCount}`);
-  console.log(`Skills: ${skillCount}`);
-  console.log(`Hooks:  ${hookCount}`);
-  console.log(`Total:  ${totalFiles} files`);
-  console.log(`Output: dist/plugin/`);
+  console.log(`Agents:   ${agentCount}`);
+  console.log(`Skills:   ${skillCount}`);
+  console.log(`Commands: ${commandCount}`);
+  console.log(`Hooks:    ${hookCount}`);
+  console.log(`Total:    ${totalFiles} files`);
+  console.log(`Output:   dist/plugin/`);
 
   if (failures.length > 0) {
     console.error(`\nBuild completed with ${failures.length} failure(s):`);
@@ -395,7 +492,13 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
     }
   }
 
-  return { agents: agentCount, skills: skillCount, hooks: hookCount, failures };
+  return {
+    agents: agentCount,
+    skills: skillCount,
+    commands: commandCount,
+    hooks: hookCount,
+    failures,
+  };
 }
 
 // --- Standalone entry point ---
