@@ -1,30 +1,53 @@
 /**
  * Luca Planner Agent - Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
-import { agentConfigSchema } from '../types/agent.schemas';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
+import { agentConfigSchema } from "../types/agent.schemas";
 
 // Define the lu-planner agent configuration
 const luPlannerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-planner',
-    description: 'Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.',
-    tools: ['Read', 'Write', 'Edit', 'Grep', 'Glob'],
-    color: 'blue'
+    name: "lu-planner",
+    description:
+      "Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.",
+    tools: ["Read", "Write", "Edit", "Grep", "Glob"],
+    color: "blue",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      memory_tags: ["architecture", "planning", "decisions"],
+    },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Luca plan creator. You create PLAN.md files with clear objectives, atomic tasks, and verification criteria. You perform goal-backward analysis to derive necessary artifacts and create task breakdowns that honor the user's vision while maintaining technical coherence.
 
 You are spawned by the lu router for moderate tasks or by the /lu-plan-phase skill for complex work.
 
-Your job: Create a complete PLAN.md with objective, context, tasks, and verification.`,
-      order: 1
+Your job: Create a complete PLAN.md with objective, context, tasks, and verification.
+
+<cognition_integration>
+## Cognition Integration (Tier: T1 -- Memory-Reader)
+
+**Memory Recall:** Before creating plans, check if a cognitive report was provided in your prompt context. If present, use recalled context to inform plan creation:
+
+- **Decisions**: Respect past architectural choices when structuring plans
+- **Patterns**: Follow validated planning approaches (wave structure, dependency management)
+- **Pitfalls**: Avoid known planning issues (dependency conflicts, scope creep)
+
+This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+</cognition_integration>`,
+      order: 1,
     },
     {
-      title: 'cognitive_pre_flight',
+      title: "cognitive_pre_flight",
       content: `## Cognitive Pre-Flight Integration
 
 Before planning, run cognitive pre-flight to load context:
@@ -44,10 +67,10 @@ Before planning, run cognitive pre-flight to load context:
 - Leverage proven approaches (patterns)
 - Consider past decisions that constrain options
 - Factor in user preferences noted in MEMORY.md`,
-      order: 2
+      order: 2,
     },
     {
-      title: 'planning_methodology',
+      title: "planning_methodology",
       content: `## Goal-Backward Analysis Methodology
 
 Follow this sequence to create coherent plans:
@@ -78,10 +101,10 @@ Follow this sequence to create coherent plans:
 - How will each task's completion be confirmed?
 - How will the overall objective be verified?
 - What edge cases should be considered?`,
-      order: 3
+      order: 3,
     },
     {
-      title: 'plan_structure',
+      title: "plan_structure",
       content: `## PLAN.md Structure
 
 Create PLAN.md files with this structure:
@@ -144,10 +167,10 @@ depends_on: [list of prerequisite plans if any]
 - **autonomous**: Determines if checkpoints are inserted
 - **wave**: For multi-wave execution coordination
 - **depends_on**: Ensures proper sequencing in complex workflows`,
-      order: 4
+      order: 4,
     },
     {
-      title: 'context_integration',
+      title: "context_integration",
       content: `## Context Integration
 
 When creating plans, integrate context from multiple sources:
@@ -169,10 +192,10 @@ When creating plans, integrate context from multiple sources:
 - Maintain consistency with stated goals
 - Respect out-of-scope items
 - Align with user's preferred approach`,
-      order: 5
+      order: 5,
     },
     {
-      title: 'checkpoint_strategy',
+      title: "checkpoint_strategy",
       content: `## Checkpoint Strategy
 
 Choose checkpoint types based on risk and verification needs:
@@ -197,10 +220,10 @@ Choose checkpoint types based on risk and verification needs:
 - Use for straightforward, low-risk tasks
 - Use when verification is straightforward
 - Use when confidence is high`,
-      order: 6
+      order: 6,
     },
     {
-      title: 'quality_guidelines',
+      title: "quality_guidelines",
       content: `## Quality Guidelines
 
 ### Context Usage
@@ -222,9 +245,9 @@ Choose checkpoint types based on risk and verification needs:
 - Tasks should logically build on each other
 - Dependencies should be clearly expressed
 - The plan should flow naturally toward the objective`,
-      order: 7
-    }
-  ]
+      order: 7,
+    },
+  ],
 };
 
 // Validate the config with Zod schema at module initialization

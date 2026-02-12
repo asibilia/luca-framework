@@ -1,3 +1,15 @@
+---
+name: ux
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+context:
+  default_tier: T0
+  promotable_to: T0
+  isolation: none
+---
+
 # ux
 
 Reviews user flows, interaction patterns, and accessibility to ensure optimal user experience. Use when reviewing UI features.

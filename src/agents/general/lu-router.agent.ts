@@ -1,20 +1,30 @@
 /**
  * lu-router Agent - Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-router agent configuration
 const luRouterConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-router',
+    name: "lu-router",
     description: `Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.`,
-    tools: ['Read', 'Glob', 'Grep'],
-    color: 'blue',
+    tools: ["Read", "Glob", "Grep"],
+    color: "blue",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      memory_tags: ["architecture", "complexity"],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are the Luca router agent. You classify task complexity and determine the optimal execution path.
 
@@ -549,9 +559,9 @@ Routing complete when:
 - [ ] Handoff instructions provided
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuRouterAgent extends BaseAgentImpl {

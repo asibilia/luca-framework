@@ -8,14 +8,13 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.1.0)
+## Current State (v1.2.0 — Shipped)
 
-**Shipped:** 2026-02-11
-**Version:** 1.1.0
+**Last Shipped:** v1.2.0 — Intelligent Agent Engine (2026-02-12)
 
-The Luca framework has a fully automated quality enforcement pipeline built on registry-driven compilation, deterministic hooks, an automated verification harness, and complexity-scaled workflow.
+The Luca framework now features an intelligent agent engine with self-correcting execution, context-aware scheduling, and a comprehensive cognitive memory system. Built on the v1.1.0 enforcement foundation, v1.2.0 adds audited verification signals, per-agent cognition profiles, modular context isolation, iterative failure recovery, and usage-aware sprint planning.
 
-**Capabilities:**
+**Capabilities (shipped):**
 
 - **Zero-friction setup**: `npx luca init` scaffolds projects in < 5 minutes
 - **Pluggable tracking**: Adapters for Jira, GitHub Issues, and Placeholder
@@ -25,21 +24,27 @@ The Luca framework has a fully automated quality enforcement pipeline built on r
 - **Deterministic hooks**: Post-edit formatting/typechecking, pre-commit quality gate, context monitoring, session persistence (Claude Code + Cursor)
 - **Automated verification**: 4-parser harness (tsc, bun-test, eslint, generic) with failure-to-fix loops
 - **Complexity gating**: 5-level system (TRIVIAL-CRITICAL) with 3 behavioral tiers scaling workflow steps
+- **Goal-backward verification**: Specification anchoring re-injects PLAN.md at checkpoints to prevent drift
+- **4-tier cognition system**: T0 (Stateless) through T3 (Fully-Cognitive) with selective memory recall via 14 domain tags
+- **Context-modular sub-agents**: Context isolation, writer/reviewer separation, universal result envelope
+- **Iterative agent loops (Ralph Wiggum)**: External loop control, convergence detection, checkpoint/rollback, HITL/AFK modes
+- **Usage-aware sprint planning**: WSJF scoring, Big Rock First scheduling, quality zones, weekly allocation
 
 ## Previous Milestones
 
 - **v1.0.0** — Core CLI & Packaging (2026-02-05). CLI installer, branding, templates, tracking adapters, enterprise readiness.
 - **v1.0.1** — Code Hardening (2026-02-10). 6 phases, 433 tests, Zod at all boundaries, clean architecture, 23ms startup.
 - **v1.1.0** — Workflow Foundation (2026-02-11). 4 phases, 11 plans, 27 requirements, 579 tests. Registry-driven builds, hooks, verification harness, complexity gates.
+- **v1.2.0** — Intelligent Agent Engine (2026-02-12). 5 phases, 25 plans, 29 requirements, 845 tests. Verification audit, cognition profiling, context isolation, iterative loops, sprint planning.
 
-## Next Milestone Goals
+## Next Milestone Goals (Post-v1.2.0)
 
 - **Additional Stack Templates**: Python, Node.js, Next.js
 - **Multi-project Support**: Support monorepos with multiple projects
 - **Cross-IDE Support**: VS Code extension
 - **Agent Marketplace**: Registry for sharing agents and skills
-- **Iterative Agent Loops**: Ralph Wiggum pattern for agent self-correction
-- **Context-Modular Architecture**: Sub-agent context separation and progressive disclosure
+- **Procedural Memory Layer**: 4th memory type for learned skills/procedures
+- **TDD-First Verification**: Test-driven generative development pattern
 
 ## Requirements
 
@@ -90,13 +95,14 @@ The Luca framework has a fully automated quality enforcement pipeline built on r
 
 ## Key Decisions
 
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| CLI installer over npm package | Better UX for setup wizard, can prompt for config | — Pending |
-| Branded skin over full rebrand | Cursor limitations on file names, enables upgradability | — Pending |
-| React+TS template only for v1 | Ship one excellent template, prove pattern | — Pending |
-| Notify on updates, not auto-update | Enterprise teams need update control | — Pending |
-| Configurable approvals with secure defaults | Balance flexibility with safety | — Pending |
+| Decision                                    | Rationale                                               | Outcome   |
+| ------------------------------------------- | ------------------------------------------------------- | --------- |
+| CLI installer over npm package              | Better UX for setup wizard, can prompt for config       | — Pending |
+| Branded skin over full rebrand              | Cursor limitations on file names, enables upgradability | — Pending |
+| React+TS template only for v1               | Ship one excellent template, prove pattern              | — Pending |
+| Notify on updates, not auto-update          | Enterprise teams need update control                    | — Pending |
+| Configurable approvals with secure defaults | Balance flexibility with safety                         | — Pending |
 
 ---
-*Last updated: 2026-02-04 after initial questioning*
+
+_Last updated: 2026-02-12 — v1.2.0 shipped_

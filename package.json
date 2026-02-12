@@ -2,14 +2,16 @@
   "name": "luca-monorepo",
   "dependencies": {
     "js-yaml": "^4.1.0",
+    "lodash": "^4.17.23",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@alecsibilia/commit": "^1.0.8",
     "@types/bun": "latest",
     "@types/js-yaml": "^4.0.9",
-    "unbuild": "^3.5.0",
-    "typescript": "^5.0.0"
+    "@types/lodash": "^4.17.23",
+    "typescript": "^5.0.0",
+    "unbuild": "^3.5.0"
   },
   "private": true,
   "scripts": {
@@ -18,6 +20,7 @@
     "build:claude": "bun run ./scripts/build-claude.ts",
     "build:cursor": "bun run ./scripts/build-cursor.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
+    "check:drift": "bun run ./scripts/check-drift.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "test:watch": "bun test --watch",

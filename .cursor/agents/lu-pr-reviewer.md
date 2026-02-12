@@ -9,6 +9,16 @@ tools:
   - Glob
   - Task
 color: purple
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags:
+    - conventions
+    - patterns
+context:
+  default_tier: T0
+  promotable_to: T1
+  isolation: none
 ---
 
 <role>
@@ -28,6 +38,19 @@ Your job: Coordinate reviewer agents, aggregate their validations, create fix pl
 - Post responses to GitHub PR comments
 - Track progress and handle errors
   </role>
+
+<cognition_integration>
+## Cognition Integration (Tier: T0, promotable to T1)
+
+**Default (T0):** No memory recall. Operate based on rules and PR context only.
+
+**When promoted to T1 (CRITICAL complexity):** Check if a cognitive report was provided in your prompt context. If present, use recalled conventions and patterns to inform review:
+
+- **Conventions**: Project coding standards and naming conventions
+- **Patterns**: Validated code patterns to look for and recommend
+
+This is read-only memory access when promoted. Do NOT write to WORKING.md.
+</cognition_integration>
 
 <philosophy>
 

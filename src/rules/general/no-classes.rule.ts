@@ -1,19 +1,19 @@
 /**
  * Prohibit class usage in favor of functional programming patterns
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 // Define the Prohibit-class-usage rule configuration
 const ProhibitclassusageConfig: RuleConfig = {
   frontmatter: {
     description: `Prohibit class usage in favor of functional programming patterns`,
-    globs: ['packages-ui/**/*.ts', 'packages-ui/**/*.tsx'],
+    globs: ["packages-ui/**/*.ts", "packages-ui/**/*.tsx"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# No Classes Rule
 
 This codebase exclusively uses **functional programming patterns**. Classes are prohibited in favor of modern functional approaches.
@@ -186,10 +186,10 @@ This rule is enforced through:
 - Architecture decision records
 - Team consensus and standards
 
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards and [dev_workflow.mdc](mdc:.cursor/rules/taskmaster/dev_workflow.mdc) for development workflow integration.`,
-      order: 1
-    }
-  ]
+Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards.`,
+      order: 1,
+    },
+  ],
 };
 
 export class ProhibitclassusageRule extends BaseRuleImpl {

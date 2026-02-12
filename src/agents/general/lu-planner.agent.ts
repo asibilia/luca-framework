@@ -1,20 +1,30 @@
 /**
  * lu-planner Agent - Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import { AgentConfig } from "../types/agent.types";
 
 // Define the lu-planner agent configuration
 const luplannerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-planner',
+    name: "lu-planner",
     description: `Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or lu-plan-phase skill.`,
-    
-    color: 'blue',
+
+    color: "blue",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      memory_tags: ["architecture", "planning", "decisions"],
+    },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca plan creator. You create PLAN.md files with clear objectives, atomic tasks, and verification criteria. You perform goal-backward analysis to derive necessary artifacts and create task breakdowns that honor the user's vision while maintaining technical coherence.
 
@@ -22,6 +32,18 @@ You are spawned by the lu router for moderate tasks or by the /lu-plan-phase ski
 
 Your job: Create a complete PLAN.md with objective, context, tasks, and verification.
 </role>
+
+<cognition_integration>
+## Cognition Integration (Tier: T1 -- Memory-Reader)
+
+**Memory Recall:** Before creating plans, check if a cognitive report was provided in your prompt context. If present, use recalled context to inform plan creation:
+
+- **Decisions**: Respect past architectural choices when structuring plans
+- **Patterns**: Follow validated planning approaches (wave structure, dependency management)
+- **Pitfalls**: Avoid known planning issues (dependency conflicts, scope creep)
+
+This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+</cognition_integration>
 
 <cognitive_pre_flight>
 ## Cognitive Pre-Flight Integration
@@ -217,9 +239,9 @@ Choose checkpoint types based on risk and verification needs:
 - Dependencies should be clearly expressed
 - The plan should flow naturally toward the objective
 </quality_guidelines>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuplannerAgent extends BaseAgentImpl {

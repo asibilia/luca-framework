@@ -1,3 +1,15 @@
+---
+name: qa-plan-generator
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+context:
+  default_tier: T0
+  promotable_to: T0
+  isolation: none
+---
+
 # qa-plan-generator
 
 Generates detailed QA testing plans for pull requests based on code changes and affected portals.

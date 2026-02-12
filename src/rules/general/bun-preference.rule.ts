@@ -1,19 +1,19 @@
 /**
  * Use Bun package manager and runtime over npm or yarn where applicable
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 // Define the Use-Bun-package-mana rule configuration
 const UseBunpackagemanaConfig: RuleConfig = {
   frontmatter: {
     description: `Use Bun package manager and runtime over npm or yarn where applicable`,
-    globs: ['package.json', '*.sh', '*.ts', '*.js', '*.md'],
+    globs: ["package.json", "*.sh", "*.ts", "*.js", "*.md"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Bun Package Manager Preference
 
 This project uses **Bun** as the primary package manager and JavaScript runtime. Always prefer Bun commands over npm or yarn equivalents.
@@ -184,10 +184,10 @@ When updating existing scripts or documentation:
 3. **Test thoroughly** to ensure Bun compatibility
 4. **Update package.json scripts** to assume Bun execution context
 
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards and [dev_workflow.mdc](mdc:.cursor/rules/taskmaster/dev_workflow.mdc) for development workflow integration.`,
-      order: 1
-    }
-  ]
+Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards.`,
+      order: 1,
+    },
+  ],
 };
 
 export class UseBunpackagemanaRule extends BaseRuleImpl {

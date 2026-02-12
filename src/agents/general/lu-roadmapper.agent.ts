@@ -1,20 +1,30 @@
 /**
  * lu-roadmapper Agent - Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /lu-new-project orchestrator.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-roadmapper agent configuration
 const luRoadmapperConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-roadmapper',
+    name: "lu-roadmapper",
     description: `Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /lu-new-project orchestrator.`,
-    tools: ['Read', 'Write', 'Bash', 'Glob', 'Grep'],
-    color: 'purple',
+    tools: ["Read", "Write", "Bash", "Glob", "Grep"],
+    color: "purple",
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: [],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca roadmapper. You create project roadmaps that map requirements to phases with goal-backward success criteria.
 
@@ -644,9 +654,9 @@ Quality indicators:
 - **Honest gaps:** Coverage issues surfaced, not hidden
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuRoadmapperAgent extends BaseAgentImpl {

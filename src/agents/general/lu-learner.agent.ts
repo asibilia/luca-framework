@@ -1,20 +1,30 @@
 /**
  * lu-learner Agent - Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-learner agent configuration
 const luLearnerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-learner',
+    name: "lu-learner",
     description: `Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.`,
-    tools: ['Read', 'Write', 'Glob', 'Grep'],
-    color: 'orange',
+    tools: ["Read", "Write", "Glob", "Grep"],
+    color: "orange",
+    cognition: {
+      default_tier: "T2",
+      promotable_to: "T3",
+      memory_tags: ["patterns", "decisions", "pitfalls"],
+    },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are the Luca learner agent. You close the learning loop by extracting validated insights and updating long-term memory.
 
@@ -189,6 +199,53 @@ When extracting a learning, determine the originating agent:
 
 </agent_tagging>
 
+<tag_assignment>
+
+## Domain Tag Assignment
+
+When writing new MEMORY.md entries, assign domain tags from the TAG-VOCABULARY.md vocabulary.
+
+**Reference:** \`.planning/phases/15-cognition-per-agent-audit/TAG-VOCABULARY.md\`
+
+### Available Tags (14 total)
+
+\`coding\`, \`patterns\`, \`pitfalls\`, \`conventions\`, \`architecture\`, \`planning\`, \`verification\`, \`testing\`, \`debugging\`, \`stack\`, \`security\`, \`performance\`, \`decisions\`, \`complexity\`
+
+### Assignment Rules
+
+1. **Assign 1-3 tags per entry** (prefer fewer, more relevant tags)
+2. **Use existing vocabulary first** — always check the 14 defined tags before proposing a new one
+3. **Tags describe the DOMAIN of the knowledge**, not the specific content:
+   - "Bun.spawn timeout issue" → \`[stack, pitfalls]\` (not \`[bun, spawn, timeout]\`)
+   - "Zod safeParse at API boundaries" → \`[coding, patterns, security]\`
+   - "Chose Zod over Yup" → \`[decisions, stack]\`
+4. **Match the knowledge type**, not just the topic:
+   - A coding pattern about security → \`[coding, security]\` or \`[security, patterns]\`
+   - A decision about testing framework → \`[decisions, testing]\`
+   - A pitfall in the build system → \`[pitfalls, stack]\`
+
+### Common Combinations
+
+| Entry Type                        | Typical Tags                |
+| --------------------------------- | --------------------------- |
+| Implementation pattern            | \`[coding, patterns]\`        |
+| Security implementation pattern   | \`[security, patterns]\`      |
+| Architecture decision             | \`[architecture, decisions]\` |
+| Test framework pitfall            | \`[testing, pitfalls]\`       |
+| Build/tooling decision            | \`[stack, decisions]\`        |
+| Verification pattern              | \`[verification, patterns]\`  |
+| Performance optimization approach | \`[performance, coding]\`     |
+
+### Proposing New Tags
+
+If no existing tag fits:
+1. Verify the entry genuinely falls outside all 14 tags
+2. Propose the new tag with a clear domain description in the entry notes
+3. New tags should be as broad as existing ones — no fine-grained tags like \`bun-testing\`
+4. The tag vocabulary is intentionally small; keyword scoring handles fine-grained matching
+
+</tag_assignment>
+
 <execution_flow>
 
 <step name="load_working" priority="first">
@@ -247,6 +304,7 @@ Format approved patterns:
 - **Example**: [Code snippet or file reference]
 - **Agent**: [determined from session context]
 - **Relevant to**: [agents that benefit from this pattern]
+- **Tags**: [1-3 domain tags from TAG-VOCABULARY.md, e.g., coding, patterns, security]
 - **Confidence**: Low (first validation)
 - **Added**: [Date]
 \`\`\`
@@ -279,6 +337,7 @@ Format approved decisions:
 - **Rationale**: [Why]
 - **Agent**: [determined from session context]
 - **Relevant to**: [agents affected by this decision]
+- **Tags**: [1-3 domain tags from TAG-VOCABULARY.md, e.g., architecture, decisions, stack]
 - **Status**: Active
 - **Reference**: [PR/file if applicable]
 \`\`\`
@@ -309,6 +368,7 @@ Format approved pitfalls:
 - **How to avoid**: [Prevention steps]
 - **Agent**: [determined from session context]
 - **Relevant to**: [agents that should avoid this]
+- **Tags**: [1-3 domain tags from TAG-VOCABULARY.md, e.g., pitfalls, testing, stack]
 - **Severity**: [High/Medium/Low]
 - **Reference**: [PR/file if applicable]
 - **Added**: [Date]
@@ -557,9 +617,9 @@ Learning extraction complete when:
 - [ ] Extraction summary output
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuLearnerAgent extends BaseAgentImpl {

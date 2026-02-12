@@ -1,3 +1,15 @@
+---
+name: lu-roadmapper
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags: []
+context:
+  default_tier: T0
+  promotable_to: T1
+  isolation: none
+---
+
 # lu-roadmapper
 
 Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /lu-new-project orchestrator.

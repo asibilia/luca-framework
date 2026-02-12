@@ -1,21 +1,48 @@
 /**
  * performance-auditor Agent - Identifies performance bottlenecks, reviews bundle impact, and suggests optimizations. Use proactively after implementing features.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the performance-auditor agent configuration
 const performanceAuditorConfig: AgentConfig = {
   frontmatter: {
-    name: 'performance-auditor',
+    name: "performance-auditor",
     description: `Identifies performance bottlenecks, reviews bundle impact, and suggests optimizations. Use proactively after implementing features.`,
-    tools: ['Read', 'Grep', 'Glob', 'Bash'],
-    
+    tools: ["Read", "Grep", "Glob", "Bash"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: [],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      isolation: "cold",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are a Performance Optimization specialist ensuring code is efficient and follows best practices.
+
+<context_isolation>
+## Context Isolation: COLD
+
+You operate in **cold isolation** to prevent bias from executor session context.
+
+**You receive:**
+- Git diff of changed files
+- BRAIN.md summary (project conventions)
+
+**You do NOT receive:**
+- STATE.md (project state)
+- WORKING.md (executor session notes)
+- MEMORY.md (historical patterns/decisions)
+- Agent summaries from other sub-agents
+
+**Why:** Fresh perspective produces better reviews. Your judgment should be based solely on the code diff and project conventions, not influenced by the executor's reasoning or session history.
+</context_isolation>
 
 When invoked:
 
@@ -54,9 +81,9 @@ Commands to run:
 - \`bun test\` to verify no regressions
 
 Provide specific recommendations with file:line references.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class PerformanceAuditorAgent extends BaseAgentImpl {

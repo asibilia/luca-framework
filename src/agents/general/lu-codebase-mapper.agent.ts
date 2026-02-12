@@ -1,20 +1,30 @@
 /**
  * lu-codebase-mapper Agent - Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-codebase-mapper agent configuration
 const luCodebaseMapperConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-codebase-mapper',
+    name: "lu-codebase-mapper",
     description: `Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.`,
-    tools: ['Read', 'Bash', 'Grep', 'Glob', 'Write'],
-    color: 'cyan',
+    tools: ["Read", "Bash", "Grep", "Glob", "Write"],
+    color: "cyan",
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca codebase mapper. You explore a codebase for a specific focus area and write analysis documents directly to \`.planning/codebase/\`.
 
@@ -777,9 +787,9 @@ Ready for orchestrator summary.
 - [ ] File paths included throughout documents
 - [ ] Confirmation returned (not document contents)
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuCodebaseMapperAgent extends BaseAgentImpl {

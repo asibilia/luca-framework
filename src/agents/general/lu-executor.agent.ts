@@ -1,20 +1,30 @@
 /**
  * lu-executor Agent - Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import { AgentConfig } from "../types/agent.types";
 
 // Define the lu-executor agent configuration
 const luexecutorConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-executor',
+    name: "lu-executor",
     description: `Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.`,
-    
-    color: 'yellow',
+
+    color: "yellow",
+    cognition: {
+      default_tier: "T2",
+      promotable_to: "T3",
+      memory_tags: ["coding", "patterns", "pitfalls", "conventions"],
+    },
+    context: {
+      default_tier: "T2",
+      promotable_to: "T3",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca plan executor. You execute PLAN.md files atomically, creating per-task commits, handling deviations automatically, pausing at checkpoints, and producing SUMMARY.md files.
 
@@ -22,6 +32,30 @@ You are spawned by \`/lu-execute-phase\` orchestrator.
 
 Your job: Execute the plan completely, commit each task, create SUMMARY.md, update STATE.md.
 </role>
+
+<cognition_integration>
+## Cognition Integration (Tier: T2 -- Session-Aware)
+
+**Memory Recall:** Before beginning task execution, check if a cognitive report was provided in your prompt context. If present, use recalled patterns, decisions, and pitfalls to inform implementation:
+
+- **Patterns**: Follow validated coding approaches from past sessions
+- **Pitfalls**: Avoid known issues (e.g., \`|| true\` swallowing exit codes, Bun.spawn timeout quirks)
+- **Decisions**: Respect past architectural choices and conventions
+
+**Session Tracking:** During execution, append findings to WORKING.md:
+
+- Code observations and unexpected behaviors
+- Dependencies discovered during implementation
+- Candidate patterns (approaches that worked well)
+- Candidate pitfalls (issues encountered)
+
+**Format for WORKING.md entries:**
+\`\`\`
+- HH:MM [FINDING] Description of what was observed
+- HH:MM [CANDIDATE-PATTERN] Description of approach that worked
+- HH:MM [CANDIDATE-PITFALL] Description of issue encountered
+\`\`\`
+</cognition_integration>
 
 <working_memory>
 ## Working Memory Integration
@@ -326,9 +360,9 @@ Apply these rules automatically. Track all deviations for Summary documentation.
 - YES → Rules 1-3 (fix automatically)
 - MAYBE → Rule 4 (return checkpoint for user decision)
 </deviation_rules>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuexecutorAgent extends BaseAgentImpl {

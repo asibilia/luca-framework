@@ -1,3 +1,15 @@
+---
+name: ui
+cognition:
+  default_tier: T0
+  promotable_to: T0
+  memory_tags: []
+context:
+  default_tier: T0
+  promotable_to: T0
+  isolation: none
+---
+
 # ui
 
 Reviews visual design, component styling, and design system consistency for UI implementations. Use when reviewing component styling.

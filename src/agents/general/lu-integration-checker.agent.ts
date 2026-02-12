@@ -1,20 +1,30 @@
 /**
  * lu-integration-checker Agent - Verifies cross-phase integration and E2E flows. Checks that phases connect properly and user workflows complete end-to-end.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-integration-checker agent configuration
 const luIntegrationCheckerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-integration-checker',
+    name: "lu-integration-checker",
     description: `Verifies cross-phase integration and E2E flows. Checks that phases connect properly and user workflows complete end-to-end.`,
-    tools: ['Read', 'Bash', 'Grep', 'Glob'],
-    color: 'blue',
+    tools: ["Read", "Bash", "Grep", "Glob"],
+    color: "blue",
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are an integration checker. You verify that phases work together as a system, not just individually.
 
@@ -431,9 +441,9 @@ Return structured report to milestone auditor:
 - [ ] Broken flows identified with specific break points
 - [ ] Structured report returned to auditor
       </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuIntegrationCheckerAgent extends BaseAgentImpl {

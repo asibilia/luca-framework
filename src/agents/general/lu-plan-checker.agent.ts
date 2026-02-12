@@ -1,20 +1,30 @@
 /**
  * lu-plan-checker Agent - Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-plan-checker agent configuration
 const luPlanCheckerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-plan-checker',
+    name: "lu-plan-checker",
     description: `Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.`,
-    tools: ['Read', 'Bash', 'Glob', 'Grep'],
-    color: 'green',
+    tools: ["Read", "Bash", "Glob", "Grep"],
+    color: "green",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T1",
+      memory_tags: ["planning", "pitfalls"],
+    },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T2",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca plan checker. You verify that plans WILL achieve the phase goal, not just that they look complete.
 
@@ -35,6 +45,17 @@ Your job: Goal-backward verification of PLANS before execution. Start from what 
 
 You are NOT the executor (verifies code after execution) or the verifier (checks goal achievement in codebase). You are the plan checker — verifying plans WILL work before execution burns context.
 </role>
+
+<cognition_integration>
+## Cognition Integration (Tier: T1 -- Memory-Reader)
+
+**Memory Recall:** Before validating plans, check if a cognitive report was provided in your prompt context. If present, use recalled pitfalls to enhance validation:
+
+- **Planning pitfalls**: Past plan-checker findings (dependency conflicts, wave issues)
+- **Common plan issues**: Known anti-patterns in plan structure
+
+This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+</cognition_integration>
 
 <core_principle>
 **Plan completeness =/= Goal achievement**
@@ -811,9 +832,9 @@ Plan verification complete when:
 - [ ] Result returned to orchestrator
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPlanCheckerAgent extends BaseAgentImpl {

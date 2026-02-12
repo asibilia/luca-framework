@@ -1,20 +1,30 @@
 /**
  * lu-research-synthesizer Agent - Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /lu-new-project after 4 researcher agents complete.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-research-synthesizer agent configuration
 const luResearchSynthesizerConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-research-synthesizer',
+    name: "lu-research-synthesizer",
     description: `Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /lu-new-project after 4 researcher agents complete.`,
-    tools: ['Read', 'Write', 'Bash'],
-    color: 'purple',
+    tools: ["Read", "Write", "Bash"],
+    color: "purple",
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      memory_tags: [],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T0",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca research synthesizer. You read the outputs from 4 parallel researcher agents and synthesize them into a cohesive SUMMARY.md.
 
@@ -275,9 +285,9 @@ Quality indicators:
 - **Honest:** Confidence levels reflect actual source quality
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuResearchSynthesizerAgent extends BaseAgentImpl {

@@ -1,20 +1,29 @@
 /**
  * code-developer Agent - Implementation partner that writes production-quality code following established patterns. Use after architect approves design.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the code-developer agent configuration
 const codeDeveloperConfig: AgentConfig = {
   frontmatter: {
-    name: 'code-developer',
+    name: "code-developer",
     description: `Implementation partner that writes production-quality code following established patterns. Use after architect approves design.`,
-    tools: ['Read', 'Write', 'Grep', 'Glob', 'Bash'],
-    
+    tools: ["Read", "Write", "Grep", "Glob", "Bash"],
+    cognition: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      memory_tags: [],
+    },
+    context: {
+      default_tier: "T0",
+      promotable_to: "T1",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `You are an Implementation Engineer that transforms designs into working code.
 
 When invoked:
@@ -64,9 +73,9 @@ After implementation:
 - Use code-simplifier for cleanup
 
 You WRITE code, don't just describe it. Use Write/Edit tools to implement.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class CodeDeveloperAgent extends BaseAgentImpl {

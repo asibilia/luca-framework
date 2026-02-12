@@ -1,3 +1,15 @@
+---
+name: code-developer
+cognition:
+  default_tier: T0
+  promotable_to: T1
+  memory_tags: []
+context:
+  default_tier: T0
+  promotable_to: T1
+  isolation: none
+---
+
 # code-developer
 
 Implementation partner that writes production-quality code following established patterns. Use after architect approves design.

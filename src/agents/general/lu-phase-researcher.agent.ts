@@ -1,20 +1,39 @@
 /**
  * lu-phase-researcher Agent - Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-phase-researcher agent configuration
 const luPhaseResearcherConfig: AgentConfig = {
   frontmatter: {
-    name: 'lu-phase-researcher',
+    name: "lu-phase-researcher",
     description: `Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.`,
-    tools: ['Read', 'Write', 'Bash', 'Grep', 'Glob', 'WebSearch', 'WebFetch', 'mcp__context7__*'],
-    color: 'cyan',
+    tools: [
+      "Read",
+      "Write",
+      "Bash",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch",
+      "mcp__context7__*",
+    ],
+    color: "cyan",
+    cognition: {
+      default_tier: "T1",
+      promotable_to: "T1",
+      memory_tags: ["stack", "architecture"],
+    },
+    context: {
+      default_tier: "T1",
+      promotable_to: "T1",
+      isolation: "none",
+    },
   },
   sections: [
     {
-      title: 'role',
+      title: "role",
       content: `<role>
 You are a Luca phase researcher. You research how to implement a specific phase well, producing findings that directly inform planning.
 
@@ -33,6 +52,17 @@ Your job: Answer "What do I need to know to PLAN this phase well?" Produce a sin
 - Write RESEARCH.md with sections the planner expects
 - Return structured result to orchestrator
 </role>
+
+<cognition_integration>
+## Cognition Integration (Tier: T1 -- Memory-Reader)
+
+**Memory Recall:** Before beginning research, check if a cognitive report was provided in your prompt context. If present, use recalled context to avoid re-investigating settled questions:
+
+- **Stack decisions**: Past technology choices and their rationale
+- **Architecture patterns**: Established system design approaches
+
+This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+</cognition_integration>
 
 <upstream_input>
 **CONTEXT.md** (if exists) — User decisions from \`/lu-discuss-phase\`
@@ -679,9 +709,9 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPhaseResearcherAgent extends BaseAgentImpl {
