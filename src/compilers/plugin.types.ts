@@ -2,9 +2,10 @@
  * Plugin manifest Zod schemas and TypeScript types for the Luca Framework.
  *
  * Defines the structure for plugin packaging metadata, including author
- * information, versioning, and references to bundled commands, agents,
- * skills, and hooks. All schema properties use snake_case per API
- * conventions.
+ * information, versioning, and keywords. Component discovery (commands,
+ * agents, skills, hooks) relies on Claude Code's auto-discovery from
+ * default directories rather than explicit manifest arrays.
+ * All schema properties use snake_case per API conventions.
  *
  * @example
  * ```typescript
@@ -68,9 +69,10 @@ export type PluginAuthor = z.infer<typeof pluginAuthorSchema>;
  * Zod schema for the full plugin manifest.
  *
  * The manifest describes a Luca plugin package: its identity, authorship,
- * licensing, and the framework primitives it bundles (commands, agents,
- * skills, hooks). Only `name` is required; every other field carries a
- * sensible default so that minimal manifests are valid.
+ * licensing, and keywords. Components (commands, agents, skills, hooks)
+ * are auto-discovered from default directories by Claude Code. Only
+ * `name` is required; every other field carries a sensible default so
+ * that minimal manifests are valid.
  *
  * **CRITICAL**: Uses snake_case for all properties per API conventions.
  *
@@ -81,8 +83,6 @@ export type PluginAuthor = z.infer<typeof pluginAuthorSchema>;
  *   version: '1.0.0',
  *   description: 'A plugin that does cool things',
  *   author: { name: 'Alec Sibilia' },
- *   commands: ['lu-cool'],
- *   agents: ['cool-agent'],
  * });
  * ```
  */
@@ -116,18 +116,6 @@ export const pluginManifestSchema = z.object({
 
   /** Searchable keywords / tags for discovery. Defaults to empty array. */
   keywords: z.array(z.string()).default([]),
-
-  /** CLI commands the plugin registers. Defaults to empty array. */
-  commands: z.array(z.string()).default([]),
-
-  /** Agent definitions the plugin provides. Defaults to empty array. */
-  agents: z.array(z.string()).default([]),
-
-  /** Skill definitions the plugin provides. Defaults to empty array. */
-  skills: z.array(z.string()).default([]),
-
-  /** Hook definitions the plugin provides. Defaults to empty array. */
-  hooks: z.array(z.string()).default([]),
 });
 
 /**
@@ -160,10 +148,6 @@ export type PluginManifestInput = z.input<typeof pluginManifestSchema>;
  * //   version: '0.1.0',
  * //   license: 'MIT',
  * //   keywords: [],
- * //   commands: [],
- * //   agents: [],
- * //   skills: [],
- * //   hooks: [],
  * // }
  * ```
  *
@@ -175,8 +159,6 @@ export type PluginManifestInput = z.input<typeof pluginManifestSchema>;
  *   description: 'PostHog analytics integration',
  *   author: { name: 'Alec Sibilia', email: 'alec@example.com' },
  *   keywords: ['analytics', 'posthog'],
- *   agents: ['analytics-agent'],
- *   skills: ['track-event'],
  * });
  * ```
  */

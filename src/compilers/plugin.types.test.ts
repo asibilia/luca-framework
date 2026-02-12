@@ -59,10 +59,6 @@ describe("pluginManifestSchema", () => {
       repository: "https://github.com/user/my-plugin",
       license: "Apache-2.0",
       keywords: ["analytics", "posthog"],
-      commands: ["lu-cool"],
-      agents: ["cool-agent"],
-      skills: ["cool-skill"],
-      hooks: ["post-cool-hook"],
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -74,10 +70,6 @@ describe("pluginManifestSchema", () => {
       expect(result.data.repository).toBe("https://github.com/user/my-plugin");
       expect(result.data.license).toBe("Apache-2.0");
       expect(result.data.keywords).toEqual(["analytics", "posthog"]);
-      expect(result.data.commands).toEqual(["lu-cool"]);
-      expect(result.data.agents).toEqual(["cool-agent"]);
-      expect(result.data.skills).toEqual(["cool-skill"]);
-      expect(result.data.hooks).toEqual(["post-cool-hook"]);
     }
   });
 
@@ -91,10 +83,6 @@ describe("pluginManifestSchema", () => {
       expect(result.data.version).toBe("0.1.0");
       expect(result.data.license).toBe("MIT");
       expect(result.data.keywords).toEqual([]);
-      expect(result.data.commands).toEqual([]);
-      expect(result.data.agents).toEqual([]);
-      expect(result.data.skills).toEqual([]);
-      expect(result.data.hooks).toEqual([]);
     }
   });
 
@@ -180,10 +168,6 @@ describe("generatePluginManifest", () => {
     expect(manifest.version).toBe("0.1.0");
     expect(manifest.license).toBe("MIT");
     expect(manifest.keywords).toEqual([]);
-    expect(manifest.commands).toEqual([]);
-    expect(manifest.agents).toEqual([]);
-    expect(manifest.skills).toEqual([]);
-    expect(manifest.hooks).toEqual([]);
 
     // Verify the generated manifest also passes schema validation
     const validation = pluginManifestSchema.safeParse(manifest);
@@ -197,8 +181,6 @@ describe("generatePluginManifest", () => {
       description: "Custom description",
       license: "Apache-2.0",
       keywords: ["custom"],
-      agents: ["my-agent"],
-      skills: ["my-skill"],
     });
 
     expect(manifest.name).toBe("custom-plugin");
@@ -206,10 +188,6 @@ describe("generatePluginManifest", () => {
     expect(manifest.description).toBe("Custom description");
     expect(manifest.license).toBe("Apache-2.0");
     expect(manifest.keywords).toEqual(["custom"]);
-    expect(manifest.agents).toEqual(["my-agent"]);
-    expect(manifest.skills).toEqual(["my-skill"]);
-    expect(manifest.commands).toEqual([]);
-    expect(manifest.hooks).toEqual([]);
   });
 
   test("throws on invalid name", () => {

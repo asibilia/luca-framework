@@ -617,19 +617,6 @@ describe("Plugin Output Freshness", () => {
 
   test("plugin.json matches source", async () => {
     const version = await readVersion();
-    const pluginAgentNames = [
-      ...Object.keys(agentRegistry),
-      "lu-executor",
-      "lu-planner",
-    ];
-    const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
-    const pluginCommandNames = [
-      ...Object.keys(skillRegistry).filter(
-        (s) => !COMMAND_EXCLUDED_SKILLS.has(s),
-      ),
-      "lu",
-    ];
-    const pluginHookNames = Object.keys(pluginHookRegistry);
 
     const manifest = generatePluginManifest({
       name: "luca",
@@ -638,10 +625,6 @@ describe("Plugin Output Freshness", () => {
         "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
       author: { name: "Alec Sibilia" },
       keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
-      commands: pluginCommandNames,
-      agents: pluginAgentNames,
-      skills: pluginSkillNames,
-      hooks: pluginHookNames,
     });
 
     const expectedJson = JSON.stringify(manifest, null, 2) + "\n";
@@ -663,8 +646,6 @@ describe("Plugin Output Freshness", () => {
     const marketplaceManifest = {
       $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
       name: "luca-marketplace",
-      description:
-        "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
       owner: {
         name: "Alec Sibilia",
       },

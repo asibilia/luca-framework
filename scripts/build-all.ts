@@ -633,10 +633,6 @@ async function main() {
       name: "Alec Sibilia",
     },
     keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
-    commands: pluginCommandNames,
-    agents: pluginAgentNames,
-    skills: pluginSkillNames,
-    hooks: pluginHookNames,
   });
 
   await Bun.write(
@@ -650,8 +646,6 @@ async function main() {
   const marketplaceManifest = {
     $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
     name: "luca-marketplace",
-    description:
-      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
     owner: {
       name: "Alec Sibilia",
     },

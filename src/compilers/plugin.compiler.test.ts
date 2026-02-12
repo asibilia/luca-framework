@@ -218,21 +218,22 @@ describe("PluginCompiler", () => {
   });
 
   describe("compileSkill", () => {
-    test("produces Claude-format markdown", () => {
+    test("produces markdown with description frontmatter", () => {
       const skill = new TestSkill(skillConfig);
       const output = pluginCompiler.compileSkill(skill, "CLAUDE");
 
+      // Should start with YAML frontmatter containing description
+      expect(output).toMatch(/^---\n/);
+      expect(output).toContain("description: A skill for running test suites");
       // Should contain H1 heading with skill name
       expect(output).toContain("# test-skill");
-      // Should contain description
+      // Should contain description in body too
       expect(output).toContain("A skill for running test suites");
       // Should contain H2 sections
       expect(output).toContain("## Instructions");
       expect(output).toContain("Run `bun test` and report results.");
       expect(output).toContain("## Output");
       expect(output).toContain("Return pass/fail summary.");
-      // Should NOT contain YAML frontmatter
-      expect(output).not.toContain("---");
     });
   });
 
@@ -284,11 +285,16 @@ describe("PluginCompiler", () => {
       expect(pluginOutput).toBe(claudeOutput);
     });
 
-    test("skill output matches ClaudeCompiler", () => {
+    test("skill output extends ClaudeCompiler with description frontmatter", () => {
       const skill = new TestSkill(skillConfig);
       const pluginOutput = pluginCompiler.compileSkill(skill, "CLAUDE");
       const claudeOutput = claudeCompiler.compileSkill(skill, "CLAUDE");
-      expect(pluginOutput).toBe(claudeOutput);
+
+      // Plugin output should contain the full Claude body
+      expect(pluginOutput).toContain(claudeOutput);
+      // But also include YAML frontmatter that Claude format lacks
+      expect(pluginOutput).toMatch(/^---\n/);
+      expect(pluginOutput).toContain("description:");
     });
 
     test("rule output matches ClaudeCompiler", () => {

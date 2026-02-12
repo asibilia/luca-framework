@@ -12,8 +12,8 @@
  *   YAML frontmatter when cognition or context configuration is present.
  *   This allows lu-cognition and lu-context to parse compiled agent files
  *   at runtime without importing TypeScript modules.
- * - **Skills**: Identical to ClaudeCompiler -- plain Claude-format markdown.
- *   Plugin SKILL.md files use the same H1/H2 structure.
+ * - **Skills**: Claude-format markdown body prefixed with YAML frontmatter
+ *   containing a `description` field, per the official plugin spec.
  * - **Rules**: Produces Claude-format markdown but notes that plugins cannot
  *   inject rules into the host project. Rule compilation is provided for
  *   completeness (e.g. bundling reference docs inside a plugin package)
@@ -88,16 +88,19 @@ export class PluginCompiler extends BaseCompiler {
   /**
    * Compile a skill definition to plugin-compatible markdown.
    *
-   * Plugin SKILL.md files use the same H1/H2 Claude markdown structure,
-   * so this delegates directly to the skill's `toClaudeFormat()` method.
+   * Plugin SKILL.md files use Claude-format H1/H2 markdown body, but per
+   * the official Claude Code plugin spec they also require YAML frontmatter
+   * with at least a `description` field for discoverability.
    *
    * @param skill - The skill instance to compile
    * @param format - Target format (must be 'CLAUDE' or 'CURSOR')
-   * @returns Compiled markdown string
+   * @returns Compiled markdown string with description frontmatter
    */
   compileSkill(skill: BaseSkill, format: SupportedFormat): string {
     this.validateFormat(format);
-    return skill.toClaudeFormat();
+    const markdown = skill.toClaudeFormat();
+    const frontmatter = formatFrontmatter({ description: skill.description });
+    return `${frontmatter}\n\n${markdown}`;
   }
 
   /**
