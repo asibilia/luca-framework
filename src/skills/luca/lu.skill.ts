@@ -1,20 +1,21 @@
 /**
- * Luca Unified Entry Point Skill - The single entry point for all Luca workflows
+ * lu Skill - Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
-import { skillConfigSchema } from '../types/skill.schemas';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
+import { skillConfigSchema } from "../types/skill.schemas";
 
 // Define the lu skill configuration
 const luSkillConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu',
-    description: 'Unified entry point for Luca framework. Handles cognitive pre-flight, complexity routing, and workflow orchestration. Use for any development task.',
-    'disable-model-invocation': true
+    name: "lu",
+    description:
+      "Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.",
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `# Luca - Unified Entry Point
 
 The single entry point for all Luca workflows. Handles git context setup, cognitive pre-flight, complexity classification, and intelligent routing to the appropriate handler.
@@ -23,10 +24,10 @@ The single entry point for all Luca workflows. Handles git context setup, cognit
 
 > **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-123\`, or your custom \`ticketPattern\` from \`.planning/config.json\`). Default pattern: \`[A-Z]+-\\d+\`
 
-`
+`,
     },
     {
-      title: 'sub-agent_delegation_requirements',
+      title: "sub-agent_delegation_requirements",
       content: `## Sub-agent Delegation Requirements
 
 This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using the Task tool.
@@ -69,10 +70,10 @@ planner_model = (omit)
 executor_model = (omit)
 \`
 `,
-      order: 2
+      order: 2,
     },
     {
-      title: 'workflow',
+      title: "workflow",
       content: `## Workflow
 
 \`\`
@@ -146,10 +147,10 @@ If \`--force-complex\` is passed (backward compatibility):
 If neither flag is passed:
 - lu-router infers complexity from cognitive report (default behavior)
 `,
-      order: 3
-    }
+      order: 3,
+    },
     // Additional sections would continue here...
-  ]
+  ],
 };
 
 // Validate the config with Zod schema at module initialization
