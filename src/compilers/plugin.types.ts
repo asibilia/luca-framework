@@ -5,7 +5,6 @@
  * information, versioning, and keywords. Component discovery (commands,
  * agents, skills, hooks) relies on Claude Code's auto-discovery from
  * default directories rather than explicit manifest arrays.
- * All schema properties use snake_case per API conventions.
  *
  * @example
  * ```typescript
@@ -23,24 +22,36 @@ import { z } from "zod";
 /**
  * Regex pattern enforcing kebab-case plugin names.
  *
- * Allows lowercase letters, digits, and hyphens. Must start and end with
- * a lowercase letter or digit. Minimum two characters when a hyphen is
- * present, single-word names are also valid.
+ * Must start with a lowercase letter. Allows lowercase letters, digits,
+ * and hyphens after the first character. Must not start or end with a
+ * hyphen. Single-word names are also valid.
  *
  * @example
  * ```typescript
  * KEBAB_CASE_REGEX.test('my-plugin')   // true
+ * KEBAB_CASE_REGEX.test('myplugin')    // true
+ * KEBAB_CASE_REGEX.test('123-plugin')  // false
  * KEBAB_CASE_REGEX.test('MyPlugin')    // false
  * KEBAB_CASE_REGEX.test('my_plugin')   // false
  * ```
  */
-export const KEBAB_CASE_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const KEBAB_CASE_REGEX = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+/**
+ * Regex pattern enforcing semantic versioning (semver).
+ *
+ * Matches versions like "1.0.0", "0.1.0-beta.1", "2.0.0-rc.1+build.123".
+ * Does not allow leading zeros in numeric segments.
+ *
+ * @see https://semver.org
+ */
+export const SEMVER_REGEX =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 
 /**
  * Zod schema for plugin author metadata.
  *
  * Represents the person or organisation that authored the plugin.
- * Uses snake_case for API compatibility.
  *
  * @example
  * ```typescript
@@ -74,7 +85,8 @@ export type PluginAuthor = z.infer<typeof pluginAuthorSchema>;
  * `name` is required; every other field carries a sensible default so
  * that minimal manifests are valid.
  *
- * **CRITICAL**: Uses snake_case for all properties per API conventions.
+ * Property names follow the Claude Code plugin manifest spec (single-word
+ * lowercase keys like `name`, `version`, `keywords`).
  *
  * @example
  * ```typescript
@@ -97,7 +109,10 @@ export const pluginManifestSchema = z.object({
     ),
 
   /** Semver version string. Defaults to "0.1.0". */
-  version: z.string().default("0.1.0"),
+  version: z
+    .string()
+    .regex(SEMVER_REGEX, 'Version must be valid semver (e.g. "1.0.0")')
+    .default("0.1.0"),
 
   /** Human-readable description of the plugin's purpose. */
   description: z.string().optional(),

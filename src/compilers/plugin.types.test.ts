@@ -3,7 +3,50 @@ import {
   pluginAuthorSchema,
   pluginManifestSchema,
   generatePluginManifest,
+  KEBAB_CASE_REGEX,
+  SEMVER_REGEX,
 } from "./plugin.types";
+
+describe("KEBAB_CASE_REGEX", () => {
+  test("accepts valid kebab-case names starting with a letter", () => {
+    for (const name of ["luca", "my-plugin", "a1-b2", "plugin-v2"]) {
+      expect(KEBAB_CASE_REGEX.test(name)).toBe(true);
+    }
+  });
+
+  test("rejects names starting with a digit", () => {
+    for (const name of ["123", "1plugin", "0-start"]) {
+      expect(KEBAB_CASE_REGEX.test(name)).toBe(false);
+    }
+  });
+
+  test("rejects non-kebab-case formats", () => {
+    for (const name of ["MyPlugin", "my_plugin", "-leading", "trailing-"]) {
+      expect(KEBAB_CASE_REGEX.test(name)).toBe(false);
+    }
+  });
+});
+
+describe("SEMVER_REGEX", () => {
+  test("accepts valid semver strings", () => {
+    for (const v of [
+      "0.0.0",
+      "1.2.3",
+      "10.20.30",
+      "1.0.0-alpha",
+      "1.0.0-alpha.1",
+      "1.0.0+build",
+    ]) {
+      expect(SEMVER_REGEX.test(v)).toBe(true);
+    }
+  });
+
+  test("rejects invalid semver strings", () => {
+    for (const v of ["1.0", "v1.0.0", "latest", "01.0.0", "1.0.0.", ".1.0.0"]) {
+      expect(SEMVER_REGEX.test(v)).toBe(false);
+    }
+  });
+});
 
 describe("pluginAuthorSchema", () => {
   test("accepts valid author with all fields", () => {
@@ -110,9 +153,62 @@ describe("pluginManifestSchema", () => {
     expect(leadingHyphen.success).toBe(false);
   });
 
+  test("rejects names starting with a digit", () => {
+    const digitOnly = pluginManifestSchema.safeParse({ name: "123" });
+    expect(digitOnly.success).toBe(false);
+
+    const digitLeading = pluginManifestSchema.safeParse({ name: "123-plugin" });
+    expect(digitLeading.success).toBe(false);
+
+    const digitSegment = pluginManifestSchema.safeParse({ name: "1a-plugin" });
+    expect(digitSegment.success).toBe(false);
+  });
+
   test("valid kebab-case names pass", () => {
     for (const name of ["plugin", "my-plugin", "my-cool-plugin", "a1-b2-c3"]) {
       const result = pluginManifestSchema.safeParse({ name });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  test("rejects invalid semver version strings", () => {
+    const noMinor = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      version: "1.0",
+    });
+    expect(noMinor.success).toBe(false);
+
+    const vPrefix = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      version: "v1.0.0",
+    });
+    expect(vPrefix.success).toBe(false);
+
+    const text = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      version: "latest",
+    });
+    expect(text.success).toBe(false);
+
+    const leadingZero = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      version: "01.0.0",
+    });
+    expect(leadingZero.success).toBe(false);
+  });
+
+  test("accepts valid semver version strings", () => {
+    for (const version of [
+      "0.1.0",
+      "1.0.0",
+      "2.3.4",
+      "1.0.0-beta.1",
+      "1.0.0-rc.1+build.123",
+    ]) {
+      const result = pluginManifestSchema.safeParse({
+        name: "my-plugin",
+        version,
+      });
       expect(result.success).toBe(true);
     }
   });

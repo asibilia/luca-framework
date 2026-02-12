@@ -203,8 +203,8 @@ export async function readVersion(): Promise<string> {
       const json = JSON.parse(await frameworkPkg.text());
       if (json.version) return json.version;
     }
-  } catch {
-    // Fall through
+  } catch (err) {
+    console.debug(`readVersion: failed to read ${frameworkPkgPath}: ${err}`);
   }
 
   // Try root package.json
@@ -215,10 +215,13 @@ export async function readVersion(): Promise<string> {
       const json = JSON.parse(await rootPkg.text());
       if (json.version) return json.version;
     }
-  } catch {
-    // Fall through
+  } catch (err) {
+    console.debug(`readVersion: failed to read ${rootPkgPath}: ${err}`);
   }
 
+  console.debug(
+    "readVersion: no version found in any package.json, using fallback 0.0.1",
+  );
   return "0.0.1";
 }
 

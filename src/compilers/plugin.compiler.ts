@@ -46,7 +46,8 @@ export class PluginCompiler extends BaseCompiler {
    * `.md` files without TypeScript imports.
    *
    * @param agent - The agent instance to compile
-   * @param format - Target format (must be 'CLAUDE' or 'CURSOR')
+   * @param format - Target format ('CLAUDE', 'CURSOR', or 'PLUGIN'). Plugin output
+   *   uses Claude format internally since the plugin runtime consumes the same markdown.
    * @returns Compiled markdown string, optionally prefixed with YAML frontmatter
    */
   compileAgent(agent: BaseAgent, format: SupportedFormat): string {
@@ -93,7 +94,8 @@ export class PluginCompiler extends BaseCompiler {
    * with at least a `description` field for discoverability.
    *
    * @param skill - The skill instance to compile
-   * @param format - Target format (must be 'CLAUDE' or 'CURSOR')
+   * @param format - Target format ('CLAUDE', 'CURSOR', or 'PLUGIN'). Plugin output
+   *   uses Claude format internally since the plugin runtime consumes the same markdown.
    * @returns Compiled markdown string with description frontmatter
    */
   compileSkill(skill: BaseSkill, format: SupportedFormat): string {
@@ -114,7 +116,8 @@ export class PluginCompiler extends BaseCompiler {
    * an active rule by the host.
    *
    * @param rule - The rule instance to compile
-   * @param format - Target format (must be 'CLAUDE' or 'CURSOR')
+   * @param format - Target format ('CLAUDE', 'CURSOR', or 'PLUGIN'). Plugin output
+   *   uses Claude format internally since the plugin runtime consumes the same markdown.
    * @returns Compiled markdown string (informational only; not injected as a host rule)
    */
   compileRule(rule: BaseRule, format: SupportedFormat): string {
