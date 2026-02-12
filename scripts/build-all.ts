@@ -378,10 +378,10 @@ async function main() {
   console.log(`Rules:  ${ruleCount} (x2 formats = ${ruleCount * 2} files)`);
   console.log(`Hooks:  ${hookCount} (Claude) + ${cursorHookCount} (Cursor)`);
   console.log(
-    `Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.commands} commands, ${pluginSummary.hooks} hooks`,
+    `Plugin: ${pluginSummary.agents} agents, ${pluginSummary.skills} skills, ${pluginSummary.commands} commands, ${pluginSummary.hooks} hooks + plugin.json + marketplace.json`,
   );
   console.log(
-    `Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount + pluginSummary.agents + pluginSummary.skills + pluginSummary.commands + pluginSummary.hooks + 2} files`,
+    `Total:  ${(agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount + pluginSummary.agents + pluginSummary.skills + pluginSummary.commands + pluginSummary.hooks + 3} files`,
   );
 
   if (failures.length > 0) {
