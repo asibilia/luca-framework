@@ -19,6 +19,7 @@
     "build:all": "bun run ./scripts/build-all.ts",
     "build:claude": "bun run ./scripts/build-claude.ts",
     "build:cursor": "bun run ./scripts/build-cursor.ts",
+    "build:plugin": "bun ./scripts/build-plugin.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
     "test": "bun test",

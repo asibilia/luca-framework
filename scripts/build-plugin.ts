@@ -1,0 +1,426 @@
+#!/usr/bin/env bun
+
+/**
+ * build-plugin.ts — Plugin build script for Claude Code plugin packaging
+ *
+ * Compiles all agents and skills from registries, generates the plugin
+ * manifest (.claude-plugin/plugin.json), copies hook scripts, and produces
+ * the plugin hooks configuration. The output is a self-contained directory
+ * under dist/plugin/ ready for `claude --plugin-dir` testing.
+ *
+ * Usage:
+ *   bun run build:plugin          # via package.json script
+ *   bun ./scripts/build-plugin.ts # direct invocation
+ *
+ * Prerequisites:
+ *   - All agent/skill source classes must compile without errors
+ *   - PluginCompiler must be available in src/compilers/
+ *
+ * Output structure:
+ *   dist/plugin/
+ *   ├── .claude-plugin/
+ *   │   └── plugin.json
+ *   ├── agents/
+ *   │   ├── code-architect.md
+ *   │   └── ... (all agents)
+ *   ├── skills/
+ *   │   ├── git-commit/
+ *   │   │   └── SKILL.md
+ *   │   └── ... (all skills)
+ *   ├── hooks/
+ *   │   └── hooks.json
+ *   └── scripts/
+ *       ├── post-edit-format.sh
+ *       └── ... (all hook scripts)
+ */
+import { agentRegistry } from "../src/agents/index";
+import { skillRegistry } from "../src/skills/index";
+import { hookRegistry } from "../src/hooks/index";
+import type { HookDefinition } from "../src/hooks/index";
+import type { BaseAgent } from "../src/agents/types/agent.types";
+import type { BaseSkill } from "../src/skills/types/skill.types";
+import { LuExecutorAgent } from "../src/agents/luca/lu-executor.agent";
+import { LuPlannerAgent } from "../src/agents/luca/lu-planner.agent";
+import { LuSkill } from "../src/skills/luca/lu.skill";
+import { PluginCompiler } from "../src/compilers/plugin.compiler";
+import { generatePluginManifest } from "../src/compilers/plugin.types";
+import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
+import path from "path";
+
+/**
+ * Result returned by buildPlugin for downstream consumption.
+ *
+ * Plan 19-04 imports this function and uses the result to verify
+ * the plugin build was successful.
+ */
+export interface BuildPluginResult {
+  agents: number;
+  skills: number;
+  hooks: number;
+  failures: string[];
+}
+
+/**
+ * Generate the plugin hooks.json configuration.
+ *
+ * Produces a hooks configuration identical in structure to
+ * generateHooksConfig() from src/hooks/index.ts, but uses
+ * `${CLAUDE_PLUGIN_ROOT}/scripts/` for command paths instead of
+ * `"$CLAUDE_PROJECT_DIR"/.claude/hooks/`.
+ *
+ * @param registry - The hook registry mapping hook names to definitions
+ * @returns A JSON-serialisable hooks configuration object
+ */
+function generatePluginHooksConfig(
+  registry: Record<string, HookDefinition>,
+): Record<string, unknown> {
+  const config: Record<
+    string,
+    Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>
+  > = {};
+
+  for (const [_name, def] of Object.entries(registry)) {
+    if (!config[def.event]) {
+      config[def.event] = [];
+    }
+
+    // Find existing matcher group or create new one
+    const matcherKey = def.matcher ?? "__no_matcher__";
+    let group = config[def.event].find((g) => {
+      if (matcherKey === "__no_matcher__") return !g.matcher;
+      return g.matcher === def.matcher;
+    });
+
+    if (!group) {
+      group = def.matcher ? { matcher: def.matcher, hooks: [] } : { hooks: [] };
+      config[def.event].push(group);
+    }
+
+    const hookEntry: Record<string, unknown> = {
+      type: "command",
+      command: `\${CLAUDE_PLUGIN_ROOT}/scripts/${def.script}`,
+      timeout: def.timeout,
+    };
+
+    if (def.async) hookEntry.async = true;
+    if (def.statusMessage) hookEntry.statusMessage = def.statusMessage;
+
+    group.hooks.push(hookEntry);
+  }
+
+  return config;
+}
+
+/**
+ * Read the package version from the luca-framework package.
+ *
+ * Falls back to the root package.json, then to "0.0.1" if no version
+ * field is found in either location.
+ *
+ * @returns Semver version string
+ */
+async function readVersion(): Promise<string> {
+  // Try luca-framework package first (has version field)
+  const frameworkPkgPath = path.join(
+    process.cwd(),
+    "packages",
+    "luca-framework",
+    "package.json",
+  );
+  try {
+    const frameworkPkg = Bun.file(frameworkPkgPath);
+    if (await frameworkPkg.exists()) {
+      const json = JSON.parse(await frameworkPkg.text());
+      if (json.version) return json.version;
+    }
+  } catch {
+    // Fall through
+  }
+
+  // Try root package.json
+  const rootPkgPath = path.join(process.cwd(), "package.json");
+  try {
+    const rootPkg = Bun.file(rootPkgPath);
+    if (await rootPkg.exists()) {
+      const json = JSON.parse(await rootPkg.text());
+      if (json.version) return json.version;
+    }
+  } catch {
+    // Fall through
+  }
+
+  return "0.0.1";
+}
+
+/**
+ * Build a complete Claude Code plugin package under dist/plugin/.
+ *
+ * 1. Creates the plugin directory structure
+ * 2. Cleans stale files from previous builds
+ * 3. Compiles all agents from agentRegistry + Luca-specific agents
+ * 4. Compiles all skills from skillRegistry + Luca-specific skill
+ * 5. Copies hook scripts from src/hooks/scripts/
+ * 6. Generates hooks/hooks.json with ${CLAUDE_PLUGIN_ROOT} paths
+ * 7. Generates .claude-plugin/plugin.json manifest
+ *
+ * @returns Build result with counts and any failure details
+ *
+ * @example
+ * ```typescript
+ * const result = await buildPlugin();
+ * console.log(`Built ${result.agents} agents, ${result.skills} skills, ${result.hooks} hooks`);
+ * if (result.failures.length > 0) {
+ *   console.error('Failures:', result.failures);
+ * }
+ * ```
+ */
+export async function buildPlugin(): Promise<BuildPluginResult> {
+  const compiler = new PluginCompiler();
+
+  // Define output directories
+  const pluginDir = path.join(process.cwd(), "dist", "plugin");
+  const manifestDir = path.join(pluginDir, ".claude-plugin");
+  const agentsDir = path.join(pluginDir, "agents");
+  const skillsDir = path.join(pluginDir, "skills");
+  const hooksDir = path.join(pluginDir, "hooks");
+  const scriptsDir = path.join(pluginDir, "scripts");
+
+  // Ensure all output directories exist
+  await Promise.all([
+    ensureDir(manifestDir),
+    ensureDir(agentsDir),
+    ensureDir(skillsDir),
+    ensureDir(hooksDir),
+    ensureDir(scriptsDir),
+  ]);
+
+  // Clean stale files before writing
+  const [removedAgents, removedSkills, removedHooks, removedScripts] =
+    await Promise.all([
+      cleanDirectory(agentsDir, [".md"]),
+      cleanSkillsDirectory(skillsDir),
+      cleanDirectory(hooksDir, [".json"]),
+      cleanDirectory(scriptsDir, [".sh"]),
+    ]);
+
+  const totalRemoved =
+    removedAgents.length +
+    removedSkills.length +
+    removedHooks.length +
+    removedScripts.length;
+
+  if (totalRemoved)
+    console.log(`Cleaned ${totalRemoved} stale files/directories`);
+
+  let agentCount = 0;
+  let skillCount = 0;
+  let hookCount = 0;
+  const failures: string[] = [];
+  const agentNames: string[] = [];
+  const skillNames: string[] = [];
+  const hookNames: string[] = [];
+
+  // --- Agents ---
+
+  // General agents from registry
+  for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
+    try {
+      const instance = new (AgentClass as new () => BaseAgent)();
+      const content = compiler.compileAgent(instance, "CLAUDE");
+
+      await Bun.write(path.join(agentsDir, `${agentName}.md`), content);
+
+      console.log(`  Generated agents/${agentName}.md`);
+      agentNames.push(agentName);
+      agentCount++;
+    } catch (error) {
+      console.error(`  Failed to generate agents/${agentName}.md:`, error);
+      failures.push(`agent/${agentName}`);
+    }
+  }
+
+  // Luca-specific agents
+  try {
+    const luExecutor = new LuExecutorAgent();
+    await Bun.write(
+      path.join(agentsDir, "lu-executor.md"),
+      compiler.compileAgent(luExecutor, "CLAUDE"),
+    );
+    console.log("  Generated agents/lu-executor.md");
+    agentNames.push("lu-executor");
+    agentCount++;
+  } catch (error) {
+    console.error("  Failed to generate agents/lu-executor.md:", error);
+    failures.push("agent/lu-executor");
+  }
+
+  try {
+    const luPlanner = new LuPlannerAgent();
+    await Bun.write(
+      path.join(agentsDir, "lu-planner.md"),
+      compiler.compileAgent(luPlanner, "CLAUDE"),
+    );
+    console.log("  Generated agents/lu-planner.md");
+    agentNames.push("lu-planner");
+    agentCount++;
+  } catch (error) {
+    console.error("  Failed to generate agents/lu-planner.md:", error);
+    failures.push("agent/lu-planner");
+  }
+
+  // --- Skills ---
+
+  // General skills from registry
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    try {
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const content = compiler.compileSkill(instance, "CLAUDE");
+
+      const skillDir = path.join(skillsDir, skillName);
+      await ensureDir(skillDir);
+      await Bun.write(path.join(skillDir, "SKILL.md"), content);
+
+      console.log(`  Generated skills/${skillName}/SKILL.md`);
+      skillNames.push(skillName);
+      skillCount++;
+    } catch (error) {
+      console.error(
+        `  Failed to generate skills/${skillName}/SKILL.md:`,
+        error,
+      );
+      failures.push(`skill/${skillName}`);
+    }
+  }
+
+  // Luca-specific skill
+  try {
+    const luSkill = new LuSkill();
+    const luSkillDir = path.join(skillsDir, "lu");
+    await ensureDir(luSkillDir);
+    await Bun.write(
+      path.join(luSkillDir, "SKILL.md"),
+      compiler.compileSkill(luSkill, "CLAUDE"),
+    );
+    console.log("  Generated skills/lu/SKILL.md");
+    skillNames.push("lu");
+    skillCount++;
+  } catch (error) {
+    console.error("  Failed to generate skills/lu/SKILL.md:", error);
+    failures.push("skill/lu");
+  }
+
+  // --- Hook Scripts ---
+
+  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+
+  for (const [hookName, hookDef] of Object.entries(hookRegistry)) {
+    try {
+      const srcPath = path.join(hookScriptsDir, hookDef.script);
+      const destPath = path.join(scriptsDir, hookDef.script);
+
+      const srcFile = Bun.file(srcPath);
+      if (!(await srcFile.exists())) {
+        console.error(
+          `  Hook script not found: src/hooks/scripts/${hookDef.script}`,
+        );
+        failures.push(`hook/${hookName}`);
+        continue;
+      }
+
+      await Bun.write(destPath, srcFile);
+
+      // Make script executable
+      const { exitCode } = Bun.spawnSync(["chmod", "+x", destPath]);
+      if (exitCode !== 0) {
+        console.error(`  Failed to chmod +x ${destPath}`);
+      }
+
+      console.log(`  Generated scripts/${hookDef.script}`);
+      hookNames.push(hookName);
+      hookCount++;
+    } catch (error) {
+      console.error(`  Failed to copy hook script ${hookDef.script}:`, error);
+      failures.push(`hook/${hookName}`);
+    }
+  }
+
+  // --- Hooks Configuration ---
+
+  const pluginHooksConfig = generatePluginHooksConfig(hookRegistry);
+  await Bun.write(
+    path.join(hooksDir, "hooks.json"),
+    JSON.stringify(pluginHooksConfig, null, 2) + "\n",
+  );
+  console.log("  Generated hooks/hooks.json");
+
+  // --- Plugin Manifest ---
+
+  const version = await readVersion();
+
+  const manifest = generatePluginManifest({
+    name: "luca",
+    version,
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    author: {
+      name: "Alec Sibilia",
+    },
+    keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+    agents: agentNames,
+    skills: skillNames,
+    hooks: hookNames,
+  });
+
+  await Bun.write(
+    path.join(manifestDir, "plugin.json"),
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
+  console.log("  Generated .claude-plugin/plugin.json");
+
+  // --- Summary ---
+
+  const totalFiles = agentCount + skillCount + hookCount + 2; // +2 for hooks.json and plugin.json
+
+  console.log("\n=== Plugin Build Summary ===");
+  console.log(`Agents: ${agentCount}`);
+  console.log(`Skills: ${skillCount}`);
+  console.log(`Hooks:  ${hookCount}`);
+  console.log(`Total:  ${totalFiles} files`);
+  console.log(`Output: dist/plugin/`);
+
+  if (failures.length > 0) {
+    console.error(`\nBuild completed with ${failures.length} failure(s):`);
+    for (const f of failures) {
+      console.error(`  - ${f}`);
+    }
+  }
+
+  return { agents: agentCount, skills: skillCount, hooks: hookCount, failures };
+}
+
+// --- Standalone entry point ---
+if (import.meta.main) {
+  buildPlugin()
+    .then((result) => {
+      if (result.failures.length > 0) {
+        process.exit(1);
+      }
+    })
+    .catch((error) => {
+      console.error("\n========================================");
+      console.error("  BUILD FAILED: build-plugin");
+      console.error("========================================\n");
+      console.error("What failed:", error.message || error);
+      console.error("\nTroubleshooting:");
+      console.error(
+        "  1. Ensure all source classes in src/ compile: bun build ./src/index.ts",
+      );
+      console.error("  2. Check that PluginCompiler exists in src/compilers/");
+      console.error(
+        "  3. Verify the registries export correctly from src/*/index.ts",
+      );
+      console.error("\nStack trace:");
+      console.error(error.stack || error);
+      process.exit(1);
+    });
+}
