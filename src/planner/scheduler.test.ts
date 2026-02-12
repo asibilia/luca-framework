@@ -98,6 +98,80 @@ describe("selectBigRock", () => {
   test("handles empty array and returns null", () => {
     expect(selectBigRock([])).toBeNull();
   });
+
+  test("excludes items with effort < 3 (TRIVIAL and SIMPLE)", () => {
+    const items = [
+      makeItem({
+        todo_path: "trivial.md",
+        wsjf_score: 20.0,
+        dependency_free: true,
+        wsjf_inputs: {
+          business_value: 10,
+          time_criticality: 10,
+          risk_reduction: 10,
+          effort_points: 1,
+        },
+      }),
+      makeItem({
+        todo_path: "simple.md",
+        wsjf_score: 15.0,
+        dependency_free: true,
+        wsjf_inputs: {
+          business_value: 10,
+          time_criticality: 10,
+          risk_reduction: 10,
+          effort_points: 2,
+        },
+      }),
+      makeItem({
+        todo_path: "moderate.md",
+        wsjf_score: 5.0,
+        dependency_free: true,
+        wsjf_inputs: {
+          business_value: 5,
+          time_criticality: 5,
+          risk_reduction: 5,
+          effort_points: 3,
+        },
+      }),
+    ];
+
+    const rock = selectBigRock(items);
+    expect(rock).not.toBeNull();
+    // Despite trivial.md having highest WSJF (20), it's excluded (effort=1)
+    // simple.md also excluded (effort=2). Only moderate.md qualifies (effort=3).
+    expect(rock!.todo_path).toBe("moderate.md");
+  });
+
+  test("returns null when all dependency-free items have effort < 3", () => {
+    const items = [
+      makeItem({
+        todo_path: "trivial.md",
+        wsjf_score: 20.0,
+        dependency_free: true,
+        wsjf_inputs: {
+          business_value: 10,
+          time_criticality: 10,
+          risk_reduction: 10,
+          effort_points: 1,
+        },
+      }),
+      makeItem({
+        todo_path: "simple.md",
+        wsjf_score: 15.0,
+        dependency_free: true,
+        wsjf_inputs: {
+          business_value: 10,
+          time_criticality: 10,
+          risk_reduction: 10,
+          effort_points: 2,
+        },
+      }),
+    ];
+
+    // No items qualify (all effort < 3)
+    expect(selectBigRock(items)).toBeNull();
+  });
 });
 
 /* ------------------------------------------------------------------ */

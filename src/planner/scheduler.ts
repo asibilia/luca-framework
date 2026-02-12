@@ -32,26 +32,41 @@ import {
 import type { ComplexityLevel } from "../complexity/types";
 
 /**
- * Select the Big Rock for the session: the highest-WSJF dependency-free item.
+ * Minimum effort points for a task to qualify as a Big Rock.
+ *
+ * Big Rocks should be substantial, high-impact tasks (MODERATE+).
+ * TRIVIAL (1) and SIMPLE (2) items are too small to anchor a session.
+ */
+const BIG_ROCK_MIN_EFFORT = 3;
+
+/**
+ * Select the Big Rock for the session: the highest-WSJF dependency-free item
+ * with effort >= 3 (MODERATE or higher).
  *
  * The Big Rock is always scheduled first so it executes in the peak quality
- * zone. Only items where `dependency_free === true` are eligible.
+ * zone. Only items where `dependency_free === true` and effort is at least
+ * MODERATE (3 points) are eligible. If no items meet both criteria, returns null.
  *
  * @param items - Array of WSJF-scored items to consider
- * @returns The highest-WSJF dependency-free item, or null if none qualify
+ * @returns The highest-WSJF dependency-free substantial item, or null if none qualify
  *
  * @example
  * ```typescript
  * const items = [
- *   { todo_path: "a.md", wsjf_score: 10, dependency_free: true, ... },
- *   { todo_path: "b.md", wsjf_score: 15, dependency_free: false, ... },
+ *   { todo_path: "a.md", wsjf_score: 10, dependency_free: true, wsjf_inputs: { effort_points: 5 }, ... },
+ *   { todo_path: "b.md", wsjf_score: 15, dependency_free: false, wsjf_inputs: { effort_points: 3 }, ... },
+ *   { todo_path: "c.md", wsjf_score: 20, dependency_free: true, wsjf_inputs: { effort_points: 1 }, ... },
  * ];
  * const rock = selectBigRock(items);
- * // rock => item "a.md" (b.md excluded because dependency_free=false)
+ * // rock => item "a.md" (b.md excluded: not dependency_free, c.md excluded: effort < 3)
  * ```
  */
 export function selectBigRock(items: WSJFScoredItem[]): WSJFScoredItem | null {
-  const eligible = items.filter((item) => item.dependency_free === true);
+  const eligible = items.filter(
+    (item) =>
+      item.dependency_free === true &&
+      item.wsjf_inputs.effort_points >= BIG_ROCK_MIN_EFFORT,
+  );
   if (eligible.length === 0) return null;
   const sorted = orderBy(eligible, "wsjf_score", "desc");
   return sorted[0] ?? null;
