@@ -5,9 +5,9 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: /lu-execute-phase 20
-- **Phase**: 20 (Skills & Agents Packaging)
-- **Plan**: Executing phase — Wave 1 (20-01, 20-02 parallel), then Wave 2 (20-03, 20-04)
+- **Workflow**: /lu-plan-phase 21
+- **Phase**: 21 (Hooks & Runtime)
+- **Plan**: Planning phase — research, plan, verify
 
 ---
 
@@ -15,56 +15,49 @@
 
 ### Task
 
-- **Goal**: Compile all skills, agents, and commands for the plugin. Convert critical rules to skills. Fix /lu skill chaining.
+- **Goal**: Generate plugin-compatible hooks, adapt scripts for plugin runtime, implement SessionStart initialization
 - **Complexity**: COMPLEX
-- **Scope**: src/skills/, src/agents/, src/rules/, scripts/build-plugin.ts, dist/plugin/
+- **Scope**: src/hooks/, scripts/build-plugin.ts, dist/plugin/hooks/, dist/plugin/scripts/
 
 ### Memory Recall
 
-- **Patterns loaded**: Source-of-Truth Build Pipeline, Skill Source Files Required, Plugin compiler via format delegation, Exported build function + import.meta.main guard, Platform-specific path generators from shared registry
-- **Decisions recalled**: Third compiler target (not replacing .claude/), Rules-as-skills conversion (plugins can't inject rules)
-- **Pitfalls flagged**: Editing .claude/ directly causes drift, Cognition config dual source of truth (always build:all after changes), Skill source files required for build pipeline
+- **Patterns loaded**: Source-of-Truth Build Pipeline, Metadata registry for hooks, Dual-format stdin/stdout, Command exclusion set, Plugin compiler via format delegation, Platform-specific path generators
+- **Decisions recalled**: Hooks on both Claude Code and Cursor, Metadata registry over class registry, Two-layer verification
+- **Pitfalls flagged**: Cognition config dual source of truth, || true swallows exit codes, Shell variable interpolation in bun -e, Bun.spawn quirks
 
-### Context Decisions (from 20-CONTEXT.md)
+### Context Decisions (from 21-CONTEXT.md)
 
-- ~25-30 non-internal skills become slash commands
-- /lu skill chaining fix is in scope (PACK-03)
-- Framework rules only for rules-as-skills (5 rules)
-- Tiered content: short description + full body
-- All 41 skill descriptions optimized for lazy loading
+- 5 hooks in plugin (exclude drift-check), plus new session-start
+- SessionStart: validate & repair, full scaffold, auto-detect BRAIN.md
+- Bun availability check with warning (prerequisite, not fallback)
+- Runtime detection via config.json (SessionStart writes, pre-commit-gate reads)
+- Context monitor: WORKING.md size as fallback when transcript_path unavailable
+- Standard Luca config defaults (same as luca init)
+
+### Intuition Flags
+
+- OPPORTUNITY: Hook registry pattern well-established — extend with session-start
+- CAUTION: SessionStart auto-detection adds complexity — keep lightweight
+- RISK: Config.json runtime field coordination between hooks
 
 ---
 
 ## Planning Notes
 
-- 4 plans created across 2 waves
-- Wave 1 (parallel): 20-01 (descriptions + lu consolidation), 20-02 (rules-as-skills)
-- Wave 2 (depends on Wave 1): 20-03 (command pipeline), 20-04 (/lu chaining rewrite)
-- Plan checker: 2 medium issues found and fixed (iteration 1), 4 low issues found and 2 fixed (iteration 2)
-- Total: 16 tasks across 4 plans
+<!-- Log planning decisions as they're made -->
 
 ---
 
 ## Session Log
 
-| Time | Action                | Result                                        |
-| ---- | --------------------- | --------------------------------------------- |
-| --   | Cognitive pre-flight  | BRAIN, MEMORY, WORKING, STATE, CONTEXT loaded |
-| --   | Research              | 20-RESEARCH.md created (680 lines)            |
-| --   | Planning              | 4 PLAN.md files created (2 waves)             |
-| --   | Plan checker (iter 1) | 2 medium issues fixed (01-PLAN, 03-PLAN)      |
-| --   | Plan checker (iter 2) | 4 low issues, 2 fixed (01-PLAN, 02-PLAN)      |
-| --   | Wave 1 execution      | 20-01 + 20-02 parallel, 6 commits, all pass   |
-| --   | Wave 2 execution      | 20-03 + 20-04 parallel, 3 commits, all pass   |
-| --   | Verification harness  | test PASS, build PASS, typecheck pre-existing |
-| --   | Phase verification    | All PACK-01..05 deliverables verified         |
-| --   | State updates         | STATE.md, WORKING.md updated                  |
-| --   | Learning capture      | 3 patterns, 2 decisions, 1 pitfall → MEMORY   |
+| Time | Action               | Result                                        |
+| ---- | -------------------- | --------------------------------------------- |
+| --   | Cognitive pre-flight | BRAIN, MEMORY, WORKING, STATE, CONTEXT loaded |
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [x] Learnings extracted
-- [x] Ready to clear
+- [ ] Learnings extracted
+- [ ] Ready to clear
