@@ -1,19 +1,19 @@
 /**
  * Luca workflow system for spec-driven development with cognitive memory
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 // Define the Luca-workflow-system rule configuration
 const LucaworkflowsystemConfig: RuleConfig = {
   frontmatter: {
     description: `Luca workflow system for spec-driven development with cognitive memory`,
-    
+
     alwaysApply: false,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `<main>
 # Luca Workflow System
 
@@ -21,14 +21,14 @@ Luca is a framework for agentic development, combining spec-driven development w
 
 ## What's New in Luca
 
-| Feature             | Description                                   |
-| ------------------- | --------------------------------------------- |
-| Entry Point         | Unified \`/lu\` with intelligent routing        |
-| **Git Integration** | None                        | Jira → GitHub issue → Branch → PR   |
-| Memory              | STATE.md only               | BRAIN.md + MEMORY.md + WORKING.md   |
-| Verification        | Optional                    | Always runs (all complexity levels) |
-| Learning            | None                        | Pattern/decision/pitfall capture    |
-| Pre-Flight          | None                        | Cognitive context loading           |
+| Feature             | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| Entry Point         | Unified \`/lu\` with intelligent routing               |
+| **Git Integration** | Jira → GitHub issue → Branch → PR                    |
+| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Verification        | Always runs (all complexity levels)                  |
+| Learning            | Pattern/decision/pitfall capture                     |
+| Pre-Flight          | Cognitive context loading                            |
 
 ## Philosophy
 
@@ -108,9 +108,9 @@ Before major operations, Luca runs cognitive pre-flight:
 3. **Initialize WORKING.md** — Session context
 4. **Generate intuition flags** — RISK, CAUTION, OPPORTUNITY, UNKNOWN
 </cognitive_pre_flight>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LucaworkflowsystemRule extends BaseRuleImpl {

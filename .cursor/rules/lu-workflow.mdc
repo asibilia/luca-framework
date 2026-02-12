@@ -12,14 +12,14 @@ Luca is a framework for agentic development, combining spec-driven development w
 
 ## What's New in Luca
 
-| Feature             | Description                                   |
-| ------------------- | --------------------------------------------- |
-| Entry Point         | Unified `/lu` with intelligent routing        |
-| **Git Integration** | None                        | Jira → GitHub issue → Branch → PR   |
-| Memory              | STATE.md only               | BRAIN.md + MEMORY.md + WORKING.md   |
-| Verification        | Optional                    | Always runs (all complexity levels) |
-| Learning            | None                        | Pattern/decision/pitfall capture    |
-| Pre-Flight          | None                        | Cognitive context loading           |
+| Feature             | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| Entry Point         | Unified `/lu` with intelligent routing               |
+| **Git Integration** | Jira → GitHub issue → Branch → PR                    |
+| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Verification        | Always runs (all complexity levels)                  |
+| Learning            | Pattern/decision/pitfall capture                     |
+| Pre-Flight          | Cognitive context loading                            |
 
 ## Philosophy
 
