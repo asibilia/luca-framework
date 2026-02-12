@@ -224,6 +224,21 @@
   - **Tags**: [patterns, architecture, conventions]
   - **Confidence**: High
   - **Added**: 2026-02-12
+- **[Phase 22] Shared build module for single source of truth across build, drift, and test**: When build logic (constants, generators) is needed by multiple scripts (build, drift detection, tests), extract to a dedicated `build-shared.ts` module that all consumers import from. This guarantees byte-identical output between the build and the drift checker, eliminates code duplication, and makes the module dependency graph a clean DAG (build-shared → build-all, check-drift, check-drift.test). Validated in Phase 22 (8 exports shared across 3 consumers, SHA-256 checksums match across 118 plugin files)
+  - **When to use**: When the same build logic is needed by both the builder and verifier
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 22] Checksum-based before/after verification for build refactoring**: When refactoring build scripts (consolidation, extraction), capture SHA-256 checksums of all output files before and after the refactoring, then diff. Zero differences confirms the refactoring is behavior-preserving. More reliable than manual inspection for large output sets. Validated in Phase 22 (118 files, 0 diffs after build consolidation)
+  - **When to use**: When restructuring build scripts without intending to change output
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 22] Category-based README generation from registries**: Generate README documentation at build time by classifying registry entries into human-curated category maps (static), then counting dynamically from actual registry contents. Unknown entries fall through to "Other" so new additions don't break the build. Produces accurate, auto-updating documentation without hardcoded numbers. Validated in Phase 22 (44 skills across 9 categories, 26 agents across 5 categories, zero "Other" entries)
+  - **When to use**: When generating documentation from source registries that change over time
+  - **Tags**: [patterns, documentation, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
 
 ### Established Conventions
 
@@ -313,6 +328,24 @@
 **Choice:** Use iteration count divided by max iterations as the cost proxy. Soft stop at 80%.
 **Rationale:** Without token counting, iterations-completed/iterations-allowed is the best available approximation. The 80% threshold leaves 20% headroom for the final iteration to complete cleanly. More sophisticated duration-based estimation can be added later without changing the BudgetState schema.
 **Alternatives rejected:** Duration-based estimation (unreliable, varies by task complexity), no budget enforcement (risks hitting hard limits mid-iteration).
+
+### Decision: Inline plugin generation over separate build-plugin.ts
+
+**Tags:** [architecture, build]
+**Phase:** 22
+**Context:** Plugin build logic existed in a separate `build-plugin.ts` file (553 lines) that was called via `import { buildPlugin } from "./build-plugin"`. Both build-all.ts and build-plugin.ts needed the same constants and helpers.
+**Choice:** Inline plugin logic into build-all.ts and extract shared constants/functions to build-shared.ts. Delete build-plugin.ts entirely.
+**Rationale:** Having a separate file created import coupling (build-all depends on build-plugin) and made the shared module extraction for drift detection harder. Inlining the plugin section into build-all.ts puts all three build targets (.claude/, .cursor/, dist/plugin/) in a single file with a clear sequential flow, while build-shared.ts provides the reusable pieces needed by check-drift.ts and tests.
+**Alternatives rejected:** Keeping build-plugin.ts as a standalone module (creates an extra layer of indirection), extracting all build logic to build-shared.ts (build-shared would become too large and gain I/O responsibilities).
+
+### Decision: Marketplace manifest structure follows Anthropic reference
+
+**Tags:** [architecture, conventions]
+**Phase:** 22
+**Context:** Claude Code marketplace spec was inferred from Anthropic's own marketplace.json reference.
+**Choice:** Flat root-level fields (`name`, `owner`, `plugins[]`), `source: "."` since marketplace.json lives inside the plugin directory, `category: "development"`, `$schema` URL included even though it doesn't resolve.
+**Rationale:** Following the reference implementation exactly reduces the chance of incompatibility with Claude Code's plugin system.
+**Alternatives rejected:** Nested `metadata` wrapper (not seen in reference), omitting `$schema` (loses spec compliance signal).
 
 ### Trade-offs Made
 
@@ -468,6 +501,12 @@
   - **Tags**: [pitfalls, planning, conventions]
   - **Confidence**: High
   - **Added**: 2026-02-12
+- **[Phase 22] Marketplace manifest duplication between build and drift check**: The marketplace manifest object literal is defined inline in both `build-all.ts` and `check-drift.ts`. Unlike other shared items extracted to `build-shared.ts`, this was not extracted because it contains the `version` variable (resolved at runtime). If the manifest structure changes, both files must be updated. Consider extracting a `generateMarketplaceManifest(version)` function to `build-shared.ts` in a future phase
+  - **Agent**: code-simplifier
+  - **Relevant to**: [lu-executor, lu-verifier]
+  - **Tags**: [pitfalls, architecture, conventions]
+  - **Confidence**: Medium
+  - **Added**: 2026-02-12
 
 ### Anti-patterns
 
@@ -523,13 +562,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 58 (+3 Phase 20: command exclusion set, routing skill, rules-as-skills)
-- Total decisions: 35 (+2 Phase 20: exclusion set scope, routing orchestrator)
-- Total pitfalls: 44 (+1 Phase 20: background executor permission loops)
+- Total patterns: 61 (+3 Phase 22: shared build module, checksum verification, category README)
+- Total decisions: 37 (+2 Phase 22: inline plugin generation, marketplace manifest structure)
+- Total pitfalls: 45 (+1 Phase 22: marketplace manifest duplication)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-12
 
-_Entries added by: lu-execute-phase (Phase 20 learning extraction)_
+_Entries added by: lu-execute-phase (Phase 22 learning extraction)_
 _Last curated: 2026-02-12_

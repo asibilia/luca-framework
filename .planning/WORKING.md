@@ -5,50 +5,43 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: /lu-execute-phase 21
-- **Phase**: 21 (Hooks & Runtime)
-- **Plan**: Execution complete — all 4 plans, 2 waves
+- **Workflow**: /lu-execute-phase 22
+- **Phase**: 22 (Distribution & Marketplace)
+- **Complexity**: COMPLEX
+- **Branch**: 7--claude-code-plugin-distribution
+- **Issue**: #7
 
 ---
 
-## Current Context
+## Memory Recall
 
-### Task
+- **Patterns**: Source-of-Truth Build Pipeline (Phase 17), Exported build function + import.meta.main guard (Phase 19), Platform-specific path generators from shared registry (Phase 19), Command exclusion set over opt-in flags (Phase 20)
+- **Decisions**: Third compiler target (not replacing .claude/), GitHub marketplace over npm, Plugin name "luca", 38 commands from 44 skills (exclusion set)
+- **Pitfalls**: Editing .claude/ or .cursor/ directly causes drift, Dual source of truth between .agent.ts and compiled .md, Background executor permission loops
 
-- **Goal**: Generate plugin-compatible hooks, adapt scripts for plugin runtime, implement SessionStart initialization
-- **Complexity**: COMPLEX
-- **Scope**: src/hooks/, scripts/build-plugin.ts, dist/plugin/hooks/, dist/plugin/scripts/
+## Execution Context
 
-### Execution Results
-
-- **Wave 1**: Plans 21-01 (hook registry + build pipeline) and 21-02 (runtime detection) — both complete
-- **Wave 2**: Plans 21-03 (SessionStart hook) and 21-04 (context monitor adaptation) — both complete
-- **Tests**: 877 pass, 0 fail, 6 skip
-- **Build**: 308 files generated across all formats
-- **Requirements**: HOOK-01 through HOOK-05 all satisfied
-
-### Learnings Captured
-
-- **Pattern**: bash+bun hybrid scripts — bash for file existence/mkdir, bun -e for JSON operations. Single bun invocation per logical block minimizes subprocess overhead.
-- **Pattern**: HOOK\_\* env var prefix for passing data to bun -e blocks. Avoids stdin conflicts when bun reads stdin for other purposes.
-- **Pattern**: read_runtime() shell function duplicated across scripts (not sourced) because hook scripts must be self-contained in plugin context.
-- **Decision**: PLUGIN_EXCLUDED_HOOKS follows COMMAND_EXCLUDED_SKILLS pattern — ReadonlySet<string> with JSDoc documenting exclusion reasons.
-- **Decision**: SessionStart config.json creation vs update — new files get full template, existing files only patch the runtime field (idempotent).
-- **Pitfall**: Executors may encounter git commit permission issues in subagents — break into separate git add + git commit calls.
-- **Pitfall**: Wave 2 executor may see unstaged changes from Wave 1 executor's build outputs — scope commits to only the files relevant to the current plan.
+- 4 plans across 3 waves
+- Wave 1: 22-01 (marketplace.json) → 22-02 (README) — sequential
+- Wave 2: 22-03 (build consolidation) — depends on 22-01 + 22-02
+- Wave 3: 22-04 (drift detection) — depends on 22-03
+- All plans verified by lu-plan-checker (2 iterations, passed)
 
 ---
 
 ## Session Log
 
-| Time | Action               | Result                                        |
-| ---- | -------------------- | --------------------------------------------- |
-| --   | Cognitive pre-flight | BRAIN, MEMORY, WORKING, STATE, CONTEXT loaded |
-| --   | Wave 1 execution     | Plans 21-01, 21-02 complete in parallel       |
-| --   | Wave 2 execution     | Plans 21-03, 21-04 complete in parallel       |
-| --   | Verification harness | 877 pass, 0 fail                              |
-| --   | Phase goal verified  | HOOK-01..05 all satisfied                     |
-| --   | State updates        | STATE, ROADMAP, REQUIREMENTS updated          |
+| Time | Action                | Result                                                        |
+| ---- | --------------------- | ------------------------------------------------------------- |
+| --   | Cognitive pre-flight  | BRAIN, MEMORY, WORKING, STATE loaded                          |
+| --   | Environment validated | Branch 7--, Issue #7, 4 plans, 3 waves                        |
+| --   | Wave 1: 22-01         | marketplace.json generated, 877 tests                         |
+| --   | Wave 1: 22-02         | README.md generated, 877 tests                                |
+| --   | Wave 2: 22-03         | Build consolidated, 877 tests, SHA-256 verified               |
+| --   | Wave 3: 22-04         | Drift detection extended, 889 tests (12 new)                  |
+| --   | Harness               | test PASS, tsc PASS (pre-existing only), build PASS           |
+| --   | Verification          | 14/14 checks PASS                                             |
+| --   | Code review           | architect APPROVE, dx 3 suggestions, simplifier 6 suggestions |
 
 ---
 
