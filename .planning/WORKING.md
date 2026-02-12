@@ -2,80 +2,55 @@
 
 ## Session Info
 
-- **Started**: 2026-02-11
-- **Workflow**: /lu-plan-phase 17
-- **Phase**: 17
+- **Started**: 2026-02-12
+- **Workflow**: /lu-plan-phase 18
+- **Phase**: 18
 - **Complexity**: COMPLEX
 
 ## Memory Recall
 
-- **Patterns loaded**: Two-layer verification (hooks + harness), layered verification, failure-to-fix loop iteration limits, result envelope with fallback-to-raw, parallel module + integration wave pattern, Zod schema-first for dual-track configs, N-level to M-tier compression, self-gating agents via always-apply rules, module pattern consistency (types.ts + defaults.ts + index.ts), additive verification steps (insert-between pattern)
-- **Decisions recalled**: Two-layer verification (hooks + harness), 5-level complexity with 3 behavioral tiers, import.meta.main over require.main, Bun.spawn with manual timeout, specification anchoring via additive steps, advisory budget not enforced, context assembly in orchestrator not agent
-- **Pitfalls flagged**: Failure-to-fix loops need iteration limits, executor modifying orchestrator-owned files, research data requires independent verification (12% error rate), `|| true` swallows exit codes, Bun.spawn quirks (no timeout, ReadableStreams, async .exited), plan checker catches wave dependency conflicts
+- **Patterns loaded**: Module pattern consistency (types.ts + defaults.ts + index.ts), Ralph Wiggum decision-support architecture (skill = controller, src/ = utilities), parallel module + integration wave pattern, Zod schema-first for dual-track configs, result envelope with fallback-to-raw, metadata-driven cognition configuration (frontmatter), isolation mode as first-class config, independent promotion tracks (context/cognition)
+- **Decisions recalled**: Advisory budget not enforced (token counting deferred), context assembly in orchestrator not agent, iteration count as budget proxy, verify loop limits lower than harness loop, 4-tier cognition system (T0-T3), YAML frontmatter for compiled agents
+- **Pitfalls flagged**: Dual source of truth (.agent.ts vs compiled .md) — always run build:all, executor modifying orchestrator-owned files, research data requires independent verification (12% error rate), context bloat from aggressive memory recall at CRITICAL
 
 ## Intuition Flags
 
-| Flag                                                    | Type        | Reason                                                                                             |
-| ------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------- |
-| Module pattern from src/harness/ applies directly       | OPPORTUNITY | src/iteration/ follows same structure (types.ts + defaults.ts + index.ts)                          |
-| Failure-to-fix loop already exists in Step 6.6          | OPPORTUNITY | Can study existing pattern before replacing it with unified loop controller                        |
-| Existing result envelope can carry iteration metadata   | OPPORTUNITY | ResultEnvelope from Phase 16 includes metadata field — iteration status fits naturally             |
-| Bun.spawn timeout pattern needed for CLI utilities      | CAUTION     | If iteration utilities call external commands, must use manual timeout pattern                     |
-| Research data 12% error rate on agent classification    | CAUTION     | Verify 17-RESEARCH.md recommendations against actual codebase during planning                      |
-| Dual source of truth risk (src/\*.ts + compiled .md)    | CAUTION     | New iteration types/defaults need build:all to propagate — plan must include build step            |
-| verifyFixIterations extends ComplexityGate              | RISK        | Adding to ComplexityGate means updating defaults.ts, types.ts, AND the complexity-gating rule      |
-| Git tag checkpoints are a new pattern for this codebase | CAUTION     | No existing git tag infrastructure — plan needs to cover creation, rollback, and pruning carefully |
+| Flag                                                       | Type        | Reason                                                                                                      |
+| ---------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| src/planner/ follows same module pattern as src/iteration/ | OPPORTUNITY | types.ts + defaults.ts + scoring.ts + scheduler.ts + index.ts — proven structure                            |
+| ResultEnvelope carries session plan output                 | OPPORTUNITY | Output-only PM agent returns structured plan via existing envelope pattern                                  |
+| Complexity-level proxy reuses existing 5-level system      | OPPORTUNITY | No new estimation vocabulary — map directly from ComplexityLevel to effort points and context %             |
+| PM agent is first read-only agent archetype                | CAUTION     | New pattern — output-only enforcement needs careful orchestrator design                                     |
+| WSJF inference by LLM is a T3 signal                       | CAUTION     | PM agent infers BV/TC/RR — these are LLM-judge signals, not deterministic. Plan should note this limitation |
+| code-architect review of session plan is novel usage       | CAUTION     | code-architect designed for code review, not schedule review — prompt needs careful adaptation              |
+| Dual source of truth risk (src/planner/ + compiled agent)  | CAUTION     | Same risk as Phases 15-17: always run build:all after modifying agent source files                          |
+| 3-hour vs 5-hour session cap discrepancy already resolved  | RESOLVED    | Updated REQUIREMENTS.md and ROADMAP.md to 3-hour per context decision 1                                     |
 
 ## Planning Notes
 
-### Context Decisions (from 17-CONTEXT.md)
+### Context Decisions (from 18-CONTEXT.md)
 
-1. Two distinct loop points: Loop A (Harness — mechanical) + Loop B (Verify — semantic)
-2. Orchestrator-only iteration control — agents are stateless, execute once, return result
-3. Step 6.6 replaced by unified loop controller (not extended)
-4. Per-plan gap granularity — verifier attributes gaps to source plans (needs enhancement)
-5. Git tag checkpoints (iter/<phase>/<loop>/<iteration>) + JSON metadata
-6. Full-iteration rollback only — no per-plan partial rollback
-7. Default AFK, soft stop at 80% budget, HITL offers Continue/Rollback/Abort/Skip
-8. Multi-signal convergence (error count + fingerprint + artifact delta, 2-of-3 stale, 2 consecutive)
-9. Rule-based error classification (transient/correctable/permanent, 3-iteration promotion)
-10. Decision-support utilities at src/iteration/ — NOT a standalone loop controller
-11. verifyFixIterations lower than harnessFixIterations (new ComplexityGate field)
-12. Verifier gap-to-plan attribution via source_plan field (prerequisite for Loop B)
+1. Session cap: 3-hour rolling window (conservative, accounts for overhead)
+2. Effort estimation: Complexity-level proxy (TRIVIAL=1..CRITICAL=8, context % 5-50%)
+3. WSJF inputs: PM agent infers BV/TC/RR from todo context + ROADMAP + dependency graph
+4. Backlog source: Direct .planning/todos/pending/\*.md file reads
+5. Session plan output: Ordered todo list with metadata + Mermaid gantt chart
+6. Quality zones: Advisory labels (peak/good/degrading/stop), not enforced
+7. Scheduling: Big Rock First slot 1, then WSJF tail
+8. Token cost model v1: Context % with relative ordering only
+9. PM agent: Full src/planner/ module + lu-pm-planner.md agent definition
+10. Agent tiers: Cognition T2, Context T1→T2
+11. Read-only: Output-only pattern (ResultEnvelope, orchestrator writes)
+12. Technical review: code-architect reviews session plan
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [x] Learnings extracted
-- [x] Ready to clear
-
-## Execution Log
-
-- Starting /lu-execute-phase 17
-- Model profile: balanced, Complexity: COMPLEX
-- 6 plans, 4 waves, 0 summaries
-- Wave 1: Plan 17-01 (types) — complete, 12/12 tests
-- Wave 2: Plans 17-02 + 17-03 (parallel) — complete, 75/75 tests
-- Wave 3: Plan 17-04 (ComplexityGate + verifier) — complete, 29/29 tests
-- Wave 4: Plans 17-05 + 17-06 (parallel) — complete
-- Commit: 915b68f (38 files, 7629 insertions)
-- Harness: PASSED (654 pass, 7 fail — all pre-existing)
-- Verification: ALL 7 ITER requirements satisfied
-- Code review: 3 agents (DX Advocate, Code Simplifier, Code Architect) — no blockers
-
-### Code Review Findings (for backlog)
-
-- Extract shared CLI utilities from 4 iteration files (duplication)
-- Parameterize convergence thresholds (currently hardcoded 0.8)
-- Consider extracting fingerprinting to its own module
-- Standardize CLI exit codes across iteration utilities
-
----
-
-_Phase 17 complete: 2026-02-11_
+- [ ] Learnings extracted
+- [ ] Ready to clear
 
 
 ---
-*Session ended: 2026-02-12T01:40:33Z (reason: prompt_input_exit)*
+*Session ended: 2026-02-12T02:53:51Z (reason: prompt_input_exit)*

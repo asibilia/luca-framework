@@ -102,7 +102,7 @@
 
 **Scope:**
 
-- Session planner producing ordered task lists for 5-hour windows
+- Session planner producing ordered task lists for 3-hour windows
 - Quality-zone scheduling (complex tasks at 0-30%, simple at 50-70%)
 - WSJF prioritization (Cost of Delay / Job Size)
 - Big Rock First + WSJF tail hybrid

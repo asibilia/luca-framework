@@ -48,7 +48,7 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 
 ### Usage-Aware Sprint Planner (Phase 18)
 
-- [ ] **PLAN-01**: Session planner reads pending todos/backlog and produces an ordered task list optimized for a single 5-hour rolling window
+- [ ] **PLAN-01**: Session planner reads pending todos/backlog and produces an ordered task list optimized for a single 3-hour rolling window
 - [ ] **PLAN-02**: Quality-zone-aware scheduling — complex tasks scheduled in peak zone (0-30% context), simple tasks in degrading zone (50-70%)
 - [ ] **PLAN-03**: WSJF scoring implemented — tasks ranked by (business value + time criticality + risk reduction) / estimated effort
 - [ ] **PLAN-04**: Big Rock First strategy — session starts with highest-impact dependency-free task, then progresses to smaller tasks
