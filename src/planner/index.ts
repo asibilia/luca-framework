@@ -64,3 +64,20 @@ export {
   DEFAULT_SESSION_CAP_MINUTES,
   MAX_CONTEXT_PERCENT,
 } from "./defaults";
+
+// Scoring engine
+export {
+  computeWSJF,
+  effortFromComplexity,
+  rankByWSJF,
+  scoreItem,
+} from "./scoring";
+
+// Session scheduling
+export {
+  selectBigRock,
+  estimateContextCost,
+  assignQualityZone,
+  scheduleSession,
+  generateMermaidGantt,
+} from "./scheduler";
