@@ -8,10 +8,10 @@
 
 ## v1.2.0 — Intelligent Agent Engine
 
-**Status:** In Progress (4/5 phases complete)
+**Status:** Complete (5/5 phases complete)
 **Theme:** Make agents smarter — audit, modularize, iterate, plan
 **Phases:** 14-18
-**Requirements:** 29 — 29 done, 0 pending (see [REQUIREMENTS.md](REQUIREMENTS.md))
+**Requirements:** 29 — all satisfied (see [REQUIREMENTS.md](REQUIREMENTS.md))
 **Approach:** Audit-first — audit current systems before building new features
 
 ### Phase 14: Execution & Verification Audit ✅
@@ -94,21 +94,24 @@
 
 ---
 
-### Phase 18: Usage-Aware Sprint Planner
+### Phase 18: Usage-Aware Sprint Planner ✅
 
 **Goal:** Build a planner sub-agent that reads the todo backlog and produces optimized session/weekly plans respecting Claude Code's 5-hour rolling window and weekly caps. Implements WSJF scoring, quality-zone-aware scheduling, and Big Rocks First strategy.
 **Depends on:** Phase 17 (iterative loops provide the execution engine the planner schedules)
-**Requirements:** PLAN-01 through PLAN-07
+**Requirements:** PLAN-01 through PLAN-07 (all satisfied)
+**Plans:** 6 plans, 4 waves — all complete
 
-**Scope:**
+**Delivered:**
 
-- Session planner producing ordered task lists for 3-hour windows
-- Quality-zone scheduling (complex tasks at 0-30%, simple at 50-70%)
-- WSJF prioritization (Cost of Delay / Job Size)
-- Big Rock First + WSJF tail hybrid
-- Weekly allocation across multiple sessions
-- Token cost estimation with historical calibration
-- PM agent with read-only permissions (least privilege)
+- `src/planner/` module (types, defaults, scoring, scheduler, weekly, cost-model, todo-parser)
+- WSJF scoring engine (computeWSJF, rankByWSJF, scoreItem, effortFromComplexity)
+- Session scheduler with Big Rock First + WSJF tail (selectBigRock with effort >= 3)
+- Quality zone scheduling (peak 0-30%, good 30-50%, degrading 50-70%, stop 70%+)
+- Weekly planner with 60/25/10/5 allocation (needle_movers/quick_wins/maintenance/reserve)
+- Token cost estimation with rolling average calibration (calibrateCost, formatCostTableForMemory)
+- lu-pm-planner agent (read-only, tools: Read/Glob/Grep/WebFetch only)
+- `/lu-plan-session` skill for user-facing session/weekly planning
+- 174 tests, 544 expect() calls, 91% function coverage
 
 ---
 
@@ -130,4 +133,4 @@ All phases are sequential — each builds on findings/infrastructure from the pr
 
 ---
 
-_Roadmap updated: 2026-02-11 (Phase 17 complete)_
+_Roadmap updated: 2026-02-11 (Phase 18 complete — v1.2.0 milestone complete)_

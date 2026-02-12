@@ -48,13 +48,13 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 
 ### Usage-Aware Sprint Planner (Phase 18)
 
-- [ ] **PLAN-01**: Session planner reads pending todos/backlog and produces an ordered task list optimized for a single 3-hour rolling window
-- [ ] **PLAN-02**: Quality-zone-aware scheduling — complex tasks scheduled in peak zone (0-30% context), simple tasks in degrading zone (50-70%)
-- [ ] **PLAN-03**: WSJF scoring implemented — tasks ranked by (business value + time criticality + risk reduction) / estimated effort
-- [ ] **PLAN-04**: Big Rock First strategy — session starts with highest-impact dependency-free task, then progresses to smaller tasks
-- [ ] **PLAN-05**: Weekly planner distributes work across multiple sessions within weekly usage cap (60% needle movers, 25% quick wins, 10% maintenance, 5% reserve)
-- [ ] **PLAN-06**: Token cost estimation model tracks actual vs. estimated costs per task type and improves over time
-- [ ] **PLAN-07**: PM/planner agent is read-only — produces plans but cannot execute changes (least privilege separation)
+- [x] **PLAN-01**: Session planner reads pending todos/backlog and produces an ordered task list optimized for a single 3-hour rolling window
+- [x] **PLAN-02**: Quality-zone-aware scheduling — complex tasks scheduled in peak zone (0-30% context), simple tasks in degrading zone (50-70%)
+- [x] **PLAN-03**: WSJF scoring implemented — tasks ranked by (business value + time criticality + risk reduction) / estimated effort
+- [x] **PLAN-04**: Big Rock First strategy — session starts with highest-impact dependency-free task, then progresses to smaller tasks
+- [x] **PLAN-05**: Weekly planner distributes work across multiple sessions within weekly usage cap (60% needle movers, 25% quick wins, 10% maintenance, 5% reserve)
+- [x] **PLAN-06**: Token cost estimation model tracks actual vs. estimated costs per task type and improves over time
+- [x] **PLAN-07**: PM/planner agent is read-only — produces plans but cannot execute changes (least privilege separation)
 
 ## Out of Scope
 
@@ -95,13 +95,13 @@ Transform Luca's agent system from static, one-shot execution into an intelligen
 | ITER-05     | Phase 17 (Iterative Loops)   | High     | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
 | ITER-06     | Phase 17 (Iterative Loops)   | Medium   | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
 | ITER-07     | Phase 17 (Iterative Loops)   | Medium   | ✅ Done | ralph-wiggum-iterative-agent-loops.md         |
-| PLAN-01     | Phase 18 (Sprint Planner)    | Critical | Pending | usage-aware-sprint-planner.md                 |
-| PLAN-02     | Phase 18 (Sprint Planner)    | Critical | Pending | usage-aware-sprint-planner.md                 |
-| PLAN-03     | Phase 18 (Sprint Planner)    | High     | Pending | usage-aware-sprint-planner.md                 |
-| PLAN-04     | Phase 18 (Sprint Planner)    | High     | Pending | usage-aware-sprint-planner.md                 |
-| PLAN-05     | Phase 18 (Sprint Planner)    | High     | Pending | usage-aware-sprint-planner.md                 |
-| PLAN-06     | Phase 18 (Sprint Planner)    | Medium   | Pending | usage-aware-sprint-planner.md                 |
-| PLAN-07     | Phase 18 (Sprint Planner)    | Medium   | Pending | usage-aware-sprint-planner.md                 |
+| PLAN-01     | Phase 18 (Sprint Planner)    | Critical | ✅ Done | usage-aware-sprint-planner.md                 |
+| PLAN-02     | Phase 18 (Sprint Planner)    | Critical | ✅ Done | usage-aware-sprint-planner.md                 |
+| PLAN-03     | Phase 18 (Sprint Planner)    | High     | ✅ Done | usage-aware-sprint-planner.md                 |
+| PLAN-04     | Phase 18 (Sprint Planner)    | High     | ✅ Done | usage-aware-sprint-planner.md                 |
+| PLAN-05     | Phase 18 (Sprint Planner)    | High     | ✅ Done | usage-aware-sprint-planner.md                 |
+| PLAN-06     | Phase 18 (Sprint Planner)    | Medium   | ✅ Done | usage-aware-sprint-planner.md                 |
+| PLAN-07     | Phase 18 (Sprint Planner)    | Medium   | ✅ Done | usage-aware-sprint-planner.md                 |
 
 ---
 

@@ -3,7 +3,7 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: /lu-plan-phase 18
+- **Workflow**: /lu-execute-phase 18
 - **Phase**: 18
 - **Complexity**: COMPLEX
 
@@ -39,9 +39,34 @@
 7. Scheduling: Big Rock First slot 1, then WSJF tail
 8. Token cost model v1: Context % with relative ordering only
 9. PM agent: Full src/planner/ module + lu-pm-planner.md agent definition
-10. Agent tiers: Cognition T2, Context T1→T2
+10. Agent tiers: Cognition T2, Context T1->T2
 11. Read-only: Output-only pattern (ResultEnvelope, orchestrator writes)
 12. Technical review: code-architect reviews session plan
+
+## Execution Results
+
+### Phase 18 Execution Summary
+
+- **Plans**: 6 plans across 4 waves — all complete
+- **Requirements**: PLAN-01..07 — all satisfied (1 fix applied during verification)
+- **Tests**: 174 planner tests (544 expect() calls), 845 total suite
+- **Coverage**: 91% functions, 86% lines
+- **Issues found**: 2 (PLAN-04 effort threshold, missing skill source file) — both fixed
+
+### Candidate Learnings
+
+1. **Pattern**: Skills MUST have source files in `src/skills/` — build:all deletes orphaned compiled outputs
+2. **Pattern**: Big Rock selection needs minimum effort threshold to prevent trivial items anchoring sessions
+3. **Decision**: WSJF scoring uses LLM-inferred BV/TC/RR (T3 signal) — acceptable for advisory planning
+4. **Decision**: Read-only agent archetype enforced via tools whitelist (Read/Glob/Grep/WebFetch only)
+5. **Pitfall**: `selectBigRock()` initially missed effort >= 3 filter — dependency_free alone is insufficient
+6. **Pattern**: Token cost calibration with rolling average handles cold-start gracefully
+
+### Code Review Summary (3 agents)
+
+- **DX Advocate**: NEEDS_WORK — silent parse failures, missing CLI helper dedup
+- **Code Simplifier**: PASS — overlapping estimateContextCost/getColdStartCost noted
+- **Code Architect**: PASS — module architecture sound, weekly allocation sum unvalidated
 
 ---
 
@@ -51,6 +76,6 @@ _Session Status_
 - [ ] Learnings extracted
 - [ ] Ready to clear
 
-
 ---
-*Session ended: 2026-02-12T02:53:51Z (reason: prompt_input_exit)*
+
+_Session ended: 2026-02-12_
