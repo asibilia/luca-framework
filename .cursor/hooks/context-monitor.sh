@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# context-monitor.sh — Warn when context usage appears high
+# context-monitor.sh -- Warn when context usage appears high
 #
 # Hook event: Stop
 # Type: Command hook (synchronous)
 # Timeout: 5 seconds
 #
-# Checks the session transcript file size as a proxy for context usage.
+# Checks context usage via two signals (higher severity wins):
+#
+# 1. Transcript file size (primary, when transcript_path is available):
+#    CONTEXT_WARN=100000      (~100KB, ~30% context)
+#    CONTEXT_ALERT=200000     (~200KB, ~50% context)
+#    CONTEXT_CRITICAL=300000  (~300KB, ~70% context)
+#
+# 2. WORKING.md file size (fallback, always checked):
+#    CONTEXT_WMD_WARN=20000   (~20KB)
+#    CONTEXT_WMD_ALERT=40000  (~40KB)
+#    CONTEXT_WMD_CRITICAL=60000 (~60KB)
+#
+# Both checks run when possible. The higher severity level wins.
 # Outputs a systemMessage warning when thresholds are exceeded.
-#
-# Thresholds (bytes, configurable via environment or defaults):
-#   CONTEXT_WARN=100000      (~100KB, ~30% context)
-#   CONTEXT_ALERT=200000     (~200KB, ~50% context)
-#   CONTEXT_CRITICAL=300000  (~300KB, ~70% context)
-#
-# These are rough approximations. Actual context usage depends on
-# tokenization, compaction state, and model context window size.
 #
 # Uses `bun -e` for JSON parsing instead of jq (project convention).
 
@@ -42,46 +46,85 @@ TRANSCRIPT_PATH=$(printf '%s' "$INPUT" | bun -e "
   if (tp) process.stdout.write(tp);
 ")
 
-# Exit if no transcript path
-if [ -z "$TRANSCRIPT_PATH" ]; then
-  exit 0
+# --- Primary check: Transcript file size ---
+TRANSCRIPT_LEVEL="NONE"
+TRANSCRIPT_MSG=""
+
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
+
+  WARN_THRESHOLD="${CONTEXT_WARN:-100000}"
+  ALERT_THRESHOLD="${CONTEXT_ALERT:-200000}"
+  CRITICAL_THRESHOLD="${CONTEXT_CRITICAL:-300000}"
+
+  if [ "$FILE_SIZE" -ge "$CRITICAL_THRESHOLD" ]; then
+    TRANSCRIPT_LEVEL="CRITICAL"
+    TRANSCRIPT_MSG="Context usage is very high (~${FILE_SIZE} bytes transcript). Quality may be degrading. Consider running /compact to free context space, or start a new session."
+  elif [ "$FILE_SIZE" -ge "$ALERT_THRESHOLD" ]; then
+    TRANSCRIPT_LEVEL="HIGH"
+    TRANSCRIPT_MSG="Context usage is high (~${FILE_SIZE} bytes transcript). Consider running /compact soon to maintain response quality."
+  elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
+    TRANSCRIPT_LEVEL="MODERATE"
+    TRANSCRIPT_MSG="Context usage is moderate (~${FILE_SIZE} bytes transcript). No action needed yet, but be mindful of context limits."
+  fi
 fi
 
-# Exit if transcript file doesn't exist
-if [ ! -f "$TRANSCRIPT_PATH" ]; then
-  exit 0
+# --- Fallback check: WORKING.md file size ---
+WORKING_LEVEL="NONE"
+WORKING_MSG=""
+
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
+
+if [ -f "$WORKING_MD" ]; then
+  WMD_SIZE=$(wc -c < "$WORKING_MD" | tr -d ' ')
+
+  WMD_WARN="${CONTEXT_WMD_WARN:-20000}"
+  WMD_ALERT="${CONTEXT_WMD_ALERT:-40000}"
+  WMD_CRITICAL="${CONTEXT_WMD_CRITICAL:-60000}"
+
+  if [ "$WMD_SIZE" -ge "$WMD_CRITICAL" ]; then
+    WORKING_LEVEL="CRITICAL"
+    WORKING_MSG="Context usage is very high based on WORKING.md growth (~${WMD_SIZE} bytes). Quality may be degrading. Consider running /compact to free context space, or start a new session."
+  elif [ "$WMD_SIZE" -ge "$WMD_ALERT" ]; then
+    WORKING_LEVEL="HIGH"
+    WORKING_MSG="Context usage is high based on WORKING.md growth (~${WMD_SIZE} bytes). Consider running /compact soon to maintain response quality."
+  elif [ "$WMD_SIZE" -ge "$WMD_WARN" ]; then
+    WORKING_LEVEL="MODERATE"
+    WORKING_MSG="Context usage is moderate based on WORKING.md growth (~${WMD_SIZE} bytes). No action needed yet, but be mindful of context limits."
+  fi
 fi
 
-# Get file size in bytes
-FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
+# --- Resolve: take the higher severity ---
+# Severity ordering: NONE=0, MODERATE=1, HIGH=2, CRITICAL=3
+severity_rank() {
+  case "$1" in
+    CRITICAL) echo 3 ;;
+    HIGH)     echo 2 ;;
+    MODERATE) echo 1 ;;
+    *)        echo 0 ;;
+  esac
+}
 
-# Configurable thresholds (can be overridden via environment)
-WARN_THRESHOLD="${CONTEXT_WARN:-100000}"
-ALERT_THRESHOLD="${CONTEXT_ALERT:-200000}"
-CRITICAL_THRESHOLD="${CONTEXT_CRITICAL:-300000}"
+T_RANK=$(severity_rank "$TRANSCRIPT_LEVEL")
+W_RANK=$(severity_rank "$WORKING_LEVEL")
 
-# Determine warning level
-if [ "$FILE_SIZE" -ge "$CRITICAL_THRESHOLD" ]; then
-  # Critical — strongly suggest compaction
-  LEVEL="CRITICAL"
-  MESSAGE="Context usage is very high (~${FILE_SIZE} bytes transcript). Quality may be degrading. Consider running /compact to free context space, or start a new session."
-elif [ "$FILE_SIZE" -ge "$ALERT_THRESHOLD" ]; then
-  # Alert — recommend compaction
-  LEVEL="HIGH"
-  MESSAGE="Context usage is high (~${FILE_SIZE} bytes transcript). Consider running /compact soon to maintain response quality."
-elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
-  # Warn — informational
-  LEVEL="MODERATE"
-  MESSAGE="Context usage is moderate (~${FILE_SIZE} bytes transcript). No action needed yet, but be mindful of context limits."
+if [ "$T_RANK" -ge "$W_RANK" ]; then
+  FINAL_LEVEL="$TRANSCRIPT_LEVEL"
+  FINAL_MSG="$TRANSCRIPT_MSG"
 else
-  # Below threshold — no warning
+  FINAL_LEVEL="$WORKING_LEVEL"
+  FINAL_MSG="$WORKING_MSG"
+fi
+
+# Exit if both are NONE
+if [ "$FINAL_LEVEL" = "NONE" ]; then
   exit 0
 fi
 
-# Output warning message
+# --- Output warning message ---
 # Claude Code: systemMessage, Cursor: followup_message
-# Pass variables via env to avoid shell interpolation in JS strings
-HOOK_LEVEL="$LEVEL" HOOK_MSG="$MESSAGE" bun -e "
+HOOK_LEVEL="$FINAL_LEVEL" HOOK_MSG="$FINAL_MSG" bun -e "
   const level = process.env.HOOK_LEVEL;
   const message = process.env.HOOK_MSG;
   const text = '[Context Monitor: ' + level + '] ' + message;
