@@ -1,19 +1,18 @@
 /**
- * git-feature Skill - Create a new feature branch linked to a ticket. Use when the user wants to create a feature branch, start a new branch, or begin work on a ticket.
+ * git-feature Skill - Create a feature branch linked to a Jira ticket or GitHub issue.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the git-feature skill configuration
 const gitFeatureConfig: SkillConfig = {
   frontmatter: {
-    name: 'git-feature',
+    name: "git-feature",
     description: `Create a new feature branch linked to a ticket. Use when the user wants to create a feature branch, start a new branch, or begin work on a ticket.`,
-
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Git Feature Branch
 
@@ -58,9 +57,9 @@ Examples (adjust to your project's ticket pattern):
 
 **Key principle:** No ticket? Use your configured placeholder ticket (default: \`PROJ-0000\`).
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class GitFeatureSkill extends BaseSkillImpl {

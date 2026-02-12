@@ -8,7 +8,7 @@ import type { SkillConfig } from "../types/skill.types";
 const codeTypecheckConfig: SkillConfig = {
   frontmatter: {
     name: "code-typecheck",
-    description: `Run TypeScript type checking on the codebase or specific workspace. Use when the user wants to typecheck, check types, run tsc, find type errors, or verify TypeScript.`,
+    description: `Run TypeScript type checking on the codebase or a specific workspace.`,
   },
   sections: [
     {
