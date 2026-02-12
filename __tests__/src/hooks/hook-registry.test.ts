@@ -48,8 +48,8 @@ describe("hookRegistry", () => {
     }
   });
 
-  test("has exactly 6 entries", () => {
-    expect(Object.keys(hookRegistry).length).toBe(6);
+  test("has exactly 7 entries", () => {
+    expect(Object.keys(hookRegistry).length).toBe(7);
   });
 
   test("post-edit-typecheck is async", () => {
@@ -90,10 +90,16 @@ describe("hookRegistry", () => {
     expect(hookRegistry["session-persist"].matcher).toBeUndefined();
   });
 
-  test("generateHooksConfig produces 4 event types", () => {
+  test("generateHooksConfig produces 5 event types", () => {
     const config = generateHooksConfig(hookRegistry);
     const events = Object.keys(config).sort();
-    expect(events).toEqual(["PostToolUse", "PreToolUse", "SessionEnd", "Stop"]);
+    expect(events).toEqual([
+      "PostToolUse",
+      "PreToolUse",
+      "SessionEnd",
+      "SessionStart",
+      "Stop",
+    ]);
   });
 
   test("every hook has a cursorEvent field", () => {
@@ -167,7 +173,7 @@ describe("generateCursorHooksConfig", () => {
     ).toBe(true);
   });
 
-  test("produces 4 Cursor event types", () => {
+  test("produces 5 Cursor event types", () => {
     const config = generateCursorHooksConfig(hookRegistry) as {
       hooks: Record<string, unknown>;
     };
@@ -176,6 +182,7 @@ describe("generateCursorHooksConfig", () => {
       "afterFileEdit",
       "beforeShellExecution",
       "sessionEnd",
+      "sessionStart",
       "stop",
     ]);
   });

@@ -34,6 +34,12 @@
         "command": ".cursor/hooks/session-persist.sh",
         "timeout": 10
       }
+    ],
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/session-start.sh",
+        "timeout": 15
+      }
     ]
   }
 }

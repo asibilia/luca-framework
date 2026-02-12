@@ -15,11 +15,11 @@ describe("hook templates for luca init", () => {
     expect(existsSync(path.join(TEMPLATES_DIR, "hooks"))).toBe(true);
   });
 
-  test("all 6 hook scripts exist in templates", () => {
+  test("all 7 hook scripts exist in templates", () => {
     const scripts = readdirSync(HOOKS_SCRIPTS_DIR).filter((f) =>
       f.endsWith(".sh"),
     );
-    expect(scripts.length).toBe(6);
+    expect(scripts.length).toBe(7);
     expect(scripts.sort()).toEqual([
       "context-monitor.sh",
       "post-edit-format.sh",
@@ -27,6 +27,7 @@ describe("hook templates for luca init", () => {
       "pre-commit-drift-check.sh",
       "pre-commit-gate.sh",
       "session-persist.sh",
+      "session-start.sh",
     ]);
   });
 
@@ -39,6 +40,7 @@ describe("hook templates for luca init", () => {
       "PostToolUse",
       "PreToolUse",
       "SessionEnd",
+      "SessionStart",
       "Stop",
     ]);
   });
@@ -53,6 +55,7 @@ describe("hook templates for luca init", () => {
       "afterFileEdit",
       "beforeShellExecution",
       "sessionEnd",
+      "sessionStart",
       "stop",
     ]);
   });
