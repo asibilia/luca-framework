@@ -417,9 +417,22 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
 
   // --- Hook Scripts ---
 
+  // Filter hooks for plugin context (exclude development-only hooks)
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+
+  if (PLUGIN_EXCLUDED_HOOKS.size > 0) {
+    console.log(
+      `  Excluded ${PLUGIN_EXCLUDED_HOOKS.size} hook(s): ${[...PLUGIN_EXCLUDED_HOOKS].join(", ")}`,
+    );
+  }
+
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
 
-  for (const [hookName, hookDef] of Object.entries(hookRegistry)) {
+  for (const [hookName, hookDef] of Object.entries(pluginHookRegistry)) {
     try {
       const srcPath = path.join(hookScriptsDir, hookDef.script);
       const destPath = path.join(scriptsDir, hookDef.script);
@@ -452,7 +465,7 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
 
   // --- Hooks Configuration ---
 
-  const pluginHooksConfig = generatePluginHooksConfig(hookRegistry);
+  const pluginHooksConfig = generatePluginHooksConfig(pluginHookRegistry);
   await Bun.write(
     path.join(hooksDir, "hooks.json"),
     JSON.stringify(pluginHooksConfig, null, 2) + "\n",
