@@ -497,15 +497,51 @@ export async function buildPlugin(): Promise<BuildPluginResult> {
   );
   console.log("  Generated .claude-plugin/plugin.json");
 
+  // --- Marketplace Manifest ---
+
+  const marketplaceManifest = {
+    $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
+    name: "luca-marketplace",
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    owner: {
+      name: "Alec Sibilia",
+    },
+    plugins: [
+      {
+        name: "luca",
+        description:
+          "Agentic development framework with cognitive memory and spec-driven workflow",
+        source: ".",
+        category: "development",
+        version,
+        author: {
+          name: "Alec Sibilia",
+        },
+        homepage: "https://github.com/alecsibilia/luca-framework",
+        repository: "https://github.com/alecsibilia/luca-framework",
+        license: "MIT",
+        keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+      },
+    ],
+  };
+
+  await Bun.write(
+    path.join(manifestDir, "marketplace.json"),
+    JSON.stringify(marketplaceManifest, null, 2) + "\n",
+  );
+  console.log("  Generated .claude-plugin/marketplace.json");
+
   // --- Summary ---
 
-  const totalFiles = agentCount + skillCount + commandCount + hookCount + 2; // +2 for hooks.json and plugin.json
+  const totalFiles = agentCount + skillCount + commandCount + hookCount + 3; // +3 for hooks.json, plugin.json, and marketplace.json
 
   console.log("\n=== Plugin Build Summary ===");
   console.log(`Agents:   ${agentCount}`);
   console.log(`Skills:   ${skillCount}`);
   console.log(`Commands: ${commandCount}`);
   console.log(`Hooks:    ${hookCount}`);
+  console.log(`Manifests:   plugin.json + marketplace.json`);
   console.log(`Total:    ${totalFiles} files`);
   console.log(`Output:   dist/plugin/`);
 
