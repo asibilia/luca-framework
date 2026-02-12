@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
 /**
- * check-drift.ts — Detect drift between src/ source and .claude/.cursor/ outputs
+ * check-drift.ts — Detect drift between src/ source and .claude/.cursor/dist/plugin/ outputs
  *
- * Generates all outputs to a temp directory using the same compilation logic as
+ * Generates all outputs in memory using the same compilation logic as
  * build-all.ts, then compares each generated file against its committed counterpart.
  *
  * Reports drifted, missing, and orphaned files.
@@ -33,8 +33,16 @@ import { LuSkill } from "../src/skills/luca/lu.skill";
 import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
 import { CursorCompiler } from "../src/compilers/cursor.compiler";
 import { ClaudeCompiler } from "../src/compilers/claude.compiler";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { PluginCompiler } from "../src/compilers/plugin.compiler";
+import { generatePluginManifest } from "../src/compilers/plugin.types";
+import {
+  COMMAND_EXCLUDED_SKILLS,
+  PLUGIN_EXCLUDED_HOOKS,
+  generatePluginHooksConfig,
+  generateCommandMarkdown,
+  readVersion,
+  generateReadme,
+} from "./build-shared";
 import path from "path";
 
 interface DriftResult {
@@ -155,6 +163,164 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
     ".cursor/hooks.json",
     JSON.stringify(cursorHooksConfig, null, 2) + "\n",
   );
+
+  // =========================================================================
+  // Plugin output entries (dist/plugin/)
+  // =========================================================================
+
+  const pluginCompiler = new PluginCompiler();
+
+  // --- Plugin agents ---
+  for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
+    const instance = new (AgentClass as new () => BaseAgent)();
+    generated.set(
+      `dist/plugin/agents/${agentName}.md`,
+      pluginCompiler.compileAgent(instance, "CLAUDE"),
+    );
+  }
+
+  // Luca-specific agents
+  const luExecutorPlugin = new LuExecutorAgent();
+  generated.set(
+    "dist/plugin/agents/lu-executor.md",
+    pluginCompiler.compileAgent(luExecutorPlugin, "CLAUDE"),
+  );
+  const luPlannerPlugin = new LuPlannerAgent();
+  generated.set(
+    "dist/plugin/agents/lu-planner.md",
+    pluginCompiler.compileAgent(luPlannerPlugin, "CLAUDE"),
+  );
+
+  // --- Plugin skills ---
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    const instance = new (SkillClass as new () => BaseSkill)();
+    generated.set(
+      `dist/plugin/skills/${skillName}/SKILL.md`,
+      pluginCompiler.compileSkill(instance, "CLAUDE"),
+    );
+  }
+
+  // Luca-specific skill
+  const luSkillPlugin = new LuSkill();
+  generated.set(
+    "dist/plugin/skills/lu/SKILL.md",
+    pluginCompiler.compileSkill(luSkillPlugin, "CLAUDE"),
+  );
+
+  // --- Plugin commands ---
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    if (COMMAND_EXCLUDED_SKILLS.has(skillName)) continue;
+    const instance = new (SkillClass as new () => BaseSkill)();
+    generated.set(
+      `dist/plugin/commands/${skillName}.md`,
+      generateCommandMarkdown(skillName, instance.description),
+    );
+  }
+
+  // Lu command
+  generated.set(
+    "dist/plugin/commands/lu.md",
+    generateCommandMarkdown("lu", luSkillPlugin.description),
+  );
+
+  // --- Plugin hooks ---
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+
+  // Plugin hook scripts
+  for (const [_name, def] of Object.entries(pluginHookRegistry)) {
+    const srcPath = path.join(hookScriptsDir, def.script);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      generated.set(`dist/plugin/scripts/${def.script}`, await srcFile.text());
+    }
+  }
+
+  // Plugin hooks.json
+  const pluginHooksConfig = generatePluginHooksConfig(pluginHookRegistry);
+  generated.set(
+    "dist/plugin/hooks/hooks.json",
+    JSON.stringify(pluginHooksConfig, null, 2) + "\n",
+  );
+
+  // --- Plugin manifest (plugin.json) ---
+  const version = await readVersion();
+  const pluginAgentNames = [
+    ...Object.keys(agentRegistry),
+    "lu-executor",
+    "lu-planner",
+  ];
+  const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
+  const pluginCommandNames = [
+    ...Object.keys(skillRegistry).filter(
+      (s) => !COMMAND_EXCLUDED_SKILLS.has(s),
+    ),
+    "lu",
+  ];
+  const pluginHookNames = Object.keys(pluginHookRegistry);
+
+  const manifest = generatePluginManifest({
+    name: "luca",
+    version,
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    author: { name: "Alec Sibilia" },
+    keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+    commands: pluginCommandNames,
+    agents: pluginAgentNames,
+    skills: pluginSkillNames,
+    hooks: pluginHookNames,
+  });
+
+  generated.set(
+    "dist/plugin/.claude-plugin/plugin.json",
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
+
+  // --- Marketplace manifest ---
+  const marketplaceManifest = {
+    $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
+    name: "luca-marketplace",
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    owner: {
+      name: "Alec Sibilia",
+    },
+    plugins: [
+      {
+        name: "luca",
+        description:
+          "Agentic development framework with cognitive memory and spec-driven workflow",
+        source: ".",
+        category: "development",
+        version,
+        author: {
+          name: "Alec Sibilia",
+        },
+        homepage: "https://github.com/alecsibilia/luca-framework",
+        repository: "https://github.com/alecsibilia/luca-framework",
+        license: "MIT",
+        keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+      },
+    ],
+  };
+
+  generated.set(
+    "dist/plugin/.claude-plugin/marketplace.json",
+    JSON.stringify(marketplaceManifest, null, 2) + "\n",
+  );
+
+  // --- README ---
+  const readmeContent = generateReadme(
+    pluginSkillNames,
+    pluginAgentNames,
+    pluginCommandNames.length,
+    pluginHookNames.length,
+  );
+  generated.set("dist/plugin/README.md", readmeContent);
 
   return generated;
 }

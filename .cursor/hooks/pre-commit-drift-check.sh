@@ -52,7 +52,7 @@ fi
 HAS_RELEVANT_FILES=0
 while IFS= read -r file; do
   case "$file" in
-    .claude/*|.cursor/*|src/agents/*|src/skills/*|src/rules/*|src/hooks/*)
+    .claude/*|.cursor/*|dist/plugin/*|src/agents/*|src/skills/*|src/rules/*|src/hooks/*|src/compilers/*)
       HAS_RELEVANT_FILES=1
       break
       ;;
