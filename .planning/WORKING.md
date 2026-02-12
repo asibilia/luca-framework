@@ -5,9 +5,9 @@
 ## Session Info
 
 - **Started**: 2026-02-12
-- **Workflow**: v1.3.0 Claude Code Plugin Distribution
-- **Phase**: 19 (Plugin Infrastructure)
-- **Plan**: Phase 19 plans 19-01 through 19-04
+- **Workflow**: /lu-plan-phase 20
+- **Phase**: 20 (Skills & Agents Packaging)
+- **Plan**: Planning phase — creating PLAN.md files
 
 ---
 
@@ -15,60 +15,50 @@
 
 ### Task
 
-- **Goal**: Package Luca as a Claude Code plugin. Phase 19 focuses on plugin infrastructure — compiler, types, build pipeline.
+- **Goal**: Compile all skills, agents, and commands for the plugin. Convert critical rules to skills. Fix /lu skill chaining.
 - **Complexity**: COMPLEX
-- **Scope**: src/compilers/, src/shared/, scripts/, dist/plugin/
+- **Scope**: src/skills/, src/agents/, src/rules/, scripts/build-plugin.ts, dist/plugin/
 
 ### Memory Recall
 
-- **Patterns loaded**: Source-of-Truth Build Pipeline, Metadata registry for non-class entities, Dual-format stdin/stdout
-- **Decisions recalled**: Third compiler target (not replacing .claude/), GitHub marketplace distribution, Rules-as-skills
-- **Pitfalls flagged**: Editing .claude/ directly causes drift, Plugin cached on install (paths must be relative)
+- **Patterns loaded**: Source-of-Truth Build Pipeline, Skill Source Files Required, Plugin compiler via format delegation, Exported build function + import.meta.main guard, Platform-specific path generators from shared registry
+- **Decisions recalled**: Third compiler target (not replacing .claude/), Rules-as-skills conversion (plugins can't inject rules)
+- **Pitfalls flagged**: Editing .claude/ directly causes drift, Cognition config dual source of truth (always build:all after changes), Skill source files required for build pipeline
+
+### Context Decisions (from 20-CONTEXT.md)
+
+- ~25-30 non-internal skills become slash commands
+- /lu skill chaining fix is in scope (PACK-03)
+- Framework rules only for rules-as-skills (5 rules)
+- Tiered content: short description + full body
+- All 41 skill descriptions optimized for lazy loading
 
 ---
 
-## Immediate Findings
+## Planning Notes
 
-### Discovery
-
-- Plugin manifest is minimal — only `name` required, auto-discovery handles rest
-- Plugins cannot inject CLAUDE.md or .claude/rules/ — rules must be converted to skills
-- npm distribution not yet implemented — GitHub marketplace is the reliable path
-- `${CLAUDE_PLUGIN_ROOT}` resolves to plugin directory at runtime
-- Plugin files cached on install — symlinks followed but external references break
-- 13 hook events available, matching existing Claude Code hook system
-
-### Code Observations
-
-- BaseCompiler SupportedFormat extended to 'CURSOR' | 'CLAUDE' | 'PLUGIN'
-- No toPluginFormat() needed — PluginCompiler delegates to toClaudeFormat() since plugin content matches Claude format
-- Plugin directory structure (not content format) is the key difference — handled by build script
-- Hook registry: plugin hooks use generatePluginHooksConfig() with ${CLAUDE_PLUGIN_ROOT}/scripts/ paths
+- 4 plans created across 2 waves
+- Wave 1 (parallel): 20-01 (descriptions + lu consolidation), 20-02 (rules-as-skills)
+- Wave 2 (depends on Wave 1): 20-03 (command pipeline), 20-04 (/lu chaining rewrite)
+- Plan checker: 2 medium issues found and fixed (iteration 1), 4 low issues found and 2 fixed (iteration 2)
+- Total: 16 tasks across 4 plans
 
 ---
 
 ## Session Log
 
-| Time  | Action                             | Result                                          |
-| ----- | ---------------------------------- | ----------------------------------------------- |
-| 13:56 | Loaded cognitive context           | BRAIN, MEMORY, WORKING, STATE loaded            |
-| 13:57 | Researched Claude Code plugin spec | Complete spec documented                        |
-| 13:57 | Analyzed existing compiler system  | Full pipeline understood                        |
-| 13:58 | Defined v1.3.0 requirements        | 25 requirements across 5 phases                 |
-| 13:58 | Created v1.3.0 roadmap             | 5 phases, 19 plans                              |
-| 13:59 | Created GitHub issue #7            | Branch: 7--claude-code-plugin-distribution      |
-| 13:59 | Updated STATE.md                   | Milestone active, Phase 19 pending              |
-| 09:30 | Executed Plan 19-01                | plugin.types.ts + tests (18 tests)              |
-| 09:30 | Executed Plan 19-02                | plugin.compiler.ts + tests (12 tests)           |
-| 09:45 | Executed Plan 19-03                | build-plugin.ts (26 agents, 39 skills, 6 hooks) |
-| 09:47 | Executed Plan 19-04                | build:all integration (253 total files)         |
-| 09:48 | Verification harness               | 877 pass, 0 fail                                |
-| 09:49 | Phase 19 verification              | PASSED — all must-haves verified                |
+| Time | Action                | Result                                        |
+| ---- | --------------------- | --------------------------------------------- |
+| --   | Cognitive pre-flight  | BRAIN, MEMORY, WORKING, STATE, CONTEXT loaded |
+| --   | Research              | 20-RESEARCH.md created (680 lines)            |
+| --   | Planning              | 4 PLAN.md files created (2 waves)             |
+| --   | Plan checker (iter 1) | 2 medium issues fixed (01-PLAN, 03-PLAN)      |
+| --   | Plan checker (iter 2) | 4 low issues, 2 fixed (01-PLAN, 02-PLAN)      |
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [x] Learnings extracted
+- [ ] Learnings extracted
 - [ ] Ready to clear
