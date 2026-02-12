@@ -194,6 +194,22 @@
 **Insight:** Cold-start cost estimates for different complexity levels can be calibrated over time using a rolling average: `(estimated * count + actual) / (count + 1)`. This handles the cold-start problem gracefully — initial estimates from config are used until real data accumulates, then the model self-corrects. The `formatCostTableForMemory()` function produces a table suitable for MEMORY.md storage.
 **When to apply:** Any estimation system that starts with configured defaults but should improve with actual usage data.
 
+- **[Phase 19] Plugin compiler via format delegation**: When a new compilation target (plugin) uses the same content format as an existing target (Claude), delegate to existing format methods (`toClaudeFormat()`) rather than creating new entity methods (`toPluginFormat()`). The compiler handles structural differences (directory layout, manifest), not content format differences. Avoids modifying all entity classes for zero content change. Validated in Phase 19 (PluginCompiler delegates to toClaudeFormat for all 3 entity types, parity confirmed via 6 comparison tests)
+  - **When to use**: When adding a new compilation target that shares content format with an existing target
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 19] Exported build function + import.meta.main guard**: Build scripts that may be called both standalone (`bun ./scripts/build-plugin.ts`) and as imported modules (`import { buildPlugin } from './build-plugin'`) should export the main function and use `import.meta.main` guard for standalone entry. The exported function returns a typed result object for downstream consumers. Validated in Phase 19 (build-plugin.ts exports buildPlugin(), build-all.ts imports and calls it)
+  - **When to use**: When creating build scripts that need both standalone and library usage
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 19] Platform-specific path generators from shared registry**: When the same entity registry (hookRegistry) needs different path prefixes per platform (`$CLAUDE_PROJECT_DIR/.claude/hooks/`, `.cursor/hooks/`, `${CLAUDE_PLUGIN_ROOT}/scripts/`), create per-platform config generators from the same registry rather than duplicating the registry. Each generator produces the platform-specific output format. Validated in Phase 19 (generateHooksConfig, generateCursorHooksConfig, generatePluginHooksConfig all consume hookRegistry)
+  - **When to use**: When the same registry data needs to produce output for multiple platform targets
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+
 ### Established Conventions
 
 <!-- Conventions to maintain consistency -->
@@ -483,13 +499,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 52 (+3 Phase 18: skill source, big rock threshold, rolling average calibration)
-- Total decisions: 33 (+2 Phase 18: WSJF T3 signal, read-only agent archetype)
-- Total pitfalls: 43 (+1 Phase 18: big rock effort filter)
+- Total patterns: 55 (+3 Phase 19: format delegation, exported build function, platform-specific path generators)
+- Total decisions: 33 (no change)
+- Total pitfalls: 43 (no change)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-12
 
-_Entries added by: lu-complete-milestone (Phase 18 learning extraction)_
+_Entries added by: lu-execute-phase (Phase 19 learning extraction)_
 _Last curated: 2026-02-12_

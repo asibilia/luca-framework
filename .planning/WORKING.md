@@ -70,5 +70,5 @@
 _Session Status_
 
 - [x] Active
-- [ ] Learnings extracted
+- [x] Learnings extracted
 - [ ] Ready to clear
