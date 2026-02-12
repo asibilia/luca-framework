@@ -8,12 +8,11 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.2.0 — Planning)
+## Current State (v1.2.0 — Shipped)
 
-**Current Milestone:** v1.2.0 — Intelligent Agent Engine
-**Last Shipped:** v1.1.0 (2026-02-11)
+**Last Shipped:** v1.2.0 — Intelligent Agent Engine (2026-02-12)
 
-The Luca framework has a fully automated quality enforcement pipeline built on registry-driven compilation, deterministic hooks, an automated verification harness, and complexity-scaled workflow. The next milestone focuses on making agents smarter through auditing, modular context, iterative loops, and usage-aware planning.
+The Luca framework now features an intelligent agent engine with self-correcting execution, context-aware scheduling, and a comprehensive cognitive memory system. Built on the v1.1.0 enforcement foundation, v1.2.0 adds audited verification signals, per-agent cognition profiles, modular context isolation, iterative failure recovery, and usage-aware sprint planning.
 
 **Capabilities (shipped):**
 
@@ -25,20 +24,18 @@ The Luca framework has a fully automated quality enforcement pipeline built on r
 - **Deterministic hooks**: Post-edit formatting/typechecking, pre-commit quality gate, context monitoring, session persistence (Claude Code + Cursor)
 - **Automated verification**: 4-parser harness (tsc, bun-test, eslint, generic) with failure-to-fix loops
 - **Complexity gating**: 5-level system (TRIVIAL-CRITICAL) with 3 behavioral tiers scaling workflow steps
-
-**v1.2.0 Goals (5 phases, 29 requirements):**
-
-- **Execution & Verification Audit**: Map pipeline, classify verification signals, add goal-backward verification
-- **Cognition Per-Agent Audit**: Audit agent cognition usage, define profiles, implement selective memory recall
-- **Context-Modular Sub-Agent Architecture**: Context isolation, token budget allocation, writer/reviewer separation
-- **Iterative Agent Loops (Ralph Wiggum)**: External loop control, convergence detection, checkpoint/rollback
-- **Usage-Aware Sprint Planner**: WSJF scoring, quality-zone scheduling, session/weekly budget planning
+- **Goal-backward verification**: Specification anchoring re-injects PLAN.md at checkpoints to prevent drift
+- **4-tier cognition system**: T0 (Stateless) through T3 (Fully-Cognitive) with selective memory recall via 14 domain tags
+- **Context-modular sub-agents**: Context isolation, writer/reviewer separation, universal result envelope
+- **Iterative agent loops (Ralph Wiggum)**: External loop control, convergence detection, checkpoint/rollback, HITL/AFK modes
+- **Usage-aware sprint planning**: WSJF scoring, Big Rock First scheduling, quality zones, weekly allocation
 
 ## Previous Milestones
 
 - **v1.0.0** — Core CLI & Packaging (2026-02-05). CLI installer, branding, templates, tracking adapters, enterprise readiness.
 - **v1.0.1** — Code Hardening (2026-02-10). 6 phases, 433 tests, Zod at all boundaries, clean architecture, 23ms startup.
 - **v1.1.0** — Workflow Foundation (2026-02-11). 4 phases, 11 plans, 27 requirements, 579 tests. Registry-driven builds, hooks, verification harness, complexity gates.
+- **v1.2.0** — Intelligent Agent Engine (2026-02-12). 5 phases, 25 plans, 29 requirements, 845 tests. Verification audit, cognition profiling, context isolation, iterative loops, sprint planning.
 
 ## Next Milestone Goals (Post-v1.2.0)
 
@@ -108,4 +105,4 @@ The Luca framework has a fully automated quality enforcement pipeline built on r
 
 ---
 
-_Last updated: 2026-02-11 — v1.2.0 milestone planning_
+_Last updated: 2026-02-12 — v1.2.0 shipped_

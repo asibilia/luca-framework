@@ -2,29 +2,29 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.2.0 — Intelligent Agent Engine
-- **Current Phase:** Phase 18 (Usage-Aware Sprint Planner)
-- **Status:** complete
-- **Last Updated:** 2026-02-11
-- **Last Activity:** Phase 18 complete — 6 plans, 4 waves, 7 requirements (PLAN-01..07) all satisfied. v1.2.0 milestone complete.
+- **Current Milestone:** None — between milestones
+- **Current Phase:** N/A
+- **Status:** ready for next milestone
+- **Last Updated:** 2026-02-12
+- **Last Activity:** v1.2.0 milestone archived. Learnings extracted. Ready for `/lu-new-milestone`.
 
 ## Progress
 
 ```
-v1.2.0: COMPLETE (5/5 phases complete)
-  Phase 14 (Exec & Verify Audit):    ✅ complete — AUDIT-01..05 (all satisfied)
-  Phase 15 (Cognition Audit):        ✅ complete — COGN-01..05 (all satisfied)
-  Phase 16 (Context-Modular):        ✅ complete — CTXM-01..06 (all satisfied)
-  Phase 17 (Ralph Wiggum Loops):     ✅ complete — ITER-01..07 (all satisfied)
-  Phase 18 (Sprint Planner):         ✅ complete — PLAN-01..07 (all satisfied)
+v1.2.0: SHIPPED (archived to milestones/v1.2.0-ROADMAP.md)
+  Phase 14 (Exec & Verify Audit):    ✅ complete — AUDIT-01..05
+  Phase 15 (Cognition Audit):        ✅ complete — COGN-01..05
+  Phase 16 (Context-Modular):        ✅ complete — CTXM-01..06
+  Phase 17 (Ralph Wiggum Loops):     ✅ complete — ITER-01..07
+  Phase 18 (Sprint Planner):         ✅ complete — PLAN-01..07
 ```
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-11)
+See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Current focus:** Intelligent Agent Engine — audit, modularize, iterate, plan
+**Last shipped:** v1.2.0 — Intelligent Agent Engine
 
 ## Git Context
 
@@ -34,6 +34,16 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 - **Base Branch:** main
 
 ## Previous Milestones
+
+### v1.2.0 — Intelligent Agent Engine ✅
+
+| Phase | Name                | Status      | Requirements                              |
+| ----- | ------------------- | ----------- | ----------------------------------------- |
+| 14    | Exec & Verify Audit | ✅ complete | AUDIT-01 through AUDIT-05 (all satisfied) |
+| 15    | Cognition Audit     | ✅ complete | COGN-01 through COGN-05 (all satisfied)   |
+| 16    | Context-Modular     | ✅ complete | CTXM-01 through CTXM-06 (all satisfied)   |
+| 17    | Ralph Wiggum Loops  | ✅ complete | ITER-01 through ITER-07 (all satisfied)   |
+| 18    | Sprint Planner      | ✅ complete | PLAN-01 through PLAN-07 (all satisfied)   |
 
 ### v1.1.0 — Workflow Foundation ✅
 
@@ -63,29 +73,15 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 | 2     | Integrations & Updates | ✅ complete | REQ-003, REQ-004, REQ-005 |
 | 3     | Enterprise Readiness   | ✅ complete | REQ-007, REQ-008          |
 
-## Pending Todos (13)
-
-### Workflow Engine (in v1.2.0)
-
-- **Ralph Wiggum iterative agent loops** (workflow) — `.planning/todos/pending/ralph-wiggum-iterative-agent-loops.md` → Phase 17
-- **Execution & verification phase audit** (workflow) — `.planning/todos/pending/execution-verification-effectiveness-audit.md` → Phase 14
-- **Context-modular sub-agent architecture** (workflow) — `.planning/todos/pending/context-modularity-subagent-architecture.md` → Phase 16
-- **Cognition features per agent type audit** (workflow) — `.planning/todos/pending/cognition-features-per-agent-audit.md` → Phase 15
-- **Usage-aware sprint planner** (workflow) — `.planning/todos/pending/usage-aware-sprint-planner.md` → Phase 18
+## Pending Todos (5)
 
 ### Quality & Verification (backlog)
 
 - **TDD-first verification pattern** (workflow) — `.planning/todos/pending/tdd-first-verification-pattern.md`
-- **Writer/reviewer context separation** (workflow) — `.planning/todos/pending/writer-reviewer-separation.md` → CTXM-05
 
 ### Cognition & Memory (backlog)
 
 - **Procedural memory layer** (workflow) — `.planning/todos/pending/procedural-memory-learned-skills.md`
-- **Progressive context disclosure** (workflow) — `.planning/todos/pending/progressive-context-disclosure.md` → CTXM-04
-
-### Execution Resilience (backlog)
-
-- **Checkpoint and rollback system** (workflow) — `.planning/todos/pending/checkpoint-and-rollback-system.md` → ITER-04
 
 ### Distribution (backlog)
 
@@ -105,15 +101,15 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 ## Session Continuity
 
-- **Last session:** 2026-02-11
-- **Stopped at:** Phase 18 complete — v1.2.0 milestone complete
+- **Last session:** 2026-02-12
+- **Stopped at:** v1.2.0 milestone archived, ready for next milestone
 - **Resume file:** None
 
 ## Next Actions
 
-1. Define v1.3.0 milestone scope and requirements
-2. Review pending todos for v1.3.0 prioritization
+1. `/lu-new-milestone` — define v1.3.0 scope and requirements
+2. Review 5 pending todos for v1.3.0 prioritization
 
 ---
 
-_State last updated: 2026-02-11_
+_State last updated: 2026-02-12_
