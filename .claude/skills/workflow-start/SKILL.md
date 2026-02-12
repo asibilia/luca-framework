@@ -1,6 +1,6 @@
 # workflow-start
 
-Start work on a Jira ticket following the full workflow. Use when the user wants to start a ticket, begin work on Jira issue, set up for new work, or initiate the full dev workflow.
+Start work on a Jira ticket. Redirects to /lu for the full development workflow.
 
 ## main
 

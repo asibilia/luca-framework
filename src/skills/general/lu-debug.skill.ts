@@ -1,19 +1,19 @@
 /**
- * lu-debug Skill - Systematic debugging with persistent state across context resets. Use when user wants to debug an issue, mentions /lu-debug, or has a bug to investigate.
+ * lu-debug Skill - Systematic debugging workflow with persistent hypothesis state across context resets.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-debug skill configuration
 const luDebugConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-debug',
-    description: `Systematic debugging with persistent state across context resets. Use when user wants to debug an issue, mentions /lu-debug, or has a bug to investigate.`,
-    'disable-model-invocation': true,
+    name: "lu-debug",
+    description: `Systematic debugging workflow with persistent hypothesis state across context resets.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Debug
 
@@ -262,9 +262,9 @@ Loop back to Step 4 to handle the return.
 - \`/lu-plan-phase {phase} --gaps\` — Plan systematic fix
 - \`/lu-quick\` — Execute quick fix directly
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuDebugSkill extends BaseSkillImpl {

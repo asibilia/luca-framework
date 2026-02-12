@@ -1,6 +1,6 @@
 ---
 name: lu-list-phase-assumptions
-description: Preview AI planning assumptions before execution. Use when user wants to see what AI will do, mentions /lu-list-phase-assumptions, or wants to course-correct before planning.
+description: Preview AI planning assumptions for a phase before committing to execution.
 disable-model-invocation: true
 ---
 

@@ -1,19 +1,18 @@
 /**
- * git-commit Skill - Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code.
+ * git-commit Skill - Stage and commit changes using the project's conventional commit CLI with ticket extraction.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the git-commit skill configuration
 const gitCommitConfig: SkillConfig = {
   frontmatter: {
-    name: 'git-commit',
-    description: `Create a commit using the interactive commit tool. Use when the user wants to commit changes, make a commit, save changes to git, or stage and commit code.`,
-    
+    name: "git-commit",
+    description: `Stage and commit changes using the project's conventional commit CLI with ticket extraction.`,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Git Commit
 
@@ -68,9 +67,9 @@ This prompts for commit details interactively.
 
 > **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-456\`, or your custom \`ticketPattern\` from \`.planning/config.json\`). Default pattern: \`[A-Z]+-\\d+\`
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class GitCommitSkill extends BaseSkillImpl {

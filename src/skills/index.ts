@@ -41,6 +41,11 @@ import { LuRemovePhaseSkill } from "./general/lu-remove-phase.skill";
 import { WorkflowStartSkill } from "./general/workflow-start.skill";
 import { TestRunSkill } from "./general/test-run.skill";
 import { QaConsolidateSkill } from "./general/qa-consolidate.skill";
+import { RuleComplexityGatingSkill } from "./general/rule-complexity-gating.skill";
+import { RuleFileNamingSkill } from "./general/rule-file-naming.skill";
+import { RuleHarnessVerificationSkill } from "./general/rule-harness-verification.skill";
+import { RuleHookSkillBoundarySkill } from "./general/rule-hook-skill-boundary.skill";
+import { RuleLuWorkflowSkill } from "./general/rule-lu-workflow.skill";
 import { LuUpdateSkill } from "./general/lu-update.skill";
 
 // Export base skill class
@@ -93,5 +98,10 @@ export const skillRegistry = {
   "workflow-start": WorkflowStartSkill,
   "test-run": TestRunSkill,
   "qa-consolidate": QaConsolidateSkill,
+  "rule-complexity-gating": RuleComplexityGatingSkill,
+  "rule-file-naming": RuleFileNamingSkill,
+  "rule-harness-verification": RuleHarnessVerificationSkill,
+  "rule-hook-skill-boundary": RuleHookSkillBoundarySkill,
+  "rule-lu-workflow": RuleLuWorkflowSkill,
   "lu-update": LuUpdateSkill,
 };

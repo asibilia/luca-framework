@@ -1,6 +1,6 @@
 ---
 name: git-feature
-description: Create a new feature branch linked to a ticket. Use when the user wants to create a feature branch, start a new branch, or begin work on a ticket.
+description: Create a feature branch linked to a Jira ticket or GitHub issue.
 ---
 
 <main>

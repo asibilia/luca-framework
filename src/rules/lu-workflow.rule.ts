@@ -1,33 +1,34 @@
 /**
  * Luca Workflow System Rule - Defines the Luca workflow system for spec-driven development with cognitive memory
  */
-import { BaseRuleImpl } from './base/base-rule';
-import type { RuleConfig } from './types/rule.types';
+import { BaseRuleImpl } from "./base/base-rule";
+import type { RuleConfig } from "./types/rule.types";
 
 // Define the lu-workflow rule configuration
 const luWorkflowRuleConfig: RuleConfig = {
   frontmatter: {
-    description: 'Luca workflow system for spec-driven development with cognitive memory',
-    globs: ['.planning/**/*'],
-    alwaysApply: false
+    description:
+      "Luca workflow system for spec-driven development with cognitive memory",
+    globs: [".planning/**/*"],
+    alwaysApply: false,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `# Luca Workflow System
 
 Luca is a framework for agentic development, combining spec-driven development with cognitive memory systems and integrated git workflow. It solves context rot while enabling AI to learn from past experience.
 
 ## What's New in Luca
 
-| Feature             | Description                                   |
-| ------------------- | --------------------------------------------- |
-| Entry Point         | Unified \`/lu\` with intelligent routing        |
-| **Git Integration** | None                        | Jira → GitHub issue → Branch → PR   |
-| Memory              | STATE.md only               | BRAIN.md + MEMORY.md + WORKING.md   |
-| Verification        | Optional                    | Always runs (all complexity levels) |
-| Learning            | None                        | Pattern/decision/pitfall capture    |
-| Pre-Flight          | None                        | Cognitive context loading           |
+| Feature             | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| Entry Point         | Unified \`/lu\` with intelligent routing               |
+| **Git Integration** | Jira → GitHub issue → Branch → PR                    |
+| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Verification        | Always runs (all complexity levels)                  |
+| Learning            | Pattern/decision/pitfall capture                     |
+| Pre-Flight          | Cognitive context loading                            |
 
 ## Philosophy
 
@@ -63,10 +64,10 @@ PLAN.md IS the prompt. It contains:
 
 No enterprise process. No approval gates.
 Plan → Execute → **Verify** → **Learn** → Repeat`,
-      order: 1
+      order: 1,
     },
     {
-      title: 'two-tier_memory_system',
+      title: "two-tier_memory_system",
       content: `## Two-Tier Memory System (NEW)
 
 ### BRAIN.md — Project Identity
@@ -96,10 +97,10 @@ Active during workflow, cleared after learning extraction:
 - Immediate findings
 - Hypotheses (for debugging)
 - Candidate learnings`,
-      order: 2
+      order: 2,
     },
     {
-      title: 'cognitive_pre_flight',
+      title: "cognitive_pre_flight",
       content: `## Cognitive Pre-Flight (NEW)
 
 Before major operations, Luca runs cognitive pre-flight:
@@ -108,10 +109,10 @@ Before major operations, Luca runs cognitive pre-flight:
 2. **Selective recall from MEMORY.md** — Relevant patterns, decisions, pitfalls
 3. **Initialize WORKING.md** — Session context
 4. **Generate intuition flags** — RISK, CAUTION, OPPORTUNITY, UNKNOWN`,
-      order: 3
-    }
+      order: 3,
+    },
     // Additional sections would continue here...
-  ]
+  ],
 };
 
 export class LuWorkflowRule extends BaseRuleImpl {

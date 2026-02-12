@@ -1,101 +1,53 @@
 # Working Memory
 
-> Session-specific memory for the current workflow. This file is active during execution and cleared on workflow completion. Validated insights are extracted to MEMORY.md before clearing.
+> Session-specific memory for the current workflow.
 
 ## Session Info
 
-- **Started**: [timestamp]
-- **Workflow**: [workflow name]
-- **Phase**: [phase number/name]
-- **Plan**: [current plan if applicable]
+- **Started**: 2026-02-12
+- **Workflow**: /lu-plan-phase 23
+- **Phase**: 23 (Integration Testing)
+- **Complexity**: COMPLEX
+- **Branch**: 7--claude-code-plugin-distribution
+- **Issue**: #7
 
 ---
 
-## Current Context
+## Memory Recall
 
-### Task
+- **Patterns**: Source-of-Truth Build Pipeline (Phase 17), Shared build module for single source of truth (Phase 22), Checksum-based before/after verification (Phase 22), Plugin compiler via format delegation (Phase 19), Layered verification (hooks + harness) (Phase 12)
+- **Decisions**: Third compiler target (not replacing .claude/), GitHub marketplace over npm, Marketplace manifest follows Anthropic reference (Phase 22), Inline plugin generation over separate build-plugin.ts (Phase 22)
+- **Pitfalls**: Marketplace manifest duplication between build and drift check (Phase 22), Editing .claude/ or .cursor/ directly causes drift, Wrong assertion counts from stale analysis (Phase 13)
 
-- **Goal**: [What we're trying to achieve]
-- **Complexity**: [Trivial/Moderate/Complex]
-- **Scope**: [Files/areas affected]
+## Planning Notes
 
-### Memory Recall
+- Phase 23 has 3 plans across 2 waves (from ROADMAP)
+- CONTEXT.md decisions: spec-first no duplication, static validation only, structural + schema depth
+- Existing drift tests already cover file existence, content parity, orphan detection
+- Phase 23 adds spec-conformance validation layer on top
 
-- **Patterns loaded**: [List of relevant patterns from MEMORY.md]
-- **Decisions recalled**: [Relevant past decisions]
-- **Pitfalls flagged**: [Known issues to watch for]
+## Execution Notes
 
----
+- Phase 23 executed: 3 plans, 2 waves, 41 new tests
+- Wave 1 (23-01 + 23-02) ran in parallel without conflicts
+- Wave 2 (23-03) depended on Wave 1 outputs (verified they existed)
+- Pre-hotfix: removed legacy commands/ directory causing API 400 errors
+- All 928 tests pass (887 existing + 41 new), 0 failures
 
-## Immediate Findings
+## Candidate Learnings
 
-### Discovery
-<!-- Log findings as you discover them -->
-
-- [timestamp] [Finding description]
-- [timestamp] [Finding description]
-
-### Code Observations
-<!-- Note interesting code patterns or issues found -->
-
-- [timestamp] [Observation]
-
-### Dependencies Identified
-<!-- Track dependencies discovered during work -->
-
-- [timestamp] [Dependency]
+- **Pattern: Spec-conformance layer separate from drift detection**: Two complementary test layers — drift tests verify compiler output matches source (parity), spec tests verify plugin format matches what Claude Code expects (conformance). Neither duplicates the other. Enables catching two distinct failure modes: "output drifted from source" vs "output doesn't match external spec"
+- **Pattern: Comprehensive E2E summary test as final gate**: A single "load readiness" test that aggregates ALL validation checks (manifest, structure, frontmatter, hooks, marketplace) into one pass/fail with structured issue reporting provides a definitive "would this plugin load?" answer. Individual tests catch specific issues; the summary test catches the integration
+- **Pitfall: hooks.json wrapper key**: hooks.json has a `{"hooks": {...}}` wrapper — the actual event types are under `.hooks`, not at the root. Forgetting this level causes tests to validate the wrong structure (just a single "hooks" key). Always access `hooksFile.hooks` before iterating event types
 
 ---
 
-## Hypotheses
+_Session Status_
 
-<!-- Track hypotheses being tested, especially during debugging -->
-
-- [ ] **H1**: [Hypothesis description] → [Status: Testing/Confirmed/Rejected]
-- [ ] **H2**: [Hypothesis description] → [Status: Testing/Confirmed/Rejected]
-
----
-
-## In-Progress Notes
-
-### Current Task
-<!-- Detailed notes about the current task -->
-
-### Blockers
-<!-- Things that are blocking progress -->
-
-### Questions
-<!-- Questions to ask the user or resolve later -->
-
----
-
-## Session Log
-
-<!-- Chronological log of significant actions -->
-
-| Time | Action | Result |
-|------|--------|--------|
-| | | |
-
----
-
-## Pre-Learning Extraction
-
-> Before this file is cleared, extract validated insights:
-
-### Candidate Patterns
-<!-- Patterns that worked and should be added to MEMORY.md -->
-
-### Candidate Decisions
-<!-- Decisions made that should be documented -->
-
-### Candidate Pitfalls
-<!-- Issues encountered that should be remembered -->
-
----
-
-*Session Status*
-
-- [ ] Active
-- [ ] Learnings extracted
+- [x] Active
+- [x] Learnings extracted
 - [ ] Ready to clear
+
+
+---
+*Session ended: 2026-02-12T21:54:35Z (reason: prompt_input_exit)*

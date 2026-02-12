@@ -1,19 +1,18 @@
 /**
- * lu-help Skill - Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.
+ * lu-help Skill - Show available Luca commands, usage guide, and workflow overview.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-help skill configuration
 const luHelpConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-help',
-    description: `Show available Luca commands and usage guide. Use when user asks about Luca commands, needs help with Luca, or wants to know what Luca can do.`,
-
+    name: "lu-help",
+    description: `Show available Luca commands, usage guide, and workflow overview.`,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Help
 
@@ -311,9 +310,9 @@ This is a reference command. Common follow-ups:
 - \`/lu-new-project\` — Start a new project
 - \`/lu [TICKET-ID]\` — Work on a ticket
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuHelpSkill extends BaseSkillImpl {

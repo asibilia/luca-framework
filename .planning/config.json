@@ -181,5 +181,6 @@
       "COMPLEX": 35,
       "CRITICAL": 50
     }
-  }
+  },
+  "runtime": "bun"
 }

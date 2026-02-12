@@ -1,6 +1,6 @@
 # lu-research-phase
 
-Comprehensive ecosystem research for niche/complex domains. Use when user needs deep domain research, mentions /lu-research-phase, or is working with specialized tech.
+Conduct comprehensive ecosystem research for niche or complex technical domains.
 
 ## main
 

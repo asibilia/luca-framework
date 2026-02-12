@@ -1,6 +1,6 @@
 # lu-plan-milestone-gaps
 
-Create phases to close gaps identified by audit. Use when user has audit gaps, mentions /lu-plan-milestone-gaps, or needs to address milestone gaps.
+Create phases to close gaps identified by a milestone audit.
 
 ## main
 

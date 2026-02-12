@@ -1,6 +1,6 @@
 # lu-plan-phase
 
-Create detailed execution plans for a Luca phase. Use when user wants to plan a phase, asks about /lu-plan-phase, or needs to create PLAN.md files.
+Create detailed PLAN.md execution plans for a specific phase with tasks, waves, and verification.
 
 ## main
 

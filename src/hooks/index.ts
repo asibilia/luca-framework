@@ -98,6 +98,16 @@ export const hookRegistry: Record<string, HookDefinition> = {
     async: false,
     statusMessage: "Saving session state...",
   },
+  "session-start": {
+    event: "SessionStart",
+    cursorEvent: "sessionStart",
+    matcher: undefined,
+    cursorMatcher: undefined,
+    script: "session-start.sh",
+    timeout: 15,
+    async: false,
+    statusMessage: "Initializing Luca...",
+  },
 };
 
 /**

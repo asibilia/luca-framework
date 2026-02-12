@@ -1,19 +1,19 @@
 /**
- * lu-settings Skill - Configure Luca workflow toggles and model profile. Use when user wants to change Luca settings, mentions /lu-settings, or needs to toggle workflow agents.
+ * lu-settings Skill - Configure Luca workflow toggles, model profile, and agent settings.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-settings skill configuration
 const luSettingsConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-settings',
-    description: `Configure Luca workflow toggles and model profile. Use when user wants to change Luca settings, mentions /lu-settings, or needs to toggle workflow agents.`,
-    'disable-model-invocation': true,
+    name: "lu-settings",
+    description: `Configure Luca workflow toggles, model profile, and agent settings.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Settings
 
@@ -111,9 +111,9 @@ Settings updated. Configuration takes effect immediately.
 - \`/lu-help\` — Review commands
 - \`/lu-set-profile {profile}\` — Quick profile switch
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuSettingsSkill extends BaseSkillImpl {

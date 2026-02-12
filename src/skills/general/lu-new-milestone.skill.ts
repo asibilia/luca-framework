@@ -1,19 +1,19 @@
 /**
- * lu-new-milestone Skill - Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.
+ * lu-new-milestone Skill - Start a new milestone cycle with requirements gathering and roadmap generation.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-new-milestone skill configuration
 const luNewMilestoneConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-new-milestone',
-    description: `Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.`,
-    'disable-model-invocation': true,
+    name: "lu-new-milestone",
+    description: `Start a new milestone cycle with requirements gathering and roadmap generation.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca New Milestone
 
@@ -118,9 +118,9 @@ How should this milestone be tracked on GitHub?
 - \`/lu-plan-phase {N}\` — Skip discussion, plan directly
 - \`/lu-progress\` — Check milestone setup
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuNewMilestoneSkill extends BaseSkillImpl {

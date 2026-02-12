@@ -194,6 +194,62 @@
 **Insight:** Cold-start cost estimates for different complexity levels can be calibrated over time using a rolling average: `(estimated * count + actual) / (count + 1)`. This handles the cold-start problem gracefully — initial estimates from config are used until real data accumulates, then the model self-corrects. The `formatCostTableForMemory()` function produces a table suitable for MEMORY.md storage.
 **When to apply:** Any estimation system that starts with configured defaults but should improve with actual usage data.
 
+- **[Phase 19] Plugin compiler via format delegation**: When a new compilation target (plugin) uses the same content format as an existing target (Claude), delegate to existing format methods (`toClaudeFormat()`) rather than creating new entity methods (`toPluginFormat()`). The compiler handles structural differences (directory layout, manifest), not content format differences. Avoids modifying all entity classes for zero content change. Validated in Phase 19 (PluginCompiler delegates to toClaudeFormat for all 3 entity types, parity confirmed via 6 comparison tests)
+  - **When to use**: When adding a new compilation target that shares content format with an existing target
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 19] Exported build function + import.meta.main guard**: Build scripts that may be called both standalone (`bun ./scripts/build-plugin.ts`) and as imported modules (`import { buildPlugin } from './build-plugin'`) should export the main function and use `import.meta.main` guard for standalone entry. The exported function returns a typed result object for downstream consumers. Validated in Phase 19 (build-plugin.ts exports buildPlugin(), build-all.ts imports and calls it)
+  - **When to use**: When creating build scripts that need both standalone and library usage
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 19] Platform-specific path generators from shared registry**: When the same entity registry (hookRegistry) needs different path prefixes per platform (`$CLAUDE_PROJECT_DIR/.claude/hooks/`, `.cursor/hooks/`, `${CLAUDE_PLUGIN_ROOT}/scripts/`), create per-platform config generators from the same registry rather than duplicating the registry. Each generator produces the platform-specific output format. Validated in Phase 19 (generateHooksConfig, generateCursorHooksConfig, generatePluginHooksConfig all consume hookRegistry)
+  - **When to use**: When the same registry data needs to produce output for multiple platform targets
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 20] Command exclusion set over opt-in flags**: When most registry entries qualify for a compilation target but a few don't, maintain a small `ReadonlySet<string>` exclusion set rather than adding opt-in boolean flags to every entry. Simpler to reason about, fewer source files to modify, and the exclusion list documents intent explicitly. Validated in Phase 20 (COMMAND_EXCLUDED_SKILLS: 6 entries from 44 skills, `!COMMAND_EXCLUDED_SKILLS.has(name)` filter)
+  - **When to use**: When filtering a registry for a compilation target and the majority of entries qualify
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 20] Routing skill pattern (Skill tool + Task tool delegation)**: A routing skill that classifies input and delegates to sub-skills (via `Skill(skill: "name", args: "...")`) and sub-agents (via `Task(agent: "name", prompt: "...")`) keeps the router lightweight and each sub-skill self-contained with its own SKILL.md. The router never executes workflow steps itself. Validated in Phase 20 (/lu rewrite: 18 Skill tool invocations, 5 Task tool invocations, 9 routing scenarios)
+  - **When to use**: When building a unified entry point that needs to dispatch to multiple specialized workflows
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 20] Rules-as-skills conversion for plugin distribution**: Plugins can't inject rules into the host IDE. Convert critical framework rules to skills with `disable-model-invocation: true` frontmatter. Prefix with `rule-` for discoverability. The skill body contains the full rule text, making it available via lazy-loaded skill discovery. Validated in Phase 20 (5 rules converted: complexity-gating, file-naming, harness-verification, hook-skill-boundary, lu-workflow)
+  - **When to use**: When distributing rules via a plugin system that only supports skills/commands/agents
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 22] Shared build module for single source of truth across build, drift, and test**: When build logic (constants, generators) is needed by multiple scripts (build, drift detection, tests), extract to a dedicated `build-shared.ts` module that all consumers import from. This guarantees byte-identical output between the build and the drift checker, eliminates code duplication, and makes the module dependency graph a clean DAG (build-shared → build-all, check-drift, check-drift.test). Validated in Phase 22 (8 exports shared across 3 consumers, SHA-256 checksums match across 118 plugin files)
+  - **When to use**: When the same build logic is needed by both the builder and verifier
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 22] Checksum-based before/after verification for build refactoring**: When refactoring build scripts (consolidation, extraction), capture SHA-256 checksums of all output files before and after the refactoring, then diff. Zero differences confirms the refactoring is behavior-preserving. More reliable than manual inspection for large output sets. Validated in Phase 22 (118 files, 0 diffs after build consolidation)
+  - **When to use**: When restructuring build scripts without intending to change output
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 22] Category-based README generation from registries**: Generate README documentation at build time by classifying registry entries into human-curated category maps (static), then counting dynamically from actual registry contents. Unknown entries fall through to "Other" so new additions don't break the build. Produces accurate, auto-updating documentation without hardcoded numbers. Validated in Phase 22 (44 skills across 9 categories, 26 agents across 5 categories, zero "Other" entries)
+  - **When to use**: When generating documentation from source registries that change over time
+  - **Tags**: [patterns, documentation, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 23] Spec-conformance layer separate from drift detection**: Two complementary test layers — drift tests verify compiler output matches source (parity), spec tests verify plugin format matches what Claude Code expects (conformance). Neither duplicates the other. Enables catching two distinct failure modes: "output drifted from source" vs "output doesn't match external spec." Drift catches internal regression; spec catches external incompatibility. Validated in Phase 23 (41 spec tests + 720 drift tests, zero overlap)
+  - **When to use**: When output files must satisfy both an internal build pipeline AND an external consumer specification
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 23] Comprehensive E2E summary test as final gate**: A single "load readiness" test that aggregates ALL validation checks (manifest, structure, frontmatter, hooks, marketplace consistency) into one pass/fail with structured issue reporting provides a definitive answer. Individual tests catch specific issues in isolation; the summary test catches integration-level failures across components. The structured issues array enables detailed debugging when the gate fails
+  - **When to use**: When multiple component-level tests exist but a single integration-level confidence gate is also needed
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+
 ### Established Conventions
 
 <!-- Conventions to maintain consistency -->
@@ -244,6 +300,8 @@
 | [Phase 16] Advisory budget, not enforced               | Token budget allocation      | [decisions, architecture]               | Token budget allocation is documented as advisory guidance (25-50% output reservation) rather than hard enforcement. Enforcement requires runtime token counting infrastructure that does not exist yet. Avoids premature optimization                                                                                                                                                                                                             | 2026-02-11 |
 | [Phase 16] Keep all findings, tag with source          | Multi-reviewer aggregation   | [decisions, architecture]               | When multiple reviewers find overlapping issues, keep all findings tagged with source_agent rather than auto-resolving conflicts. Auto-resolution risks discarding valid but differently-phrased findings                                                                                                                                                                                                                                          | 2026-02-11 |
 | [Phase 16] Context assembly in orchestrator, not agent | Context responsibility       | [decisions, architecture]               | Clean separation where agents define WHAT context they need (frontmatter config) but the orchestrator assembles HOW to provide it (document assembly). Agents never load their own context documents. Keeps agents focused on their task domain                                                                                                                                                                                                    | 2026-02-11 |
+| [Phase 20] 38 commands from 44 skills (exclusion set)  | Command compilation scope    | [decisions, architecture]               | 6 skills excluded from command generation: `workflow-start` (internal), 5 `rule-*` skills (informational, not invocable). Exclusion set pattern chosen over per-skill opt-in flag to minimize source changes. Commands use YAML frontmatter format with `allowed_tools: []` and `disable_model_invocation: true` for non-interactive skills                                                                                                        | 2026-02-12 |
+| [Phase 20] /lu as routing orchestrator, not executor   | Skill architecture           | [decisions, architecture]               | /lu rewritten from monolithic inline workflow to lightweight router using two delegation mechanisms: Skill tool for sub-skills (lu-discuss-phase, etc.) and Task tool for agents (lu-cognition, lu-router, etc.). Router never executes workflow steps itself. Each sub-skill loads its own SKILL.md. Enables independent sub-skill iteration without touching the router                                                                          | 2026-02-12 |
 
 ### Decision: WSJF Scoring with LLM-Inferred Inputs (T3 Signal)
 
@@ -280,6 +338,24 @@
 **Choice:** Use iteration count divided by max iterations as the cost proxy. Soft stop at 80%.
 **Rationale:** Without token counting, iterations-completed/iterations-allowed is the best available approximation. The 80% threshold leaves 20% headroom for the final iteration to complete cleanly. More sophisticated duration-based estimation can be added later without changing the BudgetState schema.
 **Alternatives rejected:** Duration-based estimation (unreliable, varies by task complexity), no budget enforcement (risks hitting hard limits mid-iteration).
+
+### Decision: Inline plugin generation over separate build-plugin.ts
+
+**Tags:** [architecture, build]
+**Phase:** 22
+**Context:** Plugin build logic existed in a separate `build-plugin.ts` file (553 lines) that was called via `import { buildPlugin } from "./build-plugin"`. Both build-all.ts and build-plugin.ts needed the same constants and helpers.
+**Choice:** Inline plugin logic into build-all.ts and extract shared constants/functions to build-shared.ts. Delete build-plugin.ts entirely.
+**Rationale:** Having a separate file created import coupling (build-all depends on build-plugin) and made the shared module extraction for drift detection harder. Inlining the plugin section into build-all.ts puts all three build targets (.claude/, .cursor/, dist/plugin/) in a single file with a clear sequential flow, while build-shared.ts provides the reusable pieces needed by check-drift.ts and tests.
+**Alternatives rejected:** Keeping build-plugin.ts as a standalone module (creates an extra layer of indirection), extracting all build logic to build-shared.ts (build-shared would become too large and gain I/O responsibilities).
+
+### Decision: Marketplace manifest structure follows Anthropic reference
+
+**Tags:** [architecture, conventions]
+**Phase:** 22
+**Context:** Claude Code marketplace spec was inferred from Anthropic's own marketplace.json reference.
+**Choice:** Flat root-level fields (`name`, `owner`, `plugins[]`), `source: "."` since marketplace.json lives inside the plugin directory, `category: "development"`, `$schema` URL included even though it doesn't resolve.
+**Rationale:** Following the reference implementation exactly reduces the chance of incompatibility with Claude Code's plugin system.
+**Alternatives rejected:** Nested `metadata` wrapper (not seen in reference), omitting `$schema` (loses spec compliance signal).
 
 ### Trade-offs Made
 
@@ -429,6 +505,25 @@
 **Solution:** Added `BIG_ROCK_MIN_EFFORT = 3` constant and `item.wsjf_inputs.effort_points >= BIG_ROCK_MIN_EFFORT` filter. Caught by lu-verifier during PLAN-04 requirements check.
 **Impact:** Medium — would produce suboptimal session plans with trivial items in the anchor slot.
 
+- **[Phase 20] Background executor agent permission loops**: Background executor agents (spawned via `Task(run_in_background: true)`) can enter permission denial loops when their Bash tool calls are auto-denied (prompts unavailable). The agent retries the same command indefinitely. Impact: agent appears stuck despite all substantive work being complete. Mitigation: orchestrator should check agent output periodically and manually complete any remaining administrative tasks (summary files, state updates) if the agent is stuck on non-critical operations
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, lu-execute-phase]
+  - **Tags**: [pitfalls, planning, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+- **[Phase 22] Marketplace manifest duplication between build and drift check**: The marketplace manifest object literal is defined inline in both `build-all.ts` and `check-drift.ts`. Unlike other shared items extracted to `build-shared.ts`, this was not extracted because it contains the `version` variable (resolved at runtime). If the manifest structure changes, both files must be updated. Consider extracting a `generateMarketplaceManifest(version)` function to `build-shared.ts` in a future phase
+  - **Agent**: code-simplifier
+  - **Relevant to**: [lu-executor, lu-verifier]
+  - **Tags**: [pitfalls, architecture, conventions]
+  - **Confidence**: Medium
+  - **Added**: 2026-02-12
+- **[Phase 23] hooks.json wrapper key mismatch**: hooks.json has a `{"hooks": {...}}` wrapper — the actual event types are under `.hooks`, not at the root. Forgetting this level causes tests to validate the wrong structure (finding just one key "hooks" instead of event types). Always access `hooksFile.hooks` before iterating event types. This is easy to miss because the file is named hooks.json and you expect the root to be the hooks config
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, lu-verifier]
+  - **Tags**: [pitfalls, testing, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-12
+
 ### Anti-patterns
 
 <!-- What NOT to do — recall when approaching similar areas -->
@@ -483,13 +578,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 52 (+3 Phase 18: skill source, big rock threshold, rolling average calibration)
-- Total decisions: 33 (+2 Phase 18: WSJF T3 signal, read-only agent archetype)
-- Total pitfalls: 43 (+1 Phase 18: big rock effort filter)
+- Total patterns: 63 (+2 Phase 23: spec-conformance layer, E2E summary gate)
+- Total decisions: 37 (no change)
+- Total pitfalls: 46 (+1 Phase 23: hooks.json wrapper key)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-12
 
-_Entries added by: lu-complete-milestone (Phase 18 learning extraction)_
+_Entries added by: lu-execute-phase (Phase 23 learning extraction)_
 _Last curated: 2026-02-12_

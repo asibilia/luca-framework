@@ -1,6 +1,6 @@
 ---
 name: lu-pause-work
-description: Create context handoff when pausing work mid-phase. Use when user wants to stop work, mentions /lu-pause-work, or needs to save current state.
+description: Create a context handoff snapshot when pausing work mid-phase for later resumption.
 disable-model-invocation: true
 ---
 

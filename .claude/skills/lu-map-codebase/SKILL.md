@@ -1,6 +1,6 @@
 # lu-map-codebase
 
-Analyze existing codebase with parallel mapper agents. Use when user wants to understand a codebase, mentions /lu-map-codebase, or needs to map brownfield code before starting a Luca project.
+Analyze an existing codebase with parallel mapper agents to build a structural overview.
 
 ## main
 

@@ -1,19 +1,19 @@
 /**
- * lu-discuss-phase Skill - Gather phase context through adaptive questioning before planning. Use when user wants to discuss a phase, clarify vision, or asks about /lu-discuss-phase.
+ * lu-discuss-phase Skill - Gather phase context through adaptive questioning before creating execution plans.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-discuss-phase skill configuration
 const luDiscussPhaseConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-discuss-phase',
-    description: `Gather phase context through adaptive questioning before planning. Use when user wants to discuss a phase, clarify vision, or asks about /lu-discuss-phase.`,
-    'disable-model-invocation': true,
+    name: "lu-discuss-phase",
+    description: `Gather phase context through adaptive questioning before creating execution plans.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Discuss Phase
 
@@ -133,9 +133,9 @@ Default:
 - \`/lu-research-phase {phase}\` — Deep research for niche/complex domains
 - \`/lu-progress\` — Check overall project status
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuDiscussPhaseSkill extends BaseSkillImpl {

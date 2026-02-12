@@ -1,6 +1,6 @@
 # lu-remove-phase
 
-Remove a future phase from roadmap and renumber subsequent phases. Use when user wants to remove a phase, mentions /lu-remove-phase, or decides not to do planned work.
+Remove a future phase from the roadmap and renumber subsequent phases.
 
 ## main
 

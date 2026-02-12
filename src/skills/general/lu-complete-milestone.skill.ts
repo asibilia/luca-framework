@@ -1,19 +1,19 @@
 /**
- * lu-complete-milestone Skill - Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done.
+ * lu-complete-milestone Skill - Archive a completed milestone, extract learnings, and prepare for the next version.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-complete-milestone skill configuration
 const luCompleteMilestoneConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-complete-milestone',
-    description: `Archive completed milestone and prepare for next version. Use when user wants to complete a milestone, mentions /lu-complete-milestone, or after all phases are done.`,
-    'disable-model-invocation': true,
+    name: "lu-complete-milestone",
+    description: `Archive a completed milestone, extract learnings, and prepare for the next version.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Complete Milestone
 
@@ -162,9 +162,9 @@ MEMORY.md persists across milestones - it's the long-term project memory.
 - \`/lu-progress\` — Review completed work
 - \`/lu-help\` — See all available commands
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuCompleteMilestoneSkill extends BaseSkillImpl {

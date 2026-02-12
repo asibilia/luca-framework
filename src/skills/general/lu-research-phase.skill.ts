@@ -1,19 +1,19 @@
 /**
- * lu-research-phase Skill - Comprehensive ecosystem research for niche/complex domains. Use when user needs deep domain research, mentions /lu-research-phase, or is working with specialized tech.
+ * lu-research-phase Skill - Conduct comprehensive ecosystem research for niche or complex technical domains.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-research-phase skill configuration
 const luResearchPhaseConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-research-phase',
-    description: `Comprehensive ecosystem research for niche/complex domains. Use when user needs deep domain research, mentions /lu-research-phase, or is working with specialized tech.`,
-    'disable-model-invocation': true,
+    name: "lu-research-phase",
+    description: `Conduct comprehensive ecosystem research for niche or complex technical domains.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Research Phase
 
@@ -89,9 +89,9 @@ Goes beyond "which library" to ecosystem knowledge:
 - \`/lu-list-phase-assumptions {phase}\` — Review what AI plans to do
 - \`/lu-progress\` — Check overall project status
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuResearchPhaseSkill extends BaseSkillImpl {

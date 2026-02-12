@@ -5,7 +5,7 @@
  * and orphan detection for the Luca Framework build pipeline.
  *
  * Runs as part of `bun test` to catch drift introduced by manual edits
- * to .claude/ or .cursor/ output files.
+ * to .claude/, .cursor/, or dist/plugin/ output files.
  */
 
 import { describe, test, expect } from "bun:test";
@@ -29,10 +29,19 @@ import { LuSkill } from "../src/skills/luca/lu.skill";
 import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
 import { CursorCompiler } from "../src/compilers/cursor.compiler";
 import { ClaudeCompiler } from "../src/compilers/claude.compiler";
+import { PluginCompiler } from "../src/compilers/plugin.compiler";
+import { generatePluginManifest } from "../src/compilers/plugin.types";
+import {
+  PLUGIN_EXCLUDED_HOOKS,
+  generatePluginHooksConfig,
+  readVersion,
+  generateReadme,
+} from "./build-shared";
 
 const ROOT = path.resolve(import.meta.dir, "..");
 const cursorCompiler = new CursorCompiler();
 const claudeCompiler = new ClaudeCompiler();
+const pluginCompiler = new PluginCompiler();
 
 // ---------------------------------------------------------------------------
 // Helper: generate expected content for a given output file
@@ -420,6 +429,291 @@ describe("No Orphan Outputs", () => {
     const dir = path.join(ROOT, ".cursor", "hooks");
     const files = readdirSync(dir).filter((f) => f.endsWith(".sh"));
     const orphans = files.filter((f) => !validHookScripts.has(f));
+    expect(orphans).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Plugin Output Freshness — committed plugin files must match generated content
+// ---------------------------------------------------------------------------
+
+describe("Plugin Output Freshness", () => {
+  const hookScriptsDir = path.join(ROOT, "src", "hooks", "scripts");
+
+  // Filtered hook registry for plugin context
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+
+  test("plugin agent outputs match source", () => {
+    const drifted: string[] = [];
+
+    // Registry agents
+    for (const [name, AgentClass] of Object.entries(agentRegistry)) {
+      const instance = new (AgentClass as new () => BaseAgent)();
+      const expected = pluginCompiler.compileAgent(instance, "CLAUDE");
+      const relPath = `dist/plugin/agents/${name}.md`;
+      const absPath = path.join(ROOT, relPath);
+      try {
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
+        }
+      } catch {
+        drifted.push(`${relPath}: missing`);
+      }
+    }
+
+    // Luca-specific agents
+    const luExecutor = new LuExecutorAgent();
+    const luPlanner = new LuPlannerAgent();
+    for (const [name, instance] of [
+      ["lu-executor", luExecutor],
+      ["lu-planner", luPlanner],
+    ] as const) {
+      const expected = pluginCompiler.compileAgent(
+        instance as BaseAgent,
+        "CLAUDE",
+      );
+      const relPath = `dist/plugin/agents/${name}.md`;
+      const absPath = path.join(ROOT, relPath);
+      try {
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
+        }
+      } catch {
+        drifted.push(`${relPath}: missing`);
+      }
+    }
+
+    expect(drifted).toEqual([]);
+  });
+
+  test("plugin skill outputs match source", () => {
+    const drifted: string[] = [];
+
+    // Registry skills
+    for (const [name, SkillClass] of Object.entries(skillRegistry)) {
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const expected = pluginCompiler.compileSkill(instance, "CLAUDE");
+      const relPath = `dist/plugin/skills/${name}/SKILL.md`;
+      const absPath = path.join(ROOT, relPath);
+      try {
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
+        }
+      } catch {
+        drifted.push(`${relPath}: missing`);
+      }
+    }
+
+    // Luca-specific skill
+    const luSkill = new LuSkill();
+    const expected = pluginCompiler.compileSkill(luSkill, "CLAUDE");
+    const relPath = "dist/plugin/skills/lu/SKILL.md";
+    const absPath = path.join(ROOT, relPath);
+    try {
+      const actual = require("fs").readFileSync(absPath, "utf8");
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
+      }
+    } catch {
+      drifted.push(`${relPath}: missing`);
+    }
+
+    expect(drifted).toEqual([]);
+  });
+
+  test("plugin hook scripts match source", () => {
+    const drifted: string[] = [];
+
+    for (const [_hookName, hookDef] of Object.entries(pluginHookRegistry)) {
+      const srcPath = path.join(hookScriptsDir, hookDef.script);
+      try {
+        const srcContent = require("fs").readFileSync(srcPath, "utf8");
+        const pluginPath = path.join(
+          ROOT,
+          "dist",
+          "plugin",
+          "scripts",
+          hookDef.script,
+        );
+        try {
+          const pluginContent = require("fs").readFileSync(pluginPath, "utf8");
+          if (pluginContent !== srcContent) {
+            drifted.push(
+              `dist/plugin/scripts/${hookDef.script}: content differs`,
+            );
+          }
+        } catch {
+          drifted.push(`dist/plugin/scripts/${hookDef.script}: missing`);
+        }
+      } catch {
+        drifted.push(`src/hooks/scripts/${hookDef.script}: source missing`);
+      }
+    }
+
+    expect(drifted).toEqual([]);
+  });
+
+  test("plugin hooks.json matches source", () => {
+    const expectedConfig = generatePluginHooksConfig(pluginHookRegistry);
+    const expectedJson = JSON.stringify(expectedConfig, null, 2) + "\n";
+
+    const hooksJsonPath = path.join(
+      ROOT,
+      "dist",
+      "plugin",
+      "hooks",
+      "hooks.json",
+    );
+    const actualJson = require("fs").readFileSync(hooksJsonPath, "utf8");
+
+    expect(actualJson).toBe(expectedJson);
+  });
+
+  test("plugin.json matches source", async () => {
+    const version = await readVersion();
+
+    const manifest = generatePluginManifest({
+      name: "luca",
+      version,
+      description:
+        "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+      author: { name: "Alec Sibilia" },
+      keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+    });
+
+    const expectedJson = JSON.stringify(manifest, null, 2) + "\n";
+    const pluginJsonPath = path.join(
+      ROOT,
+      "dist",
+      "plugin",
+      ".claude-plugin",
+      "plugin.json",
+    );
+    const actualJson = require("fs").readFileSync(pluginJsonPath, "utf8");
+
+    expect(actualJson).toBe(expectedJson);
+  });
+
+  test("marketplace.json matches source", async () => {
+    const version = await readVersion();
+
+    const marketplaceManifest = {
+      $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
+      name: "luca-marketplace",
+      owner: {
+        name: "Alec Sibilia",
+      },
+      plugins: [
+        {
+          name: "luca",
+          description:
+            "Agentic development framework with cognitive memory and spec-driven workflow",
+          source: ".",
+          category: "development",
+          version,
+          author: {
+            name: "Alec Sibilia",
+          },
+          homepage: "https://github.com/alecsibilia/luca-framework",
+          repository: "https://github.com/alecsibilia/luca-framework",
+          license: "MIT",
+          keywords: [
+            "agent",
+            "ai",
+            "framework",
+            "luca",
+            "workflow",
+            "cognitive",
+          ],
+        },
+      ],
+    };
+
+    const expectedJson = JSON.stringify(marketplaceManifest, null, 2) + "\n";
+    const marketplaceJsonPath = path.join(
+      ROOT,
+      "dist",
+      "plugin",
+      ".claude-plugin",
+      "marketplace.json",
+    );
+    const actualJson = require("fs").readFileSync(marketplaceJsonPath, "utf8");
+
+    expect(actualJson).toBe(expectedJson);
+  });
+
+  test("README.md matches source", async () => {
+    const version = await readVersion();
+    const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
+    const pluginAgentNames = [
+      ...Object.keys(agentRegistry),
+      "lu-executor",
+      "lu-planner",
+    ];
+    const pluginHookNames = Object.keys(pluginHookRegistry);
+
+    const expectedReadme = generateReadme(
+      pluginSkillNames,
+      pluginAgentNames,
+      pluginHookNames.length,
+    );
+
+    const readmePath = path.join(ROOT, "dist", "plugin", "README.md");
+    const actualReadme = require("fs").readFileSync(readmePath, "utf8");
+
+    expect(actualReadme).toBe(expectedReadme);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Plugin No Orphan Outputs — every plugin output file maps back to source
+// ---------------------------------------------------------------------------
+
+describe("Plugin No Orphan Outputs", () => {
+  const validPluginAgentNames = new Set([
+    ...Object.keys(agentRegistry),
+    "lu-executor",
+    "lu-planner",
+  ]);
+  const validPluginSkillNames = new Set([...Object.keys(skillRegistry), "lu"]);
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+  const validPluginHookScripts = new Set(
+    Object.values(pluginHookRegistry).map((h) => h.script),
+  );
+
+  test("no orphan agent outputs in dist/plugin/agents/", () => {
+    const dir = path.join(ROOT, "dist", "plugin", "agents");
+    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    const orphans = files.filter(
+      (f) => !validPluginAgentNames.has(f.replace(".md", "")),
+    );
+    expect(orphans).toEqual([]);
+  });
+
+  test("no orphan skill outputs in dist/plugin/skills/", () => {
+    const dir = path.join(ROOT, "dist", "plugin", "skills");
+    const dirs = readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    const orphans = dirs.filter((d) => !validPluginSkillNames.has(d));
+    expect(orphans).toEqual([]);
+  });
+
+  test("no orphan hook scripts in dist/plugin/scripts/", () => {
+    const dir = path.join(ROOT, "dist", "plugin", "scripts");
+    const files = readdirSync(dir).filter((f) => f.endsWith(".sh"));
+    const orphans = files.filter((f) => !validPluginHookScripts.has(f));
     expect(orphans).toEqual([]);
   });
 });

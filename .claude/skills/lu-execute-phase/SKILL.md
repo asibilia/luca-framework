@@ -1,6 +1,6 @@
 # lu-execute-phase
 
-Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.
+Execute all plans in a phase with wave-based parallelization and harness verification.
 
 ## main
 

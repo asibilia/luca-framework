@@ -1,5 +1,5 @@
 /**
- * lu-execute-phase Skill - Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.
+ * lu-execute-phase Skill - Execute all plans in a phase with wave-based parallelization and harness verification.
  */
 import { BaseSkillImpl } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
@@ -8,7 +8,7 @@ import type { SkillConfig } from "../types/skill.types";
 const luExecutePhaseConfig: SkillConfig = {
   frontmatter: {
     name: "lu-execute-phase",
-    description: `Execute all plans in a Luca phase with wave-based parallelization. Use when user wants to execute a phase, run plans, or asks about /lu-execute-phase.`,
+    description: `Execute all plans in a phase with wave-based parallelization and harness verification.`,
     "disable-model-invocation": true,
   },
   sections: [

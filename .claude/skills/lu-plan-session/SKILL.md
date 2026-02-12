@@ -1,6 +1,6 @@
 # lu-plan-session
 
-Plan the next AI coding session using WSJF prioritization. Analyzes pending todos, scores by business value and effort, and produces a Big Rock First + WSJF tail session plan. Use when the user wants to plan their next session or week.
+Plan the next coding session using WSJF prioritization of pending todos and roadmap items.
 
 ## main
 

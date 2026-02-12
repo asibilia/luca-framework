@@ -1,6 +1,6 @@
 # git-pr
 
-Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.
+Create a pull request with conventional formatting and submit for review.
 
 ## main
 

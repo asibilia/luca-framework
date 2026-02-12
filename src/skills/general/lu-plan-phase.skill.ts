@@ -1,19 +1,19 @@
 /**
- * lu-plan-phase Skill - Create detailed execution plans for a Luca phase. Use when user wants to plan a phase, asks about /lu-plan-phase, or needs to create PLAN.md files.
+ * lu-plan-phase Skill - Create detailed PLAN.md execution plans for a specific phase with tasks, waves, and verification.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-plan-phase skill configuration
 const luPlanPhaseConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-plan-phase',
-    description: `Create detailed execution plans for a Luca phase. Use when user wants to plan a phase, asks about /lu-plan-phase, or needs to create PLAN.md files.`,
-    'disable-model-invocation': true,
+    name: "lu-plan-phase",
+    description: `Create detailed PLAN.md execution plans for a specific phase with tasks, waves, and verification.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Plan Phase
 
@@ -511,9 +511,9 @@ If issues found and iteration_count < max_revisions:
 - \`/lu-progress\` — See plan details before executing
 - \`/lu-discuss-phase {phase}\` — Gather more context if plans seem off
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuPlanPhaseSkill extends BaseSkillImpl {

@@ -1,19 +1,18 @@
 /**
- * git-pr Skill - Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.
+ * git-pr Skill - Create a pull request with conventional formatting and submit for review.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the git-pr skill configuration
 const gitPrConfig: SkillConfig = {
   frontmatter: {
-    name: 'git-pr',
-    description: `Create a pull request with proper formatting. Use when the user wants to create a PR, open a pull request, submit for review, or push changes for merge.`,
-    
+    name: "git-pr",
+    description: `Create a pull request with conventional formatting and submit for review.`,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Git Pull Request
 
@@ -63,9 +62,9 @@ Generated with [Claude Code](https://claude.ai/claude-code)
 - Include "Closes PROJ-####" or "Fixes #issue" when applicable
 - Adjust base branch based on your team's workflow
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class GitPrSkill extends BaseSkillImpl {

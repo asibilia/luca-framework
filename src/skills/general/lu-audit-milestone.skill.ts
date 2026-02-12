@@ -1,19 +1,19 @@
 /**
- * lu-audit-milestone Skill - Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.
+ * lu-audit-milestone Skill - Audit milestone completion against original requirements and acceptance criteria.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-audit-milestone skill configuration
 const luAuditMilestoneConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-audit-milestone',
-    description: `Audit milestone completion against original intent. Use when user wants to verify a milestone, mentions /lu-audit-milestone, or before completing a milestone.`,
-    'disable-model-invocation': true,
+    name: "lu-audit-milestone",
+    description: `Audit milestone completion against original requirements and acceptance criteria.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Audit Milestone
 
@@ -432,9 +432,9 @@ Code quality: {N} issues found
 - \`/lu-plan-milestone-gaps\` — Create phases to close gaps
 - \`/lu-progress\` — Review audit results
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuAuditMilestoneSkill extends BaseSkillImpl {

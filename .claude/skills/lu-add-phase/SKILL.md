@@ -1,6 +1,6 @@
 # lu-add-phase
 
-Add a new phase to end of current milestone. Use when user wants to add a phase, mentions /lu-add-phase, or needs to extend the roadmap.
+Append a new phase to the end of the current milestone roadmap.
 
 ## main
 

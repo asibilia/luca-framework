@@ -1,6 +1,6 @@
 ---
 name: lu-new-milestone
-description: Start a new milestone cycle with requirements and roadmap. Use when user wants to start a new version, mentions /lu-new-milestone, or after completing a milestone.
+description: Start a new milestone cycle with requirements gathering and roadmap generation.
 disable-model-invocation: true
 ---
 

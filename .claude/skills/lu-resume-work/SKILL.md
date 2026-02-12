@@ -1,6 +1,6 @@
 # lu-resume-work
 
-Resume work from previous session with full context restoration. Use when user returns to a Luca project, mentions /lu-resume-work, or wants to continue where they left off.
+Resume work from a previous session with full cognitive context restoration.
 
 ## main
 

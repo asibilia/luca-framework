@@ -1,19 +1,19 @@
 /**
- * lu-add-todo Skill - Capture idea or task as todo from conversation. Use when user wants to save an idea for later, mentions /lu-add-todo, or needs to capture a task without acting on it now.
+ * lu-add-todo Skill - Capture an idea or task as a todo for later without acting on it now.
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import { BaseSkillImpl } from "../base/base-skill";
+import type { SkillConfig } from "../types/skill.types";
 
 // Define the lu-add-todo skill configuration
 const luAddTodoConfig: SkillConfig = {
   frontmatter: {
-    name: 'lu-add-todo',
-    description: `Capture idea or task as todo from conversation. Use when user wants to save an idea for later, mentions /lu-add-todo, or needs to capture a task without acting on it now.`,
-    'disable-model-invocation': true,
+    name: "lu-add-todo",
+    description: `Capture an idea or task as a todo for later without acting on it now.`,
+    "disable-model-invocation": true,
   },
   sections: [
     {
-      title: 'main',
+      title: "main",
       content: `<main>
 # Luca Add Todo
 
@@ -93,9 +93,9 @@ source: conversation
 - \`/lu-check-todos\` — Review all pending todos
 - \`/lu-progress\` — Check project status
 </main>`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class LuAddTodoSkill extends BaseSkillImpl {

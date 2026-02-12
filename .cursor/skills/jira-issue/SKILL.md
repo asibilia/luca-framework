@@ -1,6 +1,6 @@
 ---
 name: jira-issue
-description: Create a GitHub issue from a Jira ticket. Use when the user wants to import a Jira ticket, create GitHub issue from Jira, sync Jira to GitHub, or link Jira ticket.
+description: Import a Jira ticket as a GitHub issue with labels and cross-references.
 ---
 
 <main>

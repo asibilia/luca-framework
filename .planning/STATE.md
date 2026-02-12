@@ -2,21 +2,22 @@
 
 ## Current Position
 
-- **Current Milestone:** None — between milestones
-- **Current Phase:** N/A
-- **Status:** ready for next milestone
+- **Current Milestone:** v1.3.0 — Claude Code Plugin Distribution — COMPLETE
+- **Current Phase:** Phase 23 (Integration Testing) — complete
+- **Status:** v1.3.0 milestone complete. All 5 phases (19-23) executed, 25 requirements satisfied.
+- **Task Complexity:** COMPLEX
 - **Last Updated:** 2026-02-12
-- **Last Activity:** v1.2.0 milestone archived. Learnings extracted. Ready for `/lu-new-milestone`.
+- **Last Activity:** Phase 23 (Integration Testing) complete. 3 plans executed across 2 waves. 41 new spec-conformance tests: structure/manifest validation (17), hook/format validation (12), E2E load readiness (12). Also fixed legacy commands/ directory causing API 400 errors. 928 tests pass (41 new).
 
 ## Progress
 
 ```
-v1.2.0: SHIPPED (archived to milestones/v1.2.0-ROADMAP.md)
-  Phase 14 (Exec & Verify Audit):    ✅ complete — AUDIT-01..05
-  Phase 15 (Cognition Audit):        ✅ complete — COGN-01..05
-  Phase 16 (Context-Modular):        ✅ complete — CTXM-01..06
-  Phase 17 (Ralph Wiggum Loops):     ✅ complete — ITER-01..07
-  Phase 18 (Sprint Planner):         ✅ complete — PLAN-01..07
+v1.3.0: COMPLETE
+  Phase 19 (Plugin Infrastructure):       ✅ complete — PLUG-01..05 satisfied
+  Phase 20 (Skills & Agents Packaging):   ✅ complete — PACK-01..05 satisfied
+  Phase 21 (Hooks & Runtime):             ✅ complete — HOOK-01..05 satisfied
+  Phase 22 (Distribution & Marketplace):  ✅ complete — DIST-01..05 satisfied
+  Phase 23 (Integration Testing):         ✅ complete — TEST-01..05 satisfied
 ```
 
 ## Project Reference
@@ -28,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 ## Git Context
 
-- **Ticket:** #5
-- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/5
-- **Branch:** 5--intelligent-agent-engine
+- **Ticket:** #7
+- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/7
+- **Branch:** 7--claude-code-plugin-distribution
 - **Base Branch:** main
 
 ## Previous Milestones
@@ -73,7 +74,7 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 | 2     | Integrations & Updates | ✅ complete | REQ-003, REQ-004, REQ-005 |
 | 3     | Enterprise Readiness   | ✅ complete | REQ-007, REQ-008          |
 
-## Pending Todos (5)
+## Pending Todos (4)
 
 ### Quality & Verification (backlog)
 
@@ -82,10 +83,6 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ### Cognition & Memory (backlog)
 
 - **Procedural memory layer** (workflow) — `.planning/todos/pending/procedural-memory-learned-skills.md`
-
-### Distribution (backlog)
-
-- **Claude Code plugin packaging** (distribution) — `.planning/todos/pending/claude-code-plugin-packaging.md`
 
 ### Developer Experience (backlog)
 
@@ -102,13 +99,13 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Session Continuity
 
 - **Last session:** 2026-02-12
-- **Stopped at:** v1.2.0 milestone archived, ready for next milestone
+- **Stopped at:** Phase 23 complete, v1.3.0 milestone complete
 - **Resume file:** None
 
 ## Next Actions
 
-1. `/lu-new-milestone` — define v1.3.0 scope and requirements
-2. Review 5 pending todos for v1.3.0 prioritization
+1. Finalize v1.3.0 milestone (merge PR, tag release)
+2. Plan next milestone (v1.4.0 or beyond)
 
 ---
 
