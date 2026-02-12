@@ -81,6 +81,17 @@ const COMMAND_EXCLUDED_SKILLS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Hooks excluded from plugin builds.
+ *
+ * pre-commit-drift-check: Development-only hook that checks for
+ * src/ -> output drift. References scripts/check-drift.ts which
+ * does not exist in plugin context.
+ */
+const PLUGIN_EXCLUDED_HOOKS: ReadonlySet<string> = new Set([
+  "pre-commit-drift-check",
+]);
+
+/**
  * Generate the plugin hooks.json configuration.
  *
  * Produces a hooks configuration identical in structure to
