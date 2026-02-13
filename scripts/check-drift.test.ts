@@ -489,41 +489,45 @@ describe("Plugin No Orphan Outputs", () => {
     Object.values(pluginHookRegistry).map((h) => h.script),
   );
 
-  test("no orphan agent outputs in dist/plugin/agents/", () => {
+  test("no orphan agent outputs in dist/plugin/agents/", async () => {
     const dir = path.join(ROOT, "dist", "plugin", "agents");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
     const orphans = files.filter(
       (f) => !validPluginAgentNames.has(f.replace(".md", "")),
     );
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan skill outputs in dist/plugin/skills/", () => {
+  test("no orphan skill outputs in dist/plugin/skills/", async () => {
     const dir = path.join(ROOT, "dist", "plugin", "skills");
-    const dirs = readdirSync(dir, { withFileTypes: true })
+    const dirs = (await readdir(dir, { withFileTypes: true }))
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     const orphans = dirs.filter((d) => !validPluginSkillNames.has(d));
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan command outputs in dist/plugin/commands/", () => {
+  test("no orphan command outputs in dist/plugin/commands/", async () => {
     const dir = path.join(ROOT, "dist", "plugin", "commands");
-    if (!existsSync(dir)) return; // skip if commands/ not yet generated
+    let files: string[];
+    try {
+      files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
+    } catch {
+      return; // skip if commands/ not yet generated
+    }
     const validCommandNames = new Set([
       ...Object.keys(skillRegistry).filter(isCommandSkill),
       "lu",
     ]);
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
     const orphans = files.filter(
       (f) => !validCommandNames.has(f.replace(".md", "")),
     );
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan hook scripts in dist/plugin/scripts/", () => {
+  test("no orphan hook scripts in dist/plugin/scripts/", async () => {
     const dir = path.join(ROOT, "dist", "plugin", "scripts");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".sh"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".sh"));
     const orphans = files.filter((f) => !validPluginHookScripts.has(f));
     expect(orphans).toEqual([]);
   });
