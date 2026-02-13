@@ -39,7 +39,20 @@ The Luca framework is now a distributable Claude Code plugin with clean naming c
 - **v1.3.0** — Claude Code Plugin Distribution (2026-02-12). 5 phases, 19 plans, 25 requirements, 928 tests. Plugin compiler, skills/agents packaging, hooks runtime, marketplace distribution, integration testing.
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12). 171 files, 938 tests. Rule class cleanup, skill naming overhaul, plugin autocomplete commands.
 
-## Next Milestone Goals (Post-v1.3.1)
+## Current Milestone: v1.3.2 — Audit Tech Debt Cleanup
+
+Address all remaining findings from the v1.3.0 audit (12 HIGH, 18 MEDIUM, 18 LOW). Focuses on build pipeline consolidation, Bun API migration, compiler architecture refactor, security hardening, and code hygiene.
+
+**17 requirements across 6 categories:**
+
+- Build Pipeline Consolidation (4): Extract shared compilation pipeline, marketplace manifest, parameterized hook config
+- Test Quality (2): Extract shared test utilities, remove unused variables
+- Bun API Migration (2): Migrate build-utils.ts and check-drift.test.ts from node:fs to Bun APIs
+- Compiler Architecture (1): Refactor BaseCompiler class hierarchy to factory-function pattern
+- Security Hardening (5): Validate paths, sanitize inputs, add guards and constraints
+- Code Hygiene (4): Fix unused variables, remove dead parameters, add consistency
+
+## Next Milestone Goals (Post-v1.3.2)
 
 - **Additional Stack Templates**: Python, Node.js, Next.js
 - **Multi-project Support**: Support monorepos with multiple projects
@@ -107,4 +120,4 @@ The Luca framework is now a distributable Claude Code plugin with clean naming c
 
 ---
 
-_Last updated: 2026-02-12 — v1.3.1 shipped_
+_Last updated: 2026-02-12 — v1.3.2 milestone started_

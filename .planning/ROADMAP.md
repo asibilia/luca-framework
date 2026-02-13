@@ -2,7 +2,78 @@
 
 ## Overview
 
-**Current Milestone:** None — between milestones
+**Current Milestone:** v1.3.2 — Audit Tech Debt Cleanup
+**Requirements:** 17
+**Phases:** 24-27
+
+---
+
+## v1.3.2: Audit Tech Debt Cleanup
+
+Address all remaining findings from the v1.3.0 milestone audit. Eliminate duplication, migrate to Bun APIs, refactor compiler architecture, harden security, and clean up code hygiene.
+
+**Goal:** Zero remaining audit findings. Clean codebase ready for feature work.
+
+### Phase 24: Build Pipeline Consolidation
+
+**Goal:** Extract shared compilation pipeline to eliminate triple duplication across build-all.ts, check-drift.ts, and check-drift.test.ts.
+**Depends on:** None (foundation phase)
+**Requirements:** DEDUP-01, DEDUP-02, DEDUP-03, DEDUP-04, CLEAN-03, CLEAN-04
+
+Plans:
+
+- [ ] 24-01: Extract `generateAllOutputs()` and `generateMarketplaceManifest()` to build-shared.ts (Wave 1)
+- [ ] 24-02: Deduplicate hook config generators into parameterized function (Wave 1, parallel)
+- [ ] 24-03: Refactor build-all.ts, check-drift.ts, check-drift.test.ts to use shared pipeline (Wave 2)
+- [ ] 24-04: Code hygiene — unused params, try/catch consistency, magic string constants (Wave 2, parallel)
+
+### Phase 25: Test & API Cleanup
+
+**Goal:** Extract shared test utilities, migrate to Bun APIs, fix code hygiene in test/build files.
+**Depends on:** Phase 24 (build pipeline must be consolidated before migrating APIs)
+**Requirements:** TEST-01, TEST-02, BUN-01, BUN-02, CLEAN-01
+
+Plans:
+
+- [ ] 25-01: Extract shared test helpers module (VALID_CLAUDE_CODE_EVENTS, extractFrontmatter) (Wave 1)
+- [ ] 25-02: Migrate build-utils.ts from node:fs to Bun APIs (Wave 1, parallel)
+- [ ] 25-03: Migrate check-drift.test.ts from require('fs') to Bun APIs + fix unused variables (Wave 2)
+
+### Phase 26: Compiler Architecture Refactor
+
+**Goal:** Refactor BaseCompiler class hierarchy to factory-function pattern per no-classes rule.
+**Depends on:** Phase 24 (shared pipeline must exist so compiler changes don't break 3 consumers)
+**Requirements:** ARCH-01, CLEAN-02
+
+Plans:
+
+- [ ] 26-01: Design factory-function compiler API (Wave 1)
+- [ ] 26-02: Implement factory compilers + migrate all consumers (Wave 2)
+
+### Phase 27: Security Hardening
+
+**Goal:** Address all LOW security findings from the audit.
+**Depends on:** Phase 25 (build-utils.ts must be migrated before adding root path guard)
+**Requirements:** SEC-01, SEC-02, SEC-03, SEC-04, SEC-05
+
+Plans:
+
+- [ ] 27-01: Hook script hardening — path validation, input sanitization, documentation (Wave 1)
+- [ ] 27-02: Build pipeline hardening — root path guard, manifest constraints (Wave 1, parallel)
+
+---
+
+## Phase Dependencies
+
+```
+Phase 24 (Build Pipeline Consolidation)
+    ├── Phase 25 (Test & API Cleanup) ──┐
+    └── Phase 26 (Compiler Refactor) ───┤
+                                        ▼
+                              Phase 27 (Security Hardening)
+```
+
+Phases 25 and 26 can execute in parallel after Phase 24 completes.
 
 ---
 
@@ -17,4 +88,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-12 (v1.3.1 shipped — ready for next milestone)_
+_Roadmap updated: 2026-02-12 (v1.3.2 milestone started)_
