@@ -29,9 +29,11 @@ import { LuExecutorAgent } from "../src/agents/luca/lu-executor.agent";
 import { LuPlannerAgent } from "../src/agents/luca/lu-planner.agent";
 import { LuSkill } from "../src/skills/luca/lu.skill";
 import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
-import { CursorCompiler } from "../src/compilers/cursor.compiler";
-import { ClaudeCompiler } from "../src/compilers/claude.compiler";
-import { PluginCompiler } from "../src/compilers/plugin.compiler";
+import {
+  compileAgent,
+  compileSkill,
+  compileRule,
+} from "../src/compilers/compile";
 import { generatePluginManifest } from "../src/compilers/plugin.types";
 import path from "path";
 
@@ -460,9 +462,6 @@ export { generateCursorHooksConfig };
  * @returns Map of relative file paths to content strings
  */
 export async function generateAllOutputs(): Promise<Map<string, string>> {
-  const cursorCompiler = new CursorCompiler();
-  const claudeCompiler = new ClaudeCompiler();
-  const pluginCompiler = new PluginCompiler();
   const generated = new Map<string, string>();
 
   // --- Agents ---
@@ -470,15 +469,15 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     const instance = new (AgentClass as new () => BaseAgent)();
     generated.set(
       `.claude/agents/${agentName}.md`,
-      claudeCompiler.compileAgent(instance, "CLAUDE"),
+      compileAgent(instance, "CLAUDE"),
     );
     generated.set(
       `.cursor/agents/${agentName}.md`,
-      cursorCompiler.compileAgent(instance, "CURSOR"),
+      compileAgent(instance, "CURSOR"),
     );
     generated.set(
       `dist/plugin/agents/${agentName}.md`,
-      pluginCompiler.compileAgent(instance, "CLAUDE"),
+      compileAgent(instance, "PLUGIN"),
     );
   }
 
@@ -486,29 +485,29 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
   const luExecutor = new LuExecutorAgent();
   generated.set(
     ".claude/agents/lu-executor.md",
-    claudeCompiler.compileAgent(luExecutor, "CLAUDE"),
+    compileAgent(luExecutor, "CLAUDE"),
   );
   generated.set(
     ".cursor/agents/lu-executor.md",
-    cursorCompiler.compileAgent(luExecutor, "CURSOR"),
+    compileAgent(luExecutor, "CURSOR"),
   );
   generated.set(
     "dist/plugin/agents/lu-executor.md",
-    pluginCompiler.compileAgent(luExecutor, "CLAUDE"),
+    compileAgent(luExecutor, "PLUGIN"),
   );
 
   const luPlanner = new LuPlannerAgent();
   generated.set(
     ".claude/agents/lu-planner.md",
-    claudeCompiler.compileAgent(luPlanner, "CLAUDE"),
+    compileAgent(luPlanner, "CLAUDE"),
   );
   generated.set(
     ".cursor/agents/lu-planner.md",
-    cursorCompiler.compileAgent(luPlanner, "CURSOR"),
+    compileAgent(luPlanner, "CURSOR"),
   );
   generated.set(
     "dist/plugin/agents/lu-planner.md",
-    pluginCompiler.compileAgent(luPlanner, "CLAUDE"),
+    compileAgent(luPlanner, "PLUGIN"),
   );
 
   // --- Skills ---
@@ -516,31 +515,25 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     const instance = new (SkillClass as new () => BaseSkill)();
     generated.set(
       `.claude/skills/${skillName}/SKILL.md`,
-      claudeCompiler.compileSkill(instance, "CLAUDE"),
+      compileSkill(instance, "CLAUDE"),
     );
     generated.set(
       `.cursor/skills/${skillName}/SKILL.md`,
-      cursorCompiler.compileSkill(instance, "CURSOR"),
+      compileSkill(instance, "CURSOR"),
     );
     generated.set(
       `dist/plugin/skills/${skillName}/SKILL.md`,
-      pluginCompiler.compileSkill(instance, "CLAUDE"),
+      compileSkill(instance, "PLUGIN"),
     );
   }
 
   // Luca-specific skill
   const luSkill = new LuSkill();
-  generated.set(
-    ".claude/skills/lu/SKILL.md",
-    claudeCompiler.compileSkill(luSkill, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/skills/lu/SKILL.md",
-    cursorCompiler.compileSkill(luSkill, "CURSOR"),
-  );
+  generated.set(".claude/skills/lu/SKILL.md", compileSkill(luSkill, "CLAUDE"));
+  generated.set(".cursor/skills/lu/SKILL.md", compileSkill(luSkill, "CURSOR"));
   generated.set(
     "dist/plugin/skills/lu/SKILL.md",
-    pluginCompiler.compileSkill(luSkill, "CLAUDE"),
+    compileSkill(luSkill, "PLUGIN"),
   );
 
   // --- Rules ---
@@ -548,11 +541,11 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     const instance = new (RuleClass as new () => BaseRule)();
     generated.set(
       `.claude/rules/${ruleName}.md`,
-      claudeCompiler.compileRule(instance, "CLAUDE"),
+      compileRule(instance, "CLAUDE"),
     );
     generated.set(
       `.cursor/rules/${ruleName}.mdc`,
-      cursorCompiler.compileRule(instance, "CURSOR"),
+      compileRule(instance, "CURSOR"),
     );
   }
 
@@ -560,11 +553,11 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
   const luWorkflowRule = new LuWorkflowRule();
   generated.set(
     ".claude/rules/lu-workflow.md",
-    claudeCompiler.compileRule(luWorkflowRule, "CLAUDE"),
+    compileRule(luWorkflowRule, "CLAUDE"),
   );
   generated.set(
     ".cursor/rules/lu-workflow.mdc",
-    cursorCompiler.compileRule(luWorkflowRule, "CURSOR"),
+    compileRule(luWorkflowRule, "CURSOR"),
   );
 
   // --- Hook scripts ---
