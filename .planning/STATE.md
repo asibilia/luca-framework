@@ -3,17 +3,17 @@
 ## Current Position
 
 - **Current Milestone:** v1.3.2 — Audit Tech Debt Cleanup
-- **Current Phase:** None — milestone just started
-- **Status:** Requirements defined (17), roadmap created (4 phases, 24-27)
-- **Task Complexity:** —
-- **Last Updated:** 2026-02-12
-- **Last Activity:** Milestone v1.3.1 completed and tagged. New milestone v1.3.2 started targeting all remaining v1.3.0 audit findings.
+- **Current Phase:** Phase 24 complete, ready for Phase 25
+- **Status:** Phase 24 executed and verified (6/6 requirements). 3 phases remain (25-27).
+- **Task Complexity:** MODERATE
+- **Last Updated:** 2026-02-13
+- **Last Activity:** Phase 24 (Build Pipeline Consolidation) completed — 9 commits, 938 tests pass, zero drift, all 6 requirements verified.
 
 ## Progress
 
 ```
 v1.3.2: IN PROGRESS
-  Phase 24 (Build Pipeline Consolidation):  ⏳ not started — DEDUP-01..04, CLEAN-03..04
+  Phase 24 (Build Pipeline Consolidation):  ✅ complete — DEDUP-01..04, CLEAN-03..04
   Phase 25 (Test & API Cleanup):            ⏳ not started — TEST-01..02, BUN-01..02, CLEAN-01
   Phase 26 (Compiler Architecture Refactor): ⏳ not started — ARCH-01, CLEAN-02
   Phase 27 (Security Hardening):            ⏳ not started — SEC-01..05
@@ -61,7 +61,7 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 | 17    | Ralph Wiggum Loops  | ✅ complete | ITER-01 through ITER-07 (all satisfied)   |
 | 18    | Sprint Planner      | ✅ complete | PLAN-01 through PLAN-07 (all satisfied)   |
 
-## Pending Todos (7)
+## Pending Todos (10)
 
 ### Quality & Verification (backlog)
 
@@ -75,6 +75,17 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ### Workflow & Architecture (backlog)
 
 - **Opinionated tech stack code style guidelines** (workflow) — `.planning/todos/pending/opinionated-tech-stack-guidelines.md`
+- **Rename skills/agents to scope-oriented naming** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
+- **TS-driven state management** (architecture) — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md`
+
+### Build (backlog)
+
+- **Dogfood build stability** (build) — `.planning/todos/pending/dogfood-build-stability.md`
+- **v1.3.0 audit tech debt** (build) — `.planning/todos/pending/v1-3-0-audit-tech-debt.md` (active as v1.3.2 milestone)
+
+### Distribution (backlog)
+
+- **Package Luca as Claude Code plugin** (distribution) — `.planning/todos/pending/claude-code-plugin-packaging.md`
 
 ### Documentation (backlog)
 
@@ -86,15 +97,15 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 ## Session Continuity
 
-- **Last session:** 2026-02-12
-- **Stopped at:** Milestone v1.3.2 created, ready for Phase 24
+- **Last session:** 2026-02-13
+- **Stopped at:** Phase 24 complete, ready for Phase 25
 - **Resume file:** None
 
 ## Next Actions
 
-1. `/phase-discuss 24` or `/phase-plan 24` — Start build pipeline consolidation
-2. Push v1.3.1 tag to remote
+1. `/phase-discuss 25` or `/phase-plan 25` — Start test & API cleanup
+2. Phase 25 and 26 can execute in parallel after Phase 24
 
 ---
 
-_State last updated: 2026-02-12_
+_State last updated: 2026-02-13_

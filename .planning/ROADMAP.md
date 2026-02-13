@@ -22,10 +22,8 @@ Address all remaining findings from the v1.3.0 milestone audit. Eliminate duplic
 
 Plans:
 
-- [ ] 24-01: Extract `generateAllOutputs()` and `generateMarketplaceManifest()` to build-shared.ts (Wave 1)
-- [ ] 24-02: Deduplicate hook config generators into parameterized function (Wave 1, parallel)
-- [ ] 24-03: Refactor build-all.ts, check-drift.ts, check-drift.test.ts to use shared pipeline (Wave 2)
-- [ ] 24-04: Code hygiene — unused params, try/catch consistency, magic string constants (Wave 2, parallel)
+- [x] 24-01: Extract shared constants, unify hook config generators, extract marketplace manifest (Wave 1)
+- [x] 24-02: Extract generateAllOutputs() pipeline and migrate all consumers (Wave 2)
 
 ### Phase 25: Test & API Cleanup
 
@@ -88,4 +86,4 @@ Phases 25 and 26 can execute in parallel after Phase 24 completes.
 
 ---
 
-_Roadmap updated: 2026-02-12 (v1.3.2 milestone started)_
+_Roadmap updated: 2026-02-13 (Phase 24 complete)_

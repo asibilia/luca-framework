@@ -259,6 +259,21 @@
   - **Tags**: [patterns, architecture, conventions]
   - **Confidence**: High
   - **Added**: 2026-02-12
+- **[Phase 24] Map-based in-memory compilation pipeline**: `generateAllOutputs()` returns `Map<string, string>` (relative path → content) instead of writing to disk or temp dir. Consumers iterate the Map for their purpose: build-all.ts writes + chmod, check-drift.ts compares to committed files, check-drift.test.ts validates freshness. This eliminates tempDir parameter, decouples compilation from I/O, and makes the pipeline testable without filesystem
+  - **When to use**: When centralizing build logic that multiple consumers need with different I/O behaviors
+  - **Tags**: [patterns, architecture]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 24] Parameterized function over near-duplicate functions**: When two functions share 90%+ logic but differ by a parameter (e.g., command prefix, wrapping behavior), replace both with a single parameterized function. `generateClaudeHooksConfig(registry, { commandPrefix, wrapInHooksKey })` replaced two functions that differed only in path prefix and envelope wrapping. Reduces surface area for drift
+  - **When to use**: When two functions are nearly identical with 1-2 parameter differences
+  - **Tags**: [patterns, architecture, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 24] Plan file lists undercount affected consumers**: Plans that list specific consumer files often miss indirect consumers (barrel exports, test files, secondary build scripts). Phase 24-01 listed 5 files but 8 needed updates. Always run full test suite after each task to discover unlisted consumers
+  - **When to use**: When executing refactoring plans that rename or remove exports
+  - **Tags**: [patterns, planning, verification]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
 
 ### Established Conventions
 
@@ -521,11 +536,9 @@
   - **Tags**: [pitfalls, planning, conventions]
   - **Confidence**: High
   - **Added**: 2026-02-12
-- **[Phase 22] Marketplace manifest duplication between build and drift check**: The marketplace manifest object literal is defined inline in both `build-all.ts` and `check-drift.ts`. Unlike other shared items extracted to `build-shared.ts`, this was not extracted because it contains the `version` variable (resolved at runtime). If the manifest structure changes, both files must be updated. Consider extracting a `generateMarketplaceManifest(version)` function to `build-shared.ts` in a future phase
-  - **Agent**: code-simplifier
-  - **Relevant to**: [lu-executor, lu-verifier]
+- **[Phase 22] Marketplace manifest duplication between build and drift check**: RESOLVED in Phase 24. `generateMarketplaceManifest(version)` extracted to `build-shared.ts`
   - **Tags**: [pitfalls, architecture, conventions]
-  - **Confidence**: Medium
+  - **Confidence**: Resolved
   - **Added**: 2026-02-12
 - **[Phase 23] hooks.json wrapper key mismatch**: hooks.json has a `{"hooks": {...}}` wrapper — the actual event types are under `.hooks`, not at the root. Forgetting this level causes tests to validate the wrong structure (finding just one key "hooks" instead of event types). Always access `hooksFile.hooks` before iterating event types. This is easy to miss because the file is named hooks.json and you expect the root to be the hooks config
   - **Agent**: lu-executor
@@ -588,13 +601,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 65 (+2 v1.3.1: scope-first naming, command stub files)
+- Total patterns: 68 (+3 Phase 24: Map-based pipeline, parameterized functions, plan file undercounting)
 - Total decisions: 37 (no change)
-- Total pitfalls: 46 (no change)
+- Total pitfalls: 46 (1 resolved: marketplace manifest duplication)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
-- Last updated: 2026-02-12
+- Last updated: 2026-02-13
 
-_Entries added by: milestone-complete (v1.3.1 learning extraction)_
-_Last curated: 2026-02-12_
+_Entries added by: phase-execute 24 (Phase 24 learning extraction)_
+_Last curated: 2026-02-13_
