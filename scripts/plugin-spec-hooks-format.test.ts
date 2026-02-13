@@ -18,47 +18,11 @@ import { describe, test, expect } from "bun:test";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "path";
 
-const PLUGIN_ROOT = path.resolve(import.meta.dir, "..", "dist", "plugin");
-
-/**
- * Complete set of valid Claude Code hook event types.
- *
- * @see https://docs.anthropic.com/en/docs/claude-code/hooks
- */
-const VALID_CLAUDE_CODE_EVENTS = new Set([
-  "PreToolUse",
-  "PostToolUse",
-  "Notification",
-  "Stop",
-  "SubagentTool",
-  "SessionStart",
-  "SessionEnd",
-]);
-
-/**
- * Extracts simple YAML frontmatter key-value pairs from markdown content.
- *
- * Handles the `---` delimited frontmatter block at the start of a file.
- * Only parses single-line `key: value` pairs (sufficient for SKILL.md
- * description fields).
- *
- * @param content - Raw markdown file content
- * @returns Parsed key-value pairs, or null if no frontmatter found
- */
-function extractFrontmatter(content: string): Record<string, string> | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return null;
-  const fields: Record<string, string> = {};
-  for (const line of match[1]!.split("\n")) {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim();
-      const value = line.slice(colonIndex + 1).trim();
-      fields[key] = value;
-    }
-  }
-  return fields;
-}
+import {
+  VALID_CLAUDE_CODE_EVENTS,
+  PLUGIN_ROOT,
+  extractFrontmatter,
+} from "./test-helpers";
 
 // ---------------------------------------------------------------------------
 // Load hooks.json once for all hook-related tests
