@@ -35,64 +35,67 @@ describe("Output Freshness", () => {
     generated = await generateAllOutputs();
   });
 
-  test("agent outputs match source", () => {
+  test("agent outputs match source", async () => {
     const drifted: string[] = [];
     const agentFiles = [...generated.entries()].filter(
       ([p]) => p.includes("/agents/") && !p.startsWith("dist/"),
     );
     for (const [relPath, expected] of agentFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("skill outputs match source", () => {
+  test("skill outputs match source", async () => {
     const drifted: string[] = [];
     const skillFiles = [...generated.entries()].filter(
       ([p]) => p.includes("/skills/") && !p.startsWith("dist/"),
     );
     for (const [relPath, expected] of skillFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("rule outputs match source", () => {
+  test("rule outputs match source", async () => {
     const drifted: string[] = [];
     const ruleFiles = [...generated.entries()].filter(
       ([p]) => p.includes("/rules/") && !p.startsWith("dist/"),
     );
     for (const [relPath, expected] of ruleFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("hook scripts match source", () => {
+  test("hook scripts match source", async () => {
     const drifted: string[] = [];
     const hookFiles = [...generated.entries()].filter(
       ([p]) =>
@@ -101,36 +104,37 @@ describe("Output Freshness", () => {
     );
     for (const [relPath, expected] of hookFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("hooks config in .claude/settings.json matches source", () => {
+  test("hooks config in .claude/settings.json matches source", async () => {
     const expectedJson = generated.get(".claude/settings.json__hooks");
     expect(expectedJson).toBeDefined();
 
     const settingsPath = path.join(ROOT, ".claude", "settings.json");
-    const settingsContent = require("fs").readFileSync(settingsPath, "utf8");
+    const settingsContent = await Bun.file(settingsPath).text();
     const settings = JSON.parse(settingsContent);
     const actualJson = JSON.stringify(settings.hooks ?? {}, null, 2);
 
     expect(actualJson).toBe(expectedJson);
   });
 
-  test(".cursor/hooks.json matches source", () => {
+  test(".cursor/hooks.json matches source", async () => {
     const expectedJson = generated.get(".cursor/hooks.json");
     expect(expectedJson).toBeDefined();
 
     const hooksJsonPath = path.join(ROOT, ".cursor", "hooks.json");
-    const actualJson = require("fs").readFileSync(hooksJsonPath, "utf8");
+    const actualJson = await Bun.file(hooksJsonPath).text();
 
     expect(actualJson).toBe(expectedJson);
   });
