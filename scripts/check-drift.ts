@@ -19,11 +19,7 @@
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry } from "../src/rules/index";
 import { skillRegistry } from "../src/skills/index";
-import {
-  hookRegistry,
-  generateHooksConfig,
-  generateCursorHooksConfig,
-} from "../src/hooks/index";
+import { hookRegistry, generateCursorHooksConfig } from "../src/hooks/index";
 import type { BaseAgent } from "../src/agents/types/agent.types";
 import type { BaseSkill } from "../src/skills/types/skill.types";
 import type { BaseRule } from "../src/rules/types/rule.types";
@@ -39,7 +35,7 @@ import {
   PLUGIN_EXCLUDED_HOOKS,
   COMMAND_EXCLUDED_PREFIXES,
   isCommandSkill,
-  generatePluginHooksConfig,
+  generateClaudeHooksConfig,
   readVersion,
   generateReadme,
 } from "./build-shared";
@@ -152,7 +148,9 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
 
   // --- Settings/hooks configs ---
   // For settings.json, we only compare the "hooks" key
-  const hooksConfig = generateHooksConfig(hookRegistry);
+  const hooksConfig = generateClaudeHooksConfig(hookRegistry, {
+    commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+  });
   generated.set(
     ".claude/settings.json__hooks",
     JSON.stringify(hooksConfig, null, 2),
@@ -240,7 +238,10 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
   }
 
   // Plugin hooks.json
-  const pluginHooksConfig = generatePluginHooksConfig(pluginHookRegistry);
+  const pluginHooksConfig = generateClaudeHooksConfig(pluginHookRegistry, {
+    commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
+    wrapInHooksKey: true,
+  });
   generated.set(
     "dist/plugin/hooks/hooks.json",
     JSON.stringify(pluginHooksConfig, null, 2) + "\n",

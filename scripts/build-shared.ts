@@ -12,7 +12,7 @@
  * - PLUGIN_EXCLUDED_HOOKS: Hooks excluded from plugin packaging
  * - SKILL_CATEGORIES: Skill-to-category mapping for README generation
  * - AGENT_CATEGORIES: Agent-to-category mapping for README generation
- * - generatePluginHooksConfig(): Plugin hooks.json builder
+ * - generateClaudeHooksConfig(): Unified Claude hooks config builder
  * - readVersion(): Package version reader
  * - generateReadme(): Plugin README.md builder
  */
@@ -147,18 +147,24 @@ export const isCommandSkill = (name: string): boolean =>
   !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
 
 /**
- * Generate the plugin hooks.json configuration.
+ * Generate Claude Code hooks configuration from the hook registry.
  *
- * Produces a hooks configuration identical in structure to
- * generateHooksConfig() from src/hooks/index.ts, but uses
- * `${CLAUDE_PLUGIN_ROOT}/scripts/` for command paths instead of
- * `"$CLAUDE_PROJECT_DIR"/.claude/hooks/`.
+ * Produces a hooks configuration with command paths based on the
+ * provided commandPrefix. Optionally wraps the result in a
+ * `{ hooks: ... }` envelope for plugin hooks.json files.
  *
  * @param registry - The hook registry mapping hook names to definitions
- * @returns A JSON-serialisable hooks configuration object
+ * @param options.commandPrefix - Path prefix for hook script commands
+ *   e.g., '"$CLAUDE_PROJECT_DIR"/.claude/hooks' or '${CLAUDE_PLUGIN_ROOT}/scripts'
+ * @param options.wrapInHooksKey - If true, returns { hooks: events }; otherwise returns events directly
+ * @returns A JSON-serializable hooks configuration object
  */
-export function generatePluginHooksConfig(
+export function generateClaudeHooksConfig(
   registry: Record<string, HookDefinition>,
+  options: {
+    commandPrefix: string;
+    wrapInHooksKey?: boolean;
+  },
 ): Record<string, unknown> {
   const events: Record<
     string,
@@ -170,7 +176,6 @@ export function generatePluginHooksConfig(
       events[def.event] = [];
     }
 
-    // Find existing matcher group or create new one
     const matcherKey = def.matcher ?? NO_MATCHER_SENTINEL;
     let group = events[def.event].find((g) => {
       if (matcherKey === NO_MATCHER_SENTINEL) return !g.matcher;
@@ -184,7 +189,7 @@ export function generatePluginHooksConfig(
 
     const hookEntry: Record<string, unknown> = {
       type: "command",
-      command: `\${CLAUDE_PLUGIN_ROOT}/scripts/${def.script}`,
+      command: `${options.commandPrefix}/${def.script}`,
       timeout: def.timeout,
     };
 
@@ -194,7 +199,7 @@ export function generatePluginHooksConfig(
     group.hooks.push(hookEntry);
   }
 
-  return { hooks: events };
+  return options.wrapInHooksKey ? { hooks: events } : events;
 }
 
 /**

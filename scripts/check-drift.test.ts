@@ -15,11 +15,7 @@ import path from "path";
 import { agentRegistry } from "../src/agents/index";
 import { skillRegistry } from "../src/skills/index";
 import { ruleRegistry } from "../src/rules/index";
-import {
-  hookRegistry,
-  generateHooksConfig,
-  generateCursorHooksConfig,
-} from "../src/hooks/index";
+import { hookRegistry, generateCursorHooksConfig } from "../src/hooks/index";
 import type { BaseAgent } from "../src/agents/types/agent.types";
 import type { BaseSkill } from "../src/skills/types/skill.types";
 import type { BaseRule } from "../src/rules/types/rule.types";
@@ -35,7 +31,7 @@ import {
   PLUGIN_EXCLUDED_HOOKS,
   COMMAND_EXCLUDED_PREFIXES,
   isCommandSkill,
-  generatePluginHooksConfig,
+  generateClaudeHooksConfig,
   readVersion,
   generateReadme,
 } from "./build-shared";
@@ -244,7 +240,9 @@ describe("Output Freshness", () => {
   });
 
   test("hooks config in .claude/settings.json matches source", () => {
-    const expectedHooks = generateHooksConfig(hookRegistry);
+    const expectedHooks = generateClaudeHooksConfig(hookRegistry, {
+      commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    });
     const expectedJson = JSON.stringify(expectedHooks, null, 2);
 
     const settingsPath = path.join(ROOT, ".claude", "settings.json");
@@ -600,7 +598,10 @@ describe("Plugin Output Freshness", () => {
   });
 
   test("plugin hooks.json matches source", () => {
-    const expectedConfig = generatePluginHooksConfig(pluginHookRegistry);
+    const expectedConfig = generateClaudeHooksConfig(pluginHookRegistry, {
+      commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
+      wrapInHooksKey: true,
+    });
     const expectedJson = JSON.stringify(expectedConfig, null, 2) + "\n";
 
     const hooksJsonPath = path.join(

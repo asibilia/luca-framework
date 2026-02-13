@@ -114,50 +114,6 @@ export const hookRegistry: Record<string, HookDefinition> = {
 };
 
 /**
- * Generate the "hooks" section for .claude/settings.json
- * from the hook registry.
- */
-export function generateHooksConfig(
-  registry: Record<string, HookDefinition>,
-): Record<string, unknown> {
-  const config: Record<
-    string,
-    Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>
-  > = {};
-
-  for (const [_name, def] of Object.entries(registry)) {
-    if (!config[def.event]) {
-      config[def.event] = [];
-    }
-
-    // Find existing matcher group or create new one
-    const matcherKey = def.matcher ?? NO_MATCHER_SENTINEL;
-    let group = config[def.event].find((g) => {
-      if (matcherKey === NO_MATCHER_SENTINEL) return !g.matcher;
-      return g.matcher === def.matcher;
-    });
-
-    if (!group) {
-      group = def.matcher ? { matcher: def.matcher, hooks: [] } : { hooks: [] };
-      config[def.event].push(group);
-    }
-
-    const hookEntry: Record<string, unknown> = {
-      type: "command",
-      command: `"$CLAUDE_PROJECT_DIR"/.claude/hooks/${def.script}`,
-      timeout: def.timeout,
-    };
-
-    if (def.async) hookEntry.async = true;
-    if (def.statusMessage) hookEntry.statusMessage = def.statusMessage;
-
-    group.hooks.push(hookEntry);
-  }
-
-  return config;
-}
-
-/**
  * Generate .cursor/hooks.json from the hook registry.
  *
  * Cursor hooks use a different config format:
