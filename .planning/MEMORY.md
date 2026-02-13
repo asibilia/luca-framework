@@ -274,6 +274,21 @@
   - **Tags**: [patterns, planning, verification]
   - **Confidence**: High
   - **Added**: 2026-02-13
+- **[Phase 25] Bun has no native readdir — use node:fs/promises as fallback**: When migrating sync filesystem operations to async Bun equivalents, note that `Bun.file()` provides `text()`, `exists()`, `write()` but has no `readdir()` equivalent. For async directory listing, import `readdir` from `node:fs/promises` — it works seamlessly in Bun despite being a Node API. Pattern: try Bun APIs first, fall back to Node APIs for missing functions
+  - **When to use**: When converting Node.js filesystem code to Bun
+  - **Tags**: [patterns, stack, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 25] Bun.file() with explicit exists() check replaces try/catch pattern**: Converting `readFileSync()` with try/catch error handling to async: use `Bun.file(path).exists()` to check file presence upfront, then `await Bun.file(path).text()` to read. This replaces the try/catch pattern with an explicit check, producing cleaner async flow and avoiding exception-based control flow
+  - **When to use**: When migrating from Node.js sync file operations with try/catch to Bun async equivalents
+  - **Tags**: [patterns, stack, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 25] Plan consolidation from dependency analysis**: Phase 25 originally planned 3 separate plans but dependency analysis during planning revealed that TEST-01 (test helpers extraction) was a prerequisite for BUN-01 (build-utils migration). Consolidating TEST-01 + BUN-01 into Wave 1, with CLEAN-01 in Wave 2, reduced execution complexity and eliminated inter-wave blocking. Pattern: analyze inter-plan dependencies during planning phase and consolidate when beneficial
+  - **When to use**: When structuring multi-plan phases, especially when one plan's outputs are inputs to another
+  - **Tags**: [patterns, planning]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
 
 ### Established Conventions
 
@@ -601,13 +616,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 68 (+3 Phase 24: Map-based pipeline, parameterized functions, plan file undercounting)
+- Total patterns: 72 (+4 Phase 25: Bun readdir fallback, Bun.file exists pattern, plan consolidation, plus 1 Phase 24 carried forward)
 - Total decisions: 37 (no change)
-- Total pitfalls: 46 (1 resolved: marketplace manifest duplication)
+- Total pitfalls: 46 (no change)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-13
 
-_Entries added by: phase-execute 24 (Phase 24 learning extraction)_
+_Entries added by: phase-execute 25 (Phase 25 learning extraction)_
 _Last curated: 2026-02-13_

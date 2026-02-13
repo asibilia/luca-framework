@@ -33,9 +33,8 @@ Plans:
 
 Plans:
 
-- [ ] 25-01: Extract shared test helpers module (VALID_CLAUDE_CODE_EVENTS, extractFrontmatter) (Wave 1)
-- [ ] 25-02: Migrate build-utils.ts from node:fs to Bun APIs (Wave 1, parallel)
-- [ ] 25-03: Migrate check-drift.test.ts from require('fs') to Bun APIs + fix unused variables (Wave 2)
+- [x] 25-01: Extract shared test helpers + code hygiene fixes (Wave 1)
+- [x] 25-02: Migrate check-drift.test.ts to async Bun.file and node:fs/promises APIs (Wave 2)
 
 ### Phase 26: Compiler Architecture Refactor
 
@@ -86,4 +85,4 @@ Phases 25 and 26 can execute in parallel after Phase 24 completes.
 
 ---
 
-_Roadmap updated: 2026-02-13 (Phase 24 complete)_
+_Roadmap updated: 2026-02-13 (Phase 25 complete)_
