@@ -1,14 +1,20 @@
 /**
- * Tests for the PluginCompiler.
+ * Tests for the plugin compile functions.
  *
- * Verifies that the plugin compiler produces Claude-format markdown for agents,
- * skills, and rules, and that its output matches ClaudeCompiler for the same
- * inputs (parity guarantee).
+ * Verifies that the plugin compile functions produce Claude-format markdown
+ * for agents, skills, and rules, and that plugin output matches Claude output
+ * for the same inputs (parity guarantee).
  */
 import { describe, test, expect } from "bun:test";
 
-import { PluginCompiler } from "./plugin.compiler";
-import { ClaudeCompiler } from "./claude.compiler";
+import {
+  compileAgentPlugin,
+  compileSkillPlugin,
+  compileRulePlugin,
+  compileAgentClaude,
+  compileSkillClaude,
+  compileRuleClaude,
+} from "./compile";
 import { BaseAgentImpl } from "../agents/base/base-agent";
 import { BaseSkillImpl } from "../skills/base/base-skill";
 import { BaseRuleImpl } from "../rules/base/base-rule";
@@ -147,13 +153,11 @@ const ruleConfig: RuleConfig = {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("PluginCompiler", () => {
-  const pluginCompiler = new PluginCompiler();
-
-  describe("compileAgent", () => {
+describe("Plugin compile functions", () => {
+  describe("compileAgentPlugin", () => {
     test("produces Claude-format markdown for agent without cognition or context", () => {
       const agent = new TestAgent(plainAgentConfig);
-      const output = pluginCompiler.compileAgent(agent, "CLAUDE");
+      const output = compileAgentPlugin(agent);
 
       // Should contain H1 heading with agent name
       expect(output).toContain("# test-agent");
@@ -170,7 +174,7 @@ describe("PluginCompiler", () => {
 
     test("includes YAML frontmatter for agent with cognition config", () => {
       const agent = new TestAgent(cognitionAgentConfig);
-      const output = pluginCompiler.compileAgent(agent, "CLAUDE");
+      const output = compileAgentPlugin(agent);
 
       // Should start with YAML frontmatter
       expect(output).toMatch(/^---\n/);
@@ -187,7 +191,7 @@ describe("PluginCompiler", () => {
 
     test("includes YAML frontmatter for agent with context config", () => {
       const agent = new TestAgent(contextAgentConfig);
-      const output = pluginCompiler.compileAgent(agent, "CLAUDE");
+      const output = compileAgentPlugin(agent);
 
       // Should start with YAML frontmatter
       expect(output).toMatch(/^---\n/);
@@ -203,7 +207,7 @@ describe("PluginCompiler", () => {
 
     test("includes both cognition and context in frontmatter when both present", () => {
       const agent = new TestAgent(fullAgentConfig);
-      const output = pluginCompiler.compileAgent(agent, "CLAUDE");
+      const output = compileAgentPlugin(agent);
 
       // Should have YAML frontmatter
       expect(output).toMatch(/^---\n/);
@@ -217,10 +221,10 @@ describe("PluginCompiler", () => {
     });
   });
 
-  describe("compileSkill", () => {
+  describe("compileSkillPlugin", () => {
     test("produces markdown with description frontmatter", () => {
       const skill = new TestSkill(skillConfig);
-      const output = pluginCompiler.compileSkill(skill, "CLAUDE");
+      const output = compileSkillPlugin(skill);
 
       // Should start with YAML frontmatter containing description
       expect(output).toMatch(/^---\n/);
@@ -237,10 +241,10 @@ describe("PluginCompiler", () => {
     });
   });
 
-  describe("compileRule", () => {
+  describe("compileRulePlugin", () => {
     test("produces Claude-format markdown", () => {
       const rule = new TestRule(ruleConfig);
-      const output = pluginCompiler.compileRule(rule, "CLAUDE");
+      const output = compileRulePlugin(rule);
 
       // Should contain H1 heading with rule description
       expect(output).toContain("# Enforce kebab-case file naming");
@@ -254,41 +258,39 @@ describe("PluginCompiler", () => {
     });
   });
 
-  describe("parity with ClaudeCompiler", () => {
-    const claudeCompiler = new ClaudeCompiler();
-
-    test("agent output matches ClaudeCompiler for plain agent", () => {
+  describe("parity with Claude compile functions", () => {
+    test("agent output matches compileAgentClaude for plain agent", () => {
       const agent = new TestAgent(plainAgentConfig);
-      const pluginOutput = pluginCompiler.compileAgent(agent, "CLAUDE");
-      const claudeOutput = claudeCompiler.compileAgent(agent, "CLAUDE");
+      const pluginOutput = compileAgentPlugin(agent);
+      const claudeOutput = compileAgentClaude(agent);
       expect(pluginOutput).toBe(claudeOutput);
     });
 
-    test("agent output matches ClaudeCompiler for cognition agent", () => {
+    test("agent output matches compileAgentClaude for cognition agent", () => {
       const agent = new TestAgent(cognitionAgentConfig);
-      const pluginOutput = pluginCompiler.compileAgent(agent, "CLAUDE");
-      const claudeOutput = claudeCompiler.compileAgent(agent, "CLAUDE");
+      const pluginOutput = compileAgentPlugin(agent);
+      const claudeOutput = compileAgentClaude(agent);
       expect(pluginOutput).toBe(claudeOutput);
     });
 
-    test("agent output matches ClaudeCompiler for context agent", () => {
+    test("agent output matches compileAgentClaude for context agent", () => {
       const agent = new TestAgent(contextAgentConfig);
-      const pluginOutput = pluginCompiler.compileAgent(agent, "CLAUDE");
-      const claudeOutput = claudeCompiler.compileAgent(agent, "CLAUDE");
+      const pluginOutput = compileAgentPlugin(agent);
+      const claudeOutput = compileAgentClaude(agent);
       expect(pluginOutput).toBe(claudeOutput);
     });
 
-    test("agent output matches ClaudeCompiler for full agent", () => {
+    test("agent output matches compileAgentClaude for full agent", () => {
       const agent = new TestAgent(fullAgentConfig);
-      const pluginOutput = pluginCompiler.compileAgent(agent, "CLAUDE");
-      const claudeOutput = claudeCompiler.compileAgent(agent, "CLAUDE");
+      const pluginOutput = compileAgentPlugin(agent);
+      const claudeOutput = compileAgentClaude(agent);
       expect(pluginOutput).toBe(claudeOutput);
     });
 
-    test("skill output extends ClaudeCompiler with description frontmatter", () => {
+    test("skill output extends compileSkillClaude with description frontmatter", () => {
       const skill = new TestSkill(skillConfig);
-      const pluginOutput = pluginCompiler.compileSkill(skill, "CLAUDE");
-      const claudeOutput = claudeCompiler.compileSkill(skill, "CLAUDE");
+      const pluginOutput = compileSkillPlugin(skill);
+      const claudeOutput = compileSkillClaude(skill);
 
       // Plugin output should contain the full Claude body
       expect(pluginOutput).toContain(claudeOutput);
@@ -297,10 +299,10 @@ describe("PluginCompiler", () => {
       expect(pluginOutput).toContain("description:");
     });
 
-    test("rule output matches ClaudeCompiler", () => {
+    test("rule output matches compileRuleClaude", () => {
       const rule = new TestRule(ruleConfig);
-      const pluginOutput = pluginCompiler.compileRule(rule, "CLAUDE");
-      const claudeOutput = claudeCompiler.compileRule(rule, "CLAUDE");
+      const pluginOutput = compileRulePlugin(rule);
+      const claudeOutput = compileRuleClaude(rule);
       expect(pluginOutput).toBe(claudeOutput);
     });
   });
