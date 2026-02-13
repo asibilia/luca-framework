@@ -9,7 +9,7 @@
  */
 
 import { describe, test, expect, beforeAll } from "bun:test";
-import { readdirSync, existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import path from "path";
 
 import {
