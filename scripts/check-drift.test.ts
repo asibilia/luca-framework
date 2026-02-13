@@ -326,83 +326,87 @@ describe("Plugin Output Freshness", () => {
     generated = await generateAllOutputs();
   });
 
-  test("plugin agent outputs match source", () => {
+  test("plugin agent outputs match source", async () => {
     const drifted: string[] = [];
     const pluginAgentFiles = [...generated.entries()].filter(([p]) =>
       p.startsWith("dist/plugin/agents/"),
     );
     for (const [relPath, expected] of pluginAgentFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("plugin skill outputs match source", () => {
+  test("plugin skill outputs match source", async () => {
     const drifted: string[] = [];
     const pluginSkillFiles = [...generated.entries()].filter(([p]) =>
       p.startsWith("dist/plugin/skills/"),
     );
     for (const [relPath, expected] of pluginSkillFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("plugin command outputs match source", () => {
+  test("plugin command outputs match source", async () => {
     const drifted: string[] = [];
     const pluginCommandFiles = [...generated.entries()].filter(([p]) =>
       p.startsWith("dist/plugin/commands/"),
     );
     for (const [relPath, expected] of pluginCommandFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("plugin hook scripts match source", () => {
+  test("plugin hook scripts match source", async () => {
     const drifted: string[] = [];
     const pluginScriptFiles = [...generated.entries()].filter(([p]) =>
       p.startsWith("dist/plugin/scripts/"),
     );
     for (const [relPath, expected] of pluginScriptFiles) {
       const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
         drifted.push(`${relPath}: missing`);
+        continue;
+      }
+      const actual = await file.text();
+      if (actual !== expected) {
+        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
-  test("plugin hooks.json matches source", () => {
+  test("plugin hooks.json matches source", async () => {
     const expectedJson = generated.get("dist/plugin/hooks/hooks.json");
     expect(expectedJson).toBeDefined();
 
@@ -413,12 +417,12 @@ describe("Plugin Output Freshness", () => {
       "hooks",
       "hooks.json",
     );
-    const actualJson = require("fs").readFileSync(hooksJsonPath, "utf8");
+    const actualJson = await Bun.file(hooksJsonPath).text();
 
     expect(actualJson).toBe(expectedJson);
   });
 
-  test("plugin.json matches source", () => {
+  test("plugin.json matches source", async () => {
     const expectedJson = generated.get(
       "dist/plugin/.claude-plugin/plugin.json",
     );
@@ -431,12 +435,12 @@ describe("Plugin Output Freshness", () => {
       ".claude-plugin",
       "plugin.json",
     );
-    const actualJson = require("fs").readFileSync(pluginJsonPath, "utf8");
+    const actualJson = await Bun.file(pluginJsonPath).text();
 
     expect(actualJson).toBe(expectedJson);
   });
 
-  test("marketplace.json matches source", () => {
+  test("marketplace.json matches source", async () => {
     const expectedJson = generated.get(
       "dist/plugin/.claude-plugin/marketplace.json",
     );
@@ -449,17 +453,17 @@ describe("Plugin Output Freshness", () => {
       ".claude-plugin",
       "marketplace.json",
     );
-    const actualJson = require("fs").readFileSync(marketplaceJsonPath, "utf8");
+    const actualJson = await Bun.file(marketplaceJsonPath).text();
 
     expect(actualJson).toBe(expectedJson);
   });
 
-  test("README.md matches source", () => {
+  test("README.md matches source", async () => {
     const expectedReadme = generated.get("dist/plugin/README.md");
     expect(expectedReadme).toBeDefined();
 
     const readmePath = path.join(ROOT, "dist", "plugin", "README.md");
-    const actualReadme = require("fs").readFileSync(readmePath, "utf8");
+    const actualReadme = await Bun.file(readmePath).text();
 
     expect(actualReadme).toBe(expectedReadme);
   });
