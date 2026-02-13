@@ -154,9 +154,11 @@ describe("Registry Completeness", () => {
   const LUCA_SPECIFIC_SKILLS = new Set(["lu.skill.ts"]);
   const LUCA_SPECIFIC_RULES = new Set(["lu-workflow.rule.ts"]);
 
-  test("every src/skills/general/*.skill.ts has a skillRegistry entry", () => {
+  test("every src/skills/general/*.skill.ts has a skillRegistry entry", async () => {
     const skillDir = path.join(ROOT, "src", "skills", "general");
-    const files = readdirSync(skillDir).filter((f) => f.endsWith(".skill.ts"));
+    const files = (await readdir(skillDir)).filter((f) =>
+      f.endsWith(".skill.ts"),
+    );
     const registryNames = new Set(Object.keys(skillRegistry));
     const missing: string[] = [];
 
@@ -171,9 +173,11 @@ describe("Registry Completeness", () => {
     expect(missing).toEqual([]);
   });
 
-  test("every src/agents/general/*.agent.ts has an agentRegistry entry", () => {
+  test("every src/agents/general/*.agent.ts has an agentRegistry entry", async () => {
     const agentDir = path.join(ROOT, "src", "agents", "general");
-    const files = readdirSync(agentDir).filter((f) => f.endsWith(".agent.ts"));
+    const files = (await readdir(agentDir)).filter((f) =>
+      f.endsWith(".agent.ts"),
+    );
     const registryNames = new Set(Object.keys(agentRegistry));
     const missing: string[] = [];
 
@@ -188,9 +192,11 @@ describe("Registry Completeness", () => {
     expect(missing).toEqual([]);
   });
 
-  test("every src/rules/general/*.rule.ts has a ruleRegistry entry", () => {
+  test("every src/rules/general/*.rule.ts has a ruleRegistry entry", async () => {
     const ruleDir = path.join(ROOT, "src", "rules", "general");
-    const files = readdirSync(ruleDir).filter((f) => f.endsWith(".rule.ts"));
+    const files = (await readdir(ruleDir)).filter((f) =>
+      f.endsWith(".rule.ts"),
+    );
     const registryNames = new Set(Object.keys(ruleRegistry));
     const missing: string[] = [];
 
@@ -205,9 +211,9 @@ describe("Registry Completeness", () => {
     expect(missing).toEqual([]);
   });
 
-  test("every src/hooks/scripts/*.sh has a hookRegistry entry", () => {
+  test("every src/hooks/scripts/*.sh has a hookRegistry entry", async () => {
     const hooksDir = path.join(ROOT, "src", "hooks", "scripts");
-    const files = readdirSync(hooksDir).filter((f) => f.endsWith(".sh"));
+    const files = (await readdir(hooksDir)).filter((f) => f.endsWith(".sh"));
     const registryScripts = new Set(
       Object.values(hookRegistry).map((h) => h.script),
     );
