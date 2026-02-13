@@ -6,15 +6,18 @@
  * Used by build-cursor.ts, build-claude.ts, and build-all.ts to ensure
  * clean output directories before writing generated files.
  */
-import { readdir, unlink, rm, lstat, mkdir } from 'fs/promises';
-import path from 'path';
+import { readdir, unlink, rm, lstat, mkdir } from "node:fs/promises";
+import path from "path";
 
 /**
  * Remove all files matching extensions from a directory.
  * Also removes symlinks and subdirectories (to handle special cases).
  * Does NOT remove the directory itself.
  */
-export async function cleanDirectory(dir: string, extensions: string[]): Promise<string[]> {
+export async function cleanDirectory(
+  dir: string,
+  extensions: string[],
+): Promise<string[]> {
   const removed: string[] = [];
   let entries: string[];
 
@@ -35,7 +38,7 @@ export async function cleanDirectory(dir: string, extensions: string[]): Promise
       } else if (stat.isDirectory()) {
         await rm(fullPath, { recursive: true });
         removed.push(fullPath);
-      } else if (extensions.some(ext => entry.endsWith(ext))) {
+      } else if (extensions.some((ext) => entry.endsWith(ext))) {
         await unlink(fullPath);
         removed.push(fullPath);
       }
