@@ -3,9 +3,9 @@ import { readdirSync } from "fs";
 import path from "path";
 import {
   hookRegistry,
-  generateHooksConfig,
   generateCursorHooksConfig,
 } from "../../../src/hooks/index";
+import { generateClaudeHooksConfig } from "../../../scripts/build-shared";
 
 const HOOK_SCRIPTS_DIR = path.join(
   import.meta.dir,
@@ -21,7 +21,9 @@ describe("hookRegistry", () => {
   });
 
   test("generateHooksConfig produces valid structure", () => {
-    const config = generateHooksConfig(hookRegistry);
+    const config = generateClaudeHooksConfig(hookRegistry, {
+      commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    });
     // Should have at least one event
     expect(Object.keys(config).length).toBeGreaterThan(0);
 
@@ -36,7 +38,9 @@ describe("hookRegistry", () => {
   });
 
   test("all hook commands reference .claude/hooks/ path", () => {
-    const config = generateHooksConfig(hookRegistry);
+    const config = generateClaudeHooksConfig(hookRegistry, {
+      commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    });
     for (const groups of Object.values(config)) {
       for (const group of groups as Array<{
         hooks: Array<{ command: string }>;
@@ -73,7 +77,9 @@ describe("hookRegistry", () => {
   });
 
   test("generateHooksConfig groups same-event-same-matcher hooks", () => {
-    const config = generateHooksConfig(hookRegistry);
+    const config = generateClaudeHooksConfig(hookRegistry, {
+      commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    });
     // PostToolUse should have 1 group with 2 hooks (format + typecheck)
     const postToolUse = config.PostToolUse as Array<{ hooks: unknown[] }>;
     expect(postToolUse.length).toBe(1);
@@ -91,7 +97,9 @@ describe("hookRegistry", () => {
   });
 
   test("generateHooksConfig produces 5 event types", () => {
-    const config = generateHooksConfig(hookRegistry);
+    const config = generateClaudeHooksConfig(hookRegistry, {
+      commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    });
     const events = Object.keys(config).sort();
     expect(events).toEqual([
       "PostToolUse",

@@ -44,6 +44,7 @@ import {
   COMMAND_EXCLUDED_PREFIXES,
   isCommandSkill,
   generateClaudeHooksConfig,
+  generateMarketplaceManifest,
   readVersion,
   generateReadme,
 } from "./build-shared";
@@ -631,30 +632,7 @@ async function main() {
 
   // --- Plugin Marketplace Manifest ---
 
-  const marketplaceManifest = {
-    $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
-    name: "luca-marketplace",
-    owner: {
-      name: "Alec Sibilia",
-    },
-    plugins: [
-      {
-        name: "luca",
-        description:
-          "Agentic development framework with cognitive memory and spec-driven workflow",
-        source: ".",
-        category: "development",
-        version,
-        author: {
-          name: "Alec Sibilia",
-        },
-        homepage: "https://github.com/alecsibilia/luca-framework",
-        repository: "https://github.com/alecsibilia/luca-framework",
-        license: "MIT",
-        keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
-      },
-    ],
-  };
+  const marketplaceManifest = generateMarketplaceManifest(version);
 
   await Bun.write(
     path.join(pluginManifestDir, "marketplace.json"),

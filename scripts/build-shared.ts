@@ -13,6 +13,7 @@
  * - SKILL_CATEGORIES: Skill-to-category mapping for README generation
  * - AGENT_CATEGORIES: Agent-to-category mapping for README generation
  * - generateClaudeHooksConfig(): Unified Claude hooks config builder
+ * - generateMarketplaceManifest(): Marketplace manifest builder
  * - readVersion(): Package version reader
  * - generateReadme(): Plugin README.md builder
  */
@@ -200,6 +201,43 @@ export function generateClaudeHooksConfig(
   }
 
   return options.wrapInHooksKey ? { hooks: events } : events;
+}
+
+/**
+ * Generate the marketplace manifest for plugin distribution.
+ *
+ * Contains metadata for the Claude Code plugin marketplace listing.
+ * Centralised here to prevent drift across build-all.ts, check-drift.ts,
+ * and check-drift.test.ts.
+ *
+ * @param version - Semver version string from package.json
+ * @returns A JSON-serializable marketplace manifest object
+ */
+export function generateMarketplaceManifest(version: string): object {
+  return {
+    $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
+    name: "luca-marketplace",
+    owner: {
+      name: "Alec Sibilia",
+    },
+    plugins: [
+      {
+        name: "luca",
+        description:
+          "Agentic development framework with cognitive memory and spec-driven workflow",
+        source: ".",
+        category: "development",
+        version,
+        author: {
+          name: "Alec Sibilia",
+        },
+        homepage: "https://github.com/alecsibilia/luca-framework",
+        repository: "https://github.com/alecsibilia/luca-framework",
+        license: "MIT",
+        keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+      },
+    ],
+  };
 }
 
 /**
