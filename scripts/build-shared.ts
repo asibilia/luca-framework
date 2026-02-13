@@ -18,6 +18,21 @@
  * - generateReadme(): Plugin README.md builder
  */
 import { NO_MATCHER_SENTINEL, type HookDefinition } from "../src/hooks/index";
+import { hookRegistry, generateCursorHooksConfig } from "../src/hooks/index";
+import { agentRegistry } from "../src/agents/index";
+import { ruleRegistry } from "../src/rules/index";
+import { skillRegistry } from "../src/skills/index";
+import type { BaseAgent } from "../src/agents/types/agent.types";
+import type { BaseSkill } from "../src/skills/types/skill.types";
+import type { BaseRule } from "../src/rules/types/rule.types";
+import { LuExecutorAgent } from "../src/agents/luca/lu-executor.agent";
+import { LuPlannerAgent } from "../src/agents/luca/lu-planner.agent";
+import { LuSkill } from "../src/skills/luca/lu.skill";
+import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
+import { CursorCompiler } from "../src/compilers/cursor.compiler";
+import { ClaudeCompiler } from "../src/compilers/claude.compiler";
+import { PluginCompiler } from "../src/compilers/plugin.compiler";
+import { generatePluginManifest } from "../src/compilers/plugin.types";
 import path from "path";
 
 /**
@@ -419,4 +434,249 @@ Automated code formatting, type checking, pre-commit validation, context monitor
 
 MIT
 `;
+}
+
+// Re-export registries for consumers that need them (e.g., orphan detection tests)
+export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
+
+// Re-export for consumers that need Cursor hooks config generation
+export { generateCursorHooksConfig };
+
+/**
+ * Generate all build outputs in memory.
+ *
+ * Runs every compiler (Cursor, Claude, Plugin) against every registry entity
+ * and Luca-specific entity, producing a Map of relative file paths to their
+ * generated content strings.
+ *
+ * Consumers use this Map differently:
+ * - build-all.ts: writes each entry to disk
+ * - check-drift.ts: compares each entry against committed files
+ * - check-drift.test.ts: uses entries for freshness assertions
+ *
+ * The special key `.claude/settings.json__hooks` contains the hooks config
+ * fragment (not a standalone file); build-all.ts merges it into settings.json.
+ *
+ * @returns Map of relative file paths to content strings
+ */
+export async function generateAllOutputs(): Promise<Map<string, string>> {
+  const cursorCompiler = new CursorCompiler();
+  const claudeCompiler = new ClaudeCompiler();
+  const pluginCompiler = new PluginCompiler();
+  const generated = new Map<string, string>();
+
+  // --- Agents ---
+  for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
+    const instance = new (AgentClass as new () => BaseAgent)();
+    generated.set(
+      `.claude/agents/${agentName}.md`,
+      claudeCompiler.compileAgent(instance, "CLAUDE"),
+    );
+    generated.set(
+      `.cursor/agents/${agentName}.md`,
+      cursorCompiler.compileAgent(instance, "CURSOR"),
+    );
+    generated.set(
+      `dist/plugin/agents/${agentName}.md`,
+      pluginCompiler.compileAgent(instance, "CLAUDE"),
+    );
+  }
+
+  // Luca-specific agents
+  const luExecutor = new LuExecutorAgent();
+  generated.set(
+    ".claude/agents/lu-executor.md",
+    claudeCompiler.compileAgent(luExecutor, "CLAUDE"),
+  );
+  generated.set(
+    ".cursor/agents/lu-executor.md",
+    cursorCompiler.compileAgent(luExecutor, "CURSOR"),
+  );
+  generated.set(
+    "dist/plugin/agents/lu-executor.md",
+    pluginCompiler.compileAgent(luExecutor, "CLAUDE"),
+  );
+
+  const luPlanner = new LuPlannerAgent();
+  generated.set(
+    ".claude/agents/lu-planner.md",
+    claudeCompiler.compileAgent(luPlanner, "CLAUDE"),
+  );
+  generated.set(
+    ".cursor/agents/lu-planner.md",
+    cursorCompiler.compileAgent(luPlanner, "CURSOR"),
+  );
+  generated.set(
+    "dist/plugin/agents/lu-planner.md",
+    pluginCompiler.compileAgent(luPlanner, "CLAUDE"),
+  );
+
+  // --- Skills ---
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    const instance = new (SkillClass as new () => BaseSkill)();
+    generated.set(
+      `.claude/skills/${skillName}/SKILL.md`,
+      claudeCompiler.compileSkill(instance, "CLAUDE"),
+    );
+    generated.set(
+      `.cursor/skills/${skillName}/SKILL.md`,
+      cursorCompiler.compileSkill(instance, "CURSOR"),
+    );
+    generated.set(
+      `dist/plugin/skills/${skillName}/SKILL.md`,
+      pluginCompiler.compileSkill(instance, "CLAUDE"),
+    );
+  }
+
+  // Luca-specific skill
+  const luSkill = new LuSkill();
+  generated.set(
+    ".claude/skills/lu/SKILL.md",
+    claudeCompiler.compileSkill(luSkill, "CLAUDE"),
+  );
+  generated.set(
+    ".cursor/skills/lu/SKILL.md",
+    cursorCompiler.compileSkill(luSkill, "CURSOR"),
+  );
+  generated.set(
+    "dist/plugin/skills/lu/SKILL.md",
+    pluginCompiler.compileSkill(luSkill, "CLAUDE"),
+  );
+
+  // --- Rules ---
+  for (const [ruleName, RuleClass] of Object.entries(ruleRegistry)) {
+    const instance = new (RuleClass as new () => BaseRule)();
+    generated.set(
+      `.claude/rules/${ruleName}.md`,
+      claudeCompiler.compileRule(instance, "CLAUDE"),
+    );
+    generated.set(
+      `.cursor/rules/${ruleName}.mdc`,
+      cursorCompiler.compileRule(instance, "CURSOR"),
+    );
+  }
+
+  // Luca-specific rule
+  const luWorkflowRule = new LuWorkflowRule();
+  generated.set(
+    ".claude/rules/lu-workflow.md",
+    claudeCompiler.compileRule(luWorkflowRule, "CLAUDE"),
+  );
+  generated.set(
+    ".cursor/rules/lu-workflow.mdc",
+    cursorCompiler.compileRule(luWorkflowRule, "CURSOR"),
+  );
+
+  // --- Hook scripts ---
+  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+  for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
+    const srcPath = path.join(hookScriptsDir, hookDef.script);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      const content = await srcFile.text();
+      generated.set(`.claude/hooks/${hookDef.script}`, content);
+      generated.set(`.cursor/hooks/${hookDef.script}`, content);
+    }
+  }
+
+  // --- Settings/hooks configs ---
+  // For settings.json, we only store the "hooks" key as a fragment
+  const hooksConfig = generateClaudeHooksConfig(hookRegistry, {
+    commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+  });
+  generated.set(
+    ".claude/settings.json__hooks",
+    JSON.stringify(hooksConfig, null, 2),
+  );
+
+  const cursorHooksConfig = generateCursorHooksConfig(hookRegistry);
+  generated.set(
+    ".cursor/hooks.json",
+    JSON.stringify(cursorHooksConfig, null, 2) + "\n",
+  );
+
+  // --- Plugin commands ---
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    if (!isCommandSkill(skillName)) continue;
+    const instance = new (SkillClass as new () => BaseSkill)();
+    generated.set(
+      `dist/plugin/commands/${skillName}.md`,
+      `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${skillName} skill to execute this command.\n`,
+    );
+  }
+
+  // Luca-specific command
+  generated.set(
+    "dist/plugin/commands/lu.md",
+    `---\ndescription: "${luSkill.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the lu skill to execute this command.\n`,
+  );
+
+  // --- Plugin hooks ---
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+
+  // Plugin hook scripts
+  for (const [_name, def] of Object.entries(pluginHookRegistry)) {
+    const srcPath = path.join(hookScriptsDir, def.script);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      generated.set(`dist/plugin/scripts/${def.script}`, await srcFile.text());
+    }
+  }
+
+  // Plugin hooks.json
+  const pluginHooksConfig = generateClaudeHooksConfig(pluginHookRegistry, {
+    commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
+    wrapInHooksKey: true,
+  });
+  generated.set(
+    "dist/plugin/hooks/hooks.json",
+    JSON.stringify(pluginHooksConfig, null, 2) + "\n",
+  );
+
+  // --- Plugin manifest (plugin.json) ---
+  const version = await readVersion();
+
+  const manifest = generatePluginManifest({
+    name: "luca",
+    version,
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    author: { name: "Alec Sibilia" },
+    keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+  });
+
+  generated.set(
+    "dist/plugin/.claude-plugin/plugin.json",
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
+
+  // --- Marketplace manifest ---
+  const marketplaceManifest = generateMarketplaceManifest(version);
+
+  generated.set(
+    "dist/plugin/.claude-plugin/marketplace.json",
+    JSON.stringify(marketplaceManifest, null, 2) + "\n",
+  );
+
+  // --- README ---
+  const pluginAgentNames = [
+    ...Object.keys(agentRegistry),
+    "lu-executor",
+    "lu-planner",
+  ];
+  const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
+  const pluginHookNames = Object.keys(pluginHookRegistry);
+
+  const readmeContent = generateReadme(
+    pluginSkillNames,
+    pluginAgentNames,
+    pluginHookNames.length,
+  );
+  generated.set("dist/plugin/README.md", readmeContent);
+
+  return generated;
 }
