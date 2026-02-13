@@ -20,8 +20,7 @@ import {
   pluginManifestSchema,
   KEBAB_CASE_REGEX,
 } from "../src/compilers/plugin.types";
-
-const PLUGIN_ROOT = path.resolve(import.meta.dir, "..", "dist", "plugin");
+import { PLUGIN_ROOT } from "./test-helpers";
 
 // ---------------------------------------------------------------------------
 // TEST-01: Plugin Directory Structure
