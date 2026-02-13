@@ -246,70 +246,70 @@ describe("No Orphan Outputs", () => {
     Object.values(hookRegistry).map((h) => h.script),
   );
 
-  test("no orphan agent outputs in .claude/agents/", () => {
+  test("no orphan agent outputs in .claude/agents/", async () => {
     const dir = path.join(ROOT, ".claude", "agents");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
     const orphans = files.filter(
       (f) => !validAgentNames.has(f.replace(".md", "")),
     );
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan agent outputs in .cursor/agents/", () => {
+  test("no orphan agent outputs in .cursor/agents/", async () => {
     const dir = path.join(ROOT, ".cursor", "agents");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
     const orphans = files.filter(
       (f) => !validAgentNames.has(f.replace(".md", "")),
     );
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan skill outputs in .claude/skills/", () => {
+  test("no orphan skill outputs in .claude/skills/", async () => {
     const dir = path.join(ROOT, ".claude", "skills");
-    const dirs = readdirSync(dir, { withFileTypes: true })
+    const dirs = (await readdir(dir, { withFileTypes: true }))
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     const orphans = dirs.filter((d) => !validSkillNames.has(d));
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan skill outputs in .cursor/skills/", () => {
+  test("no orphan skill outputs in .cursor/skills/", async () => {
     const dir = path.join(ROOT, ".cursor", "skills");
-    const dirs = readdirSync(dir, { withFileTypes: true })
+    const dirs = (await readdir(dir, { withFileTypes: true }))
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     const orphans = dirs.filter((d) => !validSkillNames.has(d));
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan rule outputs in .claude/rules/", () => {
+  test("no orphan rule outputs in .claude/rules/", async () => {
     const dir = path.join(ROOT, ".claude", "rules");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
     const orphans = files.filter(
       (f) => !validRuleNames.has(f.replace(".md", "")),
     );
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan rule outputs in .cursor/rules/", () => {
+  test("no orphan rule outputs in .cursor/rules/", async () => {
     const dir = path.join(ROOT, ".cursor", "rules");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".mdc"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".mdc"));
     const orphans = files.filter(
       (f) => !validRuleNames.has(f.replace(".mdc", "")),
     );
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan hook scripts in .claude/hooks/", () => {
+  test("no orphan hook scripts in .claude/hooks/", async () => {
     const dir = path.join(ROOT, ".claude", "hooks");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".sh"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".sh"));
     const orphans = files.filter((f) => !validHookScripts.has(f));
     expect(orphans).toEqual([]);
   });
 
-  test("no orphan hook scripts in .cursor/hooks/", () => {
+  test("no orphan hook scripts in .cursor/hooks/", async () => {
     const dir = path.join(ROOT, ".cursor", "hooks");
-    const files = readdirSync(dir).filter((f) => f.endsWith(".sh"));
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".sh"));
     const orphans = files.filter((f) => !validHookScripts.has(f));
     expect(orphans).toEqual([]);
   });
