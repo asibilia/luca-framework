@@ -33,6 +33,8 @@ import { PluginCompiler } from "../src/compilers/plugin.compiler";
 import { generatePluginManifest } from "../src/compilers/plugin.types";
 import {
   PLUGIN_EXCLUDED_HOOKS,
+  COMMAND_EXCLUDED_PREFIXES,
+  isCommandSkill,
   generatePluginHooksConfig,
   readVersion,
   generateReadme,
@@ -531,10 +533,6 @@ describe("Plugin Output Freshness", () => {
   test("plugin command outputs match source", () => {
     const drifted: string[] = [];
 
-    const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
-    const isCommandSkill = (name: string) =>
-      !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
-
     // Registry commands
     for (const [name, SkillClass] of Object.entries(skillRegistry)) {
       if (!isCommandSkill(name)) continue;
@@ -754,9 +752,6 @@ describe("Plugin No Orphan Outputs", () => {
   test("no orphan command outputs in dist/plugin/commands/", () => {
     const dir = path.join(ROOT, "dist", "plugin", "commands");
     if (!existsSync(dir)) return; // skip if commands/ not yet generated
-    const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
-    const isCommandSkill = (name: string) =>
-      !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
     const validCommandNames = new Set([
       ...Object.keys(skillRegistry).filter(isCommandSkill),
       "lu",

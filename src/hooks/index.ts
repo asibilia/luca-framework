@@ -35,6 +35,9 @@ export interface HookDefinition {
   statusMessage?: string;
 }
 
+/** Sentinel value for hooks with no matcher constraint. */
+export const NO_MATCHER_SENTINEL = "__no_matcher__" as const;
+
 export const hookRegistry: Record<string, HookDefinition> = {
   "post-edit-format": {
     event: "PostToolUse",
@@ -128,9 +131,9 @@ export function generateHooksConfig(
     }
 
     // Find existing matcher group or create new one
-    const matcherKey = def.matcher ?? "__no_matcher__";
+    const matcherKey = def.matcher ?? NO_MATCHER_SENTINEL;
     let group = config[def.event].find((g) => {
-      if (matcherKey === "__no_matcher__") return !g.matcher;
+      if (matcherKey === NO_MATCHER_SENTINEL) return !g.matcher;
       return g.matcher === def.matcher;
     });
 

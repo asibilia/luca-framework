@@ -45,6 +45,8 @@ import { generatePluginManifest } from "../src/compilers/plugin.types";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
 import {
   PLUGIN_EXCLUDED_HOOKS,
+  COMMAND_EXCLUDED_PREFIXES,
+  isCommandSkill,
   generatePluginHooksConfig,
   readVersion,
   generateReadme,
@@ -516,11 +518,6 @@ async function main() {
   // Generate command stubs for "/" autocomplete discovery.
   // Each command file has YAML frontmatter + a body referencing the skill.
   // Exclude internal/reference skills (workflow-start, rule-*) from commands.
-
-  const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
-
-  const isCommandSkill = (name: string) =>
-    !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
 
   // Registry skills
   for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {

@@ -16,7 +16,7 @@
  * - readVersion(): Package version reader
  * - generateReadme(): Plugin README.md builder
  */
-import type { HookDefinition } from "../src/hooks/index";
+import { NO_MATCHER_SENTINEL, type HookDefinition } from "../src/hooks/index";
 import path from "path";
 
 /**
@@ -131,6 +131,22 @@ export const AGENT_CATEGORIES: Record<string, string> = {
 };
 
 /**
+ * Skill name prefixes excluded from plugin command generation.
+ * These skills are internal/reference and not user-invocable.
+ */
+export const COMMAND_EXCLUDED_PREFIXES: readonly string[] = [
+  "rule-",
+  "workflow-start",
+];
+
+/**
+ * Check whether a skill name should generate a plugin command.
+ * Returns false for internal/reference skills.
+ */
+export const isCommandSkill = (name: string): boolean =>
+  !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
+
+/**
  * Generate the plugin hooks.json configuration.
  *
  * Produces a hooks configuration identical in structure to
@@ -155,9 +171,9 @@ export function generatePluginHooksConfig(
     }
 
     // Find existing matcher group or create new one
-    const matcherKey = def.matcher ?? "__no_matcher__";
+    const matcherKey = def.matcher ?? NO_MATCHER_SENTINEL;
     let group = events[def.event].find((g) => {
-      if (matcherKey === "__no_matcher__") return !g.matcher;
+      if (matcherKey === NO_MATCHER_SENTINEL) return !g.matcher;
       return g.matcher === def.matcher;
     });
 

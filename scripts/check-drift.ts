@@ -37,6 +37,8 @@ import { PluginCompiler } from "../src/compilers/plugin.compiler";
 import { generatePluginManifest } from "../src/compilers/plugin.types";
 import {
   PLUGIN_EXCLUDED_HOOKS,
+  COMMAND_EXCLUDED_PREFIXES,
+  isCommandSkill,
   generatePluginHooksConfig,
   readVersion,
   generateReadme,
@@ -206,10 +208,6 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
   );
 
   // --- Plugin commands ---
-  const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
-  const isCommandSkill = (name: string) =>
-    !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
-
   for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
     if (!isCommandSkill(skillName)) continue;
     const instance = new (SkillClass as new () => BaseSkill)();
