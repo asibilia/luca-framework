@@ -120,7 +120,10 @@
         "harnessFixIterations": 3,
         "verifyFixIterations": 1,
         "verificationMode": "standard",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier"
+        ],
         "uat": "optional",
         "learningCapture": "standard"
       },

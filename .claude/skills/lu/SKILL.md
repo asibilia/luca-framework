@@ -17,7 +17,7 @@ The single entry point for all Luca workflows. This is a **routing skill** — i
 
 This skill uses TWO delegation mechanisms:
 
-**Skill tool** — for workflow sub-skills (lu-discuss-phase, lu-plan-phase, lu-execute-phase, etc.)
+**Skill tool** — for workflow sub-skills (phase-discuss, phase-plan, phase-execute, etc.)
 
 - Invoke: `Skill(skill: "skill-name", args: "...")`
 - Each invoked skill loads its own SKILL.md with full instructions
@@ -98,48 +98,48 @@ Based on the classified complexity and task type, invoke the appropriate skill:
 
 **New project initialization:**
 ```
-Skill(skill: "lu-new-project", args: "<project description>")
+Skill(skill: "project-new", args: "<project description>")
 ```
 
 **New milestone:**
 ```
-Skill(skill: "lu-new-milestone", args: "<milestone description>")
+Skill(skill: "milestone-new", args: "<milestone description>")
 ```
 
 **TRIVIAL / SIMPLE tasks:**
 ```
-Skill(skill: "lu-quick", args: "<task-description>")
+Skill(skill: "quick", args: "<task-description>")
 ```
 
 **MODERATE tasks (single phase):**
-1. `Skill(skill: "lu-discuss-phase", args: "<phase-number>")`
-2. `Skill(skill: "lu-plan-phase", args: "<phase-number>")`
-3. `Skill(skill: "lu-execute-phase", args: "<phase-number>")`
+1. `Skill(skill: "phase-discuss", args: "<phase-number>")`
+2. `Skill(skill: "phase-plan", args: "<phase-number>")`
+3. `Skill(skill: "phase-execute", args: "<phase-number>")`
 
 **COMPLEX / CRITICAL tasks (full pipeline):**
-1. `Skill(skill: "lu-research-phase", args: "<phase-number>")` — if domain is unfamiliar
-2. `Skill(skill: "lu-discuss-phase", args: "<phase-number>")`
-3. `Skill(skill: "lu-plan-phase", args: "<phase-number>")`
-4. `Skill(skill: "lu-execute-phase", args: "<phase-number>")`
+1. `Skill(skill: "phase-research", args: "<phase-number>")` — if domain is unfamiliar
+2. `Skill(skill: "phase-discuss", args: "<phase-number>")`
+3. `Skill(skill: "phase-plan", args: "<phase-number>")`
+4. `Skill(skill: "phase-execute", args: "<phase-number>")`
 
 **PR review work:**
 ```
-Skill(skill: "lu-address-pr", args: "<pr-url>")
+Skill(skill: "pr-address", args: "<pr-url>")
 ```
 
 **Debug workflow:**
 ```
-Skill(skill: "lu-debug", args: "<bug-description>")
+Skill(skill: "debug", args: "<bug-description>")
 ```
 
 **Session planning:**
 ```
-Skill(skill: "lu-plan-session")
+Skill(skill: "session-plan")
 ```
 
 **Progress check:**
 ```
-Skill(skill: "lu-progress")
+Skill(skill: "progress")
 ```
 
 ### Step 5: Verification (always runs)

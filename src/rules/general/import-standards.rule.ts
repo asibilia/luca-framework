@@ -1,19 +1,19 @@
 /**
  * Standards for import statements and module organization
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Standards-for-import rule configuration
-const StandardsforimportConfig: RuleConfig = {
+// Define the import-standards rule configuration
+const importStandardsConfig: RuleConfig = {
   frontmatter: {
     description: `Standards for import statements and module organization`,
-    globs: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Import Standards Rule
 
 This rule ensures consistent and clean import statements throughout the codebase.
@@ -208,13 +208,13 @@ type State = {
 - **Tool Support**: Better IDE and linter integration
 
 Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conventions.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class StandardsforimportRule extends BaseRuleImpl {
+export class ImportStandardsRule extends BaseRuleImpl {
   constructor() {
-    super(StandardsforimportConfig);
+    super(importStandardsConfig);
   }
 }

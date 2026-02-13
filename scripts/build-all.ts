@@ -375,6 +375,7 @@ async function main() {
   const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
   const pluginAgentsDir = path.join(pluginDir, "agents");
   const pluginSkillsDir = path.join(pluginDir, "skills");
+  const pluginCommandsDir = path.join(pluginDir, "commands");
   const pluginHooksDir = path.join(pluginDir, "hooks");
   const pluginScriptsDir = path.join(pluginDir, "scripts");
 
@@ -383,6 +384,7 @@ async function main() {
     ensureDir(pluginManifestDir),
     ensureDir(pluginAgentsDir),
     ensureDir(pluginSkillsDir),
+    ensureDir(pluginCommandsDir),
     ensureDir(pluginHooksDir),
     ensureDir(pluginScriptsDir),
   ]);
@@ -391,11 +393,13 @@ async function main() {
   const [
     removedPluginAgents,
     removedPluginSkills,
+    removedPluginCommands,
     removedPluginHooks,
     removedPluginScripts,
   ] = await Promise.all([
     cleanDirectory(pluginAgentsDir, [".md"]),
     cleanSkillsDirectory(pluginSkillsDir),
+    cleanDirectory(pluginCommandsDir, [".md"]),
     cleanDirectory(pluginHooksDir, [".json"]),
     cleanDirectory(pluginScriptsDir, [".sh"]),
   ]);
@@ -403,6 +407,7 @@ async function main() {
   const totalPluginRemoved =
     removedPluginAgents.length +
     removedPluginSkills.length +
+    removedPluginCommands.length +
     removedPluginHooks.length +
     removedPluginScripts.length;
 
@@ -411,9 +416,11 @@ async function main() {
 
   let pluginAgentCount = 0;
   let pluginSkillCount = 0;
+  let pluginCommandCount = 0;
   let pluginHookCount = 0;
   const pluginAgentNames: string[] = [];
   const pluginSkillNames: string[] = [];
+  const pluginCommandNames: string[] = [];
   const pluginHookNames: string[] = [];
 
   // --- Plugin Agents ---
@@ -504,6 +511,45 @@ async function main() {
     console.error("  Failed to generate skills/lu/SKILL.md:", error);
     failures.push({ type: "plugin-skill", name: "lu", error });
   }
+
+  // --- Plugin Commands ---
+  // Generate command stubs for "/" autocomplete discovery.
+  // Each command file has YAML frontmatter + a body referencing the skill.
+  // Exclude internal/reference skills (workflow-start, rule-*) from commands.
+
+  const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
+
+  const isCommandSkill = (name: string) =>
+    !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
+
+  // Registry skills
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    if (!isCommandSkill(skillName)) continue;
+    try {
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const content = `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${skillName} skill to execute this command.\n`;
+      await Bun.write(path.join(pluginCommandsDir, `${skillName}.md`), content);
+      pluginCommandNames.push(skillName);
+      pluginCommandCount++;
+    } catch (error) {
+      console.error(`  Failed to generate commands/${skillName}.md:`, error);
+      failures.push({ type: "plugin-command", name: skillName, error });
+    }
+  }
+
+  // Luca-specific command (lu)
+  try {
+    const luSkillForCmd = new LuSkill();
+    const luContent = `---\ndescription: "${luSkillForCmd.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the lu skill to execute this command.\n`;
+    await Bun.write(path.join(pluginCommandsDir, "lu.md"), luContent);
+    pluginCommandNames.push("lu");
+    pluginCommandCount++;
+  } catch (error) {
+    console.error("  Failed to generate commands/lu.md:", error);
+    failures.push({ type: "plugin-command", name: "lu", error });
+  }
+
+  console.log(`  Generated ${pluginCommandCount} command files`);
 
   // --- Plugin Hook Scripts ---
 
@@ -632,11 +678,16 @@ async function main() {
   // --- Plugin Summary ---
 
   const pluginTotalFiles =
-    pluginAgentCount + pluginSkillCount + pluginHookCount + 4; // +4 for hooks.json, plugin.json, marketplace.json, README.md
+    pluginAgentCount +
+    pluginSkillCount +
+    pluginCommandCount +
+    pluginHookCount +
+    4; // +4 for hooks.json, plugin.json, marketplace.json, README.md
 
   console.log("\n=== Plugin Build Summary ===");
   console.log(`Agents:   ${pluginAgentCount}`);
   console.log(`Skills:   ${pluginSkillCount}`);
+  console.log(`Commands: ${pluginCommandCount}`);
   console.log(`Hooks:    ${pluginHookCount}`);
   console.log(`Manifests:   plugin.json + marketplace.json`);
   console.log(`Docs:        README.md`);
@@ -651,12 +702,17 @@ async function main() {
   console.log(`Rules:  ${ruleCount} (x2 formats = ${ruleCount * 2} files)`);
   console.log(`Hooks:  ${hookCount} (Claude) + ${cursorHookCount} (Cursor)`);
   console.log(
-    `Plugin: ${pluginAgentCount} agents, ${pluginSkillCount} skills, ${pluginHookCount} hooks + plugin.json + marketplace.json`,
+    `Plugin: ${pluginAgentCount} agents, ${pluginSkillCount} skills, ${pluginCommandCount} commands, ${pluginHookCount} hooks + plugin.json + marketplace.json`,
   );
 
   const claudeCursorFiles =
     (agentCount + skillCount + ruleCount) * 2 + hookCount + cursorHookCount;
-  const pluginFiles = pluginAgentCount + pluginSkillCount + pluginHookCount + 4;
+  const pluginFiles =
+    pluginAgentCount +
+    pluginSkillCount +
+    pluginCommandCount +
+    pluginHookCount +
+    4;
   console.log(`Total:  ${claudeCursorFiles + pluginFiles} files`);
 
   console.log("\n--- .claude/ ---");
@@ -674,6 +730,7 @@ async function main() {
   console.log("\n--- dist/plugin/ ---");
   console.log(`  Agents:   ${pluginAgentCount}`);
   console.log(`  Skills:   ${pluginSkillCount}`);
+  console.log(`  Commands: ${pluginCommandCount}`);
   console.log(`  Hooks:    ${pluginHookCount}`);
   console.log(`  Manifests: plugin.json + marketplace.json`);
   console.log(`  Docs:      README.md`);

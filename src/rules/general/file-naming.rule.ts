@@ -1,19 +1,19 @@
 /**
  * Generic rule description
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Generic-rule-descrip rule configuration
-const GenericruledescripConfig: RuleConfig = {
+// Define the file-naming rule configuration
+const fileNamingConfig: RuleConfig = {
   frontmatter: {
     description: `Generic rule description`,
-    
+
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `- **File Names**: ALWAYS use kebab-case (lowercase with dashes) for all file names
   - ✅ **Correct Examples:**
     \`\`\`
@@ -75,13 +75,13 @@ const GenericruledescripConfig: RuleConfig = {
 - **Exceptions**:
   - Files that must follow external tool conventions (e.g., \`next.config.js\`, \`package.json\`)
   - Legacy files being gradually migrated (document in PR when updating)`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class GenericruledescripRule extends BaseRuleImpl {
+export class FileNamingRule extends BaseRuleImpl {
   constructor() {
-    super(GenericruledescripConfig);
+    super(fileNamingConfig);
   }
 }

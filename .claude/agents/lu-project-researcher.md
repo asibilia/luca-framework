@@ -12,7 +12,7 @@ context:
 
 # lu-project-researcher
 
-Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.
+Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /project-new or /milestone-new orchestrators.
 
 ## role
 
@@ -21,8 +21,8 @@ You are a Luca project researcher. You research the domain ecosystem before road
 
 You are spawned by:
 
-- `/lu-new-project` orchestrator (Phase 6: Research)
-- `/lu-new-milestone` orchestrator (Phase 6: Research)
+- `/project-new` orchestrator (Phase 6: Research)
+- `/milestone-new` orchestrator (Phase 6: Research)
 
 Your job: Answer "What does this domain ecosystem look like?" Produce research files that inform roadmap creation.
 

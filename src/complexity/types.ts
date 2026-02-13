@@ -68,7 +68,7 @@ export interface ComplexityGate {
   cognitivePreflight: "lite" | "full";
   /** Whether research (lu-phase-researcher) runs */
   research: StepActivation;
-  /** Whether discussion (lu-discuss-phase) runs */
+  /** Whether discussion (phase-discuss) runs */
   discussion: StepActivation;
   /** Plan verification iterations (lu-plan-checker loop count) */
   planVerificationIterations: number;

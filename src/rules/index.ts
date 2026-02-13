@@ -4,27 +4,23 @@
  */
 
 // Import all general rules
-// -- Unique class names (14 rules)
-import { APIpayloadsmustusRule } from "./general/api-snake-case.rule";
-import { AtlassianMCPintegrRule } from "./general/atlassian-mcp.rule";
-import { UseBunpackagemanaRule } from "./general/bun-preference.rule";
-import { GuidelinesforcreatRule } from "./general/cursor_rules.rule";
+import { ApiSnakeCaseRule } from "./general/api-snake-case.rule";
+import { AtlassianMcpRule } from "./general/atlassian-mcp.rule";
+import { BunPreferenceRule } from "./general/bun-preference.rule";
+import { ComplexityGatingRule } from "./general/complexity-gating.rule";
+import { CursorRulesRule } from "./general/cursor_rules.rule";
+import { FileNamingRule } from "./general/file-naming.rule";
 import { FunctionalAPIReuseRule } from "./general/functional-api-reuse.rule";
 import { HarnessVerificationRule } from "./general/harness-verification.rule";
-import { ComplexityGatingRule } from "./general/complexity-gating.rule";
 import { HookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
-import { StandardsforimportRule } from "./general/import-standards.rule";
-import { LucaworkflowsystemRule } from "./general/lu-workflow.rule";
-import { MandatorydocumentatRule } from "./general/mandatory-documentation.rule";
-import { ProhibitclassusageRule } from "./general/no-classes.rule";
-import { ApplywheninteractiRule } from "./general/posthog-integration.rule";
-import { EnforceZodschemafRule } from "./general/schema-first-parsing.rule";
-import { GuidelinesforcontiRule } from "./general/self_improve.rule";
-import { UseBuninsteadofNRule } from "./general/use-bun-instead-of-node-vite-npm-pnpm.rule";
-
-// -- Duplicate class names requiring aliases (2 rules)
-import { GenericruledescripRule as FileNamingRule } from "./general/file-naming.rule";
-import { GenericruledescripRule as LodashPreferenceRule } from "./general/lodash-preference.rule";
+import { ImportStandardsRule } from "./general/import-standards.rule";
+import { LodashPreferenceRule } from "./general/lodash-preference.rule";
+import { MandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
+import { NoClassesRule } from "./general/no-classes.rule";
+import { PosthogIntegrationRule } from "./general/posthog-integration.rule";
+import { SchemaFirstParsingRule } from "./general/schema-first-parsing.rule";
+import { SelfImproveRule } from "./general/self_improve.rule";
+import { UseBunRule } from "./general/use-bun-instead-of-node-vite-npm-pnpm.rule";
 
 // Export base rule class
 export { BaseRuleImpl } from "./base/base-rule";
@@ -39,22 +35,21 @@ export type {
 
 // Registry mapping rule names to their classes for bulk processing
 export const ruleRegistry = {
-  "api-snake-case": APIpayloadsmustusRule,
-  "atlassian-mcp": AtlassianMCPintegrRule,
-  "bun-preference": UseBunpackagemanaRule,
-  cursor_rules: GuidelinesforcreatRule,
+  "api-snake-case": ApiSnakeCaseRule,
+  "atlassian-mcp": AtlassianMcpRule,
+  "bun-preference": BunPreferenceRule,
+  "complexity-gating": ComplexityGatingRule,
+  cursor_rules: CursorRulesRule,
   "file-naming": FileNamingRule,
   "functional-api-reuse": FunctionalAPIReuseRule,
   "harness-verification": HarnessVerificationRule,
-  "complexity-gating": ComplexityGatingRule,
   "hook-skill-boundary": HookSkillBoundaryRule,
-  "import-standards": StandardsforimportRule,
+  "import-standards": ImportStandardsRule,
   "lodash-preference": LodashPreferenceRule,
-  "lu-workflow": LucaworkflowsystemRule,
-  "mandatory-documentation": MandatorydocumentatRule,
-  "no-classes": ProhibitclassusageRule,
-  "posthog-integration": ApplywheninteractiRule,
-  "schema-first-parsing": EnforceZodschemafRule,
-  self_improve: GuidelinesforcontiRule,
-  "use-bun-instead-of-node-vite-npm-pnpm": UseBuninsteadofNRule,
+  "mandatory-documentation": MandatoryDocumentationRule,
+  "no-classes": NoClassesRule,
+  "posthog-integration": PosthogIntegrationRule,
+  "schema-first-parsing": SchemaFirstParsingRule,
+  self_improve: SelfImproveRule,
+  "use-bun-instead-of-node-vite-npm-pnpm": UseBunRule,
 };

@@ -1,5 +1,5 @@
 /**
- * lu-phase-researcher Agent - Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.
+ * lu-phase-researcher Agent - Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /phase-plan orchestrator.
  */
 import { BaseAgentImpl } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
@@ -8,7 +8,7 @@ import type { AgentConfig } from "../types/agent.types";
 const luPhaseResearcherConfig: AgentConfig = {
   frontmatter: {
     name: "lu-phase-researcher",
-    description: `Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /lu-plan-phase orchestrator.`,
+    description: `Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /phase-plan orchestrator.`,
     tools: [
       "Read",
       "Write",
@@ -39,8 +39,8 @@ You are a Luca phase researcher. You research how to implement a specific phase 
 
 You are spawned by:
 
-- \`/lu-plan-phase\` orchestrator (integrated research before planning)
-- \`/lu-research-phase\` orchestrator (standalone research)
+- \`/phase-plan\` orchestrator (integrated research before planning)
+- \`/phase-research\` orchestrator (standalone research)
 
 Your job: Answer "What do I need to know to PLAN this phase well?" Produce a single RESEARCH.md file that the planner consumes immediately.
 
@@ -65,7 +65,7 @@ This is read-only memory access. Do NOT write to WORKING.md or attempt learning 
 </cognition_integration>
 
 <upstream_input>
-**CONTEXT.md** (if exists) — User decisions from \`/lu-discuss-phase\`
+**CONTEXT.md** (if exists) — User decisions from \`/phase-discuss\`
 
 | Section | How You Use It |
 |---------|----------------|
@@ -512,7 +512,7 @@ Orchestrator provides:
 PADDED_PHASE=$(printf "%02d" $PHASE 2>/dev/null || echo "$PHASE")
 PHASE_DIR=$(ls -d .planning/phases/$PADDED_PHASE-* .planning/phases/$PHASE-* 2>/dev/null | head -1)
 
-# Read CONTEXT.md if exists (from /lu-discuss-phase)
+# Read CONTEXT.md if exists (from /phase-discuss)
 cat "$PHASE_DIR"/*-CONTEXT.md 2>/dev/null
 
 # Check if planning docs should be committed (default: true)

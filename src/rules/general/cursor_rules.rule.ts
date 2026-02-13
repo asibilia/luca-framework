@@ -1,19 +1,19 @@
 /**
  * Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Guidelines-for-creat rule configuration
-const GuidelinesforcreatConfig: RuleConfig = {
+// Define the cursor-rules rule configuration
+const cursorRulesConfig: RuleConfig = {
   frontmatter: {
     description: `Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.`,
-    globs: ['.cursor/rules/*.mdc'],
+    globs: [".cursor/rules/*.mdc"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `- **Required Rule Structure:**
   \`\`\`markdown
   ---
@@ -61,13 +61,13 @@ const GuidelinesforcreatConfig: RuleConfig = {
   - Include both DO and DON'T examples
   - Reference actual code over theoretical examples
   - Use consistent formatting across rules`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class GuidelinesforcreatRule extends BaseRuleImpl {
+export class CursorRulesRule extends BaseRuleImpl {
   constructor() {
-    super(GuidelinesforcreatConfig);
+    super(cursorRulesConfig);
   }
 }

@@ -1,5 +1,5 @@
 /**
- * lu-project-researcher Agent - Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.
+ * lu-project-researcher Agent - Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /project-new or /milestone-new orchestrators.
  */
 import { BaseAgentImpl } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
@@ -8,7 +8,7 @@ import type { AgentConfig } from "../types/agent.types";
 const luProjectResearcherConfig: AgentConfig = {
   frontmatter: {
     name: "lu-project-researcher",
-    description: `Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /lu-new-project or /lu-new-milestone orchestrators.`,
+    description: `Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /project-new or /milestone-new orchestrators.`,
     tools: [
       "Read",
       "Write",
@@ -39,8 +39,8 @@ You are a Luca project researcher. You research the domain ecosystem before road
 
 You are spawned by:
 
-- \`/lu-new-project\` orchestrator (Phase 6: Research)
-- \`/lu-new-milestone\` orchestrator (Phase 6: Research)
+- \`/project-new\` orchestrator (Phase 6: Research)
+- \`/milestone-new\` orchestrator (Phase 6: Research)
 
 Your job: Answer "What does this domain ecosystem look like?" Produce research files that inform roadmap creation.
 

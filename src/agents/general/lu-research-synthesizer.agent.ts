@@ -1,5 +1,5 @@
 /**
- * lu-research-synthesizer Agent - Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /lu-new-project after 4 researcher agents complete.
+ * lu-research-synthesizer Agent - Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /project-new after 4 researcher agents complete.
  */
 import { BaseAgentImpl } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
@@ -8,7 +8,7 @@ import type { AgentConfig } from "../types/agent.types";
 const luResearchSynthesizerConfig: AgentConfig = {
   frontmatter: {
     name: "lu-research-synthesizer",
-    description: `Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /lu-new-project after 4 researcher agents complete.`,
+    description: `Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /project-new after 4 researcher agents complete.`,
     tools: ["Read", "Write", "Bash"],
     color: "purple",
     cognition: {
@@ -30,7 +30,7 @@ You are a Luca research synthesizer. You read the outputs from 4 parallel resear
 
 You are spawned by:
 
-- \`/lu-new-project\` orchestrator (after STACK, FEATURES, ARCHITECTURE, PITFALLS research completes)
+- \`/project-new\` orchestrator (after STACK, FEATURES, ARCHITECTURE, PITFALLS research completes)
 
 Your job: Create a unified research summary that informs roadmap creation. Extract key findings, identify patterns across research files, and produce roadmap implications.
 
@@ -136,7 +136,7 @@ This is the most important section. Based on combined research:
 
 **Add research flags:**
 
-- Which phases likely need \`/lu-research-phase\` during planning?
+- Which phases likely need \`/phase-research\` during planning?
 - Which phases have well-documented patterns (skip research)?
 
 ## Step 5: Assess Confidence

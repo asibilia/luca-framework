@@ -9,7 +9,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { readdirSync } from "node:fs";
+import { readdirSync, existsSync } from "node:fs";
 import path from "path";
 
 import { agentRegistry } from "../src/agents/index";
@@ -528,6 +528,47 @@ describe("Plugin Output Freshness", () => {
     expect(drifted).toEqual([]);
   });
 
+  test("plugin command outputs match source", () => {
+    const drifted: string[] = [];
+
+    const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
+    const isCommandSkill = (name: string) =>
+      !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
+
+    // Registry commands
+    for (const [name, SkillClass] of Object.entries(skillRegistry)) {
+      if (!isCommandSkill(name)) continue;
+      const instance = new (SkillClass as new () => BaseSkill)();
+      const expected = `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${name} skill to execute this command.\n`;
+      const relPath = `dist/plugin/commands/${name}.md`;
+      const absPath = path.join(ROOT, relPath);
+      try {
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
+        }
+      } catch {
+        drifted.push(`${relPath}: missing`);
+      }
+    }
+
+    // Luca-specific command
+    const luSkillCmd = new LuSkill();
+    const expectedLu = `---\ndescription: "${luSkillCmd.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the lu skill to execute this command.\n`;
+    const relPathLu = "dist/plugin/commands/lu.md";
+    const absPathLu = path.join(ROOT, relPathLu);
+    try {
+      const actualLu = require("fs").readFileSync(absPathLu, "utf8");
+      if (actualLu !== expectedLu) {
+        drifted.push(`${relPathLu}: content differs`);
+      }
+    } catch {
+      drifted.push(`${relPathLu}: missing`);
+    }
+
+    expect(drifted).toEqual([]);
+  });
+
   test("plugin hook scripts match source", () => {
     const drifted: string[] = [];
 
@@ -707,6 +748,23 @@ describe("Plugin No Orphan Outputs", () => {
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
     const orphans = dirs.filter((d) => !validPluginSkillNames.has(d));
+    expect(orphans).toEqual([]);
+  });
+
+  test("no orphan command outputs in dist/plugin/commands/", () => {
+    const dir = path.join(ROOT, "dist", "plugin", "commands");
+    if (!existsSync(dir)) return; // skip if commands/ not yet generated
+    const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
+    const isCommandSkill = (name: string) =>
+      !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
+    const validCommandNames = new Set([
+      ...Object.keys(skillRegistry).filter(isCommandSkill),
+      "lu",
+    ]);
+    const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    const orphans = files.filter(
+      (f) => !validCommandNames.has(f.replace(".md", "")),
+    );
     expect(orphans).toEqual([]);
   });
 

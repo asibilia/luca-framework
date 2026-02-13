@@ -205,6 +205,26 @@ async function generateToTemp(tempDir: string): Promise<Map<string, string>> {
     pluginCompiler.compileSkill(luSkillPlugin, "CLAUDE"),
   );
 
+  // --- Plugin commands ---
+  const COMMAND_EXCLUDED_PREFIXES = ["rule-", "workflow-start"];
+  const isCommandSkill = (name: string) =>
+    !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
+
+  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+    if (!isCommandSkill(skillName)) continue;
+    const instance = new (SkillClass as new () => BaseSkill)();
+    generated.set(
+      `dist/plugin/commands/${skillName}.md`,
+      `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${skillName} skill to execute this command.\n`,
+    );
+  }
+
+  // Luca-specific command
+  generated.set(
+    "dist/plugin/commands/lu.md",
+    `---\ndescription: "${luSkillPlugin.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the lu skill to execute this command.\n`,
+  );
+
   // --- Plugin hooks ---
   const pluginHookRegistry = Object.fromEntries(
     Object.entries(hookRegistry).filter(

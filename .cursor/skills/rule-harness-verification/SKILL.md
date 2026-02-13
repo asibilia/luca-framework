@@ -23,7 +23,7 @@ Hooks are fast (< 30s), deterministic, and fire automatically. They catch issues
 
 ## When Harness Runs
 
-- **Phase boundary**: After all waves in a phase complete (lu-execute-phase Step 6.5)
+- **Phase boundary**: After all waves in a phase complete (phase-execute Step 6.5)
 - **Before agent verification**: Harness runs before lu-verifier to catch mechanical failures
 - **Failure-to-fix loop**: If harness fails, spawns executor to fix, re-runs (max 3 iterations)
 

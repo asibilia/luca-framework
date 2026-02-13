@@ -1,14 +1,14 @@
-import { test, expect, describe } from 'bun:test';
-import { readdir, lstat } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-import { agentRegistry } from '../../src/agents/index';
-import { skillRegistry } from '../../src/skills/index';
-import { ruleRegistry } from '../../src/rules/index';
+import { test, expect, describe } from "bun:test";
+import { readdir, lstat } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
+import { agentRegistry } from "../../src/agents/index";
+import { skillRegistry } from "../../src/skills/index";
+import { ruleRegistry } from "../../src/rules/index";
 
-const ROOT = path.join(import.meta.dir, '../..');
-const CURSOR_DIR = path.join(ROOT, '.cursor');
-const CLAUDE_DIR = path.join(ROOT, '.claude');
+const ROOT = path.join(import.meta.dir, "../..");
+const CURSOR_DIR = path.join(ROOT, ".cursor");
+const CLAUDE_DIR = path.join(ROOT, ".claude");
 
 /**
  * These tests verify post-build output correctness.
@@ -16,36 +16,37 @@ const CLAUDE_DIR = path.join(ROOT, '.claude');
  * Run `bun run build:all` to generate the artifacts first.
  */
 
-const hasBuildOutput = existsSync(path.join(CURSOR_DIR, 'agents')) &&
-  existsSync(path.join(CLAUDE_DIR, 'agents'));
+const hasBuildOutput =
+  existsSync(path.join(CURSOR_DIR, "agents")) &&
+  existsSync(path.join(CLAUDE_DIR, "agents"));
 
-describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
-  describe('agents', () => {
-    const agentsDir = path.join(CURSOR_DIR, 'agents');
+describe.skipIf(!hasBuildOutput)("build output — .cursor", () => {
+  describe("agents", () => {
+    const agentsDir = path.join(CURSOR_DIR, "agents");
 
-    test('contains expected number of agent files (registry + luca-specific)', async () => {
+    test("contains expected number of agent files (registry + luca-specific)", async () => {
       const files = await readdir(agentsDir);
-      const mdFiles = files.filter(f => f.endsWith('.md'));
+      const mdFiles = files.filter((f) => f.endsWith(".md"));
       // 23 general (from agentRegistry) + 2 luca-specific (lu-executor, lu-planner)
       expect(mdFiles.length).toBe(Object.keys(agentRegistry).length + 2);
     });
 
-    test('every registry agent has a corresponding .md file', async () => {
+    test("every registry agent has a corresponding .md file", async () => {
       const files = await readdir(agentsDir);
       for (const agentName of Object.keys(agentRegistry)) {
         expect(files).toContain(`${agentName}.md`);
       }
     });
 
-    test('luca-specific agents exist', async () => {
+    test("luca-specific agents exist", async () => {
       const files = await readdir(agentsDir);
-      expect(files).toContain('lu-executor.md');
-      expect(files).toContain('lu-planner.md');
+      expect(files).toContain("lu-executor.md");
+      expect(files).toContain("lu-planner.md");
     });
 
-    test('agent files are non-empty', async () => {
+    test("agent files are non-empty", async () => {
       const files = await readdir(agentsDir);
-      const mdFiles = files.filter(f => f.endsWith('.md'));
+      const mdFiles = files.filter((f) => f.endsWith(".md"));
       for (const file of mdFiles) {
         const bunFile = Bun.file(path.join(agentsDir, file));
         const size = bunFile.size;
@@ -54,10 +55,10 @@ describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
     });
   });
 
-  describe('skills', () => {
-    const skillsDir = path.join(CURSOR_DIR, 'skills');
+  describe("skills", () => {
+    const skillsDir = path.join(CURSOR_DIR, "skills");
 
-    test('contains expected number of skill directories (registry + luca-specific)', async () => {
+    test("contains expected number of skill directories (registry + luca-specific)", async () => {
       const entries = await readdir(skillsDir);
       const dirs: string[] = [];
       for (const entry of entries) {
@@ -68,38 +69,39 @@ describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
       expect(dirs.length).toBe(Object.keys(skillRegistry).length + 1);
     });
 
-    test('every registry skill has a corresponding directory with SKILL.md', async () => {
+    test("every registry skill has a corresponding directory with SKILL.md", async () => {
       for (const skillName of Object.keys(skillRegistry)) {
-        const skillFile = Bun.file(path.join(skillsDir, skillName, 'SKILL.md'));
+        const skillFile = Bun.file(path.join(skillsDir, skillName, "SKILL.md"));
         expect(skillFile.size).toBeGreaterThan(0);
       }
     });
 
-    test('luca-specific skill exists', async () => {
-      const skillFile = Bun.file(path.join(skillsDir, 'lu', 'SKILL.md'));
+    test("luca-specific skill exists", async () => {
+      const skillFile = Bun.file(path.join(skillsDir, "lu", "SKILL.md"));
       expect(skillFile.size).toBeGreaterThan(0);
     });
   });
 
-  describe('rules', () => {
-    const rulesDir = path.join(CURSOR_DIR, 'rules');
+  describe("rules", () => {
+    const rulesDir = path.join(CURSOR_DIR, "rules");
 
-    test('contains expected number of rule files', async () => {
+    test("contains expected number of rule files", async () => {
       const files = await readdir(rulesDir);
-      const mdcFiles = files.filter(f => f.endsWith('.mdc'));
-      // ruleRegistry already contains lu-workflow, so luca-specific overwrites it
-      // unique count = registry size (20)
-      expect(mdcFiles.length).toBe(Object.keys(ruleRegistry).length);
+      const mdcFiles = files.filter((f) => f.endsWith(".mdc"));
+      // registry rules + 1 luca-specific rule (lu-workflow) compiled separately
+      expect(mdcFiles.length).toBe(Object.keys(ruleRegistry).length + 1);
     });
 
-    test('every registry rule has a corresponding .mdc file', async () => {
+    test("every registry rule has a corresponding .mdc file", async () => {
       const files = await readdir(rulesDir);
       for (const ruleName of Object.keys(ruleRegistry)) {
         expect(files).toContain(`${ruleName}.mdc`);
       }
+      // luca-specific rule compiled separately
+      expect(files).toContain("lu-workflow.mdc");
     });
 
-    test('no symlinks in rules directory', async () => {
+    test("no symlinks in rules directory", async () => {
       const entries = await readdir(rulesDir);
       for (const entry of entries) {
         const stat = await lstat(path.join(rulesDir, entry));
@@ -107,7 +109,7 @@ describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
       }
     });
 
-    test('no subdirectories in rules directory', async () => {
+    test("no subdirectories in rules directory", async () => {
       const entries = await readdir(rulesDir);
       for (const entry of entries) {
         const stat = await lstat(path.join(rulesDir, entry));
@@ -115,9 +117,9 @@ describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
       }
     });
 
-    test('rule files are non-empty', async () => {
+    test("rule files are non-empty", async () => {
       const files = await readdir(rulesDir);
-      const mdcFiles = files.filter(f => f.endsWith('.mdc'));
+      const mdcFiles = files.filter((f) => f.endsWith(".mdc"));
       for (const file of mdcFiles) {
         const bunFile = Bun.file(path.join(rulesDir, file));
         expect(bunFile.size).toBeGreaterThan(0);
@@ -126,34 +128,34 @@ describe.skipIf(!hasBuildOutput)('build output — .cursor', () => {
   });
 });
 
-describe.skipIf(!hasBuildOutput)('build output — .claude', () => {
-  describe('agents', () => {
-    const agentsDir = path.join(CLAUDE_DIR, 'agents');
+describe.skipIf(!hasBuildOutput)("build output — .claude", () => {
+  describe("agents", () => {
+    const agentsDir = path.join(CLAUDE_DIR, "agents");
 
-    test('contains expected number of agent files (registry + luca-specific)', async () => {
+    test("contains expected number of agent files (registry + luca-specific)", async () => {
       const files = await readdir(agentsDir);
-      const mdFiles = files.filter(f => f.endsWith('.md'));
+      const mdFiles = files.filter((f) => f.endsWith(".md"));
       expect(mdFiles.length).toBe(Object.keys(agentRegistry).length + 2);
     });
 
-    test('every registry agent has a corresponding .md file', async () => {
+    test("every registry agent has a corresponding .md file", async () => {
       const files = await readdir(agentsDir);
       for (const agentName of Object.keys(agentRegistry)) {
         expect(files).toContain(`${agentName}.md`);
       }
     });
 
-    test('luca-specific agents exist', async () => {
+    test("luca-specific agents exist", async () => {
       const files = await readdir(agentsDir);
-      expect(files).toContain('lu-executor.md');
-      expect(files).toContain('lu-planner.md');
+      expect(files).toContain("lu-executor.md");
+      expect(files).toContain("lu-planner.md");
     });
   });
 
-  describe('skills', () => {
-    const skillsDir = path.join(CLAUDE_DIR, 'skills');
+  describe("skills", () => {
+    const skillsDir = path.join(CLAUDE_DIR, "skills");
 
-    test('contains expected number of skill directories (registry + luca-specific)', async () => {
+    test("contains expected number of skill directories (registry + luca-specific)", async () => {
       const entries = await readdir(skillsDir);
       const dirs: string[] = [];
       for (const entry of entries) {
@@ -163,40 +165,41 @@ describe.skipIf(!hasBuildOutput)('build output — .claude', () => {
       expect(dirs.length).toBe(Object.keys(skillRegistry).length + 1);
     });
 
-    test('every registry skill has a corresponding directory with SKILL.md', async () => {
+    test("every registry skill has a corresponding directory with SKILL.md", async () => {
       for (const skillName of Object.keys(skillRegistry)) {
-        const skillFile = Bun.file(path.join(skillsDir, skillName, 'SKILL.md'));
+        const skillFile = Bun.file(path.join(skillsDir, skillName, "SKILL.md"));
         expect(skillFile.size).toBeGreaterThan(0);
       }
     });
 
-    test('luca-specific skill exists', async () => {
-      const skillFile = Bun.file(path.join(skillsDir, 'lu', 'SKILL.md'));
+    test("luca-specific skill exists", async () => {
+      const skillFile = Bun.file(path.join(skillsDir, "lu", "SKILL.md"));
       expect(skillFile.size).toBeGreaterThan(0);
     });
   });
 
-  describe('rules', () => {
-    const rulesDir = path.join(CLAUDE_DIR, 'rules');
+  describe("rules", () => {
+    const rulesDir = path.join(CLAUDE_DIR, "rules");
 
-    test('contains expected number of rule files', async () => {
+    test("contains expected number of rule files", async () => {
       const files = await readdir(rulesDir);
-      const mdFiles = files.filter(f => f.endsWith('.md'));
-      // ruleRegistry already contains lu-workflow, so luca-specific overwrites it
-      // unique count = registry size (20)
-      expect(mdFiles.length).toBe(Object.keys(ruleRegistry).length);
+      const mdFiles = files.filter((f) => f.endsWith(".md"));
+      // registry rules + 1 luca-specific rule (lu-workflow) compiled separately
+      expect(mdFiles.length).toBe(Object.keys(ruleRegistry).length + 1);
     });
 
-    test('every registry rule has a corresponding .md file', async () => {
+    test("every registry rule has a corresponding .md file", async () => {
       const files = await readdir(rulesDir);
       for (const ruleName of Object.keys(ruleRegistry)) {
         expect(files).toContain(`${ruleName}.md`);
       }
+      // luca-specific rule compiled separately
+      expect(files).toContain("lu-workflow.md");
     });
 
-    test('rule files are non-empty', async () => {
+    test("rule files are non-empty", async () => {
       const files = await readdir(rulesDir);
-      const mdFiles = files.filter(f => f.endsWith('.md'));
+      const mdFiles = files.filter((f) => f.endsWith(".md"));
       for (const file of mdFiles) {
         const bunFile = Bun.file(path.join(rulesDir, file));
         expect(bunFile.size).toBeGreaterThan(0);

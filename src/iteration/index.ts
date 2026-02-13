@@ -2,7 +2,7 @@
  * Iteration module for the Luca verification loop system.
  *
  * Provides decision-support utilities for externally-controlled iteration
- * loops (Ralph Wiggum pattern). The lu-execute-phase skill IS the loop
+ * loops (Ralph Wiggum pattern). The phase-execute skill IS the loop
  * controller; this module provides the intelligence for decisions.
  *
  * Sub-modules:

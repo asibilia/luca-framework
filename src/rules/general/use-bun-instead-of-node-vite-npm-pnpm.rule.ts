@@ -1,19 +1,27 @@
 /**
  * Use Bun instead of Node.js, npm, pnpm, or vite.
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Use-Bun-instead-of-N rule configuration
-const UseBuninsteadofNConfig: RuleConfig = {
+// Define the use-bun rule configuration
+const useBunConfig: RuleConfig = {
   frontmatter: {
     description: `Use Bun instead of Node.js, npm, pnpm, or vite.`,
-    globs: ['*.ts', '*.tsx', '*.html', '*.css', '*.js', '*.jsx', 'package.json'],
+    globs: [
+      "*.ts",
+      "*.tsx",
+      "*.html",
+      "*.css",
+      "*.js",
+      "*.jsx",
+      "package.json",
+    ],
     alwaysApply: false,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `Default to using Bun instead of Node.js.
 
 - Use \`bun <file>\` instead of \`node <file>\` or \`ts-node <file>\`
@@ -119,13 +127,13 @@ bun --hot ./index.ts
 \`\`\`
 
 For more information, read the Bun API docs in \`node_modules/bun-types/docs/**.md\`.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class UseBuninsteadofNRule extends BaseRuleImpl {
+export class UseBunRule extends BaseRuleImpl {
   constructor() {
-    super(UseBuninsteadofNConfig);
+    super(useBunConfig);
   }
 }

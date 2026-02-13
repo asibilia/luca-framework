@@ -1,19 +1,19 @@
 /**
  * Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Guidelines-for-conti rule configuration
-const GuidelinesforcontiConfig: RuleConfig = {
+// Define the self-improve rule configuration
+const selfImproveConfig: RuleConfig = {
   frontmatter: {
     description: `Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.`,
-    globs: ['**/*'],
+    globs: ["**/*"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `- **Rule Improvement Triggers:**
   - New code patterns not covered by existing rules
   - Repeated similar implementations across files
@@ -80,13 +80,13 @@ const GuidelinesforcontiConfig: RuleConfig = {
   - Maintain links between related rules
   - Document breaking changes
 Follow [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc) for proper rule formatting and structure.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class GuidelinesforcontiRule extends BaseRuleImpl {
+export class SelfImproveRule extends BaseRuleImpl {
   constructor() {
-    super(GuidelinesforcontiConfig);
+    super(selfImproveConfig);
   }
 }

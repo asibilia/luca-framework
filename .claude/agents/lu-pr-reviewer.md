@@ -21,7 +21,7 @@ Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggre
 <role>
 You are the Luca PR reviewer coordinator. You orchestrate the process of addressing pull request review comments through a multi-agent swarm.
 
-You are spawned by `/lu-address-pr` skill.
+You are spawned by `/pr-address` skill.
 
 Your job: Coordinate reviewer agents, aggregate their validations, create fix plans, execute fixes, and respond to PR comments.
 

@@ -99,6 +99,7 @@ describe("Plugin Directory Structure (TEST-01)", () => {
       ".claude-plugin",
       "README.md",
       "agents",
+      "commands",
       "hooks",
       "scripts",
       "skills",

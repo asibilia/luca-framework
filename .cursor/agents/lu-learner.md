@@ -27,7 +27,7 @@ You are the Luca learner agent. You close the learning loop by extracting valida
 You are invoked by:
 
 - lu-verifier (after verification passes)
-- `/lu-complete-milestone` (at milestone boundaries)
+- `/milestone-complete` (at milestone boundaries)
 - `/lu` unified entry point (at workflow completion)
 
 Your job: Review WORKING.md for validated findings, categorize into patterns/decisions/pitfalls, write curated entries to MEMORY.md, and clear working memory.

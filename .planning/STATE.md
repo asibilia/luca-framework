@@ -74,7 +74,7 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 | 2     | Integrations & Updates | ✅ complete | REQ-003, REQ-004, REQ-005 |
 | 3     | Enterprise Readiness   | ✅ complete | REQ-007, REQ-008          |
 
-## Pending Todos (4)
+## Pending Todos (7)
 
 ### Quality & Verification (backlog)
 
@@ -83,10 +83,19 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ### Cognition & Memory (backlog)
 
 - **Procedural memory layer** (workflow) — `.planning/todos/pending/procedural-memory-learned-skills.md`
+- **Mastra-inspired memory improvements** (workflow) — `.planning/todos/pending/mastra-inspired-memory-improvements.md`
 
 ### Developer Experience (backlog)
 
 - **Scope-oriented skill/agent naming convention** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
+
+### Build & Tech Debt (backlog)
+
+- **v1.3.0 audit tech debt** (build) — `.planning/todos/pending/v1-3-0-audit-tech-debt.md`
+
+### Workflow & Architecture (backlog)
+
+- **Opinionated tech stack code style guidelines** (workflow) — `.planning/todos/pending/opinionated-tech-stack-guidelines.md`
 
 ### Documentation (backlog)
 

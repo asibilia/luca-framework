@@ -1,19 +1,19 @@
 /**
  * apply when interacting with PostHog/analytics tasks
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the apply-when-interacti rule configuration
-const applywheninteractiConfig: RuleConfig = {
+// Define the posthog-integration rule configuration
+const posthogIntegrationConfig: RuleConfig = {
   frontmatter: {
     description: `apply when interacting with PostHog/analytics tasks`,
-    
+
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `Never hallucinate an API key. Instead, always use the API key populated in the .env file.
 
 # Feature flags
@@ -33,13 +33,13 @@ If a custom property for a person or event is at any point referenced in two or 
 # Naming
 
 Before creating any new event or property names, consult with the developer for any existing naming convention. Consistency in naming is essential, and additional context may exist outside this project. Similarly, be careful about any changes to existing event and property names, as this may break reporting and distort data for the project.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class ApplywheninteractiRule extends BaseRuleImpl {
+export class PosthogIntegrationRule extends BaseRuleImpl {
   constructor() {
-    super(applywheninteractiConfig);
+    super(posthogIntegrationConfig);
   }
 }
