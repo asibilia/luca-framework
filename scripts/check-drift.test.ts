@@ -8,163 +8,47 @@
  * to .claude/, .cursor/, or dist/plugin/ output files.
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeAll } from "bun:test";
 import { readdirSync, existsSync } from "node:fs";
 import path from "path";
 
-import { agentRegistry } from "../src/agents/index";
-import { skillRegistry } from "../src/skills/index";
-import { ruleRegistry } from "../src/rules/index";
-import { hookRegistry, generateCursorHooksConfig } from "../src/hooks/index";
-import type { BaseAgent } from "../src/agents/types/agent.types";
-import type { BaseSkill } from "../src/skills/types/skill.types";
-import type { BaseRule } from "../src/rules/types/rule.types";
-import { LuExecutorAgent } from "../src/agents/luca/lu-executor.agent";
-import { LuPlannerAgent } from "../src/agents/luca/lu-planner.agent";
-import { LuSkill } from "../src/skills/luca/lu.skill";
-import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
-import { CursorCompiler } from "../src/compilers/cursor.compiler";
-import { ClaudeCompiler } from "../src/compilers/claude.compiler";
-import { PluginCompiler } from "../src/compilers/plugin.compiler";
-import { generatePluginManifest } from "../src/compilers/plugin.types";
 import {
+  generateAllOutputs,
+  agentRegistry,
+  skillRegistry,
+  ruleRegistry,
+  hookRegistry,
   PLUGIN_EXCLUDED_HOOKS,
-  COMMAND_EXCLUDED_PREFIXES,
   isCommandSkill,
-  generateClaudeHooksConfig,
-  generateMarketplaceManifest,
-  readVersion,
-  generateReadme,
 } from "./build-shared";
 
 const ROOT = path.resolve(import.meta.dir, "..");
-const cursorCompiler = new CursorCompiler();
-const claudeCompiler = new ClaudeCompiler();
-const pluginCompiler = new PluginCompiler();
-
-// ---------------------------------------------------------------------------
-// Helper: generate expected content for a given output file
-// ---------------------------------------------------------------------------
-
-function generateExpected(): Map<string, string> {
-  const generated = new Map<string, string>();
-
-  // Agents (registry)
-  for (const [name, AgentClass] of Object.entries(agentRegistry)) {
-    const instance = new (AgentClass as new () => BaseAgent)();
-    generated.set(
-      `.claude/agents/${name}.md`,
-      claudeCompiler.compileAgent(instance, "CLAUDE"),
-    );
-    generated.set(
-      `.cursor/agents/${name}.md`,
-      cursorCompiler.compileAgent(instance, "CURSOR"),
-    );
-  }
-
-  // Luca-specific agents
-  const luExecutor = new LuExecutorAgent();
-  generated.set(
-    ".claude/agents/lu-executor.md",
-    claudeCompiler.compileAgent(luExecutor, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/agents/lu-executor.md",
-    cursorCompiler.compileAgent(luExecutor, "CURSOR"),
-  );
-  const luPlanner = new LuPlannerAgent();
-  generated.set(
-    ".claude/agents/lu-planner.md",
-    claudeCompiler.compileAgent(luPlanner, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/agents/lu-planner.md",
-    cursorCompiler.compileAgent(luPlanner, "CURSOR"),
-  );
-
-  // Skills (registry)
-  for (const [name, SkillClass] of Object.entries(skillRegistry)) {
-    const instance = new (SkillClass as new () => BaseSkill)();
-    generated.set(
-      `.claude/skills/${name}/SKILL.md`,
-      claudeCompiler.compileSkill(instance, "CLAUDE"),
-    );
-    generated.set(
-      `.cursor/skills/${name}/SKILL.md`,
-      cursorCompiler.compileSkill(instance, "CURSOR"),
-    );
-  }
-
-  // Luca-specific skill
-  const luSkill = new LuSkill();
-  generated.set(
-    ".claude/skills/lu/SKILL.md",
-    claudeCompiler.compileSkill(luSkill, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/skills/lu/SKILL.md",
-    cursorCompiler.compileSkill(luSkill, "CURSOR"),
-  );
-
-  // Rules (registry)
-  for (const [name, RuleClass] of Object.entries(ruleRegistry)) {
-    const instance = new (RuleClass as new () => BaseRule)();
-    generated.set(
-      `.claude/rules/${name}.md`,
-      claudeCompiler.compileRule(instance, "CLAUDE"),
-    );
-    generated.set(
-      `.cursor/rules/${name}.mdc`,
-      cursorCompiler.compileRule(instance, "CURSOR"),
-    );
-  }
-
-  // Luca-specific rule
-  const luWorkflowRule = new LuWorkflowRule();
-  generated.set(
-    ".claude/rules/lu-workflow.md",
-    claudeCompiler.compileRule(luWorkflowRule, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/rules/lu-workflow.mdc",
-    cursorCompiler.compileRule(luWorkflowRule, "CURSOR"),
-  );
-
-  return generated;
-}
 
 // ---------------------------------------------------------------------------
 // 1. Output Freshness — committed files must match generated content
 // ---------------------------------------------------------------------------
 
 describe("Output Freshness", () => {
-  const generated = generateExpected();
+  let generated: Map<string, string>;
 
-  // Group by entity type for clearer test output
-  const agentFiles = [...generated.entries()].filter(([p]) =>
-    p.includes("/agents/"),
-  );
-  const skillFiles = [...generated.entries()].filter(([p]) =>
-    p.includes("/skills/"),
-  );
-  const ruleFiles = [...generated.entries()].filter(([p]) =>
-    p.includes("/rules/"),
-  );
+  beforeAll(async () => {
+    generated = await generateAllOutputs();
+  });
 
   test("agent outputs match source", () => {
     const drifted: string[] = [];
+    const agentFiles = [...generated.entries()].filter(
+      ([p]) => p.includes("/agents/") && !p.startsWith("dist/"),
+    );
     for (const [relPath, expected] of agentFiles) {
       const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      // File must exist
-      if (!file.size) {
+      try {
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
+        }
+      } catch {
         drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      // Synchronous read via Bun.file — we use a workaround
-      const actual = require("fs").readFileSync(absPath, "utf8");
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
       }
     }
     expect(drifted).toEqual([]);
@@ -172,6 +56,9 @@ describe("Output Freshness", () => {
 
   test("skill outputs match source", () => {
     const drifted: string[] = [];
+    const skillFiles = [...generated.entries()].filter(
+      ([p]) => p.includes("/skills/") && !p.startsWith("dist/"),
+    );
     for (const [relPath, expected] of skillFiles) {
       const absPath = path.join(ROOT, relPath);
       try {
@@ -188,6 +75,9 @@ describe("Output Freshness", () => {
 
   test("rule outputs match source", () => {
     const drifted: string[] = [];
+    const ruleFiles = [...generated.entries()].filter(
+      ([p]) => p.includes("/rules/") && !p.startsWith("dist/"),
+    );
     for (const [relPath, expected] of ruleFiles) {
       const absPath = path.join(ROOT, relPath);
       try {
@@ -204,47 +94,28 @@ describe("Output Freshness", () => {
 
   test("hook scripts match source", () => {
     const drifted: string[] = [];
-    const hookScriptsDir = path.join(ROOT, "src", "hooks", "scripts");
-
-    for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
-      const srcPath = path.join(hookScriptsDir, hookDef.script);
+    const hookFiles = [...generated.entries()].filter(
+      ([p]) =>
+        (p.startsWith(".claude/hooks/") || p.startsWith(".cursor/hooks/")) &&
+        p.endsWith(".sh"),
+    );
+    for (const [relPath, expected] of hookFiles) {
+      const absPath = path.join(ROOT, relPath);
       try {
-        const srcContent = require("fs").readFileSync(srcPath, "utf8");
-
-        // Check Claude output
-        const claudePath = path.join(ROOT, ".claude", "hooks", hookDef.script);
-        try {
-          const claudeContent = require("fs").readFileSync(claudePath, "utf8");
-          if (claudeContent !== srcContent) {
-            drifted.push(`.claude/hooks/${hookDef.script}: content differs`);
-          }
-        } catch {
-          drifted.push(`.claude/hooks/${hookDef.script}: missing`);
-        }
-
-        // Check Cursor output
-        const cursorPath = path.join(ROOT, ".cursor", "hooks", hookDef.script);
-        try {
-          const cursorContent = require("fs").readFileSync(cursorPath, "utf8");
-          if (cursorContent !== srcContent) {
-            drifted.push(`.cursor/hooks/${hookDef.script}: content differs`);
-          }
-        } catch {
-          drifted.push(`.cursor/hooks/${hookDef.script}: missing`);
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
         }
       } catch {
-        // Source script missing — separate concern
-        drifted.push(`src/hooks/scripts/${hookDef.script}: source missing`);
+        drifted.push(`${relPath}: missing`);
       }
     }
     expect(drifted).toEqual([]);
   });
 
   test("hooks config in .claude/settings.json matches source", () => {
-    const expectedHooks = generateClaudeHooksConfig(hookRegistry, {
-      commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
-    });
-    const expectedJson = JSON.stringify(expectedHooks, null, 2);
+    const expectedJson = generated.get(".claude/settings.json__hooks");
+    expect(expectedJson).toBeDefined();
 
     const settingsPath = path.join(ROOT, ".claude", "settings.json");
     const settingsContent = require("fs").readFileSync(settingsPath, "utf8");
@@ -255,8 +126,8 @@ describe("Output Freshness", () => {
   });
 
   test(".cursor/hooks.json matches source", () => {
-    const expectedConfig = generateCursorHooksConfig(hookRegistry);
-    const expectedJson = JSON.stringify(expectedConfig, null, 2) + "\n";
+    const expectedJson = generated.get(".cursor/hooks.json");
+    expect(expectedJson).toBeDefined();
 
     const hooksJsonPath = path.join(ROOT, ".cursor", "hooks.json");
     const actualJson = require("fs").readFileSync(hooksJsonPath, "utf8");
@@ -439,23 +310,18 @@ describe("No Orphan Outputs", () => {
 // ---------------------------------------------------------------------------
 
 describe("Plugin Output Freshness", () => {
-  const hookScriptsDir = path.join(ROOT, "src", "hooks", "scripts");
+  let generated: Map<string, string>;
 
-  // Filtered hook registry for plugin context
-  const pluginHookRegistry = Object.fromEntries(
-    Object.entries(hookRegistry).filter(
-      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
-    ),
-  );
+  beforeAll(async () => {
+    generated = await generateAllOutputs();
+  });
 
   test("plugin agent outputs match source", () => {
     const drifted: string[] = [];
-
-    // Registry agents
-    for (const [name, AgentClass] of Object.entries(agentRegistry)) {
-      const instance = new (AgentClass as new () => BaseAgent)();
-      const expected = pluginCompiler.compileAgent(instance, "CLAUDE");
-      const relPath = `dist/plugin/agents/${name}.md`;
+    const pluginAgentFiles = [...generated.entries()].filter(([p]) =>
+      p.startsWith("dist/plugin/agents/"),
+    );
+    for (const [relPath, expected] of pluginAgentFiles) {
       const absPath = path.join(ROOT, relPath);
       try {
         const actual = require("fs").readFileSync(absPath, "utf8");
@@ -466,41 +332,15 @@ describe("Plugin Output Freshness", () => {
         drifted.push(`${relPath}: missing`);
       }
     }
-
-    // Luca-specific agents
-    const luExecutor = new LuExecutorAgent();
-    const luPlanner = new LuPlannerAgent();
-    for (const [name, instance] of [
-      ["lu-executor", luExecutor],
-      ["lu-planner", luPlanner],
-    ] as const) {
-      const expected = pluginCompiler.compileAgent(
-        instance as BaseAgent,
-        "CLAUDE",
-      );
-      const relPath = `dist/plugin/agents/${name}.md`;
-      const absPath = path.join(ROOT, relPath);
-      try {
-        const actual = require("fs").readFileSync(absPath, "utf8");
-        if (actual !== expected) {
-          drifted.push(`${relPath}: content differs`);
-        }
-      } catch {
-        drifted.push(`${relPath}: missing`);
-      }
-    }
-
     expect(drifted).toEqual([]);
   });
 
   test("plugin skill outputs match source", () => {
     const drifted: string[] = [];
-
-    // Registry skills
-    for (const [name, SkillClass] of Object.entries(skillRegistry)) {
-      const instance = new (SkillClass as new () => BaseSkill)();
-      const expected = pluginCompiler.compileSkill(instance, "CLAUDE");
-      const relPath = `dist/plugin/skills/${name}/SKILL.md`;
+    const pluginSkillFiles = [...generated.entries()].filter(([p]) =>
+      p.startsWith("dist/plugin/skills/"),
+    );
+    for (const [relPath, expected] of pluginSkillFiles) {
       const absPath = path.join(ROOT, relPath);
       try {
         const actual = require("fs").readFileSync(absPath, "utf8");
@@ -511,33 +351,15 @@ describe("Plugin Output Freshness", () => {
         drifted.push(`${relPath}: missing`);
       }
     }
-
-    // Luca-specific skill
-    const luSkill = new LuSkill();
-    const expected = pluginCompiler.compileSkill(luSkill, "CLAUDE");
-    const relPath = "dist/plugin/skills/lu/SKILL.md";
-    const absPath = path.join(ROOT, relPath);
-    try {
-      const actual = require("fs").readFileSync(absPath, "utf8");
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    } catch {
-      drifted.push(`${relPath}: missing`);
-    }
-
     expect(drifted).toEqual([]);
   });
 
   test("plugin command outputs match source", () => {
     const drifted: string[] = [];
-
-    // Registry commands
-    for (const [name, SkillClass] of Object.entries(skillRegistry)) {
-      if (!isCommandSkill(name)) continue;
-      const instance = new (SkillClass as new () => BaseSkill)();
-      const expected = `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${name} skill to execute this command.\n`;
-      const relPath = `dist/plugin/commands/${name}.md`;
+    const pluginCommandFiles = [...generated.entries()].filter(([p]) =>
+      p.startsWith("dist/plugin/commands/"),
+    );
+    for (const [relPath, expected] of pluginCommandFiles) {
       const absPath = path.join(ROOT, relPath);
       try {
         const actual = require("fs").readFileSync(absPath, "utf8");
@@ -548,62 +370,31 @@ describe("Plugin Output Freshness", () => {
         drifted.push(`${relPath}: missing`);
       }
     }
-
-    // Luca-specific command
-    const luSkillCmd = new LuSkill();
-    const expectedLu = `---\ndescription: "${luSkillCmd.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the lu skill to execute this command.\n`;
-    const relPathLu = "dist/plugin/commands/lu.md";
-    const absPathLu = path.join(ROOT, relPathLu);
-    try {
-      const actualLu = require("fs").readFileSync(absPathLu, "utf8");
-      if (actualLu !== expectedLu) {
-        drifted.push(`${relPathLu}: content differs`);
-      }
-    } catch {
-      drifted.push(`${relPathLu}: missing`);
-    }
-
     expect(drifted).toEqual([]);
   });
 
   test("plugin hook scripts match source", () => {
     const drifted: string[] = [];
-
-    for (const [_hookName, hookDef] of Object.entries(pluginHookRegistry)) {
-      const srcPath = path.join(hookScriptsDir, hookDef.script);
+    const pluginScriptFiles = [...generated.entries()].filter(([p]) =>
+      p.startsWith("dist/plugin/scripts/"),
+    );
+    for (const [relPath, expected] of pluginScriptFiles) {
+      const absPath = path.join(ROOT, relPath);
       try {
-        const srcContent = require("fs").readFileSync(srcPath, "utf8");
-        const pluginPath = path.join(
-          ROOT,
-          "dist",
-          "plugin",
-          "scripts",
-          hookDef.script,
-        );
-        try {
-          const pluginContent = require("fs").readFileSync(pluginPath, "utf8");
-          if (pluginContent !== srcContent) {
-            drifted.push(
-              `dist/plugin/scripts/${hookDef.script}: content differs`,
-            );
-          }
-        } catch {
-          drifted.push(`dist/plugin/scripts/${hookDef.script}: missing`);
+        const actual = require("fs").readFileSync(absPath, "utf8");
+        if (actual !== expected) {
+          drifted.push(`${relPath}: content differs`);
         }
       } catch {
-        drifted.push(`src/hooks/scripts/${hookDef.script}: source missing`);
+        drifted.push(`${relPath}: missing`);
       }
     }
-
     expect(drifted).toEqual([]);
   });
 
   test("plugin hooks.json matches source", () => {
-    const expectedConfig = generateClaudeHooksConfig(pluginHookRegistry, {
-      commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
-      wrapInHooksKey: true,
-    });
-    const expectedJson = JSON.stringify(expectedConfig, null, 2) + "\n";
+    const expectedJson = generated.get("dist/plugin/hooks/hooks.json");
+    expect(expectedJson).toBeDefined();
 
     const hooksJsonPath = path.join(
       ROOT,
@@ -617,19 +408,12 @@ describe("Plugin Output Freshness", () => {
     expect(actualJson).toBe(expectedJson);
   });
 
-  test("plugin.json matches source", async () => {
-    const version = await readVersion();
+  test("plugin.json matches source", () => {
+    const expectedJson = generated.get(
+      "dist/plugin/.claude-plugin/plugin.json",
+    );
+    expect(expectedJson).toBeDefined();
 
-    const manifest = generatePluginManifest({
-      name: "luca",
-      version,
-      description:
-        "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
-      author: { name: "Alec Sibilia" },
-      keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
-    });
-
-    const expectedJson = JSON.stringify(manifest, null, 2) + "\n";
     const pluginJsonPath = path.join(
       ROOT,
       "dist",
@@ -642,12 +426,12 @@ describe("Plugin Output Freshness", () => {
     expect(actualJson).toBe(expectedJson);
   });
 
-  test("marketplace.json matches source", async () => {
-    const version = await readVersion();
+  test("marketplace.json matches source", () => {
+    const expectedJson = generated.get(
+      "dist/plugin/.claude-plugin/marketplace.json",
+    );
+    expect(expectedJson).toBeDefined();
 
-    const marketplaceManifest = generateMarketplaceManifest(version);
-
-    const expectedJson = JSON.stringify(marketplaceManifest, null, 2) + "\n";
     const marketplaceJsonPath = path.join(
       ROOT,
       "dist",
@@ -660,21 +444,9 @@ describe("Plugin Output Freshness", () => {
     expect(actualJson).toBe(expectedJson);
   });
 
-  test("README.md matches source", async () => {
-    const version = await readVersion();
-    const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
-    const pluginAgentNames = [
-      ...Object.keys(agentRegistry),
-      "lu-executor",
-      "lu-planner",
-    ];
-    const pluginHookNames = Object.keys(pluginHookRegistry);
-
-    const expectedReadme = generateReadme(
-      pluginSkillNames,
-      pluginAgentNames,
-      pluginHookNames.length,
-    );
+  test("README.md matches source", () => {
+    const expectedReadme = generated.get("dist/plugin/README.md");
+    expect(expectedReadme).toBeDefined();
 
     const readmePath = path.join(ROOT, "dist", "plugin", "README.md");
     const actualReadme = require("fs").readFileSync(readmePath, "utf8");
