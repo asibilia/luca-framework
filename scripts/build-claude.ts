@@ -31,13 +31,15 @@ import { LuExecutorAgent } from "../src/agents/luca/lu-executor.agent";
 import { LuPlannerAgent } from "../src/agents/luca/lu-planner.agent";
 import { LuSkill } from "../src/skills/luca/lu.skill";
 import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
-import { ClaudeCompiler } from "../src/compilers/claude.compiler";
+import {
+  compileAgent,
+  compileSkill,
+  compileRule,
+} from "../src/compilers/compile";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
 import path from "path";
 
 async function main() {
-  const compiler = new ClaudeCompiler();
-
   // Define output directories
   const claudeDir = path.join(process.cwd(), ".claude");
   const agentsDir = path.join(claudeDir, "agents");
@@ -71,7 +73,7 @@ async function main() {
   for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
     try {
       const instance = new (AgentClass as new () => BaseAgent)();
-      const content = compiler.compileAgent(instance, "CLAUDE");
+      const content = compileAgent(instance, "CLAUDE");
       const outputPath = path.join(agentsDir, `${agentName}.md`);
       await Bun.write(outputPath, content);
       console.log(`✓ Generated .claude/agents/${agentName}.md`);
@@ -88,7 +90,7 @@ async function main() {
   const luExecutor = new LuExecutorAgent();
   await Bun.write(
     path.join(agentsDir, "lu-executor.md"),
-    compiler.compileAgent(luExecutor, "CLAUDE"),
+    compileAgent(luExecutor, "CLAUDE"),
   );
   console.log("✓ Generated .claude/agents/lu-executor.md");
   agentCount++;
@@ -96,7 +98,7 @@ async function main() {
   const luPlanner = new LuPlannerAgent();
   await Bun.write(
     path.join(agentsDir, "lu-planner.md"),
-    compiler.compileAgent(luPlanner, "CLAUDE"),
+    compileAgent(luPlanner, "CLAUDE"),
   );
   console.log("✓ Generated .claude/agents/lu-planner.md");
   agentCount++;
@@ -107,7 +109,7 @@ async function main() {
   for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
     try {
       const instance = new (SkillClass as new () => BaseSkill)();
-      const content = compiler.compileSkill(instance, "CLAUDE");
+      const content = compileSkill(instance, "CLAUDE");
       const skillDir = path.join(skillsDir, skillName);
       await ensureDir(skillDir);
       await Bun.write(path.join(skillDir, "SKILL.md"), content);
@@ -127,7 +129,7 @@ async function main() {
   await ensureDir(luSkillDir);
   await Bun.write(
     path.join(luSkillDir, "SKILL.md"),
-    compiler.compileSkill(luSkill, "CLAUDE"),
+    compileSkill(luSkill, "CLAUDE"),
   );
   console.log("✓ Generated .claude/skills/lu/SKILL.md");
   skillCount++;
@@ -138,7 +140,7 @@ async function main() {
   for (const [ruleName, RuleClass] of Object.entries(ruleRegistry)) {
     try {
       const instance = new (RuleClass as new () => BaseRule)();
-      const content = compiler.compileRule(instance, "CLAUDE");
+      const content = compileRule(instance, "CLAUDE");
       const outputPath = path.join(rulesDir, `${ruleName}.md`);
       await Bun.write(outputPath, content);
       console.log(`✓ Generated .claude/rules/${ruleName}.md`);
@@ -155,7 +157,7 @@ async function main() {
   const luWorkflowRule = new LuWorkflowRule();
   await Bun.write(
     path.join(rulesDir, "lu-workflow.md"),
-    compiler.compileRule(luWorkflowRule, "CLAUDE"),
+    compileRule(luWorkflowRule, "CLAUDE"),
   );
   console.log("✓ Generated .claude/rules/lu-workflow.md");
   ruleCount++;
@@ -249,7 +251,7 @@ main().catch((error) => {
     "  1. Ensure all source classes in src/ compile: bun build ./src/index.ts",
   );
   console.error(
-    "  2. Check that ClaudeCompiler exists in src/compilers/claude.compiler.ts",
+    "  2. Check that compile functions exist in src/compilers/compile.ts",
   );
   console.error(
     "  3. Verify the registries export correctly from src/*/index.ts",
