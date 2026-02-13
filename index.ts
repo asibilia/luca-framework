@@ -35,11 +35,23 @@ export { BaseAgentImpl } from "./src/agents/base/base-agent";
 export { BaseSkillImpl } from "./src/skills/base/base-skill";
 export { BaseRuleImpl } from "./src/rules/base/base-rule";
 
-// Compilers
-export { BaseCompiler } from "./src/compilers/base.compiler";
-export type { SupportedFormat } from "./src/compilers/base.compiler";
-export { CursorCompiler } from "./src/compilers/cursor.compiler";
-export { ClaudeCompiler } from "./src/compilers/claude.compiler";
+// Compilers (functional API)
+export {
+  compileAgent,
+  compileSkill,
+  compileRule,
+  compileAgentClaude,
+  compileAgentCursor,
+  compileAgentPlugin,
+  compileSkillClaude,
+  compileSkillCursor,
+  compileSkillPlugin,
+  compileRuleClaude,
+  compileRuleCursor,
+  compileRulePlugin,
+  validateFormat,
+} from "./src/compilers/compile";
+export type { SupportedFormat } from "./src/compilers/compile";
 
 // Luca-specific entities
 export { LuExecutorAgent } from "./src/agents/luca/lu-executor.agent";
