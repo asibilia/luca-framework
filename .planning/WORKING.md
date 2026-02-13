@@ -34,7 +34,12 @@
 
 ## Planning Notes
 
-<!-- Log planning decisions as they're made -->
+- **Plan 24-01 executed** (Tasks 1-3 complete):
+  - Task 1: Extracted NO_MATCHER_SENTINEL, COMMAND_EXCLUDED_PREFIXES, isCommandSkill()
+  - Task 2: Unified generateHooksConfig + generatePluginHooksConfig -> generateClaudeHooksConfig
+  - Task 3: Extracted generateMarketplaceManifest()
+  - Discovery: build-claude.ts, hook-registry.test.ts, and index.ts also needed updates (not in plan file list)
+  - All 938 tests pass, zero drift
 
 ---
 
