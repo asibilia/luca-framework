@@ -174,7 +174,7 @@ async function main() {
 
   // Copy hook scripts from src/hooks/scripts/ to .claude/hooks/
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
-  for (const [hookName, hookDef] of Object.entries(hookRegistry)) {
+  for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
     try {
       const srcPath = path.join(hookScriptsDir, hookDef.script);
       const destPath = path.join(hooksDir, hookDef.script);
