@@ -7,6 +7,7 @@
 import { CodeArchitectAgent } from "./general/code-architect.agent";
 import { CodeDeveloperAgent } from "./general/code-developer.agent";
 import { CodeSimplifierAgent } from "./general/code-simplifier.agent";
+import { LuDiscussResearcherAgent } from "./general/lu-discuss-researcher.agent";
 import { DxAdvocateAgent } from "./general/dx-advocate.agent";
 import { LuCodebaseMapperAgent } from "./general/lu-codebase-mapper.agent";
 import { LuCognitionAgent } from "./general/lu-cognition.agent";
@@ -57,6 +58,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-codebase-mapper": () => new LuCodebaseMapperAgent(),
   "lu-cognition": () => new LuCognitionAgent(),
   "lu-debugger": () => new LuDebuggerAgent(),
+  "lu-discuss-researcher": () => new LuDiscussResearcherAgent(),
   "lu-integration-checker": () => new LuIntegrationCheckerAgent(),
   "lu-learner": () => new LuLearnerAgent(),
   "lu-phase-researcher": () => new LuPhaseResearcherAgent(),

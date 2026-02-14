@@ -142,6 +142,7 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-project-researcher": "Research",
   "lu-research-synthesizer": "Research",
   "lu-codebase-mapper": "Research",
+  "lu-discuss-researcher": "Research",
   // Specialty
   "lu-roadmapper": "Specialty",
   "lu-pm-planner": "Specialty",
