@@ -2,19 +2,21 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.3.3 — Final Audit Sweep
-- **Current Phase:** Phase 28 (Build Script Cleanup) — pending
-- **Status:** v1.3.3 milestone created. Autopilot session active — cross-milestone mode.
+- **Current Milestone:** v1.4.0 — Developer Experience & Verification
+- **Current Phase:** Phase 30 (Dogfood Build Stability) — pending
+- **Status:** v1.4.0 milestone created. Autopilot session active — full-auto mode.
 - **Task Complexity:** N/A
-- **Last Updated:** 2026-02-13
-- **Last Activity:** v1.3.3 milestone setup — 2 phases, 10 requirements, sourced from v1.3.2 audit tech debt.
+- **Last Updated:** 2026-02-14
+- **Last Activity:** v1.4.0 milestone setup — 4 phases, 22 requirements, WSJF-prioritized from 11 backlog items.
 
 ## Progress
 
 ```
-v1.3.3: IN PROGRESS
-  Phase 28 (Build Script Cleanup):     ⬚ pending — BUILD-01..04
-  Phase 29 (Test Quality & Code Hygiene): ⬚ pending — REG-01, TEST-01..04, CLEAN-01
+v1.4.0: IN PROGRESS
+  Phase 30 (Dogfood Build Stability):        ⬚ pending — DOGFOOD-01..04
+  Phase 31 (TDD-First Verification):         ⬚ pending — TDD-01..06
+  Phase 32 (Auto-Discuss Research Agent):     ⬚ pending — AUTO-01..06
+  Phase 33 (Workflow Documentation):          ⬚ pending — DOCS-01..05
 ```
 
 ## Project Reference
@@ -22,16 +24,21 @@ v1.3.3: IN PROGRESS
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Last shipped:** v1.3.2 — Audit Tech Debt Cleanup
+**Last shipped:** v1.3.3 — Final Audit Sweep
 
 ## Git Context
 
-- **Ticket:** #10
-- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/10
-- **Branch:** feat/9-audit-tech-debt-cleanup
+- **Ticket:** #12
+- **Branch:** main (milestone setup)
 - **Base Branch:** main
 
 ## Previous Milestones
+
+### v1.3.3 — Final Audit Sweep ✅
+
+- Build script deprecation, pipeline decomposition, registry factory refactor
+- Drift test DRY-up, plugin spec async migration
+- 2 phases, 4 plans, 10 requirements, 992 tests
 
 ### v1.3.2 — Audit Tech Debt Cleanup ✅
 
@@ -41,59 +48,34 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ### v1.3.1 — Post-Audit Cleanup & Plugin Autocomplete ✅
 
-- Rule class name cleanup (CRIT-01), duplicate rule removal (CRIT-02)
-- Skill naming overhaul (29 skills renamed), command reference update (~430 refs)
+- Rule class name cleanup, skill naming overhaul (29 skills renamed)
 - Plugin autocomplete (38 command files), 938 tests
 
-### v1.3.0 — Claude Code Plugin Distribution ✅
-
-| Phase | Name                  | Status      | Requirements                            |
-| ----- | --------------------- | ----------- | --------------------------------------- |
-| 19    | Plugin Infrastructure | ✅ complete | PLUG-01 through PLUG-05 (all satisfied) |
-| 20    | Skills & Agents       | ✅ complete | PACK-01 through PACK-05 (all satisfied) |
-| 21    | Hooks & Runtime       | ✅ complete | HOOK-01 through HOOK-05 (all satisfied) |
-| 22    | Distribution          | ✅ complete | DIST-01 through DIST-05 (all satisfied) |
-| 23    | Integration Testing   | ✅ complete | TEST-01 through TEST-05 (all satisfied) |
-
-### v1.2.0 — Intelligent Agent Engine ✅
-
-| Phase | Name                | Status      | Requirements                              |
-| ----- | ------------------- | ----------- | ----------------------------------------- |
-| 14    | Exec & Verify Audit | ✅ complete | AUDIT-01 through AUDIT-05 (all satisfied) |
-| 15    | Cognition Audit     | ✅ complete | COGN-01 through COGN-05 (all satisfied)   |
-| 16    | Context-Modular     | ✅ complete | CTXM-01 through CTXM-06 (all satisfied)   |
-| 17    | Ralph Wiggum Loops  | ✅ complete | ITER-01 through ITER-07 (all satisfied)   |
-| 18    | Sprint Planner      | ✅ complete | PLAN-01 through PLAN-07 (all satisfied)   |
-
-## Pending Todos (10)
+## Pending Todos (9)
 
 ### Quality & Verification (backlog)
 
-- **TDD-first verification pattern** (workflow) — `.planning/todos/pending/tdd-first-verification-pattern.md`
+- **TDD-first verification pattern** — `.planning/todos/pending/tdd-first-verification-pattern.md` → Phase 31
 
-### Cognition & Memory (backlog)
+### Cognition & Memory (deferred to v1.5.0)
 
-- **Procedural memory layer** (workflow) — `.planning/todos/pending/procedural-memory-learned-skills.md`
-- **Mastra-inspired memory improvements** (workflow) — `.planning/todos/pending/mastra-inspired-memory-improvements.md`
+- **Procedural memory layer** — `.planning/todos/pending/procedural-memory-learned-skills.md`
+- **Mastra-inspired memory improvements** — `.planning/todos/pending/mastra-inspired-memory-improvements.md`
 
 ### Workflow & Architecture (backlog)
 
-- **Auto-discuss web research agent** (workflow) — `.planning/todos/pending/auto-discuss-web-research-agent.md`
-- **Opinionated tech stack code style guidelines** (workflow) — `.planning/todos/pending/opinionated-tech-stack-guidelines.md`
-- **Rename skills/agents to scope-oriented naming** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
-- **TS-driven state management** (architecture) — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md`
+- **Auto-discuss web research agent** — `.planning/todos/pending/auto-discuss-web-research-agent.md` → Phase 32
+- **Opinionated tech stack code style guidelines** — `.planning/todos/pending/opinionated-tech-stack-guidelines.md` (deferred to v1.6.0+)
+- **TS-driven state management** — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md` (consolidated with xstate, deferred to v1.5.0)
+- **XState workflow state package** — `.planning/todos/pending/xstate-workflow-state-package.md` (deferred to v1.5.0)
 
 ### Build (backlog)
 
-- **Dogfood build stability** (build) — `.planning/todos/pending/dogfood-build-stability.md`
-
-### Distribution (backlog)
-
-- **Package Luca as Claude Code plugin** (distribution) — `.planning/todos/pending/claude-code-plugin-packaging.md`
+- **Dogfood build stability** — `.planning/todos/pending/dogfood-build-stability.md` → Phase 30
 
 ### Documentation (backlog)
 
-- **Workflow mind map (Mermaid)** (docs) — `.planning/todos/pending/workflow-mind-map-mermaid.md`
+- **Workflow mind map (Mermaid)** — `.planning/todos/pending/workflow-mind-map-mermaid.md` → Phase 33
 
 ## Blockers
 
@@ -101,16 +83,17 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Session Continuity
 
-- **Last session:** 2026-02-13
-- **Stopped at:** v1.3.3 milestone created, autopilot cross-milestone in progress
+- **Last session:** 2026-02-14
+- **Stopped at:** v1.4.0 milestone created, autopilot full-auto in progress
 - **Resume file:** None
 
 ## Next Actions
 
-1. Execute Phase 28 (Build Script Cleanup)
-2. Execute Phase 29 (Test Quality & Code Hygiene)
-3. Create PR for v1.3.2 branch
+1. Execute Phase 30 (Dogfood Build Stability)
+2. Execute Phase 31 (TDD-First Verification) — parallel with Phase 30
+3. Execute Phase 32 (Auto-Discuss Research Agent) — after Phase 30
+4. Execute Phase 33 (Workflow Documentation) — after Phase 31
 
 ---
 
-_State last updated: 2026-02-13 (v1.3.3 milestone created)_
+_State last updated: 2026-02-14 (v1.4.0 milestone created)_
