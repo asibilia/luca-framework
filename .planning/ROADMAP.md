@@ -89,7 +89,8 @@
 
 **Plans:**
 
-- [ ] 37-01: TBD
+- [x] 37-01: Core types, procedure parser, PROCEDURES.md template, barrel exports, tests (Wave 1)
+- [x] 37-02: Recall, lifecycle, agent integration, build verification (Wave 2)
 
 ---
 

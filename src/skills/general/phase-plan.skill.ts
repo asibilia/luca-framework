@@ -69,6 +69,22 @@ Before planning begins, run cognitive pre-flight:
 
    Look for: relevant patterns, past decisions, known pitfalls
 
+2.5. **Recall relevant procedures from PROCEDURES.md**:
+
+   \\\`\\\`\\\`bash
+   # Read procedures file
+   PROCEDURES_CONTENT=\$(cat .planning/PROCEDURES.md 2>/dev/null || echo "")
+   \\\`\\\`\\\`
+
+   Filter active procedures relevant to the current phase by tags and description.
+   Select top 3-5 procedures by relevance score:
+   - Tag overlap with phase keywords (40% weight)
+   - Trigger similarity to phase description (40% weight)
+   - Historical success rate (20% weight)
+
+   Procedures are step-sequence templates from past successful executions.
+   The planner should consider them as starting points for task breakdown.
+
 3. **Initialize WORKING.md** for this planning session:
 
    \`\`\`markdown
@@ -85,6 +101,7 @@ Before planning begins, run cognitive pre-flight:
    - **Patterns**: [relevant patterns from MEMORY.md]
    - **Decisions**: [relevant decisions]
    - **Pitfalls**: [flagged pitfalls]
+   - **Procedures**: [relevant procedures from PROCEDURES.md]
 
    ## Planning Notes
 

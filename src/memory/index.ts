@@ -87,3 +87,30 @@ export { createContextMonitor } from "./context-monitor.ts";
 // ─── Memory Parsing ──────────────────────────────────────────────────────────
 
 export { parseMemoryFile } from "./memory-parser.ts";
+
+// ─── Procedure Types ────────────────────────────────────────────────────────
+
+export { procedureStepSchema, procedureEntrySchema } from "./types.ts";
+
+export type { ProcedureStep, ProcedureEntry } from "./types.ts";
+
+// ─── Procedure Parsing ──────────────────────────────────────────────────────
+
+export {
+  parseProcedureFile,
+  parseProcedureContent,
+  serializeProcedures,
+  generateProcedureId,
+} from "./procedure-parser.ts";
+
+// ─── Procedure Recall ───────────────────────────────────────────────────────
+
+export { recallProcedures } from "./procedure-recall.ts";
+
+// ─── Procedure Lifecycle ────────────────────────────────────────────────────
+
+export {
+  evaluateRetirement,
+  applyRetirement,
+  updateExecutionStats,
+} from "./procedure-lifecycle.ts";

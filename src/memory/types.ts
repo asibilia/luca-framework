@@ -339,3 +339,78 @@ export const compressionTriggerSchema = z.object({
 
 /** Compression trigger assessment with reasons and actions. */
 export type CompressionTrigger = z.infer<typeof compressionTriggerSchema>;
+
+// ─── Procedure Step Schema ─────────────────────────────────────────────────────
+
+/**
+ * A single step within a learned procedure.
+ *
+ * Steps are ordered instructions that form an executable recipe.
+ * Each step has an action description and optional metadata about
+ * expected output and tooling.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const procedureStepSchema = z.object({
+  /** Step number (1-indexed) */
+  order: z.number().int().positive(),
+  /** What to do in this step */
+  action: z.string(),
+  /** Expected output or artifact from this step */
+  expected_output: z.string().optional(),
+  /** Tool or agent to use for this step */
+  tool: z.string().optional(),
+});
+
+/** A single step within a learned procedure. */
+export type ProcedureStep = z.infer<typeof procedureStepSchema>;
+
+// ─── Procedure Entry Schema ────────────────────────────────────────────────────
+
+/**
+ * A learned procedure extracted from a successful execution.
+ *
+ * Procedures are executable step sequences (mini-skill templates) that
+ * capture "how to do it" knowledge. Unlike patterns (declarative insights),
+ * procedures are ordered, trackable recipes with success rate validation
+ * and retirement lifecycle.
+ *
+ * Stored in .planning/PROCEDURES.md, parsed by procedure-parser.ts.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const procedureEntrySchema = z.object({
+  /** Unique identifier (proc-<slug>) */
+  id: z.string(),
+  /** Procedure title */
+  title: z.string(),
+  /** When to use this procedure (trigger conditions) */
+  trigger: z.string(),
+  /** Ordered steps to execute */
+  steps: z.array(procedureStepSchema),
+  /** Domain tags from TAG-VOCABULARY.md */
+  tags: z.array(z.string()).default([]),
+  /** Agent that originated this procedure */
+  source_agent: z.string().default("general"),
+  /** Phase where this procedure was first extracted */
+  source_phase: z.number().int().optional(),
+  /** Number of times this procedure has been executed */
+  execution_count: z.number().int().nonnegative().default(0),
+  /** Number of successful executions */
+  success_count: z.number().int().nonnegative().default(0),
+  /** Computed success rate (success_count / execution_count, 0.0-1.0) */
+  success_rate: z.number().min(0).max(1).default(0),
+  /** ISO 8601 date when procedure was added */
+  added_at: z.string(),
+  /** ISO 8601 date when procedure was last executed */
+  last_executed_at: z.string().optional(),
+  /** Estimated token count */
+  token_estimate: z.number().int().nonnegative().default(0),
+  /** Whether this procedure is active or retired */
+  status: z.enum(["active", "retired"]).default("active"),
+  /** Reason for retirement (if retired) */
+  retirement_reason: z.string().optional(),
+});
+
+/** A learned procedure with ordered steps, success tracking, and lifecycle status. */
+export type ProcedureEntry = z.infer<typeof procedureEntrySchema>;
