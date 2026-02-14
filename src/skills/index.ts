@@ -46,6 +46,7 @@ import { RuleFileNamingSkill } from "./general/rule-file-naming.skill";
 import { RuleHarnessVerificationSkill } from "./general/rule-harness-verification.skill";
 import { RuleHookSkillBoundarySkill } from "./general/rule-hook-skill-boundary.skill";
 import { RuleLuWorkflowSkill } from "./general/rule-lu-workflow.skill";
+import { AutopilotSkill } from "./general/autopilot.skill";
 import { UpdateSkill } from "./general/update.skill";
 
 // Export base skill class
@@ -103,5 +104,6 @@ export const skillRegistry = {
   "rule-harness-verification": RuleHarnessVerificationSkill,
   "rule-hook-skill-boundary": RuleHookSkillBoundarySkill,
   "rule-lu-workflow": RuleLuWorkflowSkill,
+  autopilot: AutopilotSkill,
   update: UpdateSkill,
 };

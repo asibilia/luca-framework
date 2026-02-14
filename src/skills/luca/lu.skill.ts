@@ -155,6 +155,13 @@ Skill(skill: "session-plan")
 Skill(skill: "progress")
 \`\`\`
 
+**Autopilot mode (autonomous execution):**
+If task description is "autopilot" or \`--autopilot\` flag is passed, route to the autopilot orchestrator which drives backlog scan, roadmap revision, and multi-phase execution autonomously:
+\`\`\`
+Skill(skill: "autopilot", args: "<flags>")
+\`\`\`
+Supported flags: \`--oversight=flagged|milestone|phase|full-auto\`, \`--skip-backlog\`, \`--max-phases=N\`, \`--dry-run\`
+
 ### Step 5: Verification (always runs)
 
 After the handler skill completes, spawn lu-verifier:
