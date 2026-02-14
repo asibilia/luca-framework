@@ -55,8 +55,8 @@ Plans:
 
 Plans:
 
-- [ ] 27-01: Hook script hardening — path validation, input sanitization, documentation (Wave 1)
-- [ ] 27-02: Build pipeline hardening — root path guard, manifest constraints (Wave 1, parallel)
+- [x] 27-01: Hook script hardening — path validation, input sanitization, documentation (Wave 1)
+- [x] 27-02: Build pipeline hardening — root path guard, manifest constraints (Wave 1, parallel)
 
 ---
 
@@ -85,4 +85,4 @@ Phases 25 and 26 can execute in parallel after Phase 24 completes.
 
 ---
 
-_Roadmap updated: 2026-02-13 (Phase 26 complete)_
+_Roadmap updated: 2026-02-13 (Phase 27 complete — v1.3.2 milestone complete)_

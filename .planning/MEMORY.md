@@ -309,6 +309,21 @@
   - **Tags**: [patterns, verification, testing]
   - **Confidence**: High
   - **Added**: 2026-02-13
+- **[Phase 27] Path whitelisting as security hardening for CLI tools**: Hook scripts that accept file paths from the IDE/CLI must validate paths against a whitelist. Pattern: reject relative paths (`./`, `../`), reject paths outside expected scope (`$HOME`), use explicit validation before any file operations. Applied to context-monitor.sh (SEC-01). Prevents path traversal attacks and accidentally reading sensitive files outside the project. Validated in Phase 27 (SEC-01 requirement, 2 commits)
+  - **When to use**: When implementing hooks or utilities that operate on user-provided file paths
+  - **Tags**: [patterns, security, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 27] String sanitization for error messages in security context**: Errors returned to callers can leak sensitive data (credentials, tokens). Sanitization pattern: define an allowlist of safe characters (alphanumeric, underscore, hyphen), apply truncation (100 chars max), use regex chain to strip known bad patterns (Basic auth, Bearer tokens, long Base64). Applied to session-persist.sh END_REASON field (SEC-02). Prevents credential leakage in error paths. Validated in Phase 27 (SEC-02 requirement, 1 commit)
+  - **When to use**: When handling user-facing error messages that may contain sensitive data
+  - **Tags**: [patterns, security, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 27] Surgical schema validation over blanket size limits**: Instead of adding generic max-length constraints to all schema fields, audit actual field usage to determine realistic bounds. Phase 27: description field set to .max(500) (used by CLI help), keywords set to .max(20) items with .min(1).max(50) per item (used by marketplace search). Bounds justified by use case, not arbitrary. Prevents over-restrictive validation. Applied to pluginManifestSchema (SEC-04). Validated in Phase 27 (SEC-04 requirement, 1 commit)
+  - **When to use**: When hardening schema validation, especially for user-facing configuration fields
+  - **Tags**: [patterns, security, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
 
 ### Established Conventions
 
@@ -594,6 +609,12 @@
   - **Tags**: [pitfalls, testing, verification]
   - **Confidence**: High
   - **Added**: 2026-02-13
+- **[Phase 27] Recursive deletion functions need root path guards**: cleanDirectory() in build-utils.ts uses Bun.file().delete() recursively. Without a check that the target path is within expected bounds (e.g., always inside `./.claude/`, `./.cursor/`, or `./dist/`), a misconfiguration or parameter injection could delete /home, /var, or other critical system directories. Phase 27 added assertSafeCleanTarget() guard that validates the absolute path starts with one of the expected output roots. Caught by harness tests (SEC-03 requirement). Pattern: guard all recursive deletion with path prefix validation
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, tooling-general]
+  - **Tags**: [pitfalls, security, coding]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
 
 ### Anti-patterns
 
@@ -649,13 +670,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 76 (+4 Phase 26: zero-state refactor, two-wave migration, consolidation, drift gate)
-- Total decisions: 38 (+1 Phase 26: compiler architecture)
-- Total pitfalls: 48 (+2 Phase 26: integration overestimation, dispatch-parity tests)
+- Total patterns: 80 (+4 Phase 27: path whitelisting, string sanitization, surgical schema validation, schema bounds by use case)
+- Total decisions: 38 (no change)
+- Total pitfalls: 49 (+1 Phase 27: recursive deletion path guards)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-13
 
-_Entries added by: lu-learner (Phase 26 learning extraction)_
+_Entries added by: lu-learner (Phase 27 learning extraction)_
 _Last curated: 2026-02-13_
