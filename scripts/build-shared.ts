@@ -32,10 +32,6 @@ import { skillRegistry } from "../src/skills/index";
 import type { BaseAgent } from "../src/agents/types/agent.types";
 import type { BaseSkill } from "../src/skills/types/skill.types";
 import type { BaseRule } from "../src/rules/types/rule.types";
-import { LuExecutorAgent } from "../src/agents/luca/lu-executor.agent";
-import { LuPlannerAgent } from "../src/agents/luca/lu-planner.agent";
-import { LuSkill } from "../src/skills/luca/lu.skill";
-import { LuWorkflowRule } from "../src/rules/lu-workflow.rule";
 import {
   compileAgent,
   compileSkill,
@@ -395,27 +391,12 @@ export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
 // Re-export hook config generators for consumers
 export { generateCursorHooksConfig, generateClaudeHooksConfig };
 
-/**
- * Generate all build outputs in memory.
- *
- * Runs every compiler (Cursor, Claude, Plugin) against every registry entity
- * and Luca-specific entity, producing a Map of relative file paths to their
- * generated content strings.
- *
- * Consumers use this Map differently:
- * - build-all.ts: writes each entry to disk
- * - check-drift.ts: compares each entry against committed files
- * - check-drift.test.ts: uses entries for freshness assertions
- *
- * The special key `.claude/settings.json__hooks` contains the hooks config
- * fragment (not a standalone file); build-all.ts merges it into settings.json.
- *
- * @returns Map of relative file paths to content strings
- */
-export async function generateAllOutputs(): Promise<Map<string, string>> {
-  const generated = new Map<string, string>();
+// ---------------------------------------------------------------------------
+// Sub-functions for generateAllOutputs()
+// Each handles one entity type, writing to the shared generated Map.
+// ---------------------------------------------------------------------------
 
-  // --- Agents ---
+function generateAgentOutputs(generated: Map<string, string>): void {
   for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
     const instance = new (AgentClass as new () => BaseAgent)();
     generated.set(
@@ -431,37 +412,9 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
       compileAgent(instance, "PLUGIN"),
     );
   }
+}
 
-  // Luca-specific agents
-  const luExecutor = new LuExecutorAgent();
-  generated.set(
-    ".claude/agents/lu-executor.md",
-    compileAgent(luExecutor, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/agents/lu-executor.md",
-    compileAgent(luExecutor, "CURSOR"),
-  );
-  generated.set(
-    "dist/plugin/agents/lu-executor.md",
-    compileAgent(luExecutor, "PLUGIN"),
-  );
-
-  const luPlanner = new LuPlannerAgent();
-  generated.set(
-    ".claude/agents/lu-planner.md",
-    compileAgent(luPlanner, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/agents/lu-planner.md",
-    compileAgent(luPlanner, "CURSOR"),
-  );
-  generated.set(
-    "dist/plugin/agents/lu-planner.md",
-    compileAgent(luPlanner, "PLUGIN"),
-  );
-
-  // --- Skills ---
+function generateSkillOutputs(generated: Map<string, string>): void {
   for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
     const instance = new (SkillClass as new () => BaseSkill)();
     generated.set(
@@ -477,17 +430,9 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
       compileSkill(instance, "PLUGIN"),
     );
   }
+}
 
-  // Luca-specific skill
-  const luSkill = new LuSkill();
-  generated.set(".claude/skills/lu/SKILL.md", compileSkill(luSkill, "CLAUDE"));
-  generated.set(".cursor/skills/lu/SKILL.md", compileSkill(luSkill, "CURSOR"));
-  generated.set(
-    "dist/plugin/skills/lu/SKILL.md",
-    compileSkill(luSkill, "PLUGIN"),
-  );
-
-  // --- Rules ---
+function generateRuleOutputs(generated: Map<string, string>): void {
   for (const [ruleName, RuleClass] of Object.entries(ruleRegistry)) {
     const instance = new (RuleClass as new () => BaseRule)();
     generated.set(
@@ -499,20 +444,14 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
       compileRule(instance, "CURSOR"),
     );
   }
+}
 
-  // Luca-specific rule
-  const luWorkflowRule = new LuWorkflowRule();
-  generated.set(
-    ".claude/rules/lu-workflow.md",
-    compileRule(luWorkflowRule, "CLAUDE"),
-  );
-  generated.set(
-    ".cursor/rules/lu-workflow.mdc",
-    compileRule(luWorkflowRule, "CURSOR"),
-  );
-
-  // --- Hook scripts ---
+async function generateHookOutputs(
+  generated: Map<string, string>,
+): Promise<void> {
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+
+  // Copy hook scripts to .claude/ and .cursor/
   for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
     const srcPath = path.join(hookScriptsDir, hookDef.script);
     const srcFile = Bun.file(srcPath);
@@ -523,8 +462,7 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     }
   }
 
-  // --- Settings/hooks configs ---
-  // For settings.json, we only store the "hooks" key as a fragment
+  // Claude settings.json hooks fragment
   const hooksConfig = generateClaudeHooksConfig(hookRegistry, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
   });
@@ -533,13 +471,20 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     JSON.stringify(hooksConfig, null, 2),
   );
 
+  // Cursor hooks.json
   const cursorHooksConfig = generateCursorHooksConfig(hookRegistry);
   generated.set(
     ".cursor/hooks.json",
     JSON.stringify(cursorHooksConfig, null, 2) + "\n",
   );
+}
 
-  // --- Plugin commands ---
+async function generatePluginOutputs(
+  generated: Map<string, string>,
+): Promise<void> {
+  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+
+  // Plugin commands (from skill registry, excluding internal prefixes)
   for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
     if (!isCommandSkill(skillName)) continue;
     const instance = new (SkillClass as new () => BaseSkill)();
@@ -549,20 +494,13 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     );
   }
 
-  // Luca-specific command
-  generated.set(
-    "dist/plugin/commands/lu.md",
-    `---\ndescription: "${luSkill.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the lu skill to execute this command.\n`,
-  );
-
-  // --- Plugin hooks ---
+  // Plugin hooks (excluding dev-only hooks)
   const pluginHookRegistry = Object.fromEntries(
     Object.entries(hookRegistry).filter(
       ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
     ),
   );
 
-  // Plugin hook scripts
   for (const [_name, def] of Object.entries(pluginHookRegistry)) {
     const srcPath = path.join(hookScriptsDir, def.script);
     const srcFile = Bun.file(srcPath);
@@ -581,7 +519,7 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     JSON.stringify(pluginHooksConfig, null, 2) + "\n",
   );
 
-  // --- Plugin manifest (plugin.json) ---
+  // Plugin manifest (plugin.json)
   const version = await readVersion();
 
   const manifest = generatePluginManifest({
@@ -598,7 +536,7 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     JSON.stringify(manifest, null, 2) + "\n",
   );
 
-  // --- Marketplace manifest ---
+  // Marketplace manifest
   const marketplaceManifest = generateMarketplaceManifest(version);
 
   generated.set(
@@ -606,21 +544,48 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
     JSON.stringify(marketplaceManifest, null, 2) + "\n",
   );
 
-  // --- README ---
-  const pluginAgentNames = [
-    ...Object.keys(agentRegistry),
-    "lu-executor",
-    "lu-planner",
-  ];
-  const pluginSkillNames = [...Object.keys(skillRegistry), "lu"];
-  const pluginHookNames = Object.keys(pluginHookRegistry);
+  // README (all names now come directly from registries)
+  const pluginAgentNames = Object.keys(agentRegistry);
+  const pluginSkillNames = Object.keys(skillRegistry);
+  const pluginHookCount = Object.keys(pluginHookRegistry).length;
 
   const readmeContent = generateReadme(
     pluginSkillNames,
     pluginAgentNames,
-    pluginHookNames.length,
+    pluginHookCount,
   );
   generated.set("dist/plugin/README.md", readmeContent);
+}
+
+/**
+ * Generate all build outputs in memory.
+ *
+ * Runs every compiler (Cursor, Claude, Plugin) against every registry entity,
+ * producing a Map of relative file paths to their generated content strings.
+ * All entities (including Luca-specific ones) are discovered via registries —
+ * no special-casing required.
+ *
+ * Consumers use this Map differently:
+ * - build-all.ts: writes each entry to disk
+ * - check-drift.ts: compares each entry against committed files
+ * - check-drift.test.ts: uses entries for freshness assertions
+ *
+ * The special key `.claude/settings.json__hooks` contains the hooks config
+ * fragment (not a standalone file); build-all.ts merges it into settings.json.
+ *
+ * @returns Map of relative file paths to content strings
+ */
+export async function generateAllOutputs(): Promise<Map<string, string>> {
+  const generated = new Map<string, string>();
+
+  // Synchronous entity compilation
+  generateAgentOutputs(generated);
+  generateSkillOutputs(generated);
+  generateRuleOutputs(generated);
+
+  // Async outputs (file I/O for hook scripts, version reading)
+  await generateHookOutputs(generated);
+  await generatePluginOutputs(generated);
 
   return generated;
 }

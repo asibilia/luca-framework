@@ -29,6 +29,10 @@ import { SecurityAuditorAgent } from "./general/security-auditor.agent";
 import { UiAgent } from "./general/ui.agent";
 import { UxAgent } from "./general/ux.agent";
 
+// Import Luca-specific agents
+import { LuExecutorAgent } from "./luca/lu-executor.agent";
+import { LuPlannerAgent } from "./luca/lu-planner.agent";
+
 // Export base agent class
 export { BaseAgentImpl } from "./base/base-agent";
 
@@ -66,4 +70,7 @@ export const agentRegistry = {
   "security-auditor": SecurityAuditorAgent,
   ui: UiAgent,
   ux: UxAgent,
+  // Luca-specific agents (previously compiled separately)
+  "lu-executor": LuExecutorAgent,
+  "lu-planner": LuPlannerAgent,
 };

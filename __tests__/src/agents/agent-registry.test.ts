@@ -1,54 +1,50 @@
 import { test, expect, describe } from "bun:test";
 import { readdir } from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 import { agentRegistry } from "../../../src/agents/index";
 import type { BaseAgent } from "../../../src/agents/types/agent.types";
 
-const GENERAL_AGENTS_DIR = path.join(
-  import.meta.dir,
-  "../../../src/agents/general",
-);
+const AGENTS_ROOT = path.join(import.meta.dir, "../../../src/agents");
+const GENERAL_AGENTS_DIR = path.join(AGENTS_ROOT, "general");
+const LUCA_AGENTS_DIR = path.join(AGENTS_ROOT, "luca");
+
+/** Collect all .agent.ts file stems from a directory (if it exists). */
+async function agentNamesInDir(dir: string): Promise<string[]> {
+  if (!existsSync(dir)) return [];
+  const files = await readdir(dir);
+  return files
+    .filter((f) => f.endsWith(".agent.ts"))
+    .map((f) => f.replace(".agent.ts", ""));
+}
 
 describe("agent registry completeness", () => {
-  test("has entry for every source file in src/agents/general/", async () => {
-    // lu-executor and lu-planner live in src/agents/general/ but are compiled
-    // separately as Luca-specific agents (imported via src/agents/luca/)
-    const lucaSpecificInGeneral = ["lu-executor", "lu-planner"];
-    const files = await readdir(GENERAL_AGENTS_DIR);
-    const agentFiles = files
-      .filter((f) => f.endsWith(".agent.ts"))
-      .map((f) => f.replace(".agent.ts", ""))
-      .filter((f) => !lucaSpecificInGeneral.includes(f));
+  test("has entry for every source file in src/agents/general/ and luca/", async () => {
+    const generalAgents = await agentNamesInDir(GENERAL_AGENTS_DIR);
+    const lucaAgents = await agentNamesInDir(LUCA_AGENTS_DIR);
+    const allAgents = [...new Set([...generalAgents, ...lucaAgents])];
 
-    for (const agentName of agentFiles) {
+    for (const agentName of allAgents) {
       expect(agentRegistry).toHaveProperty(agentName);
     }
   });
 
   test("has no extra entries beyond source files", async () => {
-    const files = await readdir(GENERAL_AGENTS_DIR);
-    const agentFiles = files
-      .filter((f) => f.endsWith(".agent.ts"))
-      .map((f) => f.replace(".agent.ts", ""));
+    const generalAgents = await agentNamesInDir(GENERAL_AGENTS_DIR);
+    const lucaAgents = await agentNamesInDir(LUCA_AGENTS_DIR);
+    const allAgents = [...new Set([...generalAgents, ...lucaAgents])];
 
     const registryKeys = Object.keys(agentRegistry);
     for (const key of registryKeys) {
-      expect(agentFiles).toContain(key);
+      expect(allAgents).toContain(key);
     }
   });
 
-  test("registry size matches source files minus luca-specific exclusions", async () => {
-    const files = await readdir(GENERAL_AGENTS_DIR);
-    const agentFiles = files
-      .filter((f) => f.endsWith(".agent.ts"))
-      .map((f) => f.replace(".agent.ts", ""));
-    // lu-executor and lu-planner live in src/agents/general/ but are imported
-    // separately by build scripts, not included in the general registry
-    const lucaSpecificInGeneral = ["lu-executor", "lu-planner"];
-    const expectedCount = agentFiles.filter(
-      (f) => !lucaSpecificInGeneral.includes(f),
-    ).length;
-    expect(Object.keys(agentRegistry).length).toBe(expectedCount);
+  test("registry size matches deduplicated source file count", async () => {
+    const generalAgents = await agentNamesInDir(GENERAL_AGENTS_DIR);
+    const lucaAgents = await agentNamesInDir(LUCA_AGENTS_DIR);
+    const allAgents = new Set([...generalAgents, ...lucaAgents]);
+    expect(Object.keys(agentRegistry).length).toBe(allAgents.size);
   });
 
   test("every entry can be instantiated", () => {

@@ -49,6 +49,9 @@ import { RuleLuWorkflowSkill } from "./general/rule-lu-workflow.skill";
 import { AutopilotSkill } from "./general/autopilot.skill";
 import { UpdateSkill } from "./general/update.skill";
 
+// Import Luca-specific skill
+import { LuSkill } from "./luca/lu.skill";
+
 // Export base skill class
 export { BaseSkillImpl } from "./base/base-skill";
 
@@ -106,4 +109,6 @@ export const skillRegistry = {
   "rule-lu-workflow": RuleLuWorkflowSkill,
   autopilot: AutopilotSkill,
   update: UpdateSkill,
+  // Luca-specific skill (previously compiled separately)
+  lu: LuSkill,
 };

@@ -19,8 +19,8 @@
 
 Plans:
 
-- [ ] 28-01: Deprecate build-claude.ts/build-cursor.ts, move hook config to src/hooks/ (Wave 1)
-- [ ] 28-02: Decompose generateAllOutputs(), register Luca entities in registries (Wave 2)
+- [x] 28-01: Deprecate build-claude.ts/build-cursor.ts, move hook config to src/hooks/ (Wave 1)
+- [x] 28-02: Decompose generateAllOutputs(), register Luca entities in registries (Wave 2)
 
 ### Phase 29: Test Quality & Code Hygiene
 

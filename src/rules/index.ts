@@ -22,6 +22,9 @@ import { SchemaFirstParsingRule } from "./general/schema-first-parsing.rule";
 import { SelfImproveRule } from "./general/self_improve.rule";
 import { UseBunRule } from "./general/use-bun-instead-of-node-vite-npm-pnpm.rule";
 
+// Import Luca-specific rule
+import { LuWorkflowRule } from "./lu-workflow.rule";
+
 // Export base rule class
 export { BaseRuleImpl } from "./base/base-rule";
 
@@ -52,4 +55,6 @@ export const ruleRegistry = {
   "schema-first-parsing": SchemaFirstParsingRule,
   self_improve: SelfImproveRule,
   "use-bun-instead-of-node-vite-npm-pnpm": UseBunRule,
+  // Luca-specific rule (previously compiled separately)
+  "lu-workflow": LuWorkflowRule,
 };
