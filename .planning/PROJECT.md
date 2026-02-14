@@ -8,11 +8,11 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.3.1 — Shipped)
+## Current State (v1.3.2 — Shipped)
 
-**Last Shipped:** v1.3.1 — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12)
+**Last Shipped:** v1.3.2 — Audit Tech Debt Cleanup (2026-02-13)
 
-The Luca framework is now a distributable Claude Code plugin with clean naming conventions, full "/" autocomplete support, and 938 passing tests. Built on the v1.2.0 intelligent agent engine and v1.3.0 plugin distribution infrastructure, v1.3.1 resolves all critical audit findings, adopts scope-first skill naming for plugin namespace clarity, and generates command stub files for autocomplete discovery.
+The Luca framework codebase is now audit-clean with zero remaining findings from the v1.3.0 milestone audit. Build pipeline consolidated into a single `generateAllOutputs()` hub, compiler architecture refactored from classes to pure functions, Bun API migration completed, and 5 security hardening measures implemented. 992 passing tests, 309 build outputs with zero drift.
 
 **Capabilities (shipped):**
 
@@ -38,28 +38,17 @@ The Luca framework is now a distributable Claude Code plugin with clean naming c
 - **v1.2.0** — Intelligent Agent Engine (2026-02-12). 5 phases, 25 plans, 29 requirements, 845 tests. Verification audit, cognition profiling, context isolation, iterative loops, sprint planning.
 - **v1.3.0** — Claude Code Plugin Distribution (2026-02-12). 5 phases, 19 plans, 25 requirements, 928 tests. Plugin compiler, skills/agents packaging, hooks runtime, marketplace distribution, integration testing.
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12). 171 files, 938 tests. Rule class cleanup, skill naming overhaul, plugin autocomplete commands.
+- **v1.3.2** — Audit Tech Debt Cleanup (2026-02-13). 4 phases, 8 plans, 17 requirements, 992 tests. Build pipeline consolidation, compiler functional refactor, Bun API migration, security hardening.
 
-## Current Milestone: v1.3.2 — Audit Tech Debt Cleanup
+## Next Milestone Goals
 
-Address all remaining findings from the v1.3.0 audit (12 HIGH, 18 MEDIUM, 18 LOW). Focuses on build pipeline consolidation, Bun API migration, compiler architecture refactor, security hardening, and code hygiene.
-
-**17 requirements across 6 categories:**
-
-- Build Pipeline Consolidation (4): Extract shared compilation pipeline, marketplace manifest, parameterized hook config
-- Test Quality (2): Extract shared test utilities, remove unused variables
-- Bun API Migration (2): Migrate build-utils.ts and check-drift.test.ts from node:fs to Bun APIs
-- Compiler Architecture (1): Refactor BaseCompiler class hierarchy to factory-function pattern
-- Security Hardening (5): Validate paths, sanitize inputs, add guards and constraints
-- Code Hygiene (4): Fix unused variables, remove dead parameters, add consistency
-
-## Next Milestone Goals (Post-v1.3.2)
-
-- **Additional Stack Templates**: Python, Node.js, Next.js
-- **Multi-project Support**: Support monorepos with multiple projects
-- **Cross-IDE Support**: VS Code extension
-- **Agent Marketplace**: Registry for sharing agents and skills
+- **TS-Driven State Management**: Offload deterministic file reads/writes from LLM to Bun scripts
 - **Procedural Memory Layer**: 4th memory type for learned skills/procedures
 - **TDD-First Verification**: Test-driven generative development pattern
+- **Dogfood Build Stability**: Stable self-referential plugin consumption
+- **Additional Stack Templates**: Python, Node.js, Next.js
+- **Multi-project Support**: Support monorepos with multiple projects
+- **Agent Marketplace**: Registry for sharing agents and skills
 
 ## Requirements
 
@@ -120,4 +109,4 @@ Address all remaining findings from the v1.3.0 audit (12 HIGH, 18 MEDIUM, 18 LOW
 
 ---
 
-_Last updated: 2026-02-12 — v1.3.2 milestone started_
+_Last updated: 2026-02-13 — v1.3.2 shipped_
