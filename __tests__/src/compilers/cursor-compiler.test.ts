@@ -1,60 +1,71 @@
 /**
- * Unit tests for CursorCompiler
+ * Unit tests for Cursor-format compile functions
  *
- * Tests compileAgent, compileSkill, compileRule delegation
- * and format validation.
+ * Tests compileAgentCursor, compileSkillCursor, compileRuleCursor,
+ * and the format-dispatching compileAgent/compileSkill/compileRule
+ * with "CURSOR" format.
  */
-import { describe, test, expect } from 'bun:test';
-import { CursorCompiler } from '../../../src/compilers/cursor.compiler';
-import { BaseAgentImpl } from '../../../src/agents/base/base-agent';
-import { BaseSkillImpl } from '../../../src/skills/base/base-skill';
-import { BaseRuleImpl } from '../../../src/rules/base/base-rule';
-import type { AgentConfig } from '../../../src/agents/types/agent.types';
-import type { SkillConfig } from '../../../src/skills/types/skill.types';
-import type { RuleConfig } from '../../../src/rules/types/rule.types';
-import { validAgentConfig, validSkillConfig, validRuleConfig } from '../../utils/fixtures';
+import { describe, test, expect } from "bun:test";
+import {
+  compileAgentCursor,
+  compileSkillCursor,
+  compileRuleCursor,
+  compileAgent,
+  compileSkill,
+  compileRule,
+} from "../../../src/compilers/compile";
+import { TestAgent, TestSkill, TestRule } from "../../utils/test-entities";
+import {
+  validAgentConfig,
+  validSkillConfig,
+  validRuleConfig,
+} from "../../utils/fixtures";
 
-// Concrete subclasses for the abstract base classes
-class TestAgent extends BaseAgentImpl {
-  constructor(config: AgentConfig) { super(config); }
-}
-class TestSkill extends BaseSkillImpl {
-  constructor(config: SkillConfig) { super(config); }
-}
-class TestRule extends BaseRuleImpl {
-  constructor(config: RuleConfig) { super(config); }
-}
-
-describe('CursorCompiler', () => {
-  const compiler = new CursorCompiler();
-
-  test('compileAgent delegates to agent.toCursorFormat()', () => {
+describe("Cursor-format compile functions", () => {
+  test("compileAgentCursor delegates to agent.toCursorFormat()", () => {
     const agent = new TestAgent(validAgentConfig);
-    const result = compiler.compileAgent(agent, 'CURSOR');
+    const result = compileAgentCursor(agent);
     expect(result).toBe(agent.toCursorFormat());
   });
 
-  test('compileSkill delegates to skill.toCursorFormat()', () => {
+  test("compileSkillCursor delegates to skill.toCursorFormat()", () => {
     const skill = new TestSkill(validSkillConfig);
-    const result = compiler.compileSkill(skill, 'CURSOR');
+    const result = compileSkillCursor(skill);
     expect(result).toBe(skill.toCursorFormat());
   });
 
-  test('compileRule delegates to rule.toCursorFormat()', () => {
+  test("compileRuleCursor delegates to rule.toCursorFormat()", () => {
     const rule = new TestRule(validRuleConfig);
-    const result = compiler.compileRule(rule, 'CURSOR');
+    const result = compileRuleCursor(rule);
     expect(result).toBe(rule.toCursorFormat());
   });
 
-  test('compileAgent throws on unsupported format', () => {
+  test("compileAgent with CURSOR format matches compileAgentCursor", () => {
     const agent = new TestAgent(validAgentConfig);
-    expect(() => compiler.compileAgent(agent, 'UNKNOWN' as any)).toThrow('Unsupported format');
+    expect(compileAgent(agent, "CURSOR")).toBe(compileAgentCursor(agent));
   });
 
-  test('compileAgent returns string containing YAML frontmatter', () => {
+  test("compileSkill with CURSOR format matches compileSkillCursor", () => {
+    const skill = new TestSkill(validSkillConfig);
+    expect(compileSkill(skill, "CURSOR")).toBe(compileSkillCursor(skill));
+  });
+
+  test("compileRule with CURSOR format matches compileRuleCursor", () => {
+    const rule = new TestRule(validRuleConfig);
+    expect(compileRule(rule, "CURSOR")).toBe(compileRuleCursor(rule));
+  });
+
+  test("compileAgent throws on unsupported format", () => {
     const agent = new TestAgent(validAgentConfig);
-    const result = compiler.compileAgent(agent, 'CURSOR');
-    expect(result).toContain('---');
-    expect(result).toContain('name: test-agent');
+    expect(() => compileAgent(agent, "UNKNOWN" as any)).toThrow(
+      "Unsupported format",
+    );
+  });
+
+  test("compileAgentCursor returns string containing YAML frontmatter", () => {
+    const agent = new TestAgent(validAgentConfig);
+    const result = compileAgentCursor(agent);
+    expect(result).toContain("---");
+    expect(result).toContain("name: test-agent");
   });
 });

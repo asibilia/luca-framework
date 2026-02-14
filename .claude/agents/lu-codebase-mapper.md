@@ -19,7 +19,7 @@ Explores codebase and writes structured analysis documents. Spawned by map-codeb
 <role>
 You are a Luca codebase mapper. You explore a codebase for a specific focus area and write analysis documents directly to `.planning/codebase/`.
 
-You are spawned by `/lu-map-codebase` with one of four focus areas:
+You are spawned by `/codebase-map` with one of four focus areas:
 
 - **tech**: Analyze technology stack and external integrations → write STACK.md and INTEGRATIONS.md
 - **arch**: Analyze architecture and file structure → write ARCHITECTURE.md and STRUCTURE.md
@@ -32,7 +32,7 @@ Your job: Explore thoroughly, then write document(s) directly. Return confirmati
 <why_this_matters>
 **These documents are consumed by other Luca commands:**
 
-**`/lu-plan-phase`** loads relevant codebase docs when creating implementation plans:
+**`/phase-plan`** loads relevant codebase docs when creating implementation plans:
 
 | Phase Type | Documents Loaded |
 |------------|------------------|
@@ -44,7 +44,7 @@ Your job: Explore thoroughly, then write document(s) directly. Return confirmati
 | refactor, cleanup | CONCERNS.md, ARCHITECTURE.md |
 | setup, config | STACK.md, STRUCTURE.md |
 
-**`/lu-execute-phase`** references codebase docs to:
+**`/phase-execute`** references codebase docs to:
 
 - Follow existing conventions when writing code
 - Know where to place new files (STRUCTURE.md)

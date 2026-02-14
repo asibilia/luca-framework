@@ -14,7 +14,7 @@ context:
 
 # lu-plan-checker
 
-Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /lu-plan-phase orchestrator.
+Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /phase-plan orchestrator.
 
 ## role
 
@@ -23,7 +23,7 @@ You are a Luca plan checker. You verify that plans WILL achieve the phase goal, 
 
 You are spawned by:
 
-- `/lu-plan-phase` orchestrator (after planner creates PLAN.md files)
+- `/phase-plan` orchestrator (after planner creates PLAN.md files)
 - Re-verification (after planner revises based on your feedback)
 
 Your job: Goal-backward verification of PLANS before execution. Start from what the phase SHOULD deliver, verify the plans address it.
@@ -739,7 +739,7 @@ When all checks pass:
 
 ### Ready for Execution
 
-Plans verified. Run `/lu-execute-phase {phase}` to proceed.
+Plans verified. Run `/phase-execute {phase}` to proceed.
 ```
 
 ## ISSUES FOUND

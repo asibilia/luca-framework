@@ -18,55 +18,23 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import path from "path";
 
 import {
   pluginManifestSchema,
   KEBAB_CASE_REGEX,
 } from "../src/compilers/plugin.types";
-
-const PLUGIN_ROOT = path.resolve(import.meta.dir, "..", "dist", "plugin");
-
-/**
- * Complete set of valid Claude Code hook event types.
- *
- * @see https://docs.anthropic.com/en/docs/claude-code/hooks
- */
-const VALID_CLAUDE_CODE_EVENTS = new Set([
-  "PreToolUse",
-  "PostToolUse",
-  "Notification",
-  "Stop",
-  "SubagentTool",
-  "SessionStart",
-  "SessionEnd",
-]);
-
-/**
- * Extracts simple YAML frontmatter key-value pairs from markdown content.
- *
- * Handles the `---` delimited frontmatter block at the start of a file.
- * Only parses single-line `key: value` pairs (sufficient for SKILL.md
- * description fields).
- *
- * @param content - Raw markdown file content
- * @returns Parsed key-value pairs, or null if no frontmatter found
- */
-function extractFrontmatter(content: string): Record<string, string> | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return null;
-  const fields: Record<string, string> = {};
-  for (const line of match[1]!.split("\n")) {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim();
-      const value = line.slice(colonIndex + 1).trim();
-      fields[key] = value;
-    }
-  }
-  return fields;
-}
+import {
+  VALID_CLAUDE_CODE_EVENTS,
+  PLUGIN_ROOT,
+  extractFrontmatter,
+  readText,
+  fileExists,
+  isDirectory,
+  listDir,
+  listSubdirs,
+  readJson,
+} from "./test-helpers";
 
 // ---------------------------------------------------------------------------
 // TEST-05: End-to-End Plugin Spec-Conformance
@@ -78,21 +46,19 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
   // -------------------------------------------------------------------------
 
   describe("Plugin Discovery", () => {
-    test("plugin root is a valid directory", () => {
-      expect(existsSync(PLUGIN_ROOT)).toBe(true);
-      expect(statSync(PLUGIN_ROOT).isDirectory()).toBe(true);
+    test("plugin root is a valid directory", async () => {
+      expect(await isDirectory(PLUGIN_ROOT)).toBe(true);
     });
 
-    test(".claude-plugin/plugin.json is discoverable and valid", () => {
+    test(".claude-plugin/plugin.json is discoverable and valid", async () => {
       const pluginJsonPath = path.join(
         PLUGIN_ROOT,
         ".claude-plugin",
         "plugin.json",
       );
-      expect(existsSync(pluginJsonPath)).toBe(true);
+      expect(await fileExists(pluginJsonPath)).toBe(true);
 
-      const content = readFileSync(pluginJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+      const parsed = await readJson(pluginJsonPath);
       const result = pluginManifestSchema.safeParse(parsed);
 
       if (!result.success) {
@@ -105,13 +71,13 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
       expect(result.success).toBe(true);
     });
 
-    test("plugin name from manifest matches directory convention", () => {
+    test("plugin name from manifest matches directory convention", async () => {
       const pluginJsonPath = path.join(
         PLUGIN_ROOT,
         ".claude-plugin",
         "plugin.json",
       );
-      const parsed = JSON.parse(readFileSync(pluginJsonPath, "utf8"));
+      const parsed = await readJson<{ name: string }>(pluginJsonPath);
 
       expect(typeof parsed.name).toBe("string");
       expect(parsed.name.length).toBeGreaterThan(0);
@@ -124,11 +90,9 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
   // -------------------------------------------------------------------------
 
   describe("Component Auto-Discovery", () => {
-    test("all discovered skills are loadable", () => {
+    test("all discovered skills are loadable", async () => {
       const skillsDir = path.join(PLUGIN_ROOT, "skills");
-      const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
-        .filter((d) => d.isDirectory())
-        .map((d) => d.name);
+      const skillDirs = await listSubdirs(skillsDir);
 
       const failures: string[] = [];
 
@@ -136,12 +100,12 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         const skillMdPath = path.join(skillsDir, dir, "SKILL.md");
 
         // SKILL.md must exist
-        if (!existsSync(skillMdPath)) {
+        if (!(await fileExists(skillMdPath))) {
           failures.push(`${dir}/: missing SKILL.md`);
           continue;
         }
 
-        const content = readFileSync(skillMdPath, "utf8");
+        const content = await readText(skillMdPath);
 
         // Must start with frontmatter
         if (!content.startsWith("---\n")) {
@@ -173,9 +137,9 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
       expect(failures).toEqual([]);
     });
 
-    test("all discovered agents are loadable", () => {
+    test("all discovered agents are loadable", async () => {
       const agentsDir = path.join(PLUGIN_ROOT, "agents");
-      const agentFiles = readdirSync(agentsDir).filter((f) =>
+      const agentFiles = (await listDir(agentsDir)).filter((f) =>
         f.endsWith(".md"),
       );
 
@@ -183,7 +147,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
 
       for (const file of agentFiles) {
         const filePath = path.join(agentsDir, file);
-        const content = readFileSync(filePath, "utf8");
+        const content = await readText(filePath);
 
         // Non-trivial content (> 50 bytes)
         if (content.length <= 50) {
@@ -214,11 +178,13 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
       expect(failures).toEqual([]);
     });
 
-    test("hooks configuration is loadable", () => {
+    test("hooks configuration is loadable", async () => {
       const hooksJsonPath = path.join(PLUGIN_ROOT, "hooks", "hooks.json");
-      expect(existsSync(hooksJsonPath)).toBe(true);
+      expect(await fileExists(hooksJsonPath)).toBe(true);
 
-      const hooksFile = JSON.parse(readFileSync(hooksJsonPath, "utf8"));
+      const hooksFile = await readJson<{
+        hooks?: Record<string, any[]>;
+      }>(hooksJsonPath);
       const failures: string[] = [];
 
       // Must have "hooks" property
@@ -239,7 +205,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
 
       // Every hook entry must have type, command, timeout
       for (const [eventType, entries] of Object.entries(hooksJson)) {
-        for (const group of entries as any[]) {
+        for (const group of entries) {
           if (!group.hooks || !Array.isArray(group.hooks)) {
             failures.push(`${eventType}: hook group missing "hooks" array`);
             continue;
@@ -277,7 +243,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
                 "scripts",
                 scriptFilename,
               );
-              if (!existsSync(scriptPath)) {
+              if (!(await fileExists(scriptPath))) {
                 failures.push(
                   `${eventType}: referenced script "${scriptFilename}" not found in dist/plugin/scripts/`,
                 );
@@ -303,7 +269,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
   // -------------------------------------------------------------------------
 
   describe("Cross-Component Consistency", () => {
-    test("marketplace plugin name matches plugin.json name", () => {
+    test("marketplace plugin name matches plugin.json name", async () => {
       const pluginJsonPath = path.join(
         PLUGIN_ROOT,
         ".claude-plugin",
@@ -315,15 +281,15 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         "marketplace.json",
       );
 
-      const pluginJson = JSON.parse(readFileSync(pluginJsonPath, "utf8"));
-      const marketplaceJson = JSON.parse(
-        readFileSync(marketplaceJsonPath, "utf8"),
-      );
+      const pluginJson = await readJson<{ name: string }>(pluginJsonPath);
+      const marketplaceJson = await readJson<{
+        plugins: Array<{ name: string }>;
+      }>(marketplaceJsonPath);
 
       expect(marketplaceJson.plugins[0].name).toBe(pluginJson.name);
     });
 
-    test("marketplace plugin version matches plugin.json version", () => {
+    test("marketplace plugin version matches plugin.json version", async () => {
       const pluginJsonPath = path.join(
         PLUGIN_ROOT,
         ".claude-plugin",
@@ -335,26 +301,24 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         "marketplace.json",
       );
 
-      const pluginJson = JSON.parse(readFileSync(pluginJsonPath, "utf8"));
-      const marketplaceJson = JSON.parse(
-        readFileSync(marketplaceJsonPath, "utf8"),
-      );
+      const pluginJson = await readJson<{ version: string }>(pluginJsonPath);
+      const marketplaceJson = await readJson<{
+        plugins: Array<{ version: string }>;
+      }>(marketplaceJsonPath);
 
       expect(marketplaceJson.plugins[0].version).toBe(pluginJson.version);
     });
 
-    test("plugin has a reasonable component count", () => {
+    test("plugin has a reasonable component count", async () => {
       const skillsDir = path.join(PLUGIN_ROOT, "skills");
       const agentsDir = path.join(PLUGIN_ROOT, "agents");
       const scriptsDir = path.join(PLUGIN_ROOT, "scripts");
 
-      const skillCount = readdirSync(skillsDir, { withFileTypes: true }).filter(
-        (d) => d.isDirectory(),
-      ).length;
-      const agentCount = readdirSync(agentsDir).filter((f) =>
+      const skillCount = (await listSubdirs(skillsDir)).length;
+      const agentCount = (await listDir(agentsDir)).filter((f) =>
         f.endsWith(".md"),
       ).length;
-      const scriptCount = readdirSync(scriptsDir).filter((f) =>
+      const scriptCount = (await listDir(scriptsDir)).filter((f) =>
         f.endsWith(".sh"),
       ).length;
 
@@ -363,11 +327,11 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
       expect(scriptCount).toBeGreaterThan(0);
     });
 
-    test("README.md exists and references plugin capabilities", () => {
+    test("README.md exists and references plugin capabilities", async () => {
       const readmePath = path.join(PLUGIN_ROOT, "README.md");
-      expect(existsSync(readmePath)).toBe(true);
+      expect(await fileExists(readmePath)).toBe(true);
 
-      const content = readFileSync(readmePath, "utf8");
+      const content = await readText(readmePath);
 
       // Non-trivial content
       expect(content.length).toBeGreaterThan(100);
@@ -386,7 +350,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
   // -------------------------------------------------------------------------
 
   describe("Plugin Load Readiness", () => {
-    test("plugin is ready for Claude Code loading", () => {
+    test("plugin is ready for Claude Code loading", async () => {
       const issues: string[] = [];
 
       // 1. Manifest check
@@ -395,10 +359,11 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         ".claude-plugin",
         "plugin.json",
       );
-      if (!existsSync(pluginJsonPath)) {
+      if (!(await fileExists(pluginJsonPath))) {
         issues.push("FATAL: .claude-plugin/plugin.json not found");
       } else {
-        const manifest = JSON.parse(readFileSync(pluginJsonPath, "utf8"));
+        const manifest =
+          await readJson<Record<string, unknown>>(pluginJsonPath);
         const result = pluginManifestSchema.safeParse(manifest);
         if (!result.success) {
           issues.push(`plugin.json schema invalid: ${result.error.message}`);
@@ -421,22 +386,20 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         "scripts",
       ]) {
         const dirPath = path.join(PLUGIN_ROOT, dir);
-        if (!existsSync(dirPath)) {
+        if (!(await isDirectory(dirPath))) {
           issues.push(`Missing required directory: ${dir}/`);
         }
       }
 
       // 3. Skills have frontmatter with description
       const skillsDir = path.join(PLUGIN_ROOT, "skills");
-      if (existsSync(skillsDir)) {
-        for (const dir of readdirSync(skillsDir, { withFileTypes: true })
-          .filter((d) => d.isDirectory())
-          .map((d) => d.name)) {
+      if (await isDirectory(skillsDir)) {
+        for (const dir of await listSubdirs(skillsDir)) {
           const skillMd = path.join(skillsDir, dir, "SKILL.md");
-          if (!existsSync(skillMd)) {
+          if (!(await fileExists(skillMd))) {
             issues.push(`Skill ${dir}/ missing SKILL.md`);
           } else {
-            const content = readFileSync(skillMd, "utf8");
+            const content = await readText(skillMd);
             const fm = extractFrontmatter(content);
             if (!fm || !fm.description) {
               issues.push(
@@ -449,8 +412,10 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
 
       // 4. Hooks use valid events and ${CLAUDE_PLUGIN_ROOT}
       const hooksJsonPath = path.join(PLUGIN_ROOT, "hooks", "hooks.json");
-      if (existsSync(hooksJsonPath)) {
-        const hooksFile = JSON.parse(readFileSync(hooksJsonPath, "utf8"));
+      if (await fileExists(hooksJsonPath)) {
+        const hooksFile = await readJson<{
+          hooks?: Record<string, unknown>;
+        }>(hooksJsonPath);
         const hooksJson = hooksFile.hooks;
         if (hooksJson && typeof hooksJson === "object") {
           for (const event of Object.keys(hooksJson)) {
@@ -465,11 +430,11 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
 
       // 5. Agents are valid markdown with headings
       const agentsDir = path.join(PLUGIN_ROOT, "agents");
-      if (existsSync(agentsDir)) {
-        for (const file of readdirSync(agentsDir).filter((f) =>
+      if (await isDirectory(agentsDir)) {
+        for (const file of (await listDir(agentsDir)).filter((f) =>
           f.endsWith(".md"),
         )) {
-          const content = readFileSync(path.join(agentsDir, file), "utf8");
+          const content = await readText(path.join(agentsDir, file));
           if (content.length <= 50) {
             issues.push(
               `Agent ${file}: content too short (${content.length} bytes)`,
@@ -487,11 +452,17 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         ".claude-plugin",
         "marketplace.json",
       );
-      if (existsSync(pluginJsonPath) && existsSync(marketplaceJsonPath)) {
-        const pluginJson = JSON.parse(readFileSync(pluginJsonPath, "utf8"));
-        const marketplaceJson = JSON.parse(
-          readFileSync(marketplaceJsonPath, "utf8"),
-        );
+      if (
+        (await fileExists(pluginJsonPath)) &&
+        (await fileExists(marketplaceJsonPath))
+      ) {
+        const pluginJson = await readJson<{
+          name: string;
+          version: string;
+        }>(pluginJsonPath);
+        const marketplaceJson = await readJson<{
+          plugins?: Array<{ name: string; version: string }>;
+        }>(marketplaceJsonPath);
         if (
           marketplaceJson.plugins &&
           marketplaceJson.plugins.length > 0 &&
@@ -522,18 +493,16 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
       expect(issues).toEqual([]);
     });
 
-    test("plugin component summary", () => {
+    test("plugin component summary", async () => {
       const skillsDir = path.join(PLUGIN_ROOT, "skills");
       const agentsDir = path.join(PLUGIN_ROOT, "agents");
       const scriptsDir = path.join(PLUGIN_ROOT, "scripts");
 
-      const skillCount = readdirSync(skillsDir, { withFileTypes: true }).filter(
-        (d) => d.isDirectory(),
-      ).length;
-      const agentCount = readdirSync(agentsDir).filter((f) =>
+      const skillCount = (await listSubdirs(skillsDir)).length;
+      const agentCount = (await listDir(agentsDir)).filter((f) =>
         f.endsWith(".md"),
       ).length;
-      const scriptCount = readdirSync(scriptsDir).filter((f) =>
+      const scriptCount = (await listDir(scriptsDir)).filter((f) =>
         f.endsWith(".sh"),
       ).length;
 

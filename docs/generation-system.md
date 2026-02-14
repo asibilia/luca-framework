@@ -72,23 +72,23 @@ bun run build:claude
 ### Example Agent Definition
 
 ```typescript
-import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import { BaseAgentImpl } from "../base/base-agent";
+import { AgentConfig } from "../types/agent.types";
 
 const exampleAgentConfig: AgentConfig = {
   frontmatter: {
-    name: 'example-agent',
-    description: 'An example agent for demonstration purposes',
-    tools: ['Read', 'Write', 'Grep'],
-    color: 'blue'
+    name: "example-agent",
+    description: "An example agent for demonstration purposes",
+    tools: ["Read", "Write", "Grep"],
+    color: "blue",
   },
   sections: [
     {
-      title: 'role',
-      content: 'You are an example agent...',
-      order: 1
-    }
-  ]
+      title: "role",
+      content: "You are an example agent...",
+      order: 1,
+    },
+  ],
 };
 
 export class ExampleAgent extends BaseAgentImpl {
@@ -109,10 +109,10 @@ This ensures that existing .cursor files can be converted to maintainable TypeSc
 
 ## Compilers
 
-The framework includes compilers for both Cursor and Claude formats:
+The framework compiles TypeScript definitions to platform-specific formats via functional compile functions in `src/compilers/compile.ts`:
 
-- `CursorCompiler`: Converts TypeScript definitions to Cursor markdown format with frontmatter
-- `ClaudeCompiler`: Converts TypeScript definitions to Claude-compatible format
+- `compileAgent(agent, format)` / `compileSkill(skill, format)` / `compileRule(rule, format)`: Format-dispatching functions supporting `"CLAUDE"`, `"CURSOR"`, and `"PLUGIN"` output formats
+- Platform-specific functions (`compileAgentClaude`, `compileAgentCursor`, etc.) handle the actual conversion
 
 ## Future Enhancements
 

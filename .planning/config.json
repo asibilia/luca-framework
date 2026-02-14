@@ -120,7 +120,10 @@
         "harnessFixIterations": 3,
         "verifyFixIterations": 1,
         "verificationMode": "standard",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier"
+        ],
         "uat": "optional",
         "learningCapture": "standard"
       },
@@ -160,6 +163,16 @@
         "learningCapture": "full+debrief"
       }
     }
+  },
+  "autopilot": {
+    "oversight": "milestone",
+    "max_phases_per_session": 10,
+    "auto_plan_phases": true,
+    "skip_uat_in_autopilot": true,
+    "gap_closure_retries": 1,
+    "pause_on_critical_review": true,
+    "cross_milestone": false,
+    "backlog_scan": true
   },
   "planner": {
     "session_cap_minutes": 180,

@@ -1,18 +1,19 @@
 /**
  * Harness/Hook verification boundary: when full harness runs vs lightweight hooks
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 const HarnessVerificationConfig: RuleConfig = {
   frontmatter: {
-    description: 'Harness/Hook verification boundary: when full harness runs vs lightweight hooks',
-    globs: ['*.ts', '*.sh', '.planning/config.json'],
+    description:
+      "Harness/Hook verification boundary: when full harness runs vs lightweight hooks",
+    globs: ["*.ts", "*.sh", ".planning/config.json"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Harness/Hook Verification Boundary
 
 ## Two-Layer Verification
@@ -33,7 +34,7 @@ Hooks are fast (< 30s), deterministic, and fire automatically. They catch issues
 
 ## When Harness Runs
 
-- **Phase boundary**: After all waves in a phase complete (lu-execute-phase Step 6.5)
+- **Phase boundary**: After all waves in a phase complete (phase-execute Step 6.5)
 - **Before agent verification**: Harness runs before lu-verifier to catch mechanical failures
 - **Failure-to-fix loop**: If harness fails, spawns executor to fix, re-runs (max 3 iterations)
 

@@ -11,54 +11,83 @@ export type {
   AgentSection,
   AgentConfig,
   BaseAgent,
-} from './src/agents/types/agent.types';
+} from "./src/agents/types/agent.types";
 
 export type {
   SkillFrontmatter,
   SkillSection,
   SkillConfig,
   BaseSkill,
-} from './src/skills/types/skill.types';
+} from "./src/skills/types/skill.types";
 
 export type {
   RuleFrontmatter,
   RuleSection,
   RuleConfig,
   BaseRule,
-} from './src/rules/types/rule.types';
+} from "./src/rules/types/rule.types";
 
 // Shared types
-export type { Result } from './src/shared/types';
+export type { Result } from "./src/shared/types";
 
 // Base class implementations
-export { BaseAgentImpl } from './src/agents/base/base-agent';
-export { BaseSkillImpl } from './src/skills/base/base-skill';
-export { BaseRuleImpl } from './src/rules/base/base-rule';
+export { BaseAgentImpl } from "./src/agents/base/base-agent";
+export { BaseSkillImpl } from "./src/skills/base/base-skill";
+export { BaseRuleImpl } from "./src/rules/base/base-rule";
 
-// Compilers
-export { BaseCompiler } from './src/compilers/base.compiler';
-export type { SupportedFormat } from './src/compilers/base.compiler';
-export { CursorCompiler } from './src/compilers/cursor.compiler';
-export { ClaudeCompiler } from './src/compilers/claude.compiler';
+// Compilers (functional API)
+export {
+  compileAgent,
+  compileSkill,
+  compileRule,
+  compileAgentClaude,
+  compileAgentCursor,
+  compileAgentPlugin,
+  compileSkillClaude,
+  compileSkillCursor,
+  compileSkillPlugin,
+  compileRuleClaude,
+  compileRuleCursor,
+  compileRulePlugin,
+  validateFormat,
+} from "./src/compilers/compile";
+export type { SupportedFormat } from "./src/compilers/compile";
 
 // Luca-specific entities
-export { LuExecutorAgent } from './src/agents/luca/lu-executor.agent';
-export { LuPlannerAgent } from './src/agents/luca/lu-planner.agent';
-export { LuSkill } from './src/skills/luca/lu.skill';
-export { LuWorkflowRule } from './src/rules/lu-workflow.rule';
+export { LuExecutorAgent } from "./src/agents/luca/lu-executor.agent";
+export { LuPlannerAgent } from "./src/agents/luca/lu-planner.agent";
+export { LuSkill } from "./src/skills/luca/lu.skill";
+export { LuWorkflowRule } from "./src/rules/lu-workflow.rule";
 
 // Registries (for build scripts and consumers)
-export { agentRegistry } from './src/agents/index';
-export { skillRegistry } from './src/skills/index';
-export { ruleRegistry } from './src/rules/index';
+export { agentRegistry } from "./src/agents/index";
+export { skillRegistry } from "./src/skills/index";
+export { ruleRegistry } from "./src/rules/index";
 
 // Hook registry and types (for build scripts and consumers)
-export { hookRegistry, generateHooksConfig, generateCursorHooksConfig } from './src/hooks/index';
-export type { HookDefinition } from './src/hooks/index';
+export {
+  hookRegistry,
+  NO_MATCHER_SENTINEL,
+  generateCursorHooksConfig,
+  generateClaudeHooksConfig,
+} from "./src/hooks/index";
+export type { HookDefinition } from "./src/hooks/index";
 
 // Harness API and types (for build scripts and consumers)
-export { runHarness, loadHarnessConfig, parserRegistry, DEFAULT_HARNESS_CONFIG } from './src/harness/index';
-export type { HarnessConfig, CheckConfig, ParsedError, CheckResult, HarnessResult, OutputParser } from './src/harness/index';
+export {
+  runHarness,
+  loadHarnessConfig,
+  parserRegistry,
+  DEFAULT_HARNESS_CONFIG,
+} from "./src/harness/index";
+export type {
+  HarnessConfig,
+  CheckConfig,
+  ParsedError,
+  CheckResult,
+  HarnessResult,
+  OutputParser,
+} from "./src/harness/index";
 
 // Complexity API and types (for build scripts and consumers)
 export {
@@ -70,7 +99,7 @@ export {
   COMPLEXITY_CLASSIFICATIONS,
   DEFAULT_COMPLEXITY_MATRIX,
   DEFAULT_COMPLEXITY_CONFIG,
-} from './src/complexity/index';
+} from "./src/complexity/index";
 export type {
   ComplexityLevel,
   ComplexityTier,
@@ -80,7 +109,7 @@ export type {
   ComplexityGate,
   ComplexityMatrix,
   ComplexityConfig,
-} from './src/complexity/index';
+} from "./src/complexity/index";
 
 // Validation utilities (public-facing)
 export {
@@ -92,4 +121,4 @@ export {
   safeValidateAgentConfig,
   safeValidateSkillConfig,
   safeValidateRuleConfig,
-} from './src/shared/validation-utils';
+} from "./src/shared/validation-utils";

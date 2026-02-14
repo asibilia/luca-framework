@@ -1,19 +1,19 @@
 /**
  * Enforce Zod schema-first parsing patterns over manual destructuring and default values
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Enforce-Zod-schema-f rule configuration
-const EnforceZodschemafConfig: RuleConfig = {
+// Define the schema-first-parsing rule configuration
+const schemaFirstParsingConfig: RuleConfig = {
   frontmatter: {
     description: `Enforce Zod schema-first parsing patterns over manual destructuring and default values`,
-    globs: ['**/*.{ts,tsx}'],
+    globs: ["**/*.{ts,tsx}"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Schema-First Parsing Standards
 
 This rule enforces consistent use of Zod schemas for parsing and validation instead of manual destructuring with default values.
@@ -463,13 +463,13 @@ const { prop = 'value' } = rawProps
 \`\`\`
 
 Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization and [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class EnforceZodschemafRule extends BaseRuleImpl {
+export class SchemaFirstParsingRule extends BaseRuleImpl {
   constructor() {
-    super(EnforceZodschemafConfig);
+    super(schemaFirstParsingConfig);
   }
 }

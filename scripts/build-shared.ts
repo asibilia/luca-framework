@@ -12,11 +12,29 @@
  * - PLUGIN_EXCLUDED_HOOKS: Hooks excluded from plugin packaging
  * - SKILL_CATEGORIES: Skill-to-category mapping for README generation
  * - AGENT_CATEGORIES: Agent-to-category mapping for README generation
- * - generatePluginHooksConfig(): Plugin hooks.json builder
+ * - generateMarketplaceManifest(): Marketplace manifest builder
  * - readVersion(): Package version reader
  * - generateReadme(): Plugin README.md builder
+ * - generateAllOutputs(): Unified compilation pipeline
+ *
+ * Re-exports from src/hooks/index:
+ * - generateClaudeHooksConfig(): Claude hooks config builder
+ * - generateCursorHooksConfig(): Cursor hooks config builder
  */
-import type { HookDefinition } from "../src/hooks/index";
+import {
+  hookRegistry,
+  generateCursorHooksConfig,
+  generateClaudeHooksConfig,
+} from "../src/hooks/index";
+import { agentRegistry } from "../src/agents/index";
+import { ruleRegistry } from "../src/rules/index";
+import { skillRegistry } from "../src/skills/index";
+import {
+  compileAgent,
+  compileSkill,
+  compileRule,
+} from "../src/compilers/compile";
+import { generatePluginManifest } from "../src/compilers/plugin.types";
 import path from "path";
 
 /**
@@ -40,32 +58,32 @@ export const PLUGIN_EXCLUDED_HOOKS: ReadonlySet<string> = new Set([
 export const SKILL_CATEGORIES: Record<string, string> = {
   // Workflow
   lu: "Workflow",
-  "lu-execute-phase": "Workflow",
-  "lu-plan-phase": "Workflow",
-  "lu-discuss-phase": "Workflow",
-  "lu-research-phase": "Workflow",
-  "lu-verify-work": "Workflow",
-  "lu-quick": "Workflow",
-  "lu-choose": "Workflow",
+  "phase-execute": "Workflow",
+  "phase-plan": "Workflow",
+  "phase-discuss": "Workflow",
+  "phase-research": "Workflow",
+  verify: "Workflow",
+  quick: "Workflow",
+  choose: "Workflow",
   "workflow-start": "Workflow",
   // Git
   "git-commit": "Git",
   "git-feature": "Git",
   "git-pr": "Git",
   // Project Management
-  "lu-new-project": "Project Management",
-  "lu-new-milestone": "Project Management",
-  "lu-complete-milestone": "Project Management",
-  "lu-audit-milestone": "Project Management",
-  "lu-add-phase": "Project Management",
-  "lu-insert-phase": "Project Management",
-  "lu-remove-phase": "Project Management",
-  "lu-plan-milestone-gaps": "Project Management",
-  "lu-plan-session": "Project Management",
-  "lu-progress": "Project Management",
-  "lu-add-todo": "Project Management",
-  "lu-check-todos": "Project Management",
-  "lu-list-phase-assumptions": "Project Management",
+  "project-new": "Project Management",
+  "milestone-new": "Project Management",
+  "milestone-complete": "Project Management",
+  "milestone-audit": "Project Management",
+  "phase-add": "Project Management",
+  "phase-insert": "Project Management",
+  "phase-remove": "Project Management",
+  "milestone-gaps": "Project Management",
+  "session-plan": "Project Management",
+  progress: "Project Management",
+  "todo-add": "Project Management",
+  "todo-check": "Project Management",
+  "phase-assumptions": "Project Management",
   // Code Quality
   "code-lint": "Code Quality",
   "code-typecheck": "Code Quality",
@@ -73,24 +91,26 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   "qa-consolidate": "Code Quality",
   // Collaboration
   "jira-issue": "Collaboration",
-  "lu-address-pr": "Collaboration",
+  "pr-address": "Collaboration",
   // Configuration
-  "lu-settings": "Configuration",
-  "lu-set-profile": "Configuration",
-  "lu-help": "Configuration",
-  "lu-update": "Configuration",
-  "lu-map-codebase": "Configuration",
+  "config-settings": "Configuration",
+  "config-profile": "Configuration",
+  help: "Configuration",
+  update: "Configuration",
+  "codebase-map": "Configuration",
   // Session Management
-  "lu-pause-work": "Session",
-  "lu-resume-work": "Session",
+  "session-pause": "Session",
+  "session-resume": "Session",
   // Debug
-  "lu-debug": "Debug",
+  debug: "Debug",
   // Reference (auto-invoked rules)
   "rule-lu-workflow": "Reference",
   "rule-complexity-gating": "Reference",
   "rule-harness-verification": "Reference",
   "rule-hook-skill-boundary": "Reference",
   "rule-file-naming": "Reference",
+  // Automation
+  autopilot: "Automation",
 };
 
 /**
@@ -131,54 +151,56 @@ export const AGENT_CATEGORIES: Record<string, string> = {
 };
 
 /**
- * Generate the plugin hooks.json configuration.
- *
- * Produces a hooks configuration identical in structure to
- * generateHooksConfig() from src/hooks/index.ts, but uses
- * `${CLAUDE_PLUGIN_ROOT}/scripts/` for command paths instead of
- * `"$CLAUDE_PROJECT_DIR"/.claude/hooks/`.
- *
- * @param registry - The hook registry mapping hook names to definitions
- * @returns A JSON-serialisable hooks configuration object
+ * Skill name prefixes excluded from plugin command generation.
+ * These skills are internal/reference and not user-invocable.
  */
-export function generatePluginHooksConfig(
-  registry: Record<string, HookDefinition>,
-): Record<string, unknown> {
-  const events: Record<
-    string,
-    Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>
-  > = {};
+export const COMMAND_EXCLUDED_PREFIXES: readonly string[] = [
+  "rule-",
+  "workflow-start",
+];
 
-  for (const [_name, def] of Object.entries(registry)) {
-    if (!events[def.event]) {
-      events[def.event] = [];
-    }
+/**
+ * Check whether a skill name should generate a plugin command.
+ * Returns false for internal/reference skills.
+ */
+export const isCommandSkill = (name: string): boolean =>
+  !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
 
-    // Find existing matcher group or create new one
-    const matcherKey = def.matcher ?? "__no_matcher__";
-    let group = events[def.event].find((g) => {
-      if (matcherKey === "__no_matcher__") return !g.matcher;
-      return g.matcher === def.matcher;
-    });
-
-    if (!group) {
-      group = def.matcher ? { matcher: def.matcher, hooks: [] } : { hooks: [] };
-      events[def.event].push(group);
-    }
-
-    const hookEntry: Record<string, unknown> = {
-      type: "command",
-      command: `\${CLAUDE_PLUGIN_ROOT}/scripts/${def.script}`,
-      timeout: def.timeout,
-    };
-
-    if (def.async) hookEntry.async = true;
-    if (def.statusMessage) hookEntry.statusMessage = def.statusMessage;
-
-    group.hooks.push(hookEntry);
-  }
-
-  return { hooks: events };
+/**
+ * Generate the marketplace manifest for plugin distribution.
+ *
+ * Contains metadata for the Claude Code plugin marketplace listing.
+ * Centralised here to prevent drift across build-all.ts, check-drift.ts,
+ * and check-drift.test.ts.
+ *
+ * @param version - Semver version string from package.json
+ * @returns A JSON-serializable marketplace manifest object
+ */
+export function generateMarketplaceManifest(version: string): object {
+  return {
+    $schema: "https://anthropic.com/claude-code/marketplace.schema.json",
+    name: "luca-marketplace",
+    owner: {
+      name: "Alec Sibilia",
+    },
+    plugins: [
+      {
+        name: "luca",
+        description:
+          "Agentic development framework with cognitive memory and spec-driven workflow",
+        source: ".",
+        category: "development",
+        version,
+        author: {
+          name: "Alec Sibilia",
+        },
+        homepage: "https://github.com/alecsibilia/luca-framework",
+        repository: "https://github.com/alecsibilia/luca-framework",
+        license: "MIT",
+        keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+      },
+    ],
+  };
 }
 
 /**
@@ -262,6 +284,7 @@ export function generateReadme(
     "Configuration",
     "Session",
     "Debug",
+    "Automation",
     "Reference",
     "Other",
   ];
@@ -275,6 +298,7 @@ export function generateReadme(
     Configuration: "Help, settings, profiles, updates, codebase mapping",
     Session: "Pause and resume work sessions",
     Debug: "Debugging workflows",
+    Automation: "Autonomous orchestration and batch execution",
     Reference: "Auto-invoked rule guidance (not user commands)",
     Other: "Additional skills",
   };
@@ -360,4 +384,209 @@ Automated code formatting, type checking, pre-commit validation, context monitor
 
 MIT
 `;
+}
+
+// Re-export registries for consumers that need them (e.g., orphan detection tests)
+export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
+
+// Re-export hook config generators for consumers
+export { generateCursorHooksConfig, generateClaudeHooksConfig };
+
+// ---------------------------------------------------------------------------
+// Sub-functions for generateAllOutputs()
+// Each handles one entity type, writing to the shared generated Map.
+// ---------------------------------------------------------------------------
+
+function generateAgentOutputs(generated: Map<string, string>): void {
+  for (const [agentName, createAgent] of Object.entries(agentRegistry)) {
+    const instance = createAgent();
+    generated.set(
+      `.claude/agents/${agentName}.md`,
+      compileAgent(instance, "CLAUDE"),
+    );
+    generated.set(
+      `.cursor/agents/${agentName}.md`,
+      compileAgent(instance, "CURSOR"),
+    );
+    generated.set(
+      `dist/plugin/agents/${agentName}.md`,
+      compileAgent(instance, "PLUGIN"),
+    );
+  }
+}
+
+function generateSkillOutputs(generated: Map<string, string>): void {
+  for (const [skillName, createSkill] of Object.entries(skillRegistry)) {
+    const instance = createSkill();
+    generated.set(
+      `.claude/skills/${skillName}/SKILL.md`,
+      compileSkill(instance, "CLAUDE"),
+    );
+    generated.set(
+      `.cursor/skills/${skillName}/SKILL.md`,
+      compileSkill(instance, "CURSOR"),
+    );
+    generated.set(
+      `dist/plugin/skills/${skillName}/SKILL.md`,
+      compileSkill(instance, "PLUGIN"),
+    );
+  }
+}
+
+function generateRuleOutputs(generated: Map<string, string>): void {
+  for (const [ruleName, createRule] of Object.entries(ruleRegistry)) {
+    const instance = createRule();
+    generated.set(
+      `.claude/rules/${ruleName}.md`,
+      compileRule(instance, "CLAUDE"),
+    );
+    generated.set(
+      `.cursor/rules/${ruleName}.mdc`,
+      compileRule(instance, "CURSOR"),
+    );
+  }
+}
+
+async function generateHookOutputs(
+  generated: Map<string, string>,
+): Promise<void> {
+  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+
+  // Copy hook scripts to .claude/ and .cursor/
+  for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
+    const srcPath = path.join(hookScriptsDir, hookDef.script);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      const content = await srcFile.text();
+      generated.set(`.claude/hooks/${hookDef.script}`, content);
+      generated.set(`.cursor/hooks/${hookDef.script}`, content);
+    }
+  }
+
+  // Claude settings.json hooks fragment
+  const hooksConfig = generateClaudeHooksConfig(hookRegistry, {
+    commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+  });
+  generated.set(
+    ".claude/settings.json__hooks",
+    JSON.stringify(hooksConfig, null, 2),
+  );
+
+  // Cursor hooks.json
+  const cursorHooksConfig = generateCursorHooksConfig(hookRegistry);
+  generated.set(
+    ".cursor/hooks.json",
+    JSON.stringify(cursorHooksConfig, null, 2) + "\n",
+  );
+}
+
+async function generatePluginOutputs(
+  generated: Map<string, string>,
+): Promise<void> {
+  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+
+  // Plugin commands (from skill registry, excluding internal prefixes)
+  for (const [skillName, createSkill] of Object.entries(skillRegistry)) {
+    if (!isCommandSkill(skillName)) continue;
+    const instance = createSkill();
+    generated.set(
+      `dist/plugin/commands/${skillName}.md`,
+      `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${skillName} skill to execute this command.\n`,
+    );
+  }
+
+  // Plugin hooks (excluding dev-only hooks)
+  const pluginHookRegistry = Object.fromEntries(
+    Object.entries(hookRegistry).filter(
+      ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
+    ),
+  );
+
+  for (const [_name, def] of Object.entries(pluginHookRegistry)) {
+    const srcPath = path.join(hookScriptsDir, def.script);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      generated.set(`dist/plugin/scripts/${def.script}`, await srcFile.text());
+    }
+  }
+
+  // Plugin hooks.json
+  const pluginHooksConfig = generateClaudeHooksConfig(pluginHookRegistry, {
+    commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
+    wrapInHooksKey: true,
+  });
+  generated.set(
+    "dist/plugin/hooks/hooks.json",
+    JSON.stringify(pluginHooksConfig, null, 2) + "\n",
+  );
+
+  // Plugin manifest (plugin.json)
+  const version = await readVersion();
+
+  const manifest = generatePluginManifest({
+    name: "luca",
+    version,
+    description:
+      "Luca - Agentic development framework with cognitive memory and spec-driven workflow",
+    author: { name: "Alec Sibilia" },
+    keywords: ["agent", "ai", "framework", "luca", "workflow", "cognitive"],
+  });
+
+  generated.set(
+    "dist/plugin/.claude-plugin/plugin.json",
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
+
+  // Marketplace manifest
+  const marketplaceManifest = generateMarketplaceManifest(version);
+
+  generated.set(
+    "dist/plugin/.claude-plugin/marketplace.json",
+    JSON.stringify(marketplaceManifest, null, 2) + "\n",
+  );
+
+  // README (all names now come directly from registries)
+  const pluginAgentNames = Object.keys(agentRegistry);
+  const pluginSkillNames = Object.keys(skillRegistry);
+  const pluginHookCount = Object.keys(pluginHookRegistry).length;
+
+  const readmeContent = generateReadme(
+    pluginSkillNames,
+    pluginAgentNames,
+    pluginHookCount,
+  );
+  generated.set("dist/plugin/README.md", readmeContent);
+}
+
+/**
+ * Generate all build outputs in memory.
+ *
+ * Runs every compiler (Cursor, Claude, Plugin) against every registry entity,
+ * producing a Map of relative file paths to their generated content strings.
+ * All entities (including Luca-specific ones) are discovered via registries —
+ * no special-casing required.
+ *
+ * Consumers use this Map differently:
+ * - build-all.ts: writes each entry to disk
+ * - check-drift.ts: compares each entry against committed files
+ * - check-drift.test.ts: uses entries for freshness assertions
+ *
+ * The special key `.claude/settings.json__hooks` contains the hooks config
+ * fragment (not a standalone file); build-all.ts merges it into settings.json.
+ *
+ * @returns Map of relative file paths to content strings
+ */
+export async function generateAllOutputs(): Promise<Map<string, string>> {
+  const generated = new Map<string, string>();
+
+  // Synchronous entity compilation
+  generateAgentOutputs(generated);
+  generateSkillOutputs(generated);
+  generateRuleOutputs(generated);
+
+  // Async outputs (file I/O for hook scripts, version reading)
+  await generateHookOutputs(generated);
+  await generatePluginOutputs(generated);
+
+  return generated;
 }

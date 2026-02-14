@@ -1,19 +1,19 @@
 /**
  * Mandatory documentation requirements for all new functionality and modifications
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Mandatory-documentat rule configuration
-const MandatorydocumentatConfig: RuleConfig = {
+// Define the mandatory-documentation rule configuration
+const mandatoryDocumentationConfig: RuleConfig = {
   frontmatter: {
     description: `Mandatory documentation requirements for all new functionality and modifications`,
-    globs: ['**/*.{ts,tsx,js,jsx}'],
+    globs: ["**/*.{ts,tsx,js,jsx}"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `- **Documentation is Mandatory**: ALL new functionality, utilities, and significant modifications MUST include comprehensive documentation
 
 - **New Function/Class Requirements**:
@@ -165,13 +165,13 @@ const MandatorydocumentatConfig: RuleConfig = {
   - **Future Maintenance**: Well-documented code is easier to maintain and extend
 
 Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conventions.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class MandatorydocumentatRule extends BaseRuleImpl {
+export class MandatoryDocumentationRule extends BaseRuleImpl {
   constructor() {
-    super(MandatorydocumentatConfig);
+    super(mandatoryDocumentationConfig);
   }
 }

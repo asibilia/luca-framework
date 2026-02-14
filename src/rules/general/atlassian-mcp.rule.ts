@@ -1,19 +1,19 @@
 /**
  * Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Atlassian-MCP-integr rule configuration
-const AtlassianMCPintegrConfig: RuleConfig = {
+// Define the atlassian-mcp rule configuration
+const atlassianMcpConfig: RuleConfig = {
   frontmatter: {
     description: `Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow`,
-    globs: ['**/*.ts', '**/*.tsx', '**/*.md'],
+    globs: ["**/*.ts", "**/*.tsx", "**/*.md"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Atlassian MCP Integration
 
 **CRITICAL**: This project uses **read-only Jira access** via Atlassian MCP. All development tracking happens in GitHub issues, not Jira.
@@ -183,13 +183,13 @@ When reviewing code that interacts with Jira:
 - [lu-workflow.mdc](mdc:.cursor/rules/lu-workflow.mdc) — Full Luca workflow
 - [CLAUDE.md](mdc:CLAUDE.md) — Project conventions including Jira ticket usage
 - [AGENTS.md](mdc:AGENTS.md) — Agent guide with commit conventions`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class AtlassianMCPintegrRule extends BaseRuleImpl {
+export class AtlassianMcpRule extends BaseRuleImpl {
   constructor() {
-    super(AtlassianMCPintegrConfig);
+    super(atlassianMcpConfig);
   }
 }

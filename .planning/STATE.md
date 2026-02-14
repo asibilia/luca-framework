@@ -2,39 +2,58 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.3.0 — Claude Code Plugin Distribution — COMPLETE
-- **Current Phase:** Phase 23 (Integration Testing) — complete
-- **Status:** v1.3.0 milestone complete. All 5 phases (19-23) executed, 25 requirements satisfied.
-- **Task Complexity:** COMPLEX
-- **Last Updated:** 2026-02-12
-- **Last Activity:** Phase 23 (Integration Testing) complete. 3 plans executed across 2 waves. 41 new spec-conformance tests: structure/manifest validation (17), hook/format validation (12), E2E load readiness (12). Also fixed legacy commands/ directory causing API 400 errors. 928 tests pass (41 new).
+- **Current Milestone:** v1.3.3 — Final Audit Sweep
+- **Current Phase:** Phase 28 (Build Script Cleanup) — pending
+- **Status:** v1.3.3 milestone created. Autopilot session active — cross-milestone mode.
+- **Task Complexity:** N/A
+- **Last Updated:** 2026-02-13
+- **Last Activity:** v1.3.3 milestone setup — 2 phases, 10 requirements, sourced from v1.3.2 audit tech debt.
 
 ## Progress
 
 ```
-v1.3.0: COMPLETE
-  Phase 19 (Plugin Infrastructure):       ✅ complete — PLUG-01..05 satisfied
-  Phase 20 (Skills & Agents Packaging):   ✅ complete — PACK-01..05 satisfied
-  Phase 21 (Hooks & Runtime):             ✅ complete — HOOK-01..05 satisfied
-  Phase 22 (Distribution & Marketplace):  ✅ complete — DIST-01..05 satisfied
-  Phase 23 (Integration Testing):         ✅ complete — TEST-01..05 satisfied
+v1.3.3: IN PROGRESS
+  Phase 28 (Build Script Cleanup):     ⬚ pending — BUILD-01..04
+  Phase 29 (Test Quality & Code Hygiene): ⬚ pending — REG-01, TEST-01..04, CLEAN-01
 ```
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-12)
+See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Last shipped:** v1.2.0 — Intelligent Agent Engine
+**Last shipped:** v1.3.2 — Audit Tech Debt Cleanup
 
 ## Git Context
 
-- **Ticket:** #7
-- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/7
-- **Branch:** 7--claude-code-plugin-distribution
+- **Ticket:** #10
+- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/10
+- **Branch:** feat/9-audit-tech-debt-cleanup
 - **Base Branch:** main
 
 ## Previous Milestones
+
+### v1.3.2 — Audit Tech Debt Cleanup ✅
+
+- Build pipeline consolidated (generateAllOutputs), compiler refactored to functional
+- Bun API migration, security hardening (5 mitigations), code hygiene
+- 4 phases, 8 plans, 17 requirements, 992 tests
+
+### v1.3.1 — Post-Audit Cleanup & Plugin Autocomplete ✅
+
+- Rule class name cleanup (CRIT-01), duplicate rule removal (CRIT-02)
+- Skill naming overhaul (29 skills renamed), command reference update (~430 refs)
+- Plugin autocomplete (38 command files), 938 tests
+
+### v1.3.0 — Claude Code Plugin Distribution ✅
+
+| Phase | Name                  | Status      | Requirements                            |
+| ----- | --------------------- | ----------- | --------------------------------------- |
+| 19    | Plugin Infrastructure | ✅ complete | PLUG-01 through PLUG-05 (all satisfied) |
+| 20    | Skills & Agents       | ✅ complete | PACK-01 through PACK-05 (all satisfied) |
+| 21    | Hooks & Runtime       | ✅ complete | HOOK-01 through HOOK-05 (all satisfied) |
+| 22    | Distribution          | ✅ complete | DIST-01 through DIST-05 (all satisfied) |
+| 23    | Integration Testing   | ✅ complete | TEST-01 through TEST-05 (all satisfied) |
 
 ### v1.2.0 — Intelligent Agent Engine ✅
 
@@ -46,35 +65,7 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 | 17    | Ralph Wiggum Loops  | ✅ complete | ITER-01 through ITER-07 (all satisfied)   |
 | 18    | Sprint Planner      | ✅ complete | PLAN-01 through PLAN-07 (all satisfied)   |
 
-### v1.1.0 — Workflow Foundation ✅
-
-| Phase | Name                 | Status      | Requirements                              |
-| ----- | -------------------- | ----------- | ----------------------------------------- |
-| 10    | Build Pipeline       | ✅ complete | BUILD-01 through BUILD-06 (all satisfied) |
-| 11    | Hooks                | ✅ complete | HOOK-01 through HOOK-08 (all satisfied)   |
-| 12    | Verification Harness | ✅ complete | VERI-01 through VERI-06 (all satisfied)   |
-| 13    | Complexity Gates     | ✅ complete | CPLX-01 through CPLX-07 (all satisfied)   |
-
-### v1.0.1 — Code Hardening ✅
-
-| Phase | Name         | Status      | Requirements |
-| ----- | ------------ | ----------- | ------------ |
-| 4     | Testing      | ✅ complete | REQ-101      |
-| 5     | Code Quality | ✅ complete | REQ-102      |
-| 6     | Security     | ✅ complete | REQ-103      |
-| 7     | Architecture | ✅ complete | REQ-104      |
-| 8     | Performance  | ✅ complete | REQ-105      |
-| 9     | DX           | ✅ complete | REQ-106      |
-
-### v1.0.0 — Core CLI & Packaging ✅
-
-| Phase | Name                   | Status      | Requirements              |
-| ----- | ---------------------- | ----------- | ------------------------- |
-| 1     | Core CLI & Foundation  | ✅ complete | REQ-001, REQ-002, REQ-006 |
-| 2     | Integrations & Updates | ✅ complete | REQ-003, REQ-004, REQ-005 |
-| 3     | Enterprise Readiness   | ✅ complete | REQ-007, REQ-008          |
-
-## Pending Todos (4)
+## Pending Todos (10)
 
 ### Quality & Verification (backlog)
 
@@ -83,10 +74,22 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ### Cognition & Memory (backlog)
 
 - **Procedural memory layer** (workflow) — `.planning/todos/pending/procedural-memory-learned-skills.md`
+- **Mastra-inspired memory improvements** (workflow) — `.planning/todos/pending/mastra-inspired-memory-improvements.md`
 
-### Developer Experience (backlog)
+### Workflow & Architecture (backlog)
 
-- **Scope-oriented skill/agent naming convention** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
+- **Auto-discuss web research agent** (workflow) — `.planning/todos/pending/auto-discuss-web-research-agent.md`
+- **Opinionated tech stack code style guidelines** (workflow) — `.planning/todos/pending/opinionated-tech-stack-guidelines.md`
+- **Rename skills/agents to scope-oriented naming** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
+- **TS-driven state management** (architecture) — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md`
+
+### Build (backlog)
+
+- **Dogfood build stability** (build) — `.planning/todos/pending/dogfood-build-stability.md`
+
+### Distribution (backlog)
+
+- **Package Luca as Claude Code plugin** (distribution) — `.planning/todos/pending/claude-code-plugin-packaging.md`
 
 ### Documentation (backlog)
 
@@ -98,15 +101,16 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 ## Session Continuity
 
-- **Last session:** 2026-02-12
-- **Stopped at:** Phase 23 complete, v1.3.0 milestone complete
+- **Last session:** 2026-02-13
+- **Stopped at:** v1.3.3 milestone created, autopilot cross-milestone in progress
 - **Resume file:** None
 
 ## Next Actions
 
-1. Finalize v1.3.0 milestone (merge PR, tag release)
-2. Plan next milestone (v1.4.0 or beyond)
+1. Execute Phase 28 (Build Script Cleanup)
+2. Execute Phase 29 (Test Quality & Code Hygiene)
+3. Create PR for v1.3.2 branch
 
 ---
 
-_State last updated: 2026-02-12_
+_State last updated: 2026-02-13 (v1.3.3 milestone created)_

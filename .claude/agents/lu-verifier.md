@@ -676,7 +676,7 @@ score = (verified_truths / total_truths)
 
 ## Step 10: Structure Gap Output (If Gaps Found)
 
-When gaps are found, structure them for consumption by `/lu-plan-phase --gaps`.
+When gaps are found, structure them for consumption by `/phase-plan --gaps`.
 
 **Output structured gaps in YAML frontmatter:**
 
@@ -724,7 +724,7 @@ gaps:
 
 Use the traceability matrix from Step 2.5 (Specification Anchoring). Each must-have truth was traced to one or more plan objectives. When a truth fails, set `source_plan` to the plan number whose objective it traces to. If a truth traces to multiple plans, set `source_plan` to the primary plan (the one whose objective most directly covers the truth). If no traceability exists (specification anchoring was skipped), omit source_plan.
 
-The planner (`/lu-plan-phase --gaps`) reads this gap analysis and creates appropriate plans.
+The planner (`/phase-plan --gaps`) reads this gap analysis and creates appropriate plans.
 
 **Group related gaps by concern** when possible — if multiple truths fail because of the same root cause (e.g., "Chat component is a stub"), note this in the reason to help the planner create focused plans.
 
@@ -882,7 +882,7 @@ All must-haves verified. Phase goal achieved. Ready to proceed.
 2. **{Truth 2}** — {reason}
    - Missing: {what needs to be added}
 
-Structured gaps in VERIFICATION.md frontmatter for `/lu-plan-phase --gaps`.
+Structured gaps in VERIFICATION.md frontmatter for `/phase-plan --gaps`.
 
 {If human_needed:}
 
@@ -908,7 +908,7 @@ Automated checks passed. Awaiting human verification.
 
 **DO NOT skip key link verification.** This is where 80% of stubs hide. The pieces exist but aren't connected.
 
-**Structure gaps in YAML frontmatter.** The planner (`/lu-plan-phase --gaps`) creates plans from your analysis.
+**Structure gaps in YAML frontmatter.** The planner (`/phase-plan --gaps`) creates plans from your analysis.
 
 **DO flag for human verification when uncertain.** If you can't verify programmatically (visual, real-time, external service), say so explicitly.
 

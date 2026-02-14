@@ -239,7 +239,7 @@ export type IterationMode = z.infer<typeof iterationModeSchema>;
 /**
  * Configuration for an iteration loop instance.
  *
- * The orchestrator (lu-execute-phase skill) constructs this from
+ * The orchestrator (phase-execute skill) constructs this from
  * ComplexityGate values and config.json iteration settings.
  *
  * Uses snake_case for data schema compatibility.

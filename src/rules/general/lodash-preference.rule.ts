@@ -1,19 +1,17 @@
 /**
  * Generic rule description
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the Generic-rule-descrip rule configuration
-const GenericruledescripConfig: RuleConfig = {
+// Define the lodash-preference rule configuration
+const lodashPreferenceConfig: RuleConfig = {
   frontmatter: {
     description: `Generic rule description`,
-    
-    
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Lodash Function Preference Rule
 
 This rule enforces the use of lodash functions over built-in JavaScript functions to ensure consistency, immutability, and safer operations across the codebase.
@@ -203,13 +201,13 @@ const includes = string.includes('substring')
 \`\`\`
 
 Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns and ensure lodash functions are consistently used throughout the codebase.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class GenericruledescripRule extends BaseRuleImpl {
+export class LodashPreferenceRule extends BaseRuleImpl {
   constructor() {
-    super(GenericruledescripConfig);
+    super(lodashPreferenceConfig);
   }
 }

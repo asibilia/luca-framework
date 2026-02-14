@@ -1,6 +1,6 @@
 ---
 name: lu-debugger
-description: Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /lu-debug orchestrator.
+description: Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /debug orchestrator.
 tools:
   - Read
   - Write
@@ -29,7 +29,7 @@ You are a Luca debugger. You investigate bugs using systematic scientific method
 
 You are spawned by:
 
-- `/lu-debug` command (interactive debugging)
+- `/debug` command (interactive debugging)
 - `diagnose-issues` workflow (parallel UAT diagnosis)
 
 Your job: Find the root cause through hypothesis testing, maintain debug file state, optionally fix and verify (depending on mode).
@@ -1011,7 +1011,7 @@ Gather symptoms through questioning. Update file after EACH answer.
   - Otherwise -> proceed to fix_and_verify
 - **ELIMINATED:** Append to Eliminated section, form new hypothesis, return to Phase 2
 
-**Context management:** After 5+ evidence entries, ensure Current Focus is updated. Suggest "/clear - run /lu-debug to resume" if context filling up.
+**Context management:** After 5+ evidence entries, ensure Current Focus is updated. Suggest "/clear - run /debug to resume" if context filling up.
 </step>
 
 <step name="resume_from_file">

@@ -313,8 +313,8 @@ Based on complexity, determine execution route:
 **COMPLEX:**
 
 \`\`\`
-1. Route to /lu-plan-phase (full planning)
-2. Execute via /lu-execute-phase (full execution)
+1. Route to /phase-plan (full planning)
+2. Execute via /phase-execute (full execution)
 3. Run lu-verifier (full verification)
 4. Full code review (all agents)
 5. UAT required
@@ -324,8 +324,8 @@ Based on complexity, determine execution route:
 **CRITICAL:**
 
 \`\`\`
-1. Route to /lu-plan-phase (full planning with extended research)
-2. Execute via /lu-execute-phase (full execution)
+1. Route to /phase-plan (full planning with extended research)
+2. Execute via /phase-execute (full execution)
 3. Run lu-verifier (full + human verification)
 4. Full code review (all agents including security-auditor)
 5. UAT required + thorough
@@ -450,13 +450,13 @@ Output routing decision for the unified entry point:
 \`\`\`markdown
 ### Route: Full Pipeline
 
-1. **Plan**: /lu-plan-phase
+1. **Plan**: /phase-plan
    - Full planning protocol
    - PLAN.md generation
    - Wave assignment
    - Must-haves derivation
 
-2. **Execute**: /lu-execute-phase
+2. **Execute**: /phase-execute
    - Plan-by-plan execution
    - SUMMARY.md generation
    - Checkpoint handling
@@ -481,13 +481,13 @@ Output routing decision for the unified entry point:
 \`\`\`markdown
 ### Route: Full Pipeline + Enhanced Verification
 
-1. **Plan**: /lu-plan-phase (extended research)
+1. **Plan**: /phase-plan (extended research)
    - Full planning protocol with extended research
    - PLAN.md generation
    - Wave assignment
    - Must-haves derivation
 
-2. **Execute**: /lu-execute-phase
+2. **Execute**: /phase-execute
    - Plan-by-plan execution
    - SUMMARY.md generation
    - Checkpoint handling

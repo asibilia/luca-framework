@@ -1,19 +1,19 @@
 /**
  * API payloads must use snake_case for consistency with backend conventions
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
-// Define the API-payloads-must-us rule configuration
-const APIpayloadsmustusConfig: RuleConfig = {
+// Define the api-snake-case rule configuration
+const apiSnakeCaseConfig: RuleConfig = {
   frontmatter: {
     description: `API payloads must use snake_case for consistency with backend conventions`,
-    globs: ['**/*.ts', '**/*.tsx'],
+    globs: ["**/*.ts", "**/*.tsx"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# API Snake Case Convention
 
 **CRITICAL**: All API request/response payloads MUST use \`snake_case\` property names for consistency with backend conventions, even though internal TypeScript code uses \`camelCase\`.
@@ -355,13 +355,13 @@ Internal-only schemas can use camelCase, but snake_case is preferred for consist
 - **✅ Type Safety**: Zod validation catches property name errors at dev time
 
 Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards and [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization.`,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
-export class APIpayloadsmustusRule extends BaseRuleImpl {
+export class ApiSnakeCaseRule extends BaseRuleImpl {
   constructor() {
-    super(APIpayloadsmustusConfig);
+    super(apiSnakeCaseConfig);
   }
 }

@@ -46,6 +46,31 @@ TRANSCRIPT_PATH=$(printf '%s' "$INPUT" | bun -e "
   if (tp) process.stdout.write(tp);
 ")
 
+# ─── SEC-01: Validate transcript path ──────────────────────────────────
+# Reject relative paths and paths outside $HOME to prevent
+# information leakage (file size) from arbitrary filesystem locations.
+if [ -n "$TRANSCRIPT_PATH" ]; then
+  # Must be an absolute path
+  case "$TRANSCRIPT_PATH" in
+    /*) ;; # absolute path — OK
+    *)
+      TRANSCRIPT_PATH=""  # reject relative paths
+      ;;
+  esac
+fi
+
+if [ -n "$TRANSCRIPT_PATH" ]; then
+  # Resolve symlinks and verify path is within home directory
+  RESOLVED_PATH=$(realpath "$TRANSCRIPT_PATH" 2>/dev/null || echo "")
+  case "$RESOLVED_PATH" in
+    "$HOME"/*) ;; # within home directory — OK
+    *)
+      TRANSCRIPT_PATH=""  # outside home directory — reject
+      ;;
+  esac
+fi
+# ──────────────────────────────────────────────────────────────────────
+
 # --- Primary check: Transcript file size ---
 TRANSCRIPT_LEVEL="NONE"
 TRANSCRIPT_MSG=""

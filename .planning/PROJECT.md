@@ -8,11 +8,11 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.2.0 — Shipped)
+## Current State (v1.3.3 — Shipped)
 
-**Last Shipped:** v1.2.0 — Intelligent Agent Engine (2026-02-12)
+**Last Shipped:** v1.3.3 — Final Audit Sweep (2026-02-13)
 
-The Luca framework now features an intelligent agent engine with self-correcting execution, context-aware scheduling, and a comprehensive cognitive memory system. Built on the v1.1.0 enforcement foundation, v1.2.0 adds audited verification signals, per-agent cognition profiles, modular context isolation, iterative failure recovery, and usage-aware sprint planning.
+All tech debt from the v1.3.2 milestone audit has been addressed. Redundant per-platform build scripts deprecated, `generateAllOutputs()` monolith decomposed, registries refactored to factory functions (no-classes rule enforced), drift test helpers extracted, plugin spec tests migrated to async Bun APIs, and shared test entities consolidated. 992 passing tests (986 pass, 6 skip), 309 build outputs with zero drift.
 
 **Capabilities (shipped):**
 
@@ -36,15 +36,20 @@ The Luca framework now features an intelligent agent engine with self-correcting
 - **v1.0.1** — Code Hardening (2026-02-10). 6 phases, 433 tests, Zod at all boundaries, clean architecture, 23ms startup.
 - **v1.1.0** — Workflow Foundation (2026-02-11). 4 phases, 11 plans, 27 requirements, 579 tests. Registry-driven builds, hooks, verification harness, complexity gates.
 - **v1.2.0** — Intelligent Agent Engine (2026-02-12). 5 phases, 25 plans, 29 requirements, 845 tests. Verification audit, cognition profiling, context isolation, iterative loops, sprint planning.
+- **v1.3.0** — Claude Code Plugin Distribution (2026-02-12). 5 phases, 19 plans, 25 requirements, 928 tests. Plugin compiler, skills/agents packaging, hooks runtime, marketplace distribution, integration testing.
+- **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12). 171 files, 938 tests. Rule class cleanup, skill naming overhaul, plugin autocomplete commands.
+- **v1.3.2** — Audit Tech Debt Cleanup (2026-02-13). 4 phases, 8 plans, 17 requirements, 992 tests. Build pipeline consolidation, compiler functional refactor, Bun API migration, security hardening.
+- **v1.3.3** — Final Audit Sweep (2026-02-13). 2 phases, 4 plans, 10 requirements, 992 tests. Build script deprecation, pipeline decomposition, registry factory refactor, drift test DRY-up, plugin spec async migration.
 
-## Next Milestone Goals (Post-v1.2.0)
+## Next Milestone Goals
 
-- **Additional Stack Templates**: Python, Node.js, Next.js
-- **Multi-project Support**: Support monorepos with multiple projects
-- **Cross-IDE Support**: VS Code extension
-- **Agent Marketplace**: Registry for sharing agents and skills
+- **TS-Driven State Management**: Offload deterministic file reads/writes from LLM to Bun scripts
 - **Procedural Memory Layer**: 4th memory type for learned skills/procedures
 - **TDD-First Verification**: Test-driven generative development pattern
+- **Dogfood Build Stability**: Stable self-referential plugin consumption
+- **Additional Stack Templates**: Python, Node.js, Next.js
+- **Multi-project Support**: Support monorepos with multiple projects
+- **Agent Marketplace**: Registry for sharing agents and skills
 
 ## Requirements
 
@@ -105,4 +110,4 @@ The Luca framework now features an intelligent agent engine with self-correcting
 
 ---
 
-_Last updated: 2026-02-12 — v1.2.0 shipped_
+_Last updated: 2026-02-13 — v1.3.3 shipped_

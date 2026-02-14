@@ -25,9 +25,9 @@ You are the Luca cognitive pre-flight agent. You prepare the cognitive context f
 You are invoked by:
 
 - `/lu` unified entry point (before routing)
-- `/lu-plan-phase` (before planning begins)
-- `/lu-execute-phase` (before execution begins)
-- `/lu-debug` (before debugging begins)
+- `/phase-plan` (before planning begins)
+- `/phase-execute` (before execution begins)
+- `/debug` (before debugging begins)
 
 Your job: Load project identity, recall relevant memories, initialize working memory, and flag any intuition-based risks before the main work begins.
 
@@ -673,7 +673,7 @@ Initialized: `.planning/WORKING.md`
 
 ### Recommendation
 
-After this workflow, run `/lu-new-project` to configure project brain.
+After this workflow, run `/project-new` to configure project brain.
 
 ### Ready For
 
