@@ -15,13 +15,17 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "path";
 
 import {
   VALID_CLAUDE_CODE_EVENTS,
   PLUGIN_ROOT,
   extractFrontmatter,
+  readText,
+  fileExists,
+  listDir,
+  listSubdirs,
+  readJson,
 } from "./test-helpers";
 
 // ---------------------------------------------------------------------------
@@ -29,16 +33,28 @@ import {
 // ---------------------------------------------------------------------------
 
 const hooksJsonPath = path.join(PLUGIN_ROOT, "hooks", "hooks.json");
-const hooksFile = JSON.parse(readFileSync(hooksJsonPath, "utf8"));
-const hooksJson = hooksFile.hooks;
 
 // ---------------------------------------------------------------------------
 // TEST-03: Hook Event Type Validation & Path Resolution
 // ---------------------------------------------------------------------------
 
 describe("Hook Event Type Validation (TEST-03)", () => {
-  test("hooks.json contains only valid Claude Code event types", () => {
-    const eventTypes = Object.keys(hooksJson);
+  let hooksJson: Record<string, any[]>;
+
+  // Use a shared async load since we can't use top-level await with sync readFileSync anymore
+  async function getHooksJson() {
+    if (!hooksJson) {
+      const hooksFile = await readJson<{ hooks: Record<string, any[]> }>(
+        hooksJsonPath,
+      );
+      hooksJson = hooksFile.hooks;
+    }
+    return hooksJson;
+  }
+
+  test("hooks.json contains only valid Claude Code event types", async () => {
+    const hooks = await getHooksJson();
+    const eventTypes = Object.keys(hooks);
     const invalid = eventTypes.filter(
       (event) => !VALID_CLAUDE_CODE_EVENTS.has(event),
     );
@@ -46,11 +62,12 @@ describe("Hook Event Type Validation (TEST-03)", () => {
     expect(invalid).toEqual([]);
   });
 
-  test("every hook entry has required fields (type, command, timeout)", () => {
+  test("every hook entry has required fields (type, command, timeout)", async () => {
+    const hooks = await getHooksJson();
     const violations: string[] = [];
 
-    for (const [eventType, entries] of Object.entries(hooksJson)) {
-      for (const group of entries as any[]) {
+    for (const [eventType, entries] of Object.entries(hooks)) {
+      for (const group of entries) {
         for (const hook of group.hooks) {
           if (typeof hook.type !== "string") {
             violations.push(`${eventType}: hook missing "type" string field`);
@@ -72,11 +89,12 @@ describe("Hook Event Type Validation (TEST-03)", () => {
     expect(violations).toEqual([]);
   });
 
-  test('every hook entry type is "command"', () => {
+  test('every hook entry type is "command"', async () => {
+    const hooks = await getHooksJson();
     const nonCommandTypes: string[] = [];
 
-    for (const [eventType, entries] of Object.entries(hooksJson)) {
-      for (const group of entries as any[]) {
+    for (const [eventType, entries] of Object.entries(hooks)) {
+      for (const group of entries) {
         for (const hook of group.hooks) {
           if (hook.type !== "command") {
             nonCommandTypes.push(
@@ -90,10 +108,11 @@ describe("Hook Event Type Validation (TEST-03)", () => {
     expect(nonCommandTypes).toEqual([]);
   });
 
-  test("all hook commands use ${CLAUDE_PLUGIN_ROOT} path prefix", () => {
+  test("all hook commands use ${CLAUDE_PLUGIN_ROOT} path prefix", async () => {
+    const hooks = await getHooksJson();
     const commands: string[] = [];
-    for (const entries of Object.values(hooksJson)) {
-      for (const group of entries as any[]) {
+    for (const entries of Object.values(hooks)) {
+      for (const group of entries) {
         for (const hook of group.hooks) {
           commands.push(hook.command);
         }
@@ -107,16 +126,17 @@ describe("Hook Event Type Validation (TEST-03)", () => {
     expect(violations).toEqual([]);
   });
 
-  test("every referenced script exists in dist/plugin/scripts/", () => {
+  test("every referenced script exists in dist/plugin/scripts/", async () => {
+    const hooks = await getHooksJson();
     const missing: string[] = [];
     const scriptsDir = path.join(PLUGIN_ROOT, "scripts");
 
-    for (const entries of Object.values(hooksJson)) {
-      for (const group of entries as any[]) {
+    for (const entries of Object.values(hooks)) {
+      for (const group of entries) {
         for (const hook of group.hooks) {
           const filename = hook.command.split("/").pop();
           const scriptPath = path.join(scriptsDir, filename);
-          if (!existsSync(scriptPath)) {
+          if (!(await fileExists(scriptPath))) {
             missing.push(
               `${filename} (referenced in hooks.json but not found)`,
             );
@@ -128,14 +148,17 @@ describe("Hook Event Type Validation (TEST-03)", () => {
     expect(missing).toEqual([]);
   });
 
-  test("every script in dist/plugin/scripts/ is referenced by hooks.json", () => {
+  test("every script in dist/plugin/scripts/ is referenced by hooks.json", async () => {
+    const hooks = await getHooksJson();
     const scriptsDir = path.join(PLUGIN_ROOT, "scripts");
-    const allScripts = readdirSync(scriptsDir).filter((f) => f.endsWith(".sh"));
+    const allScripts = (await listDir(scriptsDir)).filter((f) =>
+      f.endsWith(".sh"),
+    );
 
     // Collect all referenced script filenames from hooks.json
     const referencedScripts = new Set<string>();
-    for (const entries of Object.values(hooksJson)) {
-      for (const group of entries as any[]) {
+    for (const entries of Object.values(hooks)) {
+      for (const group of entries) {
         for (const hook of group.hooks) {
           const filename = hook.command.split("/").pop();
           referencedScripts.add(filename);
@@ -148,13 +171,15 @@ describe("Hook Event Type Validation (TEST-03)", () => {
     expect(orphans).toEqual([]);
   });
 
-  test("all hook scripts are executable shell files", () => {
+  test("all hook scripts are executable shell files", async () => {
     const scriptsDir = path.join(PLUGIN_ROOT, "scripts");
-    const allScripts = readdirSync(scriptsDir).filter((f) => f.endsWith(".sh"));
+    const allScripts = (await listDir(scriptsDir)).filter((f) =>
+      f.endsWith(".sh"),
+    );
     const violations: string[] = [];
 
     for (const script of allScripts) {
-      const content = readFileSync(path.join(scriptsDir, script), "utf8");
+      const content = await readText(path.join(scriptsDir, script));
       const firstLine = content.split("\n")[0] ?? "";
       if (
         !firstLine.startsWith("#!/usr/bin/env bash") &&
@@ -176,20 +201,18 @@ describe("Hook Event Type Validation (TEST-03)", () => {
 
 describe("SKILL.md Frontmatter Validation (TEST-04)", () => {
   const skillsDir = path.join(PLUGIN_ROOT, "skills");
-  const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
 
-  test("every SKILL.md has YAML frontmatter", () => {
+  test("every SKILL.md has YAML frontmatter", async () => {
+    const skillDirs = await listSubdirs(skillsDir);
     const violations: string[] = [];
 
     for (const dir of skillDirs) {
       const skillMdPath = path.join(skillsDir, dir, "SKILL.md");
-      if (!existsSync(skillMdPath)) {
+      if (!(await fileExists(skillMdPath))) {
         violations.push(`${dir}/SKILL.md: file does not exist`);
         continue;
       }
-      const content = readFileSync(skillMdPath, "utf8");
+      const content = await readText(skillMdPath);
       if (!content.startsWith("---\n")) {
         violations.push(
           `${dir}/SKILL.md: does not start with YAML frontmatter`,
@@ -200,13 +223,14 @@ describe("SKILL.md Frontmatter Validation (TEST-04)", () => {
     expect(violations).toEqual([]);
   });
 
-  test("every SKILL.md frontmatter has a description field", () => {
+  test("every SKILL.md frontmatter has a description field", async () => {
+    const skillDirs = await listSubdirs(skillsDir);
     const violations: string[] = [];
 
     for (const dir of skillDirs) {
       const skillMdPath = path.join(skillsDir, dir, "SKILL.md");
-      if (!existsSync(skillMdPath)) continue;
-      const content = readFileSync(skillMdPath, "utf8");
+      if (!(await fileExists(skillMdPath))) continue;
+      const content = await readText(skillMdPath);
       const fields = extractFrontmatter(content);
 
       if (!fields) {
@@ -223,13 +247,14 @@ describe("SKILL.md Frontmatter Validation (TEST-04)", () => {
     expect(violations).toEqual([]);
   });
 
-  test("no SKILL.md has empty or whitespace-only description", () => {
+  test("no SKILL.md has empty or whitespace-only description", async () => {
+    const skillDirs = await listSubdirs(skillsDir);
     const violations: string[] = [];
 
     for (const dir of skillDirs) {
       const skillMdPath = path.join(skillsDir, dir, "SKILL.md");
-      if (!existsSync(skillMdPath)) continue;
-      const content = readFileSync(skillMdPath, "utf8");
+      if (!(await fileExists(skillMdPath))) continue;
+      const content = await readText(skillMdPath);
       const fields = extractFrontmatter(content);
 
       if (fields && fields.description !== undefined) {
@@ -251,13 +276,15 @@ describe("SKILL.md Frontmatter Validation (TEST-04)", () => {
 
 describe("Agent .md Content Validation (TEST-04)", () => {
   const agentsDir = path.join(PLUGIN_ROOT, "agents");
-  const agentFiles = readdirSync(agentsDir).filter((f) => f.endsWith(".md"));
 
-  test("every agent .md has non-trivial content", () => {
+  test("every agent .md has non-trivial content", async () => {
+    const agentFiles = (await listDir(agentsDir)).filter((f) =>
+      f.endsWith(".md"),
+    );
     const violations: string[] = [];
 
     for (const file of agentFiles) {
-      const content = readFileSync(path.join(agentsDir, file), "utf8");
+      const content = await readText(path.join(agentsDir, file));
       if (content.length <= 50) {
         violations.push(
           `${file}: content too short (${content.length} chars, expected > 50)`,
@@ -268,11 +295,14 @@ describe("Agent .md Content Validation (TEST-04)", () => {
     expect(violations).toEqual([]);
   });
 
-  test("every agent .md has a markdown heading", () => {
+  test("every agent .md has a markdown heading", async () => {
+    const agentFiles = (await listDir(agentsDir)).filter((f) =>
+      f.endsWith(".md"),
+    );
     const violations: string[] = [];
 
     for (const file of agentFiles) {
-      const content = readFileSync(path.join(agentsDir, file), "utf8");
+      const content = await readText(path.join(agentsDir, file));
       if (!content.includes("# ")) {
         violations.push(`${file}: no markdown heading found`);
       }

@@ -8,6 +8,7 @@
  * to eliminate duplication (Phase 25, TEST-01).
  */
 import path from "path";
+import { readdir, lstat } from "node:fs/promises";
 
 /**
  * Complete set of valid Claude Code hook event types.
@@ -70,4 +71,57 @@ export function extractFrontmatter(
     }
   }
   return fields;
+}
+
+// ---------------------------------------------------------------------------
+// Async Bun file helpers — replacements for sync node:fs in tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Reads a file's text content using Bun.file().
+ */
+export async function readText(filePath: string): Promise<string> {
+  return Bun.file(filePath).text();
+}
+
+/**
+ * Checks if a file or directory exists using Bun.file().exists().
+ */
+export async function fileExists(filePath: string): Promise<boolean> {
+  return Bun.file(filePath).exists();
+}
+
+/**
+ * Checks if a path is a directory using lstat from fs/promises.
+ */
+export async function isDirectory(dirPath: string): Promise<boolean> {
+  try {
+    const stat = await lstat(dirPath);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lists entries in a directory using readdir from fs/promises.
+ */
+export async function listDir(dirPath: string): Promise<string[]> {
+  return readdir(dirPath);
+}
+
+/**
+ * Lists subdirectory names in a directory.
+ */
+export async function listSubdirs(dirPath: string): Promise<string[]> {
+  const entries = await readdir(dirPath, { withFileTypes: true });
+  return entries.filter((d) => d.isDirectory()).map((d) => d.name);
+}
+
+/**
+ * Reads and parses a JSON file.
+ */
+export async function readJson<T = unknown>(filePath: string): Promise<T> {
+  const text = await Bun.file(filePath).text();
+  return JSON.parse(text) as T;
 }

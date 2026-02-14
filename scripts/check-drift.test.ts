@@ -25,6 +25,60 @@ import {
 const ROOT = path.resolve(import.meta.dir, "..");
 
 // ---------------------------------------------------------------------------
+// Helpers — DRY up repeated drift-detection and orphan-detection patterns
+// ---------------------------------------------------------------------------
+
+/**
+ * Checks generated entries matching a filter against committed files on disk.
+ * Returns an array of drift descriptions (empty = no drift).
+ */
+async function detectDrift(
+  generated: Map<string, string>,
+  filter: (relPath: string) => boolean,
+): Promise<string[]> {
+  const drifted: string[] = [];
+  const entries = [...generated.entries()].filter(([p]) => filter(p));
+  for (const [relPath, expected] of entries) {
+    const absPath = path.join(ROOT, relPath);
+    const file = Bun.file(absPath);
+    if (!(await file.exists())) {
+      drifted.push(`${relPath}: missing`);
+      continue;
+    }
+    const actual = await file.text();
+    if (actual !== expected) {
+      drifted.push(`${relPath}: content differs`);
+    }
+  }
+  return drifted;
+}
+
+/**
+ * Lists .md files in a directory and returns any that are not in validNames.
+ */
+async function detectOrphanFiles(
+  dir: string,
+  validNames: Set<string>,
+  ext: string = ".md",
+): Promise<string[]> {
+  const files = (await readdir(dir)).filter((f) => f.endsWith(ext));
+  return files.filter((f) => !validNames.has(f.replace(ext, "")));
+}
+
+/**
+ * Lists subdirectories in a directory and returns any not in validNames.
+ */
+async function detectOrphanDirs(
+  dir: string,
+  validNames: Set<string>,
+): Promise<string[]> {
+  const entries = (await readdir(dir, { withFileTypes: true }))
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  return entries.filter((d) => !validNames.has(d));
+}
+
+// ---------------------------------------------------------------------------
 // 1. Output Freshness — committed files must match generated content
 // ---------------------------------------------------------------------------
 
@@ -36,84 +90,36 @@ describe("Output Freshness", () => {
   });
 
   test("agent outputs match source", async () => {
-    const drifted: string[] = [];
-    const agentFiles = [...generated.entries()].filter(
-      ([p]) => p.includes("/agents/") && !p.startsWith("dist/"),
+    const drifted = await detectDrift(
+      generated,
+      (p) => p.includes("/agents/") && !p.startsWith("dist/"),
     );
-    for (const [relPath, expected] of agentFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
   test("skill outputs match source", async () => {
-    const drifted: string[] = [];
-    const skillFiles = [...generated.entries()].filter(
-      ([p]) => p.includes("/skills/") && !p.startsWith("dist/"),
+    const drifted = await detectDrift(
+      generated,
+      (p) => p.includes("/skills/") && !p.startsWith("dist/"),
     );
-    for (const [relPath, expected] of skillFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
   test("rule outputs match source", async () => {
-    const drifted: string[] = [];
-    const ruleFiles = [...generated.entries()].filter(
-      ([p]) => p.includes("/rules/") && !p.startsWith("dist/"),
+    const drifted = await detectDrift(
+      generated,
+      (p) => p.includes("/rules/") && !p.startsWith("dist/"),
     );
-    for (const [relPath, expected] of ruleFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
   test("hook scripts match source", async () => {
-    const drifted: string[] = [];
-    const hookFiles = [...generated.entries()].filter(
-      ([p]) =>
+    const drifted = await detectDrift(
+      generated,
+      (p) =>
         (p.startsWith(".claude/hooks/") || p.startsWith(".cursor/hooks/")) &&
         p.endsWith(".sh"),
     );
-    for (const [relPath, expected] of hookFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
@@ -145,30 +151,15 @@ describe("Output Freshness", () => {
 // ---------------------------------------------------------------------------
 
 describe("Registry Completeness", () => {
-  // Known Luca-specific entities that live in luca/ subdirectories
-  // and are compiled separately (not via registry)
-  const LUCA_SPECIFIC_AGENTS = new Set([
-    "lu-executor.agent.ts",
-    "lu-planner.agent.ts",
-  ]);
-  const LUCA_SPECIFIC_SKILLS = new Set(["lu.skill.ts"]);
-  const LUCA_SPECIFIC_RULES = new Set(["lu-workflow.rule.ts"]);
-
   test("every src/skills/general/*.skill.ts has a skillRegistry entry", async () => {
     const skillDir = path.join(ROOT, "src", "skills", "general");
     const files = (await readdir(skillDir)).filter((f) =>
       f.endsWith(".skill.ts"),
     );
     const registryNames = new Set(Object.keys(skillRegistry));
-    const missing: string[] = [];
-
-    for (const file of files) {
-      if (LUCA_SPECIFIC_SKILLS.has(file)) continue;
-      const name = file.replace(".skill.ts", "");
-      if (!registryNames.has(name)) {
-        missing.push(file);
-      }
-    }
+    const missing = files
+      .map((f) => f.replace(".skill.ts", ""))
+      .filter((name) => !registryNames.has(name));
 
     expect(missing).toEqual([]);
   });
@@ -179,15 +170,9 @@ describe("Registry Completeness", () => {
       f.endsWith(".agent.ts"),
     );
     const registryNames = new Set(Object.keys(agentRegistry));
-    const missing: string[] = [];
-
-    for (const file of files) {
-      if (LUCA_SPECIFIC_AGENTS.has(file)) continue;
-      const name = file.replace(".agent.ts", "");
-      if (!registryNames.has(name)) {
-        missing.push(file);
-      }
-    }
+    const missing = files
+      .map((f) => f.replace(".agent.ts", ""))
+      .filter((name) => !registryNames.has(name));
 
     expect(missing).toEqual([]);
   });
@@ -198,15 +183,9 @@ describe("Registry Completeness", () => {
       f.endsWith(".rule.ts"),
     );
     const registryNames = new Set(Object.keys(ruleRegistry));
-    const missing: string[] = [];
-
-    for (const file of files) {
-      if (LUCA_SPECIFIC_RULES.has(file)) continue;
-      const name = file.replace(".rule.ts", "");
-      if (!registryNames.has(name)) {
-        missing.push(file);
-      }
-    }
+    const missing = files
+      .map((f) => f.replace(".rule.ts", ""))
+      .filter((name) => !registryNames.has(name));
 
     expect(missing).toEqual([]);
   });
@@ -217,13 +196,7 @@ describe("Registry Completeness", () => {
     const registryScripts = new Set(
       Object.values(hookRegistry).map((h) => h.script),
     );
-    const missing: string[] = [];
-
-    for (const file of files) {
-      if (!registryScripts.has(file)) {
-        missing.push(file);
-      }
-    }
+    const missing = files.filter((f) => !registryScripts.has(f));
 
     expect(missing).toEqual([]);
   });
@@ -234,83 +207,77 @@ describe("Registry Completeness", () => {
 // ---------------------------------------------------------------------------
 
 describe("No Orphan Outputs", () => {
-  // All valid output names = registry keys + Luca-specific
-  const validAgentNames = new Set([
-    ...Object.keys(agentRegistry),
-    "lu-executor",
-    "lu-planner",
-  ]);
-  const validSkillNames = new Set([...Object.keys(skillRegistry), "lu"]);
-  const validRuleNames = new Set([...Object.keys(ruleRegistry), "lu-workflow"]);
+  const validAgentNames = new Set(Object.keys(agentRegistry));
+  const validSkillNames = new Set(Object.keys(skillRegistry));
+  const validRuleNames = new Set(Object.keys(ruleRegistry));
   const validHookScripts = new Set(
     Object.values(hookRegistry).map((h) => h.script),
   );
 
   test("no orphan agent outputs in .claude/agents/", async () => {
-    const dir = path.join(ROOT, ".claude", "agents");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
-    const orphans = files.filter(
-      (f) => !validAgentNames.has(f.replace(".md", "")),
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, ".claude", "agents"),
+      validAgentNames,
     );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan agent outputs in .cursor/agents/", async () => {
-    const dir = path.join(ROOT, ".cursor", "agents");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
-    const orphans = files.filter(
-      (f) => !validAgentNames.has(f.replace(".md", "")),
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, ".cursor", "agents"),
+      validAgentNames,
     );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan skill outputs in .claude/skills/", async () => {
-    const dir = path.join(ROOT, ".claude", "skills");
-    const dirs = (await readdir(dir, { withFileTypes: true }))
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-    const orphans = dirs.filter((d) => !validSkillNames.has(d));
+    const orphans = await detectOrphanDirs(
+      path.join(ROOT, ".claude", "skills"),
+      validSkillNames,
+    );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan skill outputs in .cursor/skills/", async () => {
-    const dir = path.join(ROOT, ".cursor", "skills");
-    const dirs = (await readdir(dir, { withFileTypes: true }))
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-    const orphans = dirs.filter((d) => !validSkillNames.has(d));
+    const orphans = await detectOrphanDirs(
+      path.join(ROOT, ".cursor", "skills"),
+      validSkillNames,
+    );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan rule outputs in .claude/rules/", async () => {
-    const dir = path.join(ROOT, ".claude", "rules");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
-    const orphans = files.filter(
-      (f) => !validRuleNames.has(f.replace(".md", "")),
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, ".claude", "rules"),
+      validRuleNames,
     );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan rule outputs in .cursor/rules/", async () => {
-    const dir = path.join(ROOT, ".cursor", "rules");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".mdc"));
-    const orphans = files.filter(
-      (f) => !validRuleNames.has(f.replace(".mdc", "")),
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, ".cursor", "rules"),
+      validRuleNames,
+      ".mdc",
     );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan hook scripts in .claude/hooks/", async () => {
-    const dir = path.join(ROOT, ".claude", "hooks");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".sh"));
-    const orphans = files.filter((f) => !validHookScripts.has(f));
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, ".claude", "hooks"),
+      new Set([...validHookScripts].map((s) => s.replace(".sh", ""))),
+      ".sh",
+    );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan hook scripts in .cursor/hooks/", async () => {
-    const dir = path.join(ROOT, ".cursor", "hooks");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".sh"));
-    const orphans = files.filter((f) => !validHookScripts.has(f));
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, ".cursor", "hooks"),
+      new Set([...validHookScripts].map((s) => s.replace(".sh", ""))),
+      ".sh",
+    );
     expect(orphans).toEqual([]);
   });
 });
@@ -327,82 +294,30 @@ describe("Plugin Output Freshness", () => {
   });
 
   test("plugin agent outputs match source", async () => {
-    const drifted: string[] = [];
-    const pluginAgentFiles = [...generated.entries()].filter(([p]) =>
+    const drifted = await detectDrift(generated, (p) =>
       p.startsWith("dist/plugin/agents/"),
     );
-    for (const [relPath, expected] of pluginAgentFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
   test("plugin skill outputs match source", async () => {
-    const drifted: string[] = [];
-    const pluginSkillFiles = [...generated.entries()].filter(([p]) =>
+    const drifted = await detectDrift(generated, (p) =>
       p.startsWith("dist/plugin/skills/"),
     );
-    for (const [relPath, expected] of pluginSkillFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
   test("plugin command outputs match source", async () => {
-    const drifted: string[] = [];
-    const pluginCommandFiles = [...generated.entries()].filter(([p]) =>
+    const drifted = await detectDrift(generated, (p) =>
       p.startsWith("dist/plugin/commands/"),
     );
-    for (const [relPath, expected] of pluginCommandFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
   test("plugin hook scripts match source", async () => {
-    const drifted: string[] = [];
-    const pluginScriptFiles = [...generated.entries()].filter(([p]) =>
+    const drifted = await detectDrift(generated, (p) =>
       p.startsWith("dist/plugin/scripts/"),
     );
-    for (const [relPath, expected] of pluginScriptFiles) {
-      const absPath = path.join(ROOT, relPath);
-      const file = Bun.file(absPath);
-      if (!(await file.exists())) {
-        drifted.push(`${relPath}: missing`);
-        continue;
-      }
-      const actual = await file.text();
-      if (actual !== expected) {
-        drifted.push(`${relPath}: content differs`);
-      }
-    }
     expect(drifted).toEqual([]);
   });
 
@@ -474,12 +389,8 @@ describe("Plugin Output Freshness", () => {
 // ---------------------------------------------------------------------------
 
 describe("Plugin No Orphan Outputs", () => {
-  const validPluginAgentNames = new Set([
-    ...Object.keys(agentRegistry),
-    "lu-executor",
-    "lu-planner",
-  ]);
-  const validPluginSkillNames = new Set([...Object.keys(skillRegistry), "lu"]);
+  const validPluginAgentNames = new Set(Object.keys(agentRegistry));
+  const validPluginSkillNames = new Set(Object.keys(skillRegistry));
   const pluginHookRegistry = Object.fromEntries(
     Object.entries(hookRegistry).filter(
       ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
@@ -490,20 +401,18 @@ describe("Plugin No Orphan Outputs", () => {
   );
 
   test("no orphan agent outputs in dist/plugin/agents/", async () => {
-    const dir = path.join(ROOT, "dist", "plugin", "agents");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".md"));
-    const orphans = files.filter(
-      (f) => !validPluginAgentNames.has(f.replace(".md", "")),
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, "dist", "plugin", "agents"),
+      validPluginAgentNames,
     );
     expect(orphans).toEqual([]);
   });
 
   test("no orphan skill outputs in dist/plugin/skills/", async () => {
-    const dir = path.join(ROOT, "dist", "plugin", "skills");
-    const dirs = (await readdir(dir, { withFileTypes: true }))
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-    const orphans = dirs.filter((d) => !validPluginSkillNames.has(d));
+    const orphans = await detectOrphanDirs(
+      path.join(ROOT, "dist", "plugin", "skills"),
+      validPluginSkillNames,
+    );
     expect(orphans).toEqual([]);
   });
 
@@ -526,9 +435,11 @@ describe("Plugin No Orphan Outputs", () => {
   });
 
   test("no orphan hook scripts in dist/plugin/scripts/", async () => {
-    const dir = path.join(ROOT, "dist", "plugin", "scripts");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".sh"));
-    const orphans = files.filter((f) => !validPluginHookScripts.has(f));
+    const orphans = await detectOrphanFiles(
+      path.join(ROOT, "dist", "plugin", "scripts"),
+      new Set([...validPluginHookScripts].map((s) => s.replace(".sh", ""))),
+      ".sh",
+    );
     expect(orphans).toEqual([]);
   });
 });

@@ -13,21 +13,27 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { readdirSync, existsSync, statSync, readFileSync } from "node:fs";
 import path from "path";
 
 import {
   pluginManifestSchema,
   KEBAB_CASE_REGEX,
 } from "../src/compilers/plugin.types";
-import { PLUGIN_ROOT } from "./test-helpers";
+import {
+  PLUGIN_ROOT,
+  fileExists,
+  isDirectory,
+  listDir,
+  listSubdirs,
+  readJson,
+} from "./test-helpers";
 
 // ---------------------------------------------------------------------------
 // TEST-01: Plugin Directory Structure
 // ---------------------------------------------------------------------------
 
 describe("Plugin Directory Structure (TEST-01)", () => {
-  test("required top-level directories exist", () => {
+  test("required top-level directories exist", async () => {
     const requiredDirs = [
       ".claude-plugin",
       "agents",
@@ -39,7 +45,7 @@ describe("Plugin Directory Structure (TEST-01)", () => {
 
     for (const dir of requiredDirs) {
       const dirPath = path.join(PLUGIN_ROOT, dir);
-      if (!existsSync(dirPath) || !statSync(dirPath).isDirectory()) {
+      if (!(await isDirectory(dirPath))) {
         missing.push(dir);
       }
     }
@@ -47,53 +53,57 @@ describe("Plugin Directory Structure (TEST-01)", () => {
     expect(missing).toEqual([]);
   });
 
-  test("agents directory contains only .md files", () => {
+  test("agents directory contains only .md files", async () => {
     const agentsDir = path.join(PLUGIN_ROOT, "agents");
-    const entries = readdirSync(agentsDir);
+    const entries = await listDir(agentsDir);
     const nonMd = entries.filter((f) => !f.endsWith(".md"));
 
     expect(nonMd).toEqual([]);
   });
 
-  test("skills directory contains only subdirectories with SKILL.md", () => {
+  test("skills directory contains only subdirectories with SKILL.md", async () => {
     const skillsDir = path.join(PLUGIN_ROOT, "skills");
-    const entries = readdirSync(skillsDir, { withFileTypes: true });
+    const entries = await listSubdirs(skillsDir);
     const problems: string[] = [];
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) {
-        problems.push(`${entry.name}: not a directory`);
-        continue;
+    // Check non-directories
+    const allEntries = await listDir(skillsDir);
+    for (const entry of allEntries) {
+      if (!(await isDirectory(path.join(skillsDir, entry)))) {
+        problems.push(`${entry}: not a directory`);
       }
-      const skillMdPath = path.join(skillsDir, entry.name, "SKILL.md");
-      if (!existsSync(skillMdPath)) {
-        problems.push(`${entry.name}: missing SKILL.md`);
+    }
+
+    // Check each subdirectory has SKILL.md
+    for (const dir of entries) {
+      const skillMdPath = path.join(skillsDir, dir, "SKILL.md");
+      if (!(await fileExists(skillMdPath))) {
+        problems.push(`${dir}: missing SKILL.md`);
       }
     }
 
     expect(problems).toEqual([]);
   });
 
-  test("hooks directory contains hooks.json", () => {
+  test("hooks directory contains hooks.json", async () => {
     const hooksJsonPath = path.join(PLUGIN_ROOT, "hooks", "hooks.json");
-    expect(existsSync(hooksJsonPath)).toBe(true);
+    expect(await fileExists(hooksJsonPath)).toBe(true);
 
     // Verify it is valid JSON
-    const content = readFileSync(hooksJsonPath, "utf8");
-    const parsed = JSON.parse(content);
+    const parsed = await readJson(hooksJsonPath);
     expect(parsed).toBeDefined();
   });
 
-  test("scripts directory contains only .sh files", () => {
+  test("scripts directory contains only .sh files", async () => {
     const scriptsDir = path.join(PLUGIN_ROOT, "scripts");
-    const entries = readdirSync(scriptsDir);
+    const entries = await listDir(scriptsDir);
     const nonSh = entries.filter((f) => !f.endsWith(".sh"));
 
     expect(nonSh).toEqual([]);
   });
 
-  test("no unexpected top-level entries", () => {
-    const entries = readdirSync(PLUGIN_ROOT);
+  test("no unexpected top-level entries", async () => {
+    const entries = await listDir(PLUGIN_ROOT);
     const expectedEntries = new Set([
       ".claude-plugin",
       "README.md",
@@ -120,36 +130,31 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
     "plugin.json",
   );
 
-  test("plugin.json is valid JSON", () => {
-    const content = readFileSync(pluginJsonPath, "utf8");
-    const parsed = JSON.parse(content);
+  test("plugin.json is valid JSON", async () => {
+    const parsed = await readJson(pluginJsonPath);
     expect(parsed).toBeDefined();
     expect(typeof parsed).toBe("object");
   });
 
-  test("plugin.json passes Zod schema validation", () => {
-    const content = readFileSync(pluginJsonPath, "utf8");
-    const parsed = JSON.parse(content);
+  test("plugin.json passes Zod schema validation", async () => {
+    const parsed = await readJson(pluginJsonPath);
     const result = pluginManifestSchema.safeParse(parsed);
 
     if (!result.success) {
-      // Provide helpful error output on failure
       console.error("Zod validation errors:", result.error.issues);
     }
 
     expect(result.success).toBe(true);
   });
 
-  test("plugin.json name is kebab-case", () => {
-    const content = readFileSync(pluginJsonPath, "utf8");
-    const parsed = JSON.parse(content);
+  test("plugin.json name is kebab-case", async () => {
+    const parsed = await readJson<{ name: string }>(pluginJsonPath);
 
     expect(KEBAB_CASE_REGEX.test(parsed.name)).toBe(true);
   });
 
-  test("plugin.json has no component arrays", () => {
-    const content = readFileSync(pluginJsonPath, "utf8");
-    const parsed = JSON.parse(content);
+  test("plugin.json has no component arrays", async () => {
+    const parsed = await readJson<Record<string, unknown>>(pluginJsonPath);
 
     // Claude Code auto-discovers from directories; manifest must NOT
     // contain explicit component arrays.
@@ -159,9 +164,8 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
     expect(found).toEqual([]);
   });
 
-  test("plugin.json contains only spec-valid fields", () => {
-    const content = readFileSync(pluginJsonPath, "utf8");
-    const parsed = JSON.parse(content);
+  test("plugin.json contains only spec-valid fields", async () => {
+    const parsed = await readJson<Record<string, unknown>>(pluginJsonPath);
 
     const validFields = new Set([
       "name",
@@ -192,16 +196,17 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
       "marketplace.json",
     );
 
-    test("marketplace.json is valid JSON", () => {
-      const content = readFileSync(marketplaceJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+    test("marketplace.json is valid JSON", async () => {
+      const parsed = await readJson(marketplaceJsonPath);
       expect(parsed).toBeDefined();
       expect(typeof parsed).toBe("object");
     });
 
-    test("marketplace.json has required root fields", () => {
-      const content = readFileSync(marketplaceJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+    test("marketplace.json has required root fields", async () => {
+      const parsed = await readJson<{
+        name: string;
+        owner: { name: string };
+      }>(marketplaceJsonPath);
 
       expect(typeof parsed.name).toBe("string");
       expect(parsed.name.length).toBeGreaterThan(0);
@@ -212,17 +217,19 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
       expect(parsed.owner.name.length).toBeGreaterThan(0);
     });
 
-    test("marketplace.json has plugins array", () => {
-      const content = readFileSync(marketplaceJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+    test("marketplace.json has plugins array", async () => {
+      const parsed = await readJson<{
+        plugins: unknown[];
+      }>(marketplaceJsonPath);
 
       expect(Array.isArray(parsed.plugins)).toBe(true);
       expect(parsed.plugins.length).toBeGreaterThanOrEqual(1);
     });
 
-    test("each plugin entry has required fields", () => {
-      const content = readFileSync(marketplaceJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+    test("each plugin entry has required fields", async () => {
+      const parsed = await readJson<{
+        plugins: Array<{ name?: string; source?: string }>;
+      }>(marketplaceJsonPath);
       const problems: string[] = [];
 
       for (let i = 0; i < parsed.plugins.length; i++) {
@@ -238,9 +245,10 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
       expect(problems).toEqual([]);
     });
 
-    test("plugin entry name is kebab-case", () => {
-      const content = readFileSync(marketplaceJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+    test("plugin entry name is kebab-case", async () => {
+      const parsed = await readJson<{
+        plugins: Array<{ name: string }>;
+      }>(marketplaceJsonPath);
       const problems: string[] = [];
 
       for (let i = 0; i < parsed.plugins.length; i++) {
@@ -255,9 +263,9 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
       expect(problems).toEqual([]);
     });
 
-    test("marketplace.json $schema is valid if present", () => {
-      const content = readFileSync(marketplaceJsonPath, "utf8");
-      const parsed = JSON.parse(content);
+    test("marketplace.json $schema is valid if present", async () => {
+      const parsed =
+        await readJson<Record<string, unknown>>(marketplaceJsonPath);
 
       if ("$schema" in parsed) {
         expect(typeof parsed.$schema).toBe("string");
