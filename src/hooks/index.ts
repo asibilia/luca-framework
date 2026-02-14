@@ -81,6 +81,16 @@ export const hookRegistry: Record<string, HookDefinition> = {
     async: false,
     statusMessage: "Checking output drift...",
   },
+  "context-check-throttled": {
+    event: "PostToolUse",
+    cursorEvent: "afterFileEdit",
+    matcher: undefined,
+    cursorMatcher: undefined,
+    script: "context-check-throttled.sh",
+    timeout: 10,
+    async: true,
+    statusMessage: "Checking context...",
+  },
   "context-monitor": {
     event: "Stop",
     cursorEvent: "stop",

@@ -69,8 +69,8 @@
 
 **Plans:**
 
-- [ ] 36-01: TBD
-- [ ] 36-02: TBD
+- [x] 36-01: Schemas, token estimation, compression engine, quality scoring, trend tracking (Wave 1)
+- [x] 36-02: Working memory, context monitor, memory parser, PostToolUse hook, barrel exports (Wave 2)
 
 ### Phase 37: Procedural Memory Layer
 

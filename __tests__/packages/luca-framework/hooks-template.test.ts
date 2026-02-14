@@ -15,12 +15,13 @@ describe("hook templates for luca init", () => {
     expect(existsSync(path.join(TEMPLATES_DIR, "hooks"))).toBe(true);
   });
 
-  test("all 7 hook scripts exist in templates", () => {
+  test("all 8 hook scripts exist in templates", () => {
     const scripts = readdirSync(HOOKS_SCRIPTS_DIR).filter((f) =>
       f.endsWith(".sh"),
     );
-    expect(scripts.length).toBe(7);
+    expect(scripts.length).toBe(8);
     expect(scripts.sort()).toEqual([
+      "context-check-throttled.sh",
       "context-monitor.sh",
       "post-edit-format.sh",
       "post-edit-typecheck.sh",

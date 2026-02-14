@@ -120,6 +120,36 @@ if [ -f "$WORKING_MD" ]; then
   fi
 fi
 
+# --- Enhanced breakdown: All memory files ---
+BRAIN_MD="$PROJECT_DIR/.planning/BRAIN.md"
+MEMORY_MD="$PROJECT_DIR/.planning/MEMORY.md"
+STATE_MD="$PROJECT_DIR/.planning/STATE.md"
+
+BRAIN_SIZE=0
+MEMORY_SIZE=0
+STATE_SIZE=0
+
+if [ -f "$BRAIN_MD" ]; then
+  BRAIN_SIZE=$(wc -c < "$BRAIN_MD" | tr -d ' ')
+fi
+if [ -f "$MEMORY_MD" ]; then
+  MEMORY_SIZE=$(wc -c < "$MEMORY_MD" | tr -d ' ')
+fi
+if [ -f "$STATE_MD" ]; then
+  STATE_SIZE=$(wc -c < "$STATE_MD" | tr -d ' ')
+fi
+
+TOTAL_CONTEXT_BYTES=$((BRAIN_SIZE + MEMORY_SIZE + ${WMD_SIZE:-0} + STATE_SIZE))
+
+# Build compression recommendation
+COMPRESS_MSG=""
+if [ "$MEMORY_SIZE" -gt 60000 ]; then
+  COMPRESS_MSG=" MEMORY.md is large (~${MEMORY_SIZE} bytes). Consider running memory compression to reduce context usage."
+fi
+if [ "$TOTAL_CONTEXT_BYTES" -gt 150000 ]; then
+  COMPRESS_MSG="${COMPRESS_MSG} Total context files are ${TOTAL_CONTEXT_BYTES} bytes. Consider consolidating memory."
+fi
+
 # --- Resolve: take the higher severity ---
 # Severity ordering: NONE=0, MODERATE=1, HIGH=2, CRITICAL=3
 severity_rank() {
@@ -147,14 +177,31 @@ if [ "$FINAL_LEVEL" = "NONE" ]; then
   exit 0
 fi
 
-# --- Output warning message ---
+# --- Output warning message with enhanced breakdown ---
 # Claude Code: systemMessage, Cursor: followup_message
-HOOK_LEVEL="$FINAL_LEVEL" HOOK_MSG="$FINAL_MSG" bun -e "
+# Includes context_breakdown for informational purposes (ignored by platforms)
+HOOK_LEVEL="$FINAL_LEVEL" \
+HOOK_MSG="$FINAL_MSG" \
+HOOK_COMPRESS_MSG="$COMPRESS_MSG" \
+HOOK_BRAIN_SIZE="$BRAIN_SIZE" \
+HOOK_MEMORY_SIZE="$MEMORY_SIZE" \
+HOOK_WORKING_SIZE="${WMD_SIZE:-0}" \
+HOOK_STATE_SIZE="$STATE_SIZE" \
+HOOK_TOTAL_SIZE="$TOTAL_CONTEXT_BYTES" \
+bun -e "
   const level = process.env.HOOK_LEVEL;
   const message = process.env.HOOK_MSG;
-  const text = '[Context Monitor: ' + level + '] ' + message;
+  const compressMsg = process.env.HOOK_COMPRESS_MSG || '';
+  const text = '[Context Monitor: ' + level + '] ' + message + compressMsg;
   const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
   const msg = isClaude ? { systemMessage: text } : { followup_message: text };
+  msg.context_breakdown = {
+    brain_bytes: parseInt(process.env.HOOK_BRAIN_SIZE || '0', 10),
+    memory_bytes: parseInt(process.env.HOOK_MEMORY_SIZE || '0', 10),
+    working_bytes: parseInt(process.env.HOOK_WORKING_SIZE || '0', 10),
+    state_bytes: parseInt(process.env.HOOK_STATE_SIZE || '0', 10),
+    total_bytes: parseInt(process.env.HOOK_TOTAL_SIZE || '0', 10),
+  };
   process.stdout.write(JSON.stringify(msg));
 "
 

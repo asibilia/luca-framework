@@ -52,8 +52,8 @@ describe("hookRegistry", () => {
     }
   });
 
-  test("has exactly 7 entries", () => {
-    expect(Object.keys(hookRegistry).length).toBe(7);
+  test("has exactly 8 entries", () => {
+    expect(Object.keys(hookRegistry).length).toBe(8);
   });
 
   test("post-edit-typecheck is async", () => {
@@ -80,10 +80,13 @@ describe("hookRegistry", () => {
     const config = generateClaudeHooksConfig(hookRegistry, {
       commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
     });
-    // PostToolUse should have 1 group with 2 hooks (format + typecheck)
+    // PostToolUse should have 2 groups:
+    //   group 0: matcher "Edit|Write" with 2 hooks (format + typecheck)
+    //   group 1: no matcher with 1 hook (context-check-throttled)
     const postToolUse = config.PostToolUse as Array<{ hooks: unknown[] }>;
-    expect(postToolUse.length).toBe(1);
+    expect(postToolUse.length).toBe(2);
     expect(postToolUse[0].hooks.length).toBe(2);
+    expect(postToolUse[1].hooks.length).toBe(1);
   });
 
   test("context-monitor fires on Stop event", () => {

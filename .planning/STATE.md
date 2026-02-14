@@ -3,20 +3,20 @@
 ## Current Position
 
 - **Current Milestone:** v1.5.0 — Cognitive Architecture & State Machine
-- **Current Phase:** Phase 36 (Memory Compression & Monitoring)
-- **Status:** Phase 34 complete. Autopilot executing Phase 36 next.
-- **Task Complexity:** COMPLEX (Phase 34), MODERATE (Phase 36)
+- **Current Phase:** Phase 35 (State Machine Integration) — next up
+- **Status:** Phases 34 + 36 complete. Autopilot executing Phase 35 next.
+- **Task Complexity:** COMPLEX (Phase 35)
 - **Last Updated:** 2026-02-14
-- **Last Activity:** Phase 34 committed (b333556) — 233 SM tests, 1269 total
+- **Last Activity:** Phase 36 complete — 160 memory tests, 1429 total
 
 ## Progress
 
 ```
-v1.5.0: IN PROGRESS (1/4 phases complete)
+v1.5.0: IN PROGRESS (2/4 phases complete)
   Phase 34 (XState Core Machine):             ✅ complete (3 plans, 233 tests)
-  Phase 35 (State Machine Integration):       ⬚ not started (depends on 34 ✅)
-  Phase 36 (Memory Compression & Monitoring): ⬚ next up (no dependencies)
-  Phase 37 (Procedural Memory Layer):         ⬚ not started (depends on 36)
+  Phase 35 (State Machine Integration):       ⬚ next up (depends on 34 ✅)
+  Phase 36 (Memory Compression & Monitoring): ✅ complete (2 plans, 160 tests)
+  Phase 37 (Procedural Memory Layer):         ⬚ not started (depends on 36 ✅)
 ```
 
 ## Project Reference
@@ -72,16 +72,15 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 ## Session Continuity
 
 - **Last session:** 2026-02-14
-- **Stopped at:** Phase 34 complete, autopilot continuing
+- **Stopped at:** Phase 36 complete, autopilot continuing
 - **Resume file:** None
 
 ## Next Actions
 
-1. Execute Phase 36 (Memory Compression & Monitoring) — plan + execute
-2. Execute Phase 35 (State Machine Integration) — plan + execute
-3. Execute Phase 37 (Procedural Memory Layer) — plan + execute
-4. Complete v1.5.0 milestone
+1. Execute Phase 35 (State Machine Integration) — plan + execute
+2. Execute Phase 37 (Procedural Memory Layer) — plan + execute
+3. Complete v1.5.0 milestone
 
 ---
 
-_State last updated: 2026-02-14 (Phase 34 complete, autopilot in progress)_
+_State last updated: 2026-02-14 (Phase 36 complete, autopilot in progress)_
