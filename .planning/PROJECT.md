@@ -8,11 +8,11 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.3.2 — Shipped)
+## Current State (v1.3.3 — Shipped)
 
-**Last Shipped:** v1.3.2 — Audit Tech Debt Cleanup (2026-02-13)
+**Last Shipped:** v1.3.3 — Final Audit Sweep (2026-02-13)
 
-The Luca framework codebase is now audit-clean with zero remaining findings from the v1.3.0 milestone audit. Build pipeline consolidated into a single `generateAllOutputs()` hub, compiler architecture refactored from classes to pure functions, Bun API migration completed, and 5 security hardening measures implemented. 992 passing tests, 309 build outputs with zero drift.
+All tech debt from the v1.3.2 milestone audit has been addressed. Redundant per-platform build scripts deprecated, `generateAllOutputs()` monolith decomposed, registries refactored to factory functions (no-classes rule enforced), drift test helpers extracted, plugin spec tests migrated to async Bun APIs, and shared test entities consolidated. 992 passing tests (986 pass, 6 skip), 309 build outputs with zero drift.
 
 **Capabilities (shipped):**
 
@@ -39,6 +39,7 @@ The Luca framework codebase is now audit-clean with zero remaining findings from
 - **v1.3.0** — Claude Code Plugin Distribution (2026-02-12). 5 phases, 19 plans, 25 requirements, 928 tests. Plugin compiler, skills/agents packaging, hooks runtime, marketplace distribution, integration testing.
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12). 171 files, 938 tests. Rule class cleanup, skill naming overhaul, plugin autocomplete commands.
 - **v1.3.2** — Audit Tech Debt Cleanup (2026-02-13). 4 phases, 8 plans, 17 requirements, 992 tests. Build pipeline consolidation, compiler functional refactor, Bun API migration, security hardening.
+- **v1.3.3** — Final Audit Sweep (2026-02-13). 2 phases, 4 plans, 10 requirements, 992 tests. Build script deprecation, pipeline decomposition, registry factory refactor, drift test DRY-up, plugin spec async migration.
 
 ## Next Milestone Goals
 
@@ -109,4 +110,4 @@ The Luca framework codebase is now audit-clean with zero remaining findings from
 
 ---
 
-_Last updated: 2026-02-13 — v1.3.2 shipped_
+_Last updated: 2026-02-13 — v1.3.3 shipped_

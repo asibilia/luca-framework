@@ -2,22 +2,22 @@
 
 ## Session Info
 
-- **Started**: (cleared)
-- **Workflow**: (cleared)
-- **Phase**: (cleared)
+- **Started**: (new session)
+- **Workflow**: (none)
+- **Phase**: (none)
 
 ## Memory Recall
 
-(Cleared after learning extraction)
+(None yet)
 
 ## Planning Notes
 
-(Cleared)
+(None yet)
 
 ---
 
 _Session Status_
 
 - [ ] Active
-- [x] Learnings extracted
-- [x] Ready to clear
+- [ ] Learnings extracted
+- [ ] Ready to clear
