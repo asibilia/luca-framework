@@ -3,7 +3,7 @@
 /**
  * build-utils.ts — Shared build utilities for stale file cleanup and directory management
  *
- * Used by build-cursor.ts, build-claude.ts, and build-all.ts to ensure
+ * Used by build-all.ts and build-shared.ts to ensure
  * clean output directories before writing generated files.
  */
 import { readdir, unlink, rm, lstat, mkdir } from "node:fs/promises";

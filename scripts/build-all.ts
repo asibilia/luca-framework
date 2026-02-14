@@ -281,7 +281,7 @@ main().catch((error) => {
     "  1. Ensure all source classes in src/ compile: bun build ./src/index.ts",
   );
   console.error(
-    "  2. Check that CursorCompiler and ClaudeCompiler exist in src/compilers/",
+    "  2. Check that compile functions exist in src/compilers/compile.ts",
   );
   console.error(
     "  3. Verify the registries export correctly from src/*/index.ts",

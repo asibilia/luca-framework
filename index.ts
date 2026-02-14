@@ -69,9 +69,9 @@ export {
   hookRegistry,
   NO_MATCHER_SENTINEL,
   generateCursorHooksConfig,
+  generateClaudeHooksConfig,
 } from "./src/hooks/index";
 export type { HookDefinition } from "./src/hooks/index";
-export { generateClaudeHooksConfig } from "./scripts/build-shared";
 
 // Harness API and types (for build scripts and consumers)
 export {

@@ -12,13 +12,20 @@
  * - PLUGIN_EXCLUDED_HOOKS: Hooks excluded from plugin packaging
  * - SKILL_CATEGORIES: Skill-to-category mapping for README generation
  * - AGENT_CATEGORIES: Agent-to-category mapping for README generation
- * - generateClaudeHooksConfig(): Unified Claude hooks config builder
  * - generateMarketplaceManifest(): Marketplace manifest builder
  * - readVersion(): Package version reader
  * - generateReadme(): Plugin README.md builder
+ * - generateAllOutputs(): Unified compilation pipeline
+ *
+ * Re-exports from src/hooks/index:
+ * - generateClaudeHooksConfig(): Claude hooks config builder
+ * - generateCursorHooksConfig(): Cursor hooks config builder
  */
-import { NO_MATCHER_SENTINEL, type HookDefinition } from "../src/hooks/index";
-import { hookRegistry, generateCursorHooksConfig } from "../src/hooks/index";
+import {
+  hookRegistry,
+  generateCursorHooksConfig,
+  generateClaudeHooksConfig,
+} from "../src/hooks/index";
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry } from "../src/rules/index";
 import { skillRegistry } from "../src/skills/index";
@@ -163,62 +170,6 @@ export const COMMAND_EXCLUDED_PREFIXES: readonly string[] = [
  */
 export const isCommandSkill = (name: string): boolean =>
   !COMMAND_EXCLUDED_PREFIXES.some((prefix) => name.startsWith(prefix));
-
-/**
- * Generate Claude Code hooks configuration from the hook registry.
- *
- * Produces a hooks configuration with command paths based on the
- * provided commandPrefix. Optionally wraps the result in a
- * `{ hooks: ... }` envelope for plugin hooks.json files.
- *
- * @param registry - The hook registry mapping hook names to definitions
- * @param options.commandPrefix - Path prefix for hook script commands
- *   e.g., '"$CLAUDE_PROJECT_DIR"/.claude/hooks' or '${CLAUDE_PLUGIN_ROOT}/scripts'
- * @param options.wrapInHooksKey - If true, returns { hooks: events }; otherwise returns events directly
- * @returns A JSON-serializable hooks configuration object
- */
-export function generateClaudeHooksConfig(
-  registry: Record<string, HookDefinition>,
-  options: {
-    commandPrefix: string;
-    wrapInHooksKey?: boolean;
-  },
-): Record<string, unknown> {
-  const events: Record<
-    string,
-    Array<{ matcher?: string; hooks: Array<Record<string, unknown>> }>
-  > = {};
-
-  for (const [_name, def] of Object.entries(registry)) {
-    if (!events[def.event]) {
-      events[def.event] = [];
-    }
-
-    const matcherKey = def.matcher ?? NO_MATCHER_SENTINEL;
-    let group = events[def.event].find((g) => {
-      if (matcherKey === NO_MATCHER_SENTINEL) return !g.matcher;
-      return g.matcher === def.matcher;
-    });
-
-    if (!group) {
-      group = def.matcher ? { matcher: def.matcher, hooks: [] } : { hooks: [] };
-      events[def.event].push(group);
-    }
-
-    const hookEntry: Record<string, unknown> = {
-      type: "command",
-      command: `${options.commandPrefix}/${def.script}`,
-      timeout: def.timeout,
-    };
-
-    if (def.async) hookEntry.async = true;
-    if (def.statusMessage) hookEntry.statusMessage = def.statusMessage;
-
-    group.hooks.push(hookEntry);
-  }
-
-  return options.wrapInHooksKey ? { hooks: events } : events;
-}
 
 /**
  * Generate the marketplace manifest for plugin distribution.
@@ -441,8 +392,8 @@ MIT
 // Re-export registries for consumers that need them (e.g., orphan detection tests)
 export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
 
-// Re-export for consumers that need Cursor hooks config generation
-export { generateCursorHooksConfig };
+// Re-export hook config generators for consumers
+export { generateCursorHooksConfig, generateClaudeHooksConfig };
 
 /**
  * Generate all build outputs in memory.
