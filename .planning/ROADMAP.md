@@ -67,8 +67,8 @@
 
 **Plans:**
 
-- [ ] 32-01: Auto-discuss flag + research agent definition
-- [ ] 32-02: Integration with phase-discuss flow + user override
+- [x] 32-01: Auto-discuss flag + research agent definition
+- [x] 32-02: Integration with phase-discuss flow + user override
 
 ### Phase 33: Workflow Documentation (Mermaid Mind Maps)
 
@@ -86,7 +86,7 @@
 
 **Plans:**
 
-- [ ] 33-01: All Mermaid diagrams + documentation placement
+- [x] 33-01: All Mermaid diagrams + documentation placement
 
 ---
 
