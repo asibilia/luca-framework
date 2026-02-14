@@ -114,8 +114,8 @@ export const pluginManifestSchema = z.object({
     .regex(SEMVER_REGEX, 'Version must be valid semver (e.g. "1.0.0")')
     .default("0.1.0"),
 
-  /** Human-readable description of the plugin's purpose. */
-  description: z.string().optional(),
+  /** Human-readable description of the plugin's purpose (max 500 chars). */
+  description: z.string().max(500).optional(),
 
   /** Author metadata. */
   author: pluginAuthorSchema.optional(),
@@ -129,8 +129,8 @@ export const pluginManifestSchema = z.object({
   /** SPDX license identifier. Defaults to "MIT". */
   license: z.string().default("MIT"),
 
-  /** Searchable keywords / tags for discovery. Defaults to empty array. */
-  keywords: z.array(z.string()).default([]),
+  /** Searchable keywords / tags for discovery (max 20 items, each 1-50 chars). Defaults to empty array. */
+  keywords: z.array(z.string().min(1).max(50)).max(20).default([]),
 });
 
 /**
