@@ -4,10 +4,10 @@
 
 | ID         | Requirement                                                          | Phase | Status |
 | ---------- | -------------------------------------------------------------------- | ----- | ------ |
-| DOGFOOD-01 | Plugin output consumed as workspace self-reference                   | 30    | [ ]    |
-| DOGFOOD-02 | Explicit rebuild script gates recompilation                          | 30    | [ ]    |
-| DOGFOOD-03 | No file watchers trigger plugin recompilation during active sessions | 30    | [ ]    |
-| DOGFOOD-04 | Session-start snapshot of compiled artifacts to stable location      | 30    | [ ]    |
+| DOGFOOD-01 | Plugin output consumed as workspace self-reference                   | 30    | [x]    |
+| DOGFOOD-02 | Explicit rebuild script gates recompilation                          | 30    | [x]    |
+| DOGFOOD-03 | No file watchers trigger plugin recompilation during active sessions | 30    | [x]    |
+| DOGFOOD-04 | Session-start snapshot of compiled artifacts to stable location      | 30    | [x]    |
 
 ## Phase 31: TDD-First Verification Pattern
 

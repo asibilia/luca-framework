@@ -26,8 +26,8 @@
 
 **Plans:**
 
-- [ ] 30-01: Workspace self-consumption + rebuild script
-- [ ] 30-02: Session snapshot guard + watch exclusion
+- [x] 30-01: Session lock guard + harness safety
+- [x] 30-02: Build manifest + dogfood config + tests
 
 ### Phase 31: TDD-First Verification Pattern
 

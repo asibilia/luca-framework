@@ -227,7 +227,7 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
           { name: 'test', command: runtime === 'bun' ? 'bun test' : 'npm test', enabled: true, timeout: 120, parser: 'bun-test' },
           { name: 'typecheck', command: runtime === 'bun' ? 'bunx --bun tsc --noEmit' : 'npx tsc --noEmit', enabled: true, timeout: 60, parser: 'tsc' },
           { name: 'lint', command: runtime === 'bun' ? 'bunx --bun eslint . --format json' : 'npx eslint . --format json', enabled: false, timeout: 60, parser: 'eslint' },
-          { name: 'build', command: runtime === 'bun' ? 'bun run build:all' : 'npm run build:all', enabled: false, timeout: 120, parser: 'generic' }
+          { name: 'build', command: runtime === 'bun' ? 'bun run check:drift' : 'npm run check:drift', enabled: false, timeout: 120, parser: 'generic' }
         ]
       },
       complexity: {
@@ -239,6 +239,14 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
           COMPLEX: { cognitivePreflight: 'full', research: 'required', discussion: 'run', planVerificationIterations: 2, harnessFixIterations: 3, verificationMode: 'full', codeReviewAgents: ['dx-advocate', 'code-simplifier', 'code-architect', 'tailwind-auditor'], uat: 'required', learningCapture: 'full' },
           CRITICAL: { cognitivePreflight: 'full', research: 'required', discussion: 'required', planVerificationIterations: 3, harnessFixIterations: 5, verificationMode: 'full+human', codeReviewAgents: ['dx-advocate', 'code-simplifier', 'code-architect', 'tailwind-auditor', 'security-auditor'], uat: 'required+thorough', learningCapture: 'full+debrief' }
         }
+      },
+      dogfood: {
+        enabled: false,
+        source: 'src/',
+        outputs: ['.claude/', '.cursor/'],
+        build_command: runtime === 'bun' ? 'bun run build:all' : 'npm run build:all',
+        lock_file: '.claude/.session-lock',
+        manifest_file: '.claude/.build-manifest.json'
       }
     };
     await Bun.write(
@@ -371,7 +379,33 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export LUCA_PLANNING_DIR=$PLANNING_DIR" >> "$CLAUDE_ENV_FILE"
 fi
 
-# Step 8: Output summary if anything was created
+# Step 8: Create session lock file (with build manifest snapshot)
+HOOK_PROJECT_DIR_LOCK="$PROJECT_DIR" bun -e "
+  const path = require('path');
+  const projectDir = process.env.HOOK_PROJECT_DIR_LOCK;
+  const lockPath = path.join(projectDir, '.claude', '.session-lock');
+  const manifestPath = path.join(projectDir, '.claude', '.build-manifest.json');
+
+  let buildManifestAt = null;
+  try {
+    const manifestFile = Bun.file(manifestPath);
+    if (await manifestFile.exists()) {
+      const manifest = JSON.parse(await manifestFile.text());
+      buildManifestAt = manifest.built_at ?? null;
+    }
+  } catch {
+    // No manifest or parse error — leave as null
+  }
+
+  const payload = {
+    created_at: new Date().toISOString(),
+    pid: process.pid,
+    build_manifest_at: buildManifestAt
+  };
+  await Bun.write(lockPath, JSON.stringify(payload, null, 2) + '\n');
+"
+
+# Step 9: Output summary if anything was created
 if [ -n "$CREATED" ]; then
   HOOK_CREATED="$CREATED" bun -e "
     const created = process.env.HOOK_CREATED.trim();

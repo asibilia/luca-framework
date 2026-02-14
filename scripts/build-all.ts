@@ -26,6 +26,41 @@ import path from "path";
 
 async function main() {
   // =========================================================================
+  // 0. Session lock guard — refuse to build during active sessions
+  // =========================================================================
+  const forceFlag = process.argv.includes("--force");
+  const lockPath = path.join(process.cwd(), ".claude", ".session-lock");
+  const lockFile = Bun.file(lockPath);
+
+  if (await lockFile.exists()) {
+    let staleNote = "";
+    try {
+      const lockData = JSON.parse(await lockFile.text());
+      const createdAt = new Date(lockData.created_at);
+      const hoursOld = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+      if (hoursOld > 12) {
+        staleNote = ` (lock is ${Math.round(hoursOld)}h old — possibly stale)`;
+      }
+    } catch {
+      // Lock file is malformed — still block
+    }
+
+    if (forceFlag) {
+      console.warn(
+        `\n⚠ Session lock detected${staleNote} — proceeding anyway (--force)\n`,
+      );
+    } else {
+      console.error(
+        `\n✖ Build blocked: an active session is in progress${staleNote}`,
+      );
+      console.error(
+        "  Run with --force to override, or end the session first.\n",
+      );
+      process.exit(1);
+    }
+  }
+
+  // =========================================================================
   // 1. Generate all outputs in memory
   // =========================================================================
   const generated = await generateAllOutputs();
@@ -269,6 +304,22 @@ async function main() {
   console.log(`  Commands: ${pluginCommandCountVal}`);
   console.log(`  Hooks:    ${pluginHookCountVal}`);
   console.log(`  Meta:     ${pluginMetaFiles} files`);
+
+  // =========================================================================
+  // 7. Write build manifest
+  // =========================================================================
+  const pkgFile = Bun.file(path.join(process.cwd(), "package.json"));
+  const pkg = JSON.parse(await pkgFile.text());
+  const manifest = {
+    built_at: new Date().toISOString(),
+    output_count: keys.length,
+    version: pkg.version ?? "0.0.0",
+  };
+  await Bun.write(
+    path.join(claudeDir, ".build-manifest.json"),
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
+  console.log("\nBuild manifest written to .claude/.build-manifest.json");
 }
 
 main().catch((error) => {
