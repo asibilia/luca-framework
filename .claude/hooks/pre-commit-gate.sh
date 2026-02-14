@@ -26,8 +26,32 @@ set -euo pipefail
 # Read stdin JSON
 INPUT=$(cat)
 
-# Extract the Bash command being executed
-# Claude Code: tool_input.command, Cursor: command (top-level)
+# ─── COMMAND EXTRACTION: SECURITY NOTES ───────────────────────────────
+#
+# INPUT FORMAT (two platforms):
+#   Claude Code: { "tool_input": { "command": "git commit -m 'msg'" } }
+#   Cursor:      { "command": "git commit -m 'msg'" }
+#
+# EXTRACTION METHOD:
+#   Uses bun -e with JSON.parse() to safely extract the command string.
+#   No shell interpolation occurs — the command is never eval'd or exec'd.
+#   The printf '%s' format prevents format string injection.
+#
+# MATCHING STRATEGY:
+#   The case statement uses shell glob patterns (NOT regex).
+#   Only substring matches are checked — the command is never executed.
+#   This is safe because:
+#     1. case/esac does pattern matching, not execution
+#     2. $COMMAND is double-quoted, preventing word splitting
+#     3. No eval, exec, or subshell uses $COMMAND
+#
+# MAINTENANCE WARNING:
+#   - NEVER eval, exec, or source $COMMAND — it contains untrusted input
+#   - NEVER use $COMMAND in arithmetic expressions
+#   - Adding new case patterns is safe (glob matching only)
+#   - If you need to pass $COMMAND to another tool, use environment
+#     variables (like HOOK_CMD="$COMMAND" bun -e "...") — NOT arguments
+# ──────────────────────────────────────────────────────────────────────
 COMMAND=$(printf '%s' "$INPUT" | bun -e "
   const data = JSON.parse(await Bun.stdin.text());
   const cmd = data.tool_input?.command ?? data.command ?? '';

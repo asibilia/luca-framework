@@ -3,35 +3,34 @@
 ## Session Info
 
 - **Started**: 2026-02-13
-- **Workflow**: /phase-plan 26
-- **Phase**: 26 — Compiler Architecture Refactor
+- **Workflow**: /phase-plan 27
+- **Phase**: 27 — Security Hardening
 
 ## Memory Recall
 
 ### Patterns
 
-- **Shared build module for single source of truth** [Phase 22/24]: `build-shared.ts` is the central hub. Phase 24 extended this with `generateAllOutputs()`. All build consumers import from here.
-- **Map-based in-memory compilation pipeline** [Phase 24]: `generateAllOutputs()` returns `Map<string, string>`. Consumers iterate for their I/O purpose.
-- **Plugin compiler via format delegation** [Phase 19]: PluginCompiler delegates to `toClaudeFormat()` rather than creating new entity methods.
-- **Metadata registry for non-class entities** [Phase 11]: hookRegistry uses `HookDefinition` metadata objects, not class constructors.
-- **Plan file lists undercount affected consumers** [Phase 24]: Always run full test suite after refactoring to discover unlisted consumers.
+- **Defense-in-depth validation** [Phase 6]: Apply validation at both config ingestion AND usage site. Prevents regressions from future refactoring.
+- **Credential sanitization pattern** [Phase 6]: Use regex chain to strip Basic, Bearer, Base64, token= patterns from error messages.
+- **Zod safeParse at API boundaries** [Phase 6]: Replace `as TypeName` casts with `zodSchema.safeParse()` for runtime validation.
+- **Dual-format stdin/stdout for cross-platform hooks** [Phase 11]: Shell scripts handle both Claude Code and Cursor stdin JSON with nullish coalescing fallbacks.
+- **Plan-checker bug prevention** [Phase 11]: Caught `|| true` swallowing exit codes and wrong APIs in hooks.
 
 ### Decisions
 
-- **No-classes rule**: Codebase uses functional patterns exclusively. Factory functions, closures, composition.
 - **Bun preference**: Use Bun APIs over node:fs per CLAUDE.md and bun-preference rule.
+- **Shell scripts for hooks**: `.claude/hooks/` and `.cursor/hooks/` use bash scripts with JSON stdin/stdout.
 
 ### Pitfalls
 
-- **Registry entries are class constructors, not instances** [Phase 13]: When checking registry entries, `entry.slug` doesn't work because the registry stores constructors.
-- **Pre-existing test failures mask new ones** [testing]: 6 pre-existing failures in executeDoctor/configValidationCheck.
-- **Cognition config dual source of truth** [Phase 15]: .agent.ts → build:all → compiled .md. Always rebuild after changes.
+- **Pre-existing test failures mask new ones** [testing]: 6 pre-existing skips in executeDoctor/configValidationCheck.
+- **Hook scripts parse JSON from stdin**: Scripts use `jq` or `bun -e` to parse stdin. Input validation must handle malformed JSON gracefully.
 
 ### Intuition Flags
 
-- CAUTION: The compiler class hierarchy (BaseCompiler → AgentCompiler, SkillCompiler, RuleCompiler, PluginCompiler) is deeply integrated — registries store class constructors that the compilation pipeline instantiates. Refactoring to factory functions affects registration, instantiation, AND compilation.
-- CAUTION: Phase 24's `generateAllOutputs()` in build-shared.ts directly instantiates compilers (`new AgentCompiler()`, etc.). This is a primary consumer that needs migration.
-- OPPORTUNITY: hookRegistry already uses the metadata pattern (no classes). The agent/skill/rule registries can follow a similar approach.
+- CAUTION: Hook scripts are security-sensitive — they execute with the user's permissions and receive file paths from the IDE/CLI. Path traversal and injection are real risks.
+- CAUTION: `cleanDirectory()` in `build-utils.ts` performs recursive deletion — a root path guard prevents accidental deletion outside expected output dirs.
+- OPPORTUNITY: All 5 SEC requirements are LOW severity — surgical fixes with clear scope.
 
 ## Planning Notes
 
@@ -42,5 +41,5 @@
 _Session Status_
 
 - [x] Active
-- [x] Learnings extracted
-- [x] Ready to clear
+- [ ] Learnings extracted
+- [ ] Ready to clear

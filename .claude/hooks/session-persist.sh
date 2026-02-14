@@ -26,6 +26,14 @@ END_REASON=$(printf '%s' "$INPUT" | bun -e "
   process.stdout.write(data.reason || 'unknown');
 ")
 
+# ─── SEC-02: Sanitize END_REASON ───────────────────────────────────────
+# Allow only alphanumeric, spaces, hyphens, underscores, and periods.
+# Prevents markdown injection into WORKING.md.
+END_REASON=$(printf '%s' "$END_REASON" | tr -cd '[:alnum:] _.-')
+# Truncate to 100 characters to prevent absurdly long reason strings.
+END_REASON="${END_REASON:0:100}"
+# ──────────────────────────────────────────────────────────────────────
+
 WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
 
 # Exit if WORKING.md doesn't exist
