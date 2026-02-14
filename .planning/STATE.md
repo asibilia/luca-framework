@@ -61,7 +61,7 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 | 17    | Ralph Wiggum Loops  | ✅ complete | ITER-01 through ITER-07 (all satisfied)   |
 | 18    | Sprint Planner      | ✅ complete | PLAN-01 through PLAN-07 (all satisfied)   |
 
-## Pending Todos (10)
+## Pending Todos (11)
 
 ### Quality & Verification (backlog)
 
@@ -74,6 +74,7 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 ### Workflow & Architecture (backlog)
 
+- **Auto-discuss web research agent** (workflow) — `.planning/todos/pending/auto-discuss-web-research-agent.md`
 - **Opinionated tech stack code style guidelines** (workflow) — `.planning/todos/pending/opinionated-tech-stack-guidelines.md`
 - **Rename skills/agents to scope-oriented naming** (workflow) — `.planning/todos/pending/skill-naming-scope-oriented-convention.md`
 - **TS-driven state management** (architecture) — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md`
