@@ -44,8 +44,8 @@ Plans:
 
 Plans:
 
-- [ ] 26-01: Design factory-function compiler API (Wave 1)
-- [ ] 26-02: Implement factory compilers + migrate all consumers (Wave 2)
+- [x] 26-01: Create functional compiler module + rewrite tests (Wave 1)
+- [x] 26-02: Migrate consumers to functional API + delete old class files (Wave 2)
 
 ### Phase 27: Security Hardening
 
@@ -85,4 +85,4 @@ Phases 25 and 26 can execute in parallel after Phase 24 completes.
 
 ---
 
-_Roadmap updated: 2026-02-13 (Phase 25 complete)_
+_Roadmap updated: 2026-02-13 (Phase 26 complete)_

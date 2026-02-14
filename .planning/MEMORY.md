@@ -289,6 +289,26 @@
   - **Tags**: [patterns, planning]
   - **Confidence**: High
   - **Added**: 2026-02-13
+- **[Phase 26] Zero-state classes are trivially refactorable to functions**: The compiler class hierarchy (BaseCompiler, ClaudeCompiler, CursorCompiler, PluginCompiler) contained only pure methods with zero mutable state. Refactoring to functional equivalents was mechanical: extract method bodies into standalone functions, remove class boilerplate, update registration. No state management complexity, no semantic changes. Pattern: inspect target classes for mutable state before committing to refactoring strategy — zero-state classes are low-risk candidates
+  - **When to use**: When evaluating class-to-function refactoring complexity
+  - **Tags**: [patterns, architecture, refactoring]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 26] Two-wave migration for class-to-function refactoring**: Wave 1 created the new functional module (src/compilers/compile.ts) and rewrote all tests against the new API. Old class files remained. Wave 2 migrated all consumers and deleted old files. This allowed tests to validate the new API's correctness BEFORE any consumer was touched, reducing risk of introducing bugs during mass refactoring. Pattern: create + test new implementation first, migrate consumers second
+  - **When to use**: When refactoring widely-used shared modules
+  - **Tags**: [patterns, architecture, planning]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 26] buildAgentFrontmatter consolidation and plugin format semantics**: The 27-line duplicate `compileAgent` logic between ClaudeCompiler and PluginCompiler was consolidated into a single internal `buildAgentFrontmatter()` helper. `compileAgentPlugin()` now delegates to `compileAgentClaude()`. Old API `pluginCompiler.compileAgent(entity, "CLAUDE")` (format parameter passed to plugin compiler) was clarified to `compileAgent(entity, "PLUGIN")` which routes to plugin-specific logic. This makes intent explicit and eliminates the confusing pattern of passing "CLAUDE" format to a plugin compiler
+  - **When to use**: When consolidating duplicate implementations and clarifying API semantics
+  - **Tags**: [patterns, refactoring, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 26] Drift check as ultimate correctness gate for compiler migrations**: After all 13 files were modified across the compiler refactoring, the byte-identical drift detection system (`bun run check:drift`) confirmed that the functional compile.ts produces IDENTICAL output to the old class-based compilers. Zero differences in 118 plugin files. This is the definitive proof that the refactoring preserved correctness. Pattern: when refactoring widely-used infrastructure, use content-addressed verification (SHA-256 checksums of all outputs) as the confidence gate, not code inspection
+  - **When to use**: When refactoring core compilation or generation logic
+  - **Tags**: [patterns, verification, testing]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
 
 ### Established Conventions
 
@@ -342,6 +362,7 @@
 | [Phase 16] Context assembly in orchestrator, not agent | Context responsibility       | [decisions, architecture]               | Clean separation where agents define WHAT context they need (frontmatter config) but the orchestrator assembles HOW to provide it (document assembly). Agents never load their own context documents. Keeps agents focused on their task domain                                                                                                                                                                                                    | 2026-02-11 |
 | [Phase 20] 38 commands from 44 skills (exclusion set)  | Command compilation scope    | [decisions, architecture]               | 6 skills excluded from command generation: `workflow-start` (internal), 5 `rule-*` skills (informational, not invocable). Exclusion set pattern chosen over per-skill opt-in flag to minimize source changes. Commands use YAML frontmatter format with `allowed_tools: []` and `disable_model_invocation: true` for non-interactive skills                                                                                                        | 2026-02-12 |
 | [Phase 20] /lu as routing orchestrator, not executor   | Skill architecture           | [decisions, architecture]               | /lu rewritten from monolithic inline workflow to lightweight router using two delegation mechanisms: Skill tool for sub-skills (lu-discuss-phase, etc.) and Task tool for agents (lu-cognition, lu-router, etc.). Router never executes workflow steps itself. Each sub-skill loads its own SKILL.md. Enables independent sub-skill iteration without touching the router                                                                          | 2026-02-12 |
+| [Phase 26] Compiler: class → functional refactoring    | Compiler architecture        | [decisions, architecture, refactoring]  | Replaced 4-class hierarchy with single functional module src/compilers/compile.ts. Zero-state classes → pure functions. Drift check: byte-identical output. Two-wave migration: test new API first, migrate consumers second. Aligns with no-classes rule                                                                                                                                                                                          | 2026-02-13 |
 
 ### Decision: WSJF Scoring with LLM-Inferred Inputs (T3 Signal)
 
@@ -561,6 +582,18 @@
   - **Tags**: [pitfalls, testing, coding]
   - **Confidence**: High
   - **Added**: 2026-02-12
+- **[Phase 26] CAUTION: Class hierarchy integration overestimated pre-refactoring**: WORKING.md flagged compiler class hierarchy as "deeply integrated" requiring complex refactoring. Reality: zero mutable state, pure methods, easily extractable. Pre-refactoring caution was overstated. Lesson: inspect actual code complexity before accepting worst-case assumptions from planning notes. Complexity assessment is hindsight-driven
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, lu-router]
+  - **Tags**: [pitfalls, planning, estimation]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
+- **[Phase 26] Dispatch-parity tests should exist for compiler format routing**: The old code allowed PluginCompiler.compileAgent(entity, "CLAUDE") which was semantically confusing. New functional API routes explicitly via compileAgent(entity, "PLUGIN") → compileAgentPlugin(). Tests should verify dispatch parity (e.g., compileAgent(agent, "CLAUDE") === compileAgentClaude(agent)) to catch API drift. Phase 26 added these tests; they didn't exist before
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor]
+  - **Tags**: [pitfalls, testing, verification]
+  - **Confidence**: High
+  - **Added**: 2026-02-13
 
 ### Anti-patterns
 
@@ -616,13 +649,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 72 (+4 Phase 25: Bun readdir fallback, Bun.file exists pattern, plan consolidation, plus 1 Phase 24 carried forward)
-- Total decisions: 37 (no change)
-- Total pitfalls: 46 (no change)
+- Total patterns: 76 (+4 Phase 26: zero-state refactor, two-wave migration, consolidation, drift gate)
+- Total decisions: 38 (+1 Phase 26: compiler architecture)
+- Total pitfalls: 48 (+2 Phase 26: integration overestimation, dispatch-parity tests)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-13
 
-_Entries added by: phase-execute 25 (Phase 25 learning extraction)_
+_Entries added by: lu-learner (Phase 26 learning extraction)_
 _Last curated: 2026-02-13_
