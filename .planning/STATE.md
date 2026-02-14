@@ -29,7 +29,8 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Git Context
 
 - **Ticket:** #12
-- **Branch:** main (milestone setup)
+- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/12
+- **Branch:** feat/v1.4.0-dx-verification
 - **Base Branch:** main
 
 ## Previous Milestones
