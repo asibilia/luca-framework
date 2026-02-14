@@ -46,9 +46,9 @@
 
 **Plans:**
 
-- [ ] 31-01: TDD integration design + lu-test-writer agent
-- [ ] 31-02: Red-Green verification loop in lu-executor
-- [ ] 31-03: Verifier signal priority update + fallback rules
+- [x] 31-01: TDD integration design + lu-test-writer agent
+- [x] 31-02: Red-Green verification loop in lu-executor
+- [x] 31-03: Verifier signal priority update + fallback rules
 
 ### Phase 32: Auto-Discuss Web Research Agent
 

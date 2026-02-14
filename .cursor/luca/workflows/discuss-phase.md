@@ -109,11 +109,26 @@ Phase: "API documentation"
 - Architecture patterns
 - Performance optimization
 - Scope (roadmap defines this)
-</gray_area_identification>
+  </gray_area_identification>
 
 <process>
 
-<step name="validate_phase" priority="first">
+<step name="auto_mode_check" priority="first">
+Check if the `--auto` flag was passed in arguments.
+
+**If `--auto` is present:**
+
+- Set AUTO_MODE=true
+- After validate_phase and check_existing, skip present_gray_areas and discuss_areas
+- Instead, follow: analyze_phase → auto_select → auto_research → present_summary → user_override → write_context
+
+**If `--auto` is NOT present:**
+
+- Set AUTO_MODE=false
+- Follow normal interactive flow (existing steps below)
+  </step>
+
+<step name="validate_phase">
 Phase number from argument (required).
 
 Load and validate:
@@ -296,6 +311,133 @@ Back to [current area]: [return to current question]"
 Track deferred ideas internally.
 </step>
 
+<step name="auto_select">
+**Only runs when AUTO_MODE=true.**
+
+Auto-select ALL gray areas identified in analyze_phase. No user prompt needed.
+
+Display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► AUTO-DISCUSS: Phase {X}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+◆ Auto-selecting all {N} gray areas for research
+◆ Areas: {list of gray area names}
+```
+
+</step>
+
+<step name="auto_research">
+**Only runs when AUTO_MODE=true.**
+
+For each gray area, spawn a `lu-discuss-researcher` agent to research it.
+
+### Step 1: Read BRAIN.md for tech stack context
+
+```bash
+BRAIN_CONTENT=$(cat .planning/BRAIN.md 2>/dev/null || echo "No BRAIN.md found")
+```
+
+Extract the Stack section for tech stack constraints.
+
+### Step 2: Spawn researchers per gray area
+
+For each gray area identified in analyze_phase:
+
+1. Formulate a focused question from the gray area topic and phase context
+2. Spawn the researcher:
+
+```python
+Task(
+  prompt="""
+<discuss_research_context>
+**Gray Area Question:** {question}
+
+**Phase:** {phase_number} — {phase_name}
+**Phase Goal:** {phase_goal from roadmap}
+
+**Project Tech Stack (from BRAIN.md):**
+{brain_stack_section}
+</discuss_research_context>
+
+Research this gray area question for the phase described above. Return your recommendation in the <research_result> format.
+""",
+  subagent_type="lu-discuss-researcher",
+  description="Research: {gray_area_name}"
+)
+```
+
+3. Collect the `<research_result>` response from each agent
+4. Parse: recommendation, confidence, sources, researchable flag
+
+### Step 3: Identify non-researchable items
+
+If any results have `researchable: false`:
+
+- These need user input even in auto mode
+- Collect them for the user_override step
+  </step>
+
+<step name="present_summary">
+**Only runs when AUTO_MODE=true.**
+
+Display consolidated research results:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► AUTO-DISCUSS RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| # | Gray Area | Recommendation | Confidence | Sources |
+|---|-----------|---------------|------------|---------|
+| 1 | {area}    | {short rec}   | HIGH       | 2 cited |
+| 2 | {area}    | {short rec}   | MEDIUM     | 1 cited |
+| 3 | {area}    | Not researchable | N/A     | —       |
+```
+
+**For each HIGH/MEDIUM recommendation:** Show the full rationale and sources.
+
+**For non-researchable items:** Flag them clearly:
+
+```
+⚠ Non-researchable items (need your input):
+  - {question}: This is a user preference question
+```
+
+</step>
+
+<step name="user_override">
+**Only runs when AUTO_MODE=true.**
+
+Even in auto mode, give the user a chance to adjust:
+
+Use AskQuestion:
+
+- header: "Auto-discuss"
+- question: "Research complete. How would you like to proceed?"
+- options:
+  - "Accept all" — Use all researched recommendations as-is
+  - "Override some" — Let me provide answers for specific questions
+  - "Discuss instead" — Switch to interactive discussion mode
+
+**If "Accept all":** Proceed to write_context with all researched decisions.
+
+**If "Override some":**
+
+- Present each recommendation and ask if user agrees or wants to override
+- For each override: capture user's preference instead of research recommendation
+- Mark overridden items with `[user-override]` provenance
+
+**If "Discuss instead":** Switch to interactive mode — present_gray_areas → discuss_areas flow.
+
+**For non-researchable items (if any):**
+
+- Always prompt the user for these, regardless of choice above
+- Use AskQuestion with the non-researchable question and suggested options
+  </step>
+
 <step name="write_context">
 Create CONTEXT.md capturing decisions made.
 
@@ -334,14 +476,39 @@ fi
 ## Implementation Decisions
 
 ### [Category 1 that was discussed]
+
 - [Decision or preference captured]
 - [Another decision if applicable]
 
 ### [Category 2 that was discussed]
+
 - [Decision or preference captured]
 
 ### Claude's Discretion
+
 [Areas where user said "you decide" — note that Claude has flexibility here]
+
+**Auto Mode Provenance (only when AUTO_MODE=true):**
+
+Annotate each decision with its source:
+
+- `[researched]` — Decision from lu-discuss-researcher web research (include confidence level and source count)
+- `[user-override]` — User overrode the researched recommendation
+- `[user-input]` — Non-researchable item answered by user directly
+
+Example:
+```
+
+### Loading Behavior
+
+- Use infinite scroll with virtualization [researched, HIGH, 2 sources]
+- Show skeleton loading during fetch [researched, MEDIUM, 1 source]
+
+### Color Theme
+
+- Use dark mode as default [user-input] (non-researchable: aesthetic preference)
+
+```
 
 </decisions>
 
@@ -365,8 +532,8 @@ fi
 
 ---
 
-*Phase: XX-name*
-*Context gathered: [date]*
+_Phase: XX-name_
+_Context gathered: [date]_
 ```
 
 Write file.
@@ -452,4 +619,4 @@ Confirm: "Committed: docs(${PADDED_PHASE}): capture phase context"
 - CONTEXT.md captures actual decisions, not vague vision
 - Deferred ideas preserved for future phases
 - User knows next steps
-</success_criteria>
+  </success_criteria>

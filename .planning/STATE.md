@@ -3,18 +3,18 @@
 ## Current Position
 
 - **Current Milestone:** v1.4.0 — Developer Experience & Verification
-- **Current Phase:** Phase 31 (TDD-First Verification) — pending
-- **Status:** Phase 30 complete. Autopilot session active — full-auto mode.
-- **Task Complexity:** MODERATE (Phase 30 completed)
+- **Current Phase:** Phase 32 (Auto-Discuss Research Agent) — pending
+- **Status:** Phase 31 complete. Autopilot session active — full-auto mode.
+- **Task Complexity:** COMPLEX (Phase 31 completed)
 - **Last Updated:** 2026-02-14
-- **Last Activity:** Phase 30 (Dogfood Build Stability) completed — session lock guard, build manifest, harness safety, 997 tests.
+- **Last Activity:** Phase 31 (TDD-First Verification) completed — lu-test-writer agent, Red-Green TDD cycle in executor, T1/T3 signal priority in verifier, 1015 tests.
 
 ## Progress
 
 ```
 v1.4.0: IN PROGRESS
   Phase 30 (Dogfood Build Stability):        ✅ complete — DOGFOOD-01..04
-  Phase 31 (TDD-First Verification):         ⬚ pending — TDD-01..06
+  Phase 31 (TDD-First Verification):         ✅ complete — TDD-01..06
   Phase 32 (Auto-Discuss Research Agent):     ⬚ pending — AUTO-01..06
   Phase 33 (Workflow Documentation):          ⬚ pending — DOCS-01..05
 ```
@@ -91,9 +91,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Next Actions
 
 1. ~~Execute Phase 30 (Dogfood Build Stability)~~ ✅
-2. Execute Phase 31 (TDD-First Verification)
+2. ~~Execute Phase 31 (TDD-First Verification)~~ ✅
 3. Execute Phase 32 (Auto-Discuss Research Agent) — after Phase 30 ✅
-4. Execute Phase 33 (Workflow Documentation) — after Phase 31
+4. Execute Phase 33 (Workflow Documentation) — after Phase 31 ✅
 
 ---
 
