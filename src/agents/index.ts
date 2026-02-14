@@ -21,6 +21,7 @@ import { LuProjectResearcherAgent } from "./general/lu-project-researcher.agent"
 import { LuResearchSynthesizerAgent } from "./general/lu-research-synthesizer.agent";
 import { LuRoadmapperAgent } from "./general/lu-roadmapper.agent";
 import { LuRouterAgent } from "./general/lu-router.agent";
+import { LuTestWriterAgent } from "./general/lu-test-writer.agent";
 import { LuVerifierAgent } from "./general/lu-verifier.agent";
 import { PerformanceAuditorAgent } from "./general/performance-auditor.agent";
 import { ProductAgent } from "./general/product.agent";
@@ -66,6 +67,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-research-synthesizer": () => new LuResearchSynthesizerAgent(),
   "lu-roadmapper": () => new LuRoadmapperAgent(),
   "lu-router": () => new LuRouterAgent(),
+  "lu-test-writer": () => new LuTestWriterAgent(),
   "lu-verifier": () => new LuVerifierAgent(),
   "performance-auditor": () => new PerformanceAuditorAgent(),
   product: () => new ProductAgent(),
