@@ -12,6 +12,7 @@
  *   bun run src/state-machine/cli.ts status
  *   bun run src/state-machine/cli.ts resume
  *   bun run src/state-machine/cli.ts reset
+ *   bun run src/state-machine/cli.ts snapshot
  *
  * @module state-machine/cli
  */
@@ -26,6 +27,7 @@ import {
 } from "./persistence";
 import { getAllowedEvents } from "./machine";
 import { buildTransitionRecord } from "./events";
+import { generateSnapshot } from "./snapshot";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -82,7 +84,9 @@ Subcommands:
 
   resume   Load and display the persisted state
 
-  reset    Clear the persisted state file`);
+  reset    Clear the persisted state file
+
+  snapshot Generate STATE.md from the current machine state`);
 }
 
 // ─── Subcommand Handlers ────────────────────────────────────────────────────
@@ -313,6 +317,52 @@ async function handleReset(): Promise<void> {
   console.log(JSON.stringify({ reset: true }));
 }
 
+/**
+ * Generate a STATE.md snapshot from the current machine state.
+ *
+ * Loads the persisted actor, generates a markdown snapshot preserving
+ * existing human-authored sections, and writes it to `.planning/STATE.md`.
+ */
+async function handleSnapshot(): Promise<void> {
+  const result = await loadPersistedActor();
+  if (!result.success) {
+    console.error(result.error);
+    process.exit(2);
+  }
+
+  const actor = result.data;
+  const snapshot = actor.getSnapshot();
+  const allowed = getAllowedEvents(snapshot);
+
+  const stateMdPath = ".planning/STATE.md";
+  let existingContent: string | undefined;
+  try {
+    const stateFile = Bun.file(stateMdPath);
+    if (await stateFile.exists()) {
+      existingContent = await stateFile.text();
+    }
+  } catch {
+    // No existing STATE.md
+  }
+
+  const markdown = generateSnapshot({
+    state: String(snapshot.value),
+    context: snapshot.context,
+    existing_content: existingContent,
+    allowed_events: allowed,
+  });
+
+  await Bun.write(stateMdPath, markdown);
+
+  console.log(
+    JSON.stringify({
+      snapshot_written: true,
+      path: stateMdPath,
+      state: snapshot.value,
+    }),
+  );
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 if (import.meta.main) {
@@ -338,6 +388,9 @@ if (import.meta.main) {
         break;
       case "reset":
         await handleReset();
+        break;
+      case "snapshot":
+        await handleSnapshot();
         break;
       default:
         printUsage();

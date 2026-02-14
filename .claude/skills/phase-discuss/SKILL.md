@@ -45,7 +45,11 @@ Read these reference files before executing:
 
 ### Complexity Gate
 
-Read complexity from STATE.md `Task Complexity:` field before starting discussion.
+Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
+
+```bash
+COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+```
 
 | Complexity | Discussion |
 |------------|-----------|

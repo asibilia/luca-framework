@@ -49,8 +49,9 @@
 
 **Plans:**
 
-- [ ] 35-01: TBD
-- [ ] 35-02: TBD
+- [x] 35-01: CLI bridge, snapshot generator, foundation tests (Wave 1)
+- [x] 35-02: Hook integration: session-start, context-monitor, snapshot-sync, pre-commit (Wave 2)
+- [x] 35-03: Skill & agent prompt updates, bridge reference rule (Wave 3)
 
 ### Phase 36: Memory Compression & Monitoring
 

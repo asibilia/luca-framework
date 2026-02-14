@@ -185,7 +185,13 @@ fi
 | COMPLEX | Always run |
 | CRITICAL | Always run |
 
-Read complexity from STATE.md `Task Complexity:` field. If TRIVIAL or SIMPLE, skip to step 6 (equivalent to --skip-research).
+Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
+
+```bash
+COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+```
+
+If TRIVIAL or SIMPLE, skip to step 6 (equivalent to --skip-research).
 
 **Check config for research setting:**
 
@@ -199,6 +205,9 @@ First, read the required context:
 
 ```bash
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 CONTEXT_CONTENT=$(cat .planning/CONTEXT.md 2>/dev/null || echo "No context file")
@@ -284,6 +293,9 @@ Display stage banner:
 First, read all context files (already done in step 7):
 
 ```bash
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")

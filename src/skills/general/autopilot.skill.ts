@@ -55,6 +55,9 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 \`\`\`bash
 CONFIG=$(cat .planning/config.json 2>/dev/null || echo '{}')
+# Primary: Read state from state machine (typed, validated)
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ROADMAP=$(cat .planning/ROADMAP.md 2>/dev/null || echo "")
 \`\`\`
@@ -428,7 +431,11 @@ Task(
 )
 \`\`\`
 
-Write complexity to STATE.md.
+Write complexity via bridge (falls back to STATE.md):
+
+\`\`\`bash
+bun run src/state-machine/bridge.ts transition set-complexity --complexity="{COMPLEXITY}" 2>/dev/null || true
+\`\`\`
 
 ### 4d. Discussion (Complexity-Gated)
 
@@ -766,9 +773,15 @@ Duration:   {session duration}
 
 ### Update State
 
-1. Update STATE.md with autopilot session results
-2. Log final status to WORKING.md
-3. Commit session metadata:
+1. Update state via bridge (falls back to STATE.md):
+
+\`\`\`bash
+bun run src/state-machine/bridge.ts transition complete-phase 2>/dev/null || true
+\`\`\`
+
+2. Update STATE.md with autopilot session results
+3. Log final status to WORKING.md
+4. Commit session metadata:
 
 \`\`\`bash
 git add .planning/STATE.md .planning/WORKING.md

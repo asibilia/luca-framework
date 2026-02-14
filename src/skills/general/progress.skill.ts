@@ -47,6 +47,15 @@ This means a milestone was completed and archived. Go to **Route F** (between mi
 
 ### Step 2: Load Full Project Context
 
+- Read state from bridge (with STATE.md fallback):
+
+\`\`\`bash
+# Primary: Read state from state machine (typed, validated)
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
+STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
+\`\`\`
+
 - Read \`.planning/STATE.md\` for living memory (position, decisions, issues)
 - Read \`.planning/ROADMAP.md\` for phase structure and objectives
 - Read \`.planning/PROJECT.md\` for current state (What This Is, Core Value, Requirements)

@@ -27,6 +27,13 @@
             "timeout": 10,
             "async": true,
             "statusMessage": "Checking context..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/snapshot-sync.sh",
+            "timeout": 10,
+            "async": true,
+            "statusMessage": "Syncing STATE.md..."
           }
         ]
       }

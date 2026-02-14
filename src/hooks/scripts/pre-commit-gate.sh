@@ -72,6 +72,18 @@ esac
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 
+# Step 0: Sync STATE.md from state machine (if available)
+# This ensures commits always contain a STATE.md matching machine state.
+BRIDGE="$PROJECT_DIR/src/state-machine/bridge.ts"
+STATE_JSON="$PROJECT_DIR/.planning/state.json"
+
+if [ -f "$BRIDGE" ] && [ -f "$STATE_JSON" ]; then
+  cd "$PROJECT_DIR"
+  bun run "$BRIDGE" snapshot 2>/dev/null || true
+  # Add the regenerated STATE.md to the commit staging area
+  git add .planning/STATE.md 2>/dev/null || true
+fi
+
 # Detect runtime: reads .planning/config.json, falls back to command detection
 read_runtime() {
   local config="${CLAUDE_PROJECT_DIR:-.}/.planning/config.json"

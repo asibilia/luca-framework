@@ -73,3 +73,23 @@ export {
   stateExists,
   STATE_FILE_PATH,
 } from "./persistence";
+
+// Snapshot
+export {
+  generateSnapshot,
+  extractSection,
+  extractPreservableSections,
+} from "./snapshot";
+export type { SnapshotInput } from "./snapshot";
+
+// Bridge (programmatic API)
+export {
+  handleReadComplexity,
+  handleReadOversight,
+  handleReadPhase,
+  handleReadField,
+  handleTransition,
+  handleSnapshot,
+  handleEnsureInit,
+  handleGateCheck,
+} from "./bridge";

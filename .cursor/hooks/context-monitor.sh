@@ -128,6 +128,8 @@ STATE_MD="$PROJECT_DIR/.planning/STATE.md"
 BRAIN_SIZE=0
 MEMORY_SIZE=0
 STATE_SIZE=0
+STATE_JSON="$PROJECT_DIR/.planning/state.json"
+STATE_JSON_SIZE=0
 
 if [ -f "$BRAIN_MD" ]; then
   BRAIN_SIZE=$(wc -c < "$BRAIN_MD" | tr -d ' ')
@@ -138,8 +140,11 @@ fi
 if [ -f "$STATE_MD" ]; then
   STATE_SIZE=$(wc -c < "$STATE_MD" | tr -d ' ')
 fi
+if [ -f "$STATE_JSON" ]; then
+  STATE_JSON_SIZE=$(wc -c < "$STATE_JSON" | tr -d ' ')
+fi
 
-TOTAL_CONTEXT_BYTES=$((BRAIN_SIZE + MEMORY_SIZE + ${WMD_SIZE:-0} + STATE_SIZE))
+TOTAL_CONTEXT_BYTES=$((BRAIN_SIZE + MEMORY_SIZE + ${WMD_SIZE:-0} + STATE_SIZE + STATE_JSON_SIZE))
 
 # Build compression recommendation
 COMPRESS_MSG=""
@@ -187,6 +192,7 @@ HOOK_BRAIN_SIZE="$BRAIN_SIZE" \
 HOOK_MEMORY_SIZE="$MEMORY_SIZE" \
 HOOK_WORKING_SIZE="${WMD_SIZE:-0}" \
 HOOK_STATE_SIZE="$STATE_SIZE" \
+HOOK_STATE_JSON_SIZE="$STATE_JSON_SIZE" \
 HOOK_TOTAL_SIZE="$TOTAL_CONTEXT_BYTES" \
 bun -e "
   const level = process.env.HOOK_LEVEL;
@@ -200,6 +206,7 @@ bun -e "
     memory_bytes: parseInt(process.env.HOOK_MEMORY_SIZE || '0', 10),
     working_bytes: parseInt(process.env.HOOK_WORKING_SIZE || '0', 10),
     state_bytes: parseInt(process.env.HOOK_STATE_SIZE || '0', 10),
+    state_json_bytes: parseInt(process.env.HOOK_STATE_JSON_SIZE || '0', 10),
     total_bytes: parseInt(process.env.HOOK_TOTAL_SIZE || '0', 10),
   };
   process.stdout.write(JSON.stringify(msg));

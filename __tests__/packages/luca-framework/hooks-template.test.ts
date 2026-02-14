@@ -15,11 +15,11 @@ describe("hook templates for luca init", () => {
     expect(existsSync(path.join(TEMPLATES_DIR, "hooks"))).toBe(true);
   });
 
-  test("all 8 hook scripts exist in templates", () => {
+  test("all 9 hook scripts exist in templates", () => {
     const scripts = readdirSync(HOOKS_SCRIPTS_DIR).filter((f) =>
       f.endsWith(".sh"),
     );
-    expect(scripts.length).toBe(8);
+    expect(scripts.length).toBe(9);
     expect(scripts.sort()).toEqual([
       "context-check-throttled.sh",
       "context-monitor.sh",
@@ -29,6 +29,7 @@ describe("hook templates for luca init", () => {
       "pre-commit-gate.sh",
       "session-persist.sh",
       "session-start.sh",
+      "snapshot-sync.sh",
     ]);
   });
 

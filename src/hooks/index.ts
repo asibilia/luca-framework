@@ -91,6 +91,16 @@ export const hookRegistry: Record<string, HookDefinition> = {
     async: true,
     statusMessage: "Checking context...",
   },
+  "snapshot-sync": {
+    event: "PostToolUse",
+    cursorEvent: "afterFileEdit",
+    matcher: undefined,
+    cursorMatcher: undefined,
+    script: "snapshot-sync.sh",
+    timeout: 10,
+    async: true,
+    statusMessage: "Syncing STATE.md...",
+  },
   "context-monitor": {
     event: "Stop",
     cursorEvent: "stop",

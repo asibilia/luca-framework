@@ -52,8 +52,8 @@ describe("hookRegistry", () => {
     }
   });
 
-  test("has exactly 8 entries", () => {
-    expect(Object.keys(hookRegistry).length).toBe(8);
+  test("has exactly 9 entries", () => {
+    expect(Object.keys(hookRegistry).length).toBe(9);
   });
 
   test("post-edit-typecheck is async", () => {
@@ -82,11 +82,11 @@ describe("hookRegistry", () => {
     });
     // PostToolUse should have 2 groups:
     //   group 0: matcher "Edit|Write" with 2 hooks (format + typecheck)
-    //   group 1: no matcher with 1 hook (context-check-throttled)
+    //   group 1: no matcher with 2 hooks (context-check-throttled + snapshot-sync)
     const postToolUse = config.PostToolUse as Array<{ hooks: unknown[] }>;
     expect(postToolUse.length).toBe(2);
     expect(postToolUse[0].hooks.length).toBe(2);
-    expect(postToolUse[1].hooks.length).toBe(1);
+    expect(postToolUse[1].hooks.length).toBe(2);
   });
 
   test("context-monitor fires on Stop event", () => {

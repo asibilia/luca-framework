@@ -287,6 +287,9 @@ First, read plan contents (required because @ syntax doesn't work across Task bo
 PLAN_01_CONTENT=$(cat "{plan_01_path}")
 PLAN_02_CONTENT=$(cat "{plan_02_path}")
 PLAN_03_CONTENT=$(cat "{plan_03_path}")
+# Primary: Read state from state machine (typed, validated)
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
@@ -460,8 +463,12 @@ Overall: {PASSED/FAILED}
 Read iteration configuration:
 
 ```bash
-# Read complexity level from STATE.md
-COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}')
+# Primary: Read complexity from state machine bridge
+COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+# Fallback: grep STATE.md directly
+if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
+  COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+fi
 
 # Read iteration config
 CONFIG=$(cat .planning/config.json)
@@ -719,6 +726,9 @@ First, read the required context:
 ```bash
 PHASE_DIR=".planning/phases/{phase_number}-*"
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
@@ -1243,7 +1253,13 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Update Roadmap and State
 
-Update ROADMAP.md, STATE.md
+Update ROADMAP.md and state via bridge (falls back to STATE.md):
+
+```bash
+bun run src/state-machine/bridge.ts transition complete-phase 2>/dev/null || true
+```
+
+Also update STATE.md directly for backward compatibility.
 
 ### 10. Update Requirements
 

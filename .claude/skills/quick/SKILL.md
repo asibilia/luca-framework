@@ -64,6 +64,9 @@ Check that an active Luca project exists:
 # Auto-initialize minimal .planning/ if needed (quick mode works without full project)
 if [ ! -d .planning ]; then
   mkdir -p .planning/quick
+  # Primary: Initialize state via bridge
+  bun run src/state-machine/bridge.ts ensure-init 2>/dev/null || true
+  # Fallback: Create STATE.md directly
   cat > .planning/STATE.md << 'EOF'
 # Project State
 
@@ -86,6 +89,9 @@ fi
 
 # Ensure STATE.md exists (might have .planning/ but no STATE.md)
 if [ ! -f .planning/STATE.md ]; then
+  # Primary: Initialize state via bridge
+  bun run src/state-machine/bridge.ts ensure-init 2>/dev/null || true
+  # Fallback: Create STATE.md directly
   cat > .planning/STATE.md << 'EOF'
 # Project State
 
@@ -151,6 +157,9 @@ mkdir -p "$QUICK_DIR"
 First, read context:
 
 ```bash
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
@@ -206,6 +215,9 @@ First, read the plan:
 
 ```bash
 PLAN_CONTENT=$(cat "${QUICK_DIR}/${next_num}-PLAN.md")
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ```
 
