@@ -254,6 +254,67 @@ describe("pluginManifestSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  test("accepts description at exactly 500 characters", () => {
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      description: "a".repeat(500),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects description exceeding 500 characters", () => {
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      description: "a".repeat(501),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts keywords array with exactly 20 items", () => {
+    const keywords = Array.from({ length: 20 }, (_, i) => `kw-${i}`);
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      keywords,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.keywords).toHaveLength(20);
+    }
+  });
+
+  test("rejects keywords array exceeding 20 items", () => {
+    const keywords = Array.from({ length: 21 }, (_, i) => `kw-${i}`);
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      keywords,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts keyword at exactly 50 characters", () => {
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      keywords: ["a".repeat(50)],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects keyword exceeding 50 characters", () => {
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      keywords: ["a".repeat(51)],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects empty string keyword", () => {
+    const result = pluginManifestSchema.safeParse({
+      name: "my-plugin",
+      keywords: ["valid", ""],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("generatePluginManifest", () => {
