@@ -28,9 +28,9 @@
 
 **Plans:**
 
-- [ ] 34-01: TBD
-- [ ] 34-02: TBD
-- [ ] 34-03: TBD
+- [x] 34-01: Machine definition, guards, actions, types (Wave 1)
+- [x] 34-02: Persistence layer, CLI interface (Wave 2)
+- [x] 34-03: Child actors, event architecture (Wave 3)
 
 ### Phase 35: State Machine Integration
 
