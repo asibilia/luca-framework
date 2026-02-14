@@ -29,9 +29,6 @@ import {
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry } from "../src/rules/index";
 import { skillRegistry } from "../src/skills/index";
-import type { BaseAgent } from "../src/agents/types/agent.types";
-import type { BaseSkill } from "../src/skills/types/skill.types";
-import type { BaseRule } from "../src/rules/types/rule.types";
 import {
   compileAgent,
   compileSkill,
@@ -112,6 +109,8 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   "rule-harness-verification": "Reference",
   "rule-hook-skill-boundary": "Reference",
   "rule-file-naming": "Reference",
+  // Automation
+  autopilot: "Automation",
 };
 
 /**
@@ -285,6 +284,7 @@ export function generateReadme(
     "Configuration",
     "Session",
     "Debug",
+    "Automation",
     "Reference",
     "Other",
   ];
@@ -298,6 +298,7 @@ export function generateReadme(
     Configuration: "Help, settings, profiles, updates, codebase mapping",
     Session: "Pause and resume work sessions",
     Debug: "Debugging workflows",
+    Automation: "Autonomous orchestration and batch execution",
     Reference: "Auto-invoked rule guidance (not user commands)",
     Other: "Additional skills",
   };
@@ -397,8 +398,8 @@ export { generateCursorHooksConfig, generateClaudeHooksConfig };
 // ---------------------------------------------------------------------------
 
 function generateAgentOutputs(generated: Map<string, string>): void {
-  for (const [agentName, AgentClass] of Object.entries(agentRegistry)) {
-    const instance = new (AgentClass as new () => BaseAgent)();
+  for (const [agentName, createAgent] of Object.entries(agentRegistry)) {
+    const instance = createAgent();
     generated.set(
       `.claude/agents/${agentName}.md`,
       compileAgent(instance, "CLAUDE"),
@@ -415,8 +416,8 @@ function generateAgentOutputs(generated: Map<string, string>): void {
 }
 
 function generateSkillOutputs(generated: Map<string, string>): void {
-  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
-    const instance = new (SkillClass as new () => BaseSkill)();
+  for (const [skillName, createSkill] of Object.entries(skillRegistry)) {
+    const instance = createSkill();
     generated.set(
       `.claude/skills/${skillName}/SKILL.md`,
       compileSkill(instance, "CLAUDE"),
@@ -433,8 +434,8 @@ function generateSkillOutputs(generated: Map<string, string>): void {
 }
 
 function generateRuleOutputs(generated: Map<string, string>): void {
-  for (const [ruleName, RuleClass] of Object.entries(ruleRegistry)) {
-    const instance = new (RuleClass as new () => BaseRule)();
+  for (const [ruleName, createRule] of Object.entries(ruleRegistry)) {
+    const instance = createRule();
     generated.set(
       `.claude/rules/${ruleName}.md`,
       compileRule(instance, "CLAUDE"),
@@ -485,9 +486,9 @@ async function generatePluginOutputs(
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
 
   // Plugin commands (from skill registry, excluding internal prefixes)
-  for (const [skillName, SkillClass] of Object.entries(skillRegistry)) {
+  for (const [skillName, createSkill] of Object.entries(skillRegistry)) {
     if (!isCommandSkill(skillName)) continue;
-    const instance = new (SkillClass as new () => BaseSkill)();
+    const instance = createSkill();
     generated.set(
       `dist/plugin/commands/${skillName}.md`,
       `---\ndescription: "${instance.description.replace(/"/g, '\\"')}"\n---\n\nInvoke the ${skillName} skill to execute this command.\n`,

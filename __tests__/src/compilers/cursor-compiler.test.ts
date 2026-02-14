@@ -14,34 +14,12 @@ import {
   compileSkill,
   compileRule,
 } from "../../../src/compilers/compile";
-import { BaseAgentImpl } from "../../../src/agents/base/base-agent";
-import { BaseSkillImpl } from "../../../src/skills/base/base-skill";
-import { BaseRuleImpl } from "../../../src/rules/base/base-rule";
-import type { AgentConfig } from "../../../src/agents/types/agent.types";
-import type { SkillConfig } from "../../../src/skills/types/skill.types";
-import type { RuleConfig } from "../../../src/rules/types/rule.types";
+import { TestAgent, TestSkill, TestRule } from "../../utils/test-entities";
 import {
   validAgentConfig,
   validSkillConfig,
   validRuleConfig,
 } from "../../utils/fixtures";
-
-// Concrete subclasses for the abstract base classes
-class TestAgent extends BaseAgentImpl {
-  constructor(config: AgentConfig) {
-    super(config);
-  }
-}
-class TestSkill extends BaseSkillImpl {
-  constructor(config: SkillConfig) {
-    super(config);
-  }
-}
-class TestRule extends BaseRuleImpl {
-  constructor(config: RuleConfig) {
-    super(config);
-  }
-}
 
 describe("Cursor-format compile functions", () => {
   test("compileAgentCursor delegates to agent.toCursorFormat()", () => {

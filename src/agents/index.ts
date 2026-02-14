@@ -38,39 +38,41 @@ export { BaseAgentImpl } from "./base/base-agent";
 
 // Export types
 export type {
-  BaseAgent,
   AgentConfig,
   AgentFrontmatter,
   AgentSection,
 } from "./types/agent.types";
 
-// Registry mapping agent names to their classes for bulk processing
-export const agentRegistry = {
-  "code-architect": CodeArchitectAgent,
-  "code-developer": CodeDeveloperAgent,
-  "code-simplifier": CodeSimplifierAgent,
-  "dx-advocate": DxAdvocateAgent,
-  "lu-codebase-mapper": LuCodebaseMapperAgent,
-  "lu-cognition": LuCognitionAgent,
-  "lu-debugger": LuDebuggerAgent,
-  "lu-integration-checker": LuIntegrationCheckerAgent,
-  "lu-learner": LuLearnerAgent,
-  "lu-phase-researcher": LuPhaseResearcherAgent,
-  "lu-plan-checker": LuPlanCheckerAgent,
-  "lu-pm-planner": LuPmPlannerAgent,
-  "lu-pr-reviewer": LuPrReviewerAgent,
-  "lu-project-researcher": LuProjectResearcherAgent,
-  "lu-research-synthesizer": LuResearchSynthesizerAgent,
-  "lu-roadmapper": LuRoadmapperAgent,
-  "lu-router": LuRouterAgent,
-  "lu-verifier": LuVerifierAgent,
-  "performance-auditor": PerformanceAuditorAgent,
-  product: ProductAgent,
-  "qa-plan-generator": QaPlanGeneratorAgent,
-  "security-auditor": SecurityAuditorAgent,
-  ui: UiAgent,
-  ux: UxAgent,
-  // Luca-specific agents (previously compiled separately)
-  "lu-executor": LuExecutorAgent,
-  "lu-planner": LuPlannerAgent,
+// Import BaseAgent for registry type annotation (also re-exported)
+import type { BaseAgent } from "./types/agent.types";
+export type { BaseAgent };
+
+// Registry mapping agent names to factory functions for bulk processing
+export const agentRegistry: Record<string, () => BaseAgent> = {
+  "code-architect": () => new CodeArchitectAgent(),
+  "code-developer": () => new CodeDeveloperAgent(),
+  "code-simplifier": () => new CodeSimplifierAgent(),
+  "dx-advocate": () => new DxAdvocateAgent(),
+  "lu-codebase-mapper": () => new LuCodebaseMapperAgent(),
+  "lu-cognition": () => new LuCognitionAgent(),
+  "lu-debugger": () => new LuDebuggerAgent(),
+  "lu-integration-checker": () => new LuIntegrationCheckerAgent(),
+  "lu-learner": () => new LuLearnerAgent(),
+  "lu-phase-researcher": () => new LuPhaseResearcherAgent(),
+  "lu-plan-checker": () => new LuPlanCheckerAgent(),
+  "lu-pm-planner": () => new LuPmPlannerAgent(),
+  "lu-pr-reviewer": () => new LuPrReviewerAgent(),
+  "lu-project-researcher": () => new LuProjectResearcherAgent(),
+  "lu-research-synthesizer": () => new LuResearchSynthesizerAgent(),
+  "lu-roadmapper": () => new LuRoadmapperAgent(),
+  "lu-router": () => new LuRouterAgent(),
+  "lu-verifier": () => new LuVerifierAgent(),
+  "performance-auditor": () => new PerformanceAuditorAgent(),
+  product: () => new ProductAgent(),
+  "qa-plan-generator": () => new QaPlanGeneratorAgent(),
+  "security-auditor": () => new SecurityAuditorAgent(),
+  ui: () => new UiAgent(),
+  ux: () => new UxAgent(),
+  "lu-executor": () => new LuExecutorAgent(),
+  "lu-planner": () => new LuPlannerAgent(),
 };

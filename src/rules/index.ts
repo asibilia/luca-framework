@@ -30,31 +30,33 @@ export { BaseRuleImpl } from "./base/base-rule";
 
 // Export types
 export type {
-  BaseRule,
   RuleConfig,
   RuleFrontmatter,
   RuleSection,
 } from "./types/rule.types";
 
-// Registry mapping rule names to their classes for bulk processing
-export const ruleRegistry = {
-  "api-snake-case": ApiSnakeCaseRule,
-  "atlassian-mcp": AtlassianMcpRule,
-  "bun-preference": BunPreferenceRule,
-  "complexity-gating": ComplexityGatingRule,
-  cursor_rules: CursorRulesRule,
-  "file-naming": FileNamingRule,
-  "functional-api-reuse": FunctionalAPIReuseRule,
-  "harness-verification": HarnessVerificationRule,
-  "hook-skill-boundary": HookSkillBoundaryRule,
-  "import-standards": ImportStandardsRule,
-  "lodash-preference": LodashPreferenceRule,
-  "mandatory-documentation": MandatoryDocumentationRule,
-  "no-classes": NoClassesRule,
-  "posthog-integration": PosthogIntegrationRule,
-  "schema-first-parsing": SchemaFirstParsingRule,
-  self_improve: SelfImproveRule,
-  "use-bun-instead-of-node-vite-npm-pnpm": UseBunRule,
-  // Luca-specific rule (previously compiled separately)
-  "lu-workflow": LuWorkflowRule,
+// Import BaseRule for registry type annotation (also re-exported)
+import type { BaseRule } from "./types/rule.types";
+export type { BaseRule };
+
+// Registry mapping rule names to factory functions for bulk processing
+export const ruleRegistry: Record<string, () => BaseRule> = {
+  "api-snake-case": () => new ApiSnakeCaseRule(),
+  "atlassian-mcp": () => new AtlassianMcpRule(),
+  "bun-preference": () => new BunPreferenceRule(),
+  "complexity-gating": () => new ComplexityGatingRule(),
+  cursor_rules: () => new CursorRulesRule(),
+  "file-naming": () => new FileNamingRule(),
+  "functional-api-reuse": () => new FunctionalAPIReuseRule(),
+  "harness-verification": () => new HarnessVerificationRule(),
+  "hook-skill-boundary": () => new HookSkillBoundaryRule(),
+  "import-standards": () => new ImportStandardsRule(),
+  "lodash-preference": () => new LodashPreferenceRule(),
+  "mandatory-documentation": () => new MandatoryDocumentationRule(),
+  "no-classes": () => new NoClassesRule(),
+  "posthog-integration": () => new PosthogIntegrationRule(),
+  "schema-first-parsing": () => new SchemaFirstParsingRule(),
+  self_improve: () => new SelfImproveRule(),
+  "use-bun-instead-of-node-vite-npm-pnpm": () => new UseBunRule(),
+  "lu-workflow": () => new LuWorkflowRule(),
 };

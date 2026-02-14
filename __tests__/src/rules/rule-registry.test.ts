@@ -2,7 +2,6 @@ import { test, expect, describe } from "bun:test";
 import { readdir } from "fs/promises";
 import path from "path";
 import { ruleRegistry } from "../../../src/rules/index";
-import type { BaseRule } from "../../../src/rules/types/rule.types";
 
 const RULES_ROOT = path.join(import.meta.dir, "../../../src/rules");
 const GENERAL_RULES_DIR = path.join(RULES_ROOT, "general");
@@ -63,8 +62,8 @@ describe("rule registry completeness", () => {
   });
 
   test("every entry can be instantiated", () => {
-    for (const [_ruleName, RuleClass] of Object.entries(ruleRegistry)) {
-      const instance = new (RuleClass as new () => BaseRule)();
+    for (const [_ruleName, createRule] of Object.entries(ruleRegistry)) {
+      const instance = createRule();
       expect(instance).toBeDefined();
       expect(instance.description).toBeDefined();
       expect(typeof instance.description).toBe("string");

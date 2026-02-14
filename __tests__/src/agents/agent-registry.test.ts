@@ -3,7 +3,6 @@ import { readdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { agentRegistry } from "../../../src/agents/index";
-import type { BaseAgent } from "../../../src/agents/types/agent.types";
 
 const AGENTS_ROOT = path.join(import.meta.dir, "../../../src/agents");
 const GENERAL_AGENTS_DIR = path.join(AGENTS_ROOT, "general");
@@ -48,8 +47,8 @@ describe("agent registry completeness", () => {
   });
 
   test("every entry can be instantiated", () => {
-    for (const [_agentName, AgentClass] of Object.entries(agentRegistry)) {
-      const instance = new (AgentClass as new () => BaseAgent)();
+    for (const [_agentName, createAgent] of Object.entries(agentRegistry)) {
+      const instance = createAgent();
       expect(instance).toBeDefined();
       expect(instance.name).toBeDefined();
       expect(typeof instance.name).toBe("string");
