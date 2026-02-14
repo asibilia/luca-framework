@@ -2,17 +2,97 @@
 
 ## Overview
 
-**Current Milestone:** None (v1.4.0 complete)
+**Current Milestone:** v1.5.0 — Cognitive Architecture & State Machine
+
+---
+
+## v1.5.0 — Cognitive Architecture & State Machine
+
+**Theme:** Replace markdown-based state management with deterministic XState machine, improve memory systems, and add procedural memory for learned skills.
+**Effort:** 21 points across 4 phases
+
+### Phase 34: XState Core Machine
+
+**Goal:** Design and implement the core XState v5 state machine modeling the full Luca workflow lifecycle with callable CLI functions, persistence, transition guards, and child actor model.
+**Complexity:** COMPLEX | **Effort:** 8
+**Depends on:** None
+
+**Requirements:**
+
+- XSTATE-01: Full workflow lifecycle state machine
+- XSTATE-02: Callable CLI functions for state transitions
+- XSTATE-03: State persistence for session resume
+- XSTATE-04: Transition guards for complexity/oversight/gates
+- XSTATE-05: Event-driven architecture for hooks/skills
+- XSTATE-06: Child actor model (phases as children)
+
+**Plans:**
+
+- [ ] 34-01: TBD
+- [ ] 34-02: TBD
+- [ ] 34-03: TBD
+
+### Phase 35: State Machine Integration
+
+**Goal:** Wire the XState machine into existing skills, hooks, and agents — replacing STATE.md reads/writes with machine queries/transitions while maintaining backward-compatible human-readable snapshots.
+**Complexity:** COMPLEX | **Effort:** 5
+**Depends on:** Phase 34
+
+**Requirements:**
+
+- INTEG-01: STATE.md reads → state machine queries
+- INTEG-02: STATE.md writes → state machine transitions
+- INTEG-03: Autopilot uses state machine for phase loop
+- INTEG-04: phase-execute uses state machine for wave tracking
+- INTEG-05: Hooks integrate with state machine
+- INTEG-06: Backward-compatible STATE.md snapshots
+
+**Plans:**
+
+- [ ] 35-01: TBD
+- [ ] 35-02: TBD
+
+### Phase 36: Memory Compression & Monitoring
+
+**Goal:** Token-aware memory compression, structured WORKING.md schemas, async context monitoring, and phase quality scoring with trend tracking.
+**Complexity:** MODERATE | **Effort:** 5
+**Depends on:** None
+
+**Requirements:**
+
+- MEM-01: Token-aware MEMORY.md compression
+- MEM-02: Auto-summarize WORKING.md on threshold
+- MEM-03: Structured WORKING.md schemas (Zod)
+- MEM-04: Async context monitoring (PostToolUse throttled)
+- MEM-05: Phase quality scoring
+- MEM-06: Quality trend tracking
+
+**Plans:**
+
+- [ ] 36-01: TBD
+- [ ] 36-02: TBD
+
+### Phase 37: Procedural Memory Layer
+
+**Goal:** Add a 4th memory type for executable learned procedures — mini-skill templates extracted from successful executions, with recall during planning and success rate tracking.
+**Complexity:** MODERATE | **Effort:** 3
+**Depends on:** Phase 36
+
+**Requirements:**
+
+- PROC-01: Procedural memory format
+- PROC-02: PROCEDURES.md storage
+- PROC-03: lu-learner step sequence extraction
+- PROC-04: Procedure recall during planning
+- PROC-05: Procedure validation and retirement
+
+**Plans:**
+
+- [ ] 37-01: TBD
 
 ---
 
 ## Backlog (Deferred)
-
-### v1.5.0 — Cognitive Architecture & State Machine (proposed)
-
-- XState-based workflow state machine (consolidated from ts-driven-state-management + xstate-workflow-state-package)
-- Mastra-inspired memory improvements (compression, structured WORKING.md, async monitoring, quality scoring)
-- Procedural memory layer (learned skills from experience)
 
 ### v1.6.0+ — Multi-Stack & Convention (proposed)
 
@@ -30,8 +110,8 @@
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete: 171 files, 938 tests ([View Archive](milestones/v1.3.1-ROADMAP.md))
 - **v1.3.2** — Audit Tech Debt Cleanup: 4 phases, 8 plans, 17 requirements, 992 tests ([View Archive](milestones/v1.3.2-ROADMAP.md))
 - **v1.3.3** — Final Audit Sweep: 2 phases, 4 plans, 10 requirements, 992 tests ([View Archive](milestones/v1.3.3-ROADMAP.md))
-- **v1.4.0** — Developer Experience & Verification: 4 phases, 8 plans, 22 requirements, 1036 tests ([View Archive](milestones/v1.4.0-ROADMAP.md))
+- **v1.4.0** — Developer Experience & Verification: 4 phases, 8 plans, 21 requirements, 1036 tests ([View Archive](milestones/v1.4.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-02-14 (v1.4.0 milestone complete)_
+_Roadmap updated: 2026-02-14 (v1.5.0 milestone created)_

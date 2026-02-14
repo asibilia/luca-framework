@@ -8,11 +8,11 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.3.3 — Shipped)
+## Current State (v1.4.0 — Shipped)
 
-**Last Shipped:** v1.3.3 — Final Audit Sweep (2026-02-13)
+**Last Shipped:** v1.4.0 — Developer Experience & Verification (2026-02-14)
 
-All tech debt from the v1.3.2 milestone audit has been addressed. Redundant per-platform build scripts deprecated, `generateAllOutputs()` monolith decomposed, registries refactored to factory functions (no-classes rule enforced), drift test helpers extracted, plugin spec tests migrated to async Bun APIs, and shared test entities consolidated. 992 passing tests (986 pass, 6 skip), 309 build outputs with zero drift.
+Dogfood build stability (session lock guard, build manifest, harness safety), TDD-first verification pattern (lu-test-writer agent, red-green cycle, T1/T3 signal priority), auto-discuss web research agent (--auto flag with lu-discuss-researcher), and workflow documentation (4 Mermaid diagrams). 1036 passing tests (1036 pass, 6 skip), 28 agents, 45 skills.
 
 **Capabilities (shipped):**
 
@@ -40,16 +40,19 @@ All tech debt from the v1.3.2 milestone audit has been addressed. Redundant per-
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12). 171 files, 938 tests. Rule class cleanup, skill naming overhaul, plugin autocomplete commands.
 - **v1.3.2** — Audit Tech Debt Cleanup (2026-02-13). 4 phases, 8 plans, 17 requirements, 992 tests. Build pipeline consolidation, compiler functional refactor, Bun API migration, security hardening.
 - **v1.3.3** — Final Audit Sweep (2026-02-13). 2 phases, 4 plans, 10 requirements, 992 tests. Build script deprecation, pipeline decomposition, registry factory refactor, drift test DRY-up, plugin spec async migration.
+- **v1.4.0** — Developer Experience & Verification (2026-02-14). 4 phases, 8 plans, 21 requirements, 1036 tests. Dogfood build stability, TDD-first verification, auto-discuss research agent, workflow documentation.
 
-## Next Milestone Goals
+## Current Milestone
 
-- **TS-Driven State Management**: Offload deterministic file reads/writes from LLM to Bun scripts
-- **Procedural Memory Layer**: 4th memory type for learned skills/procedures
-- **TDD-First Verification**: Test-driven generative development pattern
-- **Dogfood Build Stability**: Stable self-referential plugin consumption
-- **Additional Stack Templates**: Python, Node.js, Next.js
-- **Multi-project Support**: Support monorepos with multiple projects
-- **Agent Marketplace**: Registry for sharing agents and skills
+**v1.5.0 — Cognitive Architecture & State Machine**
+
+Replace markdown-based state management with a deterministic XState state machine, improve memory systems with compression/quality scoring, and add procedural memory for learned skills.
+
+### Goals
+
+- **XState Workflow State Machine**: Deterministic state transitions via XState v5 actor model, replacing LLM-driven markdown reads/writes with callable functions
+- **Memory Improvements**: Token-aware compression, structured WORKING.md schemas, async context monitoring, phase quality scoring
+- **Procedural Memory Layer**: 4th memory type encoding reusable workflows extracted from successful executions
 
 ## Requirements
 
@@ -110,4 +113,4 @@ All tech debt from the v1.3.2 milestone audit has been addressed. Redundant per-
 
 ---
 
-_Last updated: 2026-02-13 — v1.3.3 shipped_
+_Last updated: 2026-02-14 — v1.5.0 milestone started_

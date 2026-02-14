@@ -1,45 +1,47 @@
-# Requirements — v1.4.0: Developer Experience & Verification
+# Requirements — v1.5.0: Cognitive Architecture & State Machine
 
-## Phase 30: Dogfood Build Stability
+## Phase 34: XState Core Machine
 
-| ID         | Requirement                                                          | Phase | Status |
-| ---------- | -------------------------------------------------------------------- | ----- | ------ |
-| DOGFOOD-01 | Plugin output consumed as workspace self-reference                   | 30    | [x]    |
-| DOGFOOD-02 | Explicit rebuild script gates recompilation                          | 30    | [x]    |
-| DOGFOOD-03 | No file watchers trigger plugin recompilation during active sessions | 30    | [x]    |
-| DOGFOOD-04 | Session-start snapshot of compiled artifacts to stable location      | 30    | [x]    |
+| ID        | Requirement                                                                                                                                         | Phase | Status |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------ |
+| XSTATE-01 | XState v5 state machine modeling full workflow lifecycle (idle → preflight → route → discuss → plan → execute → verify → learn → commit → complete) | 34    | [ ]    |
+| XSTATE-02 | Callable CLI functions for state transitions (`bun run state send --event=PHASE_COMPLETE`)                                                          | 34    | [ ]    |
+| XSTATE-03 | State persistence — serialize/deserialize machine state to/from disk for session resume                                                             | 34    | [ ]    |
+| XSTATE-04 | Transition guards encoding complexity gating, oversight levels, and gate config                                                                     | 34    | [ ]    |
+| XSTATE-05 | Event-driven architecture — workflow transitions emit events for hooks/skills                                                                       | 34    | [ ]    |
+| XSTATE-06 | Child actor model — phases as child actors, milestone as parent                                                                                     | 34    | [ ]    |
 
-## Phase 31: TDD-First Verification Pattern
+## Phase 35: State Machine Integration
 
-| ID     | Requirement                                                                                                 | Phase | Status |
-| ------ | ----------------------------------------------------------------------------------------------------------- | ----- | ------ |
-| TDD-01 | lu-test-writer agent generates tests from plan verification criteria                                        | 31    | [ ]    |
-| TDD-02 | Red phase confirmation — tests fail before implementation begins                                            | 31    | [ ]    |
-| TDD-03 | Green phase confirmation — tests pass after implementation                                                  | 31    | [ ]    |
-| TDD-04 | lu-executor integrates TDD cycle (read plan -> generate tests -> confirm red -> implement -> confirm green) | 31    | [ ]    |
-| TDD-05 | lu-verifier uses test pass/fail as primary T1 signal, goal-backward as secondary T3                         | 31    | [ ]    |
-| TDD-06 | Fallback for non-testable work (docs, config) defined and documented                                        | 31    | [ ]    |
+| ID       | Requirement                                                                  | Phase | Status |
+| -------- | ---------------------------------------------------------------------------- | ----- | ------ |
+| INTEG-01 | STATE.md reads replaced by state machine queries (`bun run state get`)       | 35    | [ ]    |
+| INTEG-02 | STATE.md writes replaced by state machine transitions (`bun run state send`) | 35    | [ ]    |
+| INTEG-03 | Autopilot skill uses state machine for phase loop and oversight gates        | 35    | [ ]    |
+| INTEG-04 | phase-execute skill uses state machine for wave/task tracking                | 35    | [ ]    |
+| INTEG-05 | Existing hooks (session-start, session-persist) integrate with state machine | 35    | [ ]    |
+| INTEG-06 | Backward compatibility — STATE.md still generated as human-readable snapshot | 35    | [ ]    |
 
-## Phase 32: Auto-Discuss Web Research Agent
+## Phase 36: Memory Compression & Monitoring
 
-| ID      | Requirement                                                         | Phase | Status |
-| ------- | ------------------------------------------------------------------- | ----- | ------ |
-| AUTO-01 | `--auto` flag on phase-discuss skill                                | 32    | [ ]    |
-| AUTO-02 | Auto-selects all gray areas (skips manual prompt)                   | 32    | [ ]    |
-| AUTO-03 | Per-question web research agent uses WebSearch/WebFetch             | 32    | [ ]    |
-| AUTO-04 | Research scoped to project tech stack (from BRAIN.md)               | 32    | [ ]    |
-| AUTO-05 | Summary with citations presented before CONTEXT.md write            | 32    | [ ]    |
-| AUTO-06 | User override — review and change any auto-answer before finalizing | 32    | [ ]    |
+| ID     | Requirement                                                                       | Phase | Status |
+| ------ | --------------------------------------------------------------------------------- | ----- | ------ |
+| MEM-01 | Token-aware MEMORY.md compression via lu-learner reflection pass                  | 36    | [ ]    |
+| MEM-02 | Auto-summarize WORKING.md sections when size exceeds threshold mid-session        | 36    | [ ]    |
+| MEM-03 | Structured WORKING.md schemas (Zod-validated sections with merge semantics)       | 36    | [ ]    |
+| MEM-04 | Async context monitoring during execution (PostToolUse throttled, not just Stop)  | 36    | [ ]    |
+| MEM-05 | Phase quality scoring — composite score (tests, types, lint, verifier confidence) | 36    | [ ]    |
+| MEM-06 | Quality trend tracking in STATE.md/MEMORY.md for cross-phase regression detection | 36    | [ ]    |
 
-## Phase 33: Workflow Documentation (Mermaid Mind Maps)
+## Phase 37: Procedural Memory Layer
 
-| ID      | Requirement                                                              | Phase | Status |
-| ------- | ------------------------------------------------------------------------ | ----- | ------ |
-| DOCS-01 | Full workflow mind map (overview level)                                  | 33    | [ ]    |
-| DOCS-02 | Agent orchestration diagram (spawning, context flow, result aggregation) | 33    | [ ]    |
-| DOCS-03 | Cognition flow diagram (BRAIN/MEMORY/WORKING data flow)                  | 33    | [ ]    |
-| DOCS-04 | Complexity gate diagram (always-on vs gated steps)                       | 33    | [ ]    |
-| DOCS-05 | Diagrams placed in docs/ and render on GitHub                            | 33    | [ ]    |
+| ID      | Requirement                                                                          | Phase | Status |
+| ------- | ------------------------------------------------------------------------------------ | ----- | ------ |
+| PROC-01 | Procedural memory format — executable learned procedures as mini-skill templates     | 37    | [ ]    |
+| PROC-02 | PROCEDURES.md file (or MEMORY.md `## Procedures` section) for storage                | 37    | [ ]    |
+| PROC-03 | lu-learner extracts step sequences from successful verifications                     | 37    | [ ]    |
+| PROC-04 | Procedure recall during planning — relevant procedures offered as starting templates | 37    | [ ]    |
+| PROC-05 | Procedure validation — success rate tracking, retirement of stale procedures         | 37    | [ ]    |
 
 ---
 
@@ -47,12 +49,12 @@
 
 | Phase     | Requirement Count | Complexity | Effort |
 | --------- | ----------------- | ---------- | ------ |
-| 30        | 4                 | MODERATE   | 3      |
-| 31        | 6                 | COMPLEX    | 5      |
-| 32        | 6                 | MODERATE   | 3      |
-| 33        | 5                 | SIMPLE     | 2      |
-| **Total** | **21**            |            | **13** |
+| 34        | 6                 | COMPLEX    | 8      |
+| 35        | 6                 | COMPLEX    | 5      |
+| 36        | 6                 | MODERATE   | 5      |
+| 37        | 5                 | MODERATE   | 3      |
+| **Total** | **23**            |            | **21** |
 
 ---
 
-_Requirements created: 2026-02-14 (v1.4.0 milestone)_
+_Requirements created: 2026-02-14 (v1.5.0 milestone)_

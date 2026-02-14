@@ -2,38 +2,43 @@
 
 ## Current Position
 
-- **Current Milestone:** v1.4.0 — Developer Experience & Verification
-- **Current Phase:** All phases complete
-- **Status:** v1.4.0 milestone complete. All 4 phases passed.
-- **Task Complexity:** SIMPLE (Phase 33 completed)
+- **Current Milestone:** v1.5.0 — Cognitive Architecture & State Machine
+- **Current Phase:** None (milestone setup)
+- **Status:** Milestone created. Ready for phase planning.
+- **Task Complexity:** N/A
 - **Last Updated:** 2026-02-14
-- **Last Activity:** Phase 33 (Workflow Documentation) completed — 4 Mermaid diagrams, 1036 tests total.
+- **Last Activity:** v1.5.0 milestone setup
 
 ## Progress
 
 ```
-v1.4.0: IN PROGRESS
-  Phase 30 (Dogfood Build Stability):        ✅ complete — DOGFOOD-01..04
-  Phase 31 (TDD-First Verification):         ✅ complete — TDD-01..06
-  Phase 32 (Auto-Discuss Research Agent):     ✅ complete — AUTO-01..06
-  Phase 33 (Workflow Documentation):          ✅ complete — DOCS-01..05
+v1.5.0: NOT STARTED
+  Phase 34 (XState Core Machine):             ⬚ not started
+  Phase 35 (State Machine Integration):       ⬚ not started
+  Phase 36 (Memory Compression & Monitoring): ⬚ not started
+  Phase 37 (Procedural Memory Layer):         ⬚ not started
 ```
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-13)
+See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** Zero-friction adoption of structured AI workflows
-**Last shipped:** v1.3.3 — Final Audit Sweep
+**Last shipped:** v1.4.0 — Developer Experience & Verification
 
 ## Git Context
 
-- **Ticket:** #12
-- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/12
-- **Branch:** feat/v1.4.0-dx-verification
+- **Ticket:** #14
+- **GitHub Issue:** https://github.com/asibilia/luca-framework/issues/14
+- **Branch:** feat/14-cognitive-architecture-state-machine
 - **Base Branch:** main
 
 ## Previous Milestones
+
+### v1.4.0 — Developer Experience & Verification ✅
+
+- Dogfood build stability, TDD-first verification, auto-discuss research, workflow docs
+- 4 phases, 8 plans, 21 requirements, 1036 tests
 
 ### v1.3.3 — Final Audit Sweep ✅
 
@@ -47,36 +52,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 - Bun API migration, security hardening (5 mitigations), code hygiene
 - 4 phases, 8 plans, 17 requirements, 992 tests
 
-### v1.3.1 — Post-Audit Cleanup & Plugin Autocomplete ✅
+## Pending Todos (5)
 
-- Rule class name cleanup, skill naming overhaul (29 skills renamed)
-- Plugin autocomplete (38 command files), 938 tests
+### Cognition & Memory (v1.5.0)
 
-## Pending Todos (9)
+- **Procedural memory layer** — `.planning/todos/pending/procedural-memory-learned-skills.md` → Phase 37
+- **Mastra-inspired memory improvements** — `.planning/todos/pending/mastra-inspired-memory-improvements.md` → Phases 36
+- **TS-driven state management** — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md` → Phase 34-35 (consolidated with XState)
+- **XState workflow state package** — `.planning/todos/pending/xstate-workflow-state-package.md` → Phase 34-35
 
-### Quality & Verification (backlog)
+### Workflow & Architecture (deferred to v1.6.0+)
 
-- **TDD-first verification pattern** — `.planning/todos/pending/tdd-first-verification-pattern.md` → Phase 31
-
-### Cognition & Memory (deferred to v1.5.0)
-
-- **Procedural memory layer** — `.planning/todos/pending/procedural-memory-learned-skills.md`
-- **Mastra-inspired memory improvements** — `.planning/todos/pending/mastra-inspired-memory-improvements.md`
-
-### Workflow & Architecture (backlog)
-
-- **Auto-discuss web research agent** — `.planning/todos/pending/auto-discuss-web-research-agent.md` → Phase 32
-- **Opinionated tech stack code style guidelines** — `.planning/todos/pending/opinionated-tech-stack-guidelines.md` (deferred to v1.6.0+)
-- **TS-driven state management** — `.planning/todos/pending/ts-driven-state-management-llm-offloading.md` (consolidated with xstate, deferred to v1.5.0)
-- **XState workflow state package** — `.planning/todos/pending/xstate-workflow-state-package.md` (deferred to v1.5.0)
-
-### Build (backlog)
-
-- **Dogfood build stability** — `.planning/todos/pending/dogfood-build-stability.md` → Phase 30
-
-### Documentation (backlog)
-
-- **Workflow mind map (Mermaid)** — `.planning/todos/pending/workflow-mind-map-mermaid.md` → Phase 33
+- **Opinionated tech stack code style guidelines** — `.planning/todos/pending/opinionated-tech-stack-guidelines.md`
 
 ## Blockers
 
@@ -85,16 +72,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Session Continuity
 
 - **Last session:** 2026-02-14
-- **Stopped at:** v1.4.0 milestone created, autopilot full-auto in progress
+- **Stopped at:** v1.5.0 milestone setup
 - **Resume file:** None
 
 ## Next Actions
 
-1. ~~Execute Phase 30 (Dogfood Build Stability)~~ ✅
-2. ~~Execute Phase 31 (TDD-First Verification)~~ ✅
-3. Execute Phase 32 (Auto-Discuss Research Agent) — after Phase 30 ✅
-4. Execute Phase 33 (Workflow Documentation) — after Phase 31 ✅
+1. Plan Phase 34 (XState Core Machine)
+2. Plan Phase 35 (State Machine Integration)
+3. Plan Phase 36 (Memory Compression & Monitoring)
+4. Plan Phase 37 (Procedural Memory Layer)
 
 ---
 
-_State last updated: 2026-02-14 (v1.4.0 milestone created)_
+_State last updated: 2026-02-14 (v1.5.0 milestone created)_
