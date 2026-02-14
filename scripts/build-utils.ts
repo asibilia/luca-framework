@@ -10,6 +10,57 @@ import { readdir, unlink, rm, lstat, mkdir } from "node:fs/promises";
 import path from "path";
 
 /**
+ * Known safe root directories for clean operations.
+ * Only directories within these roots may be cleaned by the build pipeline.
+ */
+export const SAFE_CLEAN_ROOTS = [".claude", ".cursor", "dist"] as const;
+
+/**
+ * Validate that a directory path is within the project root and within
+ * an allowed output directory. Throws if the path is unsafe.
+ *
+ * This guard prevents accidental deletion of files outside the build
+ * output directories (e.g., due to a bug or refactor passing the wrong path).
+ *
+ * @param dir - The directory path to validate
+ * @throws Error if the path is outside the project root or not within an allowed root
+ *
+ * @example
+ * ```typescript
+ * assertSafeCleanTarget('/Users/dev/project/.claude/agents'); // OK
+ * assertSafeCleanTarget('/Users/dev/project/dist/plugin');    // OK
+ * assertSafeCleanTarget('/etc');                               // throws
+ * assertSafeCleanTarget('/Users/dev/project/src');             // throws
+ * ```
+ */
+export function assertSafeCleanTarget(dir: string): void {
+  const resolved = path.resolve(dir);
+  const projectRoot = path.resolve(process.cwd());
+
+  // Must be within the project root (not equal to it — never clean project root itself)
+  if (
+    !resolved.startsWith(projectRoot + path.sep) &&
+    resolved !== projectRoot
+  ) {
+    throw new Error(
+      `cleanDirectory() refused: "${dir}" is outside the project root "${projectRoot}"`,
+    );
+  }
+
+  // Must be within an allowed output subdirectory
+  const relative = path.relative(projectRoot, resolved);
+  const isAllowed = SAFE_CLEAN_ROOTS.some(
+    (root) => relative === root || relative.startsWith(root + path.sep),
+  );
+
+  if (!isAllowed) {
+    throw new Error(
+      `cleanDirectory() refused: "${relative}" is not within an allowed output directory (${SAFE_CLEAN_ROOTS.join(", ")})`,
+    );
+  }
+}
+
+/**
  * Remove all files matching extensions from a directory.
  * Also removes symlinks and subdirectories (to handle special cases).
  * Does NOT remove the directory itself.
@@ -18,6 +69,7 @@ export async function cleanDirectory(
   dir: string,
   extensions: string[],
 ): Promise<string[]> {
+  assertSafeCleanTarget(dir);
   const removed: string[] = [];
   let entries: string[];
 
@@ -55,6 +107,7 @@ export async function cleanDirectory(
  * Skills live in subdirectories (e.g., .cursor/skills/code-lint/SKILL.md).
  */
 export async function cleanSkillsDirectory(dir: string): Promise<string[]> {
+  assertSafeCleanTarget(dir);
   const removed: string[] = [];
   let entries: string[];
 
