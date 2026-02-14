@@ -201,6 +201,7 @@ Execute each task in the plan.
 
    - Check if task has \`tdd="true"\` attribute → follow TDD execution flow (see tdd_execution_flow section)
    - Check if plan frontmatter has \`tdd: true\` → apply TDD to ALL tasks in this plan (see tdd_execution_flow section)
+   - Check if task has \`testable="false"\` attribute → skip TDD even if plan has tdd: true (execute task normally)
    - Work toward task completion
    - **If CLI/API returns authentication error:** Handle as authentication gate
    - **When you discover additional work not in plan:** Apply deviation rules automatically

@@ -30,6 +30,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - `security-auditor` - Security review (conditional)
 - `lu-planner` - Plans fixes for issues (if needed)
 - `lu-plan-checker` - Validates fix plans (if needed)
+- `lu-test-writer` - Generates test files from plan verification criteria (spawned by lu-executor during TDD cycle)
 
 **DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate agents.
 
@@ -187,6 +188,7 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 | security-auditor | opus    | sonnet   | haiku  |
 | lu-planner       | opus    | opus     | sonnet |
 | lu-plan-checker  | sonnet  | sonnet   | haiku  |
+| lu-test-writer   | sonnet  | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -313,12 +315,16 @@ Task(
 
 </execution_context>
 
+**TDD Mode:** {tdd_enabled_or_disabled — read plan frontmatter for `tdd: true`. If present: "ENABLED", else: "DISABLED (standard execution)"}
+
 <execution_rules>
 - Execute each task in the plan sequentially
 - Commit atomically after each task (git add . && bun run commit)
 - Create SUMMARY.md when complete
 - Log findings to WORKING.md
 - Handle deviations per deviation rules
+- If TDD Mode is ENABLED: follow TDD execution flow (generate tests -> confirm RED -> implement -> confirm GREEN) for each task
+- If a task has `testable: false`: skip TDD for that task, execute normally
 </execution_rules>
 
 Execute this plan. Return SUMMARY when complete.
@@ -347,12 +353,16 @@ Task(
 
 </execution_context>
 
+**TDD Mode:** {tdd_enabled_or_disabled — read plan frontmatter for `tdd: true`. If present: "ENABLED", else: "DISABLED (standard execution)"}
+
 <execution_rules>
 - Execute each task in the plan sequentially
 - Commit atomically after each task (git add . && bun run commit)
 - Create SUMMARY.md when complete
 - Log findings to WORKING.md
 - Handle deviations per deviation rules
+- If TDD Mode is ENABLED: follow TDD execution flow (generate tests -> confirm RED -> implement -> confirm GREEN) for each task
+- If a task has `testable: false`: skip TDD for that task, execute normally
 </execution_rules>
 
 Execute this plan. Return SUMMARY when complete.

@@ -517,27 +517,82 @@ For each requirement:
 - ✗ BLOCKED: One or more supporting truths failed
 - ? NEEDS HUMAN: Can't verify requirement programmatically
 
-## Step 6.5: Incorporate Harness Results
+## Step 6.5: Incorporate Harness Results — T1 Signal (PRIMARY)
+
+**Signal Designation:** T1 — Primary Verification Signal
+
+Test pass/fail results from the verification harness are the PRIMARY verification signal because:
+- **Deterministic**: Same input always produces same result
+- **Fast**: Runs in seconds, not minutes
+- **Specification-encoded**: Tests directly encode plan verification criteria (when TDD is used)
+- **Mechanical**: No LLM judgment required for pass/fail determination
+
+When TDD-generated tests exist and pass, this is strong evidence that the plan's verification criteria are met. The verifier should weight this signal heavily in its overall status determination.
 
 If harness results are provided in the verification context:
 
-**If harness status = "passed":**
+**If harness status = "passed" AND TDD tests included:**
 
-- Add to report: "All automated checks passed (test, typecheck, lint, build)"
-- This is a positive signal -- the codebase is mechanically sound
-- Focus your verification on semantic concerns (goal achievement, wiring, stubs)
+- T1 signal: STRONG PASS
+- Add to report: "T1 Signal (PRIMARY): All automated checks passed including TDD-generated tests. Plan verification criteria mechanically confirmed."
+- Verification status can be `passed` even without full T3 analysis if T1 is strong and no anti-patterns found
+
+**If harness status = "passed" but NO TDD tests:**
+
+- T1 signal: PARTIAL (mechanical checks pass but no specification-encoded tests)
+- T3 signal becomes co-primary (goal-backward analysis needed to fill the gap)
+- Add to report: "T1 Signal (PARTIAL): Automated checks passed but no TDD-generated tests. Goal-backward analysis (T3) required."
 
 **If harness status = "failed_after_fixes":**
 
-- The automated fix loop attempted to repair failures but some remain
-- Include each remaining error as a mechanical gap:
-  - Map harness errors to the truth/artifact they affect
-  - Severity: errors are blockers, warnings are informational
-- These mechanical failures should be reported in the gaps section
+- T1 signal: FAIL (remaining errors are blockers)
+- Map each remaining error to the truth/artifact it affects
+- Severity: errors are blockers, warnings are informational
+- These mechanical failures MUST appear in the gaps section regardless of T3 results
 
 **If no harness results provided:**
 
-- Skip this step (backward-compatible with pre-harness workflow)
+- T1 signal: absent (backward-compatible with pre-harness workflow)
+- T3 (goal-backward) becomes the primary signal
+
+## Step 6.7: Non-Testable Work Fallback (TDD-06)
+
+When verifying work that has no TDD-generated tests (non-testable tasks), adjust the verification approach:
+
+**Detection:** A task is non-testable if:
+- Plan frontmatter has `testable: false`
+- SUMMARY.md indicates the task was TDD-skipped (look for `[TDD-SKIP]` entries)
+- The task only produced documentation (.md), configuration (.json, .toml, .yaml), or planning artifacts
+
+**Fallback Verification Rules:**
+
+| Work Type | Primary Signal | Verification Approach |
+|-----------|---------------|----------------------|
+| Documentation (.md files) | T3 (goal-backward) | Verify docs exist, are substantive (>50 lines for meaningful docs), cover stated topics |
+| Configuration (.json, .toml, .yaml) | T3 (goal-backward) + mechanical | Verify config is valid JSON/TOML/YAML, contains expected keys, values are reasonable |
+| Research tasks | T3 (goal-backward) | Verify RESEARCH.md exists, covers research questions, has actionable findings |
+| Planning updates | T3 (goal-backward) | Verify plan files exist, have correct frontmatter, tasks are well-defined |
+| Mixed (testable + non-testable) | T1 for testable, T3 for non-testable | Verify each component with its appropriate signal |
+
+**For mixed plans:** When a plan contains both testable and non-testable tasks, split verification:
+- Testable tasks: Use T1 (test results) as primary
+- Non-testable tasks: Use T3 (goal-backward) as primary
+- Overall plan status: Combine both signals. If either fails, the plan has gaps.
+
+**Non-testable verification is NOT less rigorous.** It uses different signals, not weaker ones.
+
+**Report format for non-testable items:**
+
+In VERIFICATION.md, non-testable items should be reported in a separate sub-table:
+
+```markdown
+### Non-Testable Items (T3 Verification)
+
+| Task | Type | T3 Status | Evidence |
+|------|------|-----------|----------|
+| {task} | docs | VERIFIED | 120-line RESEARCH.md covers all 5 questions |
+| {task} | config | VERIFIED | Valid JSON, all expected keys present |
+```
 
 ## Step 7: Scan for Anti-Patterns
 
@@ -618,12 +673,38 @@ When task complexity is CRITICAL, human verification items are mandatory, not op
 
 ## Step 9: Determine Overall Status
 
+### Signal Priority Matrix
+
+When both T1 (harness/test results) and T3 (goal-backward) signals are available, combine them using this matrix:
+
+| T1 (Harness/Tests) | T3 (Goal-Backward) | Overall Status |
+|---------------------|---------------------|----------------|
+| STRONG PASS         | PASS                | passed         |
+| STRONG PASS         | PARTIAL             | passed (T1 overrides — tests confirm spec) |
+| STRONG PASS         | FAIL                | human_needed (conflict — needs review) |
+| PARTIAL             | PASS                | passed         |
+| PARTIAL             | PARTIAL             | human_needed   |
+| PARTIAL             | FAIL                | gaps_found     |
+| FAIL                | any                 | gaps_found (T1 failure is always blocking) |
+| absent              | PASS                | passed         |
+| absent              | PARTIAL             | human_needed   |
+| absent              | FAIL                | gaps_found     |
+
+**Key rule:** T1 FAIL always results in `gaps_found`, regardless of T3 status. Mechanical failures are non-negotiable.
+
+**Key rule:** T1 STRONG PASS with T3 PARTIAL still passes because TDD tests directly encode the specification. If the specification tests pass, partial semantic analysis does not block.
+
+**Key rule:** T1 STRONG PASS with T3 FAIL triggers `human_needed` because the conflict between mechanical passing and semantic failure needs human judgment.
+
+### Status Definitions
+
 **Status: passed**
 
 - All truths VERIFIED
 - All artifacts pass level 1-3
 - All key links WIRED
 - No blocker anti-patterns
+- Signal matrix produces `passed`
 - (Human verification items are OK — will be prompted)
 
 **Status: gaps_found**
@@ -632,11 +713,13 @@ When task complexity is CRITICAL, human verification items are mandatory, not op
 - OR one or more artifacts MISSING/STUB
 - OR one or more key links NOT_WIRED
 - OR blocker anti-patterns found
+- OR signal matrix produces `gaps_found`
 
 **Status: human_needed**
 
 - All automated checks pass
 - BUT items flagged for human verification
+- OR signal matrix produces `human_needed` (T1/T3 conflict)
 - Can't determine goal achievement without human
 
 **Calculate score:**
@@ -645,7 +728,17 @@ When task complexity is CRITICAL, human verification items are mandatory, not op
 score = (verified_truths / total_truths)
 ```
 
-## Step 9.5: Goal-Backward Objective Check
+## Step 9.5: Goal-Backward Objective Check — T3 Signal (SECONDARY)
+
+**Signal Designation:** T3 — Secondary Verification Signal
+
+Goal-backward analysis is the SECONDARY verification signal because:
+- **Semantic**: Checks intent and purpose, not just mechanics
+- **Thorough**: Catches specification gaps that tests miss
+- **Subjective**: Requires LLM judgment (less deterministic than T1)
+- **Complementary**: Fills gaps that mechanical testing cannot cover
+
+When T1 (test results) is a STRONG PASS, T3 provides additional confidence but should NOT override T1. When T1 is PARTIAL (no TDD tests) or absent, T3 becomes the PRIMARY signal.
 
 **Purpose:** After determining overall status, explicitly confirm whether each PLAN.md objective was actually met — not just that truths verified, but that the original intent was achieved.
 
