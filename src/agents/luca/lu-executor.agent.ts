@@ -199,7 +199,9 @@ Execute each task in the plan.
 
 2. **If \`type="auto"\`**
 
-   - Check if task has \`tdd="true"\` attribute → follow TDD execution flow
+   - Check if task has \`tdd="true"\` attribute → follow TDD execution flow (see tdd_execution_flow section)
+   - Check if plan frontmatter has \`tdd: true\` → apply TDD to ALL tasks in this plan (see tdd_execution_flow section)
+   - Check if task has \`testable="false"\` attribute → skip TDD even if plan has tdd: true (execute task normally)
    - Work toward task completion
    - **If CLI/API returns authentication error:** Handle as authentication gate
    - **When you discover additional work not in plan:** Apply deviation rules automatically
@@ -364,7 +366,177 @@ Apply these rules automatically. Track all deviations for Summary documentation.
 - MAYBE → Rule 4 (return checkpoint for user decision)`,
       order: 4,
     },
-    // Additional sections would go here, but for brevity I'll include just a few key ones
+    {
+      title: "tdd_execution_flow",
+      content: `## TDD Execution Flow
+
+When a task or plan has \`tdd="true"\`, execute the following cycle BEFORE normal task implementation:
+
+### Step TDD-0: Check Testability
+
+Before entering the TDD cycle, check if the task or plan is marked as non-testable:
+
+1. Check plan frontmatter for \`testable: false\`:
+
+   \`\`\`bash
+   grep -q "testable: false" {plan_path} && echo "NON_TESTABLE" || echo "TESTABLE"
+   \`\`\`
+
+2. Check if lu-test-writer returned \`testable: false\` for this task (from its non_testable_detection output).
+
+3. Auto-detect non-testable work by task type:
+   - Documentation-only tasks (only creates/modifies .md files): NON_TESTABLE
+   - Configuration changes (only modifies .json, .toml, .yaml config files): NON_TESTABLE
+   - Research tasks (type="research" in plan): NON_TESTABLE
+   - Planning updates (only modifies .planning/ directory): NON_TESTABLE
+
+**If NON_TESTABLE:**
+
+Skip TDD-1 through TDD-4. Execute the task normally using standard execution flow.
+
+Log:
+
+\`\`\`bash
+echo "- $(date -u +%H:%M) [TDD-SKIP] Task '{task_name}' is non-testable: {reason}. Using standard execution." >> .planning/WORKING.md
+\`\`\`
+
+The verifier will use goal-backward (T3) as the primary signal for this task instead of test results (T1).
+
+**If TESTABLE:** Proceed to Step TDD-1.
+
+### Step TDD-1: Spawn lu-test-writer
+
+Spawn the \`lu-test-writer\` agent via Task() with the plan content, verification criteria, and success criteria as context:
+
+\`\`\`python
+Task(
+  prompt="""
+<tdd_context>
+**Plan Content:**
+{plan_content}
+
+**Current Task:**
+{task_description}
+
+**Verification Criteria:**
+{verification_checklist}
+
+**Success Criteria:**
+{success_criteria}
+
+**Files to be created/modified:**
+{task_files_list}
+</tdd_context>
+
+Generate test files for this plan's verification criteria. Write tests that will FAIL before implementation (Red phase). Return the test file path and test count.
+""",
+  subagent_type="lu-test-writer",
+  description="Generate TDD tests for {task_name}"
+)
+\`\`\`
+
+Wait for the Task to return. Parse the output for:
+- \`Test file:\` path
+- \`Tests generated:\` count
+- \`Testable tasks:\` count
+- Any \`testable: false\` entries (skip TDD for those tasks)
+
+### Step TDD-2: Confirm RED Phase
+
+Run the generated tests to confirm they fail:
+
+\`\`\`bash
+bun test {test_file_path} 2>&1
+TDD_RED_EXIT=$?
+\`\`\`
+
+**If tests FAIL (exit code != 0):** RED phase confirmed. Log to WORKING.md:
+
+\`\`\`bash
+echo "- $(date -u +%H:%M) [TDD-RED] Tests fail as expected ({test_count} tests, {failure_count} failures)" >> .planning/WORKING.md
+\`\`\`
+
+Proceed to implementation.
+
+**If tests PASS (exit code == 0):** RED phase VIOLATION. Tests should not pass before implementation. This indicates:
+- Tests are testing existing functionality (not new work)
+- Tests are trivial and don't actually verify the task
+- The code already exists (task may be unnecessary)
+
+Log the violation and proceed with caution:
+
+\`\`\`bash
+echo "- $(date -u +%H:%M) [TDD-RED-VIOLATION] Tests passed before implementation - investigating" >> .planning/WORKING.md
+\`\`\`
+
+Continue to implementation but flag this in the SUMMARY.
+
+### Step TDD-3: Implement the Task
+
+Implement the task normally following all existing execution rules (deviation rules, commit protocol, etc.). The implementation should make the failing tests pass.
+
+### Step TDD-4: Confirm GREEN Phase
+
+After implementation, run the tests again:
+
+\`\`\`bash
+bun test {test_file_path} 2>&1
+TDD_GREEN_EXIT=$?
+\`\`\`
+
+**If tests PASS (exit code == 0):** GREEN phase confirmed. Log:
+
+\`\`\`bash
+echo "- $(date -u +%H:%M) [TDD-GREEN] All {test_count} tests pass after implementation" >> .planning/WORKING.md
+\`\`\`
+
+Proceed to commit the task (implementation + test file together).
+
+**If tests FAIL (exit code != 0):** GREEN phase not achieved. Enter retry loop (see \`tdd_retry_loop\` section).`,
+      order: 5,
+    },
+    {
+      title: "tdd_retry_loop",
+      content: `## TDD Retry Loop
+
+When tests fail after implementation (GREEN phase not achieved), retry the implementation:
+
+**Retry budget:** Use the same \`harnessFixIterations\` from the complexity matrix (read from \`.planning/config.json\`). Default: 3 iterations for MODERATE complexity.
+
+**For each retry iteration:**
+
+1. Analyze the test failures:
+
+   \`\`\`bash
+   bun test {test_file_path} 2>&1 | tail -50
+   \`\`\`
+
+2. Identify what the tests expect vs what the implementation provides.
+
+3. Fix the implementation to make tests pass. Do NOT modify the tests — the tests represent the specification.
+
+4. Re-run tests:
+
+   \`\`\`bash
+   bun test {test_file_path} 2>&1
+   TDD_RETRY_EXIT=$?
+   \`\`\`
+
+5. If tests pass: Exit retry loop, log GREEN, proceed to commit.
+
+6. If tests still fail and retries remaining: Continue to next iteration.
+
+7. If retries exhausted and tests still fail: Log failure and proceed with a warning:
+
+   \`\`\`bash
+   echo "- $(date -u +%H:%M) [TDD-FAIL] Tests still failing after {max_retries} retries. Proceeding with partial implementation." >> .planning/WORKING.md
+   \`\`\`
+
+   Commit the implementation as-is. The failing tests will be caught by the verification harness (Step 6.5) and the verifier (Step 7).
+
+**Critical rule:** NEVER modify test expectations to make tests pass. The tests are the specification. If tests are genuinely wrong (testing impossible behavior), document the issue and flag it for review, but do not silently change test assertions.`,
+      order: 6,
+    },
   ],
 };
 

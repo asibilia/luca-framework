@@ -271,7 +271,46 @@ If approved:
 \`\`\`bash
 git add .planning/ROADMAP.md .planning/phases/
 bun run commit --message="revise roadmap with unplanned backlog items" --type=docs --scope=autopilot --no-push --skip-checks
-\`\`\``,
+\`\`\`
+
+### 2e. GitHub Issue & Branch
+
+**After applying roadmap changes, ensure a GitHub issue and feature branch exist for the milestone.**
+
+Read STATE.md and check for an existing \`GitHub Issue:\` line or \`Ticket:\` line.
+
+**If no issue exists:**
+
+- If OVERSIGHT == "full-auto" or "flagged": auto-create issue and branch
+- If OVERSIGHT == "milestone" or "phase": present options (Create / Skip / Abort)
+
+**Auto-create flow:**
+
+1. Extract milestone name from ROADMAP.md (e.g., "v1.4.0 — Developer Experience & Verification")
+2. Generate issue body from ROADMAP.md summary + REQUIREMENTS.md summary
+3. Create issue:
+   \`\`\`bash
+   gh issue create --title "feat(framework): {milestone-name}" --body "{body}"
+   \`\`\`
+4. Extract issue number from output
+5. Create feature branch:
+   \`\`\`bash
+   git checkout -b {issue_number}--{milestone-slug}
+   \`\`\`
+6. Push branch:
+   \`\`\`bash
+   git push -u origin {branch_name}
+   \`\`\`
+7. Update STATE.md with:
+   - \`**Ticket:** #{issue_number}\`
+   - \`**Branch:** {branch_name}\`
+
+**If issue already exists:**
+
+- Verify it is still open: \`gh issue view {number} --json state\`
+- Ensure we are on the correct feature branch
+- If not on feature branch: \`git checkout {branch_name}\` or create it
+- Continue to Step 3`,
       order: 4,
     },
     {

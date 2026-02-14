@@ -7,6 +7,7 @@
 import { CodeArchitectAgent } from "./general/code-architect.agent";
 import { CodeDeveloperAgent } from "./general/code-developer.agent";
 import { CodeSimplifierAgent } from "./general/code-simplifier.agent";
+import { LuDiscussResearcherAgent } from "./general/lu-discuss-researcher.agent";
 import { DxAdvocateAgent } from "./general/dx-advocate.agent";
 import { LuCodebaseMapperAgent } from "./general/lu-codebase-mapper.agent";
 import { LuCognitionAgent } from "./general/lu-cognition.agent";
@@ -21,6 +22,7 @@ import { LuProjectResearcherAgent } from "./general/lu-project-researcher.agent"
 import { LuResearchSynthesizerAgent } from "./general/lu-research-synthesizer.agent";
 import { LuRoadmapperAgent } from "./general/lu-roadmapper.agent";
 import { LuRouterAgent } from "./general/lu-router.agent";
+import { LuTestWriterAgent } from "./general/lu-test-writer.agent";
 import { LuVerifierAgent } from "./general/lu-verifier.agent";
 import { PerformanceAuditorAgent } from "./general/performance-auditor.agent";
 import { ProductAgent } from "./general/product.agent";
@@ -56,6 +58,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-codebase-mapper": () => new LuCodebaseMapperAgent(),
   "lu-cognition": () => new LuCognitionAgent(),
   "lu-debugger": () => new LuDebuggerAgent(),
+  "lu-discuss-researcher": () => new LuDiscussResearcherAgent(),
   "lu-integration-checker": () => new LuIntegrationCheckerAgent(),
   "lu-learner": () => new LuLearnerAgent(),
   "lu-phase-researcher": () => new LuPhaseResearcherAgent(),
@@ -66,6 +69,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-research-synthesizer": () => new LuResearchSynthesizerAgent(),
   "lu-roadmapper": () => new LuRoadmapperAgent(),
   "lu-router": () => new LuRouterAgent(),
+  "lu-test-writer": () => new LuTestWriterAgent(),
   "lu-verifier": () => new LuVerifierAgent(),
   "performance-auditor": () => new PerformanceAuditorAgent(),
   product: () => new ProductAgent(),

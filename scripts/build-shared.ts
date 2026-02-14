@@ -133,6 +133,7 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-pr-reviewer": "Quality",
   "lu-integration-checker": "Quality",
   "lu-plan-checker": "Quality",
+  "lu-test-writer": "Quality",
   "qa-plan-generator": "Quality",
   "performance-auditor": "Quality",
   "security-auditor": "Quality",
@@ -141,6 +142,7 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-project-researcher": "Research",
   "lu-research-synthesizer": "Research",
   "lu-codebase-mapper": "Research",
+  "lu-discuss-researcher": "Research",
   // Specialty
   "lu-roadmapper": "Specialty",
   "lu-pm-planner": "Specialty",

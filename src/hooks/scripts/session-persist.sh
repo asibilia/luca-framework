@@ -34,6 +34,9 @@ END_REASON=$(printf '%s' "$END_REASON" | tr -cd '[:alnum:] _.-')
 END_REASON="${END_REASON:0:100}"
 # ──────────────────────────────────────────────────────────────────────
 
+# Remove session lock (before any other cleanup — most important action)
+rm -f "$PROJECT_DIR/.claude/.session-lock"
+
 WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
 
 # Exit if WORKING.md doesn't exist

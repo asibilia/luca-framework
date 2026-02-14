@@ -72,7 +72,7 @@
       },
       {
         "name": "build",
-        "command": "bun run build:all",
+        "command": "bun run check:drift",
         "enabled": true,
         "timeout": 120,
         "parser": "generic"
@@ -194,6 +194,17 @@
       "COMPLEX": 35,
       "CRITICAL": 50
     }
+  },
+  "dogfood": {
+    "enabled": true,
+    "source": "src/",
+    "outputs": [
+      ".claude/",
+      ".cursor/"
+    ],
+    "build_command": "bun run build:all",
+    "lock_file": ".claude/.session-lock",
+    "manifest_file": ".claude/.build-manifest.json"
   },
   "runtime": "bun"
 }
