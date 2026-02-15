@@ -34,7 +34,8 @@ Before archiving, ensure all session learnings are captured:
 1. **Check WORKING.md** for unextracted learnings:
 
    ```bash
-   cat .planning/WORKING.md 2>/dev/null
+   # Primary: Read working memory from memory bridge
+   bun run src/memory/bridge.ts read-working 2>/dev/null || cat .planning/WORKING.md 2>/dev/null
    ```
 
 2. **Invoke lu-learner** if candidate learnings exist
@@ -64,11 +65,37 @@ Include in archive:
 After archiving:
 
 ```bash
-# Clear WORKING.md for next milestone
+# Primary: Clear WORKING.md via memory bridge
+bun run src/memory/bridge.ts clear-working 2>/dev/null || true
+# Fallback: Reset from template
 cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
 ```
 
 MEMORY.md persists across milestones - it's the long-term project memory.
+
+## State Machine Integration
+
+When updating state during milestone completion, use the bridge CLI as primary with STATE.md fallback:
+
+```bash
+# Read current state
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly
+STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
+```
+
+After archiving the milestone, reset state for the next milestone:
+
+```bash
+# Reset state machine for next milestone
+bun run src/state-machine/bridge.ts transition --event=RESET 2>/dev/null || true
+bun run src/state-machine/bridge.ts ensure-init --force 2>/dev/null || true
+bun run src/state-machine/bridge.ts set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
+bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+# Fallback: Update STATE.md directly if bridge unavailable
+```
+
+The bridge `snapshot` command automatically preserves the "Previous Milestones" section when regenerating STATE.md. Manually append the completed milestone to "Previous Milestones" before calling snapshot.
 
 ## Process
 

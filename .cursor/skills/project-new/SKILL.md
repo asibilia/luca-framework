@@ -496,9 +496,13 @@ Based on config depth setting:
    - Success criteria for each phase
    - Dependencies between phases
 
-2. Create .planning/STATE.md initialized to:
-   - Current Phase: 1
-   - Status: ready_for_planning
+2. Initialize state machine via bridge (with STATE.md fallback):
+
+   \`\`\`bash
+   # Primary: Initialize state via bridge (creates state.json + STATE.md)
+   bun run src/state-machine/bridge.ts ensure-init 2>/dev/null || true
+   # Fallback: Create .planning/STATE.md initialized to Phase 1, ready_for_planning
+   \`\`\`
 
 3. Update REQUIREMENTS.md with traceability table showing which requirements map to which phases
 </output_requirements>
@@ -548,12 +552,15 @@ Use AskQuestion tool:
    git checkout -b {issue_number}--{project-slug}
    ```
 
-3. **Update STATE.md** with issue and branch references:
+3. **Update state with issue and branch references:**
 
-   Add to Project Reference section:
-
-   - `**GitHub Issue:** #{issue_number}`
-   - `**Branch:** \`{issue_number}--{project-slug}\``
+   ```bash
+   # Primary: Set fields via bridge (updates state.json + regenerates STATE.md)
+   bun run src/state-machine/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run src/state-machine/bridge.ts set-field --field=branch --value="{issue_number}--{project-slug}" 2>/dev/null || true
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Add to STATE.md Project Reference section manually
+   ```
 
 4. **Commit and push:**
 

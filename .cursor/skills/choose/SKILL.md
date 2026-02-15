@@ -28,7 +28,7 @@ This project supports two complementary workflows:
 | Greenfield project | Luca | Full roadmap with research phases |
 | Complex refactor | Luca | Phase-based execution with verification |
 | Same-day completion | Issue workflow | No planning overhead needed |
-| Multi-session work | Luca | STATE.md preserves context across sessions |
+| Multi-session work | Luca | State machine preserves context across sessions |
 
 ## Process
 
@@ -99,7 +99,7 @@ This task benefits from structured planning and phased execution.
 | Planning | `.cursor/plans/` | `.planning/` |
 | Commits | `type(scope): #issue desc` | `type(phase-plan): #issue desc` |
 | Branch | `{issue}--{description}` | `{issue}--{description}` |
-| State | Git history | STATE.md + Git |
+| State | Git history | State machine + STATE.md + Git |
 | Verification | Manual testing | Automated phase verification |
 
 ## Success Criteria

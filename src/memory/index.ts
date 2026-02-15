@@ -10,6 +10,7 @@
  * - Working memory management (parse, serialize, merge, summarize)
  * - Context monitoring with zone mapping and compression triggers
  * - MEMORY.md parsing into structured entries
+ * - Memory bridge CLI handlers for skill/agent integration
  */
 
 // ─── Types and Schemas ─────────────────────────────────────────────────────────
@@ -114,3 +115,16 @@ export {
   applyRetirement,
   updateExecutionStats,
 } from "./procedure-lifecycle.ts";
+
+// ─── Memory Bridge ─────────────────────────────────────────────────────────
+
+export {
+  handleReadMemory,
+  handleReadWorking,
+  handleReadProcedures,
+  handleCheckContext,
+  handleCheckCompression,
+  handleAppendWorking,
+  handleClearWorking,
+  handleUpdateProcedureStats,
+} from "./bridge.ts";

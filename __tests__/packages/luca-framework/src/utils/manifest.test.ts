@@ -175,8 +175,8 @@ describe('createManifest', () => {
     expect(manifest.workTracker).toBe('none');
     expect(Object.keys(manifest.files)).toHaveLength(2);
     expect(manifest.files['file1.md']).toBeDefined();
-    expect(manifest.files['file1.md'].originalHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(manifest.files['file1.md'].source).toBe('framework');
+    expect(manifest.files['file1.md']?.originalHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(manifest.files['file1.md']?.source).toBe('framework');
   });
 
   test('skips files that cannot be hashed (e.g., directories)', async () => {
@@ -243,9 +243,9 @@ describe('compareFiles', () => {
     const comparisons = await compareFiles(manifest, newFiles, tempDir);
 
     expect(comparisons).toHaveLength(1);
-    expect(comparisons[0].status).toBe('unchanged');
-    expect(comparisons[0].path).toBe('test.md');
-    expect(comparisons[0].originalHash).toBe(hash);
+    expect(comparisons[0]?.status).toBe('unchanged');
+    expect(comparisons[0]?.path).toBe('test.md');
+    expect(comparisons[0]?.originalHash).toBe(hash);
   });
 
   test('detects user-modified files', async () => {
@@ -267,7 +267,7 @@ describe('compareFiles', () => {
     const comparisons = await compareFiles(manifest, newFiles, tempDir);
 
     expect(comparisons).toHaveLength(1);
-    expect(comparisons[0].status).toBe('user-modified');
+    expect(comparisons[0]?.status).toBe('user-modified');
   });
 
   test('detects new files (not in manifest)', async () => {
@@ -281,9 +281,9 @@ describe('compareFiles', () => {
     const comparisons = await compareFiles(manifest, newFiles, tempDir);
 
     expect(comparisons).toHaveLength(1);
-    expect(comparisons[0].status).toBe('new');
-    expect(comparisons[0].originalHash).toBeNull();
-    expect(comparisons[0].currentHash).toBeNull();
+    expect(comparisons[0]?.status).toBe('new');
+    expect(comparisons[0]?.originalHash).toBeNull();
+    expect(comparisons[0]?.currentHash).toBeNull();
   });
 
   test('detects deleted files', async () => {
@@ -300,8 +300,8 @@ describe('compareFiles', () => {
     const comparisons = await compareFiles(manifest, newFiles, tempDir);
 
     expect(comparisons).toHaveLength(1);
-    expect(comparisons[0].status).toBe('deleted');
-    expect(comparisons[0].currentHash).toBeNull();
+    expect(comparisons[0]?.status).toBe('deleted');
+    expect(comparisons[0]?.currentHash).toBeNull();
   });
 
   test('handles multiple files with mixed statuses', async () => {

@@ -87,9 +87,12 @@ export {
   handleReadComplexity,
   handleReadOversight,
   handleReadPhase,
+  handleReadStatus,
   handleReadField,
+  handleSetField,
   handleTransition,
   handleSnapshot,
   handleEnsureInit,
   handleGateCheck,
+  SETTABLE_FIELDS,
 } from "./bridge";

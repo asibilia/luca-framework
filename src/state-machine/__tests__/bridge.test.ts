@@ -406,6 +406,187 @@ describe("bridge snapshot", () => {
   });
 });
 
+// ─── read-status ───────────────────────────────────────────────────────────
+
+describe("bridge read-status", () => {
+  test("returns defaults when state not initialized", async () => {
+    const { exitCode, json } = await runBridge("read-status");
+    expect(exitCode).toBe(0);
+    expect(json.initialized).toBe(false);
+    expect(json.state).toBe("idle");
+    expect(json.complexity).toBe("TRIVIAL");
+    expect(json.oversight).toBe("milestone");
+    expect(json.current_phase).toBeNull();
+    expect(json.current_milestone).toBeNull();
+    expect(json.session_id).toBeNull();
+    expect(json.ticket_id).toBeNull();
+    expect(json.github_issue).toBeNull();
+    expect(json.branch).toBeNull();
+    expect(json.base_branch).toBe("main");
+    expect(json.verification_attempts).toBe(0);
+    expect(json.phase_results_count).toBe(0);
+    expect(json.last_error).toBeNull();
+  });
+
+  test("returns comprehensive status when initialized", async () => {
+    await initState();
+    const { exitCode, json } = await runBridge("read-status");
+    expect(exitCode).toBe(0);
+    expect(json.initialized).toBe(true);
+    expect(json.state).toBe("idle");
+    expect(json.complexity).toBeDefined();
+    expect(json.oversight).toBeDefined();
+    expect(json.session_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(json.base_branch).toBe("main");
+  });
+
+  test("reflects state changes after transition", async () => {
+    await initState();
+    await runBridge("transition", "--event=START");
+    const { exitCode, json } = await runBridge("read-status");
+    expect(exitCode).toBe(0);
+    expect(json.state).toBe("preflight");
+  });
+});
+
+// ─── set-field ─────────────────────────────────────────────────────────────
+
+describe("bridge set-field", () => {
+  test("sets current_milestone field", async () => {
+    await initState();
+    const { exitCode, json } = await runBridge(
+      "set-field",
+      "--field=current_milestone",
+      "--value=v2.0",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.field).toBe("current_milestone");
+    expect(json.value).toBe("v2.0");
+    expect(json.previous_value).toBeNull();
+
+    // Verify persistence
+    const readResult = await runBridge(
+      "read-field",
+      "--field=current_milestone",
+    );
+    expect(readResult.json.value).toBe("v2.0");
+  });
+
+  test("sets github_issue field with numeric value", async () => {
+    await initState();
+    const { exitCode, json } = await runBridge(
+      "set-field",
+      "--field=github_issue",
+      "--value=42",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.field).toBe("github_issue");
+    expect(json.value).toBe(42);
+  });
+
+  test("sets branch field", async () => {
+    await initState();
+    const { exitCode, json } = await runBridge(
+      "set-field",
+      "--field=branch",
+      "--value=feat/14-cognitive-architecture",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.field).toBe("branch");
+    expect(json.value).toBe("feat/14-cognitive-architecture");
+  });
+
+  test("sets complexity field", async () => {
+    await initState();
+    const { exitCode, json } = await runBridge(
+      "set-field",
+      "--field=complexity",
+      "--value=COMPLEX",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.value).toBe("COMPLEX");
+
+    // Verify via read-complexity
+    const readResult = await runBridge("read-complexity");
+    expect(readResult.json.complexity).toBe("COMPLEX");
+  });
+
+  test("sets array fields (memory_tags)", async () => {
+    await initState();
+    const { exitCode, json } = await runBridge(
+      "set-field",
+      "--field=memory_tags",
+      '--value=["tag1","tag2"]',
+    );
+    expect(exitCode).toBe(0);
+    expect(json.value).toEqual(["tag1", "tag2"]);
+  });
+
+  test("regenerates STATE.md after setting field", async () => {
+    await initState();
+    await runBridge("set-field", "--field=current_milestone", "--value=v3.0");
+
+    const stateFile = Bun.file(STATE_MD);
+    expect(await stateFile.exists()).toBe(true);
+    // STATE.md should contain the updated milestone if the snapshot renders it
+  });
+
+  test("rejects unknown fields", async () => {
+    await initState();
+    const { exitCode, stderr } = await runBridge(
+      "set-field",
+      "--field=nonexistent_field",
+      "--value=bad",
+    );
+    expect(exitCode).toBe(2);
+    expect(stderr).toContain("not settable");
+  });
+
+  test("errors on missing --field argument", async () => {
+    await initState();
+    const { exitCode, stderr } = await runBridge(
+      "set-field",
+      "--value=something",
+    );
+    expect(exitCode).toBe(2);
+    expect(stderr).toContain("Missing --field");
+  });
+
+  test("errors on missing --value argument", async () => {
+    await initState();
+    const { exitCode, stderr } = await runBridge(
+      "set-field",
+      "--field=current_milestone",
+    );
+    expect(exitCode).toBe(2);
+    expect(stderr).toContain("Missing --value");
+  });
+
+  test("errors when state not initialized", async () => {
+    const { exitCode, stderr } = await runBridge(
+      "set-field",
+      "--field=current_milestone",
+      "--value=v1.0",
+    );
+    expect(exitCode).toBe(2);
+    expect(stderr).toContain("not found");
+  });
+
+  test("returns previous_value when overwriting", async () => {
+    await initState();
+    await runBridge("set-field", "--field=current_milestone", "--value=v1.0");
+    const { json } = await runBridge(
+      "set-field",
+      "--field=current_milestone",
+      "--value=v2.0",
+    );
+    expect(json.previous_value).toBe("v1.0");
+    expect(json.value).toBe("v2.0");
+  });
+});
+
 // ─── Unknown subcommand ─────────────────────────────────────────────────────
 
 describe("bridge unknown subcommand", () => {

@@ -62,12 +62,13 @@ Before planning begins, run cognitive pre-flight:
 2.5. **Recall relevant procedures from PROCEDURES.md**:
 
    \`\`\`bash
-   # Read procedures file
+   # Primary: Scored procedure recall via memory bridge (filters active, scores by relevance)
+   PROCEDURES_JSON=$(bun run src/memory/bridge.ts read-procedures --query="{phase_description}" --tags={phase_tags} --limit=5 2>/dev/null || echo '{"entries":[]}')
+   # Fallback: Read PROCEDURES.md directly
    PROCEDURES_CONTENT=$(cat .planning/PROCEDURES.md 2>/dev/null || echo "")
    \`\`\`
 
-   Filter active procedures relevant to the current phase by tags and description.
-   Select top 3-5 procedures by relevance score:
+   The bridge automatically filters active procedures and scores by relevance:
    - Tag overlap with phase keywords (40% weight)
    - Trigger similarity to phase description (40% weight)
    - Historical success rate (20% weight)
@@ -317,6 +318,9 @@ ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
 VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
+# Primary: Read working memory from memory bridge
+WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+# Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
 

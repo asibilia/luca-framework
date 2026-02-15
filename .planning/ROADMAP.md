@@ -9,7 +9,7 @@
 ## v1.5.0 — Cognitive Architecture & State Machine
 
 **Theme:** Replace markdown-based state management with deterministic XState machine, improve memory systems, and add procedural memory for learned skills.
-**Effort:** 21 points across 4 phases
+**Effort:** 26 points across 5 phases
 
 ### Phase 34: XState Core Machine
 
@@ -91,6 +91,26 @@
 
 - [x] 37-01: Core types, procedure parser, PROCEDURES.md template, barrel exports, tests (Wave 1)
 - [x] 37-02: Recall, lifecycle, agent integration, build verification (Wave 2)
+
+### Phase 38: Full Skill Migration to State Machine Bridge
+
+**Goal:** Migrate the remaining 38 skills from direct STATE.md reads/writes to use the state machine bridge CLI as primary, with STATE.md as fallback — completing the integration started in Phase 35.
+**Complexity:** MODERATE | **Effort:** 5
+**Depends on:** Phase 35
+
+**Requirements:**
+
+- BRIDGE-01: High-priority skills (state-writing) migrated to bridge transitions
+- BRIDGE-02: Medium-priority skills (state-reading for gating) migrated to bridge queries
+- BRIDGE-03: Low-priority skills (display-only) migrated to bridge queries
+- BRIDGE-04: Snapshot command adopted for STATE.md regeneration
+- BRIDGE-05: All skills maintain STATE.md fallback for backward compatibility
+
+**Plans:**
+
+- [x] 38-01: High-priority state-writing skills (workflow-start, session-resume, milestone-complete, verify, phase-add/insert/remove) (Wave 1)
+- [x] 38-02: Medium-priority gating skills (git-commit, git-feature, git-pr, test-run, code-lint, code-typecheck) (Wave 2)
+- [x] 38-03: Low-priority display/utility skills (help, debug, todo-add, todo-check, choose, lu, update, remaining skills) (Wave 3)
 
 ---
 

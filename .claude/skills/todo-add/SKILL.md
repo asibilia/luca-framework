@@ -29,8 +29,13 @@ Capture idea or task as todo from current conversation.
    - Location: `.planning/todos/pending/{slug}.md`
    - Include: title, area, source context, timestamp
 
-5. **Update STATE.md:**
-   - Increment todo count
+5. **Update state (bridge primary, STATE.md fallback):**
+
+   \`\`\`bash
+   # Primary: Regenerate STATE.md from state machine (reflects todo changes)
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Manually increment todo count in STATE.md
+   \`\`\`
 
 6. **Confirm:**
 
@@ -72,7 +77,7 @@ source: conversation
 - [ ] Area inferred from context
 - [ ] Duplicate check performed
 - [ ] Todo file created in `.planning/todos/pending/`
-- [ ] STATE.md updated
+- [ ] State updated via bridge snapshot (or STATE.md fallback)
 - [ ] User knows how to review todos
 
 ## Next Steps

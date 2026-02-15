@@ -109,7 +109,7 @@ Unless the session already has cognitive context loaded:
 \`\`\`
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries (tags: planning, workflow, patterns), initialize WORKING.md."
+  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/bridge.ts clear-working)."
 )
 \`\`\`
 
@@ -280,7 +280,13 @@ bun run commit --message="revise roadmap with unplanned backlog items" --type=do
 
 **After applying roadmap changes, ensure a GitHub issue and feature branch exist for the milestone.**
 
-Read STATE.md and check for an existing \`GitHub Issue:\` line or \`Ticket:\` line.
+Read state from bridge (with STATE.md fallback) and check for existing GitHub issue/ticket:
+
+\\\`\\\`\\\`bash
+# Primary: Read state from bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Check github_issue field from JSON; fallback: grep STATE.md
+\\\`\\\`\\\`
 
 **If no issue exists:**
 
@@ -304,9 +310,13 @@ Read STATE.md and check for an existing \`GitHub Issue:\` line or \`Ticket:\` li
    \`\`\`bash
    git push -u origin {branch_name}
    \`\`\`
-7. Update STATE.md with:
-   - \`**Ticket:** #{issue_number}\`
-   - \`**Branch:** {branch_name}\`
+7. Update state via bridge:
+   \\\`\\\`\\\`bash
+   bun run src/state-machine/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run src/state-machine/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Update STATE.md directly
+   \\\`\\\`\\\`
 
 **If issue already exists:**
 
@@ -503,7 +513,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to \`[x]\`
-3. Log to WORKING.md: \`- {timestamp} [PHASE-COMPLETE] Phase {NN} passed\`
+3. Log to WORKING.md via bridge: \`bun run src/memory/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"\`
 4. Display:
 
 \`\`\`
@@ -779,12 +789,18 @@ Duration:   {session duration}
 bun run src/state-machine/bridge.ts transition complete-phase 2>/dev/null || true
 \`\`\`
 
-2. Update STATE.md with autopilot session results
-3. Log final status to WORKING.md
+2. Regenerate STATE.md via bridge snapshot:
+
+\`\`\`bash
+bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+# Fallback: Update STATE.md manually with autopilot session results
+\`\`\`
+
+3. Log final status to WORKING.md via bridge: \`bun run src/memory/bridge.ts append-working --section=findings --content="Autopilot session complete"\`
 4. Commit session metadata:
 
 \`\`\`bash
-git add .planning/STATE.md .planning/WORKING.md
+git add .planning/STATE.md .planning/WORKING.md .planning/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 \`\`\``,
       order: 11,

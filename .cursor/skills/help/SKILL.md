@@ -202,7 +202,8 @@ Join the Luca Discord community
 .planning/
 ├── PROJECT.md            # Project vision
 ├── ROADMAP.md            # Current phase breakdown
-├── STATE.md              # Project memory & context (includes git context)
+├── state.json            # State machine (typed, primary source of truth)
+├── STATE.md              # Human-readable state snapshot (auto-generated from state.json)
 ├── BRAIN.md              # Project identity & conventions
 ├── MEMORY.md             # Long-term learnings
 ├── WORKING.md            # Session working memory
@@ -214,7 +215,7 @@ Join the Luca Discord community
 └── phases/               # Phase-specific plans/summaries
 ```
 
-**STATE.md** tracks git context:
+**State machine** (state.json + STATE.md) tracks git context:
 
 - Ticket: `[TICKET-ID]` or `None`
 - GitHub Issue: `#123`

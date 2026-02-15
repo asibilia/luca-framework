@@ -89,7 +89,13 @@ After verification (pass or fail):
 First, read the required context:
 
 ```bash
+# Primary: Read working memory from memory bridge (structured JSON)
+WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+# Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "No working memory")
+# Primary: Read memory summary from memory bridge (compact index)
+MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
+# Fallback: Read MEMORY.md directly
 MEMORY_CONTENT=$(cat .planning/MEMORY.md 2>/dev/null || echo "No memory file")
 VERIFICATION_RESULT="[from verifier return value]"
 ```
@@ -156,7 +162,9 @@ For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: w
 Throughout execution, log to WORKING.md:
 
 ```bash
-# Log execution progress
+# Primary: Log execution progress via memory bridge
+bun run src/memory/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
+# Fallback: Append directly to WORKING.md
 echo "- $(date -u +%H:%M) [Plan X complete - finding Y]" >> .planning/WORKING.md
 ```
 
@@ -292,6 +300,9 @@ PLAN_03_CONTENT=$(cat "{plan_03_path}")
 STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
+# Primary: Read working memory from memory bridge
+WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+# Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
 
@@ -731,6 +742,9 @@ ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
+# Primary: Read working memory from memory bridge
+WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+# Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
 PLAN_CONTENTS=$(find $PHASE_DIR -name "*-PLAN.md" -exec cat {} \;)

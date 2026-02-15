@@ -60,7 +60,7 @@ Read this reference file before executing:
 - Refreshing codebase map after significant changes
 - Onboarding to an unfamiliar codebase
 - Before major refactoring (understand current state)
-- When STATE.md references outdated codebase info
+- When project state references outdated codebase info
 
 **Skip map-codebase for:**
 

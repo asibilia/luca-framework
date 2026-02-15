@@ -27,8 +27,8 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 
 1. **Load context:**
    - Read \`.planning/BRAIN.md\` for project identity
-   - Read \`.planning/WORKING.md\` for current session context
-   - Selective recall from \`.planning/MEMORY.md\` for planner-relevant patterns (tags: planning, estimates, workflow)
+   - Read working memory via bridge: \`bun run src/memory/bridge.ts read-working\` (fallback: cat .planning/WORKING.md)
+   - Selective recall from memory via bridge: \`bun run src/memory/bridge.ts read-memory --tags=planning,estimates,workflow --limit=10\` (fallback: cat .planning/MEMORY.md)
 
 2. **Initialize WORKING.md:**
    - Set session info: workflow=session-plan, started timestamp
@@ -55,7 +55,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
    - Package TodoMetadata[] as structured input
    - Include \`.planning/ROADMAP.md\` for priority context
    - Include dependency graph
-   - Include any MEMORY.md calibration entries for effort estimates
+   - Include any MEMORY.md calibration entries for effort estimates (via bridge: \`bun run src/memory/bridge.ts read-memory --tags=estimates,calibration --limit=5\`)
 
 2. **Spawn lu-pm-planner sub-agent:**
    - Agent infers WSJF inputs (BV, TC, RR) for each todo from context

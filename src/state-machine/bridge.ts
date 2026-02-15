@@ -9,7 +9,9 @@
  *   read-complexity  — Read current complexity level (graceful fallback)
  *   read-oversight   — Read current oversight level (graceful fallback)
  *   read-phase       — Read current phase info (graceful fallback)
+ *   read-status      — Read comprehensive workflow status (graceful fallback)
  *   read-field       — Read an arbitrary context field (errors on missing state)
+ *   set-field        — Set an allowlisted context field + persist + regenerate STATE.md
  *   transition       — Send event + persist + update STATE.md atomically
  *   snapshot         — Generate/update STATE.md from current state
  *   ensure-init      — Initialize state if not already initialized
@@ -21,7 +23,9 @@
  *   bun run src/state-machine/bridge.ts read-complexity
  *   bun run src/state-machine/bridge.ts read-oversight
  *   bun run src/state-machine/bridge.ts read-phase
+ *   bun run src/state-machine/bridge.ts read-status
  *   bun run src/state-machine/bridge.ts read-field --field=session_id
+ *   bun run src/state-machine/bridge.ts set-field --field=current_milestone --value="v2.0"
  *   bun run src/state-machine/bridge.ts transition --event=START [--data=json]
  *   bun run src/state-machine/bridge.ts snapshot
  *   bun run src/state-machine/bridge.ts ensure-init [--force]
@@ -30,13 +34,16 @@
  * @module state-machine/bridge
  */
 import get from "lodash/get";
+import set from "lodash/set";
+import cloneDeep from "lodash/cloneDeep";
 import {
   persistActor,
   loadPersistedActor,
   createFreshActor,
   stateExists,
+  STATE_FILE_PATH,
 } from "./persistence";
-import { workflowEventSchema } from "./types";
+import { workflowContextSchema, workflowEventSchema } from "./types";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents } from "./machine";
 import { generateSnapshot } from "./snapshot";
@@ -89,8 +96,11 @@ Subcommands:
   read-complexity   Read current complexity level (TRIVIAL if not initialized)
   read-oversight    Read current oversight level (milestone if not initialized)
   read-phase        Read current phase info (null defaults if not initialized)
+  read-status       Read comprehensive workflow status (defaults if not initialized)
   read-field        Read an arbitrary context field (errors on missing state)
                     Options: --field=path (required, lodash get path)
+  set-field         Set an allowlisted context field, persist, and regenerate STATE.md
+                    Options: --field=name (required), --value=json-or-string (required)
   transition        Send event, persist state, and update STATE.md
                     Options: --event=TYPE (required), --data=json (optional)
   snapshot          Generate STATE.md from current machine state
@@ -210,6 +220,73 @@ async function handleReadPhase(): Promise<void> {
 }
 
 /**
+ * Read comprehensive workflow status.
+ *
+ * Returns key fields from the workflow context in a single JSON object.
+ * Falls back to sensible defaults if state is not initialized.
+ * Never errors on missing state.
+ */
+async function handleReadStatus(): Promise<void> {
+  const defaults = {
+    initialized: false,
+    state: "idle",
+    complexity: "TRIVIAL",
+    oversight: "milestone",
+    current_phase: null,
+    current_milestone: null,
+    current_plan_ids: [] as string[],
+    current_wave_count: 0,
+    ticket_id: null,
+    github_issue: null,
+    branch: null,
+    base_branch: "main",
+    session_id: null,
+    started_at: null,
+    last_transition_at: null,
+    verification_attempts: 0,
+    phase_results_count: 0,
+    last_error: null,
+  };
+
+  const exists = await stateExists();
+  if (!exists) {
+    console.log(JSON.stringify(defaults));
+    return;
+  }
+
+  const result = await loadPersistedActor();
+  if (!result.success) {
+    console.log(JSON.stringify(defaults));
+    return;
+  }
+
+  const snapshot = result.data.getSnapshot();
+  const ctx = snapshot.context;
+  console.log(
+    JSON.stringify({
+      initialized: true,
+      state: String(snapshot.value),
+      complexity: ctx.complexity,
+      oversight: ctx.oversight,
+      current_phase: ctx.current_phase ?? null,
+      current_milestone: ctx.current_milestone ?? null,
+      current_plan_ids: ctx.current_plan_ids,
+      current_wave_count: ctx.current_wave_count,
+      ticket_id: ctx.ticket_id ?? null,
+      github_issue: ctx.github_issue ?? null,
+      branch: ctx.branch ?? null,
+      base_branch: ctx.base_branch,
+      session_id: ctx.session_id,
+      started_at: ctx.started_at ?? null,
+      last_transition_at: ctx.last_transition_at ?? null,
+      verification_attempts: ctx.verification_attempts,
+      phase_results_count: ctx.phase_results.length,
+      last_error: ctx.last_error ?? null,
+    }),
+  );
+}
+
+/**
  * Read an arbitrary context field by lodash path.
  *
  * Unlike the read-* convenience commands, this errors on missing state.
@@ -232,6 +309,139 @@ async function handleReadField(args: string[]): Promise<void> {
   const snapshot = result.data.getSnapshot();
   const value = get(snapshot.context, fieldPath);
   console.log(JSON.stringify({ field: fieldPath, value }));
+}
+
+// ─── Set Field Command ──────────────────────────────────────────────────────
+
+/**
+ * Allowlisted context fields that can be set via the bridge.
+ *
+ * Only fields in this list can be mutated directly. All other context
+ * changes must go through typed workflow events (transition command).
+ */
+const SETTABLE_FIELDS = [
+  "current_milestone",
+  "current_phase",
+  "github_issue",
+  "branch",
+  "base_branch",
+  "ticket_id",
+  "oversight",
+  "complexity",
+  "memory_tags",
+  "intuition_flags",
+] as const;
+
+/**
+ * Set an allowlisted context field, persist state, and regenerate STATE.md.
+ *
+ * This bypasses the event model for fields that don't have a corresponding
+ * workflow event. It directly mutates the persisted snapshot context,
+ * validates the result against the context schema, and regenerates STATE.md.
+ *
+ * @param args - CLI arguments (--field=name required, --value=json-or-string required)
+ */
+async function handleSetField(args: string[]): Promise<void> {
+  const fieldPath = getArg(args, "field");
+  const rawValue = getArg(args, "value");
+
+  if (!fieldPath) {
+    console.error("Missing --field argument");
+    process.exit(2);
+  }
+  if (!rawValue && rawValue !== "0" && rawValue !== "false") {
+    console.error("Missing --value argument");
+    process.exit(2);
+  }
+
+  // Validate field is in allowlist
+  if (!SETTABLE_FIELDS.includes(fieldPath as any)) {
+    console.error(
+      `Field "${fieldPath}" is not settable via bridge. Allowed: ${SETTABLE_FIELDS.join(", ")}`,
+    );
+    process.exit(2);
+  }
+
+  // Parse value: try JSON first, fall back to raw string
+  let value: any;
+  try {
+    value = JSON.parse(rawValue);
+  } catch {
+    value = rawValue;
+  }
+
+  // Load the persisted state file directly (not the actor)
+  const stateFile = Bun.file(STATE_FILE_PATH);
+  if (!(await stateFile.exists())) {
+    console.error("State file not found. Run ensure-init first.");
+    process.exit(2);
+  }
+
+  let snapshotJson: any;
+  try {
+    snapshotJson = await stateFile.json();
+  } catch {
+    console.error("State file contains invalid JSON");
+    process.exit(2);
+  }
+
+  // Capture previous value and set new value
+  const previousValue = get(snapshotJson.context, fieldPath);
+  const updatedContext = cloneDeep(snapshotJson.context);
+  set(updatedContext, fieldPath, value);
+
+  // Validate the updated context
+  const validation = workflowContextSchema.safeParse(updatedContext);
+  if (!validation.success) {
+    console.error(
+      JSON.stringify({
+        error: `Invalid value for field "${fieldPath}"`,
+        details: validation.error.issues,
+      }),
+    );
+    process.exit(2);
+  }
+
+  // Update the timestamp
+  updatedContext.last_transition_at = new Date().toISOString();
+
+  // Write back
+  snapshotJson.context = updatedContext;
+  await Bun.write(STATE_FILE_PATH, JSON.stringify(snapshotJson, null, 2));
+
+  // Regenerate STATE.md
+  let existingContent: string | undefined;
+  try {
+    const mdFile = Bun.file(STATE_MD_PATH);
+    if (await mdFile.exists()) {
+      existingContent = await mdFile.text();
+    }
+  } catch {
+    // No existing STATE.md
+  }
+
+  // Load actor from updated state to get allowed events
+  const loadResult = await loadPersistedActor();
+  if (loadResult.success) {
+    const snapshot = loadResult.data.getSnapshot();
+    const allowed = getAllowedEvents(snapshot);
+    const markdown = generateSnapshot({
+      state: String(snapshot.value),
+      context: snapshot.context,
+      existing_content: existingContent,
+      allowed_events: allowed,
+    });
+    await Bun.write(STATE_MD_PATH, markdown);
+  }
+
+  console.log(
+    JSON.stringify({
+      field: fieldPath,
+      value,
+      previous_value: previousValue ?? null,
+      state: String(snapshotJson.value),
+    }),
+  );
 }
 
 // ─── Transition Command ─────────────────────────────────────────────────────
@@ -478,8 +688,14 @@ if (import.meta.main) {
       case "read-phase":
         await handleReadPhase();
         break;
+      case "read-status":
+        await handleReadStatus();
+        break;
       case "read-field":
         await handleReadField(args);
+        break;
+      case "set-field":
+        await handleSetField(args);
         break;
       case "transition":
         await handleTransition(args);
@@ -512,9 +728,12 @@ export {
   handleReadComplexity,
   handleReadOversight,
   handleReadPhase,
+  handleReadStatus,
   handleReadField,
+  handleSetField,
   handleTransition,
   handleSnapshot,
   handleEnsureInit,
   handleGateCheck,
+  SETTABLE_FIELDS,
 };

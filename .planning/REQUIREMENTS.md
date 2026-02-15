@@ -43,6 +43,16 @@
 | PROC-04 | Procedure recall during planning — relevant procedures offered as starting templates | 37    | [ ]    |
 | PROC-05 | Procedure validation — success rate tracking, retirement of stale procedures         | 37    | [ ]    |
 
+## Phase 38: Full Skill Migration to State Machine Bridge
+
+| ID        | Requirement                                                                                          | Phase | Status |
+| --------- | ---------------------------------------------------------------------------------------------------- | ----- | ------ |
+| BRIDGE-01 | High-priority skills (state-writing) migrated to bridge transitions                                  | 38    | [ ]    |
+| BRIDGE-02 | Medium-priority skills (state-reading for gating) migrated to bridge queries                         | 38    | [ ]    |
+| BRIDGE-03 | Low-priority skills (display/utility) migrated to bridge queries                                     | 38    | [ ]    |
+| BRIDGE-04 | Snapshot command adopted for STATE.md regeneration (replacing manual heredoc/sed rewrites)           | 38    | [ ]    |
+| BRIDGE-05 | All skills maintain STATE.md fallback for backward compatibility until bridge is fully battle-tested | 38    | [ ]    |
+
 ---
 
 ## Summary
@@ -53,8 +63,9 @@
 | 35        | 6                 | COMPLEX    | 5      |
 | 36        | 6                 | MODERATE   | 5      |
 | 37        | 5                 | MODERATE   | 3      |
-| **Total** | **23**            |            | **21** |
+| 38        | 5                 | MODERATE   | 5      |
+| **Total** | **28**            |            | **26** |
 
 ---
 
-_Requirements created: 2026-02-14 (v1.5.0 milestone)_
+_Requirements updated: 2026-02-15 (Phase 38 added to v1.5.0)_
