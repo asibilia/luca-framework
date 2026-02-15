@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { createContextMonitor } from "../context-monitor.ts";
 import { join } from "node:path";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────────
@@ -13,6 +13,7 @@ beforeAll(async () => {
 
   // Create .planning directory
   const planningDir = join(tempDir, ".planning");
+  await mkdir(planningDir, { recursive: true });
   await Bun.write(
     join(planningDir, "BRAIN.md"),
     "# Brain\n\nProject identity.",
@@ -60,6 +61,28 @@ describe("createContextMonitor", () => {
 
     // Budget should be the default 50000
     expect(usage.budget_tokens).toBe(50000);
+  });
+
+  test("zero context_budget falls back to default", async () => {
+    const monitor = createContextMonitor({
+      project_dir: tempDir,
+      context_budget: 0,
+    });
+    const usage = await monitor.checkContextUsage();
+
+    expect(usage.budget_tokens).toBe(50000);
+    expect(Number.isFinite(usage.usage_percent)).toBe(true);
+  });
+
+  test("negative context_budget falls back to default", async () => {
+    const monitor = createContextMonitor({
+      project_dir: tempDir,
+      context_budget: -100,
+    });
+    const usage = await monitor.checkContextUsage();
+
+    expect(usage.budget_tokens).toBe(50000);
+    expect(Number.isFinite(usage.usage_percent)).toBe(true);
   });
 });
 

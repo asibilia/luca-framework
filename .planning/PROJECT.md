@@ -12,7 +12,7 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Last Shipped:** v1.4.0 — Developer Experience & Verification (2026-02-14)
 
-Dogfood build stability (session lock guard, build manifest, harness safety), TDD-first verification pattern (lu-test-writer agent, red-green cycle, T1/T3 signal priority), auto-discuss web research agent (--auto flag with lu-discuss-researcher), and workflow documentation (4 Mermaid diagrams). 1036 passing tests (1036 pass, 6 skip), 28 agents, 45 skills.
+Dogfood build stability (session lock guard, build manifest, harness safety), TDD-first verification pattern (lu-test-writer agent, red-green cycle, T1/T3 signal priority), auto-discuss web research agent (--auto flag with lu-discuss-researcher), and workflow documentation (4 Mermaid diagrams). 1042 tests (1036 pass, 6 skip), 28 agents, 45 skills.
 
 **Capabilities (shipped):**
 
@@ -40,7 +40,7 @@ Dogfood build stability (session lock guard, build manifest, harness safety), TD
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete (2026-02-12). 171 files, 938 tests. Rule class cleanup, skill naming overhaul, plugin autocomplete commands.
 - **v1.3.2** — Audit Tech Debt Cleanup (2026-02-13). 4 phases, 8 plans, 17 requirements, 992 tests. Build pipeline consolidation, compiler functional refactor, Bun API migration, security hardening.
 - **v1.3.3** — Final Audit Sweep (2026-02-13). 2 phases, 4 plans, 10 requirements, 992 tests. Build script deprecation, pipeline decomposition, registry factory refactor, drift test DRY-up, plugin spec async migration.
-- **v1.4.0** — Developer Experience & Verification (2026-02-14). 4 phases, 8 plans, 21 requirements, 1036 tests. Dogfood build stability, TDD-first verification, auto-discuss research agent, workflow documentation.
+- **v1.4.0** — Developer Experience & Verification (2026-02-14). 4 phases, 8 plans, 21 requirements, 1042 tests (1036 pass, 6 skip). Dogfood build stability, TDD-first verification, auto-discuss research agent, workflow documentation.
 
 ## Current Milestone
 
@@ -113,4 +113,4 @@ Replace markdown-based state management with a deterministic XState state machin
 
 ---
 
-_Last updated: 2026-02-14 — v1.5.0 milestone started_
+_Last updated: 2026-02-15 — v1.5.0 milestone complete_

@@ -85,7 +85,11 @@ interface ContextBreakdownEntry {
  */
 export function createContextMonitor(config?: ContextMonitorConfig) {
   const projectDir = config?.project_dir ?? ".";
-  const budget = config?.context_budget ?? DEFAULT_CONTEXT_BUDGET;
+  const rawBudget = config?.context_budget;
+  const budget =
+    typeof rawBudget === "number" && Number.isFinite(rawBudget) && rawBudget > 0
+      ? rawBudget
+      : DEFAULT_CONTEXT_BUDGET;
   const zones = config?.zone_boundaries ?? {
     peak_end: 30,
     good_end: 50,
