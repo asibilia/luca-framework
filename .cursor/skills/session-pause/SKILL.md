@@ -16,7 +16,14 @@ Enables seamless resumption in fresh session with full context restoration.
 
 ### Step 1: Detect Current Phase
 
-Find current phase directory from most recently modified files.
+Read current phase from bridge (with filesystem fallback):
+
+```bash
+# Primary: Read phase info from bridge
+PHASE_JSON=$(bun run src/state-machine/bridge.ts read-phase 2>/dev/null || echo '{"current_phase":null}')
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Find current phase directory from most recently modified files
+```
 
 ### Step 2: Gather Context
 

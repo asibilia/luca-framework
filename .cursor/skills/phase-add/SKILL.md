@@ -54,10 +54,15 @@ Add a new integer phase to the end of the current milestone in the roadmap.
    - Insert new phase entry after last phase in current milestone
    - Include Goal, Depends on, Plans placeholders
 
-8. **Update STATE.md:**
+8. **Update state (bridge primary, STATE.md fallback):**
 
-   - Add reference to new phase
-   - Add entry under "Roadmap Evolution"
+   \`\`\`bash
+   # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Manually add reference to new phase in STATE.md
+   \`\`\`
+
+   - Add entry under "Roadmap Evolution" in STATE.md
 
 9. **Present completion:**
 
@@ -88,7 +93,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry
-- [ ] STATE.md updated with roadmap evolution note
+- [ ] State updated via bridge snapshot (or STATE.md fallback)
 - [ ] New phase appears at end of current milestone
 - [ ] Next phase number calculated correctly
 </main>

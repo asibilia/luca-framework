@@ -55,6 +55,9 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 \`\`\`bash
 CONFIG=$(cat .planning/config.json 2>/dev/null || echo '{}')
+# Primary: Read state from state machine (typed, validated)
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ROADMAP=$(cat .planning/ROADMAP.md 2>/dev/null || echo "")
 \`\`\`
@@ -106,7 +109,7 @@ Unless the session already has cognitive context loaded:
 \`\`\`
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries (tags: planning, workflow, patterns), initialize WORKING.md."
+  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/bridge.ts clear-working)."
 )
 \`\`\`
 
@@ -277,7 +280,13 @@ bun run commit --message="revise roadmap with unplanned backlog items" --type=do
 
 **After applying roadmap changes, ensure a GitHub issue and feature branch exist for the milestone.**
 
-Read STATE.md and check for an existing \`GitHub Issue:\` line or \`Ticket:\` line.
+Read state from bridge (with STATE.md fallback) and check for existing GitHub issue/ticket:
+
+\\\`\\\`\\\`bash
+# Primary: Read state from bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Check github_issue field from JSON; fallback: grep STATE.md
+\\\`\\\`\\\`
 
 **If no issue exists:**
 
@@ -301,9 +310,13 @@ Read STATE.md and check for an existing \`GitHub Issue:\` line or \`Ticket:\` li
    \`\`\`bash
    git push -u origin {branch_name}
    \`\`\`
-7. Update STATE.md with:
-   - \`**Ticket:** #{issue_number}\`
-   - \`**Branch:** {branch_name}\`
+7. Update state via bridge:
+   \\\`\\\`\\\`bash
+   bun run src/state-machine/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run src/state-machine/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Update STATE.md directly
+   \\\`\\\`\\\`
 
 **If issue already exists:**
 
@@ -428,7 +441,11 @@ Task(
 )
 \`\`\`
 
-Write complexity to STATE.md.
+Write complexity via bridge (falls back to STATE.md):
+
+\`\`\`bash
+bun run src/state-machine/bridge.ts transition set-complexity --complexity="{COMPLEXITY}" 2>/dev/null || true
+\`\`\`
 
 ### 4d. Discussion (Complexity-Gated)
 
@@ -496,7 +513,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to \`[x]\`
-3. Log to WORKING.md: \`- {timestamp} [PHASE-COMPLETE] Phase {NN} passed\`
+3. Log to WORKING.md via bridge: \`bun run src/memory/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"\`
 4. Display:
 
 \`\`\`
@@ -766,12 +783,24 @@ Duration:   {session duration}
 
 ### Update State
 
-1. Update STATE.md with autopilot session results
-2. Log final status to WORKING.md
-3. Commit session metadata:
+1. Update state via bridge (falls back to STATE.md):
 
 \`\`\`bash
-git add .planning/STATE.md .planning/WORKING.md
+bun run src/state-machine/bridge.ts transition complete-phase 2>/dev/null || true
+\`\`\`
+
+2. Regenerate STATE.md via bridge snapshot:
+
+\`\`\`bash
+bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+# Fallback: Update STATE.md manually with autopilot session results
+\`\`\`
+
+3. Log final status to WORKING.md via bridge: \`bun run src/memory/bridge.ts append-working --section=findings --content="Autopilot session complete"\`
+4. Commit session metadata:
+
+\`\`\`bash
+git add .planning/STATE.md .planning/WORKING.md .planning/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 \`\`\``,
       order: 11,

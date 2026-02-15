@@ -20,6 +20,7 @@ import { NoClassesRule } from "./general/no-classes.rule";
 import { PosthogIntegrationRule } from "./general/posthog-integration.rule";
 import { SchemaFirstParsingRule } from "./general/schema-first-parsing.rule";
 import { SelfImproveRule } from "./general/self_improve.rule";
+import { StateMachineBridgeRule } from "./general/state-machine-bridge.rule";
 import { UseBunRule } from "./general/use-bun-instead-of-node-vite-npm-pnpm.rule";
 
 // Import Luca-specific rule
@@ -57,6 +58,7 @@ export const ruleRegistry: Record<string, () => BaseRule> = {
   "posthog-integration": () => new PosthogIntegrationRule(),
   "schema-first-parsing": () => new SchemaFirstParsingRule(),
   self_improve: () => new SelfImproveRule(),
+  "state-machine-bridge": () => new StateMachineBridgeRule(),
   "use-bun-instead-of-node-vite-npm-pnpm": () => new UseBunRule(),
   "lu-workflow": () => new LuWorkflowRule(),
 };

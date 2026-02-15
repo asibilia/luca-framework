@@ -147,6 +147,33 @@ ROADMAP_EOF
   CREATED="${CREATED}ROADMAP.md "
 fi
 
+# Step 3e: Initialize state machine (if bridge exists)
+STATE_JSON="$PLANNING_DIR/state.json"
+STATE_MACHINE_BRIDGE="src/state-machine/bridge.ts"
+
+if [ -f "$STATE_MACHINE_BRIDGE" ]; then
+  if [ -f "$STATE_JSON" ]; then
+    # State exists -- check age to decide resume vs reinit
+    # macOS stat -f "%m", Linux stat -c "%Y"
+    STATE_MTIME=$(stat -f "%m" "$STATE_JSON" 2>/dev/null || stat -c "%Y" "$STATE_JSON" 2>/dev/null || echo "0")
+    NOW=$(date +%s)
+    STATE_AGE=$((NOW - STATE_MTIME))
+
+    if [ "$STATE_AGE" -lt 86400 ]; then
+      # Fresh enough -- resume (regenerate snapshot)
+      bun run "$STATE_MACHINE_BRIDGE" snapshot 2>/dev/null || true
+    else
+      # Stale -- reinitialize
+      bun run "$STATE_MACHINE_BRIDGE" ensure-init --force 2>/dev/null || true
+      CREATED="${CREATED}state.json "
+    fi
+  else
+    # No state.json -- initialize fresh
+    bun run "$STATE_MACHINE_BRIDGE" ensure-init 2>/dev/null || true
+    CREATED="${CREATED}state.json "
+  fi
+fi
+
 # Step 4: Detect runtime
 if command -v bun &>/dev/null; then
   RUNTIME="bun"

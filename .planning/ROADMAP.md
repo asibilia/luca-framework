@@ -2,17 +2,11 @@
 
 ## Overview
 
-**Current Milestone:** None (v1.4.0 complete)
+**Current Milestone:** (none — planning next)
 
 ---
 
 ## Backlog (Deferred)
-
-### v1.5.0 — Cognitive Architecture & State Machine (proposed)
-
-- XState-based workflow state machine (consolidated from ts-driven-state-management + xstate-workflow-state-package)
-- Mastra-inspired memory improvements (compression, structured WORKING.md, async monitoring, quality scoring)
-- Procedural memory layer (learned skills from experience)
 
 ### v1.6.0+ — Multi-Stack & Convention (proposed)
 
@@ -30,8 +24,9 @@
 - **v1.3.1** — Post-Audit Cleanup & Plugin Autocomplete: 171 files, 938 tests ([View Archive](milestones/v1.3.1-ROADMAP.md))
 - **v1.3.2** — Audit Tech Debt Cleanup: 4 phases, 8 plans, 17 requirements, 992 tests ([View Archive](milestones/v1.3.2-ROADMAP.md))
 - **v1.3.3** — Final Audit Sweep: 2 phases, 4 plans, 10 requirements, 992 tests ([View Archive](milestones/v1.3.3-ROADMAP.md))
-- **v1.4.0** — Developer Experience & Verification: 4 phases, 8 plans, 22 requirements, 1036 tests ([View Archive](milestones/v1.4.0-ROADMAP.md))
+- **v1.4.0** — Developer Experience & Verification: 4 phases, 8 plans, 21 requirements, 1042 tests ([View Archive](milestones/v1.4.0-ROADMAP.md)) _(requirement count corrected from 22 to 21 after recount; scope unchanged)_
+- **v1.5.0** — Cognitive Architecture & State Machine: 6 phases, 14 plans, 35 requirements, 1654 tests ([View Archive](milestones/v1.5.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-02-14 (v1.4.0 milestone complete)_
+_Roadmap updated: 2026-02-15 (v1.5.0 archived)_

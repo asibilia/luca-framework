@@ -173,7 +173,13 @@ Read these reference files before executing:
 
    **Complexity gate:** Code review runs at MODERATE and above. If complexity is TRIVIAL or SIMPLE, skip code review entirely and proceed to step 12.
 
-   **Spawn reviewers based on complexity** (read from STATE.md \`Task Complexity:\` field):
+   **Read complexity from bridge (with STATE.md fallback):**
+
+   \`\`\`bash
+   COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+   \`\`\`
+
+   **Spawn reviewers based on complexity:**
 
    | Agent | MODERATE | COMPLEX | CRITICAL |
    |-------|----------|---------|----------|
@@ -183,7 +189,7 @@ Read these reference files before executing:
    | tailwind-auditor | If UI files | If UI files | Run |
    | security-auditor | If auth files | If auth files | Always |
 
-   If no complexity is set in STATE.md, default to spawning all reviewers (backward-compatible).
+   If complexity cannot be read, default to spawning all reviewers (backward-compatible).
 
    **MANDATORY**: You MUST spawn reviewer agents in PARALLEL. Do NOT review code yourself.
 

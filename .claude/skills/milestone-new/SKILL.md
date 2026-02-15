@@ -35,10 +35,28 @@ Read these reference files before executing:
 ## Process
 
 1. **Load Context** — Read PROJECT.md, MILESTONES.md, STATE.md
+
+   ```bash
+   # Primary: Read state from bridge (typed, validated)
+   STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+   # Fallback: Read STATE.md directly (backward compatibility)
+   STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
+   ```
+
 2. **Gather Milestone Goals** — Use MILESTONE-CONTEXT.md if exists, or question user
 3. **Determine Milestone Version** — Parse last version, suggest next
 4. **Update PROJECT.md** — Add Current Milestone section
-5. **Update STATE.md** — Reset for new milestone
+5. **Reset state for new milestone:**
+
+   ```bash
+   # Primary: Reset state machine and reinitialize for new milestone
+   bun run src/state-machine/bridge.ts transition --event=RESET 2>/dev/null || true
+   bun run src/state-machine/bridge.ts ensure-init --force 2>/dev/null || true
+   bun run src/state-machine/bridge.ts set-field --field=current_milestone --value="v{version}" 2>/dev/null || true
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Update STATE.md directly if bridge unavailable
+   ```
+
 6. **Research Decision** — Spawn researchers if selected (milestone-aware context)
 7. **Define Requirements** — Present features, scope each category
 8. **Create Roadmap** — Spawn lu-roadmapper (continues phase numbering)
@@ -67,18 +85,25 @@ How should this milestone be tracked on GitHub?
 2. Create issue: `gh issue create --title "feat({scope}): {milestone-name}" --body "{body}"`
 3. Create branch: `git checkout -b {issue_number}--{milestone-slug}`
 4. Push branch: `git push -u origin {branch_name}`
-5. Update STATE.md with new issue/branch references
+5. Update state with new issue/branch references:
+
+   ```bash
+   bun run src/state-machine/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run src/state-machine/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Update STATE.md directly
+   ```
 
 **If "Continue on existing" selected:**
 
 1. Verify existing issue still open: `gh issue view {number} --json state`
 2. Add comment to existing issue noting new milestone started
-3. Keep STATE.md issue/branch as-is
+3. Keep existing issue/branch in state (no bridge update needed)
 
 **If "No tracking" selected:**
 
 1. Warn user: commits won't reference issues, PR creation will require manual setup
-2. Update STATE.md to note: `GitHub Issue: None (user opted out)`
+2. Note: GitHub Issue: None (user opted out) — no bridge update needed
 
 ## Success Criteria
 
@@ -91,7 +116,7 @@ How should this milestone be tracked on GitHub?
 - [ ] REQUIREMENTS.md created with REQ-IDs
 - [ ] ROADMAP.md created with phases continuing from previous milestone
 - [ ] GitHub tracking decision made (new issue, continue existing, or opt-out)
-- [ ] STATE.md reflects issue/branch tracking status
+- [ ] State machine reflects issue/branch tracking status (via bridge set-field)
 
 ## Next Steps
 

@@ -18,6 +18,17 @@
             "statusMessage": "Type-checking..."
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-check-throttled.sh",
+            "timeout": 10,
+            "async": true,
+            "statusMessage": "Checking context..."
+          }
+        ]
       }
     ],
     "PreToolUse": [

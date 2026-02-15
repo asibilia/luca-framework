@@ -53,8 +53,9 @@ These steps run regardless of complexity:
 
 **Before spawning optional sub-agents**, check the current task complexity:
 
-1. Read complexity from STATE.md \`Task Complexity:\` field
-2. If not set, read from lu-router's classification output
+1. Read complexity from bridge: \`bun run src/state-machine/bridge.ts read-complexity 2>/dev/null\`
+2. Fallback: Read from STATE.md \`Task Complexity:\` field
+3. If not set, read from lu-router's classification output
 3. Look up the step in the matrix above
 4. If the step says "Skip" for the current level, skip it
 5. If the step says "Optional", skip unless the user or config explicitly enables it
@@ -63,7 +64,7 @@ These steps run regardless of complexity:
 **Complexity is set by:**
 - lu-router (automatic inference)
 - \`--complexity=<level>\` flag (manual override)
-- Persisted in STATE.md for session continuity
+- Persisted in state machine (state.json + STATE.md) for session continuity
 
 ## Override Mechanisms
 

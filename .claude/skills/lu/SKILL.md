@@ -77,12 +77,19 @@ If already on a feature branch or `--skip-branch` is set, skip this step.
 Unless `--skip-memory` is set, spawn the lu-cognition agent:
 
 ```
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load BRAIN.md, recall relevant MEMORY.md entries, initialize WORKING.md.")
+Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/bridge.ts read-memory --tags=<relevant-tags> --limit=10), initialize WORKING.md via bridge (bun run src/memory/bridge.ts clear-working).")
 ```
 
 ### Step 3: Complexity Classification
 
-If `--complexity=<level>` was passed, use that level directly. Write it to STATE.md.
+If `--complexity=<level>` was passed, use that level directly. Write it via the bridge:
+
+```bash
+# Primary: Set complexity via bridge (updates state machine + STATE.md)
+bun run src/state-machine/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true
+bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+# Fallback: Update STATE.md directly if bridge unavailable
+```
 
 If `--force-complex` was passed, use COMPLEX.
 
@@ -162,7 +169,7 @@ Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-de
 For MODERATE+ complexity, spawn lu-learner:
 
 ```
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Capture patterns, decisions, and pitfalls to MEMORY.md.")
+Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Read working memory via bridge (bun run src/memory/bridge.ts read-working). Capture patterns, decisions, and pitfalls to MEMORY.md. Clear working memory via bridge after extraction (bun run src/memory/bridge.ts clear-working).")
 ```
 
 For TRIVIAL/SIMPLE: Skip learning capture.
@@ -180,7 +187,7 @@ If `--complexity=<level>` is passed:
 1. Skip lu-router classification
 2. Use the specified level directly
 3. Look up gated steps from the complexity matrix in config.json
-4. Persist to STATE.md `Task Complexity:` field
+4. Persist via bridge: `bun run src/state-machine/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true`
 
 If `--force-complex` is passed (backward compatibility):
 - Equivalent to `--complexity=COMPLEX`

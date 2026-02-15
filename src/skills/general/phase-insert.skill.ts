@@ -68,9 +68,13 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
    - Include "(INSERTED)" marker
    - Add Goal, Depends on, Plans placeholders
 
-8. **Update STATE.md:**
+8. **Update state (bridge primary, STATE.md fallback):**
 
-   - Add entry under "Roadmap Evolution" with (URGENT) marker
+   \\\`\\\`\\\`bash
+   # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
+   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   # Fallback: Manually add entry under "Roadmap Evolution" in STATE.md with (URGENT) marker
+   \\\`\\\`\\\`
 
 9. **Present completion:**
 
@@ -97,7 +101,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry (includes "(INSERTED)" marker)
 - [ ] Phase inserted in correct position
-- [ ] STATE.md updated with roadmap evolution note
+- [ ] State updated via bridge snapshot (or STATE.md fallback)
 - [ ] Decimal number calculated correctly
 
 ## Next Steps

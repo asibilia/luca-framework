@@ -60,6 +60,23 @@ Before planning begins, run cognitive pre-flight:
 
    Look for: relevant patterns, past decisions, known pitfalls
 
+2.5. **Recall relevant procedures from PROCEDURES.md**:
+
+   \`\`\`bash
+   # Primary: Scored procedure recall via memory bridge (filters active, scores by relevance)
+   PROCEDURES_JSON=$(bun run src/memory/bridge.ts read-procedures --query="{phase_description}" --tags={phase_tags} --limit=5 2>/dev/null || echo '{"entries":[]}')
+   # Fallback: Read PROCEDURES.md directly
+   PROCEDURES_CONTENT=$(cat .planning/PROCEDURES.md 2>/dev/null || echo "")
+   \`\`\`
+
+   The bridge automatically filters active procedures and scores by relevance:
+   - Tag overlap with phase keywords (40% weight)
+   - Trigger similarity to phase description (40% weight)
+   - Historical success rate (20% weight)
+
+   Procedures are step-sequence templates from past successful executions.
+   The planner should consider them as starting points for task breakdown.
+
 3. **Initialize WORKING.md** for this planning session:
 
    ```markdown
@@ -76,6 +93,7 @@ Before planning begins, run cognitive pre-flight:
    - **Patterns**: [relevant patterns from MEMORY.md]
    - **Decisions**: [relevant decisions]
    - **Pitfalls**: [flagged pitfalls]
+   - **Procedures**: [relevant procedures from PROCEDURES.md]
 
    ## Planning Notes
 
@@ -185,7 +203,13 @@ fi
 | COMPLEX | Always run |
 | CRITICAL | Always run |
 
-Read complexity from STATE.md `Task Complexity:` field. If TRIVIAL or SIMPLE, skip to step 6 (equivalent to --skip-research).
+Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
+
+```bash
+COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+```
+
+If TRIVIAL or SIMPLE, skip to step 6 (equivalent to --skip-research).
 
 **Check config for research setting:**
 
@@ -199,6 +223,9 @@ First, read the required context:
 
 ```bash
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 CONTEXT_CONTENT=$(cat .planning/CONTEXT.md 2>/dev/null || echo "No context file")
@@ -284,11 +311,17 @@ Display stage banner:
 First, read all context files (already done in step 7):
 
 ```bash
+# Primary: Read state from state machine bridge
+STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+# Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
 VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
+# Primary: Read working memory from memory bridge
+WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+# Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
 

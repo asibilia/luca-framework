@@ -25,7 +25,14 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
 2. **Load state:**
 
-   - Read STATE.md and ROADMAP.md
+   \`\`\`bash
+   # Primary: Read state from bridge
+   STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+   # Fallback: Read STATE.md directly
+   STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
+   \`\`\`
+
+   - Read ROADMAP.md
    - Parse current phase number
 
 3. **Validate phase exists:**
@@ -68,10 +75,13 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
     - Renumber all subsequent phases
     - Update dependency references
 
-11. **Update STATE.md:**
+11. **Update state (bridge primary, STATE.md fallback):**
 
-    - Update total phase count
-    - Recalculate progress percentage
+    \`\`\`bash
+    # Primary: Regenerate STATE.md from state machine (reflects roadmap changes)
+    bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+    # Fallback: Manually update total phase count and progress percentage in STATE.md
+    \`\`\`
 
 12. **Commit:**
     - `chore: remove phase {target} ({original-phase-name})`
@@ -97,7 +107,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 - [ ] All subsequent phase directories renumbered
 - [ ] Files inside directories renamed
 - [ ] ROADMAP.md updated (section removed, all references renumbered)
-- [ ] STATE.md updated (phase count, progress percentage)
+- [ ] State updated via bridge snapshot (or STATE.md fallback)
 - [ ] Changes committed with descriptive message
 - [ ] No gaps in phase numbering
 

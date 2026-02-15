@@ -522,7 +522,7 @@ When files are written and returning to orchestrator:
 
 User can review actual files:
 - \`cat .planning/ROADMAP.md\`
-- \`cat .planning/STATE.md\`
+- \`bun run src/state-machine/bridge.ts read-status\` (or fallback: \`cat .planning/STATE.md\`)
 
 {If gaps found during creation:}
 

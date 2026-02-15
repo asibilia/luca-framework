@@ -9,6 +9,14 @@
       {
         "command": ".cursor/hooks/post-edit-typecheck.sh",
         "timeout": 30
+      },
+      {
+        "command": ".cursor/hooks/context-check-throttled.sh",
+        "timeout": 10
+      },
+      {
+        "command": ".cursor/hooks/snapshot-sync.sh",
+        "timeout": 10
       }
     ],
     "beforeShellExecution": [
