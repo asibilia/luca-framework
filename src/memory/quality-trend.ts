@@ -22,6 +22,7 @@ import type { Result } from "../shared/types.ts";
  * ```
  */
 export function createQualityTrend(windowSize?: number): QualityTrend {
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return qualityTrendSchema.parse({
     phases: [],
     rolling_average: 0,
@@ -61,6 +62,7 @@ export function addPhaseMetrics(
     trend.window_size,
   );
 
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return qualityTrendSchema.parse({
     phases: newPhases,
     rolling_average: Math.round(rollingAverage * 1000) / 1000,

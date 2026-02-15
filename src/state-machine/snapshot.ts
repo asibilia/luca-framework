@@ -11,6 +11,7 @@
  */
 import type { WorkflowContext, PhaseResult } from "./types";
 import type { WorkflowState } from "./types";
+import { escapeRegex } from "../shared/cli-utils.ts";
 
 // ─── Preservable Sections ────────────────────────────────────────────────────
 
@@ -90,13 +91,6 @@ export function extractPreservableSections(
 }
 
 // ─── Formatting Helpers ──────────────────────────────────────────────────────
-
-/**
- * Escape special regex characters in a string.
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 /**
  * Format a workflow state value for display.

@@ -1,4 +1,16 @@
+import { z } from "zod";
 import type { ProcedureEntry } from "./types.ts";
+
+/**
+ * Input validation schema for procedure recall context.
+ *
+ * Validates the planning context passed to recallProcedures() from
+ * CLI bridge arguments (external input boundary).
+ */
+const recallContextSchema = z.object({
+  phase_description: z.string().default(""),
+  phase_tags: z.array(z.string()).default([]),
+});
 
 // ─── Stop Words ──────────────────────────────────────────────────────────────
 
@@ -215,13 +227,19 @@ export function recallProcedures(
   context: { phase_description: string; phase_tags: string[] },
   limit: number = 5,
 ): ProcedureEntry[] {
+  // Validate context at function boundary
+  const parseResult = recallContextSchema.safeParse(context);
+  const validContext = parseResult.success
+    ? parseResult.data
+    : { phase_description: "", phase_tags: [] as string[] };
+
   // 1. Filter to active procedures only
   const active = procedures.filter((p) => p.status === "active");
 
   // 2. Score each procedure
   const scored = active.map((entry) => ({
     entry,
-    score: scoreProcedure(entry, context),
+    score: scoreProcedure(entry, validContext),
   }));
 
   // 3. Sort by descending score

@@ -48,6 +48,7 @@ import { createContextMonitor } from "./context-monitor.ts";
 import { analyzeMemoryEntries } from "./compression.ts";
 import { estimateTokens } from "./token-estimator.ts";
 import { WORKING_MEMORY_SECTIONS } from "./types.ts";
+import { getArg } from "../shared/cli-utils.ts";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -57,26 +58,6 @@ const WORKING_PATH = ".planning/WORKING.md";
 const PROCEDURES_PATH = ".planning/PROCEDURES.md";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Extract a named argument from CLI args array.
- *
- * Searches for `--name=value` pattern and returns the value portion.
- *
- * @param args - Array of CLI argument strings
- * @param name - Argument name (without -- prefix)
- * @param defaultValue - Value to return if argument is not found
- * @returns The argument value, or defaultValue if not found
- */
-function getArg(
-  args: string[],
-  name: string,
-  defaultValue: string = "",
-): string {
-  const prefix = `--${name}=`;
-  const arg = args.find((a) => a.startsWith(prefix));
-  return arg ? arg.slice(prefix.length) : defaultValue;
-}
 
 /**
  * Print usage information to stderr.
@@ -374,10 +355,15 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
   }
 
   // Parse existing or create empty
-  let wm = {
-    sections: [] as any[],
+  let wm: {
+    sections: any[];
+    total_tokens: number;
+    status: "active" | "extracted" | "cleared";
+    session_started_at?: string;
+  } = {
+    sections: [],
     total_tokens: 0,
-    status: "active" as const,
+    status: "active",
   };
 
   try {

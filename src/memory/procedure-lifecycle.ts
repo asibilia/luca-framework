@@ -1,4 +1,17 @@
+import { z } from "zod";
 import type { ProcedureEntry } from "./types.ts";
+
+/**
+ * Input validation schema for evaluateRetirement() options.
+ *
+ * Validates threshold overrides passed from external callers.
+ * All fields optional with sensible defaults matching function defaults.
+ */
+const retirementOptionsSchema = z.object({
+  min_executions: z.number().int().positive().default(5),
+  min_success_rate: z.number().min(0).max(1).default(0.3),
+  max_stale_days: z.number().int().positive().default(180),
+});
 
 // ─── Retirement Evaluation ───────────────────────────────────────────────────
 
@@ -34,9 +47,15 @@ export function evaluateRetirement(
     max_stale_days?: number;
   },
 ): { should_retire: boolean; reason: string } {
-  const minExecutions = options?.min_executions ?? 5;
-  const minSuccessRate = options?.min_success_rate ?? 0.3;
-  const maxStaleDays = options?.max_stale_days ?? 180;
+  // Validate options at function boundary, fall back to defaults on invalid input
+  const parseResult = retirementOptionsSchema.safeParse(options ?? {});
+  const validOptions = parseResult.success
+    ? parseResult.data
+    : { min_executions: 5, min_success_rate: 0.3, max_stale_days: 180 };
+
+  const minExecutions = validOptions.min_executions;
+  const minSuccessRate = validOptions.min_success_rate;
+  const maxStaleDays = validOptions.max_stale_days;
 
   // Criterion 1: Consistently failing
   if (

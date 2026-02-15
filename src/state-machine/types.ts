@@ -419,6 +419,7 @@ export function initializeContext(
   input?: Partial<WorkflowContext> & { config?: Record<string, any> },
 ): WorkflowContext {
   const config = input?.config ?? {};
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return workflowContextSchema.parse({
     session_id: input?.session_id ?? crypto.randomUUID(),
     ticket_id: input?.ticket_id,

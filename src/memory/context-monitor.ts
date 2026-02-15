@@ -165,6 +165,7 @@ export function createContextMonitor(config?: ContextMonitorConfig) {
         exists: f.exists,
       }));
 
+      // Internal construction — .parse() validates shape, data is computed (not external input)
       return contextUsageResultSchema.parse({
         total_tokens: totalTokens,
         budget_tokens: budget,
@@ -241,6 +242,7 @@ export function createContextMonitor(config?: ContextMonitorConfig) {
         }
       }
 
+      // Internal construction — .parse() validates shape, data is computed (not external input)
       return compressionTriggerSchema.parse({
         should_compress: triggers.length > 0,
         triggers,

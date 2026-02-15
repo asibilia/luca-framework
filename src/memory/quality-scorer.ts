@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { PhaseQualityMetrics } from "./types.ts";
 import { phaseQualityMetricsSchema } from "./types.ts";
 import type { HarnessResult } from "../harness/types.ts";
@@ -34,6 +35,20 @@ const EXPECTED_LEARNINGS: Record<string, number> = {
   COMPLEX: 5,
   CRITICAL: 5,
 };
+
+/**
+ * Input validation schema for calculatePhaseQuality().
+ *
+ * Validates external input at the function boundary. The harness_result
+ * field uses z.any() because HarnessResult has its own validation elsewhere.
+ */
+const phaseQualityInputSchema = z.object({
+  phase_id: z.number().int(),
+  harness_result: z.any().optional(),
+  verification_status: z.enum(["passed", "partial", "failed", "skipped"]),
+  learning_count: z.number().int().nonnegative(),
+  complexity: z.string(),
+});
 
 /**
  * Calculate composite quality metrics for a completed phase.
@@ -75,6 +90,21 @@ export function calculatePhaseQuality(input: {
   learning_count: number;
   complexity: string;
 }): PhaseQualityMetrics {
+  // Validate input at function boundary
+  const parseResult = phaseQualityInputSchema.safeParse(input);
+  if (!parseResult.success) {
+    // Return safe default metrics on invalid input
+    // Internal construction — .parse() validates shape, data is computed (not external input)
+    return phaseQualityMetricsSchema.parse({
+      phase_id: 0,
+      composite_score: 0,
+      zone: "stop" as QualityZone,
+      component_scores: { tests: 0, types: 0, verification: 0, learnings: 0 },
+      weights: { ...WEIGHTS },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // 1. Extract test and type scores from harness result
   const testScore = extractCheckScore(input.harness_result, "test");
   const typeScore = extractCheckScore(input.harness_result, "typecheck");
@@ -103,6 +133,7 @@ export function calculatePhaseQuality(input: {
   const zone = scoreToZone(compositeScore);
 
   // 6. Return validated PhaseQualityMetrics
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return phaseQualityMetricsSchema.parse({
     phase_id: input.phase_id,
     composite_score: Math.round(compositeScore * 1000) / 1000,

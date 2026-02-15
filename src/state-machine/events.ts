@@ -83,6 +83,7 @@ export function buildTransitionRecord(
   actionsExecuted: string[] = [],
 ): TransitionRecord {
   const summary = extractContextSummary(context);
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return transitionRecordSchema.parse({
     previous_state: previousState,
     current_state: currentState,

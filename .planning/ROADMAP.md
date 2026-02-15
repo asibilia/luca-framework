@@ -9,7 +9,7 @@
 ## v1.5.0 — Cognitive Architecture & State Machine
 
 **Theme:** Replace markdown-based state management with deterministic XState machine, improve memory systems, and add procedural memory for learned skills.
-**Effort:** 26 points across 5 phases
+**Effort:** 27 points across 6 phases
 
 ### Phase 34: XState Core Machine
 
@@ -112,6 +112,26 @@
 - [x] 38-02: Medium-priority gating skills (git-commit, git-feature, git-pr, test-run, code-lint, code-typecheck) (Wave 2)
 - [x] 38-03: Low-priority display/utility skills (help, debug, todo-add, todo-check, choose, lu, update, remaining skills) (Wave 3)
 
+### Phase 39: Code Quality Cleanup
+
+**Goal:** Fix 7 non-blocking code quality issues identified during milestone audit — extract duplicated CLI utilities, add schema validation at function boundaries, and document intentional .parse() usage.
+**Complexity:** SIMPLE | **Effort:** 1
+**Depends on:** Phase 38
+
+**Requirements:**
+
+- CLEAN-01: Extract `getArg`, `hasFlag`, `escapeRegex` into `src/shared/cli-utils.ts`
+- CLEAN-02: All bridge/CLI modules import from shared instead of local definitions
+- CLEAN-03: `calculatePhaseQuality()` input validated via Zod schema
+- CLEAN-04: `recallProcedures()` context validated via Zod schema
+- CLEAN-05: `evaluateRetirement()` options validated via Zod schema
+- CLEAN-06: Internal `.parse()` calls documented with intent comments
+- CLEAN-07: Shared CLI utils have comprehensive unit tests
+
+**Plans:**
+
+- [x] 39-01: Deduplicate CLI utils, add input validation schemas, document .parse() intent, tests
+
 ---
 
 ## Backlog (Deferred)
@@ -136,4 +156,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-14 (v1.5.0 milestone created)_
+_Roadmap updated: 2026-02-15 (Phase 39 complete — v1.5.0 milestone done)_

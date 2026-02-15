@@ -2,6 +2,7 @@ import type { ProcedureEntry } from "./types.ts";
 import { procedureEntrySchema } from "./types.ts";
 import type { Result } from "../shared/types.ts";
 import { estimateTokens } from "./token-estimator.ts";
+import { escapeRegex } from "../shared/cli-utils.ts";
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -419,9 +420,7 @@ function parseSuccessRate(raw: string): {
  * 3. Third action [tool: lu-executor]
  * ```
  */
-function parseSteps(
-  content: string,
-): Array<{
+function parseSteps(content: string): Array<{
   order: number;
   action: string;
   expected_output?: string;
@@ -631,18 +630,6 @@ function serializeEntry(entry: ProcedureEntry): string {
   lines.push("");
 
   return lines.join("\n");
-}
-
-// ─── Utilities ──────────────────────────────────────────────────────────────────
-
-/**
- * Escape special regex characters in a string.
- *
- * @param str - String to escape
- * @returns Regex-safe string
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // ─── CLI Entry Point ────────────────────────────────────────────────────────────

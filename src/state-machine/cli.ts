@@ -28,41 +28,9 @@ import {
 import { getAllowedEvents } from "./machine";
 import { buildTransitionRecord } from "./events";
 import { generateSnapshot } from "./snapshot";
+import { getArg, hasFlag } from "../shared/cli-utils.ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Extract a named argument from CLI args array.
- *
- * Searches for `--name=value` pattern and returns the value portion.
- *
- * @param args - Array of CLI argument strings
- * @param name - Argument name (without -- prefix)
- * @param defaultValue - Value to return if argument is not found
- * @returns The argument value, or defaultValue if not found
- */
-function getArg(
-  args: string[],
-  name: string,
-  defaultValue: string = "",
-): string {
-  const prefix = `--${name}=`;
-  const arg = args.find((a) => a.startsWith(prefix));
-  return arg ? arg.slice(prefix.length) : defaultValue;
-}
-
-/**
- * Check if a boolean flag is present in CLI args.
- *
- * Searches for `--name` (without value) in the args array.
- *
- * @param args - Array of CLI argument strings
- * @param name - Flag name (without -- prefix)
- * @returns true if the flag is present
- */
-function hasFlag(args: string[], name: string): boolean {
-  return args.includes(`--${name}`);
-}
 
 /**
  * Print usage information to stderr.

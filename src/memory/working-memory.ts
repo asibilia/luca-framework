@@ -292,6 +292,7 @@ export function addSection(
 
   const totalTokens = newSections.reduce((sum, s) => sum + s.token_estimate, 0);
 
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return workingMemorySchema.parse({
     sections: newSections,
     total_tokens: totalTokens,
@@ -377,6 +378,7 @@ export function summarizeSection(
 
   const totalTokens = newSections.reduce((sum, s) => sum + s.token_estimate, 0);
 
+  // Internal construction — .parse() validates shape, data is computed (not external input)
   return workingMemorySchema.parse({
     sections: newSections,
     total_tokens: totalTokens,
