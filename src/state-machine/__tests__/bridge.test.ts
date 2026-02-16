@@ -6,8 +6,8 @@ import { $ } from "bun";
 
 const STATE_FILE = ".planning/state.json";
 const STATE_MD = ".planning/STATE.md";
-const BRIDGE = "src/state-machine/bridge.ts";
-const CLI = "src/state-machine/cli.ts";
+const BRIDGE = "packages/luca-state/src/bridge.ts";
+const CLI = "packages/luca-state/src/cli.ts";
 
 /**
  * Clean up state files between tests.
