@@ -7,7 +7,7 @@
  *
  * Uses snake_case for all output fields per API conventions.
  *
- * @module state-machine/events
+ * @module luca-state/events
  */
 import { transitionRecordSchema } from "./types";
 import type { TransitionRecord, WorkflowContext } from "./types";

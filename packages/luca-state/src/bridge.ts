@@ -22,20 +22,20 @@
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
  * Usage:
- *   bun run src/state-machine/bridge.ts read-complexity
- *   bun run src/state-machine/bridge.ts read-oversight
- *   bun run src/state-machine/bridge.ts read-phase
- *   bun run src/state-machine/bridge.ts read-status
- *   bun run src/state-machine/bridge.ts read-field --field=session_id
- *   bun run src/state-machine/bridge.ts set-field --field=current_milestone --value="v2.0"
- *   bun run src/state-machine/bridge.ts transition --event=START [--data=json]
- *   bun run src/state-machine/bridge.ts snapshot
- *   bun run src/state-machine/bridge.ts ensure-init [--force]
- *   bun run src/state-machine/bridge.ts gate-check --gate=confirm_plan
- *   bun run src/state-machine/bridge.ts suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
- *   bun run src/state-machine/bridge.ts resume-phase --phase=42
+ *   luca-state read-complexity
+ *   luca-state read-oversight
+ *   luca-state read-phase
+ *   luca-state read-status
+ *   luca-state read-field --field=session_id
+ *   luca-state set-field --field=current_milestone --value="v2.0"
+ *   luca-state transition --event=START [--data=json]
+ *   luca-state snapshot
+ *   luca-state ensure-init [--force]
+ *   luca-state gate-check --gate=confirm_plan
+ *   luca-state suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
+ *   luca-state resume-phase --phase=42
  *
- * @module state-machine/bridge
+ * @module luca-state/bridge
  */
 import get from "lodash/get";
 import set from "lodash/set";
@@ -51,7 +51,7 @@ import { workflowContextSchema, workflowEventSchema } from "./types";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents } from "./machine";
 import { generateSnapshot } from "./snapshot";
-import { getArg, hasFlag } from "../shared/cli-utils.ts";
+import { getArg, hasFlag } from "./utils/cli-utils";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ const STATE_MD_PATH = ".planning/STATE.md";
  * Print usage information to stderr.
  */
 function printUsage(): void {
-  console.error(`Usage: bun run src/state-machine/bridge.ts <subcommand> [options]
+  console.error(`Usage: luca-state <subcommand> [options]
 
 Subcommands:
   read-complexity   Read current complexity level (TRIVIAL if not initialized)
@@ -669,7 +669,7 @@ const CHECKPOINTS_DIR = ".planning/checkpoints";
  *
  * @example
  * ```sh
- * bun run src/state-machine/bridge.ts suspend --phase=42 --reason=context_exhaustion --wave=1 --tasks=42-01-T1,42-01-T2
+ * luca-state suspend --phase=42 --reason=context_exhaustion --wave=1 --tasks=42-01-T1,42-01-T2
  * ```
  */
 async function handleSuspend(args: string[]): Promise<void> {
@@ -796,7 +796,7 @@ async function handleSuspend(args: string[]): Promise<void> {
  *
  * @example
  * ```sh
- * bun run src/state-machine/bridge.ts resume-phase --phase=42
+ * luca-state resume-phase --phase=42
  * ```
  */
 async function handleResumePhase(args: string[]): Promise<void> {

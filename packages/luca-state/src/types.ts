@@ -8,6 +8,29 @@
  */
 import { z } from "zod";
 
+// ─── Result Type ────────────────────────────────────────────────────────────
+
+/**
+ * Discriminated union for operation results.
+ *
+ * Used by persistence functions for success/failure returns.
+ *
+ * @example
+ * ```typescript
+ * function parseConfig(input: string): Result<Config> {
+ *   try {
+ *     const data = JSON.parse(input);
+ *     return { success: true, data };
+ *   } catch (error) {
+ *     return { success: false, error: error.message };
+ *   }
+ * }
+ * ```
+ */
+export type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
 // ─── Workflow States ──────────────────────────────────────────────────────────
 
 /** All possible workflow states */

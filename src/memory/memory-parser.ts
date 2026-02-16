@@ -275,12 +275,11 @@ function parseInlineEntries(
 
     const tags =
       extractTags(fullContent) || extractTags(currentExtraLines.join("\n"));
-    const confidence = extractMetadataField(
-      currentExtraLines.join("\n"),
-      "Confidence",
-    );
-    const agent = extractMetadataField(currentExtraLines.join("\n"), "Agent");
-    const added = extractMetadataField(currentExtraLines.join("\n"), "Added");
+    const extraContent = currentExtraLines.join("\n");
+    const confidence = extractMetadataField(extraContent, "Confidence");
+    const agent = extractMetadataField(extraContent, "Agent");
+    const added = extractMetadataField(extraContent, "Added");
+    const milestone = extractMetadataField(extraContent, "Milestone");
 
     const entry = buildEntry(
       currentTitle,
@@ -291,6 +290,7 @@ function parseInlineEntries(
       agent,
       added,
       isArchive,
+      milestone,
     );
 
     if (entry) entries.push(entry);
@@ -376,6 +376,7 @@ function parseSubsectionEntries(
     const confidence = extractMetadataField(fullContent, "Confidence");
     const agent = extractMetadataField(fullContent, "Agent");
     const added = extractMetadataField(fullContent, "Added");
+    const milestone = extractMetadataField(fullContent, "Milestone");
 
     // Extract the main description (first non-metadata field or **Context** or **Choice**)
     const descMatch = fullContent.match(
@@ -392,6 +393,7 @@ function parseSubsectionEntries(
       agent,
       added,
       isArchive,
+      milestone,
     );
 
     if (entry) entries.push(entry);
@@ -607,6 +609,7 @@ export function generateEntryId(title: string, category: string): string {
  * @param agent - Extracted agent string
  * @param added - Extracted added date string
  * @param isArchive - Whether this is from an archive section
+ * @param milestone - Milestone version string (e.g., "v1.5.0")
  * @returns Validated MemoryEntry or null if validation fails
  */
 function buildEntry(
@@ -618,6 +621,7 @@ function buildEntry(
   agent?: string,
   added?: string,
   isArchive: boolean = false,
+  milestone?: string,
 ): MemoryEntry | null {
   if (!title.trim()) return null;
 
@@ -625,7 +629,7 @@ function buildEntry(
   const id = generateEntryId(title, category);
   const tokenEstimate = estimateTokens(content);
 
-  const raw = {
+  const raw: Record<string, unknown> = {
     id,
     category,
     title: title.trim(),
@@ -637,6 +641,10 @@ function buildEntry(
     recall_count: 0,
     token_estimate: tokenEstimate,
   };
+
+  if (milestone) {
+    raw.milestone = milestone.trim();
+  }
 
   const result = memoryEntrySchema.safeParse(raw);
   if (!result.success) {

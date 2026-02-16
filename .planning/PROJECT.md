@@ -8,7 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.5.0 — Shipped)
+## Current Milestone: v1.6.0 — Package & Publish
+
+**Theme:** Extract core components as standalone publishable packages, complete remaining memory improvements, and introduce multi-stack convention support.
+
+**Goals:**
+
+1. **XState Workflow State Package** — Extract the internal XState v5 state machine into a standalone npm package (`@luca-framework/state` or similar) that other projects can adopt independently
+2. **Remaining Memory Improvements** — Complete Mastra-inspired features deferred from v1.5.0: suspend/resume with persistent state, milestone-scoped memory recall
+3. **Opinionated Tech Stack Profiles** — Organize code style rules under named tech stack profiles (typescript, python, go, rust) with config toggle and auto-detection integration
+
+**Success Vision:** Luca's core state machine is published as a standalone package, memory system handles suspend/resume gracefully, and the framework supports multi-stack code conventions.
+
+## Previous State (v1.5.0 — Shipped)
 
 **Last Shipped:** v1.5.0 — Cognitive Architecture & State Machine (2026-02-15)
 
@@ -108,4 +120,4 @@ Deterministic XState v5 workflow state machine replacing markdown-based state ma
 
 ---
 
-_Last updated: 2026-02-15 — v1.5.0 shipped_
+_Last updated: 2026-02-16 — v1.6.0 milestone started_

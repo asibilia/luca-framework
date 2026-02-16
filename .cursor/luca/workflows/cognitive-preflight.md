@@ -54,13 +54,58 @@ These keywords drive selective memory recall.
 
 ### Step 3: Selective Memory Recall
 
+#### 3a. Milestone-Scoped Recall (Preferred)
+
+When a current milestone is known (from STATE.md or bridge), use the scored
+recall engine. This ranks entries by a composite score combining milestone
+proximity, tag overlap, confidence, and recency:
+
 ```bash
-# Check for MEMORY.md
+# Read current milestone from state
+CURRENT_MILESTONE=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null \
+  | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null)
+
+if [ -n "$CURRENT_MILESTONE" ] && [ -f .planning/MEMORY.md ]; then
+  # Milestone-scoped recall via memory bridge
+  # Tags come from Step 2 keyword extraction
+  RECALL_JSON=$(bun run src/memory/bridge.ts read-memory \
+    --milestone="${CURRENT_MILESTONE}" \
+    --tags="${TASK_TAGS}" \
+    --limit=5 2>/dev/null)
+  echo "$RECALL_JSON"
+fi
+```
+
+**Scoring formula:**
+
+| Factor              | Weight | Description                              |
+| ------------------- | ------ | ---------------------------------------- |
+| Milestone proximity | 0.4    | Same=1.0, adjacent=0.7, 2 apart=0.4      |
+| Tag overlap         | 0.3    | Intersection of entry tags and task tags |
+| Confidence          | 0.15   | high=1.0, medium=0.6, low=0.3            |
+| Recency             | 0.15   | <30d=1.0, <90d=0.7, <180d=0.4, else=0.2  |
+
+Entries from the current milestone are strongly preferred. Entries without a
+milestone tag receive a neutral proximity score of 0.5.
+
+#### 3b. Keyword-Based Recall (Fallback)
+
+When no milestone is set, or MEMORY.md has no milestone-tagged entries, fall
+back to tag-based filtering:
+
+```bash
+# Fallback: tag-based filtering via bridge
 if [ -f .planning/MEMORY.md ]; then
+  RECALL_JSON=$(bun run src/memory/bridge.ts read-memory \
+    --tags="${TASK_TAGS}" \
+    --limit=5 2>/dev/null)
+  echo "$RECALL_JSON"
+fi
+
+# Final fallback: read MEMORY.md directly
+if [ -z "$RECALL_JSON" ] && [ -f .planning/MEMORY.md ]; then
   echo "Searching memory for relevant entries..."
   cat .planning/MEMORY.md
-else
-  echo "No MEMORY.md exists - no prior learnings to recall"
 fi
 ```
 
@@ -275,7 +320,8 @@ This ensures complexity persists across sessions for:
 
 - [ ] BRAIN.md checked (loaded or noted as missing)
 - [ ] Keywords extracted from task
-- [ ] MEMORY.md searched for relevant entries
+- [ ] Milestone-scoped recall attempted (if current_milestone is set in STATE)
+- [ ] MEMORY.md searched for relevant entries (milestone-scored or tag-filtered)
 - [ ] Relevant items identified (3-5 max)
 - [ ] WORKING.md initialized with session context
 - [ ] Intuition flags generated
@@ -288,3 +334,5 @@ This ensures complexity persists across sessions for:
 - Worthwhile tradeoff for memory-aided development
 - Can be skipped with `--skip-memory` flag if needed
 - Memory recall is selective - not everything is loaded
+- Milestone recall uses scored ranking (proximity + tags + confidence + recency)
+- Entries without milestone tags receive neutral 0.5 proximity score
