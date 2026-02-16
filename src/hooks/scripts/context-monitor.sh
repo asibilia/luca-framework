@@ -177,6 +177,21 @@ else
   FINAL_MSG="$WORKING_MSG"
 fi
 
+# --- Auto-persist WORKING.md on high context usage ---
+# When severity is HIGH or CRITICAL, auto-persist working memory with a
+# timestamp marker via the memory bridge. This ensures session context is
+# saved before quality degrades due to context exhaustion.
+if [ "$FINAL_LEVEL" = "CRITICAL" ] || [ "$FINAL_LEVEL" = "HIGH" ]; then
+  ZONE="degrading"
+  if [ "$FINAL_LEVEL" = "CRITICAL" ]; then
+    ZONE="stop"
+  fi
+  bun run src/memory/bridge.ts append-working \
+    --section=session_info \
+    --content="Auto-persisted at $(date -u +%Y-%m-%dT%H:%M:%SZ) (zone: $ZONE)" \
+    2>/dev/null || true
+fi
+
 # Exit if both are NONE
 if [ "$FINAL_LEVEL" = "NONE" ]; then
   exit 0
