@@ -13,22 +13,22 @@ describe("profileRegistry", () => {
   });
 
   test("typescript profile has 8 rules", () => {
-    const ts = profileRegistry.typescript;
+    const ts = profileRegistry["typescript"]!;
     expect(Object.keys(ts.rules)).toHaveLength(8);
   });
 
   test("python profile has 0 rules (placeholder)", () => {
-    const py = profileRegistry.python;
+    const py = profileRegistry["python"]!;
     expect(Object.keys(py.rules)).toHaveLength(0);
   });
 
   test("go profile has 0 rules (placeholder)", () => {
-    const go = profileRegistry.go;
+    const go = profileRegistry["go"]!;
     expect(Object.keys(go.rules)).toHaveLength(0);
   });
 
   test("rust profile has 0 rules (placeholder)", () => {
-    const rust = profileRegistry.rust;
+    const rust = profileRegistry["rust"]!;
     expect(Object.keys(rust.rules)).toHaveLength(0);
   });
 
@@ -58,13 +58,13 @@ describe("typescript profile rule factories", () => {
   ];
 
   test("contains expected rule names", () => {
-    const ruleNames = Object.keys(profileRegistry.typescript.rules).sort();
+    const ruleNames = Object.keys(profileRegistry["typescript"]!.rules).sort();
     expect(ruleNames).toEqual(expectedRuleNames.sort());
   });
 
   test("all rule factories produce valid BaseRule instances", () => {
-    for (const [ruleName, factory] of Object.entries(
-      profileRegistry.typescript.rules,
+    for (const [_ruleName, factory] of Object.entries(
+      profileRegistry["typescript"]!.rules,
     )) {
       const instance = factory();
 
