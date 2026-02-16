@@ -394,6 +394,43 @@ export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
 // Re-export hook config generators for consumers
 export { generateCursorHooksConfig, generateClaudeHooksConfig };
 
+// Re-export profile infrastructure for build consumers
+export { profileRegistry, profileConfigSchema } from "../src/rules/index";
+
+/**
+ * Get the list of active profile names from config.
+ *
+ * Reads .planning/config.json and returns the active profile names
+ * based on opinionated_guidelines toggle and tech_stack_profiles array.
+ * Returns empty array when opinionated_guidelines is false.
+ *
+ * @returns Array of active profile name strings
+ */
+export function getActiveProfileNames(): string[] {
+  try {
+    const fs = require("fs");
+    const configPath = path.join(process.cwd(), ".planning", "config.json");
+    const raw = fs.readFileSync(configPath, "utf-8");
+    const config = JSON.parse(raw);
+    const workflow = config?.workflow ?? {};
+
+    // Import the schema dynamically to avoid circular dependency issues
+    const {
+      profileConfigSchema: schema,
+    } = require("../src/rules/profiles/profile.schemas");
+    const parsed = schema.parse(workflow);
+
+    if (!parsed.opinionated_guidelines) {
+      return [];
+    }
+
+    return parsed.tech_stack_profiles;
+  } catch {
+    // Default: typescript profile active
+    return ["typescript"];
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Sub-functions for generateAllOutputs()
 // Each handles one entity type, writing to the shared generated Map.
