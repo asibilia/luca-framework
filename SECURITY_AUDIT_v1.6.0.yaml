@@ -1,0 +1,150 @@
+---
+audit:
+  timestamp: "2026-02-16"
+  version: "v1.6.0"
+  scope: "96 changed TypeScript files"
+  threat_model: "Developer tool (local execution)"
+  overall_grade: "B+ (Strong for developer tool)"
+
+summary:
+  critical: 0
+  high: 0
+  medium: 3
+  low: 0
+
+issues:
+  - severity: MEDIUM
+    file: packages/luca-state/src/bridge.ts
+    lines: "275, 288"
+    issue: "Lodash get() accepts arbitrary field paths without allowlist in read-field command"
+    description: |
+      The handleReadField() function uses lodash get() with an untrusted field path
+      argument without validation. Unlike set-field which has SETTABLE_FIELDS allowlist,
+      read-field has no restrictions and can access sensitive fields like gates,
+      session_id, or internal state.
+    impact: "Information disclosure of workflow state (local machine only)"
+    suggestion: |
+      Add READABLE_FIELDS allowlist and validate fieldPath before calling get():
+
+      const READABLE_FIELDS = [...SETTABLE_FIELDS, "state", "current_state"] as const;
+
+      if (!READABLE_FIELDS.includes(fieldPath as any)) {
+        console.error(`Field not readable. Allowed: ${READABLE_FIELDS.join(", ")}`);
+        process.exit(2);
+      }
+
+  - severity: MEDIUM
+    file: packages/luca-state/src/bridge.ts
+    lines: "732, 818"
+    issue: "Checkpoint path construction accepts arbitrary phase IDs without upper bound"
+    description: |
+      The suspend and resume-phase commands validate that phaseId >= 0 and is finite,
+      but do not validate an upper bound. This allows creating millions of checkpoint
+      files if the command is invoked repeatedly with large phase numbers, causing
+      filesystem exhaustion and denial of service on shared development machines.
+    impact: "Denial of Service via filesystem exhaustion (requires CLI access)"
+    suggestion: |
+      Add upper bound validation to phase IDs:
+
+      const MAX_PHASE_ID = 999999;
+      if (!Number.isFinite(phaseId) || phaseId < 0 || phaseId > MAX_PHASE_ID) {
+        console.error(`Invalid phase number: ${phaseStr}`);
+        process.exit(2);
+      }
+
+      Or validate against actual workflow state phases.
+
+  - severity: MEDIUM
+    file: packages/luca-state/src/bridge.ts
+    lines: "343-349"
+    issue: "JSON.parse() in set-field accepts arbitrary JSON without size/depth limits"
+    description: |
+      The set-field command parses user-supplied JSON values without size or depth limits.
+      While Zod schema validation provides eventual defense-in-depth, a malicious actor
+      could send deeply nested JSON to cause memory exhaustion or performance degradation.
+      No immediate code injection risk (JSON.parse is safe), but resource exhaustion possible.
+    impact: "Potential DoS via deeply nested JSON payloads (mitigated by schema validation)"
+    suggestion: |
+      Add JSON size and depth validation before parsing:
+
+      const MAX_JSON_SIZE = 10000;
+      const MAX_JSON_DEPTH = 20;
+
+      if (rawValue.length > MAX_JSON_SIZE) {
+        console.error("Value exceeds maximum size");
+        process.exit(2);
+      }
+
+      const depthTracker = { depth: 0, maxDepth: MAX_JSON_DEPTH };
+      value = JSON.parse(rawValue, (key, val) => {
+        if (typeof val === 'object' && val !== null) {
+          depthTracker.depth++;
+          if (depthTracker.depth > depthTracker.maxDepth) {
+            throw new Error("JSON nesting too deep");
+          }
+        }
+        return val;
+      });
+
+verified_safe:
+  - description: "Command injection in pre-commit-gate.sh"
+    finding: "SAFE - Command extracted via JSON parsing, never executed/interpolated"
+    location: "src/hooks/scripts/pre-commit-gate.sh:55-59"
+
+  - description: "Path traversal in state file operations"
+    finding: "SAFE - State file path hardcoded to .planning/state.json"
+    location: "packages/luca-state/src/persistence.ts:22"
+
+  - description: "Shell injection in hook script config reading"
+    finding: "SAFE - Config paths passed via environment variables, not shell substitution"
+    location: "src/hooks/scripts/session-start.sh:187-291"
+
+  - description: "Memory bridge file operations"
+    finding: "SAFE - Section names validated against WORKING_MEMORY_SECTIONS allowlist"
+    location: "src/memory/bridge.ts:393-402"
+
+  - description: "JSON deserialization in state loading"
+    finding: "SAFE - Parsed JSON validated by XState actor and Zod schemas"
+    location: "packages/luca-state/src/persistence.ts:103-110"
+
+  - description: "Session lock and build manifest file creation"
+    finding: "SAFE - File paths constructed with node:path.join using constants only"
+    location: "src/hooks/scripts/session-start.sh:410-433"
+
+recommendations:
+  - priority: MEDIUM
+    effort_minutes: 10
+    action: "Add READABLE_FIELDS allowlist to read-field command"
+
+  - priority: MEDIUM
+    effort_minutes: 5
+    action: "Add MAX_PHASE_ID upper bound validation to suspend/resume-phase commands"
+
+  - priority: MEDIUM
+    effort_minutes: 15
+    action: "Add JSON size and depth limit validation to set-field command"
+
+threat_model_notes: |
+  This is a local developer tool, not a web service:
+  - Threat actors must have shell access to the development machine
+  - Primary concern is "confused deputy" scenarios and unintended usage patterns
+  - State files assumed to be in .planning/ (user responsibility for .gitignore)
+  - No authentication/authorization needed for local execution context
+  - All identified MEDIUM issues require attacker to have CLI invocation capability
+
+conclusion: |
+  The v1.6.0 codebase demonstrates strong security posture for a developer tool.
+
+  Strengths:
+  - Proper input validation framework with CLI argument parsing
+  - Consistent use of Zod schema validation across state operations
+  - Safe JSON parsing practices with error handling
+  - No command injection or shell injection vectors
+  - Proper isolation of shell commands from user input
+
+  Opportunities:
+  - Tighten field access controls with allowlists
+  - Add resource limits to prevent DoS via CLI arguments
+
+  Recommended action: Fix the three MEDIUM issues before v1.6.0 release for
+  maximum hardening. All fixes are straightforward (30 minutes total effort).
