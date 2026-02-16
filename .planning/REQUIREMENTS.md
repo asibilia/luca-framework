@@ -16,7 +16,7 @@ Requirements for v1.6.0 — Package & Publish milestone. Each maps to roadmap ph
 - [x] **PKG-05**: Transition guards extracted with configurable complexity/oversight/gate rules
 - [x] **PKG-06**: TypeScript types and Zod schemas exported for consumer type safety
 - [x] **PKG-07**: Comprehensive test suite (unit + integration) for standalone package
-- [ ] **PKG-08**: Internal framework updated to consume from `packages/luca-state/` instead of `src/state-machine/`
+- [x] **PKG-08**: Internal framework updated to consume from `packages/luca-state/` instead of `src/state-machine/`
 
 ### Memory Improvements
 
@@ -64,26 +64,26 @@ Deferred to future release. Tracked but not in current roadmap.
 
 Which phases cover which requirements. Updated during roadmap creation.
 
-| Requirement | Phase    | Status  |
-| ----------- | -------- | ------- |
-| PKG-01      | Phase 40 | Done    |
-| PKG-02      | Phase 40 | Done    |
-| PKG-03      | Phase 40 | Done    |
-| PKG-04      | Phase 40 | Done    |
-| PKG-05      | Phase 40 | Done    |
-| PKG-06      | Phase 40 | Done    |
-| PKG-07      | Phase 40 | Done    |
-| PKG-08      | Phase 41 | Pending |
-| MEM-01      | Phase 42 | Done    |
-| MEM-02      | Phase 42 | Done    |
-| MEM-03      | Phase 42 | Done    |
-| MEM-04      | Phase 42 | Done    |
-| MEM-05      | Phase 42 | Done    |
-| STACK-01    | Phase 43 | Done    |
-| STACK-02    | Phase 43 | Done    |
-| STACK-03    | Phase 43 | Done    |
-| STACK-04    | Phase 43 | Done    |
-| STACK-05    | Phase 43 | Done    |
+| Requirement | Phase    | Status |
+| ----------- | -------- | ------ |
+| PKG-01      | Phase 40 | Done   |
+| PKG-02      | Phase 40 | Done   |
+| PKG-03      | Phase 40 | Done   |
+| PKG-04      | Phase 40 | Done   |
+| PKG-05      | Phase 40 | Done   |
+| PKG-06      | Phase 40 | Done   |
+| PKG-07      | Phase 40 | Done   |
+| PKG-08      | Phase 41 | Done   |
+| MEM-01      | Phase 42 | Done   |
+| MEM-02      | Phase 42 | Done   |
+| MEM-03      | Phase 42 | Done   |
+| MEM-04      | Phase 42 | Done   |
+| MEM-05      | Phase 42 | Done   |
+| STACK-01    | Phase 43 | Done   |
+| STACK-02    | Phase 43 | Done   |
+| STACK-03    | Phase 43 | Done   |
+| STACK-04    | Phase 43 | Done   |
+| STACK-05    | Phase 43 | Done   |
 
 **Coverage:**
 

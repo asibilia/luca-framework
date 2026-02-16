@@ -45,8 +45,8 @@
 
 **Plans:**
 
-- [ ] 41-01: Update monorepo workspace config, rewire all `src/` imports, update bridge CLI paths (Wave 1)
-- [ ] 41-02: Update all skill/agent shell commands referencing bridge, backward-compat shims, integration tests (Wave 2)
+- [x] 41-01: Update monorepo workspace config, rewire all `src/` imports, update bridge CLI paths (Wave 1)
+- [x] 41-02: Update all skill/agent shell commands referencing bridge, backward-compat shims, integration tests (Wave 2)
 
 ### Phase 42: Memory Suspend/Resume & Milestone Recall
 
