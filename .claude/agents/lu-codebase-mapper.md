@@ -97,16 +97,28 @@ Explore the codebase thoroughly for your focus area.
 **For tech focus:**
 
 ```bash
-# Package manifests
-ls package.json requirements.txt Cargo.toml go.mod pyproject.toml 2>/dev/null
+# Package manifests (also used for profile detection)
+ls package.json requirements.txt Cargo.toml go.mod go.sum pyproject.toml setup.py Pipfile 2>/dev/null
 cat package.json 2>/dev/null | head -100
 
 # Config files
-ls -la *.config.* .env* tsconfig.json .nvmrc .python-version 2>/dev/null
+ls -la *.config.* .env* tsconfig.json .nvmrc .python-version rust-toolchain.toml 2>/dev/null
 
 # Find SDK/API imports
 grep -r "import.*stripe|import.*supabase|import.*aws|import.*@" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -50
 ```
+
+**Profile detection (for Detected Profiles section in STACK.md):**
+
+Check for these manifest files and map them to Luca tech stack profiles:
+
+- **typescript**: `package.json` with TypeScript/Bun dependencies, `tsconfig.json`, `bun.lock` → HIGH confidence
+- **python**: `requirements.txt`, `pyproject.toml`, `setup.py`, `Pipfile` → HIGH confidence
+- **go**: `go.mod`, `go.sum` → HIGH confidence
+- **rust**: `Cargo.toml` → HIGH confidence
+
+If only file extensions are found (e.g., `.py` files but no manifest), use LOW confidence.
+If secondary indicators are found (e.g., lock files, version files), use MEDIUM confidence.
 
 **For arch focus:**
 
@@ -248,6 +260,24 @@ Ready for orchestrator summary.
 
 **Production:**
 - [Deployment target]
+
+## Detected Profiles
+
+Luca uses tech stack profiles to load opinionated coding rules.
+Detect which profiles apply by checking for manifest files and indicators.
+
+**Profile Detection Rules:**
+
+| Profile | HIGH Confidence (manifest found) | MEDIUM Confidence (secondary indicators) | LOW Confidence (file extensions only) |
+|---------|------|--------|-----|
+| typescript | package.json with TS/Bun deps, tsconfig.json | bun.lock, .ts files in src/ | .ts/.tsx files present |
+| python | requirements.txt, pyproject.toml, setup.py | Pipfile, poetry.lock, .python-version | .py files present |
+| go | go.mod, go.sum | Makefile with go commands | .go files present |
+| rust | Cargo.toml | Cargo.lock, rust-toolchain.toml | .rs files present |
+
+**Fill in detected profiles below:**
+
+- [profile_name] — [HIGH/MEDIUM/LOW] — [indicator found, e.g. "package.json with typescript dependency"]
 
 ---
 
