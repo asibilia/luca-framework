@@ -1,8 +1,8 @@
 /**
  * Use Bun instead of Node.js, npm, pnpm, or vite.
  */
-import { BaseRuleImpl } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { BaseRuleImpl } from "../../base/base-rule";
+import type { RuleConfig } from "../../types/rule.types";
 
 // Define the use-bun rule configuration
 const useBunConfig: RuleConfig = {

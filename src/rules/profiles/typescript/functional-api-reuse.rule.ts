@@ -1,19 +1,17 @@
 /**
  * Functional API Reuse & Architecture Rule
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { BaseRuleImpl } from "../../base/base-rule";
+import type { RuleConfig } from "../../types/rule.types";
 
 // Define the Functional-API-Reuse rule configuration
 const FunctionalAPIReuseConfig: RuleConfig = {
   frontmatter: {
     description: `Functional API Reuse & Architecture Rule`,
-    
-    
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Functional API Reuse & Architecture Rule
 
 **CRITICAL ARCHITECTURE PRINCIPLE**: Always build on existing functionality rather than reinventing solutions. This is a mandatory architectural decision that must be followed in all code contributions.
@@ -261,9 +259,9 @@ When refactoring existing code to follow this rule:
 
 Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.
 `,
-      order: 1
-    }
-  ]
+      order: 1,
+    },
+  ],
 };
 
 export class FunctionalAPIReuseRule extends BaseRuleImpl {

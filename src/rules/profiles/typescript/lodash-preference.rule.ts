@@ -1,8 +1,8 @@
 /**
  * Generic rule description
  */
-import { BaseRuleImpl } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { BaseRuleImpl } from "../../base/base-rule";
+import type { RuleConfig } from "../../types/rule.types";
 
 // Define the lodash-preference rule configuration
 const lodashPreferenceConfig: RuleConfig = {

@@ -1,8 +1,8 @@
 /**
  * Prohibit class usage in favor of functional programming patterns
  */
-import { BaseRuleImpl } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { BaseRuleImpl } from "../../base/base-rule";
+import type { RuleConfig } from "../../types/rule.types";
 
 // Define the no-classes rule configuration
 const noClassesConfig: RuleConfig = {

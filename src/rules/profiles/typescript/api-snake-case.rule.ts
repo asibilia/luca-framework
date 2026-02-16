@@ -1,8 +1,8 @@
 /**
  * API payloads must use snake_case for consistency with backend conventions
  */
-import { BaseRuleImpl } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { BaseRuleImpl } from "../../base/base-rule";
+import type { RuleConfig } from "../../types/rule.types";
 
 // Define the api-snake-case rule configuration
 const apiSnakeCaseConfig: RuleConfig = {

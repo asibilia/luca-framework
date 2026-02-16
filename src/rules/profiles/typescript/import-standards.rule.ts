@@ -1,8 +1,8 @@
 /**
  * Standards for import statements and module organization
  */
-import { BaseRuleImpl } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { BaseRuleImpl } from "../../base/base-rule";
+import type { RuleConfig } from "../../types/rule.types";
 
 // Define the import-standards rule configuration
 const importStandardsConfig: RuleConfig = {
