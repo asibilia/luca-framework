@@ -388,6 +388,78 @@ Execute this plan. Return SUMMARY when complete.
 
 **Do NOT proceed to next wave until all Task calls return.**
 
+### 4.5. Suspend/Resume Support
+
+**Before each wave**, check context usage to decide if suspension is needed:
+
+```bash
+# Check context usage zone from context monitor
+CONTEXT_JSON=$(bun run src/memory/context-monitor.ts --project-dir=. 2>/dev/null || echo '{"zone":"peak"}')
+ZONE=$(echo "$CONTEXT_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.zone)" 2>/dev/null || echo "peak")
+```
+
+**If zone is "stop"** (context exhaustion imminent):
+
+1. **Create checkpoint:** Record current progress so a new session can resume.
+
+```bash
+# Suspend with checkpoint via bridge
+bun run src/state-machine/bridge.ts suspend \
+  --phase={phase_number} \
+  --reason=context_exhaustion \
+  --wave={current_wave_index} \
+  --tasks={comma_separated_completed_task_ids} \
+  2>/dev/null || true
+```
+
+2. **Write `.continue-here.md`** as a handoff document for the next session:
+
+```
+# Continue Here
+
+**Phase:** {phase_number}
+**Suspended at wave:** {current_wave_index}
+**Reason:** Context exhaustion (zone: stop)
+**Completed plans:** {list of completed plan IDs}
+**Remaining waves:** {list of remaining wave numbers}
+
+## Resume Instructions
+
+Run: `/phase-execute {phase_number}`
+
+The phase-execute skill will detect the suspend checkpoint and resume
+from the last incomplete wave automatically.
+```
+
+3. **Stop execution** and inform the user:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► PHASE SUSPENDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Context usage is in the "stop" zone. Suspending to preserve quality.
+
+Checkpoint saved. Resume in a new session with:
+  /phase-execute {phase_number}
+```
+
+**On resume** (checkpoint exists for this phase):
+
+At the start of phase execution, check for an existing suspend checkpoint:
+
+```bash
+# Check for suspend checkpoint
+CHECKPOINT_EXISTS=$(bun run src/state-machine/bridge.ts resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
+```
+
+If a checkpoint exists:
+
+1. Load the checkpoint to get completed wave index and task IDs
+2. Skip waves that were already completed
+3. Resume execution from the first incomplete wave
+4. Clear the checkpoint after successful phase completion
+
 ### 5. Aggregate Results
 
 - Collect summaries from all plans
