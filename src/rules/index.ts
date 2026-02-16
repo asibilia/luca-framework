@@ -1,30 +1,32 @@
 /**
  * Rule registry for the Luca Framework
- * Auto-generated index file for bulk rule processing
+ *
+ * Dynamically assembles the rule registry from:
+ * 1. General/framework rules (always loaded)
+ * 2. Tech stack profile rules (loaded based on config)
+ *
+ * Profile loading is controlled by .planning/config.json:
+ * - workflow.opinionated_guidelines: master toggle (default: true)
+ * - workflow.tech_stack_profiles: array of profile names (default: ["typescript"])
  */
 
-// Import all general rules
-import { ApiSnakeCaseRule } from "./general/api-snake-case.rule";
+// Import general/framework rules (always active)
 import { AtlassianMcpRule } from "./general/atlassian-mcp.rule";
-import { BunPreferenceRule } from "./general/bun-preference.rule";
 import { ComplexityGatingRule } from "./general/complexity-gating.rule";
 import { CursorRulesRule } from "./general/cursor_rules.rule";
 import { FileNamingRule } from "./general/file-naming.rule";
-import { FunctionalAPIReuseRule } from "./general/functional-api-reuse.rule";
 import { HarnessVerificationRule } from "./general/harness-verification.rule";
 import { HookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
-import { ImportStandardsRule } from "./general/import-standards.rule";
-import { LodashPreferenceRule } from "./general/lodash-preference.rule";
 import { MandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
-import { NoClassesRule } from "./general/no-classes.rule";
 import { PosthogIntegrationRule } from "./general/posthog-integration.rule";
-import { SchemaFirstParsingRule } from "./general/schema-first-parsing.rule";
 import { SelfImproveRule } from "./general/self_improve.rule";
 import { StateMachineBridgeRule } from "./general/state-machine-bridge.rule";
-import { UseBunRule } from "./general/use-bun-instead-of-node-vite-npm-pnpm.rule";
 
 // Import Luca-specific rule
 import { LuWorkflowRule } from "./lu-workflow.rule";
+
+// Import profile registry and config schema
+import { profileRegistry, profileConfigSchema } from "./profiles/index";
 
 // Export base rule class
 export { BaseRuleImpl } from "./base/base-rule";
@@ -40,25 +42,91 @@ export type {
 import type { BaseRule } from "./types/rule.types";
 export type { BaseRule };
 
-// Registry mapping rule names to factory functions for bulk processing
-export const ruleRegistry: Record<string, () => BaseRule> = {
-  "api-snake-case": () => new ApiSnakeCaseRule(),
+// Re-export profile infrastructure for consumers
+export { profileRegistry, profileConfigSchema };
+export type { TechStackProfile, ProfileConfig } from "./profiles/index";
+
+// ---------------------------------------------------------------------------
+// General rules (always loaded regardless of profile config)
+// ---------------------------------------------------------------------------
+const generalRules: Record<string, () => BaseRule> = {
   "atlassian-mcp": () => new AtlassianMcpRule(),
-  "bun-preference": () => new BunPreferenceRule(),
   "complexity-gating": () => new ComplexityGatingRule(),
   cursor_rules: () => new CursorRulesRule(),
   "file-naming": () => new FileNamingRule(),
-  "functional-api-reuse": () => new FunctionalAPIReuseRule(),
   "harness-verification": () => new HarnessVerificationRule(),
   "hook-skill-boundary": () => new HookSkillBoundaryRule(),
-  "import-standards": () => new ImportStandardsRule(),
-  "lodash-preference": () => new LodashPreferenceRule(),
   "mandatory-documentation": () => new MandatoryDocumentationRule(),
-  "no-classes": () => new NoClassesRule(),
   "posthog-integration": () => new PosthogIntegrationRule(),
-  "schema-first-parsing": () => new SchemaFirstParsingRule(),
   self_improve: () => new SelfImproveRule(),
   "state-machine-bridge": () => new StateMachineBridgeRule(),
-  "use-bun-instead-of-node-vite-npm-pnpm": () => new UseBunRule(),
   "lu-workflow": () => new LuWorkflowRule(),
+};
+
+// ---------------------------------------------------------------------------
+// Profile-aware rule loading
+// ---------------------------------------------------------------------------
+
+/**
+ * Read profile config from .planning/config.json at import time.
+ *
+ * Uses synchronous file read via Bun.file() with a sync fallback.
+ * If the config file is missing or malformed, defaults apply via Zod schema.
+ */
+function loadProfileConfig(): {
+  opinionated_guidelines: boolean;
+  tech_stack_profiles: string[];
+} {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const configPath = path.join(process.cwd(), ".planning", "config.json");
+    const raw = fs.readFileSync(configPath, "utf-8");
+    const config = JSON.parse(raw);
+    const workflow = config?.workflow ?? {};
+    return profileConfigSchema.parse(workflow);
+  } catch {
+    // Fallback to defaults if config is missing or unreadable
+    return profileConfigSchema.parse({});
+  }
+}
+
+/**
+ * Collect rules from active tech stack profiles.
+ *
+ * If opinionated_guidelines is false, no profile rules are loaded.
+ * Otherwise, each profile in tech_stack_profiles contributes its rules.
+ */
+function loadProfileRules(): Record<string, () => BaseRule> {
+  const config = loadProfileConfig();
+
+  if (!config.opinionated_guidelines) {
+    return {};
+  }
+
+  const profileRules: Record<string, () => BaseRule> = {};
+
+  for (const profileName of config.tech_stack_profiles) {
+    const profile = profileRegistry[profileName];
+    if (profile) {
+      Object.assign(profileRules, profile.rules);
+    }
+  }
+
+  return profileRules;
+}
+
+// ---------------------------------------------------------------------------
+// Assembled registry: general + profile rules
+// ---------------------------------------------------------------------------
+
+/**
+ * Complete rule registry combining general rules with active profile rules.
+ *
+ * This is the single source of truth consumed by the build pipeline
+ * (build-shared.ts) to generate .claude/ and .cursor/ rule files.
+ */
+export const ruleRegistry: Record<string, () => BaseRule> = {
+  ...generalRules,
+  ...loadProfileRules(),
 };
