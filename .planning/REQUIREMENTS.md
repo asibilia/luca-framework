@@ -28,11 +28,11 @@ Requirements for v1.6.0 — Package & Publish milestone. Each maps to roadmap ph
 
 ### Tech Stack Profiles
 
-- [ ] **STACK-01**: Tech stack profile structure (typescript, python, go, rust directories)
-- [ ] **STACK-02**: Migrate existing TS-specific rules under `typescript` profile
-- [ ] **STACK-03**: Config toggle (`workflow.opinionated_guidelines: true/false`)
-- [ ] **STACK-04**: Integration with `lu-map-codebase` stack detection for auto-selection
-- [ ] **STACK-05**: Build system conditionally includes/excludes guidelines per selected profile
+- [x] **STACK-01**: Tech stack profile structure (typescript, python, go, rust directories)
+- [x] **STACK-02**: Migrate existing TS-specific rules under `typescript` profile
+- [x] **STACK-03**: Config toggle (`workflow.opinionated_guidelines: true/false`)
+- [x] **STACK-04**: Integration with `lu-map-codebase` stack detection for auto-selection
+- [x] **STACK-05**: Build system conditionally includes/excludes guidelines per selected profile
 
 ## v2 Requirements
 
@@ -79,11 +79,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-03      | Phase 42 | Pending |
 | MEM-04      | Phase 42 | Pending |
 | MEM-05      | Phase 42 | Pending |
-| STACK-01    | Phase 43 | Pending |
-| STACK-02    | Phase 43 | Pending |
-| STACK-03    | Phase 43 | Pending |
-| STACK-04    | Phase 43 | Pending |
-| STACK-05    | Phase 43 | Pending |
+| STACK-01    | Phase 43 | Done    |
+| STACK-02    | Phase 43 | Done    |
+| STACK-03    | Phase 43 | Done    |
+| STACK-04    | Phase 43 | Done    |
+| STACK-05    | Phase 43 | Done    |
 
 **Coverage:**
 

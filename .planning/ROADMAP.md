@@ -83,8 +83,8 @@
 
 **Plans:**
 
-- [ ] 43-01: Profile directory structure, config toggle, migrate TS-specific rules to typescript profile (Wave 1)
-- [ ] 43-02: Build system conditional includes, codebase-mapper integration, placeholder profiles for python/go/rust, tests (Wave 2)
+- [x] 43-01: Profile directory structure, config toggle, migrate TS-specific rules to typescript profile (Wave 1)
+- [x] 43-02: Build system conditional includes, codebase-mapper integration, placeholder profiles for python/go/rust, tests (Wave 2)
 
 ---
 
