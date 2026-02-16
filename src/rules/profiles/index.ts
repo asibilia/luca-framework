@@ -6,6 +6,9 @@
  * based on the tech_stack_profiles setting in .planning/config.json.
  */
 import { typescriptProfile } from "./typescript/index";
+import { pythonProfile } from "./python/index";
+import { goProfile } from "./go/index";
+import { rustProfile } from "./rust/index";
 
 import type { TechStackProfile } from "./profile.types";
 
@@ -24,4 +27,7 @@ export type { ProfileConfig } from "./profile.schemas";
  */
 export const profileRegistry: Record<string, TechStackProfile> = {
   typescript: typescriptProfile,
+  python: pythonProfile,
+  go: goProfile,
+  rust: rustProfile,
 };
