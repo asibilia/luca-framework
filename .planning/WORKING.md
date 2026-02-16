@@ -4,16 +4,18 @@
 
 - **Started**: 2026-02-16
 - **Workflow**: /autopilot
-- **Phase**: 42 — Complete
+- **Phase**: 41 — Framework Integration Rewire
 
 ## Memory Recall
 
-- **Patterns**: (cleared)
-- **Decisions**: (cleared)
-- **Pitfalls**: (cleared)
-- **Procedures**: (cleared)
+- **Patterns**: Source-to-output build pipeline (edit src/ only, run build:all)
+- **Decisions**: Direct string substitution src/state-machine/bridge.ts → packages/luca-state/src/bridge.ts
+- **Pitfalls**: Dual-copy state machine sync; .cursor/luca/workflows/ not rebuilt by build:all; STATE.md gets overwritten by bridge
+- **Procedures**: (none relevant)
 
 ## Planning Notes
+
+- Plan-checker found 2 issues: missing .cursor/luca/workflows/cognitive-preflight.md and cli.test.ts — both resolved in plans
 
 ## Findings
 
@@ -26,5 +28,5 @@
 _Session Status_
 
 - [x] Active
-- [x] Learnings extracted
-- [x] Ready to clear
+- [ ] Learnings extracted
+- [ ] Ready to clear

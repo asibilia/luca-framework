@@ -306,7 +306,7 @@ PLAN_01_CONTENT=$(cat "{plan_01_path}")
 PLAN_02_CONTENT=$(cat "{plan_02_path}")
 PLAN_03_CONTENT=$(cat "{plan_03_path}")
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 # Primary: Read working memory from memory bridge
@@ -414,7 +414,7 @@ ZONE=$(echo "$CONTEXT_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text())
 
 \`\`\`bash
 # Suspend with checkpoint via bridge
-bun run src/state-machine/bridge.ts suspend \\
+bun run packages/luca-state/src/bridge.ts suspend \\
   --phase={phase_number} \\
   --reason=context_exhaustion \\
   --wave={current_wave_index} \\
@@ -460,7 +460,7 @@ At the start of phase execution, check for an existing suspend checkpoint:
 
 \`\`\`bash
 # Check for suspend checkpoint
-CHECKPOINT_EXISTS=$(bun run src/state-machine/bridge.ts resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
+CHECKPOINT_EXISTS=$(bun run packages/luca-state/src/bridge.ts resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
 \`\`\`
 
 If a checkpoint exists:
@@ -557,7 +557,7 @@ Read iteration configuration:
 
 \`\`\`bash
 # Primary: Read complexity from state machine bridge
-COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+COMPLEXITY=$(bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 # Fallback: grep STATE.md directly
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -820,7 +820,7 @@ First, read the required context:
 PHASE_DIR=".planning/phases/{phase_number}-*"
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 # Primary: Read state from state machine bridge
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 # Primary: Read working memory from memory bridge
@@ -1352,7 +1352,7 @@ Wait for user response, then proceed accordingly.
 Update ROADMAP.md and state via bridge (falls back to STATE.md):
 
 \`\`\`bash
-bun run src/state-machine/bridge.ts transition complete-phase 2>/dev/null || true
+bun run packages/luca-state/src/bridge.ts transition complete-phase 2>/dev/null || true
 \`\`\`
 
 Also update STATE.md directly for backward compatibility.

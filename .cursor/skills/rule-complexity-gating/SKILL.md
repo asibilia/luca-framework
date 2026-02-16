@@ -54,7 +54,7 @@ These steps run regardless of complexity:
 
 **Before spawning optional sub-agents**, check the current task complexity:
 
-1. Read complexity from bridge: \`bun run src/state-machine/bridge.ts read-complexity 2>/dev/null\`
+1. Read complexity from bridge: \`bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null\`
 2. Fallback: Read from STATE.md \`Task Complexity:\` field
 3. If not set, read from lu-router's classification output
 3. Look up the step in the matrix above

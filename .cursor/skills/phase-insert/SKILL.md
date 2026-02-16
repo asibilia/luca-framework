@@ -63,7 +63,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 
    \`\`\`bash
    # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
-   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
    # Fallback: Manually add entry under "Roadmap Evolution" in STATE.md with (URGENT) marker
    \`\`\`
 

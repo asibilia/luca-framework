@@ -67,7 +67,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 
    \\\`\\\`\\\`bash
    # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
-   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
    # Fallback: Manually add reference to new phase in STATE.md
    \\\`\\\`\\\`
 
