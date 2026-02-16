@@ -20,11 +20,11 @@ Requirements for v1.6.0 — Package & Publish milestone. Each maps to roadmap ph
 
 ### Memory Improvements
 
-- [ ] **MEM-01**: Suspend/resume with persistent state — step-level checkpoints within phases
-- [ ] **MEM-02**: Auto-persist WORKING.md on context HIGH warning
-- [ ] **MEM-03**: Explicit suspend semantics in phase-execute (mark phase `suspended` with resume metadata)
-- [ ] **MEM-04**: Milestone-scoped memory recall — weight current milestone entries higher during recall
-- [ ] **MEM-05**: Milestone tags on MEMORY.md entries for temporal relevance scoring
+- [x] **MEM-01**: Suspend/resume with persistent state — step-level checkpoints within phases
+- [x] **MEM-02**: Auto-persist WORKING.md on context HIGH warning
+- [x] **MEM-03**: Explicit suspend semantics in phase-execute (mark phase `suspended` with resume metadata)
+- [x] **MEM-04**: Milestone-scoped memory recall — weight current milestone entries higher during recall
+- [x] **MEM-05**: Milestone tags on MEMORY.md entries for temporal relevance scoring
 
 ### Tech Stack Profiles
 
@@ -74,11 +74,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKG-06      | Phase 40 | Done    |
 | PKG-07      | Phase 40 | Done    |
 | PKG-08      | Phase 41 | Pending |
-| MEM-01      | Phase 42 | Pending |
-| MEM-02      | Phase 42 | Pending |
-| MEM-03      | Phase 42 | Pending |
-| MEM-04      | Phase 42 | Pending |
-| MEM-05      | Phase 42 | Pending |
+| MEM-01      | Phase 42 | Done    |
+| MEM-02      | Phase 42 | Done    |
+| MEM-03      | Phase 42 | Done    |
+| MEM-04      | Phase 42 | Done    |
+| MEM-05      | Phase 42 | Done    |
 | STACK-01    | Phase 43 | Done    |
 | STACK-02    | Phase 43 | Done    |
 | STACK-03    | Phase 43 | Done    |

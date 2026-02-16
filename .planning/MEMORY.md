@@ -685,10 +685,40 @@
   - **Tags**: [pitfalls, testing, verification]
   - **Confidence**: High
   - **Added**: 2026-02-16
+- **[Phase 42] Dual-copy state machine maintenance until Phase 41 integration**: The codebase has two copies of state machine code: `packages/luca-state/src/` (extracted package) and `src/state-machine/` (framework). Both contain types.ts, machine.ts with identical logic. Both copies must be kept in sync during development. During types/machine changes, update both locations. Phase 41 will complete the integration rewire to use only the package copy. Workaround: after changes to either location, run `bun run build:all` and full test suite to catch inconsistencies. Temporary state until Phase 41 resolves this design debt. Validated in Phase 42 (memory bridge updates confirmed working with both source locations)
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, state-machine, luca-state-package]
+  - **Tags**: [pitfalls, architecture, migration]
+  - **Confidence**: High
+  - **Added**: 2026-02-16
+- **[Phase 42] Context monitor hook wiring: auto-persist on context WARNING/CRITICAL**: The auto-persist feature integrates at the hook level (Stop event handler in context-monitor.sh). When context usage crosses HIGH or CRITICAL thresholds, the hook calls `bun run src/state-machine/bridge.ts persist` to write a checkpoint. This happens automatically without agent intervention. Hooks/skills that read from WORKING.md should know that auto-persist may have fired between their execution and the persistence call. Pattern: hook-based auto-persist is deterministic and requires no agent coordination, unlike manual persistence triggered by agents
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, memory-bridge, context-monitor]
+  - **Tags**: [pitfalls, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-16
 - **[Phase 40] CLI entry point script must be executable**: When creating a CLI entry point (bin/luca-state.js), the script requires `#!/usr/bin/env bun` shebang AND execute permissions (`chmod +x`). The shebang is present in source but file permissions are not tracked by git (use .gitignore or post-clone setup). Package.json `bin` field must point to the executable file. During extraction, verify `ls -la bin/` shows `-rwxr-xr-x` permissions; if not, re-chmod or add post-install script in package.json
   - **Agent**: lu-executor
   - **Relevant to**: [lu-executor, packaging]
   - **Tags**: [pitfalls, packaging, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-16
+- **[Phase 42] Source-to-output build pipeline for hooks/skills**: Hooks and skills are managed via a two-tier system: source files in `src/hooks/scripts/` and `src/skills/general/` (+ `src/skills/luca/` for branded variant) are compiled to outputs in `.claude/hooks/`, `.claude/skills/`, `.cursor/hooks/`, `.cursor/skills/` via `bun run build:all`. Edits MUST be made to source files, never to generated outputs. The drift check system (`bun run check:drift`, pre-commit hook, drift test suite) enforces this by comparing outputs to source and blocking commits if they diverge. Validated in Phase 42 (all hook/skill modifications routed through source → build pipeline)
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, build pipeline, drift detection]
+  - **Tags**: [patterns, architecture, conventions]
+  - **Confidence**: High
+  - **Added**: 2026-02-16
+- **[Phase 42] Milestone-weighted recall scoring with semver proximity decay**: Recall scoring combines four weighted dimensions: milestone proximity (40%), tag overlap (30%), confidence (15%), recency (15%). Milestone proximity uses semver-based decay: same milestone = 1.0 weight, adjacent milestone = 0.7, 2-apart = 0.4, 3+ apart = 0.2, no milestone = 0.5 (neutral). This composite scoring produces more semantically relevant recalls than tag-only or keyword-only scoring. Validated in Phase 42 (milestone-aware recall implemented in memory bridge)
+  - **Agent**: lu-learner
+  - **Relevant to**: [lu-learner, lu-cognition, memory-bridge]
+  - **Tags**: [patterns, architecture, performance]
+  - **Confidence**: High
+  - **Added**: 2026-02-16
+- **[Phase 42] Suspended vs paused state semantics**: Suspended state is triggered by context exhaustion or intentional pause (high context usage, workflow hold). Paused state is triggered by human verification hold (waiting for approval). Different semantics, different resume flows. Suspended resumes with fresh context and prior checkpoint. Paused resumes from exact checkpoint with same context. The state machine differentiates these for appropriate recovery behavior. Validated in Phase 42 (both states implemented with distinct resume paths)
+  - **Agent**: lu-executor
+  - **Relevant to**: [lu-executor, state-machine, memory-bridge]
+  - **Tags**: [patterns, architecture]
   - **Confidence**: High
   - **Added**: 2026-02-16
 
@@ -706,7 +736,7 @@
   Tags: [pitfalls, coding]
 - **`echo` for JSON piping**: Never use `echo "$VAR"` to pipe JSON. Use `printf '%s' "$VAR"` to prevent backslash interpretation
   Tags: [pitfalls, coding]
-- **Editing .claude/ or .cursor/ output files directly**: Never modify compiled output files. Always edit the `src/` source and run `bun run build:all`. Output files are generated artifacts — manual edits will be overwritten on next build and cause drift detection failures
+- **Editing .claude/ or .cursor/ output files directly**: Never modify compiled output files. Always edit the `src/` source and run `bun run build:all`. Output files are generated artifacts — manual edits will be overwritten on next build and cause drift detection failures. Phase 42 validation: tasks that edited generated hook/skill files were reverted by the drift check system. Single source of truth is `src/hooks/scripts/` and `src/skills/general/`
   Tags: [pitfalls, architecture, conventions, drift]
 
 ## Preferences
@@ -746,13 +776,13 @@
 
 _Memory Statistics_
 
-- Total patterns: 87 (+4 Phase 40: zero-dependency standalone package, dual-source package extraction, import rewiring audit, +3 Phase 43)
-- Total decisions: 42 (+2 Phase 40: self-contained module extraction, keep framework copy for backward compat, +2 Phase 43)
-- Total pitfalls: 55 (+4 Phase 40: barrel export registration, test coverage gaps, CLI entry point executable permissions, +2 Phase 43)
+- Total patterns: 90 (+4 Phase 40, +3 Phase 43, +3 Phase 42: source-to-output build pipeline, milestone-weighted recall scoring, suspended vs paused state semantics)
+- Total decisions: 42 (no change)
+- Total pitfalls: 58 (+4 Phase 40, +2 Phase 43, +2 Phase 42: dual-copy state machine maintenance, context monitor auto-persist wiring)
 - Total conventions: 4 (no change)
-- Total anti-patterns: 6 (no change)
+- Total anti-patterns: 6 (+Phase 42 update: editing generated files anti-pattern validation)
 - Total preferences: 9 (no change)
 - Last updated: 2026-02-16
 
-_Entries added by: lu-learner (Phase 40 learning extraction)_
+_Entries added by: lu-learner (Phase 42 learning extraction)_
 _Last curated: 2026-02-16_

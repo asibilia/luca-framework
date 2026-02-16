@@ -64,8 +64,8 @@
 
 **Plans:**
 
-- [ ] 42-01: Suspend/resume types, checkpoint persistence, auto-persist on context warning, phase-execute suspend semantics (Wave 1)
-- [ ] 42-02: Milestone tags for MEMORY.md entries, milestone-scoped recall scoring, memory bridge updates, tests (Wave 2)
+- [x] 42-01: Suspend/resume types, checkpoint persistence, auto-persist on context warning, phase-execute suspend semantics (Wave 1)
+- [x] 42-02: Milestone tags for MEMORY.md entries, milestone-scoped recall scoring, memory bridge updates, tests (Wave 2)
 
 ### Phase 43: Tech Stack Guideline Profiles
 
