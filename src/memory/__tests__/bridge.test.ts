@@ -117,12 +117,14 @@ async function writeFixtureMemory() {
   - **Tags**: [testing, api]
   - **Confidence**: High
   - **Agent**: lu-executor
+  - **Milestone**: v1.5.0
   - **Added**: 2026-01-15
 
 - **Build Pipeline Setup**: Standard build configuration
   - **Tags**: [build, architecture]
   - **Confidence**: Medium
   - **Agent**: general
+  - **Milestone**: v1.4.0
   - **Added**: 2026-01-20
 
 ## Decisions
@@ -135,6 +137,7 @@ async function writeFixtureMemory() {
 - **Tags**: [stack, coding]
 - **Confidence**: High
 - **Agent**: general
+- **Milestone**: v1.6.0
 - **Added**: 2026-02-01
 
 ## Pitfalls
@@ -344,6 +347,131 @@ describe("memory bridge read-memory", () => {
     );
     expect(exitCode).toBe(0);
     expect(json.entries.length).toBeLessThanOrEqual(2);
+  });
+});
+
+// ─── read-memory --milestone ──────────────────────────────────────────────────
+
+describe("memory bridge read-memory --milestone", () => {
+  test("returns milestone-scoped scored results", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+      "--tags=coding,stack",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.milestone).toBe("v1.6.0");
+    expect(json.query_tags).toEqual(["coding", "stack"]);
+    expect(json.total_scored).toBeGreaterThan(0);
+    expect(json.entries.length).toBeGreaterThan(0);
+
+    // Each entry should have score and milestone_proximity fields
+    const first = json.entries[0];
+    expect(first.score).toBeDefined();
+    expect(typeof first.score).toBe("number");
+    expect(first.milestone_proximity).toBeDefined();
+    expect(typeof first.milestone_proximity).toBe("number");
+    expect(first.tag_overlap).toBeDefined();
+  });
+
+  test("entries are sorted by score descending", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+    );
+    expect(exitCode).toBe(0);
+
+    for (let i = 1; i < json.entries.length; i++) {
+      expect(json.entries[i - 1].score).toBeGreaterThanOrEqual(
+        json.entries[i].score,
+      );
+    }
+  });
+
+  test("same-milestone entries rank higher", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+      "--tags=coding,stack",
+    );
+    expect(exitCode).toBe(0);
+
+    // "Use Bun Over Node" has milestone v1.6.0 and tags [stack, coding]
+    // so it should rank first (same milestone + tag match)
+    const topEntry = json.entries[0];
+    expect(topEntry.milestone).toBe("v1.6.0");
+    expect(topEntry.milestone_proximity).toBe(1.0);
+  });
+
+  test("applies --limit to milestone results", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+      "--limit=2",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.entries.length).toBeLessThanOrEqual(2);
+    expect(json.total_scored).toBeGreaterThanOrEqual(json.entries.length);
+  });
+
+  test("entries without milestone get neutral proximity", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+    );
+    expect(exitCode).toBe(0);
+
+    // "Import Path Gotcha" and "Dark Mode Always" have no milestone
+    const noMilestone = json.entries.filter(
+      (e: any) => e.milestone === undefined || e.milestone === null,
+    );
+    for (const entry of noMilestone) {
+      expect(entry.milestone_proximity).toBe(0.5);
+    }
+  });
+
+  test("read-memory without --milestone still works normally", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge("read-memory");
+    expect(exitCode).toBe(0);
+    // Standard summary mode: no score field
+    expect(json.entries_count).toBeGreaterThan(0);
+    expect(json.entries[0].score).toBeUndefined();
+  });
+
+  test("applies --category filter before milestone scoring", async () => {
+    await writeFixtureMemory();
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+      "--category=pattern",
+    );
+    expect(exitCode).toBe(0);
+
+    // All entries should be patterns
+    for (const entry of json.entries) {
+      expect(entry.category).toBe("pattern");
+    }
+  });
+
+  test("returns graceful empty when MEMORY.md does not exist", async () => {
+    try {
+      unlinkSync(MEMORY_PATH);
+    } catch {
+      // May not exist
+    }
+    const { exitCode, json } = await runBridge(
+      "read-memory",
+      "--milestone=v1.6.0",
+    );
+    expect(exitCode).toBe(0);
+    expect(json.entries).toEqual([]);
+    expect(json.entries_count).toBe(0);
   });
 });
 
