@@ -29,9 +29,9 @@
 
 **Plans:**
 
-- [ ] 40-01: Package scaffolding, core machine + types + guards extraction, shared utils extraction (Wave 1)
-- [ ] 40-02: Persistence layer, CLI entry point, event architecture (Wave 2)
-- [ ] 40-03: Snapshot generator, full test suite, package documentation (Wave 3)
+- [x] 40-01: Package scaffolding, core machine + types + guards extraction, shared utils extraction (Wave 1)
+- [x] 40-02: Persistence layer, CLI entry point, event architecture (Wave 2)
+- [x] 40-03: Snapshot generator, full test suite, package documentation (Wave 3)
 
 ### Phase 41: Framework Integration Rewire
 

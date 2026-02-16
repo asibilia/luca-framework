@@ -9,13 +9,13 @@ Requirements for v1.6.0 — Package & Publish milestone. Each maps to roadmap ph
 
 ### XState Workflow State Package
 
-- [ ] **PKG-01**: Package structure with separate `packages/luca-state/` directory, own `package.json`, `tsconfig.json`
-- [ ] **PKG-02**: Core machine definition extracted from `src/state-machine/` with zero framework dependencies
-- [ ] **PKG-03**: Callable CLI entry point (`luca-state transition`, `luca-state read-status`, etc.)
-- [ ] **PKG-04**: State persistence (serialize/deserialize to disk) as standalone feature
-- [ ] **PKG-05**: Transition guards extracted with configurable complexity/oversight/gate rules
-- [ ] **PKG-06**: TypeScript types and Zod schemas exported for consumer type safety
-- [ ] **PKG-07**: Comprehensive test suite (unit + integration) for standalone package
+- [x] **PKG-01**: Package structure with separate `packages/luca-state/` directory, own `package.json`, `tsconfig.json`
+- [x] **PKG-02**: Core machine definition extracted from `src/state-machine/` with zero framework dependencies
+- [x] **PKG-03**: Callable CLI entry point (`luca-state transition`, `luca-state read-status`, etc.)
+- [x] **PKG-04**: State persistence (serialize/deserialize to disk) as standalone feature
+- [x] **PKG-05**: Transition guards extracted with configurable complexity/oversight/gate rules
+- [x] **PKG-06**: TypeScript types and Zod schemas exported for consumer type safety
+- [x] **PKG-07**: Comprehensive test suite (unit + integration) for standalone package
 - [ ] **PKG-08**: Internal framework updated to consume from `packages/luca-state/` instead of `src/state-machine/`
 
 ### Memory Improvements
@@ -66,13 +66,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase    | Status  |
 | ----------- | -------- | ------- |
-| PKG-01      | Phase 40 | Pending |
-| PKG-02      | Phase 40 | Pending |
-| PKG-03      | Phase 40 | Pending |
-| PKG-04      | Phase 40 | Pending |
-| PKG-05      | Phase 40 | Pending |
-| PKG-06      | Phase 40 | Pending |
-| PKG-07      | Phase 40 | Pending |
+| PKG-01      | Phase 40 | Done    |
+| PKG-02      | Phase 40 | Done    |
+| PKG-03      | Phase 40 | Done    |
+| PKG-04      | Phase 40 | Done    |
+| PKG-05      | Phase 40 | Done    |
+| PKG-06      | Phase 40 | Done    |
+| PKG-07      | Phase 40 | Done    |
 | PKG-08      | Phase 41 | Pending |
 | MEM-01      | Phase 42 | Pending |
 | MEM-02      | Phase 42 | Pending |
