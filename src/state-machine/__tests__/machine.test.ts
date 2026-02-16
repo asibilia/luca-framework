@@ -369,6 +369,111 @@ describe("paused state", () => {
   });
 });
 
+// ─── Suspended State ──────────────────────────────────────────────────────────
+
+describe("suspended state", () => {
+  test("SUSPEND from executing transitions to suspended", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion", checkpoint_id: "42" },
+    ]);
+    expect(actor.getSnapshot().value).toBe("suspended");
+  });
+
+  test("SUSPEND records suspend_metadata", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion", checkpoint_id: "42" },
+    ]);
+    const ctx = actor.getSnapshot().context;
+    expect(ctx.suspend_metadata).toBeDefined();
+    expect(ctx.suspend_metadata?.reason).toBe("context_exhaustion");
+    expect(ctx.suspend_metadata?.checkpoint_path).toBe(
+      ".planning/checkpoints/suspend-42.json",
+    );
+    expect(ctx.suspend_metadata?.suspended_at).toBeDefined();
+  });
+
+  test("SUSPEND without checkpoint_id records no checkpoint_path", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "manual" },
+    ]);
+    const ctx = actor.getSnapshot().context;
+    expect(ctx.suspend_metadata).toBeDefined();
+    expect(ctx.suspend_metadata?.reason).toBe("manual");
+    expect(ctx.suspend_metadata?.checkpoint_path).toBeUndefined();
+  });
+
+  test("RESUME_PHASE from suspended transitions to executing", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion", checkpoint_id: "42" },
+      { type: "RESUME_PHASE", checkpoint_id: "42" },
+    ]);
+    expect(actor.getSnapshot().value).toBe("executing");
+  });
+
+  test("RESUME_PHASE clears suspend_metadata", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion" },
+      { type: "RESUME_PHASE" },
+    ]);
+    const ctx = actor.getSnapshot().context;
+    expect(ctx.suspend_metadata).toBeUndefined();
+  });
+
+  test("ABORT from suspended transitions to idle", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion" },
+      { type: "ABORT", reason: "User cancelled" },
+    ]);
+    expect(actor.getSnapshot().value).toBe("idle");
+    expect(actor.getSnapshot().context.suspend_metadata).toBeUndefined();
+    expect(actor.getSnapshot().context.last_error).toBe("User cancelled");
+  });
+
+  test("RESET from suspended transitions to idle", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion" },
+      { type: "RESET" },
+    ]);
+    expect(actor.getSnapshot().value).toBe("idle");
+    expect(actor.getSnapshot().context.suspend_metadata).toBeUndefined();
+  });
+});
+
 // ─── Failed State ─────────────────────────────────────────────────────────────
 
 describe("failed state", () => {
@@ -605,6 +710,21 @@ describe("getAllowedEvents", () => {
     const events = getAllowedEvents(actor.getSnapshot());
     expect(events).toContain("RESUME");
     expect(events).toContain("ABORT");
+  });
+
+  test("returns RESUME_PHASE, ABORT, and RESET for suspended state", () => {
+    const actor = createWorkflow();
+    sendEvents(actor, [
+      { type: "START" },
+      { type: "PREFLIGHT_COMPLETE", intuition_flags: [] },
+      { type: "ROUTE_COMPLETE", complexity: "TRIVIAL" },
+      { type: "PLAN_COMPLETE", plan_id: "1" },
+      { type: "SUSPEND", reason: "context_exhaustion" },
+    ]);
+    const events = getAllowedEvents(actor.getSnapshot());
+    expect(events).toContain("RESUME_PHASE");
+    expect(events).toContain("ABORT");
+    expect(events).toContain("RESET");
   });
 
   test("returns empty array for complete (final) state", () => {
