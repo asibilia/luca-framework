@@ -13,13 +13,13 @@
 // Import general/framework rules (always active)
 import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
 import { complexityGatingRule } from "./general/complexity-gating.rule";
-import { cursorRulesRule } from "./general/cursor_rules.rule";
+import { cursorRulesRule } from "./general/cursor-rules.rule";
 import { fileNamingRule } from "./general/file-naming.rule";
 import { harnessVerificationRule } from "./general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
 import { mandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
 import { posthogIntegrationRule } from "./general/posthog-integration.rule";
-import { selfImproveRule } from "./general/self_improve.rule";
+import { selfImproveRule } from "./general/self-improve.rule";
 import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
 
 // Import Luca-specific rule
@@ -52,13 +52,13 @@ export type { TechStackProfile, ProfileConfig } from "./profiles/index";
 const generalRules: Record<string, () => BaseRule> = {
   "atlassian-mcp": () => atlassianMcpRule,
   "complexity-gating": () => complexityGatingRule,
-  cursor_rules: () => cursorRulesRule,
+  "cursor-rules": () => cursorRulesRule,
   "file-naming": () => fileNamingRule,
   "harness-verification": () => harnessVerificationRule,
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
   "posthog-integration": () => posthogIntegrationRule,
-  self_improve: () => selfImproveRule,
+  "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,
   "lu-workflow": () => luWorkflowRule,
 };
