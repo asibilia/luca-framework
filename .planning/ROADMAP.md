@@ -44,7 +44,7 @@
 **Complexity:** MODERATE
 **Depends on:** Phase 45
 
-- [ ] Plan 47-A: Consolidate scattered test files into **tests**/ directory
+- [x] Plan 47-A: Consolidate scattered test files into **tests**/ directory
 
 ### Phase 48 — Bun API Migration
 
