@@ -1,7 +1,7 @@
 /**
  * Use Bun package manager and runtime over npm or yarn where applicable
  */
-import { BaseRuleImpl } from "../../base/base-rule";
+import { createRule } from "../../base/base-rule";
 import type { RuleConfig } from "../../types/rule.types";
 
 // Define the bun-preference rule configuration
@@ -190,8 +190,4 @@ Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding sta
   ],
 };
 
-export class BunPreferenceRule extends BaseRuleImpl {
-  constructor() {
-    super(bunPreferenceConfig);
-  }
-}
+export const bunPreferenceRule = createRule(bunPreferenceConfig);

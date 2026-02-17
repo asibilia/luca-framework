@@ -1,7 +1,7 @@
 /**
  * Mandatory documentation requirements for all new functionality and modifications
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 // Define the mandatory-documentation rule configuration
@@ -170,8 +170,6 @@ Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conv
   ],
 };
 
-export class MandatoryDocumentationRule extends BaseRuleImpl {
-  constructor() {
-    super(mandatoryDocumentationConfig);
-  }
-}
+export const mandatoryDocumentationRule = createRule(
+  mandatoryDocumentationConfig,
+);

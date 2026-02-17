@@ -16,8 +16,8 @@ import type { BaseRule } from "../types/rule.types";
  *   name: "typescript",
  *   description: "TypeScript/JavaScript conventions and best practices",
  *   rules: {
- *     "no-classes": () => new NoClassesRule(),
- *     "import-standards": () => new ImportStandardsRule(),
+ *     "no-classes": () => noClassesRule,
+ *     "import-standards": () => importStandardsRule,
  *   },
  * }
  * ```

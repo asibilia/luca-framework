@@ -1,7 +1,7 @@
 /**
  * API payloads must use snake_case for consistency with backend conventions
  */
-import { BaseRuleImpl } from "../../base/base-rule";
+import { createRule } from "../../base/base-rule";
 import type { RuleConfig } from "../../types/rule.types";
 
 // Define the api-snake-case rule configuration
@@ -360,8 +360,4 @@ Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding sta
   ],
 };
 
-export class ApiSnakeCaseRule extends BaseRuleImpl {
-  constructor() {
-    super(apiSnakeCaseConfig);
-  }
-}
+export const apiSnakeCaseRule = createRule(apiSnakeCaseConfig);

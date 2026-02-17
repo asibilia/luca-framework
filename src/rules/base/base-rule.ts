@@ -1,37 +1,43 @@
 /**
- * Base class for all rules in the Luca Framework
+ * Factory function for creating rules in the Luca Framework.
+ *
+ * Replaces the former BaseRuleImpl abstract class with a functional pattern
+ * that aligns with the project's no-classes convention.
  */
-import { BaseRule, RuleConfig } from '../types/rule.types';
-import { toCursorFormat, toClaudeFormat } from '../../shared/format';
-import { ruleConfigSchema } from '../types/rule.schemas';
+import type { BaseRule, RuleConfig } from "../types/rule.types";
+import { toCursorFormat, toClaudeFormat } from "../../shared/format";
+import { ruleConfigSchema } from "../types/rule.schemas";
 
-export abstract class BaseRuleImpl implements BaseRule {
-  protected readonly _config: RuleConfig;
-
-  constructor(config: RuleConfig) {
-    // Validate config with Zod schema
-    const validatedConfig = ruleConfigSchema.parse(config);
-    this._config = validatedConfig;
-  }
-
-  get config(): RuleConfig {
-    return this._config;
-  }
-
-  get name(): string {
-    // Rules typically don't have a name in frontmatter, so we'll use the filename or description
-    return this._config.frontmatter.description.substring(0, 30).replace(/\s+/g, '-') || 'rule';
-  }
-
-  get description(): string {
-    return this._config.frontmatter.description;
-  }
-
-  toCursorFormat(): string {
-    return toCursorFormat(this._config.frontmatter, this._config.sections);
-  }
-
-  toClaudeFormat(): string {
-    return toClaudeFormat(`# ${this.description}`, this._config.sections);
-  }
+/**
+ * Create a rule instance from a validated configuration.
+ *
+ * @param config - Rule configuration with frontmatter and sections
+ * @returns A BaseRule-compatible object with formatting methods
+ */
+export function createRule(config: RuleConfig): BaseRule {
+  const validated = ruleConfigSchema.parse(config);
+  return {
+    get config() {
+      return validated;
+    },
+    get name() {
+      return (
+        validated.frontmatter.description
+          .substring(0, 30)
+          .replace(/\s+/g, "-") || "rule"
+      );
+    },
+    get description() {
+      return validated.frontmatter.description;
+    },
+    toCursorFormat() {
+      return toCursorFormat(validated.frontmatter, validated.sections);
+    },
+    toClaudeFormat() {
+      return toClaudeFormat(
+        `# ${validated.frontmatter.description}`,
+        validated.sections,
+      );
+    },
+  };
 }

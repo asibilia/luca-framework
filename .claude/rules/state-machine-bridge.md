@@ -6,7 +6,7 @@
 
 ## Overview
 
-Luca uses a typed state machine (`src/state-machine/`) as the primary source of truth for workflow state. The bridge CLI (`packages/luca-state/src/bridge.ts`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
+Luca uses a typed state machine (`packages/luca-state/`) as the primary source of truth for workflow state. The bridge CLI (`packages/luca-state/src/bridge.ts`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
 
 ## Bridge CLI Commands
 

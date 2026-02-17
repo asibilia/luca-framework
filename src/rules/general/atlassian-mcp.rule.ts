@@ -1,7 +1,7 @@
 /**
  * Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 // Define the atlassian-mcp rule configuration
@@ -188,8 +188,4 @@ When reviewing code that interacts with Jira:
   ],
 };
 
-export class AtlassianMcpRule extends BaseRuleImpl {
-  constructor() {
-    super(atlassianMcpConfig);
-  }
-}
+export const atlassianMcpRule = createRule(atlassianMcpConfig);

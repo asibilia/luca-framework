@@ -1,7 +1,7 @@
 /**
  * Prohibit class usage in favor of functional programming patterns
  */
-import { BaseRuleImpl } from "../../base/base-rule";
+import { createRule } from "../../base/base-rule";
 import type { RuleConfig } from "../../types/rule.types";
 
 // Define the no-classes rule configuration
@@ -192,8 +192,4 @@ Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding sta
   ],
 };
 
-export class NoClassesRule extends BaseRuleImpl {
-  constructor() {
-    super(noClassesConfig);
-  }
-}
+export const noClassesRule = createRule(noClassesConfig);

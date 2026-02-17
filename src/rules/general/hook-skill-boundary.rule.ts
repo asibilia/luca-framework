@@ -1,18 +1,19 @@
 /**
  * Hook/Skill boundary: when to use deterministic hooks vs interactive skills
  */
-import { BaseRuleImpl } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import { createRule } from "../base/base-rule";
+import type { RuleConfig } from "../types/rule.types";
 
 const HookSkillBoundaryConfig: RuleConfig = {
   frontmatter: {
-    description: 'Hook/Skill boundary: when to use deterministic hooks vs interactive skills',
-    globs: ['*.ts', '*.sh', '.claude/settings.json', '.cursor/hooks.json'],
+    description:
+      "Hook/Skill boundary: when to use deterministic hooks vs interactive skills",
+    globs: ["*.ts", "*.sh", ".claude/settings.json", ".cursor/hooks.json"],
     alwaysApply: true,
   },
   sections: [
     {
-      title: 'rule',
+      title: "rule",
       content: `# Hook/Skill Boundary
 
 ## Core Distinction
@@ -68,8 +69,4 @@ const HookSkillBoundaryConfig: RuleConfig = {
   ],
 };
 
-export class HookSkillBoundaryRule extends BaseRuleImpl {
-  constructor() {
-    super(HookSkillBoundaryConfig);
-  }
-}
+export const hookSkillBoundaryRule = createRule(HookSkillBoundaryConfig);

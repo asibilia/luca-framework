@@ -1,7 +1,7 @@
 /**
  * Enforce Zod schema-first parsing patterns over manual destructuring and default values
  */
-import { BaseRuleImpl } from "../../base/base-rule";
+import { createRule } from "../../base/base-rule";
 import type { RuleConfig } from "../../types/rule.types";
 
 // Define the schema-first-parsing rule configuration
@@ -468,8 +468,4 @@ Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import
   ],
 };
 
-export class SchemaFirstParsingRule extends BaseRuleImpl {
-  constructor() {
-    super(schemaFirstParsingConfig);
-  }
-}
+export const schemaFirstParsingRule = createRule(schemaFirstParsingConfig);

@@ -11,25 +11,25 @@
  */
 
 // Import general/framework rules (always active)
-import { AtlassianMcpRule } from "./general/atlassian-mcp.rule";
-import { ComplexityGatingRule } from "./general/complexity-gating.rule";
-import { CursorRulesRule } from "./general/cursor_rules.rule";
-import { FileNamingRule } from "./general/file-naming.rule";
-import { HarnessVerificationRule } from "./general/harness-verification.rule";
-import { HookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
-import { MandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
-import { PosthogIntegrationRule } from "./general/posthog-integration.rule";
-import { SelfImproveRule } from "./general/self_improve.rule";
-import { StateMachineBridgeRule } from "./general/state-machine-bridge.rule";
+import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
+import { complexityGatingRule } from "./general/complexity-gating.rule";
+import { cursorRulesRule } from "./general/cursor_rules.rule";
+import { fileNamingRule } from "./general/file-naming.rule";
+import { harnessVerificationRule } from "./general/harness-verification.rule";
+import { hookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
+import { mandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
+import { posthogIntegrationRule } from "./general/posthog-integration.rule";
+import { selfImproveRule } from "./general/self_improve.rule";
+import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
 
 // Import Luca-specific rule
-import { LuWorkflowRule } from "./lu-workflow.rule";
+import { luWorkflowRule } from "./lu-workflow.rule";
 
 // Import profile registry and config schema
 import { profileRegistry, profileConfigSchema } from "./profiles/index";
 
-// Export base rule class
-export { BaseRuleImpl } from "./base/base-rule";
+// Export base rule factory
+export { createRule } from "./base/base-rule";
 
 // Export types
 export type {
@@ -50,17 +50,17 @@ export type { TechStackProfile, ProfileConfig } from "./profiles/index";
 // General rules (always loaded regardless of profile config)
 // ---------------------------------------------------------------------------
 const generalRules: Record<string, () => BaseRule> = {
-  "atlassian-mcp": () => new AtlassianMcpRule(),
-  "complexity-gating": () => new ComplexityGatingRule(),
-  cursor_rules: () => new CursorRulesRule(),
-  "file-naming": () => new FileNamingRule(),
-  "harness-verification": () => new HarnessVerificationRule(),
-  "hook-skill-boundary": () => new HookSkillBoundaryRule(),
-  "mandatory-documentation": () => new MandatoryDocumentationRule(),
-  "posthog-integration": () => new PosthogIntegrationRule(),
-  self_improve: () => new SelfImproveRule(),
-  "state-machine-bridge": () => new StateMachineBridgeRule(),
-  "lu-workflow": () => new LuWorkflowRule(),
+  "atlassian-mcp": () => atlassianMcpRule,
+  "complexity-gating": () => complexityGatingRule,
+  cursor_rules: () => cursorRulesRule,
+  "file-naming": () => fileNamingRule,
+  "harness-verification": () => harnessVerificationRule,
+  "hook-skill-boundary": () => hookSkillBoundaryRule,
+  "mandatory-documentation": () => mandatoryDocumentationRule,
+  "posthog-integration": () => posthogIntegrationRule,
+  self_improve: () => selfImproveRule,
+  "state-machine-bridge": () => stateMachineBridgeRule,
+  "lu-workflow": () => luWorkflowRule,
 };
 
 // ---------------------------------------------------------------------------

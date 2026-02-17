@@ -12,11 +12,7 @@
 import { z } from "zod";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
-
-// ─── Result Type ─────────────────────────────────────────────────────────────
-
-/** Discriminated union for operation results. */
-type Result<T> = { success: true; data: T } | { success: false; error: string };
+import type { Result } from "../shared/types";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 

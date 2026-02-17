@@ -6,7 +6,7 @@
  */
 import { BaseAgentImpl } from "../../src/agents/base/base-agent";
 import { BaseSkillImpl } from "../../src/skills/base/base-skill";
-import { BaseRuleImpl } from "../../src/rules/base/base-rule";
+import { createRule } from "../../src/rules/base/base-rule";
 import type { AgentConfig } from "../../src/agents/types/agent.types";
 import type { SkillConfig } from "../../src/skills/types/skill.types";
 import type { RuleConfig } from "../../src/rules/types/rule.types";
@@ -23,8 +23,10 @@ export class TestSkill extends BaseSkillImpl {
   }
 }
 
-export class TestRule extends BaseRuleImpl {
-  constructor(config: RuleConfig) {
-    super(config);
-  }
+/**
+ * Factory wrapper matching the old TestRule class interface.
+ * Returns a BaseRule instance via createRule.
+ */
+export function createTestRule(config: RuleConfig) {
+  return createRule(config);
 }

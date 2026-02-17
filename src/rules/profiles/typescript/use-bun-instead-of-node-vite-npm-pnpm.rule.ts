@@ -1,7 +1,7 @@
 /**
  * Use Bun instead of Node.js, npm, pnpm, or vite.
  */
-import { BaseRuleImpl } from "../../base/base-rule";
+import { createRule } from "../../base/base-rule";
 import type { RuleConfig } from "../../types/rule.types";
 
 // Define the use-bun rule configuration
@@ -132,8 +132,4 @@ For more information, read the Bun API docs in \`node_modules/bun-types/docs/**.
   ],
 };
 
-export class UseBunRule extends BaseRuleImpl {
-  constructor() {
-    super(useBunConfig);
-  }
-}
+export const useBunRule = createRule(useBunConfig);

@@ -1,7 +1,7 @@
 /**
  * Generic rule description
  */
-import { BaseRuleImpl } from "../../base/base-rule";
+import { createRule } from "../../base/base-rule";
 import type { RuleConfig } from "../../types/rule.types";
 
 // Define the lodash-preference rule configuration
@@ -206,8 +206,4 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
   ],
 };
 
-export class LodashPreferenceRule extends BaseRuleImpl {
-  constructor() {
-    super(lodashPreferenceConfig);
-  }
-}
+export const lodashPreferenceRule = createRule(lodashPreferenceConfig);

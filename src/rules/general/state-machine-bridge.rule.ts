@@ -1,7 +1,7 @@
 /**
  * State machine bridge CLI reference: how to read/write state via the typed bridge layer
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 const StateMachineBridgeConfig: RuleConfig = {
@@ -18,7 +18,7 @@ const StateMachineBridgeConfig: RuleConfig = {
 
 ## Overview
 
-Luca uses a typed state machine (\`src/state-machine/\`) as the primary source of truth for workflow state. The bridge CLI (\`packages/luca-state/src/bridge.ts\`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
+Luca uses a typed state machine (\`packages/luca-state/\`) as the primary source of truth for workflow state. The bridge CLI (\`packages/luca-state/src/bridge.ts\`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
 
 ## Bridge CLI Commands
 
@@ -109,8 +109,4 @@ This ensures the workflow never breaks due to bridge issues.`,
   ],
 };
 
-export class StateMachineBridgeRule extends BaseRuleImpl {
-  constructor() {
-    super(StateMachineBridgeConfig);
-  }
-}
+export const stateMachineBridgeRule = createRule(StateMachineBridgeConfig);

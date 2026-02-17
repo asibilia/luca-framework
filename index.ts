@@ -57,7 +57,7 @@ export type { SupportedFormat } from "./src/compilers/compile";
 export { LuExecutorAgent } from "./src/agents/luca/lu-executor.agent";
 export { LuPlannerAgent } from "./src/agents/luca/lu-planner.agent";
 export { LuSkill } from "./src/skills/luca/lu.skill";
-export { LuWorkflowRule } from "./src/rules/lu-workflow.rule";
+export { luWorkflowRule } from "./src/rules/lu-workflow.rule";
 
 // Registries (for build scripts and consumers)
 export { agentRegistry } from "./src/agents/index";
