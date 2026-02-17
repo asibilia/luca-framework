@@ -1,7 +1,7 @@
 /**
  * Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 // Define the cursor-rules rule configuration
@@ -66,8 +66,4 @@ const cursorRulesConfig: RuleConfig = {
   ],
 };
 
-export class CursorRulesRule extends BaseRuleImpl {
-  constructor() {
-    super(cursorRulesConfig);
-  }
-}
+export const cursorRulesRule = createRule(cursorRulesConfig);

@@ -330,6 +330,22 @@ describe("metadata extraction", () => {
     const value = extractMetadataField("- **Confidence**: High", "Agent");
     expect(value).toBeUndefined();
   });
+
+  test("extractMetadataField extracts Milestone", () => {
+    const value = extractMetadataField(
+      "- **Confidence**: High\n- **Milestone**: v1.5.0\n- **Agent**: executor",
+      "Milestone",
+    );
+    expect(value).toBe("v1.5.0");
+  });
+
+  test("extractMetadataField extracts Milestone with different version formats", () => {
+    const v1 = extractMetadataField("- **Milestone**: v2.0.0", "Milestone");
+    expect(v1).toBe("v2.0.0");
+
+    const v2 = extractMetadataField("- **Milestone**: 1.6", "Milestone");
+    expect(v2).toBe("1.6");
+  });
 });
 
 // ─── ID generation ────────────────────────────────────────────────────────────
@@ -438,6 +454,93 @@ describe("edge cases", () => {
       expect(patterns.length).toBeGreaterThan(0);
       expect(decisions.length).toBeGreaterThan(0);
       expect(pitfalls.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Milestone extraction ─────────────────────────────────────────────────────
+
+describe("milestone extraction", () => {
+  test("inline entry with Milestone metadata extracts milestone field", () => {
+    const content = `## Patterns
+
+### Validated Approaches
+
+- **[Phase 42] Suspend/resume pattern**: Checkpoint-based suspend for long phases
+  - **Tags**: [patterns, state-machine]
+  - **Confidence**: High
+  - **Milestone**: v1.6.0
+  - **Added**: 2026-02-16
+`;
+
+    const result = parseMemoryContent(content);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const entry = result.data.find((e) => e.title.includes("Suspend/resume"));
+      expect(entry).toBeDefined();
+      expect(entry!.milestone).toBe("v1.6.0");
+    }
+  });
+
+  test("subsection entry with Milestone metadata extracts milestone field", () => {
+    const content = `## Decisions
+
+### Decision: XState v5 for state management
+
+**Tags**: [decisions, architecture, state-machine]
+**Milestone**: v1.5.0
+**Context**: Need deterministic workflow state machine.
+**Choice**: XState v5 with snapshot persistence.
+`;
+
+    const result = parseMemoryContent(content);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const entry = result.data.find((e) => e.title.includes("XState"));
+      expect(entry).toBeDefined();
+      expect(entry!.milestone).toBe("v1.5.0");
+    }
+  });
+
+  test("entry without milestone has undefined milestone field", () => {
+    const result = parseMemoryContent(PATTERNS_SECTION);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Existing fixture entries don't have milestone
+      for (const entry of result.data) {
+        expect(entry.milestone).toBeUndefined();
+      }
+    }
+  });
+
+  test("mixed milestone and non-milestone entries coexist", () => {
+    const content = `## Patterns
+
+### Validated Approaches
+
+- **Old pattern without milestone**: Legacy approach
+  Tags: [patterns]
+
+- **[Phase 42] New pattern with milestone**: Modern approach
+  - **Tags**: [patterns, memory]
+  - **Milestone**: v1.6.0
+`;
+
+    const result = parseMemoryContent(content);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const old = result.data.find((e) => e.title.includes("Old pattern"));
+      const newer = result.data.find((e) => e.title.includes("New pattern"));
+
+      expect(old).toBeDefined();
+      expect(old!.milestone).toBeUndefined();
+
+      expect(newer).toBeDefined();
+      expect(newer!.milestone).toBe("v1.6.0");
     }
   });
 });

@@ -28,6 +28,8 @@ export const memoryEntrySchema = z.object({
   agent: z.string().default("general"),
   /** Confidence level */
   confidence: z.enum(["low", "medium", "high"]).default("low"),
+  /** Milestone version when this entry was captured (e.g., "v1.5.0") */
+  milestone: z.string().optional(),
   /** ISO 8601 date when entry was added */
   added_at: z.string(),
   /** ISO 8601 date when entry was last recalled */

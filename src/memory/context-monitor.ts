@@ -2,6 +2,11 @@ import type { QualityZone } from "../planner/types.ts";
 import type { ContextUsageResult, CompressionTrigger } from "./types.ts";
 import { contextUsageResultSchema, compressionTriggerSchema } from "./types.ts";
 import { estimateFileTokens } from "./token-estimator.ts";
+import {
+  parseWorkingMemory,
+  serializeWorkingMemory,
+  addSection,
+} from "./working-memory.ts";
 import { join } from "node:path";
 
 /** Default context file paths relative to project root. */
@@ -252,6 +257,49 @@ export function createContextMonitor(config?: ContextMonitorConfig) {
         triggers,
         recommended_actions: actions,
       });
+    },
+
+    /**
+     * Auto-persist WORKING.md when context usage is in degrading or stop zone.
+     *
+     * Reads current WORKING.md, adds an auto-persist timestamp marker to
+     * the session_info section, and writes it back. This ensures working
+     * memory is saved before context exhaustion causes quality degradation.
+     *
+     * @returns Object with persisted flag and current zone
+     */
+    autoPersistWorking: async (): Promise<{
+      persisted: boolean;
+      zone: string;
+    }> => {
+      const fileResults = await readAllFiles();
+      const totalTokens = fileResults.reduce((sum, f) => sum + f.tokens, 0);
+      const usagePercent = (totalTokens / budget) * 100;
+      const zone = mapToZone(usagePercent);
+
+      if (zone === "degrading" || zone === "stop") {
+        const workingPath = join(projectDir, ".planning/WORKING.md");
+        const workingFile = Bun.file(workingPath);
+
+        if (await workingFile.exists()) {
+          const content = await workingFile.text();
+          const parsed = parseWorkingMemory(content);
+
+          if (parsed.success) {
+            const withMarker = addSection(
+              parsed.data,
+              "session_info",
+              `\n**Auto-persisted:** ${new Date().toISOString()} (zone: ${zone})`,
+            );
+            await Bun.write(workingPath, serializeWorkingMemory(withMarker));
+            return { persisted: true, zone };
+          }
+        }
+
+        return { persisted: false, zone };
+      }
+
+      return { persisted: false, zone };
     },
   };
 }

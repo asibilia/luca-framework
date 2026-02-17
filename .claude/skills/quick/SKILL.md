@@ -65,7 +65,7 @@ Check that an active Luca project exists:
 if [ ! -d .planning ]; then
   mkdir -p .planning/quick
   # Primary: Initialize state via bridge
-  bun run src/state-machine/bridge.ts ensure-init 2>/dev/null || true
+  bun run packages/luca-state/src/bridge.ts ensure-init 2>/dev/null || true
   # Fallback: Create STATE.md directly
   cat > .planning/STATE.md << 'EOF'
 # Project State
@@ -90,7 +90,7 @@ fi
 # Ensure STATE.md exists (might have .planning/ but no STATE.md)
 if [ ! -f .planning/STATE.md ]; then
   # Primary: Initialize state via bridge
-  bun run src/state-machine/bridge.ts ensure-init 2>/dev/null || true
+  bun run packages/luca-state/src/bridge.ts ensure-init 2>/dev/null || true
   # Fallback: Create STATE.md directly
   cat > .planning/STATE.md << 'EOF'
 # Project State
@@ -158,7 +158,7 @@ First, read context:
 
 ```bash
 # Primary: Read state from state machine bridge
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 # Primary: Read working memory from memory bridge (structured JSON)
@@ -219,7 +219,7 @@ First, read the plan:
 ```bash
 PLAN_CONTENT=$(cat "${QUICK_DIR}/${next_num}-PLAN.md")
 # Primary: Read state from state machine bridge
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ```

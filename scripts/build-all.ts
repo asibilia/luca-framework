@@ -20,7 +20,7 @@
  *   .claude/rules/*.md
  *   dist/plugin/ (complete plugin package)
  */
-import { generateAllOutputs } from "./build-shared";
+import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
 import path from "path";
 
@@ -274,7 +274,12 @@ async function main() {
   const skillCount = claudeSkillCount;
   const ruleCount = claudeRuleCount;
 
+  // Profile summary
+  const activeProfiles = getActiveProfileNames();
   console.log(`\n=== Build All Summary ===`);
+  console.log(
+    `Profiles: ${activeProfiles.length > 0 ? activeProfiles.join(", ") : "none (opinionated_guidelines disabled)"}`,
+  );
   console.log(`Agents: ${agentCount} (x2 formats = ${agentCount * 2} files)`);
   console.log(`Skills: ${skillCount} (x2 formats = ${skillCount * 2} files)`);
   console.log(`Rules:  ${ruleCount} (x2 formats = ${ruleCount * 2} files)`);

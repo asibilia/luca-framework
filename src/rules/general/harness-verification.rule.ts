@@ -1,7 +1,7 @@
 /**
  * Harness/Hook verification boundary: when full harness runs vs lightweight hooks
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 const HarnessVerificationConfig: RuleConfig = {
@@ -56,8 +56,4 @@ The harness is thorough (runs all 4 check types), produces structured output, an
   ],
 };
 
-export class HarnessVerificationRule extends BaseRuleImpl {
-  constructor() {
-    super(HarnessVerificationConfig);
-  }
-}
+export const harnessVerificationRule = createRule(HarnessVerificationConfig);

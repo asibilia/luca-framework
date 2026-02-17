@@ -182,7 +182,7 @@ Before recalling memory, resolve the target agent's cognition tier.
 3. **Read current complexity from bridge (falls back to STATE.md):**
    ```bash
    # Primary: Read complexity from state machine bridge
-   COMPLEXITY=$(bun run src/state-machine/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
+   COMPLEXITY=$(bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
    # Fallback: grep STATE.md directly
    if [ -z "$COMPLEXITY" ] || [ "$COMPLEXITY" = "undefined" ]; then
      COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -240,11 +240,41 @@ IF effective_tier == T0:
 
 If effective_tier is T1 or higher, proceed with recall:
 
+**Milestone-Scoped Recall (preferred when milestone is known):**
+
+When the current milestone is available (from STATE.md or state machine bridge), use the memory bridge's milestone-scored recall for higher-quality results:
+
+```bash
+# Resolve current milestone
+CURRENT_MILESTONE=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null || echo "")
+
+# Determine effective entry limit by tier
+if [ "$EFFECTIVE_TIER" = "T1" ]; then LIMIT=5; elif [ "$EFFECTIVE_TIER" = "T2" ]; then LIMIT=7; else LIMIT=10; fi
+
+if [ -n "$CURRENT_MILESTONE" ]; then
+  # Milestone-scoped recall: scored by proximity + tag relevance
+  MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --milestone="$CURRENT_MILESTONE" --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
+else
+  # Fallback: standard tag-based recall without milestone scoring
+  MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
+fi
+```
+
+Milestone-scoped recall scores each entry using a weighted formula:
+- **Milestone proximity (40%)**: Same milestone = 1.0, adjacent = 0.7, distant = 0.2
+- **Tag overlap (30%)**: Fraction of query tags matching entry tags
+- **Confidence (15%)**: High = 1.0, Medium = 0.6, Low = 0.3
+- **Recency (15%)**: Recent entries (< 30 days) score higher
+
+Entries are returned sorted by composite score, so the most relevant entries for the current milestone and task context appear first.
+
+**If milestone recall is unavailable**, fall back to manual recall:
+
 ```bash
 cat .planning/MEMORY.md 2>/dev/null
 ```
 
-**Tag-Based Pre-Filtering (NEW — before scoring):**
+**Tag-Based Pre-Filtering (before scoring):**
 
 ```
 agent_memory_tags = agent.cognition.memory_tags (from resolve_cognition_tier)
@@ -467,8 +497,10 @@ Output cognitive report for downstream agents. The report format adapts to the a
 - **Default Tier**: {T0-T3}
 - **Effective Tier**: {T0-T3} (after complexity promotion)
 - **Complexity Level**: {TRIVIAL-CRITICAL}
+- **Current Milestone**: {milestone version or "N/A"}
 - **Memory Tags**: {list of agent's memory_tags, or "*" for wildcard}
 - **Entries Recalled**: {count}
+- **Recall Mode**: {milestone-scoped | tag-based | manual}
 ```
 
 **T0 agents — minimal report:**
@@ -510,6 +542,7 @@ Agent is T0 (stateless) — no memory recall performed.
 ### Memory Recall
 
 **Target Agent:** {upcoming_agent}
+**Recall Mode:** {milestone-scoped (v1.x.x) | tag-based | manual}
 **Patterns:** {N} relevant patterns loaded ({M} agent-specific, {K} general)
 **Decisions:** {N} relevant decisions recalled
 **Pitfalls:** {N} cautions flagged
@@ -519,6 +552,7 @@ Agent is T0 (stateless) — no memory recall performed.
 {List of specific items recalled with brief descriptions}
 {Note which entries are agent-specific vs general}
 {Note which entries matched via tags vs legacy (no tags)}
+{If milestone-scoped: note milestone proximity scores for top entries}
 
 ### Intuition Flags
 
@@ -694,7 +728,8 @@ Pre-flight complete when:
 - [ ] Target agent's cognition tier resolved (frontmatter parsed, complexity promotion applied)
 - [ ] BRAIN.md checked (loaded or noted as missing)
 - [ ] Keywords extracted from incoming task
-- [ ] MEMORY.md entries pre-filtered by agent's memory_tags (if T1+)
+- [ ] Current milestone resolved from state machine bridge (if available)
+- [ ] MEMORY.md entries recalled via milestone-scoped scoring (preferred) or tag-based filtering (fallback)
 - [ ] Relevant patterns, decisions, pitfalls identified (or none found, or skipped for T0)
 - [ ] Entry count scaled by effective tier (T1: 3-5, T2: 5-7, T3: 7-10)
 - [ ] WORKING.md initialized with session context

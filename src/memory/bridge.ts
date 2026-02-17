@@ -9,6 +9,7 @@
  *   read-memory          — Summary index of MEMORY.md entries (compact by default)
  *   read-memory --tags   — Filtered full entries by tags
  *   read-memory --category — Filtered full entries by category
+ *   read-memory --milestone — Milestone-scoped recall (scored by proximity + tags)
  *   read-working         — Parsed WORKING.md structure
  *   read-procedures      — Summary index of PROCEDURES.md entries
  *   read-procedures --query — Scored procedure recall
@@ -24,6 +25,7 @@
  *   bun run src/memory/bridge.ts read-memory
  *   bun run src/memory/bridge.ts read-memory --tags=coding,testing --limit=5
  *   bun run src/memory/bridge.ts read-memory --category=pattern --limit=3
+ *   bun run src/memory/bridge.ts read-memory --milestone=v1.6.0 --tags=memory,recall --limit=10
  *   bun run src/memory/bridge.ts read-working
  *   bun run src/memory/bridge.ts read-procedures
  *   bun run src/memory/bridge.ts read-procedures --query="implement feature" --tags=api --limit=3
@@ -46,6 +48,7 @@ import { recallProcedures } from "./procedure-recall.ts";
 import { updateExecutionStats } from "./procedure-lifecycle.ts";
 import { createContextMonitor } from "./context-monitor.ts";
 import { analyzeMemoryEntries } from "./compression.ts";
+import { scoreMilestoneRecall } from "./milestone-recall.ts";
 import { estimateTokens } from "./token-estimator.ts";
 import { WORKING_MEMORY_SECTIONS } from "./types.ts";
 import { getArg } from "../shared/cli-utils.ts";
@@ -68,6 +71,7 @@ function printUsage(): void {
 Subcommands:
   read-memory            Summary index of MEMORY.md entries (compact)
                          Options: --tags=t1,t2 --category=pattern --limit=N
+                                  --milestone=v1.6.0 (scored recall by proximity)
   read-working           Parsed WORKING.md structure
   read-procedures        Summary index of PROCEDURES.md entries
                          Options: --query="text" --tags=t1,t2 --limit=N
@@ -87,17 +91,17 @@ Subcommands:
  *
  * Without filters: returns a compact summary index (id, title, category, tags, confidence).
  * With --tags or --category: returns full matching entries.
+ * With --milestone: returns milestone-scoped recall (scored by proximity + tag relevance).
  * With --limit: caps the number of entries returned.
  *
- * @param args - CLI arguments (--tags, --category, --limit optional)
+ * @param args - CLI arguments (--tags, --category, --milestone, --limit optional)
  */
 export async function handleReadMemory(args: string[]): Promise<void> {
   const tagsArg = getArg(args, "tags");
   const categoryArg = getArg(args, "category");
+  const milestoneArg = getArg(args, "milestone");
   const limitArg = getArg(args, "limit");
   const limit = limitArg ? parseInt(limitArg, 10) : 0;
-
-  const hasFilters = !!tagsArg || !!categoryArg;
 
   const result = await parseMemoryFile(MEMORY_PATH);
 
@@ -114,6 +118,60 @@ export async function handleReadMemory(args: string[]): Promise<void> {
     return;
   }
 
+  // ── Milestone-scoped recall mode ─────────────────────────────────────────
+  // In milestone mode, --tags serves dual purpose:
+  //   1. Pre-filters entries to only those matching at least one tag (consistent with standard mode)
+  //   2. Boosts matching entries via tag_overlap scoring in scoreMilestoneRecall
+  if (milestoneArg) {
+    const queryTags = tagsArg ? tagsArg.split(",").map((t) => t.trim()) : [];
+
+    let sourceEntries = result.data;
+
+    // Apply tag filter before scoring (consistent with standard mode behavior)
+    if (queryTags.length > 0) {
+      const lowerTags = queryTags.map((t) => t.toLowerCase());
+      sourceEntries = sourceEntries.filter((e) =>
+        e.tags.some((t) => lowerTags.includes(t.toLowerCase())),
+      );
+    }
+
+    // Apply category filter before scoring
+    if (categoryArg) {
+      const cat = categoryArg.toLowerCase();
+      sourceEntries = sourceEntries.filter(
+        (e) => e.category.toLowerCase() === cat,
+      );
+    }
+
+    const scored = scoreMilestoneRecall(sourceEntries, queryTags, {
+      current_milestone: milestoneArg,
+    });
+
+    const limited = limit > 0 ? scored.slice(0, limit) : scored;
+
+    console.log(
+      JSON.stringify({
+        milestone: milestoneArg,
+        query_tags: queryTags,
+        total_scored: scored.length,
+        entries: limited.map((s) => ({
+          id: s.entry.id,
+          title: s.entry.title,
+          category: s.entry.category,
+          tags: s.entry.tags,
+          confidence: s.entry.confidence,
+          milestone: s.entry.milestone,
+          score: s.score,
+          milestone_proximity: s.milestone_proximity,
+          tag_overlap: s.tag_overlap,
+        })),
+      }),
+    );
+    return;
+  }
+
+  // ── Standard filter/summary mode ─────────────────────────────────────────
+  const hasFilters = !!tagsArg || !!categoryArg;
   let entries = result.data;
 
   // Apply tag filter

@@ -116,6 +116,21 @@ export {
   updateExecutionStats,
 } from "./procedure-lifecycle.ts";
 
+// ─── Milestone Recall ──────────────────────────────────────────────────────
+
+export {
+  scoreMilestoneRecall,
+  parseVersion,
+  versionDistance,
+  calculateMilestoneProximity,
+  calculateTagOverlap,
+} from "./milestone-recall.ts";
+
+export type {
+  MilestoneRecallConfig,
+  ScoredMemoryEntry,
+} from "./milestone-recall.ts";
+
 // ─── Memory Bridge ─────────────────────────────────────────────────────────
 
 export {

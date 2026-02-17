@@ -1,7 +1,7 @@
 /**
  * Generic rule description
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 // Define the file-naming rule configuration
@@ -80,8 +80,4 @@ const fileNamingConfig: RuleConfig = {
   ],
 };
 
-export class FileNamingRule extends BaseRuleImpl {
-  constructor() {
-    super(fileNamingConfig);
-  }
-}
+export const fileNamingRule = createRule(fileNamingConfig);

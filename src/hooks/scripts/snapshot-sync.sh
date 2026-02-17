@@ -29,7 +29,7 @@ fi
 
 # Check if state machine bridge exists
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
-BRIDGE="$PROJECT_DIR/src/state-machine/bridge.ts"
+BRIDGE="$PROJECT_DIR/packages/luca-state/src/bridge.ts"
 
 if [ ! -f "$BRIDGE" ]; then
   exit 0  # Bridge not available -- skip silently

@@ -1,7 +1,7 @@
 /**
  * apply when interacting with PostHog/analytics tasks
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 // Define the posthog-integration rule configuration
@@ -38,8 +38,4 @@ Before creating any new event or property names, consult with the developer for 
   ],
 };
 
-export class PosthogIntegrationRule extends BaseRuleImpl {
-  constructor() {
-    super(posthogIntegrationConfig);
-  }
-}
+export const posthogIntegrationRule = createRule(posthogIntegrationConfig);

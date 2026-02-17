@@ -211,8 +211,44 @@ Analyze the codebase for concerns, tech debt, and risks.
 
 1. Wait for agents to complete, collect confirmations (NOT document contents)
 2. Verify all 7 documents exist with line counts
-3. Commit codebase map
-4. Offer next steps (typically: `/project-new` or `/phase-plan`)
+3. **Profile suggestion check** (see below)
+4. Commit codebase map
+5. Offer next steps (typically: `/project-new` or `/phase-plan`)
+
+## Post-Mapping: Profile Suggestions
+
+After all mapper agents complete, read the `## Detected Profiles` section from `.planning/codebase/STACK.md` and compare with the current config:
+
+```bash
+# Read current config profiles
+CURRENT_PROFILES=$(cat .planning/config.json 2>/dev/null | grep -o '"tech_stack_profiles"[[:space:]]*:[[:space:]]*\[[^]]*\]' || echo '["typescript"]')
+
+# Read detected profiles from STACK.md
+DETECTED_SECTION=$(sed -n '/## Detected Profiles/,/^---/p' .planning/codebase/STACK.md 2>/dev/null || echo "")
+```
+
+**If new profiles are detected that are not in the current config:**
+
+Report to the user:
+
+```
+## Profile Suggestions
+
+Based on codebase analysis, the following tech stack profiles were detected:
+
+- **[profile]** — [confidence] confidence — [indicator]
+
+Current config has: [current profiles list]
+
+To update, edit `.planning/config.json` → `workflow.tech_stack_profiles`:
+```json
+"tech_stack_profiles": ["typescript", "python"]
+```
+
+Then run `bun run build:all` to load the new profile rules.
+```
+
+**If all detected profiles match the current config**, skip this step silently.
 
 ## Success Criteria
 

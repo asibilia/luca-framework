@@ -16,8 +16,9 @@
  *   bun run check:drift           # via package.json script
  *   bun ./scripts/check-drift.ts  # direct invocation
  */
-import { generateAllOutputs } from "./build-shared";
+import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import path from "path";
+import { readdirSync, statSync } from "fs";
 
 interface DriftResult {
   file: string;
@@ -99,9 +100,49 @@ async function main() {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Stale file detection: find compiled rules in output dirs that are NOT
+  // in the generated Map. This catches the case where a profile was disabled
+  // but old rule files remain on disk.
+  // -------------------------------------------------------------------------
+  const staleCheckDirs: Array<{ dir: string; prefix: string; ext: string }> = [
+    {
+      dir: path.join(projectDir, ".claude", "rules"),
+      prefix: ".claude/rules/",
+      ext: ".md",
+    },
+    {
+      dir: path.join(projectDir, ".cursor", "rules"),
+      prefix: ".cursor/rules/",
+      ext: ".mdc",
+    },
+  ];
+
+  for (const { dir, prefix, ext } of staleCheckDirs) {
+    try {
+      const entries = readdirSync(dir);
+      for (const entry of entries) {
+        if (!entry.endsWith(ext)) continue;
+        const relPath = `${prefix}${entry}`;
+        if (!generated.has(relPath)) {
+          results.push({
+            file: relPath,
+            status: "orphaned",
+            detail: `Stale rule file: exists on disk but not in generated output (profile may have been disabled)`,
+          });
+        }
+      }
+    } catch {
+      // Directory doesn't exist — nothing to check
+    }
+  }
+
   // Report results
   if (results.length === 0) {
     console.log("No drift detected. All outputs match source.");
+    console.log(
+      `Active profiles: ${getActiveProfileNames().join(", ") || "none"}`,
+    );
     process.exit(0);
   }
 
@@ -120,6 +161,16 @@ async function main() {
   if (missing.length > 0) {
     console.error("Missing files (source exists but output not generated):");
     for (const r of missing) {
+      console.error(`  - ${r.file}`);
+    }
+  }
+
+  const orphaned = results.filter((r) => r.status === "orphaned");
+  if (orphaned.length > 0) {
+    console.error(
+      "Stale files (exist on disk but not in generated output — profile may have been disabled):",
+    );
+    for (const r of orphaned) {
       console.error(`  - ${r.file}`);
     }
   }

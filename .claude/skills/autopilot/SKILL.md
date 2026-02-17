@@ -42,7 +42,7 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 ```bash
 CONFIG=$(cat .planning/config.json 2>/dev/null || echo '{}')
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ROADMAP=$(cat .planning/ROADMAP.md 2>/dev/null || echo "")
@@ -268,7 +268,7 @@ Read state from bridge (with STATE.md fallback) and check for existing GitHub is
 
 \`\`\`bash
 # Primary: Read state from bridge
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Check github_issue field from JSON; fallback: grep STATE.md
 \`\`\`
 
@@ -296,9 +296,9 @@ STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo
    ```
 7. Update state via bridge:
    \`\`\`bash
-   bun run src/state-machine/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run src/state-machine/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+   bun run packages/luca-state/src/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run packages/luca-state/src/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
+   bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
    # Fallback: Update STATE.md directly
    \`\`\`
 
@@ -426,7 +426,7 @@ Task(
 Write complexity via bridge (falls back to STATE.md):
 
 ```bash
-bun run src/state-machine/bridge.ts transition set-complexity --complexity="{COMPLEXITY}" 2>/dev/null || true
+bun run packages/luca-state/src/bridge.ts transition set-complexity --complexity="{COMPLEXITY}" 2>/dev/null || true
 ```
 
 ### 4d. Discussion (Complexity-Gated)
@@ -763,13 +763,13 @@ Duration:   {session duration}
 1. Update state via bridge (falls back to STATE.md):
 
 ```bash
-bun run src/state-machine/bridge.ts transition complete-phase 2>/dev/null || true
+bun run packages/luca-state/src/bridge.ts transition complete-phase 2>/dev/null || true
 ```
 
 2. Regenerate STATE.md via bridge snapshot:
 
 ```bash
-bun run src/state-machine/bridge.ts snapshot 2>/dev/null || true
+bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 ```
 

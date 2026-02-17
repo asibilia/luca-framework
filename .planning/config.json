@@ -16,7 +16,11 @@
     "code_review": true,
     "uat_required": true,
     "always_verify": true,
-    "capture_learnings": true
+    "capture_learnings": true,
+    "opinionated_guidelines": true,
+    "tech_stack_profiles": [
+      "typescript"
+    ]
   },
   "planning": {
     "commit_docs": true,

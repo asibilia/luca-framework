@@ -339,3 +339,69 @@ describe("integration with real project", () => {
     expect(memoryBreakdown!.tokens).toBeGreaterThan(0);
   });
 });
+
+// ─── Auto-Persist Working ────────────────────────────────────────────────────
+
+describe("autoPersistWorking", () => {
+  test("returns object with expected shape", async () => {
+    const monitor = createContextMonitor({ project_dir: tempDir });
+    const result = await monitor.autoPersistWorking();
+
+    expect(typeof result.persisted).toBe("boolean");
+    expect(typeof result.zone).toBe("string");
+  });
+
+  test("does not persist when zone is peak or good", async () => {
+    // With our small temp files, usage should be in peak zone
+    const monitor = createContextMonitor({
+      project_dir: tempDir,
+      context_budget: 100000, // Large budget so files are tiny relative to it
+    });
+    const result = await monitor.autoPersistWorking();
+
+    expect(result.persisted).toBe(false);
+    expect(["peak", "good"]).toContain(result.zone);
+  });
+
+  test("persists when zone is degrading or stop", async () => {
+    // Set a tiny budget so files push us into degrading/stop zone
+    const monitor = createContextMonitor({
+      project_dir: tempDir,
+      context_budget: 10, // Extremely small budget
+      zone_boundaries: { peak_end: 10, good_end: 20, degrading_end: 50 },
+    });
+    const result = await monitor.autoPersistWorking();
+
+    // With such a tiny budget, all files should push us past degrading
+    expect(result.persisted).toBe(true);
+    expect(["degrading", "stop"]).toContain(result.zone);
+
+    // Check that WORKING.md was modified with auto-persist marker
+    const workingContent = await Bun.file(
+      join(tempDir, ".planning/WORKING.md"),
+    ).text();
+    expect(workingContent).toContain("Auto-persisted:");
+  });
+
+  test("includes zone in auto-persist marker", async () => {
+    // Reset WORKING.md to clean state
+    await Bun.write(
+      join(tempDir, ".planning/WORKING.md"),
+      "# Working Memory\n\n## Session Info\n\nClean state.",
+    );
+
+    const monitor = createContextMonitor({
+      project_dir: tempDir,
+      context_budget: 10,
+      zone_boundaries: { peak_end: 10, good_end: 20, degrading_end: 50 },
+    });
+    const result = await monitor.autoPersistWorking();
+
+    if (result.persisted) {
+      const workingContent = await Bun.file(
+        join(tempDir, ".planning/WORKING.md"),
+      ).text();
+      expect(workingContent).toContain(`zone: ${result.zone}`);
+    }
+  });
+});

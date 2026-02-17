@@ -5,9 +5,43 @@ import { ruleRegistry } from "../../../src/rules/index";
 
 const RULES_ROOT = path.join(import.meta.dir, "../../../src/rules");
 const GENERAL_RULES_DIR = path.join(RULES_ROOT, "general");
+const PROFILES_DIR = path.join(RULES_ROOT, "profiles");
+
+/**
+ * Recursively collect all .rule.ts file basenames (without extension) from a directory tree.
+ */
+async function collectRuleNames(dir: string): Promise<string[]> {
+  const names: string[] = [];
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return names;
+  }
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry);
+    const stat = await Bun.file(fullPath).exists();
+    // If it's a .rule.ts file, collect it
+    if (entry.endsWith(".rule.ts")) {
+      names.push(entry.replace(".rule.ts", ""));
+    }
+    // If it's a directory, recurse (check via readdir attempt)
+    if (!entry.includes(".")) {
+      try {
+        const subNames = await collectRuleNames(fullPath);
+        names.push(...subNames);
+      } catch {
+        // Not a directory, skip
+      }
+    }
+  }
+
+  return names;
+}
 
 describe("rule registry completeness", () => {
-  test("has entry for every source file in src/rules/general/ and root", async () => {
+  test("has entry for every source file in src/rules/general/, profiles/, and root", async () => {
     // General rules
     const generalFiles = await readdir(GENERAL_RULES_DIR);
     const generalRules = generalFiles
@@ -20,7 +54,10 @@ describe("rule registry completeness", () => {
       .filter((f) => f.endsWith(".rule.ts"))
       .map((f) => f.replace(".rule.ts", ""));
 
-    const allRules = [...generalRules, ...rootRules];
+    // Profile rules (recursively scan profiles/ directory)
+    const profileRules = await collectRuleNames(PROFILES_DIR);
+
+    const allRules = [...generalRules, ...rootRules, ...profileRules];
 
     for (const ruleName of allRules) {
       expect(ruleRegistry).toHaveProperty(ruleName);
@@ -38,7 +75,10 @@ describe("rule registry completeness", () => {
       .filter((f) => f.endsWith(".rule.ts"))
       .map((f) => f.replace(".rule.ts", ""));
 
-    const allRules = [...generalRules, ...rootRules];
+    // Profile rules (recursively scan profiles/ directory)
+    const profileRules = await collectRuleNames(PROFILES_DIR);
+
+    const allRules = [...generalRules, ...rootRules, ...profileRules];
 
     const registryKeys = Object.keys(ruleRegistry);
     for (const key of registryKeys) {
@@ -57,7 +97,11 @@ describe("rule registry completeness", () => {
       .filter((f) => f.endsWith(".rule.ts"))
       .map((f) => f.replace(".rule.ts", ""));
 
-    const expectedCount = generalRules.length + rootRules.length;
+    // Profile rules (recursively scan profiles/ directory)
+    const profileRules = await collectRuleNames(PROFILES_DIR);
+
+    const expectedCount =
+      generalRules.length + rootRules.length + profileRules.length;
     expect(Object.keys(ruleRegistry).length).toBe(expectedCount);
   });
 

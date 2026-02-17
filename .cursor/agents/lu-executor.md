@@ -99,7 +99,7 @@ Before any operation, read project state:
 
 ```bash
 # Primary: Read state from state machine bridge (typed, validated)
-STATE_JSON=$(bun run src/state-machine/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 cat .planning/STATE.md 2>/dev/null
 ```

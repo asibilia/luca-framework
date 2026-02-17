@@ -17,7 +17,7 @@ import {
 } from "./compile";
 import { BaseAgentImpl } from "../agents/base/base-agent";
 import { BaseSkillImpl } from "../skills/base/base-skill";
-import { BaseRuleImpl } from "../rules/base/base-rule";
+import { createRule } from "../rules/base/base-rule";
 import type { AgentConfig } from "../agents/types/agent.types";
 import type { SkillConfig } from "../skills/types/skill.types";
 import type { RuleConfig } from "../rules/types/rule.types";
@@ -38,10 +38,8 @@ class TestSkill extends BaseSkillImpl {
   }
 }
 
-class TestRule extends BaseRuleImpl {
-  constructor(config: RuleConfig) {
-    super(config);
-  }
+function createTestRule(config: RuleConfig) {
+  return createRule(config);
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +241,7 @@ describe("Plugin compile functions", () => {
 
   describe("compileRulePlugin", () => {
     test("produces Claude-format markdown", () => {
-      const rule = new TestRule(ruleConfig);
+      const rule = createTestRule(ruleConfig);
       const output = compileRulePlugin(rule);
 
       // Should contain H1 heading with rule description
@@ -300,7 +298,7 @@ describe("Plugin compile functions", () => {
     });
 
     test("rule output matches compileRuleClaude", () => {
-      const rule = new TestRule(ruleConfig);
+      const rule = createTestRule(ruleConfig);
       const pluginOutput = compileRulePlugin(rule);
       const claudeOutput = compileRuleClaude(rule);
       expect(pluginOutput).toBe(claudeOutput);

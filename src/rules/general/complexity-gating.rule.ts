@@ -1,7 +1,7 @@
 /**
  * Complexity gating: which workflow steps activate at which complexity level
  */
-import { BaseRuleImpl } from "../base/base-rule";
+import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
 const ComplexityGatingConfig: RuleConfig = {
@@ -91,8 +91,4 @@ Config booleans and per-invocation flags take precedence over complexity gating.
   ],
 };
 
-export class ComplexityGatingRule extends BaseRuleImpl {
-  constructor() {
-    super(ComplexityGatingConfig);
-  }
-}
+export const complexityGatingRule = createRule(ComplexityGatingConfig);

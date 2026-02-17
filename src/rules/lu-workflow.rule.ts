@@ -1,7 +1,7 @@
 /**
  * Luca Workflow System Rule - Defines the Luca workflow system for spec-driven development with cognitive memory
  */
-import { BaseRuleImpl } from "./base/base-rule";
+import { createRule } from "./base/base-rule";
 import type { RuleConfig } from "./types/rule.types";
 
 // Define the lu-workflow rule configuration
@@ -115,8 +115,4 @@ Before major operations, Luca runs cognitive pre-flight:
   ],
 };
 
-export class LuWorkflowRule extends BaseRuleImpl {
-  constructor() {
-    super(luWorkflowRuleConfig);
-  }
-}
+export const luWorkflowRule = createRule(luWorkflowRuleConfig);

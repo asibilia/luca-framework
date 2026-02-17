@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "918b4fcb-11a3-4f3f-b34a-ad974a00ed02",
+    "session_id": "a5dcbe08-11c5-42e0-9700-1d6ad40538be",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -26,7 +26,11 @@
       "code_review": true,
       "uat_required": true,
       "always_verify": true,
-      "capture_learnings": true
+      "capture_learnings": true,
+      "opinionated_guidelines": true,
+      "tech_stack_profiles": [
+        "typescript"
+      ]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -119,7 +123,7 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "started_at": "2026-02-15T15:50:15.849Z"
+    "started_at": "2026-02-17T00:51:02.466Z"
   },
   "children": {}
 }
