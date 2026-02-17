@@ -23,14 +23,23 @@
 
 ## Findings
 
-## Hypotheses
+- Phase 44: coverage/ and .DS_Store already clean; renamed 2 snake_case rule files to kebab-case; removed empty .planning/ in luca-state
+- Phase 45: 98 TypeScript errors fixed to 0 across 29 files (source, scripts, tests)
+- Phase 46: Added main/module/types to 3 package.json files; created 2 missing tsconfig.json files
+- Phase 47: 37 test files consolidated from scattered locations into **tests**/; fixed ROOT path in check-drift
+- Phase 48: 7 files migrated from Node.js fs to Bun.file/Bun.write; existsSync kept for directory checks
 
 ## Candidate Learnings
+
+- `Bun.file().exists()` returns false for directories — use `existsSync` from node:fs for directory checks
+- `import type` is required for type-only imports when verbatimModuleSyntax is enabled
+- Registry tests must match registry keys exactly (kebab-case, not snake_case)
+- `path.resolve(import.meta.dir, "..")` must be updated when test files move deeper in directory structure
 
 ---
 
 _Session Status_
 
 - [x] Active
-- [ ] Learnings extracted
+- [x] Learnings extracted
 - [ ] Ready to clear
