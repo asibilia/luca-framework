@@ -4,7 +4,7 @@ Standalone XState v5 state machine for the Luca agentic workflow. Zero framework
 
 ## Overview
 
-`luca-state` encapsulates the 12-state deterministic workflow machine that drives Luca's development lifecycle: idle, preflight, routing, discussing, planning, executing, verifying, learning, committing, complete, paused, and failed.
+`luca-state` encapsulates the 13-state deterministic workflow machine that drives Luca's development lifecycle: idle, preflight, routing, discussing, planning, executing, verifying, learning, committing, complete, suspended, paused, and failed.
 
 The package is fully self-contained with persistence, CLI tools, snapshot generation, complexity gating, and guard logic.
 

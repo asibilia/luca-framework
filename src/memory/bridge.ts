@@ -119,10 +119,21 @@ export async function handleReadMemory(args: string[]): Promise<void> {
   }
 
   // ── Milestone-scoped recall mode ─────────────────────────────────────────
+  // In milestone mode, --tags serves dual purpose:
+  //   1. Pre-filters entries to only those matching at least one tag (consistent with standard mode)
+  //   2. Boosts matching entries via tag_overlap scoring in scoreMilestoneRecall
   if (milestoneArg) {
     const queryTags = tagsArg ? tagsArg.split(",").map((t) => t.trim()) : [];
 
     let sourceEntries = result.data;
+
+    // Apply tag filter before scoring (consistent with standard mode behavior)
+    if (queryTags.length > 0) {
+      const lowerTags = queryTags.map((t) => t.toLowerCase());
+      sourceEntries = sourceEntries.filter((e) =>
+        e.tags.some((t) => lowerTags.includes(t.toLowerCase())),
+      );
+    }
 
     // Apply category filter before scoring
     if (categoryArg) {

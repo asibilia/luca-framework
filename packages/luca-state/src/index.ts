@@ -121,5 +121,17 @@ export {
   handleSnapshot,
   handleEnsureInit,
   handleGateCheck,
+  handleSuspend,
+  handleResumePhase,
   SETTABLE_FIELDS,
 } from "./bridge";
+
+// ─── Suspend Checkpoint ─────────────────────────────────────────────────────
+
+export {
+  createSuspendCheckpoint,
+  loadSuspendCheckpoint,
+  clearSuspendCheckpoint,
+  suspendCheckpointSchema,
+} from "./suspend-checkpoint";
+export type { SuspendCheckpoint } from "./suspend-checkpoint";

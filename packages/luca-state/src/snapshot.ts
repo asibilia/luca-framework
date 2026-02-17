@@ -112,6 +112,7 @@ function formatState(state: string): string {
     learning: "Learning",
     committing: "Committing",
     complete: "Complete",
+    suspended: "Suspended",
     paused: "Paused",
     failed: "Failed",
   };

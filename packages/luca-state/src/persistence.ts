@@ -109,7 +109,7 @@ export async function loadPersistedActor(
       };
     }
 
-    const actor = createActor(workflowMachine, { snapshot, input: undefined });
+    const actor = createActor(workflowMachine, { snapshot });
     actor.start();
     return { success: true, data: actor };
   } catch (err) {

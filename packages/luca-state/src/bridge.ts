@@ -52,6 +52,11 @@ import { buildTransitionRecord } from "./events";
 import { getAllowedEvents } from "./machine";
 import { generateSnapshot } from "./snapshot";
 import { getArg, hasFlag } from "./utils/cli-utils";
+import {
+  createSuspendCheckpoint,
+  loadSuspendCheckpoint,
+  clearSuspendCheckpoint,
+} from "./suspend-checkpoint";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -651,15 +656,12 @@ async function handleGateCheck(args: string[]): Promise<void> {
 
 // ─── Suspend Command ─────────────────────────────────────────────────────────
 
-/** Default directory for suspend checkpoints */
-const CHECKPOINTS_DIR = ".planning/checkpoints";
-
 /**
  * Create a suspend checkpoint and transition the machine to the suspended state.
  *
- * Persists phase progress (wave index, completed tasks) to a checkpoint file,
- * then sends the SUSPEND event to the state machine. This enables resumption
- * in a new session with full context restoration.
+ * Validates that the current machine state allows SUSPEND before writing the
+ * checkpoint. Persists phase progress (wave index, completed tasks) via the
+ * suspend-checkpoint module, then sends the SUSPEND event.
  *
  * @param args - CLI arguments:
  *   --phase=N (required) Phase number to suspend
@@ -685,15 +687,22 @@ async function handleSuspend(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  const reason = getArg(args, "reason") ?? "manual";
+  // Use || instead of ?? because getArg returns "" for missing values
+  const reason = getArg(args, "reason") || "manual";
+
   const waveStr = getArg(args, "wave");
   const waveIndex = waveStr ? parseInt(waveStr, 10) : 0;
+  if (!Number.isFinite(waveIndex) || waveIndex < 0) {
+    console.error(`Invalid wave index: ${waveStr}`);
+    process.exit(2);
+  }
+
   const tasksRaw = getArg(args, "tasks");
   const completedTaskIds = tasksRaw
     ? tasksRaw.split(",").map((s) => s.trim())
     : [];
 
-  // Load actor to get session_id and current working memory
+  // Load actor to get session_id and validate state allows SUSPEND
   const loadResult = await loadPersistedActor();
   if (!loadResult.success) {
     console.error(loadResult.error);
@@ -703,6 +712,39 @@ async function handleSuspend(args: string[]): Promise<void> {
   const actor = loadResult.data;
   const snapshot = actor.getSnapshot();
   const sessionId = snapshot.context.session_id;
+
+  // Validate that the current state allows SUSPEND before writing checkpoint
+  const allowed = getAllowedEvents(snapshot);
+  if (!allowed.includes("SUSPEND")) {
+    console.error(
+      `Cannot suspend: current state "${String(snapshot.value)}" does not allow SUSPEND. ` +
+        `Allowed events: ${allowed.join(", ")}`,
+    );
+    process.exit(2);
+  }
+
+  // Send SUSPEND event to state machine first
+  const prevState = snapshot.value;
+  actor.send({
+    type: "SUSPEND" as const,
+    reason,
+    checkpoint_id: String(phaseId),
+  });
+  const nextSnapshot = actor.getSnapshot();
+
+  // Verify the transition actually occurred
+  if (String(nextSnapshot.value) === String(prevState)) {
+    console.error(
+      `SUSPEND transition rejected: state remained "${String(prevState)}"`,
+    );
+    process.exit(2);
+  }
+
+  const persistResult = await persistActor(actor);
+  if (!persistResult.success) {
+    console.error(persistResult.error);
+    process.exit(2);
+  }
 
   // Read WORKING.md snapshot for checkpoint
   let workingMemorySnapshot = "";
@@ -715,11 +757,8 @@ async function handleSuspend(args: string[]): Promise<void> {
     // WORKING.md not available — proceed without snapshot
   }
 
-  // Write checkpoint file
-  const { mkdirSync } = await import("node:fs");
-  mkdirSync(CHECKPOINTS_DIR, { recursive: true });
-
-  const checkpoint = {
+  // Write checkpoint file via suspend-checkpoint module
+  const checkpointPath = await createSuspendCheckpoint({
     phase_id: phaseId,
     wave_index: waveIndex,
     completed_task_ids: completedTaskIds,
@@ -727,25 +766,7 @@ async function handleSuspend(args: string[]): Promise<void> {
     suspended_at: new Date().toISOString(),
     reason,
     session_id: sessionId,
-  };
-
-  const checkpointPath = `${CHECKPOINTS_DIR}/suspend-${phaseId}.json`;
-  await Bun.write(checkpointPath, JSON.stringify(checkpoint, null, 2));
-
-  // Send SUSPEND event to state machine
-  const prevState = snapshot.value;
-  actor.send({
-    type: "SUSPEND" as const,
-    reason,
-    checkpoint_id: String(phaseId),
   });
-  const nextSnapshot = actor.getSnapshot();
-
-  const persistResult = await persistActor(actor);
-  if (!persistResult.success) {
-    console.error(persistResult.error);
-    process.exit(2);
-  }
 
   // Update STATE.md
   let existingContent: string | undefined;
@@ -758,12 +779,12 @@ async function handleSuspend(args: string[]): Promise<void> {
     // No existing STATE.md
   }
 
-  const allowed = getAllowedEvents(nextSnapshot);
+  const nextAllowed = getAllowedEvents(nextSnapshot);
   const markdown = generateSnapshot({
     state: String(nextSnapshot.value),
     context: nextSnapshot.context,
     existing_content: existingContent,
-    allowed_events: allowed,
+    allowed_events: nextAllowed,
   });
   await Bun.write(STATE_MD_PATH, markdown);
 
@@ -786,9 +807,9 @@ async function handleSuspend(args: string[]): Promise<void> {
 /**
  * Load a suspend checkpoint and resume the phase in the state machine.
  *
- * Reads the checkpoint file for the given phase, sends RESUME_PHASE to
- * the state machine, and outputs the checkpoint data for the caller
- * to restore execution context. Clears the checkpoint file on success.
+ * Reads the checkpoint file via the suspend-checkpoint module, sends
+ * RESUME_PHASE to the state machine, verifies the transition occurred,
+ * and only then clears the checkpoint file.
  *
  * @param args - CLI arguments:
  *   --phase=N (required) Phase number to resume
@@ -814,20 +835,14 @@ async function handleResumePhase(args: string[]): Promise<void> {
 
   const keepCheckpoint = hasFlag(args, "keep-checkpoint");
 
-  // Load checkpoint file
-  const checkpointPath = `${CHECKPOINTS_DIR}/suspend-${phaseId}.json`;
-  const checkpointFile = Bun.file(checkpointPath);
-
-  if (!(await checkpointFile.exists())) {
-    console.error(`No suspend checkpoint found for phase ${phaseId}`);
-    process.exit(2);
-  }
-
-  let checkpoint: any;
+  // Load checkpoint via suspend-checkpoint module (validates schema)
+  let checkpoint;
   try {
-    checkpoint = await checkpointFile.json();
-  } catch {
-    console.error(`Invalid JSON in checkpoint file: ${checkpointPath}`);
+    checkpoint = await loadSuspendCheckpoint(phaseId);
+  } catch (err) {
+    console.error(
+      err instanceof Error ? err.message : `Failed to load checkpoint: ${err}`,
+    );
     process.exit(2);
   }
 
@@ -846,6 +861,16 @@ async function handleResumePhase(args: string[]): Promise<void> {
     checkpoint_id: String(phaseId),
   });
   const nextSnapshot = actor.getSnapshot();
+
+  // Verify the transition actually occurred before clearing checkpoint
+  const transitioned = String(nextSnapshot.value) !== String(prevState);
+  if (!transitioned) {
+    console.error(
+      `RESUME_PHASE transition rejected: state remained "${String(prevState)}". ` +
+        `Checkpoint preserved at .planning/checkpoints/suspend-${phaseId}.json`,
+    );
+    process.exit(2);
+  }
 
   const persistResult = await persistActor(actor);
   if (!persistResult.success) {
@@ -873,11 +898,10 @@ async function handleResumePhase(args: string[]): Promise<void> {
   });
   await Bun.write(STATE_MD_PATH, markdown);
 
-  // Clear checkpoint unless --keep-checkpoint
+  // Clear checkpoint only after verified transition
   if (!keepCheckpoint) {
     try {
-      const { unlinkSync } = await import("node:fs");
-      unlinkSync(checkpointPath);
+      await clearSuspendCheckpoint(phaseId);
     } catch {
       // Non-fatal: checkpoint removal failed
     }
