@@ -62,7 +62,7 @@ describe("lu-test-writer agent", () => {
   test("is registered in agentRegistry", () => {
     expect(agentRegistry["lu-test-writer"]).toBeDefined();
     expect(typeof agentRegistry["lu-test-writer"]).toBe("function");
-    const instance = agentRegistry["lu-test-writer"]();
+    const instance = agentRegistry["lu-test-writer"]!();
     expect(instance.name).toBe("lu-test-writer");
   });
 });

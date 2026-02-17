@@ -233,7 +233,7 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
       const problems: string[] = [];
 
       for (let i = 0; i < parsed.plugins.length; i++) {
-        const plugin = parsed.plugins[i];
+        const plugin = parsed.plugins[i]!;
         if (typeof plugin.name !== "string" || plugin.name.length === 0) {
           problems.push(`plugins[${i}]: missing or invalid name`);
         }
@@ -252,7 +252,7 @@ describe("Plugin Manifest Spec-Conformance (TEST-02)", () => {
       const problems: string[] = [];
 
       for (let i = 0; i < parsed.plugins.length; i++) {
-        const plugin = parsed.plugins[i];
+        const plugin = parsed.plugins[i]!;
         if (!KEBAB_CASE_REGEX.test(plugin.name)) {
           problems.push(
             `plugins[${i}].name "${plugin.name}" is not kebab-case`,

@@ -14,14 +14,14 @@ import { ruleRegistry } from "../index";
 const GENERAL_RULE_NAMES = [
   "atlassian-mcp",
   "complexity-gating",
-  "cursor_rules",
+  "cursor-rules",
   "file-naming",
   "harness-verification",
   "hook-skill-boundary",
   "lu-workflow",
   "mandatory-documentation",
   "posthog-integration",
-  "self_improve",
+  "self-improve",
   "state-machine-bridge",
 ];
 

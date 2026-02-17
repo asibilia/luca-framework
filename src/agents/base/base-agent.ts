@@ -1,9 +1,9 @@
 /**
  * Base class for all agents in the Luca Framework
  */
-import { BaseAgent, AgentConfig } from '../types/agent.types';
-import { toCursorFormat, toClaudeFormat } from '../../shared/format';
-import { agentConfigSchema } from '../types/agent.schemas';
+import type { BaseAgent, AgentConfig } from "../types/agent.types";
+import { toCursorFormat, toClaudeFormat } from "../../shared/format";
+import { agentConfigSchema } from "../types/agent.schemas";
 
 export abstract class BaseAgentImpl implements BaseAgent {
   protected readonly _config: AgentConfig;
@@ -31,6 +31,9 @@ export abstract class BaseAgentImpl implements BaseAgent {
   }
 
   toClaudeFormat(): string {
-    return toClaudeFormat(`# ${this.name}\n\n${this.description}`, this._config.sections);
+    return toClaudeFormat(
+      `# ${this.name}\n\n${this.description}`,
+      this._config.sections,
+    );
   }
 }

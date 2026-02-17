@@ -11,7 +11,7 @@ describe("harness integration", () => {
   });
 
   test("harness-verification rule can be instantiated", () => {
-    const createRule = ruleRegistry["harness-verification"];
+    const createRule = ruleRegistry["harness-verification"]!;
     const instance = createRule();
     expect(instance).toBeDefined();
   });

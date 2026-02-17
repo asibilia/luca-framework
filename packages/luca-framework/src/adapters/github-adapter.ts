@@ -8,8 +8,8 @@
  * @module adapters/github-adapter
  */
 
-import { execa } from 'execa'
-import { z } from 'zod'
+import { execa } from "execa";
+import { z } from "zod";
 
 import type {
   WorkTrackerContract,
@@ -17,16 +17,16 @@ import type {
   WorkTicketType,
   WorkTicketPriority,
   AdapterResult,
-} from '../contracts/work-tracker'
+} from "../contracts/work-tracker";
 
 /**
  * Configuration options for the GitHub adapter.
  */
 export interface GitHubAdapterConfig {
   /** GitHub repository owner (auto-detected from git remote if not provided) */
-  owner?: string
+  owner?: string;
   /** GitHub repository name (auto-detected from git remote if not provided) */
-  repo?: string
+  repo?: string;
 }
 
 /**
@@ -40,15 +40,21 @@ const githubIssueResponseSchema = z.object({
   title: z.string(),
   body: z.string().nullable(),
   state: z.string(),
-  labels: z.array(z.object({ name: z.string() })).optional().default([]),
-  assignees: z.array(z.object({ login: z.string() })).optional().default([]),
+  labels: z
+    .array(z.object({ name: z.string() }))
+    .optional()
+    .default([]),
+  assignees: z
+    .array(z.object({ login: z.string() }))
+    .optional()
+    .default([]),
   url: z.string().optional(),
-})
+});
 
 /**
  * GitHub Issue response shape derived from Zod schema.
  */
-type GitHubIssueResponse = z.infer<typeof githubIssueResponseSchema>
+type GitHubIssueResponse = z.infer<typeof githubIssueResponseSchema>;
 
 /**
  * Match GitHub labels to a value using a mapping table.
@@ -66,33 +72,35 @@ function mapLabels<T>(
   mappings: Array<[string[], T]>,
   defaultValue: T,
 ): T {
-  const labelNames = labels.map((l) => l.name.toLowerCase())
+  const labelNames = labels.map((l) => l.name.toLowerCase());
   for (const [keys, value] of mappings) {
-    if (keys.some((k) => labelNames.includes(k))) return value
+    if (keys.some((k) => labelNames.includes(k))) return value;
   }
-  return defaultValue
+  return defaultValue;
 }
 
 /** Label-to-type mappings for GitHub issues. */
 const TYPE_MAPPINGS: Array<[string[], WorkTicketType]> = [
-  [['bug'], 'bug'],
-  [['enhancement', 'feature'], 'story'],
-  [['epic'], 'epic'],
-]
+  [["bug"], "bug"],
+  [["enhancement", "feature"], "story"],
+  [["epic"], "epic"],
+];
 
 /** Label-to-priority mappings for GitHub issues. */
 const PRIORITY_MAPPINGS: Array<[string[], WorkTicketPriority]> = [
-  [['critical', 'urgent'], 'highest'],
-  [['high', 'priority'], 'high'],
-  [['low'], 'low'],
-]
+  [["critical", "urgent"], "highest"],
+  [["high", "priority"], "high"],
+  [["low"], "low"],
+];
 
 function inferTypeFromLabels(labels: Array<{ name: string }>): WorkTicketType {
-  return mapLabels(labels, TYPE_MAPPINGS, 'task')
+  return mapLabels(labels, TYPE_MAPPINGS, "task");
 }
 
-function inferPriorityFromLabels(labels: Array<{ name: string }>): WorkTicketPriority {
-  return mapLabels(labels, PRIORITY_MAPPINGS, 'medium')
+function inferPriorityFromLabels(
+  labels: Array<{ name: string }>,
+): WorkTicketPriority {
+  return mapLabels(labels, PRIORITY_MAPPINGS, "medium");
 }
 
 /**
@@ -103,39 +111,39 @@ function inferPriorityFromLabels(labels: Array<{ name: string }>): WorkTicketPri
  * @returns Formatted error message
  */
 function parseGhError(error: unknown, issueNumber: string): string {
-  const errorMessage = error instanceof Error ? error.message : String(error)
-  const lowerMessage = errorMessage.toLowerCase()
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const lowerMessage = errorMessage.toLowerCase();
 
   // Check for common error patterns
   if (
-    lowerMessage.includes('not found') ||
-    lowerMessage.includes('could not resolve')
+    lowerMessage.includes("not found") ||
+    lowerMessage.includes("could not resolve")
   ) {
-    return `Issue #${issueNumber} not found`
+    return `Issue #${issueNumber} not found`;
   }
 
   if (
-    lowerMessage.includes('command not found') ||
-    lowerMessage.includes('enoent')
+    lowerMessage.includes("command not found") ||
+    lowerMessage.includes("enoent")
   ) {
-    return 'GitHub CLI (gh) not installed. Run: brew install gh'
+    return "GitHub CLI (gh) not installed. Run: brew install gh";
   }
 
   if (
-    lowerMessage.includes('not logged in') ||
-    lowerMessage.includes('authentication')
+    lowerMessage.includes("not logged in") ||
+    lowerMessage.includes("authentication")
   ) {
-    return 'GitHub CLI not authenticated. Run: gh auth login'
+    return "GitHub CLI not authenticated. Run: gh auth login";
   }
 
   // Sanitize token/bearer patterns before returning error to prevent credential leaks
   const sanitized = errorMessage.replace(
     /(?:token|bearer|ghp_|gho_|github_pat_)\s*\S+/gi,
-    '[REDACTED]'
-  )
+    "[REDACTED]",
+  );
 
   // Return the sanitized error if no pattern matched
-  return `GitHub CLI error: ${sanitized}`
+  return `GitHub CLI error: ${sanitized}`;
 }
 
 /**
@@ -153,14 +161,21 @@ function parseGhError(error: unknown, issueNumber: string): string {
  * @returns Validation result with optional error message
  */
 function validateBranchName(name: string): { valid: boolean; error?: string } {
-  if (!name || name.trim() === '') return { valid: false, error: 'Branch name is required' }
-  if (name.startsWith('-')) return { valid: false, error: 'Branch name cannot start with -' }
-  if (name.includes('..')) return { valid: false, error: 'Branch name cannot contain ..' }
-  if (/[\s\0~^:\\]/.test(name)) return { valid: false, error: 'Branch name contains invalid characters' }
-  if (name.endsWith('.lock')) return { valid: false, error: 'Branch name cannot end with .lock' }
-  if (name.endsWith('.')) return { valid: false, error: 'Branch name cannot end with .' }
-  if (name.includes('//')) return { valid: false, error: 'Branch name cannot contain //' }
-  return { valid: true }
+  if (!name || name.trim() === "")
+    return { valid: false, error: "Branch name is required" };
+  if (name.startsWith("-"))
+    return { valid: false, error: "Branch name cannot start with -" };
+  if (name.includes(".."))
+    return { valid: false, error: "Branch name cannot contain .." };
+  if (/[\s\0~^:\\]/.test(name))
+    return { valid: false, error: "Branch name contains invalid characters" };
+  if (name.endsWith(".lock"))
+    return { valid: false, error: "Branch name cannot end with .lock" };
+  if (name.endsWith("."))
+    return { valid: false, error: "Branch name cannot end with ." };
+  if (name.includes("//"))
+    return { valid: false, error: "Branch name cannot contain //" };
+  return { valid: true };
 }
 
 /**
@@ -172,8 +187,9 @@ function validateBranchName(name: string): { valid: boolean; error?: string } {
  * @returns Validation result with optional error message
  */
 function validateIssueNumber(num: string): { valid: boolean; error?: string } {
-  if (!/^\d+$/.test(num)) return { valid: false, error: 'Issue number must be numeric' }
-  return { valid: true }
+  if (!/^\d+$/.test(num))
+    return { valid: false, error: "Issue number must be numeric" };
+  return { valid: true };
 }
 
 /**
@@ -204,13 +220,13 @@ function validateIssueNumber(num: string): { valid: boolean; error?: string } {
  * ```
  */
 export function createGitHubAdapter(
-  config: GitHubAdapterConfig = {}
+  config: GitHubAdapterConfig = {},
 ): WorkTrackerContract {
   // Config is available for future use (explicit owner/repo override)
-  const _config = config
+  const _config = config;
 
   return {
-    name: 'github' as const,
+    name: "github" as const,
 
     /**
      * Retrieve GitHub issue details by number.
@@ -223,50 +239,50 @@ export function createGitHubAdapter(
      */
     async getTicket(ticketId: string): Promise<AdapterResult<WorkTicket>> {
       // Extract issue number (remove # prefix if present)
-      const issueNumber = ticketId.replace(/^#/, '')
+      const issueNumber = ticketId.replace(/^#/, "");
 
       // Validate issue number is numeric to prevent injection
-      const issueValidation = validateIssueNumber(issueNumber)
+      const issueValidation = validateIssueNumber(issueNumber);
       if (!issueValidation.valid) {
-        return { success: false, error: issueValidation.error! }
+        return { success: false, error: issueValidation.error! };
       }
 
       try {
-        const { stdout } = await execa('gh', [
-          'issue',
-          'view',
-          '--json',
-          'number,title,body,state,labels,assignees,url',
-          '--',
+        const { stdout } = await execa("gh", [
+          "issue",
+          "view",
+          "--json",
+          "number,title,body,state,labels,assignees,url",
+          "--",
           issueNumber,
-        ])
+        ]);
 
-        const raw = JSON.parse(stdout)
-        const parsed = githubIssueResponseSchema.safeParse(raw)
+        const raw = JSON.parse(stdout);
+        const parsed = githubIssueResponseSchema.safeParse(raw);
 
         if (!parsed.success) {
           return {
             success: false,
             error: `Invalid GitHub API response: ${parsed.error.message}`,
-          }
+          };
         }
 
-        const issue = parsed.data
+        const issue = parsed.data;
 
         const ticket: WorkTicket = {
           id: `#${issue.number}`,
           title: issue.title,
-          description: issue.body || '',
+          description: issue.body || "",
           type: inferTypeFromLabels(issue.labels),
           status: issue.state,
           priority: inferPriorityFromLabels(issue.labels),
           assignee: issue.assignees?.[0]?.login,
-          url: issue.url,
-        }
+          url: issue.url ?? "",
+        };
 
-        return { success: true, data: ticket }
+        return { success: true, data: ticket };
       } catch (error) {
-        return { success: false, error: parseGhError(error, issueNumber) }
+        return { success: false, error: parseGhError(error, issueNumber) };
       }
     },
 
@@ -282,34 +298,43 @@ export function createGitHubAdapter(
      */
     async createBranch(
       ticketId: string,
-      branchName: string
+      branchName: string,
     ): Promise<AdapterResult<string>> {
-      const issueNumber = ticketId.replace(/^#/, '')
+      const issueNumber = ticketId.replace(/^#/, "");
 
       // Validate inputs to prevent injection
-      const issueValidation = validateIssueNumber(issueNumber)
+      const issueValidation = validateIssueNumber(issueNumber);
       if (!issueValidation.valid) {
-        return { success: false, error: issueValidation.error! }
+        return { success: false, error: issueValidation.error! };
       }
 
-      const branchValidation = validateBranchName(branchName)
+      const branchValidation = validateBranchName(branchName);
       if (!branchValidation.valid) {
-        return { success: false, error: branchValidation.error! }
+        return { success: false, error: branchValidation.error! };
       }
 
       try {
         // Try gh issue develop first (creates linked branch)
-        await execa('gh', ['issue', 'develop', issueNumber, '--name', branchName])
-        return { success: true, data: branchName }
+        await execa("gh", [
+          "issue",
+          "develop",
+          issueNumber,
+          "--name",
+          branchName,
+        ]);
+        return { success: true, data: branchName };
       } catch {
         // Fallback to standard git checkout with -- to separate flags from branch name
         try {
-          await execa('git', ['checkout', '-b', '--', branchName])
-          return { success: true, data: branchName }
+          await execa("git", ["checkout", "-b", "--", branchName]);
+          return { success: true, data: branchName };
         } catch (gitError) {
           const errorMessage =
-            gitError instanceof Error ? gitError.message : String(gitError)
-          return { success: false, error: `Failed to create branch: ${errorMessage}` }
+            gitError instanceof Error ? gitError.message : String(gitError);
+          return {
+            success: false,
+            error: `Failed to create branch: ${errorMessage}`,
+          };
         }
       }
     },
@@ -327,10 +352,10 @@ export function createGitHubAdapter(
      */
     async linkPR(
       _ticketId: string,
-      _prUrl: string
+      _prUrl: string,
     ): Promise<AdapterResult<void>> {
       // GitHub auto-links via "Closes #123" in PR body - no action needed
-      return { success: true, data: undefined }
+      return { success: true, data: undefined };
     },
 
     /**
@@ -342,39 +367,39 @@ export function createGitHubAdapter(
      */
     async validate(): Promise<AdapterResult<boolean>> {
       try {
-        const { stdout } = await execa('gh', ['auth', 'status'])
+        const { stdout } = await execa("gh", ["auth", "status"]);
 
         // Check if output indicates logged in status
         if (
-          stdout.toLowerCase().includes('logged in') ||
-          stdout.toLowerCase().includes('active account: true')
+          stdout.toLowerCase().includes("logged in") ||
+          stdout.toLowerCase().includes("active account: true")
         ) {
-          return { success: true, data: true }
+          return { success: true, data: true };
         }
 
         return {
           success: false,
-          error: 'GitHub CLI not authenticated. Run: gh auth login',
-        }
+          error: "GitHub CLI not authenticated. Run: gh auth login",
+        };
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : String(error)
+          error instanceof Error ? error.message : String(error);
 
         if (
-          errorMessage.toLowerCase().includes('command not found') ||
-          errorMessage.toLowerCase().includes('enoent')
+          errorMessage.toLowerCase().includes("command not found") ||
+          errorMessage.toLowerCase().includes("enoent")
         ) {
           return {
             success: false,
-            error: 'GitHub CLI (gh) not installed. Run: brew install gh',
-          }
+            error: "GitHub CLI (gh) not installed. Run: brew install gh",
+          };
         }
 
         return {
           success: false,
           error: `GitHub CLI validation failed: ${errorMessage}`,
-        }
+        };
       }
     },
-  }
+  };
 }

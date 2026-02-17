@@ -2,7 +2,7 @@
  * lu-executor Agent - Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
  */
 import { BaseAgentImpl } from "../base/base-agent";
-import { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-executor agent configuration
 const luexecutorConfig: AgentConfig = {

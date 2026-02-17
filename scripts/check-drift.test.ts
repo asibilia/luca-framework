@@ -132,7 +132,7 @@ describe("Output Freshness", () => {
     const settings = JSON.parse(settingsContent);
     const actualJson = JSON.stringify(settings.hooks ?? {}, null, 2);
 
-    expect(actualJson).toBe(expectedJson);
+    expect(actualJson).toBe(expectedJson!);
   });
 
   test(".cursor/hooks.json matches source", async () => {
@@ -142,7 +142,7 @@ describe("Output Freshness", () => {
     const hooksJsonPath = path.join(ROOT, ".cursor", "hooks.json");
     const actualJson = await Bun.file(hooksJsonPath).text();
 
-    expect(actualJson).toBe(expectedJson);
+    expect(actualJson).toBe(expectedJson!);
   });
 });
 
@@ -334,7 +334,7 @@ describe("Plugin Output Freshness", () => {
     );
     const actualJson = await Bun.file(hooksJsonPath).text();
 
-    expect(actualJson).toBe(expectedJson);
+    expect(actualJson).toBe(expectedJson!);
   });
 
   test("plugin.json matches source", async () => {
@@ -352,7 +352,7 @@ describe("Plugin Output Freshness", () => {
     );
     const actualJson = await Bun.file(pluginJsonPath).text();
 
-    expect(actualJson).toBe(expectedJson);
+    expect(actualJson).toBe(expectedJson!);
   });
 
   test("marketplace.json matches source", async () => {
@@ -370,7 +370,7 @@ describe("Plugin Output Freshness", () => {
     );
     const actualJson = await Bun.file(marketplaceJsonPath).text();
 
-    expect(actualJson).toBe(expectedJson);
+    expect(actualJson).toBe(expectedJson!);
   });
 
   test("README.md matches source", async () => {
@@ -380,7 +380,7 @@ describe("Plugin Output Freshness", () => {
     const readmePath = path.join(ROOT, "dist", "plugin", "README.md");
     const actualReadme = await Bun.file(readmePath).text();
 
-    expect(actualReadme).toBe(expectedReadme);
+    expect(actualReadme).toBe(expectedReadme!);
   });
 });
 

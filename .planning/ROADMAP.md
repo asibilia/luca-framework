@@ -16,9 +16,9 @@
 **Complexity:** TRIVIAL
 **Depends on:** None
 
-- [ ] Plan 44-A: Remove git-tracked coverage/ and .DS_Store artifacts
-- [ ] Plan 44-B: Rename snake_case rule files to kebab-case
-- [ ] Plan 44-C: Clean empty directories and document phase numbering gaps
+- [x] Plan 44-A: Remove git-tracked coverage/ and .DS_Store artifacts (already clean)
+- [x] Plan 44-B: Rename snake_case rule files to kebab-case
+- [x] Plan 44-C: Clean empty directories and document phase numbering gaps
 
 ### Phase 45 — TypeScript Error Resolution
 

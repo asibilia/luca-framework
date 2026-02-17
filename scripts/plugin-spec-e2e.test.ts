@@ -286,7 +286,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         plugins: Array<{ name: string }>;
       }>(marketplaceJsonPath);
 
-      expect(marketplaceJson.plugins[0].name).toBe(pluginJson.name);
+      expect(marketplaceJson.plugins[0]!.name).toBe(pluginJson.name);
     });
 
     test("marketplace plugin version matches plugin.json version", async () => {
@@ -306,7 +306,7 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         plugins: Array<{ version: string }>;
       }>(marketplaceJsonPath);
 
-      expect(marketplaceJson.plugins[0].version).toBe(pluginJson.version);
+      expect(marketplaceJson.plugins[0]!.version).toBe(pluginJson.version);
     });
 
     test("plugin has a reasonable component count", async () => {
@@ -466,19 +466,19 @@ describe("End-to-End Plugin Spec-Conformance (TEST-05)", () => {
         if (
           marketplaceJson.plugins &&
           marketplaceJson.plugins.length > 0 &&
-          marketplaceJson.plugins[0].name !== pluginJson.name
+          marketplaceJson.plugins[0]!.name !== pluginJson.name
         ) {
           issues.push(
-            `Marketplace plugin name "${marketplaceJson.plugins[0].name}" does not match plugin.json name "${pluginJson.name}"`,
+            `Marketplace plugin name "${marketplaceJson.plugins[0]!.name}" does not match plugin.json name "${pluginJson.name}"`,
           );
         }
         if (
           marketplaceJson.plugins &&
           marketplaceJson.plugins.length > 0 &&
-          marketplaceJson.plugins[0].version !== pluginJson.version
+          marketplaceJson.plugins[0]!.version !== pluginJson.version
         ) {
           issues.push(
-            `Marketplace plugin version "${marketplaceJson.plugins[0].version}" does not match plugin.json version "${pluginJson.version}"`,
+            `Marketplace plugin version "${marketplaceJson.plugins[0]!.version}" does not match plugin.json version "${pluginJson.version}"`,
           );
         }
       }

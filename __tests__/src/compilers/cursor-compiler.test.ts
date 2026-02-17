@@ -14,7 +14,11 @@ import {
   compileSkill,
   compileRule,
 } from "../../../src/compilers/compile";
-import { TestAgent, TestSkill, TestRule } from "../../utils/test-entities";
+import {
+  TestAgent,
+  TestSkill,
+  createTestRule,
+} from "../../utils/test-entities";
 import {
   validAgentConfig,
   validSkillConfig,
@@ -35,7 +39,7 @@ describe("Cursor-format compile functions", () => {
   });
 
   test("compileRuleCursor delegates to rule.toCursorFormat()", () => {
-    const rule = new TestRule(validRuleConfig);
+    const rule = createTestRule(validRuleConfig);
     const result = compileRuleCursor(rule);
     expect(result).toBe(rule.toCursorFormat());
   });
@@ -51,7 +55,7 @@ describe("Cursor-format compile functions", () => {
   });
 
   test("compileRule with CURSOR format matches compileRuleCursor", () => {
-    const rule = new TestRule(validRuleConfig);
+    const rule = createTestRule(validRuleConfig);
     expect(compileRule(rule, "CURSOR")).toBe(compileRuleCursor(rule));
   });
 

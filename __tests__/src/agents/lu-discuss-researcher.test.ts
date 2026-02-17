@@ -88,7 +88,7 @@ describe("lu-discuss-researcher agent", () => {
     const factory = agentRegistry["lu-discuss-researcher"];
     expect(factory).toBeDefined();
     expect(typeof factory).toBe("function");
-    const agent = factory();
+    const agent = factory!();
     expect(agent.name).toBe("lu-discuss-researcher");
   });
 });

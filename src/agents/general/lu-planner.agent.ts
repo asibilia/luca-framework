@@ -2,7 +2,7 @@
  * lu-planner Agent - Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation. Spawned by lu router or phase-plan skill.
  */
 import { BaseAgentImpl } from "../base/base-agent";
-import { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-planner agent configuration
 const luplannerConfig: AgentConfig = {

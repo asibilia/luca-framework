@@ -174,14 +174,15 @@ export function generateClaudeHooksConfig(
     }
 
     const matcherKey = def.matcher ?? NO_MATCHER_SENTINEL;
-    let group = events[def.event].find((g) => {
+    const eventGroups = events[def.event]!;
+    let group = eventGroups.find((g) => {
       if (matcherKey === NO_MATCHER_SENTINEL) return !g.matcher;
       return g.matcher === def.matcher;
     });
 
     if (!group) {
       group = def.matcher ? { matcher: def.matcher, hooks: [] } : { hooks: [] };
-      events[def.event].push(group);
+      eventGroups.push(group);
     }
 
     const hookEntry: Record<string, unknown> = {

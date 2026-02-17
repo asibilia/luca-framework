@@ -4,7 +4,7 @@
  * Tests validateAgentConfig, validateSkillConfig, validateRuleConfig (strict),
  * and safeValidateAgentConfig, safeValidateSkillConfig, safeValidateRuleConfig (safe).
  */
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect } from "bun:test";
 import {
   validateAgentConfig,
   validateSkillConfig,
@@ -12,19 +12,23 @@ import {
   safeValidateAgentConfig,
   safeValidateSkillConfig,
   safeValidateRuleConfig,
-} from '../../../src/shared/validation-utils';
-import { validAgentConfig, validSkillConfig, validRuleConfig } from '../../utils/fixtures';
+} from "../../../src/shared/validation-utils";
+import {
+  validAgentConfig,
+  validSkillConfig,
+  validRuleConfig,
+} from "../../utils/fixtures";
 
 // ---------------------------------------------------------------------------
 // validateAgentConfig (2 cases)
 // ---------------------------------------------------------------------------
-describe('validateAgentConfig', () => {
-  test('returns validated config for valid input', () => {
+describe("validateAgentConfig", () => {
+  test("returns validated config for valid input", () => {
     const result = validateAgentConfig(validAgentConfig);
     expect(result).toEqual(validAgentConfig);
   });
 
-  test('throws on invalid input', () => {
+  test("throws on invalid input", () => {
     expect(() => validateAgentConfig({} as any)).toThrow();
   });
 });
@@ -32,13 +36,13 @@ describe('validateAgentConfig', () => {
 // ---------------------------------------------------------------------------
 // validateSkillConfig (2 cases)
 // ---------------------------------------------------------------------------
-describe('validateSkillConfig', () => {
-  test('returns validated config for valid input', () => {
+describe("validateSkillConfig", () => {
+  test("returns validated config for valid input", () => {
     const result = validateSkillConfig(validSkillConfig);
     expect(result).toEqual(validSkillConfig);
   });
 
-  test('throws on invalid input', () => {
+  test("throws on invalid input", () => {
     expect(() => validateSkillConfig({ frontmatter: {} } as any)).toThrow();
   });
 });
@@ -46,13 +50,13 @@ describe('validateSkillConfig', () => {
 // ---------------------------------------------------------------------------
 // validateRuleConfig (2 cases)
 // ---------------------------------------------------------------------------
-describe('validateRuleConfig', () => {
-  test('returns validated config for valid input', () => {
+describe("validateRuleConfig", () => {
+  test("returns validated config for valid input", () => {
     const result = validateRuleConfig(validRuleConfig);
     expect(result).toEqual(validRuleConfig);
   });
 
-  test('throws on invalid input', () => {
+  test("throws on invalid input", () => {
     expect(() => validateRuleConfig({ sections: [] } as any)).toThrow();
   });
 });
@@ -60,56 +64,84 @@ describe('validateRuleConfig', () => {
 // ---------------------------------------------------------------------------
 // safeValidateAgentConfig (2 cases)
 // ---------------------------------------------------------------------------
-describe('safeValidateAgentConfig', () => {
-  test('returns success: true with data for valid input', () => {
+describe("safeValidateAgentConfig", () => {
+  test("returns success: true with data for valid input", () => {
     const result = safeValidateAgentConfig(validAgentConfig);
     expect(result.success).toBe(true);
-    expect(result.data).toEqual(validAgentConfig);
-    expect(result.error).toBeUndefined();
+    if (result.success) {
+      expect(result.data).toEqual(validAgentConfig);
+    }
+    if (!result.success) {
+      expect(result.error).toBeUndefined();
+    }
   });
 
-  test('returns success: false with error for invalid input', () => {
+  test("returns success: false with error for invalid input", () => {
     const result = safeValidateAgentConfig({} as any);
     expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
-    expect(result.data).toBeUndefined();
+    if (!result.success) {
+      expect(result.error).toBeDefined();
+    }
+    if (result.success) {
+      expect(result.data).toBeUndefined();
+    }
   });
 });
 
 // ---------------------------------------------------------------------------
 // safeValidateSkillConfig (2 cases)
 // ---------------------------------------------------------------------------
-describe('safeValidateSkillConfig', () => {
-  test('returns success: true with data for valid input', () => {
+describe("safeValidateSkillConfig", () => {
+  test("returns success: true with data for valid input", () => {
     const result = safeValidateSkillConfig(validSkillConfig);
     expect(result.success).toBe(true);
-    expect(result.data).toEqual(validSkillConfig);
-    expect(result.error).toBeUndefined();
+    if (result.success) {
+      expect(result.data).toEqual(validSkillConfig);
+    }
+    if (!result.success) {
+      expect(result.error).toBeUndefined();
+    }
   });
 
-  test('returns success: false with error for invalid input', () => {
-    const result = safeValidateSkillConfig({ frontmatter: { name: 123 } } as any);
+  test("returns success: false with error for invalid input", () => {
+    const result = safeValidateSkillConfig({
+      frontmatter: { name: 123 },
+    } as any);
     expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
-    expect(result.data).toBeUndefined();
+    if (!result.success) {
+      expect(result.error).toBeDefined();
+    }
+    if (result.success) {
+      expect(result.data).toBeUndefined();
+    }
   });
 });
 
 // ---------------------------------------------------------------------------
 // safeValidateRuleConfig (2 cases)
 // ---------------------------------------------------------------------------
-describe('safeValidateRuleConfig', () => {
-  test('returns success: true with data for valid input', () => {
+describe("safeValidateRuleConfig", () => {
+  test("returns success: true with data for valid input", () => {
     const result = safeValidateRuleConfig(validRuleConfig);
     expect(result.success).toBe(true);
-    expect(result.data).toEqual(validRuleConfig);
-    expect(result.error).toBeUndefined();
+    if (result.success) {
+      expect(result.data).toEqual(validRuleConfig);
+    }
+    if (!result.success) {
+      expect(result.error).toBeUndefined();
+    }
   });
 
-  test('returns success: false with error for invalid input', () => {
-    const result = safeValidateRuleConfig({ frontmatter: { description: 42 } } as any);
+  test("returns success: false with error for invalid input", () => {
+    const result = safeValidateRuleConfig({
+      frontmatter: { description: 42 },
+    } as any);
     expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
-    expect(result.data).toBeUndefined();
+    if (!result.success) {
+      expect(result.error).toBeDefined();
+    }
+    if (result.success) {
+      expect(result.data).toBeUndefined();
+    }
   });
 });
