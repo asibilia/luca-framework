@@ -8,21 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current Milestone: v1.6.0 — Package & Publish
+## Current State (v1.6.0 — Shipped)
 
-**Theme:** Extract core components as standalone publishable packages, complete remaining memory improvements, and introduce multi-stack convention support.
+**Last Shipped:** v1.6.0 — Package & Publish (2026-02-16)
 
-**Goals:**
-
-1. **XState Workflow State Package** — Extract the internal XState v5 state machine into a standalone npm package (`@luca-framework/state` or similar) that other projects can adopt independently
-2. **Remaining Memory Improvements** — Complete Mastra-inspired features deferred from v1.5.0: suspend/resume with persistent state, milestone-scoped memory recall
-3. **Opinionated Tech Stack Profiles** — Organize code style rules under named tech stack profiles (typescript, python, go, rust) with config toggle and auto-detection integration
-
-**Success Vision:** Luca's core state machine is published as a standalone package, memory system handles suspend/resume gracefully, and the framework supports multi-stack code conventions.
+Standalone XState workflow state package (`packages/luca-state/`) with zero framework dependencies, 347 tests, 12-subcommand CLI. Full framework rewire (83 source files + 327 generated files). Memory suspend/resume with checkpoint persistence and auto-persist on context warnings. Milestone-scoped memory recall with version distance scoring. Tech stack guideline profiles with conditional rule loading, config toggle, and auto-detection integration. Post-milestone tech debt cleanup: class-to-functional rule refactor (19 rules), duplicate state-machine deletion (-8,300 lines), type deduplication. 1755 tests (1749 pass, 6 skip), 30 agents, 45+ skills, 19 rules.
 
 ## Previous State (v1.5.0 — Shipped)
 
-**Last Shipped:** v1.5.0 — Cognitive Architecture & State Machine (2026-02-15)
+**Shipped:** v1.5.0 — Cognitive Architecture & State Machine (2026-02-15)
 
 Deterministic XState v5 workflow state machine replacing markdown-based state management, typed bridge CLI for all 45 skills, token-aware memory compression, structured WORKING.md schemas, async context monitoring, phase quality scoring with trend tracking, and procedural memory layer for learned skill templates. 1660 tests (1654 pass, 6 skip), 28 agents, 45 skills.
 
@@ -60,6 +54,7 @@ Deterministic XState v5 workflow state machine replacing markdown-based state ma
 - **v1.3.3** — Final Audit Sweep (2026-02-13). 2 phases, 4 plans, 10 requirements, 992 tests. Build script deprecation, pipeline decomposition, registry factory refactor, drift test DRY-up, plugin spec async migration.
 - **v1.4.0** — Developer Experience & Verification (2026-02-14). 4 phases, 8 plans, 21 requirements, 1042 tests (1036 pass, 6 skip). Dogfood build stability, TDD-first verification, auto-discuss research agent, workflow documentation.
 - **v1.5.0** — Cognitive Architecture & State Machine (2026-02-15). 6 phases, 14 plans, 35 requirements, 1660 tests (1654 pass, 6 skip). XState workflow machine, typed bridge CLI, memory compression/monitoring, procedural memory, full skill migration, code quality cleanup.
+- **v1.6.0** — Package & Publish (2026-02-16). 4 phases, 9 plans, 18 requirements, 1755 tests (1749 pass, 6 skip). XState package extraction, framework rewire, memory suspend/resume, tech stack profiles, class-to-functional refactor.
 
 ## Requirements
 
