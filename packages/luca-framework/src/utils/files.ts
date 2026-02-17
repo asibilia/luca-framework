@@ -1,11 +1,11 @@
-import { rm, mkdir, readdir, copyFile, readFile, writeFile, chmod } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'pathe';
-import * as p from '@clack/prompts';
-import { copyTemplates, getTemplatesDir } from './template';
-import { createManifest, writeManifest } from './manifest';
-import { logger } from './logger';
-import type { LucaConfig, LucaManifest } from '../types';
+import { rm, mkdir, readdir, copyFile, chmod } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join } from "pathe";
+import * as p from "@clack/prompts";
+import { copyTemplates, getTemplatesDir } from "./template";
+import { createManifest, writeManifest } from "./manifest";
+import { logger } from "./logger";
+import type { LucaConfig, LucaManifest } from "../types";
 
 // Track created files for cleanup on error
 const createdPaths: string[] = [];
@@ -41,7 +41,7 @@ function trackCreated(path: string) {
 export async function cleanupFiles() {
   if (createdPaths.length === 0) return;
 
-  logger.warn('Cleaning up partial installation...');
+  logger.warn("Cleaning up partial installation...");
 
   // Remove in reverse order (deepest first)
   for (const path of createdPaths.reverse()) {
@@ -75,8 +75,8 @@ export async function cleanupFiles() {
  * ```
  */
 export function setupCleanupHandler() {
-  process.once('SIGINT', async () => {
-    p.cancel('\nInstallation cancelled.');
+  process.once("SIGINT", async () => {
+    p.cancel("\nInstallation cancelled.");
     await cleanupFiles();
     process.exit(1);
   });
@@ -118,7 +118,9 @@ export function setupCleanupHandler() {
 export async function generateFiles(options: {
   config: LucaConfig;
   cwd?: string;
-}): Promise<{ success: true; data: LucaManifest } | { success: false; error: string }> {
+}): Promise<
+  { success: true; data: LucaManifest } | { success: false; error: string }
+> {
   // Reset tracked paths from any previous invocation
   createdPaths.length = 0;
 
@@ -129,14 +131,14 @@ export async function generateFiles(options: {
 
   try {
     // Step 1: Create directories
-    spinner.start('Creating directories...');
+    spinner.start("Creating directories...");
 
-    const planningDir = join(cwd, '.planning');
-    const cursorDir = join(cwd, '.cursor');
-    const lucaDir = join(cursorDir, 'luca');
-    const agentsDir = join(cursorDir, 'agents');
-    const rulesDir = join(cursorDir, 'rules');
-    const skillsDir = join(cursorDir, 'skills');
+    const planningDir = join(cwd, ".planning");
+    const cursorDir = join(cwd, ".cursor");
+    const lucaDir = join(cursorDir, "luca");
+    const agentsDir = join(cursorDir, "agents");
+    const rulesDir = join(cursorDir, "rules");
+    const skillsDir = join(cursorDir, "skills");
 
     for (const dir of [planningDir, lucaDir, agentsDir, rulesDir, skillsDir]) {
       if (!existsSync(dir)) {
@@ -145,12 +147,12 @@ export async function generateFiles(options: {
       }
     }
 
-    spinner.stop('Directories created');
+    spinner.stop("Directories created");
 
     // Step 2: Copy base templates
-    spinner.start('Copying base templates...');
+    spinner.start("Copying base templates...");
 
-    const baseTemplatesDir = join(templatesDir, 'base');
+    const baseTemplatesDir = join(templatesDir, "base");
     const { processed: baseProcessed } = await copyTemplates({
       sourceDir: baseTemplatesDir,
       destDir: cwd,
@@ -164,10 +166,10 @@ export async function generateFiles(options: {
     spinner.stop(`Copied ${baseProcessed.length} base files`);
 
     // Step 3: Copy stack-specific templates (if not custom)
-    if (config.stack !== 'custom') {
+    if (config.stack !== "custom") {
       spinner.start(`Copying ${config.stack} stack templates...`);
 
-      const stackTemplatesDir = join(templatesDir, 'stacks', config.stack);
+      const stackTemplatesDir = join(templatesDir, "stacks", config.stack);
       if (existsSync(stackTemplatesDir)) {
         const { processed: stackProcessed } = await copyTemplates({
           sourceDir: stackTemplatesDir,
@@ -181,31 +183,36 @@ export async function generateFiles(options: {
 
         spinner.stop(`Copied ${stackProcessed.length} stack files`);
       } else {
-        spinner.stop(`Stack template ${config.stack} not found, using base only`);
+        spinner.stop(
+          `Stack template ${config.stack} not found, using base only`,
+        );
       }
     }
 
     // Step 4: Copy framework files (.cursor/luca/)
-    spinner.start('Installing framework files...');
+    spinner.start("Installing framework files...");
 
-    const frameworkTemplatesDir = join(templatesDir, 'framework');
+    const frameworkTemplatesDir = join(templatesDir, "framework");
     if (existsSync(frameworkTemplatesDir)) {
-      const { processed: frameworkProcessed, copied: frameworkCopied } = await copyTemplates({
-        sourceDir: frameworkTemplatesDir,
-        destDir: lucaDir,
-        config,
-      });
+      const { processed: frameworkProcessed, copied: frameworkCopied } =
+        await copyTemplates({
+          sourceDir: frameworkTemplatesDir,
+          destDir: lucaDir,
+          config,
+        });
 
-      spinner.stop(`Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`);
+      spinner.stop(
+        `Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`,
+      );
     } else {
-      spinner.stop('Framework templates not found');
+      spinner.stop("Framework templates not found");
     }
 
     // Step 4.5: Install Claude Code hooks
-    spinner.start('Installing Claude Code hooks...');
+    spinner.start("Installing Claude Code hooks...");
 
-    const claudeDir = join(cwd, '.claude');
-    const claudeHooksDir = join(claudeDir, 'hooks');
+    const claudeDir = join(cwd, ".claude");
+    const claudeHooksDir = join(claudeDir, "hooks");
 
     // Create .claude/hooks/ directory
     if (!existsSync(claudeHooksDir)) {
@@ -214,9 +221,9 @@ export async function generateFiles(options: {
     }
 
     // Copy hook scripts from templates
-    const hookTemplatesDir = join(templatesDir, 'hooks');
+    const hookTemplatesDir = join(templatesDir, "hooks");
     if (existsSync(hookTemplatesDir)) {
-      const hookScriptsDir = join(hookTemplatesDir, 'scripts');
+      const hookScriptsDir = join(hookTemplatesDir, "scripts");
       if (existsSync(hookScriptsDir)) {
         const hookFiles = await readdir(hookScriptsDir);
         let hooksCopied = 0;
@@ -239,16 +246,16 @@ export async function generateFiles(options: {
         }
 
         // Generate .claude/settings.json from hook settings template
-        const settingsHooksPath = join(hookTemplatesDir, 'settings-hooks.json');
-        const claudeSettingsPath = join(claudeDir, 'settings.json');
+        const settingsHooksPath = join(hookTemplatesDir, "settings-hooks.json");
+        const claudeSettingsPath = join(claudeDir, "settings.json");
 
-        if (existsSync(settingsHooksPath)) {
+        if (await Bun.file(settingsHooksPath).exists()) {
           let existingSettings: Record<string, unknown> = {};
 
           // Preserve existing settings.json content (if any)
-          if (existsSync(claudeSettingsPath)) {
+          if (await Bun.file(claudeSettingsPath).exists()) {
             try {
-              const existing = await readFile(claudeSettingsPath, 'utf-8');
+              const existing = await Bun.file(claudeSettingsPath).text();
               existingSettings = JSON.parse(existing);
             } catch {
               // Invalid JSON — start fresh
@@ -256,31 +263,31 @@ export async function generateFiles(options: {
           }
 
           // Read hook settings template
-          const hooksContent = await readFile(settingsHooksPath, 'utf-8');
+          const hooksContent = await Bun.file(settingsHooksPath).text();
           const hooksSettings = JSON.parse(hooksContent);
 
           // Merge hooks into settings (preserving other keys like permissions)
           existingSettings.hooks = hooksSettings.hooks;
 
-          await writeFile(
+          await Bun.write(
             claudeSettingsPath,
-            JSON.stringify(existingSettings, null, 2) + '\n'
+            JSON.stringify(existingSettings, null, 2) + "\n",
           );
           trackCreated(claudeSettingsPath);
         }
 
         spinner.stop(`Installed ${hooksCopied} hook scripts + settings.json`);
       } else {
-        spinner.stop('Hook scripts directory not found, skipping hooks');
+        spinner.stop("Hook scripts directory not found, skipping hooks");
       }
     } else {
-      spinner.stop('Hook templates not found, skipping hooks');
+      spinner.stop("Hook templates not found, skipping hooks");
     }
 
     // Step 4.6: Install Cursor hooks
-    spinner.start('Installing Cursor hooks...');
+    spinner.start("Installing Cursor hooks...");
 
-    const cursorHooksDir = join(cursorDir, 'hooks');
+    const cursorHooksDir = join(cursorDir, "hooks");
 
     if (!existsSync(cursorHooksDir)) {
       await mkdir(cursorHooksDir, { recursive: true });
@@ -288,7 +295,7 @@ export async function generateFiles(options: {
     }
 
     if (existsSync(hookTemplatesDir)) {
-      const hookScriptsDirCursor = join(hookTemplatesDir, 'scripts');
+      const hookScriptsDirCursor = join(hookTemplatesDir, "scripts");
       if (existsSync(hookScriptsDirCursor)) {
         const cursorHookFiles = await readdir(hookScriptsDirCursor);
         let cursorHooksCopied = 0;
@@ -310,24 +317,26 @@ export async function generateFiles(options: {
         }
 
         // Copy cursor-hooks.json to .cursor/hooks.json
-        const cursorHooksJsonSrc = join(hookTemplatesDir, 'cursor-hooks.json');
-        const cursorHooksJsonDest = join(cursorDir, 'hooks.json');
+        const cursorHooksJsonSrc = join(hookTemplatesDir, "cursor-hooks.json");
+        const cursorHooksJsonDest = join(cursorDir, "hooks.json");
 
-        if (existsSync(cursorHooksJsonSrc)) {
+        if (await Bun.file(cursorHooksJsonSrc).exists()) {
           await copyFile(cursorHooksJsonSrc, cursorHooksJsonDest);
           trackCreated(cursorHooksJsonDest);
         }
 
-        spinner.stop(`Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`);
+        spinner.stop(
+          `Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`,
+        );
       } else {
-        spinner.stop('Hook scripts directory not found, skipping Cursor hooks');
+        spinner.stop("Hook scripts directory not found, skipping Cursor hooks");
       }
     } else {
-      spinner.stop('Hook templates not found, skipping Cursor hooks');
+      spinner.stop("Hook templates not found, skipping Cursor hooks");
     }
 
     // Step 5: Create manifest
-    spinner.start('Creating manifest...');
+    spinner.start("Creating manifest...");
 
     const manifest = await createManifest({
       config,
@@ -336,18 +345,19 @@ export async function generateFiles(options: {
     });
 
     await writeManifest(manifest, cwd);
-    trackCreated(join(cwd, '.planning', 'manifest.json'));
+    trackCreated(join(cwd, ".planning", "manifest.json"));
 
-    spinner.stop('Manifest created');
+    spinner.stop("Manifest created");
 
     // Clear tracking (success - don't cleanup)
     createdPaths.length = 0;
 
     return { success: true, data: manifest };
   } catch (error) {
-    spinner.stop('Error during file generation');
+    spinner.stop("Error during file generation");
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     logger.error(`File generation failed: ${errorMessage}`);
 
     // Cleanup on error

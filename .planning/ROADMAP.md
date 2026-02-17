@@ -52,7 +52,7 @@
 **Complexity:** MODERATE
 **Depends on:** Phase 45
 
-- [ ] Plan 48-A: Migrate node:fs and node:path to Bun equivalents
+- [x] Plan 48-A: Migrate node:fs and node:path to Bun equivalents
 
 ---
 

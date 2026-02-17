@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import * as p from "@clack/prompts";
-import { readFile, writeFile, cp, rm, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+import { cp, rm, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join, dirname } from "pathe";
 import { logger } from "../utils/logger";
 import {
@@ -51,11 +51,11 @@ async function collectTemplateFiles(
       : processedRelPath;
 
     if (isTemplateFile(relPath)) {
-      const content = await readFile(sourcePath, "utf-8");
+      const content = await Bun.file(sourcePath).text();
       const processedContent = await processTemplate(content, context);
       output.set(destKey, processedContent);
     } else {
-      const content = await readFile(sourcePath, "utf-8");
+      const content = await Bun.file(sourcePath).text();
       output.set(destKey, content);
     }
   }
@@ -167,7 +167,7 @@ async function createBackup(
     const sourcePath = join(cwd, relativePath);
     const destPath = join(backupDir, relativePath);
 
-    if (existsSync(sourcePath)) {
+    if (await Bun.file(sourcePath).exists()) {
       await mkdir(dirname(destPath), { recursive: true });
       await cp(sourcePath, destPath);
     }
@@ -215,7 +215,7 @@ async function handleConflicts(
     if (newContent) {
       const conflictPath = join(conflictsDir, conflict.path + ".new");
       await mkdir(dirname(conflictPath), { recursive: true });
-      await writeFile(conflictPath, newContent);
+      await Bun.write(conflictPath, newContent);
     }
   }
 
@@ -238,7 +238,7 @@ ${conflicts.map((c) => `- \`${c.path}\` (${c.status})`).join("\n")}
 4. Run \`npx luca update\` again after resolving all conflicts
 `;
 
-  await writeFile(summaryPath, summary);
+  await Bun.write(summaryPath, summary);
   logger.info(`Conflict details written to ${conflictsDir}/CONFLICTS.md`);
 }
 
@@ -270,7 +270,7 @@ async function applyUpdates(
       case "new":
         // Safe to update/add
         await mkdir(dirname(destPath), { recursive: true });
-        await writeFile(destPath, newContent);
+        await Bun.write(destPath, newContent);
         updated.push(comparison.path);
         break;
 
@@ -279,7 +279,7 @@ async function applyUpdates(
         if (options.force || options.acceptTheirs) {
           // Overwrite user changes
           await mkdir(dirname(destPath), { recursive: true });
-          await writeFile(destPath, newContent);
+          await Bun.write(destPath, newContent);
           updated.push(comparison.path);
         } else if (options.acceptMine) {
           // Keep user changes

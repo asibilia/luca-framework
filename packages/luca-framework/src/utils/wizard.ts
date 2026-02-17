@@ -8,7 +8,6 @@ import {
   mergeBranding,
 } from "./branding";
 import type { LucaConfig, BrandingConfig, ProjectContext } from "../types";
-import { readFile } from "fs/promises";
 import { sanitizeJsonParse } from "./sanitize";
 
 /**
@@ -259,7 +258,7 @@ export function createConfigFromArgs(args: {
 export async function loadConfigFromFile(
   configPath: string,
 ): Promise<LucaConfig> {
-  const content = await readFile(configPath, "utf-8");
+  const content = await Bun.file(configPath).text();
   const parsed = sanitizeJsonParse(content) as Record<string, unknown>;
 
   // Validate branding fields from config file

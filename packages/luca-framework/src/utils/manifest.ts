@@ -1,12 +1,10 @@
-import { readFile, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { createHash } from 'crypto';
-import { join, relative } from 'pathe';
-import { sanitizeJsonParse } from './sanitize';
-import type { LucaConfig, LucaManifest, FileComparison } from '../types';
+import { createHash } from "crypto";
+import { join, relative } from "pathe";
+import { sanitizeJsonParse } from "./sanitize";
+import type { LucaConfig, LucaManifest, FileComparison } from "../types";
 
 // Package version - will be updated by build process
-const LUCA_VERSION = '0.0.1';
+const LUCA_VERSION = "0.0.1";
 
 /**
  * Calculate SHA-256 hash of file contents.
@@ -23,8 +21,8 @@ const LUCA_VERSION = '0.0.1';
  * ```
  */
 export async function hashFile(filePath: string): Promise<string> {
-  const content = await readFile(filePath);
-  return createHash('sha256').update(content).digest('hex');
+  const content = await Bun.file(filePath).bytes();
+  return createHash("sha256").update(content).digest("hex");
 }
 
 /**
@@ -59,7 +57,7 @@ export async function createManifest(options: {
   const { config, cwd, createdFiles } = options;
   const now = new Date().toISOString();
 
-  const files: LucaManifest['files'] = {};
+  const files: LucaManifest["files"] = {};
 
   for (const filePath of createdFiles) {
     try {
@@ -68,7 +66,7 @@ export async function createManifest(options: {
 
       files[relativePath] = {
         originalHash: hash,
-        source: 'framework',
+        source: "framework",
       };
     } catch {
       // Skip files that can't be hashed (directories, etc.)
@@ -98,9 +96,12 @@ export async function createManifest(options: {
  * // Creates: .planning/manifest.json
  * ```
  */
-export async function writeManifest(manifest: LucaManifest, cwd: string): Promise<void> {
-  const manifestPath = join(cwd, '.planning', 'manifest.json');
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+export async function writeManifest(
+  manifest: LucaManifest,
+  cwd: string,
+): Promise<void> {
+  const manifestPath = join(cwd, ".planning", "manifest.json");
+  await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
 }
 
 /**
@@ -121,9 +122,9 @@ export async function writeManifest(manifest: LucaManifest, cwd: string): Promis
  * ```
  */
 export async function readManifest(cwd: string): Promise<LucaManifest | null> {
-  const manifestPath = join(cwd, '.planning', 'manifest.json');
+  const manifestPath = join(cwd, ".planning", "manifest.json");
   try {
-    const content = await readFile(manifestPath, 'utf-8');
+    const content = await Bun.file(manifestPath).text();
     return sanitizeJsonParse(content) as LucaManifest;
   } catch {
     return null;
@@ -146,7 +147,7 @@ export async function readManifest(cwd: string): Promise<LucaManifest | null> {
  * ```
  */
 export function hashContent(content: string): string {
-  return createHash('sha256').update(content).digest('hex');
+  return createHash("sha256").update(content).digest("hex");
 }
 
 /**
@@ -175,7 +176,7 @@ export function hashContent(content: string): string {
 export async function compareFiles(
   manifest: LucaManifest,
   newFiles: Map<string, string>,
-  cwd: string
+  cwd: string,
 ): Promise<FileComparison[]> {
   const comparisons: FileComparison[] = [];
 
@@ -189,7 +190,7 @@ export async function compareFiles(
       const originalHash = manifestEntry.originalHash;
 
       // Check if file exists on disk
-      if (existsSync(absolutePath)) {
+      if (await Bun.file(absolutePath).exists()) {
         try {
           const currentHash = await hashFile(absolutePath);
 
@@ -197,7 +198,7 @@ export async function compareFiles(
             // File unchanged since installation → safe to update
             comparisons.push({
               path: relativePath,
-              status: 'unchanged',
+              status: "unchanged",
               originalHash,
               currentHash,
               newHash,
@@ -206,7 +207,7 @@ export async function compareFiles(
             // User modified the file → conflict
             comparisons.push({
               path: relativePath,
-              status: 'user-modified',
+              status: "user-modified",
               originalHash,
               currentHash,
               newHash,
@@ -216,7 +217,7 @@ export async function compareFiles(
           // Can't read file - treat as deleted
           comparisons.push({
             path: relativePath,
-            status: 'deleted',
+            status: "deleted",
             originalHash,
             currentHash: null,
             newHash,
@@ -226,7 +227,7 @@ export async function compareFiles(
         // File was deleted from filesystem → conflict
         comparisons.push({
           path: relativePath,
-          status: 'deleted',
+          status: "deleted",
           originalHash,
           currentHash: null,
           newHash,
@@ -236,7 +237,7 @@ export async function compareFiles(
       // File not in manifest → new file to add
       comparisons.push({
         path: relativePath,
-        status: 'new',
+        status: "new",
         originalHash: null,
         currentHash: null,
         newHash,
