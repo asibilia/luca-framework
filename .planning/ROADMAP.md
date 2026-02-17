@@ -26,9 +26,9 @@
 **Complexity:** MODERATE
 **Depends on:** None
 
-- [ ] Plan 45-A: Fix source code TypeScript errors (11 files, ~19 errors)
-- [ ] Plan 45-B: Fix script TypeScript errors (3 files, ~15 errors)
-- [ ] Plan 45-C: Fix test file TypeScript errors (12 files, ~63 errors)
+- [x] Plan 45-A: Fix source code TypeScript errors (11 files, ~19 errors)
+- [x] Plan 45-B: Fix script TypeScript errors (3 files, ~15 errors)
+- [x] Plan 45-C: Fix test file TypeScript errors (12 files, ~63 errors)
 
 ### Phase 46 — Package Configuration Health
 
@@ -36,7 +36,7 @@
 **Complexity:** SIMPLE
 **Depends on:** None
 
-- [ ] Plan 46-A: Fix package.json and tsconfig health issues
+- [x] Plan 46-A: Fix package.json and tsconfig health issues
 
 ### Phase 47 — Test File Consolidation
 
