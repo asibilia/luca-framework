@@ -8,7 +8,7 @@
  */
 
 /** Keys that can be exploited for prototype pollution attacks */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
  * Recursively strip prototype pollution keys from a parsed JSON value.
@@ -17,7 +17,7 @@ const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
  * @returns A new value with dangerous keys removed
  */
 function stripPrototypeKeys(obj: unknown): unknown {
-  if (obj === null || typeof obj !== 'object') {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
 
@@ -42,9 +42,12 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * @throws {SyntaxError} If the input is not valid JSON
  */
 /**
- * NOTE: This function is intentionally duplicated in src/shared/validation-utils.ts
- * The two domains (src/ and packages/) are isolated by design and cannot cross-import.
- * If you modify this function, update the other copy as well.
+ * NOTE: This function is intentionally duplicated across isolated domains.
+ * The packages are isolated by design and cannot cross-import.
+ * If you modify this function, update all copies:
+ * - packages/luca-framework/src/utils/sanitize.ts (this file)
+ * - packages/luca-state/src/sanitize.ts
+ * - src/shared/validation-utils.ts
  */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);
@@ -57,11 +60,16 @@ export function sanitizeJsonParse(json: string): unknown {
  * @param json - The JSON string to parse
  * @returns Object with success, optional data, and optional error
  */
-export function safeSanitizeJsonParse(json: string): { success: true; data: unknown } | { success: false; error: string } {
+export function safeSanitizeJsonParse(
+  json: string,
+): { success: true; data: unknown } | { success: false; error: string } {
   try {
     const data = sanitizeJsonParse(json);
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'JSON parse failed' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "JSON parse failed",
+    };
   }
 }

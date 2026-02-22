@@ -27,6 +27,7 @@ import { luWorkflowRule } from "./lu-workflow.rule";
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { sanitizeJsonParse } from "../shared/validation-utils";
 
 // Import profile registry and config schema
 import { profileRegistry, profileConfigSchema } from "./profiles/index";
@@ -83,7 +84,7 @@ function loadProfileConfig(): {
   try {
     const configPath = join(process.cwd(), ".planning", "config.json");
     const raw = readFileSync(configPath, "utf-8");
-    const config = JSON.parse(raw);
+    const config = sanitizeJsonParse(raw) as Record<string, any>;
     const workflow = config?.workflow ?? {};
     return profileConfigSchema.parse(workflow);
   } catch {

@@ -1,6 +1,7 @@
 import { join } from "pathe";
 import { sanitizeJsonParse } from "../../sanitize";
 import { validateBranding } from "../../branding";
+import { VALID_TRACKERS } from "../../wizard";
 import type { CheckResult, DoctorCheck } from "../types";
 
 export const configValidationCheck: DoctorCheck = {
@@ -75,17 +76,18 @@ export const configValidationCheck: DoctorCheck = {
       }
 
       // Validate workTracker value
-      const validTrackers = ["jira", "github", "none"];
       if (
         config.workTracker &&
-        !validTrackers.includes(config.workTracker as string)
+        !VALID_TRACKERS.includes(
+          config.workTracker as (typeof VALID_TRACKERS)[number],
+        )
       ) {
         return {
           name: this.name,
           status: "fail",
           message: "config.json has invalid workTracker",
           fixCommand: "Delete .planning/ directory, then run: bunx luca init",
-          details: `workTracker must be one of: ${validTrackers.join(", ")}. Got: "${config.workTracker}"`,
+          details: `workTracker must be one of: ${VALID_TRACKERS.join(", ")}. Got: "${config.workTracker}"`,
         };
       }
 

@@ -4,6 +4,7 @@ import { join } from "pathe";
 import * as p from "@clack/prompts";
 import { copyTemplates, getTemplatesDir } from "./template";
 import { createManifest, writeManifest } from "./manifest";
+import { sanitizeJsonParse } from "./sanitize";
 import { logger } from "./logger";
 import type { LucaConfig, LucaManifest } from "../types";
 
@@ -256,7 +257,10 @@ export async function generateFiles(options: {
           if (await Bun.file(claudeSettingsPath).exists()) {
             try {
               const existing = await Bun.file(claudeSettingsPath).text();
-              existingSettings = JSON.parse(existing);
+              existingSettings = sanitizeJsonParse(existing) as Record<
+                string,
+                unknown
+              >;
             } catch {
               // Invalid JSON — start fresh
             }
@@ -264,7 +268,10 @@ export async function generateFiles(options: {
 
           // Read hook settings template
           const hooksContent = await Bun.file(settingsHooksPath).text();
-          const hooksSettings = JSON.parse(hooksContent);
+          const hooksSettings = sanitizeJsonParse(hooksContent) as Record<
+            string,
+            unknown
+          >;
 
           // Merge hooks into settings (preserving other keys like permissions)
           existingSettings.hooks = hooksSettings.hooks;
