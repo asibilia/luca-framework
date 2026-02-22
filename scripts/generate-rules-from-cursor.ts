@@ -103,13 +103,14 @@ function generateRuleTsContent(ruleData: RuleData): string {
     .substring(0, 20)
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9-]/g, "");
-  const className = `${ruleName.charAt(0).toUpperCase() + ruleName.slice(1).replace(/-/g, "")}Rule`;
   const configName = `${ruleName.replace(/-/g, "")}Config`;
+  // Derive camelCase export name with "Rule" suffix (e.g., "file-naming" -> "fileNamingRule")
+  const exportName = `${ruleName.replace(/-([a-z])/g, (_: string, letter: string) => letter.toUpperCase()).replace(/-/g, "")}Rule`;
 
   return `/**
  * ${ruleData.description}
  */
-import { BaseRuleImpl } from '../base/base-rule';
+import { createRule } from '../base/base-rule';
 import type { RuleConfig } from '../types/rule.types';
 
 // Define the ${ruleName} rule configuration
@@ -132,11 +133,7 @@ const ${configName}: RuleConfig = {
   ]
 };
 
-export class ${className} extends BaseRuleImpl {
-  constructor() {
-    super(${configName});
-  }
-}
+export const ${exportName} = createRule(${configName});
 `;
 }
 
