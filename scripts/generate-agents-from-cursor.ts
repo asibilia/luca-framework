@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
-import { mkdir, readdir } from "fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import path from "path";
+
+import { parseFrontmatter } from "./parse-frontmatter";
 
 interface AgentData {
   name: string;
@@ -14,62 +16,19 @@ interface AgentData {
 }
 
 async function parseAgentMarkdown(filePath: string): Promise<AgentData> {
-  const content = await Bun.file(filePath).text();
-
-  // Extract frontmatter
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!frontmatterMatch) {
-    throw new Error(`No frontmatter found in ${filePath}`);
-  }
-
-  const frontmatter = frontmatterMatch[1]!;
-  const frontmatterLines = frontmatter.split("\n");
-
-  const parsedFrontmatter: Record<string, any> = {};
-  for (const line of frontmatterLines) {
-    if (line.trim()) {
-      const colonIndex = line.indexOf(":");
-      if (colonIndex !== -1) {
-        const key = line.substring(0, colonIndex).trim();
-        const rawValue = line.substring(colonIndex + 1).trim();
-        let value: any = rawValue;
-
-        // Handle arrays
-        if (rawValue.startsWith("[") && rawValue.endsWith("]")) {
-          value = rawValue
-            .slice(1, -1)
-            .split(",")
-            .map((v) => v.trim().replace(/"/g, "").replace(/'/g, ""));
-        } else if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-          value = rawValue.slice(1, -1);
-        } else if (rawValue === "true") {
-          value = true;
-        } else if (rawValue === "false") {
-          value = false;
-        } else if (!isNaN(Number(rawValue))) {
-          value = Number(rawValue);
-        }
-
-        parsedFrontmatter[key] = value;
-      }
-    }
-  }
-
-  // Extract content after frontmatter
-  const contentWithoutFrontmatter = content
-    .substring(frontmatterMatch[0].length)
-    .trim();
+  const rawContent = await Bun.file(filePath).text();
+  const { frontmatter, content } = parseFrontmatter(rawContent);
 
   return {
-    name: parsedFrontmatter.name,
-    description: parsedFrontmatter.description,
-    tools: parsedFrontmatter.tools
-      ? parsedFrontmatter.tools.split(", ").map((t: string) => t.trim())
+    name: frontmatter.name,
+    description: frontmatter.description,
+    tools: frontmatter.tools
+      ? frontmatter.tools.split(", ").map((t: string) => t.trim())
       : undefined,
-    model: parsedFrontmatter.model,
-    color: parsedFrontmatter.color,
-    disableModelInvocation: parsedFrontmatter["disable-model-invocation"],
-    content: contentWithoutFrontmatter,
+    model: frontmatter.model,
+    color: frontmatter.color,
+    disableModelInvocation: frontmatter["disable-model-invocation"],
+    content,
   };
 }
 

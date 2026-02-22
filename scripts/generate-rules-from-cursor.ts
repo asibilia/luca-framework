@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
-import { mkdir, readdir } from "fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import path from "path";
+
+import { parseFrontmatter } from "./parse-frontmatter";
 
 interface RuleData {
   description: string;
@@ -11,80 +13,20 @@ interface RuleData {
 }
 
 async function parseRuleMarkdown(filePath: string): Promise<RuleData> {
-  const content = await Bun.file(filePath).text();
-
-  // Extract frontmatter
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  let parsedFrontmatter: Record<string, any> = {};
-  let contentWithoutFrontmatter = content;
-
-  if (frontmatterMatch) {
-    const frontmatter = frontmatterMatch[1]!;
-    const frontmatterLines = frontmatter.split("\n");
-
-    for (const line of frontmatterLines) {
-      if (line.trim()) {
-        const colonIndex = line.indexOf(":");
-        if (colonIndex !== -1) {
-          const key = line.substring(0, colonIndex).trim();
-          const rawValue = line.substring(colonIndex + 1).trim();
-          let value: any = rawValue;
-
-          // Handle arrays
-          if (rawValue.startsWith("[") && rawValue.endsWith("]")) {
-            value = rawValue
-              .slice(1, -1)
-              .split(",")
-              .map((v) => v.trim().replace(/"/g, "").replace(/'/g, ""));
-          } else if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-            value = rawValue.slice(1, -1);
-          } else if (rawValue === "true") {
-            value = true;
-          } else if (rawValue === "false") {
-            value = false;
-          } else if (!isNaN(Number(rawValue))) {
-            value = Number(rawValue);
-          }
-
-          parsedFrontmatter[key] = value;
-        }
-      }
-    }
-
-    // Extract content after frontmatter
-    contentWithoutFrontmatter = content
-      .substring(frontmatterMatch[0].length)
-      .trim();
-  } else {
-    // If no frontmatter, try to extract description from the first line or heading
-    const lines = content.split("\n");
-    let description = "";
-
-    // Look for a markdown heading that might serve as description
-    for (const line of lines) {
-      if (line.startsWith("# ")) {
-        description = line.substring(2).trim(); // Remove '# ' prefix
-        break;
-      }
-    }
-
-    if (!description) {
-      // Use first 100 characters as description
-      description = content.substring(0, 100).replace(/\n/g, " ").trim();
-    }
-
-    parsedFrontmatter = { description };
-  }
+  const rawContent = await Bun.file(filePath).text();
+  const { frontmatter, content } = parseFrontmatter(rawContent, {
+    fallbackDescription: true,
+  });
 
   return {
-    description: parsedFrontmatter.description || "Generic rule description",
-    globs: parsedFrontmatter.globs
-      ? Array.isArray(parsedFrontmatter.globs)
-        ? parsedFrontmatter.globs
-        : parsedFrontmatter.globs.split(", ")
+    description: frontmatter.description || "Generic rule description",
+    globs: frontmatter.globs
+      ? Array.isArray(frontmatter.globs)
+        ? frontmatter.globs
+        : frontmatter.globs.split(", ")
       : undefined,
-    alwaysApply: parsedFrontmatter.alwaysApply,
-    content: contentWithoutFrontmatter,
+    alwaysApply: frontmatter.alwaysApply,
+    content,
   };
 }
 
