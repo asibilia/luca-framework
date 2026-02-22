@@ -54,6 +54,34 @@
 
 - [x] Plan 48-A: Migrate node:fs and node:path to Bun equivalents
 
+### Phase 49 — Dead Code & Stale Generators
+
+**Goal:** Remove duplicate agent files and fix code generator that emits deleted base class.
+**Complexity:** SIMPLE
+**Depends on:** Phase 44
+**Gaps:** Audit HIGH #1, #2, #3
+
+- [x] Plan 49-A: Remove dead agent duplicates and fix stale code generator
+
+### Phase 50 — Bun Convention Alignment
+
+**Goal:** Replace execa with Bun.$, update npm/npx references to bun/bunx, replace CJS require with ESM import.
+**Complexity:** SIMPLE
+**Depends on:** Phase 48
+**Gaps:** Audit HIGH #4, MEDIUM #4, #6
+
+- [ ] Plan 50-A: Align adapters, commands, and rules with Bun conventions
+
+### Phase 51 — DRY Extraction & Security Consistency
+
+**Goal:** Extract shared frontmatter utility, deduplicate constants, apply sanitizeJsonParse consistently.
+**Complexity:** MODERATE
+**Depends on:** Phase 45
+**Gaps:** Audit HIGH #5, MEDIUM #1, #3
+
+- [ ] Plan 51-A: Extract shared frontmatter parsing utility from generate scripts
+- [ ] Plan 51-B: Apply sanitizeJsonParse and deduplicate VALID_TRACKERS
+
 ---
 
 ## Backlog (Deferred)
