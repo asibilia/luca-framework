@@ -56,12 +56,12 @@ export const initCommand = defineCommand({
       logger.error("Luca is already installed in this project.");
       logger.info("");
       logger.info("To update to the latest version:");
-      logger.info("  npx luca update");
+      logger.info("  bunx luca update");
       logger.info("");
       logger.info(
         "To reinitialize from scratch (this will overwrite existing config):",
       );
-      logger.info("  rm -rf .planning/ .cursor/luca/ && npx luca init");
+      logger.info("  rm -rf .planning/ .cursor/luca/ && bunx luca init");
       process.exit(1);
     }
 
@@ -82,7 +82,7 @@ export const initCommand = defineCommand({
         logger.info("  - Contains valid JSON");
         logger.info("  - Matches the expected schema (see docs for format)");
         logger.info("");
-        logger.info("Example: npx luca init --config ./luca-config.json");
+        logger.info("Example: bunx luca init --config ./luca-config.json");
         process.exit(1);
       }
     } else if (
@@ -119,7 +119,7 @@ export const initCommand = defineCommand({
       logger.info("To recover, try the following:");
       logger.info("  1. Check file permissions in the current directory");
       logger.info("  2. Ensure sufficient disk space is available");
-      logger.info("  3. Run `npx luca init` again");
+      logger.info("  3. Run `bunx luca init` again");
       logger.info("");
       logger.info(
         "If the problem persists, report a bug at: https://github.com/alecsibilia/luca-framework/issues",

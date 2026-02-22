@@ -25,6 +25,9 @@ import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
 // Import Luca-specific rule
 import { luWorkflowRule } from "./lu-workflow.rule";
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 // Import profile registry and config schema
 import { profileRegistry, profileConfigSchema } from "./profiles/index";
 
@@ -78,10 +81,8 @@ function loadProfileConfig(): {
   tech_stack_profiles: string[];
 } {
   try {
-    const fs = require("fs");
-    const path = require("path");
-    const configPath = path.join(process.cwd(), ".planning", "config.json");
-    const raw = fs.readFileSync(configPath, "utf-8");
+    const configPath = join(process.cwd(), ".planning", "config.json");
+    const raw = readFileSync(configPath, "utf-8");
     const config = JSON.parse(raw);
     const workflow = config?.workflow ?? {};
     return profileConfigSchema.parse(workflow);

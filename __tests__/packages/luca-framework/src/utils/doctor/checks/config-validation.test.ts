@@ -94,7 +94,7 @@ describe("configValidationCheck", () => {
     const result = await configValidationCheck.run();
     expect(result.status).toBe("fail");
     expect(result.message).toContain("missing");
-    expect(result.fixCommand).toContain("npx luca init");
+    expect(result.fixCommand).toContain("bunx luca init");
   });
 
   test.skip("config.json invalid JSON", async () => {
@@ -133,7 +133,7 @@ describe("configValidationCheck", () => {
     const result = await configValidationCheck.run();
     expect(result.status).toBe("warning");
     expect(result.message).toContain("manifest.json missing");
-    expect(result.fixCommand).toContain("npx luca update");
+    expect(result.fixCommand).toContain("bunx luca update");
   });
 
   test.skip("all valid (config + manifest)", async () => {

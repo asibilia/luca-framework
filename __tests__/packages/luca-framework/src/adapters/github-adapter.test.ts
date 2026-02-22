@@ -4,225 +4,207 @@
  * Tests for createGitHubAdapter() including getTicket, createBranch, linkPR,
  * validate, label mapping (type and priority), and error parsing.
  *
- * Uses mock.module() to replace execa before the adapter is imported.
+ * Uses Bun.$ global override via mock-shell to intercept shell commands.
  */
 
-import { describe, test, expect, beforeEach, mock } from 'bun:test';
-import { createExecaMock, installExecaMock } from '../../../../utils/mock-execa';
+import { describe, test, expect, afterEach } from "bun:test";
+import {
+  createShellMock,
+  installShellMock,
+} from "../../../../utils/mock-shell";
+import { createGitHubAdapter } from "../../../../../packages/luca-framework/src/adapters/github-adapter";
 
 // -- Fixtures matching the actual GitHubIssueResponse shape used by the adapter --
 
 const fullIssueResponse = {
   number: 42,
-  title: 'Bug: something is broken',
-  body: 'Steps to reproduce...',
-  state: 'open',
-  labels: [{ name: 'bug' }],
-  assignees: [{ login: 'developer' }],
-  url: 'https://github.com/org/repo/issues/42',
+  title: "Bug: something is broken",
+  body: "Steps to reproduce...",
+  state: "open",
+  labels: [{ name: "bug" }],
+  assignees: [{ login: "developer" }],
+  url: "https://github.com/org/repo/issues/42",
 };
 
 const minimalIssueResponse = {
   number: 1,
-  title: 'Minimal issue',
+  title: "Minimal issue",
   body: null,
-  state: 'closed',
+  state: "closed",
   labels: [],
   assignees: [],
-  url: 'https://github.com/org/repo/issues/1',
+  url: "https://github.com/org/repo/issues/1",
 };
 
 // ---------------------------------------------------------------------------
 // getTicket
 // ---------------------------------------------------------------------------
 
-describe('GitHubAdapter', () => {
-  describe('getTicket', () => {
-    test('returns ticket for valid issue with # prefix', async () => {
-      const execaMock = createExecaMock({
+describe("GitHubAdapter", () => {
+  let restoreShell: (() => void) | undefined;
+
+  afterEach(() => {
+    if (restoreShell) {
+      restoreShell();
+      restoreShell = undefined;
+    }
+  });
+
+  describe("getTicket", () => {
+    test("returns ticket for valid issue with # prefix", async () => {
+      const shellMock = createShellMock({
         stdout: JSON.stringify(fullIssueResponse),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      // Dynamic import after mock is installed
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('#42');
+      const result = await adapter.getTicket("#42");
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.id).toBe('#42');
-        expect(result.data.title).toBe('Bug: something is broken');
-        expect(result.data.description).toBe('Steps to reproduce...');
-        expect(result.data.type).toBe('bug');
-        expect(result.data.status).toBe('open');
-        expect(result.data.priority).toBe('medium');
-        expect(result.data.assignee).toBe('developer');
-        expect(result.data.url).toBe('https://github.com/org/repo/issues/42');
+        expect(result.data.id).toBe("#42");
+        expect(result.data.title).toBe("Bug: something is broken");
+        expect(result.data.description).toBe("Steps to reproduce...");
+        expect(result.data.type).toBe("bug");
+        expect(result.data.status).toBe("open");
+        expect(result.data.priority).toBe("medium");
+        expect(result.data.assignee).toBe("developer");
+        expect(result.data.url).toBe("https://github.com/org/repo/issues/42");
       }
 
-      // Verify execa was called with correct args (# stripped, -- before issue number)
-      const calls = execaMock.getCalls();
+      // Verify shell was called with correct command (# stripped, -- before issue number)
+      const calls = shellMock.getCalls();
       expect(calls.length).toBe(1);
-      expect(calls[0]!.command).toBe('gh');
-      expect(calls[0]!.args).toContain('42');
-      // Verify --json comes before --, and -- comes before the issue number
-      const args = calls[0]!.args;
-      expect(args.indexOf('--json')).toBeLessThan(args.indexOf('--'));
-      expect(args.indexOf('--')).toBeLessThan(args.indexOf('42'));
+      expect(calls[0]!.raw).toContain("gh issue view");
+      expect(calls[0]!.raw).toContain("--json");
+      expect(calls[0]!.raw).toContain("-- 42");
     });
 
-    test('returns ticket for valid issue without # prefix', async () => {
-      const execaMock = createExecaMock({
+    test("returns ticket for valid issue without # prefix", async () => {
+      const shellMock = createShellMock({
         stdout: JSON.stringify(fullIssueResponse),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.id).toBe('#42');
+        expect(result.data.id).toBe("#42");
       }
     });
 
-    test('returns ticket with empty description when body is null', async () => {
-      const execaMock = createExecaMock({
+    test("returns ticket with empty description when body is null", async () => {
+      const shellMock = createShellMock({
         stdout: JSON.stringify(minimalIssueResponse),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('1');
+      const result = await adapter.getTicket("1");
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.description).toBe('');
+        expect(result.data.description).toBe("");
         expect(result.data.assignee).toBeUndefined();
-        expect(result.data.type).toBe('task');
-        expect(result.data.priority).toBe('medium');
+        expect(result.data.type).toBe("task");
+        expect(result.data.priority).toBe("medium");
       }
     });
 
-    test('returns error when issue not found', async () => {
-      const execaMock = createExecaMock({
-        error: new Error('could not resolve to an issue: not found'),
+    test("returns error when issue not found", async () => {
+      const shellMock = createShellMock({
+        error: new Error("could not resolve to an issue: not found"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('999');
+      const result = await adapter.getTicket("999");
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('Issue #999 not found');
+        expect(result.error).toContain("Issue #999 not found");
       }
     });
 
-    test('returns error when gh CLI not installed (ENOENT style)', async () => {
+    test("returns error when gh CLI not installed (ENOENT style)", async () => {
       // Note: "command not found" also contains "not found" which matches the
       // first condition in parseGhError, so it returns "Issue #1 not found".
       // The ENOENT pattern is the reliable way to detect missing CLI.
       // This test verifies the "command not found" message is handled
       // (it matches the "not found" branch in parseGhError).
-      const execaMock = createExecaMock({
-        error: new Error('command not found: gh'),
+      const shellMock = createShellMock({
+        error: new Error("command not found: gh"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('1');
+      const result = await adapter.getTicket("1");
 
       expect(result.success).toBe(false);
       // "command not found" contains "not found", so parseGhError matches that first
       if (!result.success) {
-        expect(result.error).toContain('not found');
+        expect(result.error).toContain("not found");
       }
     });
 
-    test('returns error when gh CLI ENOENT', async () => {
-      const execaMock = createExecaMock({
-        error: new Error('ENOENT'),
+    test("returns error when gh CLI ENOENT", async () => {
+      const shellMock = createShellMock({
+        error: new Error("ENOENT"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('1');
+      const result = await adapter.getTicket("1");
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('GitHub CLI (gh) not installed');
+        expect(result.error).toContain("GitHub CLI (gh) not installed");
       }
     });
 
-    test('returns error when not authenticated', async () => {
-      const execaMock = createExecaMock({
-        error: new Error('not logged in to any GitHub hosts'),
+    test("returns error when not authenticated", async () => {
+      const shellMock = createShellMock({
+        error: new Error("not logged in to any GitHub hosts"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('1');
+      const result = await adapter.getTicket("1");
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('GitHub CLI not authenticated');
+        expect(result.error).toContain("GitHub CLI not authenticated");
       }
     });
 
-    test('returns generic error for unknown errors', async () => {
-      const execaMock = createExecaMock({
-        error: new Error('something unexpected happened'),
+    test("returns generic error for unknown errors", async () => {
+      const shellMock = createShellMock({
+        error: new Error("something unexpected happened"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('1');
+      const result = await adapter.getTicket("1");
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('GitHub CLI error:');
-        expect(result.error).toContain('something unexpected happened');
+        expect(result.error).toContain("GitHub CLI error:");
+        expect(result.error).toContain("something unexpected happened");
       }
     });
 
-    test('handles non-Error thrown values', async () => {
-      const execaMock = createExecaMock({
-        error: 'string error' as unknown as Error,
+    test("handles non-Error thrown values", async () => {
+      const shellMock = createShellMock({
+        error: "string error" as unknown as Error,
       });
       // The mock factory throws the error object; when it's a string, parseGhError
       // uses String(error) path
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('1');
+      const result = await adapter.getTicket("1");
 
       expect(result.success).toBe(false);
     });
@@ -232,95 +214,80 @@ describe('GitHubAdapter', () => {
   // Label mapping — type inference
   // -------------------------------------------------------------------------
 
-  describe('inferTypeFromLabels (via getTicket)', () => {
+  describe("inferTypeFromLabels (via getTicket)", () => {
     test('maps "bug" label to bug type', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'bug' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "bug" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.type).toBe('bug');
+      if (result.success) expect(result.data.type).toBe("bug");
     });
 
     test('maps "enhancement" label to story type', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'enhancement' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "enhancement" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.type).toBe('story');
+      if (result.success) expect(result.data.type).toBe("story");
     });
 
     test('maps "feature" label to story type', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'feature' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "feature" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.type).toBe('story');
+      if (result.success) expect(result.data.type).toBe("story");
     });
 
     test('maps "epic" label to epic type', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'epic' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "epic" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.type).toBe('epic');
+      if (result.success) expect(result.data.type).toBe("epic");
     });
 
-    test('defaults to task type with no matching labels', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'documentation' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+    test("defaults to task type with no matching labels", async () => {
+      const issue = {
+        ...fullIssueResponse,
+        labels: [{ name: "documentation" }],
+      };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.type).toBe('task');
+      if (result.success) expect(result.data.type).toBe("task");
     });
 
-    test('label matching is case-insensitive', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'BUG' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+    test("label matching is case-insensitive", async () => {
+      const issue = { ...fullIssueResponse, labels: [{ name: "BUG" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.type).toBe('bug');
+      if (result.success) expect(result.data.type).toBe("bug");
     });
   });
 
@@ -328,95 +295,77 @@ describe('GitHubAdapter', () => {
   // Label mapping — priority inference
   // -------------------------------------------------------------------------
 
-  describe('inferPriorityFromLabels (via getTicket)', () => {
+  describe("inferPriorityFromLabels (via getTicket)", () => {
     test('maps "critical" label to highest priority', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'critical' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "critical" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.priority).toBe('highest');
+      if (result.success) expect(result.data.priority).toBe("highest");
     });
 
     test('maps "urgent" label to highest priority', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'urgent' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "urgent" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.priority).toBe('highest');
+      if (result.success) expect(result.data.priority).toBe("highest");
     });
 
     test('maps "high" label to high priority', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'high' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "high" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.priority).toBe('high');
+      if (result.success) expect(result.data.priority).toBe("high");
     });
 
     test('maps "priority" label to high priority', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'priority' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "priority" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.priority).toBe('high');
+      if (result.success) expect(result.data.priority).toBe("high");
     });
 
     test('maps "low" label to low priority', async () => {
-      const issue = { ...fullIssueResponse, labels: [{ name: 'low' }] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const issue = { ...fullIssueResponse, labels: [{ name: "low" }] };
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.priority).toBe('low');
+      if (result.success) expect(result.data.priority).toBe("low");
     });
 
-    test('defaults to medium priority with no matching labels', async () => {
+    test("defaults to medium priority with no matching labels", async () => {
       const issue = { ...fullIssueResponse, labels: [] };
-      const execaMock = createExecaMock({ stdout: JSON.stringify(issue) });
-      installExecaMock(execaMock);
+      const shellMock = createShellMock({ stdout: JSON.stringify(issue) });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.getTicket('42');
+      const result = await adapter.getTicket("42");
 
       expect(result.success).toBe(true);
-      if (result.success) expect(result.data.priority).toBe('medium');
+      if (result.success) expect(result.data.priority).toBe("medium");
     });
   });
 
@@ -424,68 +373,61 @@ describe('GitHubAdapter', () => {
   // createBranch
   // -------------------------------------------------------------------------
 
-  describe('createBranch', () => {
-    test('creates branch via gh issue develop', async () => {
-      const execaMock = createExecaMock({ stdout: '' });
-      installExecaMock(execaMock);
+  describe("createBranch", () => {
+    test("creates branch via gh issue develop", async () => {
+      const shellMock = createShellMock({ stdout: "" });
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.createBranch!('#42', 'feat/my-branch');
+      const result = await adapter.createBranch!("#42", "feat/my-branch");
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data).toBe('feat/my-branch');
+        expect(result.data).toBe("feat/my-branch");
       }
 
-      const calls = execaMock.getCalls();
-      expect(calls[0]!.command).toBe('gh');
-      expect(calls[0]!.args).toEqual(['issue', 'develop', '42', '--name', 'feat/my-branch']);
+      const calls = shellMock.getCalls();
+      expect(calls[0]!.raw).toContain("gh issue develop");
+      expect(calls[0]!.raw).toContain("42");
+      expect(calls[0]!.raw).toContain("--name");
+      expect(calls[0]!.raw).toContain("feat/my-branch");
     });
 
-    test('falls back to git checkout when gh issue develop fails', async () => {
-      const execaMock = createExecaMock({}, [
-        { error: new Error('gh issue develop not supported') },
-        { stdout: '' }, // git checkout -b succeeds
+    test("falls back to git checkout when gh issue develop fails", async () => {
+      const shellMock = createShellMock({}, [
+        { error: new Error("gh issue develop not supported") },
+        { stdout: "" }, // git checkout -b succeeds
       ]);
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.createBranch!('42', 'feat/fallback');
+      const result = await adapter.createBranch!("42", "feat/fallback");
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data).toBe('feat/fallback');
+        expect(result.data).toBe("feat/fallback");
       }
 
-      const calls = execaMock.getCalls();
+      const calls = shellMock.getCalls();
       expect(calls.length).toBe(2);
-      expect(calls[1]!.command).toBe('git');
-      expect(calls[1]!.args).toEqual(['checkout', '-b', '--', 'feat/fallback']);
+      expect(calls[1]!.raw).toContain("git checkout -b");
+      expect(calls[1]!.raw).toContain("-- feat/fallback");
     });
 
-    test('returns error when both gh and git fail', async () => {
-      const execaMock = createExecaMock({}, [
-        { error: new Error('gh issue develop failed') },
-        { error: new Error('branch already exists') },
+    test("returns error when both gh and git fail", async () => {
+      const shellMock = createShellMock({}, [
+        { error: new Error("gh issue develop failed") },
+        { error: new Error("branch already exists") },
       ]);
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.createBranch!('42', 'feat/existing');
+      const result = await adapter.createBranch!("42", "feat/existing");
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('Failed to create branch');
-        expect(result.error).toContain('branch already exists');
+        expect(result.error).toContain("Failed to create branch");
+        expect(result.error).toContain("branch already exists");
       }
     });
   });
@@ -494,24 +436,24 @@ describe('GitHubAdapter', () => {
   // linkPR
   // -------------------------------------------------------------------------
 
-  describe('linkPR', () => {
-    test('always returns success (no-op)', async () => {
-      const execaMock = createExecaMock();
-      installExecaMock(execaMock);
+  describe("linkPR", () => {
+    test("always returns success (no-op)", async () => {
+      const shellMock = createShellMock();
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
-      const result = await adapter.linkPR!('#42', 'https://github.com/org/repo/pull/1');
+      const result = await adapter.linkPR!(
+        "#42",
+        "https://github.com/org/repo/pull/1",
+      );
 
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBeUndefined();
       }
 
-      // No execa calls should have been made
-      expect(execaMock.getCalls().length).toBe(0);
+      // No shell calls should have been made
+      expect(shellMock.getCalls().length).toBe(0);
     });
   });
 
@@ -519,16 +461,13 @@ describe('GitHubAdapter', () => {
   // validate
   // -------------------------------------------------------------------------
 
-  describe('validate', () => {
-    test('returns success when logged in', async () => {
-      const execaMock = createExecaMock({
-        stdout: 'Logged in to github.com account user (keyring)',
+  describe("validate", () => {
+    test("returns success when logged in", async () => {
+      const shellMock = createShellMock({
+        stdout: "Logged in to github.com account user (keyring)",
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
       const result = await adapter.validate!();
 
@@ -538,74 +477,62 @@ describe('GitHubAdapter', () => {
       }
     });
 
-    test('returns success when active account status', async () => {
-      const execaMock = createExecaMock({
-        stdout: 'Active account: true',
+    test("returns success when active account status", async () => {
+      const shellMock = createShellMock({
+        stdout: "Active account: true",
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
       const result = await adapter.validate!();
 
       expect(result.success).toBe(true);
     });
 
-    test('returns error when not authenticated (stdout without login status)', async () => {
+    test("returns error when not authenticated (stdout without login status)", async () => {
       // The validate method checks if stdout includes "logged in" or "active account: true".
       // When neither matches, it returns an error.
-      const execaMock = createExecaMock({
-        stdout: 'No accounts configured. Run gh auth login.',
+      const shellMock = createShellMock({
+        stdout: "No accounts configured. Run gh auth login.",
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
       const result = await adapter.validate!();
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('GitHub CLI not authenticated');
+        expect(result.error).toContain("GitHub CLI not authenticated");
       }
     });
 
-    test('returns error when gh CLI not installed (exception)', async () => {
-      const execaMock = createExecaMock({
-        error: new Error('command not found: gh'),
+    test("returns error when gh CLI not installed (exception)", async () => {
+      const shellMock = createShellMock({
+        error: new Error("command not found: gh"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
       const result = await adapter.validate!();
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('GitHub CLI (gh) not installed');
+        expect(result.error).toContain("GitHub CLI (gh) not installed");
       }
     });
 
-    test('returns generic validation error for unknown errors', async () => {
-      const execaMock = createExecaMock({
-        error: new Error('some unexpected error'),
+    test("returns generic validation error for unknown errors", async () => {
+      const shellMock = createShellMock({
+        error: new Error("some unexpected error"),
       });
-      installExecaMock(execaMock);
+      restoreShell = installShellMock(shellMock);
 
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
       const adapter = createGitHubAdapter();
       const result = await adapter.validate!();
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('GitHub CLI validation failed');
+        expect(result.error).toContain("GitHub CLI validation failed");
       }
     });
   });
@@ -614,29 +541,15 @@ describe('GitHubAdapter', () => {
   // Adapter properties
   // -------------------------------------------------------------------------
 
-  describe('adapter properties', () => {
-    test('has name "github"', async () => {
-      const execaMock = createExecaMock();
-      installExecaMock(execaMock);
-
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
+  describe("adapter properties", () => {
+    test('has name "github"', () => {
       const adapter = createGitHubAdapter();
-      expect(adapter.name).toBe('github');
+      expect(adapter.name).toBe("github");
     });
 
-    test('accepts optional config', async () => {
-      const execaMock = createExecaMock({
-        stdout: JSON.stringify(fullIssueResponse),
-      });
-      installExecaMock(execaMock);
-
-      const { createGitHubAdapter } = await import(
-        '../../../../../packages/luca-framework/src/adapters/github-adapter'
-      );
-      const adapter = createGitHubAdapter({ owner: 'myorg', repo: 'myrepo' });
-      expect(adapter.name).toBe('github');
+    test("accepts optional config", () => {
+      const adapter = createGitHubAdapter({ owner: "myorg", repo: "myrepo" });
+      expect(adapter.name).toBe("github");
     });
   });
 });

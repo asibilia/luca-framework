@@ -16,7 +16,7 @@ export const configValidationCheck: DoctorCheck = {
         name: this.name,
         status: "fail",
         message: "config.json missing",
-        fixCommand: "npx luca init",
+        fixCommand: "bunx luca init",
         details: "Luca configuration file not found in .planning/",
       };
     }
@@ -37,7 +37,7 @@ export const configValidationCheck: DoctorCheck = {
           name: this.name,
           status: "fail",
           message: "config.json invalid",
-          fixCommand: "Delete .planning/ directory, then run: npx luca init",
+          fixCommand: "Delete .planning/ directory, then run: bunx luca init",
           details: `Missing required fields: ${missingFields.join(", ")}`,
         };
       }
@@ -54,7 +54,7 @@ export const configValidationCheck: DoctorCheck = {
             name: this.name,
             status: "fail",
             message: "config.json has incomplete branding",
-            fixCommand: "Delete .planning/ directory, then run: npx luca init",
+            fixCommand: "Delete .planning/ directory, then run: bunx luca init",
             details: `Missing required branding fields: ${missingBrandingFields.join(", ")}`,
           };
         }
@@ -68,7 +68,7 @@ export const configValidationCheck: DoctorCheck = {
             name: this.name,
             status: "fail",
             message: "config.json has invalid branding",
-            fixCommand: "Delete .planning/ directory, then run: npx luca init",
+            fixCommand: "Delete .planning/ directory, then run: bunx luca init",
             details: `Branding validation failed — ${errorDetails}`,
           };
         }
@@ -84,7 +84,7 @@ export const configValidationCheck: DoctorCheck = {
           name: this.name,
           status: "fail",
           message: "config.json has invalid workTracker",
-          fixCommand: "Delete .planning/ directory, then run: npx luca init",
+          fixCommand: "Delete .planning/ directory, then run: bunx luca init",
           details: `workTracker must be one of: ${validTrackers.join(", ")}. Got: "${config.workTracker}"`,
         };
       }
@@ -95,7 +95,7 @@ export const configValidationCheck: DoctorCheck = {
           name: this.name,
           status: "warning",
           message: "manifest.json missing",
-          fixCommand: "npx luca update",
+          fixCommand: "bunx luca update",
           details: "Manifest file missing. Updates may not be safe.",
         };
       }
@@ -118,7 +118,7 @@ export const configValidationCheck: DoctorCheck = {
         name: this.name,
         status: "fail",
         message: "config.json unreadable",
-        fixCommand: "Delete .planning/ directory, then run: npx luca init",
+        fixCommand: "Delete .planning/ directory, then run: bunx luca init",
         details: isJsonEscapeError
           ? `${errorMessage}. Hint: Ensure backslashes in regex patterns are double-escaped (e.g., "[A-Z]+-\\\\d+" not "[A-Z]+-\\d+")`
           : errorMessage,

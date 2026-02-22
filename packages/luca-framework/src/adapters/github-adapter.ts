@@ -8,7 +8,6 @@
  * @module adapters/github-adapter
  */
 
-import { execa } from "execa";
 import { z } from "zod";
 
 import type {
@@ -106,7 +105,7 @@ function inferPriorityFromLabels(
 /**
  * Parse error output to provide helpful error messages.
  *
- * @param error - Error from execa
+ * @param error - Error from Bun.$ shell execution
  * @param issueNumber - The issue number being looked up
  * @returns Formatted error message
  */
@@ -248,14 +247,9 @@ export function createGitHubAdapter(
       }
 
       try {
-        const { stdout } = await execa("gh", [
-          "issue",
-          "view",
-          "--json",
-          "number,title,body,state,labels,assignees,url",
-          "--",
-          issueNumber,
-        ]);
+        const result =
+          await Bun.$`gh issue view --json number,title,body,state,labels,assignees,url -- ${issueNumber}`.quiet();
+        const stdout = result.text();
 
         const raw = JSON.parse(stdout);
         const parsed = githubIssueResponseSchema.safeParse(raw);
@@ -315,18 +309,12 @@ export function createGitHubAdapter(
 
       try {
         // Try gh issue develop first (creates linked branch)
-        await execa("gh", [
-          "issue",
-          "develop",
-          issueNumber,
-          "--name",
-          branchName,
-        ]);
+        await Bun.$`gh issue develop ${issueNumber} --name ${branchName}`.quiet();
         return { success: true, data: branchName };
       } catch {
         // Fallback to standard git checkout with -- to separate flags from branch name
         try {
-          await execa("git", ["checkout", "-b", "--", branchName]);
+          await Bun.$`git checkout -b -- ${branchName}`.quiet();
           return { success: true, data: branchName };
         } catch (gitError) {
           const errorMessage =
@@ -367,7 +355,8 @@ export function createGitHubAdapter(
      */
     async validate(): Promise<AdapterResult<boolean>> {
       try {
-        const { stdout } = await execa("gh", ["auth", "status"]);
+        const result = await Bun.$`gh auth status`.quiet();
+        const stdout = result.text();
 
         // Check if output indicates logged in status
         if (

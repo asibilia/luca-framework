@@ -235,7 +235,7 @@ ${conflicts.map((c) => `- \`${c.path}\` (${c.status})`).join("\n")}
 1. Compare your version with the \`.new\` version
 2. Merge changes as needed
 3. Delete the \`.new\` file when resolved
-4. Run \`npx luca update\` again after resolving all conflicts
+4. Run \`bunx luca update\` again after resolving all conflicts
 `;
 
   await Bun.write(summaryPath, summary);
@@ -361,7 +361,7 @@ export const updateCommand = defineCommand({
     const manifest = await readManifest(cwd);
     if (!manifest) {
       logger.error("Luca is not installed in this project.");
-      logger.info("Run `npx luca init` to initialize a new Luca project.");
+      logger.info("Run `bunx luca init` to initialize a new Luca project.");
       process.exit(1);
     }
 
@@ -528,9 +528,9 @@ ${conflicted.length > 0 ? "Review conflicts in .cursor/luca/conflicts/ and resol
       logger.info("Your files have been restored to their pre-update state.");
       logger.info("");
       logger.info("To recover, try the following:");
-      logger.info("  1. Run `npx luca doctor` to check your installation");
+      logger.info("  1. Run `bunx luca doctor` to check your installation");
       logger.info(
-        "  2. Run `npx luca update --dry-run` to preview changes without applying them",
+        "  2. Run `bunx luca update --dry-run` to preview changes without applying them",
       );
       logger.info("  3. If the issue persists, report a bug at:");
       logger.info("     https://github.com/alecsibilia/luca-framework/issues");
