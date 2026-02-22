@@ -70,7 +70,7 @@
 **Depends on:** Phase 48
 **Gaps:** Audit HIGH #4, MEDIUM #4, #6
 
-- [ ] Plan 50-A: Align adapters, commands, and rules with Bun conventions
+- [x] Plan 50-A: Align adapters, commands, and rules with Bun conventions
 
 ### Phase 51 — DRY Extraction & Security Consistency
 
