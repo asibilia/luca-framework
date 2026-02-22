@@ -79,8 +79,8 @@
 **Depends on:** Phase 45
 **Gaps:** Audit HIGH #5, MEDIUM #1, #3
 
-- [ ] Plan 51-A: Extract shared frontmatter parsing utility from generate scripts
-- [ ] Plan 51-B: Apply sanitizeJsonParse and deduplicate VALID_TRACKERS
+- [x] Plan 51-A: Extract shared frontmatter parsing utility from generate scripts
+- [x] Plan 51-B: Apply sanitizeJsonParse and deduplicate VALID_TRACKERS
 
 ---
 

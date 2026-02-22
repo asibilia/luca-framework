@@ -2,32 +2,32 @@
 
 ## Session Info
 
-- **Started**: 2026-02-21
+- **Started**: 2026-02-22
 - **Workflow**: /phase-execute
-- **Phase**: 50 — Bun Convention Alignment (COMPLETE)
+- **Phase**: 51 — DRY Extraction & Security Consistency
 
-Auto-persisted at 2026-02-22T00:38:54Z (zone: stop)
+Auto-persisted at 2026-02-22T16:27:18Z (zone: stop)
 
 ## Memory Recall
 
-- **Patterns**: CLI entry point with import.meta.main instead of CJS require.main (Phase 12); Bun.$ for shell commands per CLAUDE.md
-- **Decisions**: Bun-first runtime, execa→Bun.$, npm/npx→bun/bunx in user-facing messages
-- **Pitfalls**: CJS require('fs') in ESM module may work at runtime but violates conventions
+- **Patterns**: Self-contained cross-package modules (Phase 6); Zod safeParse at API boundaries (Phase 6); Metadata-driven cognition via frontmatter (Phase 15); Source-of-truth build pipeline (Phase 17)
+- **Decisions**: No raw JSON.parse on external data — use sanitizeJsonParse(); Enterprise focus — prioritize security consistency
+- **Pitfalls**: Cross-package import failures — use self-contained modules or npm package imports; js-yaml quoting change propagation affects test assertions
 - **Procedures**: None active
 
-## Execution Findings
+## Execution Notes
 
-- Phase 50 executed in 1 wave, 7 tasks (+ 1 bonus task T4b)
-- Bun.$ tagged template syntax requires `.quiet()` to suppress stdout; `.text()` to extract output
-- Test mock infrastructure redesigned: `mock-shell.ts` replaces `mock-execa.ts`, overrides `Bun.$` on the global
-- Bonus discovery: config-validation.ts had 7 additional npx references not identified in audit
-- readFileSync from "node:fs" via ESM import is the correct pattern for synchronous file reads in Bun (Bun.file is async-only)
+- Phase 51 executed in 2 waves (A then B), both successful
+- Wave A: Created `scripts/parse-frontmatter.ts` shared utility, refactored 3 generate scripts (commit `47af519`)
+- Wave B: Applied `sanitizeJsonParse` in 3 files, deduplicated `VALID_TRACKERS`, updated NOTE comments (commit `de0e078`)
+- All verification checks passed: tsc clean, 1763 tests pass, build:all produces 327 files
+- No deviations from plans; bonus T4b (NOTE comment update) completed per plan checker recommendation
 
 ## Candidate Learnings
 
-- **Pattern**: Bun.$ mock strategy — override `Bun.$` on the global, record raw command strings, return configurable responses
-- **Pitfall**: When migrating execa→Bun.$, check ALL source files for npm/npx references (not just the ones identified in audit)
-- **Decision**: For synchronous file operations in ESM modules, use `readFileSync` from `"node:fs"` via ESM import, not `Bun.file()`
+- **Pattern**: Shared build-time utilities in `scripts/` directory work well for DRY extraction without cross-package import issues
+- **Pattern**: sanitizeJsonParse copy-per-domain pattern now covers 3 locations; NOTE comments link all copies for maintainability
+- **Decision**: VALID_TRACKERS single source of truth in wizard.ts, imported by config-validation.ts (same package, safe import)
 
 ---
 
