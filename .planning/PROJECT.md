@@ -8,9 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.6.0 — Shipped)
+## Current State (v1.7.0 — Shipped)
 
-**Last Shipped:** v1.6.0 — Package & Publish (2026-02-16)
+**Last Shipped:** v1.7.0 — Codebase Health & Build Stability (2026-02-23)
+
+Resolved accumulated tech debt from v1.6.0: clean TypeScript compilation (0 errors across all packages), consolidated test conventions (`__tests__/` directory), full Bun API alignment (Bun.file, Bun.$, node:fs prefixes). Extracted shared utilities (parse-frontmatter.ts), applied sanitizeJsonParse consistently across all 3 isolated domains, eliminated dead code (duplicate agents, stale generators), deduplicated VALID_TRACKERS constant. 1763 tests (1763 pass, 6 skip), 28 agents, 45+ skills, 19 rules.
+
+## Previous State (v1.6.0)
+
+v1.6.0 — Package & Publish (2026-02-16)
 
 Standalone XState workflow state package (`packages/luca-state/`) with zero framework dependencies, 347 tests, 12-subcommand CLI. Full framework rewire (83 source files + 327 generated files). Memory suspend/resume with checkpoint persistence and auto-persist on context warnings. Milestone-scoped memory recall with version distance scoring. Tech stack guideline profiles with conditional rule loading, config toggle, and auto-detection integration. Post-milestone tech debt cleanup: class-to-functional rule refactor (19 rules), duplicate state-machine deletion (-8,300 lines), type deduplication. 1755 tests (1749 pass, 6 skip), 30 agents, 45+ skills, 19 rules.
 

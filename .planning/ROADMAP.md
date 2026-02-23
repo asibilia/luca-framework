@@ -2,85 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v1.7.0 — Codebase Health & Build Stability
-
----
-
-## v1.7.0 — Codebase Health & Build Stability
-
-**Goal:** Resolve accumulated tech debt from v1.6.0, fix all TypeScript errors, clean repo hygiene, consolidate test conventions, and ensure package configs are publish-ready.
-
-### Phase 44 — Quick Wins: Repo Hygiene
-
-**Goal:** Clean committed artifacts, rename convention violations, remove empty directories.
-**Complexity:** TRIVIAL
-**Depends on:** None
-
-- [x] Plan 44-A: Remove git-tracked coverage/ and .DS_Store artifacts (already clean)
-- [x] Plan 44-B: Rename snake_case rule files to kebab-case
-- [x] Plan 44-C: Clean empty directories and document phase numbering gaps
-
-### Phase 45 — TypeScript Error Resolution
-
-**Goal:** Fix all 97 TypeScript errors across 26 files to achieve clean `tsc --noEmit`.
-**Complexity:** MODERATE
-**Depends on:** None
-
-- [x] Plan 45-A: Fix source code TypeScript errors (11 files, ~19 errors)
-- [x] Plan 45-B: Fix script TypeScript errors (3 files, ~15 errors)
-- [x] Plan 45-C: Fix test file TypeScript errors (12 files, ~63 errors)
-
-### Phase 46 — Package Configuration Health
-
-**Goal:** Fix package.json main fields, add missing tsconfigs, clean unused path aliases.
-**Complexity:** SIMPLE
-**Depends on:** None
-
-- [x] Plan 46-A: Fix package.json and tsconfig health issues
-
-### Phase 47 — Test File Consolidation
-
-**Goal:** Establish test convention and move scattered test files to centralized `__tests__/`.
-**Complexity:** MODERATE
-**Depends on:** Phase 45
-
-- [x] Plan 47-A: Consolidate scattered test files into **tests**/ directory
-
-### Phase 48 — Bun API Migration
-
-**Goal:** Replace Node.js fs/path APIs with Bun equivalents in luca-framework package.
-**Complexity:** MODERATE
-**Depends on:** Phase 45
-
-- [x] Plan 48-A: Migrate node:fs and node:path to Bun equivalents
-
-### Phase 49 — Dead Code & Stale Generators
-
-**Goal:** Remove duplicate agent files and fix code generator that emits deleted base class.
-**Complexity:** SIMPLE
-**Depends on:** Phase 44
-**Gaps:** Audit HIGH #1, #2, #3
-
-- [x] Plan 49-A: Remove dead agent duplicates and fix stale code generator
-
-### Phase 50 — Bun Convention Alignment
-
-**Goal:** Replace execa with Bun.$, update npm/npx references to bun/bunx, replace CJS require with ESM import.
-**Complexity:** SIMPLE
-**Depends on:** Phase 48
-**Gaps:** Audit HIGH #4, MEDIUM #4, #6
-
-- [x] Plan 50-A: Align adapters, commands, and rules with Bun conventions
-
-### Phase 51 — DRY Extraction & Security Consistency
-
-**Goal:** Extract shared frontmatter utility, deduplicate constants, apply sanitizeJsonParse consistently.
-**Complexity:** MODERATE
-**Depends on:** Phase 45
-**Gaps:** Audit HIGH #5, MEDIUM #1, #3
-
-- [x] Plan 51-A: Extract shared frontmatter parsing utility from generate scripts
-- [x] Plan 51-B: Apply sanitizeJsonParse and deduplicate VALID_TRACKERS
+**Current Milestone:** Planning next
 
 ---
 
@@ -111,7 +33,8 @@
 - **v1.4.0** — Developer Experience & Verification: 4 phases, 8 plans, 21 requirements, 1042 tests ([View Archive](milestones/v1.4.0-ROADMAP.md))
 - **v1.5.0** — Cognitive Architecture & State Machine: 6 phases, 14 plans, 35 requirements, 1654 tests ([View Archive](milestones/v1.5.0-ROADMAP.md))
 - **v1.6.0** — Package & Publish: 4 phases, 9 plans, 18 requirements, 1755 tests ([View Archive](milestones/v1.6.0-ROADMAP.md))
+- **v1.7.0** — Codebase Health & Build Stability: 8 phases, 13 plans, 1763 tests ([View Archive](milestones/v1.7.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-02-16 (v1.6.0 milestone completed)_
+_Roadmap updated: 2026-02-23 (v1.7.0 milestone completed)_
