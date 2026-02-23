@@ -57,23 +57,23 @@ describe("hookRegistry", () => {
   });
 
   test("post-edit-typecheck is async", () => {
-    expect(hookRegistry["post-edit-typecheck"].async).toBe(true);
+    expect(hookRegistry["post-edit-typecheck"]!.async).toBe(true);
   });
 
   test("pre-commit-gate is synchronous", () => {
-    expect(hookRegistry["pre-commit-gate"].async).toBe(false);
+    expect(hookRegistry["pre-commit-gate"]!.async).toBe(false);
   });
 
   test("post-edit hooks share the same event and matcher", () => {
-    const format = hookRegistry["post-edit-format"];
-    const typecheck = hookRegistry["post-edit-typecheck"];
+    const format = hookRegistry["post-edit-format"]!;
+    const typecheck = hookRegistry["post-edit-typecheck"]!;
     expect(format.event).toBe(typecheck.event);
     expect(format.matcher).toBe(typecheck.matcher);
   });
 
   test("pre-commit-gate matches Bash tool", () => {
-    expect(hookRegistry["pre-commit-gate"].event).toBe("PreToolUse");
-    expect(hookRegistry["pre-commit-gate"].matcher).toBe("Bash");
+    expect(hookRegistry["pre-commit-gate"]!.event).toBe("PreToolUse");
+    expect(hookRegistry["pre-commit-gate"]!.matcher).toBe("Bash");
   });
 
   test("generateHooksConfig groups same-event-same-matcher hooks", () => {
@@ -85,18 +85,18 @@ describe("hookRegistry", () => {
     //   group 1: no matcher with 2 hooks (context-check-throttled + snapshot-sync)
     const postToolUse = config.PostToolUse as Array<{ hooks: unknown[] }>;
     expect(postToolUse.length).toBe(2);
-    expect(postToolUse[0].hooks.length).toBe(2);
-    expect(postToolUse[1].hooks.length).toBe(2);
+    expect(postToolUse[0]!.hooks.length).toBe(2);
+    expect(postToolUse[1]!.hooks.length).toBe(2);
   });
 
   test("context-monitor fires on Stop event", () => {
-    expect(hookRegistry["context-monitor"].event).toBe("Stop");
-    expect(hookRegistry["context-monitor"].matcher).toBeUndefined();
+    expect(hookRegistry["context-monitor"]!.event).toBe("Stop");
+    expect(hookRegistry["context-monitor"]!.matcher).toBeUndefined();
   });
 
   test("session-persist fires on SessionEnd event", () => {
-    expect(hookRegistry["session-persist"].event).toBe("SessionEnd");
-    expect(hookRegistry["session-persist"].matcher).toBeUndefined();
+    expect(hookRegistry["session-persist"]!.event).toBe("SessionEnd");
+    expect(hookRegistry["session-persist"]!.matcher).toBeUndefined();
   });
 
   test("generateHooksConfig produces 5 event types", () => {
@@ -177,7 +177,7 @@ describe("generateCursorHooksConfig", () => {
     const shellHooks = config.hooks.beforeShellExecution;
     expect(shellHooks).toBeDefined();
     expect(
-      shellHooks.some(
+      shellHooks!.some(
         (h) =>
           typeof h.matcher === "string" && h.matcher.includes("git commit"),
       ),

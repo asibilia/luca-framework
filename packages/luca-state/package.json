@@ -6,6 +6,9 @@
   "bin": {
     "luca-state": "./bin/luca-state.js"
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",

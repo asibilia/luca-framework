@@ -1,10 +1,14 @@
-import * as p from '@clack/prompts';
-import { logger } from './logger';
-import { detectProjectContext, formatStack } from './detect';
-import { validateBrandingField, validateBranding, defaultBranding, mergeBranding } from './branding';
-import type { LucaConfig, BrandingConfig, ProjectContext } from '../types';
-import { readFile } from 'fs/promises';
-import { sanitizeJsonParse } from './sanitize';
+import * as p from "@clack/prompts";
+import { logger } from "./logger";
+import { detectProjectContext, formatStack } from "./detect";
+import {
+  validateBrandingField,
+  validateBranding,
+  defaultBranding,
+  mergeBranding,
+} from "./branding";
+import type { LucaConfig, BrandingConfig, ProjectContext } from "../types";
+import { sanitizeJsonParse } from "./sanitize";
 
 /**
  * Run the interactive setup wizard.
@@ -24,14 +28,16 @@ import { sanitizeJsonParse } from './sanitize';
  * }
  * ```
  */
-export async function runWizard(context: ProjectContext): Promise<LucaConfig | null> {
-  p.intro('🚀 Welcome to Luca');
+export async function runWizard(
+  context: ProjectContext,
+): Promise<LucaConfig | null> {
+  p.intro("🚀 Welcome to Luca");
 
   // Show detected context
   if (context.hasPackageJson) {
     p.note(
-      `Detected: ${context.projectName || 'project'}\nStack: ${formatStack(context.detectedStack)}`,
-      'Project Context'
+      `Detected: ${context.projectName || "project"}\nStack: ${formatStack(context.detectedStack)}`,
+      "Project Context",
     );
   }
 
@@ -40,90 +46,94 @@ export async function runWizard(context: ProjectContext): Promise<LucaConfig | n
     {
       frameworkName: () =>
         p.text({
-          message: 'What should we call your assistant?',
+          message: "What should we call your assistant?",
           placeholder: defaultBranding.frameworkName,
           defaultValue: defaultBranding.frameworkName,
           validate: (value) => {
-            const result = validateBrandingField('frameworkName', value);
+            const result = validateBrandingField("frameworkName", value ?? "");
             return result.valid ? undefined : result.error;
           },
         }),
       commandPrefix: () =>
         p.text({
-          message: 'Command prefix for skills?',
+          message: "Command prefix for skills?",
           placeholder: defaultBranding.commandPrefix,
           defaultValue: defaultBranding.commandPrefix,
           validate: (value) => {
-            const result = validateBrandingField('commandPrefix', value);
+            const result = validateBrandingField("commandPrefix", value ?? "");
             return result.valid ? undefined : result.error;
           },
         }),
       ticketPattern: () =>
         p.text({
-          message: 'Ticket ID pattern (regex)?',
+          message: "Ticket ID pattern (regex)?",
           placeholder: defaultBranding.ticketPattern,
           defaultValue: defaultBranding.ticketPattern,
           validate: (value) => {
-            const result = validateBrandingField('ticketPattern', value);
+            const result = validateBrandingField("ticketPattern", value ?? "");
             return result.valid ? undefined : result.error;
           },
         }),
       placeholderTicket: () =>
         p.text({
-          message: 'Placeholder ticket ID for untracked work?',
+          message: "Placeholder ticket ID for untracked work?",
           placeholder: defaultBranding.placeholderTicket,
           defaultValue: defaultBranding.placeholderTicket,
           validate: (value) => {
-            const result = validateBrandingField('placeholderTicket', value);
+            const result = validateBrandingField(
+              "placeholderTicket",
+              value ?? "",
+            );
             return result.valid ? undefined : result.error;
           },
         }),
     },
     {
       onCancel: () => {
-        p.cancel('Setup cancelled.');
+        p.cancel("Setup cancelled.");
         process.exit(0);
       },
-    }
+    },
   );
 
   if (!branding) return null;
 
   // Group 2: Stack selection
-  const detectedStack = context.detectedStack !== 'unknown' ? context.detectedStack : undefined;
+  const detectedStack =
+    context.detectedStack !== "unknown" ? context.detectedStack : undefined;
   const stack = await p.select({
-    message: 'Select your stack template',
+    message: "Select your stack template",
     options: [
       {
-        value: 'react-ts',
-        label: 'React + TypeScript',
-        hint: detectedStack?.includes('react') ? '(detected)' : undefined,
+        value: "react-ts",
+        label: "React + TypeScript",
+        hint: detectedStack?.includes("react") ? "(detected)" : undefined,
       },
       {
-        value: 'custom',
-        label: 'Custom (minimal base files only)',
+        value: "custom",
+        label: "Custom (minimal base files only)",
       },
     ],
-    initialValue: detectedStack?.includes('react') ? 'react-ts' : 'custom',
+    initialValue: detectedStack?.includes("react") ? "react-ts" : "custom",
   });
 
   if (p.isCancel(stack)) {
-    p.cancel('Setup cancelled.');
+    p.cancel("Setup cancelled.");
     return null;
   }
 
   // Group 3: Work tracker
   const workTracker = await p.select({
-    message: 'Which work tracker do you use?',
+    message: "Which work tracker do you use?",
     options: [
-      { value: 'jira', label: 'Jira' },
-      { value: 'github', label: 'GitHub Issues' },
-      { value: 'none', label: 'None / Placeholder tickets' },
+      { value: "jira", label: "Jira" },
+      { value: "github", label: "GitHub Issues" },
+      { value: "none", label: "None / Placeholder tickets" },
     ],
   });
 
   if (p.isCancel(workTracker)) {
-    p.cancel('Setup cancelled.');
+    p.cancel("Setup cancelled.");
     return null;
   }
 
@@ -133,14 +143,14 @@ export async function runWizard(context: ProjectContext): Promise<LucaConfig | n
   });
 
   if (p.isCancel(confirmed) || !confirmed) {
-    p.cancel('Setup cancelled.');
+    p.cancel("Setup cancelled.");
     return null;
   }
 
   return {
     branding: branding as BrandingConfig,
     stack: stack as string,
-    workTracker: workTracker as 'jira' | 'github' | 'none',
+    workTracker: workTracker as "jira" | "github" | "none",
   };
 }
 
@@ -166,8 +176,8 @@ export async function runWizard(context: ProjectContext): Promise<LucaConfig | n
  * });
  * ```
  */
-export const VALID_STACKS = ['react-ts', 'custom'] as const;
-export const VALID_TRACKERS = ['jira', 'github', 'none'] as const;
+export const VALID_STACKS = ["react-ts", "custom"] as const;
+export const VALID_TRACKERS = ["jira", "github", "none"] as const;
 
 export function createConfigFromArgs(args: {
   name?: string;
@@ -184,21 +194,27 @@ export function createConfigFromArgs(args: {
   if (!validation.valid) {
     const errorMessages = Object.entries(validation.errors)
       .map(([field, error]) => `${field}: ${error}`)
-      .join('; ');
+      .join("; ");
     throw new Error(`Invalid branding arguments: ${errorMessages}`);
   }
 
   // Validate --stack argument
-  if (args.stack && !VALID_STACKS.includes(args.stack as typeof VALID_STACKS[number])) {
+  if (
+    args.stack &&
+    !VALID_STACKS.includes(args.stack as (typeof VALID_STACKS)[number])
+  ) {
     throw new Error(
-      `Invalid --stack value "${args.stack}". Valid options: ${VALID_STACKS.join(', ')}`
+      `Invalid --stack value "${args.stack}". Valid options: ${VALID_STACKS.join(", ")}`,
     );
   }
 
   // Validate --tracker argument
-  if (args.tracker && !VALID_TRACKERS.includes(args.tracker as typeof VALID_TRACKERS[number])) {
+  if (
+    args.tracker &&
+    !VALID_TRACKERS.includes(args.tracker as (typeof VALID_TRACKERS)[number])
+  ) {
     throw new Error(
-      `Invalid --tracker value "${args.tracker}". Valid options: ${VALID_TRACKERS.join(', ')}`
+      `Invalid --tracker value "${args.tracker}". Valid options: ${VALID_TRACKERS.join(", ")}`,
     );
   }
 
@@ -207,8 +223,8 @@ export function createConfigFromArgs(args: {
       frameworkName: args.name,
       commandPrefix: args.prefix,
     }),
-    stack: args.stack || 'custom',
-    workTracker: (args.tracker as 'jira' | 'github' | 'none') || 'none',
+    stack: args.stack || "custom",
+    workTracker: (args.tracker as "jira" | "github" | "none") || "none",
   };
 }
 
@@ -239,8 +255,10 @@ export function createConfigFromArgs(args: {
  * }
  * ```
  */
-export async function loadConfigFromFile(configPath: string): Promise<LucaConfig> {
-  const content = await readFile(configPath, 'utf-8');
+export async function loadConfigFromFile(
+  configPath: string,
+): Promise<LucaConfig> {
+  const content = await Bun.file(configPath).text();
   const parsed = sanitizeJsonParse(content) as Record<string, unknown>;
 
   // Validate branding fields from config file
@@ -249,28 +267,30 @@ export async function loadConfigFromFile(configPath: string): Promise<LucaConfig
   if (!validation.valid) {
     const errorMessages = Object.entries(validation.errors)
       .map(([field, error]) => `${field}: ${error}`)
-      .join('; ');
+      .join("; ");
     throw new Error(`Invalid branding in config file: ${errorMessages}`);
   }
 
   // Validate stack and workTracker values (same rules as createConfigFromArgs)
-  const stack = (parsed.stack as string) || 'custom';
-  if (!VALID_STACKS.includes(stack as typeof VALID_STACKS[number])) {
+  const stack = (parsed.stack as string) || "custom";
+  if (!VALID_STACKS.includes(stack as (typeof VALID_STACKS)[number])) {
     throw new Error(
-      `Invalid stack in config file "${stack}". Valid options: ${VALID_STACKS.join(', ')}`
+      `Invalid stack in config file "${stack}". Valid options: ${VALID_STACKS.join(", ")}`,
     );
   }
 
-  const workTracker = (parsed.workTracker as string) || 'none';
-  if (!VALID_TRACKERS.includes(workTracker as typeof VALID_TRACKERS[number])) {
+  const workTracker = (parsed.workTracker as string) || "none";
+  if (
+    !VALID_TRACKERS.includes(workTracker as (typeof VALID_TRACKERS)[number])
+  ) {
     throw new Error(
-      `Invalid workTracker in config file "${workTracker}". Valid options: ${VALID_TRACKERS.join(', ')}`
+      `Invalid workTracker in config file "${workTracker}". Valid options: ${VALID_TRACKERS.join(", ")}`,
     );
   }
 
   return {
     branding: mergeBranding(brandingInput),
     stack,
-    workTracker: workTracker as 'jira' | 'github' | 'none',
+    workTracker: workTracker as "jira" | "github" | "none",
   };
 }

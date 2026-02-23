@@ -13,17 +13,21 @@
 // Import general/framework rules (always active)
 import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
 import { complexityGatingRule } from "./general/complexity-gating.rule";
-import { cursorRulesRule } from "./general/cursor_rules.rule";
+import { cursorRulesRule } from "./general/cursor-rules.rule";
 import { fileNamingRule } from "./general/file-naming.rule";
 import { harnessVerificationRule } from "./general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
 import { mandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
 import { posthogIntegrationRule } from "./general/posthog-integration.rule";
-import { selfImproveRule } from "./general/self_improve.rule";
+import { selfImproveRule } from "./general/self-improve.rule";
 import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
 
 // Import Luca-specific rule
 import { luWorkflowRule } from "./lu-workflow.rule";
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { sanitizeJsonParse } from "../shared/validation-utils";
 
 // Import profile registry and config schema
 import { profileRegistry, profileConfigSchema } from "./profiles/index";
@@ -52,13 +56,13 @@ export type { TechStackProfile, ProfileConfig } from "./profiles/index";
 const generalRules: Record<string, () => BaseRule> = {
   "atlassian-mcp": () => atlassianMcpRule,
   "complexity-gating": () => complexityGatingRule,
-  cursor_rules: () => cursorRulesRule,
+  "cursor-rules": () => cursorRulesRule,
   "file-naming": () => fileNamingRule,
   "harness-verification": () => harnessVerificationRule,
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
   "posthog-integration": () => posthogIntegrationRule,
-  self_improve: () => selfImproveRule,
+  "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,
   "lu-workflow": () => luWorkflowRule,
 };
@@ -78,11 +82,9 @@ function loadProfileConfig(): {
   tech_stack_profiles: string[];
 } {
   try {
-    const fs = require("fs");
-    const path = require("path");
-    const configPath = path.join(process.cwd(), ".planning", "config.json");
-    const raw = fs.readFileSync(configPath, "utf-8");
-    const config = JSON.parse(raw);
+    const configPath = join(process.cwd(), ".planning", "config.json");
+    const raw = readFileSync(configPath, "utf-8");
+    const config = sanitizeJsonParse(raw) as Record<string, any>;
     const workflow = config?.workflow ?? {};
     return profileConfigSchema.parse(workflow);
   } catch {

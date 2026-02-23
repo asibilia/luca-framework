@@ -1,3 +1,3 @@
-#!/usr/bin/env node
-import { runInit } from 'luca-framework';
+#!/usr/bin/env bun
+import { runInit } from "luca-framework";
 runInit();

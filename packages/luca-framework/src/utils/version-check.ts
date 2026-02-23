@@ -1,6 +1,5 @@
-import { readFile } from 'fs/promises';
-import { join, dirname } from 'pathe';
-import { fileURLToPath } from 'url';
+import { join, dirname } from "pathe";
+import { fileURLToPath } from "url";
 
 /**
  * Check for updates and notify user (non-blocking).
@@ -15,7 +14,7 @@ import { fileURLToPath } from 'url';
  */
 export async function checkForUpdates(): Promise<void> {
   try {
-    const { default: updateNotifier } = await import('update-notifier');
+    const { default: updateNotifier } = await import("update-notifier");
 
     // Resolve package.json from this module's location
     // Works both in development (src/) and production (dist/)
@@ -23,15 +22,15 @@ export async function checkForUpdates(): Promise<void> {
 
     // Try multiple possible locations
     const possiblePaths = [
-      join(currentDir, '..', '..', 'package.json'),  // from dist/utils/
-      join(currentDir, '..', 'package.json'),         // from src/utils/
+      join(currentDir, "..", "..", "package.json"), // from dist/utils/
+      join(currentDir, "..", "package.json"), // from src/utils/
     ];
 
     let pkg: { name: string; version: string } | null = null;
 
     for (const pkgPath of possiblePaths) {
       try {
-        pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
+        pkg = JSON.parse(await Bun.file(pkgPath).text());
         break;
       } catch {
         // Try next path
@@ -52,7 +51,7 @@ export async function checkForUpdates(): Promise<void> {
     // Notify if update available
     // This is non-blocking - runs in background
     notifier.notify({
-      message: `New Luca CLI version available: {currentVersion} → {latestVersion}\nRun: npm install -g luca-framework@latest\n\nTo update project framework files, run: npx luca update`,
+      message: `New Luca CLI version available: {currentVersion} → {latestVersion}\nRun: bun install -g luca-framework@latest\n\nTo update project framework files, run: bunx luca update`,
       defer: false,
     });
   } catch {

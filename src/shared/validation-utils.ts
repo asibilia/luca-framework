@@ -2,20 +2,20 @@
  * Utility functions for validating configurations with Zod schemas
  * and secure JSON parsing with prototype pollution protection.
  */
-import { agentConfigSchema } from '../agents/types/agent.schemas';
-import { skillConfigSchema } from '../skills/types/skill.schemas';
-import { ruleConfigSchema } from '../rules/types/rule.schemas';
-import type { AgentConfig } from '../agents/types/agent.types';
-import type { SkillConfig } from '../skills/types/skill.types';
-import type { RuleConfig } from '../rules/types/rule.types';
-import type { Result } from './types';
+import { agentConfigSchema } from "../agents/types/agent.schemas";
+import { skillConfigSchema } from "../skills/types/skill.schemas";
+import { ruleConfigSchema } from "../rules/types/rule.schemas";
+import type { AgentConfig } from "../agents/types/agent.types";
+import type { SkillConfig } from "../skills/types/skill.types";
+import type { RuleConfig } from "../rules/types/rule.types";
+import type { Result } from "./types";
 
 // ---------------------------------------------------------------------------
 // Prototype Pollution Protection
 // ---------------------------------------------------------------------------
 
 /** Keys that can be exploited for prototype pollution attacks */
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
  * Recursively strip prototype pollution keys from a parsed JSON value.
@@ -28,7 +28,7 @@ const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
  * @returns A new value with dangerous keys removed
  */
 function stripPrototypeKeys(obj: unknown): unknown {
-  if (obj === null || typeof obj !== 'object') {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
 
@@ -63,9 +63,12 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * ```
  */
 /**
- * NOTE: This function is intentionally duplicated in packages/luca-framework/src/utils/sanitize.ts
- * The two domains (src/ and packages/) are isolated by design and cannot cross-import.
- * If you modify this function, update the other copy as well.
+ * NOTE: This function is intentionally duplicated across isolated domains.
+ * The packages are isolated by design and cannot cross-import.
+ * If you modify this function, update all copies:
+ * - packages/luca-framework/src/utils/sanitize.ts
+ * - packages/luca-state/src/sanitize.ts
+ * - src/shared/validation-utils.ts (this file)
  */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);
@@ -96,7 +99,10 @@ export function safeSanitizeJsonParse(json: string): Result<unknown> {
     const data = sanitizeJsonParse(json);
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'JSON parse failed' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "JSON parse failed",
+    };
   }
 }
 
@@ -113,21 +119,31 @@ export function validateRuleConfig(config: RuleConfig): RuleConfig {
 }
 
 // Helper function to validate with error handling
-export function safeValidateAgentConfig(config: AgentConfig): Result<AgentConfig> {
+export function safeValidateAgentConfig(
+  config: AgentConfig,
+): Result<AgentConfig> {
   try {
     const data = agentConfigSchema.parse(config);
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Validation failed' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Validation failed",
+    };
   }
 }
 
-export function safeValidateSkillConfig(config: SkillConfig): Result<SkillConfig> {
+export function safeValidateSkillConfig(
+  config: SkillConfig,
+): Result<SkillConfig> {
   try {
     const data = skillConfigSchema.parse(config);
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Validation failed' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Validation failed",
+    };
   }
 }
 
@@ -136,6 +152,9 @@ export function safeValidateRuleConfig(config: RuleConfig): Result<RuleConfig> {
     const data = ruleConfigSchema.parse(config);
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Validation failed' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Validation failed",
+    };
   }
 }

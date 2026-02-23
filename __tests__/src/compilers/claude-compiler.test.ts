@@ -14,7 +14,11 @@ import {
   compileSkill,
   compileRule,
 } from "../../../src/compilers/compile";
-import { TestAgent, TestSkill, TestRule } from "../../utils/test-entities";
+import {
+  TestAgent,
+  TestSkill,
+  createTestRule,
+} from "../../utils/test-entities";
 import {
   validAgentConfig,
   validSkillConfig,
@@ -35,7 +39,7 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileRuleClaude delegates to rule.toClaudeFormat()", () => {
-    const rule = new TestRule(validRuleConfig);
+    const rule = createTestRule(validRuleConfig);
     const result = compileRuleClaude(rule);
     expect(result).toBe(rule.toClaudeFormat());
   });
@@ -51,7 +55,7 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileRule with CLAUDE format matches compileRuleClaude", () => {
-    const rule = new TestRule(validRuleConfig);
+    const rule = createTestRule(validRuleConfig);
     expect(compileRule(rule, "CLAUDE")).toBe(compileRuleClaude(rule));
   });
 

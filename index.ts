@@ -33,7 +33,7 @@ export type { Result } from "./src/shared/types";
 // Base class implementations
 export { BaseAgentImpl } from "./src/agents/base/base-agent";
 export { BaseSkillImpl } from "./src/skills/base/base-skill";
-export { BaseRuleImpl } from "./src/rules/base/base-rule";
+export { createRule } from "./src/rules/base/base-rule";
 
 // Compilers (functional API)
 export {

@@ -1,9 +1,9 @@
-import { readFile, writeFile, readdir, copyFile, mkdir } from 'fs/promises';
-import { join, dirname, relative, resolve } from 'pathe';
-import { render } from 'ejs';
-import { fileURLToPath } from 'url';
-import { createBrandingContext } from './branding';
-import type { LucaConfig } from '../types';
+import { readdir, copyFile, mkdir } from "node:fs/promises";
+import { join, dirname, relative, resolve } from "pathe";
+import { render } from "ejs";
+import { fileURLToPath } from "url";
+import { createBrandingContext } from "./branding";
+import type { LucaConfig } from "../types";
 
 /**
  * Sanitize EJS template content to only allow safe output tags.
@@ -14,10 +14,10 @@ import type { LucaConfig } from '../types';
  */
 function sanitizeTemplate(content: string): string {
   // Step 1: Convert <%- (unescaped) to <%= (escaped)
-  let sanitized = content.replace(/<%-([\s\S]*?)%>/g, '<%=$1%>')
+  let sanitized = content.replace(/<%-([\s\S]*?)%>/g, "<%=$1%>");
   // Step 2: Strip <% %> code execution tags (NOT <%= output tags)
-  sanitized = sanitized.replace(/<%(?!=)([\s\S]*?)%>/g, '')
-  return sanitized
+  sanitized = sanitized.replace(/<%(?!=)([\s\S]*?)%>/g, "");
+  return sanitized;
 }
 
 /**
@@ -45,12 +45,12 @@ function sanitizeTemplate(content: string): string {
  */
 export async function processTemplate(
   templateContent: string,
-  context: Record<string, unknown>
+  context: Record<string, unknown>,
 ): Promise<string> {
-  const safeContent = sanitizeTemplate(templateContent)
+  const safeContent = sanitizeTemplate(templateContent);
   return render(safeContent, context, {
     strict: false,
-  })
+  });
 }
 
 /**
@@ -73,15 +73,15 @@ export async function processTemplate(
  */
 export function processFilename(
   filename: string,
-  context: Record<string, unknown>
+  context: Record<string, unknown>,
 ): string {
   return filename.replace(/__(\w+(?:\.\w+)*)__/g, (match, key) => {
     // Support nested paths like branding.commandPrefix
-    const parts = key.split('.');
+    const parts = key.split(".");
     let value: unknown = context;
 
     for (const part of parts) {
-      if (value && typeof value === 'object' && part in value) {
+      if (value && typeof value === "object" && part in value) {
         value = (value as Record<string, unknown>)[part];
       } else {
         // Return original if path not found
@@ -100,14 +100,17 @@ export function processFilename(
  * @param baseDir - Base directory for relative path calculation
  * @returns Array of relative file paths
  */
-export async function getAllFiles(dir: string, baseDir: string = dir): Promise<string[]> {
+export async function getAllFiles(
+  dir: string,
+  baseDir: string = dir,
+): Promise<string[]> {
   const files: string[] = [];
   const entries = await readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...await getAllFiles(fullPath, baseDir));
+      files.push(...(await getAllFiles(fullPath, baseDir)));
     } else {
       files.push(relative(baseDir, fullPath));
     }
@@ -127,24 +130,24 @@ export async function getAllFiles(dir: string, baseDir: string = dir): Promise<s
  */
 /** File extensions that should be processed as EJS templates (vs binary copy). */
 export const TEMPLATE_EXTENSIONS = [
-  '.md',
-  '.json',
-  '.ts',
-  '.tsx',
-  '.js',
-  '.jsx',
-  '.mdc',
-  '.yaml',
-  '.yml',
-  '.txt',
-  '.html',
-  '.css',
-  '.gitkeep',
-  '.gitignore',
+  ".md",
+  ".json",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mdc",
+  ".yaml",
+  ".yml",
+  ".txt",
+  ".html",
+  ".css",
+  ".gitkeep",
+  ".gitignore",
 ] as const;
 
 export function isTemplateFile(filename: string): boolean {
-  return TEMPLATE_EXTENSIONS.some(ext => filename.endsWith(ext));
+  return TEMPLATE_EXTENSIONS.some((ext) => filename.endsWith(ext));
 }
 
 /**
@@ -152,11 +155,11 @@ export function isTemplateFile(filename: string): boolean {
  * Prevents path traversal via '../' in variable values.
  */
 function assertWithinDirectory(filePath: string, baseDir: string): void {
-  const resolved = resolve(filePath)
-  const base = resolve(baseDir)
-  const rel = relative(base, resolved)
-  if (rel.startsWith('..') || resolve(base, rel) !== resolved) {
-    throw new Error(`Path traversal detected: ${filePath} escapes ${baseDir}`)
+  const resolved = resolve(filePath);
+  const base = resolve(baseDir);
+  const rel = relative(base, resolved);
+  if (rel.startsWith("..") || resolve(base, rel) !== resolved) {
+    throw new Error(`Path traversal detected: ${filePath} escapes ${baseDir}`);
   }
 }
 
@@ -212,9 +215,9 @@ export async function copyTemplates(options: {
 
     if (isTemplateFile(relPath)) {
       // Process as template
-      const content = await readFile(sourcePath, 'utf-8');
+      const content = await Bun.file(sourcePath).text();
       const processedContent = await processTemplate(content, context);
-      await writeFile(destPath, processedContent);
+      await Bun.write(destPath, processedContent);
       processed.push(processedRelPath);
     } else {
       // Copy binary file as-is
@@ -240,11 +243,11 @@ export function getTemplatesDir(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
 
   // Check if we're in bundled context (dist/) or source context (src/utils/)
-  if (currentDir.endsWith('dist')) {
+  if (currentDir.endsWith("dist")) {
     // Bundled: dist/ → ../templates
-    return join(currentDir, '..', 'templates');
+    return join(currentDir, "..", "templates");
   }
 
   // Source: src/utils/ → ../../templates
-  return join(currentDir, '..', '..', 'templates');
+  return join(currentDir, "..", "..", "templates");
 }

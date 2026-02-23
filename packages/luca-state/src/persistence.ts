@@ -15,6 +15,7 @@ import { unlinkSync } from "node:fs";
 import { workflowMachine } from "./machine";
 import type { WorkflowMachineInput } from "./machine";
 import type { Result } from "./types";
+import { sanitizeJsonParse } from "./sanitize";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ export async function loadPersistedActor(
 
     let snapshot: Snapshot<unknown>;
     try {
-      snapshot = JSON.parse(text) as Snapshot<unknown>;
+      snapshot = sanitizeJsonParse(text) as Snapshot<unknown>;
     } catch {
       return {
         success: false,
@@ -109,7 +110,7 @@ export async function loadPersistedActor(
       };
     }
 
-    const actor = createActor(workflowMachine, { snapshot });
+    const actor = createActor(workflowMachine, { snapshot } as any);
     actor.start();
     return { success: true, data: actor };
   } catch (err) {

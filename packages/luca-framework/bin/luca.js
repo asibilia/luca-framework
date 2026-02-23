@@ -1,3 +1,3 @@
-#!/usr/bin/env node
-import { runMain } from '../dist/index.mjs';
+#!/usr/bin/env bun
+import { runMain } from "../dist/index.mjs";
 runMain();

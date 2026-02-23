@@ -1,18 +1,24 @@
-import { defineCommand } from 'citty';
-import * as p from '@clack/prompts';
-import { readFile, writeFile, cp, rm, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, dirname } from 'pathe';
-import { logger } from '../utils/logger';
+import { defineCommand } from "citty";
+import * as p from "@clack/prompts";
+import { cp, rm, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, dirname } from "pathe";
+import { logger } from "../utils/logger";
 import {
   readManifest,
   writeManifest,
   compareFiles,
   hashContent,
-} from '../utils/manifest';
-import { getTemplatesDir, processTemplate, processFilename, getAllFiles, isTemplateFile } from '../utils/template';
-import { createBrandingContext } from '../utils/branding';
-import type { LucaConfig, LucaManifest, FileComparison } from '../types';
+} from "../utils/manifest";
+import {
+  getTemplatesDir,
+  processTemplate,
+  processFilename,
+  getAllFiles,
+  isTemplateFile,
+} from "../utils/template";
+import { createBrandingContext } from "../utils/branding";
+import type { LucaConfig, LucaManifest, FileComparison } from "../types";
 
 /**
  * Get new framework files from templates directory.
@@ -40,14 +46,16 @@ async function collectTemplateFiles(
   for (const relPath of files) {
     const sourcePath = join(sourceDir, relPath);
     const processedRelPath = processFilename(relPath, context);
-    const destKey = destPrefix ? join(destPrefix, processedRelPath) : processedRelPath;
+    const destKey = destPrefix
+      ? join(destPrefix, processedRelPath)
+      : processedRelPath;
 
     if (isTemplateFile(relPath)) {
-      const content = await readFile(sourcePath, 'utf-8');
+      const content = await Bun.file(sourcePath).text();
       const processedContent = await processTemplate(content, context);
       output.set(destKey, processedContent);
     } else {
-      const content = await readFile(sourcePath, 'utf-8');
+      const content = await Bun.file(sourcePath).text();
       output.set(destKey, content);
     }
   }
@@ -55,7 +63,7 @@ async function collectTemplateFiles(
 
 async function getNewFrameworkFiles(
   config: LucaConfig,
-  cwd: string
+  cwd: string,
 ): Promise<Map<string, string>> {
   const templatesDir = getTemplatesDir();
   const newFiles = new Map<string, string>();
@@ -64,13 +72,22 @@ async function getNewFrameworkFiles(
     config,
   };
 
-  await collectTemplateFiles(join(templatesDir, 'base'), newFiles, context);
+  await collectTemplateFiles(join(templatesDir, "base"), newFiles, context);
 
-  if (config.stack !== 'custom') {
-    await collectTemplateFiles(join(templatesDir, 'stacks', config.stack), newFiles, context);
+  if (config.stack !== "custom") {
+    await collectTemplateFiles(
+      join(templatesDir, "stacks", config.stack),
+      newFiles,
+      context,
+    );
   }
 
-  await collectTemplateFiles(join(templatesDir, 'framework'), newFiles, context, join('.cursor', 'luca'));
+  await collectTemplateFiles(
+    join(templatesDir, "framework"),
+    newFiles,
+    context,
+    join(".cursor", "luca"),
+  );
 
   return newFiles;
 }
@@ -79,10 +96,10 @@ async function getNewFrameworkFiles(
  * Show dry run summary of what would be updated.
  */
 function showDryRunSummary(comparisons: FileComparison[]): void {
-  const unchanged = comparisons.filter((c) => c.status === 'unchanged');
-  const modified = comparisons.filter((c) => c.status === 'user-modified');
-  const newFiles = comparisons.filter((c) => c.status === 'new');
-  const deleted = comparisons.filter((c) => c.status === 'deleted');
+  const unchanged = comparisons.filter((c) => c.status === "unchanged");
+  const modified = comparisons.filter((c) => c.status === "user-modified");
+  const newFiles = comparisons.filter((c) => c.status === "new");
+  const deleted = comparisons.filter((c) => c.status === "deleted");
 
   logger.box(`
 Update Preview (Dry Run)
@@ -95,7 +112,7 @@ Conflicts:          ${modified.length + deleted.length}
   `);
 
   if (unchanged.length > 0) {
-    logger.info('Files to update (unchanged since installation):');
+    logger.info("Files to update (unchanged since installation):");
     for (const file of unchanged.slice(0, 10)) {
       logger.info(`  ✓ ${file.path}`);
     }
@@ -105,7 +122,7 @@ Conflicts:          ${modified.length + deleted.length}
   }
 
   if (newFiles.length > 0) {
-    logger.info('\nNew files to add:');
+    logger.info("\nNew files to add:");
     for (const file of newFiles.slice(0, 10)) {
       logger.info(`  + ${file.path}`);
     }
@@ -115,14 +132,14 @@ Conflicts:          ${modified.length + deleted.length}
   }
 
   if (modified.length > 0) {
-    logger.warn('\nUser-modified files (conflicts):');
+    logger.warn("\nUser-modified files (conflicts):");
     for (const file of modified) {
       logger.warn(`  ⚠ ${file.path}`);
     }
   }
 
   if (deleted.length > 0) {
-    logger.warn('\nUser-deleted files (conflicts):');
+    logger.warn("\nUser-deleted files (conflicts):");
     for (const file of deleted) {
       logger.warn(`  ⚠ ${file.path}`);
     }
@@ -134,9 +151,9 @@ Conflicts:          ${modified.length + deleted.length}
  */
 async function createBackup(
   manifest: LucaManifest,
-  cwd: string
+  cwd: string,
 ): Promise<string> {
-  const backupDir = join(cwd, '.cursor', 'luca', '.backup');
+  const backupDir = join(cwd, ".cursor", "luca", ".backup");
 
   // Remove old backup if exists
   if (existsSync(backupDir)) {
@@ -150,7 +167,7 @@ async function createBackup(
     const sourcePath = join(cwd, relativePath);
     const destPath = join(backupDir, relativePath);
 
-    if (existsSync(sourcePath)) {
+    if (await Bun.file(sourcePath).exists()) {
       await mkdir(dirname(destPath), { recursive: true });
       await cp(sourcePath, destPath);
     }
@@ -164,7 +181,7 @@ async function createBackup(
  */
 async function restoreBackup(backupDir: string, cwd: string): Promise<void> {
   if (!existsSync(backupDir)) {
-    logger.warn('No backup found to restore');
+    logger.warn("No backup found to restore");
     return;
   }
 
@@ -177,7 +194,7 @@ async function restoreBackup(backupDir: string, cwd: string): Promise<void> {
     await cp(sourcePath, destPath);
   }
 
-  logger.info('Backup restored successfully');
+  logger.info("Backup restored successfully");
 }
 
 /**
@@ -186,24 +203,24 @@ async function restoreBackup(backupDir: string, cwd: string): Promise<void> {
 async function handleConflicts(
   conflicts: FileComparison[],
   newFiles: Map<string, string>,
-  cwd: string
+  cwd: string,
 ): Promise<void> {
   if (conflicts.length === 0) return;
 
-  const conflictsDir = join(cwd, '.cursor', 'luca', 'conflicts');
+  const conflictsDir = join(cwd, ".cursor", "luca", "conflicts");
   await mkdir(conflictsDir, { recursive: true });
 
   for (const conflict of conflicts) {
     const newContent = newFiles.get(conflict.path);
     if (newContent) {
-      const conflictPath = join(conflictsDir, conflict.path + '.new');
+      const conflictPath = join(conflictsDir, conflict.path + ".new");
       await mkdir(dirname(conflictPath), { recursive: true });
-      await writeFile(conflictPath, newContent);
+      await Bun.write(conflictPath, newContent);
     }
   }
 
   // Write conflict summary
-  const summaryPath = join(conflictsDir, 'CONFLICTS.md');
+  const summaryPath = join(conflictsDir, "CONFLICTS.md");
   const summary = `# Update Conflicts
 
 The following files have been modified locally and could not be auto-updated.
@@ -211,17 +228,17 @@ New versions have been saved with a \`.new\` extension.
 
 ## Resolve manually:
 
-${conflicts.map((c) => `- \`${c.path}\` (${c.status})`).join('\n')}
+${conflicts.map((c) => `- \`${c.path}\` (${c.status})`).join("\n")}
 
 ## How to resolve:
 
 1. Compare your version with the \`.new\` version
 2. Merge changes as needed
 3. Delete the \`.new\` file when resolved
-4. Run \`npx luca update\` again after resolving all conflicts
+4. Run \`bunx luca update\` again after resolving all conflicts
 `;
 
-  await writeFile(summaryPath, summary);
+  await Bun.write(summaryPath, summary);
   logger.info(`Conflict details written to ${conflictsDir}/CONFLICTS.md`);
 }
 
@@ -236,7 +253,7 @@ async function applyUpdates(
     force: boolean;
     acceptTheirs: boolean;
     acceptMine: boolean;
-  }
+  },
 ): Promise<{ updated: string[]; skipped: string[]; conflicted: string[] }> {
   const updated: string[] = [];
   const skipped: string[] = [];
@@ -249,20 +266,20 @@ async function applyUpdates(
     const destPath = join(cwd, comparison.path);
 
     switch (comparison.status) {
-      case 'unchanged':
-      case 'new':
+      case "unchanged":
+      case "new":
         // Safe to update/add
         await mkdir(dirname(destPath), { recursive: true });
-        await writeFile(destPath, newContent);
+        await Bun.write(destPath, newContent);
         updated.push(comparison.path);
         break;
 
-      case 'user-modified':
-      case 'deleted':
+      case "user-modified":
+      case "deleted":
         if (options.force || options.acceptTheirs) {
           // Overwrite user changes
           await mkdir(dirname(destPath), { recursive: true });
-          await writeFile(destPath, newContent);
+          await Bun.write(destPath, newContent);
           updated.push(comparison.path);
         } else if (options.acceptMine) {
           // Keep user changes
@@ -285,7 +302,7 @@ async function updateManifestAfterUpdate(
   manifest: LucaManifest,
   updatedFiles: string[],
   newFiles: Map<string, string>,
-  cwd: string
+  cwd: string,
 ): Promise<LucaManifest> {
   const now = new Date().toISOString();
   const updatedManifest: LucaManifest = {
@@ -299,7 +316,7 @@ async function updateManifestAfterUpdate(
     if (content) {
       updatedManifest.files[relativePath] = {
         originalHash: hashContent(content),
-        source: 'framework',
+        source: "framework",
       };
     }
   }
@@ -310,30 +327,30 @@ async function updateManifestAfterUpdate(
 
 export const updateCommand = defineCommand({
   meta: {
-    name: 'update',
-    description: 'Update Luca framework to the latest version',
+    name: "update",
+    description: "Update Luca framework to the latest version",
   },
   args: {
     force: {
-      type: 'boolean',
-      description: 'Force update, overwriting user modifications',
+      type: "boolean",
+      description: "Force update, overwriting user modifications",
       default: false,
-      alias: 'f',
+      alias: "f",
     },
-    'dry-run': {
-      type: 'boolean',
-      description: 'Show what would be updated without making changes',
+    "dry-run": {
+      type: "boolean",
+      description: "Show what would be updated without making changes",
       default: false,
-      alias: 'd',
+      alias: "d",
     },
-    'accept-theirs': {
-      type: 'boolean',
-      description: 'Accept all new framework versions for conflicts',
+    "accept-theirs": {
+      type: "boolean",
+      description: "Accept all new framework versions for conflicts",
       default: false,
     },
-    'accept-mine': {
-      type: 'boolean',
-      description: 'Keep all user modifications, skip conflicting files',
+    "accept-mine": {
+      type: "boolean",
+      description: "Keep all user modifications, skip conflicting files",
       default: false,
     },
   },
@@ -343,47 +360,53 @@ export const updateCommand = defineCommand({
     // Step 1: Check Luca is installed (read manifest)
     const manifest = await readManifest(cwd);
     if (!manifest) {
-      logger.error('Luca is not installed in this project.');
-      logger.info('Run `npx luca init` to initialize a new Luca project.');
+      logger.error("Luca is not installed in this project.");
+      logger.info("Run `bunx luca init` to initialize a new Luca project.");
       process.exit(1);
     }
 
     logger.info(`Current version: ${manifest.version}`);
 
     // Validate conflicting options
-    if (args['accept-theirs'] && args['accept-mine']) {
-      logger.error('Cannot use both --accept-theirs and --accept-mine. Choose one conflict resolution strategy:');
-      logger.info('');
-      logger.info('  --accept-theirs  Overwrite your local changes with the new framework versions');
-      logger.info('  --accept-mine    Keep your local changes and skip conflicting framework files');
-      logger.info('');
-      logger.info('Or omit both flags to resolve conflicts interactively.');
+    if (args["accept-theirs"] && args["accept-mine"]) {
+      logger.error(
+        "Cannot use both --accept-theirs and --accept-mine. Choose one conflict resolution strategy:",
+      );
+      logger.info("");
+      logger.info(
+        "  --accept-theirs  Overwrite your local changes with the new framework versions",
+      );
+      logger.info(
+        "  --accept-mine    Keep your local changes and skip conflicting framework files",
+      );
+      logger.info("");
+      logger.info("Or omit both flags to resolve conflicts interactively.");
       process.exit(1);
     }
 
     // Step 2: Get new framework files from templates
     const spinner = p.spinner();
-    spinner.start('Reading framework templates...');
+    spinner.start("Reading framework templates...");
 
     const config: LucaConfig = {
       branding: manifest.branding,
       stack: manifest.stack,
-      workTracker: manifest.workTracker as 'jira' | 'github' | 'none',
+      workTracker: manifest.workTracker as "jira" | "github" | "none",
     };
 
     const newFiles = await getNewFrameworkFiles(config, cwd);
     spinner.stop(`Found ${newFiles.size} framework files`);
 
     // Step 3: Compare files using compareFiles()
-    spinner.start('Comparing files...');
+    spinner.start("Comparing files...");
     const comparisons = await compareFiles(manifest, newFiles, cwd);
-    spinner.stop('Comparison complete');
+    spinner.stop("Comparison complete");
 
     // Step 4: Show summary
-    const unchanged = comparisons.filter((c) => c.status === 'unchanged');
-    const modified = comparisons.filter((c) => c.status === 'user-modified');
-    const newFilesCount = comparisons.filter((c) => c.status === 'new');
-    const deleted = comparisons.filter((c) => c.status === 'deleted');
+    const unchanged = comparisons.filter((c) => c.status === "unchanged");
+    const modified = comparisons.filter((c) => c.status === "user-modified");
+    const newFilesCount = comparisons.filter((c) => c.status === "new");
+    const deleted = comparisons.filter((c) => c.status === "deleted");
     const conflicts = [...modified, ...deleted];
 
     logger.info(`\nUpdate summary:`);
@@ -392,83 +415,95 @@ export const updateCommand = defineCommand({
     logger.info(`  Conflicts:         ${conflicts.length}`);
 
     // Step 5: Handle dry run
-    if (args['dry-run']) {
+    if (args["dry-run"]) {
       showDryRunSummary(comparisons);
-      logger.info('\nDry run complete. No changes were made.');
+      logger.info("\nDry run complete. No changes were made.");
       return;
     }
 
     // If nothing to update
-    if (unchanged.length === 0 && newFilesCount.length === 0 && conflicts.length === 0) {
-      logger.info('Everything is up to date!');
+    if (
+      unchanged.length === 0 &&
+      newFilesCount.length === 0 &&
+      conflicts.length === 0
+    ) {
+      logger.info("Everything is up to date!");
       return;
     }
 
     // Step 6: Handle conflicts based on args or prompt user
-    if (conflicts.length > 0 && !args.force && !args['accept-theirs'] && !args['accept-mine']) {
+    if (
+      conflicts.length > 0 &&
+      !args.force &&
+      !args["accept-theirs"] &&
+      !args["accept-mine"]
+    ) {
       logger.warn(`\n${conflicts.length} file(s) have been modified locally.`);
 
       const conflictAction = await p.select({
-        message: 'How would you like to handle conflicts?',
+        message: "How would you like to handle conflicts?",
         options: [
-          { value: 'theirs', label: 'Accept framework versions (overwrite my changes)' },
-          { value: 'mine', label: 'Keep my changes (skip conflicting files)' },
-          { value: 'manual', label: 'Save conflicts for manual resolution' },
-          { value: 'cancel', label: 'Cancel update' },
+          {
+            value: "theirs",
+            label: "Accept framework versions (overwrite my changes)",
+          },
+          { value: "mine", label: "Keep my changes (skip conflicting files)" },
+          { value: "manual", label: "Save conflicts for manual resolution" },
+          { value: "cancel", label: "Cancel update" },
         ],
       });
 
-      if (p.isCancel(conflictAction) || conflictAction === 'cancel') {
-        p.cancel('Update cancelled.');
+      if (p.isCancel(conflictAction) || conflictAction === "cancel") {
+        p.cancel("Update cancelled.");
         process.exit(0);
       }
 
-      if (conflictAction === 'theirs') {
-        args['accept-theirs'] = true;
-      } else if (conflictAction === 'mine') {
-        args['accept-mine'] = true;
+      if (conflictAction === "theirs") {
+        (args as Record<string, unknown>)["accept-theirs"] = true;
+      } else if (conflictAction === "mine") {
+        (args as Record<string, unknown>)["accept-mine"] = true;
       }
       // 'manual' continues with default behavior
     }
 
     // Step 7: Create backup before changes
-    spinner.start('Creating backup...');
+    spinner.start("Creating backup...");
     const backupDir = await createBackup(manifest, cwd);
-    spinner.stop('Backup created');
+    spinner.stop("Backup created");
 
     try {
       // Step 8: Apply updates
-      spinner.start('Applying updates...');
+      spinner.start("Applying updates...");
       const { updated, skipped, conflicted } = await applyUpdates(
         comparisons,
         newFiles,
         cwd,
         {
           force: args.force,
-          acceptTheirs: args['accept-theirs'],
-          acceptMine: args['accept-mine'],
-        }
+          acceptTheirs: args["accept-theirs"],
+          acceptMine: args["accept-mine"],
+        },
       );
-      spinner.stop('Updates applied');
+      spinner.stop("Updates applied");
 
       // Step 9: Handle conflicts (write to conflicts directory)
       if (conflicted.length > 0) {
         const conflictComparisons = comparisons.filter((c) =>
-          conflicted.includes(c.path)
+          conflicted.includes(c.path),
         );
         await handleConflicts(conflictComparisons, newFiles, cwd);
       }
 
       // Step 10: Update manifest
-      spinner.start('Updating manifest...');
+      spinner.start("Updating manifest...");
       await updateManifestAfterUpdate(manifest, updated, newFiles, cwd);
-      spinner.stop('Manifest updated');
+      spinner.stop("Manifest updated");
 
       // Step 11: Clean up backup (success)
       await rm(backupDir, { recursive: true, force: true });
 
       // Success output
-      p.outro('Update complete!');
+      p.outro("Update complete!");
 
       logger.box(`
 Update Summary:
@@ -477,25 +512,28 @@ Updated:    ${updated.length} files
 Skipped:    ${skipped.length} files (user modifications kept)
 Conflicts:  ${conflicted.length} files (saved to .cursor/luca/conflicts/)
 
-${conflicted.length > 0 ? 'Review conflicts in .cursor/luca/conflicts/ and resolve manually.' : ''}
+${conflicted.length > 0 ? "Review conflicts in .cursor/luca/conflicts/ and resolve manually." : ""}
       `);
     } catch (error) {
-      spinner.stop('Update failed');
+      spinner.stop("Update failed");
 
       // Restore backup on failure
-      logger.error('Update failed, restoring backup...');
+      logger.error("Update failed, restoring backup...");
       await restoreBackup(backupDir, cwd);
 
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(`Update failed: ${errorMessage}`);
-      logger.info('');
-      logger.info('Your files have been restored to their pre-update state.');
-      logger.info('');
-      logger.info('To recover, try the following:');
-      logger.info('  1. Run `npx luca doctor` to check your installation');
-      logger.info('  2. Run `npx luca update --dry-run` to preview changes without applying them');
-      logger.info('  3. If the issue persists, report a bug at:');
-      logger.info('     https://github.com/alecsibilia/luca-framework/issues');
+      logger.info("");
+      logger.info("Your files have been restored to their pre-update state.");
+      logger.info("");
+      logger.info("To recover, try the following:");
+      logger.info("  1. Run `bunx luca doctor` to check your installation");
+      logger.info(
+        "  2. Run `bunx luca update --dry-run` to preview changes without applying them",
+      );
+      logger.info("  3. If the issue persists, report a bug at:");
+      logger.info("     https://github.com/alecsibilia/luca-framework/issues");
       process.exit(1);
     }
   },
