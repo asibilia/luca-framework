@@ -20,7 +20,7 @@ Luca is a lightweight framework designed to help developers build, manage, and e
 
 ```bash
 mkdir my-agent-project && cd my-agent-project
-npx create-luca
+bunx create-luca
 ```
 
 ### 2. Install dependencies
@@ -57,7 +57,7 @@ Open a plan file in your IDE and use the `/lu` command to execute it. Luca plans
 To update your project to the latest Luca framework version:
 
 ```bash
-npx luca update
+bunx luca update
 ```
 
 ## License
