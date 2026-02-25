@@ -1,7 +1,7 @@
 /**
  * phase-remove Skill - Remove a future phase from the roadmap and renumber subsequent phases.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-remove skill configuration
@@ -134,8 +134,4 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
   ],
 };
 
-export class PhaseRemoveSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseRemoveConfig);
-  }
-}
+export const phaseRemoveSkill = createSkill(phaseRemoveConfig);

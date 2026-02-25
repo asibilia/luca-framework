@@ -1,7 +1,7 @@
 /**
  * progress Skill - Check project progress, show current state, and suggest the next action to take.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the progress skill configuration
@@ -288,8 +288,4 @@ This skill provides intelligent routing based on project state. The "Route" sect
   ],
 };
 
-export class ProgressSkill extends BaseSkillImpl {
-  constructor() {
-    super(progressConfig);
-  }
-}
+export const progressSkill = createSkill(progressConfig);

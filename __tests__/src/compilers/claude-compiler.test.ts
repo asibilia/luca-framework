@@ -16,7 +16,7 @@ import {
 } from "../../../src/compilers/compile";
 import {
   createTestAgent,
-  TestSkill,
+  createTestSkill,
   createTestRule,
 } from "../../utils/test-entities";
 import {
@@ -33,7 +33,7 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileSkillClaude delegates to skill.toClaudeFormat()", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const result = compileSkillClaude(skill);
     expect(result).toBe(skill.toClaudeFormat());
   });
@@ -50,7 +50,7 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileSkill with CLAUDE format matches compileSkillClaude", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(compileSkill(skill, "CLAUDE")).toBe(compileSkillClaude(skill));
   });
 

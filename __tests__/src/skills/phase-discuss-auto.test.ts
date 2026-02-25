@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test";
-import { PhaseDiscussSkill } from "../../../src/skills/general/phase-discuss.skill";
+import { phaseDiscussSkill } from "../../../src/skills/general/phase-discuss.skill";
 
 describe("phase-discuss --auto mode", () => {
-  const skill = new PhaseDiscussSkill();
+  const skill = phaseDiscussSkill;
   const mainSection = skill.config.sections.find((s) => s.title === "main");
 
   test("skill accepts --auto flag in arguments", () => {
@@ -45,6 +45,7 @@ describe("phase-discuss --auto mode", () => {
   });
 
   test("skill still compiles and validates", () => {
-    expect(() => new PhaseDiscussSkill()).not.toThrow();
+    expect(skill).toBeDefined();
+    expect(skill.name).toBe("phase-discuss");
   });
 });

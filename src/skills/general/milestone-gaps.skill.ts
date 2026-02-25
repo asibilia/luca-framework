@@ -1,7 +1,7 @@
 /**
  * milestone-gaps Skill - Create phases to close gaps identified by a milestone audit.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the milestone-gaps skill configuration
@@ -74,8 +74,4 @@ Create phases to close gaps identified by milestone audit.
   ],
 };
 
-export class MilestoneGapsSkill extends BaseSkillImpl {
-  constructor() {
-    super(milestoneGapsConfig);
-  }
-}
+export const milestoneGapsSkill = createSkill(milestoneGapsConfig);

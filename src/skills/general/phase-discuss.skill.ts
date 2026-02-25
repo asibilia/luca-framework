@@ -1,7 +1,7 @@
 /**
  * phase-discuss Skill - Gather phase context through adaptive questioning before creating execution plans.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-discuss skill configuration
@@ -194,8 +194,4 @@ Default:
   ],
 };
 
-export class PhaseDiscussSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseDiscussConfig);
-  }
-}
+export const phaseDiscussSkill = createSkill(phaseDiscussConfig);

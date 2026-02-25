@@ -1,7 +1,7 @@
 /**
  * help Skill - Show available Luca commands, usage guide, and workflow overview.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the help skill configuration
@@ -316,8 +316,4 @@ This is a reference command. Common follow-ups:
   ],
 };
 
-export class HelpSkill extends BaseSkillImpl {
-  constructor() {
-    super(helpConfig);
-  }
-}
+export const helpSkill = createSkill(helpConfig);

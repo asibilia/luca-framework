@@ -1,7 +1,7 @@
 /**
  * session-resume Skill - Resume work from a previous session with full cognitive context restoration.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the session-resume skill configuration
@@ -97,8 +97,4 @@ Follow the resume-project workflow which handles:
   ],
 };
 
-export class SessionResumeSkill extends BaseSkillImpl {
-  constructor() {
-    super(sessionResumeConfig);
-  }
-}
+export const sessionResumeSkill = createSkill(sessionResumeConfig);

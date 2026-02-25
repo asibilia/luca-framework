@@ -1,7 +1,7 @@
 /**
  * session-pause Skill - Create a context handoff snapshot when pausing work mid-phase for later resumption.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the session-pause skill configuration
@@ -141,8 +141,4 @@ This skill creates a handoff for resuming later. No immediate action needed.
   ],
 };
 
-export class SessionPauseSkill extends BaseSkillImpl {
-  constructor() {
-    super(sessionPauseConfig);
-  }
-}
+export const sessionPauseSkill = createSkill(sessionPauseConfig);

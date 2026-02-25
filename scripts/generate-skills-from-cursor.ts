@@ -35,14 +35,14 @@ function generateSkillTsContent(skillData: SkillData): string {
     content: skillData.content,
   });
 
-  const className = `${skillData.name.charAt(0).toUpperCase() + skillData.name.slice(1).replace(/-/g, "")}Skill`;
+  const instanceName = `${skillData.name.replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase())}Skill`;
   const configName = `${skillData.name.replace(/-/g, "")}Config`;
 
   return `/**
  * ${skillData.name} Skill - ${skillData.description}
  */
-import { BaseSkillImpl } from '../base/base-skill';
-import { SkillConfig } from '../types/skill.types';
+import { createSkill } from '../base/base-skill';
+import type { SkillConfig } from '../types/skill.types';
 
 // Define the ${skillData.name} skill configuration
 const ${configName}: SkillConfig = {
@@ -64,11 +64,7 @@ const ${configName}: SkillConfig = {
   ]
 };
 
-export class ${className} extends BaseSkillImpl {
-  constructor() {
-    super(${configName});
-  }
-}
+export const ${instanceName} = createSkill(${configName});
 `;
 }
 

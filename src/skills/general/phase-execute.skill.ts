@@ -1,7 +1,7 @@
 /**
  * phase-execute Skill - Execute all plans in a phase with wave-based parallelization and harness verification.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-execute skill configuration
@@ -1576,8 +1576,4 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
   ],
 };
 
-export class PhaseExecuteSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseExecuteConfig);
-  }
-}
+export const phaseExecuteSkill = createSkill(phaseExecuteConfig);

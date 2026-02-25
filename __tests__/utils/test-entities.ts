@@ -4,7 +4,7 @@
  * These factory wrappers are used across multiple test files to avoid duplication.
  */
 import { createAgent } from "../../src/agents/base/base-agent";
-import { BaseSkillImpl } from "../../src/skills/base/base-skill";
+import { createSkill } from "../../src/skills/base/base-skill";
 import { createRule } from "../../src/rules/base/base-rule";
 import type { AgentConfig } from "../../src/agents/types/agent.types";
 import type { SkillConfig } from "../../src/skills/types/skill.types";
@@ -18,10 +18,12 @@ export function createTestAgent(config: AgentConfig) {
   return createAgent(config);
 }
 
-export class TestSkill extends BaseSkillImpl {
-  constructor(config: SkillConfig) {
-    super(config);
-  }
+/**
+ * Factory wrapper for creating test skills.
+ * Returns a BaseSkill instance via createSkill.
+ */
+export function createTestSkill(config: SkillConfig) {
+  return createSkill(config);
 }
 
 /**

@@ -1,7 +1,7 @@
 /**
  * test-run Skill - Run the project test suite with optional filter pattern and coverage reporting.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the test-run skill configuration
@@ -48,8 +48,4 @@ bun test --cwd packages-dev/task-archive
   ],
 };
 
-export class TestRunSkill extends BaseSkillImpl {
-  constructor() {
-    super(testRunConfig);
-  }
-}
+export const testRunSkill = createSkill(testRunConfig);

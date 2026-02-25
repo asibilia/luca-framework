@@ -1,7 +1,7 @@
 /**
  * config-settings Skill - Configure Luca workflow toggles, model profile, and agent settings.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the config-settings skill configuration
@@ -116,8 +116,4 @@ Settings updated. Configuration takes effect immediately.
   ],
 };
 
-export class ConfigSettingsSkill extends BaseSkillImpl {
-  constructor() {
-    super(configSettingsConfig);
-  }
-}
+export const configSettingsSkill = createSkill(configSettingsConfig);

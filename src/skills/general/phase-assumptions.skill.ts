@@ -1,7 +1,7 @@
 /**
  * phase-assumptions Skill - Preview AI planning assumptions for a phase before committing to execution.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-assumptions skill configuration
@@ -106,8 +106,4 @@ Shows AI's intended approach for a phase so you can course-correct if needed.
   ],
 };
 
-export class PhaseAssumptionsSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseAssumptionsConfig);
-  }
-}
+export const phaseAssumptionsSkill = createSkill(phaseAssumptionsConfig);

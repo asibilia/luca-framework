@@ -1,7 +1,7 @@
 /**
  * git-commit Skill - Stage and commit changes using the project's conventional commit CLI with ticket extraction.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the git-commit skill configuration
@@ -72,8 +72,4 @@ This prompts for commit details interactively.
   ],
 };
 
-export class GitCommitSkill extends BaseSkillImpl {
-  constructor() {
-    super(gitCommitConfig);
-  }
-}
+export const gitCommitSkill = createSkill(gitCommitConfig);

@@ -16,7 +16,7 @@ import {
   compileRuleClaude,
 } from "../../../src/compilers/compile";
 import { createAgent } from "../../../src/agents/base/base-agent";
-import { BaseSkillImpl } from "../../../src/skills/base/base-skill";
+import { createSkill } from "../../../src/skills/base/base-skill";
 import { createRule } from "../../../src/rules/base/base-rule";
 import type { AgentConfig } from "../../../src/agents/types/agent.types";
 import type { SkillConfig } from "../../../src/skills/types/skill.types";
@@ -30,10 +30,8 @@ function createTestAgent(config: AgentConfig) {
   return createAgent(config);
 }
 
-class TestSkill extends BaseSkillImpl {
-  constructor(config: SkillConfig) {
-    super(config);
-  }
+function createTestSkill(config: SkillConfig) {
+  return createSkill(config);
 }
 
 function createTestRule(config: RuleConfig) {
@@ -219,7 +217,7 @@ describe("Plugin compile functions", () => {
 
   describe("compileSkillPlugin", () => {
     test("produces markdown with description frontmatter", () => {
-      const skill = new TestSkill(skillConfig);
+      const skill = createTestSkill(skillConfig);
       const output = compileSkillPlugin(skill);
 
       // Should start with YAML frontmatter containing description
@@ -284,7 +282,7 @@ describe("Plugin compile functions", () => {
     });
 
     test("skill output extends compileSkillClaude with description frontmatter", () => {
-      const skill = new TestSkill(skillConfig);
+      const skill = createTestSkill(skillConfig);
       const pluginOutput = compileSkillPlugin(skill);
       const claudeOutput = compileSkillClaude(skill);
 

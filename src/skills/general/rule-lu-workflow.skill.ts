@@ -1,7 +1,7 @@
 /**
  * rule-lu-workflow Skill - Luca cognitive memory system: BRAIN.md, MEMORY.md, WORKING.md workflow and quality curve.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the rule-lu-workflow skill configuration
@@ -111,8 +111,4 @@ Before major operations, Luca runs cognitive pre-flight:
   ],
 };
 
-export class RuleLuWorkflowSkill extends BaseSkillImpl {
-  constructor() {
-    super(ruleLuWorkflowConfig);
-  }
-}
+export const ruleLuWorkflowSkill = createSkill(ruleLuWorkflowConfig);

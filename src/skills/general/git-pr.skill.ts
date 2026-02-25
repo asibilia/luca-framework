@@ -1,7 +1,7 @@
 /**
  * git-pr Skill - Create a pull request with conventional formatting and submit for review.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the git-pr skill configuration
@@ -67,8 +67,4 @@ Generated with [Claude Code](https://claude.ai/claude-code)
   ],
 };
 
-export class GitPrSkill extends BaseSkillImpl {
-  constructor() {
-    super(gitPrConfig);
-  }
-}
+export const gitPrSkill = createSkill(gitPrConfig);

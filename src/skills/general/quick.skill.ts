@@ -1,7 +1,7 @@
 /**
  * quick Skill - Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the quick skill configuration
@@ -339,8 +339,4 @@ Ready for next task: /quick
   ],
 };
 
-export class QuickSkill extends BaseSkillImpl {
-  constructor() {
-    super(quickConfig);
-  }
-}
+export const quickSkill = createSkill(quickConfig);

@@ -1,7 +1,7 @@
 /**
  * update Skill - Update Luca to the latest version with changelog preview and migration notes.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the update skill configuration
@@ -97,8 +97,4 @@ This is a terminal action. The update is complete.
   ],
 };
 
-export class UpdateSkill extends BaseSkillImpl {
-  constructor() {
-    super(updateConfig);
-  }
-}
+export const updateSkill = createSkill(updateConfig);

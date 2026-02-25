@@ -1,7 +1,7 @@
 /**
  * config-profile Skill - Switch the model profile (quality/balanced/budget) for Luca agent delegation.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the config-profile skill configuration
@@ -85,8 +85,4 @@ Profile updated to \`{profile}\`. Takes effect on next agent invocation.
   ],
 };
 
-export class ConfigProfileSkill extends BaseSkillImpl {
-  constructor() {
-    super(configProfileConfig);
-  }
-}
+export const configProfileSkill = createSkill(configProfileConfig);

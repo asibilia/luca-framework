@@ -1,7 +1,7 @@
 /**
  * phase-research Skill - Conduct comprehensive ecosystem research for niche or complex technical domains.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-research skill configuration
@@ -94,8 +94,4 @@ Goes beyond "which library" to ecosystem knowledge:
   ],
 };
 
-export class PhaseResearchSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseResearchConfig);
-  }
-}
+export const phaseResearchSkill = createSkill(phaseResearchConfig);

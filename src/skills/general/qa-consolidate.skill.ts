@@ -1,7 +1,7 @@
 /**
  * qa-consolidate Skill - Consolidate QA testing plans from merged feature PRs onto a parent release PR.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the qa-consolidate skill configuration
@@ -302,8 +302,4 @@ User says: "generate missing QA plans and consolidate for RELEASE-1345"
   ],
 };
 
-export class QaConsolidateSkill extends BaseSkillImpl {
-  constructor() {
-    super(qaConsolidateConfig);
-  }
-}
+export const qaConsolidateSkill = createSkill(qaConsolidateConfig);

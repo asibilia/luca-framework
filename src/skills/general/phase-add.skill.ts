@@ -1,7 +1,7 @@
 /**
  * phase-add Skill - Append a new phase to the end of the current milestone roadmap.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-add skill configuration
@@ -111,8 +111,4 @@ Add a new integer phase to the end of the current milestone in the roadmap.
   ],
 };
 
-export class PhaseAddSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseAddConfig);
-  }
-}
+export const phaseAddSkill = createSkill(phaseAddConfig);

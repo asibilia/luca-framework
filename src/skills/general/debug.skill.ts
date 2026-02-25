@@ -1,7 +1,7 @@
 /**
  * debug Skill - Systematic debugging workflow with persistent hypothesis state across context resets.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the debug skill configuration
@@ -273,8 +273,4 @@ Loop back to Step 4 to handle the return.
   ],
 };
 
-export class DebugSkill extends BaseSkillImpl {
-  constructor() {
-    super(debugConfig);
-  }
-}
+export const debugSkill = createSkill(debugConfig);
