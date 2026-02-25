@@ -1,103 +1,84 @@
-# Requirements — v1.7.0 Codebase Health & Build Stability
+# Requirements — v1.8.0 Functional Architecture & Bridge Unification
 
-## Phase 44 — Quick Wins: Repo Hygiene
+## Phase 52 — Functional Agent Factories
 
-### R44-1: Remove git-tracked coverage artifacts
+### R52-1: Create `createAgent()` factory function
 
-- **Must:** Remove `coverage/` directory from git tracking (`git rm -r --cached`)
-- **Must:** Remove `dist/.DS_Store` from git tracking (`git rm --cached`)
-- **Must:** Verify `.gitignore` covers both patterns
-- **Verify:** `git status` shows removals staged, no coverage files tracked
+- **Must:** Create `createAgent(config: AgentConfig): BaseAgent` factory in `src/agents/base/base-agent.ts`
+- **Must:** Follow exact pattern of existing `createRule()` in `src/rules/base/base-rule.ts`
+- **Must:** Return object implementing `BaseAgent` interface (config, name, description, toCursorFormat, toClaudeFormat)
+- **Must:** Use Zod `agentConfigSchema.parse(config)` for validation (same as current constructor)
+- **Must:** Keep `BaseAgent` interface unchanged (no breaking changes to consumers)
+- **Should:** Remove `BaseAgentImpl` abstract class after all agents migrated
+- **Verify:** `bun test` passes, `bunx --bun tsc --noEmit` reports 0 errors
 
-### R44-2: Rename snake_case rule files to kebab-case
+### R52-2: Migrate all 28 agents to factory pattern
 
-- **Must:** Rename `src/rules/general/cursor_rules.rule.ts` to `cursor-rules.rule.ts`
-- **Must:** Rename `src/rules/general/self_improve.rule.ts` to `self-improve.rule.ts`
-- **Must:** Use `git mv` to preserve history
-- **Must:** Update all imports referencing old names
-- **Verify:** `bun run build:all` succeeds, `bun run check:drift` passes
+- **Must:** Convert each agent from `class XAgent extends BaseAgentImpl` to `export const xAgent = createAgent(config)`
+- **Must:** Remove class definitions and class exports from all 28 agent files
+- **Must:** Keep config objects unchanged (frontmatter, sections, cognition, context)
+- **Must:** Maintain all existing agent names and descriptions
+- **Verify:** Each agent file exports a `BaseAgent` instance, not a class
+- **Verify:** `bun test` passes after each batch of migrations
 
-### R44-3: Clean empty directories
+### R52-3: Update agent registry
 
-- **Must:** Remove `packages/luca-state/.planning/` if empty
-- **Should:** Document phase numbering gap (37 → 40) in roadmap history or README
-- **Verify:** No empty leftover directories
-
-## Phase 45 — TypeScript Error Resolution
-
-### R45-1: Fix source code TypeScript errors
-
-- **Must:** Fix all errors in `index.ts`, adapters, commands, agents, hooks, utils
-- **Must:** Use `import type` for verbatimModuleSyntax compliance
-- **Must:** Add proper null checks for possibly-undefined values
-- **Must:** Fix readonly property assignments in `commands/update.ts`
-- **Verify:** `bunx --bun tsc --noEmit` reports 0 source code errors
-
-### R45-2: Fix script TypeScript errors
-
-- **Must:** Fix frontmatter parsing in 3 generate-\*-from-cursor.ts scripts
-- **Should:** Extract shared frontmatter parsing utility to reduce duplication
-- **Verify:** `bunx --bun tsc --noEmit` reports 0 script errors
-
-### R45-3: Fix test file TypeScript errors
-
-- **Must:** Fix Result<T> discriminated union access patterns
-- **Must:** Fix possibly-undefined array/registry lookups
-- **Must:** Fix string literal type mismatches
-- **Verify:** `bunx --bun tsc --noEmit` reports 0 errors total
+- **Must:** Update `src/agents/index.ts` registry from `() => new XAgent()` to `() => xAgent`
+- **Must:** Remove all class imports, replace with instance imports
+- **Must:** Verify registry returns identical output for all 28 agents
+- **Verify:** `bun run build:all` succeeds
+- **Verify:** `bun run check:drift` passes (generated outputs match)
 - **Verify:** `bun test` passes with all tests green
 
-## Phase 46 — Package Configuration Health
+## Phase 53 — Functional Skill Factories
 
-### R46-1: Add main fields to package.json files
+### R53-1: Create `createSkill()` factory function
 
-- **Must:** Add `"main": "./dist/index.cjs"` to create-luca, luca-framework, luca-state
-- **Verify:** Each package.json has both `main` and module/exports fields
+- **Must:** Create `createSkill(config: SkillConfig): BaseSkill` factory in `src/skills/base/base-skill.ts`
+- **Must:** Follow exact pattern of `createAgent()` and `createRule()`
+- **Must:** Return object implementing `BaseSkill` interface
+- **Must:** Use Zod `skillConfigSchema.parse(config)` for validation
+- **Should:** Remove `BaseSkillImpl` abstract class after all skills migrated
+- **Verify:** `bun test` passes, `bunx --bun tsc --noEmit` reports 0 errors
 
-### R46-2: Add missing tsconfig.json files
+### R53-2: Migrate all 45 skills to factory pattern
 
-- **Must:** Create `packages/luca-framework/tsconfig.json` extending root
-- **Must:** Create `packages/create-luca/tsconfig.json` extending root
-- **Verify:** `bunx --bun tsc --noEmit` works from each package directory
+- **Must:** Convert each skill from `class XSkill extends BaseSkillImpl` to `export const xSkill = createSkill(config)`
+- **Must:** Remove class definitions and class exports from all 45 skill files
+- **Must:** Keep config objects unchanged (frontmatter, sections)
+- **Must:** Maintain all existing skill names and descriptions
+- **Verify:** Each skill file exports a `BaseSkill` instance, not a class
+- **Verify:** `bun test` passes after each batch of migrations
 
-### R46-3: Clean unused path alias
+### R53-3: Update skill registry
 
-- **Must:** Remove `"~/*": ["./src/*"]` from root tsconfig.json if unused
-- **Verify:** `bun test` and `bunx --bun tsc --noEmit` still pass
-
-### R46-4: Add typescript devDep to luca-framework
-
-- **Must:** Add `typescript` to `packages/luca-framework/package.json` devDependencies
-- **Verify:** `bun install` succeeds
-
-## Phase 47 — Test File Consolidation
-
-### R47-1: Establish test convention
-
-- **Must:** Document centralized `__tests__/` as the standard test location
-- **Must:** Mirror source directory structure in `__tests__/`
-
-### R47-2: Move scattered test files
-
-- **Must:** Move 20 scattered test files from `scripts/` and `src/` to `__tests__/`
-- **Must:** Update all import paths in moved files
-- **Must:** Consolidate source-tree `__tests__/` directories
+- **Must:** Update `src/skills/index.ts` registry from `() => new XSkill()` to `() => xSkill`
+- **Must:** Remove all class imports, replace with instance imports
+- **Must:** Verify registry returns identical output for all 45 skills
+- **Verify:** `bun run build:all` succeeds
+- **Verify:** `bun run check:drift` passes
 - **Verify:** `bun test` passes with all tests green
-- **Verify:** No test files remain in `scripts/` or `src/` (except `packages/`)
 
-## Phase 48 — Bun API Migration
+## Phase 54 — State Machine Bridge Migration
 
-### R48-1: Fix harness runner import
+### R54-1: Audit skill bridge adoption
 
-- **Must:** Change `import { join } from 'path'` to `import { join } from 'pathe'` in `src/harness/runner.ts`
-- **Verify:** Harness still runs correctly
+- **Must:** Identify all skills that read/write STATE.md directly
+- **Must:** Categorize each skill's state access pattern (read-only, write, both)
+- **Must:** Document which skills already use bridge pattern
+- **Verify:** Audit report with complete coverage of all 45 skills
 
-### R48-2: Migrate luca-framework fs APIs
+### R54-2: Migrate skills to bridge with fallback
 
-- **Must:** Evaluate portability needs (CLI may need Node.js fs for non-Bun users)
-- **Should:** Migrate where Bun-only is acceptable
-- **Verify:** `bun test` passes, CLI commands still work
+- **Must:** Replace `cat .planning/STATE.md` with `bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || cat .planning/STATE.md`
+- **Must:** Replace `grep ... STATE.md` complexity reads with `bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null || grep ...`
+- **Must:** Replace direct STATE.md writes with bridge transitions + STATE.md fallback
+- **Must:** Keep backward-compatible fallback (`2>/dev/null || ...`) for all bridge calls
+- **Must:** Preserve existing skill behavior — bridge is a drop-in replacement
+- **Verify:** `bun test` passes
+- **Verify:** `bun run build:all` succeeds
+- **Verify:** `bun run check:drift` passes
 
 ---
 
-_Requirements generated: 2026-02-16 (v1.7.0 milestone)_
+_Requirements generated: 2026-02-25 (v1.8.0 milestone)_

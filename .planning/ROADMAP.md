@@ -2,17 +2,47 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v1.8.0 — Functional Architecture & Bridge Unification
+
+---
+
+## v1.8.0 — Functional Architecture & Bridge Unification
+
+**Goal:** Eliminate all class-based patterns from agents and skills, completing the functional architecture migration started with rules in v1.6.0. Unify state access through the typed bridge layer.
+
+### Phase 52 — Functional Agent Factories (COMPLEX)
+
+**Goal:** Refactor all 28 agent classes to functional `createAgent()` factory pattern, matching the proven `createRule()` pattern.
+
+- [ ] Plan 52-A: Create `createAgent()` factory function and refactor agent base
+- [ ] Plan 52-B: Migrate all 28 agents from class to factory pattern
+- [ ] Plan 52-C: Update agent registry and verify tests pass
+
+### Phase 53 — Functional Skill Factories (COMPLEX)
+
+**Goal:** Refactor all 45 skill classes to functional `createSkill()` factory pattern.
+
+- [ ] Plan 53-A: Create `createSkill()` factory function and refactor skill base
+- [ ] Plan 53-B: Migrate all 45 skills from class to factory pattern
+- [ ] Plan 53-C: Update skill registry and verify tests pass
+
+### Phase 54 — State Machine Bridge Migration (MODERATE)
+
+**Goal:** Migrate remaining skills to state machine bridge, replacing direct STATE.md read/write with typed bridge CLI.
+
+**Depends on:** Phase 53
+
+- [ ] Plan 54-A: Audit all skills for STATE.md access patterns
+- [ ] Plan 54-B: Migrate skills to bridge with STATE.md fallback
 
 ---
 
 ## Backlog (Deferred)
 
-### v1.8.0+ — Architectural Refactoring (proposed)
+### v1.9.0+ — Package Unification & Advanced Features (proposed)
 
-- Refactor 62 agent/skill classes to functional factories (critical, high effort)
-- Migrate remaining 38 skills to state machine bridge
 - Unify npm package: merge state management + CLI scaffold + plugin runner
+- Repo structure architect / maintainer subagent
 - Model-aware task routing (complexity-to-model mapping per agent)
 - Procedure evolution via reinforcement learning patterns
 - Python, Go, Rust tech stack profiles with full guidelines
@@ -37,4 +67,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-23 (v1.7.0 milestone completed)_
+_Roadmap updated: 2026-02-25 (v1.8.0 milestone started)_
