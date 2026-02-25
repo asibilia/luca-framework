@@ -11,13 +11,13 @@ All 46 skills were audited. Results:
 
 | Category                                     | Count | Status           |
 | -------------------------------------------- | ----- | ---------------- |
-| Using bridge pattern with STATE.md fallback  | 17    | Already migrated |
-| No state access (utility/reference skills)   | 29    | Not applicable   |
+| Using bridge pattern with STATE.md fallback  | 20    | Already migrated |
+| No state access (utility/reference skills)   | 26    | Not applicable   |
 | Using ONLY direct STATE.md (needs migration) | 0     | None found       |
 
 ### R54-2: Migration status
 
-**No migration work needed.** All 17 skills that access workflow state already use the bridge CLI as primary with STATE.md fallback:
+**No migration work needed.** All 20 skills that access workflow state already use the bridge CLI as primary with STATE.md fallback:
 
 ```bash
 # Read pattern (already in place):
@@ -30,7 +30,7 @@ bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null || grep "T
 bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
 ```
 
-### Skills using bridge (17)
+### Skills using bridge (20)
 
 1. autopilot.skill.ts (11 bridge refs)
 2. phase-execute.skill.ts (11 bridge refs)
