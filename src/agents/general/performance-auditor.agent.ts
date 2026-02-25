@@ -1,7 +1,7 @@
 /**
  * performance-auditor Agent - Identifies performance bottlenecks, reviews bundle impact, and suggests optimizations. Use proactively after implementing features.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the performance-auditor agent configuration
@@ -86,8 +86,4 @@ Provide specific recommendations with file:line references.`,
   ],
 };
 
-export class PerformanceAuditorAgent extends BaseAgentImpl {
-  constructor() {
-    super(performanceAuditorConfig);
-  }
-}
+export const performanceAuditorAgent = createAgent(performanceAuditorConfig);

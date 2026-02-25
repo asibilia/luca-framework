@@ -1,39 +1,39 @@
 /**
- * Base class for all agents in the Luca Framework
+ * Factory function for creating agents in the Luca Framework.
+ *
+ * Replaces the former BaseAgentImpl abstract class with a functional pattern
+ * that aligns with the project's no-classes convention.
  */
 import type { BaseAgent, AgentConfig } from "../types/agent.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
 import { agentConfigSchema } from "../types/agent.schemas";
 
-export abstract class BaseAgentImpl implements BaseAgent {
-  protected readonly _config: AgentConfig;
-
-  constructor(config: AgentConfig) {
-    // Validate config with Zod schema
-    const validatedConfig = agentConfigSchema.parse(config);
-    this._config = validatedConfig;
-  }
-
-  get config(): AgentConfig {
-    return this._config;
-  }
-
-  get name(): string {
-    return this._config.frontmatter.name;
-  }
-
-  get description(): string {
-    return this._config.frontmatter.description;
-  }
-
-  toCursorFormat(): string {
-    return toCursorFormat(this._config.frontmatter, this._config.sections);
-  }
-
-  toClaudeFormat(): string {
-    return toClaudeFormat(
-      `# ${this.name}\n\n${this.description}`,
-      this._config.sections,
-    );
-  }
+/**
+ * Create an agent instance from a validated configuration.
+ *
+ * @param config - Agent configuration with frontmatter and sections
+ * @returns A BaseAgent-compatible object with formatting methods
+ */
+export function createAgent(config: AgentConfig): BaseAgent {
+  const validated = agentConfigSchema.parse(config);
+  return {
+    get config() {
+      return validated;
+    },
+    get name() {
+      return validated.frontmatter.name;
+    },
+    get description() {
+      return validated.frontmatter.description;
+    },
+    toCursorFormat() {
+      return toCursorFormat(validated.frontmatter, validated.sections);
+    },
+    toClaudeFormat() {
+      return toClaudeFormat(
+        `# ${validated.frontmatter.name}\n\n${validated.frontmatter.description}`,
+        validated.sections,
+      );
+    },
+  };
 }

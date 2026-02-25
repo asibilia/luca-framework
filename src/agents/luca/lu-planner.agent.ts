@@ -1,7 +1,7 @@
 /**
  * Luca Planner Agent - Creates execution plans with cognitive pre-flight, goal-backward analysis, and artifact derivation
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 import { agentConfigSchema } from "../types/agent.schemas";
 
@@ -253,8 +253,4 @@ Choose checkpoint types based on risk and verification needs:
 // Validate the config with Zod schema at module initialization
 const validatedConfig = agentConfigSchema.parse(luPlannerConfig);
 
-export class LuPlannerAgent extends BaseAgentImpl {
-  constructor() {
-    super(validatedConfig);
-  }
-}
+export const luPlannerAgent = createAgent(validatedConfig);

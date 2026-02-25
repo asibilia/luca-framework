@@ -1,7 +1,7 @@
 /**
  * code-simplifier Agent - Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the code-simplifier agent configuration
@@ -140,8 +140,4 @@ Provide before/after comparisons for significant changes.`,
   ],
 };
 
-export class CodeSimplifierAgent extends BaseAgentImpl {
-  constructor() {
-    super(codeSimplifierConfig);
-  }
-}
+export const codeSimplifierAgent = createAgent(codeSimplifierConfig);

@@ -1,7 +1,7 @@
 /**
  * ux Agent - Reviews user flows, interaction patterns, and accessibility to ensure optimal user experience. Use when reviewing UI features.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the ux agent configuration
@@ -78,8 +78,4 @@ Flag issues with severity: CRITICAL, HIGH, MEDIUM, LOW`,
   ],
 };
 
-export class UxAgent extends BaseAgentImpl {
-  constructor() {
-    super(uxConfig);
-  }
-}
+export const uxAgent = createAgent(uxConfig);

@@ -1,7 +1,7 @@
 /**
  * lu-router Agent - Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-router agent configuration
@@ -564,8 +564,4 @@ Routing complete when:
   ],
 };
 
-export class LuRouterAgent extends BaseAgentImpl {
-  constructor() {
-    super(luRouterConfig);
-  }
-}
+export const luRouterAgent = createAgent(luRouterConfig);

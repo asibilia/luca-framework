@@ -15,7 +15,7 @@ import {
   compileRule,
 } from "../../../src/compilers/compile";
 import {
-  TestAgent,
+  createTestAgent,
   TestSkill,
   createTestRule,
 } from "../../utils/test-entities";
@@ -27,7 +27,7 @@ import {
 
 describe("Cursor-format compile functions", () => {
   test("compileAgentCursor delegates to agent.toCursorFormat()", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentCursor(agent);
     expect(result).toBe(agent.toCursorFormat());
   });
@@ -45,7 +45,7 @@ describe("Cursor-format compile functions", () => {
   });
 
   test("compileAgent with CURSOR format matches compileAgentCursor", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(compileAgent(agent, "CURSOR")).toBe(compileAgentCursor(agent));
   });
 
@@ -60,14 +60,14 @@ describe("Cursor-format compile functions", () => {
   });
 
   test("compileAgent throws on unsupported format", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(() => compileAgent(agent, "UNKNOWN" as any)).toThrow(
       "Unsupported format",
     );
   });
 
   test("compileAgentCursor returns string containing YAML frontmatter", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentCursor(agent);
     expect(result).toContain("---");
     expect(result).toContain("name: test-agent");

@@ -1,20 +1,20 @@
 /**
- * Unit tests for BaseAgentImpl
+ * Unit tests for createAgent factory function
  *
- * Tests constructor validation, getters, toCursorFormat, and toClaudeFormat.
- * Uses a concrete TestAgent subclass since BaseAgentImpl is abstract.
+ * Tests config validation, getters, toCursorFormat, and toClaudeFormat.
+ * Uses createTestAgent factory wrapper.
  */
 import { describe, test, expect } from "bun:test";
-import { TestAgent } from "../../../utils/test-entities";
+import { createTestAgent } from "../../../utils/test-entities";
 import type { AgentConfig } from "../../../../src/agents/types/agent.types";
 import { validAgentConfig } from "../../../utils/fixtures";
 
 // ---------------------------------------------------------------------------
 // Constructor Validation (8 cases)
 // ---------------------------------------------------------------------------
-describe("BaseAgentImpl - constructor validation", () => {
+describe("createAgent - config validation", () => {
   test("accepts a valid config", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(agent).toBeDefined();
   });
 
@@ -23,7 +23,7 @@ describe("BaseAgentImpl - constructor validation", () => {
       frontmatter: { name: "no-tools", description: "Agent without tools" },
       sections: [{ title: "Sec", content: "body", order: 1 }],
     };
-    const agent = new TestAgent(config);
+    const agent = createTestAgent(config);
     expect(agent.name).toBe("no-tools");
   });
 
@@ -32,7 +32,7 @@ describe("BaseAgentImpl - constructor validation", () => {
       frontmatter: { name: "no-color", description: "Agent without color" },
       sections: [{ title: "Sec", content: "body", order: 1 }],
     };
-    const agent = new TestAgent(config);
+    const agent = createTestAgent(config);
     expect(agent.config.frontmatter.color).toBeUndefined();
   });
 
@@ -44,7 +44,7 @@ describe("BaseAgentImpl - constructor validation", () => {
       },
       sections: [],
     };
-    const agent = new TestAgent(config);
+    const agent = createTestAgent(config);
     expect(agent.config.sections).toHaveLength(0);
   });
 
@@ -53,7 +53,7 @@ describe("BaseAgentImpl - constructor validation", () => {
       frontmatter: { description: "Missing name" },
       sections: [],
     };
-    expect(() => new TestAgent(config as any)).toThrow();
+    expect(() => createTestAgent(config as any)).toThrow();
   });
 
   test("rejects config missing frontmatter.description", () => {
@@ -61,38 +61,38 @@ describe("BaseAgentImpl - constructor validation", () => {
       frontmatter: { name: "missing-desc" },
       sections: [],
     };
-    expect(() => new TestAgent(config as any)).toThrow();
+    expect(() => createTestAgent(config as any)).toThrow();
   });
 
   test("rejects config missing frontmatter entirely", () => {
     const config = { sections: [] };
-    expect(() => new TestAgent(config as any)).toThrow();
+    expect(() => createTestAgent(config as any)).toThrow();
   });
 
   test("rejects config missing sections entirely", () => {
     const config = {
       frontmatter: { name: "no-sections", description: "Missing sections" },
     };
-    expect(() => new TestAgent(config as any)).toThrow();
+    expect(() => createTestAgent(config as any)).toThrow();
   });
 });
 
 // ---------------------------------------------------------------------------
 // Getters (3 cases)
 // ---------------------------------------------------------------------------
-describe("BaseAgentImpl - getters", () => {
+describe("createAgent - getters", () => {
   test("config getter returns the full validated config", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(agent.config).toEqual(validAgentConfig);
   });
 
   test("name getter returns frontmatter.name", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(agent.name).toBe("test-agent");
   });
 
   test("description getter returns frontmatter.description", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(agent.description).toBe("A test agent for unit tests");
   });
 });
@@ -100,23 +100,23 @@ describe("BaseAgentImpl - getters", () => {
 // ---------------------------------------------------------------------------
 // toCursorFormat (5 cases)
 // ---------------------------------------------------------------------------
-describe("BaseAgentImpl - toCursorFormat", () => {
+describe("createAgent - toCursorFormat", () => {
   test("output starts with YAML frontmatter delimiters", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toCursorFormat();
     expect(output.startsWith("---\n")).toBe(true);
     expect(output).toContain("\n---\n");
   });
 
   test("frontmatter includes name and description", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toCursorFormat();
     expect(output).toContain("name: test-agent");
     expect(output).toContain("description: A test agent for unit tests");
   });
 
   test("sections with titles are wrapped in XML-like tags", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toCursorFormat();
     expect(output).toContain("<main>");
     expect(output).toContain("</main>");
@@ -134,7 +134,7 @@ describe("BaseAgentImpl - toCursorFormat", () => {
         { title: "First", content: "first content", order: 1 },
       ],
     };
-    const agent = new TestAgent(config);
+    const agent = createTestAgent(config);
     const output = agent.toCursorFormat();
     const firstIdx = output.indexOf("first content");
     const secondIdx = output.indexOf("second content");
@@ -142,7 +142,7 @@ describe("BaseAgentImpl - toCursorFormat", () => {
   });
 
   test("frontmatter includes array fields (tools)", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toCursorFormat();
     expect(output).toContain("tools:");
     expect(output).toContain("  - read");
@@ -153,15 +153,15 @@ describe("BaseAgentImpl - toCursorFormat", () => {
 // ---------------------------------------------------------------------------
 // toClaudeFormat (4 cases)
 // ---------------------------------------------------------------------------
-describe("BaseAgentImpl - toClaudeFormat", () => {
+describe("createAgent - toClaudeFormat", () => {
   test("output starts with H1 heading using the agent name", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toClaudeFormat();
     expect(output.startsWith("# test-agent")).toBe(true);
   });
 
   test("description follows the H1 heading", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toClaudeFormat();
     const lines = output.split("\n");
     // Line 0: "# test-agent", Line 1: empty, Line 2: description
@@ -169,7 +169,7 @@ describe("BaseAgentImpl - toClaudeFormat", () => {
   });
 
   test("sections with titles become H2 headings", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const output = agent.toClaudeFormat();
     expect(output).toContain("## Main");
     expect(output).toContain("This is the main section of the test agent.");
@@ -183,7 +183,7 @@ describe("BaseAgentImpl - toClaudeFormat", () => {
         { title: "Alpha", content: "alpha content", order: 1 },
       ],
     };
-    const agent = new TestAgent(config);
+    const agent = createTestAgent(config);
     const output = agent.toClaudeFormat();
     const alphaIdx = output.indexOf("alpha content");
     const betaIdx = output.indexOf("beta content");

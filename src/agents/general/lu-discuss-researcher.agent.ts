@@ -2,7 +2,7 @@
  * lu-discuss-researcher Agent - Researches a single gray area question for phase-discuss auto mode.
  * Uses WebSearch and WebFetch scoped to project tech stack to produce a cited recommendation.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-discuss-researcher agent configuration
@@ -202,8 +202,4 @@ For these, set \`researchable: false\` and explain why. The orchestrator will fl
   ],
 };
 
-export class LuDiscussResearcherAgent extends BaseAgentImpl {
-  constructor() {
-    super(luDiscussResearcherConfig);
-  }
-}
+export const luDiscussResearcherAgent = createAgent(luDiscussResearcherConfig);

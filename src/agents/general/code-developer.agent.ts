@@ -1,7 +1,7 @@
 /**
  * code-developer Agent - Implementation partner that writes production-quality code following established patterns. Use after architect approves design.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the code-developer agent configuration
@@ -78,8 +78,4 @@ You WRITE code, don't just describe it. Use Write/Edit tools to implement.`,
   ],
 };
 
-export class CodeDeveloperAgent extends BaseAgentImpl {
-  constructor() {
-    super(codeDeveloperConfig);
-  }
-}
+export const codeDeveloperAgent = createAgent(codeDeveloperConfig);

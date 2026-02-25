@@ -15,7 +15,7 @@ import {
   compileRule,
 } from "../../../src/compilers/compile";
 import {
-  TestAgent,
+  createTestAgent,
   TestSkill,
   createTestRule,
 } from "../../utils/test-entities";
@@ -27,7 +27,7 @@ import {
 
 describe("Claude-format compile functions", () => {
   test("compileAgentClaude delegates to agent.toClaudeFormat()", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentClaude(agent);
     expect(result).toBe(agent.toClaudeFormat());
   });
@@ -45,7 +45,7 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileAgent with CLAUDE format matches compileAgentClaude", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(compileAgent(agent, "CLAUDE")).toBe(compileAgentClaude(agent));
   });
 
@@ -60,14 +60,14 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileAgent throws on unsupported format", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(() => compileAgent(agent, "INVALID" as any)).toThrow(
       "Unsupported format",
     );
   });
 
   test("compileAgentClaude returns string starting with H1 heading", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentClaude(agent);
     expect(result.startsWith("# test-agent")).toBe(true);
   });

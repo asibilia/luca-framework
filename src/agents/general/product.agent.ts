@@ -1,7 +1,7 @@
 /**
  * product Agent - Analyzes feature requests and helps scope product requirements with technical feasibility in mind. Use when starting work on new features.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the product agent configuration
@@ -77,8 +77,4 @@ Provide actionable recommendations with specific file references.`,
   ],
 };
 
-export class ProductAgent extends BaseAgentImpl {
-  constructor() {
-    super(productConfig);
-  }
-}
+export const productAgent = createAgent(productConfig);
