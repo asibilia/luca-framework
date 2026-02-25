@@ -3,7 +3,6 @@
  */
 import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
-import { agentConfigSchema } from "../types/agent.schemas";
 
 // Define the lu-planner agent configuration
 const luPlannerConfig: AgentConfig = {
@@ -250,7 +249,4 @@ Choose checkpoint types based on risk and verification needs:
   ],
 };
 
-// Validate the config with Zod schema at module initialization
-const validatedConfig = agentConfigSchema.parse(luPlannerConfig);
-
-export const luPlannerAgent = createAgent(validatedConfig);
+export const luPlannerAgent = createAgent(luPlannerConfig);

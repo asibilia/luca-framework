@@ -4,7 +4,6 @@
  */
 import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
-import { skillConfigSchema } from "../types/skill.schemas";
 
 // Define the autopilot skill configuration
 const autopilotSkillConfig: SkillConfig = {
@@ -808,7 +807,4 @@ bun run commit --message="autopilot session complete" --type=docs --scope=autopi
   ],
 };
 
-// Validate the config with Zod schema at module initialization
-const validatedConfig = skillConfigSchema.parse(autopilotSkillConfig);
-
-export const autopilotSkill = createSkill(validatedConfig);
+export const autopilotSkill = createSkill(autopilotSkillConfig);

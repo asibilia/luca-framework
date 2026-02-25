@@ -4,7 +4,7 @@
 import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
-const HarnessVerificationConfig: RuleConfig = {
+const harnessVerificationConfig: RuleConfig = {
   frontmatter: {
     description:
       "Harness/Hook verification boundary: when full harness runs vs lightweight hooks",
@@ -56,4 +56,4 @@ The harness is thorough (runs all 4 check types), produces structured output, an
   ],
 };
 
-export const harnessVerificationRule = createRule(HarnessVerificationConfig);
+export const harnessVerificationRule = createRule(harnessVerificationConfig);

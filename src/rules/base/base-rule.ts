@@ -6,6 +6,7 @@
  */
 import type { BaseRule, RuleConfig } from "../types/rule.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
+import { deepFreeze } from "../../shared/deep-freeze";
 import { ruleConfigSchema } from "../types/rule.schemas";
 
 /**
@@ -17,7 +18,7 @@ import { ruleConfigSchema } from "../types/rule.schemas";
 export function createRule(config: RuleConfig): BaseRule {
   // Uses parse() for fail-fast validation; use safeParse() at system boundaries
   // where graceful error handling is needed instead of thrown exceptions.
-  const validated = Object.freeze(ruleConfigSchema.parse(config));
+  const validated = deepFreeze(ruleConfigSchema.parse(config));
   return {
     get config() {
       return validated;

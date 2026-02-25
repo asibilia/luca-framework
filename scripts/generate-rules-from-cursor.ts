@@ -4,6 +4,7 @@ import { mkdir, readdir } from "node:fs/promises";
 import path from "path";
 
 import { parseFrontmatter } from "./parse-frontmatter";
+import { toCamelCaseWithSuffix, toConfigName } from "./shared/naming-utils";
 
 interface RuleData {
   description: string;
@@ -45,9 +46,8 @@ function generateRuleTsContent(ruleData: RuleData): string {
     .substring(0, 20)
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9-]/g, "");
-  const configName = `${ruleName.replace(/-/g, "")}Config`;
-  // Derive camelCase export name with "Rule" suffix (e.g., "file-naming" -> "fileNamingRule")
-  const exportName = `${ruleName.replace(/-([a-z])/g, (_: string, letter: string) => letter.toUpperCase()).replace(/-/g, "")}Rule`;
+  const configName = toConfigName(ruleName);
+  const exportName = toCamelCaseWithSuffix(ruleName, "Rule");
 
   return `/**
  * ${ruleData.description}

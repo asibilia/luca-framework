@@ -6,6 +6,7 @@
  */
 import type { BaseAgent, AgentConfig } from "../types/agent.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
+import { deepFreeze } from "../../shared/deep-freeze";
 import { agentConfigSchema } from "../types/agent.schemas";
 
 /**
@@ -17,7 +18,7 @@ import { agentConfigSchema } from "../types/agent.schemas";
 export function createAgent(config: AgentConfig): BaseAgent {
   // Uses parse() for fail-fast validation; use safeParse() at system boundaries
   // where graceful error handling is needed instead of thrown exceptions.
-  const validated = Object.freeze(agentConfigSchema.parse(config));
+  const validated = deepFreeze(agentConfigSchema.parse(config));
   return {
     get config() {
       return validated;

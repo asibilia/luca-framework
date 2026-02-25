@@ -1,7 +1,7 @@
 /**
  * Hook registry for the Luca Framework build pipeline.
  *
- * Unlike agent/skill/rule registries (which map to class constructors),
+ * Unlike agent/skill/rule registries (which map to factory-produced instances),
  * the hook registry maps hook names to metadata objects. The build scripts
  * use this metadata to:
  * 1. Copy shell scripts from src/hooks/scripts/ to .claude/hooks/ and .cursor/hooks/

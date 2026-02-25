@@ -35,7 +35,7 @@ export function toCursorFormat(
   sections: Section[],
 ): string {
   const fm = formatFrontmatter(frontmatter);
-  const body = sections
+  const body = [...sections]
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .map((section) => {
       if (section.title) {
@@ -53,7 +53,7 @@ export function toCursorFormat(
  * Converts a config to Claude-compatible format (H1 heading + H2 sections)
  */
 export function toClaudeFormat(heading: string, sections: Section[]): string {
-  const body = sections
+  const body = [...sections]
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .map((section) => {
       if (section.title) {

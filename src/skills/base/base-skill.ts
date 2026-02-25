@@ -6,6 +6,7 @@
  */
 import type { BaseSkill, SkillConfig } from "../types/skill.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
+import { deepFreeze } from "../../shared/deep-freeze";
 import { skillConfigSchema } from "../types/skill.schemas";
 
 /**
@@ -17,7 +18,7 @@ import { skillConfigSchema } from "../types/skill.schemas";
 export function createSkill(config: SkillConfig): BaseSkill {
   // Uses parse() for fail-fast validation; use safeParse() at system boundaries
   // where graceful error handling is needed instead of thrown exceptions.
-  const validated = Object.freeze(skillConfigSchema.parse(config));
+  const validated = deepFreeze(skillConfigSchema.parse(config));
   return {
     get config() {
       return validated;

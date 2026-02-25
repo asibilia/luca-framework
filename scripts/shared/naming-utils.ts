@@ -24,11 +24,14 @@ export function toCamelCaseWithSuffix(
 }
 
 /**
- * Convert a kebab-case name to a flat config variable name.
+ * Convert a kebab-case name to a camelCase config variable name.
  *
  * @param kebabName - The kebab-case input (e.g. "code-simplifier")
- * @returns flat identifier with "Config" suffix (e.g. "codesimplifierConfig")
+ * @returns camelCase identifier with "Config" suffix (e.g. "codeSimplifierConfig")
  */
 export function toConfigName(kebabName: string): string {
-  return kebabName.replace(/-/g, "") + "Config";
+  return (
+    kebabName.replace(/-([a-z])/g, (_: string, l: string) => l.toUpperCase()) +
+    "Config"
+  );
 }
