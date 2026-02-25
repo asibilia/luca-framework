@@ -14,17 +14,17 @@
 
 **Goal:** Refactor all 28 agent classes to functional `createAgent()` factory pattern, matching the proven `createRule()` pattern.
 
-- [ ] Plan 52-A: Create `createAgent()` factory function and refactor agent base
-- [ ] Plan 52-B: Migrate all 28 agents from class to factory pattern
-- [ ] Plan 52-C: Update agent registry and verify tests pass
+- [x] Plan 52-A: Create `createAgent()` factory function and refactor agent base
+- [x] Plan 52-B: Migrate all 28 agents from class to factory pattern
+- [x] Plan 52-C: Update agent registry and verify tests pass
 
 ### Phase 53 — Functional Skill Factories (COMPLEX)
 
 **Goal:** Refactor all 45 skill classes to functional `createSkill()` factory pattern.
 
-- [ ] Plan 53-A: Create `createSkill()` factory function and refactor skill base
-- [ ] Plan 53-B: Migrate all 45 skills from class to factory pattern
-- [ ] Plan 53-C: Update skill registry and verify tests pass
+- [x] Plan 53-A: Create `createSkill()` factory function and refactor skill base
+- [x] Plan 53-B: Migrate all 45 skills from class to factory pattern
+- [x] Plan 53-C: Update skill registry and verify tests pass
 
 ### Phase 54 — State Machine Bridge Migration (MODERATE)
 
@@ -32,8 +32,8 @@
 
 **Depends on:** Phase 53
 
-- [ ] Plan 54-A: Audit all skills for STATE.md access patterns
-- [ ] Plan 54-B: Migrate skills to bridge with STATE.md fallback
+- [x] Plan 54-A: Audit all skills for STATE.md access patterns (all 17 stateful skills already use bridge)
+- [x] Plan 54-B: Migrate skills to bridge with STATE.md fallback (no migration needed — 100% adopted)
 
 ---
 
@@ -67,4 +67,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-25 (v1.8.0 milestone started)_
+_Roadmap updated: 2026-02-25 (v1.8.0 milestone complete — all phases passed)_
