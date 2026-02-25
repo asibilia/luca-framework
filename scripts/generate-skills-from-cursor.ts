@@ -4,6 +4,7 @@ import { mkdir, readdir, stat, access } from "node:fs/promises";
 import path from "path";
 
 import { parseFrontmatter } from "./parse-frontmatter";
+import { toCamelCaseWithSuffix, toConfigName } from "./shared/naming-utils";
 
 interface SkillData {
   name: string;
@@ -35,8 +36,8 @@ function generateSkillTsContent(skillData: SkillData): string {
     content: skillData.content,
   });
 
-  const instanceName = `${skillData.name.replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase())}Skill`;
-  const configName = `${skillData.name.replace(/-/g, "")}Config`;
+  const instanceName = toCamelCaseWithSuffix(skillData.name, "Skill");
+  const configName = toConfigName(skillData.name);
 
   return `/**
  * ${skillData.name} Skill - ${skillData.description}

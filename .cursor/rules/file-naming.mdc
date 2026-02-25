@@ -1,5 +1,5 @@
 ---
-description: Generic rule description
+description: Enforce kebab-case file naming conventions
 alwaysApply: true
 ---
 

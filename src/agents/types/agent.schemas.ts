@@ -40,7 +40,7 @@ export const agentConfigSchema = z.object({
 });
 
 // Note: We don't include function validations in Zod schemas as they're not serializable
-// Function validations should be handled at the class level
+// Function validations should be handled at the factory level
 
 // Type inference from Zod schemas
 export type CognitionTierSchema = z.infer<typeof cognitionTierSchema>;

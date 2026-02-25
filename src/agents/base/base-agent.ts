@@ -15,7 +15,9 @@ import { agentConfigSchema } from "../types/agent.schemas";
  * @returns A BaseAgent-compatible object with formatting methods
  */
 export function createAgent(config: AgentConfig): BaseAgent {
-  const validated = agentConfigSchema.parse(config);
+  // Uses parse() for fail-fast validation; use safeParse() at system boundaries
+  // where graceful error handling is needed instead of thrown exceptions.
+  const validated = Object.freeze(agentConfigSchema.parse(config));
   return {
     get config() {
       return validated;

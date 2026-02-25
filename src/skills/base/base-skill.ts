@@ -15,7 +15,9 @@ import { skillConfigSchema } from "../types/skill.schemas";
  * @returns A BaseSkill-compatible object with formatting methods
  */
 export function createSkill(config: SkillConfig): BaseSkill {
-  const validated = skillConfigSchema.parse(config);
+  // Uses parse() for fail-fast validation; use safeParse() at system boundaries
+  // where graceful error handling is needed instead of thrown exceptions.
+  const validated = Object.freeze(skillConfigSchema.parse(config));
   return {
     get config() {
       return validated;

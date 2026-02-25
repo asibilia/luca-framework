@@ -7,7 +7,7 @@
 
 ### R54-1: Audit skill bridge adoption
 
-All 46 skills were audited. Results:
+All 45 skills were audited. Results:
 
 | Category                                     | Count | Status           |
 | -------------------------------------------- | ----- | ---------------- |

@@ -1,7 +1,7 @@
 /**
  * Zod schemas for Luca Framework rule types
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 export const ruleFrontmatterSchema = z.object({
   description: z.string(),
@@ -21,7 +21,7 @@ export const ruleConfigSchema = z.object({
 });
 
 // Note: We don't include function validations in Zod schemas as they're not serializable
-// Function validations should be handled at the class level
+// Function validations should be handled at the factory level
 
 // Type inference from Zod schemas
 export type RuleFrontmatterSchema = z.infer<typeof ruleFrontmatterSchema>;

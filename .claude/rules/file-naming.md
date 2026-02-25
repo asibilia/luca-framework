@@ -1,4 +1,4 @@
-# Generic rule description
+# Enforce kebab-case file naming conventions
 
 ## rule
 

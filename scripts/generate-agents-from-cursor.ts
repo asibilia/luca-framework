@@ -4,6 +4,7 @@ import { mkdir, readdir } from "node:fs/promises";
 import path from "path";
 
 import { parseFrontmatter } from "./parse-frontmatter";
+import { toCamelCaseWithSuffix, toConfigName } from "./shared/naming-utils";
 
 interface AgentData {
   name: string;
@@ -43,8 +44,8 @@ function generateAgentTsContent(agentData: AgentData): string {
     content: agentData.content,
   });
 
-  const exportName = `${agentData.name.replace(/-([a-z])/g, (_: string, letter: string) => letter.toUpperCase())}Agent`;
-  const configName = `${agentData.name.replace(/-/g, "")}Config`;
+  const exportName = toCamelCaseWithSuffix(agentData.name, "Agent");
+  const configName = toConfigName(agentData.name);
 
   return `/**
  * ${agentData.name} Agent - ${agentData.description}

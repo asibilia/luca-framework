@@ -334,7 +334,7 @@ main().catch((error) => {
   console.error("What failed:", error.message || error);
   console.error("\nTroubleshooting:");
   console.error(
-    "  1. Ensure all source classes in src/ compile: bun build ./src/index.ts",
+    "  1. Ensure all source files in src/ compile: bun build ./src/index.ts",
   );
   console.error(
     "  2. Check that compile functions exist in src/compilers/compile.ts",
