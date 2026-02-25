@@ -1,7 +1,7 @@
 /**
  * phase-insert Skill - Insert urgent work as a decimal phase between existing phases mid-milestone.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-insert skill configuration
@@ -118,8 +118,4 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
   ],
 };
 
-export class PhaseInsertSkill extends BaseSkillImpl {
-  constructor() {
-    super(phaseInsertConfig);
-  }
-}
+export const phaseInsertSkill = createSkill(phaseInsertConfig);

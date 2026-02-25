@@ -2,9 +2,8 @@
  * autopilot Skill - Autonomous orchestrator that drives backlog, roadmap, plan, execute,
  * and milestone workflows with configurable oversight levels.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
-import { skillConfigSchema } from "../types/skill.schemas";
 
 // Define the autopilot skill configuration
 const autopilotSkillConfig: SkillConfig = {
@@ -808,11 +807,4 @@ bun run commit --message="autopilot session complete" --type=docs --scope=autopi
   ],
 };
 
-// Validate the config with Zod schema at module initialization
-const validatedConfig = skillConfigSchema.parse(autopilotSkillConfig);
-
-export class AutopilotSkill extends BaseSkillImpl {
-  constructor() {
-    super(validatedConfig);
-  }
-}
+export const autopilotSkill = createSkill(autopilotSkillConfig);

@@ -1,7 +1,7 @@
 /**
  * lu-research-synthesizer Agent - Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /project-new after 4 researcher agents complete.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the lu-research-synthesizer agent configuration
@@ -290,8 +290,4 @@ Quality indicators:
   ],
 };
 
-export class LuResearchSynthesizerAgent extends BaseAgentImpl {
-  constructor() {
-    super(luResearchSynthesizerConfig);
-  }
-}
+export const luResearchSynthesizerAgent = createAgent(luResearchSynthesizerConfig);

@@ -1,7 +1,7 @@
 /**
  * milestone-audit Skill - Audit milestone completion against original requirements and acceptance criteria.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the milestone-audit skill configuration
@@ -437,8 +437,4 @@ Code quality: {N} issues found
   ],
 };
 
-export class MilestoneAuditSkill extends BaseSkillImpl {
-  constructor() {
-    super(milestoneAuditConfig);
-  }
-}
+export const milestoneAuditSkill = createSkill(milestoneAuditConfig);

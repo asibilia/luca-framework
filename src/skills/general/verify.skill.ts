@@ -1,7 +1,7 @@
 /**
  * verify Skill - Validate built features through conversational UAT testing against acceptance criteria.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the verify skill configuration
@@ -394,8 +394,4 @@ Manual intervention required
   ],
 };
 
-export class VerifySkill extends BaseSkillImpl {
-  constructor() {
-    super(verifyConfig);
-  }
-}
+export const verifySkill = createSkill(verifyConfig);

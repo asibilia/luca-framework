@@ -4,7 +4,7 @@
 import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
-const ComplexityGatingConfig: RuleConfig = {
+const complexityGatingConfig: RuleConfig = {
   frontmatter: {
     description:
       "Complexity gating: which workflow steps activate at which complexity level",
@@ -91,4 +91,4 @@ Config booleans and per-invocation flags take precedence over complexity gating.
   ],
 };
 
-export const complexityGatingRule = createRule(ComplexityGatingConfig);
+export const complexityGatingRule = createRule(complexityGatingConfig);

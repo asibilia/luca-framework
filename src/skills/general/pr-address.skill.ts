@@ -1,7 +1,7 @@
 /**
  * pr-address Skill - Address PR review comments by swarming reviewer agents, validating concerns, and applying fixes.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the pr-address skill configuration
@@ -659,8 +659,4 @@ This skill can be invoked:
   ],
 };
 
-export class PrAddressSkill extends BaseSkillImpl {
-  constructor() {
-    super(prAddressConfig);
-  }
-}
+export const prAddressSkill = createSkill(prAddressConfig);

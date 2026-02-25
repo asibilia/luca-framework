@@ -1,7 +1,7 @@
 /**
  * git-feature Skill - Create a feature branch linked to a Jira ticket or GitHub issue.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the git-feature skill configuration
@@ -62,8 +62,4 @@ Examples (adjust to your project's ticket pattern):
   ],
 };
 
-export class GitFeatureSkill extends BaseSkillImpl {
-  constructor() {
-    super(gitFeatureConfig);
-  }
-}
+export const gitFeatureSkill = createSkill(gitFeatureConfig);

@@ -30,9 +30,9 @@ export type {
 // Shared types
 export type { Result } from "./src/shared/types";
 
-// Base class implementations
-export { BaseAgentImpl } from "./src/agents/base/base-agent";
-export { BaseSkillImpl } from "./src/skills/base/base-skill";
+// Factory functions
+export { createAgent } from "./src/agents/base/base-agent";
+export { createSkill } from "./src/skills/base/base-skill";
 export { createRule } from "./src/rules/base/base-rule";
 
 // Compilers (functional API)
@@ -54,9 +54,9 @@ export {
 export type { SupportedFormat } from "./src/compilers/compile";
 
 // Luca-specific entities
-export { LuExecutorAgent } from "./src/agents/luca/lu-executor.agent";
-export { LuPlannerAgent } from "./src/agents/luca/lu-planner.agent";
-export { LuSkill } from "./src/skills/luca/lu.skill";
+export { luExecutorAgent } from "./src/agents/luca/lu-executor.agent";
+export { luPlannerAgent } from "./src/agents/luca/lu-planner.agent";
+export { luSkill } from "./src/skills/luca/lu.skill";
 export { luWorkflowRule } from "./src/rules/lu-workflow.rule";
 
 // Registries (for build scripts and consumers)

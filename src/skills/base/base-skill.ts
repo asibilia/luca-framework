@@ -1,36 +1,42 @@
 /**
- * Base class for all skills in the Luca Framework
+ * Factory function for creating skills in the Luca Framework.
+ *
+ * Replaces the former BaseSkillImpl abstract class with a functional pattern
+ * that aligns with the project's no-classes convention.
  */
-import type { BaseSkill, SkillConfig } from '../types/skill.types';
-import { toCursorFormat, toClaudeFormat } from '../../shared/format';
-import { skillConfigSchema } from '../types/skill.schemas';
+import type { BaseSkill, SkillConfig } from "../types/skill.types";
+import { toCursorFormat, toClaudeFormat } from "../../shared/format";
+import { deepFreeze } from "../../shared/deep-freeze";
+import { skillConfigSchema } from "../types/skill.schemas";
 
-export abstract class BaseSkillImpl implements BaseSkill {
-  protected readonly _config: SkillConfig;
-
-  constructor(config: SkillConfig) {
-    // Validate config with Zod schema
-    const validatedConfig = skillConfigSchema.parse(config);
-    this._config = validatedConfig;
-  }
-
-  get config(): SkillConfig {
-    return this._config;
-  }
-
-  get name(): string {
-    return this._config.frontmatter.name;
-  }
-
-  get description(): string {
-    return this._config.frontmatter.description;
-  }
-
-  toCursorFormat(): string {
-    return toCursorFormat(this._config.frontmatter, this._config.sections);
-  }
-
-  toClaudeFormat(): string {
-    return toClaudeFormat(`# ${this.name}\n\n${this.description}`, this._config.sections);
-  }
+/**
+ * Create a skill instance from a validated configuration.
+ *
+ * @param config - Skill configuration with frontmatter and sections
+ * @returns A BaseSkill-compatible object with formatting methods
+ */
+export function createSkill(config: SkillConfig): BaseSkill {
+  // Uses parse() for fail-fast validation; use safeParse() at system boundaries
+  // where graceful error handling is needed instead of thrown exceptions.
+  const validated = deepFreeze(skillConfigSchema.parse(config));
+  return {
+    get config() {
+      return validated;
+    },
+    get name() {
+      return validated.frontmatter.name;
+    },
+    get description() {
+      return validated.frontmatter.description;
+    },
+    toCursorFormat() {
+      return toCursorFormat(validated.frontmatter, validated.sections);
+    },
+    toClaudeFormat() {
+      return toClaudeFormat(
+        `# ${validated.frontmatter.name}\n\n${validated.frontmatter.description}`,
+        validated.sections,
+      );
+    },
+  };
 }

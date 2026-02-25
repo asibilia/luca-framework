@@ -1,7 +1,7 @@
 /**
  * todo-add Skill - Capture an idea or task as a todo for later without acting on it now.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the todo-add skill configuration
@@ -103,8 +103,4 @@ source: conversation
   ],
 };
 
-export class TodoAddSkill extends BaseSkillImpl {
-  constructor() {
-    super(todoAddConfig);
-  }
-}
+export const todoAddSkill = createSkill(todoAddConfig);

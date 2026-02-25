@@ -1,7 +1,7 @@
 /**
  * todo-check Skill - List pending todos and select one to work on next.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the todo-check skill configuration
@@ -88,8 +88,4 @@ List pending todos and select one to work on.
   ],
 };
 
-export class TodoCheckSkill extends BaseSkillImpl {
-  constructor() {
-    super(todoCheckConfig);
-  }
-}
+export const todoCheckSkill = createSkill(todoCheckConfig);

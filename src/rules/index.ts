@@ -74,7 +74,7 @@ const generalRules: Record<string, () => BaseRule> = {
 /**
  * Read profile config from .planning/config.json at import time.
  *
- * Uses synchronous file read via Bun.file() with a sync fallback.
+ * Uses synchronous file read at import time.
  * If the config file is missing or malformed, defaults apply via Zod schema.
  */
 function loadProfileConfig(): {

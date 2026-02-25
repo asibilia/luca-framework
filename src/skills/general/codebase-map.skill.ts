@@ -1,7 +1,7 @@
 /**
  * codebase-map Skill - Analyze an existing codebase with parallel mapper agents to build a structural overview.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the codebase-map skill configuration
@@ -279,8 +279,4 @@ Then run \`bun run build:all\` to load the new profile rules.
   ],
 };
 
-export class CodebaseMapSkill extends BaseSkillImpl {
-  constructor() {
-    super(codebaseMapConfig);
-  }
-}
+export const codebaseMapSkill = createSkill(codebaseMapConfig);

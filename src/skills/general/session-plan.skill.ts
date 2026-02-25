@@ -1,7 +1,7 @@
 /**
  * session-plan Skill - Plan the next coding session using WSJF prioritization of pending todos and roadmap items.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the session-plan skill configuration
@@ -128,8 +128,4 @@ If \`{ARGUMENTS}\` specifies more than 1 session:
 /**
  * session-plan skill implementation
  */
-export class SessionPlanSkill extends BaseSkillImpl {
-  constructor() {
-    super(sessionPlanConfig);
-  }
-}
+export const sessionPlanSkill = createSkill(sessionPlanConfig);

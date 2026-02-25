@@ -1,52 +1,46 @@
 import { describe, test, expect } from "bun:test";
-import { AutopilotSkill } from "../../../../src/skills/general/autopilot.skill";
+import { autopilotSkill } from "../../../../src/skills/general/autopilot.skill";
 
 // ---------------------------------------------------------------------------
-// Constructor Validation
+// Config Validation
 // ---------------------------------------------------------------------------
-describe("AutopilotSkill - constructor validation", () => {
+describe("autopilotSkill - config validation", () => {
   test("creates with valid config", () => {
-    const skill = new AutopilotSkill();
-    expect(skill).toBeDefined();
+    expect(autopilotSkill).toBeDefined();
   });
 
   test("config validates via Zod schema", () => {
-    const skill = new AutopilotSkill();
-    expect(skill.config).toBeDefined();
-    expect(skill.config.frontmatter).toBeDefined();
-    expect(skill.config.sections.length).toBeGreaterThan(0);
+    expect(autopilotSkill.config).toBeDefined();
+    expect(autopilotSkill.config.frontmatter).toBeDefined();
+    expect(autopilotSkill.config.sections.length).toBeGreaterThan(0);
   });
 });
 
 // ---------------------------------------------------------------------------
 // Getters
 // ---------------------------------------------------------------------------
-describe("AutopilotSkill - getters", () => {
+describe("autopilotSkill - getters", () => {
   test('name returns "autopilot"', () => {
-    const skill = new AutopilotSkill();
-    expect(skill.name).toBe("autopilot");
+    expect(autopilotSkill.name).toBe("autopilot");
   });
 
   test("description mentions autonomous orchestration", () => {
-    const skill = new AutopilotSkill();
-    expect(skill.description).toContain("Autonomous orchestrator");
+    expect(autopilotSkill.description).toContain("Autonomous orchestrator");
   });
 });
 
 // ---------------------------------------------------------------------------
 // toCursorFormat
 // ---------------------------------------------------------------------------
-describe("AutopilotSkill - toCursorFormat", () => {
+describe("autopilotSkill - toCursorFormat", () => {
   test("output includes frontmatter with skill name", () => {
-    const skill = new AutopilotSkill();
-    const output = skill.toCursorFormat();
+    const output = autopilotSkill.toCursorFormat();
     expect(output.startsWith("---\n")).toBe(true);
     expect(output).toContain("name: autopilot");
   });
 
   test("frontmatter includes disable-model-invocation as true", () => {
-    const skill = new AutopilotSkill();
-    const output = skill.toCursorFormat();
+    const output = autopilotSkill.toCursorFormat();
     expect(output).toContain("disable-model-invocation: true");
   });
 });
@@ -54,16 +48,14 @@ describe("AutopilotSkill - toCursorFormat", () => {
 // ---------------------------------------------------------------------------
 // toClaudeFormat
 // ---------------------------------------------------------------------------
-describe("AutopilotSkill - toClaudeFormat", () => {
+describe("autopilotSkill - toClaudeFormat", () => {
   test("output starts with H1 heading using the skill name", () => {
-    const skill = new AutopilotSkill();
-    const output = skill.toClaudeFormat();
+    const output = autopilotSkill.toClaudeFormat();
     expect(output.startsWith("# autopilot")).toBe(true);
   });
 
   test("sections with titles become H2 headings", () => {
-    const skill = new AutopilotSkill();
-    const output = skill.toClaudeFormat();
+    const output = autopilotSkill.toClaudeFormat();
     expect(output).toContain("## main");
     expect(output).toContain("## configuration");
     expect(output).toContain("## backlog_scan");
@@ -75,9 +67,8 @@ describe("AutopilotSkill - toClaudeFormat", () => {
 // ---------------------------------------------------------------------------
 // Content Verification
 // ---------------------------------------------------------------------------
-describe("AutopilotSkill - content verification", () => {
-  const skill = new AutopilotSkill();
-  const output = skill.toClaudeFormat();
+describe("autopilotSkill - content verification", () => {
+  const output = autopilotSkill.toClaudeFormat();
 
   test("references phase-plan sub-skill", () => {
     expect(output).toContain("phase-plan");

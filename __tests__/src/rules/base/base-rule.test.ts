@@ -13,7 +13,7 @@ import { validRuleConfig } from "../../../utils/fixtures";
 // ---------------------------------------------------------------------------
 // Constructor Validation (3 cases)
 // ---------------------------------------------------------------------------
-describe("createRule -constructor validation", () => {
+describe("createRule - constructor validation", () => {
   test("accepts a valid config", () => {
     const rule = createTestRule(validRuleConfig);
     expect(rule).toBeDefined();
@@ -41,7 +41,7 @@ describe("createRule -constructor validation", () => {
 // ---------------------------------------------------------------------------
 // name getter - unique behavior (3 cases)
 // ---------------------------------------------------------------------------
-describe("createRule -name getter", () => {
+describe("createRule - name getter", () => {
   test("derives name from description (first 30 chars, spaces to dashes)", () => {
     const rule = createTestRule(validRuleConfig);
     // "A test rule for unit tests" -> first 30 chars (all fit), spaces -> dashes
@@ -76,7 +76,7 @@ describe("createRule -name getter", () => {
 // ---------------------------------------------------------------------------
 // Other getters / fields (2 cases)
 // ---------------------------------------------------------------------------
-describe("createRule -getters", () => {
+describe("createRule - getters", () => {
   test("description getter returns full frontmatter.description", () => {
     const rule = createTestRule(validRuleConfig);
     expect(rule.description).toBe("A test rule for unit tests");
@@ -92,7 +92,7 @@ describe("createRule -getters", () => {
 // ---------------------------------------------------------------------------
 // toClaudeFormat (1 case -- rules use description as H1, not name)
 // ---------------------------------------------------------------------------
-describe("createRule -toClaudeFormat", () => {
+describe("createRule - toClaudeFormat", () => {
   test("output starts with H1 using description (not name)", () => {
     const rule = createTestRule(validRuleConfig);
     const output = rule.toClaudeFormat();
@@ -105,7 +105,7 @@ describe("createRule -toClaudeFormat", () => {
 // ---------------------------------------------------------------------------
 // toCursorFormat (1 case)
 // ---------------------------------------------------------------------------
-describe("createRule -toCursorFormat", () => {
+describe("createRule - toCursorFormat", () => {
   test("output includes frontmatter with description and section tags", () => {
     const rule = createTestRule(validRuleConfig);
     const output = rule.toCursorFormat();

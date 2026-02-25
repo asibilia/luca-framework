@@ -6,13 +6,13 @@
 
 ---
 
-## Backlog (Deferred)
+## Backlog (Pending)
 
-### v1.8.0+ — Architectural Refactoring (proposed)
+### v1.9.0+ — Proposed
 
-- Refactor 62 agent/skill classes to functional factories (critical, high effort)
-- Migrate remaining 38 skills to state machine bridge
+- Comprehensive repo consistency cleanup (types, schemas, naming, directory structure)
 - Unify npm package: merge state management + CLI scaffold + plugin runner
+- Repo structure architect / maintainer subagent
 - Model-aware task routing (complexity-to-model mapping per agent)
 - Procedure evolution via reinforcement learning patterns
 - Python, Go, Rust tech stack profiles with full guidelines
@@ -34,7 +34,8 @@
 - **v1.5.0** — Cognitive Architecture & State Machine: 6 phases, 14 plans, 35 requirements, 1654 tests ([View Archive](milestones/v1.5.0-ROADMAP.md))
 - **v1.6.0** — Package & Publish: 4 phases, 9 plans, 18 requirements, 1755 tests ([View Archive](milestones/v1.6.0-ROADMAP.md))
 - **v1.7.0** — Codebase Health & Build Stability: 8 phases, 13 plans, 1763 tests ([View Archive](milestones/v1.7.0-ROADMAP.md))
+- **v1.8.0** — Functional Architecture & Bridge Unification: 3 phases, 8 plans, 8 requirements, 1763 tests ([View Archive](milestones/v1.8.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-02-23 (v1.7.0 milestone completed)_
+_Roadmap updated: 2026-02-25 (v1.8.0 archived)_

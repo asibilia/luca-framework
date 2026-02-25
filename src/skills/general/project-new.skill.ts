@@ -1,7 +1,7 @@
 /**
  * project-new Skill - Initialize a new Luca project with deep context gathering and BRAIN.md creation.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the project-new skill configuration
@@ -641,8 +641,4 @@ Present completion with next steps:
   ],
 };
 
-export class ProjectNewSkill extends BaseSkillImpl {
-  constructor() {
-    super(projectNewConfig);
-  }
-}
+export const projectNewSkill = createSkill(projectNewConfig);

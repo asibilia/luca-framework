@@ -1,7 +1,7 @@
 /**
  * milestone-new Skill - Start a new milestone cycle with requirements gathering and roadmap generation.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the milestone-new skill configuration
@@ -148,8 +148,4 @@ How should this milestone be tracked on GitHub?
   ],
 };
 
-export class MilestoneNewSkill extends BaseSkillImpl {
-  constructor() {
-    super(milestoneNewConfig);
-  }
-}
+export const milestoneNewSkill = createSkill(milestoneNewConfig);

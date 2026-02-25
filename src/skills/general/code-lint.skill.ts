@@ -1,7 +1,7 @@
 /**
  * code-lint Skill - Run ESLint with auto-fix on the codebase or a specific path.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the code-lint skill configuration
@@ -39,8 +39,4 @@ bun run --cwd packages-ui/components lint
   ],
 };
 
-export class CodeLintSkill extends BaseSkillImpl {
-  constructor() {
-    super(codeLintConfig);
-  }
-}
+export const codeLintSkill = createSkill(codeLintConfig);

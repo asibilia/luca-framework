@@ -3,7 +3,7 @@
  * scores items by WSJF, and produces optimized session/weekly plans.
  * READ-ONLY: Produces plans but cannot execute changes (PLAN-07).
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 const luPmPlannerConfig: AgentConfig = {
@@ -215,8 +215,4 @@ gantt
   ],
 };
 
-export class LuPmPlannerAgent extends BaseAgentImpl {
-  constructor() {
-    super(luPmPlannerConfig);
-  }
-}
+export const luPmPlannerAgent = createAgent(luPmPlannerConfig);

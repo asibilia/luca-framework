@@ -1,7 +1,7 @@
 /**
  * code-typecheck Skill - Run TypeScript type checking on the codebase or a specific workspace.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the code-typecheck skill configuration
@@ -36,8 +36,4 @@ Run TypeScript type checking on the codebase.
   ],
 };
 
-export class CodeTypecheckSkill extends BaseSkillImpl {
-  constructor() {
-    super(codeTypecheckConfig);
-  }
-}
+export const codeTypecheckSkill = createSkill(codeTypecheckConfig);

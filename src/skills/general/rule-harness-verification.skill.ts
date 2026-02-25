@@ -1,7 +1,7 @@
 /**
  * rule-harness-verification Skill - Verification boundary: lightweight hooks run per-edit/commit, comprehensive harness runs at phase boundaries.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the rule-harness-verification skill configuration
@@ -54,8 +54,4 @@ The harness is thorough (runs all 4 check types), produces structured output, an
   ],
 };
 
-export class RuleHarnessVerificationSkill extends BaseSkillImpl {
-  constructor() {
-    super(ruleHarnessVerificationConfig);
-  }
-}
+export const ruleHarnessVerificationSkill = createSkill(ruleHarnessVerificationConfig);

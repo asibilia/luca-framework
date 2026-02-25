@@ -15,8 +15,8 @@ import {
   compileRule,
 } from "../../../src/compilers/compile";
 import {
-  TestAgent,
-  TestSkill,
+  createTestAgent,
+  createTestSkill,
   createTestRule,
 } from "../../utils/test-entities";
 import {
@@ -27,13 +27,13 @@ import {
 
 describe("Claude-format compile functions", () => {
   test("compileAgentClaude delegates to agent.toClaudeFormat()", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentClaude(agent);
     expect(result).toBe(agent.toClaudeFormat());
   });
 
   test("compileSkillClaude delegates to skill.toClaudeFormat()", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const result = compileSkillClaude(skill);
     expect(result).toBe(skill.toClaudeFormat());
   });
@@ -45,12 +45,12 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileAgent with CLAUDE format matches compileAgentClaude", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(compileAgent(agent, "CLAUDE")).toBe(compileAgentClaude(agent));
   });
 
   test("compileSkill with CLAUDE format matches compileSkillClaude", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(compileSkill(skill, "CLAUDE")).toBe(compileSkillClaude(skill));
   });
 
@@ -60,14 +60,14 @@ describe("Claude-format compile functions", () => {
   });
 
   test("compileAgent throws on unsupported format", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(() => compileAgent(agent, "INVALID" as any)).toThrow(
       "Unsupported format",
     );
   });
 
   test("compileAgentClaude returns string starting with H1 heading", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentClaude(agent);
     expect(result.startsWith("# test-agent")).toBe(true);
   });

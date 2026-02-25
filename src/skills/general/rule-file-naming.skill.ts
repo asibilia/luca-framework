@@ -1,7 +1,7 @@
 /**
  * rule-file-naming Skill - File and directory naming conventions: kebab-case enforcement with examples and migration guidelines.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the rule-file-naming skill configuration
@@ -80,8 +80,4 @@ const ruleFileNamingConfig: SkillConfig = {
   ],
 };
 
-export class RuleFileNamingSkill extends BaseSkillImpl {
-  constructor() {
-    super(ruleFileNamingConfig);
-  }
-}
+export const ruleFileNamingSkill = createSkill(ruleFileNamingConfig);

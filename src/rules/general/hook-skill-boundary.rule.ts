@@ -4,7 +4,7 @@
 import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
-const HookSkillBoundaryConfig: RuleConfig = {
+const hookSkillBoundaryConfig: RuleConfig = {
   frontmatter: {
     description:
       "Hook/Skill boundary: when to use deterministic hooks vs interactive skills",
@@ -69,4 +69,4 @@ const HookSkillBoundaryConfig: RuleConfig = {
   ],
 };
 
-export const hookSkillBoundaryRule = createRule(HookSkillBoundaryConfig);
+export const hookSkillBoundaryRule = createRule(hookSkillBoundaryConfig);

@@ -1,7 +1,7 @@
 /**
  * security-auditor Agent - Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the security-auditor agent configuration
@@ -84,8 +84,4 @@ Flag vulnerabilities with severity: CRITICAL, HIGH, MEDIUM, LOW`,
   ],
 };
 
-export class SecurityAuditorAgent extends BaseAgentImpl {
-  constructor() {
-    super(securityAuditorConfig);
-  }
-}
+export const securityAuditorAgent = createAgent(securityAuditorConfig);

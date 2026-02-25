@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test";
-import { LuExecutorAgent } from "../../../src/agents/luca/lu-executor.agent";
+import { luExecutorAgent } from "../../../src/agents/luca/lu-executor.agent";
 
 describe("lu-executor TDD integration", () => {
-  const agent = new LuExecutorAgent();
+  const agent = luExecutorAgent;
   const sections = agent.config.sections;
 
   test("executor agent has tdd_execution_flow section", () => {
@@ -50,7 +50,8 @@ describe("lu-executor TDD integration", () => {
     expect(execSection!.content.toLowerCase()).toContain("tdd");
   });
 
-  test("executor agent still compiles and validates", () => {
-    expect(() => new LuExecutorAgent()).not.toThrow();
+  test("executor agent validates successfully", () => {
+    expect(agent).toBeDefined();
+    expect(agent.name).toBe("lu-executor");
   });
 });

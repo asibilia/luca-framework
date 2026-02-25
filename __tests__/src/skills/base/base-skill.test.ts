@@ -1,21 +1,21 @@
 /**
- * Unit tests for BaseSkillImpl
+ * Unit tests for createSkill factory function
  *
- * Tests constructor validation, getters, toCursorFormat, toClaudeFormat,
+ * Tests config validation, getters, toCursorFormat, toClaudeFormat,
  * and the optional disable-model-invocation field.
- * Uses a concrete TestSkill subclass since BaseSkillImpl is abstract.
+ * Uses createTestSkill wrapper around createSkill.
  */
 import { describe, test, expect } from "bun:test";
-import { TestSkill } from "../../../utils/test-entities";
+import { createTestSkill } from "../../../utils/test-entities";
 import type { SkillConfig } from "../../../../src/skills/types/skill.types";
 import { validSkillConfig } from "../../../utils/fixtures";
 
 // ---------------------------------------------------------------------------
-// Constructor Validation (4 cases)
+// Config Validation (4 cases)
 // ---------------------------------------------------------------------------
-describe("BaseSkillImpl - constructor validation", () => {
+describe("createSkill - config validation", () => {
   test("accepts a valid config", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(skill).toBeDefined();
   });
 
@@ -28,7 +28,7 @@ describe("BaseSkillImpl - constructor validation", () => {
       },
       sections: [{ title: "Sec", content: "body", order: 1 }],
     };
-    const skill = new TestSkill(config);
+    const skill = createTestSkill(config);
     expect(skill.config.frontmatter["disable-model-invocation"]).toBe(true);
   });
 
@@ -37,7 +37,7 @@ describe("BaseSkillImpl - constructor validation", () => {
       frontmatter: { name: "no-flag", description: "No flag skill" },
       sections: [],
     };
-    const skill = new TestSkill(config);
+    const skill = createTestSkill(config);
     expect(
       skill.config.frontmatter["disable-model-invocation"],
     ).toBeUndefined();
@@ -48,26 +48,26 @@ describe("BaseSkillImpl - constructor validation", () => {
       frontmatter: { description: "Missing name" },
       sections: [],
     };
-    expect(() => new TestSkill(config as any)).toThrow();
+    expect(() => createTestSkill(config as any)).toThrow();
   });
 });
 
 // ---------------------------------------------------------------------------
 // Getters (3 cases)
 // ---------------------------------------------------------------------------
-describe("BaseSkillImpl - getters", () => {
+describe("createSkill - getters", () => {
   test("config getter returns the full validated config", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(skill.config).toEqual(validSkillConfig);
   });
 
   test("name getter returns frontmatter.name", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(skill.name).toBe("test-skill");
   });
 
   test("description getter returns frontmatter.description", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(skill.description).toBe("A test skill for unit tests");
   });
 });
@@ -75,9 +75,9 @@ describe("BaseSkillImpl - getters", () => {
 // ---------------------------------------------------------------------------
 // toCursorFormat (2 cases)
 // ---------------------------------------------------------------------------
-describe("BaseSkillImpl - toCursorFormat", () => {
+describe("createSkill - toCursorFormat", () => {
   test("output includes frontmatter and section tags", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const output = skill.toCursorFormat();
     expect(output.startsWith("---\n")).toBe(true);
     expect(output).toContain("name: test-skill");
@@ -86,7 +86,7 @@ describe("BaseSkillImpl - toCursorFormat", () => {
   });
 
   test("frontmatter includes disable-model-invocation as boolean", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const output = skill.toCursorFormat();
     expect(output).toContain("disable-model-invocation: false");
   });
@@ -95,15 +95,15 @@ describe("BaseSkillImpl - toCursorFormat", () => {
 // ---------------------------------------------------------------------------
 // toClaudeFormat (2 cases)
 // ---------------------------------------------------------------------------
-describe("BaseSkillImpl - toClaudeFormat", () => {
+describe("createSkill - toClaudeFormat", () => {
   test("output starts with H1 heading using the skill name", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const output = skill.toClaudeFormat();
     expect(output.startsWith("# test-skill")).toBe(true);
   });
 
   test("sections with titles become H2 headings", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const output = skill.toClaudeFormat();
     expect(output).toContain("## Instructions");
     expect(output).toContain("Follow these instructions for the test skill.");

@@ -15,8 +15,8 @@ import {
   compileRule,
 } from "../../../src/compilers/compile";
 import {
-  TestAgent,
-  TestSkill,
+  createTestAgent,
+  createTestSkill,
   createTestRule,
 } from "../../utils/test-entities";
 import {
@@ -27,13 +27,13 @@ import {
 
 describe("Cursor-format compile functions", () => {
   test("compileAgentCursor delegates to agent.toCursorFormat()", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentCursor(agent);
     expect(result).toBe(agent.toCursorFormat());
   });
 
   test("compileSkillCursor delegates to skill.toCursorFormat()", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     const result = compileSkillCursor(skill);
     expect(result).toBe(skill.toCursorFormat());
   });
@@ -45,12 +45,12 @@ describe("Cursor-format compile functions", () => {
   });
 
   test("compileAgent with CURSOR format matches compileAgentCursor", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(compileAgent(agent, "CURSOR")).toBe(compileAgentCursor(agent));
   });
 
   test("compileSkill with CURSOR format matches compileSkillCursor", () => {
-    const skill = new TestSkill(validSkillConfig);
+    const skill = createTestSkill(validSkillConfig);
     expect(compileSkill(skill, "CURSOR")).toBe(compileSkillCursor(skill));
   });
 
@@ -60,14 +60,14 @@ describe("Cursor-format compile functions", () => {
   });
 
   test("compileAgent throws on unsupported format", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     expect(() => compileAgent(agent, "UNKNOWN" as any)).toThrow(
       "Unsupported format",
     );
   });
 
   test("compileAgentCursor returns string containing YAML frontmatter", () => {
-    const agent = new TestAgent(validAgentConfig);
+    const agent = createTestAgent(validAgentConfig);
     const result = compileAgentCursor(agent);
     expect(result).toContain("---");
     expect(result).toContain("name: test-agent");

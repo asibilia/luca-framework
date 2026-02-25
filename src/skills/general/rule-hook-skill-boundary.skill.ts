@@ -1,7 +1,7 @@
 /**
  * rule-hook-skill-boundary Skill - Decision matrix for choosing deterministic hooks vs interactive skills for enforcement and workflow automation.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the rule-hook-skill-boundary skill configuration
@@ -67,8 +67,4 @@ const ruleHookSkillBoundaryConfig: SkillConfig = {
   ],
 };
 
-export class RuleHookSkillBoundarySkill extends BaseSkillImpl {
-  constructor() {
-    super(ruleHookSkillBoundaryConfig);
-  }
-}
+export const ruleHookSkillBoundarySkill = createSkill(ruleHookSkillBoundaryConfig);

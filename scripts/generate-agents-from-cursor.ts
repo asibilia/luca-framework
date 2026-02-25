@@ -4,6 +4,7 @@ import { mkdir, readdir } from "node:fs/promises";
 import path from "path";
 
 import { parseFrontmatter } from "./parse-frontmatter";
+import { toCamelCaseWithSuffix, toConfigName } from "./shared/naming-utils";
 
 interface AgentData {
   name: string;
@@ -43,14 +44,14 @@ function generateAgentTsContent(agentData: AgentData): string {
     content: agentData.content,
   });
 
-  const className = `${agentData.name.charAt(0).toUpperCase() + agentData.name.slice(1).replace(/-/g, "")}Agent`;
-  const configName = `${agentData.name.replace(/-/g, "")}Config`;
+  const exportName = toCamelCaseWithSuffix(agentData.name, "Agent");
+  const configName = toConfigName(agentData.name);
 
   return `/**
  * ${agentData.name} Agent - ${agentData.description}
  */
-import { BaseAgentImpl } from '../base/base-agent';
-import { AgentConfig } from '../types/agent.types';
+import { createAgent } from '../base/base-agent';
+import type { AgentConfig } from '../types/agent.types';
 
 // Define the ${agentData.name} agent configuration
 const ${configName}: AgentConfig = {
@@ -73,11 +74,7 @@ const ${configName}: AgentConfig = {
   ]
 };
 
-export class ${className} extends BaseAgentImpl {
-  constructor() {
-    super(${configName});
-  }
-}
+export const ${exportName} = createAgent(${configName});
 `;
 }
 

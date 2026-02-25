@@ -1,26 +1,29 @@
 /**
- * Shared test entity classes for compiler and base class tests.
+ * Shared test entity factories for compiler and base class tests.
  *
- * These concrete subclasses of the abstract base classes are used across
- * multiple test files to avoid duplication.
+ * These factory wrappers are used across multiple test files to avoid duplication.
  */
-import { BaseAgentImpl } from "../../src/agents/base/base-agent";
-import { BaseSkillImpl } from "../../src/skills/base/base-skill";
+import { createAgent } from "../../src/agents/base/base-agent";
+import { createSkill } from "../../src/skills/base/base-skill";
 import { createRule } from "../../src/rules/base/base-rule";
 import type { AgentConfig } from "../../src/agents/types/agent.types";
 import type { SkillConfig } from "../../src/skills/types/skill.types";
 import type { RuleConfig } from "../../src/rules/types/rule.types";
 
-export class TestAgent extends BaseAgentImpl {
-  constructor(config: AgentConfig) {
-    super(config);
-  }
+/**
+ * Factory wrapper for creating test agents.
+ * Returns a BaseAgent instance via createAgent.
+ */
+export function createTestAgent(config: AgentConfig) {
+  return createAgent(config);
 }
 
-export class TestSkill extends BaseSkillImpl {
-  constructor(config: SkillConfig) {
-    super(config);
-  }
+/**
+ * Factory wrapper for creating test skills.
+ * Returns a BaseSkill instance via createSkill.
+ */
+export function createTestSkill(config: SkillConfig) {
+  return createSkill(config);
 }
 
 /**

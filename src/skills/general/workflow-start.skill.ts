@@ -1,7 +1,7 @@
 /**
  * workflow-start Skill - Start work on a Jira ticket. Redirects to /lu for the full development workflow.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the workflow-start skill configuration
@@ -85,8 +85,4 @@ This is now fully handled by \`/lu\` when given a Jira ticket input.
   ],
 };
 
-export class WorkflowStartSkill extends BaseSkillImpl {
-  constructor() {
-    super(workflowStartConfig);
-  }
-}
+export const workflowStartSkill = createSkill(workflowStartConfig);

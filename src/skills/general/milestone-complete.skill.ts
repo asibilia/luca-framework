@@ -1,7 +1,7 @@
 /**
  * milestone-complete Skill - Archive a completed milestone, extract learnings, and prepare for the next version.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the milestone-complete skill configuration
@@ -194,8 +194,4 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
   ],
 };
 
-export class MilestoneCompleteSkill extends BaseSkillImpl {
-  constructor() {
-    super(milestoneCompleteConfig);
-  }
-}
+export const milestoneCompleteSkill = createSkill(milestoneCompleteConfig);

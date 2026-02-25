@@ -1,7 +1,7 @@
 /**
  * phase-plan Skill - Create detailed PLAN.md execution plans for a specific phase with tasks, waves, and verification.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the phase-plan skill configuration
@@ -549,8 +549,4 @@ If issues found and iteration_count < max_revisions:
   ],
 };
 
-export class PhasePlanSkill extends BaseSkillImpl {
-  constructor() {
-    super(phasePlanConfig);
-  }
-}
+export const phasePlanSkill = createSkill(phasePlanConfig);

@@ -1,7 +1,7 @@
 /**
  * rule-complexity-gating Skill - Five complexity levels (TRIVIAL to CRITICAL) with gating matrix for workflow steps and agent activation.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the rule-complexity-gating skill configuration
@@ -90,8 +90,4 @@ Config booleans and per-invocation flags take precedence over complexity gating.
   ],
 };
 
-export class RuleComplexityGatingSkill extends BaseSkillImpl {
-  constructor() {
-    super(ruleComplexityGatingConfig);
-  }
-}
+export const ruleComplexityGatingSkill = createSkill(ruleComplexityGatingConfig);

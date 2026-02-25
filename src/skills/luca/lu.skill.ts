@@ -1,9 +1,8 @@
 /**
  * lu Skill - Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
-import { skillConfigSchema } from "../types/skill.schemas";
 
 // Define the lu skill configuration
 const luSkillConfig: SkillConfig = {
@@ -211,11 +210,4 @@ If \`--force-complex\` is passed (backward compatibility):
   ],
 };
 
-// Validate the config with Zod schema at module initialization
-const validatedConfig = skillConfigSchema.parse(luSkillConfig);
-
-export class LuSkill extends BaseSkillImpl {
-  constructor() {
-    super(validatedConfig);
-  }
-}
+export const luSkill = createSkill(luSkillConfig);

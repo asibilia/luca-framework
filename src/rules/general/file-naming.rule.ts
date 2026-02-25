@@ -1,5 +1,5 @@
 /**
- * Generic rule description
+ * Enforce kebab-case file naming conventions
  */
 import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
@@ -7,7 +7,7 @@ import type { RuleConfig } from "../types/rule.types";
 // Define the file-naming rule configuration
 const fileNamingConfig: RuleConfig = {
   frontmatter: {
-    description: `Generic rule description`,
+    description: `Enforce kebab-case file naming conventions`,
 
     alwaysApply: true,
   },

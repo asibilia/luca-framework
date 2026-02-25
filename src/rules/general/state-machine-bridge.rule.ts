@@ -4,7 +4,7 @@
 import { createRule } from "../base/base-rule";
 import type { RuleConfig } from "../types/rule.types";
 
-const StateMachineBridgeConfig: RuleConfig = {
+const stateMachineBridgeConfig: RuleConfig = {
   frontmatter: {
     description:
       "State machine bridge CLI reference: how to read/write state via the typed bridge layer",
@@ -109,4 +109,4 @@ This ensures the workflow never breaks due to bridge issues.`,
   ],
 };
 
-export const stateMachineBridgeRule = createRule(StateMachineBridgeConfig);
+export const stateMachineBridgeRule = createRule(stateMachineBridgeConfig);

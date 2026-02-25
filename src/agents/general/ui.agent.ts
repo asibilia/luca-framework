@@ -1,7 +1,7 @@
 /**
  * ui Agent - Reviews visual design, component styling, and design system consistency for UI implementations. Use when reviewing component styling.
  */
-import { BaseAgentImpl } from "../base/base-agent";
+import { createAgent } from "../base/base-agent";
 import type { AgentConfig } from "../types/agent.types";
 
 // Define the ui agent configuration
@@ -78,8 +78,4 @@ Flag issues with severity: CRITICAL, HIGH, MEDIUM, LOW`,
   ],
 };
 
-export class UiAgent extends BaseAgentImpl {
-  constructor() {
-    super(uiConfig);
-  }
-}
+export const uiAgent = createAgent(uiConfig);

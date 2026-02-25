@@ -1,7 +1,7 @@
 /**
  * jira-issue Skill - Import a Jira ticket as a GitHub issue with labels and cross-references.
  */
-import { BaseSkillImpl } from "../base/base-skill";
+import { createSkill } from "../base/base-skill";
 import type { SkillConfig } from "../types/skill.types";
 
 // Define the jira-issue skill configuration
@@ -100,8 +100,4 @@ _Created from Jira using jira-issue skill_
   ],
 };
 
-export class JiraIssueSkill extends BaseSkillImpl {
-  constructor() {
-    super(jiraIssueConfig);
-  }
-}
+export const jiraIssueSkill = createSkill(jiraIssueConfig);
