@@ -17,9 +17,9 @@ import {
   calibrateCost,
   buildCostTable,
   formatCostTableForMemory,
-} from "../../../src/planner/cost-model";
+} from "../../../src/planner/__helpers/cost-model";
 
-import type { TokenCostEstimate } from "~/planner/planner.schemas";
+import type { TokenCostEstimate } from "~/planner/__schemas/planner.schemas";
 
 /* ------------------------------------------------------------------ */
 /*  getColdStartCost                                                   */

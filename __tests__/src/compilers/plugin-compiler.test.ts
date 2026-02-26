@@ -14,7 +14,7 @@ import {
   compileAgentClaude,
   compileSkillClaude,
   compileRuleClaude,
-} from "../../../src/compilers/compile";
+} from "../../../src/compilers/__helpers/compile";
 import { createAgent } from "~/agents/__helpers/create-agent";
 import { createSkill } from "~/skills/__helpers/create-skill";
 import { createRule } from "~/rules/__helpers/create-rule";

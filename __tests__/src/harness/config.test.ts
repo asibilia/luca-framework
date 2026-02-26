@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { loadHarnessConfig } from "../../../src/harness/runner";
-import { DEFAULT_HARNESS_CONFIG } from "~/harness/harness.schemas";
+import { loadHarnessConfig } from "../../../src/harness/__helpers/runner";
+import { DEFAULT_HARNESS_CONFIG } from "~/harness/__schemas/harness.schemas";
 import path from "path";
 
 const PROJECT_DIR = path.join(import.meta.dir, "../../..");

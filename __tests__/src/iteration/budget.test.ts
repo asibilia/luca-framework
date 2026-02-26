@@ -4,7 +4,7 @@ import {
   assessBudget,
   advanceBudget,
   shouldStartIteration,
-} from "../../../src/iteration/budget";
+} from "../../../src/iteration/__helpers/budget";
 
 describe("createBudgetState", () => {
   test("creates state with correct defaults (soft_stop_percent=80)", () => {

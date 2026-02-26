@@ -4,8 +4,8 @@ import {
   computeTriggerSimilarity,
   scoreProcedure,
   recallProcedures,
-} from "../../../src/memory/procedure-recall.ts";
-import type { ProcedureEntry } from "~/memory/memory.schemas";
+} from "../../../src/memory/__helpers/procedure-recall.ts";
+import type { ProcedureEntry } from "~/memory/__schemas/memory.schemas";
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 

@@ -5,9 +5,9 @@ import { ruleRegistry } from "../../../src/rules/index";
  * These tests verify the assembled rule registry (general + profile rules).
  *
  * With default config (opinionated_guidelines: true, tech_stack_profiles: ["typescript"]):
- * - 11 general rules (10 general + 1 lu-workflow)
+ * - 13 general rules (12 general + 1 lu-workflow)
  * - 8 typescript profile rules
- * - Total: 19 rules
+ * - Total: 21 rules
  */
 
 // Known general rule names (always present regardless of profile config)
@@ -15,11 +15,13 @@ const GENERAL_RULE_NAMES = [
   "atlassian-mcp",
   "complexity-gating",
   "cursor-rules",
+  "domain-architecture",
   "file-naming",
   "harness-verification",
   "hook-skill-boundary",
   "lu-workflow",
   "mandatory-documentation",
+  "module-boundary",
   "posthog-integration",
   "self-improve",
   "state-machine-bridge",
@@ -38,8 +40,8 @@ const TYPESCRIPT_RULE_NAMES = [
 ];
 
 describe("ruleRegistry with default config", () => {
-  test("produces correct total rule count (19)", () => {
-    expect(Object.keys(ruleRegistry)).toHaveLength(19);
+  test("produces correct total rule count (21)", () => {
+    expect(Object.keys(ruleRegistry)).toHaveLength(21);
   });
 
   test("general rules are always present", () => {

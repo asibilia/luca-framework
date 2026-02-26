@@ -34,8 +34,8 @@ import {
   compileAgent,
   compileSkill,
   compileRule,
-} from "../src/compilers/compile";
-import { generatePluginManifest } from "../src/compilers/plugin.schemas";
+} from "../src/compilers/__helpers/compile";
+import { generatePluginManifest } from "../src/compilers/__schemas/compilers.schemas";
 import path from "path";
 
 /**

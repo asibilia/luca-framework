@@ -13,9 +13,9 @@ import {
   classifyBucket,
   partitionIntoBuckets,
   distributeWeekly,
-} from "../../../src/planner/weekly";
+} from "../../../src/planner/__helpers/weekly";
 
-import type { WSJFScoredItem } from "~/planner/planner.schemas";
+import type { WSJFScoredItem } from "~/planner/__schemas/planner.schemas";
 
 /* ------------------------------------------------------------------ */
 /*  Test helper                                                        */

@@ -13,16 +13,18 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { sanitizeJsonParse } from "~/shared/validation-utils";
+import { sanitizeJsonParse } from "~/shared/__helpers/validation-utils";
 
 // Import general/framework rules (always active)
 import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
 import { complexityGatingRule } from "./general/complexity-gating.rule";
 import { cursorRulesRule } from "./general/cursor-rules.rule";
+import { domainArchitectureRule } from "./general/domain-architecture.rule";
 import { fileNamingRule } from "./general/file-naming.rule";
 import { harnessVerificationRule } from "./general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
 import { luWorkflowRule } from "./general/lu-workflow.rule";
+import { moduleBoundaryRule } from "./general/module-boundary.rule";
 import { mandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
 import { posthogIntegrationRule } from "./general/posthog-integration.rule";
 import { selfImproveRule } from "./general/self-improve.rule";
@@ -53,10 +55,12 @@ const generalRules: Record<string, () => BaseRule> = {
   "atlassian-mcp": () => atlassianMcpRule,
   "complexity-gating": () => complexityGatingRule,
   "cursor-rules": () => cursorRulesRule,
+  "domain-architecture": () => domainArchitectureRule,
   "file-naming": () => fileNamingRule,
   "harness-verification": () => harnessVerificationRule,
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
+  "module-boundary": () => moduleBoundaryRule,
   "posthog-integration": () => posthogIntegrationRule,
   "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,

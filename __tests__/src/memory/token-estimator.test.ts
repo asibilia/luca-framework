@@ -3,7 +3,7 @@ import {
   estimateTokens,
   estimateFileTokens,
   estimateMemoryBudget,
-} from "../../../src/memory/token-estimator.ts";
+} from "../../../src/memory/__helpers/token-estimator.ts";
 import { join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

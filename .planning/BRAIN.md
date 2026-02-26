@@ -27,9 +27,17 @@
   - `src/skills/` — Skill source (.skill.ts) → compiled to `.claude/skills/` + `.cursor/skills/`
   - `src/rules/` — Rule source (.rule.ts) → compiled to `.claude/rules/` + `.cursor/rules/`
   - `src/hooks/` — Hook registry + shell scripts → compiled to `.claude/hooks/` + `.cursor/hooks/`
+  - `src/compilers/` — Compilation logic and plugin manifest schemas
+  - `src/complexity/` — Complexity gating system (five levels, three tiers)
+  - `src/context/` — Context tier management (T0-T3)
+  - `src/harness/` — Verification harness (test/typecheck/lint/build runners)
+  - `src/iteration/` — Iteration engine (budget, classifier, convergence, checkpoint)
+  - `src/*/__schemas/` — Shared Zod schemas per domain (internal infrastructure, `__` prefix)
+  - `src/*/__helpers/` — Shared utilities per domain (internal infrastructure, `__` prefix)
   - `src/*/index.ts` — Registries mapping entity names to classes/metadata
   - `.planning/` — Runtime artifacts (BRAIN, MEMORY, WORKING, STATE)
   - `packages/luca-framework/templates/` — Scaffolding templates for `luca init`
+- **Import Conventions**: `~/` alias for cross-domain imports (resolves to `src/`), `./` for same-domain
 - **Key Modules**:
   - Memory system (BRAIN.md → MEMORY.md → WORKING.md)
   - Workflow engine (skills → agents → verification → learning)

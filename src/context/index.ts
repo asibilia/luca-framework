@@ -15,7 +15,7 @@ export type {
   ContextConfig,
   BudgetAllocation,
   ContextDocumentSet,
-} from "./context.schemas";
+} from "./__schemas/context.schemas";
 
 export type {
   ResultStatus,
@@ -24,7 +24,7 @@ export type {
   ResultIssue,
   ResultMetadata,
   ResultEnvelope,
-} from "./result-envelope";
+} from "./__helpers/result-envelope";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -36,7 +36,7 @@ export {
   contextConfigSchema,
   budgetAllocationSchema,
   contextDocumentSetSchema,
-} from "./context.schemas";
+} from "./__schemas/context.schemas";
 
 export {
   resultStatusSchema,
@@ -46,32 +46,39 @@ export {
   resultIssueSchema,
   resultMetadataSchema,
   resultEnvelopeSchema,
-} from "./result-envelope";
+} from "./__helpers/result-envelope";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-export { CONTEXT_TIERS, CONTEXT_TIER_ORDER, ISOLATION_MODES } from "./context.schemas";
+export {
+  CONTEXT_TIERS,
+  CONTEXT_TIER_ORDER,
+  ISOLATION_MODES,
+} from "./__schemas/context.schemas";
 
 export {
   RESULT_STATUSES,
   ISSUE_SEVERITIES,
   ARTIFACT_ACTIONS,
-} from "./result-envelope";
+} from "./__helpers/result-envelope";
 
 // ---------------------------------------------------------------------------
 // Utility functions
 // ---------------------------------------------------------------------------
 
-export { meetsContextThreshold, maxContextTier } from "./context.schemas";
+export {
+  meetsContextThreshold,
+  maxContextTier,
+} from "./__schemas/context.schemas";
 
-export { parseResultEnvelope } from "./result-envelope";
+export { parseResultEnvelope } from "./__helpers/result-envelope";
 
 export {
   resolveEffectiveContextTier,
   resolveContextTierFromMatrix,
-} from "./resolve-context-tier";
+} from "./__helpers/resolve-context-tier";
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -82,24 +89,27 @@ export {
   ISOLATION_OVERRIDES,
   DEFAULT_AGENT_CONTEXT_PROFILES,
   FALLBACK_CONTEXT_PROFILE,
-} from "./defaults";
+} from "./__helpers/defaults";
 
-export { DEFAULT_CONTEXT_PROMOTIONS } from "./resolve-context-tier";
+export { DEFAULT_CONTEXT_PROMOTIONS } from "./__helpers/resolve-context-tier";
 
 // ---------------------------------------------------------------------------
 // Assembly
 // ---------------------------------------------------------------------------
 
-export type { AssembledContext } from "./context-assembler";
+export type { AssembledContext } from "./__helpers/context-assembler";
 export {
   assembleContext,
   getRequiredDocumentKeys,
   assembledContextSchema,
-} from "./context-assembler";
+} from "./__helpers/context-assembler";
 
 // ---------------------------------------------------------------------------
 // Aggregation
 // ---------------------------------------------------------------------------
 
-export type { AggregatedResult } from "./result-aggregator";
-export { aggregateResults, aggregatedResultSchema } from "./result-aggregator";
+export type { AggregatedResult } from "./__helpers/result-aggregator";
+export {
+  aggregateResults,
+  aggregatedResultSchema,
+} from "./__helpers/result-aggregator";

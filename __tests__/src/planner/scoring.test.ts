@@ -15,9 +15,9 @@ import {
   effortFromComplexity,
   rankByWSJF,
   scoreItem,
-} from "../../../src/planner/scoring";
+} from "../../../src/planner/__helpers/scoring";
 
-import type { WSJFScoredItem } from "~/planner/planner.schemas";
+import type { WSJFScoredItem } from "~/planner/__schemas/planner.schemas";
 
 /* ------------------------------------------------------------------ */
 /*  computeWSJF                                                       */

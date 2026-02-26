@@ -29,7 +29,7 @@ export {
   compressionTriggerSchema,
   COMPRESSION_STRATEGIES,
   WORKING_MEMORY_SECTIONS,
-} from "./memory.schemas";
+} from "./__schemas/memory.schemas";
 
 export type {
   MemoryEntry,
@@ -42,7 +42,7 @@ export type {
   WorkingMemory,
   ContextUsageResult,
   CompressionTrigger,
-} from "./memory.schemas";
+} from "./__schemas/memory.schemas";
 
 // ─── Token Estimation ──────────────────────────────────────────────────────────
 
@@ -50,15 +50,18 @@ export {
   estimateTokens,
   estimateFileTokens,
   estimateMemoryBudget,
-} from "./token-estimator.ts";
+} from "./__helpers/token-estimator.ts";
 
 // ─── Compression ───────────────────────────────────────────────────────────────
 
-export { analyzeMemoryEntries } from "./compression.ts";
+export { analyzeMemoryEntries } from "./__helpers/compression.ts";
 
 // ─── Quality Scoring ───────────────────────────────────────────────────────────
 
-export { calculatePhaseQuality, scoreToZone } from "./quality-scorer.ts";
+export {
+  calculatePhaseQuality,
+  scoreToZone,
+} from "./__helpers/quality-scorer.ts";
 
 // ─── Quality Trend ─────────────────────────────────────────────────────────────
 
@@ -69,7 +72,7 @@ export {
   detectRegression,
   serializeTrend,
   deserializeTrend,
-} from "./quality-trend.ts";
+} from "./__helpers/quality-trend.ts";
 
 // ─── Working Memory ───────────────────────────────────────────────────────────
 
@@ -79,21 +82,24 @@ export {
   addSection,
   summarizeSection,
   shouldAutoSummarize,
-} from "./working-memory.ts";
+} from "./__helpers/working-memory.ts";
 
 // ─── Context Monitoring ──────────────────────────────────────────────────────
 
-export { createContextMonitor } from "./context-monitor.ts";
+export { createContextMonitor } from "./__helpers/context-monitor.ts";
 
 // ─── Memory Parsing ──────────────────────────────────────────────────────────
 
-export { parseMemoryFile } from "./memory-parser.ts";
+export { parseMemoryFile } from "./__helpers/memory-parser.ts";
 
 // ─── Procedure Types ────────────────────────────────────────────────────────
 
-export { procedureStepSchema, procedureEntrySchema } from "./memory.schemas";
+export {
+  procedureStepSchema,
+  procedureEntrySchema,
+} from "./__schemas/memory.schemas";
 
-export type { ProcedureStep, ProcedureEntry } from "./memory.schemas";
+export type { ProcedureStep, ProcedureEntry } from "./__schemas/memory.schemas";
 
 // ─── Procedure Parsing ──────────────────────────────────────────────────────
 
@@ -102,11 +108,11 @@ export {
   parseProcedureContent,
   serializeProcedures,
   generateProcedureId,
-} from "./procedure-parser.ts";
+} from "./__helpers/procedure-parser.ts";
 
 // ─── Procedure Recall ───────────────────────────────────────────────────────
 
-export { recallProcedures } from "./procedure-recall.ts";
+export { recallProcedures } from "./__helpers/procedure-recall.ts";
 
 // ─── Procedure Lifecycle ────────────────────────────────────────────────────
 
@@ -114,7 +120,7 @@ export {
   evaluateRetirement,
   applyRetirement,
   updateExecutionStats,
-} from "./procedure-lifecycle.ts";
+} from "./__helpers/procedure-lifecycle.ts";
 
 // ─── Milestone Recall ──────────────────────────────────────────────────────
 
@@ -124,12 +130,12 @@ export {
   versionDistance,
   calculateMilestoneProximity,
   calculateTagOverlap,
-} from "./milestone-recall.ts";
+} from "./__helpers/milestone-recall.ts";
 
 export type {
   MilestoneRecallConfig,
   ScoredMemoryEntry,
-} from "./milestone-recall.ts";
+} from "./__helpers/milestone-recall.ts";
 
 // ─── Memory Bridge ─────────────────────────────────────────────────────────
 
@@ -142,4 +148,4 @@ export {
   handleAppendWorking,
   handleClearWorking,
   handleUpdateProcedureStats,
-} from "./bridge.ts";
+} from "./__helpers/bridge.ts";

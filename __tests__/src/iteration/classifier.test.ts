@@ -1,10 +1,13 @@
 import { describe, test, expect } from "bun:test";
-import type { ParsedError, CheckResult } from "~/harness/harness.schemas";
+import type {
+  ParsedError,
+  CheckResult,
+} from "~/harness/__schemas/harness.schemas";
 import {
   classifySingleError,
   classifyErrors,
   partitionByClass,
-} from "../../../src/iteration/classifier";
+} from "../../../src/iteration/__helpers/classifier";
 
 function makeError(overrides: Partial<ParsedError> = {}): ParsedError {
   return {

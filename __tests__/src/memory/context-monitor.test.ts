@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { createContextMonitor } from "../../../src/memory/context-monitor.ts";
+import { createContextMonitor } from "../../../src/memory/__helpers/context-monitor.ts";
 import { join } from "node:path";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

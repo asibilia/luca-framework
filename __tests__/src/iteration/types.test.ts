@@ -10,7 +10,7 @@ import {
   loopResultSchema,
   iterationConfigSchema,
   hitlDecisionSchema,
-} from "~/iteration/iteration.schemas";
+} from "~/iteration/__schemas/iteration.schemas";
 
 describe("iteration types", () => {
   test("classifiedErrorSchema parses valid classified error", () => {

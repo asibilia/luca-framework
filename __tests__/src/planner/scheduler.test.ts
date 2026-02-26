@@ -6,15 +6,15 @@
  */
 import { describe, test, expect } from "bun:test";
 
-import type { WSJFScoredItem, PlannerConfig } from "~/planner/planner.schemas";
-import { plannerConfigSchema } from "~/planner/planner.schemas";
+import type { WSJFScoredItem, PlannerConfig } from "~/planner/__schemas/planner.schemas";
+import { plannerConfigSchema } from "~/planner/__schemas/planner.schemas";
 import {
   selectBigRock,
   estimateContextCost,
   assignQualityZone,
   scheduleSession,
   generateMermaidGantt,
-} from "../../../src/planner/scheduler";
+} from "../../../src/planner/__helpers/scheduler";
 
 /* ------------------------------------------------------------------ */
 /*  Test helper                                                        */

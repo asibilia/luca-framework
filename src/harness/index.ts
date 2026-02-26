@@ -4,7 +4,7 @@
  * Exports the runner, parser registry, types, schemas, and default config.
  */
 
-export { runHarness, loadHarnessConfig } from "./runner";
+export { runHarness, loadHarnessConfig } from "./__helpers/runner";
 export { parserRegistry } from "./parsers";
 export type {
   HarnessConfig,
@@ -13,7 +13,7 @@ export type {
   CheckResult,
   HarnessResult,
   OutputParser,
-} from "./harness.schemas";
+} from "./__schemas/harness.schemas";
 export {
   CheckConfigSchema,
   HarnessConfigSchema,
@@ -21,4 +21,4 @@ export {
   CheckResultSchema,
   HarnessResultSchema,
   DEFAULT_HARNESS_CONFIG,
-} from "./harness.schemas";
+} from "./__schemas/harness.schemas";

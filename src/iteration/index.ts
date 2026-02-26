@@ -47,7 +47,7 @@ export {
   LOOP_OUTCOMES,
   loopOutcomeSchema,
   loopResultSchema,
-} from "./iteration.schemas";
+} from "./__schemas/iteration.schemas";
 
 export type {
   ErrorFingerprint,
@@ -67,7 +67,7 @@ export type {
   IterationConfig,
   LoopOutcome,
   LoopResult,
-} from "./iteration.schemas";
+} from "./__schemas/iteration.schemas";
 
 // Convergence detection
 export {
@@ -75,14 +75,14 @@ export {
   computeFingerprintOverlap,
   computeConvergenceSignals,
   assessConvergence,
-} from "./convergence";
+} from "./__helpers/convergence";
 
 // Error classification
 export {
   classifySingleError,
   classifyErrors,
   partitionByClass,
-} from "./classifier";
+} from "./__helpers/classifier";
 
 // Checkpoint management
 export {
@@ -95,7 +95,7 @@ export {
   getCurrentCommitHash,
   getArtifactDelta,
   prunePhaseCheckpoints,
-} from "./checkpoint";
+} from "./__helpers/checkpoint";
 
 // Budget tracking
 export {
@@ -103,4 +103,4 @@ export {
   assessBudget,
   advanceBudget,
   shouldStartIteration,
-} from "./budget";
+} from "./__helpers/budget";

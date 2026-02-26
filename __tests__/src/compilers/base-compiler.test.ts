@@ -7,7 +7,7 @@ import { describe, test, expect } from "bun:test";
 import {
   validateFormat,
   type SupportedFormat,
-} from "../../../src/compilers/compile";
+} from "../../../src/compilers/__helpers/compile";
 
 describe("validateFormat", () => {
   test("accepts CURSOR format without throwing", () => {

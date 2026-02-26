@@ -2,8 +2,8 @@
  * Zod schemas for Luca Framework agent types
  */
 import { z } from "zod";
-import { contextConfigSchema } from "~/context/context.schemas";
-import { SectionSchema, type Section } from "~/shared/format";
+import { contextConfigSchema } from "~/context/__schemas/context.schemas";
+import { SectionSchema, type Section } from "~/shared/__helpers/format";
 
 /** Valid cognition tier values (T0=stateless, T1=recall, T2=contextual, T3=fully-cognitive) */
 export const CognitionTierSchema = z.enum(["T0", "T1", "T2", "T3"]);

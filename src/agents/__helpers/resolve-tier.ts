@@ -7,8 +7,8 @@
  * promotable_to ceiling caps the result.
  */
 import type { CognitionTier } from "~/agents/__schemas/agent.schemas";
-import type { ComplexityLevel } from "~/complexity/complexity.schemas";
-import { DEFAULT_COMPLEXITY_MATRIX } from "~/complexity/defaults";
+import type { ComplexityLevel } from "~/complexity/__schemas/complexity.schemas";
+import { DEFAULT_COMPLEXITY_MATRIX } from "~/complexity";
 
 /** Numeric order for tier comparison */
 export const TIER_ORDER: Record<CognitionTier, number> = {

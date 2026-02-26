@@ -3,8 +3,8 @@
  *
  * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import { toCursorFormat, toClaudeFormat } from "~/shared/format";
-import { deepFreeze } from "~/shared/deep-freeze";
+import { toCursorFormat, toClaudeFormat } from "~/shared/__helpers/format";
+import { deepFreeze } from "~/shared/__helpers/deep-freeze";
 import { RuleConfigSchema } from "~/rules/__schemas/rule.schemas";
 
 import type { BaseRule, RuleConfig } from "~/rules/__schemas/rule.schemas";

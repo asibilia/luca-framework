@@ -27,7 +27,7 @@
 ## Commands
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 |         |             |
 
 ## Coding Standards
@@ -65,12 +65,33 @@ utils/
 
 ```typescript
 // Reading data (reactive)
-const trainers = useQuery(api.trainers.queries.getAllTrainersWithStats)
+const trainers = useQuery(api.trainers.queries.getAllTrainersWithStats);
 
 // Writing data
-const updateName = useMutation(api.trainers.mutations.updateTrainerName)
-await updateName({ display_name: 'New Name' })
+const updateName = useMutation(api.trainers.mutations.updateTrainerName);
+await updateName({ display_name: "New Name" });
 ```
+
+## Domain Architecture
+
+Every `src/` domain follows one of three archetypes:
+
+- **Entity (A)**: agents, skills, rules — named instances with registries, entity subdirs, `__schemas/` + `__helpers/` + barrel
+- **Core (B)**: memory, planner, iteration, context, shared — internal logic, `__schemas/` + `__helpers/` + barrel
+- **Infrastructure (C)**: compilers, complexity, harness, hooks — build/verification, `__schemas/` + `__helpers/` + barrel + optional subdirs
+
+Import direction follows four dependency tiers (downward only):
+
+| Tier          | Domains                                      | May import from                    |
+| ------------- | -------------------------------------------- | ---------------------------------- |
+| T0 Foundation | shared, complexity                           | Nothing in src/                    |
+| T1 Core       | context, planner, harness, iteration, memory | T0 only                            |
+| T2 Entity     | agents, skills, rules                        | T0-T1; never cross-import          |
+| T3 Build      | compilers, hooks                             | T0-T2; imported by nothing in src/ |
+
+**Invariant**: Every domain's `index.ts` is a pure barrel — only re-export statements, no logic.
+
+See generated rules for full details: `.claude/rules/domain-architecture.md` and `.claude/rules/module-boundary.md`.
 
 ## Testing
 
@@ -103,16 +124,16 @@ Luca is a **developer tooling monorepo** (not a web app). There is no running we
 
 ### Services & commands
 
-| Action | Command |
-|--------|---------|
-| Install deps | `bun install` |
-| Type check | `bunx --bun tsc --noEmit` |
-| Run tests | `bun test` |
-| Build packages (unbuild) | `bun run build` |
-| Build full pipeline (agents/skills/rules/hooks/plugin) | `bun run build:all` |
-| Drift check (verify outputs match source) | `bun run check:drift` |
-| Luca CLI | `bun run packages/luca-framework/bin/luca.js <command>` |
-| State machine bridge | `bun run packages/luca-state/src/bridge.ts <command>` |
+| Action                                                 | Command                                                 |
+| ------------------------------------------------------ | ------------------------------------------------------- |
+| Install deps                                           | `bun install`                                           |
+| Type check                                             | `bunx --bun tsc --noEmit`                               |
+| Run tests                                              | `bun test`                                              |
+| Build packages (unbuild)                               | `bun run build`                                         |
+| Build full pipeline (agents/skills/rules/hooks/plugin) | `bun run build:all`                                     |
+| Drift check (verify outputs match source)              | `bun run check:drift`                                   |
+| Luca CLI                                               | `bun run packages/luca-framework/bin/luca.js <command>` |
+| State machine bridge                                   | `bun run packages/luca-state/src/bridge.ts <command>`   |
 
 ### Non-obvious caveats
 

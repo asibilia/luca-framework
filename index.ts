@@ -28,7 +28,7 @@ export type {
 } from "./src/rules/__schemas/rule.schemas";
 
 // Shared types
-export type { Result } from "./src/shared/shared.schemas";
+export type { Result } from "./src/shared/__schemas/shared.schemas";
 
 // Factory functions
 export { createAgent } from "./src/agents/__helpers/create-agent";
@@ -50,8 +50,8 @@ export {
   compileRuleCursor,
   compileRulePlugin,
   validateFormat,
-} from "./src/compilers/compile";
-export type { SupportedFormat } from "./src/compilers/compile";
+} from "./src/compilers/__helpers/compile";
+export type { SupportedFormat } from "./src/compilers/__helpers/compile";
 
 // Luca-specific entities
 export { luExecutorAgent } from "./src/agents/luca/lu-executor.agent";
@@ -121,4 +121,4 @@ export {
   safeValidateAgentConfig,
   safeValidateSkillConfig,
   safeValidateRuleConfig,
-} from "./src/shared/validation-utils";
+} from "./src/shared/__helpers/validation-utils";

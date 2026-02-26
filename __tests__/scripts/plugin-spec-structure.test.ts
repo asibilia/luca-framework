@@ -18,7 +18,7 @@ import path from "path";
 import {
   pluginManifestSchema,
   KEBAB_CASE_REGEX,
-} from "~/compilers/plugin.schemas";
+} from "~/compilers/__schemas/compilers.schemas";
 import {
   PLUGIN_ROOT,
   fileExists,

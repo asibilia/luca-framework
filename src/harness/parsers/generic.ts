@@ -6,14 +6,20 @@
  * 2. Bare: error: message (no file location)
  */
 
-import type { ParsedError, OutputParser } from '~/harness/harness.schemas';
+import type {
+  ParsedError,
+  OutputParser,
+} from "~/harness/__schemas/harness.schemas";
 
-const GENERIC_ERROR_REGEX = /^(.+?):(\d+)(?::(\d+))?:\s*(?:error|Error|ERROR)[:\s]+(.+)$/;
+const GENERIC_ERROR_REGEX =
+  /^(.+?):(\d+)(?::(\d+))?:\s*(?:error|Error|ERROR)[:\s]+(.+)$/;
 const BARE_ERROR_REGEX = /^(?:error|Error|ERROR)[:\s]+(.+)$/;
 
-export const parseGenericOutput: OutputParser = (output: string): ParsedError[] => {
+export const parseGenericOutput: OutputParser = (
+  output: string,
+): ParsedError[] => {
   const errors: ParsedError[] = [];
-  const lines = output.split('\n');
+  const lines = output.split("\n");
 
   for (const line of lines) {
     const structuredMatch = line.match(GENERIC_ERROR_REGEX);
@@ -21,9 +27,11 @@ export const parseGenericOutput: OutputParser = (output: string): ParsedError[] 
       errors.push({
         file: structuredMatch[1]!.trim(),
         line: parseInt(structuredMatch[2]!, 10),
-        column: structuredMatch[3] ? parseInt(structuredMatch[3], 10) : undefined,
+        column: structuredMatch[3]
+          ? parseInt(structuredMatch[3], 10)
+          : undefined,
         message: structuredMatch[4]!.trim(),
-        severity: 'error',
+        severity: "error",
       });
       continue;
     }
@@ -31,9 +39,9 @@ export const parseGenericOutput: OutputParser = (output: string): ParsedError[] 
     const bareMatch = line.match(BARE_ERROR_REGEX);
     if (bareMatch) {
       errors.push({
-        file: 'unknown',
+        file: "unknown",
         message: bareMatch[1]!.trim(),
-        severity: 'error',
+        severity: "error",
       });
     }
   }

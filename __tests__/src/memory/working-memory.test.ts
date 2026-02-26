@@ -5,8 +5,8 @@ import {
   addSection,
   summarizeSection,
   shouldAutoSummarize,
-} from "../../../src/memory/working-memory.ts";
-import { estimateTokens } from "../../../src/memory/token-estimator.ts";
+} from "../../../src/memory/__helpers/working-memory.ts";
+import { estimateTokens } from "../../../src/memory/__helpers/token-estimator.ts";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────────
 

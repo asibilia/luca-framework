@@ -4,7 +4,7 @@
  * Tests formatFrontmatter (7).
  */
 import { describe, test, expect } from 'bun:test';
-import { formatFrontmatter } from '../../../src/shared/utils';
+import { formatFrontmatter } from '../../../src/shared/__helpers/utils';
 
 // ---------------------------------------------------------------------------
 // formatFrontmatter (7 cases)

@@ -8,7 +8,7 @@ import {
   DEFAULT_PLANNER_CONFIG,
   DEFAULT_SESSION_CAP_MINUTES,
   MAX_CONTEXT_PERCENT,
-} from "../../../src/planner/defaults";
+} from "../../../src/planner/__helpers/defaults";
 
 describe("planner defaults", () => {
   test("EFFORT_MAP has correct Fibonacci-like values", () => {

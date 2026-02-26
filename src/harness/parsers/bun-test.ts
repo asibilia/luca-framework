@@ -5,7 +5,10 @@
  * and file header lines from bun test output.
  */
 
-import type { ParsedError, OutputParser } from '~/harness/harness.schemas';
+import type {
+  ParsedError,
+  OutputParser,
+} from "~/harness/__schemas/harness.schemas";
 
 // Match failed test name: "✗ test name [timing]" or "✘ test name [timing]"
 const FAIL_MARKER_REGEX = /^\s*[✗✘×]\s+(.+?)(?:\s+\[[\d.]+(?:ms|s)\])?\s*$/;
@@ -14,17 +17,20 @@ const FAIL_MARKER_REGEX = /^\s*[✗✘×]\s+(.+?)(?:\s+\[[\d.]+(?:ms|s)\])?\s*$/
 const STACK_LOCATION_REGEX = /^\s+at\s+(.+?):(\d+):(\d+)\s*$/;
 
 // Match compile/parse error: "error: <message>" at start of line or "SyntaxError: ..."
-const COMPILE_ERROR_REGEX = /^(?:error|SyntaxError|TypeError|ReferenceError):\s+(.+)$/;
+const COMPILE_ERROR_REGEX =
+  /^(?:error|SyntaxError|TypeError|ReferenceError):\s+(.+)$/;
 
 // Match file header line: "path/to/file.test.ts:" (indicates which test file)
 const FILE_HEADER_REGEX = /^(\S+\.(?:test|spec)\.\w+):$/;
 
-export const parseBunTestOutput: OutputParser = (output: string): ParsedError[] => {
+export const parseBunTestOutput: OutputParser = (
+  output: string,
+): ParsedError[] => {
   const errors: ParsedError[] = [];
-  const lines = output.split('\n');
+  const lines = output.split("\n");
 
-  let currentTestName = '';
-  let currentFile = '';
+  let currentTestName = "";
+  let currentFile = "";
   let assertionDetails: string[] = [];
   let foundLocation = false;
 
@@ -44,9 +50,11 @@ export const parseBunTestOutput: OutputParser = (output: string): ParsedError[] 
       // If we had a previous failure without a location, emit it
       if (currentTestName && !foundLocation) {
         errors.push({
-          file: currentFile || 'unknown',
-          message: currentTestName + (assertionDetails.length ? ': ' + assertionDetails.join(' ') : ''),
-          severity: 'error',
+          file: currentFile || "unknown",
+          message:
+            currentTestName +
+            (assertionDetails.length ? ": " + assertionDetails.join(" ") : ""),
+          severity: "error",
         });
       }
 
@@ -60,8 +68,12 @@ export const parseBunTestOutput: OutputParser = (output: string): ParsedError[] 
     if (currentTestName && !foundLocation) {
       // Collect Expected/Received lines
       const trimmed = line.trim();
-      if (trimmed.startsWith('Expected:') || trimmed.startsWith('Received:') ||
-          trimmed.startsWith('error:') || trimmed.startsWith('expect(')) {
+      if (
+        trimmed.startsWith("Expected:") ||
+        trimmed.startsWith("Received:") ||
+        trimmed.startsWith("error:") ||
+        trimmed.startsWith("expect(")
+      ) {
         assertionDetails.push(trimmed);
       }
 
@@ -73,10 +85,12 @@ export const parseBunTestOutput: OutputParser = (output: string): ParsedError[] 
           file: locMatch[1]!,
           line: parseInt(locMatch[2]!, 10),
           column: parseInt(locMatch[3]!, 10),
-          message: currentTestName + (assertionDetails.length ? ': ' + assertionDetails.join(' ') : ''),
-          severity: 'error',
+          message:
+            currentTestName +
+            (assertionDetails.length ? ": " + assertionDetails.join(" ") : ""),
+          severity: "error",
         });
-        currentTestName = '';
+        currentTestName = "";
         assertionDetails = [];
       }
     }
@@ -85,14 +99,14 @@ export const parseBunTestOutput: OutputParser = (output: string): ParsedError[] 
     const compileMatch = line.match(COMPILE_ERROR_REGEX);
     if (compileMatch && !currentTestName) {
       // Look ahead for file location
-      const nextLine = lines[i + 1] ?? '';
+      const nextLine = lines[i + 1] ?? "";
       const locMatch = nextLine.match(STACK_LOCATION_REGEX);
       errors.push({
-        file: locMatch ? locMatch[1]! : currentFile || 'unknown',
+        file: locMatch ? locMatch[1]! : currentFile || "unknown",
         line: locMatch ? parseInt(locMatch[2]!, 10) : undefined,
         column: locMatch ? parseInt(locMatch[3]!, 10) : undefined,
         message: compileMatch[1]!,
-        severity: 'error',
+        severity: "error",
       });
     }
   }
@@ -100,9 +114,11 @@ export const parseBunTestOutput: OutputParser = (output: string): ParsedError[] 
   // Flush any remaining failure without location
   if (currentTestName && !foundLocation) {
     errors.push({
-      file: currentFile || 'unknown',
-      message: currentTestName + (assertionDetails.length ? ': ' + assertionDetails.join(' ') : ''),
-      severity: 'error',
+      file: currentFile || "unknown",
+      message:
+        currentTestName +
+        (assertionDetails.length ? ": " + assertionDetails.join(" ") : ""),
+      severity: "error",
     });
   }
 

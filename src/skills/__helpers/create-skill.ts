@@ -3,8 +3,8 @@
  *
  * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import { toCursorFormat, toClaudeFormat } from "~/shared/format";
-import { deepFreeze } from "~/shared/deep-freeze";
+import { toCursorFormat, toClaudeFormat } from "~/shared/__helpers/format";
+import { deepFreeze } from "~/shared/__helpers/deep-freeze";
 import { SkillConfigSchema } from "~/skills/__schemas/skill.schemas";
 
 import type { BaseSkill, SkillConfig } from "~/skills/__schemas/skill.schemas";

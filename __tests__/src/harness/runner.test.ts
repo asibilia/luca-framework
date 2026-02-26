@@ -1,7 +1,10 @@
 import { describe, test, expect } from "bun:test";
-import { runHarness, loadHarnessConfig } from "../../../src/harness/runner";
-import { DEFAULT_HARNESS_CONFIG } from "~/harness/harness.schemas";
-import type { HarnessConfig } from "~/harness/harness.schemas";
+import {
+  runHarness,
+  loadHarnessConfig,
+} from "../../../src/harness/__helpers/runner";
+import { DEFAULT_HARNESS_CONFIG } from "~/harness/__schemas/harness.schemas";
+import type { HarnessConfig } from "~/harness/__schemas/harness.schemas";
 import { join } from "path";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { tmpdir } from "os";

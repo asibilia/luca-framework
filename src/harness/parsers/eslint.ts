@@ -6,9 +6,13 @@
  * 2. Default human-readable ESLint output (regex fallback)
  */
 
-import type { ParsedError, OutputParser } from '~/harness/harness.schemas';
+import type {
+  ParsedError,
+  OutputParser,
+} from "~/harness/__schemas/harness.schemas";
 
-const ESLINT_DEFAULT_REGEX = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}(\S+)\s*$/;
+const ESLINT_DEFAULT_REGEX =
+  /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}(\S+)\s*$/;
 const ESLINT_FILE_REGEX = /^(\/\S+|\S+\.\w+)$/;
 
 interface EslintJsonMessage {
@@ -24,12 +28,14 @@ interface EslintJsonResult {
   messages: EslintJsonMessage[];
 }
 
-export const parseEslintOutput: OutputParser = (output: string): ParsedError[] => {
+export const parseEslintOutput: OutputParser = (
+  output: string,
+): ParsedError[] => {
   const errors: ParsedError[] = [];
   const trimmed = output.trim();
 
   // Attempt JSON parse first (eslint --format json)
-  if (trimmed.startsWith('[')) {
+  if (trimmed.startsWith("[")) {
     try {
       const results: EslintJsonResult[] = JSON.parse(trimmed);
       for (const result of results) {
@@ -40,7 +46,7 @@ export const parseEslintOutput: OutputParser = (output: string): ParsedError[] =
             column: msg.column,
             message: msg.message,
             code: msg.ruleId ?? undefined,
-            severity: msg.severity === 2 ? 'error' : 'warning',
+            severity: msg.severity === 2 ? "error" : "warning",
           });
         }
       }
@@ -51,8 +57,8 @@ export const parseEslintOutput: OutputParser = (output: string): ParsedError[] =
   }
 
   // Fallback: regex-based parsing of default ESLint output
-  const lines = output.split('\n');
-  let currentFile = '';
+  const lines = output.split("\n");
+  let currentFile = "";
 
   for (const line of lines) {
     const fileMatch = line.match(ESLINT_FILE_REGEX);
@@ -67,7 +73,7 @@ export const parseEslintOutput: OutputParser = (output: string): ParsedError[] =
         file: currentFile,
         line: parseInt(msgMatch[1]!, 10),
         column: parseInt(msgMatch[2]!, 10),
-        severity: msgMatch[3] as 'error' | 'warning',
+        severity: msgMatch[3] as "error" | "warning",
         message: msgMatch[4]!.trim(),
         code: msgMatch[5],
       });

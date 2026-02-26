@@ -3,8 +3,8 @@ import {
   evaluateRetirement,
   applyRetirement,
   updateExecutionStats,
-} from "../../../src/memory/procedure-lifecycle.ts";
-import type { ProcedureEntry } from "~/memory/memory.schemas";
+} from "../../../src/memory/__helpers/procedure-lifecycle.ts";
+import type { ProcedureEntry } from "~/memory/__schemas/memory.schemas";
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 
