@@ -1,7 +1,7 @@
 {
   "name": "luca-framework",
-  "description": "Luca - Agentic development framework for Cursor IDE",
-  "version": "0.0.1",
+  "description": "Luca - Agentic development framework for AI-powered development workflows",
+  "version": "2.0.0",
   "bin": {
     "luca": "./bin/luca.js"
   },
@@ -48,11 +48,18 @@
   "files": [
     "bin",
     "dist",
+    "dist/plugin",
     "templates"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alecsibilia/luca-framework.git",
+    "directory": "packages/luca-framework"
+  },
   "keywords": [
     "agent",
     "ai",
+    "claude",
     "cli",
     "cursor",
     "framework",
@@ -60,6 +67,7 @@
   ],
   "scripts": {
     "build": "unbuild",
+    "build:plugin": "bun run scripts/copy-plugin.ts",
     "test": "bun test"
   },
   "type": "module"

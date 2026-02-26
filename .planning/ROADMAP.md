@@ -26,10 +26,10 @@
 
 **Depends on:** Phase 56
 
-- [ ] Plan 57-A: Audit three packages, map exports, design merged structure
-- [ ] Plan 57-B: Move `luca-state` into unified package, migrate tests
-- [ ] Plan 57-C: Absorb `create-luca` scaffolding into `init` command
-- [ ] Plan 57-D: Update workspace config, imports, and full test suite
+- [x] Plan 57-A: Audit three packages, map exports, design merged structure
+- [x] Plan 57-B: Move `luca-state` into unified package, migrate tests
+- [x] Plan 57-C: Absorb `create-luca`, remove old packages
+- [x] Plan 57-D: Update all bridge references (40+ files), full validation
 
 ### Phase 58 — CLI Commands & Plugin Distribution
 
