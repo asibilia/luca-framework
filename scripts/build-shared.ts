@@ -112,6 +112,8 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   "rule-file-naming": "Reference",
   // Automation
   autopilot: "Automation",
+  // Code Quality (repo-level)
+  "repo-audit": "Code Quality",
 };
 
 /**
@@ -144,6 +146,8 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-research-synthesizer": "Research",
   "lu-codebase-mapper": "Research",
   "lu-discuss-researcher": "Research",
+  // Quality (repo-level)
+  "lu-repo-architect": "Quality",
   // Specialty
   "lu-roadmapper": "Specialty",
   "lu-pm-planner": "Specialty",
