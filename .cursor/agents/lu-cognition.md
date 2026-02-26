@@ -182,7 +182,7 @@ Before recalling memory, resolve the target agent's cognition tier.
 3. **Read current complexity from bridge (falls back to STATE.md):**
    ```bash
    # Primary: Read complexity from state machine bridge
-   COMPLEXITY=$(bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
+   COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
    # Fallback: grep STATE.md directly
    if [ -z "$COMPLEXITY" ] || [ "$COMPLEXITY" = "undefined" ]; then
      COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -246,7 +246,7 @@ When the current milestone is available (from STATE.md or state machine bridge),
 
 ```bash
 # Resolve current milestone
-CURRENT_MILESTONE=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null || echo "")
+CURRENT_MILESTONE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null || echo "")
 
 # Determine effective entry limit by tier
 if [ "$EFFECTIVE_TIER" = "T1" ]; then LIMIT=5; elif [ "$EFFECTIVE_TIER" = "T2" ]; then LIMIT=7; else LIMIT=10; fi

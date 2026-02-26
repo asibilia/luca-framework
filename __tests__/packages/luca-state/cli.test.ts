@@ -5,7 +5,7 @@ import { $ } from "bun";
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
 const STATE_FILE = ".planning/state.json";
-const CLI = "packages/luca-state/src/cli.ts";
+const CLI = "packages/luca-framework/src/state/cli.ts";
 
 /**
  * Clean up the state file between tests.

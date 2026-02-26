@@ -16,9 +16,9 @@
 
 **Depends on:** None
 
-- [ ] Plan 56-A: Agent schema and `createAgent()` factory implementation
-- [ ] Plan 56-B: `repo-audit` skill with interactive and automated modes
-- [ ] Plan 56-C: Hook integration and self-audit validation
+- [x] Plan 56-A: Agent schema and `createAgent()` factory implementation
+- [x] Plan 56-B: `repo-audit` skill with interactive and automated modes
+- [x] Plan 56-C: Tests and build validation (1791 tests, 0 drift)
 
 ### Phase 57 — Package Consolidation
 

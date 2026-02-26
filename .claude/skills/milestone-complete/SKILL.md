@@ -79,7 +79,7 @@ When updating state during milestone completion, use the bridge CLI as primary w
 
 ```bash
 # Read current state
-STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ```
@@ -88,10 +88,10 @@ After archiving the milestone, reset state for the next milestone:
 
 ```bash
 # Reset state machine for next milestone
-bun run packages/luca-state/src/bridge.ts transition --event=RESET 2>/dev/null || true
-bun run packages/luca-state/src/bridge.ts ensure-init --force 2>/dev/null || true
-bun run packages/luca-state/src/bridge.ts set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
-bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=RESET 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts ensure-init --force 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
 # Fallback: Update STATE.md directly if bridge unavailable
 ```
 

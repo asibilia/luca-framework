@@ -46,7 +46,7 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * The packages are isolated by design and cannot cross-import.
  * If you modify this function, update all copies:
  * - packages/luca-framework/src/utils/sanitize.ts (this file)
- * - packages/luca-state/src/sanitize.ts
+ * - packages/luca-framework/src/state/sanitize.ts
  * - src/shared/validation-utils.ts
  */
 export function sanitizeJsonParse(json: string): unknown {

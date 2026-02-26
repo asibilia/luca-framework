@@ -11,14 +11,17 @@
     "consola": "^3.4.0",
     "defu": "^6.1.4",
     "ejs": "^3.1.10",
+    "lodash": "^4.17.23",
     "pathe": "^2.0.3",
     "pkg-types": "^2.1.0",
     "semver": "^7.7.3",
     "update-notifier": "^7.3.1",
+    "xstate": "^5.28.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",
+    "@types/lodash": "^4.17.23",
     "@types/semver": "^7.7.1",
     "@types/update-notifier": "^6.0.8"
   },
@@ -30,6 +33,16 @@
       "types": "./src/index.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./state": {
+      "types": "./src/state/index.ts",
+      "import": "./dist/state/index.mjs",
+      "require": "./dist/state/index.cjs"
+    },
+    "./state/bridge": {
+      "types": "./src/state/bridge.ts",
+      "import": "./dist/state/bridge.mjs",
+      "require": "./dist/state/bridge.cjs"
     }
   },
   "files": [

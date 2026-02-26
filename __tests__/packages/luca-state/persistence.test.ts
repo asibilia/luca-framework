@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createActor } from "xstate";
 import { unlinkSync, mkdirSync } from "node:fs";
-import { workflowMachine } from "../machine";
-import { DEFAULT_COMPLEXITY_MATRIX } from "../defaults";
+import { workflowMachine } from "../../../packages/luca-framework/src/state/machine";
+import { DEFAULT_COMPLEXITY_MATRIX } from "../../../packages/luca-framework/src/state/defaults";
 import {
   persistActor,
   loadPersistedActor,
@@ -10,7 +10,7 @@ import {
   clearPersistedState,
   stateExists,
   STATE_FILE_PATH,
-} from "../persistence";
+} from "../../../packages/luca-framework/src/state/persistence";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import { $ } from "bun";
 
 const STATE_FILE = ".planning/state.json";
 const STATE_MD = ".planning/STATE.md";
-const BRIDGE = "packages/luca-state/src/bridge.ts";
+const BRIDGE = "packages/luca-framework/src/state/bridge.ts";
 const SNAPSHOT_SYNC_SCRIPT = "src/hooks/scripts/snapshot-sync.sh";
 const THROTTLE_FILE = "/tmp/.luca-snapshot-sync-ts";
 

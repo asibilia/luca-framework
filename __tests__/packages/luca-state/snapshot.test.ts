@@ -3,9 +3,9 @@ import {
   generateSnapshot,
   extractSection,
   extractPreservableSections,
-} from "../snapshot";
-import { workflowContextSchema } from "../types";
-import type { WorkflowContext } from "../types";
+} from "../../../packages/luca-framework/src/state/snapshot";
+import { workflowContextSchema } from "../../../packages/luca-framework/src/state/types";
+import type { WorkflowContext } from "../../../packages/luca-framework/src/state/types";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 

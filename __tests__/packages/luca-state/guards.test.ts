@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { workflowGuards, guardNames } from "../guards";
-import { DEFAULT_COMPLEXITY_MATRIX } from "../defaults";
+import { workflowGuards, guardNames } from "../../../packages/luca-framework/src/state/guards";
+import { DEFAULT_COMPLEXITY_MATRIX } from "../../../packages/luca-framework/src/state/defaults";
 
 /**
  * Helper to build a minimal context object with a complexity matrix.

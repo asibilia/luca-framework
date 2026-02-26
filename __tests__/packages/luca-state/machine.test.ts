@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { createActor } from "xstate";
-import { workflowMachine, getAllowedEvents } from "../machine";
-import { DEFAULT_COMPLEXITY_MATRIX } from "../defaults";
+import { workflowMachine, getAllowedEvents } from "../../../packages/luca-framework/src/state/machine";
+import { DEFAULT_COMPLEXITY_MATRIX } from "../../../packages/luca-framework/src/state/defaults";
 
 /**
  * Helper to create and start a workflow machine actor with context overrides.

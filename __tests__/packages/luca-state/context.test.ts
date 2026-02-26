@@ -7,7 +7,7 @@ import {
   budgetStateRefSchema,
   oversightLevelSchema,
   initializeContext,
-} from "../types";
+} from "../../../packages/luca-framework/src/state/types";
 
 // ─── workflowContextSchema ──────────────────────────────────────────────────
 

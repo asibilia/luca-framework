@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { createActor } from "xstate";
-import { phaseActorMachine } from "../actors/phase-actor";
-import type { PhaseInput } from "../types";
+import { phaseActorMachine } from "../../../packages/luca-framework/src/state/actors/phase-actor";
+import type { PhaseInput } from "../../../packages/luca-framework/src/state/types";
 
 /**
  * Helper to create and start a phase actor with input overrides.

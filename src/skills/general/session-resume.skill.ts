@@ -36,13 +36,13 @@ Follow the resume-project workflow which handles:
 
    \`\`\`bash
    # Primary: Read comprehensive state from bridge
-   STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+   STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
    # Fallback: Read STATE.md directly (backward compatibility)
    STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 
    # Read complexity and phase info
-   COMPLEXITY=$(bun run packages/luca-state/src/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
-   PHASE_JSON=$(bun run packages/luca-state/src/bridge.ts read-phase 2>/dev/null || echo '{"current_phase":null}')
+   COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+   PHASE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-phase 2>/dev/null || echo '{"current_phase":null}')
    \`\`\`
 
    If state not initialized, reconstruct from artifacts
@@ -67,7 +67,7 @@ Follow the resume-project workflow which handles:
 
 7. **Session continuity updates**
    - Session continuity is auto-tracked by the state machine (\`last_transition_at\` field)
-   - STATE.md is regenerated via \`bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true\`
+   - STATE.md is regenerated via \`bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true\`
 
 ## Success Criteria
 

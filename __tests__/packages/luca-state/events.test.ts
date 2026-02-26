@@ -4,9 +4,9 @@ import {
   extractContextSummary,
   isSignificantTransition,
   describeTransition,
-} from "../events";
-import { transitionRecordSchema, initializeContext } from "../types";
-import type { WorkflowContext } from "../types";
+} from "../../../packages/luca-framework/src/state/events";
+import { transitionRecordSchema, initializeContext } from "../../../packages/luca-framework/src/state/types";
+import type { WorkflowContext } from "../../../packages/luca-framework/src/state/types";
 
 /**
  * Helper to create a test context with sensible defaults.
