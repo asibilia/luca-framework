@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import { HarnessConfigSchema, DEFAULT_HARNESS_CONFIG } from "./types";
 import { parserRegistry } from "./parsers";
+import { sanitizeJsonParse } from "../shared/validation-utils";
 import { join } from "path";
 
 const RAW_OUTPUT_MAX_LINES = 50;
@@ -26,7 +27,8 @@ export async function loadHarnessConfig(
 
   if (await configFile.exists()) {
     try {
-      const raw = await configFile.json();
+      const text = await configFile.text();
+      const raw = sanitizeJsonParse(text) as Record<string, unknown>;
       if (raw.harness) {
         const result = HarnessConfigSchema.safeParse(raw.harness);
         if (result.success) {

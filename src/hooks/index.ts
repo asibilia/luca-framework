@@ -147,16 +147,6 @@ export function resolveHookRegistry(): Record<string, HookDefinition> {
 }
 
 /**
- * Generate .cursor/hooks.json from the hook registry.
- *
- * Cursor hooks use a different config format:
- * - Wrapped in { version: 1, hooks: { ... } }
- * - camelCase event names (afterFileEdit, beforeShellExecution, stop, sessionEnd)
- * - Flat array per event (no matcher-grouping)
- * - Relative command paths (.cursor/hooks/<script>)
- * - No async or statusMessage fields
- */
-/**
  * Generate Claude Code hooks configuration from the hook registry.
  *
  * Produces a hooks configuration with command paths based on the
@@ -213,6 +203,16 @@ export function generateClaudeHooksConfig(
   return options.wrapInHooksKey ? { hooks: events } : events;
 }
 
+/**
+ * Generate .cursor/hooks.json from the hook registry.
+ *
+ * Cursor hooks use a different config format:
+ * - Wrapped in { version: 1, hooks: { ... } }
+ * - camelCase event names (afterFileEdit, beforeShellExecution, stop, sessionEnd)
+ * - Flat array per event (no matcher-grouping)
+ * - Relative command paths (.cursor/hooks/<script>)
+ * - No async or statusMessage fields
+ */
 export function generateCursorHooksConfig(
   registry: Record<string, HookDefinition>,
 ): Record<string, unknown> {
