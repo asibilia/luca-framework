@@ -16,6 +16,8 @@ context:
   default_tier: T3
   promotable_to: T3
   isolation: none
+model_routing:
+  default_model: haiku
 ---
 
 <role>

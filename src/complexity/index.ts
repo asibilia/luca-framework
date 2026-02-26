@@ -14,6 +14,7 @@ export type {
   ComplexityGate,
   ComplexityMatrix,
   ComplexityConfig,
+  ModelId,
 } from "./__schemas/complexity.schemas";
 
 // Schemas
@@ -24,6 +25,7 @@ export {
   StepActivationSchema,
   ComplexityGateSchema,
   ComplexityConfigSchema,
+  ModelIdSchema,
 } from "./__schemas/complexity.schemas";
 
 // Constants

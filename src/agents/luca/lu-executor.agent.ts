@@ -22,6 +22,10 @@ const luExecutorConfig: AgentConfig = {
       promotable_to: "T3",
       isolation: "none",
     },
+    model_routing: {
+      default_model: "sonnet",
+      complexity_overrides: { CRITICAL: "opus" },
+    },
   },
   sections: [
     {

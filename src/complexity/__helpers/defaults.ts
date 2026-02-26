@@ -97,6 +97,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     codeReviewAgents: [],
     uat: "skip",
     learningCapture: "skip",
+    default_model: "haiku",
   },
   SIMPLE: {
     cognitivePreflight: "lite",
@@ -109,6 +110,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     codeReviewAgents: [],
     uat: "skip",
     learningCapture: "brief",
+    default_model: "haiku",
   },
   MODERATE: {
     cognitivePreflight: "full",
@@ -122,6 +124,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     uat: "optional",
     learningCapture: "standard",
     contextPromotions: { T0: "T1", T1: "T2" },
+    default_model: "sonnet",
   },
   COMPLEX: {
     cognitivePreflight: "full",
@@ -141,6 +144,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     learningCapture: "full",
     cognitionPromotions: { T1: "T2", T2: "T3" },
     contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
+    default_model: "sonnet",
   },
   CRITICAL: {
     cognitivePreflight: "full",
@@ -161,6 +165,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     learningCapture: "full+debrief",
     cognitionPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
+    default_model: "opus",
   },
 };
 

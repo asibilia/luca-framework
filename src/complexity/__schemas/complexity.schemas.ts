@@ -21,6 +21,15 @@ import { z } from "zod";
  */
 const tierSchema = z.enum(["T0", "T1", "T2", "T3"]);
 
+/**
+ * Model identifier for routing decisions.
+ *
+ * Defined in the complexity domain (T0) so both complexity gates
+ * and agent schemas (T2) can reference it without upward imports.
+ */
+export const ModelIdSchema = z.enum(["opus", "sonnet", "haiku"]);
+export type ModelId = z.infer<typeof ModelIdSchema>;
+
 /** The five complexity levels, ordered from least to most complex */
 export const COMPLEXITY_LEVELS = [
   "TRIVIAL",
@@ -137,6 +146,9 @@ export const ComplexityGateSchema = z.object({
       T3: tierSchema.optional(),
     })
     .optional(),
+  /** Optional default model for this complexity level.
+   *  Used as a fallback when an agent has no model_routing config. */
+  default_model: ModelIdSchema.optional(),
 });
 export type ComplexityGate = z.infer<typeof ComplexityGateSchema>;
 

@@ -39,11 +39,15 @@ import { luPlannerAgent } from "./luca/lu-planner.agent";
 // Export factory function
 export { createAgent } from "./__helpers/create-agent";
 
+// Export model resolution
+export { resolveModel } from "./__helpers/resolve-model";
+
 // Export types
 export type {
   AgentConfig,
   AgentFrontmatter,
   AgentSection,
+  ModelRoutingConfig,
 } from "./__schemas/agent.schemas";
 
 // Import BaseAgent for registry type annotation (also re-exported)

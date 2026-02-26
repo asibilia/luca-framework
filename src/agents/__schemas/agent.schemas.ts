@@ -3,6 +3,7 @@
  */
 import { z } from "zod";
 import { contextConfigSchema } from "~/context/__schemas/context.schemas";
+import { ModelIdSchema } from "~/complexity/__schemas/complexity.schemas";
 import { SectionSchema, type Section } from "~/shared/__helpers/format";
 
 /** Valid cognition tier values (T0=stateless, T1=recall, T2=contextual, T3=fully-cognitive) */
@@ -18,6 +19,15 @@ export const CognitionConfigSchema = z.object({
   memory_tags: z.array(z.string()).default([]),
 });
 
+/** Per-agent model routing configuration */
+export const ModelRoutingConfigSchema = z.object({
+  /** Default model for this agent */
+  default_model: ModelIdSchema.default("sonnet"),
+  /** Per-complexity model overrides */
+  complexity_overrides: z.record(z.string(), ModelIdSchema).optional(),
+});
+export type ModelRoutingConfig = z.infer<typeof ModelRoutingConfigSchema>;
+
 export const AgentFrontmatterSchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -27,6 +37,8 @@ export const AgentFrontmatterSchema = z.object({
   cognition: CognitionConfigSchema.optional(),
   /** Optional per-agent context configuration. When absent, agent defaults to T0. */
   context: contextConfigSchema.optional(),
+  /** Optional per-agent model routing configuration. When absent, uses complexity gate default. */
+  model_routing: ModelRoutingConfigSchema.optional(),
 });
 
 /** Agent section schema — references the canonical SectionSchema from shared/format */

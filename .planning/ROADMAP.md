@@ -37,9 +37,9 @@
 
 **Depends on:** Phase 57
 
-- [ ] Plan 58-A: Add `run:claude` and `run:cursor` CLI commands
-- [ ] Plan 58-B: Structure `dist/` for `--plugin-dir` compatibility
-- [ ] Plan 58-C: Package metadata, prepublish build, `npm pack` validation
+- [x] Plan 58-A: Add `run:claude` and `run:cursor` CLI commands
+- [x] Plan 58-B: Structure `dist/` for `--plugin-dir` compatibility
+- [x] Plan 58-C: Package metadata v2.0.0, `npm pack` validation
 
 ### Phase 59 — Model-Aware Task Routing
 
