@@ -2,7 +2,7 @@
  * Zod schemas for Luca Framework rule types
  */
 import { z } from "zod";
-import { SectionSchema, type Section } from "../../shared/format";
+import { SectionSchema, type Section } from "~/shared/format";
 
 export const RuleFrontmatterSchema = z.object({
   description: z.string(),

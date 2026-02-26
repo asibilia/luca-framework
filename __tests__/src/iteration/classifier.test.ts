@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import type { ParsedError, CheckResult } from "../../../src/harness/types";
+import type { ParsedError, CheckResult } from "~/harness/harness.schemas";
 import {
   classifySingleError,
   classifyErrors,

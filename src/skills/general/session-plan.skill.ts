@@ -1,8 +1,8 @@
 /**
  * session-plan Skill - Plan the next coding session using WSJF prioritization of pending todos and roadmap items.
  */
-import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.schemas";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the session-plan skill configuration
 const sessionPlanConfig: SkillConfig = {

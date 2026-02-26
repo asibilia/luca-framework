@@ -5,9 +5,9 @@
  * See: packages/luca-framework/src/types.ts
  *      packages/luca-framework/src/contracts/work-tracker.ts
  *      packages/luca-framework/src/utils/branding.ts
- *      src/agents/types/agent.schemas.ts
- *      src/skills/types/skill.schemas.ts
- *      src/rules/types/rule.schemas.ts
+ *      src/agents/__schemas/agent.schemas.ts
+ *      src/skills/__schemas/skill.schemas.ts
+ *      src/rules/__schemas/rule.schemas.ts
  */
 
 import type {
@@ -20,11 +20,11 @@ import type {
 
 import type { WorkTicket } from "../../packages/luca-framework/src/contracts/work-tracker";
 
-import type { AgentConfig } from "../../src/agents/types/agent.schemas";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
-import type { SkillConfig } from "../../src/skills/types/skill.schemas";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-import type { RuleConfig } from "../../src/rules/types/rule.schemas";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // ---------------------------------------------------------------------------
 // Branding

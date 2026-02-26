@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import type { ParsedError } from "../../../src/harness/types";
-import type { ClassifiedError } from "../../../src/iteration/types";
+import type { ParsedError } from "~/harness/harness.schemas";
+import type { ClassifiedError } from "~/iteration/iteration.schemas";
 import {
   createFingerprint,
   computeFingerprintOverlap,

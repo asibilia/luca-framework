@@ -1,8 +1,8 @@
 /**
  * Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
  */
-import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.schemas";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // Define the atlassian-mcp rule configuration
 const atlassianMcpConfig: RuleConfig = {

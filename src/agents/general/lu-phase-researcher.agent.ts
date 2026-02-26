@@ -1,8 +1,8 @@
 /**
  * lu-phase-researcher Agent - Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /phase-plan orchestrator.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.schemas";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the lu-phase-researcher agent configuration
 const luPhaseResearcherConfig: AgentConfig = {

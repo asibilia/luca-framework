@@ -11,10 +11,10 @@ import type {
   HarnessResult,
   CheckResult,
   CheckConfig,
-} from "./types";
-import { HarnessConfigSchema, DEFAULT_HARNESS_CONFIG } from "./types";
+} from "./harness.schemas";
+import { HarnessConfigSchema, DEFAULT_HARNESS_CONFIG } from "./harness.schemas";
 import { parserRegistry } from "./parsers";
-import { sanitizeJsonParse } from "../shared/validation-utils";
+import { sanitizeJsonParse } from "~/shared/validation-utils";
 import { join } from "path";
 
 const RAW_OUTPUT_MAX_LINES = 50;

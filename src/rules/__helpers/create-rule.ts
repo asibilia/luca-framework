@@ -3,11 +3,11 @@
  *
  * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import { toCursorFormat, toClaudeFormat } from "../../shared/format";
-import { deepFreeze } from "../../shared/deep-freeze";
-import { RuleConfigSchema } from "../types/rule.schemas";
+import { toCursorFormat, toClaudeFormat } from "~/shared/format";
+import { deepFreeze } from "~/shared/deep-freeze";
+import { RuleConfigSchema } from "~/rules/__schemas/rule.schemas";
 
-import type { BaseRule, RuleConfig } from "../types/rule.schemas";
+import type { BaseRule, RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 /**
  * Create a rule instance from a validated configuration.

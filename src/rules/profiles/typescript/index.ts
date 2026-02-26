@@ -13,7 +13,7 @@ import { noClassesRule } from "./no-classes.rule";
 import { schemaFirstParsingRule } from "./schema-first-parsing.rule";
 import { useBunRule } from "./use-bun-instead-of-node-vite-npm-pnpm.rule";
 
-import type { TechStackProfile } from "../profile.schemas";
+import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 /**
  * TypeScript profile containing 8 opinionated rules for

@@ -10,12 +10,12 @@ import { pythonProfile } from "./python/index";
 import { goProfile } from "./go/index";
 import { rustProfile } from "./rust/index";
 
-import type { TechStackProfile } from "./profile.schemas";
+import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 // Re-export types and schemas for consumers
-export type { TechStackProfile } from "./profile.schemas";
-export { ProfileConfigSchema } from "./profile.schemas";
-export type { ProfileConfig } from "./profile.schemas";
+export type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
+export { ProfileConfigSchema } from "~/rules/__schemas/profile.schemas";
+export type { ProfileConfig } from "~/rules/__schemas/profile.schemas";
 
 /**
  * Registry of all available tech stack profiles.

@@ -50,8 +50,8 @@ import { createContextMonitor } from "./context-monitor.ts";
 import { analyzeMemoryEntries } from "./compression.ts";
 import { scoreMilestoneRecall } from "./milestone-recall.ts";
 import { estimateTokens } from "./token-estimator.ts";
-import { WORKING_MEMORY_SECTIONS } from "./types.ts";
-import { getArg } from "../shared/cli-utils.ts";
+import { WORKING_MEMORY_SECTIONS } from "./memory.schemas";
+import { getArg } from "~/shared/cli-utils";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

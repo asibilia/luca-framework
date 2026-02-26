@@ -15,8 +15,8 @@
 
 import orderBy from "lodash/orderBy";
 
-import type { ComplexityLevel } from "../complexity/types";
-import type { WSJFInput, WSJFScoredItem } from "./types";
+import type { ComplexityLevel } from "~/complexity/complexity.schemas";
+import type { WSJFInput, WSJFScoredItem } from "./planner.schemas";
 import { EFFORT_MAP } from "./defaults";
 
 /**

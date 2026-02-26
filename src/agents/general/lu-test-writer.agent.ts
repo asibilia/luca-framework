@@ -1,8 +1,8 @@
 /**
  * lu-test-writer Agent - Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by lu-executor during TDD cycle.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.schemas";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the lu-test-writer agent configuration
 const luTestWriterConfig: AgentConfig = {

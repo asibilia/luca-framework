@@ -1,8 +1,8 @@
 /**
  * code-architect Agent - Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.schemas";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the code-architect agent configuration
 const codeArchitectConfig: AgentConfig = {

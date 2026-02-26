@@ -35,7 +35,7 @@ import {
   compileSkill,
   compileRule,
 } from "../src/compilers/compile";
-import { generatePluginManifest } from "../src/compilers/plugin.types";
+import { generatePluginManifest } from "../src/compilers/plugin.schemas";
 import path from "path";
 
 /**

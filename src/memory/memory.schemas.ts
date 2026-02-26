@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { qualityZoneSchema } from "../planner/types.ts";
+import { qualityZoneSchema } from "~/planner/planner.schemas";
 
 // ─── Memory Entry Schema ───────────────────────────────────────────────────────
 

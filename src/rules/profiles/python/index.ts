@@ -5,7 +5,7 @@
  * Rules will be added as they are defined (e.g., PEP 8, typing conventions,
  * virtual environment preferences, etc.).
  */
-import type { TechStackProfile } from "../profile.schemas";
+import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 /**
  * Python profile — currently empty, ready for rule population.

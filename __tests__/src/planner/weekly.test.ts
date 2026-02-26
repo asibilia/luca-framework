@@ -15,7 +15,7 @@ import {
   distributeWeekly,
 } from "../../../src/planner/weekly";
 
-import type { WSJFScoredItem } from "../../../src/planner/types";
+import type { WSJFScoredItem } from "~/planner/planner.schemas";
 
 /* ------------------------------------------------------------------ */
 /*  Test helper                                                        */

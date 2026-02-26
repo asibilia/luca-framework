@@ -10,7 +10,7 @@
  * - Isolation modes override tier-based document selection for sensitive agents
  * - Every agent has a fallback profile (T0/T0/none)
  */
-import type { ContextConfig, ContextTier, IsolationMode } from "./types";
+import type { ContextConfig, ContextTier, IsolationMode } from "./context.schemas";
 
 // ---------------------------------------------------------------------------
 // Tier-to-document mapping

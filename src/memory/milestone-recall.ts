@@ -15,7 +15,7 @@
  *
  * @module memory/milestone-recall
  */
-import type { MemoryEntry } from "./types.ts";
+import type { MemoryEntry } from "./memory.schemas";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

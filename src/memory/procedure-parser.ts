@@ -1,8 +1,8 @@
-import type { ProcedureEntry } from "./types.ts";
-import { procedureEntrySchema } from "./types.ts";
-import type { Result } from "../shared/types.ts";
+import type { ProcedureEntry } from "./memory.schemas";
+import { procedureEntrySchema } from "./memory.schemas";
+import type { Result } from "~/shared/shared.schemas";
 import { estimateTokens } from "./token-estimator.ts";
-import { escapeRegex } from "../shared/cli-utils.ts";
+import { escapeRegex } from "~/shared/cli-utils";
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 

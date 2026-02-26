@@ -1,6 +1,6 @@
-import type { MemoryEntry } from "./types.ts";
-import { memoryEntrySchema } from "./types.ts";
-import type { Result } from "../shared/types.ts";
+import type { MemoryEntry } from "./memory.schemas";
+import { memoryEntrySchema } from "./memory.schemas";
+import type { Result } from "~/shared/shared.schemas";
 import { estimateTokens } from "./token-estimator.ts";
 
 /**

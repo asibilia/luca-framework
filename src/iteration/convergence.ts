@@ -1,14 +1,14 @@
 import { createHash } from "crypto";
 
-import type { ParsedError } from "../harness/types";
+import type { ParsedError } from "~/harness/harness.schemas";
 import type {
   ErrorFingerprint,
   ConvergenceSignals,
   ConvergenceResult,
   ConvergenceStatus,
   ClassifiedError,
-} from "./types";
-import { classifiedErrorSchema } from "./types";
+} from "./iteration.schemas";
+import { classifiedErrorSchema } from "./iteration.schemas";
 
 /**
  * Create a stable fingerprint for a ParsedError.

@@ -13,10 +13,10 @@
  *
  * @module
  */
-import type { BaseAgent } from "../agents/types/agent.schemas";
-import type { BaseSkill } from "../skills/types/skill.schemas";
-import type { BaseRule } from "../rules/types/rule.schemas";
-import { formatFrontmatter } from "../shared/utils";
+import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
+import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
+import type { BaseRule } from "~/rules/__schemas/rule.schemas";
+import { formatFrontmatter } from "~/shared/utils";
 
 /**
  * Supported compilation output formats.

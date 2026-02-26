@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 
-import type { BaseRule } from "../types/rule.schemas";
+import type { BaseRule } from "~/rules/__schemas/rule.schemas";
 
 /**
  * Schema for profile configuration within the workflow section of config.json.

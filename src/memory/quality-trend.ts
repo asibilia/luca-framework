@@ -1,6 +1,6 @@
-import type { PhaseQualityMetrics, QualityTrend } from "./types.ts";
-import { qualityTrendSchema } from "./types.ts";
-import type { Result } from "../shared/types.ts";
+import type { PhaseQualityMetrics, QualityTrend } from "./memory.schemas";
+import { qualityTrendSchema } from "./memory.schemas";
+import type { Result } from "~/shared/shared.schemas";
 
 /**
  * Create an empty quality trend tracker.

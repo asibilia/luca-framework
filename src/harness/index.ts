@@ -13,7 +13,7 @@ export type {
   CheckResult,
   HarnessResult,
   OutputParser,
-} from "./types";
+} from "./harness.schemas";
 export {
   CheckConfigSchema,
   HarnessConfigSchema,
@@ -21,4 +21,4 @@ export {
   CheckResultSchema,
   HarnessResultSchema,
   DEFAULT_HARNESS_CONFIG,
-} from "./types";
+} from "./harness.schemas";

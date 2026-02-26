@@ -2,7 +2,7 @@ import type {
   MemoryEntry,
   CompressionRecommendation,
   CompressionStrategy,
-} from "./types.ts";
+} from "./memory.schemas";
 import { estimateTokens } from "./token-estimator.ts";
 
 /**

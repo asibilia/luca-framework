@@ -6,7 +6,7 @@
  * 2. Bare: error: message (no file location)
  */
 
-import type { ParsedError, OutputParser } from '../types';
+import type { ParsedError, OutputParser } from '~/harness/harness.schemas';
 
 const GENERIC_ERROR_REGEX = /^(.+?):(\d+)(?::(\d+))?:\s*(?:error|Error|ERROR)[:\s]+(.+)$/;
 const BARE_ERROR_REGEX = /^(?:error|Error|ERROR)[:\s]+(.+)$/;

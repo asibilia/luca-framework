@@ -14,8 +14,8 @@
  * @module planner/todo-parser
  */
 
-import type { TodoMetadata } from "./types";
-import { todoMetadataSchema } from "./types";
+import type { TodoMetadata } from "./planner.schemas";
+import { todoMetadataSchema } from "./planner.schemas";
 
 /**
  * Parse YAML frontmatter from markdown content.

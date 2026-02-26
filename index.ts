@@ -11,29 +11,29 @@ export type {
   AgentSection,
   AgentConfig,
   BaseAgent,
-} from "./src/agents/types/agent.schemas";
+} from "./src/agents/__schemas/agent.schemas";
 
 export type {
   SkillFrontmatter,
   SkillSection,
   SkillConfig,
   BaseSkill,
-} from "./src/skills/types/skill.schemas";
+} from "./src/skills/__schemas/skill.schemas";
 
 export type {
   RuleFrontmatter,
   RuleSection,
   RuleConfig,
   BaseRule,
-} from "./src/rules/types/rule.schemas";
+} from "./src/rules/__schemas/rule.schemas";
 
 // Shared types
-export type { Result } from "./src/shared/types";
+export type { Result } from "./src/shared/shared.schemas";
 
 // Factory functions
-export { createAgent } from "./src/agents/base/base-agent";
-export { createSkill } from "./src/skills/base/base-skill";
-export { createRule } from "./src/rules/base/base-rule";
+export { createAgent } from "./src/agents/__helpers/create-agent";
+export { createSkill } from "./src/skills/__helpers/create-skill";
+export { createRule } from "./src/rules/__helpers/create-rule";
 
 // Compilers (functional API)
 export {

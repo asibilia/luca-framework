@@ -2,14 +2,14 @@
  * Utility functions for validating configurations with Zod schemas
  * and secure JSON parsing with prototype pollution protection.
  */
-import { AgentConfigSchema } from "../agents/types/agent.schemas";
-import { SkillConfigSchema } from "../skills/types/skill.schemas";
-import { RuleConfigSchema } from "../rules/types/rule.schemas";
+import { AgentConfigSchema } from "~/agents/__schemas/agent.schemas";
+import { SkillConfigSchema } from "~/skills/__schemas/skill.schemas";
+import { RuleConfigSchema } from "~/rules/__schemas/rule.schemas";
 
-import type { AgentConfig } from "../agents/types/agent.schemas";
-import type { SkillConfig } from "../skills/types/skill.schemas";
-import type { RuleConfig } from "../rules/types/rule.schemas";
-import type { Result } from "./types";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
+import type { Result } from "./shared.schemas";
 
 // ---------------------------------------------------------------------------
 // Prototype Pollution Protection

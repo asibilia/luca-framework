@@ -1,8 +1,8 @@
 /**
  * Luca Workflow System Rule - Defines the Luca workflow system for spec-driven development with cognitive memory
  */
-import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.schemas";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // Define the lu-workflow rule configuration
 const luWorkflowRuleConfig: RuleConfig = {

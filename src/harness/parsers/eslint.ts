@@ -6,7 +6,7 @@
  * 2. Default human-readable ESLint output (regex fallback)
  */
 
-import type { ParsedError, OutputParser } from '../types';
+import type { ParsedError, OutputParser } from '~/harness/harness.schemas';
 
 const ESLINT_DEFAULT_REGEX = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}(\S+)\s*$/;
 const ESLINT_FILE_REGEX = /^(\/\S+|\S+\.\w+)$/;

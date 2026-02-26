@@ -1,6 +1,6 @@
-import type { WorkingMemory, WorkingMemorySection } from "./types.ts";
-import { workingMemorySchema, WORKING_MEMORY_SECTIONS } from "./types.ts";
-import type { Result } from "../shared/types.ts";
+import type { WorkingMemory, WorkingMemorySection } from "./memory.schemas";
+import { workingMemorySchema, WORKING_MEMORY_SECTIONS } from "./memory.schemas";
+import type { Result } from "~/shared/shared.schemas";
 import { estimateTokens } from "./token-estimator.ts";
 
 /**

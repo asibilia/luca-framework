@@ -17,7 +17,7 @@ import {
   scoreItem,
 } from "../../../src/planner/scoring";
 
-import type { WSJFScoredItem } from "../../../src/planner/types";
+import type { WSJFScoredItem } from "~/planner/planner.schemas";
 
 /* ------------------------------------------------------------------ */
 /*  computeWSJF                                                       */

@@ -1,5 +1,5 @@
-import type { IterationRecord, LoopType } from "./types";
-import { iterationRecordSchema } from "./types";
+import type { IterationRecord, LoopType } from "./iteration.schemas";
+import { iterationRecordSchema } from "./iteration.schemas";
 
 /**
  * Convert a git tag name to a safe filename.

@@ -1,5 +1,5 @@
-import type { CheckResult, ParsedError } from "../harness/types";
-import type { ClassifiedError, ErrorClass } from "./types";
+import type { CheckResult, ParsedError } from "~/harness/harness.schemas";
+import type { ClassifiedError, ErrorClass } from "./iteration.schemas";
 import { createFingerprint } from "./convergence";
 
 /**

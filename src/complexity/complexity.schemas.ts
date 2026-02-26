@@ -11,8 +11,8 @@
  * All data-shape types are derived from Zod schemas via z.infer.
  */
 import { z } from "zod";
-import { CognitionTierSchema } from "../agents/types/agent.schemas";
-import { contextTierSchema } from "../context/types";
+import { CognitionTierSchema } from "~/agents/__schemas/agent.schemas";
+import { contextTierSchema } from "~/context/context.schemas";
 
 /** The five complexity levels, ordered from least to most complex */
 export const COMPLEXITY_LEVELS = [

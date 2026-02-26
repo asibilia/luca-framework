@@ -4,7 +4,7 @@ import {
   applyRetirement,
   updateExecutionStats,
 } from "../../../src/memory/procedure-lifecycle.ts";
-import type { ProcedureEntry } from "../../../src/memory/types.ts";
+import type { ProcedureEntry } from "~/memory/memory.schemas";
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 

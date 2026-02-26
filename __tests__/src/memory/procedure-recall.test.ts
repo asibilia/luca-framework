@@ -5,7 +5,7 @@ import {
   scoreProcedure,
   recallProcedures,
 } from "../../../src/memory/procedure-recall.ts";
-import type { ProcedureEntry } from "../../../src/memory/types.ts";
+import type { ProcedureEntry } from "~/memory/memory.schemas";
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 

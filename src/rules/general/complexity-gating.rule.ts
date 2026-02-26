@@ -1,8 +1,8 @@
 /**
  * Complexity gating: which workflow steps activate at which complexity level
  */
-import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.schemas";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 const complexityGatingConfig: RuleConfig = {
   frontmatter: {

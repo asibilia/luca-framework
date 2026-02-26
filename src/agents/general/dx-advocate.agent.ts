@@ -1,8 +1,8 @@
 /**
  * dx-advocate Agent - Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.schemas";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the dx-advocate agent configuration
 const dxAdvocateConfig: AgentConfig = {

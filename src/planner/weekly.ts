@@ -21,7 +21,7 @@ import type {
   WeeklyPlan,
   AllocationBucket,
   PlannerConfig,
-} from "./types";
+} from "./planner.schemas";
 import {
   DEFAULT_WEEKLY_ALLOCATION,
   DEFAULT_PLANNER_CONFIG,

@@ -12,7 +12,7 @@
 import { z } from "zod";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
-import type { Result } from "../shared/types";
+import type { Result } from "~/shared/shared.schemas";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 

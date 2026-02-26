@@ -3,11 +3,11 @@
  *
  * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import { toCursorFormat, toClaudeFormat } from "../../shared/format";
-import { deepFreeze } from "../../shared/deep-freeze";
-import { AgentConfigSchema } from "../types/agent.schemas";
+import { toCursorFormat, toClaudeFormat } from "~/shared/format";
+import { deepFreeze } from "~/shared/deep-freeze";
+import { AgentConfigSchema } from "~/agents/__schemas/agent.schemas";
 
-import type { BaseAgent, AgentConfig } from "../types/agent.schemas";
+import type { BaseAgent, AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 /**
  * Create an agent instance from a validated configuration.

@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { analyzeMemoryEntries } from "../../../src/memory/compression.ts";
-import { memoryEntrySchema } from "../../../src/memory/types.ts";
-import type { MemoryEntry } from "../../../src/memory/types.ts";
+import { memoryEntrySchema } from "~/memory/memory.schemas";
+import type { MemoryEntry } from "~/memory/memory.schemas";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

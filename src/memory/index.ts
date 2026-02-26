@@ -29,7 +29,7 @@ export {
   compressionTriggerSchema,
   COMPRESSION_STRATEGIES,
   WORKING_MEMORY_SECTIONS,
-} from "./types.ts";
+} from "./memory.schemas";
 
 export type {
   MemoryEntry,
@@ -42,7 +42,7 @@ export type {
   WorkingMemory,
   ContextUsageResult,
   CompressionTrigger,
-} from "./types.ts";
+} from "./memory.schemas";
 
 // ─── Token Estimation ──────────────────────────────────────────────────────────
 
@@ -91,9 +91,9 @@ export { parseMemoryFile } from "./memory-parser.ts";
 
 // ─── Procedure Types ────────────────────────────────────────────────────────
 
-export { procedureStepSchema, procedureEntrySchema } from "./types.ts";
+export { procedureStepSchema, procedureEntrySchema } from "./memory.schemas";
 
-export type { ProcedureStep, ProcedureEntry } from "./types.ts";
+export type { ProcedureStep, ProcedureEntry } from "./memory.schemas";
 
 // ─── Procedure Parsing ──────────────────────────────────────────────────────
 

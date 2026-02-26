@@ -7,8 +7,8 @@ import {
   serializeTrend,
   deserializeTrend,
 } from "../../../src/memory/quality-trend.ts";
-import { phaseQualityMetricsSchema } from "../../../src/memory/types.ts";
-import type { PhaseQualityMetrics } from "../../../src/memory/types.ts";
+import { phaseQualityMetricsSchema } from "~/memory/memory.schemas";
+import type { PhaseQualityMetrics } from "~/memory/memory.schemas";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

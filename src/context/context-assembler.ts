@@ -15,15 +15,15 @@
  */
 import { z } from "zod";
 
-import type { ComplexityLevel } from "../complexity/types";
+import type { ComplexityLevel } from "~/complexity/complexity.schemas";
 
-import type { ContextConfig, ContextDocumentSet } from "./types";
+import type { ContextConfig, ContextDocumentSet } from "./context.schemas";
 import {
   contextTierSchema,
   isolationModeSchema,
   contextDocumentSetSchema,
   budgetAllocationSchema,
-} from "./types";
+} from "./context.schemas";
 import { resolveContextTierFromMatrix } from "./resolve-context-tier";
 import {
   TIER_DOCUMENTS,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ProcedureEntry } from "./types.ts";
+import type { ProcedureEntry } from "./memory.schemas";
 
 /**
  * Input validation schema for evaluateRetirement() options.

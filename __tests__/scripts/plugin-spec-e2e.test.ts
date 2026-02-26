@@ -23,7 +23,7 @@ import path from "path";
 import {
   pluginManifestSchema,
   KEBAB_CASE_REGEX,
-} from "../../src/compilers/plugin.types";
+} from "~/compilers/plugin.schemas";
 import {
   VALID_CLAUDE_CODE_EVENTS,
   PLUGIN_ROOT,

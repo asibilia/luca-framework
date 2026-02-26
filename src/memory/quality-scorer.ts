@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { PhaseQualityMetrics } from "./types.ts";
-import { phaseQualityMetricsSchema } from "./types.ts";
-import type { HarnessResult } from "../harness/types.ts";
-import type { QualityZone } from "../planner/types.ts";
+import type { PhaseQualityMetrics } from "./memory.schemas";
+import { phaseQualityMetricsSchema } from "./memory.schemas";
+import type { HarnessResult } from "~/harness/harness.schemas";
+import type { QualityZone } from "~/planner/planner.schemas";
 
 /**
  * Weight constants for composite score calculation.

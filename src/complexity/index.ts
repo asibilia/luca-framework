@@ -14,7 +14,7 @@ export type {
   ComplexityGate,
   ComplexityMatrix,
   ComplexityConfig,
-} from "./types";
+} from "./complexity.schemas";
 
 // Schemas
 export {
@@ -24,7 +24,7 @@ export {
   StepActivationSchema,
   ComplexityGateSchema,
   ComplexityConfigSchema,
-} from "./types";
+} from "./complexity.schemas";
 
 // Constants
 export {
@@ -33,7 +33,7 @@ export {
   COMPLEXITY_TIER,
   meetsThreshold,
   getTier,
-} from "./types";
+} from "./complexity.schemas";
 
 // Defaults
 export {

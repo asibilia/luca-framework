@@ -21,7 +21,7 @@ import type {
   QualityZone,
   ZoneBoundary,
   PlannerConfig,
-} from "./types";
+} from "./planner.schemas";
 import {
   DEFAULT_ZONE_BOUNDARIES,
   COLD_START_COSTS,
@@ -29,7 +29,7 @@ import {
   MAX_CONTEXT_PERCENT,
   DEFAULT_PLANNER_CONFIG,
 } from "./defaults";
-import type { ComplexityLevel } from "../complexity/types";
+import type { ComplexityLevel } from "~/complexity/complexity.schemas";
 
 /**
  * Minimum effort points for a task to qualify as a Big Rock.

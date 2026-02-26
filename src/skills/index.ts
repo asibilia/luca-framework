@@ -53,17 +53,17 @@ import { updateSkill } from "./general/update.skill";
 import { luSkill } from "./luca/lu.skill";
 
 // Export factory function
-export { createSkill } from "./base/base-skill";
+export { createSkill } from "./__helpers/create-skill";
 
 // Export types
 export type {
   SkillConfig,
   SkillFrontmatter,
   SkillSection,
-} from "./types/skill.schemas";
+} from "./__schemas/skill.schemas";
 
 // Import BaseSkill for registry type annotation (also re-exported)
-import type { BaseSkill } from "./types/skill.schemas";
+import type { BaseSkill } from "./__schemas/skill.schemas";
 export type { BaseSkill };
 
 // Registry mapping skill names to factory functions for bulk processing

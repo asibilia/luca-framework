@@ -6,7 +6,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import { createTestAgent } from "../../../utils/test-entities";
-import type { AgentConfig } from "../../../../src/agents/types/agent.schemas";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 import { validAgentConfig } from "../../../utils/fixtures";
 
 // ---------------------------------------------------------------------------

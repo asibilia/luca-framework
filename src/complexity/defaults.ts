@@ -12,7 +12,7 @@ import type {
   ComplexityLevel,
   ComplexityMatrix,
   ComplexityClassification,
-} from "./types";
+} from "./complexity.schemas";
 
 /** Classification criteria for each level (used by lu-router) */
 export const COMPLEXITY_CLASSIFICATIONS: Record<

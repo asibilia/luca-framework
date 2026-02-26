@@ -5,7 +5,7 @@
  * and file header lines from bun test output.
  */
 
-import type { ParsedError, OutputParser } from '../types';
+import type { ParsedError, OutputParser } from '~/harness/harness.schemas';
 
 // Match failed test name: "✗ test name [timing]" or "✘ test name [timing]"
 const FAIL_MARKER_REGEX = /^\s*[✗✘×]\s+(.+?)(?:\s+\[[\d.]+(?:ms|s)\])?\s*$/;

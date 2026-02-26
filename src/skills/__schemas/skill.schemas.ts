@@ -2,7 +2,7 @@
  * Zod schemas for Luca Framework skill types
  */
 import { z } from "zod";
-import { SectionSchema, type Section } from "../../shared/format";
+import { SectionSchema, type Section } from "~/shared/format";
 
 export const SkillFrontmatterSchema = z.object({
   name: z.string(),

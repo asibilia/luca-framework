@@ -13,8 +13,8 @@
  */
 import { z } from "zod";
 
-import type { ContextTier, IsolationMode } from "./types";
-import { contextTierSchema, isolationModeSchema } from "./types";
+import type { ContextTier, IsolationMode } from "./context.schemas";
+import { contextTierSchema, isolationModeSchema } from "./context.schemas";
 
 // ---------------------------------------------------------------------------
 // Constants

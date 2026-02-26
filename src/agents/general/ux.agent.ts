@@ -1,8 +1,8 @@
 /**
  * ux Agent - Reviews user flows, interaction patterns, and accessibility to ensure optimal user experience. Use when reviewing UI features.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.schemas";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the ux agent configuration
 const uxConfig: AgentConfig = {

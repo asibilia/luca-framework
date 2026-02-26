@@ -3,8 +3,8 @@ import {
   calculatePhaseQuality,
   scoreToZone,
 } from "../../../src/memory/quality-scorer.ts";
-import { phaseQualityMetricsSchema } from "../../../src/memory/types.ts";
-import type { HarnessResult, CheckResult } from "../../../src/harness/types.ts";
+import { phaseQualityMetricsSchema } from "~/memory/memory.schemas";
+import type { HarnessResult, CheckResult } from "~/harness/harness.schemas";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

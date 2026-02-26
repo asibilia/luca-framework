@@ -7,7 +7,7 @@ import {
 import {
   procedureEntrySchema,
   procedureStepSchema,
-} from "../../../src/memory/types.ts";
+} from "~/memory/memory.schemas";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────────
 

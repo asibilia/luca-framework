@@ -5,7 +5,7 @@
  * functions. Follows the registry pattern used by agents/skills/rules/hooks.
  */
 
-import type { OutputParser } from "../types";
+import type { OutputParser } from "~/harness/harness.schemas";
 import { parseTscOutput } from "./tsc";
 import { parseBunTestOutput } from "./bun-test";
 import { parseEslintOutput } from "./eslint";

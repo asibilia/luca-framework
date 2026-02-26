@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { sanitizeJsonParse } from "../shared/validation-utils";
+import { sanitizeJsonParse } from "~/shared/validation-utils";
 
 // Import general/framework rules (always active)
 import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
@@ -29,17 +29,17 @@ import { selfImproveRule } from "./general/self-improve.rule";
 import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
 import { profileRegistry, ProfileConfigSchema } from "./profiles/index";
 
-import type { BaseRule } from "./types/rule.schemas";
+import type { BaseRule } from "./__schemas/rule.schemas";
 
 // Export base rule factory
-export { createRule } from "./base/base-rule";
+export { createRule } from "./__helpers/create-rule";
 
 // Export types
 export type {
   RuleConfig,
   RuleFrontmatter,
   RuleSection,
-} from "./types/rule.schemas";
+} from "./__schemas/rule.schemas";
 export type { BaseRule };
 
 // Re-export profile infrastructure for consumers

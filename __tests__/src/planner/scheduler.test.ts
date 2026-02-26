@@ -6,8 +6,8 @@
  */
 import { describe, test, expect } from "bun:test";
 
-import type { WSJFScoredItem, PlannerConfig } from "../../../src/planner/types";
-import { plannerConfigSchema } from "../../../src/planner/types";
+import type { WSJFScoredItem, PlannerConfig } from "~/planner/planner.schemas";
+import { plannerConfigSchema } from "~/planner/planner.schemas";
 import {
   selectBigRock,
   estimateContextCost,

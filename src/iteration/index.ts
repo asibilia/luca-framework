@@ -47,7 +47,7 @@ export {
   LOOP_OUTCOMES,
   loopOutcomeSchema,
   loopResultSchema,
-} from "./types";
+} from "./iteration.schemas";
 
 export type {
   ErrorFingerprint,
@@ -67,7 +67,7 @@ export type {
   IterationConfig,
   LoopOutcome,
   LoopResult,
-} from "./types";
+} from "./iteration.schemas";
 
 // Convergence detection
 export {

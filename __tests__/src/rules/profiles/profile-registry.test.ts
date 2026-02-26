@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { profileRegistry } from "../../../../src/rules/profiles/index";
-import type { BaseRule } from "../../../../src/rules/types/rule.schemas";
+import type { BaseRule } from "~/rules/__schemas/rule.schemas";
 
 describe("profileRegistry", () => {
   test("contains all 4 profiles", () => {

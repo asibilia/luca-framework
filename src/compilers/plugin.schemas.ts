@@ -8,7 +8,7 @@
  *
  * @example
  * ```typescript
- * import { pluginManifestSchema, generatePluginManifest } from './plugin.types';
+ * import { pluginManifestSchema, generatePluginManifest } from './plugin.schemas';
  *
  * // Validate an external manifest
  * const result = pluginManifestSchema.safeParse(rawManifest);

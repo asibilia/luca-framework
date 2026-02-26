@@ -15,7 +15,7 @@ export type {
   ContextConfig,
   BudgetAllocation,
   ContextDocumentSet,
-} from "./types";
+} from "./context.schemas";
 
 export type {
   ResultStatus,
@@ -36,7 +36,7 @@ export {
   contextConfigSchema,
   budgetAllocationSchema,
   contextDocumentSetSchema,
-} from "./types";
+} from "./context.schemas";
 
 export {
   resultStatusSchema,
@@ -52,7 +52,7 @@ export {
 // Constants
 // ---------------------------------------------------------------------------
 
-export { CONTEXT_TIERS, CONTEXT_TIER_ORDER, ISOLATION_MODES } from "./types";
+export { CONTEXT_TIERS, CONTEXT_TIER_ORDER, ISOLATION_MODES } from "./context.schemas";
 
 export {
   RESULT_STATUSES,
@@ -64,7 +64,7 @@ export {
 // Utility functions
 // ---------------------------------------------------------------------------
 
-export { meetsContextThreshold, maxContextTier } from "./types";
+export { meetsContextThreshold, maxContextTier } from "./context.schemas";
 
 export { parseResultEnvelope } from "./result-envelope";
 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { ProfileConfigSchema } from "../../../../src/rules/profiles/profile.schemas";
+import { ProfileConfigSchema } from "~/rules/__schemas/profile.schemas";
 
 describe("ProfileConfigSchema defaults", () => {
   test("defaults opinionated_guidelines to true", () => {

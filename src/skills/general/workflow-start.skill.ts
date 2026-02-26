@@ -1,8 +1,8 @@
 /**
  * workflow-start Skill - Start work on a Jira ticket. Redirects to /lu for the full development workflow.
  */
-import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.schemas";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the workflow-start skill configuration
 const workflowStartConfig: SkillConfig = {

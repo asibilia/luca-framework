@@ -37,7 +37,7 @@ export {
   plannerConfigSchema,
   // Todo metadata
   todoMetadataSchema,
-} from "./types";
+} from "./planner.schemas";
 
 export type {
   QualityZone,
@@ -51,7 +51,7 @@ export type {
   TokenCostEstimate,
   PlannerConfig,
   TodoMetadata,
-} from "./types";
+} from "./planner.schemas";
 
 // Defaults
 export {

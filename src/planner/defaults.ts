@@ -1,11 +1,11 @@
-import type { ComplexityLevel } from "../complexity/types";
+import type { ComplexityLevel } from "~/complexity/complexity.schemas";
 import type {
   EffortPoints,
   PlannerConfig,
   QualityZone,
   ZoneBoundary,
-} from "./types";
-import { plannerConfigSchema } from "./types";
+} from "./planner.schemas";
+import { plannerConfigSchema } from "./planner.schemas";
 
 /**
  * Maps each complexity level to its effort point value.

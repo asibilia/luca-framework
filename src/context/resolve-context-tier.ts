@@ -7,14 +7,14 @@
  * harder tasks receive more contextual information.
  *
  * This parallels the cognition tier resolution in
- * `src/agents/cognition/resolve-tier.ts` but operates on context tiers
+ * `src/agents/__helpers/resolve-tier.ts` but operates on context tiers
  * (document assembly) rather than cognition tiers (reasoning depth).
  */
-import type { ComplexityLevel } from "../complexity/types";
-import { DEFAULT_COMPLEXITY_MATRIX } from "../complexity/defaults";
+import type { ComplexityLevel } from "~/complexity/complexity.schemas";
+import { DEFAULT_COMPLEXITY_MATRIX } from "~/complexity/defaults";
 
-import type { ContextTier } from "./types";
-import { CONTEXT_TIER_ORDER } from "./types";
+import type { ContextTier } from "./context.schemas";
+import { CONTEXT_TIER_ORDER } from "./context.schemas";
 
 // ---------------------------------------------------------------------------
 // Default context promotions by complexity level
