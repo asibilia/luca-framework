@@ -2,7 +2,7 @@
  * lu-project-researcher Agent - Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /project-new or /milestone-new orchestrators.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-project-researcher agent configuration
 const luProjectResearcherConfig: AgentConfig = {

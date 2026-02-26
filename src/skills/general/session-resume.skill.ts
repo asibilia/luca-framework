@@ -2,7 +2,7 @@
  * session-resume Skill - Resume work from a previous session with full cognitive context restoration.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the session-resume skill configuration
 const sessionResumeConfig: SkillConfig = {

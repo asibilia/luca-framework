@@ -2,7 +2,7 @@
  * Mandatory documentation requirements for all new functionality and modifications
  */
 import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import type { RuleConfig } from "../types/rule.schemas";
 
 // Define the mandatory-documentation rule configuration
 const mandatoryDocumentationConfig: RuleConfig = {

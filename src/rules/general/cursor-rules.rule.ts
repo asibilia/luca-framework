@@ -2,7 +2,7 @@
  * Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
  */
 import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import type { RuleConfig } from "../types/rule.schemas";
 
 // Define the cursor-rules rule configuration
 const cursorRulesConfig: RuleConfig = {

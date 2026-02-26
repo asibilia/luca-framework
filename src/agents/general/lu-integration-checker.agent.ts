@@ -2,7 +2,7 @@
  * lu-integration-checker Agent - Verifies cross-phase integration and E2E flows. Checks that phases connect properly and user workflows complete end-to-end.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-integration-checker agent configuration
 const luIntegrationCheckerConfig: AgentConfig = {

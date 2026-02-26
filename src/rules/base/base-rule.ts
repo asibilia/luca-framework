@@ -1,13 +1,13 @@
 /**
  * Factory function for creating rules in the Luca Framework.
  *
- * Replaces the former BaseRuleImpl abstract class with a functional pattern
- * that aligns with the project's no-classes convention.
+ * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import type { BaseRule, RuleConfig } from "../types/rule.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
 import { deepFreeze } from "../../shared/deep-freeze";
-import { ruleConfigSchema } from "../types/rule.schemas";
+import { RuleConfigSchema } from "../types/rule.schemas";
+
+import type { BaseRule, RuleConfig } from "../types/rule.schemas";
 
 /**
  * Create a rule instance from a validated configuration.
@@ -18,7 +18,7 @@ import { ruleConfigSchema } from "../types/rule.schemas";
 export function createRule(config: RuleConfig): BaseRule {
   // Uses parse() for fail-fast validation; use safeParse() at system boundaries
   // where graceful error handling is needed instead of thrown exceptions.
-  const validated = deepFreeze(ruleConfigSchema.parse(config));
+  const validated = deepFreeze(RuleConfigSchema.parse(config));
   return {
     get config() {
       return validated;

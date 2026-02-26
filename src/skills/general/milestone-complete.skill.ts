@@ -2,7 +2,7 @@
  * milestone-complete Skill - Archive a completed milestone, extract learnings, and prepare for the next version.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the milestone-complete skill configuration
 const milestoneCompleteConfig: SkillConfig = {

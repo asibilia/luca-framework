@@ -2,7 +2,7 @@
  * todo-add Skill - Capture an idea or task as a todo for later without acting on it now.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the todo-add skill configuration
 const todoAddConfig: SkillConfig = {

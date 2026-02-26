@@ -4,7 +4,7 @@
  * READ-ONLY: Produces plans but cannot execute changes (PLAN-07).
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 const luPmPlannerConfig: AgentConfig = {
   frontmatter: {

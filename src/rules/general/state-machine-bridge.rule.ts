@@ -2,7 +2,7 @@
  * State machine bridge CLI reference: how to read/write state via the typed bridge layer
  */
 import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import type { RuleConfig } from "../types/rule.schemas";
 
 const stateMachineBridgeConfig: RuleConfig = {
   frontmatter: {

@@ -1,13 +1,13 @@
 /**
  * Factory function for creating skills in the Luca Framework.
  *
- * Replaces the former BaseSkillImpl abstract class with a functional pattern
- * that aligns with the project's no-classes convention.
+ * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import type { BaseSkill, SkillConfig } from "../types/skill.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
 import { deepFreeze } from "../../shared/deep-freeze";
-import { skillConfigSchema } from "../types/skill.schemas";
+import { SkillConfigSchema } from "../types/skill.schemas";
+
+import type { BaseSkill, SkillConfig } from "../types/skill.schemas";
 
 /**
  * Create a skill instance from a validated configuration.
@@ -18,7 +18,7 @@ import { skillConfigSchema } from "../types/skill.schemas";
 export function createSkill(config: SkillConfig): BaseSkill {
   // Uses parse() for fail-fast validation; use safeParse() at system boundaries
   // where graceful error handling is needed instead of thrown exceptions.
-  const validated = deepFreeze(skillConfigSchema.parse(config));
+  const validated = deepFreeze(SkillConfigSchema.parse(config));
   return {
     get config() {
       return validated;

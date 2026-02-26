@@ -2,7 +2,7 @@
  * Functional API Reuse & Architecture Rule
  */
 import { createRule } from "../../base/base-rule";
-import type { RuleConfig } from "../../types/rule.types";
+import type { RuleConfig } from "../../types/rule.schemas";
 
 // Define the Functional-API-Reuse rule configuration
 const functionalApiReuseConfig: RuleConfig = {

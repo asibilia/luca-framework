@@ -2,7 +2,7 @@
  * Hook/Skill boundary: when to use deterministic hooks vs interactive skills
  */
 import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import type { RuleConfig } from "../types/rule.schemas";
 
 const hookSkillBoundaryConfig: RuleConfig = {
   frontmatter: {

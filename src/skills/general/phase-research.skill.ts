@@ -2,7 +2,7 @@
  * phase-research Skill - Conduct comprehensive ecosystem research for niche or complex technical domains.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the phase-research skill configuration
 const phaseResearchConfig: SkillConfig = {

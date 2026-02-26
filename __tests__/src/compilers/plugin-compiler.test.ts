@@ -18,9 +18,9 @@ import {
 import { createAgent } from "../../../src/agents/base/base-agent";
 import { createSkill } from "../../../src/skills/base/base-skill";
 import { createRule } from "../../../src/rules/base/base-rule";
-import type { AgentConfig } from "../../../src/agents/types/agent.types";
-import type { SkillConfig } from "../../../src/skills/types/skill.types";
-import type { RuleConfig } from "../../../src/rules/types/rule.types";
+import type { AgentConfig } from "../../../src/agents/types/agent.schemas";
+import type { SkillConfig } from "../../../src/skills/types/skill.schemas";
+import type { RuleConfig } from "../../../src/rules/types/rule.schemas";
 
 // ---------------------------------------------------------------------------
 // Test factory functions (functional pattern, no classes)

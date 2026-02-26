@@ -6,7 +6,7 @@
  * The complexity matrix defines tier-to-tier promotions; the agent's
  * promotable_to ceiling caps the result.
  */
-import type { CognitionTier } from "../types/agent.types";
+import type { CognitionTier } from "../types/agent.schemas";
 import type { ComplexityLevel } from "../../complexity/types";
 import { DEFAULT_COMPLEXITY_MATRIX } from "../../complexity/defaults";
 

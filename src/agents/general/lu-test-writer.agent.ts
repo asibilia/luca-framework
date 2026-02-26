@@ -2,7 +2,7 @@
  * lu-test-writer Agent - Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by lu-executor during TDD cycle.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-test-writer agent configuration
 const luTestWriterConfig: AgentConfig = {
@@ -122,7 +122,7 @@ Report the failure count and types. All tests should fail (Red phase confirmatio
 ### Agent Compilation Tests
 
 For new agents, test that:
-- Agent config validates against \`agentConfigSchema\` (constructor does not throw)
+- Agent config validates against \`AgentConfigSchema\` (constructor does not throw)
 - Agent has required sections with expected titles
 - \`name\` matches expected value
 - \`toCursorFormat()\` and \`toClaudeFormat()\` return non-empty strings

@@ -2,7 +2,7 @@
  * Standards for import statements and module organization
  */
 import { createRule } from "../../base/base-rule";
-import type { RuleConfig } from "../../types/rule.types";
+import type { RuleConfig } from "../../types/rule.schemas";
 
 // Define the import-standards rule configuration
 const importStandardsConfig: RuleConfig = {

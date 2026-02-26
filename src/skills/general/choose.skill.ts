@@ -2,7 +2,7 @@
  * choose Skill - Choose between issue-driven development and Luca spec-driven workflow for a task.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the choose skill configuration
 const chooseConfig: SkillConfig = {

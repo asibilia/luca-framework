@@ -2,7 +2,7 @@
  * phase-add Skill - Append a new phase to the end of the current milestone roadmap.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the phase-add skill configuration
 const phaseAddConfig: SkillConfig = {

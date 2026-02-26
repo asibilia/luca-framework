@@ -43,7 +43,7 @@ function generateSkillTsContent(skillData: SkillData): string {
  * ${skillData.name} Skill - ${skillData.description}
  */
 import { createSkill } from '../base/base-skill';
-import type { SkillConfig } from '../types/skill.types';
+import type { SkillConfig } from '../types/skill.schemas';
 
 // Define the ${skillData.name} skill configuration
 const ${configName}: SkillConfig = {

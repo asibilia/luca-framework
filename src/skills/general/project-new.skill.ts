@@ -2,7 +2,7 @@
  * project-new Skill - Initialize a new Luca project with deep context gathering and BRAIN.md creation.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the project-new skill configuration
 const projectNewConfig: SkillConfig = {

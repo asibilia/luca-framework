@@ -2,7 +2,7 @@
  * git-feature Skill - Create a feature branch linked to a Jira ticket or GitHub issue.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the git-feature skill configuration
 const gitFeatureConfig: SkillConfig = {

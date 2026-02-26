@@ -2,7 +2,7 @@
  * git-commit Skill - Stage and commit changes using the project's conventional commit CLI with ticket extraction.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the git-commit skill configuration
 const gitCommitConfig: SkillConfig = {

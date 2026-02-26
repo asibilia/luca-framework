@@ -2,7 +2,7 @@
  * security-auditor Agent - Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the security-auditor agent configuration
 const securityAuditorConfig: AgentConfig = {

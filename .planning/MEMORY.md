@@ -799,13 +799,139 @@
 
 _Memory Statistics_
 
-- Total patterns: 92 (+4 Phase 40, +3 Phase 43, +3 Phase 42, +2 Phase 41: plan-checker gap detection, grep sweep verification)
+- Total patterns: 100 (+4 Phase 40, +3 Phase 43, +3 Phase 42, +2 Phase 41, +4 Phase 55: Zod-only, thunk pattern, investigation-first, section deduplication)
 - Total decisions: 42 (no change)
-- Total pitfalls: 60 (+4 Phase 40, +2 Phase 43, +2 Phase 42, +2 Phase 41: plan naming convention, .cursor/luca/ not regenerated)
+- Total pitfalls: 64 (+4 Phase 40, +2 Phase 43, +2 Phase 42, +2 Phase 41, +4 Phase 55: consumer underestimation, test omission, path updates, alias elimination)
 - Total conventions: 4 (no change)
 - Total anti-patterns: 6 (no change)
 - Total preferences: 9 (no change)
-- Last updated: 2026-02-16
+- Last updated: 2026-02-26
 
-_Entries added by: lu-learner (Phase 41 learning extraction)_
-_Last curated: 2026-02-16_
+_Entries added by: lu-learner (Phase 55 learning extraction)_
+_Last curated: 2026-02-26_
+
+### [Phase 55] Investigation-First Wave for Large Refactors
+
+Investigation-first approach (Wave 1, read-only) resolves critical unknowns before code changes:
+
+- 5 investigated unknowns: consumer distribution, test import scope, placement decisions, unsafe casts, drift detection
+- Each answer directly informed downstream wave planning (U1 consumer asymmetry prevented naive deletion)
+- Discovered missing test file (quality-scorer.test.ts) not in original plan, preventing post-merge breakage
+- Pattern: plan unknowns → execute read-only investigation → validate assumptions → refine wave plan
+
+When to use: Refactors spanning 100+ file edits with complex dependencies or unclear consumer distribution.
+
+Tags: [patterns, planning, verification]
+
+### [Phase 55] Consumer Map Asymmetry: Barrel Aliasing Over Deletion
+
+Phase 55 measured consumer distribution and found massive asymmetry:
+
+- Agent: 30+ files import from agent.types.ts, only 3 from agent.schemas.ts
+- Skill: 40+ files import from skill.types.ts, only 3 from skill.schemas.ts
+- Rule: 25+ files import from rule.types.ts, only 3 from rule.schemas.ts
+
+Lowest-churn consolidation: keep `.types.ts` as thin barrel re-export from `.schemas.ts` (imports stay same, 0 consumer updates). Alternative (delete + bulk find-replace) requires 95+ import path updates across entire codebase.
+
+Lesson: Graph consumer distribution before choosing consolidation strategy. High asymmetry favors aliasing; symmetric distribution favors deletion.
+
+Tags: [patterns, refactoring, architecture]
+
+### [Phase 55] Wave Ordering with Investigation Dependencies
+
+Phase 55 executed investigation questions in dependency order: U1 (consumer map) → U3 (placement), U4 (unsafe casts) → Wave 4 mitigation, U5 (drift scope) validates renames are invisible. Sequential dependency prevented backward iterations and enabled each answer to inform downstream decisions.
+
+Pattern: Identify inter-dependent unknowns, order investigation to maximize forward progress, validate assumptions early.
+
+Tags: [patterns, planning]
+
+### [Phase 55] Zod-Only Type Derivation: Single Source of Truth
+
+Phase 55 successfully migrated 6 type systems (agent, skill, rule, harness, complexity, hook) to Zod-only with `z.infer<>` derivation:
+
+- Deleted 3 files: agent.types.ts, skill.types.ts, rule.types.ts
+- Consolidated hand-written interfaces into `.schemas.ts` files (0 divergence possible)
+- Bulk find-replace strategy worked at scale: 122 file edits, 0 manual overrides needed
+- Pattern eliminates parallel type definitions and their maintenance burden
+
+Schema object naming: `FooSchema` (PascalCase + suffix). Type naming: `Foo` (plain PascalCase).
+
+Provides clarity at sight and grep-friendliness during consolidation.
+
+Tags: [patterns, Zod, architecture]
+
+### [Phase 55] Section Type Canonical Location Deduplication
+
+Consolidated Section type from 3 entity files into single canonical definition in `src/shared/format.ts`:
+
+- Created `SectionSchema` Zod schema in shared location
+- Updated agent.schemas.ts, skill.schemas.ts, rule.schemas.ts to import canonical Section type
+- Retained entity-specific aliases (AgentSection = Section) for discoverability
+- Only one definition exists — eliminates divergence risk
+
+Pattern: When same type appears in 3+ files, move to shared location, import everywhere, keep local aliases for discoverability.
+
+Tags: [patterns, refactoring]
+
+### [Phase 55] Registry Thunk Pattern: Lazy Resolution
+
+Standardized 3 registries from direct objects to thunk pattern:
+
+- hookRegistry: Record<string, () => HookDefinition>
+- parserRegistry: Record<string, () => OutputParser>
+- profileRegistry: Record<string, () => TechStackProfile>
+
+Added `resolveHookRegistry()` helper for bulk resolution when all registries needed at once. Provides lazy instantiation, easier testing (mock the thunk), extensibility.
+
+Pattern is minimal (wrap in arrow function) but significantly improves architecture.
+
+Tags: [patterns, architecture]
+
+### [Phase 55] SafeParse at Boundaries, Parse Internally
+
+Audited entire codebase and confirmed boundary contract:
+
+- Harness config loading: safeParse with fallback to DEFAULT_HARNESS_CONFIG
+- Internal factories (createAgent, createSkill, createRule): parse for fail-fast with guaranteed valid input
+- Zero unsafe parse() at unguarded boundaries
+
+Pattern: untrusted input (config files, external APIs) → safeParse + fallback. Trusted internal data → parse for fail-fast.
+
+Tags: [patterns, security, Zod]
+
+## Pitfalls from Phase 55
+
+### [Phase 55] Consumer Count Underestimation in Planning
+
+Phase 55's original plan listed only 5 affected files for `profile.types.ts` migration, but investigation found 95+ consumers importing from barrel `.types.ts` files. If plan had executed deletion strategy without investigation, would have required post-hoc bulk find-replace for 95+ files (high blast radius). Investigation-first prevented this.
+
+Lesson: When consolidating types with barrel re-exports, graph actual consumer distribution before committing to deletion vs aliasing strategy.
+
+Tags: [pitfalls, planning]
+
+### [Phase 55] Test File Omission from Plan
+
+Original Wave 4 plan listed 5 affected test files, but investigation found 6: quality-scorer.test.ts importing HarnessResult and CheckResult from src/harness/types.ts was not in the original list. Would have caused build failure post-merge if not discovered during investigation.
+
+Lesson: Investigation phases must explicitly search test/ directories for imports from files being migrated. Don't rely on manual listing.
+
+Tags: [pitfalls, planning, testing]
+
+### [Phase 55] Internal Import Path Updates After Git Move
+
+After `git mv src/rules/lu-workflow.rule.ts src/rules/general/lu-workflow.rule.ts`, discovered internal imports within the rule file needed path depth adjustment:
+
+- `"./types/rule.types"` → `"../types/rule.types"` (one level up)
+- `"./base/base-rule"` → `"../base/base-rule"` (one level up)
+
+Pattern: After git mv, check whether file's relative imports changed depth. git mv updates git history but not relative import paths.
+
+Tags: [pitfalls, refactoring]
+
+### [Phase 55] Backward-Compat Alias Elimination
+
+Phase 55 created backward-compat aliases (CognitionTier as CognitionTierSchema, etc.) but then discovered they were unnecessary after `.types.ts` deletion removed all original places they aliased from. Eliminated all aliases in final cleanup.
+
+Lesson: When consolidating types, plan alias elimination alongside consumer migration. Don't leave orphaned aliases.
+
+Tags: [pitfalls, refactoring]

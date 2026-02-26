@@ -6,22 +6,33 @@
  * CLI entry point.
  */
 
-import type { HarnessConfig, HarnessResult, CheckResult, CheckConfig } from './types';
-import { DEFAULT_HARNESS_CONFIG } from './types';
-import { parserRegistry } from './parsers';
-import { join } from 'path';
+import type {
+  HarnessConfig,
+  HarnessResult,
+  CheckResult,
+  CheckConfig,
+} from "./types";
+import { HarnessConfigSchema, DEFAULT_HARNESS_CONFIG } from "./types";
+import { parserRegistry } from "./parsers";
+import { join } from "path";
 
 const RAW_OUTPUT_MAX_LINES = 50;
 
-export async function loadHarnessConfig(projectDir: string): Promise<HarnessConfig> {
-  const configPath = join(projectDir, '.planning', 'config.json');
+export async function loadHarnessConfig(
+  projectDir: string,
+): Promise<HarnessConfig> {
+  const configPath = join(projectDir, ".planning", "config.json");
   const configFile = Bun.file(configPath);
 
   if (await configFile.exists()) {
     try {
       const raw = await configFile.json();
       if (raw.harness) {
-        return raw.harness as HarnessConfig;
+        const result = HarnessConfigSchema.safeParse(raw.harness);
+        if (result.success) {
+          return result.data;
+        }
+        // Validation failed — fall through to defaults
       }
     } catch {
       // Invalid JSON — fall through to defaults
@@ -31,14 +42,17 @@ export async function loadHarnessConfig(projectDir: string): Promise<HarnessConf
   return { ...DEFAULT_HARNESS_CONFIG };
 }
 
-async function runCheck(check: CheckConfig, projectDir: string): Promise<CheckResult> {
+async function runCheck(
+  check: CheckConfig,
+  projectDir: string,
+): Promise<CheckResult> {
   const startTime = Date.now();
 
   try {
-    const proc = Bun.spawn(['sh', '-c', check.command], {
+    const proc = Bun.spawn(["sh", "-c", check.command], {
       cwd: projectDir,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: "pipe",
+      stderr: "pipe",
     });
 
     const timeoutMs = check.timeout * 1000;
@@ -48,16 +62,16 @@ async function runCheck(check: CheckConfig, projectDir: string): Promise<CheckRe
       const timer = setTimeout(() => {
         timedOut = true;
         proc.kill();
-        reject(new Error('timeout'));
+        reject(new Error("timeout"));
       }, timeoutMs);
       // Prevent timer from keeping the process alive in tests
-      if (typeof timer === 'object' && 'unref' in timer) {
+      if (typeof timer === "object" && "unref" in timer) {
         (timer as NodeJS.Timeout).unref();
       }
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
     let exitCode = 1;
 
     try {
@@ -75,7 +89,7 @@ async function runCheck(check: CheckConfig, projectDir: string): Promise<CheckRe
       if (timedOut) {
         return {
           name: check.name,
-          status: 'timeout',
+          status: "timeout",
           exitCode: -1,
           errors: [],
           warnings: [],
@@ -86,18 +100,20 @@ async function runCheck(check: CheckConfig, projectDir: string): Promise<CheckRe
       throw e;
     }
 
-    const combinedOutput = stdout + (stderr ? '\n' + stderr : '');
-    const outputLines = combinedOutput.split('\n');
-    const truncatedOutput = outputLines.slice(-RAW_OUTPUT_MAX_LINES).join('\n');
+    const combinedOutput = stdout + (stderr ? "\n" + stderr : "");
+    const outputLines = combinedOutput.split("\n");
+    const truncatedOutput = outputLines.slice(-RAW_OUTPUT_MAX_LINES).join("\n");
 
-    const parser = parserRegistry[check.parser] ?? parserRegistry['generic']!;
+    const parserThunk =
+      parserRegistry[check.parser] ?? parserRegistry["generic"]!;
+    const parser = parserThunk();
     const allParsed = parser(combinedOutput);
-    const errors = allParsed.filter(e => e.severity === 'error');
-    const warnings = allParsed.filter(e => e.severity === 'warning');
+    const errors = allParsed.filter((e) => e.severity === "error");
+    const warnings = allParsed.filter((e) => e.severity === "warning");
 
     return {
       name: check.name,
-      status: exitCode === 0 ? 'passed' : 'failed',
+      status: exitCode === 0 ? "passed" : "failed",
       exitCode,
       errors,
       warnings,
@@ -107,7 +123,7 @@ async function runCheck(check: CheckConfig, projectDir: string): Promise<CheckRe
   } catch (e) {
     return {
       name: check.name,
-      status: 'skipped',
+      status: "skipped",
       exitCode: -1,
       errors: [],
       warnings: [],
@@ -117,20 +133,27 @@ async function runCheck(check: CheckConfig, projectDir: string): Promise<CheckRe
   }
 }
 
-export async function runHarness(config: HarnessConfig, projectDir: string): Promise<HarnessResult> {
+export async function runHarness(
+  config: HarnessConfig,
+  projectDir: string,
+): Promise<HarnessResult> {
   const startTime = Date.now();
-  const enabledChecks = config.checks.filter(c => c.enabled);
+  const enabledChecks = config.checks.filter((c) => c.enabled);
   const results: CheckResult[] = [];
 
   for (const check of enabledChecks) {
     const result = await runCheck(check, projectDir);
     results.push(result);
-    if (config.failFast && result.status === 'failed') break;
+    if (config.failFast && result.status === "failed") break;
   }
 
   const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
   const totalWarnings = results.reduce((sum, r) => sum + r.warnings.length, 0);
-  const overallStatus = results.every(r => r.status === 'passed' || r.status === 'skipped') ? 'passed' : 'failed';
+  const overallStatus = results.every(
+    (r) => r.status === "passed" || r.status === "skipped",
+  )
+    ? "passed"
+    : "failed";
 
   return {
     status: overallStatus,
@@ -144,9 +167,11 @@ export async function runHarness(config: HarnessConfig, projectDir: string): Pro
 
 // CLI entry point
 if (import.meta.main) {
-  const projectDir = process.argv.find(a => a.startsWith('--project-dir='))?.split('=')[1] ?? '.';
+  const projectDir =
+    process.argv.find((a) => a.startsWith("--project-dir="))?.split("=")[1] ??
+    ".";
   const config = await loadHarnessConfig(projectDir);
   const result = await runHarness(config, projectDir);
   console.log(JSON.stringify(result, null, 2));
-  process.exit(result.status === 'passed' ? 0 : 1);
+  process.exit(result.status === "passed" ? 0 : 1);
 }

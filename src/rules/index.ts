@@ -10,6 +10,11 @@
  * - workflow.tech_stack_profiles: array of profile names (default: ["typescript"])
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { sanitizeJsonParse } from "../shared/validation-utils";
+
 // Import general/framework rules (always active)
 import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
 import { complexityGatingRule } from "./general/complexity-gating.rule";
@@ -17,20 +22,14 @@ import { cursorRulesRule } from "./general/cursor-rules.rule";
 import { fileNamingRule } from "./general/file-naming.rule";
 import { harnessVerificationRule } from "./general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
+import { luWorkflowRule } from "./general/lu-workflow.rule";
 import { mandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
 import { posthogIntegrationRule } from "./general/posthog-integration.rule";
 import { selfImproveRule } from "./general/self-improve.rule";
 import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
+import { profileRegistry, ProfileConfigSchema } from "./profiles/index";
 
-// Import Luca-specific rule
-import { luWorkflowRule } from "./lu-workflow.rule";
-
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { sanitizeJsonParse } from "../shared/validation-utils";
-
-// Import profile registry and config schema
-import { profileRegistry, profileConfigSchema } from "./profiles/index";
+import type { BaseRule } from "./types/rule.schemas";
 
 // Export base rule factory
 export { createRule } from "./base/base-rule";
@@ -40,14 +39,11 @@ export type {
   RuleConfig,
   RuleFrontmatter,
   RuleSection,
-} from "./types/rule.types";
-
-// Import BaseRule for registry type annotation (also re-exported)
-import type { BaseRule } from "./types/rule.types";
+} from "./types/rule.schemas";
 export type { BaseRule };
 
 // Re-export profile infrastructure for consumers
-export { profileRegistry, profileConfigSchema };
+export { profileRegistry, ProfileConfigSchema };
 export type { TechStackProfile, ProfileConfig } from "./profiles/index";
 
 // ---------------------------------------------------------------------------
@@ -86,10 +82,10 @@ function loadProfileConfig(): {
     const raw = readFileSync(configPath, "utf-8");
     const config = sanitizeJsonParse(raw) as Record<string, any>;
     const workflow = config?.workflow ?? {};
-    return profileConfigSchema.parse(workflow);
+    return ProfileConfigSchema.parse(workflow);
   } catch {
     // Fallback to defaults if config is missing or unreadable
-    return profileConfigSchema.parse({});
+    return ProfileConfigSchema.parse({});
   }
 }
 
@@ -109,8 +105,9 @@ function loadProfileRules(): Record<string, () => BaseRule> {
   const profileRules: Record<string, () => BaseRule> = {};
 
   for (const profileName of config.tech_stack_profiles) {
-    const profile = profileRegistry[profileName];
-    if (profile) {
+    const profileThunk = profileRegistry[profileName];
+    if (profileThunk) {
+      const profile = profileThunk();
       Object.assign(profileRules, profile.rules);
     }
   }

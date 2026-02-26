@@ -3,7 +3,7 @@
  * Uses WebSearch and WebFetch scoped to project tech stack to produce a cited recommendation.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-discuss-researcher agent configuration
 const luDiscussResearcherConfig: AgentConfig = {

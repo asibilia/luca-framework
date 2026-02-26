@@ -2,7 +2,7 @@
  * qa-plan-generator Agent - Generates detailed QA testing plans for pull requests based on code changes and affected portals.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the qa-plan-generator agent configuration
 const qaPlanGeneratorConfig: AgentConfig = {

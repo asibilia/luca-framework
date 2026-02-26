@@ -60,10 +60,10 @@ export type {
   SkillConfig,
   SkillFrontmatter,
   SkillSection,
-} from "./types/skill.types";
+} from "./types/skill.schemas";
 
 // Import BaseSkill for registry type annotation (also re-exported)
-import type { BaseSkill } from "./types/skill.types";
+import type { BaseSkill } from "./types/skill.schemas";
 export type { BaseSkill };
 
 // Registry mapping skill names to factory functions for bulk processing

@@ -2,7 +2,7 @@
  * code-typecheck Skill - Run TypeScript type checking on the codebase or a specific workspace.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the code-typecheck skill configuration
 const codeTypecheckConfig: SkillConfig = {

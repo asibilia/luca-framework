@@ -2,7 +2,7 @@
  * rule-file-naming Skill - File and directory naming conventions: kebab-case enforcement with examples and migration guidelines.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the rule-file-naming skill configuration
 const ruleFileNamingConfig: SkillConfig = {

@@ -7,7 +7,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import { createTestRule } from "../../../utils/test-entities";
-import type { RuleConfig } from "../../../../src/rules/types/rule.types";
+import type { RuleConfig } from "../../../../src/rules/types/rule.schemas";
 import { validRuleConfig } from "../../../utils/fixtures";
 
 // ---------------------------------------------------------------------------

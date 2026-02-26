@@ -3,48 +3,56 @@
  */
 import { z } from "zod";
 import { contextConfigSchema } from "../../context/types";
+import { SectionSchema, type Section } from "../../shared/format";
 
 /** Valid cognition tier values (T0=stateless, T1=recall, T2=contextual, T3=fully-cognitive) */
-export const cognitionTierSchema = z.enum(["T0", "T1", "T2", "T3"]);
+export const CognitionTierSchema = z.enum(["T0", "T1", "T2", "T3"]);
 
 /** Per-agent cognition configuration */
-export const cognitionConfigSchema = z.object({
+export const CognitionConfigSchema = z.object({
   /** Default cognition tier for this agent */
-  default_tier: cognitionTierSchema.default("T0"),
+  default_tier: CognitionTierSchema.default("T0"),
   /** Maximum tier this agent can be promoted to by complexity gating */
-  promotable_to: cognitionTierSchema.default("T0"),
+  promotable_to: CognitionTierSchema.default("T0"),
   /** Domain tags for selective MEMORY.md recall filtering */
   memory_tags: z.array(z.string()).default([]),
 });
 
-export const agentFrontmatterSchema = z.object({
+export const AgentFrontmatterSchema = z.object({
   name: z.string(),
   description: z.string(),
   tools: z.array(z.string()).optional(),
   color: z.string().optional(),
   /** Optional per-agent cognition configuration. When absent, agent defaults to T0. */
-  cognition: cognitionConfigSchema.optional(),
+  cognition: CognitionConfigSchema.optional(),
   /** Optional per-agent context configuration. When absent, agent defaults to T0. */
   context: contextConfigSchema.optional(),
 });
 
-export const agentSectionSchema = z.object({
-  title: z.string(),
-  content: z.string(),
-  order: z.number().optional(),
-});
+/** Agent section schema — references the canonical SectionSchema from shared/format */
+export const AgentSectionSchema = SectionSchema;
 
-export const agentConfigSchema = z.object({
-  frontmatter: agentFrontmatterSchema,
-  sections: z.array(agentSectionSchema),
+export const AgentConfigSchema = z.object({
+  frontmatter: AgentFrontmatterSchema,
+  sections: z.array(SectionSchema),
 });
 
 // Note: We don't include function validations in Zod schemas as they're not serializable
 // Function validations should be handled at the factory level
 
 // Type inference from Zod schemas
-export type CognitionTierSchema = z.infer<typeof cognitionTierSchema>;
-export type CognitionConfigSchemaType = z.infer<typeof cognitionConfigSchema>;
-export type AgentFrontmatterSchema = z.infer<typeof agentFrontmatterSchema>;
-export type AgentSectionSchema = z.infer<typeof agentSectionSchema>;
-export type AgentConfigSchema = z.infer<typeof agentConfigSchema>;
+export type CognitionTier = z.infer<typeof CognitionTierSchema>;
+export type CognitionConfig = z.infer<typeof CognitionConfigSchema>;
+export type AgentFrontmatter = z.infer<typeof AgentFrontmatterSchema>;
+/** Agent section type — alias for the canonical Section type for discoverability */
+export type AgentSection = Section;
+export type AgentConfig = z.infer<typeof AgentConfigSchema>;
+
+/** Behavior contract for an agent instance (functional, not class-based) */
+export type BaseAgent = {
+  readonly config: AgentConfig;
+  readonly name: string;
+  readonly description: string;
+  toCursorFormat(): string;
+  toClaudeFormat(): string;
+};

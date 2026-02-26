@@ -2,7 +2,7 @@
  * lu-debugger Agent - Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /debug orchestrator.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-debugger agent configuration
 const luDebuggerConfig: AgentConfig = {

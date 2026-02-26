@@ -2,12 +2,13 @@
  * Utility functions for validating configurations with Zod schemas
  * and secure JSON parsing with prototype pollution protection.
  */
-import { agentConfigSchema } from "../agents/types/agent.schemas";
-import { skillConfigSchema } from "../skills/types/skill.schemas";
-import { ruleConfigSchema } from "../rules/types/rule.schemas";
-import type { AgentConfig } from "../agents/types/agent.types";
-import type { SkillConfig } from "../skills/types/skill.types";
-import type { RuleConfig } from "../rules/types/rule.types";
+import { AgentConfigSchema } from "../agents/types/agent.schemas";
+import { SkillConfigSchema } from "../skills/types/skill.schemas";
+import { RuleConfigSchema } from "../rules/types/rule.schemas";
+
+import type { AgentConfig } from "../agents/types/agent.schemas";
+import type { SkillConfig } from "../skills/types/skill.schemas";
+import type { RuleConfig } from "../rules/types/rule.schemas";
 import type { Result } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -107,15 +108,15 @@ export function safeSanitizeJsonParse(json: string): Result<unknown> {
 }
 
 export function validateAgentConfig(config: AgentConfig): AgentConfig {
-  return agentConfigSchema.parse(config);
+  return AgentConfigSchema.parse(config);
 }
 
 export function validateSkillConfig(config: SkillConfig): SkillConfig {
-  return skillConfigSchema.parse(config);
+  return SkillConfigSchema.parse(config);
 }
 
 export function validateRuleConfig(config: RuleConfig): RuleConfig {
-  return ruleConfigSchema.parse(config);
+  return RuleConfigSchema.parse(config);
 }
 
 // Helper function to validate with error handling
@@ -123,7 +124,7 @@ export function safeValidateAgentConfig(
   config: AgentConfig,
 ): Result<AgentConfig> {
   try {
-    const data = agentConfigSchema.parse(config);
+    const data = AgentConfigSchema.parse(config);
     return { success: true, data };
   } catch (error) {
     return {
@@ -137,7 +138,7 @@ export function safeValidateSkillConfig(
   config: SkillConfig,
 ): Result<SkillConfig> {
   try {
-    const data = skillConfigSchema.parse(config);
+    const data = SkillConfigSchema.parse(config);
     return { success: true, data };
   } catch (error) {
     return {
@@ -149,7 +150,7 @@ export function safeValidateSkillConfig(
 
 export function safeValidateRuleConfig(config: RuleConfig): Result<RuleConfig> {
   try {
-    const data = ruleConfigSchema.parse(config);
+    const data = RuleConfigSchema.parse(config);
     return { success: true, data };
   } catch (error) {
     return {

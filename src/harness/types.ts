@@ -4,68 +4,101 @@
  * The harness orchestrates running test/lint/typecheck/build as a single
  * command, parses toolchain output into structured errors, and returns
  * typed results.
+ *
+ * All data-shape types are derived from Zod schemas via z.infer.
  */
 
+import { z } from "zod";
+
 /** Configuration for a single check in the harness */
-export interface CheckConfig {
-  name: string;            // e.g., "test", "typecheck", "lint", "build"
-  command: string;          // e.g., "bun test", "bunx --bun tsc --noEmit"
-  enabled: boolean;
-  timeout: number;          // seconds
-  parser: string;           // parser key from parser registry: "bun-test", "tsc", "eslint", "generic"
-}
+export const CheckConfigSchema = z.object({
+  name: z.string(),
+  command: z.string(),
+  enabled: z.boolean(),
+  timeout: z.number().positive(),
+  parser: z.string(),
+});
+export type CheckConfig = z.infer<typeof CheckConfigSchema>;
 
 /** Top-level harness configuration (maps to config.json "harness" section) */
-export interface HarnessConfig {
-  enabled: boolean;
-  checks: CheckConfig[];
-  maxFixIterations: number;
-  failFast: boolean;
-}
+export const HarnessConfigSchema = z.object({
+  enabled: z.boolean(),
+  checks: z.array(CheckConfigSchema),
+  maxFixIterations: z.number().int().positive(),
+  failFast: z.boolean(),
+});
+export type HarnessConfig = z.infer<typeof HarnessConfigSchema>;
 
 /** A single parsed error from toolchain output */
-export interface ParsedError {
-  file: string;
-  line?: number;
-  column?: number;
-  message: string;
-  code?: string;            // e.g., TS2345, ESLint rule name
-  severity: 'error' | 'warning';
-}
+export const ParsedErrorSchema = z.object({
+  file: z.string(),
+  line: z.number().optional(),
+  column: z.number().optional(),
+  message: z.string(),
+  code: z.string().optional(),
+  severity: z.enum(["error", "warning"]),
+});
+export type ParsedError = z.infer<typeof ParsedErrorSchema>;
 
 /** Result of running a single check */
-export interface CheckResult {
-  name: string;
-  status: 'passed' | 'failed' | 'skipped' | 'timeout';
-  exitCode: number;
-  errors: ParsedError[];
-  warnings: ParsedError[];
-  rawOutput: string;        // truncated to last N lines
-  duration: number;         // milliseconds
-}
+export const CheckResultSchema = z.object({
+  name: z.string(),
+  status: z.enum(["passed", "failed", "skipped", "timeout"]),
+  exitCode: z.number().int(),
+  errors: z.array(ParsedErrorSchema),
+  warnings: z.array(ParsedErrorSchema),
+  rawOutput: z.string(),
+  duration: z.number().nonnegative(),
+});
+export type CheckResult = z.infer<typeof CheckResultSchema>;
 
 /** Aggregate result of running all checks */
-export interface HarnessResult {
-  status: 'passed' | 'failed';
-  checks: CheckResult[];
-  totalErrors: number;
-  totalWarnings: number;
-  duration: number;         // milliseconds
-  timestamp: string;        // ISO 8601
-}
+export const HarnessResultSchema = z.object({
+  status: z.enum(["passed", "failed"]),
+  checks: z.array(CheckResultSchema),
+  totalErrors: z.number().int().nonnegative(),
+  totalWarnings: z.number().int().nonnegative(),
+  duration: z.number().nonnegative(),
+  timestamp: z.string(),
+});
+export type HarnessResult = z.infer<typeof HarnessResultSchema>;
 
-/** Parser function signature */
+/** Parser function signature — not a Zod schema (functions are not serializable) */
 export type OutputParser = (output: string) => ParsedError[];
 
 /** Default harness config used when no config.json harness section exists */
-export const DEFAULT_HARNESS_CONFIG: HarnessConfig = {
+export const DEFAULT_HARNESS_CONFIG: HarnessConfig = HarnessConfigSchema.parse({
   enabled: true,
   maxFixIterations: 3,
   failFast: false,
   checks: [
-    { name: 'test', command: 'bun test', enabled: true, timeout: 120, parser: 'bun-test' },
-    { name: 'typecheck', command: 'bunx --bun tsc --noEmit', enabled: true, timeout: 60, parser: 'tsc' },
-    { name: 'lint', command: 'bunx --bun eslint . --format json', enabled: false, timeout: 60, parser: 'eslint' },
-    { name: 'build', command: 'bun run build:all', enabled: false, timeout: 120, parser: 'generic' },
+    {
+      name: "test",
+      command: "bun test",
+      enabled: true,
+      timeout: 120,
+      parser: "bun-test",
+    },
+    {
+      name: "typecheck",
+      command: "bunx --bun tsc --noEmit",
+      enabled: true,
+      timeout: 60,
+      parser: "tsc",
+    },
+    {
+      name: "lint",
+      command: "bunx --bun eslint . --format json",
+      enabled: false,
+      timeout: 60,
+      parser: "eslint",
+    },
+    {
+      name: "build",
+      command: "bun run build:all",
+      enabled: false,
+      timeout: 120,
+      parser: "generic",
+    },
   ],
-};
+});

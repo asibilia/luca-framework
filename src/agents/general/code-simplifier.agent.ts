@@ -2,7 +2,7 @@
  * code-simplifier Agent - Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the code-simplifier agent configuration
 const codeSimplifierConfig: AgentConfig = {

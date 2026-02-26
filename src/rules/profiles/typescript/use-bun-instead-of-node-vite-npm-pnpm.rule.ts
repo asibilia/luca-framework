@@ -2,7 +2,7 @@
  * Use Bun instead of Node.js, npm, pnpm, or vite.
  */
 import { createRule } from "../../base/base-rule";
-import type { RuleConfig } from "../../types/rule.types";
+import type { RuleConfig } from "../../types/rule.schemas";
 
 // Define the use-bun rule configuration
 const useBunConfig: RuleConfig = {

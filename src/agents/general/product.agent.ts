@@ -2,7 +2,7 @@
  * product Agent - Analyzes feature requests and helps scope product requirements with technical feasibility in mind. Use when starting work on new features.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the product agent configuration
 const productConfig: AgentConfig = {

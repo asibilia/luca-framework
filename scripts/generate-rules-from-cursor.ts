@@ -53,7 +53,7 @@ function generateRuleTsContent(ruleData: RuleData): string {
  * ${ruleData.description}
  */
 import { createRule } from '../base/base-rule';
-import type { RuleConfig } from '../types/rule.types';
+import type { RuleConfig } from '../types/rule.schemas';
 
 // Define the ${ruleName} rule configuration
 const ${configName}: RuleConfig = {

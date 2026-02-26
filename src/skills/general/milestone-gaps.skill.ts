@@ -2,7 +2,7 @@
  * milestone-gaps Skill - Create phases to close gaps identified by a milestone audit.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the milestone-gaps skill configuration
 const milestoneGapsConfig: SkillConfig = {

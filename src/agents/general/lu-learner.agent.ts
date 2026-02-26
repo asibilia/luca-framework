@@ -2,7 +2,7 @@
  * lu-learner Agent - Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-learner agent configuration
 const luLearnerConfig: AgentConfig = {

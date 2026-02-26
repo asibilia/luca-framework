@@ -1,13 +1,13 @@
 /**
  * Factory function for creating agents in the Luca Framework.
  *
- * Replaces the former BaseAgentImpl abstract class with a functional pattern
- * that aligns with the project's no-classes convention.
+ * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import type { BaseAgent, AgentConfig } from "../types/agent.types";
 import { toCursorFormat, toClaudeFormat } from "../../shared/format";
 import { deepFreeze } from "../../shared/deep-freeze";
-import { agentConfigSchema } from "../types/agent.schemas";
+import { AgentConfigSchema } from "../types/agent.schemas";
+
+import type { BaseAgent, AgentConfig } from "../types/agent.schemas";
 
 /**
  * Create an agent instance from a validated configuration.
@@ -18,7 +18,7 @@ import { agentConfigSchema } from "../types/agent.schemas";
 export function createAgent(config: AgentConfig): BaseAgent {
   // Uses parse() for fail-fast validation; use safeParse() at system boundaries
   // where graceful error handling is needed instead of thrown exceptions.
-  const validated = deepFreeze(agentConfigSchema.parse(config));
+  const validated = deepFreeze(AgentConfigSchema.parse(config));
   return {
     get config() {
       return validated;

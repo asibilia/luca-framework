@@ -2,7 +2,7 @@
  * quick Skill - Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the quick skill configuration
 const quickConfig: SkillConfig = {

@@ -2,7 +2,7 @@
  * Harness/Hook verification boundary: when full harness runs vs lightweight hooks
  */
 import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import type { RuleConfig } from "../types/rule.schemas";
 
 const harnessVerificationConfig: RuleConfig = {
   frontmatter: {

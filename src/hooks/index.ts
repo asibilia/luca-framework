@@ -16,30 +16,33 @@
  * - async: Whether the hook runs in background (Claude Code only)
  */
 
-export interface HookDefinition {
+import { z } from "zod";
+
+export const HookDefinitionSchema = z.object({
   /** Claude Code hook event name (PascalCase) */
-  event: string;
+  event: z.string(),
   /** Cursor hook event name (camelCase) */
-  cursorEvent: string;
+  cursorEvent: z.string(),
   /** Regex matcher for Claude Code tool name filtering (undefined = always fire) */
-  matcher?: string;
+  matcher: z.string().optional(),
   /** Regex matcher for Cursor filtering (undefined = always fire) */
-  cursorMatcher?: string;
+  cursorMatcher: z.string().optional(),
   /** Shell script filename in src/hooks/scripts/ */
-  script: string;
+  script: z.string(),
   /** Timeout in seconds */
-  timeout: number;
+  timeout: z.number().positive(),
   /** Run asynchronously in background (Claude Code only, ignored by Cursor) */
-  async: boolean;
+  async: z.boolean(),
   /** Status message shown while hook runs (Claude Code only) */
-  statusMessage?: string;
-}
+  statusMessage: z.string().optional(),
+});
+export type HookDefinition = z.infer<typeof HookDefinitionSchema>;
 
 /** Sentinel value for hooks with no matcher constraint. */
 export const NO_MATCHER_SENTINEL = "__no_matcher__" as const;
 
-export const hookRegistry: Record<string, HookDefinition> = {
-  "post-edit-format": {
+export const hookRegistry: Record<string, () => HookDefinition> = {
+  "post-edit-format": () => ({
     event: "PostToolUse",
     cursorEvent: "afterFileEdit",
     matcher: "Edit|Write",
@@ -48,8 +51,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 10,
     async: false,
     statusMessage: "Formatting...",
-  },
-  "post-edit-typecheck": {
+  }),
+  "post-edit-typecheck": () => ({
     event: "PostToolUse",
     cursorEvent: "afterFileEdit",
     matcher: "Edit|Write",
@@ -58,8 +61,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 30,
     async: true,
     statusMessage: "Type-checking...",
-  },
-  "pre-commit-gate": {
+  }),
+  "pre-commit-gate": () => ({
     event: "PreToolUse",
     cursorEvent: "beforeShellExecution",
     matcher: "Bash",
@@ -69,8 +72,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 120,
     async: false,
     statusMessage: "Running pre-commit checks...",
-  },
-  "pre-commit-drift-check": {
+  }),
+  "pre-commit-drift-check": () => ({
     event: "PreToolUse",
     cursorEvent: "beforeShellExecution",
     matcher: "Bash",
@@ -80,8 +83,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 60,
     async: false,
     statusMessage: "Checking output drift...",
-  },
-  "context-check-throttled": {
+  }),
+  "context-check-throttled": () => ({
     event: "PostToolUse",
     cursorEvent: "afterFileEdit",
     matcher: undefined,
@@ -90,8 +93,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 10,
     async: true,
     statusMessage: "Checking context...",
-  },
-  "snapshot-sync": {
+  }),
+  "snapshot-sync": () => ({
     event: "PostToolUse",
     cursorEvent: "afterFileEdit",
     matcher: undefined,
@@ -100,8 +103,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 10,
     async: true,
     statusMessage: "Syncing STATE.md...",
-  },
-  "context-monitor": {
+  }),
+  "context-monitor": () => ({
     event: "Stop",
     cursorEvent: "stop",
     matcher: undefined,
@@ -110,8 +113,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 5,
     async: false,
     statusMessage: "Checking context usage...",
-  },
-  "session-persist": {
+  }),
+  "session-persist": () => ({
     event: "SessionEnd",
     cursorEvent: "sessionEnd",
     matcher: undefined,
@@ -120,8 +123,8 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 10,
     async: false,
     statusMessage: "Saving session state...",
-  },
-  "session-start": {
+  }),
+  "session-start": () => ({
     event: "SessionStart",
     cursorEvent: "sessionStart",
     matcher: undefined,
@@ -130,8 +133,18 @@ export const hookRegistry: Record<string, HookDefinition> = {
     timeout: 15,
     async: false,
     statusMessage: "Initializing Luca...",
-  },
+  }),
 };
+
+/**
+ * Resolve all hookRegistry thunks into a flat Record<string, HookDefinition>.
+ * Convenience helper for consumers that need the resolved registry.
+ */
+export function resolveHookRegistry(): Record<string, HookDefinition> {
+  return Object.fromEntries(
+    Object.entries(hookRegistry).map(([name, thunk]) => [name, thunk()]),
+  );
+}
 
 /**
  * Generate .cursor/hooks.json from the hook registry.

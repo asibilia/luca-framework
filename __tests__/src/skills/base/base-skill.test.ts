@@ -7,7 +7,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import { createTestSkill } from "../../../utils/test-entities";
-import type { SkillConfig } from "../../../../src/skills/types/skill.types";
+import type { SkillConfig } from "../../../../src/skills/types/skill.schemas";
 import { validSkillConfig } from "../../../utils/fixtures";
 
 // ---------------------------------------------------------------------------

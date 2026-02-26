@@ -2,22 +2,20 @@
  * Functional compiler module for converting TypeScript entity definitions
  * to target format markdown.
  *
- * Replaces the BaseCompiler class hierarchy (BaseCompiler, ClaudeCompiler,
- * CursorCompiler, PluginCompiler) with composable pure functions.
+ * Uses composable pure functions for compilation.
  *
  * Each entity type (agent, skill, rule) has:
  * - Per-format functions: compileAgentClaude(), compileAgentCursor(), compileAgentPlugin()
  * - A format-dispatching function: compileAgent(entity, format)
  *
- * The internal buildAgentFrontmatter() helper consolidates the duplicated
- * YAML frontmatter logic that was previously copy-pasted between
- * ClaudeCompiler and PluginCompiler.
+ * The internal buildAgentFrontmatter() helper consolidates shared
+ * YAML frontmatter logic.
  *
  * @module
  */
-import type { BaseAgent } from "../agents/types/agent.types";
-import type { BaseSkill } from "../skills/types/skill.types";
-import type { BaseRule } from "../rules/types/rule.types";
+import type { BaseAgent } from "../agents/types/agent.schemas";
+import type { BaseSkill } from "../skills/types/skill.schemas";
+import type { BaseRule } from "../rules/types/rule.schemas";
 import { formatFrontmatter } from "../shared/utils";
 
 /**

@@ -2,7 +2,7 @@
  * lu-pr-reviewer Agent - Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-pr-reviewer agent configuration
 const luPrReviewerConfig: AgentConfig = {

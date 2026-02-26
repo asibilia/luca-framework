@@ -2,7 +2,7 @@
  * jira-issue Skill - Import a Jira ticket as a GitHub issue with labels and cross-references.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the jira-issue skill configuration
 const jiraIssueConfig: SkillConfig = {

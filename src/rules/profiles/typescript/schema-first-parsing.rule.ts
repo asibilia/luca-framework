@@ -2,7 +2,7 @@
  * Enforce Zod schema-first parsing patterns over manual destructuring and default values
  */
 import { createRule } from "../../base/base-rule";
-import type { RuleConfig } from "../../types/rule.types";
+import type { RuleConfig } from "../../types/rule.schemas";
 
 // Define the schema-first-parsing rule configuration
 const schemaFirstParsingConfig: RuleConfig = {

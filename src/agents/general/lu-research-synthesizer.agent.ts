@@ -2,7 +2,7 @@
  * lu-research-synthesizer Agent - Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /project-new after 4 researcher agents complete.
  */
 import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import type { AgentConfig } from "../types/agent.schemas";
 
 // Define the lu-research-synthesizer agent configuration
 const luResearchSynthesizerConfig: AgentConfig = {

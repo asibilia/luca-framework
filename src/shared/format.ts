@@ -1,13 +1,18 @@
 /**
  * Shared formatting functions for factory functions
  */
+import { z } from "zod";
 import { formatFrontmatter } from "./utils";
 
-interface Section {
-  title: string;
-  content: string;
-  order?: number;
-}
+/** Canonical Zod schema for a section within any entity (agent, skill, rule) */
+export const SectionSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  order: z.number().optional(),
+});
+
+/** Canonical Section type for all entity sections */
+export type Section = z.infer<typeof SectionSchema>;
 
 /**
  * Sanitize a string for use as an XML tag name.

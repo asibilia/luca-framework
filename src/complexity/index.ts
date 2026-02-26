@@ -1,7 +1,7 @@
 /**
  * Public API for the complexity gating module.
  *
- * Exports types, defaults, classifications, and utility functions.
+ * Exports types, schemas, defaults, classifications, and utility functions.
  */
 
 // Types
@@ -14,7 +14,17 @@ export type {
   ComplexityGate,
   ComplexityMatrix,
   ComplexityConfig,
-} from './types';
+} from "./types";
+
+// Schemas
+export {
+  ComplexityTierSchema,
+  ComplexityClassificationSchema,
+  VerificationModeSchema,
+  StepActivationSchema,
+  ComplexityGateSchema,
+  ComplexityConfigSchema,
+} from "./types";
 
 // Constants
 export {
@@ -23,11 +33,11 @@ export {
   COMPLEXITY_TIER,
   meetsThreshold,
   getTier,
-} from './types';
+} from "./types";
 
 // Defaults
 export {
   COMPLEXITY_CLASSIFICATIONS,
   DEFAULT_COMPLEXITY_MATRIX,
   DEFAULT_COMPLEXITY_CONFIG,
-} from './defaults';
+} from "./defaults";

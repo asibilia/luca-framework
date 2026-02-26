@@ -2,7 +2,7 @@
  * debug Skill - Systematic debugging workflow with persistent hypothesis state across context resets.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the debug skill configuration
 const debugConfig: SkillConfig = {

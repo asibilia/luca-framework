@@ -2,7 +2,7 @@
  * git-pr Skill - Create a pull request with conventional formatting and submit for review.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the git-pr skill configuration
 const gitPrConfig: SkillConfig = {

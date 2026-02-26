@@ -2,7 +2,7 @@
  * phase-assumptions Skill - Preview AI planning assumptions for a phase before committing to execution.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the phase-assumptions skill configuration
 const phaseAssumptionsConfig: SkillConfig = {

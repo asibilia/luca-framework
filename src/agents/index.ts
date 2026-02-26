@@ -43,10 +43,10 @@ export type {
   AgentConfig,
   AgentFrontmatter,
   AgentSection,
-} from "./types/agent.types";
+} from "./types/agent.schemas";
 
 // Import BaseAgent for registry type annotation (also re-exported)
-import type { BaseAgent } from "./types/agent.types";
+import type { BaseAgent } from "./types/agent.schemas";
 export type { BaseAgent };
 
 // Registry mapping agent names to factory functions for bulk processing

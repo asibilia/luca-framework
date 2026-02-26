@@ -11,21 +11,21 @@ export type {
   AgentSection,
   AgentConfig,
   BaseAgent,
-} from "./src/agents/types/agent.types";
+} from "./src/agents/types/agent.schemas";
 
 export type {
   SkillFrontmatter,
   SkillSection,
   SkillConfig,
   BaseSkill,
-} from "./src/skills/types/skill.types";
+} from "./src/skills/types/skill.schemas";
 
 export type {
   RuleFrontmatter,
   RuleSection,
   RuleConfig,
   BaseRule,
-} from "./src/rules/types/rule.types";
+} from "./src/rules/types/rule.schemas";
 
 // Shared types
 export type { Result } from "./src/shared/types";
@@ -57,7 +57,7 @@ export type { SupportedFormat } from "./src/compilers/compile";
 export { luExecutorAgent } from "./src/agents/luca/lu-executor.agent";
 export { luPlannerAgent } from "./src/agents/luca/lu-planner.agent";
 export { luSkill } from "./src/skills/luca/lu.skill";
-export { luWorkflowRule } from "./src/rules/lu-workflow.rule";
+export { luWorkflowRule } from "./src/rules/general/lu-workflow.rule";
 
 // Registries (for build scripts and consumers)
 export { agentRegistry } from "./src/agents/index";

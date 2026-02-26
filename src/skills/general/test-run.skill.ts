@@ -2,7 +2,7 @@
  * test-run Skill - Run the project test suite with optional filter pattern and coverage reporting.
  */
 import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import type { SkillConfig } from "../types/skill.schemas";
 
 // Define the test-run skill configuration
 const testRunConfig: SkillConfig = {

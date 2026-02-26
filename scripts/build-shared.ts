@@ -23,6 +23,7 @@
  */
 import {
   hookRegistry,
+  resolveHookRegistry,
   generateCursorHooksConfig,
   generateClaudeHooksConfig,
 } from "../src/hooks/index";
@@ -390,12 +391,13 @@ MIT
 
 // Re-export registries for consumers that need them (e.g., orphan detection tests)
 export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
+export { resolveHookRegistry } from "../src/hooks/index";
 
 // Re-export hook config generators for consumers
 export { generateCursorHooksConfig, generateClaudeHooksConfig };
 
 // Re-export profile infrastructure for build consumers
-export { profileRegistry, profileConfigSchema } from "../src/rules/index";
+export { profileRegistry, ProfileConfigSchema } from "../src/rules/index";
 
 /**
  * Get the list of active profile names from config.
@@ -416,7 +418,7 @@ export function getActiveProfileNames(): string[] {
 
     // Import the schema dynamically to avoid circular dependency issues
     const {
-      profileConfigSchema: schema,
+      ProfileConfigSchema: schema,
     } = require("../src/rules/profiles/profile.schemas");
     const parsed = schema.parse(workflow);
 
@@ -490,9 +492,10 @@ async function generateHookOutputs(
   generated: Map<string, string>,
 ): Promise<void> {
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+  const resolved = resolveHookRegistry();
 
   // Copy hook scripts to .claude/ and .cursor/
-  for (const [_hookName, hookDef] of Object.entries(hookRegistry)) {
+  for (const [_hookName, hookDef] of Object.entries(resolved)) {
     const srcPath = path.join(hookScriptsDir, hookDef.script);
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
@@ -503,7 +506,7 @@ async function generateHookOutputs(
   }
 
   // Claude settings.json hooks fragment
-  const hooksConfig = generateClaudeHooksConfig(hookRegistry, {
+  const hooksConfig = generateClaudeHooksConfig(resolved, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
   });
   generated.set(
@@ -512,7 +515,7 @@ async function generateHookOutputs(
   );
 
   // Cursor hooks.json
-  const cursorHooksConfig = generateCursorHooksConfig(hookRegistry);
+  const cursorHooksConfig = generateCursorHooksConfig(resolved);
   generated.set(
     ".cursor/hooks.json",
     JSON.stringify(cursorHooksConfig, null, 2) + "\n",
@@ -535,8 +538,9 @@ async function generatePluginOutputs(
   }
 
   // Plugin hooks (excluding dev-only hooks)
+  const resolved = resolveHookRegistry();
   const pluginHookRegistry = Object.fromEntries(
-    Object.entries(hookRegistry).filter(
+    Object.entries(resolved).filter(
       ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
     ),
   );

@@ -7,9 +7,12 @@
  * - Group A (lightweight): TRIVIAL, SIMPLE
  * - Group B (standard): MODERATE
  * - Group C (thorough): COMPLEX, CRITICAL
+ *
+ * All data-shape types are derived from Zod schemas via z.infer.
  */
-import type { CognitionTier } from "../agents/types/agent.types";
-import type { ContextTier } from "../context/types";
+import { z } from "zod";
+import { CognitionTierSchema } from "../agents/types/agent.schemas";
+import { contextTierSchema } from "../context/types";
 
 /** The five complexity levels, ordered from least to most complex */
 export const COMPLEXITY_LEVELS = [
@@ -31,7 +34,12 @@ export const COMPLEXITY_ORDER: Record<ComplexityLevel, number> = {
 };
 
 /** Behavioral tier grouping */
-export type ComplexityTier = "lightweight" | "standard" | "thorough";
+export const ComplexityTierSchema = z.enum([
+  "lightweight",
+  "standard",
+  "thorough",
+]);
+export type ComplexityTier = z.infer<typeof ComplexityTierSchema>;
 
 export const COMPLEXITY_TIER: Record<ComplexityLevel, ComplexityTier> = {
   TRIVIAL: "lightweight",
@@ -42,67 +50,100 @@ export const COMPLEXITY_TIER: Record<ComplexityLevel, ComplexityTier> = {
 };
 
 /** Classification criteria for a complexity level */
-export interface ComplexityClassification {
-  level: ComplexityLevel;
-  fileCount: string; // e.g., "1", "2-3", "3-5", "5-10", "10+"
-  scope: string; // e.g., "single component", "feature-scoped"
-  risk: string; // e.g., "low", "medium", "high", "very high"
-  estimatedTime: string; // e.g., "< 15 min", "15-30 min"
-  examples: string[];
-}
+export const ComplexityClassificationSchema = z.object({
+  level: z.enum(COMPLEXITY_LEVELS),
+  fileCount: z.string(),
+  scope: z.string(),
+  risk: z.string(),
+  estimatedTime: z.string(),
+  examples: z.array(z.string()),
+});
+export type ComplexityClassification = z.infer<
+  typeof ComplexityClassificationSchema
+>;
 
 /** Verification mode mapped from complexity */
-export type VerificationMode = "quick" | "standard" | "full" | "full+human";
+export const VerificationModeSchema = z.enum([
+  "quick",
+  "standard",
+  "full",
+  "full+human",
+]);
+export type VerificationMode = z.infer<typeof VerificationModeSchema>;
 
 /** Step activation status */
-export type StepActivation =
-  | "skip"
-  | "optional"
-  | "run"
-  | "required"
-  | "required+thorough";
+export const StepActivationSchema = z.enum([
+  "skip",
+  "optional",
+  "run",
+  "required",
+  "required+thorough",
+]);
+export type StepActivation = z.infer<typeof StepActivationSchema>;
 
 /** Per-level workflow gating configuration */
-export interface ComplexityGate {
+export const ComplexityGateSchema = z.object({
   /** Cognitive pre-flight depth */
-  cognitivePreflight: "lite" | "full";
+  cognitivePreflight: z.enum(["lite", "full"]),
   /** Whether research (lu-phase-researcher) runs */
-  research: StepActivation;
+  research: StepActivationSchema,
   /** Whether discussion (phase-discuss) runs */
-  discussion: StepActivation;
+  discussion: StepActivationSchema,
   /** Plan verification iterations (lu-plan-checker loop count) */
-  planVerificationIterations: number;
+  planVerificationIterations: z.number().int().nonnegative(),
   /** Harness fix iterations (Loop A: mechanical failure fix loop max) */
-  harnessFixIterations: number;
+  harnessFixIterations: z.number().int().positive(),
   /** Verify fix iterations (Loop B: semantic gap fix loop max) */
-  verifyFixIterations: number;
+  verifyFixIterations: z.number().int().nonnegative(),
   /** Verification mode for lu-verifier */
-  verificationMode: VerificationMode;
+  verificationMode: VerificationModeSchema,
   /** Code review agents to spawn (by agent name) */
-  codeReviewAgents: string[];
+  codeReviewAgents: z.array(z.string()),
   /** UAT step activation */
-  uat: StepActivation;
+  uat: StepActivationSchema,
   /** Learning capture depth */
-  learningCapture: "skip" | "brief" | "standard" | "full" | "full+debrief";
+  learningCapture: z.enum([
+    "skip",
+    "brief",
+    "standard",
+    "full",
+    "full+debrief",
+  ]),
   /** Optional cognition tier promotions at this complexity level.
    *  Maps a default tier to a promoted tier (e.g., T1 -> T2 at COMPLEX). */
-  cognitionPromotions?: Partial<Record<CognitionTier, CognitionTier>>;
+  cognitionPromotions: z
+    .object({
+      T0: CognitionTierSchema.optional(),
+      T1: CognitionTierSchema.optional(),
+      T2: CognitionTierSchema.optional(),
+      T3: CognitionTierSchema.optional(),
+    })
+    .optional(),
   /** Optional context tier promotions at this complexity level.
    *  Maps a default context tier to a promoted tier. Context promotes one
    *  level earlier than cognition in the default matrix. */
-  contextPromotions?: Partial<Record<ContextTier, ContextTier>>;
-}
+  contextPromotions: z
+    .object({
+      T0: contextTierSchema.optional(),
+      T1: contextTierSchema.optional(),
+      T2: contextTierSchema.optional(),
+      T3: contextTierSchema.optional(),
+    })
+    .optional(),
+});
+export type ComplexityGate = z.infer<typeof ComplexityGateSchema>;
 
 /** The complete complexity matrix: maps each level to its gate configuration */
 export type ComplexityMatrix = Record<ComplexityLevel, ComplexityGate>;
 
 /** Top-level complexity configuration (maps to config.json "complexity" section) */
-export interface ComplexityConfig {
+export const ComplexityConfigSchema = z.object({
   /** Default level when no override is set. "auto" means lu-router infers. */
-  defaultLevel: ComplexityLevel | "auto";
+  defaultLevel: z.union([z.enum(COMPLEXITY_LEVELS), z.literal("auto")]),
   /** The full gating matrix */
-  matrix: ComplexityMatrix;
-}
+  matrix: z.record(z.enum(COMPLEXITY_LEVELS), ComplexityGateSchema),
+});
+export type ComplexityConfig = z.infer<typeof ComplexityConfigSchema>;
 
 /** Utility: check if a level meets or exceeds a threshold */
 export function meetsThreshold(
