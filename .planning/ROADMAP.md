@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v2.0.0 — Unified Package & Intelligent Routing
+**Current Milestone:** v2.0.0 — Unified Package & Intelligent Routing (5 phases, 16 plans, 1808 tests)
 
 ---
 
@@ -47,9 +47,9 @@
 
 **Depends on:** Phase 57
 
-- [ ] Plan 59-A: Extend `AgentFrontmatterSchema` and `ComplexityGateSchema` with model routing fields
-- [ ] Plan 59-B: Update `lu-router` and key agents with model routing preferences
-- [ ] Plan 59-C: Tests and documentation for model routing
+- [x] Plan 59-A: Extend `AgentFrontmatterSchema` and `ComplexityGateSchema` with model routing fields
+- [x] Plan 59-B: Update `lu-router` and key agents with model routing preferences
+- [x] Plan 59-C: Tests and documentation for model routing (17 new tests)
 
 ### Phase 60 — Integration Testing & Release Prep
 
@@ -57,8 +57,8 @@
 
 **Depends on:** Phases 57, 58, 59
 
-- [ ] Plan 60-A: End-to-end integration tests (install, init, run:claude, state bridge)
-- [ ] Plan 60-B: Archive milestone, bump version, update CHANGELOG
+- [x] Plan 60-A: End-to-end integration tests (bridge, boundaries, drift, 1808 tests)
+- [x] Plan 60-B: Archive todos, finalize roadmap
 
 ---
 
