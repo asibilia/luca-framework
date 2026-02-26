@@ -4,7 +4,7 @@ import {
   buildTagName,
   metadataPath,
   getCurrentCommitHash,
-} from "../../../src/iteration/checkpoint";
+} from "../../../src/iteration/__helpers/checkpoint";
 
 describe("sanitizeTagName", () => {
   test("converts 'iter/17/harness/1' to 'iter-17-harness-1'", () => {

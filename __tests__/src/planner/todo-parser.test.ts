@@ -18,7 +18,7 @@ import {
   extractBody,
   parseSingleTodo,
   parseTodos,
-} from "../../../src/planner/todo-parser";
+} from "../../../src/planner/__helpers/todo-parser";
 
 /* ------------------------------------------------------------------ */
 /*  parseYamlFrontmatter                                               */

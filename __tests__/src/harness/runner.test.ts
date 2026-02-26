@@ -1,19 +1,22 @@
-import { describe, test, expect } from 'bun:test';
-import { runHarness, loadHarnessConfig } from '../../../src/harness/runner';
-import { DEFAULT_HARNESS_CONFIG } from '../../../src/harness/types';
-import type { HarnessConfig } from '../../../src/harness/types';
-import { join } from 'path';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
+import { describe, test, expect } from "bun:test";
+import {
+  runHarness,
+  loadHarnessConfig,
+} from "../../../src/harness/__helpers/runner";
+import { DEFAULT_HARNESS_CONFIG } from "~/harness/__schemas/harness.schemas";
+import type { HarnessConfig } from "~/harness/__schemas/harness.schemas";
+import { join } from "path";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "fs";
+import { tmpdir } from "os";
 
-const PROJECT_DIR = join(import.meta.dir, '../../..');
+const PROJECT_DIR = join(import.meta.dir, "../../..");
 
 function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), 'harness-test-'));
+  return mkdtempSync(join(tmpdir(), "harness-test-"));
 }
 
-describe('loadHarnessConfig', () => {
-  test('returns defaults when no config.json exists', async () => {
+describe("loadHarnessConfig", () => {
+  test("returns defaults when no config.json exists", async () => {
     const tmpDir = makeTmpDir();
     try {
       const config = await loadHarnessConfig(tmpDir);
@@ -26,49 +29,58 @@ describe('loadHarnessConfig', () => {
     }
   });
 
-  test('loads harness section from project config.json', async () => {
+  test("loads harness section from project config.json", async () => {
     const config = await loadHarnessConfig(PROJECT_DIR);
     expect(config.enabled).toBe(true);
     expect(config.checks).toHaveLength(4);
     expect(config.maxFixIterations).toBe(3);
     // Project config has build enabled (differs from defaults)
-    const buildCheck = config.checks.find(c => c.name === 'build');
+    const buildCheck = config.checks.find((c) => c.name === "build");
     expect(buildCheck?.enabled).toBe(true);
   });
 
-  test('reads harness section from config.json when present', async () => {
+  test("reads harness section from config.json when present", async () => {
     const tmpDir = makeTmpDir();
-    const planningDir = join(tmpDir, '.planning');
+    const planningDir = join(tmpDir, ".planning");
     mkdirSync(planningDir, { recursive: true });
 
     const customConfig = {
       harness: {
         enabled: true,
         checks: [
-          { name: 'custom', command: 'echo ok', enabled: true, timeout: 10, parser: 'generic' },
+          {
+            name: "custom",
+            command: "echo ok",
+            enabled: true,
+            timeout: 10,
+            parser: "generic",
+          },
         ],
         maxFixIterations: 5,
         failFast: true,
       },
     };
-    writeFileSync(join(planningDir, 'config.json'), JSON.stringify(customConfig));
+    writeFileSync(
+      join(planningDir, "config.json"),
+      JSON.stringify(customConfig),
+    );
 
     try {
       const config = await loadHarnessConfig(tmpDir);
       expect(config.maxFixIterations).toBe(5);
       expect(config.failFast).toBe(true);
       expect(config.checks).toHaveLength(1);
-      expect(config.checks[0]!.name).toBe('custom');
+      expect(config.checks[0]!.name).toBe("custom");
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
-  test('returns defaults on invalid JSON', async () => {
+  test("returns defaults on invalid JSON", async () => {
     const tmpDir = makeTmpDir();
-    const planningDir = join(tmpDir, '.planning');
+    const planningDir = join(tmpDir, ".planning");
     mkdirSync(planningDir, { recursive: true });
-    writeFileSync(join(planningDir, 'config.json'), '{invalid json}}}');
+    writeFileSync(join(planningDir, "config.json"), "{invalid json}}}");
 
     try {
       const config = await loadHarnessConfig(tmpDir);
@@ -79,12 +91,18 @@ describe('loadHarnessConfig', () => {
   });
 });
 
-describe('runHarness', () => {
-  test('runs a passing check (echo)', async () => {
+describe("runHarness", () => {
+  test("runs a passing check (echo)", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'echo-test', command: 'echo "hello world"', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "echo-test",
+          command: 'echo "hello world"',
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -92,20 +110,26 @@ describe('runHarness', () => {
 
     const result = await runHarness(config, PROJECT_DIR);
 
-    expect(result.status).toBe('passed');
+    expect(result.status).toBe("passed");
     expect(result.checks).toHaveLength(1);
-    expect(result.checks[0]!.status).toBe('passed');
+    expect(result.checks[0]!.status).toBe("passed");
     expect(result.checks[0]!.exitCode).toBe(0);
-    expect(result.checks[0]!.rawOutput).toContain('hello world');
+    expect(result.checks[0]!.rawOutput).toContain("hello world");
     expect(result.totalErrors).toBe(0);
     expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  test('runs a failing check (false command)', async () => {
+  test("runs a failing check (false command)", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'fail-test', command: 'false', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "fail-test",
+          command: "false",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -113,17 +137,29 @@ describe('runHarness', () => {
 
     const result = await runHarness(config, PROJECT_DIR);
 
-    expect(result.status).toBe('failed');
-    expect(result.checks[0]!.status).toBe('failed');
+    expect(result.status).toBe("failed");
+    expect(result.checks[0]!.status).toBe("failed");
     expect(result.checks[0]!.exitCode).not.toBe(0);
   });
 
-  test('skips disabled checks', async () => {
+  test("skips disabled checks", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'disabled', command: 'echo disabled', enabled: false, timeout: 10, parser: 'generic' },
-        { name: 'enabled', command: 'echo enabled', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "disabled",
+          command: "echo disabled",
+          enabled: false,
+          timeout: 10,
+          parser: "generic",
+        },
+        {
+          name: "enabled",
+          command: "echo enabled",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -132,16 +168,34 @@ describe('runHarness', () => {
     const result = await runHarness(config, PROJECT_DIR);
 
     expect(result.checks).toHaveLength(1);
-    expect(result.checks[0]!.name).toBe('enabled');
+    expect(result.checks[0]!.name).toBe("enabled");
   });
 
-  test('failFast stops after first failure', async () => {
+  test("failFast stops after first failure", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'pass', command: 'true', enabled: true, timeout: 10, parser: 'generic' },
-        { name: 'fail', command: 'false', enabled: true, timeout: 10, parser: 'generic' },
-        { name: 'should-not-run', command: 'echo never', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "pass",
+          command: "true",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
+        {
+          name: "fail",
+          command: "false",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
+        {
+          name: "should-not-run",
+          command: "echo never",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: true,
@@ -149,17 +203,23 @@ describe('runHarness', () => {
 
     const result = await runHarness(config, PROJECT_DIR);
 
-    expect(result.status).toBe('failed');
+    expect(result.status).toBe("failed");
     expect(result.checks).toHaveLength(2);
-    expect(result.checks[0]!.name).toBe('pass');
-    expect(result.checks[1]!.name).toBe('fail');
+    expect(result.checks[0]!.name).toBe("pass");
+    expect(result.checks[1]!.name).toBe("fail");
   });
 
-  test('handles timeout', async () => {
+  test("handles timeout", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'timeout-test', command: 'sleep 30', enabled: true, timeout: 1, parser: 'generic' },
+        {
+          name: "timeout-test",
+          command: "sleep 30",
+          enabled: true,
+          timeout: 1,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -167,24 +227,24 @@ describe('runHarness', () => {
 
     const result = await runHarness(config, PROJECT_DIR);
 
-    expect(result.status).toBe('failed');
-    expect(result.checks[0]!.status).toBe('timeout');
+    expect(result.status).toBe("failed");
+    expect(result.checks[0]!.status).toBe("timeout");
     expect(result.checks[0]!.exitCode).toBe(-1);
-    expect(result.checks[0]!.rawOutput).toContain('timed out');
+    expect(result.checks[0]!.rawOutput).toContain("timed out");
   }, 10000);
 
-  test('uses correct parser for check output', async () => {
+  test("uses correct parser for check output", async () => {
     // Simulate tsc-like output via echo
-    const tscOutput = 'src/foo.ts(10,3): error TS2322: Type mismatch';
+    const tscOutput = "src/foo.ts(10,3): error TS2322: Type mismatch";
     const config: HarnessConfig = {
       enabled: true,
       checks: [
         {
-          name: 'tsc-mock',
+          name: "tsc-mock",
           command: `echo '${tscOutput}' && exit 1`,
           enabled: true,
           timeout: 10,
-          parser: 'tsc',
+          parser: "tsc",
         },
       ],
       maxFixIterations: 3,
@@ -194,16 +254,22 @@ describe('runHarness', () => {
     const result = await runHarness(config, PROJECT_DIR);
 
     expect(result.checks[0]!.errors).toHaveLength(1);
-    expect(result.checks[0]!.errors[0]!.file).toBe('src/foo.ts');
-    expect(result.checks[0]!.errors[0]!.code).toBe('TS2322');
+    expect(result.checks[0]!.errors[0]!.file).toBe("src/foo.ts");
+    expect(result.checks[0]!.errors[0]!.code).toBe("TS2322");
     expect(result.totalErrors).toBe(1);
   });
 
-  test('captures stderr in combined output', async () => {
+  test("captures stderr in combined output", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'stderr-test', command: 'echo "stdout line" && echo "stderr line" >&2', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "stderr-test",
+          command: 'echo "stdout line" && echo "stderr line" >&2',
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -211,15 +277,21 @@ describe('runHarness', () => {
 
     const result = await runHarness(config, PROJECT_DIR);
 
-    expect(result.checks[0]!.rawOutput).toContain('stdout line');
-    expect(result.checks[0]!.rawOutput).toContain('stderr line');
+    expect(result.checks[0]!.rawOutput).toContain("stdout line");
+    expect(result.checks[0]!.rawOutput).toContain("stderr line");
   });
 
-  test('reports duration in milliseconds', async () => {
+  test("reports duration in milliseconds", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'duration-test', command: 'true', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "duration-test",
+          command: "true",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -231,7 +303,7 @@ describe('runHarness', () => {
     expect(result.checks[0]!.duration).toBeGreaterThanOrEqual(0);
   });
 
-  test('handles empty checks list', async () => {
+  test("handles empty checks list", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [],
@@ -241,16 +313,22 @@ describe('runHarness', () => {
 
     const result = await runHarness(config, PROJECT_DIR);
 
-    expect(result.status).toBe('passed');
+    expect(result.status).toBe("passed");
     expect(result.checks).toHaveLength(0);
     expect(result.totalErrors).toBe(0);
   });
 
-  test('handles command that does not exist', async () => {
+  test("handles command that does not exist", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
-        { name: 'bad-cmd', command: 'nonexistent_command_12345', enabled: true, timeout: 10, parser: 'generic' },
+        {
+          name: "bad-cmd",
+          command: "nonexistent_command_12345",
+          enabled: true,
+          timeout: 10,
+          parser: "generic",
+        },
       ],
       maxFixIterations: 3,
       failFast: false,
@@ -259,19 +337,19 @@ describe('runHarness', () => {
     const result = await runHarness(config, PROJECT_DIR);
 
     // Should either fail or be skipped, not crash
-    expect(['failed', 'skipped']).toContain(result.checks[0]!.status);
+    expect(["failed", "skipped"]).toContain(result.checks[0]!.status);
   });
 
-  test('falls back to generic parser for unknown parser key', async () => {
+  test("falls back to generic parser for unknown parser key", async () => {
     const config: HarnessConfig = {
       enabled: true,
       checks: [
         {
-          name: 'unknown-parser',
+          name: "unknown-parser",
           command: 'echo "src/x.ts:1:1: error: test error" && exit 1',
           enabled: true,
           timeout: 10,
-          parser: 'nonexistent-parser',
+          parser: "nonexistent-parser",
         },
       ],
       maxFixIterations: 3,
@@ -281,6 +359,6 @@ describe('runHarness', () => {
     const result = await runHarness(config, PROJECT_DIR);
 
     expect(result.checks[0]!.errors).toHaveLength(1);
-    expect(result.checks[0]!.errors[0]!.file).toBe('src/x.ts');
+    expect(result.checks[0]!.errors[0]!.file).toBe("src/x.ts");
   });
 });

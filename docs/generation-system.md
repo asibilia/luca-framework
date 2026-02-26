@@ -10,24 +10,53 @@ The Luca Framework provides a system for defining agents, skills, and rules in T
 
 ```
 src/
-├── agents/          # Agent definitions in TypeScript
-│   ├── base/        # Base agent implementation
-│   ├── general/     # General agents generated from .cursor files
-│   ├── luca/        # Luca-specific agents
-│   └── types/       # Type definitions
-├── skills/          # Skill definitions in TypeScript
-│   ├── base/        # Base skill implementation
-│   ├── general/     # General skills generated from .cursor files
-│   ├── luca/        # Luca-specific skills
-│   └── types/       # Type definitions
-├── rules/           # Rule definitions in TypeScript
-│   ├── base/        # Base rule implementation
-│   ├── general/     # General rules generated from .cursor files
-│   ├── luca/        # Luca-specific rules
-│   └── types/       # Type definitions
-├── compilers/       # Compilation logic
-├── shared/          # Shared utilities
+├── agents/          # [T2 Entity] Agent definitions
+│   ├── __schemas/   # Agent Zod schemas and types
+│   ├── __helpers/   # Factory functions and utilities
+│   ├── general/     # General agents
+│   └── luca/        # Luca-specific agents
+├── skills/          # [T2 Entity] Skill definitions
+│   ├── __schemas/   # Skill Zod schemas and types
+│   ├── __helpers/   # Factory functions and utilities
+│   ├── general/     # General skills
+│   └── luca/        # Luca-specific skills
+├── rules/           # [T2 Entity] Rule definitions
+│   ├── __schemas/   # Rule Zod schemas and types
+│   ├── __helpers/   # Factory functions and utilities
+│   ├── general/     # General rules
+│   └── profiles/    # Rule profile configurations
+├── memory/          # [T1 Core] Memory system
+│   ├── __schemas/   # Memory Zod schemas and types
+│   └── __helpers/   # Bridge, compression, parsing, scoring
+├── planner/         # [T1 Core] Plan management
+│   ├── __schemas/   # Planner Zod schemas and types
+│   └── __helpers/   # Cost-model, scheduler, scoring, weekly
+├── iteration/       # [T1 Core] Iteration engine
+│   ├── __schemas/   # Iteration Zod schemas and types
+│   └── __helpers/   # Budget, checkpoint, classifier, convergence
+├── context/         # [T1 Core] Context tier management
+│   ├── __schemas/   # Context Zod schemas and types
+│   └── __helpers/   # Assembler, defaults, envelope, aggregator
+├── harness/         # [T1 Core] Verification harness
+│   ├── __schemas/   # Harness Zod schemas and types
+│   ├── __helpers/   # Runner implementation
+│   └── parsers/     # Output parsers (bun-test, tsc, eslint, generic)
+├── shared/          # [T0 Foundation] Cross-domain utilities
+│   ├── __schemas/   # Shared Zod schemas (Result<T> type)
+│   └── __helpers/   # cli-utils, format, validation, deep-freeze
+├── complexity/      # [T0 Foundation] Complexity gating
+│   ├── __schemas/   # Complexity Zod schemas and types
+│   └── __helpers/   # Default matrix and classifications
+├── compilers/       # [T3 Build] Compilation pipeline
+│   ├── __schemas/   # Plugin manifest schemas
+│   └── __helpers/   # Compile functions (Claude/Cursor/Plugin)
+├── hooks/           # [T3 Build] Hook registry and config
+│   ├── __schemas/   # Hook definition schemas
+│   ├── __helpers/   # Registry and config generators
+│   └── scripts/     # Hook shell scripts
 ```
+
+> **Note:** `__schemas/` and `__helpers/` directories use the double-underscore prefix convention to visually separate internal infrastructure from entity directories. See `.claude/rules/module-boundary.md` for import rules. All cross-domain imports use the `~/` path alias (resolves to `src/`).
 
 ## Scripts
 

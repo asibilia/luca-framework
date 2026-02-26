@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect } from 'bun:test'
-import { toCursorFormat } from '../../../src/shared/format'
+import { toCursorFormat } from '../../../src/shared/__helpers/format'
 
 describe('XML Tag Name Sanitization', () => {
   test('sanitizes section title with spaces', () => {

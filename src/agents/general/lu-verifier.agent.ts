@@ -1,8 +1,8 @@
 /**
  * lu-verifier Agent - Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the lu-verifier agent configuration
 const luVerifierConfig: AgentConfig = {

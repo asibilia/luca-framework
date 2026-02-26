@@ -1,8 +1,8 @@
 /**
  * Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
  */
-import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // Define the self-improve rule configuration
 const selfImproveConfig: RuleConfig = {

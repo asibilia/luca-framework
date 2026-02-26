@@ -1,8 +1,8 @@
 /**
  * Luca Executor Agent - Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the lu-executor agent configuration
 const luExecutorConfig: AgentConfig = {

@@ -8,7 +8,7 @@ import { describe, test, expect } from "bun:test";
 import {
   sanitizeJsonParse,
   safeSanitizeJsonParse,
-} from "../../../src/shared/validation-utils";
+} from "../../../src/shared/__helpers/validation-utils";
 
 // ---------------------------------------------------------------------------
 // sanitizeJsonParse (7 cases)

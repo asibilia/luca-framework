@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { getArg, hasFlag, escapeRegex } from "../../../src/shared/cli-utils.ts";
+import { getArg, hasFlag, escapeRegex } from "../../../src/shared/__helpers/cli-utils.ts";
 
 // ─── getArg ──────────────────────────────────────────────────────────────────
 

@@ -3,12 +3,12 @@
  *
  * These factory wrappers are used across multiple test files to avoid duplication.
  */
-import { createAgent } from "../../src/agents/base/base-agent";
-import { createSkill } from "../../src/skills/base/base-skill";
-import { createRule } from "../../src/rules/base/base-rule";
-import type { AgentConfig } from "../../src/agents/types/agent.types";
-import type { SkillConfig } from "../../src/skills/types/skill.types";
-import type { RuleConfig } from "../../src/rules/types/rule.types";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 /**
  * Factory wrapper for creating test agents.

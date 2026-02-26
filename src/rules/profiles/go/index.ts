@@ -5,7 +5,7 @@
  * Rules will be added as they are defined (e.g., error handling patterns,
  * package organization, interface conventions, etc.).
  */
-import type { TechStackProfile } from "../profile.types";
+import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 /**
  * Go profile — currently empty, ready for rule population.

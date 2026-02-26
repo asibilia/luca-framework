@@ -3,11 +3,11 @@ import {
   parseProcedureContent,
   serializeProcedures,
   generateProcedureId,
-} from "../../../src/memory/procedure-parser.ts";
+} from "../../../src/memory/__helpers/procedure-parser.ts";
 import {
   procedureEntrySchema,
   procedureStepSchema,
-} from "../../../src/memory/types.ts";
+} from "~/memory/__schemas/memory.schemas";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────────
 

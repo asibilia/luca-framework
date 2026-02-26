@@ -1,8 +1,8 @@
 /**
  * config-settings Skill - Configure Luca workflow toggles, model profile, and agent settings.
  */
-import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the config-settings skill configuration
 const configSettingsConfig: SkillConfig = {

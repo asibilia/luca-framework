@@ -5,7 +5,7 @@
  * Rules will be added as they are defined (e.g., ownership patterns,
  * error handling with Result/Option, module organization, etc.).
  */
-import type { TechStackProfile } from "../profile.types";
+import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 /**
  * Rust profile — currently empty, ready for rule population.

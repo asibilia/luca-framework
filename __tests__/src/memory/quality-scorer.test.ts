@@ -2,9 +2,12 @@ import { describe, test, expect } from "bun:test";
 import {
   calculatePhaseQuality,
   scoreToZone,
-} from "../../../src/memory/quality-scorer.ts";
-import { phaseQualityMetricsSchema } from "../../../src/memory/types.ts";
-import type { HarnessResult, CheckResult } from "../../../src/harness/types.ts";
+} from "../../../src/memory/__helpers/quality-scorer.ts";
+import { phaseQualityMetricsSchema } from "~/memory/__schemas/memory.schemas";
+import type {
+  HarnessResult,
+  CheckResult,
+} from "~/harness/__schemas/harness.schemas";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

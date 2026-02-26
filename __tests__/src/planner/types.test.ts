@@ -9,7 +9,7 @@ import {
   todoMetadataSchema,
   zoneBoundarySchema,
   qualityZoneSchema,
-} from "../../../src/planner/types";
+} from "~/planner/__schemas/planner.schemas";
 
 describe("planner types", () => {
   test("qualityZoneSchema accepts valid zones", () => {

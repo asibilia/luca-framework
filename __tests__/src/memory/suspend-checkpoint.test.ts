@@ -15,7 +15,7 @@ import {
   clearSuspendCheckpoint,
   suspendCheckpointExists,
   suspendCheckpointSchema,
-} from "../../../src/memory/suspend-checkpoint.ts";
+} from "../../../src/memory/__helpers/suspend-checkpoint.ts";
 
 // ─── Test Setup ──────────────────────────────────────────────────────────────
 

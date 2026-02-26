@@ -9,14 +9,14 @@
 
 import { describe, test, expect } from "bun:test";
 
-import { parseTodos } from "../../../src/planner/todo-parser";
-import { scoreItem, rankByWSJF } from "../../../src/planner/scoring";
-import { scheduleSession } from "../../../src/planner/scheduler";
-import { distributeWeekly } from "../../../src/planner/weekly";
+import { parseTodos } from "../../../src/planner/__helpers/todo-parser";
+import { scoreItem, rankByWSJF } from "../../../src/planner/__helpers/scoring";
+import { scheduleSession } from "../../../src/planner/__helpers/scheduler";
+import { distributeWeekly } from "../../../src/planner/__helpers/weekly";
 import {
   buildCostTable,
   formatCostTableForMemory,
-} from "../../../src/planner/cost-model";
+} from "../../../src/planner/__helpers/cost-model";
 
 describe("planner integration", () => {
   test("end-to-end: parse -> score -> schedule -> plan", async () => {

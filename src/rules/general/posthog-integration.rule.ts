@@ -1,8 +1,8 @@
 /**
  * apply when interacting with PostHog/analytics tasks
  */
-import { createRule } from "../base/base-rule";
-import type { RuleConfig } from "../types/rule.types";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // Define the posthog-integration rule configuration
 const posthogIntegrationConfig: RuleConfig = {

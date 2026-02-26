@@ -50,8 +50,8 @@ function generateAgentTsContent(agentData: AgentData): string {
   return `/**
  * ${agentData.name} Agent - ${agentData.description}
  */
-import { createAgent } from '../base/base-agent';
-import type { AgentConfig } from '../types/agent.types';
+import { createAgent } from '~/agents/__helpers/create-agent';
+import type { AgentConfig } from '~/agents/__schemas/agent.schemas';
 
 // Define the ${agentData.name} agent configuration
 const ${configName}: AgentConfig = {

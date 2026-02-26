@@ -1,12 +1,12 @@
 import { describe, test, expect } from "bun:test";
-import type { ParsedError } from "../../../src/harness/types";
-import type { ClassifiedError } from "../../../src/iteration/types";
+import type { ParsedError } from "~/harness/__schemas/harness.schemas";
+import type { ClassifiedError } from "~/iteration/__schemas/iteration.schemas";
 import {
   createFingerprint,
   computeFingerprintOverlap,
   computeConvergenceSignals,
   assessConvergence,
-} from "../../../src/iteration/convergence";
+} from "../../../src/iteration/__helpers/convergence";
 
 describe("createFingerprint", () => {
   test("same error produces same fingerprint", () => {

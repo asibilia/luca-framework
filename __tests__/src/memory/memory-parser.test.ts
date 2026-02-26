@@ -5,7 +5,7 @@ import {
   extractTags,
   extractMetadataField,
   generateEntryId,
-} from "../../../src/memory/memory-parser.ts";
+} from "../../../src/memory/__helpers/memory-parser.ts";
 import { join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

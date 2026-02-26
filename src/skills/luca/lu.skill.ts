@@ -1,8 +1,8 @@
 /**
  * lu Skill - Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.
  */
-import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the lu skill configuration
 const luSkillConfig: SkillConfig = {

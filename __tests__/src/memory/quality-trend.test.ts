@@ -6,9 +6,9 @@ import {
   detectRegression,
   serializeTrend,
   deserializeTrend,
-} from "../../../src/memory/quality-trend.ts";
-import { phaseQualityMetricsSchema } from "../../../src/memory/types.ts";
-import type { PhaseQualityMetrics } from "../../../src/memory/types.ts";
+} from "../../../src/memory/__helpers/quality-trend.ts";
+import { phaseQualityMetricsSchema } from "~/memory/__schemas/memory.schemas";
+import type { PhaseQualityMetrics } from "~/memory/__schemas/memory.schemas";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

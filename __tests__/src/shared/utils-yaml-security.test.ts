@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect } from 'bun:test'
-import { formatFrontmatter } from '../../../src/shared/utils'
+import { formatFrontmatter } from '../../../src/shared/__helpers/utils'
 
 describe('YAML Security (js-yaml)', () => {
   test('escapes string values containing double quotes', () => {

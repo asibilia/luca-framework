@@ -18,6 +18,7 @@ import {
   skillRegistry,
   ruleRegistry,
   hookRegistry,
+  resolveHookRegistry,
   PLUGIN_EXCLUDED_HOOKS,
   isCommandSkill,
 } from "../../scripts/build-shared";
@@ -193,8 +194,9 @@ describe("Registry Completeness", () => {
   test("every src/hooks/scripts/*.sh has a hookRegistry entry", async () => {
     const hooksDir = path.join(ROOT, "src", "hooks", "scripts");
     const files = (await readdir(hooksDir)).filter((f) => f.endsWith(".sh"));
+    const resolved = resolveHookRegistry();
     const registryScripts = new Set(
-      Object.values(hookRegistry).map((h) => h.script),
+      Object.values(resolved).map((h) => h.script),
     );
     const missing = files.filter((f) => !registryScripts.has(f));
 
@@ -211,7 +213,7 @@ describe("No Orphan Outputs", () => {
   const validSkillNames = new Set(Object.keys(skillRegistry));
   const validRuleNames = new Set(Object.keys(ruleRegistry));
   const validHookScripts = new Set(
-    Object.values(hookRegistry).map((h) => h.script),
+    Object.values(resolveHookRegistry()).map((h) => h.script),
   );
 
   test("no orphan agent outputs in .claude/agents/", async () => {
@@ -391,8 +393,9 @@ describe("Plugin Output Freshness", () => {
 describe("Plugin No Orphan Outputs", () => {
   const validPluginAgentNames = new Set(Object.keys(agentRegistry));
   const validPluginSkillNames = new Set(Object.keys(skillRegistry));
+  const resolvedHooks = resolveHookRegistry();
   const pluginHookRegistry = Object.fromEntries(
-    Object.entries(hookRegistry).filter(
+    Object.entries(resolvedHooks).filter(
       ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
     ),
   );

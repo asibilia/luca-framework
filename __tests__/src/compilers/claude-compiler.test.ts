@@ -13,7 +13,7 @@ import {
   compileAgent,
   compileSkill,
   compileRule,
-} from "../../../src/compilers/compile";
+} from "../../../src/compilers/__helpers/compile";
 import {
   createTestAgent,
   createTestSkill,

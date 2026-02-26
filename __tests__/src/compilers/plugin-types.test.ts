@@ -5,7 +5,7 @@ import {
   generatePluginManifest,
   KEBAB_CASE_REGEX,
   SEMVER_REGEX,
-} from "../../../src/compilers/plugin.types";
+} from "~/compilers/__schemas/compilers.schemas";
 
 describe("KEBAB_CASE_REGEX", () => {
   test("accepts valid kebab-case names starting with a letter", () => {

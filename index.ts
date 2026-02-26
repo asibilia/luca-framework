@@ -11,29 +11,29 @@ export type {
   AgentSection,
   AgentConfig,
   BaseAgent,
-} from "./src/agents/types/agent.types";
+} from "./src/agents/__schemas/agent.schemas";
 
 export type {
   SkillFrontmatter,
   SkillSection,
   SkillConfig,
   BaseSkill,
-} from "./src/skills/types/skill.types";
+} from "./src/skills/__schemas/skill.schemas";
 
 export type {
   RuleFrontmatter,
   RuleSection,
   RuleConfig,
   BaseRule,
-} from "./src/rules/types/rule.types";
+} from "./src/rules/__schemas/rule.schemas";
 
 // Shared types
-export type { Result } from "./src/shared/types";
+export type { Result } from "./src/shared/__schemas/shared.schemas";
 
 // Factory functions
-export { createAgent } from "./src/agents/base/base-agent";
-export { createSkill } from "./src/skills/base/base-skill";
-export { createRule } from "./src/rules/base/base-rule";
+export { createAgent } from "./src/agents/__helpers/create-agent";
+export { createSkill } from "./src/skills/__helpers/create-skill";
+export { createRule } from "./src/rules/__helpers/create-rule";
 
 // Compilers (functional API)
 export {
@@ -50,14 +50,14 @@ export {
   compileRuleCursor,
   compileRulePlugin,
   validateFormat,
-} from "./src/compilers/compile";
-export type { SupportedFormat } from "./src/compilers/compile";
+} from "./src/compilers/__helpers/compile";
+export type { SupportedFormat } from "./src/compilers/__helpers/compile";
 
 // Luca-specific entities
 export { luExecutorAgent } from "./src/agents/luca/lu-executor.agent";
 export { luPlannerAgent } from "./src/agents/luca/lu-planner.agent";
 export { luSkill } from "./src/skills/luca/lu.skill";
-export { luWorkflowRule } from "./src/rules/lu-workflow.rule";
+export { luWorkflowRule } from "./src/rules/general/lu-workflow.rule";
 
 // Registries (for build scripts and consumers)
 export { agentRegistry } from "./src/agents/index";
@@ -121,4 +121,4 @@ export {
   safeValidateAgentConfig,
   safeValidateSkillConfig,
   safeValidateRuleConfig,
-} from "./src/shared/validation-utils";
+} from "./src/shared/__helpers/validation-utils";

@@ -2,8 +2,8 @@
  * lu-discuss-researcher Agent - Researches a single gray area question for phase-discuss auto mode.
  * Uses WebSearch and WebFetch scoped to project tech stack to produce a cited recommendation.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the lu-discuss-researcher agent configuration
 const luDiscussResearcherConfig: AgentConfig = {

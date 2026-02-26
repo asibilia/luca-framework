@@ -1,8 +1,8 @@
 /**
  * code-developer Agent - Implementation partner that writes production-quality code following established patterns. Use after architect approves design.
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the code-developer agent configuration
 const codeDeveloperConfig: AgentConfig = {

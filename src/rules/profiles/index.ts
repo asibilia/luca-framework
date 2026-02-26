@@ -10,12 +10,12 @@ import { pythonProfile } from "./python/index";
 import { goProfile } from "./go/index";
 import { rustProfile } from "./rust/index";
 
-import type { TechStackProfile } from "./profile.types";
+import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 // Re-export types and schemas for consumers
-export type { TechStackProfile } from "./profile.types";
-export { profileConfigSchema } from "./profile.schemas";
-export type { ProfileConfig } from "./profile.schemas";
+export type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
+export { ProfileConfigSchema } from "~/rules/__schemas/profile.schemas";
+export type { ProfileConfig } from "~/rules/__schemas/profile.schemas";
 
 /**
  * Registry of all available tech stack profiles.
@@ -25,9 +25,9 @@ export type { ProfileConfig } from "./profile.schemas";
  * 2. Define the profile with its rules
  * 3. Import and add it to this registry
  */
-export const profileRegistry: Record<string, TechStackProfile> = {
-  typescript: typescriptProfile,
-  python: pythonProfile,
-  go: goProfile,
-  rust: rustProfile,
+export const profileRegistry: Record<string, () => TechStackProfile> = {
+  typescript: () => typescriptProfile,
+  python: () => pythonProfile,
+  go: () => goProfile,
+  rust: () => rustProfile,
 };

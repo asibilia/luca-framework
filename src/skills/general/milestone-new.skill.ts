@@ -1,8 +1,8 @@
 /**
  * milestone-new Skill - Start a new milestone cycle with requirements gathering and roadmap generation.
  */
-import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the milestone-new skill configuration
 const milestoneNewConfig: SkillConfig = {

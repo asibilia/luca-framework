@@ -1,19 +1,19 @@
 import { describe, test, expect } from "bun:test";
-import { profileConfigSchema } from "../../../../src/rules/profiles/profile.schemas";
+import { ProfileConfigSchema } from "~/rules/__schemas/profile.schemas";
 
-describe("profileConfigSchema defaults", () => {
+describe("ProfileConfigSchema defaults", () => {
   test("defaults opinionated_guidelines to true", () => {
-    const result = profileConfigSchema.parse({});
+    const result = ProfileConfigSchema.parse({});
     expect(result.opinionated_guidelines).toBe(true);
   });
 
   test('defaults tech_stack_profiles to ["typescript"]', () => {
-    const result = profileConfigSchema.parse({});
+    const result = ProfileConfigSchema.parse({});
     expect(result.tech_stack_profiles).toEqual(["typescript"]);
   });
 
   test("parses explicit values correctly", () => {
-    const result = profileConfigSchema.parse({
+    const result = ProfileConfigSchema.parse({
       opinionated_guidelines: false,
       tech_stack_profiles: ["python", "go"],
     });
@@ -22,9 +22,9 @@ describe("profileConfigSchema defaults", () => {
   });
 });
 
-describe("profileConfigSchema validation", () => {
+describe("ProfileConfigSchema validation", () => {
   test("accepts valid config with all fields", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       opinionated_guidelines: true,
       tech_stack_profiles: ["typescript", "python"],
     });
@@ -32,7 +32,7 @@ describe("profileConfigSchema validation", () => {
   });
 
   test("accepts empty profiles array", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       opinionated_guidelines: true,
       tech_stack_profiles: [],
     });
@@ -43,28 +43,28 @@ describe("profileConfigSchema validation", () => {
   });
 
   test("rejects non-boolean opinionated_guidelines", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       opinionated_guidelines: "yes",
     });
     expect(result.success).toBe(false);
   });
 
   test("rejects non-array tech_stack_profiles", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       tech_stack_profiles: "typescript",
     });
     expect(result.success).toBe(false);
   });
 
   test("rejects non-string items in tech_stack_profiles", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       tech_stack_profiles: [123, true],
     });
     expect(result.success).toBe(false);
   });
 
   test("accepts partial config (only opinionated_guidelines)", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       opinionated_guidelines: false,
     });
     expect(result.success).toBe(true);
@@ -75,7 +75,7 @@ describe("profileConfigSchema validation", () => {
   });
 
   test("accepts partial config (only tech_stack_profiles)", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       tech_stack_profiles: ["rust"],
     });
     expect(result.success).toBe(true);
@@ -86,7 +86,7 @@ describe("profileConfigSchema validation", () => {
   });
 
   test("ignores extra fields", () => {
-    const result = profileConfigSchema.safeParse({
+    const result = ProfileConfigSchema.safeParse({
       opinionated_guidelines: true,
       tech_stack_profiles: ["typescript"],
       extra_field: "ignored",

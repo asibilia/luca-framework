@@ -36,17 +36,17 @@ import { luExecutorAgent } from "./luca/lu-executor.agent";
 import { luPlannerAgent } from "./luca/lu-planner.agent";
 
 // Export factory function
-export { createAgent } from "./base/base-agent";
+export { createAgent } from "./__helpers/create-agent";
 
 // Export types
 export type {
   AgentConfig,
   AgentFrontmatter,
   AgentSection,
-} from "./types/agent.types";
+} from "./__schemas/agent.schemas";
 
 // Import BaseAgent for registry type annotation (also re-exported)
-import type { BaseAgent } from "./types/agent.types";
+import type { BaseAgent } from "./__schemas/agent.schemas";
 export type { BaseAgent };
 
 // Registry mapping agent names to factory functions for bulk processing

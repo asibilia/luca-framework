@@ -5,8 +5,8 @@ import {
   calculateMilestoneProximity,
   calculateTagOverlap,
   scoreMilestoneRecall,
-} from "../../../src/memory/milestone-recall.ts";
-import type { MemoryEntry } from "../../../src/memory/types.ts";
+} from "../../../src/memory/__helpers/milestone-recall.ts";
+import type { MemoryEntry } from "~/memory/__schemas/memory.schemas";
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 

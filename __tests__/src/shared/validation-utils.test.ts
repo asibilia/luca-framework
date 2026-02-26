@@ -12,7 +12,7 @@ import {
   safeValidateAgentConfig,
   safeValidateSkillConfig,
   safeValidateRuleConfig,
-} from "../../../src/shared/validation-utils";
+} from "../../../src/shared/__helpers/validation-utils";
 import {
   validAgentConfig,
   validSkillConfig,

@@ -1,8 +1,8 @@
 /**
  * Use Bun package manager and runtime over npm or yarn where applicable
  */
-import { createRule } from "../../base/base-rule";
-import type { RuleConfig } from "../../types/rule.types";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // Define the bun-preference rule configuration
 const bunPreferenceConfig: RuleConfig = {

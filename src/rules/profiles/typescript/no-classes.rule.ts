@@ -1,8 +1,8 @@
 /**
  * Prohibit class usage in favor of functional programming patterns
  */
-import { createRule } from "../../base/base-rule";
-import type { RuleConfig } from "../../types/rule.types";
+import { createRule } from "~/rules/__helpers/create-rule";
+import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 
 // Define the no-classes rule configuration
 const noClassesConfig: RuleConfig = {

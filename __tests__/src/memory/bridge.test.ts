@@ -4,7 +4,7 @@ import { $ } from "bun";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
-const BRIDGE = "src/memory/bridge.ts";
+const BRIDGE = "src/memory/__helpers/bridge.ts";
 const MEMORY_PATH = ".planning/MEMORY.md";
 const WORKING_PATH = ".planning/WORKING.md";
 const PROCEDURES_PATH = ".planning/PROCEDURES.md";

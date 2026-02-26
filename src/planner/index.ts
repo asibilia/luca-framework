@@ -37,7 +37,7 @@ export {
   plannerConfigSchema,
   // Todo metadata
   todoMetadataSchema,
-} from "./types";
+} from "./__schemas/planner.schemas";
 
 export type {
   QualityZone,
@@ -51,7 +51,7 @@ export type {
   TokenCostEstimate,
   PlannerConfig,
   TodoMetadata,
-} from "./types";
+} from "./__schemas/planner.schemas";
 
 // Defaults
 export {
@@ -63,7 +63,7 @@ export {
   DEFAULT_PLANNER_CONFIG,
   DEFAULT_SESSION_CAP_MINUTES,
   MAX_CONTEXT_PERCENT,
-} from "./defaults";
+} from "./__helpers/defaults";
 
 // Scoring engine
 export {
@@ -71,7 +71,7 @@ export {
   effortFromComplexity,
   rankByWSJF,
   scoreItem,
-} from "./scoring";
+} from "./__helpers/scoring";
 
 // Session scheduling
 export {
@@ -80,14 +80,14 @@ export {
   assignQualityZone,
   scheduleSession,
   generateMermaidGantt,
-} from "./scheduler";
+} from "./__helpers/scheduler";
 
 // Weekly planning
 export {
   classifyBucket,
   partitionIntoBuckets,
   distributeWeekly,
-} from "./weekly";
+} from "./__helpers/weekly";
 
 // Token cost model
 export {
@@ -96,7 +96,7 @@ export {
   calibrateCost,
   buildCostTable,
   formatCostTableForMemory,
-} from "./cost-model";
+} from "./__helpers/cost-model";
 
 // Todo file parsing
 export {
@@ -104,4 +104,4 @@ export {
   extractBody,
   parseSingleTodo,
   parseTodos,
-} from "./todo-parser";
+} from "./__helpers/todo-parser";

@@ -3,8 +3,8 @@
  * scores items by WSJF, and produces optimized session/weekly plans.
  * READ-ONLY: Produces plans but cannot execute changes (PLAN-07).
  */
-import { createAgent } from "../base/base-agent";
-import type { AgentConfig } from "../types/agent.types";
+import { createAgent } from "~/agents/__helpers/create-agent";
+import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 const luPmPlannerConfig: AgentConfig = {
   frontmatter: {

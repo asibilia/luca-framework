@@ -10,44 +10,42 @@
  * - workflow.tech_stack_profiles: array of profile names (default: ["typescript"])
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { sanitizeJsonParse } from "~/shared/__helpers/validation-utils";
+
 // Import general/framework rules (always active)
 import { atlassianMcpRule } from "./general/atlassian-mcp.rule";
 import { complexityGatingRule } from "./general/complexity-gating.rule";
 import { cursorRulesRule } from "./general/cursor-rules.rule";
+import { domainArchitectureRule } from "./general/domain-architecture.rule";
 import { fileNamingRule } from "./general/file-naming.rule";
 import { harnessVerificationRule } from "./general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "./general/hook-skill-boundary.rule";
+import { luWorkflowRule } from "./general/lu-workflow.rule";
+import { moduleBoundaryRule } from "./general/module-boundary.rule";
 import { mandatoryDocumentationRule } from "./general/mandatory-documentation.rule";
 import { posthogIntegrationRule } from "./general/posthog-integration.rule";
 import { selfImproveRule } from "./general/self-improve.rule";
 import { stateMachineBridgeRule } from "./general/state-machine-bridge.rule";
+import { profileRegistry, ProfileConfigSchema } from "./profiles/index";
 
-// Import Luca-specific rule
-import { luWorkflowRule } from "./lu-workflow.rule";
-
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { sanitizeJsonParse } from "../shared/validation-utils";
-
-// Import profile registry and config schema
-import { profileRegistry, profileConfigSchema } from "./profiles/index";
+import type { BaseRule } from "./__schemas/rule.schemas";
 
 // Export base rule factory
-export { createRule } from "./base/base-rule";
+export { createRule } from "./__helpers/create-rule";
 
 // Export types
 export type {
   RuleConfig,
   RuleFrontmatter,
   RuleSection,
-} from "./types/rule.types";
-
-// Import BaseRule for registry type annotation (also re-exported)
-import type { BaseRule } from "./types/rule.types";
+} from "./__schemas/rule.schemas";
 export type { BaseRule };
 
 // Re-export profile infrastructure for consumers
-export { profileRegistry, profileConfigSchema };
+export { profileRegistry, ProfileConfigSchema };
 export type { TechStackProfile, ProfileConfig } from "./profiles/index";
 
 // ---------------------------------------------------------------------------
@@ -57,10 +55,12 @@ const generalRules: Record<string, () => BaseRule> = {
   "atlassian-mcp": () => atlassianMcpRule,
   "complexity-gating": () => complexityGatingRule,
   "cursor-rules": () => cursorRulesRule,
+  "domain-architecture": () => domainArchitectureRule,
   "file-naming": () => fileNamingRule,
   "harness-verification": () => harnessVerificationRule,
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
+  "module-boundary": () => moduleBoundaryRule,
   "posthog-integration": () => posthogIntegrationRule,
   "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,
@@ -86,10 +86,10 @@ function loadProfileConfig(): {
     const raw = readFileSync(configPath, "utf-8");
     const config = sanitizeJsonParse(raw) as Record<string, any>;
     const workflow = config?.workflow ?? {};
-    return profileConfigSchema.parse(workflow);
+    return ProfileConfigSchema.parse(workflow);
   } catch {
     // Fallback to defaults if config is missing or unreadable
-    return profileConfigSchema.parse({});
+    return ProfileConfigSchema.parse({});
   }
 }
 
@@ -109,8 +109,9 @@ function loadProfileRules(): Record<string, () => BaseRule> {
   const profileRules: Record<string, () => BaseRule> = {};
 
   for (const profileName of config.tech_stack_profiles) {
-    const profile = profileRegistry[profileName];
-    if (profile) {
+    const profileThunk = profileRegistry[profileName];
+    if (profileThunk) {
+      const profile = profileThunk();
       Object.assign(profileRules, profile.rules);
     }
   }

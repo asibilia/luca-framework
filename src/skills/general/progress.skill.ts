@@ -1,8 +1,8 @@
 /**
  * progress Skill - Check project progress, show current state, and suggest the next action to take.
  */
-import { createSkill } from "../base/base-skill";
-import type { SkillConfig } from "../types/skill.types";
+import { createSkill } from "~/skills/__helpers/create-skill";
+import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the progress skill configuration
 const progressConfig: SkillConfig = {
