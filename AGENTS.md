@@ -94,3 +94,30 @@ Use Bun's test framework:
 - `.github/copilot-instructions.md` - GitHub Copilot instructions
 - `.github/agents/` - Agent persona configs
 - `.github/prompts/` - Reusable prompt templates
+
+## Cursor Cloud specific instructions
+
+### Project context
+
+Luca is a **developer tooling monorepo** (not a web app). There is no running web server or database. It produces CLI tools and build artifacts for AI-powered IDE workflows.
+
+### Services & commands
+
+| Action | Command |
+|--------|---------|
+| Install deps | `bun install` |
+| Type check | `bunx --bun tsc --noEmit` |
+| Run tests | `bun test` |
+| Build packages (unbuild) | `bun run build` |
+| Build full pipeline (agents/skills/rules/hooks/plugin) | `bun run build:all` |
+| Drift check (verify outputs match source) | `bun run check:drift` |
+| Luca CLI | `bun run packages/luca-framework/bin/luca.js <command>` |
+| State machine bridge | `bun run packages/luca-state/src/bridge.ts <command>` |
+
+### Non-obvious caveats
+
+- **Build before full test suite**: Some tests in `__tests__/scripts/` (plugin-spec, build-output, check-drift) require `bun run build:all` to have been run first — they validate built artifacts under `dist/plugin/`.
+- **Test isolation issue**: ~29 tests in `packages/luca-framework` fail when run in the full suite due to a module resolution ordering issue (`validateBranding` export not found). These same tests **pass individually** (`bun test __tests__/packages/luca-framework/`). This is a pre-existing issue.
+- **No ESLint**: The project has no ESLint configuration. Linting is limited to TypeScript type checking.
+- **Bun is required**: The project uses `bun.lock` and `bunfig.toml`. Bun may not be pre-installed on Cloud Agent VMs — install via `curl -fsSL https://bun.sh/install | bash` if missing.
+- **No `.env` required**: No environment variables are needed for core development. Jira adapter env vars (`JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`) are optional.
