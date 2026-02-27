@@ -35,8 +35,8 @@
 
 **Depends on:** Phase 68 (runtime must be validated before adding new extension)
 
-- [ ] Plan 69-A: Design and implement luca-subagents.ts core (create, continue, remove, list)
-- [ ] Plan 69-B: Widget dashboard, session management, and luca-teams.ts integration
+- [x] Plan 69-A: Implement luca-subagents.ts (create, list, result, remove — 4 tools)
+- [x] Plan 69-B: Teams integration, session management, E2E tests
 
 ---
 

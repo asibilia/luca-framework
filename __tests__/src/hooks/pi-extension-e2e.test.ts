@@ -61,6 +61,7 @@ async function loadAllExtensions() {
     "luca-query-experts.ts",
     "luca-safety-rules.ts",
     "luca-purpose-gating.ts",
+    "luca-subagents.ts",
     "luca-hooks.ts",
   ];
   for (const f of files) {
@@ -105,6 +106,7 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-query-experts.ts", tools: 4, events: 0 },
     { file: "luca-safety-rules.ts", tools: 5, events: 1 },
     { file: "luca-purpose-gating.ts", tools: 6, events: 1 },
+    { file: "luca-subagents.ts", tools: 4, events: 1 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
   ];
 
@@ -143,9 +145,9 @@ describe("Pi extension E2E: loading", () => {
     }
   });
 
-  test("all extensions combined register exactly 39 tools", async () => {
+  test("all extensions combined register exactly 43 tools", async () => {
     const mock = await loadAllExtensions();
-    expect(mock.tools.size).toBe(39);
+    expect(mock.tools.size).toBe(43);
   });
 });
 
@@ -254,6 +256,30 @@ describe("Pi extension E2E: tool responses", () => {
     expectPiResponse(result);
     const data = JSON.parse(result.content[0].text);
     expect(data.total).toBe(0);
+  });
+
+  test("luca_subagent_list returns empty array initially", async () => {
+    const result = await callTool(tools, "luca_subagent_list");
+    expectPiResponse(result);
+    const data = JSON.parse(result.content[0].text);
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBe(0);
+  });
+
+  test("luca_subagent_result returns not-found for invalid ID", async () => {
+    const result = await callTool(tools, "luca_subagent_result", {
+      id: "nonexistent",
+    });
+    expectPiResponse(result);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  test("luca_subagent_remove returns not-found for invalid ID", async () => {
+    const result = await callTool(tools, "luca_subagent_remove", {
+      id: "nonexistent",
+    });
+    expectPiResponse(result);
+    expect(result.content[0].text).toContain("not found");
   });
 });
 

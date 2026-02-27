@@ -62,6 +62,7 @@ export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-query-experts.ts",
   "luca-safety-rules.ts",
   "luca-purpose-gating.ts",
+  "luca-subagents.ts",
 ] as const;
 
 /**

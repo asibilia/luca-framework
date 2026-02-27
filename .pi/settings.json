@@ -17,7 +17,8 @@
     ".pi/extensions/luca-tilldone.ts",
     ".pi/extensions/luca-query-experts.ts",
     ".pi/extensions/luca-safety-rules.ts",
-    ".pi/extensions/luca-purpose-gating.ts"
+    ".pi/extensions/luca-purpose-gating.ts",
+    ".pi/extensions/luca-subagents.ts"
   ],
   "shell": "/bin/zsh"
 }
