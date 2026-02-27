@@ -72,7 +72,6 @@ export const PI_EXTENSION_FILES: readonly string[] = [
  * Must be copied alongside extensions for imports to resolve.
  */
 export const PI_HELPER_FILES: readonly string[] = [
-  "index.ts",
   "sanitize.ts",
   "response.ts",
   "frontmatter.ts",
@@ -80,6 +79,9 @@ export const PI_HELPER_FILES: readonly string[] = [
   "registry.ts",
   "status.ts",
 ] as const;
+// Note: index.ts barrel is NOT included — Pi auto-discovers
+// .pi/extensions/*/index.ts as extensions. Extensions import
+// directly from individual helper files, not the barrel.
 
 /**
  * Hooks excluded from plugin builds.

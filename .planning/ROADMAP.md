@@ -26,8 +26,8 @@
 
 **Depends on:** Phase 67 (extensions must use shared helpers before validation)
 
-- [ ] Plan 68-A: Extension loading smoke tests and tool response validation
-- [ ] Plan 68-B: Fix runtime issues and cross-extension integration tests
+- [x] Plan 68-A: Extension loading smoke tests, __helpers fix, tool response validation
+- [x] Plan 68-B: Permanent E2E test suite (33 tests) for Pi extensions
 
 ### Phase 69 — Background Subagent Spawning
 
