@@ -119,7 +119,7 @@ export default function lucaComplexity(pi: any) {
 
     const content = readFileSync(stateMdPath, "utf-8");
     const match = content.match(/\*\*Task Complexity:\*\*\s*(\w+)/i);
-    if (match) {
+    if (match?.[1]) {
       const level = match[1].toUpperCase();
       if (COMPLEXITY_LEVELS.includes(level as ComplexityLevel)) {
         return level as ComplexityLevel;
@@ -128,7 +128,7 @@ export default function lucaComplexity(pi: any) {
 
     // Try non-bold format
     const simpleMatch = content.match(/Task Complexity:\s*(\w+)/i);
-    if (simpleMatch) {
+    if (simpleMatch?.[1]) {
       const level = simpleMatch[1].toUpperCase();
       if (COMPLEXITY_LEVELS.includes(level as ComplexityLevel)) {
         return level as ComplexityLevel;
@@ -248,14 +248,5 @@ export default function lucaComplexity(pi: any) {
         gates: gate,
       });
     },
-  });
-
-  // Show complexity in footer on session start
-  pi.on("session_start", async (_event: any, ctx: any) => {
-    const level = readComplexity();
-    const tier = COMPLEXITY_TIER[level];
-    if (ctx?.ui?.setStatus) {
-      ctx.ui.setStatus("luca-complexity", `Complexity: ${level} (${tier})`);
-    }
   });
 }

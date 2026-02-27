@@ -18,6 +18,7 @@ import { join } from "path";
 
 import { runShellCommand } from "./__helpers/exec";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import { createStatusFormatter } from "./__helpers/status";
 
 export default function lucaHarness(pi: any) {
   const cwd = process.cwd();
@@ -176,14 +177,19 @@ export default function lucaHarness(pi: any) {
     const allPassed = results.every((r) => r.status === "passed");
     const failedChecks = results.filter((r) => r.status !== "passed");
 
+    const fmt = createStatusFormatter(ctx);
+
     if (allPassed) {
       if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus("luca-harness", "All checks passed");
+        ctx.ui.setStatus("luca-harness", fmt.success("\u2713 All passing"));
       }
     } else {
       const failNames = failedChecks.map((c) => c.name).join(", ");
       if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus("luca-harness", `FAILED: ${failNames}`);
+        ctx.ui.setStatus(
+          "luca-harness",
+          fmt.bold(fmt.error(`\u2717 FAILED: ${failNames}`)),
+        );
       }
 
       // Surface failures to the LLM for auto-fix

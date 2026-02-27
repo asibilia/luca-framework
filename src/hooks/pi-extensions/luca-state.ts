@@ -13,6 +13,11 @@ import { join } from "path";
 
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { escapeRegExp } from "./__helpers/sanitize";
+import {
+  createStatusFormatter,
+  SEP,
+  COMPLEXITY_TIERS,
+} from "./__helpers/status";
 
 export default function lucaState(pi: any) {
   const cwd = process.cwd();
@@ -37,13 +42,13 @@ export default function lucaState(pi: any) {
 
     for (const line of lines) {
       const match = line.match(/^\*\*(.+?):\*\*\s*(.+)$/);
-      if (match) {
+      if (match?.[1] && match[2]) {
         const key = match[1].trim().toLowerCase().replace(/\s+/g, "_");
         state[key] = match[2].trim();
       }
       // Also match "Key: Value" format (without bold)
       const simpleMatch = line.match(/^([A-Z][a-z ]+):\s*(.+)$/);
-      if (simpleMatch && !match) {
+      if (simpleMatch?.[1] && simpleMatch[2] && !match) {
         const key = simpleMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
         state[key] = simpleMatch[2].trim();
       }
@@ -151,14 +156,46 @@ export default function lucaState(pi: any) {
     },
   });
 
-  // Show state in footer on session start
+  // Show consolidated state in footer on session start
   pi.on("session_start", async (_event: any, ctx: any) => {
+    if (!ctx?.ui?.setStatus) return;
+
     const state = readStateMd();
-    const phase = state["current_phase"] ?? "?";
-    const complexity = state["task_complexity"] ?? "?";
-    const milestone = state["current_milestone"] ?? "?";
-    if (ctx?.ui?.setStatus) {
-      ctx.ui.setStatus("luca", `${milestone} | Phase ${phase} | ${complexity}`);
-    }
+    const phase = state["current_phase"] ?? "--";
+    const milestone = state["current_milestone"] ?? "--";
+    const complexity = (state["task_complexity"] ?? "MODERATE").toUpperCase();
+    const tier = COMPLEXITY_TIERS[complexity] ?? "standard";
+
+    // Check memory file existence
+    const brainExists = existsSync(join(planningDir, "BRAIN.md"));
+    const memoryExists = existsSync(join(planningDir, "MEMORY.md"));
+    const workingExists = existsSync(join(planningDir, "WORKING.md"));
+
+    const fmt = createStatusFormatter(ctx);
+
+    // Phase + milestone segment
+    const phaseSegment = fmt.accent(`P${phase} ${milestone}`);
+
+    // Complexity segment — color by tier
+    const complexityColor =
+      tier === "thorough"
+        ? fmt.error
+        : tier === "standard"
+          ? fmt.warning
+          : fmt.muted;
+    const complexitySegment = fmt.hasTheme
+      ? complexityColor(complexity)
+      : `${complexity} (${tier})`;
+
+    // Memory indicators — green if loaded, dim if missing
+    const b = brainExists ? fmt.success("B") : fmt.dim("B");
+    const m = memoryExists ? fmt.success("M") : fmt.dim("M");
+    const w = workingExists ? fmt.success("W") : fmt.dim("W");
+    const memorySegment = `${b} ${m} ${w}`;
+
+    ctx.ui.setStatus(
+      "luca-state",
+      `${phaseSegment}${SEP}${complexitySegment}${SEP}${memorySegment}`,
+    );
   });
 }

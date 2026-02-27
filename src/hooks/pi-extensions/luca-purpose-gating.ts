@@ -336,8 +336,9 @@ export default function lucaPurposeGating(pi: any) {
       // Group by purpose
       const grouped: Record<string, string[]> = {};
       for (const agent of eligible) {
-        if (!grouped[agent.purpose]) grouped[agent.purpose] = [];
-        grouped[agent.purpose].push(agent.agent);
+        const bucket = grouped[agent.purpose] ?? [];
+        bucket.push(agent.agent);
+        grouped[agent.purpose] = bucket;
       }
 
       return createJsonResponse({

@@ -187,7 +187,7 @@ export default function lucaMemory(pi: any) {
         let insertIdx = lines.length;
 
         for (let i = headerIdx + 1; i < lines.length; i++) {
-          if (lines[i].startsWith("## ")) {
+          if (lines[i]?.startsWith("## ")) {
             insertIdx = i;
             break;
           }
@@ -217,19 +217,6 @@ export default function lucaMemory(pi: any) {
     // Inject BRAIN.md into session context if Pi supports it
     if (ctx?.addSystemContext) {
       ctx.addSystemContext("luca-brain", brain);
-    }
-
-    // Show memory status in footer
-    const memoryExists = existsSync(memoryPath);
-    const workingExists = existsSync(workingPath);
-    const status = [
-      "BRAIN loaded",
-      memoryExists ? "MEMORY available" : "no MEMORY",
-      workingExists ? "WORKING active" : "no WORKING",
-    ].join(" | ");
-
-    if (ctx?.ui?.setStatus) {
-      ctx.ui.setStatus("luca-memory", status);
     }
   });
 }

@@ -185,7 +185,7 @@ export default function lucaQueryExperts(pi: any) {
           }
           expertDefs.push({
             domain: safeDomain,
-            focus_areas: parts[1].split("|").map((f) => f.trim()),
+            focus_areas: (parts[1] ?? "").split("|").map((f) => f.trim()),
             description: `Custom expert — ${safeDomain}`,
           });
         } else {

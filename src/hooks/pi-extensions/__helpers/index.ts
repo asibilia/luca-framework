@@ -15,3 +15,5 @@ export {
   isWithinDirectory,
   normalizeContext,
 } from "./sanitize";
+export { createStatusFormatter, SEP, COMPLEXITY_TIERS } from "./status";
+export type { StatusFormatter } from "./status";
