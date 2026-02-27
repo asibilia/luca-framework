@@ -18,7 +18,7 @@
 So “posting a todo” **without** the Cursor UI = **write a valid `.planning/todos/pending/{slug}.md`** and run:
 
 ```bash
-bun run packages/luca-state/src/bridge.ts snapshot
+bun run packages/luca-framework/src/state/bridge.ts snapshot
 ```
 
 (from repo root; or equivalent if your Luca project lives elsewhere).
@@ -33,7 +33,7 @@ bun run packages/luca-state/src/bridge.ts snapshot
 
 - **`src/planner/todo-parser.ts`** — `parseYamlFrontmatter`, `extractBody`, `parseSingleTodo`, `parseTodos`. Use this to validate and read todos.
 - **`src/planner/types.ts`** — `todoMetadataSchema`, `TodoMetadata`. Use for the exact shape of a valid todo.
-- **`packages/luca-state/src/bridge.ts`** — `snapshot` subcommand to refresh STATE.md after adding a todo.
+- **`packages/luca-framework/src/state/bridge.ts`** — `snapshot` subcommand to refresh STATE.md after adding a todo.
 
 ---
 
@@ -58,7 +58,7 @@ Recommended: **external watcher** (Bun script or `fswatch`) pointing at the vaul
   - **Option A (no LLM):** Use heuristics: first line or first `# ` as title, rest as body; `area: workflow` default; `source: obsidian-drop`; `created: today ISO`.
   - **Option B (with LLM):** Send file content to Claude (e.g. via Cursor MCP or API) with a small prompt: “From this note, extract: title, area (one of api|ui|auth|data|workflow|config|…), and body (Context / Task / Notes). Output structured.” Then build the todo from that.
 - **Output:** Write one file to `.planning/todos/pending/{slug}.md` in the format expected by `todoMetadataSchema` and the existing skills (see existing pending todo example in repo).
-- **Then:** Run `bun run packages/luca-state/src/bridge.ts snapshot` (from the Luca project root that contains `.planning/`).
+- **Then:** Run `bun run packages/luca-framework/src/state/bridge.ts snapshot` (from the Luca project root that contains `.planning/`).
 
 You can implement this in this repo as e.g. `scripts/ingest-obsidian-to-todo.ts` (or a small package under `packages-dev/`), and call it from the file watcher with the path to the new Obsidian file. Use `todo-parser` + `todoMetadataSchema` to validate before writing.
 
@@ -96,7 +96,7 @@ So: **autonomous milestones** = run `/autopilot` (or equivalent) with the desire
      - Parse file (heuristic or LLM) → `title`, `area`, `created`, `source: obsidian-drop`, body.
      - Slug from title (same rules as quick.skill).
      - Write `.planning/todos/pending/{slug}.md` (create dir if needed).
-     - Run `bun run packages/luca-state/src/bridge.ts snapshot` in project root.
+     - Run `bun run packages/luca-framework/src/state/bridge.ts snapshot` in project root.
    - Reuse `todoMetadataSchema` / `parseSingleTodo` for validation if you read back the file.
 
 3. **File watcher**
@@ -130,5 +130,5 @@ Example env (optional):
 - Example pending todo: `.planning/todos/pending/package-json-health.md`.
 - todo-add skill: `.cursor/skills/todo-add/SKILL.md`, `src/skills/general/todo-add.skill.ts`.
 - autopilot skill: `.cursor/skills/autopilot/SKILL.md` (backlog scan at Step 1, roadmap revision, milestone-new/milestone-complete).
-- Bridge snapshot: `packages/luca-state/src/bridge.ts` subcommand `snapshot`.
+- Bridge snapshot: `packages/luca-framework/src/state/bridge.ts` subcommand `snapshot`.
 - Slug style: `src/skills/general/quick.skill.ts` (slug generation in prompt).

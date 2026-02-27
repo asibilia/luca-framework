@@ -133,7 +133,7 @@ Luca is a **developer tooling monorepo** (not a web app). There is no running we
 | Build full pipeline (agents/skills/rules/hooks/plugin) | `bun run build:all`                                     |
 | Drift check (verify outputs match source)              | `bun run check:drift`                                   |
 | Luca CLI                                               | `bun run packages/luca-framework/bin/luca.js <command>` |
-| State machine bridge                                   | `bun run packages/luca-state/src/bridge.ts <command>`   |
+| State machine bridge                                   | `bun run packages/luca-framework/src/state/bridge.ts <command>`   |
 
 ### Non-obvious caveats
 

@@ -364,6 +364,15 @@ Output routing decision for the unified entry point:
 
 {Route-specific instructions}
 
+### Model Recommendation
+- **Recommended model**: {opus|sonnet|haiku}
+- **Rationale**: {agent complexity override | agent default | complexity gate default}
+
+Include \`recommended_model\` in your output based on:
+- If the target agent has model_routing.complexity_overrides for this level: use that
+- If the target agent has model_routing.default_model: use that
+- Otherwise use the complexity level default: TRIVIAL/SIMPLE=haiku, MODERATE/COMPLEX=sonnet, CRITICAL=opus
+
 ### Verification
 **Mode**: {quick|standard|full}
 **Always runs**: Yes

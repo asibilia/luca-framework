@@ -27,6 +27,7 @@ import { sessionResumeSkill } from "./general/session-resume.skill";
 import { phaseResearchSkill } from "./general/phase-research.skill";
 import { configProfileSkill } from "./general/config-profile.skill";
 import { quickSkill } from "./general/quick.skill";
+import { repoAuditSkill } from "./general/repo-audit.skill";
 import { milestoneGapsSkill } from "./general/milestone-gaps.skill";
 import { phasePlanSkill } from "./general/phase-plan.skill";
 import { sessionPlanSkill } from "./general/session-plan.skill";
@@ -91,6 +92,7 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "phase-research": () => phaseResearchSkill,
   "config-profile": () => configProfileSkill,
   quick: () => quickSkill,
+  "repo-audit": () => repoAuditSkill,
   "milestone-gaps": () => milestoneGapsSkill,
   "phase-plan": () => phasePlanSkill,
   "session-plan": () => sessionPlanSkill,

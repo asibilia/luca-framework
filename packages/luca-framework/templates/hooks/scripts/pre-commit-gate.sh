@@ -74,7 +74,8 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 
 # Step 0: Sync STATE.md from state machine (if available)
 # This ensures commits always contain a STATE.md matching machine state.
-BRIDGE="$PROJECT_DIR/packages/luca-state/src/bridge.ts"
+# Resolve bridge: try installed package, then monorepo path
+BRIDGE=$(node -e "console.log(require.resolve('@asibilia/luca-framework/state/bridge'))" 2>/dev/null || echo "$PROJECT_DIR/packages/luca-framework/src/state/bridge.ts")
 STATE_JSON="$PROJECT_DIR/.planning/state.json"
 
 if [ -f "$BRIDGE" ] && [ -f "$STATE_JSON" ]; then

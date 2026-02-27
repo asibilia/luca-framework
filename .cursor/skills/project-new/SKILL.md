@@ -500,7 +500,7 @@ Based on config depth setting:
 
    \`\`\`bash
    # Primary: Initialize state via bridge (creates state.json + STATE.md)
-   bun run packages/luca-state/src/bridge.ts ensure-init 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
    # Fallback: Create .planning/STATE.md initialized to Phase 1, ready_for_planning
    \`\`\`
 
@@ -556,9 +556,9 @@ Use AskQuestion tool:
 
    ```bash
    # Primary: Set fields via bridge (updates state.json + regenerates STATE.md)
-   bun run packages/luca-state/src/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts set-field --field=branch --value="{issue_number}--{project-slug}" 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=branch --value="{issue_number}--{project-slug}" 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
    # Fallback: Add to STATE.md Project Reference section manually
    ```
 

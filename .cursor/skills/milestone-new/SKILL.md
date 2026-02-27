@@ -39,7 +39,7 @@ Read these reference files before executing:
 
    ```bash
    # Primary: Read state from bridge (typed, validated)
-   STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+   STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
    # Fallback: Read STATE.md directly (backward compatibility)
    STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
    ```
@@ -51,10 +51,10 @@ Read these reference files before executing:
 
    ```bash
    # Primary: Reset state machine and reinitialize for new milestone
-   bun run packages/luca-state/src/bridge.ts transition --event=RESET 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts ensure-init --force 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts set-field --field=current_milestone --value="v{version}" 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts transition --event=RESET 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts ensure-init --force 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=current_milestone --value="v{version}" 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
    # Fallback: Update STATE.md directly if bridge unavailable
    ```
 
@@ -89,9 +89,9 @@ How should this milestone be tracked on GitHub?
 5. Update state with new issue/branch references:
 
    ```bash
-   bun run packages/luca-state/src/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   bun run packages/luca-state/src/bridge.ts snapshot 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
    # Fallback: Update STATE.md directly
    ```
 

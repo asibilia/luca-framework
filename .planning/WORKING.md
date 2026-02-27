@@ -3,36 +3,29 @@
 ## Session Info
 
 - **Started**: 2026-02-26
-- **Workflow**: Phase 55 complete — learning extraction in progress
-- **Phase**: 55 (Repo Consistency Cleanup)
-- **Status**: Learning extraction complete
-
-Auto-persisted at 2026-02-26T16:30:00Z (zone: stop)
-
-Auto-persisted at 2026-02-26T17:27:08Z (zone: stop)
-
-Auto-persisted at 2026-02-26T17:33:35Z (zone: stop)
-
-Auto-persisted at 2026-02-26T18:17:52Z (zone: stop)
-
-Auto-persisted at 2026-02-26T19:05:26Z (zone: stop)
+- **Workflow**: Autopilot (full-auto) — v2.0.0 milestone
+- **Phase**: 56 (Repo Structure Architect Agent)
+- **Status**: Starting
 
 ## Memory Recall
 
-(cleared after learning extraction)
+- Bun runtime requirement (always use bun, never node)
+- Isolated domains: luca-framework, luca-state, src/ cannot cross-import
+- Functional patterns only (no classes)
+- Domain architecture: T0-T3 tiers with downward-only imports
 
 ## Candidate Learnings
 
-(none — all extracted to MEMORY.md)
+(none yet)
 
 ---
 
 _Session Status_
 
-- [ ] Active
+- [x] Active
 - [ ] Learnings extracted
-- [x] Ready to clear
+- [ ] Ready to clear
 
 
 ---
-*Session ended: 2026-02-26T20:32:22Z (reason: clear)*
+*Session ended: 2026-02-27T01:52:50Z (reason: prompt_input_exit)*

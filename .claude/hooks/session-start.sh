@@ -149,7 +149,7 @@ fi
 
 # Step 3e: Initialize state machine (if bridge exists)
 STATE_JSON="$PLANNING_DIR/state.json"
-STATE_MACHINE_BRIDGE="packages/luca-state/src/bridge.ts"
+STATE_MACHINE_BRIDGE="packages/luca-framework/src/state/bridge.ts"
 
 if [ -f "$STATE_MACHINE_BRIDGE" ]; then
   if [ -f "$STATE_JSON" ]; then

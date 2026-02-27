@@ -21,6 +21,10 @@ context:
   default_tier: T2
   promotable_to: T3
   isolation: none
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    CRITICAL: opus
 ---
 
 <role>
@@ -99,7 +103,7 @@ Before any operation, read project state:
 
 ```bash
 # Primary: Read state from state machine bridge (typed, validated)
-STATE_JSON=$(bun run packages/luca-state/src/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 cat .planning/STATE.md 2>/dev/null
 ```

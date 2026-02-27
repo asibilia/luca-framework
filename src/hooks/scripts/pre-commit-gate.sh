@@ -74,7 +74,7 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 
 # Step 0: Sync STATE.md from state machine (if available)
 # This ensures commits always contain a STATE.md matching machine state.
-BRIDGE="$PROJECT_DIR/packages/luca-state/src/bridge.ts"
+BRIDGE="$PROJECT_DIR/packages/luca-framework/src/state/bridge.ts"
 STATE_JSON="$PROJECT_DIR/.planning/state.json"
 
 if [ -f "$BRIDGE" ] && [ -f "$STATE_JSON" ]; then

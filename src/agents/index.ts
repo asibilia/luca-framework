@@ -18,6 +18,7 @@ import { luPhaseResearcherAgent } from "./general/lu-phase-researcher.agent";
 import { luPlanCheckerAgent } from "./general/lu-plan-checker.agent";
 import { luPmPlannerAgent } from "./general/lu-pm-planner.agent";
 import { luPrReviewerAgent } from "./general/lu-pr-reviewer.agent";
+import { luRepoArchitectAgent } from "./general/lu-repo-architect.agent";
 import { luProjectResearcherAgent } from "./general/lu-project-researcher.agent";
 import { luResearchSynthesizerAgent } from "./general/lu-research-synthesizer.agent";
 import { luRoadmapperAgent } from "./general/lu-roadmapper.agent";
@@ -38,11 +39,15 @@ import { luPlannerAgent } from "./luca/lu-planner.agent";
 // Export factory function
 export { createAgent } from "./__helpers/create-agent";
 
+// Export model resolution
+export { resolveModel } from "./__helpers/resolve-model";
+
 // Export types
 export type {
   AgentConfig,
   AgentFrontmatter,
   AgentSection,
+  ModelRoutingConfig,
 } from "./__schemas/agent.schemas";
 
 // Import BaseAgent for registry type annotation (also re-exported)
@@ -65,6 +70,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-plan-checker": () => luPlanCheckerAgent,
   "lu-pm-planner": () => luPmPlannerAgent,
   "lu-pr-reviewer": () => luPrReviewerAgent,
+  "lu-repo-architect": () => luRepoArchitectAgent,
   "lu-project-researcher": () => luProjectResearcherAgent,
   "lu-research-synthesizer": () => luResearchSynthesizerAgent,
   "lu-roadmapper": () => luRoadmapperAgent,

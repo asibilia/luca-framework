@@ -149,7 +149,8 @@ fi
 
 # Step 3e: Initialize state machine (if bridge exists)
 STATE_JSON="$PLANNING_DIR/state.json"
-STATE_MACHINE_BRIDGE="packages/luca-state/src/bridge.ts"
+# Resolve bridge: try installed package, then monorepo path
+STATE_MACHINE_BRIDGE=$(node -e "console.log(require.resolve('@asibilia/luca-framework/state/bridge'))" 2>/dev/null || echo "packages/luca-framework/src/state/bridge.ts")
 
 if [ -f "$STATE_MACHINE_BRIDGE" ]; then
   if [ -f "$STATE_JSON" ]; then
