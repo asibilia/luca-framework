@@ -36,6 +36,16 @@ interface AuditEntry {
   context: string;
 }
 
+/**
+ * Normalize a string for safety pattern matching.
+ * Removes underscores/hyphens and lowercases so that camelCase, snake_case,
+ * PascalCase, and UPPER_CASE variants all match the same pattern.
+ * e.g. "apiKey", "api_key", "API_KEY", "ApiKey" → "apikey"
+ */
+function normalizeForMatch(str: string): string {
+  return str.toLowerCase().replace(/[_-]/g, "");
+}
+
 export default function lucaSafetyRules(pi: any) {
   const cwd = process.cwd();
 
@@ -268,7 +278,11 @@ export default function lucaSafetyRules(pi: any) {
       for (const rule of rules.values()) {
         const patterns = rule.pattern.split("|").map((p) => p.trim());
         for (const pattern of patterns) {
-          if (params.content.toLowerCase().includes(pattern.toLowerCase())) {
+          if (
+            normalizeForMatch(params.content).includes(
+              normalizeForMatch(pattern),
+            )
+          ) {
             const action =
               gateMode === "block"
                 ? "BLOCKED"
@@ -436,7 +450,7 @@ export default function lucaSafetyRules(pi: any) {
 
       const patterns = rule.pattern.split("|").map((p) => p.trim());
       for (const pattern of patterns) {
-        if (command.toLowerCase().includes(pattern.toLowerCase())) {
+        if (normalizeForMatch(command).includes(normalizeForMatch(pattern))) {
           auditLog.push({
             timestamp: new Date().toISOString(),
             rule_id: rule.id,

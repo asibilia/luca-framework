@@ -26,6 +26,9 @@ interface TeamDef {
   agents: string[];
 }
 
+/** Max characters to include from an agent persona (prevents huge payloads). */
+const MAX_PERSONA_LENGTH = 2000;
+
 export default function lucaTeams(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
@@ -255,8 +258,8 @@ export default function lucaTeams(pi: any) {
           tools: info?.tools ?? [],
           model: info?.model ?? "default",
           persona:
-            persona.length > 2000
-              ? persona.slice(0, 2000) + "\n\n[truncated]"
+            persona.length > MAX_PERSONA_LENGTH
+              ? persona.slice(0, MAX_PERSONA_LENGTH) + "\n\n[truncated]"
               : persona,
         });
       }

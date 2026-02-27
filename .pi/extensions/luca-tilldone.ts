@@ -25,6 +25,9 @@ interface LoopState {
   }>;
 }
 
+/** Max characters to keep from command output (prevents huge payloads). */
+const MAX_OUTPUT_LENGTH = 1500;
+
 export default function lucaTilldone(pi: any) {
   const cwd = process.cwd();
 
@@ -52,14 +55,15 @@ export default function lucaTilldone(pi: any) {
       });
       return {
         passed: true,
-        output: typeof result === "string" ? result.slice(-1500) : "",
+        output:
+          typeof result === "string" ? result.slice(-MAX_OUTPUT_LENGTH) : "",
         duration: Date.now() - start,
       };
     } catch (err: any) {
       const output = (err.stdout || "") + "\n" + (err.stderr || "");
       return {
         passed: false,
-        output: output.slice(-1500),
+        output: output.slice(-MAX_OUTPUT_LENGTH),
         duration: Date.now() - start,
       };
     }
