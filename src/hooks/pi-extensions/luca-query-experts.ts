@@ -9,9 +9,11 @@
  * Source: src/hooks/pi-extensions/luca-query-experts.ts
  * Deployed to: .pi/extensions/luca-query-experts.ts
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
+import { createRegistry } from "./__helpers/registry";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
 
 /** A research expert definition. */
@@ -44,7 +46,7 @@ export default function lucaQueryExperts(pi: any) {
   const researchDir = join(cwd, ".planning", "research");
 
   /** Active research sessions. */
-  const sessions: Map<string, ResearchSession> = new Map();
+  const sessions = createRegistry<ResearchSession>("research-sessions");
 
   /** Built-in expert domains with default focus areas. */
   const BUILTIN_EXPERTS: Record<string, ExpertDef> = {
@@ -146,27 +148,17 @@ export default function lucaQueryExperts(pi: any) {
     ) {
       // Validate session name length
       if (params.name.length > 128) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: "Error: session name exceeds maximum length of 128 characters",
-            },
-          ],
-        };
+        return createTextResponse(
+          "Error: session name exceeds maximum length of 128 characters",
+        );
       }
 
       // Sanitize session name for safe storage and file naming
       const safeName = sanitizeName(params.name, 128);
       if (!safeName) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Error: session name "${params.name}" contains no valid characters. Use alphanumeric, hyphens, or underscores.`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Error: session name "${params.name}" contains no valid characters. Use alphanumeric, hyphens, or underscores.`,
+        );
       }
 
       const expertDefs: ExpertDef[] = [];
@@ -181,25 +173,15 @@ export default function lucaQueryExperts(pi: any) {
           // Parse custom expert: custom:domain:focus1|focus2|focus3
           const parts = expertSpec.slice(7).split(":");
           if (parts.length < 2) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Invalid custom expert format "${expertSpec}". Use: custom:domain:focus1|focus2|focus3`,
-                },
-              ],
-            };
+            return createTextResponse(
+              `Invalid custom expert format "${expertSpec}". Use: custom:domain:focus1|focus2|focus3`,
+            );
           }
           const safeDomain = sanitizeName(parts[0] ?? "", 64);
           if (!safeDomain) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Error: custom expert domain "${parts[0]}" contains no valid characters. Use alphanumeric, hyphens, or underscores.`,
-                },
-              ],
-            };
+            return createTextResponse(
+              `Error: custom expert domain "${parts[0]}" contains no valid characters. Use alphanumeric, hyphens, or underscores.`,
+            );
           }
           expertDefs.push({
             domain: safeDomain,
@@ -210,14 +192,9 @@ export default function lucaQueryExperts(pi: any) {
           const builtin = BUILTIN_EXPERTS[expertSpec];
           if (!builtin) {
             const available = Object.keys(BUILTIN_EXPERTS).join(", ");
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Unknown expert domain "${expertSpec}". Available: ${available}. Or use custom:domain:focus1|focus2`,
-                },
-              ],
-            };
+            return createTextResponse(
+              `Unknown expert domain "${expertSpec}". Available: ${available}. Or use custom:domain:focus1|focus2`,
+            );
           }
           expertDefs.push(builtin);
         }
@@ -233,27 +210,16 @@ export default function lucaQueryExperts(pi: any) {
 
       sessions.set(safeName, session);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                session: session.name,
-                expert_count: session.experts.length,
-                experts: session.experts.map((e) => ({
-                  domain: e.domain,
-                  focus_areas: e.focus_areas,
-                  description: e.description,
-                })),
-                instructions: `Research session "${session.name}" created with ${session.experts.length} experts. Call luca_query_expert for each domain to collect findings, then luca_synthesize_research to produce the final synthesis.`,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        session: session.name,
+        expert_count: session.experts.length,
+        experts: session.experts.map((e) => ({
+          domain: e.domain,
+          focus_areas: e.focus_areas,
+          description: e.description,
+        })),
+        instructions: `Research session "${session.name}" created with ${session.experts.length} experts. Call luca_query_expert for each domain to collect findings, then luca_synthesize_research to produce the final synthesis.`,
+      });
     },
   });
 
@@ -296,27 +262,17 @@ export default function lucaQueryExperts(pi: any) {
     ) {
       const session = sessions.get(params.session);
       if (!session) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Session "${params.session}" not found. Define one with luca_define_experts.`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Session "${params.session}" not found. Define one with luca_define_experts.`,
+        );
       }
 
       const expert = session.experts.find((e) => e.domain === params.domain);
       if (!expert) {
         const available = session.experts.map((e) => e.domain).join(", ");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Domain "${params.domain}" not in session. Available: ${available}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Domain "${params.domain}" not in session. Available: ${available}`,
+        );
       }
 
       const confidence = (params.confidence ?? "medium") as
@@ -324,14 +280,9 @@ export default function lucaQueryExperts(pi: any) {
         | "medium"
         | "low";
       if (!["high", "medium", "low"].includes(confidence)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Invalid confidence "${params.confidence}". Use: high, medium, low`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Invalid confidence "${params.confidence}". Use: high, medium, low`,
+        );
       }
 
       const finding: ExpertFinding = {
@@ -349,29 +300,18 @@ export default function lucaQueryExperts(pi: any) {
         (e) => !session.findings.some((f) => f.domain === e.domain),
       );
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                session: session.name,
-                domain: params.domain,
-                confidence,
-                findings_collected: session.findings.length,
-                total_experts: session.experts.length,
-                remaining_domains: remaining.map((e) => e.domain),
-                instructions:
-                  remaining.length > 0
-                    ? `${remaining.length} expert(s) remaining: ${remaining.map((e) => e.domain).join(", ")}. Query each, then call luca_synthesize_research.`
-                    : "All experts queried. Call luca_synthesize_research to produce the final synthesis.",
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        session: session.name,
+        domain: params.domain,
+        confidence,
+        findings_collected: session.findings.length,
+        total_experts: session.experts.length,
+        remaining_domains: remaining.map((e) => e.domain),
+        instructions:
+          remaining.length > 0
+            ? `${remaining.length} expert(s) remaining: ${remaining.map((e) => e.domain).join(", ")}. Query each, then call luca_synthesize_research.`
+            : "All experts queried. Call luca_synthesize_research to produce the final synthesis.",
+      });
     },
   });
 
@@ -401,25 +341,13 @@ export default function lucaQueryExperts(pi: any) {
     ) {
       const session = sessions.get(params.session);
       if (!session) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Session "${params.session}" not found.`,
-            },
-          ],
-        };
+        return createTextResponse(`Session "${params.session}" not found.`);
       }
 
       if (session.findings.length === 0) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: "No findings collected yet. Query experts first.",
-            },
-          ],
-        };
+        return createTextResponse(
+          "No findings collected yet. Query experts first.",
+        );
       }
 
       session.status = "synthesized";
@@ -458,33 +386,19 @@ ${params.synthesis}
 
       writeFileSync(filePath, content, "utf-8");
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                session: session.name,
-                status: "synthesized",
-                findings_count: session.findings.length,
-                domains: session.findings.map((f) => f.domain),
-                output_file: `.planning/research/${fileName}`,
-                confidence_breakdown: {
-                  high: session.findings.filter((f) => f.confidence === "high")
-                    .length,
-                  medium: session.findings.filter(
-                    (f) => f.confidence === "medium",
-                  ).length,
-                  low: session.findings.filter((f) => f.confidence === "low")
-                    .length,
-                },
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        session: session.name,
+        status: "synthesized",
+        findings_count: session.findings.length,
+        domains: session.findings.map((f) => f.domain),
+        output_file: `.planning/research/${fileName}`,
+        confidence_breakdown: {
+          high: session.findings.filter((f) => f.confidence === "high").length,
+          medium: session.findings.filter((f) => f.confidence === "medium")
+            .length,
+          low: session.findings.filter((f) => f.confidence === "low").length,
+        },
+      });
     },
   });
 
@@ -507,50 +421,28 @@ ${params.synthesis}
       if (params.session) {
         const session = sessions.get(params.session);
         if (!session) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Session "${params.session}" not found`,
-              },
-            ],
-          };
+          return createTextResponse(`Session "${params.session}" not found`);
         }
 
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  name: session.name,
-                  status: session.status,
-                  experts: session.experts.map((e) => ({
-                    domain: e.domain,
-                    reported: session.findings.some(
-                      (f) => f.domain === e.domain,
-                    ),
-                  })),
-                  findings_count: session.findings.length,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          name: session.name,
+          status: session.status,
+          experts: session.experts.map((e) => ({
+            domain: e.domain,
+            reported: session.findings.some((f) => f.domain === e.domain),
+          })),
+          findings_count: session.findings.length,
+        });
       }
 
-      const allSessions = Array.from(sessions.values()).map((s) => ({
+      const allSessions = sessions.values().map((s) => ({
         name: s.name,
         status: s.status,
         experts: s.experts.length,
         findings: s.findings.length,
       }));
 
-      return {
-        content: [{ type: "text", text: JSON.stringify(allSessions, null, 2) }],
-      };
+      return createJsonResponse(allSessions);
     },
   });
 }

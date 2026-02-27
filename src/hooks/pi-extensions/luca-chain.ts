@@ -9,9 +9,12 @@
  * Source: src/hooks/pi-extensions/luca-chain.ts
  * Deployed to: .pi/extensions/luca-chain.ts
  */
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { extractFrontmatterField } from "./__helpers/frontmatter";
+import { createRegistry } from "./__helpers/registry";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { isValidIdentifier } from "./__helpers/sanitize";
 
 /** A single step in an agent chain. */
@@ -34,10 +37,9 @@ interface Chain {
 export default function lucaChain(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
-  const planningDir = join(cwd, ".planning");
 
   /** Active chains. */
-  const chains: Map<string, Chain> = new Map();
+  const chains = createRegistry<Chain>("chains");
 
   /**
    * Read agent persona summary for chain context injection.
@@ -47,12 +49,9 @@ export default function lucaChain(pi: any) {
     if (!existsSync(filePath)) return `Agent "${agentName}" not found`;
 
     const content = readFileSync(filePath, "utf-8");
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) return content.slice(0, 500);
-
-    const fm = fmMatch[1];
-    const description = fm.match(/^description:\s*(.+)$/m)?.[1]?.trim() ?? "";
-    return description;
+    return (
+      extractFrontmatterField(content, "description") ?? content.slice(0, 500)
+    );
   }
 
   // Tool: Define a new chain
@@ -90,14 +89,9 @@ export default function lucaChain(pi: any) {
     ) {
       // Validate chain name
       if (!isValidIdentifier(params.name)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Invalid chain name "${params.name}". Only alphanumeric characters, hyphens, and underscores are allowed.`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Invalid chain name "${params.name}". Only alphanumeric characters, hyphens, and underscores are allowed.`,
+        );
       }
 
       // Parse steps from 'agent:task -> agent:task' format
@@ -110,40 +104,25 @@ export default function lucaChain(pi: any) {
       for (const stepDef of stepDefs) {
         const colonIdx = stepDef.indexOf(":");
         if (colonIdx === -1) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Invalid step format "${stepDef}". Expected "agent:task".`,
-              },
-            ],
-          };
+          return createTextResponse(
+            `Invalid step format "${stepDef}". Expected "agent:task".`,
+          );
         }
         const agent = stepDef.slice(0, colonIdx).trim();
         const task = stepDef.slice(colonIdx + 1).trim();
 
         // Validate agent name contains only safe characters
         if (!isValidIdentifier(agent)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Invalid agent name "${agent}" in step "${stepDef}". Only alphanumeric characters, hyphens, and underscores are allowed.`,
-              },
-            ],
-          };
+          return createTextResponse(
+            `Invalid agent name "${agent}" in step "${stepDef}". Only alphanumeric characters, hyphens, and underscores are allowed.`,
+          );
         }
 
         // Validate agent exists
         if (!existsSync(join(agentsDir, `${agent}.md`))) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Agent "${agent}" not found in .pi/agents/`,
-              },
-            ],
-          };
+          return createTextResponse(
+            `Agent "${agent}" not found in .pi/agents/`,
+          );
         }
 
         chainSteps.push({
@@ -163,26 +142,15 @@ export default function lucaChain(pi: any) {
 
       chains.set(params.name, chain);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                chain: chain.name,
-                steps: chain.steps.map((s, i) => ({
-                  step: i + 1,
-                  agent: s.agent,
-                  task: s.task,
-                })),
-                total_steps: chain.steps.length,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        chain: chain.name,
+        steps: chain.steps.map((s, i) => ({
+          step: i + 1,
+          agent: s.agent,
+          task: s.task,
+        })),
+        total_steps: chain.steps.length,
+      });
     },
   });
 
@@ -213,14 +181,9 @@ export default function lucaChain(pi: any) {
     ) {
       const chain = chains.get(params.chain);
       if (!chain) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Chain "${params.chain}" not found. Define one with luca_define_chain.`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Chain "${params.chain}" not found. Define one with luca_define_chain.`,
+        );
       }
 
       // Record previous step output if provided
@@ -232,28 +195,17 @@ export default function lucaChain(pi: any) {
       // Check if chain is complete
       if (chain.currentStep >= chain.steps.length) {
         chain.status = "completed";
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  chain: chain.name,
-                  status: "completed",
-                  message: "All steps completed",
-                  steps: chain.steps.map((s, i) => ({
-                    step: i + 1,
-                    agent: s.agent,
-                    status: s.status,
-                    output_preview: s.output ? s.output.slice(0, 200) : null,
-                  })),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          chain: chain.name,
+          status: "completed",
+          message: "All steps completed",
+          steps: chain.steps.map((s, i) => ({
+            step: i + 1,
+            agent: s.agent,
+            status: s.status,
+            output_preview: s.output ? s.output.slice(0, 200) : null,
+          })),
+        });
       }
 
       // Get current step
@@ -270,27 +222,16 @@ export default function lucaChain(pi: any) {
 
       const agentDesc = getAgentSummary(step.agent);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                chain: chain.name,
-                step_number: chain.currentStep,
-                total_steps: chain.steps.length,
-                agent: step.agent,
-                agent_description: agentDesc,
-                task: step.task,
-                previous_context: previousOutputs || null,
-                instructions: `Execute this step as the "${step.agent}" agent. When complete, call luca_chain_next with the output to advance to the next step.`,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        chain: chain.name,
+        step_number: chain.currentStep,
+        total_steps: chain.steps.length,
+        agent: step.agent,
+        agent_description: agentDesc,
+        task: step.task,
+        previous_context: previousOutputs || null,
+        instructions: `Execute this step as the "${step.agent}" agent. When complete, call luca_chain_next with the output to advance to the next step.`,
+      });
     },
   });
 
@@ -313,55 +254,30 @@ export default function lucaChain(pi: any) {
       if (params.chain) {
         const chain = chains.get(params.chain);
         if (!chain) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Chain "${params.chain}" not found`,
-              },
-            ],
-          };
+          return createTextResponse(`Chain "${params.chain}" not found`);
         }
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  name: chain.name,
-                  status: chain.status,
-                  current_step: chain.currentStep,
-                  total_steps: chain.steps.length,
-                  steps: chain.steps.map((s, i) => ({
-                    step: i + 1,
-                    agent: s.agent,
-                    task: s.task,
-                    status: s.status,
-                  })),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          name: chain.name,
+          status: chain.status,
+          current_step: chain.currentStep,
+          total_steps: chain.steps.length,
+          steps: chain.steps.map((s, i) => ({
+            step: i + 1,
+            agent: s.agent,
+            task: s.task,
+            status: s.status,
+          })),
+        });
       }
 
       // List all chains
-      const allChains = Array.from(chains.values()).map((c) => ({
+      const allChains = chains.values().map((c) => ({
         name: c.name,
         status: c.status,
         progress: `${c.steps.filter((s) => s.status === "completed").length}/${c.steps.length}`,
       }));
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(allChains, null, 2),
-          },
-        ],
-      };
+      return createJsonResponse(allChains);
     },
   });
 }

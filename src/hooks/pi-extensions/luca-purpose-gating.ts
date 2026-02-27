@@ -9,9 +9,11 @@
  * Source: src/hooks/pi-extensions/luca-purpose-gating.ts
  * Deployed to: .pi/extensions/luca-purpose-gating.ts
  */
-import { readFileSync, existsSync, readdirSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { join } from "path";
 
+import { createRegistry } from "./__helpers/registry";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { normalizeContext } from "./__helpers/sanitize";
 
 /** Purpose categories for agent classification. */
@@ -49,10 +51,10 @@ export default function lucaPurposeGating(pi: any) {
   const agentsDir = join(cwd, ".pi", "agents");
 
   /** Registered agent purposes. */
-  const purposes: Map<string, AgentPurpose> = new Map();
+  const purposes = createRegistry<AgentPurpose>("purposes");
 
   /** Deferred background tasks. */
-  const deferredTasks: Map<string, DeferredTask> = new Map();
+  const deferredTasks = createRegistry<DeferredTask>("deferred-tasks");
 
   /** Task ID counter. */
   let taskIdCounter = 0;
@@ -167,14 +169,9 @@ export default function lucaPurposeGating(pi: any) {
       ];
 
       if (!validPurposes.includes(params.purpose as PurposeCategory)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Invalid purpose "${params.purpose}". Use: ${validPurposes.join(", ")}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Invalid purpose "${params.purpose}". Use: ${validPurposes.join(", ")}`,
+        );
       }
 
       const contexts = params.allowed_contexts
@@ -191,14 +188,9 @@ export default function lucaPurposeGating(pi: any) {
         background_spawnable: params.background_spawnable ?? false,
       });
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Agent "${params.agent}" registered: purpose=${params.purpose}, contexts=${contexts.join(", ")}, background=${params.background_spawnable ?? false}`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Agent "${params.agent}" registered: purpose=${params.purpose}, contexts=${contexts.join(", ")}, background=${params.background_spawnable ?? false}`,
+      );
     },
   });
 
@@ -230,47 +222,25 @@ export default function lucaPurposeGating(pi: any) {
       // Normalize and validate context
       const ctx = normalizeContext(params.context);
       if (!ctx) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  agent: params.agent,
-                  compatible: false,
-                  reason:
-                    "Empty or whitespace-only context provided. Specify a valid execution context.",
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          agent: params.agent,
+          compatible: false,
+          reason:
+            "Empty or whitespace-only context provided. Specify a valid execution context.",
+        });
       }
 
       // Auto-discover if not yet populated
-      if (purposes.size === 0) autoDiscoverAgents();
+      if (purposes.size() === 0) autoDiscoverAgents();
 
       const agentPurpose = purposes.get(params.agent);
       if (!agentPurpose) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  agent: params.agent,
-                  compatible: false,
-                  reason:
-                    "Agent not registered. Use luca_register_purpose or ensure agent exists in .pi/agents/",
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          agent: params.agent,
+          compatible: false,
+          reason:
+            "Agent not registered. Use luca_register_purpose or ensure agent exists in .pi/agents/",
+        });
       }
 
       const compatible =
@@ -278,7 +248,8 @@ export default function lucaPurposeGating(pi: any) {
         agentPurpose.allowed_contexts.includes(ctx);
 
       // Find alternative agents for this context
-      const alternatives = Array.from(purposes.values())
+      const alternatives = purposes
+        .values()
         .filter(
           (p) =>
             p.agent !== params.agent &&
@@ -287,26 +258,15 @@ export default function lucaPurposeGating(pi: any) {
         )
         .map((p) => ({ agent: p.agent, purpose: p.purpose }));
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                agent: params.agent,
-                context: params.context,
-                compatible,
-                purpose: agentPurpose.purpose,
-                allowed_contexts: agentPurpose.allowed_contexts,
-                background_spawnable: agentPurpose.background_spawnable,
-                alternatives: compatible ? [] : alternatives.slice(0, 5),
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        agent: params.agent,
+        context: params.context,
+        compatible,
+        purpose: agentPurpose.purpose,
+        allowed_contexts: agentPurpose.allowed_contexts,
+        background_spawnable: agentPurpose.background_spawnable,
+        alternatives: compatible ? [] : alternatives.slice(0, 5),
+      });
     },
   });
 
@@ -339,30 +299,19 @@ export default function lucaPurposeGating(pi: any) {
       // Normalize and validate context
       const ctx = normalizeContext(params.context);
       if (!ctx) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  context: params.context,
-                  error:
-                    "Empty or whitespace-only context provided. Specify a valid execution context.",
-                  total_eligible: 0,
-                  by_purpose: {},
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          context: params.context,
+          error:
+            "Empty or whitespace-only context provided. Specify a valid execution context.",
+          total_eligible: 0,
+          by_purpose: {},
+        });
       }
 
       // Auto-discover if not yet populated
-      if (purposes.size === 0) autoDiscoverAgents();
+      if (purposes.size() === 0) autoDiscoverAgents();
 
-      const eligible = Array.from(purposes.values()).filter((p) => {
+      const eligible = purposes.values().filter((p) => {
         const contextMatch =
           p.allowed_contexts.includes("any") ||
           p.allowed_contexts.includes(ctx);
@@ -379,23 +328,12 @@ export default function lucaPurposeGating(pi: any) {
         grouped[agent.purpose].push(agent.agent);
       }
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                context: params.context,
-                background_only: params.background_only ?? false,
-                total_eligible: eligible.length,
-                by_purpose: grouped,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        context: params.context,
+        background_only: params.background_only ?? false,
+        total_eligible: eligible.length,
+        by_purpose: grouped,
+      });
     },
   });
 
@@ -429,18 +367,13 @@ export default function lucaPurposeGating(pi: any) {
       params: { agent: string; trigger: string; context: string },
     ) {
       // Auto-discover if not yet populated
-      if (purposes.size === 0) autoDiscoverAgents();
+      if (purposes.size() === 0) autoDiscoverAgents();
 
       const agentPurpose = purposes.get(params.agent);
       if (agentPurpose && !agentPurpose.background_spawnable) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Agent "${params.agent}" is not marked as background_spawnable. Register with background_spawnable=true first.`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Agent "${params.agent}" is not marked as background_spawnable. Register with background_spawnable=true first.`,
+        );
       }
 
       const taskId = `bg-${++taskIdCounter}`;
@@ -455,24 +388,13 @@ export default function lucaPurposeGating(pi: any) {
 
       deferredTasks.set(taskId, task);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                task_id: taskId,
-                agent: params.agent,
-                trigger: params.trigger,
-                status: "pending",
-                instructions: `Task deferred. Call luca_trigger_deferred with trigger="${params.trigger}" when the condition is met.`,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        task_id: taskId,
+        agent: params.agent,
+        trigger: params.trigger,
+        status: "pending",
+        instructions: `Task deferred. Call luca_trigger_deferred with trigger="${params.trigger}" when the condition is met.`,
+      });
     },
   });
 
@@ -503,30 +425,19 @@ export default function lucaPurposeGating(pi: any) {
         }
       }
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                trigger: params.trigger,
-                triggered_count: triggered.length,
-                tasks: triggered.map((t) => ({
-                  task_id: t.id,
-                  agent: t.agent,
-                  context: t.context.slice(0, 500),
-                  instructions: `Spawn agent "${t.agent}" with context: ${t.context.slice(0, 200)}`,
-                })),
-                remaining_pending: Array.from(deferredTasks.values()).filter(
-                  (t) => t.status === "pending",
-                ).length,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        trigger: params.trigger,
+        triggered_count: triggered.length,
+        tasks: triggered.map((t) => ({
+          task_id: t.id,
+          agent: t.agent,
+          context: t.context.slice(0, 500),
+          instructions: `Spawn agent "${t.agent}" with context: ${t.context.slice(0, 200)}`,
+        })),
+        remaining_pending: deferredTasks
+          .values()
+          .filter((t) => t.status === "pending").length,
+      });
     },
   });
 
@@ -538,7 +449,7 @@ export default function lucaPurposeGating(pi: any) {
       "List all deferred background tasks and their current status (pending, triggered, completed).",
     parameters: {},
     async execute() {
-      const tasks = Array.from(deferredTasks.values()).map((t) => ({
+      const tasks = deferredTasks.values().map((t) => ({
         task_id: t.id,
         agent: t.agent,
         trigger: t.trigger,
@@ -547,24 +458,13 @@ export default function lucaPurposeGating(pi: any) {
         triggered_at: t.triggered_at ?? null,
       }));
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                total: tasks.length,
-                pending: tasks.filter((t) => t.status === "pending").length,
-                triggered: tasks.filter((t) => t.status === "triggered").length,
-                completed: tasks.filter((t) => t.status === "completed").length,
-                tasks,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        total: tasks.length,
+        pending: tasks.filter((t) => t.status === "pending").length,
+        triggered: tasks.filter((t) => t.status === "triggered").length,
+        completed: tasks.filter((t) => t.status === "completed").length,
+        tasks,
+      });
     },
   });
 
