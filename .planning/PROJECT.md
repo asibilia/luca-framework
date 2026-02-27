@@ -8,23 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v1.8.0 — Shipped)
+## Current State (v2.1.0 — Shipped)
 
-**Last Shipped:** v1.8.0 — Functional Architecture & Bridge Unification (2026-02-25)
+**Last Shipped:** v2.1.0 — Pi Library Integration (2026-02-27)
 
-Completed the functional architecture migration: all 28 agents and 45 skills migrated from class-based patterns to `createAgent()`/`createSkill()` factory functions, matching the `createRule()` pattern established in v1.6.0. All three entity types now use identical factory patterns with Zod validation and deep freeze immutability. Verified 100% state machine bridge adoption across all 20 stateful skills. Resolved all audit findings: deep freeze, naming utils, stale comments, double validation, PascalCase configs, duplicate types, index signatures. Net code reduction of 343 lines. 1763 tests (1763 pass, 6 skip), 28 agents, 45 skills, 19 rules.
+Added Pi (pi.dev) as a first-class output target alongside `.claude/` and `.cursor/`, with 12 native TypeScript extensions implementing 39 tools across Luca's full workflow system. Three-platform compilation from `src/` to `.claude/`, `.cursor/`, and `.pi/`. Pi extensions cover: state management, memory bridge, verification harness, complexity gating, agent roles, team dispatch, chain pipelines, task-gated loops, expert research, safety rules, and purpose gating. Input sanitization with 8 shared functions (escapeRegExp, sanitizeName, sanitizeForTemplate, validateScriptPath, isValidIdentifier, normalizeToolName, isWithinDirectory, normalizeContext). Shared helper modules (response, frontmatter, exec, registry) eliminate ~648 lines of duplication. Unified build config with single-source-of-truth extension lists. 2106 tests (2106 pass, 6 skip), 28 agents, 45 skills, 19 rules.
 
-## Previous State (v1.7.0)
+## Previous State (v2.0.0)
 
-v1.7.0 — Codebase Health & Build Stability (2026-02-23)
+v2.0.0 — Unified Package & Intelligent Routing (2026-02-26). Consolidated `luca-state`, `create-luca`, and `luca-framework` into single `@alecsibilia/luca-framework` package. CLI commands (`run:claude`, `run:cursor`), plugin distribution via `--plugin-dir`, model-aware task routing with cost-appropriate model selection. 1808 tests.
 
-Resolved accumulated tech debt from v1.6.0: clean TypeScript compilation (0 errors across all packages), consolidated test conventions (`__tests__/` directory), full Bun API alignment (Bun.file, Bun.$, node:fs prefixes). Extracted shared utilities (parse-frontmatter.ts), applied sanitizeJsonParse consistently across all 3 isolated domains, eliminated dead code (duplicate agents, stale generators), deduplicated VALID_TRACKERS constant. 1763 tests (1763 pass, 6 skip), 28 agents, 45+ skills, 19 rules.
+## Previous State (v1.8.0)
 
-## Previous State (v1.6.0)
-
-v1.6.0 — Package & Publish (2026-02-16)
-
-Standalone XState workflow state package (`packages/luca-state/`) with zero framework dependencies, 347 tests, 12-subcommand CLI. Full framework rewire (83 source files + 327 generated files). Memory suspend/resume with checkpoint persistence and auto-persist on context warnings. Milestone-scoped memory recall with version distance scoring. Tech stack guideline profiles with conditional rule loading, config toggle, and auto-detection integration. Post-milestone tech debt cleanup: class-to-functional rule refactor (19 rules), duplicate state-machine deletion (-8,300 lines), type deduplication. 1755 tests (1749 pass, 6 skip), 30 agents, 45+ skills, 19 rules.
+v1.8.0 — Functional Architecture & Bridge Unification (2026-02-25). Agent/skill factory migration, deep freeze immutability, 100% bridge adoption. 1763 tests.
 
 **Capabilities (shipped):**
 

@@ -18,4 +18,5 @@ export { hookRegistry, resolveHookRegistry } from "./__helpers/hook-registry";
 export {
   generateClaudeHooksConfig,
   generateCursorHooksConfig,
+  generatePiExtension,
 } from "./__helpers/config-generators";

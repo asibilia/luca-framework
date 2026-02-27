@@ -212,7 +212,8 @@
     "source": "src/",
     "outputs": [
       ".claude/",
-      ".cursor/"
+      ".cursor/",
+      ".pi/"
     ],
     "build_command": "bun run build:all",
     "lock_file": ".claude/.session-lock",

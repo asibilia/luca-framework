@@ -55,6 +55,32 @@ export function toCursorFormat(
 }
 
 /**
+ * Converts a config to Pi-compatible format (YAML frontmatter + H2 sections).
+ *
+ * Pi uses plain markdown with YAML frontmatter (no XML tags). The body
+ * uses H2 headings for sections, same as Claude format.
+ */
+export function toPiFormat(
+  frontmatter: Record<string, unknown>,
+  heading: string,
+  sections: Section[],
+): string {
+  const fm = formatFrontmatter(frontmatter);
+  const body = [...sections]
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+    .map((section) => {
+      if (section.title) {
+        return `## ${section.title}\n\n${section.content}\n\n`;
+      }
+      return `${section.content}\n\n`;
+    })
+    .join("")
+    .trim();
+
+  return `${fm}\n\n${heading}\n\n${body}`;
+}
+
+/**
  * Converts a config to Claude-compatible format (H1 heading + H2 sections)
  */
 export function toClaudeFormat(heading: string, sections: Section[]): string {

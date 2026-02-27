@@ -2,21 +2,32 @@
 
 ## Session Info
 
-- **Started**: 2026-02-26
-- **Workflow**: Autopilot (full-auto) — v2.0.0 milestone
-- **Phase**: 56 (Repo Structure Architect Agent)
-- **Status**: Starting
+- **Started**: 2026-02-27T16:30:00Z
+- **Workflow**: /phase-plan
+- **Phase**: 67 — Pi Extension DRY Cleanup
 
 ## Memory Recall
 
-- Bun runtime requirement (always use bun, never node)
-- Isolated domains: luca-framework, luca-state, src/ cannot cross-import
-- Functional patterns only (no classes)
-- Domain architecture: T0-T3 tiers with downward-only imports
+- **Patterns**: Build pipeline setup (medium confidence), existing \_\_helpers/ pattern from Phase 66
+- **Decisions**: Functional patterns, Bun over Node, src/ → build pipeline
+- **Pitfalls**: Import path gotcha when moving files (DIRECTLY relevant — extracting helpers changes import paths)
+- **Procedures**: None directly applicable
+
+## Planning Notes
+
+- Phase 67 addresses DRY/Simplification findings from v2.1.0-MILESTONE-AUDIT.md
+- 3 CRITICAL: JSON response wrapper (38+ instances), YAML frontmatter parsing (3 extensions), command execution pattern (2 extensions)
+- 3 HIGH: Map-based registry pattern (6 extensions), tool parameter schema boilerplate (39 tools), error handling (12+ locations)
+- 5 MEDIUM: cwd pattern (11 extensions), event handler registration, loop state tracking, agent file reading, persona truncation
+- 1 MEDIUM architecture: build config drift between generatePiSettings() and generatePiOutputs()
+- Phase 66 already created \_\_helpers/ directory with sanitize.ts — reuse this location for new helpers
+- Code review from Phase 66 flagged module boundary concern: config-generators.ts imports from pi-extensions/\_\_helpers/
+
+## Findings
+
+## Hypotheses
 
 ## Candidate Learnings
-
-(none yet)
 
 ---
 
@@ -28,4 +39,4 @@ _Session Status_
 
 
 ---
-*Session ended: 2026-02-27T01:52:50Z (reason: prompt_input_exit)*
+*Session ended: 2026-02-27T19:11:49Z (reason: user_close)*

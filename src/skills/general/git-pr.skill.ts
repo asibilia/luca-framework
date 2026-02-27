@@ -53,7 +53,7 @@ Example: \`fix(apps): PROJ-1234 update login button url\`
 
 ---
 
-Generated with [Claude Code](https://claude.ai/claude-code)
+Generated with [Claude Code](https://claude.com/claude-code)
 \`\`\`
 
 ## Notes

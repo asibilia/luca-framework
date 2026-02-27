@@ -24,17 +24,23 @@ import { formatFrontmatter } from "~/shared/__helpers/utils";
  * - CLAUDE: Claude Code native format (.claude/ directory)
  * - CURSOR: Cursor IDE format (.cursor/ directory)
  * - PLUGIN: Claude Code plugin format (dist/plugin/ directory)
+ * - PI: Pi terminal agent format (.pi/ directory)
  */
-export type SupportedFormat = "CURSOR" | "CLAUDE" | "PLUGIN";
+export type SupportedFormat = "CURSOR" | "CLAUDE" | "PLUGIN" | "PI";
 
 /**
  * Validate that a format string is one of the supported formats.
  *
  * @param format - The format string to validate
- * @throws Error if the format is not "CURSOR", "CLAUDE", or "PLUGIN"
+ * @throws Error if the format is not "CURSOR", "CLAUDE", "PLUGIN", or "PI"
  */
 export function validateFormat(format: SupportedFormat): void {
-  if (format !== "CURSOR" && format !== "CLAUDE" && format !== "PLUGIN") {
+  if (
+    format !== "CURSOR" &&
+    format !== "CLAUDE" &&
+    format !== "PLUGIN" &&
+    format !== "PI"
+  ) {
     throw new Error(`Unsupported format: ${format}`);
   }
 }
@@ -204,6 +210,51 @@ export function compileRulePlugin(rule: BaseRule): string {
 }
 
 // ---------------------------------------------------------------------------
+// Pi format
+// ---------------------------------------------------------------------------
+
+/**
+ * Compile an agent definition to Pi-format markdown.
+ *
+ * Pi agents use YAML frontmatter (name, description, tools, model) with
+ * H2-section markdown body. Tool restrictions and model tier are included
+ * in frontmatter when defined in the agent config.
+ *
+ * @param agent - The agent instance to compile
+ * @returns Compiled markdown string with Pi-specific YAML frontmatter
+ */
+export function compileAgentPi(agent: BaseAgent): string {
+  return agent.toPiFormat();
+}
+
+/**
+ * Compile a skill definition to Pi-format SKILL.md.
+ *
+ * Pi skills use YAML frontmatter (name, description) with H2-section
+ * markdown body, stored in .pi/skills/{name}/SKILL.md.
+ *
+ * @param skill - The skill instance to compile
+ * @returns Compiled markdown string with Pi-specific YAML frontmatter
+ */
+export function compileSkillPi(skill: BaseSkill): string {
+  return skill.toPiFormat();
+}
+
+/**
+ * Compile a rule definition to Pi-format markdown.
+ *
+ * Note: Pi has no rules directory. Individual rule compilations are collected
+ * and merged into a single AGENTS.md file by the build pipeline. This method
+ * produces the rule's content section for inclusion in that merged file.
+ *
+ * @param rule - The rule instance to compile
+ * @returns Compiled markdown string for AGENTS.md inclusion
+ */
+export function compileRulePi(rule: BaseRule): string {
+  return rule.toPiFormat();
+}
+
+// ---------------------------------------------------------------------------
 // Format-dispatching functions
 // ---------------------------------------------------------------------------
 
@@ -229,6 +280,8 @@ export function compileAgent(
       return compileAgentCursor(agent);
     case "PLUGIN":
       return compileAgentPlugin(agent);
+    case "PI":
+      return compileAgentPi(agent);
   }
 }
 
@@ -254,6 +307,8 @@ export function compileSkill(
       return compileSkillCursor(skill);
     case "PLUGIN":
       return compileSkillPlugin(skill);
+    case "PI":
+      return compileSkillPi(skill);
   }
 }
 
@@ -276,5 +331,7 @@ export function compileRule(rule: BaseRule, format: SupportedFormat): string {
       return compileRuleCursor(rule);
     case "PLUGIN":
       return compileRulePlugin(rule);
+    case "PI":
+      return compileRulePi(rule);
   }
 }

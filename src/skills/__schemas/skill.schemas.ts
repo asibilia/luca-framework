@@ -34,4 +34,5 @@ export type BaseSkill = {
   readonly description: string;
   toCursorFormat(): string;
   toClaudeFormat(): string;
+  toPiFormat(): string;
 };

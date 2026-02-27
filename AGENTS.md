@@ -4,25 +4,26 @@
 
 ## Project Overview
 
-[placeholder]
+- **Luca is a developer tooling monorepo**, not a web app. It produces CLI tools and build artifacts for AI-powered IDE workflows (Cursor, Claude Code, etc.).
+- **Primary goal**: orchestrate structured AI coding workflows (plans, phases, harness, agents/skills/rules) on top of existing repos.
+- **Runtime & language**: Bun + TypeScript across a multi-package monorepo.
+- **Documentation for humans**: see `README.md` and the docs under `docs/`.
 
-## Technology Stack
+## Quickstart for agents
 
-- **Frontend**: Next.js 16 App Router, React 19, TypeScript
-- **Backend**: Convex (real-time database with serverless functions)
-- **Auth**: Clerk (authentication and user management)
-- **AI**: Vercel AI Gateway (Google Gemini models)
-- **State**: Jotai for client-side state, XState for complex flows
-- **UI**: Custom component system built on Radix UI primitives
-- **Styling**: Tailwind CSS v4 with custom color theming
-- **Testing**: Bun test framework
-- **Runtime**: Bun
+- **Install dependencies**: `bun install`
+- **Run tests**: `bun test`
+- **Type check**: `bunx --bun tsc --noEmit`
+- **Build core packages**: `bun run build`
+- **Build full pipeline (agents/skills/rules/hooks/plugin)**: `bun run build:all`
+
+These cover 90% of what agents need; see “Cursor Cloud specific instructions” below for more detail.
 
 ## Development Setup
 
-**Prerequisites:** Bun (v1.0+), Node.js 20+
+**Prerequisite:** Bun (v1.0+). Node.js 20+ is useful but not required for core workflows.
 
-[placeholder]
+No `.env` is required for core development; Jira-related env vars are optional and only used by the Jira adapter.
 
 ## Commands
 
@@ -44,33 +45,6 @@ Key patterns:
 - No `any` type, no `as` type casting, no `!` assertions
 - `<div>` instead of `<p>` in JSX
 - File names: `kebab-case.ts`
-
-## Architecture
-
-```
-app/                    # Next.js App Router (page.tsx, layout.tsx, route.ts only)
-components/
-  _ui/                  # Reusable UI primitives (Radix-based)
-  [domain]/             # Domain-specific components
-convex/                 # Backend logic (schema, queries, mutations, actions)
-utils/
-  helpers/              # Business logic
-  schemas/              # Zod schemas
-  state/                # Jotai atoms, XState machines
-```
-
-**Auth**: Clerk with middleware-based protection. All `/protected/*` routes secured automatically - never manually check auth in pages.
-
-**Database**: Convex with reactive queries and mutations.
-
-```typescript
-// Reading data (reactive)
-const trainers = useQuery(api.trainers.queries.getAllTrainersWithStats);
-
-// Writing data
-const updateName = useMutation(api.trainers.mutations.updateTrainerName);
-await updateName({ display_name: "New Name" });
-```
 
 ## Domain Architecture
 
@@ -124,16 +98,16 @@ Luca is a **developer tooling monorepo** (not a web app). There is no running we
 
 ### Services & commands
 
-| Action                                                 | Command                                                 |
-| ------------------------------------------------------ | ------------------------------------------------------- |
-| Install deps                                           | `bun install`                                           |
-| Type check                                             | `bunx --bun tsc --noEmit`                               |
-| Run tests                                              | `bun test`                                              |
-| Build packages (unbuild)                               | `bun run build`                                         |
-| Build full pipeline (agents/skills/rules/hooks/plugin) | `bun run build:all`                                     |
-| Drift check (verify outputs match source)              | `bun run check:drift`                                   |
-| Luca CLI                                               | `bun run packages/luca-framework/bin/luca.js <command>` |
-| State machine bridge                                   | `bun run packages/luca-framework/src/state/bridge.ts <command>`   |
+| Action                                                 | Command                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| Install deps                                           | `bun install`                                                   |
+| Type check                                             | `bunx --bun tsc --noEmit`                                       |
+| Run tests                                              | `bun test`                                                      |
+| Build packages (unbuild)                               | `bun run build`                                                 |
+| Build full pipeline (agents/skills/rules/hooks/plugin) | `bun run build:all`                                             |
+| Drift check (verify outputs match source)              | `bun run check:drift`                                           |
+| Luca CLI                                               | `bun run packages/luca-framework/bin/luca.js <command>`         |
+| State machine bridge                                   | `bun run packages/luca-framework/src/state/bridge.ts <command>` |
 
 ### Non-obvious caveats
 

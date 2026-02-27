@@ -83,7 +83,7 @@ Generate a testing plan in this exact markdown format:
 - [ ] [Area that might be affected and why]
 
 ---
-*Generated with [Claude Code](https://claude.ai/claude-code)*
+*Generated with [Claude Code](https://claude.com/claude-code)*
 ```
 
 ## Guidelines

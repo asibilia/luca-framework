@@ -13,16 +13,6 @@ Default to using Bun instead of Node.js.
 - Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
 - Bun automatically loads .env, so don't use dotenv.
 
-## APIs
-
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
-
 ## Testing
 
 Use `bun test` to run tests.
@@ -35,77 +25,21 @@ test("hello world", () => {
 });
 ```
 
-## Frontend
+## Repo-specific guidance for agents
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+- **This repo is a developer tooling monorepo**, not a web app. It builds Luca’s agents/skills/rules/hooks and related tooling.
+- **Core commands** (same as `AGENTS.md`, surfaced here for convenience):
+  - Install deps: `bun install`
+  - Run tests: `bun test`
+  - Type check: `bunx --bun tsc --noEmit`
+  - Build packages: `bun run build`
+  - Build full pipeline (agents/skills/rules/hooks/plugin): `bun run build:all`
+  - Drift check (built outputs vs source): `bun run check:drift`
+- **High-leverage gotchas**:
+  - Some tests in `__tests__/scripts/` expect `bun run build:all` to have been run first because they validate artifacts under `dist/plugin/`.
+  - ~29 tests in `packages/luca-framework` fail when run as part of the full suite due to a pre-existing module resolution issue; they **pass when run individually** (e.g. `bun test __tests__/packages/luca-framework/`).
+  - There is **no ESLint configuration**; linting is effectively TypeScript type checking.
+  - Bun is required (repo uses `bun.lock` and `bunfig.toml`). If Bun is missing, install it before running any commands.
+  - No `.env` is required for core development; Jira adapter env vars are optional.
 
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-
-// import .css files directly and it works
-import './index.css';
-
-import { createRoot } from "react-dom/client";
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+For anything more detailed than this, prefer the main `README.md`, `AGENTS.md`, and the docs under `docs/` rather than expanding this file.

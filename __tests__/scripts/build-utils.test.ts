@@ -11,8 +11,9 @@ describe("SAFE_CLEAN_ROOTS", () => {
   test("contains expected root directories", () => {
     expect(SAFE_CLEAN_ROOTS).toContain(".claude");
     expect(SAFE_CLEAN_ROOTS).toContain(".cursor");
+    expect(SAFE_CLEAN_ROOTS).toContain(".pi");
     expect(SAFE_CLEAN_ROOTS).toContain("dist");
-    expect(SAFE_CLEAN_ROOTS).toHaveLength(3);
+    expect(SAFE_CLEAN_ROOTS).toHaveLength(4);
   });
 });
 
@@ -44,6 +45,15 @@ describe("assertSafeCleanTarget", () => {
     ).not.toThrow();
     expect(() =>
       assertSafeCleanTarget(path.join(PROJECT_ROOT, ".cursor", "rules")),
+    ).not.toThrow();
+  });
+
+  test("accepts .pi subdirectories", () => {
+    expect(() =>
+      assertSafeCleanTarget(path.join(PROJECT_ROOT, ".pi", "agents")),
+    ).not.toThrow();
+    expect(() =>
+      assertSafeCleanTarget(path.join(PROJECT_ROOT, ".pi", "skills")),
     ).not.toThrow();
   });
 
