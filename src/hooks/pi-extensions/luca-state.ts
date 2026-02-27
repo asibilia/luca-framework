@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { escapeRegExp } from "./__helpers/sanitize";
 
 export default function lucaState(pi: any) {
@@ -55,14 +56,7 @@ export default function lucaState(pi: any) {
     parameters: {},
     async execute() {
       const state = readStateMd();
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(state, null, 2),
-          },
-        ],
-      };
+      return createJsonResponse(state);
     },
   });
 
@@ -86,9 +80,7 @@ export default function lucaState(pi: any) {
     async execute(_toolCallId: string, params: { field: string }) {
       const state = readStateMd();
       const value = state[params.field] ?? "Field not found";
-      return {
-        content: [{ type: "text", text: value }],
-      };
+      return createTextResponse(value);
     },
   });
 
@@ -118,21 +110,14 @@ export default function lucaState(pi: any) {
       params: { field: string; value: string },
     ) {
       if (!existsSync(stateMdPath)) {
-        return {
-          content: [{ type: "text", text: "Error: STATE.md not found" }],
-        };
+        return createTextResponse("Error: STATE.md not found");
       }
 
       // Validate field length to prevent abuse
       if (params.field.length > 100) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: "Error: field name exceeds maximum length of 100 characters",
-            },
-          ],
-        };
+        return createTextResponse(
+          "Error: field name exceeds maximum length of 100 characters",
+        );
       }
 
       let content = readFileSync(stateMdPath, "utf-8");
@@ -150,25 +135,15 @@ export default function lucaState(pi: any) {
         if (simplePattern.test(content)) {
           content = content.replace(simplePattern, `$1 ${params.value}`);
         } else {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Field "${params.field}" not found in STATE.md`,
-              },
-            ],
-          };
+          return createTextResponse(
+            `Field "${params.field}" not found in STATE.md`,
+          );
         }
       }
       writeFileSync(stateMdPath, content, "utf-8");
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Updated "${params.field}" to "${params.value}"`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Updated "${params.field}" to "${params.value}"`,
+      );
     },
   });
 
