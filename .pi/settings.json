@@ -10,7 +10,11 @@
     ".pi/extensions/luca-state.ts",
     ".pi/extensions/luca-memory.ts",
     ".pi/extensions/luca-harness.ts",
-    ".pi/extensions/luca-complexity.ts"
+    ".pi/extensions/luca-complexity.ts",
+    ".pi/extensions/luca-roles.ts",
+    ".pi/extensions/luca-teams.ts",
+    ".pi/extensions/luca-chain.ts",
+    ".pi/extensions/luca-tilldone.ts"
   ],
   "shell": "/bin/zsh"
 }

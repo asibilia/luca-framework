@@ -103,10 +103,10 @@
 
 **Depends on:** Phase 61
 
-- [ ] Plan 64-A: Tool-restricted agent roles schema + compilation
-- [ ] Plan 64-B: Dispatcher pattern / agent teams (YAML → extensions)
-- [ ] Plan 64-C: Agent chains / sequential pipelines
-- [ ] Plan 64-D: Task-gated work loops (tilldone pattern)
+- [x] Plan 64-A: Tool-restricted agent roles (luca-roles.ts — 4 tools + tool_call enforcement)
+- [x] Plan 64-B: Dispatcher pattern / agent teams (luca-teams.ts — 3 tools, 4 pre-defined teams)
+- [x] Plan 64-C: Agent chains / sequential pipelines (luca-chain.ts — 3 tools)
+- [x] Plan 64-D: Task-gated work loops (luca-tilldone.ts — 3 tools, LLM-controlled retry)
 
 ### Phase 65 — Advanced Features
 

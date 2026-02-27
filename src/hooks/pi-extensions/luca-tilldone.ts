@@ -1,0 +1,302 @@
+/**
+ * Luca TillDone Extension for Pi
+ *
+ * Provides task-gated work loops — retry commands or checks until they
+ * pass, with configurable max iterations, delay, and exit conditions.
+ * Implements the "tilldone" pattern for verification-driven development.
+ *
+ * Source: src/hooks/pi-extensions/luca-tilldone.ts
+ * Deployed to: .pi/extensions/luca-tilldone.ts
+ */
+import { execSync } from "child_process";
+
+/** Active loop state. */
+interface LoopState {
+  name: string;
+  command: string;
+  maxIterations: number;
+  currentIteration: number;
+  status: "running" | "passed" | "failed" | "stopped";
+  history: Array<{
+    iteration: number;
+    status: "passed" | "failed";
+    output: string;
+    duration: number;
+  }>;
+}
+
+export default function lucaTilldone(pi: any) {
+  const cwd = process.cwd();
+
+  /** Active loops. */
+  const loops: Map<string, LoopState> = new Map();
+
+  /**
+   * Run a command and return structured result.
+   */
+  function runCommand(
+    command: string,
+    timeout: number,
+  ): {
+    passed: boolean;
+    output: string;
+    duration: number;
+  } {
+    const start = Date.now();
+    try {
+      const result = execSync(command, {
+        cwd,
+        timeout: timeout * 1000,
+        stdio: ["pipe", "pipe", "pipe"],
+        encoding: "utf-8",
+      });
+      return {
+        passed: true,
+        output: typeof result === "string" ? result.slice(-1500) : "",
+        duration: Date.now() - start,
+      };
+    } catch (err: any) {
+      const output = (err.stdout || "") + "\n" + (err.stderr || "");
+      return {
+        passed: false,
+        output: output.slice(-1500),
+        duration: Date.now() - start,
+      };
+    }
+  }
+
+  // Tool: Run a command in a retry loop until it passes
+  pi.registerTool({
+    name: "luca_tilldone",
+    label: "Run Till Done",
+    description:
+      "Run a command repeatedly until it succeeds (exit code 0). Returns the result of each attempt. Use for verification-driven loops like 'run tests until they pass'. Does NOT auto-fix — returns failure output so the LLM can fix issues between iterations.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description:
+            "Loop name for tracking (e.g., 'test-loop', 'typecheck-loop')",
+        },
+        command: {
+          type: "string",
+          description:
+            "Shell command to run (e.g., 'bun test', 'bunx --bun tsc --noEmit')",
+        },
+        max_iterations: {
+          type: "number",
+          description: "Maximum retry attempts (default: 5)",
+        },
+        timeout: {
+          type: "number",
+          description: "Timeout per attempt in seconds (default: 120)",
+        },
+      },
+      required: ["name", "command"],
+    },
+    async execute(
+      _toolCallId: string,
+      params: {
+        name: string;
+        command: string;
+        max_iterations?: number;
+        timeout?: number;
+      },
+    ) {
+      const maxIterations = params.max_iterations ?? 5;
+      const timeout = params.timeout ?? 120;
+
+      // Run single attempt (LLM controls the loop by calling repeatedly)
+      const existingLoop = loops.get(params.name);
+      const iteration = existingLoop ? existingLoop.currentIteration + 1 : 1;
+
+      if (iteration > maxIterations) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  name: params.name,
+                  status: "failed",
+                  message: `Max iterations (${maxIterations}) reached`,
+                  total_attempts: iteration - 1,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      const result = runCommand(params.command, timeout);
+
+      // Update loop state
+      const loopState: LoopState = existingLoop ?? {
+        name: params.name,
+        command: params.command,
+        maxIterations,
+        currentIteration: 0,
+        status: "running",
+        history: [],
+      };
+
+      loopState.currentIteration = iteration;
+      loopState.history.push({
+        iteration,
+        status: result.passed ? "passed" : "failed",
+        output: result.output,
+        duration: result.duration,
+      });
+
+      if (result.passed) {
+        loopState.status = "passed";
+      } else if (iteration >= maxIterations) {
+        loopState.status = "failed";
+      }
+
+      loops.set(params.name, loopState);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                name: params.name,
+                iteration,
+                max_iterations: maxIterations,
+                status: result.passed ? "passed" : "failed",
+                loop_status: loopState.status,
+                remaining: maxIterations - iteration,
+                output: result.output,
+                duration_ms: result.duration,
+                instructions: result.passed
+                  ? "Command succeeded. Loop complete."
+                  : `Command failed (attempt ${iteration}/${maxIterations}). Fix the issues shown in the output, then call luca_tilldone again with the same name to retry.`,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  });
+
+  // Tool: Get loop status
+  pi.registerTool({
+    name: "luca_loop_status",
+    label: "Loop Status",
+    description:
+      "Get the status of a tilldone loop, including iteration count, pass/fail history, and remaining attempts.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Loop name (omit to list all loops)",
+        },
+      },
+    },
+    async execute(_toolCallId: string, params: { name?: string }) {
+      if (params.name) {
+        const loop = loops.get(params.name);
+        if (!loop) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Loop "${params.name}" not found`,
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  name: loop.name,
+                  command: loop.command,
+                  status: loop.status,
+                  iteration: loop.currentIteration,
+                  max_iterations: loop.maxIterations,
+                  history: loop.history.map((h) => ({
+                    iteration: h.iteration,
+                    status: h.status,
+                    duration_ms: h.duration,
+                  })),
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      // List all loops
+      const allLoops = Array.from(loops.values()).map((l) => ({
+        name: l.name,
+        status: l.status,
+        progress: `${l.currentIteration}/${l.maxIterations}`,
+        passed: l.history.filter((h) => h.status === "passed").length > 0,
+      }));
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(allLoops, null, 2),
+          },
+        ],
+      };
+    },
+  });
+
+  // Tool: Reset/stop a loop
+  pi.registerTool({
+    name: "luca_loop_reset",
+    label: "Reset Loop",
+    description: "Reset or stop a tilldone loop, clearing its iteration state.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Loop name to reset",
+        },
+      },
+      required: ["name"],
+    },
+    async execute(_toolCallId: string, params: { name: string }) {
+      const loop = loops.get(params.name);
+      if (!loop) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Loop "${params.name}" not found`,
+            },
+          ],
+        };
+      }
+
+      const previousStatus = loop.status;
+      loops.delete(params.name);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Loop "${params.name}" reset (was: ${previousStatus}, ${loop.currentIteration} iterations)`,
+          },
+        ],
+      };
+    },
+  });
+}
