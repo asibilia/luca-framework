@@ -72,9 +72,9 @@
 
 **Depends on:** None
 
-- [ ] Plan 61-A: Pi format functions, compiler pipeline integration, AGENTS.md generation
-- [ ] Plan 61-B: Agent persona compilation with tool restrictions and model tier
-- [ ] Plan 61-C: Tests and build validation
+- [x] Plan 61-A: Pi format functions, compiler pipeline integration, AGENTS.md generation
+- [x] Plan 61-B: Agent persona compilation with tool restrictions and model tier (merged into 61-A)
+- [x] Plan 61-C: Tests and build validation (16 Pi compiler tests, merged into 61-A)
 
 ### Phase 62 — Skills + Extensions Output
 
@@ -82,9 +82,9 @@
 
 **Depends on:** Phase 61
 
-- [ ] Plan 62-A: Skill compilation to .pi/skills/{name}/SKILL.md
-- [ ] Plan 62-B: Hook-to-extension compilation (shell → TypeScript)
-- [ ] Plan 62-C: End-to-end test: Luca compile → Pi loads successfully
+- [x] Plan 62-A: Skill compilation to .pi/skills/{name}/SKILL.md (delivered in 61-A)
+- [x] Plan 62-B: Hook-to-extension compilation (shell → TypeScript luca-hooks.ts)
+- [x] Plan 62-C: End-to-end test: 22 Pi extension tests, build validates 9 hooks + 1 extension
 
 ### Phase 63 — Luca Workflow Extensions
 

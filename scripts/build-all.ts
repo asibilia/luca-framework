@@ -83,6 +83,8 @@ async function main() {
   const piDir = path.join(process.cwd(), ".pi");
   const piAgentsDir = path.join(piDir, "agents");
   const piSkillsDir = path.join(piDir, "skills");
+  const piHooksDir = path.join(piDir, "hooks");
+  const piExtensionsDir = path.join(piDir, "extensions");
 
   const pluginDir = path.join(process.cwd(), "dist", "plugin");
   const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
@@ -104,6 +106,8 @@ async function main() {
     ensureDir(claudeHooksDir),
     ensureDir(piAgentsDir),
     ensureDir(piSkillsDir),
+    ensureDir(piHooksDir),
+    ensureDir(piExtensionsDir),
     ensureDir(pluginManifestDir),
     ensureDir(pluginAgentsDir),
     ensureDir(pluginSkillsDir),
@@ -124,6 +128,8 @@ async function main() {
     removedClaudeHooks,
     removedPiAgents,
     removedPiSkills,
+    removedPiHooks,
+    removedPiExtensions,
     removedPluginAgents,
     removedPluginSkills,
     removedPluginCommands,
@@ -140,6 +146,8 @@ async function main() {
     cleanDirectory(claudeHooksDir, [".sh"]),
     cleanDirectory(piAgentsDir, [".md"]),
     cleanSkillsDirectory(piSkillsDir),
+    cleanDirectory(piHooksDir, [".sh"]),
+    cleanDirectory(piExtensionsDir, [".ts"]),
     cleanDirectory(pluginAgentsDir, [".md"]),
     cleanSkillsDirectory(pluginSkillsDir),
     cleanDirectory(pluginCommandsDir, [".md"]),
@@ -158,6 +166,8 @@ async function main() {
     removedClaudeHooks.length +
     removedPiAgents.length +
     removedPiSkills.length +
+    removedPiHooks.length +
+    removedPiExtensions.length +
     removedPluginAgents.length +
     removedPluginSkills.length +
     removedPluginCommands.length +
@@ -264,6 +274,12 @@ async function main() {
     (k) => k.startsWith(".cursor/hooks/") && k.endsWith(".sh"),
   ).length;
 
+  const piHookCount = keys.filter(
+    (k) => k.startsWith(".pi/hooks/") && k.endsWith(".sh"),
+  ).length;
+  const piExtensionCount = keys.filter(
+    (k) => k.startsWith(".pi/extensions/") && k.endsWith(".ts"),
+  ).length;
   const piMetaFiles = keys.filter(
     (k) => k === ".pi/AGENTS.md" || k === ".pi/settings.json",
   ).length;
@@ -328,10 +344,12 @@ async function main() {
   console.log(`  Hooks:  ${cursorHookCount}`);
 
   console.log("\n--- .pi/ ---");
-  console.log(`  Agents:    ${piAgentCount}`);
-  console.log(`  Skills:    ${piSkillCount}`);
-  console.log(`  AGENTS.md: ${piMetaFiles > 0 ? "yes" : "no"}`);
-  console.log(`  Meta:      ${piMetaFiles} files`);
+  console.log(`  Agents:     ${piAgentCount}`);
+  console.log(`  Skills:     ${piSkillCount}`);
+  console.log(`  Hooks:      ${piHookCount}`);
+  console.log(`  Extensions: ${piExtensionCount}`);
+  console.log(`  AGENTS.md:  ${piMetaFiles > 0 ? "yes" : "no"}`);
+  console.log(`  Meta:       ${piMetaFiles} files`);
 
   console.log("\n--- dist/plugin/ ---");
   console.log(`  Agents:   ${pluginAgentCountVal}`);

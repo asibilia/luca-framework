@@ -5,6 +5,8 @@
     "enabled": true,
     "threshold": 0.7
   },
-  "extensions": [],
+  "extensions": [
+    ".pi/extensions/luca-hooks.ts"
+  ],
   "shell": "/bin/zsh"
 }

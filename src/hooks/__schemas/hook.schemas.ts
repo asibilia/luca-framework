@@ -12,10 +12,14 @@ export const HookDefinitionSchema = z.object({
   event: z.string(),
   /** Cursor hook event name (camelCase) */
   cursorEvent: z.string(),
+  /** Pi extension event name (snake_case) — undefined means hook is not compiled for Pi */
+  piEvent: z.string().optional(),
   /** Regex matcher for Claude Code tool name filtering (undefined = always fire) */
   matcher: z.string().optional(),
   /** Regex matcher for Cursor filtering (undefined = always fire) */
   cursorMatcher: z.string().optional(),
+  /** Pi tool names that trigger this hook (undefined = always fire) */
+  piMatcher: z.array(z.string()).optional(),
   /** Shell script filename in src/hooks/scripts/ */
   script: z.string(),
   /** Timeout in seconds */

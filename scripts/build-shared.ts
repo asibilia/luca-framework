@@ -26,6 +26,7 @@ import {
   resolveHookRegistry,
   generateCursorHooksConfig,
   generateClaudeHooksConfig,
+  generatePiExtension,
 } from "../src/hooks/index";
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry } from "../src/rules/index";
@@ -398,7 +399,11 @@ export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
 export { resolveHookRegistry } from "../src/hooks/index";
 
 // Re-export hook config generators for consumers
-export { generateCursorHooksConfig, generateClaudeHooksConfig };
+export {
+  generateCursorHooksConfig,
+  generateClaudeHooksConfig,
+  generatePiExtension,
+};
 
 // Re-export profile infrastructure for build consumers
 export { profileRegistry, ProfileConfigSchema } from "../src/rules/index";
@@ -542,7 +547,7 @@ function generatePiSettings(): object {
       enabled: true,
       threshold: 0.7,
     },
-    extensions: [],
+    extensions: [".pi/extensions/luca-hooks.ts"],
     shell: "/bin/zsh",
   };
 }
@@ -561,7 +566,7 @@ async function generateHookOutputs(
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
   const resolved = resolveHookRegistry();
 
-  // Copy hook scripts to .claude/ and .cursor/
+  // Copy hook scripts to .claude/, .cursor/, and .pi/
   for (const [_hookName, hookDef] of Object.entries(resolved)) {
     const srcPath = path.join(hookScriptsDir, hookDef.script);
     const srcFile = Bun.file(srcPath);
@@ -569,6 +574,10 @@ async function generateHookOutputs(
       const content = await srcFile.text();
       generated.set(`.claude/hooks/${hookDef.script}`, content);
       generated.set(`.cursor/hooks/${hookDef.script}`, content);
+      // Pi hooks: copy scripts that have a piEvent mapping
+      if (hookDef.piEvent) {
+        generated.set(`.pi/hooks/${hookDef.script}`, content);
+      }
     }
   }
 
@@ -587,6 +596,10 @@ async function generateHookOutputs(
     ".cursor/hooks.json",
     JSON.stringify(cursorHooksConfig, null, 2) + "\n",
   );
+
+  // Pi extension: generates luca-hooks.ts from hook registry
+  const piExtension = generatePiExtension(resolved);
+  generated.set(".pi/extensions/luca-hooks.ts", piExtension);
 }
 
 async function generatePluginOutputs(
