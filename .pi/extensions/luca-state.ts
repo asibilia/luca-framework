@@ -21,7 +21,11 @@ export default function lucaState(pi: any) {
 
   /**
    * Parse STATE.md into a structured object.
-   * Extracts key-value pairs from the markdown format.
+   *
+   * Extracts key-value pairs from the markdown format, supporting
+   * both bold (`**Key:** value`) and simple (`Key: value`) formats.
+   *
+   * @returns Record of normalized key-value pairs, or an error object if file missing
    */
   function readStateMd(): Record<string, string> {
     if (!existsSync(stateMdPath)) {

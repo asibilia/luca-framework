@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v2.1.0 — Pi Library Integration (7 phases, 22 plans, 2049 tests)
+**Current Milestone:** v2.1.0 — Pi Library Integration (7 phases, 22 plans, 2106 tests)
 
 ---
 
@@ -138,10 +138,10 @@
 
 **Audit reference:** v2.1.0-MILESTONE-AUDIT.md — DRY/Simplification (3 CRITICAL, 3 HIGH, 5 MEDIUM) + Architecture (1 MEDIUM)
 
-- [ ] Plan 67-A: Create `src/hooks/pi-extensions/__helpers/` with response.ts, frontmatter.ts, exec.ts, registry.ts
-- [ ] Plan 67-B: Refactor all 11 extensions to use shared helpers (38+ response wrappers, 3x frontmatter, 2x exec)
-- [ ] Plan 67-C: Unify `generatePiSettings()` and `generatePiOutputs()` extension list to single source of truth
-- [ ] Plan 67-D: Add JSDoc to extracted helpers and extension functions (16 documentation gaps)
+- [x] Plan 67-A: Create `src/hooks/pi-extensions/__helpers/` with response.ts, frontmatter.ts, exec.ts, registry.ts (57 new tests, 127 helper total)
+- [x] Plan 67-B: Refactor all 11 extensions to use shared helpers (88 response wrappers, 3x frontmatter, 2x exec, 7x registry — ~648 lines removed)
+- [x] Plan 67-C: Unify `generatePiSettings()` and `generatePiOutputs()` extension list to single source of truth; copy `__helpers/` to `.pi/`
+- [x] Plan 67-D: Add JSDoc to extracted helpers and extension functions (all functions documented)
 
 ---
 
