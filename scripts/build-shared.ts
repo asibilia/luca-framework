@@ -557,6 +557,9 @@ function generatePiSettings(): object {
       ".pi/extensions/luca-teams.ts",
       ".pi/extensions/luca-chain.ts",
       ".pi/extensions/luca-tilldone.ts",
+      ".pi/extensions/luca-query-experts.ts",
+      ".pi/extensions/luca-safety-rules.ts",
+      ".pi/extensions/luca-purpose-gating.ts",
     ],
     shell: "/bin/zsh",
   };
@@ -587,6 +590,9 @@ async function generatePiOutputs(
     "luca-teams.ts",
     "luca-chain.ts",
     "luca-tilldone.ts",
+    "luca-query-experts.ts",
+    "luca-safety-rules.ts",
+    "luca-purpose-gating.ts",
   ];
 
   for (const fileName of extensionFiles) {

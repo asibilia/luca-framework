@@ -114,9 +114,9 @@
 
 **Depends on:** Phases 63, 64
 
-- [ ] Plan 65-A: Parallel expert research (query_experts pattern)
-- [ ] Plan 65-B: Damage control / safety rules (YAML → all platforms)
-- [ ] Plan 65-C: Purpose gating and background subagent spawning
+- [x] Plan 65-A: Parallel expert research (luca-query-experts.ts — 4 tools, 5 built-in expert domains)
+- [x] Plan 65-B: Safety rules with gate modes (luca-safety-rules.ts — 5 tools, 6 built-in rules, tool_call enforcement)
+- [x] Plan 65-C: Purpose gating and deferred tasks (luca-purpose-gating.ts — 6 tools, auto-discovery, session_start)
 
 ---
 
