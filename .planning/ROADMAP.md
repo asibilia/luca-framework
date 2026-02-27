@@ -92,10 +92,10 @@
 
 **Depends on:** Phase 62
 
-- [ ] Plan 63-A: State bridge extension (luca_read_state, luca_transition tools)
-- [ ] Plan 63-B: Memory extension (BRAIN.md/MEMORY.md/WORKING.md integration)
-- [ ] Plan 63-C: Harness extension (verification at agent_end)
-- [ ] Plan 63-D: Complexity gating extension
+- [x] Plan 63-A: State bridge extension (luca_read_state, luca_set_field tools)
+- [x] Plan 63-B: Memory extension (BRAIN.md/MEMORY.md/WORKING.md integration)
+- [x] Plan 63-C: Harness extension (verification at agent_end)
+- [x] Plan 63-D: Complexity gating extension
 
 ### Phase 64 — Agent Orchestration Features
 

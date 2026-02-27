@@ -6,7 +6,11 @@
     "threshold": 0.7
   },
   "extensions": [
-    ".pi/extensions/luca-hooks.ts"
+    ".pi/extensions/luca-hooks.ts",
+    ".pi/extensions/luca-state.ts",
+    ".pi/extensions/luca-memory.ts",
+    ".pi/extensions/luca-harness.ts",
+    ".pi/extensions/luca-complexity.ts"
   ],
   "shell": "/bin/zsh"
 }
