@@ -11,6 +11,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
+import { isWithinDirectory } from "./__helpers/sanitize";
+
 export default function lucaMemory(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -21,8 +23,12 @@ export default function lucaMemory(pi: any) {
   /**
    * Read a planning file safely.
    * Returns the file content or an error message.
+   * Validates that the file path is within the planning directory.
    */
   function readPlanningFile(filePath: string, label: string): string {
+    if (!isWithinDirectory(filePath, planningDir)) {
+      return `${label} path escapes planning directory — access denied`;
+    }
     if (!existsSync(filePath)) {
       return `${label} not found at ${filePath}`;
     }
@@ -161,6 +167,18 @@ export default function lucaMemory(pi: any) {
             {
               type: "text",
               text: `Unknown section "${params.section}". Valid: ${Object.keys(sectionHeaders).join(", ")}`,
+            },
+          ],
+        };
+      }
+
+      // Guard: ensure write path is within the planning directory
+      if (!isWithinDirectory(workingPath, planningDir)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Write path escapes planning directory — access denied`,
             },
           ],
         };

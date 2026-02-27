@@ -7,6 +7,10 @@
  *
  * Source: src/hooks/pi-extensions/__helpers/sanitize.ts
  */
+import { resolve } from "path";
+
+// Zero-width and invisible Unicode characters to strip during normalization
+const ZERO_WIDTH_CHARS = /[\u200B\u200C\u200D\uFEFF]/g;
 
 /**
  * Escape regex special characters in a string.
@@ -107,4 +111,80 @@ export function validateScriptPath(scriptPath: string): boolean {
  */
 export function isValidIdentifier(str: string): boolean {
   return /^[a-zA-Z0-9_-]+$/.test(str);
+}
+
+/**
+ * Normalize a tool name for restriction checks.
+ * Trims whitespace, removes zero-width/invisible Unicode characters,
+ * converts to lowercase, and collapses internal whitespace.
+ *
+ * Used by luca-roles to prevent tool restriction bypass via whitespace,
+ * invisible characters, or case variations.
+ *
+ * @param name - The raw tool name to normalize
+ * @returns The normalized tool name
+ *
+ * @example
+ * ```typescript
+ * normalizeToolName("  luca_verify  ") // "luca_verify"
+ * normalizeToolName("luca\u200B_verify") // "luca_verify"
+ * normalizeToolName("LUCA_VERIFY") // "luca_verify"
+ * ```
+ */
+export function normalizeToolName(name: string): string {
+  return name
+    .trim()
+    .replace(ZERO_WIDTH_CHARS, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * Check if a resolved file path is within a base directory.
+ * Prevents path traversal attacks by resolving both paths to absolute
+ * and verifying containment.
+ *
+ * @param filePath - The file path to validate
+ * @param baseDir - The base directory that must contain the file
+ * @returns true if filePath is within baseDir, false otherwise
+ *
+ * @example
+ * ```typescript
+ * isWithinDirectory("/project/.planning/BRAIN.md", "/project/.planning") // true
+ * isWithinDirectory("/project/.planning/../etc/passwd", "/project/.planning") // false
+ * isWithinDirectory("/etc/passwd", "/project/.planning") // false
+ * ```
+ */
+export function isWithinDirectory(filePath: string, baseDir: string): boolean {
+  const resolvedFile = resolve(filePath);
+  const resolvedBase = resolve(baseDir);
+  // Ensure the resolved file starts with the base directory followed by /
+  // Also allow exact match (the directory itself)
+  return (
+    resolvedFile === resolvedBase || resolvedFile.startsWith(resolvedBase + "/")
+  );
+}
+
+/**
+ * Normalize a context or purpose string for comparison.
+ * Trims whitespace, converts to lowercase, collapses internal whitespace,
+ * and returns empty string for null/undefined inputs.
+ *
+ * Used by luca-purpose-gating to prevent bypasses via whitespace,
+ * empty strings, or case inconsistencies.
+ *
+ * @param str - The raw context/purpose string to normalize (may be null/undefined)
+ * @returns The normalized string, or empty string for null/undefined
+ *
+ * @example
+ * ```typescript
+ * normalizeContext("  Research  ") // "research"
+ * normalizeContext("EXECUTION") // "execution"
+ * normalizeContext("  ") // ""
+ * normalizeContext(null) // ""
+ * ```
+ */
+export function normalizeContext(str: string | null | undefined): string {
+  if (str == null) return "";
+  return str.trim().replace(/\s+/g, " ").toLowerCase();
 }

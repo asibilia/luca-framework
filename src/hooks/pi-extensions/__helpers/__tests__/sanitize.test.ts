@@ -1,3 +1,9 @@
+/**
+ * Tests for shared sanitization utilities (PLAN-66-B + PLAN-66-C).
+ *
+ * Validates all sanitization functions used across Pi extensions
+ * for input validation and normalization.
+ */
 import { test, expect, describe } from "bun:test";
 import {
   escapeRegExp,
@@ -5,7 +11,14 @@ import {
   sanitizeForTemplate,
   validateScriptPath,
   isValidIdentifier,
+  normalizeToolName,
+  isWithinDirectory,
+  normalizeContext,
 } from "../sanitize";
+
+// ---------------------------------------------------------------------------
+// escapeRegExp (PLAN-66-B)
+// ---------------------------------------------------------------------------
 
 describe("escapeRegExp", () => {
   test("escapes all regex metacharacters", () => {
@@ -40,6 +53,10 @@ describe("escapeRegExp", () => {
     expect(escapeRegExp("(a|b)")).toBe("\\(a\\|b\\)");
   });
 });
+
+// ---------------------------------------------------------------------------
+// sanitizeName (PLAN-66-B)
+// ---------------------------------------------------------------------------
 
 describe("sanitizeName", () => {
   test("replaces non-alphanumeric characters with hyphens", () => {
@@ -85,6 +102,10 @@ describe("sanitizeName", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// sanitizeForTemplate (PLAN-66-B)
+// ---------------------------------------------------------------------------
+
 describe("sanitizeForTemplate", () => {
   test("removes backticks", () => {
     expect(sanitizeForTemplate("hello `world`")).toBe("hello world");
@@ -125,6 +146,10 @@ describe("sanitizeForTemplate", () => {
     expect(sanitizeForTemplate("hello\x7fworld")).toBe("helloworld");
   });
 });
+
+// ---------------------------------------------------------------------------
+// validateScriptPath (PLAN-66-B)
+// ---------------------------------------------------------------------------
 
 describe("validateScriptPath", () => {
   test("accepts valid relative paths", () => {
@@ -170,6 +195,10 @@ describe("validateScriptPath", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// isValidIdentifier (PLAN-66-B)
+// ---------------------------------------------------------------------------
+
 describe("isValidIdentifier", () => {
   test("accepts alphanumeric strings", () => {
     expect(isValidIdentifier("hello123")).toBe(true);
@@ -211,5 +240,157 @@ describe("isValidIdentifier", () => {
 
   test("rejects strings with template injection", () => {
     expect(isValidIdentifier("${injected}")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeToolName (PLAN-66-C Task 1)
+// ---------------------------------------------------------------------------
+
+describe("normalizeToolName", () => {
+  test("trims leading and trailing whitespace", () => {
+    expect(normalizeToolName(" luca_verify ")).toBe("luca_verify");
+  });
+
+  test("removes zero-width space (U+200B)", () => {
+    expect(normalizeToolName("luca\u200B_verify")).toBe("luca_verify");
+  });
+
+  test("removes zero-width non-joiner (U+200C)", () => {
+    expect(normalizeToolName("luca\u200C_verify")).toBe("luca_verify");
+  });
+
+  test("removes zero-width joiner (U+200D)", () => {
+    expect(normalizeToolName("luca\u200D_verify")).toBe("luca_verify");
+  });
+
+  test("removes BOM (U+FEFF)", () => {
+    expect(normalizeToolName("\uFEFFluca_verify")).toBe("luca_verify");
+  });
+
+  test("converts to lowercase", () => {
+    expect(normalizeToolName("LUCA_VERIFY")).toBe("luca_verify");
+  });
+
+  test("collapses internal whitespace to single space", () => {
+    expect(normalizeToolName("luca  _  verify")).toBe("luca _ verify");
+  });
+
+  test("handles combined normalization", () => {
+    expect(normalizeToolName("  LUCA\u200B_VERIFY  ")).toBe("luca_verify");
+  });
+
+  test("handles empty string", () => {
+    expect(normalizeToolName("")).toBe("");
+  });
+
+  test("handles whitespace-only string", () => {
+    expect(normalizeToolName("   ")).toBe("");
+  });
+
+  test("preserves already normalized names", () => {
+    expect(normalizeToolName("luca_verify")).toBe("luca_verify");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isWithinDirectory (PLAN-66-C Task 2)
+// ---------------------------------------------------------------------------
+
+describe("isWithinDirectory", () => {
+  test("returns true for file within directory", () => {
+    expect(
+      isWithinDirectory("/project/.planning/BRAIN.md", "/project/.planning"),
+    ).toBe(true);
+  });
+
+  test("returns false for path traversal attempt", () => {
+    expect(
+      isWithinDirectory(
+        "/project/.planning/../etc/passwd",
+        "/project/.planning",
+      ),
+    ).toBe(false);
+  });
+
+  test("returns false for file outside directory", () => {
+    expect(isWithinDirectory("/etc/passwd", "/project/.planning")).toBe(false);
+  });
+
+  test("returns true for nested subdirectory files", () => {
+    expect(
+      isWithinDirectory(
+        "/project/.planning/sub/dir/file.md",
+        "/project/.planning",
+      ),
+    ).toBe(true);
+  });
+
+  test("returns true for exact directory match", () => {
+    expect(isWithinDirectory("/project/.planning", "/project/.planning")).toBe(
+      true,
+    );
+  });
+
+  test("returns false for sibling directory with similar prefix", () => {
+    // /project/.planning-extra is NOT within /project/.planning
+    expect(
+      isWithinDirectory(
+        "/project/.planning-extra/file.md",
+        "/project/.planning",
+      ),
+    ).toBe(false);
+  });
+
+  test("handles relative paths by resolving them", () => {
+    // Both get resolved to absolute, so relative traversal is caught
+    expect(
+      isWithinDirectory(
+        "/project/.planning/../../etc/passwd",
+        "/project/.planning",
+      ),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeContext (PLAN-66-C Task 3)
+// ---------------------------------------------------------------------------
+
+describe("normalizeContext", () => {
+  test("trims leading and trailing whitespace", () => {
+    expect(normalizeContext("  Research  ")).toBe("research");
+  });
+
+  test("converts to lowercase", () => {
+    expect(normalizeContext("EXECUTION")).toBe("execution");
+  });
+
+  test("collapses internal whitespace", () => {
+    expect(normalizeContext("code  review")).toBe("code review");
+  });
+
+  test("returns empty string for null", () => {
+    expect(normalizeContext(null)).toBe("");
+  });
+
+  test("returns empty string for undefined", () => {
+    expect(normalizeContext(undefined)).toBe("");
+  });
+
+  test("returns empty string for whitespace-only input", () => {
+    expect(normalizeContext("   ")).toBe("");
+  });
+
+  test("handles combined normalization", () => {
+    expect(normalizeContext("  Code   Review  ")).toBe("code review");
+  });
+
+  test("preserves already normalized strings", () => {
+    expect(normalizeContext("research")).toBe("research");
+  });
+
+  test("handles empty string", () => {
+    expect(normalizeContext("")).toBe("");
   });
 });
