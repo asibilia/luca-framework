@@ -41,6 +41,16 @@ interface ResearchSession {
   status: "pending" | "researching" | "synthesized";
 }
 
+/**
+ * Pi extension: Parallel expert research sessions.
+ *
+ * Registers tools for defining multi-domain research sessions, submitting
+ * expert findings, and synthesizing cross-domain insights. Supports
+ * built-in domains (stack, architecture, security, performance, dx)
+ * and custom expert definitions.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaQueryExperts(pi: any) {
   const cwd = process.cwd();
   const researchDir = join(cwd, ".planning", "research");

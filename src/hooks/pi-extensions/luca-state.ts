@@ -19,6 +19,15 @@ import {
   COMPLEXITY_TIERS,
 } from "./__helpers/status";
 
+/**
+ * Pi extension: Workflow state management and status display.
+ *
+ * Registers tools for reading/writing .planning/STATE.md fields and
+ * displays a consolidated status bar (phase, complexity, memory
+ * indicators) in Pi's footer during sessions.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaState(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -156,13 +165,15 @@ export default function lucaState(pi: any) {
     },
   });
 
-  // Show consolidated state in footer on session start
-  pi.on("session_start", async (_event: any, ctx: any) => {
-    if (!ctx?.ui?.setStatus) return;
-
+  /**
+   * Build the state status string from current STATE.md and .planning/ files.
+   *
+   * Called at session_start and can be refreshed by tool_call events.
+   */
+  function buildStateStatus(ctx: any): string {
     const state = readStateMd();
-    const phase = state["current_phase"] ?? "--";
-    const milestone = state["current_milestone"] ?? "--";
+    const phase = state["current_phase"];
+    const milestone = state["current_milestone"];
     const complexity = (state["task_complexity"] ?? "MODERATE").toUpperCase();
     const tier = COMPLEXITY_TIERS[complexity] ?? "standard";
 
@@ -173,8 +184,13 @@ export default function lucaState(pi: any) {
 
     const fmt = createStatusFormatter(ctx);
 
-    // Phase + milestone segment
-    const phaseSegment = fmt.accent(`P${phase} ${milestone}`);
+    // Phase + milestone segment — show "No active phase" when missing
+    const hasPhase = phase && phase !== "--" && phase !== "?";
+    const hasMilestone = milestone && milestone !== "--" && milestone !== "?";
+    const phaseSegment =
+      hasPhase || hasMilestone
+        ? fmt.accent(`P${phase ?? "?"}${hasMilestone ? ` ${milestone}` : ""}`)
+        : fmt.dim("No active phase");
 
     // Complexity segment — color by tier
     const complexityColor =
@@ -193,9 +209,33 @@ export default function lucaState(pi: any) {
     const w = workingExists ? fmt.success("W") : fmt.dim("W");
     const memorySegment = `${b} ${m} ${w}`;
 
+    return `${phaseSegment}${SEP}${complexitySegment}${SEP}${memorySegment}`;
+  }
+
+  // Show consolidated state in footer on session start
+  pi.on("session_start", async (_event: any, ctx: any) => {
+    if (!ctx?.ui?.setStatus) return;
+    ctx.ui.setStatus("luca-state", buildStateStatus(ctx));
+  });
+
+  // Track active luca tool calls
+  pi.on("tool_call", async (event: any, ctx: any) => {
+    const toolName: string = event?.toolName ?? "";
+    if (!toolName.startsWith("luca_") || !ctx?.ui?.setStatus) return;
+
+    // Show which luca tool is active alongside state
+    const label = toolName.replace("luca_", "").replace(/_/g, " ");
+    const fmt = createStatusFormatter(ctx);
     ctx.ui.setStatus(
       "luca-state",
-      `${phaseSegment}${SEP}${complexitySegment}${SEP}${memorySegment}`,
+      `${buildStateStatus(ctx)}${SEP}${fmt.accent(label)}`,
     );
+  });
+
+  // Clear active tool indicator when tool finishes
+  pi.on("tool_execution_end", async (event: any, ctx: any) => {
+    const toolName: string = event?.toolName ?? "";
+    if (!toolName.startsWith("luca_") || !ctx?.ui?.setStatus) return;
+    ctx.ui.setStatus("luca-state", buildStateStatus(ctx));
   });
 }

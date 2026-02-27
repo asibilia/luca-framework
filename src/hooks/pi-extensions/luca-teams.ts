@@ -26,6 +26,15 @@ interface TeamDef {
 /** Max characters to include from an agent persona (prevents huge payloads). */
 const MAX_PERSONA_LENGTH = 2000;
 
+/**
+ * Pi extension: Agent team dispatch and multi-agent review.
+ *
+ * Registers tools for listing, defining, and dispatching tasks to
+ * agent teams. Each team member's role description, tool restrictions,
+ * and persona context are returned for simulated multi-agent review.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaTeams(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");

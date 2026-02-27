@@ -46,6 +46,15 @@ interface DeferredTask {
   triggered_at?: string;
 }
 
+/**
+ * Pi extension: Agent purpose classification and deferred task scheduling.
+ *
+ * Registers tools for classifying agent purposes, checking execution
+ * context eligibility, querying eligible agents, and scheduling
+ * deferred background tasks with trigger conditions.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaPurposeGating(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
@@ -336,8 +345,9 @@ export default function lucaPurposeGating(pi: any) {
       // Group by purpose
       const grouped: Record<string, string[]> = {};
       for (const agent of eligible) {
-        if (!grouped[agent.purpose]) grouped[agent.purpose] = [];
-        grouped[agent.purpose].push(agent.agent);
+        const bucket = grouped[agent.purpose] ?? [];
+        bucket.push(agent.agent);
+        grouped[agent.purpose] = bucket;
       }
 
       return createJsonResponse({

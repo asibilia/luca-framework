@@ -59,6 +59,15 @@ function normalizeForMatch(str: string): string {
   return str.toLowerCase().replace(/[_-]/g, "");
 }
 
+/**
+ * Pi extension: Safety rule registration and content checking.
+ *
+ * Registers tools for defining safety rules with pattern matching,
+ * checking content against registered rules, managing the gate
+ * enforcement mode (block/warn/log), and viewing the audit log.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaSafetyRules(pi: any) {
   const cwd = process.cwd();
 

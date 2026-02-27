@@ -35,6 +35,16 @@ interface LoopState {
 /** Max characters to keep from command output (prevents huge payloads). */
 const MAX_OUTPUT_LENGTH = 1500;
 
+/**
+ * Pi extension: Retry-until-success command loops.
+ *
+ * Registers tools for running a command repeatedly until it succeeds,
+ * checking loop status, and resetting loops. Used for verification-driven
+ * workflows like "run tests until they pass" with configurable max
+ * iterations and timeout per attempt.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaTilldone(pi: any) {
   const cwd = process.cwd();
 

@@ -14,6 +14,15 @@ import { join } from "path";
 import { createTextResponse } from "./__helpers/response";
 import { isWithinDirectory } from "./__helpers/sanitize";
 
+/**
+ * Pi extension: Cognitive memory system.
+ *
+ * Registers tools for reading BRAIN.md (project identity), MEMORY.md
+ * (long-term learnings), and WORKING.md (session context), plus
+ * appending to WORKING.md sections during active sessions.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaMemory(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");

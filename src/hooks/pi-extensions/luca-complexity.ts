@@ -100,6 +100,15 @@ const GATING_MATRIX: Record<
   },
 };
 
+/**
+ * Pi extension: Complexity gating and tier management.
+ *
+ * Registers tools for reading/setting task complexity levels (TRIVIAL
+ * through CRITICAL) and checking workflow step gates against the
+ * complexity matrix in .planning/config.json.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaComplexity(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");

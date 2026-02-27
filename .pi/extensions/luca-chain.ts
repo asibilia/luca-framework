@@ -34,6 +34,15 @@ interface Chain {
   status: "pending" | "running" | "completed" | "failed";
 }
 
+/**
+ * Pi extension: Agent chain orchestration.
+ *
+ * Registers tools for defining, advancing, and querying sequential
+ * agent pipelines. Each chain step specifies an agent role and task,
+ * with context passed between steps.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaChain(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
@@ -195,8 +204,11 @@ export default function lucaChain(pi: any) {
 
       // Record previous step output if provided
       if (params.previous_output && chain.currentStep > 0) {
-        chain.steps[chain.currentStep - 1].output = params.previous_output;
-        chain.steps[chain.currentStep - 1].status = "completed";
+        const prevStep = chain.steps[chain.currentStep - 1];
+        if (prevStep) {
+          prevStep.output = params.previous_output;
+          prevStep.status = "completed";
+        }
       }
 
       // Check if chain is complete
@@ -217,6 +229,10 @@ export default function lucaChain(pi: any) {
 
       // Get current step
       const step = chain.steps[chain.currentStep];
+      if (!step) {
+        chain.status = "completed";
+        return createTextResponse(`Chain "${chain.name}" has no more steps.`);
+      }
       step.status = "running";
       chain.status = "running";
       chain.currentStep++;

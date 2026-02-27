@@ -20,6 +20,15 @@ import { runShellCommand } from "./__helpers/exec";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { createStatusFormatter } from "./__helpers/status";
 
+/**
+ * Pi extension: Verification harness runner.
+ *
+ * Registers the luca_verify tool that runs configured quality checks
+ * (test, typecheck, lint, build) from .planning/config.json and returns
+ * structured pass/fail results with error output and duration.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaHarness(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -181,14 +190,17 @@ export default function lucaHarness(pi: any) {
 
     if (allPassed) {
       if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus("luca-harness", fmt.success("\u2713 All passing"));
+        ctx.ui.setStatus(
+          "luca-harness",
+          fmt.success("Last verify: \u2713 all passing"),
+        );
       }
     } else {
       const failNames = failedChecks.map((c) => c.name).join(", ");
       if (ctx?.ui?.setStatus) {
         ctx.ui.setStatus(
           "luca-harness",
-          fmt.bold(fmt.error(`\u2717 FAILED: ${failNames}`)),
+          fmt.bold(fmt.error(`Last verify: \u2717 ${failNames}`)),
         );
       }
 

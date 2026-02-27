@@ -21,6 +21,15 @@ interface AgentRole extends AgentFrontmatter {
   tools: string[];
 }
 
+/**
+ * Pi extension: Agent role activation and tool restriction enforcement.
+ *
+ * Registers tools for listing available agent roles from .pi/agents/,
+ * activating a role to enforce its tool restrictions, deactivating
+ * the active role, and querying the current role state.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaRoles(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");

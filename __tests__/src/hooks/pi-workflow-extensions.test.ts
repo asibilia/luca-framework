@@ -91,13 +91,17 @@ describe("luca-state extension", () => {
     expect(tool!.parameters.required).toContain("value");
   });
 
-  test("subscribes to session_start event", async () => {
+  test("subscribes to session_start, tool_call, and tool_execution_end events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-state");
     const pi = createMockPi();
     mod.default(pi);
 
     const sessionStart = pi.events.find((e) => e.event === "session_start");
     expect(sessionStart).toBeDefined();
+    const toolCall = pi.events.find((e) => e.event === "tool_call");
+    expect(toolCall).toBeDefined();
+    const toolEnd = pi.events.find((e) => e.event === "tool_execution_end");
+    expect(toolEnd).toBeDefined();
   });
 
   test("luca_read_state returns parsed state", async () => {
@@ -374,13 +378,13 @@ describe("luca-complexity extension", () => {
     expect(result.content[0].text).toContain("Unknown step");
   });
 
-  test("subscribes to session_start event", async () => {
+  test("does not subscribe to session_start (owned by luca-state)", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-complexity");
     const pi = createMockPi();
     mod.default(pi);
 
     const sessionStart = pi.events.find((e) => e.event === "session_start");
-    expect(sessionStart).toBeDefined();
+    expect(sessionStart).toBeUndefined();
   });
 });
 

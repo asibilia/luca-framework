@@ -34,6 +34,15 @@ interface Chain {
   status: "pending" | "running" | "completed" | "failed";
 }
 
+/**
+ * Pi extension: Agent chain orchestration.
+ *
+ * Registers tools for defining, advancing, and querying sequential
+ * agent pipelines. Each chain step specifies an agent role and task,
+ * with context passed between steps.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaChain(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");

@@ -72,11 +72,13 @@ export const PI_EXTENSION_FILES: readonly string[] = [
  * Must be copied alongside extensions for imports to resolve.
  */
 export const PI_HELPER_FILES: readonly string[] = [
+  "index.ts",
   "sanitize.ts",
   "response.ts",
   "frontmatter.ts",
   "exec.ts",
   "registry.ts",
+  "status.ts",
 ] as const;
 
 /**

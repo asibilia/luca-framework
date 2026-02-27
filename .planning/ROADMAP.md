@@ -16,9 +16,9 @@
 
 **Depends on:** None (67-A already complete from v2.1.0)
 
-- [ ] Plan 67-B: Refactor all 11 Pi extensions to use shared helpers
-- [ ] Plan 67-C: Unify build config to single source of truth for Pi extensions
-- [ ] Plan 67-D: Add JSDoc documentation to Pi extension helpers and functions
+- [x] Plan 67-B: Refactor all 11 Pi extensions to use shared helpers
+- [x] Plan 67-C: Unify build config to single source of truth for Pi extensions
+- [x] Plan 67-D: Add JSDoc documentation to Pi extension helpers and functions
 
 ### Phase 68 — E2E Pi Runtime Validation
 
