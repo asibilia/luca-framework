@@ -11,13 +11,10 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 
-/** Agent info parsed from frontmatter. */
-interface AgentInfo {
-  name: string;
-  description: string;
-  tools: string[];
-  model?: string;
-}
+import type { AgentFrontmatter } from "./__helpers/frontmatter";
+import { parseFrontmatter } from "./__helpers/frontmatter";
+import { createRegistry } from "./__helpers/registry";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 
 /** Team definition. */
 interface TeamDef {
@@ -34,7 +31,7 @@ export default function lucaTeams(pi: any) {
   const agentsDir = join(cwd, ".pi", "agents");
 
   /** Registered teams. */
-  const teams: Map<string, TeamDef> = new Map();
+  const teams = createRegistry<TeamDef>("teams");
 
   // Pre-define standard teams
   teams.set("code-review", {
@@ -73,31 +70,10 @@ export default function lucaTeams(pi: any) {
   /**
    * Parse YAML frontmatter from an agent .md file.
    */
-  function parseAgentFile(filePath: string): AgentInfo | null {
+  function parseAgentFile(filePath: string): AgentFrontmatter | null {
     if (!existsSync(filePath)) return null;
     const content = readFileSync(filePath, "utf-8");
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) return null;
-
-    const fm = fmMatch[1];
-    const name = fm.match(/^name:\s*(.+)$/m)?.[1]?.trim() ?? "";
-    const description = fm.match(/^description:\s*(.+)$/m)?.[1]?.trim() ?? "";
-    const model = fm.match(/^model:\s*(.+)$/m)?.[1]?.trim();
-
-    const tools: string[] = [];
-    const toolsMatch = fm.match(/^tools:\n((?:\s+-\s+.+\n?)*)/m);
-    if (toolsMatch) {
-      const toolLines = toolsMatch[1].match(/^\s+-\s+(.+)$/gm);
-      if (toolLines) {
-        for (const line of toolLines) {
-          const toolName = line.replace(/^\s+-\s+/, "").trim();
-          if (toolName) tools.push(toolName);
-        }
-      }
-    }
-
-    if (!name) return null;
-    return { name, description, tools, model };
+    return parseFrontmatter(content);
   }
 
   /**
@@ -119,19 +95,12 @@ export default function lucaTeams(pi: any) {
       "List all registered agent teams with their member agents and descriptions.",
     parameters: {},
     async execute() {
-      const teamList = Array.from(teams.values()).map((t) => ({
+      const teamList = teams.values().map((t) => ({
         name: t.name,
         description: t.description,
         agents: t.agents,
       }));
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(teamList, null, 2),
-          },
-        ],
-      };
+      return createJsonResponse(teamList);
     },
   });
 
@@ -178,14 +147,7 @@ export default function lucaTeams(pi: any) {
         (name) => !existsSync(join(agentsDir, `${name}.md`)),
       );
       if (missing.length > 0) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Agent(s) not found: ${missing.join(", ")}`,
-            },
-          ],
-        };
+        return createTextResponse(`Agent(s) not found: ${missing.join(", ")}`);
       }
 
       teams.set(params.name, {
@@ -194,14 +156,9 @@ export default function lucaTeams(pi: any) {
         agents: agentNames,
       });
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Team "${params.name}" defined with ${agentNames.length} agents: ${agentNames.join(", ")}`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Team "${params.name}" defined with ${agentNames.length} agents: ${agentNames.join(", ")}`,
+      );
     },
   });
 
@@ -228,15 +185,10 @@ export default function lucaTeams(pi: any) {
     async execute(_toolCallId: string, params: { team: string; task: string }) {
       const teamDef = teams.get(params.team);
       if (!teamDef) {
-        const available = Array.from(teams.keys()).join(", ");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Team "${params.team}" not found. Available: ${available}`,
-            },
-          ],
-        };
+        const available = teams.keys().join(", ");
+        return createTextResponse(
+          `Team "${params.team}" not found. Available: ${available}`,
+        );
       }
 
       // Build dispatch context for each agent
@@ -272,9 +224,7 @@ export default function lucaTeams(pi: any) {
           "Review the task from each agent's perspective. Apply each agent's role constraints and expertise. Synthesize findings into a unified response.",
       };
 
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return createJsonResponse(result);
     },
   });
 }

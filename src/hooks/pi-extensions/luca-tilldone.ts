@@ -13,7 +13,9 @@
  * Source: src/hooks/pi-extensions/luca-tilldone.ts
  * Deployed to: .pi/extensions/luca-tilldone.ts
  */
-import { execSync } from "child_process";
+import { runShellCommand } from "./__helpers/exec";
+import { createRegistry } from "./__helpers/registry";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 
 /** Active loop state. */
 interface LoopState {
@@ -37,7 +39,7 @@ export default function lucaTilldone(pi: any) {
   const cwd = process.cwd();
 
   /** Active loops. */
-  const loops: Map<string, LoopState> = new Map();
+  const loops = createRegistry<LoopState>("loops");
 
   /**
    * Run a command and return structured result.
@@ -62,28 +64,11 @@ export default function lucaTilldone(pi: any) {
     output: string;
     duration: number;
   } {
-    const start = Date.now();
-    try {
-      const result = execSync(command, {
-        cwd,
-        timeout: timeout * 1000,
-        stdio: ["pipe", "pipe", "pipe"],
-        encoding: "utf-8",
-      });
-      return {
-        passed: true,
-        output:
-          typeof result === "string" ? result.slice(-MAX_OUTPUT_LENGTH) : "",
-        duration: Date.now() - start,
-      };
-    } catch (err: any) {
-      const output = (err.stdout || "") + "\n" + (err.stderr || "");
-      return {
-        passed: false,
-        output: output.slice(-MAX_OUTPUT_LENGTH),
-        duration: Date.now() - start,
-      };
-    }
+    return runShellCommand(command, {
+      cwd,
+      timeout,
+      maxOutput: MAX_OUTPUT_LENGTH,
+    });
   }
 
   // Tool: Run a command in a retry loop until it passes
@@ -133,23 +118,12 @@ export default function lucaTilldone(pi: any) {
       const iteration = existingLoop ? existingLoop.currentIteration + 1 : 1;
 
       if (iteration > maxIterations) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  name: params.name,
-                  status: "failed",
-                  message: `Max iterations (${maxIterations}) reached`,
-                  total_attempts: iteration - 1,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          name: params.name,
+          status: "failed",
+          message: `Max iterations (${maxIterations}) reached`,
+          total_attempts: iteration - 1,
+        });
       }
 
       const result = runCommand(params.command, timeout);
@@ -180,30 +154,19 @@ export default function lucaTilldone(pi: any) {
 
       loops.set(params.name, loopState);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                name: params.name,
-                iteration,
-                max_iterations: maxIterations,
-                status: result.passed ? "passed" : "failed",
-                loop_status: loopState.status,
-                remaining: maxIterations - iteration,
-                output: result.output,
-                duration_ms: result.duration,
-                instructions: result.passed
-                  ? "Command succeeded. Loop complete."
-                  : `Command failed (attempt ${iteration}/${maxIterations}). Fix the issues shown in the output, then call luca_tilldone again with the same name to retry.`,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        name: params.name,
+        iteration,
+        max_iterations: maxIterations,
+        status: result.passed ? "passed" : "failed",
+        loop_status: loopState.status,
+        remaining: maxIterations - iteration,
+        output: result.output,
+        duration_ms: result.duration,
+        instructions: result.passed
+          ? "Command succeeded. Loop complete."
+          : `Command failed (attempt ${iteration}/${maxIterations}). Fix the issues shown in the output, then call luca_tilldone again with the same name to retry.`,
+      });
     },
   });
 
@@ -226,56 +189,31 @@ export default function lucaTilldone(pi: any) {
       if (params.name) {
         const loop = loops.get(params.name);
         if (!loop) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Loop "${params.name}" not found`,
-              },
-            ],
-          };
+          return createTextResponse(`Loop "${params.name}" not found`);
         }
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  name: loop.name,
-                  command: loop.command,
-                  status: loop.status,
-                  iteration: loop.currentIteration,
-                  max_iterations: loop.maxIterations,
-                  history: loop.history.map((h) => ({
-                    iteration: h.iteration,
-                    status: h.status,
-                    duration_ms: h.duration,
-                  })),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          name: loop.name,
+          command: loop.command,
+          status: loop.status,
+          iteration: loop.currentIteration,
+          max_iterations: loop.maxIterations,
+          history: loop.history.map((h) => ({
+            iteration: h.iteration,
+            status: h.status,
+            duration_ms: h.duration,
+          })),
+        });
       }
 
       // List all loops
-      const allLoops = Array.from(loops.values()).map((l) => ({
+      const allLoops = loops.values().map((l) => ({
         name: l.name,
         status: l.status,
         progress: `${l.currentIteration}/${l.maxIterations}`,
         passed: l.history.filter((h) => h.status === "passed").length > 0,
       }));
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(allLoops, null, 2),
-          },
-        ],
-      };
+      return createJsonResponse(allLoops);
     },
   });
 
@@ -297,27 +235,15 @@ export default function lucaTilldone(pi: any) {
     async execute(_toolCallId: string, params: { name: string }) {
       const loop = loops.get(params.name);
       if (!loop) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Loop "${params.name}" not found`,
-            },
-          ],
-        };
+        return createTextResponse(`Loop "${params.name}" not found`);
       }
 
       const previousStatus = loop.status;
       loops.delete(params.name);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Loop "${params.name}" reset (was: ${previousStatus}, ${loop.currentIteration} iterations)`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Loop "${params.name}" reset (was: ${previousStatus}, ${loop.currentIteration} iterations)`,
+      );
     },
   });
 }

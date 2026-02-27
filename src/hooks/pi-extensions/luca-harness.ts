@@ -13,9 +13,11 @@
  * Source: src/hooks/pi-extensions/luca-harness.ts
  * Deployed to: .pi/extensions/luca-harness.ts
  */
-import { execSync } from "child_process";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+
+import { runShellCommand } from "./__helpers/exec";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 
 export default function lucaHarness(pi: any) {
   const cwd = process.cwd();
@@ -99,38 +101,8 @@ export default function lucaHarness(pi: any) {
     output: string;
     duration: number;
   } {
-    const start = Date.now();
-    try {
-      const result = execSync(command, {
-        cwd,
-        timeout: timeout * 1000,
-        stdio: ["pipe", "pipe", "pipe"],
-        encoding: "utf-8",
-      });
-      return {
-        name,
-        status: "passed",
-        output: typeof result === "string" ? result.slice(-2000) : "",
-        duration: Date.now() - start,
-      };
-    } catch (err: any) {
-      const duration = Date.now() - start;
-      if (duration >= timeout * 1000 - 100) {
-        return {
-          name,
-          status: "timeout",
-          output: `Check timed out after ${timeout}s`,
-          duration,
-        };
-      }
-      const output = (err.stdout || "") + "\n" + (err.stderr || "");
-      return {
-        name,
-        status: "failed",
-        output: output.slice(-2000),
-        duration,
-      };
-    }
+    const result = runShellCommand(command, { cwd, timeout, maxOutput: 2000 });
+    return { name, ...result };
   }
 
   // Tool: Run verification harness
@@ -153,9 +125,7 @@ export default function lucaHarness(pi: any) {
       const config = loadConfig();
 
       if (!config.enabled) {
-        return {
-          content: [{ type: "text", text: "Harness is disabled in config" }],
-        };
+        return createTextResponse("Harness is disabled in config");
       }
 
       // Filter checks if specific ones requested
@@ -176,9 +146,7 @@ export default function lucaHarness(pi: any) {
         total_duration: results.reduce((sum, r) => sum + r.duration, 0),
       };
 
-      return {
-        content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
-      };
+      return createJsonResponse(summary);
     },
   });
 
