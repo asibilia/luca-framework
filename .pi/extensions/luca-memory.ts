@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
+import { createTextResponse } from "./__helpers/response";
 import { isWithinDirectory } from "./__helpers/sanitize";
 
 export default function lucaMemory(pi: any) {
@@ -44,9 +45,7 @@ export default function lucaMemory(pi: any) {
     parameters: {},
     async execute() {
       const content = readPlanningFile(brainPath, "BRAIN.md");
-      return {
-        content: [{ type: "text", text: content }],
-      };
+      return createTextResponse(content);
     },
   });
 
@@ -69,7 +68,7 @@ export default function lucaMemory(pi: any) {
     async execute(_toolCallId: string, params: { category?: string }) {
       const content = readPlanningFile(memoryPath, "MEMORY.md");
       if (content.startsWith("MEMORY.md not found")) {
-        return { content: [{ type: "text", text: content }] };
+        return createTextResponse(content);
       }
 
       // If category filter specified, extract only that section
@@ -92,21 +91,14 @@ export default function lucaMemory(pi: any) {
         }
 
         if (sectionLines.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `No "${params.category}" section found in MEMORY.md`,
-              },
-            ],
-          };
+          return createTextResponse(
+            `No "${params.category}" section found in MEMORY.md`,
+          );
         }
-        return {
-          content: [{ type: "text", text: sectionLines.join("\n") }],
-        };
+        return createTextResponse(sectionLines.join("\n"));
       }
 
-      return { content: [{ type: "text", text: content }] };
+      return createTextResponse(content);
     },
   });
 
@@ -119,9 +111,7 @@ export default function lucaMemory(pi: any) {
     parameters: {},
     async execute() {
       const content = readPlanningFile(workingPath, "WORKING.md");
-      return {
-        content: [{ type: "text", text: content }],
-      };
+      return createTextResponse(content);
     },
   });
 
@@ -162,26 +152,16 @@ export default function lucaMemory(pi: any) {
 
       const header = sectionHeaders[params.section];
       if (!header) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Unknown section "${params.section}". Valid: ${Object.keys(sectionHeaders).join(", ")}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Unknown section "${params.section}". Valid: ${Object.keys(sectionHeaders).join(", ")}`,
+        );
       }
 
       // Guard: ensure write path is within the planning directory
       if (!isWithinDirectory(workingPath, planningDir)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Write path escapes planning directory — access denied`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Write path escapes planning directory — access denied`,
+        );
       }
 
       // Ensure .planning/ directory exists
@@ -217,14 +197,9 @@ export default function lucaMemory(pi: any) {
         writeFileSync(workingPath, existing + newSection, "utf-8");
       }
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Appended to "${params.section}" in WORKING.md`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Appended to "${params.section}" in WORKING.md`,
+      );
     },
   });
 
