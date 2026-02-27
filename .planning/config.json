@@ -1,4 +1,12 @@
 {
+  "branding": {
+    "frameworkName": "Luca",
+    "commandPrefix": "lu",
+    "ticketPattern": "[A-Z]+-\\d+",
+    "placeholderTicket": "PROJ-0000"
+  },
+  "stack": "typescript",
+  "workTracker": "github",
   "mode": "interactive",
   "depth": "comprehensive",
   "model_profile": "balanced",

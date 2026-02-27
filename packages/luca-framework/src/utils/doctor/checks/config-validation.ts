@@ -38,7 +38,7 @@ export const configValidationCheck: DoctorCheck = {
           name: this.name,
           status: "fail",
           message: "config.json invalid",
-          fixCommand: "Delete .planning/ directory, then run: bunx luca init",
+          fixCommand: `Add the missing fields to .planning/config.json: ${missingFields.join(", ")}. Run 'bunx luca init' in a new project to see example values.`,
           details: `Missing required fields: ${missingFields.join(", ")}`,
         };
       }
@@ -55,7 +55,8 @@ export const configValidationCheck: DoctorCheck = {
             name: this.name,
             status: "fail",
             message: "config.json has incomplete branding",
-            fixCommand: "Delete .planning/ directory, then run: bunx luca init",
+            fixCommand:
+              "Fix the invalid fields in .planning/config.json. Run 'bunx luca init' in a new project to see example values.",
             details: `Missing required branding fields: ${missingBrandingFields.join(", ")}`,
           };
         }
@@ -69,7 +70,8 @@ export const configValidationCheck: DoctorCheck = {
             name: this.name,
             status: "fail",
             message: "config.json has invalid branding",
-            fixCommand: "Delete .planning/ directory, then run: bunx luca init",
+            fixCommand:
+              "Fix the invalid fields in .planning/config.json. Run 'bunx luca init' in a new project to see example values.",
             details: `Branding validation failed — ${errorDetails}`,
           };
         }
@@ -86,7 +88,8 @@ export const configValidationCheck: DoctorCheck = {
           name: this.name,
           status: "fail",
           message: "config.json has invalid workTracker",
-          fixCommand: "Delete .planning/ directory, then run: bunx luca init",
+          fixCommand:
+            "Fix the invalid fields in .planning/config.json. Run 'bunx luca init' in a new project to see example values.",
           details: `workTracker must be one of: ${VALID_TRACKERS.join(", ")}. Got: "${config.workTracker}"`,
         };
       }
@@ -120,7 +123,8 @@ export const configValidationCheck: DoctorCheck = {
         name: this.name,
         status: "fail",
         message: "config.json unreadable",
-        fixCommand: "Delete .planning/ directory, then run: bunx luca init",
+        fixCommand:
+          "Fix the invalid fields in .planning/config.json. Run 'bunx luca init' in a new project to see example values.",
         details: isJsonEscapeError
           ? `${errorMessage}. Hint: Ensure backslashes in regex patterns are double-escaped (e.g., "[A-Z]+-\\\\d+" not "[A-Z]+-\\d+")`
           : errorMessage,
