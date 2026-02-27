@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v2.1.0 — Pi Library Integration (7 phases, 22 plans, 1979 tests)
+**Current Milestone:** v2.1.0 — Pi Library Integration (7 phases, 22 plans, 2049 tests)
 
 ---
 
@@ -126,9 +126,9 @@
 
 **Audit reference:** v2.1.0-MILESTONE-AUDIT.md — Security (2 CRITICAL, 5 HIGH, 3 MEDIUM)
 
-- [ ] Plan 66-A: Document execSync security model (accepted risk + Pi permission layer defense-in-depth)
-- [ ] Plan 66-B: Input sanitization for HIGH-severity issues (regex construction, template injection, file paths, domain allowlist, step name validation)
-- [ ] Plan 66-C: Protection for MEDIUM-severity issues (tool name normalization, path traversal guard, purpose matching sanitization)
+- [x] Plan 66-A: Document execSync security model (accepted risk + Pi permission layer defense-in-depth)
+- [x] Plan 66-B: Input sanitization for HIGH-severity issues (regex construction, template injection, file paths, domain allowlist, step name validation)
+- [x] Plan 66-C: Protection for MEDIUM-severity issues (tool name normalization, path traversal guard, purpose matching sanitization)
 
 ### Phase 67 — Pi Extension DRY Cleanup
 
