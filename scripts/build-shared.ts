@@ -40,6 +40,46 @@ import { generatePluginManifest } from "../src/compilers/__schemas/compilers.sch
 import path from "path";
 
 /**
+ * Pi extension source files that are copied from src/hooks/pi-extensions/
+ * to .pi/extensions/ during build.
+ *
+ * This is the SINGLE SOURCE OF TRUTH for which extensions exist.
+ * Both generatePiSettings() and generatePiOutputs() derive from this list.
+ *
+ * NOTE: "luca-hooks.ts" is NOT in this list because it is generated
+ * from the hook registry (not copied from source). It is added
+ * to settings.json separately by generatePiSettings().
+ */
+export const PI_EXTENSION_FILES: readonly string[] = [
+  "luca-state.ts",
+  "luca-memory.ts",
+  "luca-harness.ts",
+  "luca-complexity.ts",
+  "luca-roles.ts",
+  "luca-teams.ts",
+  "luca-chain.ts",
+  "luca-tilldone.ts",
+  "luca-query-experts.ts",
+  "luca-safety-rules.ts",
+  "luca-purpose-gating.ts",
+] as const;
+
+/**
+ * Pi extension helper files that are copied from
+ * src/hooks/pi-extensions/__helpers/ to .pi/extensions/__helpers/.
+ *
+ * These are shared utilities imported by multiple extensions.
+ * Must be copied alongside extensions for imports to resolve.
+ */
+export const PI_HELPER_FILES: readonly string[] = [
+  "sanitize.ts",
+  "response.ts",
+  "frontmatter.ts",
+  "exec.ts",
+  "registry.ts",
+] as const;
+
+/**
  * Hooks excluded from plugin builds.
  *
  * pre-commit-drift-check: Development-only hook that checks for
@@ -548,18 +588,10 @@ function generatePiSettings(): object {
       threshold: 0.7,
     },
     extensions: [
+      // Generated from hook registry (not a source file copy)
       ".pi/extensions/luca-hooks.ts",
-      ".pi/extensions/luca-state.ts",
-      ".pi/extensions/luca-memory.ts",
-      ".pi/extensions/luca-harness.ts",
-      ".pi/extensions/luca-complexity.ts",
-      ".pi/extensions/luca-roles.ts",
-      ".pi/extensions/luca-teams.ts",
-      ".pi/extensions/luca-chain.ts",
-      ".pi/extensions/luca-tilldone.ts",
-      ".pi/extensions/luca-query-experts.ts",
-      ".pi/extensions/luca-safety-rules.ts",
-      ".pi/extensions/luca-purpose-gating.ts",
+      // Source file copies (derived from PI_EXTENSION_FILES)
+      ...PI_EXTENSION_FILES.map((f) => `.pi/extensions/${f}`),
     ],
     shell: "/bin/zsh",
   };
@@ -581,25 +613,26 @@ async function generatePiOutputs(
     "hooks",
     "pi-extensions",
   );
-  const extensionFiles = [
-    "luca-state.ts",
-    "luca-memory.ts",
-    "luca-harness.ts",
-    "luca-complexity.ts",
-    "luca-roles.ts",
-    "luca-teams.ts",
-    "luca-chain.ts",
-    "luca-tilldone.ts",
-    "luca-query-experts.ts",
-    "luca-safety-rules.ts",
-    "luca-purpose-gating.ts",
-  ];
 
-  for (const fileName of extensionFiles) {
+  // Copy extension source files (derived from PI_EXTENSION_FILES constant)
+  for (const fileName of PI_EXTENSION_FILES) {
     const srcPath = path.join(extensionsDir, fileName);
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
       generated.set(`.pi/extensions/${fileName}`, await srcFile.text());
+    }
+  }
+
+  // Copy shared helper files (required for extension imports to resolve)
+  const helpersDir = path.join(extensionsDir, "__helpers");
+  for (const fileName of PI_HELPER_FILES) {
+    const srcPath = path.join(helpersDir, fileName);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      generated.set(
+        `.pi/extensions/__helpers/${fileName}`,
+        await srcFile.text(),
+      );
     }
   }
 }

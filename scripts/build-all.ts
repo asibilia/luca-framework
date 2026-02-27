@@ -85,6 +85,7 @@ async function main() {
   const piSkillsDir = path.join(piDir, "skills");
   const piHooksDir = path.join(piDir, "hooks");
   const piExtensionsDir = path.join(piDir, "extensions");
+  const piExtensionsHelpersDir = path.join(piExtensionsDir, "__helpers");
 
   const pluginDir = path.join(process.cwd(), "dist", "plugin");
   const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
@@ -108,6 +109,7 @@ async function main() {
     ensureDir(piSkillsDir),
     ensureDir(piHooksDir),
     ensureDir(piExtensionsDir),
+    ensureDir(piExtensionsHelpersDir),
     ensureDir(pluginManifestDir),
     ensureDir(pluginAgentsDir),
     ensureDir(pluginSkillsDir),
@@ -130,6 +132,7 @@ async function main() {
     removedPiSkills,
     removedPiHooks,
     removedPiExtensions,
+    removedPiExtensionsHelpers,
     removedPluginAgents,
     removedPluginSkills,
     removedPluginCommands,
@@ -148,6 +151,7 @@ async function main() {
     cleanSkillsDirectory(piSkillsDir),
     cleanDirectory(piHooksDir, [".sh"]),
     cleanDirectory(piExtensionsDir, [".ts"]),
+    cleanDirectory(piExtensionsHelpersDir, [".ts"]),
     cleanDirectory(pluginAgentsDir, [".md"]),
     cleanSkillsDirectory(pluginSkillsDir),
     cleanDirectory(pluginCommandsDir, [".md"]),
@@ -168,6 +172,7 @@ async function main() {
     removedPiSkills.length +
     removedPiHooks.length +
     removedPiExtensions.length +
+    removedPiExtensionsHelpers.length +
     removedPluginAgents.length +
     removedPluginSkills.length +
     removedPluginCommands.length +
