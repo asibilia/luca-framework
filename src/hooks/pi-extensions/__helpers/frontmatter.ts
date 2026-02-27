@@ -46,9 +46,9 @@ export interface AgentFrontmatter {
  */
 export function parseFrontmatter(content: string): AgentFrontmatter | null {
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!fmMatch) return null;
+  if (!fmMatch || !fmMatch[1]) return null;
 
-  const fm = fmMatch[1];
+  const fm: string = fmMatch[1];
   const name = fm.match(/^name:\s*(.+)$/m)?.[1]?.trim() ?? "";
   const description = fm.match(/^description:\s*(.+)$/m)?.[1]?.trim() ?? "";
   const model = fm.match(/^model:\s*(.+)$/m)?.[1]?.trim();
@@ -56,7 +56,7 @@ export function parseFrontmatter(content: string): AgentFrontmatter | null {
   // Parse tools array (YAML list format)
   const tools: string[] = [];
   const toolsMatch = fm.match(/^tools:\n((?:\s+-\s+.+\n?)*)/m);
-  if (toolsMatch) {
+  if (toolsMatch && toolsMatch[1]) {
     const toolLines = toolsMatch[1].match(/^\s+-\s+(.+)$/gm);
     if (toolLines) {
       for (const line of toolLines) {
@@ -91,9 +91,9 @@ export function extractFrontmatterField(
   field: string,
 ): string | null {
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!fmMatch) return null;
+  if (!fmMatch || !fmMatch[1]) return null;
 
-  const fm = fmMatch[1];
+  const fm: string = fmMatch[1];
   const fieldMatch = fm.match(new RegExp(`^${field}:\\s*(.+)$`, "m"));
   return fieldMatch?.[1]?.trim() ?? null;
 }
