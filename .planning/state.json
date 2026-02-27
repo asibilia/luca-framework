@@ -1,0 +1,129 @@
+{
+  "status": "active",
+  "value": "idle",
+  "historyValue": {},
+  "context": {
+    "session_id": "05c98d23-e9a5-4098-997f-39a6dcf75a63",
+    "base_branch": "main",
+    "current_plan_ids": [],
+    "current_wave_count": 0,
+    "complexity": "TRIVIAL",
+    "oversight": "milestone",
+    "gates": {
+      "confirm_project": true,
+      "confirm_phases": true,
+      "confirm_roadmap": true,
+      "confirm_breakdown": true,
+      "confirm_plan": true,
+      "execute_next_plan": true,
+      "issues_review": true,
+      "confirm_transition": true
+    },
+    "workflow_config": {
+      "research": true,
+      "plan_check": true,
+      "verifier": true,
+      "code_review": true,
+      "uat_required": true,
+      "always_verify": true,
+      "capture_learnings": true,
+      "opinionated_guidelines": true,
+      "tech_stack_profiles": [
+        "typescript"
+      ]
+    },
+    "complexity_matrix": {
+      "TRIVIAL": {
+        "cognitivePreflight": "lite",
+        "research": "skip",
+        "discussion": "skip",
+        "planVerificationIterations": 0,
+        "harnessFixIterations": 1,
+        "verifyFixIterations": 0,
+        "verificationMode": "quick",
+        "codeReviewAgents": [],
+        "uat": "skip",
+        "learningCapture": "skip"
+      },
+      "SIMPLE": {
+        "cognitivePreflight": "lite",
+        "research": "skip",
+        "discussion": "skip",
+        "planVerificationIterations": 0,
+        "harnessFixIterations": 2,
+        "verifyFixIterations": 1,
+        "verificationMode": "quick",
+        "codeReviewAgents": [],
+        "uat": "skip",
+        "learningCapture": "brief"
+      },
+      "MODERATE": {
+        "cognitivePreflight": "full",
+        "research": "optional",
+        "discussion": "optional",
+        "planVerificationIterations": 1,
+        "harnessFixIterations": 3,
+        "verifyFixIterations": 1,
+        "verificationMode": "standard",
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier"
+        ],
+        "uat": "optional",
+        "learningCapture": "standard"
+      },
+      "COMPLEX": {
+        "cognitivePreflight": "full",
+        "research": "required",
+        "discussion": "run",
+        "planVerificationIterations": 2,
+        "harnessFixIterations": 3,
+        "verifyFixIterations": 2,
+        "verificationMode": "full",
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier",
+          "code-architect",
+          "tailwind-auditor"
+        ],
+        "uat": "required",
+        "learningCapture": "full"
+      },
+      "CRITICAL": {
+        "cognitivePreflight": "full",
+        "research": "required",
+        "discussion": "required",
+        "planVerificationIterations": 3,
+        "harnessFixIterations": 5,
+        "verifyFixIterations": 3,
+        "verificationMode": "full+human",
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier",
+          "code-architect",
+          "tailwind-auditor",
+          "security-auditor"
+        ],
+        "uat": "required+thorough",
+        "learningCapture": "full+debrief"
+      }
+    },
+    "autopilot_config": {
+      "oversight": "milestone",
+      "max_phases_per_session": 10,
+      "auto_plan_phases": true,
+      "skip_uat_in_autopilot": true,
+      "gap_closure_retries": 1,
+      "pause_on_critical_review": true,
+      "cross_milestone": false,
+      "backlog_scan": true
+    },
+    "phase_results": [],
+    "verification_attempts": 0,
+    "max_verification_attempts": 3,
+    "intuition_flags": [],
+    "memory_tags": [],
+    "started_at": "2026-02-27T19:15:23.864Z"
+  },
+  "children": {}
+}
