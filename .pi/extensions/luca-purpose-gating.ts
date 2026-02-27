@@ -12,6 +12,8 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 
+import { normalizeContext } from "./__helpers/sanitize";
+
 /** Purpose categories for agent classification. */
 type PurposeCategory =
   | "researcher"
@@ -59,7 +61,7 @@ export default function lucaPurposeGating(pi: any) {
    * Infer purpose from agent frontmatter description and name.
    */
   function inferPurpose(agentName: string): PurposeCategory {
-    const name = agentName.toLowerCase();
+    const name = agentName.trim().toLowerCase();
     if (name.includes("research") || name.includes("discover"))
       return "researcher";
     if (name.includes("plan") || name.includes("roadmap")) return "planner";
@@ -85,7 +87,7 @@ export default function lucaPurposeGating(pi: any) {
 
     const files = readdirSync(agentsDir).filter((f) => f.endsWith(".md"));
     for (const file of files) {
-      const agentName = file.replace(".md", "");
+      const agentName = file.replace(".md", "").trim();
       if (purposes.has(agentName)) continue;
 
       const purpose = inferPurpose(agentName);
@@ -178,7 +180,7 @@ export default function lucaPurposeGating(pi: any) {
       const contexts = params.allowed_contexts
         ? params.allowed_contexts
             .split(",")
-            .map((c) => c.trim())
+            .map((c) => normalizeContext(c))
             .filter(Boolean)
         : ["any"];
 
@@ -225,6 +227,28 @@ export default function lucaPurposeGating(pi: any) {
       _toolCallId: string,
       params: { agent: string; context: string },
     ) {
+      // Normalize and validate context
+      const ctx = normalizeContext(params.context);
+      if (!ctx) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  agent: params.agent,
+                  compatible: false,
+                  reason:
+                    "Empty or whitespace-only context provided. Specify a valid execution context.",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
       // Auto-discover if not yet populated
       if (purposes.size === 0) autoDiscoverAgents();
 
@@ -251,7 +275,7 @@ export default function lucaPurposeGating(pi: any) {
 
       const compatible =
         agentPurpose.allowed_contexts.includes("any") ||
-        agentPurpose.allowed_contexts.includes(params.context.toLowerCase());
+        agentPurpose.allowed_contexts.includes(ctx);
 
       // Find alternative agents for this context
       const alternatives = Array.from(purposes.values())
@@ -259,7 +283,7 @@ export default function lucaPurposeGating(pi: any) {
           (p) =>
             p.agent !== params.agent &&
             (p.allowed_contexts.includes("any") ||
-              p.allowed_contexts.includes(params.context.toLowerCase())),
+              p.allowed_contexts.includes(ctx)),
         )
         .map((p) => ({ agent: p.agent, purpose: p.purpose }));
 
@@ -312,13 +336,36 @@ export default function lucaPurposeGating(pi: any) {
       _toolCallId: string,
       params: { context: string; background_only?: boolean },
     ) {
+      // Normalize and validate context
+      const ctx = normalizeContext(params.context);
+      if (!ctx) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  context: params.context,
+                  error:
+                    "Empty or whitespace-only context provided. Specify a valid execution context.",
+                  total_eligible: 0,
+                  by_purpose: {},
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
       // Auto-discover if not yet populated
       if (purposes.size === 0) autoDiscoverAgents();
 
       const eligible = Array.from(purposes.values()).filter((p) => {
         const contextMatch =
           p.allowed_contexts.includes("any") ||
-          p.allowed_contexts.includes(params.context.toLowerCase());
+          p.allowed_contexts.includes(ctx);
         const backgroundMatch = params.background_only
           ? p.background_spawnable
           : true;
