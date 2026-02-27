@@ -11,6 +11,8 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
+
 /** Complexity levels ordered from lowest to highest. */
 const COMPLEXITY_LEVELS = [
   "TRIVIAL",
@@ -140,14 +142,7 @@ export default function lucaComplexity(pi: any) {
     async execute() {
       const level = readComplexity();
       const tier = COMPLEXITY_TIER[level];
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ level, tier }, null, 2),
-          },
-        ],
-      };
+      return createJsonResponse({ level, tier });
     },
   });
 
@@ -171,20 +166,13 @@ export default function lucaComplexity(pi: any) {
     async execute(_toolCallId: string, params: { level: string }) {
       const level = params.level.toUpperCase();
       if (!COMPLEXITY_LEVELS.includes(level as ComplexityLevel)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Invalid level "${params.level}". Valid: ${COMPLEXITY_LEVELS.join(", ")}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Invalid level "${params.level}". Valid: ${COMPLEXITY_LEVELS.join(", ")}`,
+        );
       }
 
       if (!existsSync(stateMdPath)) {
-        return {
-          content: [{ type: "text", text: "STATE.md not found" }],
-        };
+        return createTextResponse("STATE.md not found");
       }
 
       let content = readFileSync(stateMdPath, "utf-8");
@@ -199,28 +187,16 @@ export default function lucaComplexity(pi: any) {
         if (simplePattern.test(content)) {
           content = content.replace(simplePattern, `$1 ${level}`);
         } else {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "Task Complexity field not found in STATE.md",
-              },
-            ],
-          };
+          return createTextResponse(
+            "Task Complexity field not found in STATE.md",
+          );
         }
       }
 
       writeFileSync(stateMdPath, content, "utf-8");
       const tier = COMPLEXITY_TIER[level as ComplexityLevel];
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Complexity set to ${level} (${tier} tier)`,
-          },
-        ],
-      };
+      return createTextResponse(`Complexity set to ${level} (${tier} tier)`);
     },
   });
 
@@ -247,47 +223,24 @@ export default function lucaComplexity(pi: any) {
       if (params.step) {
         const decision = gate[params.step];
         if (decision === undefined) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Unknown step "${params.step}". Valid: ${Object.keys(gate).join(", ")}`,
-              },
-            ],
-          };
+          return createTextResponse(
+            `Unknown step "${params.step}". Valid: ${Object.keys(gate).join(", ")}`,
+          );
         }
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  level,
-                  step: params.step,
-                  decision,
-                  tier: COMPLEXITY_TIER[level],
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return createJsonResponse({
+          level,
+          step: params.step,
+          decision,
+          tier: COMPLEXITY_TIER[level],
+        });
       }
 
       // Return full matrix for current level
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              { level, tier: COMPLEXITY_TIER[level], gates: gate },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        level,
+        tier: COMPLEXITY_TIER[level],
+        gates: gate,
+      });
     },
   });
 

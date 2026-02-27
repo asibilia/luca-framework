@@ -11,14 +11,14 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 
+import type { AgentFrontmatter } from "./__helpers/frontmatter";
+import { parseFrontmatter } from "./__helpers/frontmatter";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { normalizeToolName } from "./__helpers/sanitize";
 
 /** Parsed agent role from .pi/agents/*.md frontmatter. */
-interface AgentRole {
-  name: string;
-  description: string;
+interface AgentRole extends AgentFrontmatter {
   tools: string[];
-  model?: string;
 }
 
 export default function lucaRoles(pi: any) {
@@ -29,33 +29,15 @@ export default function lucaRoles(pi: any) {
   let activeRole: AgentRole | null = null;
 
   /**
-   * Parse YAML frontmatter from a .pi/agents/*.md file.
-   * Extracts name, description, tools, and model fields.
+   * Parse agent frontmatter and normalize tool names for role enforcement.
    */
-  function parseFrontmatter(content: string): AgentRole | null {
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) return null;
-
-    const fm = fmMatch[1];
-    const name = fm.match(/^name:\s*(.+)$/m)?.[1]?.trim() ?? "";
-    const description = fm.match(/^description:\s*(.+)$/m)?.[1]?.trim() ?? "";
-    const model = fm.match(/^model:\s*(.+)$/m)?.[1]?.trim();
-
-    // Parse tools array (YAML list format)
-    const tools: string[] = [];
-    const toolsMatch = fm.match(/^tools:\n((?:\s+-\s+.+\n?)*)/m);
-    if (toolsMatch) {
-      const toolLines = toolsMatch[1].match(/^\s+-\s+(.+)$/gm);
-      if (toolLines) {
-        for (const line of toolLines) {
-          const toolName = line.replace(/^\s+-\s+/, "").trim();
-          if (toolName) tools.push(normalizeToolName(toolName));
-        }
-      }
-    }
-
-    if (!name) return null;
-    return { name, description, tools, model };
+  function parseAgentRole(content: string): AgentRole | null {
+    const fm = parseFrontmatter(content);
+    if (!fm) return null;
+    return {
+      ...fm,
+      tools: fm.tools.map(normalizeToolName),
+    };
   }
 
   /**
@@ -69,7 +51,7 @@ export default function lucaRoles(pi: any) {
 
     for (const file of files) {
       const content = readFileSync(join(agentsDir, file), "utf-8");
-      const role = parseFrontmatter(content);
+      const role = parseAgentRole(content);
       if (role) roles.push(role);
     }
 
@@ -91,9 +73,7 @@ export default function lucaRoles(pi: any) {
         tools: r.tools,
         model: r.model ?? "default",
       }));
-      return {
-        content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
-      };
+      return createJsonResponse(summary);
     },
   });
 
@@ -123,25 +103,15 @@ export default function lucaRoles(pi: any) {
 
       if (!role) {
         const available = roles.map((r) => r.name).join(", ");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Role "${params.role}" not found. Available: ${available}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Role "${params.role}" not found. Available: ${available}`,
+        );
       }
 
       activeRole = role;
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Activated role "${role.name}" — allowed tools: ${role.tools.join(", ")}`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Activated role "${role.name}" — allowed tools: ${role.tools.join(", ")}`,
+      );
     },
   });
 
@@ -155,14 +125,9 @@ export default function lucaRoles(pi: any) {
     async execute() {
       const previous = activeRole?.name ?? "none";
       activeRole = null;
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Deactivated role "${previous}" — all tools now unrestricted`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Deactivated role "${previous}" — all tools now unrestricted`,
+      );
     },
   });
 
@@ -175,32 +140,14 @@ export default function lucaRoles(pi: any) {
     parameters: {},
     async execute() {
       if (!activeRole) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ active: false, role: null }, null, 2),
-            },
-          ],
-        };
+        return createJsonResponse({ active: false, role: null });
       }
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                active: true,
-                role: activeRole.name,
-                tools: activeRole.tools,
-                model: activeRole.model ?? "default",
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        active: true,
+        role: activeRole.name,
+        tools: activeRole.tools,
+        model: activeRole.model ?? "default",
+      });
     },
   });
 

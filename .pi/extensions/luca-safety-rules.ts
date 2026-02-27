@@ -12,6 +12,9 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { createRegistry } from "./__helpers/registry";
+import { createJsonResponse, createTextResponse } from "./__helpers/response";
+
 /** Severity levels for safety rules. */
 type Severity = "critical" | "high" | "medium" | "low";
 
@@ -53,7 +56,7 @@ export default function lucaSafetyRules(pi: any) {
   let gateMode: GateMode = "warn";
 
   /** Registered safety rules. */
-  const rules: Map<string, SafetyRule> = new Map();
+  const rules = createRegistry<SafetyRule>("safety-rules");
 
   /** Audit log. */
   const auditLog: AuditEntry[] = [];
@@ -133,7 +136,7 @@ export default function lucaSafetyRules(pi: any) {
       "List all registered safety rules with severity levels and current gate mode.",
     parameters: {},
     async execute() {
-      const ruleList = Array.from(rules.values()).map((r) => ({
+      const ruleList = rules.values().map((r) => ({
         id: r.id,
         name: r.name,
         severity: r.severity,
@@ -141,22 +144,11 @@ export default function lucaSafetyRules(pi: any) {
         mitigation: r.mitigation,
       }));
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                gate_mode: gateMode,
-                rules: ruleList,
-                total: ruleList.length,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        gate_mode: gateMode,
+        rules: ruleList,
+        total: ruleList.length,
+      });
     },
   });
 
@@ -210,14 +202,9 @@ export default function lucaSafetyRules(pi: any) {
     ) {
       const validSeverities = ["critical", "high", "medium", "low"];
       if (!validSeverities.includes(params.severity)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Invalid severity "${params.severity}". Use: ${validSeverities.join(", ")}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Invalid severity "${params.severity}". Use: ${validSeverities.join(", ")}`,
+        );
       }
 
       const rule: SafetyRule = {
@@ -231,14 +218,9 @@ export default function lucaSafetyRules(pi: any) {
 
       rules.set(params.id, rule);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Safety rule "${params.id}" registered (severity: ${params.severity})`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Safety rule "${params.id}" registered (severity: ${params.severity})`,
+      );
     },
   });
 
@@ -330,27 +312,16 @@ export default function lucaSafetyRules(pi: any) {
 
       const hasCritical = violations.some((v) => v.severity === "critical");
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                safe: violations.length === 0,
-                gate_mode: gateMode,
-                violations,
-                summary:
-                  violations.length === 0
-                    ? "No safety violations detected"
-                    : `${violations.length} violation(s) found${hasCritical ? " — CRITICAL issues present" : ""}`,
-                blocked: gateMode === "block" && violations.length > 0,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        safe: violations.length === 0,
+        gate_mode: gateMode,
+        violations,
+        summary:
+          violations.length === 0
+            ? "No safety violations detected"
+            : `${violations.length} violation(s) found${hasCritical ? " — CRITICAL issues present" : ""}`,
+        blocked: gateMode === "block" && violations.length > 0,
+      });
     },
   });
 
@@ -373,27 +344,17 @@ export default function lucaSafetyRules(pi: any) {
     async execute(_toolCallId: string, params: { mode: string }) {
       const validModes = ["block", "warn", "log"];
       if (!validModes.includes(params.mode)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Invalid mode "${params.mode}". Use: ${validModes.join(", ")}`,
-            },
-          ],
-        };
+        return createTextResponse(
+          `Invalid mode "${params.mode}". Use: ${validModes.join(", ")}`,
+        );
       }
 
       const previous = gateMode;
       gateMode = params.mode as GateMode;
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Safety mode changed: ${previous} → ${gateMode}`,
-          },
-        ],
-      };
+      return createTextResponse(
+        `Safety mode changed: ${previous} → ${gateMode}`,
+      );
     },
   });
 
@@ -416,22 +377,11 @@ export default function lucaSafetyRules(pi: any) {
       const limit = params.limit ?? 20;
       const entries = auditLog.slice(-limit);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                total_entries: auditLog.length,
-                showing: entries.length,
-                entries,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return createJsonResponse({
+        total_entries: auditLog.length,
+        showing: entries.length,
+        entries,
+      });
     },
   });
 
