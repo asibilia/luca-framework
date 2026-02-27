@@ -42,7 +42,14 @@ export default function lucaTilldone(pi: any) {
   const loops = createRegistry<LoopState>("loops");
 
   /**
-   * Run a command and return structured result.
+   * Run a shell command with the extension's working directory and output limits.
+   *
+   * Thin wrapper around runShellCommand that applies the extension-scoped
+   * cwd and MAX_OUTPUT_LENGTH settings.
+   *
+   * @param command - Shell command to execute
+   * @param timeout - Timeout in seconds
+   * @returns Execution result with passed, output, and duration
    *
    * @security CRITICAL (accepted) — execSync command injection vector.
    *   - `command` parameter is LLM-provided and arbitrary **by design**. This

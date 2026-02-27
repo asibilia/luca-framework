@@ -26,7 +26,12 @@ export default function lucaHarness(pi: any) {
 
   /**
    * Load harness configuration from .planning/config.json.
-   * Falls back to defaults if config is missing or invalid.
+   *
+   * Reads the `harness` section of the planning config and merges
+   * with sensible defaults. Falls back entirely to defaults if the
+   * config file is missing, unparseable, or lacks a harness section.
+   *
+   * @returns Harness config with enabled flag, max fix iterations, and check definitions
    */
   function loadConfig(): {
     enabled: boolean;
@@ -78,7 +83,15 @@ export default function lucaHarness(pi: any) {
   }
 
   /**
-   * Run a single check command and return structured results.
+   * Run a named verification check using the shared shell command executor.
+   *
+   * Adapts the generic runShellCommand result to include the check name
+   * for structured harness reporting.
+   *
+   * @param name - Check name (e.g., "test", "typecheck")
+   * @param command - Shell command to execute
+   * @param timeout - Timeout in seconds
+   * @returns Named execution result with status, output, and duration
    *
    * @security CRITICAL (accepted) — execSync command injection vector.
    *   - `command` parameter originates from `.planning/config.json`, which is

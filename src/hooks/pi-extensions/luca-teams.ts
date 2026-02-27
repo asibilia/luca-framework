@@ -68,7 +68,13 @@ export default function lucaTeams(pi: any) {
   });
 
   /**
-   * Parse YAML frontmatter from an agent .md file.
+   * Parse agent info from a .pi/agents/*.md file.
+   *
+   * Reads the file, extracts YAML frontmatter using the shared parser,
+   * and returns structured agent information.
+   *
+   * @param filePath - Absolute path to the agent .md file
+   * @returns Parsed agent info, or null if file missing or has no frontmatter
    */
   function parseAgentFile(filePath: string): AgentFrontmatter | null {
     if (!existsSync(filePath)) return null;
@@ -78,6 +84,13 @@ export default function lucaTeams(pi: any) {
 
   /**
    * Read the full content of an agent persona file (after frontmatter).
+   *
+   * Returns the markdown body of the agent file, stripping the YAML
+   * frontmatter block. Used by team dispatch to inject role-specific
+   * context into the LLM prompt.
+   *
+   * @param agentName - Agent identifier (matches filename in .pi/agents/)
+   * @returns Persona markdown content, or null if file not found
    */
   function readAgentPersona(agentName: string): string | null {
     const filePath = join(agentsDir, `${agentName}.md`);

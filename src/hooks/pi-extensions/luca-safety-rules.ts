@@ -41,9 +41,19 @@ interface AuditEntry {
 
 /**
  * Normalize a string for safety pattern matching.
+ *
  * Removes underscores/hyphens and lowercases so that camelCase, snake_case,
  * PascalCase, and UPPER_CASE variants all match the same pattern.
- * e.g. "apiKey", "api_key", "API_KEY", "ApiKey" → "apikey"
+ *
+ * @param str - The string to normalize for comparison
+ * @returns Lowercased string with underscores and hyphens removed
+ *
+ * @example
+ * ```typescript
+ * normalizeForMatch("api_key")  // "apikey"
+ * normalizeForMatch("API_KEY")  // "apikey"
+ * normalizeForMatch("apiKey")   // "apikey"
+ * ```
  */
 function normalizeForMatch(str: string): string {
   return str.toLowerCase().replace(/[_-]/g, "");

@@ -30,6 +30,12 @@ export default function lucaRoles(pi: any) {
 
   /**
    * Parse agent frontmatter and normalize tool names for role enforcement.
+   *
+   * Reads YAML frontmatter from an agent file's content and normalizes
+   * the tool names for case-insensitive restriction matching.
+   *
+   * @param content - Full markdown content of a .pi/agents/*.md file
+   * @returns Parsed agent role with normalized tools, or null if no valid frontmatter
    */
   function parseAgentRole(content: string): AgentRole | null {
     const fm = parseFrontmatter(content);
@@ -42,6 +48,12 @@ export default function lucaRoles(pi: any) {
 
   /**
    * Load all available agent roles from .pi/agents/.
+   *
+   * Reads every .md file in the agents directory, parses its YAML
+   * frontmatter, and returns an array of structured agent roles
+   * with normalized tool names for restriction enforcement.
+   *
+   * @returns Array of parsed agent roles, empty if agents directory missing
    */
   function loadRoles(): AgentRole[] {
     if (!existsSync(agentsDir)) return [];

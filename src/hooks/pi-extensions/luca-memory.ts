@@ -22,9 +22,14 @@ export default function lucaMemory(pi: any) {
   const workingPath = join(planningDir, "WORKING.md");
 
   /**
-   * Read a planning file safely.
-   * Returns the file content or an error message.
-   * Validates that the file path is within the planning directory.
+   * Read a planning file safely with path traversal protection.
+   *
+   * Validates that the file path is within the planning directory
+   * before reading, preventing access to files outside .planning/.
+   *
+   * @param filePath - Absolute path to the planning file
+   * @param label - Human-readable file label for error messages (e.g., "BRAIN.md")
+   * @returns File content as string, or an error message if file missing or path invalid
    */
   function readPlanningFile(filePath: string, label: string): string {
     if (!isWithinDirectory(filePath, planningDir)) {
