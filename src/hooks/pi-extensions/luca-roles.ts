@@ -11,6 +11,8 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 
+import { normalizeToolName } from "./__helpers/sanitize";
+
 /** Parsed agent role from .pi/agents/*.md frontmatter. */
 interface AgentRole {
   name: string;
@@ -47,7 +49,7 @@ export default function lucaRoles(pi: any) {
       if (toolLines) {
         for (const line of toolLines) {
           const toolName = line.replace(/^\s+-\s+/, "").trim();
-          if (toolName) tools.push(toolName);
+          if (toolName) tools.push(normalizeToolName(toolName));
         }
       }
     }
@@ -114,7 +116,10 @@ export default function lucaRoles(pi: any) {
     },
     async execute(_toolCallId: string, params: { role: string }) {
       const roles = loadRoles();
-      const role = roles.find((r) => r.name === params.role);
+      const normalizedRoleName = params.role.trim().toLowerCase();
+      const role = roles.find(
+        (r) => r.name.trim().toLowerCase() === normalizedRoleName,
+      );
 
       if (!role) {
         const available = roles.map((r) => r.name).join(", ");
@@ -204,10 +209,10 @@ export default function lucaRoles(pi: any) {
     if (!activeRole) return; // No role active, allow all
     if (activeRole.tools.length === 0) return; // No restrictions defined
 
-    const toolName = (event.toolName || "").toLowerCase();
+    const toolName = normalizeToolName(event.toolName || "");
 
-    // Check if the tool is in the allowed list (case-insensitive)
-    const allowed = activeRole.tools.some((t) => t.toLowerCase() === toolName);
+    // Check if the tool is in the allowed list (normalized comparison)
+    const allowed = activeRole.tools.some((t) => t === toolName);
 
     if (!allowed) {
       return {
