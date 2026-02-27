@@ -2,16 +2,28 @@
 
 ## Session Info
 
+- **Started**: 2026-02-27T16:30:00Z
+- **Workflow**: /phase-plan
+- **Phase**: 67 — Pi Extension DRY Cleanup
+
 ## Memory Recall
+
+- **Patterns**: Build pipeline setup (medium confidence), existing \_\_helpers/ pattern from Phase 66
+- **Decisions**: Functional patterns, Bun over Node, src/ → build pipeline
+- **Pitfalls**: Import path gotcha when moving files (DIRECTLY relevant — extracting helpers changes import paths)
+- **Procedures**: None directly applicable
 
 ## Planning Notes
 
-## Findings
+- Phase 67 addresses DRY/Simplification findings from v2.1.0-MILESTONE-AUDIT.md
+- 3 CRITICAL: JSON response wrapper (38+ instances), YAML frontmatter parsing (3 extensions), command execution pattern (2 extensions)
+- 3 HIGH: Map-based registry pattern (6 extensions), tool parameter schema boilerplate (39 tools), error handling (12+ locations)
+- 5 MEDIUM: cwd pattern (11 extensions), event handler registration, loop state tracking, agent file reading, persona truncation
+- 1 MEDIUM architecture: build config drift between generatePiSettings() and generatePiOutputs()
+- Phase 66 already created \_\_helpers/ directory with sanitize.ts — reuse this location for new helpers
+- Code review from Phase 66 flagged module boundary concern: config-generators.ts imports from pi-extensions/\_\_helpers/
 
-- PLAN-66-B sanitize module was created in main repo working dir but never committed; recreated with all 5 original functions + 3 new ones in worktree
-- Pre-existing TypeScript errors in pi-extensions (TS18048/TS2532 for possibly undefined regex matches) not caused by PLAN-66-C changes
-- All 2049 tests pass, 0 failures after PLAN-66-C changes
-- Shared sanitize module has 100% function and line coverage (70 tests)
+## Findings
 
 ## Hypotheses
 
@@ -21,6 +33,6 @@
 
 _Session Status_
 
-- [ ] Active
+- [x] Active
 - [ ] Learnings extracted
-- [x] Ready to clear
+- [ ] Ready to clear
