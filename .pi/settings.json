@@ -1,0 +1,10 @@
+{
+  "model": "claude-sonnet-4-6",
+  "provider": "anthropic",
+  "compaction": {
+    "enabled": true,
+    "threshold": 0.7
+  },
+  "extensions": [],
+  "shell": "/bin/zsh"
+}

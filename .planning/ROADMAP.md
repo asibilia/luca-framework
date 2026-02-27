@@ -62,14 +62,72 @@
 
 ---
 
+## v2.1.0 — Pi Library Integration
+
+**Goal:** Add Pi (https://pi.dev/) as a first-class output target alongside `.claude/` and `.cursor/`, with native extensions for Luca workflow features and cross-platform agent orchestration patterns.
+
+### Phase 61 — Pi Compiler Foundation
+
+**Goal:** Add Pi compiler target to `src/compilers/`, generate `.pi/` directory with AGENTS.md, settings.json, agent persona files, and basic skill compilation.
+
+**Depends on:** None
+
+- [ ] Plan 61-A: Pi format functions, compiler pipeline integration, AGENTS.md generation
+- [ ] Plan 61-B: Agent persona compilation with tool restrictions and model tier
+- [ ] Plan 61-C: Tests and build validation
+
+### Phase 62 — Skills + Extensions Output
+
+**Goal:** Compile Luca skills to Pi's SKILL.md format and hooks to TypeScript extensions.
+
+**Depends on:** Phase 61
+
+- [ ] Plan 62-A: Skill compilation to .pi/skills/{name}/SKILL.md
+- [ ] Plan 62-B: Hook-to-extension compilation (shell → TypeScript)
+- [ ] Plan 62-C: End-to-end test: Luca compile → Pi loads successfully
+
+### Phase 63 — Luca Workflow Extensions
+
+**Goal:** Build Pi extensions that bring Luca's workflow system (state, memory, harness, complexity) into Pi.
+
+**Depends on:** Phase 62
+
+- [ ] Plan 63-A: State bridge extension (luca_read_state, luca_transition tools)
+- [ ] Plan 63-B: Memory extension (BRAIN.md/MEMORY.md/WORKING.md integration)
+- [ ] Plan 63-C: Harness extension (verification at agent_end)
+- [ ] Plan 63-D: Complexity gating extension
+
+### Phase 64 — Agent Orchestration Features
+
+**Goal:** Cross-platform agent orchestration patterns: tool-restricted roles, dispatcher teams, agent chains, task-gated loops.
+
+**Depends on:** Phase 61
+
+- [ ] Plan 64-A: Tool-restricted agent roles schema + compilation
+- [ ] Plan 64-B: Dispatcher pattern / agent teams (YAML → extensions)
+- [ ] Plan 64-C: Agent chains / sequential pipelines
+- [ ] Plan 64-D: Task-gated work loops (tilldone pattern)
+
+### Phase 65 — Advanced Features
+
+**Goal:** Parallel expert research, safety rules, purpose gating, background subagents.
+
+**Depends on:** Phases 63, 64
+
+- [ ] Plan 65-A: Parallel expert research (query_experts pattern)
+- [ ] Plan 65-B: Damage control / safety rules (YAML → all platforms)
+- [ ] Plan 65-C: Purpose gating and background subagent spawning
+
+---
+
 ## Backlog (Future)
 
-### v2.1.0 — Multi-Language Profiles
+### v2.2.0 — Multi-Language Profiles
 
 - Python, Go, Rust tech stack profiles with full opinionated rules
 - Mixed-stack project support (multiple profiles active simultaneously)
 
-### v2.2.0+ — Adaptive Learning
+### v2.3.0+ — Adaptive Learning
 
 - Procedure evolution via reinforcement learning patterns
 

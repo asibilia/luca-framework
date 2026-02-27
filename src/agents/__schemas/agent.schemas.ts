@@ -67,4 +67,5 @@ export type BaseAgent = {
   readonly description: string;
   toCursorFormat(): string;
   toClaudeFormat(): string;
+  toPiFormat(): string;
 };

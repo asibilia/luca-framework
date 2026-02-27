@@ -34,4 +34,5 @@ export type BaseRule = {
   readonly description: string;
   toCursorFormat(): string;
   toClaudeFormat(): string;
+  toPiFormat(): string;
 };
