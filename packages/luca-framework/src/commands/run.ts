@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
 import { resolve, dirname } from "pathe";
 import { fileURLToPath } from "node:url";
@@ -36,6 +37,15 @@ export const runClaudeCommand = defineCommand({
   },
   async run({ args }) {
     const pluginDir = resolvePluginDir();
+
+    if (!existsSync(pluginDir)) {
+      console.error(`Plugin directory not found: ${pluginDir}`);
+      console.error(
+        "Run 'luca build && luca build:plugin' to generate the plugin directory.",
+      );
+      process.exit(1);
+    }
+
     const command = `claude --plugin-dir "${pluginDir}"`;
 
     if (args["dry-run"]) {

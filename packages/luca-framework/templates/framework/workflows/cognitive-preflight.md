@@ -62,7 +62,9 @@ proximity, tag overlap, confidence, and recency:
 
 ```bash
 # Read current milestone from state
-CURRENT_MILESTONE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null \
+# Resolve bridge: try installed package, then monorepo path
+BRIDGE_PATH=$(node -e "console.log(require.resolve('@asibilia/luca-framework/state/bridge'))" 2>/dev/null || echo "packages/luca-framework/src/state/bridge.ts")
+CURRENT_MILESTONE=$(bun run "$BRIDGE_PATH" read-status 2>/dev/null \
   | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null)
 
 if [ -n "$CURRENT_MILESTONE" ] && [ -f .planning/MEMORY.md ]; then
