@@ -26,7 +26,9 @@
     "always_verify": true,
     "capture_learnings": true,
     "opinionated_guidelines": true,
-    "tech_stack_profiles": ["typescript"]
+    "tech_stack_profiles": [
+      "typescript"
+    ]
   },
   "planning": {
     "commit_docs": true,
@@ -130,7 +132,10 @@
         "harnessFixIterations": 3,
         "verifyFixIterations": 1,
         "verificationMode": "standard",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier"
+        ],
         "uat": "optional",
         "learningCapture": "standard"
       },
@@ -205,7 +210,11 @@
   "dogfood": {
     "enabled": true,
     "source": "src/",
-    "outputs": [".claude/", ".cursor/", ".pi/"],
+    "outputs": [
+      ".claude/",
+      ".cursor/",
+      ".pi/"
+    ],
     "build_command": "bun run build:all",
     "lock_file": ".claude/.session-lock",
     "manifest_file": ".claude/.build-manifest.json"
