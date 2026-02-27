@@ -8,6 +8,11 @@
 import type { HookDefinition } from "../__schemas/hook.schemas";
 import { NO_MATCHER_SENTINEL } from "../__schemas/hook.schemas";
 
+import {
+  sanitizeForTemplate,
+  validateScriptPath,
+} from "../pi-extensions/__helpers/sanitize";
+
 /**
  * Generate Claude Code hooks configuration from the hook registry.
  *
@@ -92,19 +97,34 @@ export function generatePiExtension(
   for (const [hookName, def] of Object.entries(registry)) {
     if (!def.piEvent) continue;
 
+    // Validate script path to prevent traversal and injection
+    if (!validateScriptPath(def.script)) {
+      console.warn(
+        `[luca-hooks] Skipping hook "${hookName}": invalid script path "${def.script}"`,
+      );
+      continue;
+    }
+
     const isDecisionHook = def.piEvent === "tool_call";
     const timeoutMs = def.timeout * 1000;
     const matcherCheck = buildPiMatcherCheck(def);
     const stdinBuilder = buildPiStdinJson(def);
 
+    // Sanitize interpolated values to prevent template injection
+    const safeHookName = sanitizeForTemplate(hookName);
+    const safeStatusMessage = def.statusMessage
+      ? sanitizeForTemplate(def.statusMessage)
+      : safeHookName;
+    const safeScript = sanitizeForTemplate(def.script);
+
     const blockReturn = isDecisionHook
-      ? `\n        return { block: true, reason: "${hookName}: checks failed" };`
+      ? `\n        return { block: true, reason: "${safeHookName}: checks failed" };`
       : "";
 
-    handlerBlocks.push(`  // ${hookName}: ${def.statusMessage ?? hookName}
+    handlerBlocks.push(`  // ${safeHookName}: ${safeStatusMessage}
   pi.on("${def.piEvent}", async (event, ctx) => {${matcherCheck}
     try {
-      execSync(\`sh "\${cwd}/${hooksDir}/${def.script}"\`, {
+      execSync(\`sh "\${cwd}/${hooksDir}/${safeScript}"\`, {
         input: ${stdinBuilder},
         timeout: ${timeoutMs},
         cwd,

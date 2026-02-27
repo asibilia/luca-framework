@@ -5,6 +5,11 @@
  * system. Registers a `luca_verify` tool that runs test/typecheck checks
  * and auto-triggers verification at agent_end events.
  *
+ * @security This extension executes shell commands via `execSync`. Commands
+ *   originate from `.planning/config.json` (developer-controlled). Primary
+ *   mitigation: Pi's permission layer requires user approval for every tool
+ *   invocation. Full security model: .pi/SECURITY-MODEL.md
+ *
  * Source: src/hooks/pi-extensions/luca-harness.ts
  * Deployed to: .pi/extensions/luca-harness.ts
  */
@@ -72,6 +77,17 @@ export default function lucaHarness(pi: any) {
 
   /**
    * Run a single check command and return structured results.
+   *
+   * @security CRITICAL (accepted) — execSync command injection vector.
+   *   - `command` parameter originates from `.planning/config.json`, which is
+   *     developer-controlled and checked into version control.
+   *   - `checks` parameter (on the tool) filters by check **name** only
+   *     (e.g., "test", "typecheck"), not by arbitrary command strings. The LLM
+   *     cannot inject commands through the checks parameter.
+   *   - Pi's permission layer requires explicit user approval before every tool
+   *     invocation, including the commands executed here.
+   *   - Output is truncated to 2000 chars; timeout kills runaway processes.
+   *   - Full security model: .pi/SECURITY-MODEL.md
    */
   function runCheck(
     name: string,

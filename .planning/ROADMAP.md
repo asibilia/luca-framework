@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v2.0.0 — Unified Package & Intelligent Routing (5 phases, 16 plans, 1808 tests)
+**Current Milestone:** v2.1.0 — Pi Library Integration (7 phases, 22 plans, 1979 tests)
 
 ---
 
@@ -118,6 +118,31 @@
 - [x] Plan 65-B: Safety rules with gate modes (luca-safety-rules.ts — 5 tools, 6 built-in rules, tool_call enforcement)
 - [x] Plan 65-C: Purpose gating and deferred tasks (luca-purpose-gating.ts — 6 tools, auto-discovery, session_start)
 
+### Phase 66 — Pi Extension Security Hardening
+
+**Goal:** Add input sanitization and defense-in-depth to Pi extensions. Document the execSync accepted risk model.
+
+**Depends on:** Phase 65
+
+**Audit reference:** v2.1.0-MILESTONE-AUDIT.md — Security (2 CRITICAL, 5 HIGH, 3 MEDIUM)
+
+- [ ] Plan 66-A: Document execSync security model (accepted risk + Pi permission layer defense-in-depth)
+- [ ] Plan 66-B: Input sanitization for HIGH-severity issues (regex construction, template injection, file paths, domain allowlist, step name validation)
+- [ ] Plan 66-C: Protection for MEDIUM-severity issues (tool name normalization, path traversal guard, purpose matching sanitization)
+
+### Phase 67 — Pi Extension DRY Cleanup
+
+**Goal:** Extract shared helpers from Pi extensions to eliminate duplication. Unify build config to prevent drift.
+
+**Depends on:** Phase 65
+
+**Audit reference:** v2.1.0-MILESTONE-AUDIT.md — DRY/Simplification (3 CRITICAL, 3 HIGH, 5 MEDIUM) + Architecture (1 MEDIUM)
+
+- [ ] Plan 67-A: Create `src/hooks/pi-extensions/__helpers/` with response.ts, frontmatter.ts, exec.ts, registry.ts
+- [ ] Plan 67-B: Refactor all 11 extensions to use shared helpers (38+ response wrappers, 3x frontmatter, 2x exec)
+- [ ] Plan 67-C: Unify `generatePiSettings()` and `generatePiOutputs()` extension list to single source of truth
+- [ ] Plan 67-D: Add JSDoc to extracted helpers and extension functions (16 documentation gaps)
+
 ---
 
 ## Backlog (Future)
@@ -126,6 +151,7 @@
 
 - Python, Go, Rust tech stack profiles with full opinionated rules
 - Mixed-stack project support (multiple profiles active simultaneously)
+- Background subagent spawning for Pi (scoped out of v2.1.0)
 
 ### v2.3.0+ — Adaptive Learning
 
@@ -152,4 +178,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-26 (v2.0.0 milestone started)_
+_Roadmap updated: 2026-02-27 (v2.1.0 gap closure phases added)_

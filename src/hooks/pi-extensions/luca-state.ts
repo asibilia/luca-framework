@@ -11,6 +11,8 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { escapeRegExp } from "./__helpers/sanitize";
+
 export default function lucaState(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -120,17 +122,31 @@ export default function lucaState(pi: any) {
           content: [{ type: "text", text: "Error: STATE.md not found" }],
         };
       }
+
+      // Validate field length to prevent abuse
+      if (params.field.length > 100) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Error: field name exceeds maximum length of 100 characters",
+            },
+          ],
+        };
+      }
+
       let content = readFileSync(stateMdPath, "utf-8");
+      const escapedField = escapeRegExp(params.field);
       // Try bold format first: **Field:** value
       const boldPattern = new RegExp(
-        `(\\*\\*${params.field}:\\*\\*)\\s*.+`,
+        `(\\*\\*${escapedField}:\\*\\*)\\s*.+`,
         "i",
       );
       if (boldPattern.test(content)) {
         content = content.replace(boldPattern, `$1 ${params.value}`);
       } else {
         // Try simple format: Field: value
-        const simplePattern = new RegExp(`(${params.field}:)\\s*.+`, "i");
+        const simplePattern = new RegExp(`(${escapedField}:)\\s*.+`, "i");
         if (simplePattern.test(content)) {
           content = content.replace(simplePattern, `$1 ${params.value}`);
         } else {

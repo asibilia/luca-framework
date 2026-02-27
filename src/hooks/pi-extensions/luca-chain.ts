@@ -12,6 +12,8 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { isValidIdentifier } from "./__helpers/sanitize";
+
 /** A single step in an agent chain. */
 interface ChainStep {
   agent: string;
@@ -86,6 +88,18 @@ export default function lucaChain(pi: any) {
         steps: string;
       },
     ) {
+      // Validate chain name
+      if (!isValidIdentifier(params.name)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Invalid chain name "${params.name}". Only alphanumeric characters, hyphens, and underscores are allowed.`,
+            },
+          ],
+        };
+      }
+
       // Parse steps from 'agent:task -> agent:task' format
       const stepDefs = params.steps
         .split("->")
@@ -107,6 +121,18 @@ export default function lucaChain(pi: any) {
         }
         const agent = stepDef.slice(0, colonIdx).trim();
         const task = stepDef.slice(colonIdx + 1).trim();
+
+        // Validate agent name contains only safe characters
+        if (!isValidIdentifier(agent)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Invalid agent name "${agent}" in step "${stepDef}". Only alphanumeric characters, hyphens, and underscores are allowed.`,
+              },
+            ],
+          };
+        }
 
         // Validate agent exists
         if (!existsSync(join(agentsDir, `${agent}.md`))) {

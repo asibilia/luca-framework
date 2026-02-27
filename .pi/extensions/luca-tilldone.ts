@@ -5,6 +5,11 @@
  * pass, with configurable max iterations, delay, and exit conditions.
  * Implements the "tilldone" pattern for verification-driven development.
  *
+ * @security This extension executes shell commands via `execSync`. Commands
+ *   are LLM-provided and arbitrary by design. Primary mitigation: Pi's
+ *   permission layer requires user approval for every tool invocation.
+ *   Full security model: .pi/SECURITY-MODEL.md
+ *
  * Source: src/hooks/pi-extensions/luca-tilldone.ts
  * Deployed to: .pi/extensions/luca-tilldone.ts
  */
@@ -36,6 +41,18 @@ export default function lucaTilldone(pi: any) {
 
   /**
    * Run a command and return structured result.
+   *
+   * @security CRITICAL (accepted) — execSync command injection vector.
+   *   - `command` parameter is LLM-provided and arbitrary **by design**. This
+   *     tool exists to run whatever command the LLM specifies as part of a
+   *     verification-driven retry loop.
+   *   - Pi's permission layer is the primary mitigation — every tool invocation
+   *     requires explicit user approval before execution.
+   *   - Output is truncated to MAX_OUTPUT_LENGTH (1500 chars) to limit
+   *     exfiltration risk.
+   *   - Timeout (default 120s) prevents runaway processes.
+   *   - Iteration cap (default 5) prevents infinite retry loops.
+   *   - Full security model: .pi/SECURITY-MODEL.md
    */
   function runCommand(
     command: string,

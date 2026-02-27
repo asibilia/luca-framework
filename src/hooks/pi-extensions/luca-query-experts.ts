@@ -12,6 +12,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
+import { sanitizeName } from "./__helpers/sanitize";
+
 /** A research expert definition. */
 interface ExpertDef {
   domain: string;
@@ -142,6 +144,31 @@ export default function lucaQueryExperts(pi: any) {
         experts: string;
       },
     ) {
+      // Validate session name length
+      if (params.name.length > 128) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Error: session name exceeds maximum length of 128 characters",
+            },
+          ],
+        };
+      }
+
+      // Sanitize session name for safe storage and file naming
+      const safeName = sanitizeName(params.name, 128);
+      if (!safeName) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: session name "${params.name}" contains no valid characters. Use alphanumeric, hyphens, or underscores.`,
+            },
+          ],
+        };
+      }
+
       const expertDefs: ExpertDef[] = [];
 
       const expertList = params.experts
@@ -163,10 +190,21 @@ export default function lucaQueryExperts(pi: any) {
               ],
             };
           }
+          const safeDomain = sanitizeName(parts[0] ?? "", 64);
+          if (!safeDomain) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Error: custom expert domain "${parts[0]}" contains no valid characters. Use alphanumeric, hyphens, or underscores.`,
+                },
+              ],
+            };
+          }
           expertDefs.push({
-            domain: parts[0],
+            domain: safeDomain,
             focus_areas: parts[1].split("|").map((f) => f.trim()),
-            description: `Custom expert — ${parts[0]}`,
+            description: `Custom expert — ${safeDomain}`,
           });
         } else {
           const builtin = BUILTIN_EXPERTS[expertSpec];
@@ -186,14 +224,14 @@ export default function lucaQueryExperts(pi: any) {
       }
 
       const session: ResearchSession = {
-        name: params.name,
+        name: safeName,
         context: params.context,
         experts: expertDefs,
         findings: [],
         status: "pending",
       };
 
-      sessions.set(params.name, session);
+      sessions.set(safeName, session);
 
       return {
         content: [
