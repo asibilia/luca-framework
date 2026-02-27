@@ -60,7 +60,14 @@ export default function lucaPurposeGating(pi: any) {
   let taskIdCounter = 0;
 
   /**
-   * Infer purpose from agent frontmatter description and name.
+   * Infer purpose category from an agent's name using keyword matching.
+   *
+   * Scans the agent name for keywords that map to purpose categories
+   * (e.g., "research" -> researcher, "plan" -> planner). Falls back to
+   * "general" if no keywords match.
+   *
+   * @param agentName - Agent identifier to classify
+   * @returns Inferred purpose category
    */
   function inferPurpose(agentName: string): PurposeCategory {
     const name = agentName.trim().toLowerCase();
@@ -83,6 +90,11 @@ export default function lucaPurposeGating(pi: any) {
 
   /**
    * Auto-discover agents and infer purposes from .pi/agents/.
+   *
+   * Scans the agents directory for .md files, infers each agent's
+   * purpose category from its name, and registers it with appropriate
+   * allowed contexts and background spawn capability. Skips agents
+   * that are already registered to avoid overwriting manual registrations.
    */
   function autoDiscoverAgents(): void {
     if (!existsSync(agentsDir)) return;

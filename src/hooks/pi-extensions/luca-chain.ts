@@ -43,6 +43,13 @@ export default function lucaChain(pi: any) {
 
   /**
    * Read agent persona summary for chain context injection.
+   *
+   * Loads the agent's markdown file from .pi/agents/ and extracts the
+   * description from its YAML frontmatter. Falls back to the first 500
+   * characters of the file content if no frontmatter is present.
+   *
+   * @param agentName - Agent identifier (matches filename in .pi/agents/)
+   * @returns Description string, or a "not found" message if file missing
    */
   function getAgentSummary(agentName: string): string {
     const filePath = join(agentsDir, `${agentName}.md`);

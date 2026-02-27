@@ -107,6 +107,12 @@ export default function lucaComplexity(pi: any) {
 
   /**
    * Read current complexity level from STATE.md.
+   *
+   * Parses the `Task Complexity` field in both bold and simple markdown
+   * formats. Defaults to MODERATE if STATE.md is missing or the field
+   * is absent or contains an unrecognized value.
+   *
+   * @returns The current complexity level (defaults to "MODERATE")
    */
   function readComplexity(): ComplexityLevel {
     if (!existsSync(stateMdPath)) return "MODERATE";
