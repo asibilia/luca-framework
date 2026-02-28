@@ -204,6 +204,25 @@ describe("luca-memory extension", () => {
     expect(sessionStart).toBeDefined();
   });
 
+  test("subscribes to before_agent_start event for per-turn BRAIN.md injection", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-memory");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const beforeAgentStart = pi.events.find(
+      (e) => e.event === "before_agent_start",
+    );
+    expect(beforeAgentStart).toBeDefined();
+  });
+
+  test("registers 2 event handlers (session_start + before_agent_start)", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-memory");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    expect(pi.events.length).toBe(2);
+  });
+
   test("luca_read_brain returns file content", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-memory");
     const pi = createMockPi();

@@ -61,6 +61,7 @@ async function loadAllExtensions() {
     "luca-safety-rules.ts",
     "luca-purpose-gating.ts",
     "luca-subagents.ts",
+    "luca-commands.ts",
     "luca-work-tracking.ts",
     "luca-widgets.ts",
     "luca-hooks.ts",
@@ -97,7 +98,7 @@ function expectPiResponse(result: any) {
 describe("Pi extension E2E: loading", () => {
   const extensionFiles = [
     { file: "luca-state.ts", tools: 3, events: 4 },
-    { file: "luca-memory.ts", tools: 4, events: 1 },
+    { file: "luca-memory.ts", tools: 4, events: 2 },
     { file: "luca-harness.ts", tools: 1, events: 0 },
     { file: "luca-complexity.ts", tools: 3, events: 0 },
     { file: "luca-roles.ts", tools: 4, events: 1 },
@@ -108,6 +109,7 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-safety-rules.ts", tools: 5, events: 1 },
     { file: "luca-purpose-gating.ts", tools: 6, events: 1 },
     { file: "luca-subagents.ts", tools: 5, events: 1 },
+    { file: "luca-commands.ts", tools: 0, events: 0, commands: 6 },
     { file: "luca-work-tracking.ts", tools: 5, events: 2 },
     { file: "luca-widgets.ts", tools: 0, events: 6 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
@@ -474,5 +476,257 @@ describe("Pi extension E2E: cross-extension integration", () => {
     });
     const eligibleData = JSON.parse(eligible.content[0].text);
     expect(eligibleData.total_eligible).toBeGreaterThan(0);
+  });
+});
+
+// ─── Slash Commands (Plan 70-B) ─────────────────────────────
+
+describe("Pi extension E2E: slash commands", () => {
+  test("luca-commands.ts registers 6 commands", async () => {
+    const mock = await loadExtension("luca-commands.ts");
+    expect(mock.commands.size).toBe(6);
+  });
+
+  test("luca-commands.ts registers expected command names", async () => {
+    const mock = await loadExtension("luca-commands.ts");
+    const expectedCommands = [
+      "status",
+      "track",
+      "verify",
+      "todos",
+      "subagents",
+      "safety",
+    ];
+    for (const name of expectedCommands) {
+      expect(mock.commands.has(name)).toBe(true);
+    }
+  });
+});
+
+// ─── before_agent_start (Plan 70-B) ────────────────────────
+
+describe("Pi extension E2E: before_agent_start", () => {
+  test("luca-memory registers before_agent_start event", async () => {
+    const mock = await loadExtension("luca-memory.ts");
+    const handlers = mock.events.get("before_agent_start") ?? [];
+    expect(handlers.length).toBe(1);
+  });
+
+  test("before_agent_start handler calls addSystemContext with luca-brain", async () => {
+    const mock = await loadExtension("luca-memory.ts");
+    const handlers = mock.events.get("before_agent_start") ?? [];
+    expect(handlers.length).toBe(1);
+
+    let contextId = "";
+    let contextContent = "";
+    const mockCtx = {
+      addSystemContext: (id: string, content: string) => {
+        contextId = id;
+        contextContent = content;
+      },
+    };
+
+    await handlers[0]({}, mockCtx);
+
+    // BRAIN.md exists in this repo
+    expect(contextId).toBe("luca-brain");
+    expect(contextContent.length).toBeGreaterThan(0);
+  });
+
+  test("session_start and before_agent_start use same context ID", async () => {
+    const mock = await loadExtension("luca-memory.ts");
+
+    const sessionStartHandlers = mock.events.get("session_start") ?? [];
+    const beforeAgentHandlers = mock.events.get("before_agent_start") ?? [];
+
+    let sessionContextId = "";
+    let beforeAgentContextId = "";
+
+    const sessionCtx = {
+      addSystemContext: (id: string, _content: string) => {
+        sessionContextId = id;
+      },
+    };
+
+    const beforeAgentCtx = {
+      addSystemContext: (id: string, _content: string) => {
+        beforeAgentContextId = id;
+      },
+    };
+
+    await sessionStartHandlers[0]({}, sessionCtx);
+    await beforeAgentHandlers[0]({}, beforeAgentCtx);
+
+    // Both should use "luca-brain" to prevent duplication
+    expect(sessionContextId).toBe("luca-brain");
+    expect(beforeAgentContextId).toBe("luca-brain");
+  });
+});
+
+// ─── Safety confirm/abort (Plan 70-B) ──────────────────────
+
+describe("Pi extension E2E: safety confirm and abort", () => {
+  test("luca_set_safety_mode confirms when downgrading from block", async () => {
+    const mock = await loadExtension("luca-safety-rules.ts");
+
+    // First set mode to block
+    const setTool = mock.tools.get("luca_set_safety_mode");
+    expect(setTool).toBeDefined();
+
+    // Set to block mode (no confirmation needed for upgrade)
+    await setTool.execute("test", { mode: "block" }, undefined, undefined, {});
+
+    // Now downgrade to warn — should call confirm
+    let confirmCalled = false;
+    let confirmTitle = "";
+    const mockCtx = {
+      ui: {
+        confirm: async (title: string, _body: string) => {
+          confirmCalled = true;
+          confirmTitle = title;
+          return true; // User confirms
+        },
+      },
+    };
+
+    const result = await setTool.execute(
+      "test",
+      { mode: "warn" },
+      undefined,
+      undefined,
+      mockCtx,
+    );
+    expect(confirmCalled).toBe(true);
+    expect(confirmTitle).toContain("Downgrade");
+    expect(result.content[0].text).toContain("block");
+    expect(result.content[0].text).toContain("warn");
+  });
+
+  test("luca_set_safety_mode blocks downgrade when user declines", async () => {
+    const mock = await loadExtension("luca-safety-rules.ts");
+
+    const setTool = mock.tools.get("luca_set_safety_mode");
+
+    // Set to block mode first
+    await setTool.execute("test", { mode: "block" }, undefined, undefined, {});
+
+    // Decline the downgrade
+    const mockCtx = {
+      ui: {
+        confirm: async (_title: string, _body: string) => false,
+      },
+    };
+
+    const result = await setTool.execute(
+      "test",
+      { mode: "log" },
+      undefined,
+      undefined,
+      mockCtx,
+    );
+    expect(result.content[0].text).toContain("cancelled");
+  });
+
+  test("tool_call handler calls ctx.abort for critical block-mode violations", async () => {
+    const mock = await loadExtension("luca-safety-rules.ts");
+
+    // Set to block mode
+    const setTool = mock.tools.get("luca_set_safety_mode");
+    await setTool.execute("test", { mode: "block" }, undefined, undefined, {});
+
+    // Get the tool_call handler
+    const handlers = mock.events.get("tool_call") ?? [];
+    expect(handlers.length).toBe(1);
+
+    let abortCalled = false;
+    let notifyMessage = "";
+    const mockCtx = {
+      abort: () => {
+        abortCalled = true;
+      },
+      ui: {
+        notify: (msg: string, _level: string) => {
+          notifyMessage = msg;
+        },
+      },
+    };
+
+    // Trigger with destructive command
+    await handlers[0](
+      {
+        toolName: "Bash",
+        params: { command: "git push --force" },
+      },
+      mockCtx,
+    );
+
+    expect(abortCalled).toBe(true);
+    expect(notifyMessage).toContain("BLOCKED");
+  });
+
+  test("tool_call handler shows confirm for critical warn-mode violations", async () => {
+    const mock = await loadExtension("luca-safety-rules.ts");
+
+    // Set to warn mode (default)
+    const setTool = mock.tools.get("luca_set_safety_mode");
+    await setTool.execute("test", { mode: "warn" }, undefined, undefined, {});
+
+    const handlers = mock.events.get("tool_call") ?? [];
+
+    let confirmCalled = false;
+    const mockCtx = {
+      ui: {
+        confirm: async (_title: string, _body: string) => {
+          confirmCalled = true;
+          return false; // User declines
+        },
+      },
+    };
+
+    const result = await handlers[0](
+      {
+        toolName: "Bash",
+        params: { command: "rm -rf /" },
+      },
+      mockCtx,
+    );
+
+    expect(confirmCalled).toBe(true);
+    expect(result?.block).toBe(true);
+    expect(result?.reason).toContain("declined");
+  });
+
+  test("ctx.abort is NOT called for non-critical violations in block mode", async () => {
+    const mock = await loadExtension("luca-safety-rules.ts");
+
+    // The tool_call handler only checks critical rules,
+    // so non-critical violations don't trigger abort.
+    // Set to block mode
+    const setTool = mock.tools.get("luca_set_safety_mode");
+    await setTool.execute("test", { mode: "block" }, undefined, undefined, {});
+
+    const handlers = mock.events.get("tool_call") ?? [];
+
+    let abortCalled = false;
+    const mockCtx = {
+      abort: () => {
+        abortCalled = true;
+      },
+      ui: {
+        notify: () => {},
+      },
+    };
+
+    // Trigger with non-critical content (credentials in code = "high" severity)
+    // But tool_call handler only checks critical rules, so this won't match
+    await handlers[0](
+      {
+        toolName: "Bash",
+        params: { command: "echo hello world" },
+      },
+      mockCtx,
+    );
+
+    expect(abortCalled).toBe(false);
   });
 });
