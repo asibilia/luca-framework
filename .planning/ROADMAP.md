@@ -56,6 +56,8 @@
 
 **Depends on:** Phase 75 (all distribution features must be complete)
 
+- [x] Plan 76-A: Wizard harness, files harness, manifest harness, doctor harness tests (32 new tests)
+
 ### Phase 77 — Model Routing Architecture
 
 **Goal:** Replace complexity gating skip/run matrix with per-agent model routing. Keep complexity levels for estimation, remove workflow step gating. Add `modelTier` field to agent definitions.
