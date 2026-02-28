@@ -48,6 +48,8 @@
 
 **Depends on:** Phase 72 (harness selection must exist), Phase 73 (templates must exist)
 
+- [x] Plan 75-A: Harness-aware update, manifest harnesses field, doctor harness check
+
 ### Phase 76 — Distribution Testing
 
 **Goal:** Comprehensive test suite: wizard harness tests, conditional file generation, bridge CLI dispatch, manifest backward compat, integration test in temp dir.

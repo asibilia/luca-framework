@@ -80,6 +80,7 @@ export async function createManifest(options: {
     branding: config.branding,
     stack: config.stack,
     workTracker: config.workTracker,
+    harnesses: config.harnesses ?? ["claude", "cursor"],
     files,
   };
 }
