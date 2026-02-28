@@ -19,7 +19,8 @@
   "private": true,
   "scripts": {
     "build": "bun run --filter '*' build",
-    "build:all": "bun run ./scripts/build-all.ts",
+    "build:all": "bun run ./scripts/build-all.ts && bun run build:templates",
+    "build:templates": "bun run ./scripts/copy-harness-templates.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
     "test": "bun test",

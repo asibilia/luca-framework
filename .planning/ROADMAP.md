@@ -16,17 +16,23 @@
 
 **Depends on:** None
 
+- [x] Plan 71-A: Rename scope, HarnessId type, runBridgeCli(), bin entry, version bump
+
 ### Phase 72 — Wizard & Harness Selection
 
 **Goal:** Add harness multi-select to wizard, update config/init with `--harness` arg, refactor files.ts for conditional per-harness scaffolding.
 
 **Depends on:** Phase 71 (scope and types must exist)
 
+- [x] Plan 72-A: Wizard multiselect, CLI arg, conditional scaffolding
+
 ### Phase 73 — Template Infrastructure
 
 **Goal:** Create template copy script, establish `templates/harness/` structure, chain build pipeline (`build:all` -> `build:templates` -> `build`).
 
 **Depends on:** Phase 71 (HarnessId type needed for template structure)
+
+- [x] Plan 73-A: Copy script, build pipeline chain, gitignore, tsconfig exclude
 
 ### Phase 74 — Hook Script Portability
 

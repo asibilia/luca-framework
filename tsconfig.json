@@ -30,5 +30,6 @@
     "paths": {
       "~/*": ["./src/*"]
     }
-  }
+  },
+  "exclude": ["packages/luca-framework/templates/harness"]
 }
