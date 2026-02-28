@@ -331,6 +331,17 @@ export default function lucaSafetyRules(pi: any) {
 
       const hasCritical = violations.some((v) => v.severity === "critical");
 
+      // Persist violation summary via appendEntry (survives compaction)
+      if (violations.length > 0 && pi.appendEntry) {
+        pi.appendEntry("luca-safety-audit", {
+          timestamp: new Date().toISOString(),
+          check_type: "manual",
+          violation_count: violations.length,
+          severities: violations.map((v) => v.severity),
+          gate_mode: gateMode,
+        });
+      }
+
       return createJsonResponse({
         safe: violations.length === 0,
         gate_mode: gateMode,
@@ -445,6 +456,18 @@ export default function lucaSafetyRules(pi: any) {
             action: gateMode === "block" ? "blocked" : "warned",
             context: `tool_call: ${command.slice(0, 200)}`,
           });
+
+          // Persist via appendEntry (survives compaction)
+          if (pi.appendEntry) {
+            pi.appendEntry("luca-safety-audit", {
+              timestamp: new Date().toISOString(),
+              rule_id: rule.id,
+              rule_name: rule.name,
+              severity: rule.severity,
+              action: gateMode === "block" ? "blocked" : "warned",
+              context: command.slice(0, 200),
+            });
+          }
 
           if (gateMode === "block") {
             // Notify user of blocked critical violation
