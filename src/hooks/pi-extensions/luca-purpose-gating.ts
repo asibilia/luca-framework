@@ -13,6 +13,7 @@ import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 import { parseFrontmatter } from "./__helpers/frontmatter";
+import { sendFollowUp } from "./__helpers/follow-up";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { normalizeContext, sanitizeName } from "./__helpers/sanitize";
@@ -500,28 +501,19 @@ export default function lucaPurposeGating(pi: any) {
             systemPrompt: agentDef.systemPrompt,
             source: "luca-purpose-gating",
             onComplete: (info) => {
-              const summary = `Background agent "${info.agent}" (trigger: ${task.trigger}) ${info.status} (${(info.elapsed / 1000).toFixed(1)}s).`;
-              try {
-                pi.sendMessage(
-                  {
-                    customType: "background-result",
-                    content: summary,
-                    display: true,
-                    details: {
-                      task_id: task.id,
-                      trigger: task.trigger,
-                      subagent_id: info.id,
-                      agent: info.agent,
-                      status: info.status,
-                      exit_code: info.exitCode,
-                      elapsed_ms: info.elapsed,
-                    },
-                  },
-                  { deliverAs: "followUp" },
-                );
-              } catch {
-                // sendMessage may fail if session ended — non-fatal
-              }
+              sendFollowUp(pi, {
+                customType: "background-result",
+                content: `Background agent "${info.agent}" (trigger: ${task.trigger}) ${info.status} (${(info.elapsed / 1000).toFixed(1)}s).`,
+                details: {
+                  task_id: task.id,
+                  trigger: task.trigger,
+                  subagent_id: info.id,
+                  agent: info.agent,
+                  status: info.status,
+                  exit_code: info.exitCode,
+                  elapsed_ms: info.elapsed,
+                },
+              });
             },
           });
 
@@ -587,6 +579,7 @@ export default function lucaPurposeGating(pi: any) {
 
   // Auto-discover agents on session start
   pi.on("session_start", async (_event: any, _ctx: any) => {
+    taskIdCounter = 0;
     autoDiscoverAgents();
   });
 }

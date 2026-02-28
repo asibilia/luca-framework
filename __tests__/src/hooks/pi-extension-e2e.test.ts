@@ -63,6 +63,7 @@ async function loadAllExtensions() {
     "luca-subagents.ts",
     "luca-commands.ts",
     "luca-widgets.ts",
+    "luca-work-tracking.ts",
     "luca-hooks.ts",
   ];
   for (const f of files) {
@@ -96,11 +97,11 @@ function expectPiResponse(result: any) {
 
 describe("Pi extension E2E: loading", () => {
   const extensionFiles = [
-    { file: "luca-state.ts", tools: 3, events: 7 },
+    { file: "luca-state.ts", tools: 3, events: 8 },
     { file: "luca-memory.ts", tools: 4, events: 2 },
     { file: "luca-harness.ts", tools: 1, events: 0 },
     { file: "luca-complexity.ts", tools: 3, events: 0 },
-    { file: "luca-roles.ts", tools: 4, events: 2 },
+    { file: "luca-roles.ts", tools: 4, events: 3 },
     { file: "luca-teams.ts", tools: 3, events: 0 },
     { file: "luca-chain.ts", tools: 3, events: 0 },
     { file: "luca-tilldone.ts", tools: 3, events: 0 },
@@ -110,6 +111,7 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-subagents.ts", tools: 5, events: 1 },
     { file: "luca-commands.ts", tools: 0, events: 0, commands: 6 },
     { file: "luca-widgets.ts", tools: 0, events: 6 },
+    { file: "luca-work-tracking.ts", tools: 5, events: 2 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
   ];
 
@@ -147,9 +149,13 @@ describe("Pi extension E2E: loading", () => {
     }
   });
 
-  test("all extensions combined register exactly 44 tools", async () => {
+  test("all extensions combined register expected tool count", async () => {
     const mock = await loadAllExtensions();
-    expect(mock.tools.size).toBe(44);
+    const expectedToolCount = extensionFiles.reduce(
+      (sum, ext) => sum + ext.tools,
+      0,
+    );
+    expect(mock.tools.size).toBe(expectedToolCount);
   });
 });
 

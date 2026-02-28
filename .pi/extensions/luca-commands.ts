@@ -19,6 +19,7 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join, basename } from "path";
 
+import { notifySafe } from "./__helpers/notify";
 import { subagentRegistry } from "./__helpers/subagent-registry";
 
 /**
@@ -76,18 +77,14 @@ export default function lucaCommands(pi: any) {
     handler: async (_args: any, ctx: any) => {
       const statePath = join(planningDir, "STATE.md");
       if (!existsSync(statePath)) {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify("No STATE.md found -- run /lu to initialize", "warn");
-        }
+        notifySafe(ctx, "No STATE.md found -- run /lu to initialize", "warn");
         return;
       }
 
       const content = readFileSync(statePath, "utf-8");
       const summary = formatStatusSummary(content);
 
-      if (ctx?.ui?.notify) {
-        ctx.ui.notify(summary, "info");
-      }
+      notifySafe(ctx, summary, "info");
     },
   });
 
@@ -98,9 +95,7 @@ export default function lucaCommands(pi: any) {
     handler: async (_args: any, ctx: any) => {
       const agents = subagentRegistry.values();
       if (agents.length === 0) {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify("No subagents tracked", "info");
-        }
+        notifySafe(ctx, "No subagents tracked", "info");
         return;
       }
 
@@ -115,9 +110,7 @@ export default function lucaCommands(pi: any) {
       if (failed > 0) parts.push(`${failed} failed`);
       if (aborted > 0) parts.push(`${aborted} aborted`);
 
-      if (ctx?.ui?.notify) {
-        ctx.ui.notify(`Subagents: ${parts.join(", ")}`, "info");
-      }
+      notifySafe(ctx, `Subagents: ${parts.join(", ")}`, "info");
     },
   });
 
@@ -129,12 +122,11 @@ export default function lucaCommands(pi: any) {
       // Check for cached harness result in .planning/
       const resultPath = join(planningDir, "last-harness-result.json");
       if (!existsSync(resultPath)) {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify(
-            "No cached verification result -- run luca_verify first",
-            "info",
-          );
-        }
+        notifySafe(
+          ctx,
+          "No cached verification result -- run luca_verify first",
+          "info",
+        );
         return;
       }
 
@@ -148,16 +140,13 @@ export default function lucaCommands(pi: any) {
           )
           .join(", ");
 
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify(
-            `Last verify: ${status} (${checks})`,
-            result.status === "passed" ? "info" : "error",
-          );
-        }
+        notifySafe(
+          ctx,
+          `Last verify: ${status} (${checks})`,
+          result.status === "passed" ? "info" : "error",
+        );
       } catch {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify("Failed to parse cached verification result", "warn");
-        }
+        notifySafe(ctx, "Failed to parse cached verification result", "warn");
       }
     },
   });
@@ -169,33 +158,26 @@ export default function lucaCommands(pi: any) {
     handler: async (_args: any, ctx: any) => {
       const pendingDir = join(planningDir, "todos", "pending");
       if (!existsSync(pendingDir)) {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify("No pending todos directory found", "info");
-        }
+        notifySafe(ctx, "No pending todos directory found", "info");
         return;
       }
 
       try {
         const files = readdirSync(pendingDir).filter((f) => f.endsWith(".md"));
         if (files.length === 0) {
-          if (ctx?.ui?.notify) {
-            ctx.ui.notify("No pending todos", "info");
-          }
+          notifySafe(ctx, "No pending todos", "info");
           return;
         }
 
         const todoNames = files.map((f) => basename(f, ".md")).join(", ");
 
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify(
-            `${files.length} pending todo(s): ${todoNames}`,
-            "info",
-          );
-        }
+        notifySafe(
+          ctx,
+          `${files.length} pending todo(s): ${todoNames}`,
+          "info",
+        );
       } catch {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify("Failed to read todos directory", "warn");
-        }
+        notifySafe(ctx, "Failed to read todos directory", "warn");
       }
     },
   });
@@ -207,9 +189,7 @@ export default function lucaCommands(pi: any) {
     handler: async (_args: any, ctx: any) => {
       const agents = subagentRegistry.values();
       if (agents.length === 0) {
-        if (ctx?.ui?.notify) {
-          ctx.ui.notify("No subagents tracked", "info");
-        }
+        notifySafe(ctx, "No subagents tracked", "info");
         return;
       }
 
@@ -222,9 +202,7 @@ export default function lucaCommands(pi: any) {
 
       const table = `ID | Agent | Status | Duration\n${rows.join("\n")}`;
 
-      if (ctx?.ui?.notify) {
-        ctx.ui.notify(table, "info");
-      }
+      notifySafe(ctx, table, "info");
     },
   });
 
@@ -238,12 +216,11 @@ export default function lucaCommands(pi: any) {
       // the safety status from its tool output pattern.
       // For slash commands, we provide a summary based on what
       // is accessible from the shared registries.
-      if (ctx?.ui?.notify) {
-        ctx.ui.notify(
-          "Safety info: use luca_list_safety_rules tool for full details",
-          "info",
-        );
-      }
+      notifySafe(
+        ctx,
+        "Safety info: use luca_list_safety_rules tool for full details",
+        "info",
+      );
     },
   });
 }

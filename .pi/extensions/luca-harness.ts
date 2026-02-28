@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
 import { runShellCommand } from "./__helpers/exec";
+import { notifySafe } from "./__helpers/notify";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 
 /**
@@ -238,16 +239,14 @@ export default function lucaHarness(pi: any) {
       };
 
       // Toast notification for verification results
-      if (ctx?.ui?.notify) {
-        const level = allPassed ? "info" : "error";
-        const msg = allPassed
-          ? `Verification passed (${results.length} checks, ${summary.total_duration}ms)`
-          : `Verification FAILED: ${results
-              .filter((r) => r.status !== "passed")
-              .map((r) => r.name)
-              .join(", ")}`;
-        ctx.ui.notify(msg, level);
-      }
+      const notifyLevel = allPassed ? "info" : "error";
+      const notifyMsg = allPassed
+        ? `Verification passed (${results.length} checks, ${summary.total_duration}ms)`
+        : `Verification FAILED: ${results
+            .filter((r) => r.status !== "passed")
+            .map((r) => r.name)
+            .join(", ")}`;
+      notifySafe(ctx, notifyMsg, notifyLevel);
 
       return createJsonResponse(summary);
     },

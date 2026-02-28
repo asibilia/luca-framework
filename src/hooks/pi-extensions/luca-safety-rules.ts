@@ -12,6 +12,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { notifySafe } from "./__helpers/notify";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 
@@ -79,6 +80,39 @@ export default function lucaSafetyRules(pi: any) {
 
   /** Audit log. */
   const auditLog: AuditEntry[] = [];
+
+  /**
+   * Redact potential credentials from audit log context strings.
+   *
+   * @param str - Raw string that may contain credentials
+   * @returns String with credential values replaced by [REDACTED]
+   */
+  function redactCredentials(str: string): string {
+    return str.replace(
+      /(?:api[_-]?key|token|secret|password|credential)\s*[:=]\s*\S+/gi,
+      "[REDACTED]",
+    );
+  }
+
+  /**
+   * Check if content matches a safety rule's pattern.
+   *
+   * Splits the rule's pipe-separated patterns and checks each against
+   * the normalized content using case-insensitive comparison.
+   *
+   * @param content - Content string to check
+   * @param rule - Safety rule with pipe-separated patterns
+   * @returns The matched pattern string, or null if no match
+   */
+  function matchesRule(content: string, rule: SafetyRule): string | null {
+    const patterns = rule.pattern.split("|").map((p) => p.trim());
+    for (const pattern of patterns) {
+      if (normalizeForMatch(content).includes(normalizeForMatch(pattern))) {
+        return pattern;
+      }
+    }
+    return null;
+  }
 
   // Pre-register built-in safety rules
   const BUILTIN_RULES: SafetyRule[] = [
@@ -277,44 +311,38 @@ export default function lucaSafetyRules(pi: any) {
       }> = [];
 
       for (const rule of rules.values()) {
-        const patterns = rule.pattern.split("|").map((p) => p.trim());
-        for (const pattern of patterns) {
-          if (
-            normalizeForMatch(params.content).includes(
-              normalizeForMatch(pattern),
-            )
-          ) {
-            const action =
+        const matched = matchesRule(params.content, rule);
+        if (matched) {
+          const action =
+            gateMode === "block"
+              ? "BLOCKED"
+              : gateMode === "warn"
+                ? "WARNING"
+                : "LOGGED";
+
+          violations.push({
+            rule_id: rule.id,
+            name: rule.name,
+            severity: rule.severity,
+            matched_pattern: matched,
+            mitigation: rule.mitigation,
+            action,
+          });
+
+          // Record in audit log
+          auditLog.push({
+            timestamp: new Date().toISOString(),
+            rule_id: rule.id,
+            action:
               gateMode === "block"
-                ? "BLOCKED"
+                ? "blocked"
                 : gateMode === "warn"
-                  ? "WARNING"
-                  : "LOGGED";
-
-            violations.push({
-              rule_id: rule.id,
-              name: rule.name,
-              severity: rule.severity,
-              matched_pattern: pattern,
-              mitigation: rule.mitigation,
-              action,
-            });
-
-            // Record in audit log
-            auditLog.push({
-              timestamp: new Date().toISOString(),
-              rule_id: rule.id,
-              action:
-                gateMode === "block"
-                  ? "blocked"
-                  : gateMode === "warn"
-                    ? "warned"
-                    : "logged",
-              context: params.context ?? params.content.slice(0, 200),
-            });
-
-            break; // One match per rule is enough
-          }
+                  ? "warned"
+                  : "logged",
+            context: redactCredentials(
+              params.context ?? params.content.slice(0, 200),
+            ),
+          });
         }
       }
 
@@ -438,7 +466,8 @@ export default function lucaSafetyRules(pi: any) {
   pi.on("tool_call", async (event: any, ctx: any) => {
     // Only check Bash/shell tool calls
     const toolName = (event.toolName || "").toLowerCase();
-    if (toolName !== "bash" && toolName !== "shell") return;
+    const SHELL_TOOLS = ["bash", "shell", "luca_tilldone", "luca_verify"];
+    if (!SHELL_TOOLS.includes(toolName)) return;
 
     const command = event.params?.command || event.params?.input || "";
     if (!command) return;
@@ -447,65 +476,61 @@ export default function lucaSafetyRules(pi: any) {
     for (const rule of rules.values()) {
       if (rule.severity !== "critical") continue;
 
-      const patterns = rule.pattern.split("|").map((p) => p.trim());
-      for (const pattern of patterns) {
-        if (normalizeForMatch(command).includes(normalizeForMatch(pattern))) {
-          auditLog.push({
-            timestamp: new Date().toISOString(),
-            rule_id: rule.id,
-            action: gateMode === "block" ? "blocked" : "warned",
-            context: `tool_call: ${command.slice(0, 200)}`,
-          });
+      const matched = matchesRule(command, rule);
+      if (!matched) continue;
 
-          // Persist via appendEntry (survives compaction)
-          if (pi.appendEntry) {
-            pi.appendEntry("luca-safety-audit", {
-              timestamp: new Date().toISOString(),
-              rule_id: rule.id,
-              rule_name: rule.name,
-              severity: rule.severity,
-              action: gateMode === "block" ? "blocked" : "warned",
-              context: command.slice(0, 200),
-            });
-          }
+      auditLog.push({
+        timestamp: new Date().toISOString(),
+        rule_id: rule.id,
+        action: gateMode === "block" ? "blocked" : "warned",
+        context: redactCredentials(`tool_call: ${command.slice(0, 200)}`),
+      });
 
-          if (gateMode === "block") {
-            // Notify user of blocked critical violation
-            if (ctx?.ui?.notify) {
-              ctx.ui.notify(
-                `BLOCKED: ${rule.name} — ${rule.mitigation}`,
-                "error",
-              );
-            }
+      // Persist via appendEntry (survives compaction)
+      if (pi.appendEntry) {
+        pi.appendEntry("luca-safety-audit", {
+          timestamp: new Date().toISOString(),
+          rule_id: rule.id,
+          rule_name: rule.name,
+          severity: rule.severity,
+          action: gateMode === "block" ? "blocked" : "warned",
+          context: redactCredentials(command.slice(0, 200)),
+        });
+      }
 
-            // Hard abort for critical violations in block mode
-            if (rule.severity === "critical" && ctx?.abort) {
-              ctx.abort();
-            }
+      if (gateMode === "block") {
+        // Notify user of blocked critical violation
+        notifySafe(ctx, `BLOCKED: ${rule.name} — ${rule.mitigation}`, "error");
 
-            return {
-              block: true,
-              reason: `Safety rule "${rule.name}" (${rule.severity}): ${rule.mitigation}`,
-            };
-          }
+        // Hard abort for critical violations in block mode
+        if (rule.severity === "critical" && ctx?.abort) {
+          ctx.abort();
+        }
 
-          // In warn mode, confirm before proceeding for critical violations
-          if (gateMode === "warn" && rule.severity === "critical") {
-            if (ctx?.ui?.confirm) {
-              const proceed = await ctx.ui.confirm(
-                `Safety: ${rule.name}`,
-                `Critical violation detected: ${rule.mitigation}\n\nProceed anyway?`,
-              );
-              if (!proceed) {
-                return {
-                  block: true,
-                  reason: `User declined after safety warning: ${rule.name}`,
-                };
-              }
-            }
-          }
+        return {
+          block: true,
+          reason: `Safety rule "${rule.name}" (${rule.severity}): ${rule.mitigation}`,
+        };
+      }
 
-          break;
+      // In warn mode, confirm before proceeding for critical violations
+      if (gateMode === "warn" && rule.severity === "critical") {
+        if (!ctx?.ui?.confirm) {
+          // Fail closed: no UI = no way to confirm = block
+          return {
+            block: true,
+            reason: `Safety rule "${rule.name}": ${rule.mitigation} (no interactive UI to confirm)`,
+          };
+        }
+        const proceed = await ctx.ui.confirm(
+          `Safety: ${rule.name}`,
+          `Critical violation detected: ${rule.mitigation}\n\nProceed anyway?`,
+        );
+        if (!proceed) {
+          return {
+            block: true,
+            reason: `User declined after safety warning: ${rule.name}`,
+          };
         }
       }
     }

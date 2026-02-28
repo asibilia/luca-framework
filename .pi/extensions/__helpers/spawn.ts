@@ -12,6 +12,7 @@
  */
 import { spawn } from "child_process";
 import {
+  chmodSync,
   existsSync,
   readFileSync,
   mkdtempSync,
@@ -19,7 +20,7 @@ import {
   unlinkSync,
   rmSync,
 } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
 import { tmpdir } from "os";
 
 import { parseFrontmatter } from "./frontmatter";
@@ -129,7 +130,9 @@ export function writePromptFile(agentName: string, prompt: string): string {
  */
 export function createSessionDir(id: string): string {
   const safeName = sanitizeName(id);
-  return mkdtempSync(join(tmpdir(), `luca-sub-session-${safeName}-`));
+  const dir = mkdtempSync(join(tmpdir(), `luca-sub-session-${safeName}-`));
+  chmodSync(dir, 0o700);
+  return dir;
 }
 
 /**
@@ -207,7 +210,9 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
     args.push("--append-system-prompt", promptFile);
   }
 
-  args.push(`Task: ${opts.task}`);
+  const MAX_TASK_LENGTH = 10000;
+  const taskStr = (opts.task || "").slice(0, MAX_TASK_LENGTH);
+  args.push(`Task: ${taskStr}`);
 
   const proc = spawn("pi", args, {
     cwd: opts.cwd,
@@ -272,7 +277,7 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
     // Clean up temp prompt file and its directory
     if (promptFile) {
       try {
-        rmSync(join(promptFile, ".."), { recursive: true, force: true });
+        rmSync(dirname(promptFile), { recursive: true, force: true });
       } catch {
         // Ignore cleanup errors
       }

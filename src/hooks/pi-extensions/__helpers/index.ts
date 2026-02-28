@@ -1,3 +1,11 @@
+/**
+ * Barrel re-exports for Pi extension __helpers/.
+ *
+ * WARNING: This file is NOT deployed to .pi/extensions/__helpers/.
+ * Pi extensions must import directly from individual files
+ * (e.g., "./__helpers/response", not "./__helpers").
+ * See scripts/build-shared.ts PI_HELPER_FILES for the deployed list.
+ */
 export { createTextResponse, createJsonResponse } from "./response";
 export type { ToolResponse } from "./response";
 export { parseFrontmatter, extractFrontmatterField } from "./frontmatter";
@@ -51,3 +59,5 @@ export type {
   QualityZone,
   PiTuiComponent,
 } from "./widget-renderers";
+export { notifySafe, confirmSafe } from "./notify";
+export { sendFollowUp } from "./follow-up";

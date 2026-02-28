@@ -17,6 +17,8 @@
 import { existsSync } from "fs";
 import { join } from "path";
 
+import { sendFollowUp } from "./__helpers/follow-up";
+import { notifySafe } from "./__helpers/notify";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
 import {
@@ -24,6 +26,7 @@ import {
   cleanupSessionDir,
   spawnPiSubprocess,
 } from "./__helpers/spawn";
+import type { SpawnCompletionInfo } from "./__helpers/spawn";
 import {
   subagentRegistry,
   nextSubagentId,
@@ -47,6 +50,41 @@ import {
  */
 export default function lucaSubagents(pi: any) {
   const cwd = process.cwd();
+
+  /**
+   * Handle subagent completion: send follow-up message and toast notification.
+   *
+   * Shared by luca_subagent_create and luca_subagent_continue onComplete
+   * callbacks to avoid duplicating the ~20-line notification block.
+   */
+  function handleSubagentComplete(ctx: any, info: SpawnCompletionInfo): void {
+    const summary = [
+      `Subagent "${info.id}" (${info.agent}) ${info.status}.`,
+      `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
+      info.output
+        ? `Output preview: ${info.output.slice(0, 500)}`
+        : "(no output)",
+    ].join("\n");
+
+    sendFollowUp(pi, {
+      customType: "subagent-result",
+      content: summary,
+      details: {
+        subagent_id: info.id,
+        agent: info.agent,
+        status: info.status,
+        exit_code: info.exitCode,
+        elapsed_ms: info.elapsed,
+      },
+    });
+
+    const level = info.status === "completed" ? "info" : "error";
+    notifySafe(
+      ctx,
+      `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
+      level,
+    );
+  }
 
   // ─── Tool: Create Subagent ─────────────────────────────
 
@@ -115,59 +153,11 @@ export default function lucaSubagents(pi: any) {
           tools: agentDef.tools,
           systemPrompt: agentDef.systemPrompt,
           source: "luca-subagents",
-          onComplete: (info) => {
-            const summary = [
-              `Subagent "${info.id}" (${info.agent}) ${info.status}.`,
-              `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
-              info.output
-                ? `Output preview: ${info.output.slice(0, 500)}`
-                : "(no output)",
-            ].join("\n");
-
-            try {
-              pi.sendMessage(
-                {
-                  customType: "subagent-result",
-                  content: summary,
-                  display: true,
-                  details: {
-                    subagent_id: info.id,
-                    agent: info.agent,
-                    status: info.status,
-                    exit_code: info.exitCode,
-                    elapsed_ms: info.elapsed,
-                  },
-                },
-                { deliverAs: "followUp" },
-              );
-            } catch {
-              // sendMessage may fail if session ended — non-fatal
-            }
-
-            // Toast notification for user awareness
-            try {
-              if (ctx?.ui?.notify) {
-                const level = info.status === "completed" ? "info" : "error";
-                ctx.ui.notify(
-                  `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
-                  level,
-                );
-              }
-            } catch {
-              /* non-fatal */
-            }
-          },
+          onComplete: (info) => handleSubagentComplete(ctx, info),
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        // Notify user of limit hit or spawn failure
-        try {
-          if (ctx?.ui?.notify) {
-            ctx.ui.notify(msg, "warn");
-          }
-        } catch {
-          /* non-fatal */
-        }
+        notifySafe(ctx, msg, "warn");
         return createTextResponse(msg);
       }
 
@@ -322,7 +312,9 @@ export default function lucaSubagents(pi: any) {
         state.status = "aborted";
         state.completedAt = Date.now();
         // Give process time to clean up
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        /** Grace period (ms) for SIGTERM before escalating to SIGKILL. */
+        const SIGTERM_GRACE_MS = 500;
+        await new Promise((resolve) => setTimeout(resolve, SIGTERM_GRACE_MS));
         if (state.process && !state.process.killed) {
           state.process.kill("SIGKILL");
         }
@@ -416,59 +408,11 @@ export default function lucaSubagents(pi: any) {
           continueSession: true,
           sessionDir: existing.sessionDir,
           source: "luca-subagents",
-          onComplete: (info) => {
-            const summary = [
-              `Subagent "${info.id}" (${info.agent}) continued session ${info.status}.`,
-              `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
-              info.output
-                ? `Output preview: ${info.output.slice(0, 500)}`
-                : "(no output)",
-            ].join("\n");
-
-            try {
-              pi.sendMessage(
-                {
-                  customType: "subagent-result",
-                  content: summary,
-                  display: true,
-                  details: {
-                    subagent_id: info.id,
-                    agent: info.agent,
-                    status: info.status,
-                    exit_code: info.exitCode,
-                    elapsed_ms: info.elapsed,
-                  },
-                },
-                { deliverAs: "followUp" },
-              );
-            } catch {
-              // sendMessage may fail if session ended — non-fatal
-            }
-
-            // Toast notification for user awareness
-            try {
-              if (ctx?.ui?.notify) {
-                const level = info.status === "completed" ? "info" : "error";
-                ctx.ui.notify(
-                  `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
-                  level,
-                );
-              }
-            } catch {
-              /* non-fatal */
-            }
-          },
+          onComplete: (info) => handleSubagentComplete(ctx, info),
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        // Notify user of spawn failure
-        try {
-          if (ctx?.ui?.notify) {
-            ctx.ui.notify(msg, "warn");
-          }
-        } catch {
-          /* non-fatal */
-        }
+        notifySafe(ctx, msg, "warn");
         return createTextResponse(msg);
       }
 

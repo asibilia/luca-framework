@@ -17,6 +17,7 @@
  * Source: src/hooks/pi-extensions/luca-widgets.ts
  * Deployed to: .pi/extensions/luca-widgets.ts
  */
+import { notifySafe } from "./__helpers/notify";
 import type {
   ChainState,
   ResearchState,
@@ -54,9 +55,19 @@ interface WidgetState {
   contextPct: number;
   /** Quality degradation zone. */
   qualityZone: QualityZone;
-  /** Turn counter. */
+  /**
+   * Turn counter.
+   *
+   * NOTE: luca-state.ts also tracks turnCount independently for footer
+   * display. Both are intentional — see luca-state.ts comment.
+   */
   turnCount: number;
-  /** Currently active luca tool name (for footer). */
+  /**
+   * Currently active luca tool name (for footer).
+   *
+   * NOTE: luca-state.ts also tracks activeTool independently for footer
+   * display. Both are intentional — see luca-state.ts comment.
+   */
   activeTool: string | null;
   /** Notification thresholds already fired (50%, 70%). */
   notifiedThresholds: Set<number>;
@@ -80,10 +91,14 @@ function createInitialState(): WidgetState {
 // ─── Tool result parsers ─────────────────────────────────────
 
 /**
- * Safely parse JSON from a Pi tool_result event.
+ * Safely parse JSON from a tool result's text content.
+ * Returns an empty object if parsing fails or content is missing.
  *
  * tool_result events contain the tool's response payload. We extract
  * the text content and parse it as JSON. Returns null if parsing fails.
+ *
+ * @param result - Tool result with content array
+ * @returns Parsed JSON object or null
  */
 function parseToolResultJson(event: any): any {
   try {
@@ -585,21 +600,21 @@ export default function lucaWidgets(pi: any) {
         state.qualityZone = getQualityZone(state.contextPct);
 
         // Fire notifications at thresholds
-        if (ctx?.ui?.notify) {
-          if (state.contextPct >= 50 && !state.notifiedThresholds.has(50)) {
-            state.notifiedThresholds.add(50);
-            ctx.ui.notify(
-              "Context usage at 50% \u2014 quality may start degrading",
-              "warning",
-            );
-          }
-          if (state.contextPct >= 70 && !state.notifiedThresholds.has(70)) {
-            state.notifiedThresholds.add(70);
-            ctx.ui.notify(
-              "Context usage at 70% \u2014 POOR quality zone, consider stopping soon",
-              "error",
-            );
-          }
+        if (state.contextPct >= 50 && !state.notifiedThresholds.has(50)) {
+          state.notifiedThresholds.add(50);
+          notifySafe(
+            ctx,
+            "Context usage at 50% \u2014 quality may start degrading",
+            "warning",
+          );
+        }
+        if (state.contextPct >= 70 && !state.notifiedThresholds.has(70)) {
+          state.notifiedThresholds.add(70);
+          notifySafe(
+            ctx,
+            "Context usage at 70% \u2014 POOR quality zone, consider stopping soon",
+            "error",
+          );
         }
 
         updateWidgets(ctx);

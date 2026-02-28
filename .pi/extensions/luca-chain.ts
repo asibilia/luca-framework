@@ -9,16 +9,13 @@
  * Source: src/hooks/pi-extensions/luca-chain.ts
  * Deployed to: .pi/extensions/luca-chain.ts
  */
-import { readFileSync, existsSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 
-import {
-  extractFrontmatterField,
-  parseFrontmatter,
-} from "./__helpers/frontmatter";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { isValidIdentifier } from "./__helpers/sanitize";
+import { readAgentDef } from "./__helpers/spawn";
 
 /** A single step in an agent chain. */
 interface ChainStep {
@@ -56,21 +53,15 @@ export default function lucaChain(pi: any) {
   /**
    * Read agent persona summary for chain context injection.
    *
-   * Loads the agent's markdown file from .pi/agents/ and extracts the
-   * description from its YAML frontmatter. Falls back to the first 500
-   * characters of the file content if no frontmatter is present.
+   * Uses readAgentDef() to load the agent's definition and extracts the
+   * description from its YAML frontmatter.
    *
    * @param agentName - Agent identifier (matches filename in .pi/agents/)
    * @returns Description string, or a "not found" message if file missing
    */
   function getAgentSummary(agentName: string): string {
-    const filePath = join(agentsDir, `${agentName}.md`);
-    if (!existsSync(filePath)) return `Agent "${agentName}" not found`;
-
-    const content = readFileSync(filePath, "utf-8");
-    return (
-      extractFrontmatterField(content, "description") ?? content.slice(0, 500)
-    );
+    const def = readAgentDef(cwd, agentName);
+    return def?.frontmatter?.description ?? `Agent "${agentName}" not found`;
   }
 
   // Tool: Define a new chain
@@ -246,24 +237,12 @@ export default function lucaChain(pi: any) {
         .map((s) => `[${s.agent}]: ${s.output!.slice(0, 1000)}`)
         .join("\n\n");
 
-      const agentDesc = getAgentSummary(step.agent);
-
-      // Read metadata from frontmatter for the current step's agent
-      let background_spawnable: boolean | undefined;
-      let purpose: string | undefined;
-      const agentFilePath = join(agentsDir, `${step.agent}.md`);
-      if (existsSync(agentFilePath)) {
-        try {
-          const content = readFileSync(agentFilePath, "utf-8");
-          const fm = parseFrontmatter(content);
-          if (fm) {
-            background_spawnable = fm.background_spawnable;
-            purpose = fm.purpose;
-          }
-        } catch {
-          // Continue without metadata
-        }
-      }
+      // Single readAgentDef call for description + metadata
+      const agentDef = readAgentDef(cwd, step.agent);
+      const agentDesc =
+        agentDef?.frontmatter?.description ?? `Agent "${step.agent}" not found`;
+      const background_spawnable = agentDef?.frontmatter?.background_spawnable;
+      const purpose = agentDef?.frontmatter?.purpose;
 
       return createJsonResponse({
         chain: chain.name,

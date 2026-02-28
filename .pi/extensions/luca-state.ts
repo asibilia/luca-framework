@@ -146,13 +146,15 @@ export default function lucaState(pi: any) {
         `(\\*\\*${escapedField}:\\*\\*)\\s*.+`,
         "i",
       );
+      // Escape $ in replacement to prevent regex backreference interpretation
+      const safeValue = params.value.replace(/\$/g, "$$$$");
       if (boldPattern.test(content)) {
-        content = content.replace(boldPattern, `$1 ${params.value}`);
+        content = content.replace(boldPattern, `$1 ${safeValue}`);
       } else {
         // Try simple format: Field: value
         const simplePattern = new RegExp(`(${escapedField}:)\\s*.+`, "i");
         if (simplePattern.test(content)) {
-          content = content.replace(simplePattern, `$1 ${params.value}`);
+          content = content.replace(simplePattern, `$1 ${safeValue}`);
         } else {
           return createTextResponse(
             `Field "${params.field}" not found in STATE.md`,
@@ -166,10 +168,21 @@ export default function lucaState(pi: any) {
     },
   });
 
-  /** Session turn counter, incremented on turn_start. */
+  /**
+   * Session turn counter, incremented on turn_start.
+   *
+   * NOTE: luca-widgets.ts also tracks turnCount independently for widget
+   * rendering. Both are intentional — state drives the footer, widgets
+   * drives the dashboard. Keep in sync when changing event handlers.
+   */
   let turnCount = 0;
 
-  /** Currently active luca tool (for footer display). */
+  /**
+   * Currently active luca tool (for footer display).
+   *
+   * NOTE: luca-widgets.ts also tracks activeTool independently for widget
+   * rendering. Both are intentional — see turnCount comment above.
+   */
   let activeTool: string | null = null;
 
   /**
@@ -305,6 +318,12 @@ export default function lucaState(pi: any) {
   pi.on("turn_start", async (_event: any, ctx: any) => {
     turnCount++;
     updateFooter(ctx);
+  });
+
+  // Reset turn counter and active tool on new agent session
+  pi.on("agent_start", async () => {
+    turnCount = 0;
+    activeTool = null;
   });
 
   // Reconstruct state when session changes (switch, fork, tree navigation)

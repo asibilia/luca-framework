@@ -29,7 +29,7 @@ import {
   generatePiExtension,
 } from "../src/hooks/index";
 import { agentRegistry } from "../src/agents/index";
-import { ruleRegistry } from "../src/rules/index";
+import { ruleRegistry, ProfileConfigSchema } from "../src/rules/index";
 import { skillRegistry } from "../src/skills/index";
 import {
   compileAgent,
@@ -65,6 +65,7 @@ export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-subagents.ts",
   "luca-commands.ts",
   "luca-widgets.ts",
+  "luca-work-tracking.ts",
 ] as const;
 
 /**
@@ -84,6 +85,8 @@ export const PI_HELPER_FILES: readonly string[] = [
   "widget-renderers.ts",
   "spawn.ts",
   "subagent-registry.ts",
+  "notify.ts",
+  "follow-up.ts",
 ] as const;
 // Note: index.ts barrel is NOT included — Pi auto-discovers
 // .pi/extensions/*/index.ts as extensions. Extensions import
@@ -467,19 +470,17 @@ export { profileRegistry, ProfileConfigSchema } from "../src/rules/index";
  *
  * @returns Array of active profile name strings
  */
-export function getActiveProfileNames(): string[] {
+export async function getActiveProfileNames(): Promise<string[]> {
   try {
-    const fs = require("fs");
     const configPath = path.join(process.cwd(), ".planning", "config.json");
-    const raw = fs.readFileSync(configPath, "utf-8");
+    const configFile = Bun.file(configPath);
+    if (!(await configFile.exists())) return ["typescript"];
+    const raw = await configFile.text();
     const config = JSON.parse(raw);
     const workflow = config?.workflow ?? {};
 
-    // Import the schema dynamically to avoid circular dependency issues
-    const {
-      ProfileConfigSchema: schema,
-    } = require("../src/rules/profiles/profile.schemas");
-    const parsed = schema.parse(workflow);
+    // Use the already-imported ProfileConfigSchema (re-exported above)
+    const parsed = ProfileConfigSchema.parse(workflow);
 
     if (!parsed.opinionated_guidelines) {
       return [];

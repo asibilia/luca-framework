@@ -20,7 +20,8 @@
     ".pi/extensions/luca-purpose-gating.ts",
     ".pi/extensions/luca-subagents.ts",
     ".pi/extensions/luca-commands.ts",
-    ".pi/extensions/luca-widgets.ts"
+    ".pi/extensions/luca-widgets.ts",
+    ".pi/extensions/luca-work-tracking.ts"
   ],
   "shell": "/bin/zsh"
 }

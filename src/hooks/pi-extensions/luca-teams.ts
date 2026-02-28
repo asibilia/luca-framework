@@ -8,11 +8,10 @@
  * Source: src/hooks/pi-extensions/luca-teams.ts
  * Deployed to: .pi/extensions/luca-teams.ts
  */
-import { readFileSync, existsSync, readdirSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 
-import type { AgentFrontmatter } from "./__helpers/frontmatter";
-import { parseFrontmatter } from "./__helpers/frontmatter";
+import { sendFollowUp } from "./__helpers/follow-up";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
@@ -82,39 +81,6 @@ export default function lucaTeams(pi: any) {
     agents: ["security-auditor", "performance-auditor"],
   });
 
-  /**
-   * Parse agent info from a .pi/agents/*.md file.
-   *
-   * Reads the file, extracts YAML frontmatter using the shared parser,
-   * and returns structured agent information.
-   *
-   * @param filePath - Absolute path to the agent .md file
-   * @returns Parsed agent info, or null if file missing or has no frontmatter
-   */
-  function parseAgentFile(filePath: string): AgentFrontmatter | null {
-    if (!existsSync(filePath)) return null;
-    const content = readFileSync(filePath, "utf-8");
-    return parseFrontmatter(content);
-  }
-
-  /**
-   * Read the full content of an agent persona file (after frontmatter).
-   *
-   * Returns the markdown body of the agent file, stripping the YAML
-   * frontmatter block. Used by team dispatch to inject role-specific
-   * context into the LLM prompt.
-   *
-   * @param agentName - Agent identifier (matches filename in .pi/agents/)
-   * @returns Persona markdown content, or null if file not found
-   */
-  function readAgentPersona(agentName: string): string | null {
-    const filePath = join(agentsDir, `${agentName}.md`);
-    if (!existsSync(filePath)) return null;
-    const content = readFileSync(filePath, "utf-8");
-    // Strip frontmatter, return body
-    return content.replace(/^---\n[\s\S]*?\n---\n*/, "").trim();
-  }
-
   // Tool: List available teams
   pi.registerTool({
     name: "luca_list_teams",
@@ -172,7 +138,7 @@ export default function lucaTeams(pi: any) {
 
       // Validate agents exist
       const missing = agentNames.filter(
-        (name) => !existsSync(join(agentsDir, `${name}.md`)),
+        (name) => !existsSync(join(agentsDir, `${sanitizeName(name)}.md`)),
       );
       if (missing.length > 0) {
         return createTextResponse(`Agent(s) not found: ${missing.join(", ")}`);
@@ -259,27 +225,18 @@ export default function lucaTeams(pi: any) {
             systemPrompt: agentDef.systemPrompt,
             source: "luca-teams",
             onComplete: (info) => {
-              const summary = `Team "${teamName}" member "${info.agent}" ${info.status} (${(info.elapsed / 1000).toFixed(1)}s).`;
-              try {
-                pi.sendMessage(
-                  {
-                    customType: "team-result",
-                    content: summary,
-                    display: true,
-                    details: {
-                      team: teamName,
-                      subagent_id: info.id,
-                      agent: info.agent,
-                      status: info.status,
-                      exit_code: info.exitCode,
-                      elapsed_ms: info.elapsed,
-                    },
-                  },
-                  { deliverAs: "followUp" },
-                );
-              } catch {
-                // sendMessage may fail if session ended — non-fatal
-              }
+              sendFollowUp(pi, {
+                customType: "team-result",
+                content: `Team "${teamName}" member "${info.agent}" ${info.status} (${(info.elapsed / 1000).toFixed(1)}s).`,
+                details: {
+                  team: teamName,
+                  subagent_id: info.id,
+                  agent: info.agent,
+                  status: info.status,
+                  exit_code: info.exitCode,
+                  elapsed_ms: info.elapsed,
+                },
+              });
             },
           });
 
@@ -312,14 +269,14 @@ export default function lucaTeams(pi: any) {
       }> = [];
 
       for (const agentName of teamDef.agents) {
-        const info = parseAgentFile(join(agentsDir, `${agentName}.md`));
-        const persona = readAgentPersona(agentName) ?? "No persona file found";
+        const def = readAgentDef(cwd, agentName);
+        const persona = def?.systemPrompt ?? "No persona file found";
 
         dispatches.push({
           agent: agentName,
-          description: info?.description ?? "Unknown agent",
-          tools: info?.tools ?? [],
-          model: info?.model ?? "default",
+          description: def?.frontmatter?.description ?? "Unknown agent",
+          tools: def?.frontmatter?.tools ?? [],
+          model: def?.frontmatter?.model ?? "default",
           persona:
             persona.length > MAX_PERSONA_LENGTH
               ? persona.slice(0, MAX_PERSONA_LENGTH) + "\n\n[truncated]"

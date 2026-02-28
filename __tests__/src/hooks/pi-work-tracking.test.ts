@@ -116,7 +116,7 @@ describe("luca_work_status", () => {
     expect(data.tracked).toBe(false);
     expect(data.todo).toBeNull();
     expect(data.mode).toBe("warn");
-    expect(data.checklist.todo).toContain("✗");
+    expect(data.checklist.todo).toContain("[FAIL]");
   });
 
   test("returns valid checklist structure", async () => {

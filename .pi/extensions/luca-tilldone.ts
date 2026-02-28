@@ -32,7 +32,11 @@ interface LoopState {
   }>;
 }
 
-/** Max characters to keep from command output (prevents huge payloads). */
+/**
+ * Output truncation limit for tilldone loop results.
+ * See also: __helpers/exec.ts DEFAULT_MAX_OUTPUT (2000),
+ *           __helpers/spawn.ts MAX_OUTPUT_CHARS (8192).
+ */
 const MAX_OUTPUT_LENGTH = 1500;
 
 /**
@@ -132,8 +136,9 @@ export default function lucaTilldone(pi: any) {
         | undefined,
       _ctx: any,
     ) {
-      const maxIterations = params.max_iterations ?? 5;
-      const timeout = params.timeout ?? 120;
+      // Hard caps: max 10 iterations, 300s timeout per attempt
+      const maxIterations = Math.min(params.max_iterations ?? 5, 10);
+      const timeout = Math.min(params.timeout ?? 120, 300);
 
       // Run single attempt (LLM controls the loop by calling repeatedly)
       const existingLoop = loops.get(params.name);

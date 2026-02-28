@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import { COMPLEXITY_TIERS } from "./__helpers/status";
 
 /** Complexity levels ordered from lowest to highest. */
 const COMPLEXITY_LEVELS = [
@@ -23,15 +24,6 @@ const COMPLEXITY_LEVELS = [
 ] as const;
 
 type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
-
-/** Tier groupings for complexity levels. */
-const COMPLEXITY_TIER: Record<ComplexityLevel, string> = {
-  TRIVIAL: "lightweight",
-  SIMPLE: "lightweight",
-  MODERATE: "standard",
-  COMPLEX: "thorough",
-  CRITICAL: "thorough",
-};
 
 /** Gating matrix: which workflow steps activate at which level. */
 const GATING_MATRIX: Record<
@@ -156,7 +148,7 @@ export default function lucaComplexity(pi: any) {
     parameters: {},
     async execute() {
       const level = readComplexity();
-      const tier = COMPLEXITY_TIER[level];
+      const tier = COMPLEXITY_TIERS[level];
       return createJsonResponse({ level, tier });
     },
   });
@@ -209,7 +201,7 @@ export default function lucaComplexity(pi: any) {
       }
 
       writeFileSync(stateMdPath, content, "utf-8");
-      const tier = COMPLEXITY_TIER[level as ComplexityLevel];
+      const tier = COMPLEXITY_TIERS[level as ComplexityLevel];
 
       return createTextResponse(`Complexity set to ${level} (${tier} tier)`);
     },
@@ -246,14 +238,14 @@ export default function lucaComplexity(pi: any) {
           level,
           step: params.step,
           decision,
-          tier: COMPLEXITY_TIER[level],
+          tier: COMPLEXITY_TIERS[level],
         });
       }
 
       // Return full matrix for current level
       return createJsonResponse({
         level,
-        tier: COMPLEXITY_TIER[level],
+        tier: COMPLEXITY_TIERS[level],
         gates: gate,
       });
     },

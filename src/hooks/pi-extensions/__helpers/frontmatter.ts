@@ -52,6 +52,28 @@ export interface AgentFrontmatter {
  * // { name: "lu-executor", description: "Executes plans", model: "claude-sonnet-4-20250514", tools: ["Read", "Write", "Bash"] }
  * ```
  */
+/**
+ * Parse a YAML list field from frontmatter content.
+ *
+ * Extracts a dash-list block for the given field name and returns
+ * the items as a string array.
+ *
+ * @param fm - Raw frontmatter string (between --- delimiters)
+ * @param fieldName - YAML field name to parse (e.g., "tools", "allowed_contexts")
+ * @returns Array of parsed list items, or empty array if field missing
+ */
+export function parseYamlList(fm: string, fieldName: string): string[] {
+  const listMatch = fm.match(
+    new RegExp(`^${fieldName}:\\n((?:\\s+-\\s+.+\\n?)*)`, "m"),
+  );
+  if (!listMatch?.[1]) return [];
+  return listMatch[1]
+    .split("\n")
+    .filter((l) => l.trim())
+    .map((l) => l.replace(/^\s*-\s+/, "").trim())
+    .filter(Boolean);
+}
+
 export function parseFrontmatter(content: string): AgentFrontmatter | null {
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch || !fmMatch[1]) return null;
@@ -62,17 +84,7 @@ export function parseFrontmatter(content: string): AgentFrontmatter | null {
   const model = fm.match(/^model:\s*(.+)$/m)?.[1]?.trim();
 
   // Parse tools array (YAML list format)
-  const tools: string[] = [];
-  const toolsMatch = fm.match(/^tools:\n((?:\s+-\s+.+\n?)*)/m);
-  if (toolsMatch && toolsMatch[1]) {
-    const toolLines = toolsMatch[1].match(/^\s+-\s+(.+)$/gm);
-    if (toolLines) {
-      for (const line of toolLines) {
-        const toolName = line.replace(/^\s+-\s+/, "").trim();
-        if (toolName) tools.push(toolName);
-      }
-    }
-  }
+  const tools = parseYamlList(fm, "tools");
 
   // Parse background_spawnable (boolean field)
   const bgMatch = fm.match(/^background_spawnable:\s*(.+)$/m)?.[1]?.trim();
@@ -82,18 +94,8 @@ export function parseFrontmatter(content: string): AgentFrontmatter | null {
   // Parse purpose (single string field)
   const purpose = fm.match(/^purpose:\s*(.+)$/m)?.[1]?.trim();
 
-  // Parse allowed_contexts array (YAML list format, same pattern as tools)
-  const allowed_contexts: string[] = [];
-  const ctxMatch = fm.match(/^allowed_contexts:\n((?:\s+-\s+.+\n?)*)/m);
-  if (ctxMatch && ctxMatch[1]) {
-    const ctxLines = ctxMatch[1].match(/^\s+-\s+(.+)$/gm);
-    if (ctxLines) {
-      for (const line of ctxLines) {
-        const ctx = line.replace(/^\s+-\s+/, "").trim();
-        if (ctx) allowed_contexts.push(ctx);
-      }
-    }
-  }
+  // Parse allowed_contexts array (YAML list format)
+  const allowed_contexts = parseYamlList(fm, "allowed_contexts");
 
   if (!name) return null;
 

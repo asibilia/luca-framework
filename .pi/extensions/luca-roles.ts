@@ -40,6 +40,14 @@ export default function lucaRoles(pi: any) {
   /** Original active tools before role was applied (for restoration). */
   let originalTools: string[] | null = null;
 
+  /** Tools always allowed when a role is active (for role management). */
+  const ROLE_MANAGEMENT_TOOLS = [
+    "luca_list_roles",
+    "luca_activate_role",
+    "luca_deactivate_role",
+    "luca_active_role",
+  ];
+
   /**
    * Parse agent frontmatter and normalize tool names for role enforcement.
    *
@@ -142,13 +150,7 @@ export default function lucaRoles(pi: any) {
       // Use setActiveTools to enforce restrictions natively
       if (pi.setActiveTools && role.tools.length > 0) {
         // Always include luca role management tools so the agent can deactivate
-        const allowedTools = [
-          ...role.tools,
-          "luca_list_roles",
-          "luca_activate_role",
-          "luca_deactivate_role",
-          "luca_active_role",
-        ];
+        const allowedTools = [...role.tools, ...ROLE_MANAGEMENT_TOOLS];
         pi.setActiveTools(allowedTools);
       }
 
@@ -226,14 +228,17 @@ export default function lucaRoles(pi: any) {
   // Re-apply role after session switch (setActiveTools resets on session switch)
   pi.on("session_switch", async (_event: any, _ctx: any) => {
     if (activeRole && pi.setActiveTools && activeRole.tools.length > 0) {
-      const allowedTools = [
-        ...activeRole.tools,
-        "luca_list_roles",
-        "luca_activate_role",
-        "luca_deactivate_role",
-        "luca_active_role",
-      ];
+      const allowedTools = [...activeRole.tools, ...ROLE_MANAGEMENT_TOOLS];
       pi.setActiveTools(allowedTools);
+    }
+  });
+
+  // Reset role state on new session
+  pi.on("session_start", async () => {
+    activeRole = null;
+    if (originalTools && pi.setActiveTools) {
+      pi.setActiveTools(originalTools);
+      originalTools = null;
     }
   });
 }

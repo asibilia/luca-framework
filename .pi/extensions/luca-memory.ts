@@ -217,28 +217,30 @@ export default function lucaMemory(pi: any) {
     },
   });
 
+  /**
+   * Inject BRAIN.md into session context if available.
+   *
+   * Reads BRAIN.md and injects it via ctx.addSystemContext so the LLM
+   * has project identity loaded. Uses a fixed ID ("luca-brain") so
+   * repeated calls replace rather than duplicate the injection.
+   *
+   * @param ctx - Pi event context
+   */
+  function injectBrain(ctx: any): void {
+    if (!existsSync(brainPath)) return;
+    const brain = readFileSync(brainPath, "utf-8");
+    if (ctx?.addSystemContext) ctx.addSystemContext("luca-brain", brain);
+  }
+
   // Inject BRAIN.md context at session start
   pi.on("session_start", async (_event: any, ctx: any) => {
-    if (!existsSync(brainPath)) return;
-
-    const brain = readFileSync(brainPath, "utf-8");
-
-    // Inject BRAIN.md into session context if Pi supports it
-    if (ctx?.addSystemContext) {
-      ctx.addSystemContext("luca-brain", brain);
-    }
+    injectBrain(ctx);
   });
 
   // Re-inject BRAIN.md before every agent turn (survives context compaction).
   // Uses the same ID ("luca-brain") so addSystemContext replaces the
   // previous injection rather than duplicating it.
   pi.on("before_agent_start", async (_event: any, ctx: any) => {
-    if (!existsSync(brainPath)) return;
-
-    const brain = readFileSync(brainPath, "utf-8");
-
-    if (ctx?.addSystemContext) {
-      ctx.addSystemContext("luca-brain", brain);
-    }
+    injectBrain(ctx);
   });
 }

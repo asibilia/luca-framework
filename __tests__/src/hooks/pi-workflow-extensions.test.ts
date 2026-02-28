@@ -1151,25 +1151,30 @@ describe("sendMessage auto-delivery in luca-subagents", () => {
 
     // Verify onComplete callback is wired in luca_subagent_create
     expect(source).toContain("onComplete:");
-    expect(source).toContain("pi.sendMessage(");
-    expect(source).toContain('deliverAs: "followUp"');
+    // sendFollowUp helper handles pi.sendMessage + deliverAs: "followUp"
+    expect(source).toContain("sendFollowUp(");
     expect(source).toContain('"subagent-result"');
   });
 
-  test("sendMessage uses deliverAs followUp (not inline)", async () => {
+  test("sendFollowUp helper guarantees deliverAs followUp", async () => {
     const { readFileSync } = await import("fs");
     const { join } = await import("path");
-    const source = readFileSync(
-      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-subagents.ts"),
+
+    // The sendFollowUp helper centralizes the pi.sendMessage + deliverAs pattern
+    const helperSource = readFileSync(
+      join(
+        process.cwd(),
+        "src",
+        "hooks",
+        "pi-extensions",
+        "__helpers",
+        "follow-up.ts",
+      ),
       "utf-8",
     );
 
-    // Count sendMessage calls — all must use deliverAs: "followUp"
-    const sendMessageCalls = source.match(/pi\.sendMessage\(/g) ?? [];
-    const followUpCalls = source.match(/deliverAs:\s*"followUp"/g) ?? [];
-
-    expect(sendMessageCalls.length).toBeGreaterThan(0);
-    expect(followUpCalls.length).toBe(sendMessageCalls.length);
+    expect(helperSource).toContain("pi.sendMessage(");
+    expect(helperSource).toContain('deliverAs: "followUp"');
   });
 
   test("luca_subagent_continue also passes onComplete", async () => {
@@ -1200,8 +1205,8 @@ describe("sendMessage auto-delivery in luca-teams", () => {
     );
 
     expect(source).toContain("onComplete:");
-    expect(source).toContain("pi.sendMessage(");
-    expect(source).toContain('deliverAs: "followUp"');
+    // sendFollowUp helper handles pi.sendMessage + deliverAs: "followUp"
+    expect(source).toContain("sendFollowUp(");
     expect(source).toContain('"team-result"');
   });
 });
@@ -1226,12 +1231,12 @@ describe("sendMessage auto-delivery in luca-purpose-gating", () => {
     );
 
     expect(source).toContain("onComplete:");
-    expect(source).toContain("pi.sendMessage(");
-    expect(source).toContain('deliverAs: "followUp"');
+    // sendFollowUp helper handles pi.sendMessage + deliverAs: "followUp"
+    expect(source).toContain("sendFollowUp(");
     expect(source).toContain('"background-result"');
   });
 
-  test("all sendMessage calls use deliverAs followUp", async () => {
+  test("all files use sendFollowUp helper for followUp delivery", async () => {
     const { readFileSync } = await import("fs");
     const { join } = await import("path");
 
@@ -1247,12 +1252,11 @@ describe("sendMessage auto-delivery in luca-purpose-gating", () => {
         "utf-8",
       );
 
-      const sendMessageCalls = source.match(/pi\.sendMessage\(/g) ?? [];
-      const followUpCalls = source.match(/deliverAs:\s*"followUp"/g) ?? [];
-
-      if (sendMessageCalls.length > 0) {
-        expect(followUpCalls.length).toBe(sendMessageCalls.length);
-      }
+      // Files should use sendFollowUp instead of direct pi.sendMessage
+      expect(source).toContain("sendFollowUp(");
+      // No direct pi.sendMessage calls should remain (DRY via helper)
+      const directCalls = source.match(/pi\.sendMessage\(/g) ?? [];
+      expect(directCalls.length).toBe(0);
     }
   });
 });
@@ -1317,14 +1321,15 @@ describe("setActiveTools role management", () => {
     expect(sessionSwitch).toBeDefined();
   });
 
-  test("luca-roles.ts registers 2 events (tool_call + session_switch)", async () => {
+  test("luca-roles.ts registers 3 events (tool_call + session_switch + session_start)", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-roles");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.events.length).toBe(2);
+    expect(pi.events.length).toBe(3);
     expect(pi.events[0]!.event).toBe("tool_call");
     expect(pi.events[1]!.event).toBe("session_switch");
+    expect(pi.events[2]!.event).toBe("session_start");
   });
 });
 
@@ -1346,17 +1351,18 @@ describe("setFooter in luca-state", () => {
     expect(source).toContain("subagentRegistry");
   });
 
-  test("luca-state.ts registers 7 events", async () => {
+  test("luca-state.ts registers 8 events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-state");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.events.length).toBe(7);
+    expect(pi.events.length).toBe(8);
     const eventNames = pi.events.map((e) => e.event);
     expect(eventNames).toContain("session_start");
     expect(eventNames).toContain("tool_call");
     expect(eventNames).toContain("tool_execution_end");
     expect(eventNames).toContain("turn_start");
+    expect(eventNames).toContain("agent_start");
     expect(eventNames).toContain("session_switch");
     expect(eventNames).toContain("session_fork");
     expect(eventNames).toContain("session_tree");
