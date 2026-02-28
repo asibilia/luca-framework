@@ -158,7 +158,6 @@ export default function lucaState(pi: any) {
         "current phase": "current_phase",
         "current milestone": "current_milestone",
         oversight: "oversight",
-        status: "status",
       };
 
       // Normalize: try direct field name, then mapped label

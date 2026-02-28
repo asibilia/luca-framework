@@ -244,14 +244,22 @@ export default function lucaMemory(pi: any) {
     injectBrain(ctx);
   });
 
-  // On session_compact: persist WORKING.md candidate learnings snapshot
-  pi.on("session_compact", async () => {
-    if (!existsSync(workingPath)) return;
+  /**
+   * Extract candidate learnings from WORKING.md and persist to MEMORY.md.
+   *
+   * Finds the "## Candidate Learnings" section, extracts its content,
+   * and appends it to MEMORY.md as a timestamped snapshot. Returns true
+   * if learnings were extracted and persisted.
+   *
+   * @param label - Snapshot label (e.g., "Compaction", "Shutdown")
+   */
+  function extractAndPersistLearnings(label: string): boolean {
+    if (!existsSync(workingPath)) return false;
 
     try {
       const working = readFileSync(workingPath, "utf-8");
 
-      // Extract candidate learnings section for persistence
+      // Extract candidate learnings section
       const lines = working.split("\n");
       const learnings: string[] = [];
       let inLearnings = false;
@@ -264,32 +272,40 @@ export default function lucaMemory(pi: any) {
         if (inLearnings && line.trim()) learnings.push(line);
       }
 
-      if (learnings.length === 0) return;
+      if (learnings.length === 0) return false;
 
-      // Append compaction snapshot to MEMORY.md
+      // Append snapshot to MEMORY.md
       const timestamp = new Date().toISOString().slice(0, 10);
-      const snapshot = `\n## Compaction Snapshot (${timestamp})\n\n${learnings.join("\n")}\n`;
+      const snapshot = `\n## ${label} Snapshot (${timestamp})\n\n${learnings.join("\n")}\n`;
 
       let existing = "";
       if (existsSync(memoryPath)) {
         existing = readFileSync(memoryPath, "utf-8");
       }
       writeFileSync(memoryPath, existing + snapshot, "utf-8");
+      return true;
     } catch {
       /* non-fatal — WORKING.md may be malformed */
+      return false;
     }
+  }
+
+  // On session_compact: persist WORKING.md candidate learnings snapshot
+  pi.on("session_compact", async () => {
+    extractAndPersistLearnings("Compaction");
   });
 
-  // On session_shutdown: final WORKING.md persistence
+  // On session_shutdown: extract learnings and add shutdown marker
   pi.on("session_shutdown", async () => {
-    // Re-run the same compaction logic to ensure nothing is lost
-    if (!existsSync(workingPath)) return;
+    // Extract and persist any remaining candidate learnings
+    extractAndPersistLearnings("Shutdown");
 
+    // Write a shutdown marker to WORKING.md
+    if (!existsSync(workingPath)) return;
     try {
       const working = readFileSync(workingPath, "utf-8");
       if (working.trim().length === 0) return;
 
-      // Write a shutdown marker to WORKING.md
       const marker = `\n---\n_Session ended: ${new Date().toISOString()}_\n`;
       writeFileSync(workingPath, working + marker, "utf-8");
     } catch {

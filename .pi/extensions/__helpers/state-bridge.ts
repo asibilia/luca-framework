@@ -160,6 +160,75 @@ export function readStateAsMap(cwd: string): Record<string, string> {
   return parseStateMd(cwd);
 }
 
+// ─── Field Validation ───────────────────────────────────────────────────────
+
+/** Valid complexity levels for the complexity field. */
+const VALID_COMPLEXITY_LEVELS = [
+  "TRIVIAL",
+  "SIMPLE",
+  "MODERATE",
+  "COMPLEX",
+  "CRITICAL",
+] as const;
+
+/** Valid oversight modes for the oversight field. */
+const VALID_OVERSIGHT_MODES = [
+  "flagged",
+  "milestone",
+  "phase",
+  "full-auto",
+] as const;
+
+/**
+ * Field-specific validators for SETTABLE_FIELDS.
+ *
+ * Returns null if valid, or an error message string if invalid.
+ * Fields without an entry accept any string value.
+ */
+const FIELD_VALIDATORS: Record<string, (value: any) => string | null> = {
+  complexity: (value) => {
+    if (typeof value !== "string") return `complexity must be a string`;
+    if (!VALID_COMPLEXITY_LEVELS.includes(value.toUpperCase() as any))
+      return `Invalid complexity "${value}". Valid: ${VALID_COMPLEXITY_LEVELS.join(", ")}`;
+    return null;
+  },
+  current_phase: (value) => {
+    if (typeof value !== "string" && typeof value !== "number")
+      return `current_phase must be a string or number`;
+    return null;
+  },
+  current_milestone: (value) => {
+    if (typeof value !== "string") return `current_milestone must be a string`;
+    return null;
+  },
+  oversight: (value) => {
+    if (typeof value !== "string") return `oversight must be a string`;
+    if (!VALID_OVERSIGHT_MODES.includes(value.toLowerCase() as any))
+      return `Invalid oversight "${value}". Valid: ${VALID_OVERSIGHT_MODES.join(", ")}`;
+    return null;
+  },
+  branch: (value) => {
+    if (typeof value !== "string") return `branch must be a string`;
+    if (value.length > 200) return `branch name exceeds 200 characters`;
+    return null;
+  },
+  base_branch: (value) => {
+    if (typeof value !== "string") return `base_branch must be a string`;
+    if (value.length > 200) return `base_branch name exceeds 200 characters`;
+    return null;
+  },
+  ticket_id: (value) => {
+    if (typeof value !== "string") return `ticket_id must be a string`;
+    if (value.length > 100) return `ticket_id exceeds 100 characters`;
+    return null;
+  },
+  github_issue: (value) => {
+    if (typeof value !== "string" && typeof value !== "number")
+      return `github_issue must be a string or number`;
+    return null;
+  },
+};
+
 // ─── Async Write Operations (via state machine) ────────────────────────────
 // These use the XState persistence layer to ensure validated writes.
 
@@ -172,7 +241,7 @@ export function readStateAsMap(cwd: string): Record<string, string> {
  *
  * @param cwd - Project root directory
  * @param field - Context field name (must be in SETTABLE_FIELDS)
- * @param value - New value for the field
+ * @param value - New value for the field (validated per field type)
  * @returns Object with success status and optional error message
  *
  * @example
@@ -194,6 +263,15 @@ export async function writeField(
       success: false,
       error: `Field "${field}" is not settable. Allowed: ${[...SETTABLE_FIELDS].join(", ")}`,
     };
+  }
+
+  // Validate value against field-specific rules
+  const validator = FIELD_VALIDATORS[field];
+  if (validator) {
+    const validationError = validator(value);
+    if (validationError) {
+      return { success: false, error: validationError };
+    }
   }
 
   // Check state exists

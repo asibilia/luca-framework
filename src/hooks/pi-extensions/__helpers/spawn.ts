@@ -17,7 +17,6 @@ import {
   readFileSync,
   mkdtempSync,
   writeFileSync,
-  unlinkSync,
   rmSync,
 } from "fs";
 import { dirname, join } from "path";

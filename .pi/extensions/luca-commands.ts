@@ -272,6 +272,7 @@ export default function lucaCommands(pi: any) {
           { label: "SIMPLE (2-3 files, low-med risk)", value: "SIMPLE" },
           { label: "MODERATE (3-5 files, med risk)", value: "MODERATE" },
           { label: "COMPLEX (5-10 files, high risk)", value: "COMPLEX" },
+          { label: "CRITICAL (10+ files, architectural)", value: "CRITICAL" },
         ],
       );
 

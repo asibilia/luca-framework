@@ -6,7 +6,11 @@
  * (e.g., "./__helpers/response", not "./__helpers").
  * See scripts/build-shared.ts PI_HELPER_FILES for the deployed list.
  */
-export { createTextResponse, createJsonResponse } from "./response";
+export {
+  createTextResponse,
+  createJsonResponse,
+  createJsonResponseWithDetails,
+} from "./response";
 export type { ToolResponse } from "./response";
 export { parseFrontmatter, extractFrontmatterField } from "./frontmatter";
 export type { AgentFrontmatter } from "./frontmatter";
