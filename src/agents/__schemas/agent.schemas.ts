@@ -3,7 +3,10 @@
  */
 import { z } from "zod";
 import { contextConfigSchema } from "~/context/__schemas/context.schemas";
-import { ModelIdSchema } from "~/complexity/__schemas/complexity.schemas";
+import {
+  ModelIdSchema,
+  ModelTierSchema,
+} from "~/complexity/__schemas/complexity.schemas";
 import { SectionSchema, type Section } from "~/shared/__helpers/format";
 
 /** Purpose categories for subagent classification and purpose gating. */
@@ -51,6 +54,8 @@ export const AgentFrontmatterSchema = z.object({
   context: contextConfigSchema.optional(),
   /** Optional per-agent model routing configuration. When absent, uses complexity gate default. */
   model_routing: ModelRoutingConfigSchema.optional(),
+  /** High-level model tier categorization. Maps to a default ModelId via MODEL_TIER_TO_MODEL. */
+  model_tier: ModelTierSchema.optional(),
   /** Whether this agent can be spawned as a background subagent. */
   background_spawnable: z.boolean().optional(),
   /** Purpose category for subagent classification and purpose gating. */

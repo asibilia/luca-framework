@@ -26,6 +26,7 @@ const luPmPlannerConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "planner",
     allowed_contexts: ["planning", "roadmap", "estimation"],
+    model_tier: "balanced",
   },
   sections: [
     {

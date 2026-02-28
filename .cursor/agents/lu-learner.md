@@ -18,6 +18,7 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: none
+model_tier: balanced
 background_spawnable: true
 purpose: synthesizer
 allowed_contexts:

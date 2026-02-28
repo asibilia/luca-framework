@@ -21,6 +21,7 @@ context:
   default_tier: T2
   promotable_to: T3
   isolation: none
+model_tier: balanced
 background_spawnable: false
 purpose: verifier
 allowed_contexts:

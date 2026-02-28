@@ -2,19 +2,22 @@
  * Model resolution for per-agent routing.
  *
  * Resolves the effective model for an agent given its model routing
- * configuration and the current complexity level. The complexity
- * matrix provides system-level defaults; agent config can override.
+ * configuration, model tier, and the current complexity level. The
+ * complexity matrix provides system-level defaults; agent config
+ * can override.
  *
  * Priority chain:
  * 1. Agent's complexity_overrides[level] (most specific)
  * 2. Agent's model_routing.default_model (agent preference)
- * 3. Complexity gate's default_model (system-level default)
- * 4. "sonnet" (universal fallback)
+ * 3. Agent's model_tier mapped to ModelId (tier default)
+ * 4. Complexity gate's default_model (system-level default)
+ * 5. "sonnet" (universal fallback)
  */
 import type { AgentFrontmatter } from "~/agents/__schemas/agent.schemas";
-import type {
-  ComplexityGate,
-  ModelId,
+import {
+  MODEL_TIER_TO_MODEL,
+  type ComplexityGate,
+  type ModelId,
 } from "~/complexity/__schemas/complexity.schemas";
 
 /**
@@ -41,13 +44,20 @@ import type {
  *   { default_model: "sonnet" }
  * ) // Returns "haiku"
  *
- * // Agent with no routing config: gate default wins
+ * // Agent with model_tier but no routing config: tier wins
+ * resolveModel(
+ *   { model_tier: "capable" },
+ *   "MODERATE",
+ *   { default_model: "sonnet" }
+ * ) // Returns "opus"
+ *
+ * // Agent with no routing config or tier: gate default wins
  * resolveModel({}, "MODERATE", { default_model: "sonnet" })
  * // Returns "sonnet"
  * ```
  */
 export function resolveModel(
-  agentFrontmatter: Pick<AgentFrontmatter, "model_routing">,
+  agentFrontmatter: Pick<AgentFrontmatter, "model_routing" | "model_tier">,
   complexityLevel: string,
   complexityGate: Pick<ComplexityGate, "default_model">,
 ): ModelId {
@@ -62,11 +72,16 @@ export function resolveModel(
     return agentFrontmatter.model_routing.default_model;
   }
 
-  // 3. Complexity gate default
+  // 3. Agent model tier → mapped to ModelId
+  if (agentFrontmatter.model_tier) {
+    return MODEL_TIER_TO_MODEL[agentFrontmatter.model_tier];
+  }
+
+  // 4. Complexity gate default
   if (complexityGate.default_model) {
     return complexityGate.default_model;
   }
 
-  // 4. Universal fallback
+  // 5. Universal fallback
   return "sonnet";
 }

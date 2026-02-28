@@ -64,6 +64,8 @@
 
 **Depends on:** None (independent of distribution work)
 
+- [x] Plan 77-A: ModelTierSchema, per-agent model_tier, 5-step resolve chain, deprecate step gating
+
 ---
 
 ## Backlog (Future)

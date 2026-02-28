@@ -23,6 +23,7 @@ const codeSimplifierConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "reviewer",
     allowed_contexts: ["review", "audit", "assessment"],
+    model_tier: "capable",
   },
   sections: [
     {

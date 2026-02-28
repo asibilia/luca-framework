@@ -29,6 +29,7 @@ const luExecutorConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "executor",
     allowed_contexts: ["execution", "implementation", "coding"],
+    model_tier: "balanced",
   },
   sections: [
     {

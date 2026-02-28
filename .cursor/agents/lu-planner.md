@@ -24,6 +24,7 @@ model_routing:
   complexity_overrides:
     COMPLEX: opus
     CRITICAL: opus
+model_tier: balanced
 background_spawnable: false
 purpose: planner
 allowed_contexts:

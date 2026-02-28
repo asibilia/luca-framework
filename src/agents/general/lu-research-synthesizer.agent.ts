@@ -24,6 +24,7 @@ const luResearchSynthesizerConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "synthesizer",
     allowed_contexts: ["synthesis", "learning", "summarization"],
+    model_tier: "balanced",
   },
   sections: [
     {

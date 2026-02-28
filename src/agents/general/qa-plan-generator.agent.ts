@@ -23,6 +23,7 @@ const qaPlanGeneratorConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "planner",
     allowed_contexts: ["planning", "testing", "validation"],
+    model_tier: "balanced",
   },
   sections: [
     {

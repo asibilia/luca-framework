@@ -15,6 +15,7 @@ export type {
   ComplexityMatrix,
   ComplexityConfig,
   ModelId,
+  ModelTier,
 } from "./__schemas/complexity.schemas";
 
 // Schemas
@@ -26,6 +27,7 @@ export {
   ComplexityGateSchema,
   ComplexityConfigSchema,
   ModelIdSchema,
+  ModelTierSchema,
 } from "./__schemas/complexity.schemas";
 
 // Constants
@@ -33,6 +35,7 @@ export {
   COMPLEXITY_LEVELS,
   COMPLEXITY_ORDER,
   COMPLEXITY_TIER,
+  MODEL_TIER_TO_MODEL,
   meetsThreshold,
   getTier,
 } from "./__schemas/complexity.schemas";
