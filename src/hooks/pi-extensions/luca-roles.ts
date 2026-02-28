@@ -37,6 +37,9 @@ export default function lucaRoles(pi: any) {
   /** Currently active role (null = unrestricted). */
   let activeRole: AgentRole | null = null;
 
+  /** Original active tools before role was applied (for restoration). */
+  let originalTools: string[] | null = null;
+
   /**
    * Parse agent frontmatter and normalize tool names for role enforcement.
    *
@@ -129,7 +132,26 @@ export default function lucaRoles(pi: any) {
         );
       }
 
+      // Store original tools for restoration
+      if (!originalTools) {
+        originalTools = pi.getActiveTools?.() ?? null;
+      }
+
       activeRole = role;
+
+      // Use setActiveTools to enforce restrictions natively
+      if (pi.setActiveTools && role.tools.length > 0) {
+        // Always include luca role management tools so the agent can deactivate
+        const allowedTools = [
+          ...role.tools,
+          "luca_list_roles",
+          "luca_activate_role",
+          "luca_deactivate_role",
+          "luca_active_role",
+        ];
+        pi.setActiveTools(allowedTools);
+      }
+
       return createTextResponse(
         `Activated role "${role.name}" — allowed tools: ${role.tools.join(", ")}`,
       );
@@ -146,6 +168,13 @@ export default function lucaRoles(pi: any) {
     async execute() {
       const previous = activeRole?.name ?? "none";
       activeRole = null;
+
+      // Restore original tools
+      if (pi.setActiveTools && originalTools) {
+        pi.setActiveTools(originalTools);
+        originalTools = null;
+      }
+
       return createTextResponse(
         `Deactivated role "${previous}" — all tools now unrestricted`,
       );
@@ -172,11 +201,15 @@ export default function lucaRoles(pi: any) {
     },
   });
 
-  // Enforce tool restrictions via tool_call event
+  // Enforce tool restrictions via tool_call event (fallback for older Pi versions)
   pi.on("tool_call", async (event: any, _ctx: any) => {
     if (!activeRole) return; // No role active, allow all
     if (activeRole.tools.length === 0) return; // No restrictions defined
 
+    // If setActiveTools is available, it handles enforcement — skip event-based blocking
+    if (pi.setActiveTools) return;
+
+    // Fallback: event-based blocking for older Pi versions
     const toolName = normalizeToolName(event.toolName || "");
 
     // Check if the tool is in the allowed list (normalized comparison)
@@ -187,6 +220,20 @@ export default function lucaRoles(pi: any) {
         block: true,
         reason: `Role "${activeRole.name}" does not allow tool "${event.toolName}". Allowed: ${activeRole.tools.join(", ")}`,
       };
+    }
+  });
+
+  // Re-apply role after session switch (setActiveTools resets on session switch)
+  pi.on("session_switch", async (_event: any, _ctx: any) => {
+    if (activeRole && pi.setActiveTools && activeRole.tools.length > 0) {
+      const allowedTools = [
+        ...activeRole.tools,
+        "luca_list_roles",
+        "luca_activate_role",
+        "luca_deactivate_role",
+        "luca_active_role",
+      ];
+      pi.setActiveTools(allowedTools);
     }
   });
 }
