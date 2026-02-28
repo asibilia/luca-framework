@@ -174,7 +174,15 @@ export default function lucaHarness(pi: any) {
       }
     },
 
-    async execute(_toolCallId: string, params: { checks?: string }) {
+    async execute(
+      _toolCallId: string,
+      params: { checks?: string },
+      signal: AbortSignal | undefined,
+      onUpdate:
+        | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
+        | undefined,
+      _ctx: any,
+    ) {
       const config = loadConfig();
 
       if (!config.enabled) {
@@ -188,9 +196,36 @@ export default function lucaHarness(pi: any) {
         checksToRun = config.checks.filter((c) => requested.includes(c.name));
       }
 
-      const results = checksToRun.map((check) =>
-        runCheck(check.name, check.command, check.timeout),
-      );
+      // Sequential execution with streaming progress via onUpdate
+      const results: Array<{
+        name: string;
+        status: "passed" | "failed" | "timeout";
+        output: string;
+        duration: number;
+      }> = [];
+
+      for (const check of checksToRun) {
+        // Check for abort between iterations
+        if (signal?.aborted) break;
+
+        // Stream progress before each check
+        onUpdate?.({
+          content: [{ type: "text", text: `Running check: ${check.name}...` }],
+        });
+
+        const result = runCheck(check.name, check.command, check.timeout);
+        results.push(result);
+
+        // Stream result after each check
+        onUpdate?.({
+          content: [
+            {
+              type: "text",
+              text: `${check.name}: ${result.status} (${result.duration}ms)`,
+            },
+          ],
+        });
+      }
 
       const allPassed = results.every((r) => r.status === "passed");
       const summary = {

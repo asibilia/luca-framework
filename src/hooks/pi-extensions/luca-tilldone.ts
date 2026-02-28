@@ -126,6 +126,11 @@ export default function lucaTilldone(pi: any) {
         max_iterations?: number;
         timeout?: number;
       },
+      _signal: AbortSignal | undefined,
+      onUpdate:
+        | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
+        | undefined,
+      _ctx: any,
     ) {
       const maxIterations = params.max_iterations ?? 5;
       const timeout = params.timeout ?? 120;
@@ -143,7 +148,27 @@ export default function lucaTilldone(pi: any) {
         });
       }
 
+      // Stream progress before running check
+      onUpdate?.({
+        content: [
+          {
+            type: "text",
+            text: `Iteration ${iteration}/${maxIterations}: running ${params.command.slice(0, 60)}...`,
+          },
+        ],
+      });
+
       const result = runCommand(params.command, timeout);
+
+      // Stream result after running check
+      onUpdate?.({
+        content: [
+          {
+            type: "text",
+            text: `Iteration ${iteration}: ${result.passed ? "passed" : "failed"} (${result.duration}ms)`,
+          },
+        ],
+      });
 
       // Update loop state
       const loopState: LoopState = existingLoop ?? {
