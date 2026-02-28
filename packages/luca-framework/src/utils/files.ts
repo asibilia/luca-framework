@@ -369,6 +369,30 @@ export async function generateFiles(options: {
       }
     }
 
+    // Step 4.7: Copy per-harness templates (agents, rules, skills, settings)
+    for (const harnessId of harnesses) {
+      const harnessTemplatesDir = join(templatesDir, "harness", harnessId);
+      if (existsSync(harnessTemplatesDir)) {
+        spinner.start(`Installing ${harnessId} platform files...`);
+
+        const harnessDestDir = join(cwd, `.${harnessId}`);
+        const { processed: harnessProcessed, copied: harnessCopied } =
+          await copyTemplates({
+            sourceDir: harnessTemplatesDir,
+            destDir: harnessDestDir,
+            config,
+          });
+
+        for (const file of [...harnessProcessed, ...harnessCopied]) {
+          trackCreated(join(harnessDestDir, file));
+        }
+
+        spinner.stop(
+          `Installed ${harnessProcessed.length + harnessCopied.length} ${harnessId} files`,
+        );
+      }
+    }
+
     // Step 5: Create manifest
     spinner.start("Creating manifest...");
 
