@@ -91,7 +91,7 @@ describe("luca-state extension", () => {
     expect(tool!.parameters.required).toContain("value");
   });
 
-  test("subscribes to session_start, tool_call, tool_execution_end, and turn_start events", async () => {
+  test("subscribes to session_start, tool_call, tool_execution_end, turn_start, and session events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-state");
     const pi = createMockPi();
     mod.default(pi);
@@ -104,6 +104,13 @@ describe("luca-state extension", () => {
     expect(toolEnd).toBeDefined();
     const turnStart = pi.events.find((e) => e.event === "turn_start");
     expect(turnStart).toBeDefined();
+    // Plan 70-C: session reconstruction events
+    const sessionSwitch = pi.events.find((e) => e.event === "session_switch");
+    expect(sessionSwitch).toBeDefined();
+    const sessionFork = pi.events.find((e) => e.event === "session_fork");
+    expect(sessionFork).toBeDefined();
+    const sessionTree = pi.events.find((e) => e.event === "session_tree");
+    expect(sessionTree).toBeDefined();
   });
 
   test("luca_read_state returns parsed state", async () => {
@@ -1247,5 +1254,177 @@ describe("sendMessage auto-delivery in luca-purpose-gating", () => {
         expect(followUpCalls.length).toBe(sendMessageCalls.length);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 70-C: renderCall/renderResult source validation
+// ---------------------------------------------------------------------------
+
+describe("renderCall/renderResult source presence", () => {
+  test("luca-harness.ts has renderCall and renderResult on luca_verify", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-harness.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("renderCall(");
+    expect(source).toContain("renderResult(");
+    // Verify they are sync functions (no async keyword before them)
+    expect(source).not.toMatch(/async\s+renderCall/);
+    expect(source).not.toMatch(/async\s+renderResult/);
+  });
+
+  test("luca-subagents.ts has renderCall on create and renderResult on result", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-subagents.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("renderCall(");
+    expect(source).toContain("renderResult(");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 70-C: setActiveTools role management
+// ---------------------------------------------------------------------------
+
+describe("setActiveTools role management", () => {
+  test("luca-roles.ts source uses setActiveTools", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-roles.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("pi.setActiveTools");
+    expect(source).toContain("pi.getActiveTools");
+    expect(source).toContain("originalTools");
+  });
+
+  test("luca-roles.ts registers session_switch handler", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-roles");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const sessionSwitch = pi.events.find((e) => e.event === "session_switch");
+    expect(sessionSwitch).toBeDefined();
+  });
+
+  test("luca-roles.ts registers 2 events (tool_call + session_switch)", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-roles");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    expect(pi.events.length).toBe(2);
+    expect(pi.events[0]!.event).toBe("tool_call");
+    expect(pi.events[1]!.event).toBe("session_switch");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 70-C: setFooter in luca-state
+// ---------------------------------------------------------------------------
+
+describe("setFooter in luca-state", () => {
+  test("luca-state.ts source uses setFooter", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-state.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("setFooter");
+    expect(source).toContain("updateFooter");
+    expect(source).toContain("subagentRegistry");
+  });
+
+  test("luca-state.ts registers 7 events", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-state");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    expect(pi.events.length).toBe(7);
+    const eventNames = pi.events.map((e) => e.event);
+    expect(eventNames).toContain("session_start");
+    expect(eventNames).toContain("tool_call");
+    expect(eventNames).toContain("tool_execution_end");
+    expect(eventNames).toContain("turn_start");
+    expect(eventNames).toContain("session_switch");
+    expect(eventNames).toContain("session_fork");
+    expect(eventNames).toContain("session_tree");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 70-C: appendEntry in luca-safety-rules
+// ---------------------------------------------------------------------------
+
+describe("appendEntry in luca-safety-rules", () => {
+  test("luca-safety-rules.ts source uses pi.appendEntry", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        "src",
+        "hooks",
+        "pi-extensions",
+        "luca-safety-rules.ts",
+      ),
+      "utf-8",
+    );
+
+    // appendEntry should be called for violations
+    expect(source).toContain("pi.appendEntry");
+    expect(source).toContain('"luca-safety-audit"');
+
+    // Should be called in both tool_call handler and safety_check tool
+    const appendCalls = source.match(/pi\.appendEntry\(/g) ?? [];
+    expect(appendCalls.length).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 70-C: luca-widgets no longer calls setStatus
+// ---------------------------------------------------------------------------
+
+describe("luca-widgets footer cleanup", () => {
+  test("luca-widgets.ts does not call setStatus", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-widgets.ts"),
+      "utf-8",
+    );
+
+    // Should NOT call setStatus in code (moved to luca-state.ts footer)
+    // Filter out comments when checking for setStatus calls
+    const codeLines = source
+      .split("\n")
+      .filter((line: string) => !line.trim().startsWith("//"));
+    const codeOnly = codeLines.join("\n");
+    expect(codeOnly).not.toContain("ctx.ui.setStatus");
+    expect(codeOnly).not.toContain('.setStatus("luca-turns"');
+  });
+
+  test("luca-widgets.ts does not import status helpers", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-widgets.ts"),
+      "utf-8",
+    );
+
+    // Should not import createStatusFormatter or SEP (no longer needed)
+    expect(source).not.toContain("createStatusFormatter");
+    expect(source).not.toContain('from "./__helpers/status"');
   });
 });

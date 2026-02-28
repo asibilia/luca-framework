@@ -160,7 +160,10 @@ export default function lucaHarness(pi: any) {
      */
     renderResult(result: any, _opts: any, _theme: any) {
       try {
-        const data = JSON.parse(result.content?.[0]?.text ?? "{}");
+        const text = result.content?.[0]?.text;
+        if (!text) return "Verification complete";
+        const data = JSON.parse(text);
+        if (!data.status) return "Verification complete";
         const icon = data.status === "passed" ? "PASS" : "FAIL";
         const checks = (data.checks ?? [])
           .map(

@@ -62,7 +62,6 @@ async function loadAllExtensions() {
     "luca-purpose-gating.ts",
     "luca-subagents.ts",
     "luca-commands.ts",
-    "luca-work-tracking.ts",
     "luca-widgets.ts",
     "luca-hooks.ts",
   ];
@@ -110,7 +109,6 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-purpose-gating.ts", tools: 6, events: 1 },
     { file: "luca-subagents.ts", tools: 5, events: 1 },
     { file: "luca-commands.ts", tools: 0, events: 0, commands: 6 },
-    { file: "luca-work-tracking.ts", tools: 5, events: 2 },
     { file: "luca-widgets.ts", tools: 0, events: 6 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
   ];
@@ -149,9 +147,9 @@ describe("Pi extension E2E: loading", () => {
     }
   });
 
-  test("all extensions combined register exactly 49 tools", async () => {
+  test("all extensions combined register exactly 44 tools", async () => {
     const mock = await loadAllExtensions();
-    expect(mock.tools.size).toBe(49);
+    expect(mock.tools.size).toBe(44);
   });
 });
 
@@ -293,30 +291,6 @@ describe("Pi extension E2E: tool responses", () => {
     });
     expectPiResponse(result);
     expect(result.content[0].text).toContain("not found");
-  });
-
-  test("luca_work_status returns tracking state", async () => {
-    const result = await callTool(tools, "luca_work_status");
-    expectPiResponse(result);
-    const data = JSON.parse(result.content[0].text);
-    expect(typeof data.tracked).toBe("boolean");
-    expect(data.mode).toBeDefined();
-    expect(data.checklist).toBeDefined();
-  });
-
-  test("luca_list_todos returns array", async () => {
-    const result = await callTool(tools, "luca_list_todos");
-    expectPiResponse(result);
-    const data = JSON.parse(result.content[0].text);
-    expect(Array.isArray(data.todos)).toBe(true);
-  });
-
-  test("luca_set_tracking_mode rejects invalid mode", async () => {
-    const result = await callTool(tools, "luca_set_tracking_mode", {
-      mode: "invalid",
-    });
-    expectPiResponse(result);
-    expect(result.content[0].text).toContain("Invalid mode");
   });
 });
 
@@ -728,5 +702,427 @@ describe("Pi extension E2E: safety confirm and abort", () => {
     );
 
     expect(abortCalled).toBe(false);
+  });
+});
+
+// ─── renderCall / renderResult (Plan 70-C) ──────────────────
+
+describe("Pi extension E2E: renderCall and renderResult", () => {
+  test("luca_verify has renderCall and renderResult", async () => {
+    const mock = await loadExtension("luca-harness.ts");
+    const tool = mock.tools.get("luca_verify");
+    expect(tool).toBeDefined();
+    expect(typeof tool!.renderCall).toBe("function");
+    expect(typeof tool!.renderResult).toBe("function");
+  });
+
+  test("luca_verify renderCall returns human-readable description", async () => {
+    const mock = await loadExtension("luca-harness.ts");
+    const tool = mock.tools.get("luca_verify");
+    const text = tool!.renderCall({ checks: "test,typecheck" }, {});
+    expect(text).toContain("verification");
+    expect(text).toContain("test,typecheck");
+  });
+
+  test("luca_verify renderCall handles missing checks", async () => {
+    const mock = await loadExtension("luca-harness.ts");
+    const tool = mock.tools.get("luca_verify");
+    const text = tool!.renderCall({}, {});
+    expect(text).toContain("all enabled");
+  });
+
+  test("luca_verify renderResult formats pass/fail with check details", async () => {
+    const mock = await loadExtension("luca-harness.ts");
+    const tool = mock.tools.get("luca_verify");
+    const result = {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            status: "failed",
+            checks: [
+              { name: "test", status: "passed", duration: 2100 },
+              { name: "typecheck", status: "failed", duration: 1400 },
+            ],
+            total_duration: 3500,
+          }),
+        },
+      ],
+    };
+    const text = tool!.renderResult(result, {}, {});
+    expect(text).toContain("FAIL");
+    expect(text).toContain("test");
+    expect(text).toContain("typecheck");
+    expect(text).toContain("3500ms");
+  });
+
+  test("luca_verify renderResult handles malformed result gracefully", async () => {
+    const mock = await loadExtension("luca-harness.ts");
+    const tool = mock.tools.get("luca_verify");
+    const text = tool!.renderResult({ content: [] }, {}, {});
+    expect(text).toBe("Verification complete");
+  });
+
+  test("luca_subagent_create has renderCall", async () => {
+    const mock = await loadExtension("luca-subagents.ts");
+    const tool = mock.tools.get("luca_subagent_create");
+    expect(tool).toBeDefined();
+    expect(typeof tool!.renderCall).toBe("function");
+  });
+
+  test("luca_subagent_create renderCall shows agent and task preview", async () => {
+    const mock = await loadExtension("luca-subagents.ts");
+    const tool = mock.tools.get("luca_subagent_create");
+    const text = tool!.renderCall(
+      { agent: "lu-executor", task: "Build the feature with tests" },
+      {},
+    );
+    expect(text).toContain("lu-executor");
+    expect(text).toContain("Build the feature");
+  });
+
+  test("luca_subagent_result has renderResult", async () => {
+    const mock = await loadExtension("luca-subagents.ts");
+    const tool = mock.tools.get("luca_subagent_result");
+    expect(tool).toBeDefined();
+    expect(typeof tool!.renderResult).toBe("function");
+  });
+
+  test("luca_subagent_result renderResult formats status and output", async () => {
+    const mock = await loadExtension("luca-subagents.ts");
+    const tool = mock.tools.get("luca_subagent_result");
+    const result = {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            id: "sub-1-lu-executor",
+            agent: "lu-executor",
+            status: "completed",
+            output: "All tests pass",
+          }),
+        },
+      ],
+    };
+    const text = tool!.renderResult(result, {}, {});
+    expect(text).toContain("DONE");
+    expect(text).toContain("lu-executor");
+    expect(text).toContain("All tests pass");
+  });
+
+  test("luca_subagent_result renderResult handles malformed result", async () => {
+    const mock = await loadExtension("luca-subagents.ts");
+    const tool = mock.tools.get("luca_subagent_result");
+    const text = tool!.renderResult({ content: [] }, {}, {});
+    expect(text).toBe("Subagent result");
+  });
+});
+
+// ─── onUpdate streaming (Plan 70-C) ─────────────────────────
+
+describe("Pi extension E2E: onUpdate streaming", () => {
+  test("luca_verify source accepts onUpdate parameter", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-harness.ts"),
+      "utf-8",
+    );
+    expect(source).toContain("onUpdate");
+    expect(source).toContain("onUpdate?.(");
+    // Verify correct param order: signal before onUpdate
+    expect(source).toContain("signal: AbortSignal");
+  });
+
+  test("luca_tilldone source accepts onUpdate parameter", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-tilldone.ts"),
+      "utf-8",
+    );
+    expect(source).toContain("onUpdate");
+    expect(source).toContain("onUpdate?.(");
+  });
+});
+
+// ─── setActiveTools (Plan 70-C) ──────────────────────────────
+
+describe("Pi extension E2E: setActiveTools role enforcement", () => {
+  test("luca_activate_role calls setActiveTools with correct tools", async () => {
+    const mock = createMockPi();
+    let activeToolsList: string[] = [];
+    (mock.api as any).setActiveTools = (tools: string[]) => {
+      activeToolsList = tools;
+    };
+    (mock.api as any).getActiveTools = () => ["Read", "Write", "Bash"];
+
+    const mod = await import(join(extensionDir, "luca-roles.ts"));
+    mod.default(mock.api);
+
+    const activateTool = mock.tools.get("luca_activate_role");
+    expect(activateTool).toBeDefined();
+    await activateTool!.execute("test", { role: "lu-executor" });
+
+    // Should include role management tools
+    expect(activeToolsList).toContain("luca_list_roles");
+    expect(activeToolsList).toContain("luca_activate_role");
+    expect(activeToolsList).toContain("luca_deactivate_role");
+    expect(activeToolsList).toContain("luca_active_role");
+  });
+
+  test("luca_deactivate_role restores original tools", async () => {
+    const mock = createMockPi();
+    const originalTools = ["Read", "Write", "Bash"];
+    let restoredTools: string[] = [];
+    (mock.api as any).setActiveTools = (tools: string[]) => {
+      restoredTools = tools;
+    };
+    (mock.api as any).getActiveTools = () => [...originalTools];
+
+    const mod = await import(join(extensionDir, "luca-roles.ts"));
+    mod.default(mock.api);
+
+    const activateTool = mock.tools.get("luca_activate_role");
+    await activateTool!.execute("test", { role: "lu-executor" });
+
+    const deactivateTool = mock.tools.get("luca_deactivate_role");
+    await deactivateTool!.execute("test", {});
+
+    // Should restore original tools
+    expect(restoredTools).toEqual(originalTools);
+  });
+
+  test("session_switch re-applies active role tools", async () => {
+    const mock = createMockPi();
+    const setToolsCalls: string[][] = [];
+    (mock.api as any).setActiveTools = (tools: string[]) => {
+      setToolsCalls.push(tools);
+    };
+    (mock.api as any).getActiveTools = () => ["Read", "Write"];
+
+    const mod = await import(join(extensionDir, "luca-roles.ts"));
+    mod.default(mock.api);
+
+    const activateTool = mock.tools.get("luca_activate_role");
+    await activateTool!.execute("test", { role: "lu-executor" });
+
+    const sessionSwitchHandlers = mock.events.get("session_switch") ?? [];
+    expect(sessionSwitchHandlers.length).toBe(1);
+    await sessionSwitchHandlers[0]!({}, {});
+
+    // setActiveTools should have been called twice (activate + session_switch)
+    expect(setToolsCalls.length).toBe(2);
+    expect(setToolsCalls[1]).toContain("luca_list_roles");
+  });
+
+  test("fallback event blocking works when setActiveTools unavailable", async () => {
+    const mock = createMockPi();
+    // No setActiveTools on the pi object (simulating older Pi version)
+
+    const mod = await import(join(extensionDir, "luca-roles.ts"));
+    mod.default(mock.api);
+
+    const activateTool = mock.tools.get("luca_activate_role");
+    await activateTool!.execute("test", { role: "lu-executor" });
+
+    const toolCallHandlers = mock.events.get("tool_call") ?? [];
+    expect(toolCallHandlers.length).toBe(1);
+
+    const result = await toolCallHandlers[0]!(
+      { toolName: "SomeUnallowedTool" },
+      {},
+    );
+    expect(result?.block).toBe(true);
+    expect(result?.reason).toContain("does not allow");
+  });
+});
+
+// ─── setFooter (Plan 70-C) ──────────────────────────────────
+
+describe("Pi extension E2E: setFooter", () => {
+  test("luca-state session_start calls setFooter when available", async () => {
+    const mock = createMockPi();
+    let footerRenderer: any = null;
+
+    const mod = await import(join(extensionDir, "luca-state.ts"));
+    mod.default(mock.api);
+
+    const sessionStartHandlers = mock.events.get("session_start") ?? [];
+    expect(sessionStartHandlers.length).toBe(1);
+
+    const mockCtx = {
+      ui: {
+        setFooter: (renderer: any) => {
+          footerRenderer = renderer;
+        },
+      },
+    };
+
+    await sessionStartHandlers[0]!({}, mockCtx);
+    expect(footerRenderer).not.toBeNull();
+    expect(typeof footerRenderer).toBe("function");
+
+    // Call the renderer to verify multi-line output
+    const output = footerRenderer({});
+    expect(typeof output).toBe("string");
+    expect(output).toContain("Phase");
+    expect(output).toContain("\n");
+  });
+
+  test("luca-state falls back to setStatus when setFooter unavailable", async () => {
+    const mock = createMockPi();
+
+    const mod = await import(join(extensionDir, "luca-state.ts"));
+    mod.default(mock.api);
+
+    const sessionStartHandlers = mock.events.get("session_start") ?? [];
+    let statusSet = false;
+    let statusText = "";
+    const mockCtx = {
+      ui: {
+        setStatus: (_id: string, text: string) => {
+          statusSet = true;
+          statusText = text;
+        },
+      },
+    };
+
+    await sessionStartHandlers[0]!({}, mockCtx);
+    expect(statusSet).toBe(true);
+    expect(statusText.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── Session events (Plan 70-C) ─────────────────────────────
+
+describe("Pi extension E2E: session events", () => {
+  test("luca-state registers session_switch, session_fork, session_tree handlers", async () => {
+    const mock = createMockPi();
+    const mod = await import(join(extensionDir, "luca-state.ts"));
+    mod.default(mock.api);
+
+    for (const event of ["session_switch", "session_fork", "session_tree"]) {
+      const handlers = mock.events.get(event) ?? [];
+      expect(handlers.length).toBe(1);
+    }
+  });
+
+  test("session_switch handler updates footer", async () => {
+    const mock = createMockPi();
+    const mod = await import(join(extensionDir, "luca-state.ts"));
+    mod.default(mock.api);
+
+    const sessionSwitchHandlers = mock.events.get("session_switch") ?? [];
+    let footerSet = false;
+    const mockCtx = {
+      ui: {
+        setFooter: (_renderer: any) => {
+          footerSet = true;
+        },
+      },
+    };
+
+    await sessionSwitchHandlers[0]!({}, mockCtx);
+    expect(footerSet).toBe(true);
+  });
+
+  test("session_fork handler calls appendEntry when available", async () => {
+    const mock = createMockPi();
+    let entryType = "";
+    let entryData: any = null;
+    (mock.api as any).appendEntry = (type: string, data: any) => {
+      entryType = type;
+      entryData = data;
+    };
+
+    const mod = await import(join(extensionDir, "luca-state.ts"));
+    mod.default(mock.api);
+
+    const sessionForkHandlers = mock.events.get("session_fork") ?? [];
+    const mockCtx = {
+      ui: {
+        setFooter: () => {},
+      },
+    };
+
+    await sessionForkHandlers[0]!({}, mockCtx);
+    expect(entryType).toBe("luca-session-event");
+    expect(entryData).not.toBeNull();
+    expect(entryData.event).toBe("session_fork");
+    expect(entryData.timestamp).toBeDefined();
+  });
+});
+
+// ─── appendEntry audit (Plan 70-C) ──────────────────────────
+
+describe("Pi extension E2E: appendEntry audit logging", () => {
+  test("safety violation persists via appendEntry", async () => {
+    const mock = createMockPi();
+    let entryType = "";
+    let entryData: any = null;
+    (mock.api as any).appendEntry = (type: string, data: any) => {
+      entryType = type;
+      entryData = data;
+    };
+
+    const mod = await import(join(extensionDir, "luca-safety-rules.ts"));
+    mod.default(mock.api);
+
+    const toolCallHandlers = mock.events.get("tool_call") ?? [];
+    expect(toolCallHandlers.length).toBe(1);
+
+    await toolCallHandlers[0]!(
+      {
+        toolName: "Bash",
+        params: { command: "git push --force" },
+      },
+      {},
+    );
+
+    expect(entryType).toBe("luca-safety-audit");
+    expect(entryData).not.toBeNull();
+    expect(entryData.rule_id).toBe("destructive-git");
+    expect(entryData.severity).toBe("critical");
+  });
+
+  test("manual safety check persists violation summary via appendEntry", async () => {
+    const mock = createMockPi();
+    const entries: Array<{ type: string; data: any }> = [];
+    (mock.api as any).appendEntry = (type: string, data: any) => {
+      entries.push({ type, data });
+    };
+
+    const mod = await import(join(extensionDir, "luca-safety-rules.ts"));
+    mod.default(mock.api);
+
+    const checkTool = mock.tools.get("luca_safety_check");
+    expect(checkTool).toBeDefined();
+
+    await checkTool!.execute("test", { content: "rm -rf /" });
+
+    const auditEntries = entries.filter((e) => e.type === "luca-safety-audit");
+    expect(auditEntries.length).toBeGreaterThan(0);
+    const manualEntry = auditEntries.find(
+      (e) => e.data.check_type === "manual",
+    );
+    expect(manualEntry).toBeDefined();
+    expect(manualEntry!.data.violation_count).toBeGreaterThan(0);
+  });
+
+  test("no appendEntry call when no violations found", async () => {
+    const mock = createMockPi();
+    let appendCalled = false;
+    (mock.api as any).appendEntry = () => {
+      appendCalled = true;
+    };
+
+    const mod = await import(join(extensionDir, "luca-safety-rules.ts"));
+    mod.default(mock.api);
+
+    const checkTool = mock.tools.get("luca_safety_check");
+    await checkTool!.execute("test", { content: "echo hello" });
+
+    expect(appendCalled).toBe(false);
   });
 });

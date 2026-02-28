@@ -318,9 +318,8 @@ export default function lucaState(pi: any) {
     pi.on(eventName, async (_event: any, ctx: any) => {
       // Re-read STATE.md (may differ per session branch)
       const freshState = readStateMd();
-      if (freshState.error) return;
 
-      // Update footer with fresh state
+      // Update footer with fresh state (works even if STATE.md missing)
       updateFooter(ctx, freshState);
 
       // Log session event for audit trail

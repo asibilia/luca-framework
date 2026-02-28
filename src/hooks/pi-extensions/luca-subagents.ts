@@ -248,7 +248,10 @@ export default function lucaSubagents(pi: any) {
      */
     renderResult(result: any, _opts: any, _theme: any) {
       try {
-        const data = JSON.parse(result.content?.[0]?.text ?? "{}");
+        const text = result.content?.[0]?.text;
+        if (!text) return "Subagent result";
+        const data = JSON.parse(text);
+        if (!data.status) return "Subagent result";
         const icon =
           data.status === "completed"
             ? "DONE"
