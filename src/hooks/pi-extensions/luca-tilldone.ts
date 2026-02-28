@@ -130,12 +130,17 @@ export default function lucaTilldone(pi: any) {
         max_iterations?: number;
         timeout?: number;
       },
-      _signal: AbortSignal | undefined,
+      signal: AbortSignal | undefined,
       onUpdate:
         | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
         | undefined,
       _ctx: any,
     ) {
+      // Check for abort before starting
+      if (signal?.aborted) {
+        return createTextResponse("Cancelled by user");
+      }
+
       // Hard caps: max 10 iterations, 300s timeout per attempt
       const maxIterations = Math.min(params.max_iterations ?? 5, 10);
       const timeout = Math.min(params.timeout ?? 120, 300);

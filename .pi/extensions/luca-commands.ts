@@ -2,8 +2,9 @@
  * Luca Commands Extension for Pi
  *
  * Registers user-facing slash commands for quick Luca workflow status
- * access. Commands are visible in the Pi command palette and triggered
- * by the user manually. They do NOT appear in the LLM's tool list.
+ * access, interactive model/complexity pickers, and keyboard shortcuts.
+ * Commands are visible in the Pi command palette and triggered by the
+ * user manually. They do NOT appear in the LLM's tool list.
  *
  * Commands registered:
  * - /status: Current phase, complexity, memory indicators
@@ -12,6 +13,15 @@
  * - /todos: Pending phase todos from .planning/
  * - /subagents: Detailed subagent table
  * - /safety: Safety gate mode and recent audit entries
+ * - /switch-model: Interactive model picker (haiku/sonnet/opus)
+ * - /set-complexity: Interactive complexity level picker
+ * - /config: Interactive config toggle picker
+ *
+ * Keyboard shortcuts:
+ * - Ctrl+Shift+S: /status
+ * - Ctrl+Shift+V: /verify
+ * - Ctrl+Shift+T: /track
+ * - Ctrl+Shift+M: /switch-model
  *
  * Source: src/hooks/pi-extensions/luca-commands.ts
  * Deployed to: .pi/extensions/luca-commands.ts
@@ -19,50 +29,51 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join, basename } from "path";
 
+import { selectSafe } from "./__helpers/dialogs";
 import { notifySafe } from "./__helpers/notify";
+import {
+  readStateAsMap,
+  readComplexity,
+  writeComplexity,
+  readStateContext,
+} from "./__helpers/state-bridge";
 import { subagentRegistry } from "./__helpers/subagent-registry";
 
 /**
- * Extract a summary from STATE.md content.
+ * Format a status summary from the state bridge map.
  *
- * Pulls Phase, Plan, Complexity, and Oversight fields from the
- * markdown content to produce a concise status string.
+ * Pulls Phase, Complexity, Milestone, and Status fields from
+ * the state context to produce a concise status string.
  *
- * @param content - Raw STATE.md content
+ * @param state - Key-value state map from readStateAsMap
  * @returns Formatted status summary string
  */
-function formatStatusSummary(content: string): string {
-  const lines = content.split("\n");
+function formatStatusSummary(state: Record<string, string>): string {
   const fields: string[] = [];
 
-  const extractors = [
-    { label: "Phase", pattern: /^##?\s*Phase[:\s]*(.+)/i },
-    { label: "Plan", pattern: /Plan[:\s]*(.+)/i },
-    { label: "Complexity", pattern: /Task Complexity[:\s]*(.+)/i },
-    { label: "Oversight", pattern: /Oversight Mode[:\s]*(.+)/i },
-    { label: "Status", pattern: /Status[:\s]*(.+)/i },
+  const mappings = [
+    { label: "Phase", key: "current_phase" },
+    { label: "Milestone", key: "current_milestone" },
+    { label: "Complexity", key: "complexity" },
+    { label: "Oversight", key: "oversight" },
   ];
 
-  for (const line of lines) {
-    for (const { label, pattern } of extractors) {
-      const match = line.match(pattern);
-      if (match?.[1] && !fields.some((f) => f.startsWith(label))) {
-        fields.push(`${label}: ${match[1].trim()}`);
-      }
+  for (const { label, key } of mappings) {
+    const value = state[key] ?? state[label.toLowerCase()];
+    if (value && value !== "undefined") {
+      fields.push(`${label}: ${value}`);
     }
   }
 
-  return fields.length > 0
-    ? fields.join(" | ")
-    : "STATE.md found but no recognized fields extracted";
+  return fields.length > 0 ? fields.join(" | ") : "No workflow state found";
 }
 
 /**
- * Pi extension: Slash commands for Luca workflow status.
+ * Pi extension: Slash commands, interactive dialogs, and keyboard shortcuts.
  *
- * Registers 6 lightweight commands that read planning state and
- * display results via ctx.ui.notify(). Commands are designed to
- * complete in < 50ms with no shell command execution.
+ * Registers 9 commands and 4 keyboard shortcuts for Luca workflow
+ * interaction. All state reads go through the state bridge (state.json
+ * primary, STATE.md fallback).
  *
  * @param pi - Pi ExtensionAPI instance
  */
@@ -75,15 +86,17 @@ export default function lucaCommands(pi: any) {
   pi.registerCommand("status", {
     description: "Show Luca workflow status (phase, complexity, memory)",
     handler: async (_args: any, ctx: any) => {
-      const statePath = join(planningDir, "STATE.md");
-      if (!existsSync(statePath)) {
-        notifySafe(ctx, "No STATE.md found -- run /lu to initialize", "warn");
+      const state = readStateAsMap(cwd);
+      if (state.error) {
+        notifySafe(
+          ctx,
+          "No workflow state found -- run /lu to initialize",
+          "warn",
+        );
         return;
       }
 
-      const content = readFileSync(statePath, "utf-8");
-      const summary = formatStatusSummary(content);
-
+      const summary = formatStatusSummary(state);
       notifySafe(ctx, summary, "info");
     },
   });
@@ -211,11 +224,6 @@ export default function lucaCommands(pi: any) {
   pi.registerCommand("safety", {
     description: "Show safety gate mode and recent audit entries",
     handler: async (_args: any, ctx: any) => {
-      // Safety state is maintained by luca-safety-rules.ts.
-      // We cannot import its internal state directly, so we read
-      // the safety status from its tool output pattern.
-      // For slash commands, we provide a summary based on what
-      // is accessible from the shared registries.
       notifySafe(
         ctx,
         "Safety info: use luca_list_safety_rules tool for full details",
@@ -223,4 +231,112 @@ export default function lucaCommands(pi: any) {
       );
     },
   });
+
+  // ─── Command: /switch-model (interactive) ─────────────
+
+  pi.registerCommand("switch-model", {
+    description: "Switch the active model (haiku/sonnet/opus)",
+    handler: async (_args: any, ctx: any) => {
+      const selected = await selectSafe(ctx, "Select model", [
+        { label: "Haiku (fast)", value: "haiku" },
+        { label: "Sonnet (balanced)", value: "sonnet" },
+        { label: "Opus (capable)", value: "opus" },
+      ]);
+
+      if (!selected) {
+        notifySafe(ctx, "Model switch cancelled", "info");
+        return;
+      }
+
+      if (pi.setModel) {
+        pi.setModel(selected);
+        notifySafe(ctx, `Model switched to ${selected}`, "info");
+      } else {
+        notifySafe(ctx, "pi.setModel not available in this Pi version", "warn");
+      }
+    },
+  });
+
+  // ─── Command: /set-complexity (interactive) ───────────
+
+  pi.registerCommand("set-complexity", {
+    description: "Set task complexity level (TRIVIAL..CRITICAL)",
+    handler: async (_args: any, ctx: any) => {
+      const current = readComplexity(cwd);
+
+      const selected = await selectSafe(
+        ctx,
+        `Current: ${current}. Select new level`,
+        [
+          { label: "TRIVIAL (1 file, low risk)", value: "TRIVIAL" },
+          { label: "SIMPLE (2-3 files, low-med risk)", value: "SIMPLE" },
+          { label: "MODERATE (3-5 files, med risk)", value: "MODERATE" },
+          { label: "COMPLEX (5-10 files, high risk)", value: "COMPLEX" },
+        ],
+      );
+
+      if (!selected) {
+        notifySafe(ctx, "Complexity change cancelled", "info");
+        return;
+      }
+
+      const result = await writeComplexity(cwd, selected);
+      if (result.success) {
+        notifySafe(ctx, `Complexity set to ${selected}`, "info");
+      } else {
+        notifySafe(ctx, `Failed: ${result.error}`, "error");
+      }
+    },
+  });
+
+  // ─── Command: /config (interactive) ───────────────────
+
+  pi.registerCommand("config", {
+    description: "View and toggle common workflow config settings",
+    handler: async (_args: any, ctx: any) => {
+      const stateCtx = readStateContext(cwd);
+      const workflow = stateCtx?.workflow_config ?? {};
+
+      const items = [
+        `UAT: ${workflow.uat_required !== false ? "enabled" : "disabled"}`,
+        `Code review: ${workflow.code_review !== false ? "enabled" : "disabled"}`,
+        `Verifier: ${workflow.verifier !== false ? "enabled" : "disabled"}`,
+        `Learning: ${workflow.capture_learnings !== false ? "enabled" : "disabled"}`,
+      ];
+
+      notifySafe(ctx, `Config: ${items.join(" | ")}`, "info");
+    },
+  });
+
+  // ─── Keyboard Shortcuts ───────────────────────────────
+
+  if (pi.registerKeybinding) {
+    pi.registerKeybinding("ctrl+shift+s", {
+      description: "Show Luca status",
+      handler: async (_ctx: any) => {
+        pi.executeCommand?.("status");
+      },
+    });
+
+    pi.registerKeybinding("ctrl+shift+v", {
+      description: "Show last verification",
+      handler: async (_ctx: any) => {
+        pi.executeCommand?.("verify");
+      },
+    });
+
+    pi.registerKeybinding("ctrl+shift+t", {
+      description: "Show subagent tracking",
+      handler: async (_ctx: any) => {
+        pi.executeCommand?.("track");
+      },
+    });
+
+    pi.registerKeybinding("ctrl+shift+m", {
+      description: "Switch model",
+      handler: async (_ctx: any) => {
+        pi.executeCommand?.("switch-model");
+      },
+    });
+  }
 }

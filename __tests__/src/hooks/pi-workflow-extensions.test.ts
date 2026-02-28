@@ -30,14 +30,23 @@ function createMockPi() {
     handler: Function;
   }> = [];
 
+  const messageRenderers: Array<{
+    type: string;
+    renderer: Function;
+  }> = [];
+
   return {
     tools,
     events,
+    messageRenderers,
     registerTool(tool: any) {
       tools.push(tool);
     },
     on(event: string, handler: Function) {
       events.push({ event, handler });
+    },
+    registerMessageRenderer(type: string, renderer: Function) {
+      messageRenderers.push({ type, renderer });
     },
   };
 }
@@ -222,12 +231,12 @@ describe("luca-memory extension", () => {
     expect(beforeAgentStart).toBeDefined();
   });
 
-  test("registers 2 event handlers (session_start + before_agent_start)", async () => {
+  test("registers 4 event handlers (session_start, before_agent_start, session_compact, session_shutdown)", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-memory");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.events.length).toBe(2);
+    expect(pi.events.length).toBe(4);
   });
 
   test("luca_read_brain returns file content", async () => {
@@ -680,15 +689,15 @@ describe("luca-widgets extension", () => {
     expect(pi.tools.length).toBe(0);
   });
 
-  test("subscribes to 6 events", async () => {
+  test("subscribes to 7 events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-widgets");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.events.length).toBe(6);
+    expect(pi.events.length).toBe(7);
   });
 
-  test("subscribes to tool_result, tool_call, tool_execution_end, turn_start, turn_end, and agent_start", async () => {
+  test("subscribes to tool_result, tool_call, tool_execution_end, turn_start, turn_end, agent_start, and session_compact", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-widgets");
     const pi = createMockPi();
     mod.default(pi);
@@ -700,6 +709,7 @@ describe("luca-widgets extension", () => {
       "turn_start",
       "turn_end",
       "agent_start",
+      "session_compact",
     ];
 
     for (const eventName of expectedEvents) {
@@ -1351,12 +1361,12 @@ describe("setFooter in luca-state", () => {
     expect(source).toContain("subagentRegistry");
   });
 
-  test("luca-state.ts registers 8 events", async () => {
+  test("luca-state.ts registers 10 events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-state");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.events.length).toBe(8);
+    expect(pi.events.length).toBe(10);
     const eventNames = pi.events.map((e) => e.event);
     expect(eventNames).toContain("session_start");
     expect(eventNames).toContain("tool_call");
@@ -1366,6 +1376,8 @@ describe("setFooter in luca-state", () => {
     expect(eventNames).toContain("session_switch");
     expect(eventNames).toContain("session_fork");
     expect(eventNames).toContain("session_tree");
+    expect(eventNames).toContain("session_compact");
+    expect(eventNames).toContain("session_shutdown");
   });
 });
 

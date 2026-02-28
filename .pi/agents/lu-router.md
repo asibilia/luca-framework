@@ -6,6 +6,7 @@ tools:
   - Glob
   - Grep
 model: haiku
+model_tier: fast
 background_spawnable: false
 purpose: general
 allowed_contexts:

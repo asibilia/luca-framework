@@ -243,4 +243,57 @@ export default function lucaMemory(pi: any) {
   pi.on("before_agent_start", async (_event: any, ctx: any) => {
     injectBrain(ctx);
   });
+
+  // On session_compact: persist WORKING.md candidate learnings snapshot
+  pi.on("session_compact", async () => {
+    if (!existsSync(workingPath)) return;
+
+    try {
+      const working = readFileSync(workingPath, "utf-8");
+
+      // Extract candidate learnings section for persistence
+      const lines = working.split("\n");
+      const learnings: string[] = [];
+      let inLearnings = false;
+      for (const line of lines) {
+        if (line.startsWith("## Candidate Learnings")) {
+          inLearnings = true;
+          continue;
+        }
+        if (inLearnings && line.startsWith("## ")) break;
+        if (inLearnings && line.trim()) learnings.push(line);
+      }
+
+      if (learnings.length === 0) return;
+
+      // Append compaction snapshot to MEMORY.md
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const snapshot = `\n## Compaction Snapshot (${timestamp})\n\n${learnings.join("\n")}\n`;
+
+      let existing = "";
+      if (existsSync(memoryPath)) {
+        existing = readFileSync(memoryPath, "utf-8");
+      }
+      writeFileSync(memoryPath, existing + snapshot, "utf-8");
+    } catch {
+      /* non-fatal — WORKING.md may be malformed */
+    }
+  });
+
+  // On session_shutdown: final WORKING.md persistence
+  pi.on("session_shutdown", async () => {
+    // Re-run the same compaction logic to ensure nothing is lost
+    if (!existsSync(workingPath)) return;
+
+    try {
+      const working = readFileSync(workingPath, "utf-8");
+      if (working.trim().length === 0) return;
+
+      // Write a shutdown marker to WORKING.md
+      const marker = `\n---\n_Session ended: ${new Date().toISOString()}_\n`;
+      writeFileSync(workingPath, working + marker, "utf-8");
+    } catch {
+      /* non-fatal */
+    }
+  });
 }

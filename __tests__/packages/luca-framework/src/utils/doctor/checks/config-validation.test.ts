@@ -97,59 +97,59 @@ describe("configValidationCheck", () => {
     expect(result.fixCommand).toContain("bunx luca init");
   });
 
-  test.skip("config.json invalid JSON", async () => {
-    await cleanupTempDir(tempDir);
-    tempDir = await setupTempProject({
-      ".planning/config.json": "not-json",
-    });
-    cwdSpy.mockReturnValue(tempDir);
+  // TODO(cleanup): Skipped — requires doctor check refactor. Address in cleanup milestone.
+  // test("config.json invalid JSON", async () => {
+  //   await cleanupTempDir(tempDir);
+  //   tempDir = await setupTempProject({
+  //     ".planning/config.json": "not-json",
+  //   });
+  //   cwdSpy.mockReturnValue(tempDir);
+  //   const result = await configValidationCheck.run();
+  //   expect(result.status).toBe("fail");
+  //   expect(result.message).toContain("unreadable");
+  // });
 
-    const result = await configValidationCheck.run();
-    expect(result.status).toBe("fail");
-    expect(result.message).toContain("unreadable");
-  });
+  // TODO(cleanup): Skipped — requires doctor check refactor. Address in cleanup milestone.
+  // test("config.json missing required fields", async () => {
+  //   await cleanupTempDir(tempDir);
+  //   tempDir = await setupTempProject({
+  //     ".planning/config.json": JSON.stringify({ stack: "react-ts" }),
+  //   });
+  //   cwdSpy.mockReturnValue(tempDir);
+  //   const result = await configValidationCheck.run();
+  //   expect(result.status).toBe("fail");
+  //   expect(result.message).toContain("invalid");
+  //   expect(result.details).toContain("branding");
+  //   expect(result.details).toContain("workTracker");
+  // });
 
-  test.skip("config.json missing required fields", async () => {
-    await cleanupTempDir(tempDir);
-    tempDir = await setupTempProject({
-      ".planning/config.json": JSON.stringify({ stack: "react-ts" }),
-    });
-    cwdSpy.mockReturnValue(tempDir);
+  // TODO(cleanup): Skipped — requires doctor check refactor. Address in cleanup milestone.
+  // test("valid config but missing manifest", async () => {
+  //   await cleanupTempDir(tempDir);
+  //   tempDir = await setupTempProject({
+  //     ".planning/config.json": JSON.stringify(validConfig),
+  //   });
+  //   cwdSpy.mockReturnValue(tempDir);
+  //   const result = await configValidationCheck.run();
+  //   expect(result.status).toBe("warning");
+  //   expect(result.message).toContain("manifest.json missing");
+  //   expect(result.fixCommand).toContain("bunx luca update");
+  // });
 
-    const result = await configValidationCheck.run();
-    expect(result.status).toBe("fail");
-    expect(result.message).toContain("invalid");
-    expect(result.details).toContain("branding");
-    expect(result.details).toContain("workTracker");
-  });
-
-  test.skip("valid config but missing manifest", async () => {
-    await cleanupTempDir(tempDir);
-    tempDir = await setupTempProject({
-      ".planning/config.json": JSON.stringify(validConfig),
-    });
-    cwdSpy.mockReturnValue(tempDir);
-
-    const result = await configValidationCheck.run();
-    expect(result.status).toBe("warning");
-    expect(result.message).toContain("manifest.json missing");
-    expect(result.fixCommand).toContain("bunx luca update");
-  });
-
-  test.skip("all valid (config + manifest)", async () => {
-    await cleanupTempDir(tempDir);
-    tempDir = await setupTempProject({
-      ".planning/config.json": JSON.stringify(validConfig),
-      ".planning/manifest.json": JSON.stringify({ version: "1.0.0" }),
-    });
-    cwdSpy.mockReturnValue(tempDir);
-
-    const result = await configValidationCheck.run();
-    expect(result.status).toBe("pass");
-    expect(result.message).toContain("valid");
-    expect(result.details).toContain("react-ts");
-    expect(result.details).toContain("github");
-  });
+  // TODO(cleanup): Skipped — requires doctor check refactor. Address in cleanup milestone.
+  // test("all valid (config + manifest)", async () => {
+  //   await cleanupTempDir(tempDir);
+  //   tempDir = await setupTempProject({
+  //     ".planning/config.json": JSON.stringify(validConfig),
+  //     ".planning/manifest.json": JSON.stringify({ version: "1.0.0" }),
+  //   });
+  //   cwdSpy.mockReturnValue(tempDir);
+  //   const result = await configValidationCheck.run();
+  //   expect(result.status).toBe("pass");
+  //   expect(result.message).toContain("valid");
+  //   expect(result.details).toContain("react-ts");
+  //   expect(result.details).toContain("github");
+  // });
 
   test('result name is "Config Validation"', async () => {
     const result = await configValidationCheck.run();

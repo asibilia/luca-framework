@@ -71,6 +71,8 @@ interface WidgetState {
   activeTool: string | null;
   /** Notification thresholds already fired (50%, 70%). */
   notifiedThresholds: Set<number>;
+  /** Number of context compactions in this session. */
+  compactionCount: number;
 }
 
 function createInitialState(): WidgetState {
@@ -85,6 +87,7 @@ function createInitialState(): WidgetState {
     turnCount: 0,
     activeTool: null,
     notifiedThresholds: new Set(),
+    compactionCount: 0,
   };
 }
 
@@ -634,8 +637,19 @@ export default function lucaWidgets(pi: any) {
     state.turnCount = 0;
     state.activeTool = null;
     state.notifiedThresholds.clear();
-    // Keep contextPct — it persists across agent runs
+    // Keep contextPct and compactionCount — they persist across agent runs
 
+    updateWidgets(ctx);
+  });
+
+  // Track context compaction events
+  pi.on("session_compact", async (_event: any, ctx: any) => {
+    state.compactionCount++;
+    notifySafe(
+      ctx,
+      `Context compacted (${state.compactionCount} time${state.compactionCount > 1 ? "s" : ""})`,
+      "info",
+    );
     updateWidgets(ctx);
   });
 }

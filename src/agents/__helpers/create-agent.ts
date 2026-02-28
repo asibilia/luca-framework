@@ -35,6 +35,10 @@ function buildPiAgentFrontmatter(
     piFm.model = frontmatter.model_routing.default_model;
   }
 
+  if (frontmatter.model_tier) {
+    piFm.model_tier = frontmatter.model_tier;
+  }
+
   if (frontmatter.background_spawnable != null) {
     piFm.background_spawnable = frontmatter.background_spawnable;
   }

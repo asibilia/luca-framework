@@ -61,16 +61,13 @@ function setNodeVersion(version: string) {
 }
 
 describe("executeDoctor", () => {
-  test.skip("no failures returns exit code 0", async () => {
-    // Node version is already >= 18 (real env)
-    // Cursor: not installed → warning (not fail)
-    // Config: temp dir already has valid config + manifest → pass
-
-    const { executeDoctor } =
-      await import("../../../../../../packages/luca-framework/src/utils/doctor/index");
-    const exitCode = await executeDoctor();
-    expect(exitCode).toBe(0);
-  });
+  // TODO(cleanup): Skipped — requires doctor executor refactor. Address in cleanup milestone.
+  // test("no failures returns exit code 0", async () => {
+  //   const { executeDoctor } =
+  //     await import("../../../../../../packages/luca-framework/src/utils/doctor/index");
+  //   const exitCode = await executeDoctor();
+  //   expect(exitCode).toBe(0);
+  // });
 
   test("one check fails returns exit code 1", async () => {
     // Node version < 18 → fail
@@ -83,25 +80,22 @@ describe("executeDoctor", () => {
     expect(exitCode).toBe(1);
   });
 
-  test.skip("warnings only returns exit code 0", async () => {
-    // Node version >= 18 → pass
-    // Cursor: not found → warning
-    // Config: valid but no manifest → warning
-    await cleanupTempDir(tempDir);
-    tempDir = await setupTempProject({
-      ".planning/config.json": JSON.stringify({
-        branding: { frameworkName: "Luca", commandPrefix: "lu" },
-        stack: "node-ts",
-        workTracker: "none",
-      }),
-    });
-    cwdSpy.mockReturnValue(tempDir);
-
-    const { executeDoctor } =
-      await import("../../../../../../packages/luca-framework/src/utils/doctor/index");
-    const exitCode = await executeDoctor();
-    expect(exitCode).toBe(0);
-  });
+  // TODO(cleanup): Skipped — requires doctor executor refactor. Address in cleanup milestone.
+  // test("warnings only returns exit code 0", async () => {
+  //   await cleanupTempDir(tempDir);
+  //   tempDir = await setupTempProject({
+  //     ".planning/config.json": JSON.stringify({
+  //       branding: { frameworkName: "Luca", commandPrefix: "lu" },
+  //       stack: "node-ts",
+  //       workTracker: "none",
+  //     }),
+  //   });
+  //   cwdSpy.mockReturnValue(tempDir);
+  //   const { executeDoctor } =
+  //     await import("../../../../../../packages/luca-framework/src/utils/doctor/index");
+  //   const exitCode = await executeDoctor();
+  //   expect(exitCode).toBe(0);
+  // });
 
   test("mixed results (fail + warning + pass) returns exit code 1", async () => {
     // Node version < 18 → fail

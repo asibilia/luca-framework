@@ -9,6 +9,7 @@ tools:
   - Grep
   - Glob
   - WebSearch
+model_tier: balanced
 background_spawnable: false
 purpose: verifier
 allowed_contexts:

@@ -21,6 +21,7 @@ export interface AgentFrontmatter {
   description: string;
   tools: string[];
   model?: string;
+  model_tier?: string;
   background_spawnable?: boolean;
   purpose?: string;
   allowed_contexts?: string[];
@@ -99,7 +100,11 @@ export function parseFrontmatter(content: string): AgentFrontmatter | null {
 
   if (!name) return null;
 
+  // Parse model_tier (single string field, e.g., "fast", "balanced", "capable")
+  const model_tier = fm.match(/^model_tier:\s*(.+)$/m)?.[1]?.trim();
+
   const result: AgentFrontmatter = { name, description, tools, model };
+  if (model_tier) result.model_tier = model_tier;
   if (background_spawnable != null)
     result.background_spawnable = background_spawnable;
   if (purpose) result.purpose = purpose;

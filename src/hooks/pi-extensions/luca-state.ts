@@ -8,11 +8,19 @@
  * Source: src/hooks/pi-extensions/luca-state.ts
  * Deployed to: .pi/extensions/luca-state.ts
  */
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 
-import { createJsonResponse, createTextResponse } from "./__helpers/response";
-import { escapeRegExp } from "./__helpers/sanitize";
+import {
+  createJsonResponse,
+  createJsonResponseWithDetails,
+  createTextResponse,
+} from "./__helpers/response";
+import {
+  readStateAsMap,
+  readField,
+  writeField,
+} from "./__helpers/state-bridge";
 import {
   createStatusFormatter,
   SEP,
@@ -32,38 +40,17 @@ import { subagentRegistry } from "./__helpers/subagent-registry";
 export default function lucaState(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
-  const stateMdPath = join(planningDir, "STATE.md");
 
   /**
-   * Parse STATE.md into a structured object.
+   * Read workflow state as a flat key-value map.
    *
-   * Extracts key-value pairs from the markdown format, supporting
-   * both bold (`**Key:** value`) and simple (`Key: value`) formats.
+   * Primary: reads from state.json via the state bridge
+   * Fallback: parses STATE.md key-value pairs
    *
-   * @returns Record of normalized key-value pairs, or an error object if file missing
+   * @returns Record of normalized key-value pairs
    */
-  function readStateMd(): Record<string, string> {
-    if (!existsSync(stateMdPath)) {
-      return { error: "STATE.md not found" };
-    }
-    const content = readFileSync(stateMdPath, "utf-8");
-    const state: Record<string, string> = {};
-    const lines = content.split("\n");
-
-    for (const line of lines) {
-      const match = line.match(/^\*\*(.+?):\*\*\s*(.+)$/);
-      if (match?.[1] && match[2]) {
-        const key = match[1].trim().toLowerCase().replace(/\s+/g, "_");
-        state[key] = match[2].trim();
-      }
-      // Also match "Key: Value" format (without bold)
-      const simpleMatch = line.match(/^([A-Z][a-z ]+):\s*(.+)$/);
-      if (simpleMatch?.[1] && simpleMatch[2] && !match) {
-        const key = simpleMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
-        state[key] = simpleMatch[2].trim();
-      }
-    }
-    return state;
+  function readState(): Record<string, string> {
+    return readStateAsMap(cwd);
   }
 
   // Tool: Read current workflow state
@@ -71,11 +58,32 @@ export default function lucaState(pi: any) {
     name: "luca_read_state",
     label: "Read Luca State",
     description:
-      "Read the current Luca workflow state including phase, complexity, milestone, and status from .planning/STATE.md",
+      "Read the current Luca workflow state including phase, complexity, milestone, status, and runtime context (model, cwd, headless mode) from .planning/STATE.md",
     parameters: {},
     async execute() {
-      const state = readStateMd();
-      return createJsonResponse(state);
+      const state = readState();
+      return createJsonResponseWithDetails(
+        {
+          ...state,
+          runtime: {
+            cwd: runtimeContext.cwd,
+            model: runtimeContext.model,
+            hasUI: runtimeContext.hasUI,
+            turn: turnCount,
+          },
+        },
+        {
+          current_phase: state["current_phase"] ?? null,
+          current_milestone: state["current_milestone"] ?? null,
+          current_plan: state["current_plan"] ?? state["plan"] ?? null,
+          task_complexity: state["task_complexity"] ?? null,
+          oversight: state["oversight"] ?? null,
+          status: state["status"] ?? null,
+          turn: turnCount,
+          has_ui: runtimeContext.hasUI,
+          model: runtimeContext.model,
+        },
+      );
     },
   });
 
@@ -97,7 +105,16 @@ export default function lucaState(pi: any) {
       required: ["field"],
     },
     async execute(_toolCallId: string, params: { field: string }) {
-      const state = readStateMd();
+      // Try state.json first via bridge, then fall back to flat map
+      const bridgeValue = readField(cwd, params.field);
+      if (bridgeValue !== undefined) {
+        return createTextResponse(
+          typeof bridgeValue === "string"
+            ? bridgeValue
+            : JSON.stringify(bridgeValue),
+        );
+      }
+      const state = readState();
       const value = state[params.field] ?? "Field not found";
       return createTextResponse(value);
     },
@@ -128,10 +145,6 @@ export default function lucaState(pi: any) {
       _toolCallId: string,
       params: { field: string; value: string },
     ) {
-      if (!existsSync(stateMdPath)) {
-        return createTextResponse("Error: STATE.md not found");
-      }
-
       // Validate field length to prevent abuse
       if (params.field.length > 100) {
         return createTextResponse(
@@ -139,34 +152,52 @@ export default function lucaState(pi: any) {
         );
       }
 
-      let content = readFileSync(stateMdPath, "utf-8");
-      const escapedField = escapeRegExp(params.field);
-      // Try bold format first: **Field:** value
-      const boldPattern = new RegExp(
-        `(\\*\\*${escapedField}:\\*\\*)\\s*.+`,
-        "i",
-      );
-      // Escape $ in replacement to prevent regex backreference interpretation
-      const safeValue = params.value.replace(/\$/g, "$$$$");
-      if (boldPattern.test(content)) {
-        content = content.replace(boldPattern, `$1 ${safeValue}`);
-      } else {
-        // Try simple format: Field: value
-        const simplePattern = new RegExp(`(${escapedField}:)\\s*.+`, "i");
-        if (simplePattern.test(content)) {
-          content = content.replace(simplePattern, `$1 ${safeValue}`);
-        } else {
-          return createTextResponse(
-            `Field "${params.field}" not found in STATE.md`,
-          );
-        }
+      // Map display field labels to state.json context field names
+      const fieldMap: Record<string, string> = {
+        "task complexity": "complexity",
+        "current phase": "current_phase",
+        "current milestone": "current_milestone",
+        oversight: "oversight",
+        status: "status",
+      };
+
+      // Normalize: try direct field name, then mapped label
+      const normalizedField =
+        fieldMap[params.field.toLowerCase()] ?? params.field;
+
+      // Parse value: try JSON first, fall back to raw string
+      let parsedValue: any;
+      try {
+        parsedValue = JSON.parse(params.value);
+      } catch {
+        parsedValue = params.value;
       }
-      writeFileSync(stateMdPath, content, "utf-8");
+
+      // Write via state bridge (state.json + STATE.md snapshot)
+      const result = await writeField(cwd, normalizedField, parsedValue);
+
+      if (!result.success) {
+        return createTextResponse(`Error: ${result.error}`);
+      }
+
       return createTextResponse(
-        `Updated "${params.field}" to "${params.value}"`,
+        `Updated "${normalizedField}" to "${params.value}"`,
       );
     },
   });
+
+  /**
+   * Runtime context captured on session_start.
+   *
+   * Stores introspection values from the Pi context object (ctx.cwd,
+   * ctx.model, ctx.hasUI) for use in state reporting and conditional
+   * behavior (e.g., skipping widgets in headless mode).
+   */
+  let runtimeContext: {
+    cwd: string | null;
+    model: string | null;
+    hasUI: boolean;
+  } = { cwd: null, model: null, hasUI: true };
 
   /**
    * Session turn counter, incremented on turn_start.
@@ -192,7 +223,7 @@ export default function lucaState(pi: any) {
    * Returns a single-line status string (used by setStatus fallback).
    */
   function buildStateStatus(ctx: any): string {
-    const state = readStateMd();
+    const state = readState();
     const phase = state["current_phase"];
     const milestone = state["current_milestone"];
     const complexity = (state["task_complexity"] ?? "MODERATE").toUpperCase();
@@ -249,7 +280,7 @@ export default function lucaState(pi: any) {
     ctx: any,
     stateOverride?: Record<string, string>,
   ): void {
-    const state = stateOverride ?? readStateMd();
+    const state = stateOverride ?? readState();
 
     if (ctx?.ui?.setFooter) {
       ctx.ui.setFooter((_theme: any) => {
@@ -291,9 +322,19 @@ export default function lucaState(pi: any) {
     }
   }
 
-  // Show consolidated state in footer on session start
+  // Capture runtime context and show consolidated state on session start
   pi.on("session_start", async (_event: any, ctx: any) => {
-    updateFooter(ctx);
+    // Introspect Pi context for runtime properties
+    runtimeContext = {
+      cwd: ctx?.cwd ?? process.cwd(),
+      model: ctx?.model ?? null,
+      hasUI: ctx?.hasUI !== false,
+    };
+
+    // Only set up footer/status in UI mode
+    if (runtimeContext.hasUI) {
+      updateFooter(ctx);
+    }
   });
 
   // Track active luca tool calls
@@ -336,7 +377,7 @@ export default function lucaState(pi: any) {
   for (const eventName of sessionEvents) {
     pi.on(eventName, async (_event: any, ctx: any) => {
       // Re-read STATE.md (may differ per session branch)
-      const freshState = readStateMd();
+      const freshState = readState();
 
       // Update footer with fresh state (works even if STATE.md missing)
       updateFooter(ctx, freshState);
@@ -355,4 +396,32 @@ export default function lucaState(pi: any) {
       }
     });
   }
+
+  // Log compaction event for audit trail
+  pi.on("session_compact", async () => {
+    if (pi.appendEntry) {
+      pi.appendEntry("luca-session-event", {
+        event: "session_compact",
+        timestamp: new Date().toISOString(),
+        turn: turnCount,
+      });
+    }
+  });
+
+  // Log shutdown event and capture final state snapshot
+  pi.on("session_shutdown", async () => {
+    if (pi.appendEntry) {
+      const finalState = readState();
+      pi.appendEntry("luca-session-event", {
+        event: "session_shutdown",
+        timestamp: new Date().toISOString(),
+        turn: turnCount,
+        state: {
+          phase: finalState["current_phase"],
+          plan: finalState["current_plan"] ?? finalState["plan"],
+          complexity: finalState["task_complexity"],
+        },
+      });
+    }
+  });
 }

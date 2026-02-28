@@ -6,6 +6,7 @@ tools:
   - Glob
   - Grep
   - Bash
+model_tier: balanced
 background_spawnable: true
 purpose: planner
 allowed_contexts:

@@ -36,12 +36,12 @@ describe("luca-commands extension", () => {
     expect(typeof mod.default).toBe("function");
   });
 
-  test("registers 6 commands", async () => {
+  test("registers 9 commands", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.commands.size).toBe(6);
+    expect(pi.commands.size).toBe(9);
   });
 
   test("registers 0 tools (command-only extension)", async () => {
@@ -214,6 +214,108 @@ describe("luca-commands extension", () => {
 
     await cmd.handler({}, mockCtx);
     expect(notifyMessage).toContain("Safety");
+  });
+
+  test("registers /switch-model command", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const cmd = pi.commands.get("switch-model");
+    expect(cmd).toBeDefined();
+    expect(cmd.description).toContain("model");
+    expect(typeof cmd.handler).toBe("function");
+  });
+
+  test("registers /set-complexity command", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const cmd = pi.commands.get("set-complexity");
+    expect(cmd).toBeDefined();
+    expect(cmd.description).toContain("complexity");
+    expect(typeof cmd.handler).toBe("function");
+  });
+
+  test("registers /config command", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const cmd = pi.commands.get("config");
+    expect(cmd).toBeDefined();
+    expect(cmd.description).toContain("config");
+    expect(typeof cmd.handler).toBe("function");
+  });
+
+  test("/switch-model handler cancels gracefully when no selection", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const cmd = pi.commands.get("switch-model");
+    let notifyMessage = "";
+
+    const mockCtx = {
+      ui: {
+        select: async () => undefined,
+        notify: (msg: string, _level: string) => {
+          notifyMessage = msg;
+        },
+      },
+    };
+
+    await cmd.handler({}, mockCtx);
+    expect(notifyMessage).toContain("cancelled");
+  });
+
+  test("/config handler shows config info", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const cmd = pi.commands.get("config");
+    let notifyMessage = "";
+
+    const mockCtx = {
+      ui: {
+        notify: (msg: string, _level: string) => {
+          notifyMessage = msg;
+        },
+      },
+    };
+
+    await cmd.handler({}, mockCtx);
+    expect(notifyMessage).toContain("Config");
+  });
+
+  test("registers 4 keybindings when pi.registerKeybinding available", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const keybindings = new Map<string, any>();
+    const pi = {
+      ...createMockPi(),
+      registerKeybinding(key: string, opts: any) {
+        keybindings.set(key, opts);
+      },
+    };
+    mod.default(pi);
+
+    expect(keybindings.size).toBe(4);
+    expect(keybindings.has("ctrl+shift+s")).toBe(true);
+    expect(keybindings.has("ctrl+shift+v")).toBe(true);
+    expect(keybindings.has("ctrl+shift+t")).toBe(true);
+    expect(keybindings.has("ctrl+shift+m")).toBe(true);
+  });
+
+  test("skips keybindings when pi.registerKeybinding unavailable", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const pi = createMockPi();
+    // No registerKeybinding method
+    mod.default(pi);
+
+    // Should not throw, just skip keybindings
+    expect(pi.commands.size).toBe(9);
   });
 
   test("commands handle missing ctx.ui gracefully", async () => {

@@ -19,7 +19,11 @@ import { join } from "path";
 
 import { runShellCommand } from "./__helpers/exec";
 import { notifySafe } from "./__helpers/notify";
-import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import {
+  createJsonResponse,
+  createJsonResponseWithDetails,
+  createTextResponse,
+} from "./__helpers/response";
 
 /**
  * Pi extension: Verification harness runner.
@@ -256,7 +260,18 @@ export default function lucaHarness(pi: any) {
         // Non-critical — /verify will report "no cached result"
       }
 
-      return createJsonResponse(summary);
+      return createJsonResponseWithDetails(summary, {
+        check_count: results.length,
+        passed_count: results.filter((r) => r.status === "passed").length,
+        failed_count: results.filter((r) => r.status !== "passed").length,
+        checks: results.map((r) => ({
+          name: r.name,
+          status: r.status,
+          duration_ms: r.duration,
+          has_errors: r.status !== "passed",
+        })),
+        total_duration_ms: summary.total_duration,
+      });
     },
   });
 

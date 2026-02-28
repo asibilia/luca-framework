@@ -87,6 +87,9 @@ export const PI_HELPER_FILES: readonly string[] = [
   "subagent-registry.ts",
   "notify.ts",
   "follow-up.ts",
+  "model-routing.ts",
+  "state-bridge.ts",
+  "dialogs.ts",
 ] as const;
 // Note: index.ts barrel is NOT included — Pi auto-discovers
 // .pi/extensions/*/index.ts as extensions. Extensions import

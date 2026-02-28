@@ -19,7 +19,11 @@ import { join } from "path";
 
 import { sendFollowUp } from "./__helpers/follow-up";
 import { notifySafe } from "./__helpers/notify";
-import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import {
+  createJsonResponse,
+  createJsonResponseWithDetails,
+  createTextResponse,
+} from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
 import {
   readAgentDef,
@@ -124,10 +128,15 @@ export default function lucaSubagents(pi: any) {
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
-      _signal: any,
+      signal: AbortSignal | undefined,
       _onUpdate: any,
       ctx: any,
     ) {
+      // Check for abort before spawning
+      if (signal?.aborted) {
+        return createTextResponse("Cancelled by user");
+      }
+
       // Read agent definition
       const agentDef = readAgentDef(cwd, params.agent);
       if (!agentDef) {
@@ -162,6 +171,21 @@ export default function lucaSubagents(pi: any) {
       }
 
       subagentRegistry.set(id, state);
+
+      // Kill child process if abort signal fires while subagent is running
+      if (signal) {
+        signal.addEventListener(
+          "abort",
+          () => {
+            if (state.process && state.status === "running") {
+              state.process.kill("SIGTERM");
+              state.status = "aborted";
+              state.completedAt = Date.now();
+            }
+          },
+          { once: true },
+        );
+      }
 
       return createJsonResponse({
         id,
@@ -262,24 +286,39 @@ export default function lucaSubagents(pi: any) {
         );
       }
 
-      return createJsonResponse({
-        id: state.id,
-        agent: state.agent,
-        task: state.task,
-        status: state.status,
-        exitCode: state.exitCode,
-        output: state.output || "(no output yet)",
-        stderr: state.stderr || null,
-        usage: state.usage,
-        model: state.model,
-        created: new Date(state.createdAt).toISOString(),
-        completed: state.completedAt
-          ? new Date(state.completedAt).toISOString()
-          : null,
-        duration_ms: state.completedAt
-          ? state.completedAt - state.createdAt
-          : Date.now() - state.createdAt,
-      });
+      return createJsonResponseWithDetails(
+        {
+          id: state.id,
+          agent: state.agent,
+          task: state.task,
+          status: state.status,
+          exitCode: state.exitCode,
+          output: state.output || "(no output yet)",
+          stderr: state.stderr || null,
+          usage: state.usage,
+          model: state.model,
+          created: new Date(state.createdAt).toISOString(),
+          completed: state.completedAt
+            ? new Date(state.completedAt).toISOString()
+            : null,
+          duration_ms: state.completedAt
+            ? state.completedAt - state.createdAt
+            : Date.now() - state.createdAt,
+        },
+        {
+          subagent_id: state.id,
+          agent: state.agent,
+          status: state.status,
+          model: state.model,
+          turns: state.usage?.turns ?? 0,
+          input_tokens: state.usage?.inputTokens ?? 0,
+          output_tokens: state.usage?.outputTokens ?? 0,
+          cost: state.usage?.cost ?? 0,
+          duration_ms: state.completedAt
+            ? state.completedAt - state.createdAt
+            : Date.now() - state.createdAt,
+        },
+      );
     },
   });
 
@@ -435,6 +474,45 @@ export default function lucaSubagents(pi: any) {
     },
   });
 
+  // ─── Message Renderer: subagent-result ─────────────────
+
+  if (pi.registerMessageRenderer) {
+    pi.registerMessageRenderer(
+      "subagent-result",
+      (message: {
+        content?: string;
+        details?: {
+          subagent_id?: string;
+          agent?: string;
+          status?: string;
+          exit_code?: number;
+          elapsed_ms?: number;
+        };
+      }) => {
+        const d = message.details ?? {};
+        const statusIcon =
+          d.status === "completed"
+            ? "DONE"
+            : d.status === "failed"
+              ? "FAIL"
+              : d.status === "aborted"
+                ? "STOP"
+                : "...";
+        const elapsed = d.elapsed_ms
+          ? `${(d.elapsed_ms / 1000).toFixed(1)}s`
+          : "?";
+        const header = `${statusIcon} Subagent "${d.subagent_id ?? "?"}" (${d.agent ?? "?"}) — ${d.status ?? "unknown"} in ${elapsed}`;
+
+        const lines = [header];
+        if (message.content) {
+          lines.push("");
+          lines.push(message.content.slice(0, 500));
+        }
+        return lines.join("\n");
+      },
+    );
+  }
+
   // ─── Cleanup on session end ────────────────────────────
 
   pi.on("session_start", async () => {
@@ -442,6 +520,21 @@ export default function lucaSubagents(pi: any) {
     for (const state of subagentRegistry.values()) {
       if (state.process && state.status === "running") {
         state.process.kill("SIGTERM");
+      }
+      if (state.sessionDir) {
+        cleanupSessionDir(state.sessionDir);
+      }
+    }
+    resetSubagentRegistry();
+  });
+
+  // Kill all running subagents and clean up on session shutdown
+  pi.on("session_shutdown", async () => {
+    for (const state of subagentRegistry.values()) {
+      if (state.process && state.status === "running") {
+        state.process.kill("SIGTERM");
+        state.status = "aborted";
+        state.completedAt = Date.now();
       }
       if (state.sessionDir) {
         cleanupSessionDir(state.sessionDir);

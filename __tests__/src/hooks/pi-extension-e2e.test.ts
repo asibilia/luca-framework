@@ -20,6 +20,8 @@ function createMockPi() {
   const tools = new Map<string, any>();
   const events = new Map<string, Function[]>();
   const commands = new Map<string, any>();
+  const keybindings: Array<{ key: string; command: string }> = [];
+  const messageRenderers = new Map<string, Function>();
 
   return {
     api: {
@@ -29,10 +31,16 @@ function createMockPi() {
         events.get(event)!.push(handler);
       },
       registerCommand: (name: string, opts: any) => commands.set(name, opts),
+      registerKeybinding: (key: string, command: string) =>
+        keybindings.push({ key, command }),
+      registerMessageRenderer: (type: string, renderer: Function) =>
+        messageRenderers.set(type, renderer),
     },
     tools,
     events,
     commands,
+    keybindings,
+    messageRenderers,
   };
 }
 
@@ -97,8 +105,8 @@ function expectPiResponse(result: any) {
 
 describe("Pi extension E2E: loading", () => {
   const extensionFiles = [
-    { file: "luca-state.ts", tools: 3, events: 8 },
-    { file: "luca-memory.ts", tools: 4, events: 2 },
+    { file: "luca-state.ts", tools: 3, events: 10 },
+    { file: "luca-memory.ts", tools: 4, events: 4 },
     { file: "luca-harness.ts", tools: 1, events: 0 },
     { file: "luca-complexity.ts", tools: 3, events: 0 },
     { file: "luca-roles.ts", tools: 4, events: 3 },
@@ -108,9 +116,9 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-query-experts.ts", tools: 4, events: 0 },
     { file: "luca-safety-rules.ts", tools: 5, events: 1 },
     { file: "luca-purpose-gating.ts", tools: 6, events: 1 },
-    { file: "luca-subagents.ts", tools: 5, events: 1 },
-    { file: "luca-commands.ts", tools: 0, events: 0, commands: 6 },
-    { file: "luca-widgets.ts", tools: 0, events: 6 },
+    { file: "luca-subagents.ts", tools: 5, events: 2 },
+    { file: "luca-commands.ts", tools: 0, events: 0, commands: 9 },
+    { file: "luca-widgets.ts", tools: 0, events: 7 },
     { file: "luca-work-tracking.ts", tools: 5, events: 2 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
   ];
@@ -144,6 +152,11 @@ describe("Pi extension E2E: loading", () => {
       "widget-renderers.ts",
       "spawn.ts",
       "subagent-registry.ts",
+      "notify.ts",
+      "follow-up.ts",
+      "model-routing.ts",
+      "state-bridge.ts",
+      "dialogs.ts",
     ]) {
       expect(existsSync(join(extensionDir, "__helpers", file))).toBe(true);
     }
@@ -462,9 +475,9 @@ describe("Pi extension E2E: cross-extension integration", () => {
 // ─── Slash Commands (Plan 70-B) ─────────────────────────────
 
 describe("Pi extension E2E: slash commands", () => {
-  test("luca-commands.ts registers 6 commands", async () => {
+  test("luca-commands.ts registers 9 commands", async () => {
     const mock = await loadExtension("luca-commands.ts");
-    expect(mock.commands.size).toBe(6);
+    expect(mock.commands.size).toBe(9);
   });
 
   test("luca-commands.ts registers expected command names", async () => {
@@ -476,6 +489,9 @@ describe("Pi extension E2E: slash commands", () => {
       "todos",
       "subagents",
       "safety",
+      "switch-model",
+      "set-complexity",
+      "config",
     ];
     for (const name of expectedCommands) {
       expect(mock.commands.has(name)).toBe(true);
