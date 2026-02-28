@@ -360,12 +360,31 @@ export default function lucaSafetyRules(pi: any) {
       },
       required: ["mode"],
     },
-    async execute(_toolCallId: string, params: { mode: string }) {
+    async execute(
+      _toolCallId: string,
+      params: { mode: string },
+      _signal: any,
+      _onUpdate: any,
+      ctx: any,
+    ) {
       const validModes = ["block", "warn", "log"];
       if (!validModes.includes(params.mode)) {
         return createTextResponse(
           `Invalid mode "${params.mode}". Use: ${validModes.join(", ")}`,
         );
+      }
+
+      // Confirm when downgrading from "block" to a less strict mode
+      if (gateMode === "block" && params.mode !== "block") {
+        if (ctx?.ui?.confirm) {
+          const proceed = await ctx.ui.confirm(
+            "Downgrade Safety Mode",
+            `Changing from "block" to "${params.mode}" will reduce safety enforcement. Continue?`,
+          );
+          if (!proceed) {
+            return createTextResponse("Safety mode change cancelled by user.");
+          }
+        }
       }
 
       const previous = gateMode;
@@ -405,7 +424,7 @@ export default function lucaSafetyRules(pi: any) {
   });
 
   // Event: Check tool_call events against safety rules for command execution
-  pi.on("tool_call", async (event: any, _ctx: any) => {
+  pi.on("tool_call", async (event: any, ctx: any) => {
     // Only check Bash/shell tool calls
     const toolName = (event.toolName || "").toLowerCase();
     if (toolName !== "bash" && toolName !== "shell") return;
@@ -428,11 +447,41 @@ export default function lucaSafetyRules(pi: any) {
           });
 
           if (gateMode === "block") {
+            // Notify user of blocked critical violation
+            if (ctx?.ui?.notify) {
+              ctx.ui.notify(
+                `BLOCKED: ${rule.name} — ${rule.mitigation}`,
+                "error",
+              );
+            }
+
+            // Hard abort for critical violations in block mode
+            if (rule.severity === "critical" && ctx?.abort) {
+              ctx.abort();
+            }
+
             return {
               block: true,
               reason: `Safety rule "${rule.name}" (${rule.severity}): ${rule.mitigation}`,
             };
           }
+
+          // In warn mode, confirm before proceeding for critical violations
+          if (gateMode === "warn" && rule.severity === "critical") {
+            if (ctx?.ui?.confirm) {
+              const proceed = await ctx.ui.confirm(
+                `Safety: ${rule.name}`,
+                `Critical violation detected: ${rule.mitigation}\n\nProceed anyway?`,
+              );
+              if (!proceed) {
+                return {
+                  block: true,
+                  reason: `User declined after safety warning: ${rule.name}`,
+                };
+              }
+            }
+          }
+
           break;
         }
       }
