@@ -306,4 +306,35 @@ export default function lucaState(pi: any) {
     turnCount++;
     updateFooter(ctx);
   });
+
+  // Reconstruct state when session changes (switch, fork, tree navigation)
+  const sessionEvents = [
+    "session_switch",
+    "session_fork",
+    "session_tree",
+  ] as const;
+
+  for (const eventName of sessionEvents) {
+    pi.on(eventName, async (_event: any, ctx: any) => {
+      // Re-read STATE.md (may differ per session branch)
+      const freshState = readStateMd();
+      if (freshState.error) return;
+
+      // Update footer with fresh state
+      updateFooter(ctx, freshState);
+
+      // Log session event for audit trail
+      if (pi.appendEntry) {
+        pi.appendEntry("luca-session-event", {
+          event: eventName,
+          timestamp: new Date().toISOString(),
+          state: {
+            phase: freshState["current_phase"],
+            plan: freshState["current_plan"] ?? freshState["plan"],
+            complexity: freshState["task_complexity"],
+          },
+        });
+      }
+    });
+  }
 }
