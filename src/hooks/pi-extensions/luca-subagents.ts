@@ -86,6 +86,9 @@ export default function lucaSubagents(pi: any) {
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
+      _signal: any,
+      _onUpdate: any,
+      ctx: any,
     ) {
       // Read agent definition
       const agentDef = readAgentDef(cwd, params.agent);
@@ -140,10 +143,31 @@ export default function lucaSubagents(pi: any) {
             } catch {
               // sendMessage may fail if session ended — non-fatal
             }
+
+            // Toast notification for user awareness
+            try {
+              if (ctx?.ui?.notify) {
+                const level = info.status === "completed" ? "info" : "error";
+                ctx.ui.notify(
+                  `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
+                  level,
+                );
+              }
+            } catch {
+              /* non-fatal */
+            }
           },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
+        // Notify user of limit hit or spawn failure
+        try {
+          if (ctx?.ui?.notify) {
+            ctx.ui.notify(msg, "warn");
+          }
+        } catch {
+          /* non-fatal */
+        }
         return createTextResponse(msg);
       }
 
@@ -350,6 +374,9 @@ export default function lucaSubagents(pi: any) {
     async execute(
       _toolCallId: string,
       params: { id: string; message: string },
+      _signal: any,
+      _onUpdate: any,
+      ctx: any,
     ) {
       const existing = subagentRegistry.get(params.id);
       if (!existing) {
@@ -414,10 +441,31 @@ export default function lucaSubagents(pi: any) {
             } catch {
               // sendMessage may fail if session ended — non-fatal
             }
+
+            // Toast notification for user awareness
+            try {
+              if (ctx?.ui?.notify) {
+                const level = info.status === "completed" ? "info" : "error";
+                ctx.ui.notify(
+                  `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
+                  level,
+                );
+              }
+            } catch {
+              /* non-fatal */
+            }
           },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
+        // Notify user of spawn failure
+        try {
+          if (ctx?.ui?.notify) {
+            ctx.ui.notify(msg, "warn");
+          }
+        } catch {
+          /* non-fatal */
+        }
         return createTextResponse(msg);
       }
 
