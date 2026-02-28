@@ -43,6 +43,16 @@ export interface AgentDef {
   frontmatter: AgentFrontmatter | null;
 }
 
+/** Payload delivered to the onComplete callback when a subagent exits. */
+export interface SpawnCompletionInfo {
+  id: string;
+  agent: string;
+  status: "completed" | "failed";
+  output: string;
+  elapsed: number;
+  exitCode: number;
+}
+
 /** Options for spawning a subagent process. */
 export interface SpawnOptions {
   id: string;
@@ -55,6 +65,12 @@ export interface SpawnOptions {
   continueSession?: boolean;
   sessionDir?: string;
   source?: string;
+  /**
+   * Callback invoked when the subagent process exits.
+   * Errors thrown inside the callback are silently caught to avoid
+   * crashing the process close handler.
+   */
+  onComplete?: (info: SpawnCompletionInfo) => void;
 }
 
 /**
@@ -261,6 +277,22 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
         // Ignore cleanup errors
       }
     }
+
+    // Invoke completion callback (if provided)
+    if (opts.onComplete) {
+      try {
+        opts.onComplete({
+          id: state.id,
+          agent: state.agent,
+          status: state.status as "completed" | "failed",
+          output: state.output,
+          elapsed: state.completedAt - state.createdAt,
+          exitCode: state.exitCode,
+        });
+      } catch {
+        // Never let callback errors crash the process handler
+      }
+    }
   });
 
   proc.on("error", () => {
@@ -268,6 +300,22 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
     state.status = "failed";
     state.completedAt = Date.now();
     state.process = undefined;
+
+    // Invoke completion callback on error (if provided)
+    if (opts.onComplete) {
+      try {
+        opts.onComplete({
+          id: state.id,
+          agent: state.agent,
+          status: "failed",
+          output: state.output,
+          elapsed: (state.completedAt ?? Date.now()) - state.createdAt,
+          exitCode: state.exitCode,
+        });
+      } catch {
+        // Never let callback errors crash the process handler
+      }
+    }
   });
 
   return state;
