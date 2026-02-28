@@ -1074,3 +1074,159 @@ describe("widget-renderers", () => {
     expect(text).toContain("security-auditor");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Spawn args: --no-extensions flag
+// ---------------------------------------------------------------------------
+
+describe("spawn.ts --no-extensions flag", () => {
+  test("spawnPiSubprocess includes --no-extensions in args", async () => {
+    // We cannot easily intercept the args passed to spawn() without mocking,
+    // so we validate the source code contains the flag.
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const spawnSource = readFileSync(
+      join(
+        process.cwd(),
+        "src",
+        "hooks",
+        "pi-extensions",
+        "__helpers",
+        "spawn.ts",
+      ),
+      "utf-8",
+    );
+
+    // The args array must include "--no-extensions"
+    expect(spawnSource).toContain('"--no-extensions"');
+
+    // Verify it's in the args array construction, not in a comment
+    const argsLine = spawnSource
+      .split("\n")
+      .find(
+        (line) => line.includes("--no-extensions") && line.includes("args"),
+      );
+    expect(argsLine).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sendMessage auto-delivery: luca-subagents
+// ---------------------------------------------------------------------------
+
+describe("sendMessage auto-delivery in luca-subagents", () => {
+  test("luca_subagent_create passes onComplete to spawnPiSubprocess", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-subagents.ts"),
+      "utf-8",
+    );
+
+    // Verify onComplete callback is wired in luca_subagent_create
+    expect(source).toContain("onComplete:");
+    expect(source).toContain("pi.sendMessage(");
+    expect(source).toContain('deliverAs: "followUp"');
+    expect(source).toContain('"subagent-result"');
+  });
+
+  test("sendMessage uses deliverAs followUp (not inline)", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-subagents.ts"),
+      "utf-8",
+    );
+
+    // Count sendMessage calls — all must use deliverAs: "followUp"
+    const sendMessageCalls = source.match(/pi\.sendMessage\(/g) ?? [];
+    const followUpCalls = source.match(/deliverAs:\s*"followUp"/g) ?? [];
+
+    expect(sendMessageCalls.length).toBeGreaterThan(0);
+    expect(followUpCalls.length).toBe(sendMessageCalls.length);
+  });
+
+  test("luca_subagent_continue also passes onComplete", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-subagents.ts"),
+      "utf-8",
+    );
+
+    // Both create and continue should have onComplete
+    const onCompleteMatches = source.match(/onComplete:/g) ?? [];
+    expect(onCompleteMatches.length).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sendMessage auto-delivery: luca-teams
+// ---------------------------------------------------------------------------
+
+describe("sendMessage auto-delivery in luca-teams", () => {
+  test("dispatch_team background mode passes onComplete", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(process.cwd(), "src", "hooks", "pi-extensions", "luca-teams.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("onComplete:");
+    expect(source).toContain("pi.sendMessage(");
+    expect(source).toContain('deliverAs: "followUp"');
+    expect(source).toContain('"team-result"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sendMessage auto-delivery: luca-purpose-gating
+// ---------------------------------------------------------------------------
+
+describe("sendMessage auto-delivery in luca-purpose-gating", () => {
+  test("trigger_deferred auto_spawn passes onComplete", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        "src",
+        "hooks",
+        "pi-extensions",
+        "luca-purpose-gating.ts",
+      ),
+      "utf-8",
+    );
+
+    expect(source).toContain("onComplete:");
+    expect(source).toContain("pi.sendMessage(");
+    expect(source).toContain('deliverAs: "followUp"');
+    expect(source).toContain('"background-result"');
+  });
+
+  test("all sendMessage calls use deliverAs followUp", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+
+    const files = [
+      "luca-subagents.ts",
+      "luca-teams.ts",
+      "luca-purpose-gating.ts",
+    ];
+
+    for (const file of files) {
+      const source = readFileSync(
+        join(process.cwd(), "src", "hooks", "pi-extensions", file),
+        "utf-8",
+      );
+
+      const sendMessageCalls = source.match(/pi\.sendMessage\(/g) ?? [];
+      const followUpCalls = source.match(/deliverAs:\s*"followUp"/g) ?? [];
+
+      if (sendMessageCalls.length > 0) {
+        expect(followUpCalls.length).toBe(sendMessageCalls.length);
+      }
+    }
+  });
+});
