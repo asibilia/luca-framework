@@ -26,6 +26,9 @@ const luExecutorConfig: AgentConfig = {
       default_model: "sonnet",
       complexity_overrides: { CRITICAL: "opus" },
     },
+    background_spawnable: false,
+    purpose: "executor",
+    allowed_contexts: ["execution", "implementation", "coding"],
   },
   sections: [
     {

@@ -21,6 +21,9 @@ const luResearchSynthesizerConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "synthesizer",
+    allowed_contexts: ["synthesis", "learning", "summarization"],
   },
   sections: [
     {
@@ -290,4 +293,6 @@ Quality indicators:
   ],
 };
 
-export const luResearchSynthesizerAgent = createAgent(luResearchSynthesizerConfig);
+export const luResearchSynthesizerAgent = createAgent(
+  luResearchSynthesizerConfig,
+);

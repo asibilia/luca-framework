@@ -23,6 +23,9 @@ const luPmPlannerConfig: AgentConfig = {
       promotable_to: "T2",
       isolation: "warm",
     },
+    background_spawnable: false,
+    purpose: "planner",
+    allowed_contexts: ["planning", "roadmap", "estimation"],
   },
   sections: [
     {

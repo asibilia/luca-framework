@@ -6,6 +6,12 @@ tools:
   - Glob
   - Grep
   - WebFetch
+background_spawnable: false
+purpose: planner
+allowed_contexts:
+  - planning
+  - roadmap
+  - estimation
 ---
 
 # lu-pm-planner

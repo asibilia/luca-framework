@@ -165,6 +165,9 @@ export default function lucaState(pi: any) {
     },
   });
 
+  /** Session turn counter, incremented on turn_start. */
+  let turnCount = 0;
+
   /**
    * Build the state status string from current STATE.md and .planning/ files.
    *
@@ -209,7 +212,12 @@ export default function lucaState(pi: any) {
     const w = workingExists ? fmt.success("W") : fmt.dim("W");
     const memorySegment = `${b} ${m} ${w}`;
 
-    return `${phaseSegment}${SEP}${complexitySegment}${SEP}${memorySegment}`;
+    // Turn counter segment
+    const turnSegment = turnCount > 0 ? fmt.dim(`turn ${turnCount}`) : "";
+
+    const segments = [phaseSegment, complexitySegment, memorySegment];
+    if (turnSegment) segments.push(turnSegment);
+    return segments.join(SEP);
   }
 
   // Show consolidated state in footer on session start
@@ -236,6 +244,13 @@ export default function lucaState(pi: any) {
   pi.on("tool_execution_end", async (event: any, ctx: any) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_") || !ctx?.ui?.setStatus) return;
+    ctx.ui.setStatus("luca-state", buildStateStatus(ctx));
+  });
+
+  // Increment turn counter and refresh footer
+  pi.on("turn_start", async (_event: any, ctx: any) => {
+    turnCount++;
+    if (!ctx?.ui?.setStatus) return;
     ctx.ui.setStatus("luca-state", buildStateStatus(ctx));
   });
 }

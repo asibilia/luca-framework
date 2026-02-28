@@ -14,51 +14,23 @@
  * Source: src/hooks/pi-extensions/luca-subagents.ts
  * Deployed to: .pi/extensions/luca-subagents.ts
  */
-import { spawn, type ChildProcess } from "child_process";
-import { existsSync, readFileSync, mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
-import { tmpdir } from "os";
-import { createRegistry } from "./__helpers/registry";
+
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
+import {
+  readAgentDef,
+  cleanupSessionDir,
+  spawnPiSubprocess,
+} from "./__helpers/spawn";
+import {
+  subagentRegistry,
+  nextSubagentId,
+  resetSubagentRegistry,
+} from "./__helpers/subagent-registry";
 
-/** Maximum output characters retained per subagent. */
-const MAX_OUTPUT_CHARS = 8192;
-
-/** Maximum concurrent subagents. */
-const MAX_SUBAGENTS = 8;
-
-/** Subagent status lifecycle. */
-type SubagentStatus = "running" | "completed" | "failed" | "aborted";
-
-/** Tracked state for a running or completed subagent. */
-interface SubagentState {
-  id: string;
-  agent: string;
-  task: string;
-  status: SubagentStatus;
-  /** Captured output (last MAX_OUTPUT_CHARS) */
-  output: string;
-  /** Captured stderr */
-  stderr: string;
-  /** Process exit code (-1 while running) */
-  exitCode: number;
-  /** Accumulated usage stats */
-  usage: {
-    turns: number;
-    inputTokens: number;
-    outputTokens: number;
-    cost: number;
-  };
-  /** Model used by subagent */
-  model: string | undefined;
-  /** Timestamp when created */
-  createdAt: number;
-  /** Timestamp when completed */
-  completedAt: number | undefined;
-  /** Reference to the child process (not serialized) */
-  process: ChildProcess | undefined;
-}
+// MAX_SUBAGENTS limit is enforced globally in __helpers/spawn.ts
 
 /**
  * Pi extension: Background subagent spawning and management.
@@ -67,169 +39,14 @@ interface SubagentState {
  * removing background subagent processes. Each subagent runs
  * as an isolated `pi` subprocess with JSON mode output capture.
  *
+ * Uses the shared subagent registry from __helpers/subagent-registry.ts
+ * so that subagents spawned by other extensions (purpose-gating, teams)
+ * are visible in luca_subagent_list.
+ *
  * @param pi - Pi ExtensionAPI instance
  */
 export default function lucaSubagents(pi: any) {
   const cwd = process.cwd();
-  const subagents = createRegistry<SubagentState>("subagents");
-  let idCounter = 0;
-
-  /**
-   * Write a system prompt to a temp file for --append-system-prompt.
-   * Returns the file path. Caller must clean up.
-   */
-  function writePromptFile(agentName: string, prompt: string): string {
-    const dir = mkdtempSync(join(tmpdir(), "luca-subagent-"));
-    const safeName = sanitizeName(agentName);
-    const filePath = join(dir, `prompt-${safeName}.md`);
-    writeFileSync(filePath, prompt, { encoding: "utf-8", mode: 0o600 });
-    return filePath;
-  }
-
-  /**
-   * Read agent definition from .pi/agents/ directory.
-   */
-  function readAgentDef(agentName: string): {
-    systemPrompt: string;
-    model?: string;
-    tools?: string[];
-  } | null {
-    const safeName = sanitizeName(agentName);
-    const filePath = join(cwd, ".pi", "agents", `${safeName}.md`);
-    if (!existsSync(filePath)) return null;
-
-    const content = readFileSync(filePath, "utf-8");
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch?.[1]) return { systemPrompt: content };
-
-    const fm = fmMatch[1];
-    const model = fm.match(/^model:\s*(.+)$/m)?.[1]?.trim();
-    const toolsMatch = fm.match(/^tools:\s*(.+)$/m)?.[1]?.trim();
-    const tools = toolsMatch ? toolsMatch.split(",").map((t) => t.trim()) : undefined;
-    const bodyStart = content.indexOf("---", 4);
-    const systemPrompt = bodyStart > 0 ? content.slice(bodyStart + 3).trim() : "";
-
-    return { systemPrompt, model, tools };
-  }
-
-  /**
-   * Spawn a subagent process and track its lifecycle.
-   */
-  function spawnSubagent(
-    id: string,
-    agentName: string,
-    task: string,
-    model?: string,
-    tools?: string[],
-    systemPrompt?: string,
-  ): SubagentState {
-    const state: SubagentState = {
-      id,
-      agent: agentName,
-      task,
-      status: "running",
-      output: "",
-      stderr: "",
-      exitCode: -1,
-      usage: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0 },
-      model,
-      createdAt: Date.now(),
-      completedAt: undefined,
-      process: undefined,
-    };
-
-    const args: string[] = ["--mode", "json", "-p", "--no-session"];
-    if (model) args.push("--model", model);
-    if (tools && tools.length > 0) args.push("--tools", tools.join(","));
-
-    let promptFile: string | undefined;
-    if (systemPrompt) {
-      promptFile = writePromptFile(agentName, systemPrompt);
-      args.push("--append-system-prompt", promptFile);
-    }
-
-    args.push(`Task: ${task}`);
-
-    const proc = spawn("pi", args, {
-      cwd,
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    state.process = proc;
-
-    let buffer = "";
-
-    const processLine = (line: string) => {
-      if (!line.trim()) return;
-      try {
-        const event = JSON.parse(line);
-        if (event.type === "message_end" && event.message) {
-          const msg = event.message;
-          if (msg.role === "assistant") {
-            state.usage.turns++;
-            if (msg.usage) {
-              state.usage.inputTokens += msg.usage.input ?? 0;
-              state.usage.outputTokens += msg.usage.output ?? 0;
-              state.usage.cost += msg.usage.cost?.total ?? 0;
-            }
-            if (!state.model && msg.model) state.model = msg.model;
-
-            // Capture final text output
-            for (const part of msg.content ?? []) {
-              if (part.type === "text") {
-                state.output = part.text.slice(-MAX_OUTPUT_CHARS);
-              }
-            }
-          }
-        }
-      } catch {
-        // Non-JSON line, ignore
-      }
-    };
-
-    proc.stdout?.on("data", (data: Buffer) => {
-      buffer += data.toString();
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) processLine(line);
-    });
-
-    proc.stderr?.on("data", (data: Buffer) => {
-      state.stderr += data.toString();
-      // Truncate stderr
-      if (state.stderr.length > MAX_OUTPUT_CHARS) {
-        state.stderr = state.stderr.slice(-MAX_OUTPUT_CHARS);
-      }
-    });
-
-    proc.on("close", (code) => {
-      if (buffer.trim()) processLine(buffer);
-      state.exitCode = code ?? 1;
-      state.status = code === 0 ? "completed" : "failed";
-      state.completedAt = Date.now();
-      state.process = undefined;
-
-      // Clean up temp prompt file
-      if (promptFile) {
-        try {
-          unlinkSync(promptFile);
-          rmdirSync(join(promptFile, ".."));
-        } catch {
-          // Ignore cleanup errors
-        }
-      }
-    });
-
-    proc.on("error", () => {
-      state.exitCode = 1;
-      state.status = "failed";
-      state.completedAt = Date.now();
-      state.process = undefined;
-    });
-
-    return state;
-  }
 
   // ─── Tool: Create Subagent ─────────────────────────────
 
@@ -244,7 +61,8 @@ export default function lucaSubagents(pi: any) {
       properties: {
         agent: {
           type: "string",
-          description: "Agent name from .pi/agents/ (e.g., 'lu-executor', 'scout')",
+          description:
+            "Agent name from .pi/agents/ (e.g., 'lu-executor', 'scout')",
         },
         task: {
           type: "string",
@@ -252,7 +70,8 @@ export default function lucaSubagents(pi: any) {
         },
         model: {
           type: "string",
-          description: "Override model for this subagent (optional, uses agent default)",
+          description:
+            "Override model for this subagent (optional, uses agent default)",
         },
       },
       required: ["agent", "task"],
@@ -261,39 +80,38 @@ export default function lucaSubagents(pi: any) {
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
     ) {
-      // Check max subagents
-      const running = subagents.values().filter((s) => s.status === "running");
-      if (running.length >= MAX_SUBAGENTS) {
-        return createTextResponse(
-          `Maximum ${MAX_SUBAGENTS} concurrent subagents reached. Remove or wait for existing ones to complete.`,
-        );
-      }
-
       // Read agent definition
-      const agentDef = readAgentDef(params.agent);
+      const agentDef = readAgentDef(cwd, params.agent);
       if (!agentDef) {
         const agentsDir = join(cwd, ".pi", "agents");
         return createTextResponse(
           `Agent "${params.agent}" not found in ${agentsDir}/. ` +
-          `Available agents can be listed with luca_list_roles.`,
+            `Available agents can be listed with luca_list_roles.`,
         );
       }
 
       // Generate unique ID
-      idCounter++;
-      const id = `sub-${idCounter}-${sanitizeName(params.agent)}`;
+      const id = nextSubagentId("sub", sanitizeName(params.agent));
 
-      // Spawn the subagent
-      const state = spawnSubagent(
-        id,
-        params.agent,
-        params.task,
-        params.model ?? agentDef.model,
-        agentDef.tools,
-        agentDef.systemPrompt,
-      );
+      // Spawn the subagent (limit enforced globally in spawn.ts)
+      let state;
+      try {
+        state = spawnPiSubprocess({
+          id,
+          agentName: params.agent,
+          task: params.task,
+          cwd,
+          model: params.model ?? agentDef.model,
+          tools: agentDef.tools,
+          systemPrompt: agentDef.systemPrompt,
+          source: "luca-subagents",
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return createTextResponse(msg);
+      }
 
-      subagents.set(id, state);
+      subagentRegistry.set(id, state);
 
       return createJsonResponse({
         id,
@@ -309,7 +127,8 @@ export default function lucaSubagents(pi: any) {
   pi.registerTool({
     name: "luca_subagent_list",
     label: "List Subagents",
-    description: "List all tracked subagent processes with their current status.",
+    description:
+      "List all tracked subagent processes with their current status.",
     parameters: {
       type: "object",
       properties: {
@@ -320,11 +139,8 @@ export default function lucaSubagents(pi: any) {
         },
       },
     },
-    async execute(
-      _toolCallId: string,
-      params: { status?: string },
-    ) {
-      let agents = subagents.values();
+    async execute(_toolCallId: string, params: { status?: string }) {
+      let agents = subagentRegistry.values();
       if (params.status) {
         agents = agents.filter((s) => s.status === params.status);
       }
@@ -337,10 +153,9 @@ export default function lucaSubagents(pi: any) {
         output_preview: s.output ? s.output.slice(0, 200) : null,
         usage: s.usage,
         model: s.model,
+        source: s.source ?? "luca-subagents",
         created: new Date(s.createdAt).toISOString(),
-        completed: s.completedAt
-          ? new Date(s.completedAt).toISOString()
-          : null,
+        completed: s.completedAt ? new Date(s.completedAt).toISOString() : null,
         duration_ms: s.completedAt
           ? s.completedAt - s.createdAt
           : Date.now() - s.createdAt,
@@ -362,13 +177,14 @@ export default function lucaSubagents(pi: any) {
       properties: {
         id: {
           type: "string",
-          description: "Subagent ID (from luca_subagent_create or luca_subagent_list)",
+          description:
+            "Subagent ID (from luca_subagent_create or luca_subagent_list)",
         },
       },
       required: ["id"],
     },
     async execute(_toolCallId: string, params: { id: string }) {
-      const state = subagents.get(params.id);
+      const state = subagentRegistry.get(params.id);
       if (!state) {
         return createTextResponse(
           `Subagent "${params.id}" not found. Use luca_subagent_list to see available subagents.`,
@@ -414,11 +230,9 @@ export default function lucaSubagents(pi: any) {
       required: ["id"],
     },
     async execute(_toolCallId: string, params: { id: string }) {
-      const state = subagents.get(params.id);
+      const state = subagentRegistry.get(params.id);
       if (!state) {
-        return createTextResponse(
-          `Subagent "${params.id}" not found.`,
-        );
+        return createTextResponse(`Subagent "${params.id}" not found.`);
       }
 
       // Kill if still running
@@ -433,12 +247,113 @@ export default function lucaSubagents(pi: any) {
         }
       }
 
-      subagents.delete(params.id);
+      // Clean up session directory
+      if (state.sessionDir) {
+        cleanupSessionDir(state.sessionDir);
+      }
+
+      subagentRegistry.delete(params.id);
 
       return createTextResponse(
         `Subagent "${params.id}" (${state.agent}) removed. ` +
-        `Final status: ${state.status}.`,
+          `Final status: ${state.status}.`,
       );
+    },
+  });
+
+  // ─── Tool: Continue Subagent ────────────────────────────
+  //
+  // Usage flow:
+  //   1. luca_subagent_create → spawns agent, returns { id }
+  //   2. luca_subagent_result → poll until status != "running"
+  //   3. luca_subagent_continue → send follow-up message, agent resumes
+  //   4. luca_subagent_result → poll for continued output
+  //   5. luca_subagent_remove → clean up when done
+  //
+
+  pi.registerTool({
+    name: "luca_subagent_continue",
+    label: "Continue Subagent",
+    description:
+      "Send a follow-up message to a completed subagent, resuming its session. " +
+      "The subagent must have completed (not be currently running). " +
+      "Returns a new subagent entry with the continued conversation.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description:
+            "Subagent ID to continue (must be completed/failed, not running)",
+        },
+        message: {
+          type: "string",
+          description: "Follow-up message to send to the subagent",
+        },
+      },
+      required: ["id", "message"],
+    },
+    async execute(
+      _toolCallId: string,
+      params: { id: string; message: string },
+    ) {
+      const existing = subagentRegistry.get(params.id);
+      if (!existing) {
+        return createTextResponse(
+          `Subagent "${params.id}" not found. Use luca_subagent_list to see available subagents.`,
+        );
+      }
+
+      if (existing.status === "running") {
+        return createTextResponse(
+          `Subagent "${params.id}" is still running. Wait for it to complete before continuing.`,
+        );
+      }
+
+      if (!existing.sessionDir || !existsSync(existing.sessionDir)) {
+        return createTextResponse(
+          `Subagent "${params.id}" has no session to continue (session directory missing).`,
+        );
+      }
+
+      // Read agent definition for model/tools
+      const agentDef = readAgentDef(cwd, existing.agent);
+
+      // Spawn continued session (limit + path validation enforced in spawn.ts)
+      let continued;
+      try {
+        continued = spawnPiSubprocess({
+          id: existing.id,
+          agentName: existing.agent,
+          task: params.message,
+          cwd,
+          model: existing.model ?? agentDef?.model,
+          tools: agentDef?.tools,
+          continueSession: true,
+          sessionDir: existing.sessionDir,
+          source: "luca-subagents",
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return createTextResponse(msg);
+      }
+
+      // Preserve cumulative usage from prior runs
+      continued.usage.turns += existing.usage.turns;
+      continued.usage.inputTokens += existing.usage.inputTokens;
+      continued.usage.outputTokens += existing.usage.outputTokens;
+      continued.usage.cost += existing.usage.cost;
+      continued.createdAt = existing.createdAt;
+
+      subagentRegistry.set(existing.id, continued);
+
+      return createJsonResponse({
+        id: existing.id,
+        agent: existing.agent,
+        status: "running",
+        continued_from: existing.status,
+        message: `Subagent "${existing.id}" continued with new message. Use luca_subagent_result to check output.`,
+      });
     },
   });
 
@@ -446,12 +361,14 @@ export default function lucaSubagents(pi: any) {
 
   pi.on("session_start", async () => {
     // Clean up any stale subagents from previous sessions
-    for (const state of subagents.values()) {
+    for (const state of subagentRegistry.values()) {
       if (state.process && state.status === "running") {
         state.process.kill("SIGTERM");
       }
+      if (state.sessionDir) {
+        cleanupSessionDir(state.sessionDir);
+      }
     }
-    subagents.clear();
-    idCounter = 0;
+    resetSubagentRegistry();
   });
 }

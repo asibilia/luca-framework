@@ -20,6 +20,9 @@ const codeSimplifierConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "cold",
     },
+    background_spawnable: false,
+    purpose: "reviewer",
+    allowed_contexts: ["review", "audit", "assessment"],
   },
   sections: [
     {

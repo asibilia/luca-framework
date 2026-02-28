@@ -20,6 +20,9 @@ const codeArchitectConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "cold",
     },
+    background_spawnable: false,
+    purpose: "reviewer",
+    allowed_contexts: ["review", "audit", "assessment"],
   },
   sections: [
     {

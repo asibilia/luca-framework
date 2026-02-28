@@ -9,12 +9,18 @@
  * Source: src/hooks/pi-extensions/luca-purpose-gating.ts
  * Deployed to: .pi/extensions/luca-purpose-gating.ts
  */
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
+import { parseFrontmatter } from "./__helpers/frontmatter";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
-import { normalizeContext } from "./__helpers/sanitize";
+import { normalizeContext, sanitizeName } from "./__helpers/sanitize";
+import { readAgentDef, spawnPiSubprocess } from "./__helpers/spawn";
+import {
+  subagentRegistry,
+  nextSubagentId,
+} from "./__helpers/subagent-registry";
 
 /** Purpose categories for agent classification. */
 type PurposeCategory =
@@ -98,42 +104,57 @@ export default function lucaPurposeGating(pi: any) {
   }
 
   /**
-   * Auto-discover agents and infer purposes from .pi/agents/.
+   * Auto-discover agents from .pi/agents/ using frontmatter metadata.
    *
-   * Scans the agents directory for .md files, infers each agent's
-   * purpose category from its name, and registers it with appropriate
-   * allowed contexts and background spawn capability. Skips agents
-   * that are already registered to avoid overwriting manual registrations.
+   * Reads each agent's compiled .md file, parses YAML frontmatter for
+   * explicit `purpose`, `background_spawnable`, and `allowed_contexts`
+   * fields. Falls back to name-based inference when metadata is absent.
+   * Skips agents that are already registered to avoid overwriting
+   * manual registrations.
    */
   function autoDiscoverAgents(): void {
     if (!existsSync(agentsDir)) return;
+
+    // Fallback context map for name-based inference
+    const contextMap: Record<PurposeCategory, string[]> = {
+      researcher: ["research", "discovery", "analysis"],
+      planner: ["planning", "roadmap", "estimation"],
+      executor: ["execution", "implementation", "coding"],
+      verifier: ["verification", "testing", "validation"],
+      reviewer: ["review", "audit", "assessment"],
+      synthesizer: ["synthesis", "learning", "summarization"],
+      auditor: ["audit", "security", "performance"],
+      general: ["any"],
+    };
 
     const files = readdirSync(agentsDir).filter((f) => f.endsWith(".md"));
     for (const file of files) {
       const agentName = file.replace(".md", "").trim();
       if (purposes.has(agentName)) continue;
 
-      const purpose = inferPurpose(agentName);
+      // Try to read frontmatter metadata
+      const filePath = join(agentsDir, file);
+      let fm: ReturnType<typeof parseFrontmatter> = null;
+      try {
+        const content = readFileSync(filePath, "utf-8");
+        fm = parseFrontmatter(content);
+      } catch {
+        // Fall through to inference
+      }
 
-      // Infer allowed contexts from purpose
-      const contextMap: Record<PurposeCategory, string[]> = {
-        researcher: ["research", "discovery", "analysis"],
-        planner: ["planning", "roadmap", "estimation"],
-        executor: ["execution", "implementation", "coding"],
-        verifier: ["verification", "testing", "validation"],
-        reviewer: ["review", "audit", "assessment"],
-        synthesizer: ["synthesis", "learning", "summarization"],
-        auditor: ["audit", "security", "performance"],
-        general: ["any"],
-      };
+      // Prefer explicit metadata, fall back to name-based inference
+      const purpose: PurposeCategory =
+        (fm?.purpose as PurposeCategory) ?? inferPurpose(agentName);
+      const allowed_contexts = fm?.allowed_contexts ?? contextMap[purpose];
+      const background_spawnable =
+        fm?.background_spawnable ??
+        ["researcher", "auditor", "synthesizer"].includes(purpose);
 
       purposes.set(agentName, {
         agent: agentName,
         purpose,
-        allowed_contexts: contextMap[purpose],
-        background_spawnable: ["researcher", "auditor", "synthesizer"].includes(
-          purpose,
-        ),
+        allowed_contexts,
+        background_spawnable,
       });
     }
   }
@@ -425,7 +446,9 @@ export default function lucaPurposeGating(pi: any) {
     name: "luca_trigger_deferred",
     label: "Trigger Deferred Tasks",
     description:
-      "Fire a trigger condition to activate any deferred background tasks waiting on it. Returns the tasks that were triggered.",
+      "Fire a trigger condition to activate any deferred background tasks waiting on it. " +
+      "When auto_spawn is true, spawns background subagents for each triggered task. " +
+      "Returns the tasks that were triggered.",
     parameters: {
       type: "object",
       properties: {
@@ -433,10 +456,18 @@ export default function lucaPurposeGating(pi: any) {
           type: "string",
           description: "Trigger condition to fire (e.g., 'phase_complete')",
         },
+        auto_spawn: {
+          type: "boolean",
+          description:
+            "When true, automatically spawn background subagents for each triggered task (default: false)",
+        },
       },
       required: ["trigger"],
     },
-    async execute(_toolCallId: string, params: { trigger: string }) {
+    async execute(
+      _toolCallId: string,
+      params: { trigger: string; auto_spawn?: boolean },
+    ) {
       const triggered: DeferredTask[] = [];
 
       for (const task of deferredTasks.values()) {
@@ -447,15 +478,55 @@ export default function lucaPurposeGating(pi: any) {
         }
       }
 
+      // Auto-spawn subagents for triggered tasks
+      const spawned: Array<{
+        task_id: string;
+        subagent_id: string;
+        agent: string;
+      }> = [];
+      if (params.auto_spawn && triggered.length > 0) {
+        for (const task of triggered) {
+          const agentDef = readAgentDef(cwd, task.agent);
+          if (!agentDef) continue;
+
+          const subId = nextSubagentId("bg", sanitizeName(task.agent));
+          const state = spawnPiSubprocess({
+            id: subId,
+            agentName: task.agent,
+            task: task.context,
+            cwd,
+            model: agentDef.model,
+            tools: agentDef.tools,
+            systemPrompt: agentDef.systemPrompt,
+            source: "luca-purpose-gating",
+          });
+
+          subagentRegistry.set(subId, state);
+          spawned.push({
+            task_id: task.id,
+            subagent_id: subId,
+            agent: task.agent,
+          });
+        }
+      }
+
       return createJsonResponse({
         trigger: params.trigger,
         triggered_count: triggered.length,
-        tasks: triggered.map((t) => ({
-          task_id: t.id,
-          agent: t.agent,
-          context: t.context.slice(0, 500),
-          instructions: `Spawn agent "${t.agent}" with context: ${t.context.slice(0, 200)}`,
-        })),
+        auto_spawn: params.auto_spawn ?? false,
+        spawned_count: spawned.length,
+        tasks: triggered.map((t) => {
+          const spawnInfo = spawned.find((s) => s.task_id === t.id);
+          return {
+            task_id: t.id,
+            agent: t.agent,
+            context: t.context.slice(0, 500),
+            subagent_id: spawnInfo?.subagent_id ?? null,
+            instructions: spawnInfo
+              ? `Subagent "${spawnInfo.subagent_id}" spawned. Use luca_subagent_result to check output.`
+              : `Spawn agent "${t.agent}" with context: ${t.context.slice(0, 200)}`,
+          };
+        }),
         remaining_pending: deferredTasks
           .values()
           .filter((t) => t.status === "pending").length,

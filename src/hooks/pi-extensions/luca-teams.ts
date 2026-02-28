@@ -15,6 +15,12 @@ import type { AgentFrontmatter } from "./__helpers/frontmatter";
 import { parseFrontmatter } from "./__helpers/frontmatter";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import { sanitizeName } from "./__helpers/sanitize";
+import { readAgentDef, spawnPiSubprocess } from "./__helpers/spawn";
+import {
+  subagentRegistry,
+  nextSubagentId,
+} from "./__helpers/subagent-registry";
 
 /** Team definition. */
 interface TeamDef {
@@ -189,7 +195,8 @@ export default function lucaTeams(pi: any) {
     name: "luca_dispatch_team",
     label: "Dispatch to Team",
     description:
-      "Dispatch a task to an agent team. Returns each agent's role description, tool restrictions, and persona context so the LLM can simulate multi-agent review.",
+      "Dispatch a task to an agent team. Returns each agent's role description, tool restrictions, and persona context so the LLM can simulate multi-agent review. " +
+      "When background=true, spawns each team member as a background subagent instead of returning metadata.",
     parameters: {
       type: "object",
       properties: {
@@ -201,10 +208,18 @@ export default function lucaTeams(pi: any) {
           type: "string",
           description: "Task description or context for the team",
         },
+        background: {
+          type: "boolean",
+          description:
+            "When true, spawn each team member as a background subagent (default: false)",
+        },
       },
       required: ["team", "task"],
     },
-    async execute(_toolCallId: string, params: { team: string; task: string }) {
+    async execute(
+      _toolCallId: string,
+      params: { team: string; task: string; background?: boolean },
+    ) {
       const teamDef = teams.get(params.team);
       if (!teamDef) {
         const available = teams.keys().join(", ");
@@ -213,7 +228,57 @@ export default function lucaTeams(pi: any) {
         );
       }
 
-      // Build dispatch context for each agent
+      // Background mode: spawn each agent as a subagent
+      if (params.background) {
+        const spawned: Array<{
+          agent: string;
+          subagent_id: string;
+          status: string;
+        }> = [];
+
+        for (const agentName of teamDef.agents) {
+          const agentDef = readAgentDef(cwd, agentName);
+          if (!agentDef) {
+            spawned.push({
+              agent: agentName,
+              subagent_id: "",
+              status: "not_found",
+            });
+            continue;
+          }
+
+          const subId = nextSubagentId("team", sanitizeName(agentName));
+          const state = spawnPiSubprocess({
+            id: subId,
+            agentName,
+            task: params.task,
+            cwd,
+            model: agentDef.model,
+            tools: agentDef.tools,
+            systemPrompt: agentDef.systemPrompt,
+            source: "luca-teams",
+          });
+
+          subagentRegistry.set(subId, state);
+          spawned.push({
+            agent: agentName,
+            subagent_id: subId,
+            status: "running",
+          });
+        }
+
+        return createJsonResponse({
+          team: teamDef.name,
+          task: params.task,
+          background: true,
+          spawned_count: spawned.filter((s) => s.status === "running").length,
+          agents: spawned,
+          instructions:
+            "Team members spawned as background subagents. Use luca_subagent_list to monitor progress and luca_subagent_result to check individual outputs.",
+        });
+      }
+
+      // Standard mode: return agent metadata for LLM simulation
       const dispatches: Array<{
         agent: string;
         description: string;

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v2.2.0 — Pi Platform Maturity (Phase 70)
 
 ---
 
@@ -26,7 +26,7 @@
 
 **Depends on:** Phase 67 (extensions must use shared helpers before validation)
 
-- [x] Plan 68-A: Extension loading smoke tests, __helpers fix, tool response validation
+- [x] Plan 68-A: Extension loading smoke tests, \_\_helpers fix, tool response validation
 - [x] Plan 68-B: Permanent E2E test suite (33 tests) for Pi extensions
 
 ### Phase 69 — Background Subagent Spawning
@@ -37,6 +37,16 @@
 
 - [x] Plan 69-A: Implement luca-subagents.ts (create, list, result, remove — 4 tools)
 - [x] Plan 69-B: Teams integration, session management, E2E tests
+
+### Phase 70 — Pi API Learnings Integration
+
+**Goal:** Incorporate Pi API learnings from reference repo analysis. Add subagent auto-delivery (`sendMessage`), `--no-extensions` flag, slash commands, toast notifications, confirm dialogs, auto-inject cognitive context, custom tool rendering, and other Pi-native API improvements.
+
+**Depends on:** Phase 69 (subagent infrastructure must be complete before enhancing it)
+
+- [ ] Plan 70-A: Critical fixes + core infrastructure (--no-extensions, onComplete callback, sendMessage)
+- [ ] Plan 70-B: Slash commands, notifications, confirmations, cognitive injection, abort
+- [ ] Plan 70-C: Tool rendering, session resilience, rich footer, audit logging
 
 ---
 

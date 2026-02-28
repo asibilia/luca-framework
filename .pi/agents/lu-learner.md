@@ -6,6 +6,12 @@ tools:
   - Write
   - Glob
   - Grep
+background_spawnable: true
+purpose: synthesizer
+allowed_contexts:
+  - synthesis
+  - learning
+  - summarization
 ---
 
 # lu-learner

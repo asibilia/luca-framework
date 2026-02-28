@@ -24,6 +24,9 @@ const luRouterConfig: AgentConfig = {
     model_routing: {
       default_model: "haiku",
     },
+    background_spawnable: false,
+    purpose: "general",
+    allowed_contexts: ["any"],
   },
   sections: [
     {

@@ -6,6 +6,10 @@ tools:
   - Glob
   - Grep
 model: haiku
+background_spawnable: false
+purpose: general
+allowed_contexts:
+  - any
 ---
 
 # lu-router

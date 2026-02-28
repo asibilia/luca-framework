@@ -7,6 +7,12 @@ tools:
   - Grep
   - Glob
   - Write
+background_spawnable: true
+purpose: researcher
+allowed_contexts:
+  - research
+  - discovery
+  - analysis
 ---
 
 # lu-codebase-mapper

@@ -7,6 +7,12 @@ tools:
   - Bash
   - Grep
   - Glob
+background_spawnable: true
+purpose: verifier
+allowed_contexts:
+  - verification
+  - testing
+  - validation
 ---
 
 # lu-test-writer

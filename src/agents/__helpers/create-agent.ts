@@ -35,6 +35,16 @@ function buildPiAgentFrontmatter(
     piFm.model = frontmatter.model_routing.default_model;
   }
 
+  if (frontmatter.background_spawnable != null) {
+    piFm.background_spawnable = frontmatter.background_spawnable;
+  }
+  if (frontmatter.purpose) {
+    piFm.purpose = frontmatter.purpose;
+  }
+  if (frontmatter.allowed_contexts && frontmatter.allowed_contexts.length > 0) {
+    piFm.allowed_contexts = frontmatter.allowed_contexts;
+  }
+
   return piFm;
 }
 

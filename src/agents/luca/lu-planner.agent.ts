@@ -26,6 +26,9 @@ const luPlannerConfig: AgentConfig = {
       default_model: "sonnet",
       complexity_overrides: { COMPLEX: "opus", CRITICAL: "opus" },
     },
+    background_spawnable: false,
+    purpose: "planner",
+    allowed_contexts: ["planning", "roadmap", "estimation"],
   },
   sections: [
     {

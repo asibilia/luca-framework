@@ -63,6 +63,7 @@ export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-safety-rules.ts",
   "luca-purpose-gating.ts",
   "luca-subagents.ts",
+  "luca-widgets.ts",
 ] as const;
 
 /**
@@ -79,6 +80,9 @@ export const PI_HELPER_FILES: readonly string[] = [
   "exec.ts",
   "registry.ts",
   "status.ts",
+  "widget-renderers.ts",
+  "spawn.ts",
+  "subagent-registry.ts",
 ] as const;
 // Note: index.ts barrel is NOT included — Pi auto-discovers
 // .pi/extensions/*/index.ts as extensions. Extensions import

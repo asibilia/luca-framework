@@ -6,6 +6,12 @@ tools:
   - Grep
   - Glob
   - Bash
+background_spawnable: true
+purpose: auditor
+allowed_contexts:
+  - audit
+  - security
+  - review
 ---
 
 # performance-auditor

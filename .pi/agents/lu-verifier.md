@@ -7,6 +7,12 @@ tools:
   - Grep
   - Glob
 model: sonnet
+background_spawnable: true
+purpose: verifier
+allowed_contexts:
+  - verification
+  - testing
+  - validation
 ---
 
 # lu-verifier

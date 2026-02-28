@@ -25,6 +25,9 @@ const luVerifierConfig: AgentConfig = {
       default_model: "sonnet",
       complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "haiku" },
     },
+    background_spawnable: true,
+    purpose: "verifier",
+    allowed_contexts: ["verification", "testing", "validation"],
   },
   sections: [
     {

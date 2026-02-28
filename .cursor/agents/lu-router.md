@@ -18,6 +18,10 @@ context:
   isolation: none
 model_routing:
   default_model: haiku
+background_spawnable: false
+purpose: general
+allowed_contexts:
+  - any
 ---
 
 <role>

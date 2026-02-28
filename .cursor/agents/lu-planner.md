@@ -24,6 +24,12 @@ model_routing:
   complexity_overrides:
     COMPLEX: opus
     CRITICAL: opus
+background_spawnable: false
+purpose: planner
+allowed_contexts:
+  - planning
+  - roadmap
+  - estimation
 ---
 
 <role>

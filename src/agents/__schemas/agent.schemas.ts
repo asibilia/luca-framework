@@ -6,6 +6,18 @@ import { contextConfigSchema } from "~/context/__schemas/context.schemas";
 import { ModelIdSchema } from "~/complexity/__schemas/complexity.schemas";
 import { SectionSchema, type Section } from "~/shared/__helpers/format";
 
+/** Purpose categories for subagent classification and purpose gating. */
+export const PurposeCategorySchema = z.enum([
+  "researcher",
+  "planner",
+  "executor",
+  "verifier",
+  "reviewer",
+  "synthesizer",
+  "auditor",
+  "general",
+]);
+
 /** Valid cognition tier values (T0=stateless, T1=recall, T2=contextual, T3=fully-cognitive) */
 export const CognitionTierSchema = z.enum(["T0", "T1", "T2", "T3"]);
 
@@ -39,6 +51,12 @@ export const AgentFrontmatterSchema = z.object({
   context: contextConfigSchema.optional(),
   /** Optional per-agent model routing configuration. When absent, uses complexity gate default. */
   model_routing: ModelRoutingConfigSchema.optional(),
+  /** Whether this agent can be spawned as a background subagent. */
+  background_spawnable: z.boolean().optional(),
+  /** Purpose category for subagent classification and purpose gating. */
+  purpose: PurposeCategorySchema.optional(),
+  /** Execution contexts where this agent is allowed to run. */
+  allowed_contexts: z.array(z.string()).optional(),
 });
 
 /** Agent section schema — references the canonical SectionSchema from shared/format */
@@ -53,6 +71,7 @@ export const AgentConfigSchema = z.object({
 // Function validations should be handled at the factory level
 
 // Type inference from Zod schemas
+export type PurposeCategory = z.infer<typeof PurposeCategorySchema>;
 export type CognitionTier = z.infer<typeof CognitionTierSchema>;
 export type CognitionConfig = z.infer<typeof CognitionConfigSchema>;
 export type AgentFrontmatter = z.infer<typeof AgentFrontmatterSchema>;

@@ -28,8 +28,7 @@ function createMockPi() {
         if (!events.has(event)) events.set(event, []);
         events.get(event)!.push(handler);
       },
-      registerCommand: (name: string, opts: any) =>
-        commands.set(name, opts),
+      registerCommand: (name: string, opts: any) => commands.set(name, opts),
     },
     tools,
     events,
@@ -62,6 +61,8 @@ async function loadAllExtensions() {
     "luca-safety-rules.ts",
     "luca-purpose-gating.ts",
     "luca-subagents.ts",
+    "luca-work-tracking.ts",
+    "luca-widgets.ts",
     "luca-hooks.ts",
   ];
   for (const f of files) {
@@ -95,9 +96,9 @@ function expectPiResponse(result: any) {
 
 describe("Pi extension E2E: loading", () => {
   const extensionFiles = [
-    { file: "luca-state.ts", tools: 3, events: 3 },
+    { file: "luca-state.ts", tools: 3, events: 4 },
     { file: "luca-memory.ts", tools: 4, events: 1 },
-    { file: "luca-harness.ts", tools: 1, events: 1 },
+    { file: "luca-harness.ts", tools: 1, events: 0 },
     { file: "luca-complexity.ts", tools: 3, events: 0 },
     { file: "luca-roles.ts", tools: 4, events: 1 },
     { file: "luca-teams.ts", tools: 3, events: 0 },
@@ -106,7 +107,9 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-query-experts.ts", tools: 4, events: 0 },
     { file: "luca-safety-rules.ts", tools: 5, events: 1 },
     { file: "luca-purpose-gating.ts", tools: 6, events: 1 },
-    { file: "luca-subagents.ts", tools: 4, events: 1 },
+    { file: "luca-subagents.ts", tools: 5, events: 1 },
+    { file: "luca-work-tracking.ts", tools: 5, events: 2 },
+    { file: "luca-widgets.ts", tools: 0, events: 6 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
   ];
 
@@ -125,9 +128,7 @@ describe("Pi extension E2E: loading", () => {
   }
 
   test("__helpers/index.ts is NOT deployed (would be auto-discovered as extension)", () => {
-    expect(
-      existsSync(join(extensionDir, "__helpers", "index.ts")),
-    ).toBe(false);
+    expect(existsSync(join(extensionDir, "__helpers", "index.ts"))).toBe(false);
   });
 
   test("__helpers individual files ARE deployed", () => {
@@ -138,16 +139,17 @@ describe("Pi extension E2E: loading", () => {
       "registry.ts",
       "sanitize.ts",
       "status.ts",
+      "widget-renderers.ts",
+      "spawn.ts",
+      "subagent-registry.ts",
     ]) {
-      expect(
-        existsSync(join(extensionDir, "__helpers", file)),
-      ).toBe(true);
+      expect(existsSync(join(extensionDir, "__helpers", file))).toBe(true);
     }
   });
 
-  test("all extensions combined register exactly 43 tools", async () => {
+  test("all extensions combined register exactly 49 tools", async () => {
     const mock = await loadAllExtensions();
-    expect(mock.tools.size).toBe(43);
+    expect(mock.tools.size).toBe(49);
   });
 });
 
@@ -281,6 +283,39 @@ describe("Pi extension E2E: tool responses", () => {
     expectPiResponse(result);
     expect(result.content[0].text).toContain("not found");
   });
+
+  test("luca_subagent_continue returns not-found for invalid ID", async () => {
+    const result = await callTool(tools, "luca_subagent_continue", {
+      id: "nonexistent",
+      message: "continue",
+    });
+    expectPiResponse(result);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  test("luca_work_status returns tracking state", async () => {
+    const result = await callTool(tools, "luca_work_status");
+    expectPiResponse(result);
+    const data = JSON.parse(result.content[0].text);
+    expect(typeof data.tracked).toBe("boolean");
+    expect(data.mode).toBeDefined();
+    expect(data.checklist).toBeDefined();
+  });
+
+  test("luca_list_todos returns array", async () => {
+    const result = await callTool(tools, "luca_list_todos");
+    expectPiResponse(result);
+    const data = JSON.parse(result.content[0].text);
+    expect(Array.isArray(data.todos)).toBe(true);
+  });
+
+  test("luca_set_tracking_mode rejects invalid mode", async () => {
+    const result = await callTool(tools, "luca_set_tracking_mode", {
+      mode: "invalid",
+    });
+    expectPiResponse(result);
+    expect(result.content[0].text).toContain("Invalid mode");
+  });
 });
 
 // ─── Cross-Extension Integration ────────────────────────────
@@ -360,6 +395,62 @@ describe("Pi extension E2E: cross-extension integration", () => {
     const statusData = JSON.parse(status.content[0].text);
     expect(statusData.name).toBe("e2e-test-session");
     expect(statusData.findings_count).toBe(1);
+  });
+
+  test("luca_trigger_deferred with auto_spawn=false returns instructions", async () => {
+    // Register a background-spawnable agent
+    await callTool(tools, "luca_register_purpose", {
+      agent: "e2e-bg-agent",
+      purpose: "researcher",
+      allowed_contexts: "research",
+      background_spawnable: true,
+    });
+
+    // Defer a task
+    await callTool(tools, "luca_defer_task", {
+      agent: "e2e-bg-agent",
+      trigger: "e2e-test-trigger",
+      context: "Test background context",
+    });
+
+    // Trigger without auto_spawn
+    const result = await callTool(tools, "luca_trigger_deferred", {
+      trigger: "e2e-test-trigger",
+      auto_spawn: false,
+    });
+    expectPiResponse(result);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.triggered_count).toBe(1);
+    expect(data.auto_spawn).toBe(false);
+    expect(data.spawned_count).toBe(0);
+    expect(data.tasks[0].subagent_id).toBeNull();
+  });
+
+  test("luca_dispatch_team with background=false returns agent metadata", async () => {
+    const result = await callTool(tools, "luca_dispatch_team", {
+      team: "code-review",
+      task: "Review the E2E test changes",
+      background: false,
+    });
+    expectPiResponse(result);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.team).toBe("code-review");
+    expect(Array.isArray(data.agents)).toBe(true);
+    expect(data.agents.length).toBeGreaterThan(0);
+    // Standard mode returns persona, not subagent_id
+    expect(data.agents[0].persona).toBeDefined();
+  });
+
+  test("luca_eligible_agents returns agents with explicit metadata", async () => {
+    const result = await callTool(tools, "luca_eligible_agents", {
+      context: "research",
+      background_only: true,
+    });
+    expectPiResponse(result);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.total_eligible).toBeGreaterThan(0);
+    // Should contain researcher agents
+    expect(data.by_purpose.researcher).toBeDefined();
   });
 
   test("purpose register → check → eligible agents", async () => {

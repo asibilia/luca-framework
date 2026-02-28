@@ -10,12 +10,20 @@
 
 /**
  * Parsed frontmatter fields from a .pi/agents/*.md file.
+ *
+ * NOTE: This is the Pi runtime type, parsed from deployed .md files at runtime.
+ * The build-time equivalent is `AgentFrontmatter` in `src/agents/__schemas/agent.schemas.ts`,
+ * which uses Zod validation and includes additional fields (cognition, context, model_routing).
+ * The two types serve different layers and are intentionally separate.
  */
 export interface AgentFrontmatter {
   name: string;
   description: string;
   tools: string[];
   model?: string;
+  background_spawnable?: boolean;
+  purpose?: string;
+  allowed_contexts?: string[];
 }
 
 /**
@@ -66,8 +74,35 @@ export function parseFrontmatter(content: string): AgentFrontmatter | null {
     }
   }
 
+  // Parse background_spawnable (boolean field)
+  const bgMatch = fm.match(/^background_spawnable:\s*(.+)$/m)?.[1]?.trim();
+  const background_spawnable =
+    bgMatch === "true" ? true : bgMatch === "false" ? false : undefined;
+
+  // Parse purpose (single string field)
+  const purpose = fm.match(/^purpose:\s*(.+)$/m)?.[1]?.trim();
+
+  // Parse allowed_contexts array (YAML list format, same pattern as tools)
+  const allowed_contexts: string[] = [];
+  const ctxMatch = fm.match(/^allowed_contexts:\n((?:\s+-\s+.+\n?)*)/m);
+  if (ctxMatch && ctxMatch[1]) {
+    const ctxLines = ctxMatch[1].match(/^\s+-\s+(.+)$/gm);
+    if (ctxLines) {
+      for (const line of ctxLines) {
+        const ctx = line.replace(/^\s+-\s+/, "").trim();
+        if (ctx) allowed_contexts.push(ctx);
+      }
+    }
+  }
+
   if (!name) return null;
-  return { name, description, tools, model };
+
+  const result: AgentFrontmatter = { name, description, tools, model };
+  if (background_spawnable != null)
+    result.background_spawnable = background_spawnable;
+  if (purpose) result.purpose = purpose;
+  if (allowed_contexts.length > 0) result.allowed_contexts = allowed_contexts;
+  return result;
 }
 
 /**

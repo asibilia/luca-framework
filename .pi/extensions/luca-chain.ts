@@ -12,7 +12,10 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
-import { extractFrontmatterField } from "./__helpers/frontmatter";
+import {
+  extractFrontmatterField,
+  parseFrontmatter,
+} from "./__helpers/frontmatter";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { isValidIdentifier } from "./__helpers/sanitize";
@@ -245,12 +248,31 @@ export default function lucaChain(pi: any) {
 
       const agentDesc = getAgentSummary(step.agent);
 
+      // Read metadata from frontmatter for the current step's agent
+      let background_spawnable: boolean | undefined;
+      let purpose: string | undefined;
+      const agentFilePath = join(agentsDir, `${step.agent}.md`);
+      if (existsSync(agentFilePath)) {
+        try {
+          const content = readFileSync(agentFilePath, "utf-8");
+          const fm = parseFrontmatter(content);
+          if (fm) {
+            background_spawnable = fm.background_spawnable;
+            purpose = fm.purpose;
+          }
+        } catch {
+          // Continue without metadata
+        }
+      }
+
       return createJsonResponse({
         chain: chain.name,
         step_number: chain.currentStep,
         total_steps: chain.steps.length,
         agent: step.agent,
         agent_description: agentDesc,
+        purpose: purpose ?? null,
+        background_spawnable: background_spawnable ?? null,
         task: step.task,
         previous_context: previousOutputs || null,
         instructions: `Execute this step as the "${step.agent}" agent. When complete, call luca_chain_next with the output to advance to the next step.`,

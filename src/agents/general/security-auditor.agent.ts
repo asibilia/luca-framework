@@ -20,6 +20,9 @@ const securityAuditorConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "cold",
     },
+    background_spawnable: true,
+    purpose: "auditor",
+    allowed_contexts: ["audit", "security", "review"],
   },
   sections: [
     {

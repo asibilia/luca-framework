@@ -91,7 +91,7 @@ describe("luca-state extension", () => {
     expect(tool!.parameters.required).toContain("value");
   });
 
-  test("subscribes to session_start, tool_call, and tool_execution_end events", async () => {
+  test("subscribes to session_start, tool_call, tool_execution_end, and turn_start events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-state");
     const pi = createMockPi();
     mod.default(pi);
@@ -102,6 +102,8 @@ describe("luca-state extension", () => {
     expect(toolCall).toBeDefined();
     const toolEnd = pi.events.find((e) => e.event === "tool_execution_end");
     expect(toolEnd).toBeDefined();
+    const turnStart = pi.events.find((e) => e.event === "turn_start");
+    expect(turnStart).toBeDefined();
   });
 
   test("luca_read_state returns parsed state", async () => {
@@ -256,13 +258,13 @@ describe("luca-harness extension", () => {
     expect(tool!.parameters.properties.checks.type).toBe("string");
   });
 
-  test("subscribes to agent_end event", async () => {
+  test("does not subscribe to agent_end (verification is explicit via luca_verify)", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-harness");
     const pi = createMockPi();
     mod.default(pi);
 
     const agentEnd = pi.events.find((e) => e.event === "agent_end");
-    expect(agentEnd).toBeDefined();
+    expect(agentEnd).toBeUndefined();
   });
 });
 
@@ -479,5 +481,596 @@ describe("Pi workflow extensions in build output", () => {
         expect(tool.name.startsWith("luca_")).toBe(true);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Frontmatter parser tests (new subagent metadata fields)
+// ---------------------------------------------------------------------------
+
+describe("frontmatter parser: subagent metadata", () => {
+  test("parseFrontmatter parses background_spawnable, purpose, allowed_contexts", async () => {
+    const { parseFrontmatter } =
+      await import("~/hooks/pi-extensions/__helpers/frontmatter");
+
+    const content = `---
+name: lu-test-agent
+description: A test agent
+model: claude-sonnet-4-20250514
+background_spawnable: true
+purpose: researcher
+tools:
+  - Read
+  - Write
+allowed_contexts:
+  - research
+  - discovery
+  - analysis
+---
+Body content here.`;
+
+    const fm = parseFrontmatter(content);
+    expect(fm).not.toBeNull();
+    expect(fm!.name).toBe("lu-test-agent");
+    expect(fm!.background_spawnable).toBe(true);
+    expect(fm!.purpose).toBe("researcher");
+    expect(fm!.allowed_contexts).toEqual(["research", "discovery", "analysis"]);
+    expect(fm!.tools).toEqual(["Read", "Write"]);
+  });
+
+  test("parseFrontmatter handles background_spawnable=false", async () => {
+    const { parseFrontmatter } =
+      await import("~/hooks/pi-extensions/__helpers/frontmatter");
+
+    const content = `---
+name: lu-executor
+description: Executes plans
+background_spawnable: false
+purpose: executor
+---
+Body.`;
+
+    const fm = parseFrontmatter(content);
+    expect(fm).not.toBeNull();
+    expect(fm!.background_spawnable).toBe(false);
+    expect(fm!.purpose).toBe("executor");
+  });
+
+  test("parseFrontmatter returns undefined for missing metadata fields", async () => {
+    const { parseFrontmatter } =
+      await import("~/hooks/pi-extensions/__helpers/frontmatter");
+
+    const content = `---
+name: simple-agent
+description: No metadata
+---
+Body.`;
+
+    const fm = parseFrontmatter(content);
+    expect(fm).not.toBeNull();
+    expect(fm!.background_spawnable).toBeUndefined();
+    expect(fm!.purpose).toBeUndefined();
+    expect(fm!.allowed_contexts).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Subagent registry tests
+// ---------------------------------------------------------------------------
+
+describe("subagent-registry", () => {
+  test("nextSubagentId generates unique IDs", async () => {
+    const { nextSubagentId, resetSubagentRegistry } =
+      await import("~/hooks/pi-extensions/__helpers/subagent-registry");
+
+    resetSubagentRegistry();
+    const id1 = nextSubagentId("sub", "lu-executor");
+    const id2 = nextSubagentId("bg", "lu-researcher");
+    expect(id1).not.toBe(id2);
+    expect(id1).toContain("sub");
+    expect(id1).toContain("lu-executor");
+    expect(id2).toContain("bg");
+    expect(id2).toContain("lu-researcher");
+  });
+
+  test("subagentRegistry is accessible and functional", async () => {
+    const { subagentRegistry, resetSubagentRegistry } =
+      await import("~/hooks/pi-extensions/__helpers/subagent-registry");
+
+    resetSubagentRegistry();
+    expect(subagentRegistry.size()).toBe(0);
+
+    subagentRegistry.set("test-1", {
+      id: "test-1",
+      agent: "lu-test",
+      task: "Test task",
+      status: "running",
+      output: "",
+      stderr: "",
+      exitCode: -1,
+      usage: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0 },
+      model: undefined,
+      createdAt: Date.now(),
+      completedAt: undefined,
+      process: undefined,
+      sessionDir: undefined,
+    });
+
+    expect(subagentRegistry.size()).toBe(1);
+    expect(subagentRegistry.get("test-1")?.agent).toBe("lu-test");
+
+    resetSubagentRegistry();
+    expect(subagentRegistry.size()).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Purpose gating reads frontmatter metadata
+// ---------------------------------------------------------------------------
+
+describe("purpose-gating frontmatter integration", () => {
+  test("luca-purpose-gating loads and registers tools", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-purpose-gating");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    expect(pi.tools.length).toBe(6);
+    const toolNames = pi.tools.map((t) => t.name);
+    expect(toolNames).toContain("luca_register_purpose");
+    expect(toolNames).toContain("luca_check_purpose");
+    expect(toolNames).toContain("luca_eligible_agents");
+    expect(toolNames).toContain("luca_defer_task");
+    expect(toolNames).toContain("luca_trigger_deferred");
+    expect(toolNames).toContain("luca_deferred_status");
+  });
+
+  test("luca_trigger_deferred has auto_spawn parameter", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-purpose-gating");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const tool = pi.tools.find((t) => t.name === "luca_trigger_deferred");
+    expect(tool).toBeDefined();
+    expect(tool!.parameters.properties.auto_spawn).toBeDefined();
+    expect(tool!.parameters.properties.auto_spawn.type).toBe("boolean");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// luca-widgets extension
+// ---------------------------------------------------------------------------
+
+describe("luca-widgets extension", () => {
+  test("exports default function", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    expect(typeof mod.default).toBe("function");
+  });
+
+  test("registers 0 tools (event-only extension)", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    expect(pi.tools.length).toBe(0);
+  });
+
+  test("subscribes to 6 events", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    expect(pi.events.length).toBe(6);
+  });
+
+  test("subscribes to tool_result, tool_call, tool_execution_end, turn_start, turn_end, and agent_start", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const expectedEvents = [
+      "tool_result",
+      "tool_call",
+      "tool_execution_end",
+      "turn_start",
+      "turn_end",
+      "agent_start",
+    ];
+
+    for (const eventName of expectedEvents) {
+      const found = pi.events.find((e) => e.event === eventName);
+      expect(found).toBeDefined();
+    }
+  });
+
+  test("tool_result handler parses chain define event", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const handler = pi.events.find((e) => e.event === "tool_result")!.handler;
+
+    const widgets: Record<string, any> = {};
+    const mockCtx = {
+      ui: {
+        setWidget: (id: string, component: any) => {
+          widgets[id] = component;
+        },
+        setStatus: () => {},
+      },
+    };
+
+    // Simulate luca_define_chain tool_result
+    await handler(
+      {
+        toolName: "luca_define_chain",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                chain: "test-chain",
+                steps: [
+                  { agent: "lu-planner", task: "Plan it" },
+                  { agent: "lu-executor", task: "Build it" },
+                ],
+                total_steps: 2,
+              }),
+            },
+          ],
+        },
+      },
+      mockCtx,
+    );
+
+    // Workflow widget should be set as a factory function
+    expect(widgets["luca-workflow"]).toBeDefined();
+    expect(typeof widgets["luca-workflow"]).toBe("function");
+
+    // Factory returns a component with render()
+    const component = widgets["luca-workflow"]();
+    expect(typeof component.render).toBe("function");
+
+    // Render should produce lines
+    const lines = component.render(60);
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.join("\n")).toContain("Chain:");
+    expect(lines.join("\n")).toContain("test-chain");
+  });
+
+  test("tool_result handler parses tilldone event", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const handler = pi.events.find((e) => e.event === "tool_result")!.handler;
+
+    const widgets: Record<string, any> = {};
+    const mockCtx = {
+      ui: {
+        setWidget: (id: string, factory: any) => {
+          widgets[id] = factory;
+        },
+        setStatus: () => {},
+      },
+    };
+
+    await handler(
+      {
+        toolName: "luca_tilldone",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                name: "test-loop",
+                iteration: 2,
+                max_iterations: 5,
+                status: "failed",
+              }),
+            },
+          ],
+        },
+      },
+      mockCtx,
+    );
+
+    expect(widgets["luca-workflow"]).toBeDefined();
+    const component = widgets["luca-workflow"]();
+    const lines = component.render(60);
+    expect(lines.join("\n")).toContain("TillDone:");
+    expect(lines.join("\n")).toContain("test-loop");
+  });
+
+  test("tool_result handler parses verify event", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const handler = pi.events.find((e) => e.event === "tool_result")!.handler;
+
+    const widgets: Record<string, any> = {};
+    const mockCtx = {
+      ui: {
+        setWidget: (id: string, factory: any) => {
+          widgets[id] = factory;
+        },
+        setStatus: () => {},
+      },
+    };
+
+    await handler(
+      {
+        toolName: "luca_verify",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                status: "failed",
+                checks: [
+                  { name: "test", status: "passed", duration: 2100 },
+                  { name: "typecheck", status: "failed", duration: 1400 },
+                ],
+              }),
+            },
+          ],
+        },
+      },
+      mockCtx,
+    );
+
+    expect(widgets["luca-verify"]).toBeDefined();
+    const component = widgets["luca-verify"]();
+    const lines = component.render(60);
+    expect(lines.join("\n")).toContain("Verify");
+    expect(lines.join("\n")).toContain("test");
+    expect(lines.join("\n")).toContain("typecheck");
+  });
+
+  test("agent_start clears stale widgets", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-widgets");
+    const pi = createMockPi();
+    mod.default(pi);
+
+    const toolResultHandler = pi.events.find(
+      (e) => e.event === "tool_result",
+    )!.handler;
+    const agentStartHandler = pi.events.find(
+      (e) => e.event === "agent_start",
+    )!.handler;
+
+    const widgets: Record<string, any> = {};
+    const mockCtx = {
+      ui: {
+        setWidget: (id: string, factory: any) => {
+          widgets[id] = factory;
+        },
+        setStatus: () => {},
+      },
+    };
+
+    // First, set a chain widget
+    await toolResultHandler(
+      {
+        toolName: "luca_define_chain",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                chain: "old-chain",
+                steps: [{ agent: "lu-planner", task: "Plan" }],
+                total_steps: 1,
+              }),
+            },
+          ],
+        },
+      },
+      mockCtx,
+    );
+    expect(typeof widgets["luca-workflow"]).toBe("function");
+
+    // Then trigger agent_start — should clear (undefined)
+    await agentStartHandler({}, mockCtx);
+    expect(widgets["luca-workflow"]).toBeUndefined();
+    expect(widgets["luca-verify"]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Widget renderers (pure functions)
+// ---------------------------------------------------------------------------
+
+describe("widget-renderers", () => {
+  test("getQualityZone returns correct zones", async () => {
+    const { getQualityZone } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    expect(getQualityZone(0)).toBe("PEAK");
+    expect(getQualityZone(15)).toBe("PEAK");
+    expect(getQualityZone(30)).toBe("PEAK");
+    expect(getQualityZone(31)).toBe("GOOD");
+    expect(getQualityZone(50)).toBe("GOOD");
+    expect(getQualityZone(51)).toBe("DEGRADING");
+    expect(getQualityZone(70)).toBe("DEGRADING");
+    expect(getQualityZone(71)).toBe("POOR");
+    expect(getQualityZone(100)).toBe("POOR");
+  });
+
+  test("renderWorkflow returns null when no workflow active", async () => {
+    const { renderWorkflow } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const result = renderWorkflow(null, null, null);
+    expect(result).toBeNull();
+  });
+
+  test("renderWorkflow renders chain progress", async () => {
+    const { renderWorkflow } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const component = renderWorkflow(
+      {
+        name: "deploy-pipeline",
+        steps: [
+          { agent: "lu-planner", task: "Design schema", status: "completed" },
+          {
+            agent: "code-developer",
+            task: "Implement endpoints",
+            status: "running",
+          },
+          {
+            agent: "lu-verifier",
+            task: "Run verification",
+            status: "pending",
+          },
+        ],
+        currentStep: 2,
+      },
+      null,
+      null,
+    );
+
+    expect(component).not.toBeNull();
+    const lines = component!.render(60);
+    expect(lines.length).toBeGreaterThan(2); // borders + header + steps
+    const text = lines.join("\n");
+    expect(text).toContain("Chain:");
+    expect(text).toContain("deploy-pipeline");
+    expect(text).toContain("1/3 steps");
+  });
+
+  test("renderWorkflow renders research progress", async () => {
+    const { renderWorkflow } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const component = renderWorkflow(
+      null,
+      {
+        session: "api-redesign",
+        experts: [
+          { domain: "stack", status: "completed" },
+          { domain: "architecture", status: "completed" },
+          { domain: "security", status: "pending" },
+        ],
+      },
+      null,
+    );
+
+    expect(component).not.toBeNull();
+    const lines = component!.render(60);
+    const text = lines.join("\n");
+    expect(text).toContain("Research:");
+    expect(text).toContain("api-redesign");
+  });
+
+  test("renderVerify returns null when no verify state", async () => {
+    const { renderVerify } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    expect(renderVerify(null)).toBeNull();
+    expect(renderVerify({ checks: [], timestamp: 0 })).toBeNull();
+  });
+
+  test("renderVerify renders check results", async () => {
+    const { renderVerify } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const component = renderVerify({
+      checks: [
+        { name: "test", status: "passed", duration: 2100 },
+        { name: "typecheck", status: "failed", duration: 1400 },
+      ],
+      timestamp: Date.now(),
+    });
+
+    expect(component).not.toBeNull();
+    const lines = component!.render(60);
+    const text = lines.join("\n");
+    expect(text).toContain("Verify");
+    expect(text).toContain("test");
+    expect(text).toContain("typecheck");
+  });
+
+  test("renderContext returns null when pct < 0", async () => {
+    const { renderContext } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    expect(renderContext(-1, "PEAK")).toBeNull();
+  });
+
+  test("renderContext renders progress bar with quality zone", async () => {
+    const { renderContext } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const component = renderContext(42, "GOOD");
+    expect(component).not.toBeNull();
+    const lines = component!.render(60);
+    const text = lines.join("\n");
+    expect(text).toContain("Context");
+    expect(text).toContain("42%");
+    expect(text).toContain("GOOD");
+  });
+
+  test("renderContext shows warning for POOR zone", async () => {
+    const { renderContext } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const component = renderContext(72, "POOR");
+    expect(component).not.toBeNull();
+    const lines = component!.render(60);
+    const text = lines.join("\n");
+    expect(text).toContain("72%");
+    expect(text).toContain("POOR");
+    expect(text).toContain("stop soon");
+  });
+
+  test("renderSubagents returns null when no subagents", async () => {
+    const { renderSubagents } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    expect(renderSubagents(null)).toBeNull();
+    expect(renderSubagents({ agents: [] })).toBeNull();
+  });
+
+  test("renderSubagents renders agent dashboard with status counts", async () => {
+    const { renderSubagents } =
+      await import("~/hooks/pi-extensions/__helpers/widget-renderers");
+
+    const component = renderSubagents({
+      agents: [
+        {
+          id: "sub-1-lu-executor",
+          agent: "lu-executor",
+          status: "running",
+          task_preview: "Implement feature X",
+          duration_ms: 12000,
+        },
+        {
+          id: "sub-2-security-auditor",
+          agent: "security-auditor",
+          status: "completed",
+          task_preview: "Review security of auth module",
+          duration_ms: 45000,
+        },
+        {
+          id: "sub-3-lu-verifier",
+          agent: "lu-verifier",
+          status: "failed",
+          task_preview: "Verify phase 67",
+          duration_ms: 8000,
+        },
+      ],
+    });
+
+    expect(component).not.toBeNull();
+    const lines = component!.render(70);
+    const text = lines.join("\n");
+    expect(text).toContain("Subagents");
+    expect(text).toContain("1 running");
+    expect(text).toContain("1 done");
+    expect(text).toContain("1 failed");
+    expect(text).toContain("lu-executor");
+    expect(text).toContain("security-auditor");
   });
 });

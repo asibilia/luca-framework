@@ -25,6 +25,12 @@ model_routing:
   default_model: sonnet
   complexity_overrides:
     CRITICAL: opus
+background_spawnable: false
+purpose: executor
+allowed_contexts:
+  - execution
+  - implementation
+  - coding
 ---
 
 <role>

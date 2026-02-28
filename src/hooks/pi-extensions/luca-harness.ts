@@ -3,7 +3,8 @@
  *
  * Provides verification capabilities to Pi's LLM via the Luca harness
  * system. Registers a `luca_verify` tool that runs test/typecheck checks
- * and auto-triggers verification at agent_end events.
+ * and returns structured results. The Verify widget is rendered by
+ * luca-widgets.ts when it intercepts luca_verify tool_result events.
  *
  * @security This extension executes shell commands via `execSync`. Commands
  *   originate from `.planning/config.json` (developer-controlled). Primary
@@ -18,7 +19,6 @@ import { join } from "path";
 
 import { runShellCommand } from "./__helpers/exec";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
-import { createStatusFormatter } from "./__helpers/status";
 
 /**
  * Pi extension: Verification harness runner.
@@ -173,51 +173,10 @@ export default function lucaHarness(pi: any) {
     },
   });
 
-  // Auto-verify at agent_end
-  pi.on("agent_end", async (_event: any, ctx: any) => {
-    const config = loadConfig();
-    if (!config.enabled) return;
-
-    // Run quick verification (test + typecheck)
-    const results = config.checks.map((check) =>
-      runCheck(check.name, check.command, check.timeout),
-    );
-
-    const allPassed = results.every((r) => r.status === "passed");
-    const failedChecks = results.filter((r) => r.status !== "passed");
-
-    const fmt = createStatusFormatter(ctx);
-
-    if (allPassed) {
-      if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus(
-          "luca-harness",
-          fmt.success("Last verify: \u2713 all passing"),
-        );
-      }
-    } else {
-      const failNames = failedChecks.map((c) => c.name).join(", ");
-      if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus(
-          "luca-harness",
-          fmt.bold(fmt.error(`Last verify: \u2717 ${failNames}`)),
-        );
-      }
-
-      // Surface failures to the LLM for auto-fix
-      if (ctx?.addMessage) {
-        const errorSummary = failedChecks
-          .map(
-            (c) =>
-              `### ${c.name} (${c.status})\n\`\`\`\n${c.output.slice(-500)}\n\`\`\``,
-          )
-          .join("\n\n");
-
-        ctx.addMessage(
-          "system",
-          `Luca verification failed. Please fix the following issues:\n\n${errorSummary}`,
-        );
-      }
-    }
-  });
+  // NOTE: No auto-verify on agent_end. Verification is triggered explicitly
+  // via the luca_verify tool (which renders the Verify widget) or by the
+  // pre-commit hook. Auto-running on every agent_end is wasteful for
+  // read-only sessions (todo-check, progress, etc.) and cannot reliably
+  // distinguish "changes made by this session" from pre-existing uncommitted
+  // work in the tree.
 }

@@ -21,6 +21,9 @@ const luIntegrationCheckerConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "verifier",
+    allowed_contexts: ["verification", "testing", "validation"],
   },
   sections: [
     {
@@ -446,4 +449,6 @@ Return structured report to milestone auditor:
   ],
 };
 
-export const luIntegrationCheckerAgent = createAgent(luIntegrationCheckerConfig);
+export const luIntegrationCheckerAgent = createAgent(
+  luIntegrationCheckerConfig,
+);
