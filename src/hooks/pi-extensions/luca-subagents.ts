@@ -76,6 +76,13 @@ export default function lucaSubagents(pi: any) {
       },
       required: ["agent", "task"],
     },
+    /**
+     * Render a human-readable summary of the tool call arguments.
+     */
+    renderCall(args: { agent: string; task: string }, _theme: any) {
+      return `Spawning subagent: ${args.agent}\nTask: ${args.task.slice(0, 100)}`;
+    },
+
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
@@ -212,6 +219,24 @@ export default function lucaSubagents(pi: any) {
       },
       required: ["id"],
     },
+    /**
+     * Render a human-readable summary of the subagent result.
+     */
+    renderResult(result: any, _opts: any, _theme: any) {
+      try {
+        const data = JSON.parse(result.content?.[0]?.text ?? "{}");
+        const icon =
+          data.status === "completed"
+            ? "DONE"
+            : data.status === "running"
+              ? "..."
+              : "FAIL";
+        return `${icon} ${data.id} (${data.agent}) — ${data.status}\n${(data.output ?? "").slice(0, 200)}`;
+      } catch {
+        return "Subagent result";
+      }
+    },
+
     async execute(_toolCallId: string, params: { id: string }) {
       const state = subagentRegistry.get(params.id);
       if (!state) {

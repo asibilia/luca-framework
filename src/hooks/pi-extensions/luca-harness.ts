@@ -144,6 +144,36 @@ export default function lucaHarness(pi: any) {
         },
       },
     },
+
+    /**
+     * Render a human-readable summary of the tool call arguments.
+     * Shown in Pi's TUI when the tool is invoked.
+     */
+    renderCall(args: { checks?: string }, _theme: any) {
+      const checks = args.checks ?? "all enabled";
+      return `Running verification: ${checks}`;
+    },
+
+    /**
+     * Render a human-readable summary of the tool result.
+     * Shown in Pi's TUI after the tool completes.
+     */
+    renderResult(result: any, _opts: any, _theme: any) {
+      try {
+        const data = JSON.parse(result.content?.[0]?.text ?? "{}");
+        const icon = data.status === "passed" ? "PASS" : "FAIL";
+        const checks = (data.checks ?? [])
+          .map(
+            (c: any) =>
+              `  ${c.status === "passed" ? "+" : "x"} ${c.name} (${c.duration}ms)`,
+          )
+          .join("\n");
+        return `${icon} Verification ${data.status}\n${checks}\nTotal: ${data.total_duration}ms`;
+      } catch {
+        return "Verification complete";
+      }
+    },
+
     async execute(_toolCallId: string, params: { checks?: string }) {
       const config = loadConfig();
 
