@@ -144,7 +144,45 @@ export default function lucaHarness(pi: any) {
         },
       },
     },
-    async execute(_toolCallId: string, params: { checks?: string }) {
+
+    /**
+     * Render a human-readable summary of the tool call arguments.
+     * Shown in Pi's TUI when the tool is invoked.
+     */
+    renderCall(args: { checks?: string }, _theme: any) {
+      const checks = args.checks ?? "all enabled";
+      return `Running verification: ${checks}`;
+    },
+
+    /**
+     * Render a human-readable summary of the tool result.
+     * Shown in Pi's TUI after the tool completes.
+     */
+    renderResult(result: any, _opts: any, _theme: any) {
+      try {
+        const data = JSON.parse(result.content?.[0]?.text ?? "{}");
+        const icon = data.status === "passed" ? "PASS" : "FAIL";
+        const checks = (data.checks ?? [])
+          .map(
+            (c: any) =>
+              `  ${c.status === "passed" ? "+" : "x"} ${c.name} (${c.duration}ms)`,
+          )
+          .join("\n");
+        return `${icon} Verification ${data.status}\n${checks}\nTotal: ${data.total_duration}ms`;
+      } catch {
+        return "Verification complete";
+      }
+    },
+
+    async execute(
+      _toolCallId: string,
+      params: { checks?: string },
+      signal: AbortSignal | undefined,
+      onUpdate:
+        | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
+        | undefined,
+      ctx: any,
+    ) {
       const config = loadConfig();
 
       if (!config.enabled) {
@@ -158,9 +196,36 @@ export default function lucaHarness(pi: any) {
         checksToRun = config.checks.filter((c) => requested.includes(c.name));
       }
 
-      const results = checksToRun.map((check) =>
-        runCheck(check.name, check.command, check.timeout),
-      );
+      // Sequential execution with streaming progress via onUpdate
+      const results: Array<{
+        name: string;
+        status: "passed" | "failed" | "timeout";
+        output: string;
+        duration: number;
+      }> = [];
+
+      for (const check of checksToRun) {
+        // Check for abort between iterations
+        if (signal?.aborted) break;
+
+        // Stream progress before each check
+        onUpdate?.({
+          content: [{ type: "text", text: `Running check: ${check.name}...` }],
+        });
+
+        const result = runCheck(check.name, check.command, check.timeout);
+        results.push(result);
+
+        // Stream result after each check
+        onUpdate?.({
+          content: [
+            {
+              type: "text",
+              text: `${check.name}: ${result.status} (${result.duration}ms)`,
+            },
+          ],
+        });
+      }
 
       const allPassed = results.every((r) => r.status === "passed");
       const summary = {
@@ -168,6 +233,18 @@ export default function lucaHarness(pi: any) {
         checks: results,
         total_duration: results.reduce((sum, r) => sum + r.duration, 0),
       };
+
+      // Toast notification for verification results
+      if (ctx?.ui?.notify) {
+        const level = allPassed ? "info" : "error";
+        const msg = allPassed
+          ? `Verification passed (${results.length} checks, ${summary.total_duration}ms)`
+          : `Verification FAILED: ${results
+              .filter((r) => r.status !== "passed")
+              .map((r) => r.name)
+              .join(", ")}`;
+        ctx.ui.notify(msg, level);
+      }
 
       return createJsonResponse(summary);
     },

@@ -97,11 +97,11 @@ function expectPiResponse(result: any) {
 
 describe("Pi extension E2E: loading", () => {
   const extensionFiles = [
-    { file: "luca-state.ts", tools: 3, events: 4 },
+    { file: "luca-state.ts", tools: 3, events: 7 },
     { file: "luca-memory.ts", tools: 4, events: 2 },
     { file: "luca-harness.ts", tools: 1, events: 0 },
     { file: "luca-complexity.ts", tools: 3, events: 0 },
-    { file: "luca-roles.ts", tools: 4, events: 1 },
+    { file: "luca-roles.ts", tools: 4, events: 2 },
     { file: "luca-teams.ts", tools: 3, events: 0 },
     { file: "luca-chain.ts", tools: 3, events: 0 },
     { file: "luca-tilldone.ts", tools: 3, events: 0 },
@@ -526,7 +526,7 @@ describe("Pi extension E2E: before_agent_start", () => {
       },
     };
 
-    await handlers[0]({}, mockCtx);
+    await handlers[0]!({}, mockCtx);
 
     // BRAIN.md exists in this repo
     expect(contextId).toBe("luca-brain");
@@ -554,8 +554,8 @@ describe("Pi extension E2E: before_agent_start", () => {
       },
     };
 
-    await sessionStartHandlers[0]({}, sessionCtx);
-    await beforeAgentHandlers[0]({}, beforeAgentCtx);
+    await sessionStartHandlers[0]!({}, sessionCtx);
+    await beforeAgentHandlers[0]!({}, beforeAgentCtx);
 
     // Both should use "luca-brain" to prevent duplication
     expect(sessionContextId).toBe("luca-brain");
@@ -652,7 +652,7 @@ describe("Pi extension E2E: safety confirm and abort", () => {
     };
 
     // Trigger with destructive command
-    await handlers[0](
+    await handlers[0]!(
       {
         toolName: "Bash",
         params: { command: "git push --force" },
@@ -669,7 +669,7 @@ describe("Pi extension E2E: safety confirm and abort", () => {
 
     // Set to warn mode (default)
     const setTool = mock.tools.get("luca_set_safety_mode");
-    await setTool.execute("test", { mode: "warn" }, undefined, undefined, {});
+    await setTool!.execute("test", { mode: "warn" }, undefined, undefined, {});
 
     const handlers = mock.events.get("tool_call") ?? [];
 
@@ -683,7 +683,7 @@ describe("Pi extension E2E: safety confirm and abort", () => {
       },
     };
 
-    const result = await handlers[0](
+    const result = await handlers[0]!(
       {
         toolName: "Bash",
         params: { command: "rm -rf /" },
@@ -719,7 +719,7 @@ describe("Pi extension E2E: safety confirm and abort", () => {
 
     // Trigger with non-critical content (credentials in code = "high" severity)
     // But tool_call handler only checks critical rules, so this won't match
-    await handlers[0](
+    await handlers[0]!(
       {
         toolName: "Bash",
         params: { command: "echo hello world" },

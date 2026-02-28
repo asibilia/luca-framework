@@ -228,4 +228,17 @@ export default function lucaMemory(pi: any) {
       ctx.addSystemContext("luca-brain", brain);
     }
   });
+
+  // Re-inject BRAIN.md before every agent turn (survives context compaction).
+  // Uses the same ID ("luca-brain") so addSystemContext replaces the
+  // previous injection rather than duplicating it.
+  pi.on("before_agent_start", async (_event: any, ctx: any) => {
+    if (!existsSync(brainPath)) return;
+
+    const brain = readFileSync(brainPath, "utf-8");
+
+    if (ctx?.addSystemContext) {
+      ctx.addSystemContext("luca-brain", brain);
+    }
+  });
 }

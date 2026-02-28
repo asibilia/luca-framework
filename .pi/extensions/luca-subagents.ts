@@ -76,9 +76,19 @@ export default function lucaSubagents(pi: any) {
       },
       required: ["agent", "task"],
     },
+    /**
+     * Render a human-readable summary of the tool call arguments.
+     */
+    renderCall(args: { agent: string; task: string }, _theme: any) {
+      return `Spawning subagent: ${args.agent}\nTask: ${args.task.slice(0, 100)}`;
+    },
+
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
+      _signal: any,
+      _onUpdate: any,
+      ctx: any,
     ) {
       // Read agent definition
       const agentDef = readAgentDef(cwd, params.agent);
@@ -133,10 +143,31 @@ export default function lucaSubagents(pi: any) {
             } catch {
               // sendMessage may fail if session ended — non-fatal
             }
+
+            // Toast notification for user awareness
+            try {
+              if (ctx?.ui?.notify) {
+                const level = info.status === "completed" ? "info" : "error";
+                ctx.ui.notify(
+                  `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
+                  level,
+                );
+              }
+            } catch {
+              /* non-fatal */
+            }
           },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
+        // Notify user of limit hit or spawn failure
+        try {
+          if (ctx?.ui?.notify) {
+            ctx.ui.notify(msg, "warn");
+          }
+        } catch {
+          /* non-fatal */
+        }
         return createTextResponse(msg);
       }
 
@@ -212,6 +243,24 @@ export default function lucaSubagents(pi: any) {
       },
       required: ["id"],
     },
+    /**
+     * Render a human-readable summary of the subagent result.
+     */
+    renderResult(result: any, _opts: any, _theme: any) {
+      try {
+        const data = JSON.parse(result.content?.[0]?.text ?? "{}");
+        const icon =
+          data.status === "completed"
+            ? "DONE"
+            : data.status === "running"
+              ? "..."
+              : "FAIL";
+        return `${icon} ${data.id} (${data.agent}) — ${data.status}\n${(data.output ?? "").slice(0, 200)}`;
+      } catch {
+        return "Subagent result";
+      }
+    },
+
     async execute(_toolCallId: string, params: { id: string }) {
       const state = subagentRegistry.get(params.id);
       if (!state) {
@@ -325,6 +374,9 @@ export default function lucaSubagents(pi: any) {
     async execute(
       _toolCallId: string,
       params: { id: string; message: string },
+      _signal: any,
+      _onUpdate: any,
+      ctx: any,
     ) {
       const existing = subagentRegistry.get(params.id);
       if (!existing) {
@@ -389,10 +441,31 @@ export default function lucaSubagents(pi: any) {
             } catch {
               // sendMessage may fail if session ended — non-fatal
             }
+
+            // Toast notification for user awareness
+            try {
+              if (ctx?.ui?.notify) {
+                const level = info.status === "completed" ? "info" : "error";
+                ctx.ui.notify(
+                  `Subagent "${info.id}" (${info.agent}) ${info.status} in ${(info.elapsed / 1000).toFixed(1)}s`,
+                  level,
+                );
+              }
+            } catch {
+              /* non-fatal */
+            }
           },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
+        // Notify user of spawn failure
+        try {
+          if (ctx?.ui?.notify) {
+            ctx.ui.notify(msg, "warn");
+          }
+        } catch {
+          /* non-fatal */
+        }
         return createTextResponse(msg);
       }
 
