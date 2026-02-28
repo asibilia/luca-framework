@@ -181,7 +181,7 @@ export default function lucaHarness(pi: any) {
       onUpdate:
         | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
         | undefined,
-      _ctx: any,
+      ctx: any,
     ) {
       const config = loadConfig();
 
@@ -233,6 +233,18 @@ export default function lucaHarness(pi: any) {
         checks: results,
         total_duration: results.reduce((sum, r) => sum + r.duration, 0),
       };
+
+      // Toast notification for verification results
+      if (ctx?.ui?.notify) {
+        const level = allPassed ? "info" : "error";
+        const msg = allPassed
+          ? `Verification passed (${results.length} checks, ${summary.total_duration}ms)`
+          : `Verification FAILED: ${results
+              .filter((r) => r.status !== "passed")
+              .map((r) => r.name)
+              .join(", ")}`;
+        ctx.ui.notify(msg, level);
+      }
 
       return createJsonResponse(summary);
     },
