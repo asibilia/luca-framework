@@ -7,6 +7,12 @@ tools:
   - Bash
   - Glob
   - Grep
+background_spawnable: true
+purpose: planner
+allowed_contexts:
+  - planning
+  - roadmap
+  - estimation
 ---
 
 # lu-roadmapper

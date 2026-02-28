@@ -17,6 +17,12 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: none
+background_spawnable: false
+purpose: reviewer
+allowed_contexts:
+  - review
+  - audit
+  - assessment
 ---
 
 <role>

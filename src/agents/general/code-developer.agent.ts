@@ -20,6 +20,9 @@ const codeDeveloperConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
+    background_spawnable: false,
+    purpose: "executor",
+    allowed_contexts: ["execution", "implementation", "coding"],
   },
   sections: [
     {

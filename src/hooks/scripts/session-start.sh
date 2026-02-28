@@ -29,6 +29,22 @@ if ! command -v bun &>/dev/null; then
   exit 0
 fi
 
+# Step 1b: Check Pi OAuth token (only triggers if ~/.pi/agent/auth.json exists)
+PI_AUTH_FILE="$HOME/.pi/agent/auth.json"
+if [ -f "$PI_AUTH_FILE" ]; then
+  PI_TOKEN_PREFIX=$(bun -e "
+    try {
+      const auth = JSON.parse(await Bun.file('$PI_AUTH_FILE').text());
+      const token = auth?.anthropic?.access ?? '';
+      process.stdout.write(token.substring(0, 14));
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+
+  if [ "$PI_TOKEN_PREFIX" = "sk-ant-oat01-" ]; then
+    printf '{"systemMessage":"[Luca] Pi is using an OAuth subscription token (sk-ant-oat01-*) which Anthropic no longer accepts for third-party API calls. To fix: 1) Create a Console API key at console.anthropic.com (starts with sk-ant-api03-*). 2) Set ANTHROPIC_API_KEY in your shell environment. See docs/troubleshooting.md for details."}'
+  fi
+fi
+
 # Step 2: Create .planning/ directory if missing
 mkdir -p "$PLANNING_DIR"
 

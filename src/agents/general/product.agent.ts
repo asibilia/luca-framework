@@ -20,6 +20,9 @@ const productConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
+    background_spawnable: false,
+    purpose: "general",
+    allowed_contexts: ["any"],
   },
   sections: [
     {

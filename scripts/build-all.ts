@@ -314,7 +314,7 @@ async function main() {
   const ruleCount = claudeRuleCount;
 
   // Profile summary
-  const activeProfiles = getActiveProfileNames();
+  const activeProfiles = await getActiveProfileNames();
   console.log(`\n=== Build All Summary ===`);
   console.log(
     `Profiles: ${activeProfiles.length > 0 ? activeProfiles.join(", ") : "none (opinionated_guidelines disabled)"}`,

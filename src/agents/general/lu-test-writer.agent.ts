@@ -21,6 +21,9 @@ const luTestWriterConfig: AgentConfig = {
       promotable_to: "T2",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "verifier",
+    allowed_contexts: ["verification", "testing", "validation"],
   },
   sections: [
     {

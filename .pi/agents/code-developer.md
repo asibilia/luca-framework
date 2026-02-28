@@ -7,6 +7,12 @@ tools:
   - Grep
   - Glob
   - Bash
+background_spawnable: false
+purpose: executor
+allowed_contexts:
+  - execution
+  - implementation
+  - coding
 ---
 
 # code-developer

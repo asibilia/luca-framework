@@ -7,6 +7,12 @@ tools:
   - Glob
   - WebSearch
   - WebFetch
+background_spawnable: true
+purpose: researcher
+allowed_contexts:
+  - research
+  - discovery
+  - analysis
 ---
 
 # lu-discuss-researcher

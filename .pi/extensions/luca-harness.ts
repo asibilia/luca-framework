@@ -3,7 +3,8 @@
  *
  * Provides verification capabilities to Pi's LLM via the Luca harness
  * system. Registers a `luca_verify` tool that runs test/typecheck checks
- * and auto-triggers verification at agent_end events.
+ * and returns structured results. The Verify widget is rendered by
+ * luca-widgets.ts when it intercepts luca_verify tool_result events.
  *
  * @security This extension executes shell commands via `execSync`. Commands
  *   originate from `.planning/config.json` (developer-controlled). Primary
@@ -13,12 +14,22 @@
  * Source: src/hooks/pi-extensions/luca-harness.ts
  * Deployed to: .pi/extensions/luca-harness.ts
  */
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
 import { runShellCommand } from "./__helpers/exec";
+import { notifySafe } from "./__helpers/notify";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 
+/**
+ * Pi extension: Verification harness runner.
+ *
+ * Registers the luca_verify tool that runs configured quality checks
+ * (test, typecheck, lint, build) from .planning/config.json and returns
+ * structured pass/fail results with error output and duration.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaHarness(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -134,7 +145,48 @@ export default function lucaHarness(pi: any) {
         },
       },
     },
-    async execute(_toolCallId: string, params: { checks?: string }) {
+
+    /**
+     * Render a human-readable summary of the tool call arguments.
+     * Shown in Pi's TUI when the tool is invoked.
+     */
+    renderCall(args: { checks?: string }, _theme: any) {
+      const checks = args.checks ?? "all enabled";
+      return `Running verification: ${checks}`;
+    },
+
+    /**
+     * Render a human-readable summary of the tool result.
+     * Shown in Pi's TUI after the tool completes.
+     */
+    renderResult(result: any, _opts: any, _theme: any) {
+      try {
+        const text = result.content?.[0]?.text;
+        if (!text) return "Verification complete";
+        const data = JSON.parse(text);
+        if (!data.status) return "Verification complete";
+        const icon = data.status === "passed" ? "PASS" : "FAIL";
+        const checks = (data.checks ?? [])
+          .map(
+            (c: any) =>
+              `  ${c.status === "passed" ? "+" : "x"} ${c.name} (${c.duration}ms)`,
+          )
+          .join("\n");
+        return `${icon} Verification ${data.status}\n${checks}\nTotal: ${data.total_duration}ms`;
+      } catch {
+        return "Verification complete";
+      }
+    },
+
+    async execute(
+      _toolCallId: string,
+      params: { checks?: string },
+      signal: AbortSignal | undefined,
+      onUpdate:
+        | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
+        | undefined,
+      ctx: any,
+    ) {
       const config = loadConfig();
 
       if (!config.enabled) {
@@ -148,9 +200,36 @@ export default function lucaHarness(pi: any) {
         checksToRun = config.checks.filter((c) => requested.includes(c.name));
       }
 
-      const results = checksToRun.map((check) =>
-        runCheck(check.name, check.command, check.timeout),
-      );
+      // Sequential execution with streaming progress via onUpdate
+      const results: Array<{
+        name: string;
+        status: "passed" | "failed" | "timeout";
+        output: string;
+        duration: number;
+      }> = [];
+
+      for (const check of checksToRun) {
+        // Check for abort between iterations
+        if (signal?.aborted) break;
+
+        // Stream progress before each check
+        onUpdate?.({
+          content: [{ type: "text", text: `Running check: ${check.name}...` }],
+        });
+
+        const result = runCheck(check.name, check.command, check.timeout);
+        results.push(result);
+
+        // Stream result after each check
+        onUpdate?.({
+          content: [
+            {
+              type: "text",
+              text: `${check.name}: ${result.status} (${result.duration}ms)`,
+            },
+          ],
+        });
+      }
 
       const allPassed = results.every((r) => r.status === "passed");
       const summary = {
@@ -159,47 +238,32 @@ export default function lucaHarness(pi: any) {
         total_duration: results.reduce((sum, r) => sum + r.duration, 0),
       };
 
+      // Toast notification for verification results
+      const notifyLevel = allPassed ? "info" : "error";
+      const notifyMsg = allPassed
+        ? `Verification passed (${results.length} checks, ${summary.total_duration}ms)`
+        : `Verification FAILED: ${results
+            .filter((r) => r.status !== "passed")
+            .map((r) => r.name)
+            .join(", ")}`;
+      notifySafe(ctx, notifyMsg, notifyLevel);
+
+      // Persist summary for /verify command (luca-commands.ts)
+      try {
+        const resultPath = join(planningDir, "last-harness-result.json");
+        writeFileSync(resultPath, JSON.stringify(summary, null, 2));
+      } catch {
+        // Non-critical — /verify will report "no cached result"
+      }
+
       return createJsonResponse(summary);
     },
   });
 
-  // Auto-verify at agent_end
-  pi.on("agent_end", async (_event: any, ctx: any) => {
-    const config = loadConfig();
-    if (!config.enabled) return;
-
-    // Run quick verification (test + typecheck)
-    const results = config.checks.map((check) =>
-      runCheck(check.name, check.command, check.timeout),
-    );
-
-    const allPassed = results.every((r) => r.status === "passed");
-    const failedChecks = results.filter((r) => r.status !== "passed");
-
-    if (allPassed) {
-      if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus("luca-harness", "All checks passed");
-      }
-    } else {
-      const failNames = failedChecks.map((c) => c.name).join(", ");
-      if (ctx?.ui?.setStatus) {
-        ctx.ui.setStatus("luca-harness", `FAILED: ${failNames}`);
-      }
-
-      // Surface failures to the LLM for auto-fix
-      if (ctx?.addMessage) {
-        const errorSummary = failedChecks
-          .map(
-            (c) =>
-              `### ${c.name} (${c.status})\n\`\`\`\n${c.output.slice(-500)}\n\`\`\``,
-          )
-          .join("\n\n");
-
-        ctx.addMessage(
-          "system",
-          `Luca verification failed. Please fix the following issues:\n\n${errorSummary}`,
-        );
-      }
-    }
-  });
+  // NOTE: No auto-verify on agent_end. Verification is triggered explicitly
+  // via the luca_verify tool (which renders the Verify widget) or by the
+  // pre-commit hook. Auto-running on every agent_end is wasteful for
+  // read-only sessions (todo-check, progress, etc.) and cannot reliably
+  // distinguish "changes made by this session" from pre-existing uncommitted
+  // work in the tree.
 }

@@ -32,7 +32,7 @@ function resolvePluginDir(): string {
   }
 
   // Return first candidate for error messaging
-  return candidates[0];
+  return candidates[0] ?? resolve(currentDir, "..", "..", "dist", "plugin");
 }
 
 /**

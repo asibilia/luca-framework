@@ -6,6 +6,12 @@ tools:
   - Write
   - Grep
   - Glob
+background_spawnable: false
+purpose: reviewer
+allowed_contexts:
+  - review
+  - audit
+  - assessment
 ---
 
 # code-simplifier

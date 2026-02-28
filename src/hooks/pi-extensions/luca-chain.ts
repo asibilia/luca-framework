@@ -9,13 +9,13 @@
  * Source: src/hooks/pi-extensions/luca-chain.ts
  * Deployed to: .pi/extensions/luca-chain.ts
  */
-import { readFileSync, existsSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 
-import { extractFrontmatterField } from "./__helpers/frontmatter";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { isValidIdentifier } from "./__helpers/sanitize";
+import { readAgentDef } from "./__helpers/spawn";
 
 /** A single step in an agent chain. */
 interface ChainStep {
@@ -34,6 +34,15 @@ interface Chain {
   status: "pending" | "running" | "completed" | "failed";
 }
 
+/**
+ * Pi extension: Agent chain orchestration.
+ *
+ * Registers tools for defining, advancing, and querying sequential
+ * agent pipelines. Each chain step specifies an agent role and task,
+ * with context passed between steps.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaChain(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
@@ -44,21 +53,15 @@ export default function lucaChain(pi: any) {
   /**
    * Read agent persona summary for chain context injection.
    *
-   * Loads the agent's markdown file from .pi/agents/ and extracts the
-   * description from its YAML frontmatter. Falls back to the first 500
-   * characters of the file content if no frontmatter is present.
+   * Uses readAgentDef() to load the agent's definition and extracts the
+   * description from its YAML frontmatter.
    *
    * @param agentName - Agent identifier (matches filename in .pi/agents/)
    * @returns Description string, or a "not found" message if file missing
    */
   function getAgentSummary(agentName: string): string {
-    const filePath = join(agentsDir, `${agentName}.md`);
-    if (!existsSync(filePath)) return `Agent "${agentName}" not found`;
-
-    const content = readFileSync(filePath, "utf-8");
-    return (
-      extractFrontmatterField(content, "description") ?? content.slice(0, 500)
-    );
+    const def = readAgentDef(cwd, agentName);
+    return def?.frontmatter?.description ?? `Agent "${agentName}" not found`;
   }
 
   // Tool: Define a new chain
@@ -195,8 +198,11 @@ export default function lucaChain(pi: any) {
 
       // Record previous step output if provided
       if (params.previous_output && chain.currentStep > 0) {
-        chain.steps[chain.currentStep - 1].output = params.previous_output;
-        chain.steps[chain.currentStep - 1].status = "completed";
+        const prevStep = chain.steps[chain.currentStep - 1];
+        if (prevStep) {
+          prevStep.output = params.previous_output;
+          prevStep.status = "completed";
+        }
       }
 
       // Check if chain is complete
@@ -217,6 +223,10 @@ export default function lucaChain(pi: any) {
 
       // Get current step
       const step = chain.steps[chain.currentStep];
+      if (!step) {
+        chain.status = "completed";
+        return createTextResponse(`Chain "${chain.name}" has no more steps.`);
+      }
       step.status = "running";
       chain.status = "running";
       chain.currentStep++;
@@ -227,7 +237,12 @@ export default function lucaChain(pi: any) {
         .map((s) => `[${s.agent}]: ${s.output!.slice(0, 1000)}`)
         .join("\n\n");
 
-      const agentDesc = getAgentSummary(step.agent);
+      // Single readAgentDef call for description + metadata
+      const agentDef = readAgentDef(cwd, step.agent);
+      const agentDesc =
+        agentDef?.frontmatter?.description ?? `Agent "${step.agent}" not found`;
+      const background_spawnable = agentDef?.frontmatter?.background_spawnable;
+      const purpose = agentDef?.frontmatter?.purpose;
 
       return createJsonResponse({
         chain: chain.name,
@@ -235,6 +250,8 @@ export default function lucaChain(pi: any) {
         total_steps: chain.steps.length,
         agent: step.agent,
         agent_description: agentDesc,
+        purpose: purpose ?? null,
+        background_spawnable: background_spawnable ?? null,
         task: step.task,
         previous_context: previousOutputs || null,
         instructions: `Execute this step as the "${step.agent}" agent. When complete, call luca_chain_next with the output to advance to the next step.`,

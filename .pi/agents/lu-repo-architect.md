@@ -6,6 +6,12 @@ tools:
   - Glob
   - Grep
   - Bash
+background_spawnable: false
+purpose: reviewer
+allowed_contexts:
+  - review
+  - audit
+  - assessment
 ---
 
 # lu-repo-architect

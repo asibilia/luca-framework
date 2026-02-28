@@ -16,6 +16,12 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
+background_spawnable: true
+purpose: researcher
+allowed_contexts:
+  - research
+  - discovery
+  - analysis
 ---
 
 <role>

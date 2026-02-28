@@ -19,6 +19,12 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: none
+background_spawnable: true
+purpose: verifier
+allowed_contexts:
+  - verification
+  - testing
+  - validation
 ---
 
 <role>

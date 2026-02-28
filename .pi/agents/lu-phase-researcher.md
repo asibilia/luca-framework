@@ -10,6 +10,12 @@ tools:
   - WebSearch
   - WebFetch
   - mcp__context7__*
+background_spawnable: true
+purpose: researcher
+allowed_contexts:
+  - research
+  - discovery
+  - analysis
 ---
 
 # lu-phase-researcher

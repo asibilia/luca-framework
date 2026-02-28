@@ -9,6 +9,12 @@ tools:
   - Grep
   - Glob
 model: sonnet
+background_spawnable: false
+purpose: executor
+allowed_contexts:
+  - execution
+  - implementation
+  - coding
 ---
 
 # lu-executor

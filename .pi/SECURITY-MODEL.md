@@ -6,6 +6,22 @@ Luca's Pi extensions execute shell commands via Node.js `execSync` to provide ve
 
 Two extensions contain command injection vectors that are **design-inherent** — the tools exist specifically to run commands. The risk is accepted and mitigated by Pi's permission model, which requires explicit user approval for every tool execution.
 
+## Authentication Requirements
+
+Anthropic enforces server-side restrictions on OAuth subscription tokens (`sk-ant-oat01-*`) for third-party API calls (as of Jan–Feb 2026). Extensions that make Anthropic API calls require a Console API key (`sk-ant-api03-*` from console.anthropic.com) set via `ANTHROPIC_API_KEY`.
+
+| Extension     | Needs Console API Key? | Reason                                             |
+| ------------- | ---------------------- | -------------------------------------------------- |
+| luca-harness  | No                     | Local shell commands only (bun test, tsc)          |
+| luca-tilldone | No                     | Local shell commands only (iterative verification) |
+| luca-state    | No                     | Local file I/O (.planning/ directory)              |
+| luca-memory   | No                     | Local file I/O (MEMORY.md, WORKING.md)             |
+| query-experts | **Yes**                | Spawns sub-agents via Anthropic API                |
+| chain         | **Yes**                | Delegates tasks via Anthropic API                  |
+| teams         | **Yes**                | Multi-agent orchestration via Anthropic API        |
+
+If the `ANTHROPIC_API_KEY` environment variable is not set (or contains an OAuth token), API-calling extensions will fail with: `400 bad request: Personal Access Tokens are not supported for this endpoint`.
+
 ## Affected Extensions
 
 | Extension     | File                                       | Function       | Line | Risk                |

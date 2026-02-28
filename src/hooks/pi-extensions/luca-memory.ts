@@ -14,6 +14,15 @@ import { join } from "path";
 import { createTextResponse } from "./__helpers/response";
 import { isWithinDirectory } from "./__helpers/sanitize";
 
+/**
+ * Pi extension: Cognitive memory system.
+ *
+ * Registers tools for reading BRAIN.md (project identity), MEMORY.md
+ * (long-term learnings), and WORKING.md (session context), plus
+ * appending to WORKING.md sections during active sessions.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaMemory(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -187,7 +196,7 @@ export default function lucaMemory(pi: any) {
         let insertIdx = lines.length;
 
         for (let i = headerIdx + 1; i < lines.length; i++) {
-          if (lines[i].startsWith("## ")) {
+          if (lines[i]?.startsWith("## ")) {
             insertIdx = i;
             break;
           }
@@ -208,28 +217,30 @@ export default function lucaMemory(pi: any) {
     },
   });
 
+  /**
+   * Inject BRAIN.md into session context if available.
+   *
+   * Reads BRAIN.md and injects it via ctx.addSystemContext so the LLM
+   * has project identity loaded. Uses a fixed ID ("luca-brain") so
+   * repeated calls replace rather than duplicate the injection.
+   *
+   * @param ctx - Pi event context
+   */
+  function injectBrain(ctx: any): void {
+    if (!existsSync(brainPath)) return;
+    const brain = readFileSync(brainPath, "utf-8");
+    if (ctx?.addSystemContext) ctx.addSystemContext("luca-brain", brain);
+  }
+
   // Inject BRAIN.md context at session start
   pi.on("session_start", async (_event: any, ctx: any) => {
-    if (!existsSync(brainPath)) return;
+    injectBrain(ctx);
+  });
 
-    const brain = readFileSync(brainPath, "utf-8");
-
-    // Inject BRAIN.md into session context if Pi supports it
-    if (ctx?.addSystemContext) {
-      ctx.addSystemContext("luca-brain", brain);
-    }
-
-    // Show memory status in footer
-    const memoryExists = existsSync(memoryPath);
-    const workingExists = existsSync(workingPath);
-    const status = [
-      "BRAIN loaded",
-      memoryExists ? "MEMORY available" : "no MEMORY",
-      workingExists ? "WORKING active" : "no WORKING",
-    ].join(" | ");
-
-    if (ctx?.ui?.setStatus) {
-      ctx.ui.setStatus("luca-memory", status);
-    }
+  // Re-inject BRAIN.md before every agent turn (survives context compaction).
+  // Uses the same ID ("luca-brain") so addSystemContext replaces the
+  // previous injection rather than duplicating it.
+  pi.on("before_agent_start", async (_event: any, ctx: any) => {
+    injectBrain(ctx);
   });
 }

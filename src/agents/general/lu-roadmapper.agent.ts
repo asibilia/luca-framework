@@ -21,6 +21,9 @@ const luRoadmapperConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "planner",
+    allowed_contexts: ["planning", "roadmap", "estimation"],
   },
   sections: [
     {

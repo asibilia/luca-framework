@@ -21,6 +21,9 @@ const luPrReviewerConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "reviewer",
+    allowed_contexts: ["review", "audit", "assessment"],
   },
   sections: [
     {

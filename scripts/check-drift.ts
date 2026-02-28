@@ -141,7 +141,7 @@ async function main() {
   if (results.length === 0) {
     console.log("No drift detected. All outputs match source.");
     console.log(
-      `Active profiles: ${getActiveProfileNames().join(", ") || "none"}`,
+      `Active profiles: ${(await getActiveProfileNames()).join(", ") || "none"}`,
     );
     process.exit(0);
   }

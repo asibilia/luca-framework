@@ -30,6 +30,9 @@ const luPhaseResearcherConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "researcher",
+    allowed_contexts: ["research", "discovery", "analysis"],
   },
   sections: [
     {

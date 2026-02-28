@@ -13,7 +13,22 @@ import { join } from "path";
 
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { escapeRegExp } from "./__helpers/sanitize";
+import {
+  createStatusFormatter,
+  SEP,
+  COMPLEXITY_TIERS,
+} from "./__helpers/status";
+import { subagentRegistry } from "./__helpers/subagent-registry";
 
+/**
+ * Pi extension: Workflow state management and status display.
+ *
+ * Registers tools for reading/writing .planning/STATE.md fields and
+ * displays a consolidated status bar (phase, complexity, memory
+ * indicators) in Pi's footer during sessions.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaState(pi: any) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
@@ -37,13 +52,13 @@ export default function lucaState(pi: any) {
 
     for (const line of lines) {
       const match = line.match(/^\*\*(.+?):\*\*\s*(.+)$/);
-      if (match) {
+      if (match?.[1] && match[2]) {
         const key = match[1].trim().toLowerCase().replace(/\s+/g, "_");
         state[key] = match[2].trim();
       }
       // Also match "Key: Value" format (without bold)
       const simpleMatch = line.match(/^([A-Z][a-z ]+):\s*(.+)$/);
-      if (simpleMatch && !match) {
+      if (simpleMatch?.[1] && simpleMatch[2] && !match) {
         const key = simpleMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
         state[key] = simpleMatch[2].trim();
       }
@@ -131,13 +146,15 @@ export default function lucaState(pi: any) {
         `(\\*\\*${escapedField}:\\*\\*)\\s*.+`,
         "i",
       );
+      // Escape $ in replacement to prevent regex backreference interpretation
+      const safeValue = params.value.replace(/\$/g, "$$$$");
       if (boldPattern.test(content)) {
-        content = content.replace(boldPattern, `$1 ${params.value}`);
+        content = content.replace(boldPattern, `$1 ${safeValue}`);
       } else {
         // Try simple format: Field: value
         const simplePattern = new RegExp(`(${escapedField}:)\\s*.+`, "i");
         if (simplePattern.test(content)) {
-          content = content.replace(simplePattern, `$1 ${params.value}`);
+          content = content.replace(simplePattern, `$1 ${safeValue}`);
         } else {
           return createTextResponse(
             `Field "${params.field}" not found in STATE.md`,
@@ -151,14 +168,191 @@ export default function lucaState(pi: any) {
     },
   });
 
-  // Show state in footer on session start
-  pi.on("session_start", async (_event: any, ctx: any) => {
+  /**
+   * Session turn counter, incremented on turn_start.
+   *
+   * NOTE: luca-widgets.ts also tracks turnCount independently for widget
+   * rendering. Both are intentional — state drives the footer, widgets
+   * drives the dashboard. Keep in sync when changing event handlers.
+   */
+  let turnCount = 0;
+
+  /**
+   * Currently active luca tool (for footer display).
+   *
+   * NOTE: luca-widgets.ts also tracks activeTool independently for widget
+   * rendering. Both are intentional — see turnCount comment above.
+   */
+  let activeTool: string | null = null;
+
+  /**
+   * Build the state status string from current STATE.md and .planning/ files.
+   *
+   * Called at session_start and can be refreshed by tool_call events.
+   * Returns a single-line status string (used by setStatus fallback).
+   */
+  function buildStateStatus(ctx: any): string {
     const state = readStateMd();
-    const phase = state["current_phase"] ?? "?";
-    const complexity = state["task_complexity"] ?? "?";
-    const milestone = state["current_milestone"] ?? "?";
-    if (ctx?.ui?.setStatus) {
-      ctx.ui.setStatus("luca", `${milestone} | Phase ${phase} | ${complexity}`);
+    const phase = state["current_phase"];
+    const milestone = state["current_milestone"];
+    const complexity = (state["task_complexity"] ?? "MODERATE").toUpperCase();
+    const tier = COMPLEXITY_TIERS[complexity] ?? "standard";
+
+    // Check memory file existence
+    const brainExists = existsSync(join(planningDir, "BRAIN.md"));
+    const memoryExists = existsSync(join(planningDir, "MEMORY.md"));
+    const workingExists = existsSync(join(planningDir, "WORKING.md"));
+
+    const fmt = createStatusFormatter(ctx);
+
+    // Phase + milestone segment — show "No active phase" when missing
+    const hasPhase = phase && phase !== "--" && phase !== "?";
+    const hasMilestone = milestone && milestone !== "--" && milestone !== "?";
+    const phaseSegment =
+      hasPhase || hasMilestone
+        ? fmt.accent(`P${phase ?? "?"}${hasMilestone ? ` ${milestone}` : ""}`)
+        : fmt.dim("No active phase");
+
+    // Complexity segment — color by tier
+    const complexityColor =
+      tier === "thorough"
+        ? fmt.error
+        : tier === "standard"
+          ? fmt.warning
+          : fmt.muted;
+    const complexitySegment = fmt.hasTheme
+      ? complexityColor(complexity)
+      : `${complexity} (${tier})`;
+
+    // Memory indicators — green if loaded, dim if missing
+    const b = brainExists ? fmt.success("B") : fmt.dim("B");
+    const m = memoryExists ? fmt.success("M") : fmt.dim("M");
+    const w = workingExists ? fmt.success("W") : fmt.dim("W");
+    const memorySegment = `${b} ${m} ${w}`;
+
+    // Turn counter segment
+    const turnSegment = turnCount > 0 ? fmt.dim(`turn ${turnCount}`) : "";
+
+    const segments = [phaseSegment, complexitySegment, memorySegment];
+    if (turnSegment) segments.push(turnSegment);
+    return segments.join(SEP);
+  }
+
+  /**
+   * Update the footer using setFooter (multi-line) with setStatus fallback.
+   *
+   * setFooter renders a rich multi-line footer showing phase, complexity,
+   * subagent count, memory indicators, and active tool. Falls back to
+   * single-line setStatus for older Pi versions.
+   */
+  function updateFooter(
+    ctx: any,
+    stateOverride?: Record<string, string>,
+  ): void {
+    const state = stateOverride ?? readStateMd();
+
+    if (ctx?.ui?.setFooter) {
+      ctx.ui.setFooter((_theme: any) => {
+        const lines: string[] = [];
+
+        // Line 1: Phase and plan
+        const phase = state["current_phase"] ?? "?";
+        const plan = state["current_plan"] ?? state["plan"] ?? "?";
+        lines.push(`Phase ${phase} | Plan ${plan}`);
+
+        // Line 2: Complexity and oversight
+        const complexity = (
+          state["task_complexity"] ?? "MODERATE"
+        ).toUpperCase();
+        const tier = COMPLEXITY_TIERS[complexity] ?? "standard";
+        lines.push(`${complexity} (${tier}) | turn ${turnCount}`);
+
+        // Line 3: Subagent count (if any running)
+        const running = subagentRegistry
+          .values()
+          .filter((s) => s.status === "running");
+        if (running.length > 0) {
+          lines.push(`Subagents: ${running.length} running`);
+        }
+
+        // Line 4: Active tool (if any)
+        if (activeTool) {
+          lines.push(`Active: ${activeTool}`);
+        }
+
+        return lines.join("\n");
+      });
+    } else if (ctx?.ui?.setStatus) {
+      // Fallback: single-line status for older Pi versions
+      const statusLine = activeTool
+        ? `${buildStateStatus(ctx)}${SEP}${activeTool}`
+        : buildStateStatus(ctx);
+      ctx.ui.setStatus("luca-state", statusLine);
     }
+  }
+
+  // Show consolidated state in footer on session start
+  pi.on("session_start", async (_event: any, ctx: any) => {
+    updateFooter(ctx);
   });
+
+  // Track active luca tool calls
+  pi.on("tool_call", async (event: any, ctx: any) => {
+    const toolName: string = event?.toolName ?? "";
+    if (!toolName.startsWith("luca_")) return;
+
+    activeTool = toolName.replace("luca_", "").replace(/_/g, " ");
+    updateFooter(ctx);
+  });
+
+  // Clear active tool indicator when tool finishes
+  pi.on("tool_execution_end", async (event: any, ctx: any) => {
+    const toolName: string = event?.toolName ?? "";
+    if (!toolName.startsWith("luca_")) return;
+
+    activeTool = null;
+    updateFooter(ctx);
+  });
+
+  // Increment turn counter and refresh footer
+  pi.on("turn_start", async (_event: any, ctx: any) => {
+    turnCount++;
+    updateFooter(ctx);
+  });
+
+  // Reset turn counter and active tool on new agent session
+  pi.on("agent_start", async () => {
+    turnCount = 0;
+    activeTool = null;
+  });
+
+  // Reconstruct state when session changes (switch, fork, tree navigation)
+  const sessionEvents = [
+    "session_switch",
+    "session_fork",
+    "session_tree",
+  ] as const;
+
+  for (const eventName of sessionEvents) {
+    pi.on(eventName, async (_event: any, ctx: any) => {
+      // Re-read STATE.md (may differ per session branch)
+      const freshState = readStateMd();
+
+      // Update footer with fresh state (works even if STATE.md missing)
+      updateFooter(ctx, freshState);
+
+      // Log session event for audit trail
+      if (pi.appendEntry) {
+        pi.appendEntry("luca-session-event", {
+          event: eventName,
+          timestamp: new Date().toISOString(),
+          state: {
+            phase: freshState["current_phase"],
+            plan: freshState["current_plan"] ?? freshState["plan"],
+            complexity: freshState["task_complexity"],
+          },
+        });
+      }
+    });
+  }
 }

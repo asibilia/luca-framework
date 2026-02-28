@@ -32,9 +32,23 @@ interface LoopState {
   }>;
 }
 
-/** Max characters to keep from command output (prevents huge payloads). */
+/**
+ * Output truncation limit for tilldone loop results.
+ * See also: __helpers/exec.ts DEFAULT_MAX_OUTPUT (2000),
+ *           __helpers/spawn.ts MAX_OUTPUT_CHARS (8192).
+ */
 const MAX_OUTPUT_LENGTH = 1500;
 
+/**
+ * Pi extension: Retry-until-success command loops.
+ *
+ * Registers tools for running a command repeatedly until it succeeds,
+ * checking loop status, and resetting loops. Used for verification-driven
+ * workflows like "run tests until they pass" with configurable max
+ * iterations and timeout per attempt.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaTilldone(pi: any) {
   const cwd = process.cwd();
 
@@ -116,9 +130,15 @@ export default function lucaTilldone(pi: any) {
         max_iterations?: number;
         timeout?: number;
       },
+      _signal: AbortSignal | undefined,
+      onUpdate:
+        | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
+        | undefined,
+      _ctx: any,
     ) {
-      const maxIterations = params.max_iterations ?? 5;
-      const timeout = params.timeout ?? 120;
+      // Hard caps: max 10 iterations, 300s timeout per attempt
+      const maxIterations = Math.min(params.max_iterations ?? 5, 10);
+      const timeout = Math.min(params.timeout ?? 120, 300);
 
       // Run single attempt (LLM controls the loop by calling repeatedly)
       const existingLoop = loops.get(params.name);
@@ -133,7 +153,27 @@ export default function lucaTilldone(pi: any) {
         });
       }
 
+      // Stream progress before running check
+      onUpdate?.({
+        content: [
+          {
+            type: "text",
+            text: `Iteration ${iteration}/${maxIterations}: running ${params.command.slice(0, 60)}...`,
+          },
+        ],
+      });
+
       const result = runCommand(params.command, timeout);
+
+      // Stream result after running check
+      onUpdate?.({
+        content: [
+          {
+            type: "text",
+            text: `Iteration ${iteration}: ${result.passed ? "passed" : "failed"} (${result.duration}ms)`,
+          },
+        ],
+      });
 
       // Update loop state
       const loopState: LoopState = existingLoop ?? {

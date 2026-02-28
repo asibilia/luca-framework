@@ -9,6 +9,12 @@ tools:
   - Grep
   - Glob
   - WebSearch
+background_spawnable: false
+purpose: verifier
+allowed_contexts:
+  - verification
+  - testing
+  - debugging
 ---
 
 # lu-debugger

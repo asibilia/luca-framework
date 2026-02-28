@@ -23,6 +23,12 @@ model_routing:
   complexity_overrides:
     TRIVIAL: haiku
     SIMPLE: haiku
+background_spawnable: true
+purpose: verifier
+allowed_contexts:
+  - verification
+  - testing
+  - validation
 ---
 
 <role>

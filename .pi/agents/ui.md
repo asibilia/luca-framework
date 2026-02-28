@@ -5,6 +5,10 @@ tools:
   - Read
   - Grep
   - Glob
+background_spawnable: false
+purpose: general
+allowed_contexts:
+  - any
 ---
 
 # ui

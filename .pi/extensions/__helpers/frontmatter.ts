@@ -10,12 +10,20 @@
 
 /**
  * Parsed frontmatter fields from a .pi/agents/*.md file.
+ *
+ * NOTE: This is the Pi runtime type, parsed from deployed .md files at runtime.
+ * The build-time equivalent is `AgentFrontmatter` in `src/agents/__schemas/agent.schemas.ts`,
+ * which uses Zod validation and includes additional fields (cognition, context, model_routing).
+ * The two types serve different layers and are intentionally separate.
  */
 export interface AgentFrontmatter {
   name: string;
   description: string;
   tools: string[];
   model?: string;
+  background_spawnable?: boolean;
+  purpose?: string;
+  allowed_contexts?: string[];
 }
 
 /**
@@ -44,6 +52,28 @@ export interface AgentFrontmatter {
  * // { name: "lu-executor", description: "Executes plans", model: "claude-sonnet-4-20250514", tools: ["Read", "Write", "Bash"] }
  * ```
  */
+/**
+ * Parse a YAML list field from frontmatter content.
+ *
+ * Extracts a dash-list block for the given field name and returns
+ * the items as a string array.
+ *
+ * @param fm - Raw frontmatter string (between --- delimiters)
+ * @param fieldName - YAML field name to parse (e.g., "tools", "allowed_contexts")
+ * @returns Array of parsed list items, or empty array if field missing
+ */
+export function parseYamlList(fm: string, fieldName: string): string[] {
+  const listMatch = fm.match(
+    new RegExp(`^${fieldName}:\\n((?:\\s+-\\s+.+\\n?)*)`, "m"),
+  );
+  if (!listMatch?.[1]) return [];
+  return listMatch[1]
+    .split("\n")
+    .filter((l) => l.trim())
+    .map((l) => l.replace(/^\s*-\s+/, "").trim())
+    .filter(Boolean);
+}
+
 export function parseFrontmatter(content: string): AgentFrontmatter | null {
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch || !fmMatch[1]) return null;
@@ -54,20 +84,27 @@ export function parseFrontmatter(content: string): AgentFrontmatter | null {
   const model = fm.match(/^model:\s*(.+)$/m)?.[1]?.trim();
 
   // Parse tools array (YAML list format)
-  const tools: string[] = [];
-  const toolsMatch = fm.match(/^tools:\n((?:\s+-\s+.+\n?)*)/m);
-  if (toolsMatch && toolsMatch[1]) {
-    const toolLines = toolsMatch[1].match(/^\s+-\s+(.+)$/gm);
-    if (toolLines) {
-      for (const line of toolLines) {
-        const toolName = line.replace(/^\s+-\s+/, "").trim();
-        if (toolName) tools.push(toolName);
-      }
-    }
-  }
+  const tools = parseYamlList(fm, "tools");
+
+  // Parse background_spawnable (boolean field)
+  const bgMatch = fm.match(/^background_spawnable:\s*(.+)$/m)?.[1]?.trim();
+  const background_spawnable =
+    bgMatch === "true" ? true : bgMatch === "false" ? false : undefined;
+
+  // Parse purpose (single string field)
+  const purpose = fm.match(/^purpose:\s*(.+)$/m)?.[1]?.trim();
+
+  // Parse allowed_contexts array (YAML list format)
+  const allowed_contexts = parseYamlList(fm, "allowed_contexts");
 
   if (!name) return null;
-  return { name, description, tools, model };
+
+  const result: AgentFrontmatter = { name, description, tools, model };
+  if (background_spawnable != null)
+    result.background_spawnable = background_spawnable;
+  if (purpose) result.purpose = purpose;
+  if (allowed_contexts.length > 0) result.allowed_contexts = allowed_contexts;
+  return result;
 }
 
 /**

@@ -21,6 +21,9 @@ const luDebuggerConfig: AgentConfig = {
       promotable_to: "T3",
       isolation: "none",
     },
+    background_spawnable: false,
+    purpose: "verifier",
+    allowed_contexts: ["verification", "testing", "debugging"],
   },
   sections: [
     {

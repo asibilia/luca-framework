@@ -5,6 +5,12 @@ tools:
   - Read
   - Write
   - Bash
+background_spawnable: true
+purpose: synthesizer
+allowed_contexts:
+  - synthesis
+  - learning
+  - summarization
 ---
 
 # lu-research-synthesizer

@@ -20,6 +20,9 @@ const qaPlanGeneratorConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
+    background_spawnable: true,
+    purpose: "planner",
+    allowed_contexts: ["planning", "testing", "validation"],
   },
   sections: [
     {

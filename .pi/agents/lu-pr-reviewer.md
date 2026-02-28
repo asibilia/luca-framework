@@ -8,6 +8,12 @@ tools:
   - Grep
   - Glob
   - Task
+background_spawnable: true
+purpose: reviewer
+allowed_contexts:
+  - review
+  - audit
+  - assessment
 ---
 
 # lu-pr-reviewer

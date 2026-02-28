@@ -6,6 +6,12 @@ tools:
   - Glob
   - Grep
   - Bash
+background_spawnable: true
+purpose: planner
+allowed_contexts:
+  - planning
+  - testing
+  - validation
 ---
 
 # qa-plan-generator

@@ -190,3 +190,90 @@ describe("createAgent - toClaudeFormat", () => {
     expect(alphaIdx).toBeLessThan(betaIdx);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Subagent Metadata Fields (5a)
+// ---------------------------------------------------------------------------
+describe("createAgent - subagent metadata in schema", () => {
+  test("accepts optional background_spawnable, purpose, allowed_contexts", () => {
+    const config: AgentConfig = {
+      frontmatter: {
+        name: "bg-agent",
+        description: "Background spawnable agent",
+        background_spawnable: true,
+        purpose: "researcher",
+        allowed_contexts: ["research", "discovery", "analysis"],
+      },
+      sections: [],
+    };
+    const agent = createTestAgent(config);
+    expect(agent.config.frontmatter.background_spawnable).toBe(true);
+    expect(agent.config.frontmatter.purpose).toBe("researcher");
+    expect(agent.config.frontmatter.allowed_contexts).toEqual([
+      "research",
+      "discovery",
+      "analysis",
+    ]);
+  });
+
+  test("schema accepts all valid purpose categories", () => {
+    const purposes = [
+      "researcher",
+      "planner",
+      "executor",
+      "verifier",
+      "reviewer",
+      "synthesizer",
+      "auditor",
+      "general",
+    ] as const;
+
+    for (const purpose of purposes) {
+      const config: AgentConfig = {
+        frontmatter: {
+          name: `${purpose}-agent`,
+          description: `Agent with purpose ${purpose}`,
+          purpose,
+        },
+        sections: [],
+      };
+      const agent = createTestAgent(config);
+      expect(agent.config.frontmatter.purpose).toBe(purpose);
+    }
+  });
+
+  test("toPiFormat includes metadata fields when present", () => {
+    const config: AgentConfig = {
+      frontmatter: {
+        name: "meta-agent",
+        description: "Agent with all metadata",
+        background_spawnable: true,
+        purpose: "verifier",
+        allowed_contexts: ["verification", "testing"],
+      },
+      sections: [{ title: "role", content: "Test role", order: 1 }],
+    };
+    const agent = createTestAgent(config);
+    const piOutput = agent.toPiFormat();
+    expect(piOutput).toContain("background_spawnable: true");
+    expect(piOutput).toContain("purpose: verifier");
+    expect(piOutput).toContain("allowed_contexts:");
+    expect(piOutput).toContain("verification");
+    expect(piOutput).toContain("testing");
+  });
+
+  test("toPiFormat omits metadata fields when absent", () => {
+    const config: AgentConfig = {
+      frontmatter: {
+        name: "simple-agent",
+        description: "No metadata",
+      },
+      sections: [],
+    };
+    const agent = createTestAgent(config);
+    const piOutput = agent.toPiFormat();
+    expect(piOutput).not.toContain("background_spawnable");
+    expect(piOutput).not.toContain("purpose:");
+    expect(piOutput).not.toContain("allowed_contexts");
+  });
+});

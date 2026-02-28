@@ -8,13 +8,18 @@
  * Source: src/hooks/pi-extensions/luca-teams.ts
  * Deployed to: .pi/extensions/luca-teams.ts
  */
-import { readFileSync, existsSync, readdirSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 
-import type { AgentFrontmatter } from "./__helpers/frontmatter";
-import { parseFrontmatter } from "./__helpers/frontmatter";
+import { sendFollowUp } from "./__helpers/follow-up";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import { sanitizeName } from "./__helpers/sanitize";
+import { readAgentDef, spawnPiSubprocess } from "./__helpers/spawn";
+import {
+  subagentRegistry,
+  nextSubagentId,
+} from "./__helpers/subagent-registry";
 
 /** Team definition. */
 interface TeamDef {
@@ -26,6 +31,15 @@ interface TeamDef {
 /** Max characters to include from an agent persona (prevents huge payloads). */
 const MAX_PERSONA_LENGTH = 2000;
 
+/**
+ * Pi extension: Agent team dispatch and multi-agent review.
+ *
+ * Registers tools for listing, defining, and dispatching tasks to
+ * agent teams. Each team member's role description, tool restrictions,
+ * and persona context are returned for simulated multi-agent review.
+ *
+ * @param pi - Pi ExtensionAPI instance
+ */
 export default function lucaTeams(pi: any) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
@@ -66,39 +80,6 @@ export default function lucaTeams(pi: any) {
     description: "Security and performance audit team",
     agents: ["security-auditor", "performance-auditor"],
   });
-
-  /**
-   * Parse agent info from a .pi/agents/*.md file.
-   *
-   * Reads the file, extracts YAML frontmatter using the shared parser,
-   * and returns structured agent information.
-   *
-   * @param filePath - Absolute path to the agent .md file
-   * @returns Parsed agent info, or null if file missing or has no frontmatter
-   */
-  function parseAgentFile(filePath: string): AgentFrontmatter | null {
-    if (!existsSync(filePath)) return null;
-    const content = readFileSync(filePath, "utf-8");
-    return parseFrontmatter(content);
-  }
-
-  /**
-   * Read the full content of an agent persona file (after frontmatter).
-   *
-   * Returns the markdown body of the agent file, stripping the YAML
-   * frontmatter block. Used by team dispatch to inject role-specific
-   * context into the LLM prompt.
-   *
-   * @param agentName - Agent identifier (matches filename in .pi/agents/)
-   * @returns Persona markdown content, or null if file not found
-   */
-  function readAgentPersona(agentName: string): string | null {
-    const filePath = join(agentsDir, `${agentName}.md`);
-    if (!existsSync(filePath)) return null;
-    const content = readFileSync(filePath, "utf-8");
-    // Strip frontmatter, return body
-    return content.replace(/^---\n[\s\S]*?\n---\n*/, "").trim();
-  }
 
   // Tool: List available teams
   pi.registerTool({
@@ -157,7 +138,7 @@ export default function lucaTeams(pi: any) {
 
       // Validate agents exist
       const missing = agentNames.filter(
-        (name) => !existsSync(join(agentsDir, `${name}.md`)),
+        (name) => !existsSync(join(agentsDir, `${sanitizeName(name)}.md`)),
       );
       if (missing.length > 0) {
         return createTextResponse(`Agent(s) not found: ${missing.join(", ")}`);
@@ -180,7 +161,8 @@ export default function lucaTeams(pi: any) {
     name: "luca_dispatch_team",
     label: "Dispatch to Team",
     description:
-      "Dispatch a task to an agent team. Returns each agent's role description, tool restrictions, and persona context so the LLM can simulate multi-agent review.",
+      "Dispatch a task to an agent team. Returns each agent's role description, tool restrictions, and persona context so the LLM can simulate multi-agent review. " +
+      "When background=true, spawns each team member as a background subagent instead of returning metadata.",
     parameters: {
       type: "object",
       properties: {
@@ -192,10 +174,18 @@ export default function lucaTeams(pi: any) {
           type: "string",
           description: "Task description or context for the team",
         },
+        background: {
+          type: "boolean",
+          description:
+            "When true, spawn each team member as a background subagent (default: false)",
+        },
       },
       required: ["team", "task"],
     },
-    async execute(_toolCallId: string, params: { team: string; task: string }) {
+    async execute(
+      _toolCallId: string,
+      params: { team: string; task: string; background?: boolean },
+    ) {
       const teamDef = teams.get(params.team);
       if (!teamDef) {
         const available = teams.keys().join(", ");
@@ -204,7 +194,72 @@ export default function lucaTeams(pi: any) {
         );
       }
 
-      // Build dispatch context for each agent
+      // Background mode: spawn each agent as a subagent
+      if (params.background) {
+        const spawned: Array<{
+          agent: string;
+          subagent_id: string;
+          status: string;
+        }> = [];
+
+        for (const agentName of teamDef.agents) {
+          const agentDef = readAgentDef(cwd, agentName);
+          if (!agentDef) {
+            spawned.push({
+              agent: agentName,
+              subagent_id: "",
+              status: "not_found",
+            });
+            continue;
+          }
+
+          const subId = nextSubagentId("team", sanitizeName(agentName));
+          const teamName = teamDef.name;
+          const state = spawnPiSubprocess({
+            id: subId,
+            agentName,
+            task: params.task,
+            cwd,
+            model: agentDef.model,
+            tools: agentDef.tools,
+            systemPrompt: agentDef.systemPrompt,
+            source: "luca-teams",
+            onComplete: (info) => {
+              sendFollowUp(pi, {
+                customType: "team-result",
+                content: `Team "${teamName}" member "${info.agent}" ${info.status} (${(info.elapsed / 1000).toFixed(1)}s).`,
+                details: {
+                  team: teamName,
+                  subagent_id: info.id,
+                  agent: info.agent,
+                  status: info.status,
+                  exit_code: info.exitCode,
+                  elapsed_ms: info.elapsed,
+                },
+              });
+            },
+          });
+
+          subagentRegistry.set(subId, state);
+          spawned.push({
+            agent: agentName,
+            subagent_id: subId,
+            status: "running",
+          });
+        }
+
+        return createJsonResponse({
+          team: teamDef.name,
+          task: params.task,
+          background: true,
+          spawned_count: spawned.filter((s) => s.status === "running").length,
+          agents: spawned,
+          instructions:
+            "Team members spawned as background subagents. Use luca_subagent_list to monitor progress and luca_subagent_result to check individual outputs.",
+        });
+      }
+
+      // Standard mode: return agent metadata for LLM simulation
       const dispatches: Array<{
         agent: string;
         description: string;
@@ -214,14 +269,14 @@ export default function lucaTeams(pi: any) {
       }> = [];
 
       for (const agentName of teamDef.agents) {
-        const info = parseAgentFile(join(agentsDir, `${agentName}.md`));
-        const persona = readAgentPersona(agentName) ?? "No persona file found";
+        const def = readAgentDef(cwd, agentName);
+        const persona = def?.systemPrompt ?? "No persona file found";
 
         dispatches.push({
           agent: agentName,
-          description: info?.description ?? "Unknown agent",
-          tools: info?.tools ?? [],
-          model: info?.model ?? "default",
+          description: def?.frontmatter?.description ?? "Unknown agent",
+          tools: def?.frontmatter?.tools ?? [],
+          model: def?.frontmatter?.model ?? "default",
           persona:
             persona.length > MAX_PERSONA_LENGTH
               ? persona.slice(0, MAX_PERSONA_LENGTH) + "\n\n[truncated]"

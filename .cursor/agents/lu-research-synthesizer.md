@@ -14,6 +14,12 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
+background_spawnable: true
+purpose: synthesizer
+allowed_contexts:
+  - synthesis
+  - learning
+  - summarization
 ---
 
 <role>
