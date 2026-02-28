@@ -6,7 +6,7 @@ export interface ProjectContext {
   /** Whether Luca is already installed */
   hasLuca: boolean;
   /** Detected stack from dependencies */
-  detectedStack: 'react-ts' | 'react' | 'node-ts' | 'node' | 'unknown';
+  detectedStack: "react-ts" | "react" | "node-ts" | "node" | "unknown";
   /** Whether TypeScript is configured */
   hasTypeScript: boolean;
   /** Project name from package.json */
@@ -26,7 +26,7 @@ export interface BrandingConfig {
 
 /**
  * Configuration for approval gates.
- * 
+ *
  * Controls when Luca asks for user confirmation before
  * executing operations. Secure defaults: all enabled.
  */
@@ -41,10 +41,15 @@ export interface ApprovalConfig {
   custom_triggers: string[];
 }
 
+/** Supported AI harness platforms */
+export type HarnessId = "claude" | "cursor" | "pi";
+
 export interface LucaConfig {
   branding: BrandingConfig;
   stack: string;
-  workTracker: 'jira' | 'github' | 'none';
+  workTracker: "jira" | "github" | "none";
+  /** Selected harness platforms for scaffolding */
+  harnesses?: HarnessId[];
   /** Approval gate configuration */
   approvals?: ApprovalConfig;
 }
@@ -56,10 +61,15 @@ export interface LucaManifest {
   branding: BrandingConfig;
   stack: string;
   workTracker: string;
-  files: Record<string, {
-    originalHash: string;
-    source: 'framework' | 'user';
-  }>;
+  /** Harness platforms installed in this project (defaults to ['claude', 'cursor'] for backward compat) */
+  harnesses?: HarnessId[];
+  files: Record<
+    string,
+    {
+      originalHash: string;
+      source: "framework" | "user";
+    }
+  >;
 }
 
 /**
@@ -75,7 +85,7 @@ export interface FileComparison {
   /** Relative path to the file */
   path: string;
   /** Comparison result status */
-  status: 'unchanged' | 'user-modified' | 'new' | 'deleted';
+  status: "unchanged" | "user-modified" | "new" | "deleted";
   /** Hash from original manifest (null if new file) */
   originalHash: string | null;
   /** Hash of current file on disk (null if deleted) */

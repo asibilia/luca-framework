@@ -929,55 +929,62 @@ async function handleResumePhase(args: string[]): Promise<void> {
 
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
-if (import.meta.main) {
+/**
+ * Run the bridge CLI dispatcher.
+ *
+ * Reads subcommand and args from `Bun.argv` (or `process.argv`)
+ * and dispatches to the appropriate handler.
+ * Exported so `bin/luca-bridge.js` can call it directly.
+ */
+export async function runBridgeCli(): Promise<void> {
   const subcommand = Bun.argv[2];
   const args = Bun.argv.slice(3);
 
-  async function run() {
-    switch (subcommand) {
-      case "read-complexity":
-        await handleReadComplexity();
-        break;
-      case "read-oversight":
-        await handleReadOversight();
-        break;
-      case "read-phase":
-        await handleReadPhase();
-        break;
-      case "read-status":
-        await handleReadStatus();
-        break;
-      case "read-field":
-        await handleReadField(args);
-        break;
-      case "set-field":
-        await handleSetField(args);
-        break;
-      case "transition":
-        await handleTransition(args);
-        break;
-      case "snapshot":
-        await handleSnapshot();
-        break;
-      case "ensure-init":
-        await handleEnsureInit(args);
-        break;
-      case "gate-check":
-        await handleGateCheck(args);
-        break;
-      case "suspend":
-        await handleSuspend(args);
-        break;
-      case "resume-phase":
-        await handleResumePhase(args);
-        break;
-      default:
-        printUsage();
-        process.exit(2);
-    }
+  switch (subcommand) {
+    case "read-complexity":
+      await handleReadComplexity();
+      break;
+    case "read-oversight":
+      await handleReadOversight();
+      break;
+    case "read-phase":
+      await handleReadPhase();
+      break;
+    case "read-status":
+      await handleReadStatus();
+      break;
+    case "read-field":
+      await handleReadField(args);
+      break;
+    case "set-field":
+      await handleSetField(args);
+      break;
+    case "transition":
+      await handleTransition(args);
+      break;
+    case "snapshot":
+      await handleSnapshot();
+      break;
+    case "ensure-init":
+      await handleEnsureInit(args);
+      break;
+    case "gate-check":
+      await handleGateCheck(args);
+      break;
+    case "suspend":
+      await handleSuspend(args);
+      break;
+    case "resume-phase":
+      await handleResumePhase(args);
+      break;
+    default:
+      printUsage();
+      process.exit(2);
   }
+}
 
-  run().catch((err) => {
+if (import.meta.main) {
+  runBridgeCli().catch((err) => {
     console.error("Error:", err instanceof Error ? err.message : String(err));
     process.exit(2);
   });
