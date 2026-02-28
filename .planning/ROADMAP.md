@@ -40,6 +40,8 @@
 
 **Depends on:** Phase 71 (scope rename must be complete)
 
+- [x] Plan 74-A: PATH export, cascading bridge lookup, hook sync
+
 ### Phase 75 — Update Command & Doctor
 
 **Goal:** Make `update.ts` harness-aware, add per-harness verification to `doctor.ts`, update init success output.

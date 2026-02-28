@@ -11,6 +11,18 @@
 
 set -euo pipefail
 
+# Ensure node_modules/.bin is in PATH for installed-package context
+export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
+
+# Cascading bridge lookup: installed bin → monorepo source → skip
+run_bridge() {
+  if command -v luca-bridge &>/dev/null; then
+    luca-bridge "$@"
+  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
+  fi
+}
+
 # Read stdin JSON (standard hook pattern)
 INPUT=$(cat)
 
@@ -27,15 +39,8 @@ if [ -f "$THROTTLE_FILE" ]; then
   fi
 fi
 
-# Check if state machine bridge exists
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
-BRIDGE="$PROJECT_DIR/packages/luca-framework/src/state/bridge.ts"
-
-if [ ! -f "$BRIDGE" ]; then
-  exit 0  # Bridge not available -- skip silently
-fi
-
 # Check if state.json exists
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 STATE_JSON="$PROJECT_DIR/.planning/state.json"
 if [ ! -f "$STATE_JSON" ]; then
   exit 0  # State machine not initialized -- skip silently
@@ -46,6 +51,6 @@ date +%s > "$THROTTLE_FILE"
 
 # Regenerate STATE.md snapshot from state machine
 cd "$PROJECT_DIR"
-bun run "$BRIDGE" snapshot 2>/dev/null || true
+run_bridge snapshot 2>/dev/null || true
 
 exit 0
