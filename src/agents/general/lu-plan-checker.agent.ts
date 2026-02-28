@@ -24,6 +24,7 @@ const luPlanCheckerConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "verifier",
     allowed_contexts: ["verification", "testing", "validation"],
+    model_tier: "balanced",
   },
   sections: [
     {

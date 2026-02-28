@@ -23,6 +23,7 @@ const uiConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "general",
     allowed_contexts: ["any"],
+    model_tier: "capable",
   },
   sections: [
     {

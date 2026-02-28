@@ -19,6 +19,7 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: warm
+model_tier: balanced
 background_spawnable: false
 purpose: planner
 allowed_contexts:

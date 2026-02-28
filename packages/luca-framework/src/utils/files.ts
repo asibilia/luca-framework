@@ -6,7 +6,7 @@ import { copyTemplates, getTemplatesDir } from "./template";
 import { createManifest, writeManifest } from "./manifest";
 import { sanitizeJsonParse } from "./sanitize";
 import { logger } from "./logger";
-import type { LucaConfig, LucaManifest } from "../types";
+import type { LucaConfig, LucaManifest, HarnessId } from "../types";
 
 // Track created files for cleanup on error
 const createdPaths: string[] = [];
@@ -127,21 +127,36 @@ export async function generateFiles(options: {
 
   const { config, cwd = process.cwd() } = options;
   const templatesDir = getTemplatesDir();
+  const harnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
 
   const spinner = p.spinner();
 
   try {
-    // Step 1: Create directories
+    // Step 1: Create directories (conditional per harness)
     spinner.start("Creating directories...");
 
     const planningDir = join(cwd, ".planning");
-    const cursorDir = join(cwd, ".cursor");
-    const lucaDir = join(cursorDir, "luca");
-    const agentsDir = join(cursorDir, "agents");
-    const rulesDir = join(cursorDir, "rules");
-    const skillsDir = join(cursorDir, "skills");
+    const dirs: string[] = [planningDir];
 
-    for (const dir of [planningDir, lucaDir, agentsDir, rulesDir, skillsDir]) {
+    if (harnesses.includes("cursor")) {
+      const cursorDir = join(cwd, ".cursor");
+      dirs.push(
+        join(cursorDir, "luca"),
+        join(cursorDir, "agents"),
+        join(cursorDir, "rules"),
+        join(cursorDir, "skills"),
+      );
+    }
+
+    if (harnesses.includes("claude")) {
+      dirs.push(join(cwd, ".claude"));
+    }
+
+    if (harnesses.includes("pi")) {
+      dirs.push(join(cwd, ".pi"));
+    }
+
+    for (const dir of dirs) {
       if (!existsSync(dir)) {
         await mkdir(dir, { recursive: true });
         trackCreated(dir);
@@ -190,156 +205,192 @@ export async function generateFiles(options: {
       }
     }
 
-    // Step 4: Copy framework files (.cursor/luca/)
-    spinner.start("Installing framework files...");
+    // Step 4: Copy framework files (.cursor/luca/) — only if cursor harness selected
+    if (harnesses.includes("cursor")) {
+      spinner.start("Installing framework files...");
 
-    const frameworkTemplatesDir = join(templatesDir, "framework");
-    if (existsSync(frameworkTemplatesDir)) {
-      const { processed: frameworkProcessed, copied: frameworkCopied } =
-        await copyTemplates({
-          sourceDir: frameworkTemplatesDir,
-          destDir: lucaDir,
-          config,
-        });
+      const cursorDir = join(cwd, ".cursor");
+      const lucaDir = join(cursorDir, "luca");
+      const frameworkTemplatesDir = join(templatesDir, "framework");
+      if (existsSync(frameworkTemplatesDir)) {
+        const { processed: frameworkProcessed, copied: frameworkCopied } =
+          await copyTemplates({
+            sourceDir: frameworkTemplatesDir,
+            destDir: lucaDir,
+            config,
+          });
 
-      spinner.stop(
-        `Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`,
-      );
-    } else {
-      spinner.stop("Framework templates not found");
-    }
-
-    // Step 4.5: Install Claude Code hooks
-    spinner.start("Installing Claude Code hooks...");
-
-    const claudeDir = join(cwd, ".claude");
-    const claudeHooksDir = join(claudeDir, "hooks");
-
-    // Create .claude/hooks/ directory
-    if (!existsSync(claudeHooksDir)) {
-      await mkdir(claudeHooksDir, { recursive: true });
-      trackCreated(claudeHooksDir);
-    }
-
-    // Copy hook scripts from templates
-    const hookTemplatesDir = join(templatesDir, "hooks");
-    if (existsSync(hookTemplatesDir)) {
-      const hookScriptsDir = join(hookTemplatesDir, "scripts");
-      if (existsSync(hookScriptsDir)) {
-        const hookFiles = await readdir(hookScriptsDir);
-        let hooksCopied = 0;
-
-        for (const hookFile of hookFiles) {
-          const srcPath = join(hookScriptsDir, hookFile);
-          const destPath = join(claudeHooksDir, hookFile);
-
-          await copyFile(srcPath, destPath);
-          trackCreated(destPath);
-
-          // Make script executable (using fs/promises chmod, cross-platform)
-          try {
-            await chmod(destPath, 0o755);
-          } catch {
-            // chmod may fail on some platforms (Windows), non-fatal
-          }
-
-          hooksCopied++;
-        }
-
-        // Generate .claude/settings.json from hook settings template
-        const settingsHooksPath = join(hookTemplatesDir, "settings-hooks.json");
-        const claudeSettingsPath = join(claudeDir, "settings.json");
-
-        if (await Bun.file(settingsHooksPath).exists()) {
-          let existingSettings: Record<string, unknown> = {};
-
-          // Preserve existing settings.json content (if any)
-          if (await Bun.file(claudeSettingsPath).exists()) {
-            try {
-              const existing = await Bun.file(claudeSettingsPath).text();
-              existingSettings = sanitizeJsonParse(existing) as Record<
-                string,
-                unknown
-              >;
-            } catch {
-              // Invalid JSON — start fresh
-            }
-          }
-
-          // Read hook settings template
-          const hooksContent = await Bun.file(settingsHooksPath).text();
-          const hooksSettings = sanitizeJsonParse(hooksContent) as Record<
-            string,
-            unknown
-          >;
-
-          // Merge hooks into settings (preserving other keys like permissions)
-          existingSettings.hooks = hooksSettings.hooks;
-
-          await Bun.write(
-            claudeSettingsPath,
-            JSON.stringify(existingSettings, null, 2) + "\n",
-          );
-          trackCreated(claudeSettingsPath);
-        }
-
-        spinner.stop(`Installed ${hooksCopied} hook scripts + settings.json`);
+        spinner.stop(
+          `Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`,
+        );
       } else {
-        spinner.stop("Hook scripts directory not found, skipping hooks");
+        spinner.stop("Framework templates not found");
       }
-    } else {
-      spinner.stop("Hook templates not found, skipping hooks");
     }
 
-    // Step 4.6: Install Cursor hooks
-    spinner.start("Installing Cursor hooks...");
+    // Hook templates shared between Claude and Cursor
+    const hookTemplatesDir = join(templatesDir, "hooks");
 
-    const cursorHooksDir = join(cursorDir, "hooks");
+    // Step 4.5: Install Claude Code hooks — only if claude harness selected
+    if (harnesses.includes("claude")) {
+      spinner.start("Installing Claude Code hooks...");
 
-    if (!existsSync(cursorHooksDir)) {
-      await mkdir(cursorHooksDir, { recursive: true });
-      trackCreated(cursorHooksDir);
-    }
+      const claudeDir = join(cwd, ".claude");
+      const claudeHooksDir = join(claudeDir, "hooks");
 
-    if (existsSync(hookTemplatesDir)) {
-      const hookScriptsDirCursor = join(hookTemplatesDir, "scripts");
-      if (existsSync(hookScriptsDirCursor)) {
-        const cursorHookFiles = await readdir(hookScriptsDirCursor);
-        let cursorHooksCopied = 0;
+      if (!existsSync(claudeHooksDir)) {
+        await mkdir(claudeHooksDir, { recursive: true });
+        trackCreated(claudeHooksDir);
+      }
 
-        for (const hookFile of cursorHookFiles) {
-          const srcPath = join(hookScriptsDirCursor, hookFile);
-          const destPath = join(cursorHooksDir, hookFile);
+      if (existsSync(hookTemplatesDir)) {
+        const hookScriptsDir = join(hookTemplatesDir, "scripts");
+        if (existsSync(hookScriptsDir)) {
+          const hookFiles = await readdir(hookScriptsDir);
+          let hooksCopied = 0;
 
-          await copyFile(srcPath, destPath);
-          trackCreated(destPath);
+          for (const hookFile of hookFiles) {
+            const srcPath = join(hookScriptsDir, hookFile);
+            const destPath = join(claudeHooksDir, hookFile);
 
-          try {
-            await chmod(destPath, 0o755);
-          } catch {
-            // chmod may fail on Windows
+            await copyFile(srcPath, destPath);
+            trackCreated(destPath);
+
+            try {
+              await chmod(destPath, 0o755);
+            } catch {
+              // chmod may fail on some platforms (Windows), non-fatal
+            }
+
+            hooksCopied++;
           }
 
-          cursorHooksCopied++;
+          // Generate .claude/settings.json from hook settings template
+          const settingsHooksPath = join(
+            hookTemplatesDir,
+            "settings-hooks.json",
+          );
+          const claudeSettingsPath = join(claudeDir, "settings.json");
+
+          if (await Bun.file(settingsHooksPath).exists()) {
+            let existingSettings: Record<string, unknown> = {};
+
+            if (await Bun.file(claudeSettingsPath).exists()) {
+              try {
+                const existing = await Bun.file(claudeSettingsPath).text();
+                existingSettings = sanitizeJsonParse(existing) as Record<
+                  string,
+                  unknown
+                >;
+              } catch {
+                // Invalid JSON — start fresh
+              }
+            }
+
+            const hooksContent = await Bun.file(settingsHooksPath).text();
+            const hooksSettings = sanitizeJsonParse(hooksContent) as Record<
+              string,
+              unknown
+            >;
+
+            existingSettings.hooks = hooksSettings.hooks;
+
+            await Bun.write(
+              claudeSettingsPath,
+              JSON.stringify(existingSettings, null, 2) + "\n",
+            );
+            trackCreated(claudeSettingsPath);
+          }
+
+          spinner.stop(`Installed ${hooksCopied} hook scripts + settings.json`);
+        } else {
+          spinner.stop("Hook scripts directory not found, skipping hooks");
         }
+      } else {
+        spinner.stop("Hook templates not found, skipping hooks");
+      }
+    }
 
-        // Copy cursor-hooks.json to .cursor/hooks.json
-        const cursorHooksJsonSrc = join(hookTemplatesDir, "cursor-hooks.json");
-        const cursorHooksJsonDest = join(cursorDir, "hooks.json");
+    // Step 4.6: Install Cursor hooks — only if cursor harness selected
+    if (harnesses.includes("cursor")) {
+      spinner.start("Installing Cursor hooks...");
 
-        if (await Bun.file(cursorHooksJsonSrc).exists()) {
-          await copyFile(cursorHooksJsonSrc, cursorHooksJsonDest);
-          trackCreated(cursorHooksJsonDest);
+      const cursorDir = join(cwd, ".cursor");
+      const cursorHooksDir = join(cursorDir, "hooks");
+
+      if (!existsSync(cursorHooksDir)) {
+        await mkdir(cursorHooksDir, { recursive: true });
+        trackCreated(cursorHooksDir);
+      }
+
+      if (existsSync(hookTemplatesDir)) {
+        const hookScriptsDirCursor = join(hookTemplatesDir, "scripts");
+        if (existsSync(hookScriptsDirCursor)) {
+          const cursorHookFiles = await readdir(hookScriptsDirCursor);
+          let cursorHooksCopied = 0;
+
+          for (const hookFile of cursorHookFiles) {
+            const srcPath = join(hookScriptsDirCursor, hookFile);
+            const destPath = join(cursorHooksDir, hookFile);
+
+            await copyFile(srcPath, destPath);
+            trackCreated(destPath);
+
+            try {
+              await chmod(destPath, 0o755);
+            } catch {
+              // chmod may fail on Windows
+            }
+
+            cursorHooksCopied++;
+          }
+
+          const cursorHooksJsonSrc = join(
+            hookTemplatesDir,
+            "cursor-hooks.json",
+          );
+          const cursorHooksJsonDest = join(cursorDir, "hooks.json");
+
+          if (await Bun.file(cursorHooksJsonSrc).exists()) {
+            await copyFile(cursorHooksJsonSrc, cursorHooksJsonDest);
+            trackCreated(cursorHooksJsonDest);
+          }
+
+          spinner.stop(
+            `Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`,
+          );
+        } else {
+          spinner.stop(
+            "Hook scripts directory not found, skipping Cursor hooks",
+          );
+        }
+      } else {
+        spinner.stop("Hook templates not found, skipping Cursor hooks");
+      }
+    }
+
+    // Step 4.7: Copy per-harness templates (agents, rules, skills, settings)
+    for (const harnessId of harnesses) {
+      const harnessTemplatesDir = join(templatesDir, "harness", harnessId);
+      if (existsSync(harnessTemplatesDir)) {
+        spinner.start(`Installing ${harnessId} platform files...`);
+
+        const harnessDestDir = join(cwd, `.${harnessId}`);
+        const { processed: harnessProcessed, copied: harnessCopied } =
+          await copyTemplates({
+            sourceDir: harnessTemplatesDir,
+            destDir: harnessDestDir,
+            config,
+          });
+
+        for (const file of [...harnessProcessed, ...harnessCopied]) {
+          trackCreated(join(harnessDestDir, file));
         }
 
         spinner.stop(
-          `Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`,
+          `Installed ${harnessProcessed.length + harnessCopied.length} ${harnessId} files`,
         );
-      } else {
-        spinner.stop("Hook scripts directory not found, skipping Cursor hooks");
       }
-    } else {
-      spinner.stop("Hook templates not found, skipping Cursor hooks");
     }
 
     // Step 5: Create manifest

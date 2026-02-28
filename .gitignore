@@ -6,6 +6,9 @@ out
 dist
 *.tgz
 
+# harness templates (compiled output, not source)
+packages/luca-framework/templates/harness
+
 # code coverage
 coverage
 *.lcov

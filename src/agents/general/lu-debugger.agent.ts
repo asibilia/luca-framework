@@ -24,6 +24,7 @@ const luDebuggerConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "verifier",
     allowed_contexts: ["verification", "testing", "debugging"],
+    model_tier: "balanced",
   },
   sections: [
     {

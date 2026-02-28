@@ -43,6 +43,11 @@ export const initCommand = defineCommand({
       type: "string",
       description: "Work tracker (jira, github, none)",
     },
+    harness: {
+      type: "string",
+      description:
+        "Harness platforms, comma-separated (claude, cursor, pi). Default: claude,cursor",
+    },
   },
   async run({ args }) {
     // Setup cleanup handler for SIGINT
@@ -90,7 +95,8 @@ export const initCommand = defineCommand({
       args.name ||
       args.prefix ||
       args.stack ||
-      args.tracker
+      args.tracker ||
+      args.harness
     ) {
       // Quick mode or explicit args
       logger.info("Using provided arguments / defaults");
@@ -99,6 +105,7 @@ export const initCommand = defineCommand({
         prefix: args.prefix,
         stack: args.stack,
         tracker: args.tracker,
+        harness: args.harness,
       });
     } else {
       // Interactive mode
@@ -130,6 +137,15 @@ export const initCommand = defineCommand({
     // Success output
     p.outro(`✅ ${config.branding.frameworkName} initialized!`);
 
+    const harnessNames = (config.harnesses ?? ["claude", "cursor"])
+      .map((h) => {
+        if (h === "claude") return ".claude/";
+        if (h === "cursor") return ".cursor/";
+        if (h === "pi") return ".pi/";
+        return h;
+      })
+      .join(", ");
+
     logger.box(`
 Next steps:
 
@@ -141,7 +157,7 @@ Files created:
 - .planning/config.json (workflow configuration)
 - .planning/BRAIN.md (project identity)
 - .planning/manifest.json (installation tracking)
-- .cursor/luca/ (framework files)
+- ${harnessNames} (harness-specific files)
     `);
   },
 });

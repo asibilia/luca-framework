@@ -24,6 +24,7 @@ const luPrReviewerConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "reviewer",
     allowed_contexts: ["review", "audit", "assessment"],
+    model_tier: "balanced",
   },
   sections: [
     {

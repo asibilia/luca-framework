@@ -18,7 +18,12 @@ import {
   isTemplateFile,
 } from "../utils/template";
 import { createBrandingContext } from "../utils/branding";
-import type { LucaConfig, LucaManifest, FileComparison } from "../types";
+import type {
+  LucaConfig,
+  LucaManifest,
+  FileComparison,
+  HarnessId,
+} from "../types";
 
 /**
  * Get new framework files from templates directory.
@@ -88,6 +93,20 @@ async function getNewFrameworkFiles(
     context,
     join(".cursor", "luca"),
   );
+
+  // Collect per-harness templates (agents, rules, skills, hooks, settings)
+  const harnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
+  for (const harnessId of harnesses) {
+    const harnessDir = join(templatesDir, "harness", harnessId);
+    if (existsSync(harnessDir)) {
+      await collectTemplateFiles(
+        harnessDir,
+        newFiles,
+        context,
+        `.${harnessId}`,
+      );
+    }
+  }
 
   return newFiles;
 }
@@ -392,6 +411,7 @@ export const updateCommand = defineCommand({
       branding: manifest.branding,
       stack: manifest.stack,
       workTracker: manifest.workTracker as "jira" | "github" | "none",
+      harnesses: manifest.harnesses ?? ["claude", "cursor"],
     };
 
     const newFiles = await getNewFrameworkFiles(config, cwd);

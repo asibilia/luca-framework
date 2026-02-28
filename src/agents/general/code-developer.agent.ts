@@ -23,6 +23,7 @@ const codeDeveloperConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "executor",
     allowed_contexts: ["execution", "implementation", "coding"],
+    model_tier: "capable",
   },
   sections: [
     {

@@ -18,6 +18,7 @@ context:
   isolation: none
 model_routing:
   default_model: haiku
+model_tier: fast
 background_spawnable: false
 purpose: general
 allowed_contexts:

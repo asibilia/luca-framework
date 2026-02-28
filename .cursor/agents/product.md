@@ -13,6 +13,7 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
+model_tier: balanced
 background_spawnable: false
 purpose: general
 allowed_contexts:

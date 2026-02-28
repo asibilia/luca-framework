@@ -14,6 +14,7 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: cold
+model_tier: capable
 background_spawnable: false
 purpose: reviewer
 allowed_contexts:

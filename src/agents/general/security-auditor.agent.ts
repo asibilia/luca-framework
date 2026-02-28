@@ -23,6 +23,7 @@ const securityAuditorConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "auditor",
     allowed_contexts: ["audit", "security", "review"],
+    model_tier: "capable",
   },
   sections: [
     {

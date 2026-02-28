@@ -16,6 +16,18 @@
 
 set -euo pipefail
 
+# Ensure node_modules/.bin is in PATH for installed-package context
+export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
+
+# Cascading bridge lookup: installed bin → monorepo source → skip
+run_bridge() {
+  if command -v luca-bridge &>/dev/null; then
+    luca-bridge "$@"
+  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
+  fi
+}
+
 # Read stdin JSON (standard hook pattern)
 INPUT=$(cat)
 
@@ -163,31 +175,28 @@ ROADMAP_EOF
   CREATED="${CREATED}ROADMAP.md "
 fi
 
-# Step 3e: Initialize state machine (if bridge exists)
+# Step 3e: Initialize state machine (via cascading bridge lookup)
 STATE_JSON="$PLANNING_DIR/state.json"
-STATE_MACHINE_BRIDGE="packages/luca-framework/src/state/bridge.ts"
 
-if [ -f "$STATE_MACHINE_BRIDGE" ]; then
-  if [ -f "$STATE_JSON" ]; then
-    # State exists -- check age to decide resume vs reinit
-    # macOS stat -f "%m", Linux stat -c "%Y"
-    STATE_MTIME=$(stat -f "%m" "$STATE_JSON" 2>/dev/null || stat -c "%Y" "$STATE_JSON" 2>/dev/null || echo "0")
-    NOW=$(date +%s)
-    STATE_AGE=$((NOW - STATE_MTIME))
+if [ -f "$STATE_JSON" ]; then
+  # State exists -- check age to decide resume vs reinit
+  # macOS stat -f "%m", Linux stat -c "%Y"
+  STATE_MTIME=$(stat -f "%m" "$STATE_JSON" 2>/dev/null || stat -c "%Y" "$STATE_JSON" 2>/dev/null || echo "0")
+  NOW=$(date +%s)
+  STATE_AGE=$((NOW - STATE_MTIME))
 
-    if [ "$STATE_AGE" -lt 86400 ]; then
-      # Fresh enough -- resume (regenerate snapshot)
-      bun run "$STATE_MACHINE_BRIDGE" snapshot 2>/dev/null || true
-    else
-      # Stale -- reinitialize
-      bun run "$STATE_MACHINE_BRIDGE" ensure-init --force 2>/dev/null || true
-      CREATED="${CREATED}state.json "
-    fi
+  if [ "$STATE_AGE" -lt 86400 ]; then
+    # Fresh enough -- resume (regenerate snapshot)
+    run_bridge snapshot 2>/dev/null || true
   else
-    # No state.json -- initialize fresh
-    bun run "$STATE_MACHINE_BRIDGE" ensure-init 2>/dev/null || true
+    # Stale -- reinitialize
+    run_bridge ensure-init --force 2>/dev/null || true
     CREATED="${CREATED}state.json "
   fi
+else
+  # No state.json -- initialize fresh
+  run_bridge ensure-init 2>/dev/null || true
+  CREATED="${CREATED}state.json "
 fi
 
 # Step 4: Detect runtime

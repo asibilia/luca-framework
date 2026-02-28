@@ -16,6 +16,9 @@
 
 set -euo pipefail
 
+# Ensure node_modules/.bin is in PATH for installed-package context
+export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
+
 # Read stdin JSON
 INPUT=$(cat)
 

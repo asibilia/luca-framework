@@ -30,6 +30,24 @@ const tierSchema = z.enum(["T0", "T1", "T2", "T3"]);
 export const ModelIdSchema = z.enum(["opus", "sonnet", "haiku"]);
 export type ModelId = z.infer<typeof ModelIdSchema>;
 
+/**
+ * High-level model tier for per-agent categorization.
+ *
+ * Agents declare a tier based on their compute needs:
+ * - **fast**: Lightweight agents (classifiers, routers) → maps to haiku
+ * - **balanced**: Standard agents (planners, executors) → maps to sonnet
+ * - **capable**: Deep-analysis agents (architects, auditors) → maps to opus
+ */
+export const ModelTierSchema = z.enum(["fast", "balanced", "capable"]);
+export type ModelTier = z.infer<typeof ModelTierSchema>;
+
+/** Maps each model tier to its default ModelId */
+export const MODEL_TIER_TO_MODEL: Record<ModelTier, ModelId> = {
+  fast: "haiku",
+  balanced: "sonnet",
+  capable: "opus",
+};
+
 /** The five complexity levels, ordered from least to most complex */
 export const COMPLEXITY_LEVELS = [
   "TRIVIAL",
@@ -97,13 +115,21 @@ export const StepActivationSchema = z.enum([
 ]);
 export type StepActivation = z.infer<typeof StepActivationSchema>;
 
-/** Per-level workflow gating configuration */
+/**
+ * Per-level workflow gating configuration.
+ *
+ * @deprecated Step activation fields (research, discussion, uat, codeReviewAgents,
+ * learningCapture) are superseded by per-agent model routing via `model_tier` and
+ * `model_routing`. Steps now always run; agents route to appropriate models based
+ * on complexity level. These fields are retained for backward compatibility and
+ * estimation purposes only.
+ */
 export const ComplexityGateSchema = z.object({
   /** Cognitive pre-flight depth */
   cognitivePreflight: z.enum(["lite", "full"]),
-  /** Whether research (lu-phase-researcher) runs */
+  /** @deprecated Superseded by per-agent model routing. Retained for backward compatibility. */
   research: StepActivationSchema,
-  /** Whether discussion (phase-discuss) runs */
+  /** @deprecated Superseded by per-agent model routing. Retained for backward compatibility. */
   discussion: StepActivationSchema,
   /** Plan verification iterations (lu-plan-checker loop count) */
   planVerificationIterations: z.number().int().nonnegative(),
@@ -113,11 +139,11 @@ export const ComplexityGateSchema = z.object({
   verifyFixIterations: z.number().int().nonnegative(),
   /** Verification mode for lu-verifier */
   verificationMode: VerificationModeSchema,
-  /** Code review agents to spawn (by agent name) */
+  /** @deprecated Superseded by per-agent model routing. Retained for backward compatibility. */
   codeReviewAgents: z.array(z.string()),
-  /** UAT step activation */
+  /** @deprecated Superseded by per-agent model routing. Retained for backward compatibility. */
   uat: StepActivationSchema,
-  /** Learning capture depth */
+  /** @deprecated Superseded by per-agent model routing. Retained for backward compatibility. */
   learningCapture: z.enum([
     "skip",
     "brief",
