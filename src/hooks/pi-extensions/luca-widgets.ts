@@ -36,7 +36,6 @@ import {
   renderSubagents,
   getQualityZone,
 } from "./__helpers/widget-renderers";
-import { createStatusFormatter, SEP } from "./__helpers/status";
 
 // ─── State ───────────────────────────────────────────────────
 
@@ -317,9 +316,7 @@ function updateSubagentFromResult(
         ? {
             ...a,
             status: data.status ?? a.status,
-            task_preview: data.task
-              ? data.task.slice(0, 100)
-              : a.task_preview,
+            task_preview: data.task ? data.task.slice(0, 100) : a.task_preview,
             duration_ms: data.duration_ms ?? a.duration_ms,
           }
         : a,
@@ -399,21 +396,10 @@ export default function lucaWidgets(pi: any) {
     ctx.ui.setWidget("luca-context", toWidgetFactory(contextComponent));
   }
 
-  /**
-   * Update the turn tracker in the footer.
-   */
-  function updateTurnStatus(ctx: any): void {
-    if (!ctx?.ui?.setStatus) return;
-    const fmt = createStatusFormatter(ctx);
-
-    const parts: string[] = [];
-    parts.push(fmt.dim(`turn ${state.turnCount}`));
-    if (state.activeTool) {
-      parts.push(fmt.accent(state.activeTool));
-    }
-
-    ctx.ui.setStatus("luca-turns", parts.join(SEP));
-  }
+  // NOTE: Turn count and active tool display moved to luca-state.ts footer.
+  // luca-widgets.ts still tracks activeTool and turnCount internally for
+  // widget rendering decisions, but does not call setStatus("luca-turns")
+  // to avoid conflicting with luca-state's setFooter.
 
   // ─── Event handlers ──────────────────────────────────────
 
@@ -540,10 +526,7 @@ export default function lucaWidgets(pi: any) {
         break;
       }
       case "luca_subagent_result": {
-        state.subagentDash = updateSubagentFromResult(
-          state.subagentDash,
-          data,
-        );
+        state.subagentDash = updateSubagentFromResult(state.subagentDash, data);
         changed = true;
         break;
       }
@@ -567,28 +550,25 @@ export default function lucaWidgets(pi: any) {
     }
   });
 
-  // Track active luca tool for footer
-  pi.on("tool_call", async (event: any, ctx: any) => {
+  // Track active luca tool (internal state only — display handled by luca-state footer)
+  pi.on("tool_call", async (event: any, _ctx: any) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
     state.activeTool = toolName.replace("luca_", "").replace(/_/g, " ");
-    updateTurnStatus(ctx);
   });
 
-  // Clear active tool when finished
-  pi.on("tool_execution_end", async (event: any, ctx: any) => {
+  // Clear active tool when finished (internal state only)
+  pi.on("tool_execution_end", async (event: any, _ctx: any) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
     state.activeTool = null;
-    updateTurnStatus(ctx);
   });
 
-  // Increment turn counter
-  pi.on("turn_start", async (_event: any, ctx: any) => {
+  // Increment turn counter (internal state only)
+  pi.on("turn_start", async (_event: any, _ctx: any) => {
     state.turnCount++;
-    updateTurnStatus(ctx);
   });
 
   // Poll context usage on turn end
@@ -642,6 +622,5 @@ export default function lucaWidgets(pi: any) {
     // Keep contextPct — it persists across agent runs
 
     updateWidgets(ctx);
-    updateTurnStatus(ctx);
   });
 }
