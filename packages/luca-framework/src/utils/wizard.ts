@@ -7,7 +7,12 @@ import {
   defaultBranding,
   mergeBranding,
 } from "./branding";
-import type { LucaConfig, BrandingConfig, ProjectContext } from "../types";
+import type {
+  LucaConfig,
+  BrandingConfig,
+  ProjectContext,
+  HarnessId,
+} from "../types";
 import { sanitizeJsonParse } from "./sanitize";
 
 /**
@@ -122,6 +127,23 @@ export async function runWizard(
     return null;
   }
 
+  // Group 2.5: Harness selection
+  const harnesses = await p.multiselect({
+    message: "Which AI harness platforms do you use?",
+    options: [
+      { value: "claude", label: "Claude Code", hint: "(.claude/ directory)" },
+      { value: "cursor", label: "Cursor IDE", hint: "(.cursor/ directory)" },
+      { value: "pi", label: "Pi", hint: "(.pi/ directory)" },
+    ],
+    initialValues: ["claude", "cursor"],
+    required: true,
+  });
+
+  if (p.isCancel(harnesses)) {
+    p.cancel("Setup cancelled.");
+    return null;
+  }
+
   // Group 3: Work tracker
   const workTracker = await p.select({
     message: "Which work tracker do you use?",
@@ -151,6 +173,7 @@ export async function runWizard(
     branding: branding as BrandingConfig,
     stack: stack as string,
     workTracker: workTracker as "jira" | "github" | "none",
+    harnesses: harnesses as HarnessId[],
   };
 }
 
@@ -178,12 +201,21 @@ export async function runWizard(
  */
 export const VALID_STACKS = ["react-ts", "custom"] as const;
 export const VALID_TRACKERS = ["jira", "github", "none"] as const;
+export const VALID_HARNESSES: readonly HarnessId[] = [
+  "claude",
+  "cursor",
+  "pi",
+] as const;
+
+/** Default harnesses when none specified (backward compat) */
+export const DEFAULT_HARNESSES: HarnessId[] = ["claude", "cursor"];
 
 export function createConfigFromArgs(args: {
   name?: string;
   prefix?: string;
   stack?: string;
   tracker?: string;
+  harness?: string;
 }): LucaConfig {
   // Validate provided branding fields before merging with defaults
   const providedBranding: Record<string, string> = {};
@@ -218,6 +250,21 @@ export function createConfigFromArgs(args: {
     );
   }
 
+  // Parse and validate --harness argument (comma-separated)
+  let harnesses: HarnessId[] = DEFAULT_HARNESSES;
+  if (args.harness) {
+    const parsed = args.harness.split(",").map((h) => h.trim()) as HarnessId[];
+    const invalid = parsed.filter(
+      (h) => !VALID_HARNESSES.includes(h as HarnessId),
+    );
+    if (invalid.length > 0) {
+      throw new Error(
+        `Invalid --harness value "${invalid.join(", ")}". Valid options: ${VALID_HARNESSES.join(", ")}`,
+      );
+    }
+    harnesses = parsed;
+  }
+
   return {
     branding: mergeBranding({
       frameworkName: args.name,
@@ -225,6 +272,7 @@ export function createConfigFromArgs(args: {
     }),
     stack: args.stack || "custom",
     workTracker: (args.tracker as "jira" | "github" | "none") || "none",
+    harnesses,
   };
 }
 
@@ -288,9 +336,24 @@ export async function loadConfigFromFile(
     );
   }
 
+  // Parse and validate harnesses (default to ['claude', 'cursor'])
+  let harnesses: HarnessId[] = DEFAULT_HARNESSES;
+  if (Array.isArray(parsed.harnesses)) {
+    const invalid = (parsed.harnesses as string[]).filter(
+      (h) => !VALID_HARNESSES.includes(h as HarnessId),
+    );
+    if (invalid.length > 0) {
+      throw new Error(
+        `Invalid harnesses in config file: "${invalid.join(", ")}". Valid options: ${VALID_HARNESSES.join(", ")}`,
+      );
+    }
+    harnesses = parsed.harnesses as HarnessId[];
+  }
+
   return {
     branding: mergeBranding(brandingInput),
     stack,
     workTracker: workTracker as "jira" | "github" | "none",
+    harnesses,
   };
 }
