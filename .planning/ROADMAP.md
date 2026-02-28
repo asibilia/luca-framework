@@ -2,64 +2,66 @@
 
 ## Overview
 
-**Current Milestone:** v2.2.0 — Pi Platform Maturity (Phase 70)
+**Current Milestone:** v2.3.0 — Distribution & Model Routing (Phase 71-77)
 
 ---
 
-## v2.2.0 — Pi Platform Maturity
+## v2.3.0 — Distribution & Model Routing
 
-**Goal:** Complete Pi extension quality hardening (DRY cleanup, build config unification, documentation), validate all 12 extensions against a live Pi runtime, and add background subagent spawning as a major new capability.
+**Goal:** Publish `@alecsibilia/luca-framework` as an installable npm package with multi-harness scaffolding (`bun add -d @alecsibilia/luca-framework && bun luca init`), and replace complexity gating with per-agent model routing for consistent workflows.
 
-### Phase 67 (continued) — Pi Extension DRY Cleanup
+### Phase 71 — Distribution Foundation
 
-**Goal:** Refactor all 11 Pi extensions to use shared helpers, unify build config, add JSDoc documentation.
+**Goal:** Rename npm scope, add HarnessId type, export bridge CLI, update package.json bin entries. No behavior changes — purely structural.
 
-**Depends on:** None (67-A already complete from v2.1.0)
+**Depends on:** None
 
-- [x] Plan 67-B: Refactor all 11 Pi extensions to use shared helpers
-- [x] Plan 67-C: Unify build config to single source of truth for Pi extensions
-- [x] Plan 67-D: Add JSDoc documentation to Pi extension helpers and functions
+### Phase 72 — Wizard & Harness Selection
 
-### Phase 68 — E2E Pi Runtime Validation
+**Goal:** Add harness multi-select to wizard, update config/init with `--harness` arg, refactor files.ts for conditional per-harness scaffolding.
 
-**Goal:** Smoke test all 12 Pi extensions against a live Pi runtime, fix discovered issues, validate cross-extension integration.
+**Depends on:** Phase 71 (scope and types must exist)
 
-**Depends on:** Phase 67 (extensions must use shared helpers before validation)
+### Phase 73 — Template Infrastructure
 
-- [x] Plan 68-A: Extension loading smoke tests, \_\_helpers fix, tool response validation
-- [x] Plan 68-B: Permanent E2E test suite (33 tests) for Pi extensions
+**Goal:** Create template copy script, establish `templates/harness/` structure, chain build pipeline (`build:all` -> `build:templates` -> `build`).
 
-### Phase 69 — Background Subagent Spawning
+**Depends on:** Phase 71 (HarnessId type needed for template structure)
 
-**Goal:** Implement fire-and-forget background subagent pattern with process isolation, widget dashboard, and team dispatch integration.
+### Phase 74 — Hook Script Portability
 
-**Depends on:** Phase 68 (runtime must be validated before adding new extension)
+**Goal:** Add PATH export to hook scripts, replace bridge resolution with cascading lookup, update remaining `@asibilia` references.
 
-- [x] Plan 69-A: Implement luca-subagents.ts (create, list, result, remove — 4 tools)
-- [x] Plan 69-B: Teams integration, session management, E2E tests
+**Depends on:** Phase 71 (scope rename must be complete)
 
-### Phase 70 — Pi API Learnings Integration
+### Phase 75 — Update Command & Doctor
 
-**Goal:** Incorporate Pi API learnings from reference repo analysis. Add subagent auto-delivery (`sendMessage`), `--no-extensions` flag, slash commands, toast notifications, confirm dialogs, auto-inject cognitive context, custom tool rendering, and other Pi-native API improvements.
+**Goal:** Make `update.ts` harness-aware, add per-harness verification to `doctor.ts`, update init success output.
 
-**Depends on:** Phase 69 (subagent infrastructure must be complete before enhancing it)
+**Depends on:** Phase 72 (harness selection must exist), Phase 73 (templates must exist)
 
-- [x] Plan 70-A: Critical fixes + core infrastructure (--no-extensions, onComplete callback, sendMessage)
-- [x] Plan 70-B: Slash commands, notifications, confirmations, cognitive injection, abort
-- [x] Plan 70-C: Tool rendering, session resilience, rich footer, audit logging
+### Phase 76 — Distribution Testing
 
----
+**Goal:** Comprehensive test suite: wizard harness tests, conditional file generation, bridge CLI dispatch, manifest backward compat, integration test in temp dir.
+
+**Depends on:** Phase 75 (all distribution features must be complete)
+
+### Phase 77 — Model Routing Architecture
+
+**Goal:** Replace complexity gating skip/run matrix with per-agent model routing. Keep complexity levels for estimation, remove workflow step gating. Add `modelTier` field to agent definitions.
+
+**Depends on:** None (independent of distribution work)
 
 ---
 
 ## Backlog (Future)
 
-### v2.3.0 — Multi-Language Profiles
+### v2.4.0 — Multi-Language Profiles
 
 - Python, Go, Rust tech stack profiles with full opinionated rules
 - Mixed-stack project support (multiple profiles active simultaneously)
 
-### v2.4.0+ — Adaptive Learning
+### v2.5.0+ — Adaptive Learning
 
 - Procedure evolution via reinforcement learning patterns
 
@@ -87,4 +89,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-28 (Phase 70 complete)_
+_Roadmap updated: 2026-02-28 (v2.3.0 milestone created)_
