@@ -248,6 +248,7 @@ export default function lucaTeams(pi: any) {
           }
 
           const subId = nextSubagentId("team", sanitizeName(agentName));
+          const teamName = teamDef.name;
           const state = spawnPiSubprocess({
             id: subId,
             agentName,
@@ -257,6 +258,29 @@ export default function lucaTeams(pi: any) {
             tools: agentDef.tools,
             systemPrompt: agentDef.systemPrompt,
             source: "luca-teams",
+            onComplete: (info) => {
+              const summary = `Team "${teamName}" member "${info.agent}" ${info.status} (${(info.elapsed / 1000).toFixed(1)}s).`;
+              try {
+                pi.sendMessage(
+                  {
+                    customType: "team-result",
+                    content: summary,
+                    display: true,
+                    details: {
+                      team: teamName,
+                      subagent_id: info.id,
+                      agent: info.agent,
+                      status: info.status,
+                      exit_code: info.exitCode,
+                      elapsed_ms: info.elapsed,
+                    },
+                  },
+                  { deliverAs: "followUp" },
+                );
+              } catch {
+                // sendMessage may fail if session ended — non-fatal
+              }
+            },
           });
 
           subagentRegistry.set(subId, state);
