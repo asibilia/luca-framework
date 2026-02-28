@@ -14,7 +14,7 @@
  * Source: src/hooks/pi-extensions/luca-harness.ts
  * Deployed to: .pi/extensions/luca-harness.ts
  */
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
 import { runShellCommand } from "./__helpers/exec";
@@ -247,6 +247,14 @@ export default function lucaHarness(pi: any) {
             .map((r) => r.name)
             .join(", ")}`;
       notifySafe(ctx, notifyMsg, notifyLevel);
+
+      // Persist summary for /verify command (luca-commands.ts)
+      try {
+        const resultPath = join(planningDir, "last-harness-result.json");
+        writeFileSync(resultPath, JSON.stringify(summary, null, 2));
+      } catch {
+        // Non-critical — /verify will report "no cached result"
+      }
 
       return createJsonResponse(summary);
     },

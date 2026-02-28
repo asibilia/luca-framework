@@ -5,7 +5,7 @@
  * the correct payload, and that callback errors do not crash
  * the process handler.
  */
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { tmpdir } from "os";
 import { mkdtempSync } from "fs";
 import { join } from "path";
@@ -13,6 +13,7 @@ import { join } from "path";
 import {
   spawnPiSubprocess,
   createSessionDir,
+  cleanupSessionDir,
 } from "~/hooks/pi-extensions/__helpers/spawn";
 import {
   subagentRegistry,
@@ -44,14 +45,24 @@ function waitForCompletion(id: string, timeoutMs = 10000): Promise<void> {
 }
 
 describe("spawnPiSubprocess onComplete callback", () => {
+  const sessionDirs: string[] = [];
+
   beforeEach(() => {
     resetSubagentRegistry();
+  });
+
+  afterEach(() => {
+    for (const dir of sessionDirs) {
+      cleanupSessionDir(dir);
+    }
+    sessionDirs.length = 0;
   });
 
   test("onComplete callback fires on process close with correct fields", async () => {
     let callbackInfo: SpawnCompletionInfo | null = null;
 
     const sessionDir = createSessionDir("test-callback-close");
+    sessionDirs.push(sessionDir);
     const state = spawnPiSubprocess({
       id: "test-cb-1",
       agentName: "test-agent",
@@ -83,6 +94,7 @@ describe("spawnPiSubprocess onComplete callback", () => {
 
   test("callback errors do not crash the process handler", async () => {
     const sessionDir = createSessionDir("test-callback-crash");
+    sessionDirs.push(sessionDir);
     const state = spawnPiSubprocess({
       id: "test-cb-2",
       agentName: "test-agent",
@@ -107,6 +119,7 @@ describe("spawnPiSubprocess onComplete callback", () => {
 
   test("without onComplete, process close works as before (backward compat)", async () => {
     const sessionDir = createSessionDir("test-no-callback");
+    sessionDirs.push(sessionDir);
     const state = spawnPiSubprocess({
       id: "test-cb-3",
       agentName: "test-agent",
@@ -132,6 +145,7 @@ describe("spawnPiSubprocess onComplete callback", () => {
     let callbackInfo: SpawnCompletionInfo | null = null;
 
     const sessionDir = createSessionDir("test-callback-status");
+    sessionDirs.push(sessionDir);
     const state = spawnPiSubprocess({
       id: "test-cb-4",
       agentName: "status-agent",

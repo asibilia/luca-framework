@@ -29,7 +29,7 @@ if ! command -v bun &>/dev/null; then
   exit 0
 fi
 
-# Step 1b: Check Pi OAuth token (Pi-specific — won't fire on Claude Code or Cursor)
+# Step 1b: Check Pi OAuth token (only triggers if ~/.pi/agent/auth.json exists)
 PI_AUTH_FILE="$HOME/.pi/agent/auth.json"
 if [ -f "$PI_AUTH_FILE" ]; then
   PI_TOKEN_PREFIX=$(bun -e "
