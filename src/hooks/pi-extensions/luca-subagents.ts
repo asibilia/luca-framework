@@ -105,6 +105,35 @@ export default function lucaSubagents(pi: any) {
           tools: agentDef.tools,
           systemPrompt: agentDef.systemPrompt,
           source: "luca-subagents",
+          onComplete: (info) => {
+            const summary = [
+              `Subagent "${info.id}" (${info.agent}) ${info.status}.`,
+              `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
+              info.output
+                ? `Output preview: ${info.output.slice(0, 500)}`
+                : "(no output)",
+            ].join("\n");
+
+            try {
+              pi.sendMessage(
+                {
+                  customType: "subagent-result",
+                  content: summary,
+                  display: true,
+                  details: {
+                    subagent_id: info.id,
+                    agent: info.agent,
+                    status: info.status,
+                    exit_code: info.exitCode,
+                    elapsed_ms: info.elapsed,
+                  },
+                },
+                { deliverAs: "followUp" },
+              );
+            } catch {
+              // sendMessage may fail if session ended — non-fatal
+            }
+          },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -332,6 +361,35 @@ export default function lucaSubagents(pi: any) {
           continueSession: true,
           sessionDir: existing.sessionDir,
           source: "luca-subagents",
+          onComplete: (info) => {
+            const summary = [
+              `Subagent "${info.id}" (${info.agent}) continued session ${info.status}.`,
+              `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
+              info.output
+                ? `Output preview: ${info.output.slice(0, 500)}`
+                : "(no output)",
+            ].join("\n");
+
+            try {
+              pi.sendMessage(
+                {
+                  customType: "subagent-result",
+                  content: summary,
+                  display: true,
+                  details: {
+                    subagent_id: info.id,
+                    agent: info.agent,
+                    status: info.status,
+                    exit_code: info.exitCode,
+                    elapsed_ms: info.elapsed,
+                  },
+                },
+                { deliverAs: "followUp" },
+              );
+            } catch {
+              // sendMessage may fail if session ended — non-fatal
+            }
+          },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
