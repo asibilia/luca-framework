@@ -44,9 +44,9 @@
 
 **Depends on:** Phase 69 (subagent infrastructure must be complete before enhancing it)
 
-- [ ] Plan 70-A: Critical fixes + core infrastructure (--no-extensions, onComplete callback, sendMessage)
-- [ ] Plan 70-B: Slash commands, notifications, confirmations, cognitive injection, abort
-- [ ] Plan 70-C: Tool rendering, session resilience, rich footer, audit logging
+- [x] Plan 70-A: Critical fixes + core infrastructure (--no-extensions, onComplete callback, sendMessage)
+- [x] Plan 70-B: Slash commands, notifications, confirmations, cognitive injection, abort
+- [x] Plan 70-C: Tool rendering, session resilience, rich footer, audit logging
 
 ---
 
@@ -83,8 +83,8 @@
 - **v1.9.0** — Repo Consistency Cleanup: 1 phase, 3 plans, 1763 tests ([View Archive](milestones/v1.9.0-ROADMAP.md))
 - **v2.0.0** — Unified Package & Intelligent Routing: 5 phases, 14 plans, 1808 tests ([View Archive](milestones/v2.0.0-ROADMAP.md))
 - **v2.1.0** — Pi Library Integration: 7 phases, 22 plans, 2106 tests. Pi as first-class output target with 12 TypeScript extensions, 39 tools, 3-platform compilation, input sanitization, shared helpers ([View Archive](milestones/v2.1.0-ROADMAP.md))
-- **v2.2.0** — Pi Platform Maturity: 3 phases, 7 plans, 2143 tests. DRY cleanup, E2E runtime validation, background subagent spawning — 13 extensions, 43 tools ([View Archive](milestones/v2.2.0-ROADMAP.md))
+- **v2.2.0** — Pi Platform Maturity: 4 phases, 10 plans, 2271 tests. DRY cleanup, E2E runtime validation, background subagent spawning, Pi API learnings — 15 extensions, 49 tools ([View Archive](milestones/v2.2.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-02-27 (v2.2.0 created)_
+_Roadmap updated: 2026-02-28 (Phase 70 complete)_
