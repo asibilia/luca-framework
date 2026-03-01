@@ -40,7 +40,7 @@
 
 **Depends on:** Phase 83 (needs real token counts for accurate zone detection)
 
-- [ ] Plan 84-A: Context pruning extensions, WORKING.md auto-compaction at degrading zone (#4, #25)
+- [x] Plan 84-A: Context pruning extensions, WORKING.md auto-compaction at degrading zone (#4, #25)
 
 ### Phase 85 — Verification Hardening
 

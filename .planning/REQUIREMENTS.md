@@ -78,19 +78,19 @@ Make Luca's runtime smarter (real token accounting, context pruning, convergence
 
 **Priority:** HIGH | **Source:** Todo #4
 
-- R8.1: Stale ResultEnvelopes auto-digested at degrading zone
-- R8.2: Section-level pruning with configurable retention policies
-- R8.3: Pruning preserves critical context (active task, current plan)
-- R8.4: Pruning events logged to WORKING.md
+- ~~R8.1: Stale ResultEnvelopes auto-digested at degrading zone~~ **Complete**
+- ~~R8.2: Section-level pruning with configurable retention policies~~ **Complete**
+- ~~R8.3: Pruning preserves critical context (active task, current plan)~~ **Complete**
+- ~~R8.4: Pruning events logged to WORKING.md~~ **Complete**
 
 ### R9: WORKING.md Auto-Compaction
 
 **Priority:** MEDIUM | **Source:** Todo #25
 
-- R9.1: Auto-compaction triggers at degrading quality zone
-- R9.2: Sections compacted by age/relevance scoring
-- R9.3: Compacted content summarized, not deleted
-- R9.4: Session continues after compaction (no hard stop)
+- ~~R9.1: Auto-compaction triggers at degrading quality zone~~ **Complete**
+- ~~R9.2: Sections compacted by age/relevance scoring~~ **Complete**
+- ~~R9.3: Compacted content summarized, not deleted~~ **Complete**
+- ~~R9.4: Session continues after compaction (no hard stop)~~ **Complete**
 
 ### R10: Verification Parity Matrix
 
