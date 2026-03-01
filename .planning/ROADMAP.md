@@ -48,7 +48,7 @@
 
 **Depends on:** Phase 83
 
-- [ ] Plan 85-A: Verification parity matrix across targets, semantic convergence detection (#22, #3)
+- [x] Plan 85-A: Verification parity matrix across targets, semantic convergence detection (#22, #3)
 
 ### Phase 86 — Observability Foundation
 

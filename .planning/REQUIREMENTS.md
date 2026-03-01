@@ -96,20 +96,20 @@ Make Luca's runtime smarter (real token accounting, context pruning, convergence
 
 **Priority:** MEDIUM | **Source:** Todo #22
 
-- R10.1: Build-time structural assertions across all compilation formats
-- R10.2: Agent count parity across .claude/, .cursor/, .pi/
-- R10.3: Skill count parity verification
-- R10.4: Rule count parity verification
-- R10.5: Drift report generated as part of build pipeline
+- ~~R10.1: Build-time structural assertions across all compilation formats~~ **Complete**
+- ~~R10.2: Agent count parity across .claude/, .cursor/, .pi/~~ **Complete**
+- ~~R10.3: Skill count parity verification~~ **Complete**
+- ~~R10.4: Rule count parity verification~~ **Complete**
+- ~~R10.5: Drift report generated as part of build pipeline~~ **Complete**
 
 ### R11: Semantic Convergence Detection
 
 **Priority:** MEDIUM | **Source:** Todo #3
 
-- R11.1: Cosine similarity added to convergence detector
-- R11.2: Iteration loops terminate on semantically equivalent errors
-- R11.3: Configurable similarity threshold
-- R11.4: Convergence reason included in iteration log
+- ~~R11.1: Cosine similarity added to convergence detector~~ **Complete**
+- ~~R11.2: Iteration loops terminate on semantically equivalent errors~~ **Complete**
+- ~~R11.3: Configurable similarity threshold~~ **Complete**
+- ~~R11.4: Convergence reason included in iteration log~~ **Complete**
 
 ### R12: Agent Effectiveness Scorecard
 
