@@ -115,19 +115,19 @@ Make Luca's runtime smarter (real token accounting, context pruning, convergence
 
 **Priority:** MEDIUM | **Source:** Todo #7
 
-- R12.1: Per-agent telemetry aggregation (invocations, success rate, avg duration)
-- R12.2: Scorecard data persisted across sessions
-- R12.3: Scorecard queryable for routing decisions
-- R12.4: Dashboard or report output available
+- ~~R12.1: Per-agent telemetry aggregation (invocations, success rate, avg duration)~~ **Complete**
+- ~~R12.2: Scorecard data persisted across sessions~~ **Complete**
+- ~~R12.3: Scorecard queryable for routing decisions~~ **Complete**
+- ~~R12.4: Dashboard or report output available~~ **Complete**
 
 ### R13: Compiler Plugin Registry
 
 **Priority:** MEDIUM | **Source:** Todo #8
 
-- R13.1: Pluggable registry replaces hardcoded switch in compile.ts
-- R13.2: Plugin interface defined for new compilation targets
-- R13.3: Existing Claude/Cursor/Pi compilers refactored as plugins
-- R13.4: Registration API for community-contributed targets
+- ~~R13.1: Pluggable registry replaces hardcoded switch in compile.ts~~ **Complete**
+- ~~R13.2: Plugin interface defined for new compilation targets~~ **Complete**
+- ~~R13.3: Existing Claude/Cursor/Pi compilers refactored as plugins~~ **Complete**
+- ~~R13.4: Registration API for community-contributed targets~~ **Complete**
 
 ---
 

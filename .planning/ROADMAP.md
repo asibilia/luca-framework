@@ -56,7 +56,7 @@
 
 **Depends on:** Phase 84, Phase 85
 
-- [ ] Plan 86-A: Agent effectiveness scorecard, compiler plugin registry (#7, #8)
+- [x] Plan 86-A: Agent effectiveness scorecard, compiler plugin registry (#7, #8)
 
 ---
 
