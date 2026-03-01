@@ -36,9 +36,35 @@ import {
   nextSubagentId,
   resetSubagentRegistry,
 } from "./__helpers/subagent-registry";
+import type { SubagentEntry } from "./__helpers/subagent-registry";
 import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 // MAX_SUBAGENTS limit is enforced globally in __helpers/spawn.ts
+
+/** Grace period (ms) for SIGTERM before escalating to SIGKILL. */
+const SIGTERM_GRACE_MS = 500;
+
+/**
+ * Gracefully kill a subagent process: SIGTERM → grace period → SIGKILL.
+ *
+ * Sends SIGTERM first to allow cleanup, then escalates to SIGKILL
+ * after SIGTERM_GRACE_MS if the process is still alive. Updates
+ * the subagent state to "aborted" with a completion timestamp.
+ *
+ * @param state - Subagent registry entry with process handle
+ */
+async function killWithEscalation(state: SubagentEntry): Promise<void> {
+  if (!state.process || state.status !== "running") return;
+
+  state.process.kill("SIGTERM");
+  state.status = "aborted";
+  state.completedAt = Date.now();
+
+  await new Promise((resolve) => setTimeout(resolve, SIGTERM_GRACE_MS));
+  if (state.process && !state.process.killed) {
+    state.process.kill("SIGKILL");
+  }
+}
 
 /**
  * Pi extension: Background subagent spawning and management.
@@ -181,11 +207,7 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
         signal.addEventListener(
           "abort",
           () => {
-            if (state.process && state.status === "running") {
-              state.process.kill("SIGTERM");
-              state.status = "aborted";
-              state.completedAt = Date.now();
-            }
+            void killWithEscalation(state);
           },
           { once: true },
         );
@@ -349,19 +371,8 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
         return createTextResponse(`Subagent "${params.id}" not found.`);
       }
 
-      // Kill if still running
-      if (state.process && state.status === "running") {
-        state.process.kill("SIGTERM");
-        state.status = "aborted";
-        state.completedAt = Date.now();
-        // Give process time to clean up
-        /** Grace period (ms) for SIGTERM before escalating to SIGKILL. */
-        const SIGTERM_GRACE_MS = 500;
-        await new Promise((resolve) => setTimeout(resolve, SIGTERM_GRACE_MS));
-        if (state.process && !state.process.killed) {
-          state.process.kill("SIGKILL");
-        }
-      }
+      // Kill if still running (SIGTERM → grace → SIGKILL)
+      await killWithEscalation(state);
 
       // Clean up session directory
       if (state.sessionDir) {
@@ -522,9 +533,7 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
   pi.on("session_start", async () => {
     // Clean up any stale subagents from previous sessions
     for (const state of subagentRegistry.values()) {
-      if (state.process && state.status === "running") {
-        state.process.kill("SIGTERM");
-      }
+      await killWithEscalation(state);
       if (state.sessionDir) {
         cleanupSessionDir(state.sessionDir);
       }
@@ -535,11 +544,7 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
   // Kill all running subagents and clean up on session shutdown
   pi.on("session_shutdown", async () => {
     for (const state of subagentRegistry.values()) {
-      if (state.process && state.status === "running") {
-        state.process.kill("SIGTERM");
-        state.status = "aborted";
-        state.completedAt = Date.now();
-      }
+      await killWithEscalation(state);
       if (state.sessionDir) {
         cleanupSessionDir(state.sessionDir);
       }
