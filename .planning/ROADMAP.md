@@ -24,7 +24,7 @@
 
 **Depends on:** Phase 81 (status and doctor should report corrected version)
 
-- [ ] Plan 82-A: bun luca status command, harness-aware doctor, Starter/Standard/Full config presets (#19, #21, #11)
+- [x] Plan 82-A: bun luca status command, harness-aware doctor, Starter/Standard/Full config presets (#19, #21, #11)
 
 ### Phase 83 — Runtime Intelligence
 

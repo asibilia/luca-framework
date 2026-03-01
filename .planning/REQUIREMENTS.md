@@ -33,28 +33,28 @@ Make Luca's runtime smarter (real token accounting, context pruning, convergence
 
 **Priority:** HIGH | **Source:** Todo #19
 
-- R3.1: `bun luca status` command exists and is registered in CLI
-- R3.2: Shows current version, active harnesses, config profile, test count
-- R3.3: Shows state machine status (idle/active phase/milestone)
-- R3.4: Clean, formatted terminal output
+- ~~R3.1: `bun luca status` command exists and is registered in CLI~~ **Complete**
+- ~~R3.2: Shows current version, active harnesses, config profile, test count~~ **Complete**
+- ~~R3.3: Shows state machine status (idle/active phase/milestone)~~ **Complete**
+- ~~R3.4: Clean, formatted terminal output~~ **Complete**
 
 ### R4: Harness-Aware Doctor
 
 **Priority:** HIGH | **Source:** Todo #21
 
-- R4.1: `bun luca doctor` checks Bun runtime (not Node)
-- R4.2: Per-harness directory validation (expected files exist)
-- R4.3: Config schema validation against current config.json
-- R4.4: Drift detection (source vs compiled output)
+- ~~R4.1: `bun luca doctor` checks Bun runtime (not Node)~~ **Complete**
+- ~~R4.2: Per-harness directory validation (expected files exist)~~ **Complete**
+- ~~R4.3: Config schema validation against current config.json~~ **Complete**
+- ~~R4.4: Drift detection (source vs compiled output)~~ **Complete**
 
 ### R5: Progressive Config Presets
 
 **Priority:** MEDIUM | **Source:** Todo #11
 
-- R5.1: Three preset tiers: Starter, Standard, Full
-- R5.2: Wizard offers preset selection during init
-- R5.3: Each preset maps to a valid config.json with appropriate defaults
-- R5.4: Preset can be changed post-init via config command
+- ~~R5.1: Three preset tiers: Starter, Standard, Full~~ **Complete**
+- ~~R5.2: Wizard offers preset selection during init~~ **Complete**
+- ~~R5.3: Each preset maps to a valid config.json with appropriate defaults~~ **Complete**
+- ~~R5.4: Preset can be changed post-init via config command~~ **Complete**
 
 ### R6: Real Token Accounting
 
