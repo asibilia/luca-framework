@@ -69,7 +69,9 @@
   "scripts": {
     "build": "unbuild",
     "build:plugin": "bun run scripts/copy-plugin.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "validate": "bun run scripts/validate-package.ts",
+    "prepublishOnly": "bun run build && bun test && bun run build:plugin"
   },
   "type": "module"
 }
