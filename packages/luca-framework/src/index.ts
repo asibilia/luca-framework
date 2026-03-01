@@ -12,6 +12,7 @@ const main = defineCommand({
   subCommands: {
     init: () => import("./commands/init").then((m) => m.initCommand),
     update: () => import("./commands/update").then((m) => m.updateCommand),
+    status: () => import("./commands/status").then((m) => m.statusCommand),
     doctor: () => import("./commands/doctor").then((m) => m.default),
     "run:claude": () =>
       import("./commands/run").then((m) => m.runClaudeCommand),
