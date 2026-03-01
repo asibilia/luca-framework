@@ -37,7 +37,7 @@ export const driftDetectionCheck: DoctorCheck = {
       };
     }
 
-    const fileEntries = Object.entries(manifest.files);
+    const fileEntries = Object.entries(manifest.files ?? {});
 
     if (fileEntries.length === 0) {
       return {

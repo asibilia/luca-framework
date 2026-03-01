@@ -48,3 +48,14 @@
   - **Confidence**: Medium
   - **Agent**: general
   - **Added**: 2026-02-12
+
+## Shutdown Snapshot (2026-03-01)
+
+(none)
+---
+_Session Status_
+- [ ] Active
+- [ ] Learnings extracted
+- [ ] Ready to clear
+---
+*Session ended: 2026-03-01T15:41:25Z (reason: unknown)*

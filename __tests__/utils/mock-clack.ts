@@ -15,6 +15,7 @@ export function createWizardResponses(options: {
   frameworkName?: string;
   commandPrefix?: string;
   stack?: string;
+  preset?: string;
   workTracker?: string;
 }): ClackMockConfig {
   return {
@@ -24,13 +25,17 @@ export function createWizardResponses(options: {
       ticketPattern: "[A-Z]+-\\d+",
       placeholderTicket: "PROJ-0000",
     },
-    selectResponses: [options.stack ?? "custom", options.workTracker ?? "none"],
+    selectResponses: [
+      options.stack ?? "custom",
+      options.preset ?? "standard",
+      options.workTracker ?? "none",
+    ],
     confirmResponse: true,
   };
 }
 
 export function createCancelledWizardResponses(
-  cancelAt: "group" | "stack" | "tracker" | "confirm",
+  cancelAt: "group" | "stack" | "preset" | "tracker" | "confirm",
 ): ClackMockConfig {
   if (cancelAt === "group") return { groupResponse: null };
   if (cancelAt === "stack")
@@ -43,7 +48,7 @@ export function createCancelledWizardResponses(
       },
       selectResponses: [CANCEL_SYMBOL],
     };
-  if (cancelAt === "tracker")
+  if (cancelAt === "preset")
     return {
       groupResponse: {
         frameworkName: "Luca",
@@ -53,6 +58,16 @@ export function createCancelledWizardResponses(
       },
       selectResponses: ["custom", CANCEL_SYMBOL],
     };
+  if (cancelAt === "tracker")
+    return {
+      groupResponse: {
+        frameworkName: "Luca",
+        commandPrefix: "lu",
+        ticketPattern: "[A-Z]+-\\d+",
+        placeholderTicket: "PROJ-0000",
+      },
+      selectResponses: ["custom", "standard", CANCEL_SYMBOL],
+    };
   return {
     groupResponse: {
       frameworkName: "Luca",
@@ -60,7 +75,7 @@ export function createCancelledWizardResponses(
       ticketPattern: "[A-Z]+-\\d+",
       placeholderTicket: "PROJ-0000",
     },
-    selectResponses: ["custom", "none"],
+    selectResponses: ["custom", "standard", "none"],
     confirmResponse: CANCEL_SYMBOL as unknown as boolean,
   };
 }

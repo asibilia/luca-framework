@@ -1,6 +1,6 @@
 import { describe, test, expect, afterEach } from "bun:test";
 import { join } from "path";
-import { mkdir } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import {
   setupTempProject,
   cleanupTempDir,
@@ -65,6 +65,8 @@ describe("harnessInstallationCheck", () => {
     await mkdir(join(tempDir, ".claude", "agents"), { recursive: true });
     await mkdir(join(tempDir, ".claude", "rules"), { recursive: true });
     await mkdir(join(tempDir, ".claude", "skills"), { recursive: true });
+    // Create key files for claude (HARNESS_FILES check)
+    await writeFile(join(tempDir, ".claude", "settings.json"), "{}");
 
     // Create expected directories for cursor
     await mkdir(join(tempDir, ".cursor", "hooks"), { recursive: true });
@@ -132,6 +134,7 @@ describe("harnessInstallationCheck", () => {
     await mkdir(join(tempDir, ".claude", "agents"), { recursive: true });
     await mkdir(join(tempDir, ".claude", "rules"), { recursive: true });
     await mkdir(join(tempDir, ".claude", "skills"), { recursive: true });
+    await writeFile(join(tempDir, ".claude", "settings.json"), "{}");
 
     setCwd(tempDir);
 
@@ -193,6 +196,8 @@ describe("harnessInstallationCheck", () => {
     await mkdir(join(tempDir, ".claude", "agents"), { recursive: true });
     await mkdir(join(tempDir, ".claude", "rules"), { recursive: true });
     await mkdir(join(tempDir, ".claude", "skills"), { recursive: true });
+    // Create key files for claude (HARNESS_FILES check)
+    await writeFile(join(tempDir, ".claude", "settings.json"), "{}");
     await mkdir(join(tempDir, ".cursor", "hooks"), { recursive: true });
     await mkdir(join(tempDir, ".cursor", "agents"), { recursive: true });
     await mkdir(join(tempDir, ".cursor", "rules"), { recursive: true });
