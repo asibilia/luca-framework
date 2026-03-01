@@ -1,14 +1,16 @@
 import { defineCommand } from "citty";
 import * as p from "@clack/prompts";
-import { cp, rm, mkdir } from "node:fs/promises";
+import { chmod, cp, rm, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "pathe";
+import difference from "lodash/difference";
 import { logger } from "../utils/logger";
 import {
   readManifest,
   writeManifest,
   compareFiles,
   hashContent,
+  hashFile,
   inferFileSource,
   LUCA_VERSION,
 } from "../utils/manifest";
@@ -364,6 +366,7 @@ async function updateManifestAfterUpdate(
   cwd: string,
   sourceMap: Map<string, FileSource>,
   config: LucaConfig,
+  removedFiles?: string[],
 ): Promise<LucaManifest> {
   const now = new Date().toISOString();
   const harnesses = config.harnesses ??
@@ -375,6 +378,13 @@ async function updateManifestAfterUpdate(
     harnesses,
     files: { ...manifest.files },
   };
+
+  // Remove entries for cleaned-up harness files
+  if (removedFiles) {
+    for (const removedPath of removedFiles) {
+      delete updatedManifest.files[removedPath];
+    }
+  }
 
   for (const relativePath of updatedFiles) {
     const content = newFiles.get(relativePath);
@@ -390,6 +400,91 @@ async function updateManifestAfterUpdate(
 
   await writeManifest(updatedManifest, cwd);
   return updatedManifest;
+}
+
+/**
+ * Collect template files for a specific harness and return them as new entries.
+ *
+ * Used when a harness is added post-init to scaffold its files during update.
+ *
+ * @param harnessId - Harness platform to scaffold
+ * @param config - Luca configuration for template context
+ * @returns Map of relative path to content, and source map entries
+ */
+async function collectHarnessFiles(
+  harnessId: HarnessId,
+  config: LucaConfig,
+): Promise<{ files: Map<string, string>; sourceMap: Map<string, FileSource> }> {
+  const templatesDir = getTemplatesDir();
+  const files = new Map<string, string>();
+  const sourceMap = new Map<string, FileSource>();
+  const context = {
+    ...createBrandingContext(config.branding),
+    config,
+  };
+
+  const harnessDir = join(templatesDir, "harness", harnessId);
+  if (existsSync(harnessDir)) {
+    await collectTemplateFiles(harnessDir, files, context, `.${harnessId}`);
+    for (const key of files.keys()) {
+      sourceMap.set(key, `harness:${harnessId}` as FileSource);
+    }
+  }
+
+  return { files, sourceMap };
+}
+
+/**
+ * Clean up files belonging to a removed harness.
+ *
+ * For each file in the manifest with source "harness:<id>":
+ * - If unchanged (originalHash === currentHash), delete from disk and manifest
+ * - If user-modified, preserve the file and log as conflict
+ *
+ * @param harnessId - Harness platform being removed
+ * @param manifest - Current manifest
+ * @param cwd - Working directory
+ * @returns Summary of cleaned and conflicted files
+ */
+async function cleanRemovedHarnessFiles(
+  harnessId: HarnessId,
+  manifest: LucaManifest,
+  cwd: string,
+): Promise<{ cleaned: string[]; conflicted: string[] }> {
+  const cleaned: string[] = [];
+  const conflicted: string[] = [];
+  const harnessSource: FileSource = `harness:${harnessId}`;
+
+  for (const [relativePath, entry] of Object.entries(manifest.files)) {
+    if (entry.source !== harnessSource) continue;
+
+    const absolutePath = join(cwd, relativePath);
+    if (!(await Bun.file(absolutePath).exists())) {
+      // Already deleted — just remove from manifest
+      cleaned.push(relativePath);
+      continue;
+    }
+
+    try {
+      const currentHash = await hashFile(absolutePath);
+      if (currentHash === entry.originalHash) {
+        // Unchanged — safe to delete
+        await rm(absolutePath, { force: true });
+        cleaned.push(relativePath);
+      } else {
+        // User modified — preserve as conflict
+        conflicted.push(relativePath);
+        logger.warn(
+          `  Preserved user-modified file: ${relativePath} (from removed harness "${harnessId}")`,
+        );
+      }
+    } catch {
+      // Can't read — treat as already deleted
+      cleaned.push(relativePath);
+    }
+  }
+
+  return { cleaned, conflicted };
 }
 
 export const updateCommand = defineCommand({
@@ -467,6 +562,59 @@ export const updateCommand = defineCommand({
       cwd,
     );
     spinner.stop(`Found ${newFiles.size} framework files`);
+
+    // Step 2.5: Detect harness additions and removals
+    const oldHarnesses: HarnessId[] = manifest.harnesses ?? [
+      "claude",
+      "cursor",
+    ];
+    const newHarnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
+    const addedHarnesses = difference(
+      newHarnesses,
+      oldHarnesses,
+    ) as HarnessId[];
+    const removedHarnesses = difference(
+      oldHarnesses,
+      newHarnesses,
+    ) as HarnessId[];
+
+    // Scaffold files for added harnesses
+    if (addedHarnesses.length > 0) {
+      spinner.start(
+        `Scaffolding files for new harness(es): ${addedHarnesses.join(", ")}...`,
+      );
+      for (const harnessId of addedHarnesses) {
+        const { files: harnessFiles, sourceMap: harnessSources } =
+          await collectHarnessFiles(harnessId, config);
+        for (const [key, content] of harnessFiles) {
+          if (!newFiles.has(key)) {
+            newFiles.set(key, content);
+          }
+        }
+        for (const [key, source] of harnessSources) {
+          sourceMap.set(key, source);
+        }
+      }
+      spinner.stop(`Scaffolded files for: ${addedHarnesses.join(", ")}`);
+    }
+
+    // Clean up files for removed harnesses
+    const removedCleanedFiles: string[] = [];
+    const removedConflictFiles: string[] = [];
+    if (removedHarnesses.length > 0) {
+      spinner.start(
+        `Cleaning up removed harness(es): ${removedHarnesses.join(", ")}...`,
+      );
+      for (const harnessId of removedHarnesses) {
+        const { cleaned, conflicted: conflicts } =
+          await cleanRemovedHarnessFiles(harnessId, manifest, cwd);
+        removedCleanedFiles.push(...cleaned);
+        removedConflictFiles.push(...conflicts);
+      }
+      spinner.stop(
+        `Removed: ${removedCleanedFiles.length} files, preserved: ${removedConflictFiles.length} conflicts`,
+      );
+    }
 
     // Step 3: Compare files using compareFiles()
     spinner.start("Comparing files...");
@@ -574,6 +722,7 @@ export const updateCommand = defineCommand({
         cwd,
         sourceMap,
         config,
+        removedCleanedFiles,
       );
       spinner.stop("Manifest updated");
 
