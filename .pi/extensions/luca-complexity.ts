@@ -8,8 +8,8 @@
  * Source: src/hooks/pi-extensions/luca-complexity.ts
  * Deployed to: .pi/extensions/luca-complexity.ts
  */
-import { COMPLEXITY_LEVELS } from "@alecsibilia/luca-framework/state";
-import type { ComplexityLevel } from "@alecsibilia/luca-framework/state";
+import { COMPLEXITY_LEVELS } from "./__helpers/luca-constants";
+import type { ComplexityLevel } from "./__helpers/luca-constants";
 import type { PiExtensionAPI } from "./__types/pi-context";
 
 import { createJsonResponse, createTextResponse } from "./__helpers/response";

@@ -45,7 +45,7 @@ const harnesses = [
   {
     id: "pi",
     source: resolve(projectRoot, ".pi"),
-    dirs: ["agents", "skills", "hooks", "extensions"],
+    dirs: ["agents", "skills", "extensions"],
     files: ["settings.json"],
   },
 ];

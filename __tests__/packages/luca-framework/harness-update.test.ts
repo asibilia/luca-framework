@@ -292,12 +292,12 @@ describe("hook script chmod (T5)", () => {
     }
   });
 
-  test("isHookScript pattern matches .claude/hooks/*.sh", () => {
+  test("isHookScript pattern matches .claude/hooks/*.sh and .cursor/hooks/*.sh", () => {
     // Testing the pattern used in update.ts
+    // Pi no longer uses hook-scripts/ (native extension instead)
     const pattern = /^\.[a-z]+\/hooks\/.*\.sh$/;
     expect(pattern.test(".claude/hooks/pre-commit.sh")).toBe(true);
     expect(pattern.test(".cursor/hooks/post-edit.sh")).toBe(true);
-    expect(pattern.test(".pi/hooks/check.sh")).toBe(true);
     expect(pattern.test(".planning/BRAIN.md")).toBe(false);
     expect(pattern.test(".claude/rules/test.md")).toBe(false);
   });

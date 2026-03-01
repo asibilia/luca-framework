@@ -15,14 +15,8 @@
  * Source: src/hooks/pi-extensions/__helpers/model-routing.ts
  * Deployed to: .pi/extensions/__helpers/model-routing.ts
  */
-import {
-  COMPLEXITY_LEVELS,
-  MODEL_TIER_TO_MODEL,
-} from "@alecsibilia/luca-framework/state";
-import type {
-  ComplexityLevel,
-  ModelId,
-} from "@alecsibilia/luca-framework/state";
+import { COMPLEXITY_LEVELS, MODEL_TIER_TO_MODEL } from "./luca-constants";
+import type { ComplexityLevel, ModelId } from "./luca-constants";
 
 import type { AgentFrontmatter } from "./frontmatter";
 import { readComplexity as bridgeReadComplexity } from "./state-bridge";
@@ -137,7 +131,4 @@ export function getModelTier(model: string): string {
 }
 
 export { MODEL_TIER_TO_MODEL, COMPLEXITY_DEFAULT_MODEL };
-export type {
-  ModelId,
-  ComplexityLevel,
-} from "@alecsibilia/luca-framework/state";
+export type { ModelId, ComplexityLevel } from "./luca-constants";

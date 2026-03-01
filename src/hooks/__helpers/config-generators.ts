@@ -82,15 +82,20 @@ export function generateClaudeHooksConfig(
  * 3. Executes the original shell script via child_process
  * 4. Returns `{ block: true }` for decision hooks (tool_call) on failure
  *
+ * @deprecated The monorepo now uses a hand-written Pi-native extension at
+ *   src/hooks/pi-extensions/luca-hooks.ts that implements hook behaviors
+ *   directly in TypeScript. This generator is kept for npm consumers who
+ *   run `luca init --harness=pi` and need the bridge extension.
+ *
  * @param registry - The hook registry mapping hook names to definitions
- * @param options.hooksDir - Relative path to hook scripts (default: ".pi/hooks")
+ * @param options.hooksDir - Relative path to hook scripts (default: ".pi/hook-scripts")
  * @returns TypeScript source code string for the extension
  */
 export function generatePiExtension(
   registry: Record<string, HookDefinition>,
   options: { hooksDir?: string } = {},
 ): string {
-  const hooksDir = options.hooksDir ?? ".pi/hooks";
+  const hooksDir = options.hooksDir ?? ".pi/hook-scripts";
 
   const handlerBlocks: string[] = [];
 

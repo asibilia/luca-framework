@@ -83,7 +83,6 @@ async function main() {
   const piDir = path.join(process.cwd(), ".pi");
   const piAgentsDir = path.join(piDir, "agents");
   const piSkillsDir = path.join(piDir, "skills");
-  const piHooksDir = path.join(piDir, "hooks");
   const piExtensionsDir = path.join(piDir, "extensions");
   const piExtensionsHelpersDir = path.join(piExtensionsDir, "__helpers");
 
@@ -107,7 +106,6 @@ async function main() {
     ensureDir(claudeHooksDir),
     ensureDir(piAgentsDir),
     ensureDir(piSkillsDir),
-    ensureDir(piHooksDir),
     ensureDir(piExtensionsDir),
     ensureDir(piExtensionsHelpersDir),
     ensureDir(pluginManifestDir),
@@ -130,7 +128,6 @@ async function main() {
     removedClaudeHooks,
     removedPiAgents,
     removedPiSkills,
-    removedPiHooks,
     removedPiExtensions,
     removedPiExtensionsHelpers,
     removedPluginAgents,
@@ -149,7 +146,6 @@ async function main() {
     cleanDirectory(claudeHooksDir, [".sh"]),
     cleanDirectory(piAgentsDir, [".md"]),
     cleanSkillsDirectory(piSkillsDir),
-    cleanDirectory(piHooksDir, [".sh"]),
     cleanDirectory(piExtensionsDir, [".ts"]),
     cleanDirectory(piExtensionsHelpersDir, [".ts"]),
     cleanDirectory(pluginAgentsDir, [".md"]),
@@ -170,7 +166,6 @@ async function main() {
     removedClaudeHooks.length +
     removedPiAgents.length +
     removedPiSkills.length +
-    removedPiHooks.length +
     removedPiExtensions.length +
     removedPiExtensionsHelpers.length +
     removedPluginAgents.length +
@@ -279,9 +274,6 @@ async function main() {
     (k) => k.startsWith(".cursor/hooks/") && k.endsWith(".sh"),
   ).length;
 
-  const piHookCount = keys.filter(
-    (k) => k.startsWith(".pi/hooks/") && k.endsWith(".sh"),
-  ).length;
   const piExtensionCount = keys.filter(
     (k) => k.startsWith(".pi/extensions/") && k.endsWith(".ts"),
   ).length;
@@ -351,7 +343,6 @@ async function main() {
   console.log("\n--- .pi/ ---");
   console.log(`  Agents:     ${piAgentCount}`);
   console.log(`  Skills:     ${piSkillCount}`);
-  console.log(`  Hooks:      ${piHookCount}`);
   console.log(`  Extensions: ${piExtensionCount}`);
   console.log(`  AGENTS.md:  ${piMetaFiles > 0 ? "yes" : "no"}`);
   console.log(`  Meta:       ${piMetaFiles} files`);

@@ -312,14 +312,15 @@ ${conflicts.map((c) => `- \`${c.path}\` (${c.status})`).join("\n")}
 /**
  * Check if a relative path is a hook script that should be made executable.
  *
- * Matches patterns like `.claude/hooks/*.sh`, `.cursor/hooks/*.sh`, `.pi/hooks/*.sh`.
+ * Matches patterns like `.claude/hooks/*.sh`, `.cursor/hooks/*.sh`,
+ * `.pi/hook-scripts/*.sh`.
  *
  * @param relativePath - Path relative to project root
  * @returns true if the path is a hook script
  */
 function isHookScript(relativePath: string): boolean {
-  // Match .<harness>/hooks/<anything>.sh
-  return /^\.[a-z]+\/hooks\/.*\.sh$/.test(relativePath);
+  // Match .<harness>/hooks/<anything>.sh or .<harness>/hook-scripts/<anything>.sh
+  return /^\.[a-z]+\/hook(?:-script)?s\/.*\.sh$/.test(relativePath);
 }
 
 /**
