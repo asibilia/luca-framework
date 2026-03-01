@@ -423,3 +423,200 @@ export const procedureEntrySchema = z.object({
 
 /** A learned procedure with ordered steps, success tracking, and lifecycle status. */
 export type ProcedureEntry = z.infer<typeof procedureEntrySchema>;
+
+// ─── Retention Policy Schema ────────────────────────────────────────────────
+
+/**
+ * Per-section retention policy for context pruning.
+ *
+ * Defines how aggressively a working memory section should be pruned.
+ * Sections with lower priority values are pruned first. max_age_ms
+ * controls time-based pruning; max_tokens controls size-based pruning.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const retentionPolicySchema = z.object({
+  /** Section name this policy applies to */
+  section: workingMemorySectionNameSchema,
+  /** Maximum age of content in milliseconds before eligible for pruning */
+  max_age_ms: z.number().int().positive().default(3600000), // 1 hour
+  /** Maximum token count for the section before pruning triggers */
+  max_tokens: z.number().int().positive().default(2000),
+  /** Retention priority (1-10, higher = more important to keep) */
+  priority: z.number().int().min(1).max(10).default(5),
+});
+
+/** Per-section retention policy. */
+export type RetentionPolicy = z.infer<typeof retentionPolicySchema>;
+
+// ─── Pruning Config Schema ──────────────────────────────────────────────────
+
+/**
+ * Global pruning configuration.
+ *
+ * Specifies per-section retention policies, which sections are critical
+ * (never pruned), and the quality zone at which pruning activates.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const pruningConfigSchema = z.object({
+  /** Per-section retention policies */
+  retention_policies: z.array(retentionPolicySchema).default([]),
+  /** Sections that must never be pruned (e.g., active task context) */
+  critical_sections: z
+    .array(workingMemorySectionNameSchema)
+    .default(["session_info", "planning_notes"]),
+  /** Quality zone at or above which pruning activates */
+  trigger_zone: qualityZoneSchema.default("degrading"),
+  /** Maximum age in ms for ResultEnvelope digestion (default: 30 min) */
+  envelope_max_age_ms: z.number().int().positive().default(1800000),
+});
+
+/** Global pruning configuration. */
+export type PruningConfig = z.infer<typeof pruningConfigSchema>;
+
+// ─── Pruning Event Schema ───────────────────────────────────────────────────
+
+/**
+ * A single pruning event logged during context pruning.
+ *
+ * Records what was pruned, from which section, how many tokens
+ * were freed, and the reason for pruning. Logged to WORKING.md
+ * for audit trail.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const pruningEventSchema = z.object({
+  /** ISO 8601 timestamp when the pruning occurred */
+  timestamp: z.string(),
+  /** Section that was pruned */
+  section: workingMemorySectionNameSchema,
+  /** Action taken: digest (envelope), truncate (retention), or skip (preserved) */
+  action: z.enum(["digest", "truncate", "skip"]),
+  /** Tokens freed by this pruning action */
+  tokens_freed: z.number().int().nonnegative(),
+  /** Human-readable reason for this pruning action */
+  reason: z.string(),
+});
+
+/** A single logged pruning event. */
+export type PruningEvent = z.infer<typeof pruningEventSchema>;
+
+// ─── Pruning Result Schema ──────────────────────────────────────────────────
+
+/**
+ * Aggregate result of a pruning pass over working memory.
+ *
+ * Contains all pruning events, total tokens freed, which sections
+ * were pruned vs preserved, and the resulting working memory state.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const pruningResultSchema = z.object({
+  /** All pruning events that occurred */
+  events: z.array(pruningEventSchema).default([]),
+  /** Total tokens freed across all pruning actions */
+  total_tokens_freed: z.number().int().nonnegative(),
+  /** Section names that were pruned */
+  sections_pruned: z.array(z.string()).default([]),
+  /** Section names that were preserved (critical) */
+  preserved_sections: z.array(z.string()).default([]),
+});
+
+/** Aggregate pruning result. */
+export type PruningResult = z.infer<typeof pruningResultSchema>;
+
+// ─── Section Score Schema ───────────────────────────────────────────────────
+
+/**
+ * Relevance/age score for a working memory section.
+ *
+ * Used by the auto-compaction engine to rank sections for compaction.
+ * Higher scores indicate sections more eligible for compaction
+ * (older, less relevant, larger).
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const sectionScoreSchema = z.object({
+  /** Section name */
+  section: workingMemorySectionNameSchema,
+  /** Age score (0-1, higher = older relative to session) */
+  age_score: z.number().min(0).max(1),
+  /** Relevance score (0-1, higher = less relevant, more compactable) */
+  relevance_score: z.number().min(0).max(1),
+  /** Size score (0-1, higher = larger relative to budget) */
+  size_score: z.number().min(0).max(1),
+  /** Composite compaction priority (0-1, higher = compact first) */
+  composite_score: z.number().min(0).max(1),
+  /** Current token count of the section */
+  token_count: z.number().int().nonnegative(),
+});
+
+/** Section compaction score. */
+export type SectionScore = z.infer<typeof sectionScoreSchema>;
+
+// ─── Compaction Config Schema ───────────────────────────────────────────────
+
+/**
+ * Configuration for WORKING.md auto-compaction.
+ *
+ * Defines the quality zone trigger, minimum section age for compaction
+ * eligibility, and maximum tokens for compacted summaries.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const compactionConfigSchema = z.object({
+  /** Quality zone at or above which compaction triggers */
+  trigger_zone: qualityZoneSchema.default("degrading"),
+  /** Minimum section age in ms before eligible for compaction (default: 10 min) */
+  min_section_age_ms: z.number().int().nonnegative().default(600000),
+  /** Maximum tokens for a compacted section summary */
+  summary_max_tokens: z.number().int().positive().default(500),
+  /** Sections exempt from compaction */
+  exempt_sections: z
+    .array(workingMemorySectionNameSchema)
+    .default(["session_info"]),
+  /** Minimum composite score threshold to trigger compaction (0-1) */
+  score_threshold: z.number().min(0).max(1).default(0.4),
+});
+
+/** Auto-compaction configuration. */
+export type CompactionConfig = z.infer<typeof compactionConfigSchema>;
+
+// ─── Compaction Result Schema ───────────────────────────────────────────────
+
+/**
+ * Result of a WORKING.md auto-compaction pass.
+ *
+ * Contains the list of sections compacted, before/after token counts,
+ * generated summaries, and whether the session should continue.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const compactionResultSchema = z.object({
+  /** Names of sections that were compacted */
+  sections_compacted: z.array(z.string()).default([]),
+  /** Total tokens before compaction */
+  tokens_before: z.number().int().nonnegative(),
+  /** Total tokens after compaction */
+  tokens_after: z.number().int().nonnegative(),
+  /** Per-section compaction summaries */
+  summaries: z
+    .array(
+      z.object({
+        /** Section name */
+        section: z.string(),
+        /** Generated summary text */
+        summary: z.string(),
+        /** Tokens before compaction */
+        tokens_before: z.number().int().nonnegative(),
+        /** Tokens after compaction */
+        tokens_after: z.number().int().nonnegative(),
+      }),
+    )
+    .default([]),
+  /** Whether the session should continue after compaction */
+  session_continued: z.boolean().default(true),
+  /** Section scores used for compaction decisions */
+  scores: z.array(sectionScoreSchema).default([]),
+});
