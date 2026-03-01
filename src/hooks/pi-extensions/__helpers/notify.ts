@@ -6,6 +6,7 @@
  *
  * Source: src/hooks/pi-extensions/__helpers/notify.ts
  */
+import type { PiExtensionContext } from "../__types/pi-context";
 
 /**
  * Safe ctx.ui.notify wrapper — never throws.
@@ -14,9 +15,13 @@
  * @param message - Notification message
  * @param level - Notification level (e.g., "info", "warn", "error")
  */
-export function notifySafe(ctx: any, message: string, level?: string): void {
+export function notifySafe(
+  ctx: PiExtensionContext | null | undefined,
+  message: string,
+  level?: string,
+): void {
   try {
-    ctx?.ui?.notify?.(message, level);
+    ctx?.ui?.notify?.(message, level as "info" | "warn" | "error");
   } catch {
     /* non-fatal */
   }
@@ -31,7 +36,7 @@ export function notifySafe(ctx: any, message: string, level?: string): void {
  * @returns true if user confirms, false if UI unavailable or user declines
  */
 export function confirmSafe(
-  ctx: any,
+  ctx: PiExtensionContext | null | undefined,
   title: string,
   body: string,
 ): Promise<boolean> {

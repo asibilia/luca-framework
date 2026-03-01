@@ -8,23 +8,16 @@
  * Source: src/hooks/pi-extensions/luca-complexity.ts
  * Deployed to: .pi/extensions/luca-complexity.ts
  */
+import { COMPLEXITY_LEVELS } from "@alecsibilia/luca-framework/state";
+import type { ComplexityLevel } from "@alecsibilia/luca-framework/state";
+import type { PiExtensionAPI } from "./__types/pi-context";
+
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import {
   readComplexity as bridgeReadComplexity,
   writeComplexity as bridgeWriteComplexity,
 } from "./__helpers/state-bridge";
 import { COMPLEXITY_TIERS } from "./__helpers/status";
-
-/** Complexity levels ordered from lowest to highest. */
-const COMPLEXITY_LEVELS = [
-  "TRIVIAL",
-  "SIMPLE",
-  "MODERATE",
-  "COMPLEX",
-  "CRITICAL",
-] as const;
-
-type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 /** Gating matrix: which workflow steps activate at which level. */
 const GATING_MATRIX: Record<
@@ -102,7 +95,7 @@ const GATING_MATRIX: Record<
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaComplexity(pi: any) {
+export default function lucaComplexity(pi: PiExtensionAPI) {
   const cwd = process.cwd();
 
   /**

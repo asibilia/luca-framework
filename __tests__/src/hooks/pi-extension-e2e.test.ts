@@ -11,38 +11,9 @@ import { describe, test, expect, beforeAll } from "bun:test";
 import { join } from "path";
 import { existsSync } from "fs";
 
+import { createMockPi } from "./__helpers/mock-pi";
+
 const extensionDir = join(process.cwd(), ".pi", "extensions");
-
-/**
- * Minimal mock of Pi's ExtensionAPI for loading extensions.
- */
-function createMockPi() {
-  const tools = new Map<string, any>();
-  const events = new Map<string, Function[]>();
-  const commands = new Map<string, any>();
-  const keybindings: Array<{ key: string; command: string }> = [];
-  const messageRenderers = new Map<string, Function>();
-
-  return {
-    api: {
-      registerTool: (def: any) => tools.set(def.name, def),
-      on: (event: string, handler: Function) => {
-        if (!events.has(event)) events.set(event, []);
-        events.get(event)!.push(handler);
-      },
-      registerCommand: (name: string, opts: any) => commands.set(name, opts),
-      registerKeybinding: (key: string, command: string) =>
-        keybindings.push({ key, command }),
-      registerMessageRenderer: (type: string, renderer: Function) =>
-        messageRenderers.set(type, renderer),
-    },
-    tools,
-    events,
-    commands,
-    keybindings,
-    messageRenderers,
-  };
-}
 
 /** Load a single extension and return its registered tools/events. */
 async function loadExtension(fileName: string) {
@@ -940,10 +911,11 @@ describe("Pi extension E2E: setActiveTools role enforcement", () => {
 
   test("fallback event blocking works when setActiveTools unavailable", async () => {
     const mock = createMockPi();
-    // No setActiveTools on the pi object (simulating older Pi version)
+    // Remove setActiveTools to simulate older Pi version
+    const apiWithout = { ...mock.api, setActiveTools: undefined };
 
     const mod = await import(join(extensionDir, "luca-roles.ts"));
-    mod.default(mock.api);
+    mod.default(apiWithout as any);
 
     const activateTool = mock.tools.get("luca_activate_role");
     await activateTool!.execute("test", { role: "lu-executor" });

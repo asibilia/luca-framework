@@ -81,11 +81,14 @@ export {
   meetsThreshold,
   COMPLEXITY_LEVELS,
   COMPLEXITY_ORDER,
+  MODEL_TIER_TO_MODEL,
 } from "./utils/complexity-utils";
 export type {
   ComplexityLevel,
   StepActivation,
   VerificationMode,
+  ModelId,
+  ModelTier,
 } from "./utils/complexity-utils";
 
 // ─── Persistence ────────────────────────────────────────────────────────────

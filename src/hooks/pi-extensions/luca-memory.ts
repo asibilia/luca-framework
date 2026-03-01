@@ -14,6 +14,8 @@ import { join } from "path";
 import { createTextResponse } from "./__helpers/response";
 import { isWithinDirectory } from "./__helpers/sanitize";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 /**
  * Pi extension: Cognitive memory system.
  *
@@ -23,7 +25,7 @@ import { isWithinDirectory } from "./__helpers/sanitize";
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaMemory(pi: any) {
+export default function lucaMemory(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
   const brainPath = join(planningDir, "BRAIN.md");
@@ -226,21 +228,21 @@ export default function lucaMemory(pi: any) {
    *
    * @param ctx - Pi event context
    */
-  function injectBrain(ctx: any): void {
+  function injectBrain(ctx: PiExtensionContext): void {
     if (!existsSync(brainPath)) return;
     const brain = readFileSync(brainPath, "utf-8");
     if (ctx?.addSystemContext) ctx.addSystemContext("luca-brain", brain);
   }
 
   // Inject BRAIN.md context at session start
-  pi.on("session_start", async (_event: any, ctx: any) => {
+  pi.on("session_start", async (_event: any, ctx: PiExtensionContext) => {
     injectBrain(ctx);
   });
 
   // Re-inject BRAIN.md before every agent turn (survives context compaction).
   // Uses the same ID ("luca-brain") so addSystemContext replaces the
   // previous injection rather than duplicating it.
-  pi.on("before_agent_start", async (_event: any, ctx: any) => {
+  pi.on("before_agent_start", async (_event: any, ctx: PiExtensionContext) => {
     injectBrain(ctx);
   });
 

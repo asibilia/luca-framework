@@ -37,6 +37,7 @@ import {
   renderSubagents,
   getQualityZone,
 } from "./__helpers/widget-renderers";
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 // ─── State ───────────────────────────────────────────────────
 
@@ -365,7 +366,7 @@ function removeSubagentEntry(
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaWidgets(pi: any) {
+export default function lucaWidgets(pi: PiExtensionAPI) {
   const state: WidgetState = createInitialState();
 
   /**
@@ -390,7 +391,7 @@ export default function lucaWidgets(pi: any) {
    * Master render function. Called after any state change.
    * Updates all widgets via ctx.ui.setWidget().
    */
-  function updateWidgets(ctx: any): void {
+  function updateWidgets(ctx: PiExtensionContext): void {
     if (!ctx?.ui?.setWidget) return;
 
     // Workflow widget
@@ -422,7 +423,7 @@ export default function lucaWidgets(pi: any) {
   // ─── Event handlers ──────────────────────────────────────
 
   // Parse tool results to update widget state
-  pi.on("tool_result", async (event: any, ctx: any) => {
+  pi.on("tool_result", async (event: any, ctx: PiExtensionContext) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
@@ -569,7 +570,7 @@ export default function lucaWidgets(pi: any) {
   });
 
   // Track active luca tool (internal state only — display handled by luca-state footer)
-  pi.on("tool_call", async (event: any, _ctx: any) => {
+  pi.on("tool_call", async (event: any, _ctx: PiExtensionContext) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
@@ -577,7 +578,7 @@ export default function lucaWidgets(pi: any) {
   });
 
   // Clear active tool when finished (internal state only)
-  pi.on("tool_execution_end", async (event: any, _ctx: any) => {
+  pi.on("tool_execution_end", async (event: any, _ctx: PiExtensionContext) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
@@ -585,12 +586,12 @@ export default function lucaWidgets(pi: any) {
   });
 
   // Increment turn counter (internal state only)
-  pi.on("turn_start", async (_event: any, _ctx: any) => {
+  pi.on("turn_start", async (_event: any, _ctx: PiExtensionContext) => {
     state.turnCount++;
   });
 
   // Poll context usage on turn end
-  pi.on("turn_end", async (_event: any, ctx: any) => {
+  pi.on("turn_end", async (_event: any, ctx: PiExtensionContext) => {
     if (typeof ctx?.getContextUsage !== "function") return;
 
     try {
@@ -628,7 +629,7 @@ export default function lucaWidgets(pi: any) {
   });
 
   // Clear stale widgets on new agent session
-  pi.on("agent_start", async (_event: any, ctx: any) => {
+  pi.on("agent_start", async (_event: any, ctx: PiExtensionContext) => {
     state.chain = null;
     state.research = null;
     state.tilldone = null;
@@ -643,7 +644,7 @@ export default function lucaWidgets(pi: any) {
   });
 
   // Track context compaction events
-  pi.on("session_compact", async (_event: any, ctx: any) => {
+  pi.on("session_compact", async (_event: any, ctx: PiExtensionContext) => {
     state.compactionCount++;
     notifySafe(
       ctx,

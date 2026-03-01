@@ -13,6 +13,8 @@
  * Source: src/hooks/pi-extensions/luca-tilldone.ts
  * Deployed to: .pi/extensions/luca-tilldone.ts
  */
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 import { runShellCommand } from "./__helpers/exec";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
@@ -49,7 +51,7 @@ const MAX_OUTPUT_LENGTH = 1500;
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaTilldone(pi: any) {
+export default function lucaTilldone(pi: PiExtensionAPI) {
   const cwd = process.cwd();
 
   /** Active loops. */
@@ -134,7 +136,7 @@ export default function lucaTilldone(pi: any) {
       onUpdate:
         | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
         | undefined,
-      _ctx: any,
+      _ctx: PiExtensionContext,
     ) {
       // Check for abort before starting
       if (signal?.aborted) {

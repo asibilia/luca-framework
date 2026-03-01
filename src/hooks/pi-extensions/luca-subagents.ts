@@ -36,6 +36,7 @@ import {
   nextSubagentId,
   resetSubagentRegistry,
 } from "./__helpers/subagent-registry";
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 // MAX_SUBAGENTS limit is enforced globally in __helpers/spawn.ts
 
@@ -52,7 +53,7 @@ import {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaSubagents(pi: any) {
+export default function lucaSubagents(pi: PiExtensionAPI) {
   const cwd = process.cwd();
 
   /**
@@ -61,7 +62,10 @@ export default function lucaSubagents(pi: any) {
    * Shared by luca_subagent_create and luca_subagent_continue onComplete
    * callbacks to avoid duplicating the ~20-line notification block.
    */
-  function handleSubagentComplete(ctx: any, info: SpawnCompletionInfo): void {
+  function handleSubagentComplete(
+    ctx: PiExtensionContext,
+    info: SpawnCompletionInfo,
+  ): void {
     const summary = [
       `Subagent "${info.id}" (${info.agent}) ${info.status}.`,
       `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
@@ -130,7 +134,7 @@ export default function lucaSubagents(pi: any) {
       params: { agent: string; task: string; model?: string },
       signal: AbortSignal | undefined,
       _onUpdate: any,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
       // Check for abort before spawning
       if (signal?.aborted) {
@@ -410,7 +414,7 @@ export default function lucaSubagents(pi: any) {
       params: { id: string; message: string },
       _signal: any,
       _onUpdate: any,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
       const existing = subagentRegistry.get(params.id);
       if (!existing) {

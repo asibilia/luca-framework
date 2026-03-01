@@ -50,10 +50,10 @@ describe("selectSafe", () => {
   test("returns null when select returns undefined", async () => {
     const ctx = {
       ui: {
-        select: async () => undefined,
+        select: async () => undefined as any,
       },
     };
-    const result = await selectSafe(ctx, "Pick model", options);
+    const result = await selectSafe(ctx as any, "Pick model", options);
     expect(result).toBeNull();
   });
 
@@ -96,10 +96,10 @@ describe("inputSafe", () => {
   test("returns null when input returns undefined (cancelled)", async () => {
     const ctx = {
       ui: {
-        input: async () => undefined,
+        input: async () => undefined as any,
       },
     };
-    const result = await inputSafe(ctx, "Enter phase");
+    const result = await inputSafe(ctx as any, "Enter phase");
     expect(result).toBeNull();
   });
 

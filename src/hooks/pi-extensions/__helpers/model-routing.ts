@@ -15,29 +15,17 @@
  * Source: src/hooks/pi-extensions/__helpers/model-routing.ts
  * Deployed to: .pi/extensions/__helpers/model-routing.ts
  */
+import {
+  COMPLEXITY_LEVELS,
+  MODEL_TIER_TO_MODEL,
+} from "@alecsibilia/luca-framework/state";
+import type {
+  ComplexityLevel,
+  ModelId,
+} from "@alecsibilia/luca-framework/state";
+
 import type { AgentFrontmatter } from "./frontmatter";
 import { readComplexity as bridgeReadComplexity } from "./state-bridge";
-
-/** Valid model identifiers for Pi's --model flag. */
-type ModelId = "opus" | "sonnet" | "haiku";
-
-/** Maps model tier labels to concrete model identifiers. */
-const MODEL_TIER_TO_MODEL: Record<string, ModelId> = {
-  fast: "haiku",
-  balanced: "sonnet",
-  capable: "opus",
-};
-
-/** Complexity levels (must match src/complexity/__schemas/complexity.schemas.ts). */
-const COMPLEXITY_LEVELS = [
-  "TRIVIAL",
-  "SIMPLE",
-  "MODERATE",
-  "COMPLEX",
-  "CRITICAL",
-] as const;
-
-type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 /** Default model per complexity level (mirrors config.json matrix defaults). */
 const COMPLEXITY_DEFAULT_MODEL: Record<ComplexityLevel, ModelId> = {
@@ -107,7 +95,10 @@ export function resolveAgentModel(
 
   // 3. Agent model_tier → mapped to ModelId
   if (frontmatter?.model_tier) {
-    const mapped = MODEL_TIER_TO_MODEL[frontmatter.model_tier];
+    const mapped =
+      MODEL_TIER_TO_MODEL[
+        frontmatter.model_tier as keyof typeof MODEL_TIER_TO_MODEL
+      ];
     if (mapped) return mapped;
   }
 
@@ -146,4 +137,7 @@ export function getModelTier(model: string): string {
 }
 
 export { MODEL_TIER_TO_MODEL, COMPLEXITY_DEFAULT_MODEL };
-export type { ModelId, ComplexityLevel };
+export type {
+  ModelId,
+  ComplexityLevel,
+} from "@alecsibilia/luca-framework/state";

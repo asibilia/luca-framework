@@ -6,6 +6,7 @@
  *
  * Source: src/hooks/pi-extensions/__helpers/follow-up.ts
  */
+import type { PiExtensionAPI } from "../__types/pi-context";
 
 /**
  * Send a follow-up message via Pi's sendMessage API.
@@ -21,7 +22,7 @@
  * @param opts.details - Structured metadata for the message
  */
 export function sendFollowUp(
-  pi: any,
+  pi: PiExtensionAPI,
   opts: {
     customType: string;
     content: string;
@@ -30,7 +31,7 @@ export function sendFollowUp(
   },
 ): void {
   try {
-    pi.sendMessage(
+    pi.sendMessage?.(
       {
         customType: opts.customType,
         content: opts.content,

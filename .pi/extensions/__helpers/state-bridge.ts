@@ -10,8 +10,8 @@
  * and other hot paths need synchronous access). Falls back to STATE.md
  * parsing when state.json is unavailable.
  *
- * Write operations use the persistence layer (loadPersistedActor,
- * persistActor) to ensure XState validates context changes, then
+ * Write operations use the persistence layer (loadPersistedActor) to
+ * ensure XState validates context changes, then
  * regenerate STATE.md via the snapshot module.
  *
  * Source: src/hooks/pi-extensions/__helpers/state-bridge.ts
@@ -21,8 +21,9 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
 import {
+  COMPLEXITY_LEVELS,
+  SETTABLE_FIELDS as SETTABLE_FIELDS_ARRAY,
   loadPersistedActor,
-  persistActor,
   stateExists,
   STATE_FILE_PATH,
   generateSnapshot,
@@ -37,21 +38,10 @@ const STATE_MD_REL = ".planning/STATE.md";
 /**
  * Allowlisted context fields that can be written via this bridge.
  *
- * Mirrors the SETTABLE_FIELDS list in the full bridge
- * (packages/luca-framework/src/state/bridge.ts).
+ * Derived from the canonical SETTABLE_FIELDS array exported by the
+ * luca-framework state package, converted to a Set for O(1) `.has()`.
  */
-const SETTABLE_FIELDS = new Set([
-  "current_milestone",
-  "current_phase",
-  "github_issue",
-  "branch",
-  "base_branch",
-  "ticket_id",
-  "oversight",
-  "complexity",
-  "memory_tags",
-  "intuition_flags",
-]);
+const SETTABLE_FIELDS: Set<string> = new Set(SETTABLE_FIELDS_ARRAY);
 
 // ─── Synchronous Read Operations ────────────────────────────────────────────
 // These read state.json directly for speed. Used by model-routing and
@@ -162,15 +152,6 @@ export function readStateAsMap(cwd: string): Record<string, string> {
 
 // ─── Field Validation ───────────────────────────────────────────────────────
 
-/** Valid complexity levels for the complexity field. */
-const VALID_COMPLEXITY_LEVELS = [
-  "TRIVIAL",
-  "SIMPLE",
-  "MODERATE",
-  "COMPLEX",
-  "CRITICAL",
-] as const;
-
 /** Valid oversight modes for the oversight field. */
 const VALID_OVERSIGHT_MODES = [
   "flagged",
@@ -188,8 +169,8 @@ const VALID_OVERSIGHT_MODES = [
 const FIELD_VALIDATORS: Record<string, (value: any) => string | null> = {
   complexity: (value) => {
     if (typeof value !== "string") return `complexity must be a string`;
-    if (!VALID_COMPLEXITY_LEVELS.includes(value.toUpperCase() as any))
-      return `Invalid complexity "${value}". Valid: ${VALID_COMPLEXITY_LEVELS.join(", ")}`;
+    if (!(COMPLEXITY_LEVELS as readonly string[]).includes(value.toUpperCase()))
+      return `Invalid complexity "${value}". Valid: ${COMPLEXITY_LEVELS.join(", ")}`;
     return null;
   },
   current_phase: (value) => {
@@ -362,13 +343,12 @@ export async function writeComplexity(
   cwd: string,
   level: string,
 ): Promise<{ success: boolean; previous?: string; error?: string }> {
-  const VALID_LEVELS = ["TRIVIAL", "SIMPLE", "MODERATE", "COMPLEX", "CRITICAL"];
   const normalized = level.toUpperCase();
 
-  if (!VALID_LEVELS.includes(normalized)) {
+  if (!(COMPLEXITY_LEVELS as readonly string[]).includes(normalized)) {
     return {
       success: false,
-      error: `Invalid complexity "${level}". Valid: ${VALID_LEVELS.join(", ")}`,
+      error: `Invalid complexity "${level}". Valid: ${COMPLEXITY_LEVELS.join(", ")}`,
     };
   }
 
@@ -384,7 +364,7 @@ export async function writeComplexity(
  * @returns Complexity level string, or "MODERATE" as default
  */
 function readComplexityFromStateMd(cwd: string): string {
-  const VALID_LEVELS = ["TRIVIAL", "SIMPLE", "MODERATE", "COMPLEX", "CRITICAL"];
+  const validLevels = COMPLEXITY_LEVELS as readonly string[];
   const mdPath = join(cwd, STATE_MD_REL);
   if (!existsSync(mdPath)) return "MODERATE";
 
@@ -394,13 +374,13 @@ function readComplexityFromStateMd(cwd: string): string {
     const boldMatch = content.match(/\*\*Task Complexity:\*\*\s*(\w+)/i);
     if (boldMatch?.[1]) {
       const level = boldMatch[1].toUpperCase();
-      if (VALID_LEVELS.includes(level)) return level;
+      if (validLevels.includes(level)) return level;
     }
 
     const simpleMatch = content.match(/Task Complexity:\s*(\w+)/i);
     if (simpleMatch?.[1]) {
       const level = simpleMatch[1].toUpperCase();
-      if (VALID_LEVELS.includes(level)) return level;
+      if (validLevels.includes(level)) return level;
     }
   } catch {
     /* non-fatal */

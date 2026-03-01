@@ -9,6 +9,7 @@
  *
  * Source: src/hooks/pi-extensions/__helpers/dialogs.ts
  */
+import type { PiExtensionContext } from "../__types/pi-context";
 
 /**
  * Safe ctx.ui.select wrapper — returns null if UI unavailable or cancelled.
@@ -35,7 +36,7 @@
  * ```
  */
 export async function selectSafe(
-  ctx: any,
+  ctx: PiExtensionContext | null | undefined,
   title: string,
   options: Array<{ label: string; value: string }>,
 ): Promise<string | null> {
@@ -69,7 +70,7 @@ export async function selectSafe(
  * ```
  */
 export async function inputSafe(
-  ctx: any,
+  ctx: PiExtensionContext | null | undefined,
   prompt: string,
   defaultValue?: string,
 ): Promise<string | null> {

@@ -38,6 +38,7 @@ import {
   readStateContext,
 } from "./__helpers/state-bridge";
 import { subagentRegistry } from "./__helpers/subagent-registry";
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 /**
  * Format a status summary from the state bridge map.
@@ -77,15 +78,18 @@ function formatStatusSummary(state: Record<string, string>): string {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaCommands(pi: any) {
+export default function lucaCommands(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
+
+  // Guard: registerCommand is optional in PiExtensionAPI — bail if unavailable
+  if (!pi.registerCommand) return;
 
   // ─── Command: /status ─────────────────────────────────
 
   pi.registerCommand("status", {
     description: "Show Luca workflow status (phase, complexity, memory)",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const state = readStateAsMap(cwd);
       if (state.error) {
         notifySafe(
@@ -105,7 +109,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("track", {
     description: "Show active subagent count and status summary",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const agents = subagentRegistry.values();
       if (agents.length === 0) {
         notifySafe(ctx, "No subagents tracked", "info");
@@ -131,7 +135,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("verify", {
     description: "Show last verification harness result",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       // Check for cached harness result in .planning/
       const resultPath = join(planningDir, "last-harness-result.json");
       if (!existsSync(resultPath)) {
@@ -168,7 +172,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("todos", {
     description: "Show current phase todos from .planning/",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const pendingDir = join(planningDir, "todos", "pending");
       if (!existsSync(pendingDir)) {
         notifySafe(ctx, "No pending todos directory found", "info");
@@ -199,7 +203,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("subagents", {
     description: "Show detailed subagent table (id, agent, status, duration)",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const agents = subagentRegistry.values();
       if (agents.length === 0) {
         notifySafe(ctx, "No subagents tracked", "info");
@@ -223,7 +227,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("safety", {
     description: "Show safety gate mode and recent audit entries",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       notifySafe(
         ctx,
         "Safety info: use luca_list_safety_rules tool for full details",
@@ -236,7 +240,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("switch-model", {
     description: "Switch the active model (haiku/sonnet/opus)",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const selected = await selectSafe(ctx, "Select model", [
         { label: "Haiku (fast)", value: "haiku" },
         { label: "Sonnet (balanced)", value: "sonnet" },
@@ -261,7 +265,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("set-complexity", {
     description: "Set task complexity level (TRIVIAL..CRITICAL)",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const current = readComplexity(cwd);
 
       const selected = await selectSafe(
@@ -294,7 +298,7 @@ export default function lucaCommands(pi: any) {
 
   pi.registerCommand("config", {
     description: "View and toggle common workflow config settings",
-    handler: async (_args: any, ctx: any) => {
+    handler: async (_args: any, ctx: PiExtensionContext) => {
       const stateCtx = readStateContext(cwd);
       const workflow = stateCtx?.workflow_config ?? {};
 
@@ -314,28 +318,28 @@ export default function lucaCommands(pi: any) {
   if (pi.registerKeybinding) {
     pi.registerKeybinding("ctrl+shift+s", {
       description: "Show Luca status",
-      handler: async (_ctx: any) => {
+      handler: async (_ctx: PiExtensionContext) => {
         pi.executeCommand?.("status");
       },
     });
 
     pi.registerKeybinding("ctrl+shift+v", {
       description: "Show last verification",
-      handler: async (_ctx: any) => {
+      handler: async (_ctx: PiExtensionContext) => {
         pi.executeCommand?.("verify");
       },
     });
 
     pi.registerKeybinding("ctrl+shift+t", {
       description: "Show subagent tracking",
-      handler: async (_ctx: any) => {
+      handler: async (_ctx: PiExtensionContext) => {
         pi.executeCommand?.("track");
       },
     });
 
     pi.registerKeybinding("ctrl+shift+m", {
       description: "Switch model",
-      handler: async (_ctx: any) => {
+      handler: async (_ctx: PiExtensionContext) => {
         pi.executeCommand?.("switch-model");
       },
     });

@@ -649,6 +649,17 @@ async function generatePiOutputs(
       );
     }
   }
+
+  // Copy type definition files (shared interfaces for pi/ctx objects)
+  const typesDir = path.join(extensionsDir, "__types");
+  const typeFiles = ["pi-context.ts"];
+  for (const fileName of typeFiles) {
+    const srcPath = path.join(typesDir, fileName);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      generated.set(`.pi/extensions/__types/${fileName}`, await srcFile.text());
+    }
+  }
 }
 
 async function generateHookOutputs(

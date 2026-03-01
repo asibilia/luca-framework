@@ -21,6 +21,8 @@ import {
   nextSubagentId,
 } from "./__helpers/subagent-registry";
 
+import type { PiExtensionAPI } from "./__types/pi-context";
+
 /** Team definition. */
 interface TeamDef {
   name: string;
@@ -40,7 +42,7 @@ const MAX_PERSONA_LENGTH = 2000;
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaTeams(pi: any) {
+export default function lucaTeams(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
 

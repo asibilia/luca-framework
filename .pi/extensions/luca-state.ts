@@ -27,6 +27,7 @@ import {
   COMPLEXITY_TIERS,
 } from "./__helpers/status";
 import { subagentRegistry } from "./__helpers/subagent-registry";
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 /**
  * Pi extension: Workflow state management and status display.
@@ -37,7 +38,7 @@ import { subagentRegistry } from "./__helpers/subagent-registry";
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaState(pi: any) {
+export default function lucaState(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
 
@@ -221,7 +222,7 @@ export default function lucaState(pi: any) {
    * Called at session_start and can be refreshed by tool_call events.
    * Returns a single-line status string (used by setStatus fallback).
    */
-  function buildStateStatus(ctx: any): string {
+  function buildStateStatus(ctx: PiExtensionContext): string {
     const state = readState();
     const phase = state["current_phase"];
     const milestone = state["current_milestone"];
@@ -276,7 +277,7 @@ export default function lucaState(pi: any) {
    * single-line setStatus for older Pi versions.
    */
   function updateFooter(
-    ctx: any,
+    ctx: PiExtensionContext,
     stateOverride?: Record<string, string>,
   ): void {
     const state = stateOverride ?? readState();
@@ -322,7 +323,7 @@ export default function lucaState(pi: any) {
   }
 
   // Capture runtime context and show consolidated state on session start
-  pi.on("session_start", async (_event: any, ctx: any) => {
+  pi.on("session_start", async (_event: any, ctx: PiExtensionContext) => {
     // Introspect Pi context for runtime properties
     runtimeContext = {
       cwd: ctx?.cwd ?? process.cwd(),
@@ -337,7 +338,7 @@ export default function lucaState(pi: any) {
   });
 
   // Track active luca tool calls
-  pi.on("tool_call", async (event: any, ctx: any) => {
+  pi.on("tool_call", async (event: any, ctx: PiExtensionContext) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
@@ -346,7 +347,7 @@ export default function lucaState(pi: any) {
   });
 
   // Clear active tool indicator when tool finishes
-  pi.on("tool_execution_end", async (event: any, ctx: any) => {
+  pi.on("tool_execution_end", async (event: any, ctx: PiExtensionContext) => {
     const toolName: string = event?.toolName ?? "";
     if (!toolName.startsWith("luca_")) return;
 
@@ -355,7 +356,7 @@ export default function lucaState(pi: any) {
   });
 
   // Increment turn counter and refresh footer
-  pi.on("turn_start", async (_event: any, ctx: any) => {
+  pi.on("turn_start", async (_event: any, ctx: PiExtensionContext) => {
     turnCount++;
     updateFooter(ctx);
   });
@@ -374,7 +375,7 @@ export default function lucaState(pi: any) {
   ] as const;
 
   for (const eventName of sessionEvents) {
-    pi.on(eventName, async (_event: any, ctx: any) => {
+    pi.on(eventName, async (_event: any, ctx: PiExtensionContext) => {
       // Re-read STATE.md (may differ per session branch)
       const freshState = readState();
 

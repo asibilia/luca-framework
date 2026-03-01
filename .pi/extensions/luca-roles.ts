@@ -17,6 +17,8 @@ import { resolveAgentModel, getModelTier } from "./__helpers/model-routing";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { normalizeToolName } from "./__helpers/sanitize";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 /** Parsed agent role from .pi/agents/*.md frontmatter. */
 interface AgentRole extends AgentFrontmatter {
   tools: string[];
@@ -31,7 +33,7 @@ interface AgentRole extends AgentFrontmatter {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaRoles(pi: any) {
+export default function lucaRoles(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
 
@@ -242,7 +244,7 @@ export default function lucaRoles(pi: any) {
   });
 
   // Enforce tool restrictions via tool_call event (fallback for older Pi versions)
-  pi.on("tool_call", async (event: any, _ctx: any) => {
+  pi.on("tool_call", async (event: any, _ctx: PiExtensionContext) => {
     if (!activeRole) return; // No role active, allow all
     if (activeRole.tools.length === 0) return; // No restrictions defined
 
@@ -264,7 +266,7 @@ export default function lucaRoles(pi: any) {
   });
 
   // Re-apply role after session switch (setActiveTools/setModel reset on switch)
-  pi.on("session_switch", async (_event: any, _ctx: any) => {
+  pi.on("session_switch", async (_event: any, _ctx: PiExtensionContext) => {
     if (!activeRole) return;
 
     if (pi.setActiveTools && activeRole.tools.length > 0) {

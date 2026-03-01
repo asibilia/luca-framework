@@ -17,6 +17,8 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 import { runShellCommand } from "./__helpers/exec";
 import { notifySafe } from "./__helpers/notify";
 import {
@@ -34,7 +36,7 @@ import {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaHarness(pi: any) {
+export default function lucaHarness(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
   const configPath = join(planningDir, "config.json");
@@ -189,7 +191,7 @@ export default function lucaHarness(pi: any) {
       onUpdate:
         | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
         | undefined,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
       const config = loadConfig();
 
