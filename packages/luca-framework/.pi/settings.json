@@ -1,0 +1,27 @@
+{
+  "model": "claude-sonnet-4-6",
+  "provider": "anthropic",
+  "compaction": {
+    "enabled": true,
+    "threshold": 0.7
+  },
+  "extensions": [
+    ".pi/extensions/luca-hooks.ts",
+    ".pi/extensions/luca-state.ts",
+    ".pi/extensions/luca-memory.ts",
+    ".pi/extensions/luca-harness.ts",
+    ".pi/extensions/luca-complexity.ts",
+    ".pi/extensions/luca-roles.ts",
+    ".pi/extensions/luca-teams.ts",
+    ".pi/extensions/luca-chain.ts",
+    ".pi/extensions/luca-tilldone.ts",
+    ".pi/extensions/luca-query-experts.ts",
+    ".pi/extensions/luca-safety-rules.ts",
+    ".pi/extensions/luca-purpose-gating.ts",
+    ".pi/extensions/luca-subagents.ts",
+    ".pi/extensions/luca-commands.ts",
+    ".pi/extensions/luca-widgets.ts",
+    ".pi/extensions/luca-work-tracking.ts"
+  ],
+  "shell": "/bin/zsh"
+}
