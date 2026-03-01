@@ -39,6 +39,7 @@ export type {
   FileSource,
   ApprovalConfig,
   HarnessId,
+  PresetId,
 } from "./types";
 
 // Re-export version for consumers

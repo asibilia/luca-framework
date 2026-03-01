@@ -12,8 +12,15 @@ import type {
   BrandingConfig,
   ProjectContext,
   HarnessId,
+  PresetId,
 } from "../types";
 import { sanitizeJsonParse } from "./sanitize";
+import {
+  PRESETS,
+  VALID_PRESETS,
+  DEFAULT_PRESET,
+  getPresetDefaults,
+} from "./presets";
 
 /**
  * Run the interactive setup wizard.
@@ -127,7 +134,27 @@ export async function runWizard(
     return null;
   }
 
-  // Group 2.5: Harness selection
+  // Group 2.5: Preset selection
+  const presetOptions = VALID_PRESETS.map((id) => ({
+    value: id,
+    label: PRESETS[id].label,
+    hint: PRESETS[id].description,
+  }));
+
+  const selectedPreset = await p.select({
+    message: "Choose a configuration preset",
+    options: presetOptions,
+    initialValue: DEFAULT_PRESET,
+  });
+
+  if (p.isCancel(selectedPreset)) {
+    p.cancel("Setup cancelled.");
+    return null;
+  }
+
+  const presetDefaults = getPresetDefaults(selectedPreset as PresetId);
+
+  // Group 2.75: Harness selection (pre-filled from preset)
   const harnesses = await p.multiselect({
     message: "Which AI harness platforms do you use?",
     options: [
@@ -135,7 +162,7 @@ export async function runWizard(
       { value: "cursor", label: "Cursor IDE", hint: "(.cursor/ directory)" },
       { value: "pi", label: "Pi", hint: "(.pi/ directory)" },
     ],
-    initialValues: ["claude", "cursor"],
+    initialValues: presetDefaults.harnesses,
     required: true,
   });
 
@@ -174,6 +201,7 @@ export async function runWizard(
     stack: stack as string,
     workTracker: workTracker as "jira" | "github" | "none",
     harnesses: harnesses as HarnessId[],
+    preset: selectedPreset as PresetId,
   };
 }
 

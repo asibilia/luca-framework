@@ -44,6 +44,16 @@ export interface ApprovalConfig {
 /** Supported AI harness platforms */
 export type HarnessId = "claude" | "cursor" | "pi";
 
+/**
+ * Progressive configuration preset identifiers.
+ *
+ * Presets control the default complexity of a Luca project:
+ * - starter: Minimal setup, single harness, basic features
+ * - standard: Balanced defaults for most projects (default)
+ * - full: All harnesses, all features enabled
+ */
+export type PresetId = "starter" | "standard" | "full";
+
 export interface LucaConfig {
   branding: BrandingConfig;
   stack: string;
@@ -52,6 +62,8 @@ export interface LucaConfig {
   harnesses?: HarnessId[];
   /** Approval gate configuration */
   approvals?: ApprovalConfig;
+  /** Progressive configuration preset */
+  preset?: PresetId;
 }
 
 /** Source tracking for manifest file entries */
