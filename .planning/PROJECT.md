@@ -8,19 +8,23 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v2.1.0 — Shipped)
+## Current State (v2.4.0 — Shipped)
 
-**Last Shipped:** v2.1.0 — Pi Library Integration (2026-02-27)
+**Last Shipped:** v2.4.0 — Pi Platform Completion (2026-03-01)
 
-Added Pi (pi.dev) as a first-class output target alongside `.claude/` and `.cursor/`, with 12 native TypeScript extensions implementing 39 tools across Luca's full workflow system. Three-platform compilation from `src/` to `.claude/`, `.cursor/`, and `.pi/`. Pi extensions cover: state management, memory bridge, verification harness, complexity gating, agent roles, team dispatch, chain pipelines, task-gated loops, expert research, safety rules, and purpose gating. Input sanitization with 8 shared functions (escapeRegExp, sanitizeName, sanitizeForTemplate, validateScriptPath, isValidIdentifier, normalizeToolName, isWithinDirectory, normalizeContext). Shared helper modules (response, frontmatter, exec, registry) eliminate ~648 lines of duplication. Unified build config with single-source-of-truth extension lists. 2106 tests (2106 pass, 6 skip), 28 agents, 45 skills, 19 rules.
+Activated runtime model routing via `pi.setModel()` with per-agent model tier assignment and context introspection for adaptive behavior. Added interactive dialogs and keyboard shortcuts (`/switch-model`, `/set-complexity`, `/config`). Improved tool resilience with AbortSignal cancellation support in verify/tilldone/subagents, session lifecycle handling (compact/shutdown events), structured details in tool returns, and custom message rendering. Refreshed all agent role content across 3 platforms. 2411 tests (2411 pass, 0 fail), 134 files changed.
 
-## Previous State (v2.0.0)
+## Previous State (v2.3.0)
 
-v2.0.0 — Unified Package & Intelligent Routing (2026-02-26). Consolidated `luca-state`, `create-luca`, and `luca-framework` into single `@alecsibilia/luca-framework` package. CLI commands (`run:claude`, `run:cursor`), plugin distribution via `--plugin-dir`, model-aware task routing with cost-appropriate model selection. 1808 tests.
+v2.3.0 — Distribution & Model Routing (2026-02-28). Published `@alecsibilia/luca-framework` as installable npm package with multi-harness scaffolding. ModelTierSchema with per-agent model routing, 5-step resolve chain. 2315 tests.
 
-## Previous State (v1.8.0)
+## Previous State (v2.2.0)
 
-v1.8.0 — Functional Architecture & Bridge Unification (2026-02-25). Agent/skill factory migration, deep freeze immutability, 100% bridge adoption. 1763 tests.
+v2.2.0 — Pi Platform Maturity (2026-02-27). DRY cleanup, E2E runtime validation, background subagent spawning, Pi API learnings. 15 extensions, 49 tools. 2271 tests.
+
+## Previous State (v2.1.0)
+
+v2.1.0 — Pi Library Integration (2026-02-27). Pi as first-class output target with 12 TypeScript extensions, 39 tools, 3-platform compilation. 2106 tests.
 
 **Capabilities (shipped):**
 
