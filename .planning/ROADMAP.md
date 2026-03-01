@@ -86,7 +86,7 @@
 
 **Depends on:** Phase 78 (model routing needed for /switch-model command)
 
-- [ ] Plan 79-A: dialogs.ts helper, interactive commands (/switch-model, /set-complexity, /config), keyboard shortcuts
+- [x] Plan 79-A: dialogs.ts helper, interactive commands (/switch-model, /set-complexity, /config), keyboard shortcuts
 
 ### Phase 80 — Tool Resilience & Session Lifecycle
 
@@ -94,7 +94,7 @@
 
 **Depends on:** None (independent of Phase 78-79)
 
-- [ ] Plan 80-A: AbortSignal in verify/tilldone/subagents, session_compact/shutdown events, details field, message renderer
+- [x] Plan 80-A: AbortSignal in verify/tilldone/subagents, session_compact/shutdown events, details field, message renderer
 
 ---
 

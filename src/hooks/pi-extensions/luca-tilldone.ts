@@ -160,6 +160,16 @@ export default function lucaTilldone(pi: PiExtensionAPI) {
         });
       }
 
+      // Check for abort between iterations
+      if (signal?.aborted) {
+        return createJsonResponse({
+          name: params.name,
+          status: "cancelled",
+          message: "Cancelled by user between iterations",
+          total_attempts: iteration - 1,
+        });
+      }
+
       // Stream progress before running check
       onUpdate?.({
         content: [

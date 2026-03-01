@@ -48,6 +48,7 @@ export default function lucaRoles(pi: PiExtensionAPI) {
 
   /** Original thinking level before role was applied (for restoration). */
   let originalThinkingLevel: string | null = null;
+  let thinkingLevelCaptured = false;
 
   /** Tools always allowed when a role is active (for role management). */
   const ROLE_MANAGEMENT_TOOLS = [
@@ -172,13 +173,19 @@ export default function lucaRoles(pi: PiExtensionAPI) {
         pi.setModel(resolvedModel);
       }
 
-      // Set thinking level for capable-tier agents
+      // Set thinking level based on model tier
       const tier = getModelTier(resolvedModel);
-      if (tier === "capable" && pi.setThinkingLevel) {
-        if (!originalThinkingLevel) {
+      if (pi.setThinkingLevel) {
+        if (!thinkingLevelCaptured) {
           originalThinkingLevel = pi.getThinkingLevel?.() ?? null;
+          thinkingLevelCaptured = true;
         }
-        pi.setThinkingLevel("high");
+        if (tier === "capable") {
+          pi.setThinkingLevel("high");
+        } else if (thinkingLevelCaptured) {
+          // Restore thinking level when switching to non-capable tier
+          pi.setThinkingLevel(originalThinkingLevel ?? "normal");
+        }
       }
 
       const modelInfo = pi.setModel ? ` | model: ${resolvedModel}` : "";
@@ -212,9 +219,10 @@ export default function lucaRoles(pi: PiExtensionAPI) {
       }
 
       // Restore original thinking level
-      if (pi.setThinkingLevel && originalThinkingLevel) {
-        pi.setThinkingLevel(originalThinkingLevel);
+      if (pi.setThinkingLevel && thinkingLevelCaptured) {
+        pi.setThinkingLevel(originalThinkingLevel ?? "normal");
         originalThinkingLevel = null;
+        thinkingLevelCaptured = false;
       }
 
       return createTextResponse(
@@ -296,9 +304,10 @@ export default function lucaRoles(pi: PiExtensionAPI) {
       pi.setModel(originalModel);
       originalModel = null;
     }
-    if (originalThinkingLevel && pi.setThinkingLevel) {
-      pi.setThinkingLevel(originalThinkingLevel);
+    if (thinkingLevelCaptured && pi.setThinkingLevel) {
+      pi.setThinkingLevel(originalThinkingLevel ?? "normal");
       originalThinkingLevel = null;
+      thinkingLevelCaptured = false;
     }
   });
 }

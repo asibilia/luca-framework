@@ -59,7 +59,7 @@ export default function lucaState(pi: PiExtensionAPI) {
     name: "luca_read_state",
     label: "Read Luca State",
     description:
-      "Read the current Luca workflow state including phase, complexity, milestone, status, and runtime context (model, cwd, headless mode) from .planning/STATE.md",
+      "Read the current Luca workflow state including phase, complexity, milestone, status, and runtime context (model, cwd, headless mode) from state.json via the state bridge",
     parameters: {},
     async execute() {
       const state = readState();

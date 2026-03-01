@@ -76,7 +76,7 @@ describe("luca-state extension", () => {
 
     const tool = pi.tools.find((t) => t.name === "luca_read_state");
     expect(tool).toBeDefined();
-    expect(tool!.description).toContain("STATE.md");
+    expect(tool!.description).toContain("state");
   });
 
   test("registers luca_read_field tool", async () => {

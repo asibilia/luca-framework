@@ -255,8 +255,8 @@ export async function writeField(
     }
   }
 
-  // Check state exists
-  if (!(await stateExists())) {
+  // Check state exists (pass cwd-qualified path to avoid process.cwd() mismatch)
+  if (!(await stateExists(join(cwd, STATE_FILE_PATH)))) {
     return { success: false, error: "state.json not found" };
   }
 
@@ -296,7 +296,7 @@ export async function writeField(
 
   // Regenerate STATE.md from the persisted state via the snapshot module
   try {
-    const loadResult = await loadPersistedActor();
+    const loadResult = await loadPersistedActor(join(cwd, STATE_FILE_PATH));
     if (loadResult.success) {
       const snapshot = loadResult.data.getSnapshot();
       const allowed = getAllowedEvents(snapshot);
