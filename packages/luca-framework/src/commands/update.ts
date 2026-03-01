@@ -82,6 +82,32 @@ interface FrameworkFilesResult {
   sourceMap: Map<string, FileSource>;
 }
 
+/**
+ * Group file comparisons by status for summary display.
+ *
+ * @param comparisons - Array of file comparison results
+ * @returns Object with arrays for each status category
+ */
+function groupByStatus(comparisons: FileComparison[]): {
+  unchanged: FileComparison[];
+  modified: FileComparison[];
+  newFiles: FileComparison[];
+  deleted: FileComparison[];
+  conflicts: FileComparison[];
+} {
+  const unchanged = comparisons.filter((c) => c.status === "unchanged");
+  const modified = comparisons.filter((c) => c.status === "user-modified");
+  const newFiles = comparisons.filter((c) => c.status === "new");
+  const deleted = comparisons.filter((c) => c.status === "deleted");
+  return {
+    unchanged,
+    modified,
+    newFiles,
+    deleted,
+    conflicts: [...modified, ...deleted],
+  };
+}
+
 async function getNewFrameworkFiles(
   config: LucaConfig,
   cwd: string,
@@ -114,21 +140,13 @@ async function getNewFrameworkFiles(
   // Collect per-harness templates (agents, rules, skills, hooks, settings)
   const harnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
   for (const harnessId of harnesses) {
-    const harnessDir = join(templatesDir, "harness", harnessId);
-    if (existsSync(harnessDir)) {
-      const beforeKeys = new Set(newFiles.keys());
-      await collectTemplateFiles(
-        harnessDir,
-        newFiles,
-        context,
-        `.${harnessId}`,
-      );
-      // Tag newly added files with their harness source
-      for (const key of newFiles.keys()) {
-        if (!beforeKeys.has(key)) {
-          sourceMap.set(key, `harness:${harnessId}` as FileSource);
-        }
-      }
+    const { files: harnessFiles, sourceMap: harnessSources } =
+      await collectHarnessFiles(harnessId, config);
+    for (const [key, content] of harnessFiles) {
+      newFiles.set(key, content);
+    }
+    for (const [key, source] of harnessSources) {
+      sourceMap.set(key, source);
     }
   }
 
@@ -146,10 +164,7 @@ async function getNewFrameworkFiles(
  * Show dry run summary of what would be updated.
  */
 function showDryRunSummary(comparisons: FileComparison[]): void {
-  const unchanged = comparisons.filter((c) => c.status === "unchanged");
-  const modified = comparisons.filter((c) => c.status === "user-modified");
-  const newFiles = comparisons.filter((c) => c.status === "new");
-  const deleted = comparisons.filter((c) => c.status === "deleted");
+  const { unchanged, modified, newFiles, deleted } = groupByStatus(comparisons);
 
   logger.box(`
 Update Preview (Dry Run)
@@ -657,11 +672,12 @@ export const updateCommand = defineCommand({
     spinner.stop("Comparison complete");
 
     // Step 4: Show summary
-    const unchanged = comparisons.filter((c) => c.status === "unchanged");
-    const modified = comparisons.filter((c) => c.status === "user-modified");
-    const newFilesCount = comparisons.filter((c) => c.status === "new");
-    const deleted = comparisons.filter((c) => c.status === "deleted");
-    const conflicts = [...modified, ...deleted];
+    const {
+      unchanged,
+      modified,
+      newFiles: newFilesCount,
+      conflicts,
+    } = groupByStatus(comparisons);
 
     logger.info(`\nUpdate summary:`);
     logger.info(`  Files to update:   ${unchanged.length}`);

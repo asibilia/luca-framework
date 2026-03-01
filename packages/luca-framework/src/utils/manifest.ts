@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { readFileSync } from "node:fs";
 import { join, relative } from "pathe";
 import { sanitizeJsonParse } from "./sanitize";
 import type {
@@ -30,9 +31,7 @@ export const LUCA_VERSION: string =
             "..",
             "package.json",
           );
-          const pkg = JSON.parse(
-            require("node:fs").readFileSync(pkgPath, "utf-8"),
-          );
+          const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
           return pkg.version ?? "0.0.0-dev";
         } catch {
           return "0.0.0-dev";
