@@ -13,12 +13,14 @@ export async function executeDoctor(
   const { configValidationCheck } = await import("./checks/config-validation");
   const { harnessInstallationCheck } =
     await import("./checks/harness-installation");
+  const { driftDetectionCheck } = await import("./checks/drift-detection");
 
   const checks: DoctorCheck[] = [
     bunRuntimeCheck,
     cursorIdeCheck,
     configValidationCheck,
     harnessInstallationCheck,
+    driftDetectionCheck,
   ];
 
   // Run all checks in parallel
