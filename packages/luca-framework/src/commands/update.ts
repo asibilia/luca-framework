@@ -293,7 +293,36 @@ ${conflicts.map((c) => `- \`${c.path}\` (${c.status})`).join("\n")}
 }
 
 /**
+ * Check if a relative path is a hook script that should be made executable.
+ *
+ * Matches patterns like `.claude/hooks/*.sh`, `.cursor/hooks/*.sh`, `.pi/hooks/*.sh`.
+ *
+ * @param relativePath - Path relative to project root
+ * @returns true if the path is a hook script
+ */
+function isHookScript(relativePath: string): boolean {
+  // Match .<harness>/hooks/<anything>.sh
+  return /^\.[a-z]+\/hooks\/.*\.sh$/.test(relativePath);
+}
+
+/**
+ * Make a file executable (chmod +x). Non-fatal on failure (e.g., Windows).
+ *
+ * @param filePath - Absolute path to the file
+ */
+async function makeExecutable(filePath: string): Promise<void> {
+  try {
+    await chmod(filePath, 0o755);
+  } catch {
+    /* non-fatal on platforms that don't support chmod */
+  }
+}
+
+/**
  * Apply updates to files based on comparison results.
+ *
+ * After writing each file, checks if it is a hook script and applies
+ * executable permissions (chmod +x) for parity with the init path.
  */
 async function applyUpdates(
   comparisons: FileComparison[],
@@ -321,6 +350,9 @@ async function applyUpdates(
         // Safe to update/add
         await mkdir(dirname(destPath), { recursive: true });
         await Bun.write(destPath, newContent);
+        if (isHookScript(comparison.path)) {
+          await makeExecutable(destPath);
+        }
         updated.push(comparison.path);
         break;
 
@@ -330,6 +362,9 @@ async function applyUpdates(
           // Overwrite user changes
           await mkdir(dirname(destPath), { recursive: true });
           await Bun.write(destPath, newContent);
+          if (isHookScript(comparison.path)) {
+            await makeExecutable(destPath);
+          }
           updated.push(comparison.path);
         } else if (options.acceptMine) {
           // Keep user changes
