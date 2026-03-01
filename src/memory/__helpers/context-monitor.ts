@@ -1,7 +1,13 @@
 import type { QualityZone } from "~/planner/__schemas/planner.schemas";
-import type { ContextUsageResult, CompressionTrigger } from "../__schemas/memory.schemas";
-import { contextUsageResultSchema, compressionTriggerSchema } from "../__schemas/memory.schemas";
-import { estimateFileTokens } from "./token-estimator.ts";
+import type {
+  ContextUsageResult,
+  CompressionTrigger,
+} from "../__schemas/memory.schemas";
+import {
+  contextUsageResultSchema,
+  compressionTriggerSchema,
+} from "../__schemas/memory.schemas";
+import { estimateFileTokens, getEstimationMethod } from "./token-estimator.ts";
 import {
   parseWorkingMemory,
   serializeWorkingMemory,
@@ -182,6 +188,7 @@ export function createContextMonitor(config?: ContextMonitorConfig) {
         zone,
         breakdown,
         timestamp: new Date().toISOString(),
+        estimation_method: getEstimationMethod(),
       });
     },
 
@@ -302,6 +309,37 @@ export function createContextMonitor(config?: ContextMonitorConfig) {
       return { persisted: false, zone };
     },
   };
+}
+
+/**
+ * Get the current quality zone for the project.
+ *
+ * Convenience function that creates a temporary context monitor,
+ * checks context usage, and returns just the quality zone. Useful
+ * for callers that only need the zone (e.g., model routing).
+ *
+ * @param projectDir - Project directory path (default: ".")
+ * @param contextBudget - Optional token budget override
+ * @returns The current quality zone (peak, good, degrading, stop)
+ *
+ * @example
+ * ```typescript
+ * const zone = await getCurrentZone(".");
+ * if (zone === "degrading" || zone === "stop") {
+ *   // Downgrade model to conserve context
+ * }
+ * ```
+ */
+export async function getCurrentZone(
+  projectDir: string = ".",
+  contextBudget?: number,
+): Promise<QualityZone> {
+  const monitor = createContextMonitor({
+    project_dir: projectDir,
+    context_budget: contextBudget,
+  });
+  const usage = await monitor.checkContextUsage();
+  return usage.zone;
 }
 
 /**

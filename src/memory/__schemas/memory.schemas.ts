@@ -314,6 +314,13 @@ export const contextUsageResultSchema = z.object({
   ),
   /** ISO 8601 timestamp when the check was performed */
   timestamp: z.string(),
+  /**
+   * Method used for token estimation.
+   *
+   * - "tiktoken": Real cl100k_base tokenizer (accurate)
+   * - "heuristic": Chars/4 fallback (approximate)
+   */
+  estimation_method: z.enum(["tiktoken", "heuristic"]).optional(),
 });
 
 /** Result of a context usage check with zone and breakdown. */

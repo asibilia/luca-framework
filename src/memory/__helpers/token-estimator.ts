@@ -86,6 +86,24 @@ export function estimateTokens(text: string): number {
 }
 
 /**
+ * Returns the active estimation method.
+ *
+ * Checks whether the tiktoken encoder is available and returns
+ * "tiktoken" or "heuristic" accordingly. Useful for reporting
+ * which method is being used in context usage results.
+ *
+ * @returns "tiktoken" if the real tokenizer is available, "heuristic" otherwise
+ */
+export function getEstimationMethod(): "tiktoken" | "heuristic" {
+  try {
+    const encoder = getEncoder();
+    return encoder ? "tiktoken" : "heuristic";
+  } catch {
+    return "heuristic";
+  }
+}
+
+/**
  * Estimate token count for a file on disk.
  *
  * Reads the file using Bun.file() and estimates tokens based on

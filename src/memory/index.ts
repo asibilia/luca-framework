@@ -51,6 +51,7 @@ export {
   estimateTokensHeuristic,
   estimateFileTokens,
   estimateMemoryBudget,
+  getEstimationMethod,
 } from "./__helpers/token-estimator.ts";
 
 // ─── Compression ───────────────────────────────────────────────────────────────
@@ -87,7 +88,10 @@ export {
 
 // ─── Context Monitoring ──────────────────────────────────────────────────────
 
-export { createContextMonitor } from "./__helpers/context-monitor.ts";
+export {
+  createContextMonitor,
+  getCurrentZone,
+} from "./__helpers/context-monitor.ts";
 
 // ─── Memory Parsing ──────────────────────────────────────────────────────────
 
