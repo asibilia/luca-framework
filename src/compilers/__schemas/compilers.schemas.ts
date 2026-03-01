@@ -182,3 +182,60 @@ export function generatePluginManifest(
 ): PluginManifest {
   return pluginManifestSchema.parse(input);
 }
+
+// ─── Parity Schemas (R10) ───────────────────────────────────────────────────
+
+/**
+ * Entity types that can be compared for cross-format parity.
+ */
+export const PARITY_ENTITY_TYPES = ["agent", "skill", "rule"] as const;
+export const parityEntityTypeSchema = z.enum(PARITY_ENTITY_TYPES);
+export type ParityEntityType = z.infer<typeof parityEntityTypeSchema>;
+
+/**
+ * Output formats to compare.
+ */
+export const PARITY_FORMATS = ["claude", "cursor", "pi", "plugin"] as const;
+export const parityFormatSchema = z.enum(PARITY_FORMATS);
+export type ParityFormat = z.infer<typeof parityFormatSchema>;
+
+/**
+ * Per entity-type format count comparison result.
+ *
+ * Uses snake_case for data schema compatibility.
+ */
+export const formatCountSchema = z.object({
+  entity_type: parityEntityTypeSchema,
+  format_counts: z.record(z.string(), z.number().int().nonnegative()),
+  is_parity: z.boolean(),
+  mismatches: z.array(z.string()),
+});
+export type FormatCount = z.infer<typeof formatCountSchema>;
+
+/**
+ * Per-entity content parity check result.
+ *
+ * Uses snake_case for data schema compatibility.
+ */
+export const contentParityCheckSchema = z.object({
+  entity_name: z.string(),
+  entity_type: parityEntityTypeSchema,
+  formats_present: z.array(parityFormatSchema),
+  formats_missing: z.array(parityFormatSchema),
+  is_parity: z.boolean(),
+});
+export type ContentParityCheck = z.infer<typeof contentParityCheckSchema>;
+
+/**
+ * Overall parity report aggregating format and content parity checks.
+ *
+ * Uses snake_case for data schema compatibility.
+ */
+export const parityReportSchema = z.object({
+  timestamp: z.string(),
+  format_parity: z.array(formatCountSchema),
+  content_parity: z.array(contentParityCheckSchema),
+  overall_parity: z.boolean(),
+  summary: z.string(),
+});
+export type ParityReport = z.infer<typeof parityReportSchema>;

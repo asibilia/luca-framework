@@ -47,11 +47,15 @@ export const classifiedErrorSchema = z.object({
 export type ClassifiedError = z.infer<typeof classifiedErrorSchema>;
 
 /**
- * The three signals used for multi-signal convergence detection.
+ * Signals used for multi-signal convergence detection.
  *
+ * Core (always present):
  * - error_count_delta: Net change in active (non-permanent) error count
  * - fingerprint_overlap: Jaccard similarity of error fingerprint sets (0.0 = all new, 1.0 = identical)
  * - artifact_change_delta: Number of files changed between iterations (from git diff --stat)
+ *
+ * Optional (R11 — semantic convergence):
+ * - semantic_overlap: Cosine similarity of error message term vectors (0.0 = different, 1.0 = identical)
  *
  * Uses snake_case for data schema compatibility.
  */
@@ -59,6 +63,7 @@ export const convergenceSignalsSchema = z.object({
   error_count_delta: z.number().int(),
   fingerprint_overlap: z.number().min(0).max(1),
   artifact_change_delta: z.number().int().nonnegative(),
+  semantic_overlap: z.number().min(0).max(1).optional(),
 });
 export type ConvergenceSignals = z.infer<typeof convergenceSignalsSchema>;
 

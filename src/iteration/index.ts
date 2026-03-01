@@ -73,6 +73,7 @@ export type {
 export {
   createFingerprint,
   computeFingerprintOverlap,
+  computeSemanticOverlap,
   computeConvergenceSignals,
   assessConvergence,
 } from "./__helpers/convergence";
