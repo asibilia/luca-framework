@@ -1,6 +1,7 @@
 {
   "name": "luca-monorepo",
   "dependencies": {
+    "js-tiktoken": "^1.0.21",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.23",
     "xstate": "^5.28.0",
