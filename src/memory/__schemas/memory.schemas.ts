@@ -620,3 +620,6 @@ export const compactionResultSchema = z.object({
   /** Section scores used for compaction decisions */
   scores: z.array(sectionScoreSchema).default([]),
 });
+
+/** Auto-compaction result. */
+export type CompactionResult = z.infer<typeof compactionResultSchema>;

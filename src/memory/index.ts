@@ -142,6 +142,47 @@ export type {
   ScoredMemoryEntry,
 } from "./__helpers/milestone-recall.ts";
 
+// ─── Context Pruning ────────────────────────────────────────────────────────
+
+export {
+  digestStaleEnvelopes,
+  applySectionRetention,
+  preserveCriticalContext,
+  logPruningEvents,
+  pruneWorkingMemory,
+} from "./__helpers/context-pruning.ts";
+
+// ─── Auto-Compaction ────────────────────────────────────────────────────────
+
+export {
+  shouldTriggerCompaction,
+  scoreSections,
+  compactSection,
+  compactWorkingMemory,
+} from "./__helpers/auto-compaction.ts";
+
+// ─── Pruning & Compaction Schemas ───────────────────────────────────────────
+
+export {
+  retentionPolicySchema,
+  pruningConfigSchema,
+  pruningEventSchema,
+  pruningResultSchema,
+  sectionScoreSchema,
+  compactionConfigSchema,
+  compactionResultSchema,
+} from "./__schemas/memory.schemas";
+
+export type {
+  RetentionPolicy,
+  PruningConfig,
+  PruningEvent,
+  PruningResult,
+  SectionScore,
+  CompactionConfig,
+  CompactionResult,
+} from "./__schemas/memory.schemas";
+
 // ─── Memory Bridge ─────────────────────────────────────────────────────────
 
 export {
