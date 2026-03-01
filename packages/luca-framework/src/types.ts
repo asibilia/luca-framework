@@ -54,6 +54,9 @@ export interface LucaConfig {
   approvals?: ApprovalConfig;
 }
 
+/** Source tracking for manifest file entries */
+export type FileSource = "framework" | "user" | `harness:${HarnessId}`;
+
 export interface LucaManifest {
   version: string;
   installedAt: string;
@@ -67,7 +70,7 @@ export interface LucaManifest {
     string,
     {
       originalHash: string;
-      source: "framework" | "user";
+      source: FileSource;
     }
   >;
 }

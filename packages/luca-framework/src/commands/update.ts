@@ -9,6 +9,8 @@ import {
   writeManifest,
   compareFiles,
   hashContent,
+  inferFileSource,
+  LUCA_VERSION,
 } from "../utils/manifest";
 import {
   getTemplatesDir,
@@ -22,6 +24,7 @@ import type {
   LucaConfig,
   LucaManifest,
   FileComparison,
+  FileSource,
   HarnessId,
 } from "../types";
 
@@ -66,12 +69,24 @@ async function collectTemplateFiles(
   }
 }
 
+/**
+ * Result of collecting new framework files from templates.
+ *
+ * @property files - Map of relative path to processed content
+ * @property sourceMap - Map of relative path to FileSource for manifest tracking
+ */
+interface FrameworkFilesResult {
+  files: Map<string, string>;
+  sourceMap: Map<string, FileSource>;
+}
+
 async function getNewFrameworkFiles(
   config: LucaConfig,
   cwd: string,
-): Promise<Map<string, string>> {
+): Promise<FrameworkFilesResult> {
   const templatesDir = getTemplatesDir();
   const newFiles = new Map<string, string>();
+  const sourceMap = new Map<string, FileSource>();
   const context = {
     ...createBrandingContext(config.branding),
     config,
@@ -99,16 +114,30 @@ async function getNewFrameworkFiles(
   for (const harnessId of harnesses) {
     const harnessDir = join(templatesDir, "harness", harnessId);
     if (existsSync(harnessDir)) {
+      const beforeKeys = new Set(newFiles.keys());
       await collectTemplateFiles(
         harnessDir,
         newFiles,
         context,
         `.${harnessId}`,
       );
+      // Tag newly added files with their harness source
+      for (const key of newFiles.keys()) {
+        if (!beforeKeys.has(key)) {
+          sourceMap.set(key, `harness:${harnessId}` as FileSource);
+        }
+      }
     }
   }
 
-  return newFiles;
+  // Tag remaining files as "framework"
+  for (const key of newFiles.keys()) {
+    if (!sourceMap.has(key)) {
+      sourceMap.set(key, "framework");
+    }
+  }
+
+  return { files: newFiles, sourceMap };
 }
 
 /**
@@ -316,26 +345,45 @@ async function applyUpdates(
 
 /**
  * Update manifest after successful update.
+ *
+ * Tags each updated file with its source from the source map,
+ * falling back to inferFileSource() for auto-detection.
+ *
+ * @param manifest - Current manifest
+ * @param updatedFiles - Relative paths of files that were written
+ * @param newFiles - Map of relative path to content
+ * @param cwd - Working directory
+ * @param sourceMap - Map of relative path to FileSource
+ * @param config - Current config (for harness propagation)
+ * @returns Updated manifest
  */
 async function updateManifestAfterUpdate(
   manifest: LucaManifest,
   updatedFiles: string[],
   newFiles: Map<string, string>,
   cwd: string,
+  sourceMap: Map<string, FileSource>,
+  config: LucaConfig,
 ): Promise<LucaManifest> {
   const now = new Date().toISOString();
+  const harnesses = config.harnesses ??
+    manifest.harnesses ?? ["claude", "cursor"];
   const updatedManifest: LucaManifest = {
     ...manifest,
+    version: LUCA_VERSION,
     updatedAt: now,
+    harnesses,
     files: { ...manifest.files },
   };
 
   for (const relativePath of updatedFiles) {
     const content = newFiles.get(relativePath);
     if (content) {
+      const source =
+        sourceMap.get(relativePath) ?? inferFileSource(relativePath, harnesses);
       updatedManifest.files[relativePath] = {
         originalHash: hashContent(content),
-        source: "framework",
+        source,
       };
     }
   }
@@ -414,7 +462,10 @@ export const updateCommand = defineCommand({
       harnesses: manifest.harnesses ?? ["claude", "cursor"],
     };
 
-    const newFiles = await getNewFrameworkFiles(config, cwd);
+    const { files: newFiles, sourceMap } = await getNewFrameworkFiles(
+      config,
+      cwd,
+    );
     spinner.stop(`Found ${newFiles.size} framework files`);
 
     // Step 3: Compare files using compareFiles()
@@ -516,7 +567,14 @@ export const updateCommand = defineCommand({
 
       // Step 10: Update manifest
       spinner.start("Updating manifest...");
-      await updateManifestAfterUpdate(manifest, updated, newFiles, cwd);
+      await updateManifestAfterUpdate(
+        manifest,
+        updated,
+        newFiles,
+        cwd,
+        sourceMap,
+        config,
+      );
       spinner.stop("Manifest updated");
 
       // Step 11: Clean up backup (success)

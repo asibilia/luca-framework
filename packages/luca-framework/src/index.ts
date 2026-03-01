@@ -35,6 +35,7 @@ export type {
   LucaConfig,
   LucaManifest,
   FileComparison,
+  FileSource,
   ApprovalConfig,
   HarnessId,
 } from "./types";

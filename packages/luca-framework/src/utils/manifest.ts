@@ -1,7 +1,12 @@
 import { createHash } from "crypto";
 import { join, relative } from "pathe";
 import { sanitizeJsonParse } from "./sanitize";
-import type { LucaConfig, LucaManifest, FileComparison } from "../types";
+import type {
+  LucaConfig,
+  LucaManifest,
+  FileComparison,
+  FileSource,
+} from "../types";
 
 /**
  * Package version — injected at build time by unbuild's replace plugin.
@@ -77,13 +82,41 @@ export async function hashFile(filePath: string): Promise<string> {
  * });
  * ```
  */
+/**
+ * Determine the file source for a relative path based on harness directories.
+ *
+ * Files under `.claude/`, `.cursor/`, or `.pi/` are tagged with their
+ * harness-specific source marker. All other files default to "framework".
+ *
+ * @param relativePath - Path relative to project root
+ * @param harnesses - Active harness IDs
+ * @returns FileSource value (e.g., "framework", "harness:claude")
+ */
+export function inferFileSource(
+  relativePath: string,
+  harnesses: string[],
+): FileSource {
+  for (const harnessId of harnesses) {
+    if (
+      relativePath.startsWith(`.${harnessId}/`) ||
+      relativePath.startsWith(`.${harnessId}\\`)
+    ) {
+      return `harness:${harnessId}` as FileSource;
+    }
+  }
+  return "framework";
+}
+
 export async function createManifest(options: {
   config: LucaConfig;
   cwd: string;
   createdFiles: string[];
+  /** Optional explicit source map overriding auto-detection */
+  sourceMap?: Map<string, FileSource>;
 }): Promise<LucaManifest> {
-  const { config, cwd, createdFiles } = options;
+  const { config, cwd, createdFiles, sourceMap } = options;
   const now = new Date().toISOString();
+  const harnesses: string[] = config.harnesses ?? ["claude", "cursor"];
 
   const files: LucaManifest["files"] = {};
 
@@ -91,10 +124,13 @@ export async function createManifest(options: {
     try {
       const hash = await hashFile(filePath);
       const relativePath = relative(cwd, filePath);
+      const source =
+        sourceMap?.get(relativePath) ??
+        inferFileSource(relativePath, harnesses);
 
       files[relativePath] = {
         originalHash: hash,
-        source: "framework",
+        source,
       };
     } catch {
       // Skip files that can't be hashed (directories, etc.)
