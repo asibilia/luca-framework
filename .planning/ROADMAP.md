@@ -32,7 +32,7 @@
 
 **Depends on:** Phase 81
 
-- [ ] Plan 83-A: Real tokenizer integration, role-based model routing with quality-zone-aware upgrades (#2, #1)
+- [x] Plan 83-A: Real tokenizer integration, role-based model routing with quality-zone-aware upgrades (#2, #1)
 
 ### Phase 84 — Context Resilience
 

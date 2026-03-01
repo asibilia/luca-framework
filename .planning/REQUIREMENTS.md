@@ -60,19 +60,19 @@ Make Luca's runtime smarter (real token accounting, context pruning, convergence
 
 **Priority:** HIGH | **Source:** Todo #2
 
-- R6.1: Tokenizer integration (tiktoken or equivalent) replaces chars/4 heuristic
-- R6.2: Quality zone boundaries calculated from real token counts
-- R6.3: Budget calculations in iteration engine use real counts
-- R6.4: Memory compression triggers based on accurate token measurement
+- ~~R6.1: Tokenizer integration (tiktoken or equivalent) replaces chars/4 heuristic~~ **Complete**
+- ~~R6.2: Quality zone boundaries calculated from real token counts~~ **Complete**
+- ~~R6.3: Budget calculations in iteration engine use real counts~~ **Complete**
+- ~~R6.4: Memory compression triggers based on accurate token measurement~~ **Complete**
 
 ### R7: Role-Based Model Routing
 
 **Priority:** HIGH | **Source:** Todo #1
 
-- R7.1: Agent roles mapped to model profiles (research->capable, execution->balanced, quick->fast)
-- R7.2: Quality-zone-aware model upgrades (upgrade model when approaching degrading zone)
-- R7.3: Model routing respects per-agent modelTier from agent definitions
-- R7.4: Routing decisions logged for observability
+- ~~R7.1: Agent roles mapped to model profiles (research->capable, execution->balanced, quick->fast)~~ **Complete**
+- ~~R7.2: Quality-zone-aware model upgrades (upgrade model when approaching degrading zone)~~ **Complete**
+- ~~R7.3: Model routing respects per-agent modelTier from agent definitions~~ **Complete**
+- ~~R7.4: Routing decisions logged for observability~~ **Complete**
 
 ### R8: Context Pruning Extensions
 
