@@ -1,35 +1,88 @@
 import type { Result } from "~/shared/__schemas/shared.schemas";
 import type { TokenEstimate } from "../__schemas/memory.schemas";
+import { getEncoding } from "js-tiktoken";
+import type { Tiktoken } from "js-tiktoken";
 
 /**
  * Characters per token heuristic (GPT/Claude average).
  *
  * English text and code average approximately 4 characters per token.
  * This heuristic is accurate within ~10% for most content and is
- * sufficient for budget estimation and compression decisions.
- * It is NOT a substitute for a real tokenizer.
+ * sufficient as a fallback when the real tokenizer is unavailable.
  */
 const CHARS_PER_TOKEN = 4;
 
 /**
- * Estimate token count for a text string.
+ * Lazy singleton encoder instance.
  *
- * Uses a ~4 chars/token heuristic which is accurate within ~10%
- * for English text and code. Not a substitute for a real tokenizer
- * but sufficient for budget estimation and compression decisions.
+ * Initialized on first call to avoid import-time overhead.
+ * Uses cl100k_base encoding which closely matches Claude/GPT-4 tokenization.
+ */
+let _encoder: Tiktoken | null = null;
+
+/**
+ * Get or create the singleton tiktoken encoder.
+ *
+ * @returns The cl100k_base encoder instance, or null if initialization fails
+ */
+function getEncoder(): Tiktoken | null {
+  if (_encoder) return _encoder;
+  try {
+    _encoder = getEncoding("cl100k_base");
+    return _encoder;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Estimate token count using the ~4 chars/token heuristic.
+ *
+ * This is the original heuristic-based estimator, preserved as a
+ * fallback when the real tokenizer is unavailable. Accurate within
+ * ~10% for English text and code.
  *
  * @param text - The text to estimate
  * @returns Estimated token count (always >= 0)
  *
  * @example
  * ```typescript
- * estimateTokens("hello world"); // 3 (11 chars / 4 = 2.75, ceil = 3)
+ * estimateTokensHeuristic("hello world"); // 3 (11 chars / 4 = 2.75, ceil = 3)
+ * estimateTokensHeuristic("");            // 0
+ * ```
+ */
+export function estimateTokensHeuristic(text: string): number {
+  if (!text) return 0;
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
+}
+
+/**
+ * Estimate token count for a text string.
+ *
+ * Uses the cl100k_base tokenizer from js-tiktoken for accurate
+ * token counting. Falls back to the ~4 chars/token heuristic
+ * if the tokenizer fails to initialize or encode.
+ *
+ * @param text - The text to estimate
+ * @returns Estimated token count (always >= 0)
+ *
+ * @example
+ * ```typescript
+ * estimateTokens("hello world"); // 2 (real tokenizer)
  * estimateTokens("");            // 0
  * ```
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0;
-  return Math.ceil(text.length / CHARS_PER_TOKEN);
+  try {
+    const encoder = getEncoder();
+    if (encoder) {
+      return encoder.encode(text).length;
+    }
+    return estimateTokensHeuristic(text);
+  } catch {
+    return estimateTokensHeuristic(text);
+  }
 }
 
 /**

@@ -48,6 +48,7 @@ export type {
 
 export {
   estimateTokens,
+  estimateTokensHeuristic,
   estimateFileTokens,
   estimateMemoryBudget,
 } from "./__helpers/token-estimator.ts";
