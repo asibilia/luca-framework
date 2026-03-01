@@ -135,6 +135,115 @@ export function shouldStartIteration(state: BudgetState): {
 }
 
 /**
+ * Token-aware budget assessment result.
+ *
+ * Extends the basic BudgetStatus with token-specific information
+ * when token tracking fields are present in the budget state.
+ */
+export interface TokenBudgetAssessment {
+  /** Overall budget status (combines iteration and token signals) */
+  status: BudgetStatus;
+  /** Iteration-based status */
+  iterationStatus: BudgetStatus;
+  /** Token-based status (null if tokens not tracked) */
+  tokenStatus: BudgetStatus | null;
+  /** Iteration usage as a percentage (0-100) */
+  iterationPercent: number;
+  /** Token usage as a percentage (0-100), null if not tracked */
+  tokenPercent: number | null;
+  /** Human-readable summary */
+  summary: string;
+}
+
+/**
+ * Assess the budget using both iteration count and token usage.
+ *
+ * When token fields (max_tokens, tokens_used) are present in the
+ * budget state, both signals are evaluated and the more restrictive
+ * status is returned. This prevents runaway token consumption even
+ * when iteration count is under budget.
+ *
+ * When token fields are absent, behaves identically to assessBudget().
+ *
+ * @param state - Current budget state (optionally with token fields)
+ * @returns TokenBudgetAssessment with combined status and details
+ *
+ * @example
+ * ```typescript
+ * const state = {
+ *   ...createBudgetState(5),
+ *   max_tokens: 100000,
+ *   tokens_used: 85000,
+ * };
+ * const assessment = assessBudgetWithTokens(state);
+ * // assessment.status === "soft_stop" (85% token usage >= 80% threshold)
+ * // assessment.tokenPercent === 85
+ * ```
+ */
+export function assessBudgetWithTokens(
+  state: BudgetState,
+): TokenBudgetAssessment {
+  const iterationStatus = assessBudget(state);
+  const iterationPercent =
+    state.max_iterations > 0
+      ? Math.round((state.current_iteration / state.max_iterations) * 100)
+      : 0;
+
+  // If token fields are not present, fall back to iteration-only
+  if (
+    state.max_tokens === undefined ||
+    state.max_tokens === null ||
+    state.tokens_used === undefined ||
+    state.tokens_used === null
+  ) {
+    return {
+      status: iterationStatus,
+      iterationStatus,
+      tokenStatus: null,
+      iterationPercent,
+      tokenPercent: null,
+      summary: `Iteration ${state.current_iteration}/${state.max_iterations} (${iterationPercent}%): ${iterationStatus}`,
+    };
+  }
+
+  // Compute token-based status
+  const tokenPercent =
+    state.max_tokens > 0
+      ? Math.round((state.tokens_used / state.max_tokens) * 100)
+      : 0;
+
+  let tokenStatus: BudgetStatus;
+  if (state.tokens_used >= state.max_tokens) {
+    tokenStatus = "exceeded";
+  } else if (tokenPercent >= state.soft_stop_percent) {
+    tokenStatus = "soft_stop";
+  } else {
+    tokenStatus = "under_budget";
+  }
+
+  // The more restrictive status wins
+  const statusPriority: Record<BudgetStatus, number> = {
+    exceeded: 2,
+    soft_stop: 1,
+    under_budget: 0,
+  };
+
+  const combinedStatus =
+    statusPriority[tokenStatus] > statusPriority[iterationStatus]
+      ? tokenStatus
+      : iterationStatus;
+
+  return {
+    status: combinedStatus,
+    iterationStatus,
+    tokenStatus,
+    iterationPercent,
+    tokenPercent,
+    summary: `Iteration ${state.current_iteration}/${state.max_iterations} (${iterationPercent}%), Tokens ${state.tokens_used}/${state.max_tokens} (${tokenPercent}%): ${combinedStatus}`,
+  };
+}
+
+/**
  * CLI entry point for budget operations.
  *
  * Usage:

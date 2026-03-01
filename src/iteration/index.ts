@@ -103,4 +103,7 @@ export {
   assessBudget,
   advanceBudget,
   shouldStartIteration,
+  assessBudgetWithTokens,
 } from "./__helpers/budget";
+
+export type { TokenBudgetAssessment } from "./__helpers/budget";

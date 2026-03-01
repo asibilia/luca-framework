@@ -192,8 +192,9 @@ export type BudgetStatus = z.infer<typeof budgetStatusSchema>;
 /**
  * Budget tracking state for an iteration loop.
  *
- * Uses iteration count as a proxy for token cost since exact token
- * counting is not available in the Claude Code runtime.
+ * Uses iteration count as the primary cost proxy. Optional token
+ * fields enable token-aware budget assessment when real token
+ * counting is available (via js-tiktoken).
  *
  * Uses snake_case for data schema compatibility.
  */
@@ -206,6 +207,10 @@ export const budgetStateSchema = z.object({
   soft_stop_percent: z.number().min(0).max(100).default(80),
   /** Current budget status */
   status: budgetStatusSchema,
+  /** Optional: maximum token budget for this loop */
+  max_tokens: z.number().int().positive().optional(),
+  /** Optional: tokens consumed so far in this loop */
+  tokens_used: z.number().int().nonnegative().optional(),
 });
 export type BudgetState = z.infer<typeof budgetStateSchema>;
 

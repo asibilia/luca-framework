@@ -4,6 +4,7 @@ import {
   assessBudget,
   advanceBudget,
   shouldStartIteration,
+  assessBudgetWithTokens,
 } from "../../../src/iteration/__helpers/budget";
 
 describe("createBudgetState", () => {
@@ -150,5 +151,114 @@ describe("shouldStartIteration", () => {
     const decision = shouldStartIteration(state);
     expect(decision.reason).toContain("1 of 5");
     expect(decision.reason).toContain("0%");
+  });
+});
+
+describe("assessBudgetWithTokens", () => {
+  test("falls back to iteration-only when no token fields", () => {
+    const state = createBudgetState(3);
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.status).toBe("under_budget");
+    expect(assessment.iterationStatus).toBe("under_budget");
+    expect(assessment.tokenStatus).toBeNull();
+    expect(assessment.iterationPercent).toBe(0);
+    expect(assessment.tokenPercent).toBeNull();
+    expect(assessment.summary).toContain("0/3");
+  });
+
+  test("returns under_budget when both iteration and tokens are low", () => {
+    const state = {
+      ...createBudgetState(5),
+      max_tokens: 100000,
+      tokens_used: 20000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.status).toBe("under_budget");
+    expect(assessment.iterationStatus).toBe("under_budget");
+    expect(assessment.tokenStatus).toBe("under_budget");
+    expect(assessment.tokenPercent).toBe(20);
+  });
+
+  test("returns soft_stop when tokens exceed soft_stop_percent", () => {
+    const state = {
+      ...createBudgetState(5),
+      max_tokens: 100000,
+      tokens_used: 85000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.status).toBe("soft_stop");
+    expect(assessment.iterationStatus).toBe("under_budget");
+    expect(assessment.tokenStatus).toBe("soft_stop");
+    expect(assessment.tokenPercent).toBe(85);
+  });
+
+  test("returns exceeded when tokens exceed max_tokens", () => {
+    const state = {
+      ...createBudgetState(5),
+      max_tokens: 100000,
+      tokens_used: 100000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.status).toBe("exceeded");
+    expect(assessment.tokenStatus).toBe("exceeded");
+  });
+
+  test("more restrictive status wins (token soft_stop beats iteration under_budget)", () => {
+    const state = {
+      ...createBudgetState(10),
+      current_iteration: 2,
+      max_tokens: 100000,
+      tokens_used: 90000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.iterationStatus).toBe("under_budget");
+    expect(assessment.tokenStatus).toBe("soft_stop");
+    expect(assessment.status).toBe("soft_stop"); // token wins
+  });
+
+  test("more restrictive status wins (iteration exceeded beats token under_budget)", () => {
+    const state = {
+      ...createBudgetState(3),
+      current_iteration: 3,
+      status: "exceeded" as const,
+      max_tokens: 100000,
+      tokens_used: 10000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.iterationStatus).toBe("exceeded");
+    expect(assessment.tokenStatus).toBe("under_budget");
+    expect(assessment.status).toBe("exceeded"); // iteration wins
+  });
+
+  test("summary includes both iteration and token information", () => {
+    const state = {
+      ...createBudgetState(5),
+      max_tokens: 100000,
+      tokens_used: 50000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    expect(assessment.summary).toContain("Iteration");
+    expect(assessment.summary).toContain("Tokens");
+    expect(assessment.summary).toContain("50000/100000");
+  });
+
+  test("custom soft_stop_percent applies to token assessment", () => {
+    const state = {
+      ...createBudgetState(5, 60),
+      max_tokens: 100000,
+      tokens_used: 65000,
+    };
+    const assessment = assessBudgetWithTokens(state);
+
+    // 65% >= 60% soft stop threshold
+    expect(assessment.tokenStatus).toBe("soft_stop");
+    expect(assessment.status).toBe("soft_stop");
   });
 });
