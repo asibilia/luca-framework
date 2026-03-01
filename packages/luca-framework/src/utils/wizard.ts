@@ -244,6 +244,7 @@ export function createConfigFromArgs(args: {
   stack?: string;
   tracker?: string;
   harness?: string;
+  preset?: string;
 }): LucaConfig {
   // Validate provided branding fields before merging with defaults
   const providedBranding: Record<string, string> = {};
@@ -278,8 +279,22 @@ export function createConfigFromArgs(args: {
     );
   }
 
+  // Validate and resolve --preset argument
+  let resolvedPreset: PresetId = DEFAULT_PRESET;
+  if (args.preset) {
+    if (!VALID_PRESETS.includes(args.preset as PresetId)) {
+      throw new Error(
+        `Invalid --preset value "${args.preset}". Valid options: ${VALID_PRESETS.join(", ")}`,
+      );
+    }
+    resolvedPreset = args.preset as PresetId;
+  }
+
+  const presetDefaults = getPresetDefaults(resolvedPreset);
+
   // Parse and validate --harness argument (comma-separated)
-  let harnesses: HarnessId[] = DEFAULT_HARNESSES;
+  // Falls back to preset defaults, then DEFAULT_HARNESSES
+  let harnesses: HarnessId[] = presetDefaults.harnesses;
   if (args.harness) {
     const parsed = args.harness.split(",").map((h) => h.trim()) as HarnessId[];
     const invalid = parsed.filter(
@@ -299,8 +314,11 @@ export function createConfigFromArgs(args: {
       commandPrefix: args.prefix,
     }),
     stack: args.stack || "custom",
-    workTracker: (args.tracker as "jira" | "github" | "none") || "none",
+    workTracker:
+      (args.tracker as "jira" | "github" | "none") ||
+      presetDefaults.workTracker,
     harnesses,
+    preset: resolvedPreset,
   };
 }
 

@@ -28,7 +28,9 @@ import type {
   FileComparison,
   FileSource,
   HarnessId,
+  PresetId,
 } from "../types";
+import { VALID_PRESETS, getPresetDefaults } from "../utils/presets";
 
 /**
  * Get new framework files from templates directory.
@@ -565,6 +567,11 @@ export const updateCommand = defineCommand({
       description: "Keep all user modifications, skip conflicting files",
       default: false,
     },
+    preset: {
+      type: "string",
+      description: "Change configuration preset (starter, standard, full)",
+      alias: "p",
+    },
   },
   async run({ args }) {
     const cwd = process.cwd();
@@ -596,6 +603,21 @@ export const updateCommand = defineCommand({
       process.exit(1);
     }
 
+    // Step 1.5: Validate and apply --preset if provided
+    if (args.preset) {
+      if (!VALID_PRESETS.includes(args.preset as PresetId)) {
+        logger.error(
+          `Invalid --preset value "${args.preset}". Valid options: ${VALID_PRESETS.join(", ")}`,
+        );
+        process.exit(1);
+      }
+      logger.info(`Applying preset: ${args.preset}`);
+    }
+
+    const presetDefaults = args.preset
+      ? getPresetDefaults(args.preset as PresetId)
+      : null;
+
     // Step 2: Get new framework files from templates
     const spinner = p.spinner();
     spinner.start("Reading framework templates...");
@@ -603,8 +625,13 @@ export const updateCommand = defineCommand({
     const config: LucaConfig = {
       branding: manifest.branding,
       stack: manifest.stack,
-      workTracker: manifest.workTracker as "jira" | "github" | "none",
-      harnesses: manifest.harnesses ?? ["claude", "cursor"],
+      workTracker: presetDefaults
+        ? presetDefaults.workTracker
+        : (manifest.workTracker as "jira" | "github" | "none"),
+      harnesses: presetDefaults
+        ? presetDefaults.harnesses
+        : (manifest.harnesses ?? ["claude", "cursor"]),
+      preset: (args.preset as PresetId) ?? undefined,
     };
 
     const { files: newFiles, sourceMap } = await getNewFrameworkFiles(
