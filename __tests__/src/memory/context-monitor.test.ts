@@ -417,7 +417,7 @@ describe("estimation_method", () => {
     const usage = await monitor.checkContextUsage();
 
     expect(usage.estimation_method).toBeDefined();
-    expect(["tiktoken", "heuristic"]).toContain(usage.estimation_method);
+    expect(["tiktoken", "heuristic"]).toContain(usage.estimation_method!);
   });
 
   test("estimation_method is tiktoken when js-tiktoken is available", async () => {
