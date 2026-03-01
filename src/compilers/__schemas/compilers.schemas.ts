@@ -18,6 +18,9 @@
  * ```
  */
 import { z } from "zod";
+import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
+import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
+import type { BaseRule } from "~/rules/__schemas/rule.schemas";
 
 /**
  * Regex pattern enforcing kebab-case plugin names.
@@ -239,3 +242,25 @@ export const parityReportSchema = z.object({
   summary: z.string(),
 });
 export type ParityReport = z.infer<typeof parityReportSchema>;
+
+// ─── Compiler Plugin Interface (R13) ────────────────────────────────────────
+
+/**
+ * Interface for pluggable compilation targets.
+ *
+ * Each plugin handles compilation for a specific output format.
+ * The `compileRule` method is optional because not all formats
+ * support individual rule files (e.g., Pi merges rules into AGENTS.md).
+ */
+export interface CompilerPlugin {
+  /** Human-readable name for the plugin */
+  name: string;
+  /** The format this plugin compiles to */
+  format: string;
+  /** Compile an agent definition to this format's markdown */
+  compileAgent: (agent: BaseAgent) => string;
+  /** Compile a skill definition to this format's markdown */
+  compileSkill: (skill: BaseSkill) => string;
+  /** Compile a rule definition to this format's markdown (optional) */
+  compileRule?: (rule: BaseRule) => string;
+}

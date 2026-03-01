@@ -60,3 +60,18 @@ export {
   checkContentParity,
   generateParityReport,
 } from "./__helpers/parity";
+
+// Compiler plugin interface (R13)
+export type { CompilerPlugin } from "./__schemas/compilers.schemas";
+
+// Compiler plugin registry (R13)
+export {
+  registerCompilerPlugin,
+  getCompilerPlugin,
+  listCompilerPlugins,
+  listRegisteredFormats,
+  compileAgentViaRegistry,
+  compileSkillViaRegistry,
+  compileRuleViaRegistry,
+  resetCompilerPluginRegistry,
+} from "./__helpers/plugin-registry";
