@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
 import { join } from "pathe";
 import type { CheckResult, DoctorCheck } from "../types";
 import { readManifest } from "../../manifest";
@@ -20,7 +20,7 @@ const HARNESS_DIRS: Record<HarnessId, string[]> = {
  * These files are checked in addition to directory existence
  * to catch partial or corrupted installations.
  */
-export const HARNESS_FILES: Record<HarnessId, string[]> = {
+const HARNESS_FILES: Record<HarnessId, string[]> = {
   claude: ["settings.json"],
   cursor: ["rules"],
   pi: ["hooks"],

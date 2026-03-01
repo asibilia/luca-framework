@@ -6,18 +6,16 @@ import { readManifest, LUCA_VERSION } from "../utils/manifest";
 import type { HarnessId, LucaManifest } from "../types";
 
 /**
- * Build a human-readable status summary from the manifest.
- *
- * Groups file counts by source (framework vs harness-specific) and
- * formats version, stack, work tracker, and harness information.
+ * Build file counts grouped by source (framework vs harness-specific).
  *
  * @param manifest - Parsed Luca manifest
- * @returns Formatted multi-line string for logger.box()
+ * @param harnesses - Active harness IDs
+ * @returns Record mapping source keys to file counts
  */
-function formatStatusSummary(manifest: LucaManifest): string {
-  const harnesses: HarnessId[] = manifest.harnesses ?? ["claude", "cursor"];
-
-  // Count files per source
+function buildFileCounts(
+  manifest: LucaManifest,
+  harnesses: HarnessId[],
+): Record<string, number> {
   const fileCounts: Record<string, number> = { framework: 0 };
   for (const harnessId of harnesses) {
     fileCounts[`harness:${harnessId}`] = 0;
@@ -28,6 +26,21 @@ function formatStatusSummary(manifest: LucaManifest): string {
     fileCounts[source] = (fileCounts[source] ?? 0) + 1;
   }
 
+  return fileCounts;
+}
+
+/**
+ * Build a human-readable status summary from the manifest.
+ *
+ * Groups file counts by source (framework vs harness-specific) and
+ * formats version, stack, work tracker, and harness information.
+ *
+ * @param manifest - Parsed Luca manifest
+ * @returns Formatted multi-line string for logger.box()
+ */
+function formatStatusSummary(manifest: LucaManifest): string {
+  const harnesses: HarnessId[] = manifest.harnesses ?? ["claude", "cursor"];
+  const fileCounts = buildFileCounts(manifest, harnesses);
   const totalFiles = Object.keys(manifest.files).length;
 
   const fileLines = Object.entries(fileCounts)
@@ -55,16 +68,7 @@ ${fileLines}`;
  */
 function buildStatusJson(manifest: LucaManifest): Record<string, unknown> {
   const harnesses: HarnessId[] = manifest.harnesses ?? ["claude", "cursor"];
-
-  const fileCounts: Record<string, number> = { framework: 0 };
-  for (const harnessId of harnesses) {
-    fileCounts[`harness:${harnessId}`] = 0;
-  }
-
-  for (const entry of Object.values(manifest.files)) {
-    const source = entry.source ?? "framework";
-    fileCounts[source] = (fileCounts[source] ?? 0) + 1;
-  }
+  const fileCounts = buildFileCounts(manifest, harnesses);
 
   return {
     version: LUCA_VERSION,

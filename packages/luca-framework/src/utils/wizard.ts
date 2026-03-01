@@ -227,6 +227,18 @@ export async function runWizard(
  * });
  * ```
  */
+/**
+ * Format branding validation errors into a human-readable string.
+ *
+ * @param errors - Record of field names to error messages
+ * @returns Semicolon-separated error string
+ */
+function formatBrandingErrors(errors: Record<string, string>): string {
+  return Object.entries(errors)
+    .map(([field, error]) => `${field}: ${error}`)
+    .join("; ");
+}
+
 export const VALID_STACKS = ["react-ts", "custom"] as const;
 export const VALID_TRACKERS = ["jira", "github", "none"] as const;
 export const VALID_HARNESSES: readonly HarnessId[] = [
@@ -253,10 +265,9 @@ export function createConfigFromArgs(args: {
 
   const validation = validateBranding(providedBranding);
   if (!validation.valid) {
-    const errorMessages = Object.entries(validation.errors)
-      .map(([field, error]) => `${field}: ${error}`)
-      .join("; ");
-    throw new Error(`Invalid branding arguments: ${errorMessages}`);
+    throw new Error(
+      `Invalid branding arguments: ${formatBrandingErrors(validation.errors)}`,
+    );
   }
 
   // Validate --stack argument
@@ -359,10 +370,9 @@ export async function loadConfigFromFile(
   const brandingInput = (parsed.branding || {}) as Record<string, string>;
   const validation = validateBranding(brandingInput);
   if (!validation.valid) {
-    const errorMessages = Object.entries(validation.errors)
-      .map(([field, error]) => `${field}: ${error}`)
-      .join("; ");
-    throw new Error(`Invalid branding in config file: ${errorMessages}`);
+    throw new Error(
+      `Invalid branding in config file: ${formatBrandingErrors(validation.errors)}`,
+    );
   }
 
   // Validate stack and workTracker values (same rules as createConfigFromArgs)
