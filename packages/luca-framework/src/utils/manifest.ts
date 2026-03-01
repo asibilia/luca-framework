@@ -3,8 +3,36 @@ import { join, relative } from "pathe";
 import { sanitizeJsonParse } from "./sanitize";
 import type { LucaConfig, LucaManifest, FileComparison } from "../types";
 
-// Package version - will be updated by build process
-const LUCA_VERSION = "0.0.1";
+/**
+ * Package version — injected at build time by unbuild's replace plugin.
+ *
+ * At build time, `__LUCA_VERSION__` is replaced with the real version string
+ * from package.json (e.g., `"2.4.0"`). When running from source (dev mode),
+ * the sentinel is not replaced and the typeof check falls through to read
+ * package.json directly.
+ */
+declare const __LUCA_VERSION__: string | undefined;
+
+export const LUCA_VERSION: string =
+  typeof __LUCA_VERSION__ !== "undefined"
+    ? __LUCA_VERSION__
+    : (() => {
+        try {
+          // Dev-mode fallback: read version from package.json
+          const pkgPath = join(
+            import.meta.dir ?? ".",
+            "..",
+            "..",
+            "package.json",
+          );
+          const pkg = JSON.parse(
+            require("node:fs").readFileSync(pkgPath, "utf-8"),
+          );
+          return pkg.version ?? "0.0.0-dev";
+        } catch {
+          return "0.0.0-dev";
+        }
+      })();
 
 /**
  * Calculate SHA-256 hash of file contents.

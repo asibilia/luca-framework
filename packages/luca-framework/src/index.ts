@@ -1,9 +1,11 @@
 import { defineCommand, runMain as cittyRunMain } from "citty";
 
+import { LUCA_VERSION } from "./utils/manifest";
+
 const main = defineCommand({
   meta: {
     name: "luca",
-    version: "2.3.0",
+    version: LUCA_VERSION,
     description:
       "Luca CLI — scaffold and manage AI-powered development workflows",
   },
@@ -36,3 +38,6 @@ export type {
   ApprovalConfig,
   HarnessId,
 } from "./types";
+
+// Re-export version for consumers
+export { LUCA_VERSION } from "./utils/manifest";
