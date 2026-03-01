@@ -15,19 +15,19 @@ Make Luca's runtime smarter (real token accounting, context pruning, convergence
 
 **Priority:** CRITICAL | **Source:** Todo #5
 
-- R1.1: LUCA_VERSION constant propagated correctly through build pipeline
-- R1.2: `package.json` version and LUCA_VERSION in sync at publish time
-- R1.3: npm publish pipeline functional with correct version metadata
-- R1.4: Version reported by CLI matches published package version
+- ~~R1.1: LUCA_VERSION constant propagated correctly through build pipeline~~ **Complete**
+- ~~R1.2: `package.json` version and LUCA_VERSION in sync at publish time~~ **Complete**
+- ~~R1.3: npm publish pipeline functional with correct version metadata~~ **Complete**
+- ~~R1.4: Version reported by CLI matches published package version~~ **Complete**
 
 ### R2: Harness-Aware Update Command
 
 **Priority:** HIGH | **Source:** Todo #10
 
-- R2.1: `bun luca update` reads `manifest.harnesses` to determine which harness dirs to update
-- R2.2: Per-harness file diffing and conflict detection
-- R2.3: New harness files scaffolded when harness added post-init
-- R2.4: Removed harness files cleaned up when harness removed
+- ~~R2.1: `bun luca update` reads `manifest.harnesses` to determine which harness dirs to update~~ **Complete**
+- ~~R2.2: Per-harness file diffing and conflict detection~~ **Complete**
+- ~~R2.3: New harness files scaffolded when harness added post-init~~ **Complete**
+- ~~R2.4: Removed harness files cleaned up when harness removed~~ **Complete**
 
 ### R3: CLI Status Command
 

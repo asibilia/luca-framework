@@ -16,7 +16,7 @@
 
 **Depends on:** None
 
-- [ ] Plan 81-A: npm version sync fix, LUCA_VERSION propagation, publishing pipeline (#5, #10)
+- [x] Plan 81-A: npm version sync fix, LUCA_VERSION propagation, publishing pipeline (#5, #10)
 
 ### Phase 82 — CLI/DX Foundation
 
