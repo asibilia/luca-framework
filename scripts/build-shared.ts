@@ -87,6 +87,9 @@ export const PI_HELPER_FILES: readonly string[] = [
   "subagent-registry.ts",
   "notify.ts",
   "follow-up.ts",
+  "model-routing.ts",
+  "state-bridge.ts",
+  "dialogs.ts",
 ] as const;
 // Note: index.ts barrel is NOT included — Pi auto-discovers
 // .pi/extensions/*/index.ts as extensions. Extensions import
@@ -644,6 +647,17 @@ async function generatePiOutputs(
         `.pi/extensions/__helpers/${fileName}`,
         await srcFile.text(),
       );
+    }
+  }
+
+  // Copy type definition files (shared interfaces for pi/ctx objects)
+  const typesDir = path.join(extensionsDir, "__types");
+  const typeFiles = ["pi-context.ts"];
+  for (const fileName of typeFiles) {
+    const srcPath = path.join(typesDir, fileName);
+    const srcFile = Bun.file(srcPath);
+    if (await srcFile.exists()) {
+      generated.set(`.pi/extensions/__types/${fileName}`, await srcFile.text());
     }
   }
 }

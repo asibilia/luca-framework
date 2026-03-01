@@ -8,22 +8,16 @@
  * Source: src/hooks/pi-extensions/luca-complexity.ts
  * Deployed to: .pi/extensions/luca-complexity.ts
  */
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join } from "path";
+import { COMPLEXITY_LEVELS } from "@alecsibilia/luca-framework/state";
+import type { ComplexityLevel } from "@alecsibilia/luca-framework/state";
+import type { PiExtensionAPI } from "./__types/pi-context";
 
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import {
+  readComplexity as bridgeReadComplexity,
+  writeComplexity as bridgeWriteComplexity,
+} from "./__helpers/state-bridge";
 import { COMPLEXITY_TIERS } from "./__helpers/status";
-
-/** Complexity levels ordered from lowest to highest. */
-const COMPLEXITY_LEVELS = [
-  "TRIVIAL",
-  "SIMPLE",
-  "MODERATE",
-  "COMPLEX",
-  "CRITICAL",
-] as const;
-
-type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 /** Gating matrix: which workflow steps activate at which level. */
 const GATING_MATRIX: Record<
@@ -101,41 +95,23 @@ const GATING_MATRIX: Record<
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaComplexity(pi: any) {
+export default function lucaComplexity(pi: PiExtensionAPI) {
   const cwd = process.cwd();
-  const planningDir = join(cwd, ".planning");
-  const stateMdPath = join(planningDir, "STATE.md");
 
   /**
-   * Read current complexity level from STATE.md.
+   * Read current complexity level via state bridge.
    *
-   * Parses the `Task Complexity` field in both bold and simple markdown
-   * formats. Defaults to MODERATE if STATE.md is missing or the field
-   * is absent or contains an unrecognized value.
+   * Primary: reads from state.json context.complexity
+   * Fallback: parses STATE.md Task Complexity field
+   * Default: "MODERATE" if both sources unavailable
    *
    * @returns The current complexity level (defaults to "MODERATE")
    */
   function readComplexity(): ComplexityLevel {
-    if (!existsSync(stateMdPath)) return "MODERATE";
-
-    const content = readFileSync(stateMdPath, "utf-8");
-    const match = content.match(/\*\*Task Complexity:\*\*\s*(\w+)/i);
-    if (match?.[1]) {
-      const level = match[1].toUpperCase();
-      if (COMPLEXITY_LEVELS.includes(level as ComplexityLevel)) {
-        return level as ComplexityLevel;
-      }
+    const level = bridgeReadComplexity(cwd).toUpperCase();
+    if (COMPLEXITY_LEVELS.includes(level as ComplexityLevel)) {
+      return level as ComplexityLevel;
     }
-
-    // Try non-bold format
-    const simpleMatch = content.match(/Task Complexity:\s*(\w+)/i);
-    if (simpleMatch?.[1]) {
-      const level = simpleMatch[1].toUpperCase();
-      if (COMPLEXITY_LEVELS.includes(level as ComplexityLevel)) {
-        return level as ComplexityLevel;
-      }
-    }
-
     return "MODERATE";
   }
 
@@ -178,31 +154,14 @@ export default function lucaComplexity(pi: any) {
         );
       }
 
-      if (!existsSync(stateMdPath)) {
-        return createTextResponse("STATE.md not found");
+      // Write via state bridge (state.json + STATE.md snapshot)
+      const result = await bridgeWriteComplexity(cwd, level);
+
+      if (!result.success) {
+        return createTextResponse(`Error: ${result.error}`);
       }
 
-      let content = readFileSync(stateMdPath, "utf-8");
-
-      // Try bold format
-      const boldPattern = /(\*\*Task Complexity:\*\*)\s*.+/i;
-      if (boldPattern.test(content)) {
-        content = content.replace(boldPattern, `$1 ${level}`);
-      } else {
-        // Try simple format
-        const simplePattern = /(Task Complexity:)\s*.+/i;
-        if (simplePattern.test(content)) {
-          content = content.replace(simplePattern, `$1 ${level}`);
-        } else {
-          return createTextResponse(
-            "Task Complexity field not found in STATE.md",
-          );
-        }
-      }
-
-      writeFileSync(stateMdPath, content, "utf-8");
       const tier = COMPLEXITY_TIERS[level as ComplexityLevel];
-
       return createTextResponse(`Complexity set to ${level} (${tier} tier)`);
     },
   });

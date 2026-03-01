@@ -26,6 +26,25 @@ export const COMPLEXITY_ORDER: Record<ComplexityLevel, number> = {
   CRITICAL: 4,
 };
 
+/** Model identifier for routing decisions. */
+export type ModelId = "opus" | "sonnet" | "haiku";
+
+/**
+ * High-level model tier for per-agent categorization.
+ *
+ * - **fast**: Lightweight agents (classifiers, routers) → maps to haiku
+ * - **balanced**: Standard agents (planners, executors) → maps to sonnet
+ * - **capable**: Deep-analysis agents (architects, auditors) → maps to opus
+ */
+export type ModelTier = "fast" | "balanced" | "capable";
+
+/** Maps each model tier to its default ModelId. */
+export const MODEL_TIER_TO_MODEL: Record<ModelTier, ModelId> = {
+  fast: "haiku",
+  balanced: "sonnet",
+  capable: "opus",
+};
+
 /** Step activation status */
 export type StepActivation =
   | "skip"

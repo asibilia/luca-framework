@@ -13,9 +13,11 @@
  *
  * Matches the response shape expected by Pi's tool execution layer:
  * an array of content blocks, each with a type and text payload.
+ * Optional `details` field provides structured metadata for Pi's UI.
  */
 export interface ToolResponse {
   content: Array<{ type: "text"; text: string }>;
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -66,5 +68,34 @@ export function createTextResponse(message: string): ToolResponse {
 export function createJsonResponse(data: unknown): ToolResponse {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+  };
+}
+
+/**
+ * Create a Pi tool response with both content and structured details.
+ *
+ * The `details` field provides structured metadata that Pi can display
+ * separately from the main content (e.g., in expandable panels or
+ * side annotations).
+ *
+ * @param data - JSON-serializable object for content
+ * @param details - Structured metadata for Pi's UI
+ * @returns Pi-compatible tool response with details
+ *
+ * @example
+ * ```typescript
+ * return createJsonResponseWithDetails(summary, {
+ *   checks: results.map(r => ({ name: r.name, status: r.status })),
+ *   total_duration_ms: totalDuration,
+ * });
+ * ```
+ */
+export function createJsonResponseWithDetails(
+  data: unknown,
+  details: Record<string, unknown>,
+): ToolResponse {
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    details,
   };
 }

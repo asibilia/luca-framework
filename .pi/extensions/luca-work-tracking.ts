@@ -26,6 +26,8 @@ import { join } from "path";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 /** Current work tracking state for the session. */
 interface WorkTrackingState {
   /** Active todo slug (filename without .md), or null. */
@@ -82,7 +84,7 @@ function run(cmd: string, cwd: string): string | null {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaWorkTracking(pi: any) {
+export default function lucaWorkTracking(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const todosDir = join(cwd, ".planning", "todos", "pending");
 
@@ -444,7 +446,7 @@ export default function lucaWorkTracking(pi: any) {
 
   // ─── Event: Gate mutation tools ────────────────────────
 
-  pi.on("tool_call", async (event: any, ctx: any) => {
+  pi.on("tool_call", async (event: any, ctx: PiExtensionContext) => {
     const toolName: string = event?.toolName ?? "";
 
     // Only gate mutation tools
@@ -485,7 +487,7 @@ export default function lucaWorkTracking(pi: any) {
 
   // ─── Event: Auto-detect tracking on session start ──────
 
-  pi.on("session_start", async (_event: any, ctx: any) => {
+  pi.on("session_start", async (_event: any, ctx: PiExtensionContext) => {
     detectBranchTracking();
     refreshTracked();
 

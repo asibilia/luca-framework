@@ -19,7 +19,11 @@ import { join } from "path";
 
 import { sendFollowUp } from "./__helpers/follow-up";
 import { notifySafe } from "./__helpers/notify";
-import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import {
+  createJsonResponse,
+  createJsonResponseWithDetails,
+  createTextResponse,
+} from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
 import {
   readAgentDef,
@@ -32,8 +36,35 @@ import {
   nextSubagentId,
   resetSubagentRegistry,
 } from "./__helpers/subagent-registry";
+import type { SubagentEntry } from "./__helpers/subagent-registry";
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 // MAX_SUBAGENTS limit is enforced globally in __helpers/spawn.ts
+
+/** Grace period (ms) for SIGTERM before escalating to SIGKILL. */
+const SIGTERM_GRACE_MS = 500;
+
+/**
+ * Gracefully kill a subagent process: SIGTERM → grace period → SIGKILL.
+ *
+ * Sends SIGTERM first to allow cleanup, then escalates to SIGKILL
+ * after SIGTERM_GRACE_MS if the process is still alive. Updates
+ * the subagent state to "aborted" with a completion timestamp.
+ *
+ * @param state - Subagent registry entry with process handle
+ */
+async function killWithEscalation(state: SubagentEntry): Promise<void> {
+  if (!state.process || state.status !== "running") return;
+
+  state.process.kill("SIGTERM");
+  state.status = "aborted";
+  state.completedAt = Date.now();
+
+  await new Promise((resolve) => setTimeout(resolve, SIGTERM_GRACE_MS));
+  if (state.process && !state.process.killed) {
+    state.process.kill("SIGKILL");
+  }
+}
 
 /**
  * Pi extension: Background subagent spawning and management.
@@ -48,7 +79,7 @@ import {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaSubagents(pi: any) {
+export default function lucaSubagents(pi: PiExtensionAPI) {
   const cwd = process.cwd();
 
   /**
@@ -57,7 +88,10 @@ export default function lucaSubagents(pi: any) {
    * Shared by luca_subagent_create and luca_subagent_continue onComplete
    * callbacks to avoid duplicating the ~20-line notification block.
    */
-  function handleSubagentComplete(ctx: any, info: SpawnCompletionInfo): void {
+  function handleSubagentComplete(
+    ctx: PiExtensionContext,
+    info: SpawnCompletionInfo,
+  ): void {
     const summary = [
       `Subagent "${info.id}" (${info.agent}) ${info.status}.`,
       `Duration: ${(info.elapsed / 1000).toFixed(1)}s`,
@@ -124,10 +158,15 @@ export default function lucaSubagents(pi: any) {
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
-      _signal: any,
+      signal: AbortSignal | undefined,
       _onUpdate: any,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
+      // Check for abort before spawning
+      if (signal?.aborted) {
+        return createTextResponse("Cancelled by user");
+      }
+
       // Read agent definition
       const agentDef = readAgentDef(cwd, params.agent);
       if (!agentDef) {
@@ -149,7 +188,7 @@ export default function lucaSubagents(pi: any) {
           agentName: params.agent,
           task: params.task,
           cwd,
-          model: params.model ?? agentDef.model,
+          model: params.model,
           tools: agentDef.tools,
           systemPrompt: agentDef.systemPrompt,
           source: "luca-subagents",
@@ -162,6 +201,17 @@ export default function lucaSubagents(pi: any) {
       }
 
       subagentRegistry.set(id, state);
+
+      // Kill child process if abort signal fires while subagent is running
+      if (signal) {
+        signal.addEventListener(
+          "abort",
+          () => {
+            void killWithEscalation(state);
+          },
+          { once: true },
+        );
+      }
 
       return createJsonResponse({
         id,
@@ -262,24 +312,39 @@ export default function lucaSubagents(pi: any) {
         );
       }
 
-      return createJsonResponse({
-        id: state.id,
-        agent: state.agent,
-        task: state.task,
-        status: state.status,
-        exitCode: state.exitCode,
-        output: state.output || "(no output yet)",
-        stderr: state.stderr || null,
-        usage: state.usage,
-        model: state.model,
-        created: new Date(state.createdAt).toISOString(),
-        completed: state.completedAt
-          ? new Date(state.completedAt).toISOString()
-          : null,
-        duration_ms: state.completedAt
-          ? state.completedAt - state.createdAt
-          : Date.now() - state.createdAt,
-      });
+      return createJsonResponseWithDetails(
+        {
+          id: state.id,
+          agent: state.agent,
+          task: state.task,
+          status: state.status,
+          exitCode: state.exitCode,
+          output: state.output || "(no output yet)",
+          stderr: state.stderr || null,
+          usage: state.usage,
+          model: state.model,
+          created: new Date(state.createdAt).toISOString(),
+          completed: state.completedAt
+            ? new Date(state.completedAt).toISOString()
+            : null,
+          duration_ms: state.completedAt
+            ? state.completedAt - state.createdAt
+            : Date.now() - state.createdAt,
+        },
+        {
+          subagent_id: state.id,
+          agent: state.agent,
+          status: state.status,
+          model: state.model,
+          turns: state.usage?.turns ?? 0,
+          input_tokens: state.usage?.inputTokens ?? 0,
+          output_tokens: state.usage?.outputTokens ?? 0,
+          cost: state.usage?.cost ?? 0,
+          duration_ms: state.completedAt
+            ? state.completedAt - state.createdAt
+            : Date.now() - state.createdAt,
+        },
+      );
     },
   });
 
@@ -306,19 +371,8 @@ export default function lucaSubagents(pi: any) {
         return createTextResponse(`Subagent "${params.id}" not found.`);
       }
 
-      // Kill if still running
-      if (state.process && state.status === "running") {
-        state.process.kill("SIGTERM");
-        state.status = "aborted";
-        state.completedAt = Date.now();
-        // Give process time to clean up
-        /** Grace period (ms) for SIGTERM before escalating to SIGKILL. */
-        const SIGTERM_GRACE_MS = 500;
-        await new Promise((resolve) => setTimeout(resolve, SIGTERM_GRACE_MS));
-        if (state.process && !state.process.killed) {
-          state.process.kill("SIGKILL");
-        }
-      }
+      // Kill if still running (SIGTERM → grace → SIGKILL)
+      await killWithEscalation(state);
 
       // Clean up session directory
       if (state.sessionDir) {
@@ -371,7 +425,7 @@ export default function lucaSubagents(pi: any) {
       params: { id: string; message: string },
       _signal: any,
       _onUpdate: any,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
       const existing = subagentRegistry.get(params.id);
       if (!existing) {
@@ -403,7 +457,7 @@ export default function lucaSubagents(pi: any) {
           agentName: existing.agent,
           task: params.message,
           cwd,
-          model: existing.model ?? agentDef?.model,
+          model: existing.model,
           tools: agentDef?.tools,
           continueSession: true,
           sessionDir: existing.sessionDir,
@@ -435,14 +489,62 @@ export default function lucaSubagents(pi: any) {
     },
   });
 
+  // ─── Message Renderer: subagent-result ─────────────────
+
+  if (pi.registerMessageRenderer) {
+    pi.registerMessageRenderer(
+      "subagent-result",
+      (message: {
+        content?: string;
+        details?: {
+          subagent_id?: string;
+          agent?: string;
+          status?: string;
+          exit_code?: number;
+          elapsed_ms?: number;
+        };
+      }) => {
+        const d = message.details ?? {};
+        const statusIcon =
+          d.status === "completed"
+            ? "DONE"
+            : d.status === "failed"
+              ? "FAIL"
+              : d.status === "aborted"
+                ? "STOP"
+                : "...";
+        const elapsed = d.elapsed_ms
+          ? `${(d.elapsed_ms / 1000).toFixed(1)}s`
+          : "?";
+        const header = `${statusIcon} Subagent "${d.subagent_id ?? "?"}" (${d.agent ?? "?"}) — ${d.status ?? "unknown"} in ${elapsed}`;
+
+        const lines = [header];
+        if (message.content) {
+          lines.push("");
+          lines.push(message.content.slice(0, 500));
+        }
+        return lines.join("\n");
+      },
+    );
+  }
+
   // ─── Cleanup on session end ────────────────────────────
 
   pi.on("session_start", async () => {
     // Clean up any stale subagents from previous sessions
     for (const state of subagentRegistry.values()) {
-      if (state.process && state.status === "running") {
-        state.process.kill("SIGTERM");
+      await killWithEscalation(state);
+      if (state.sessionDir) {
+        cleanupSessionDir(state.sessionDir);
       }
+    }
+    resetSubagentRegistry();
+  });
+
+  // Kill all running subagents and clean up on session shutdown
+  pi.on("session_shutdown", async () => {
+    for (const state of subagentRegistry.values()) {
+      await killWithEscalation(state);
       if (state.sessionDir) {
         cleanupSessionDir(state.sessionDir);
       }

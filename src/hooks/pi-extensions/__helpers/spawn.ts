@@ -17,13 +17,13 @@ import {
   readFileSync,
   mkdtempSync,
   writeFileSync,
-  unlinkSync,
   rmSync,
 } from "fs";
 import { dirname, join } from "path";
 import { tmpdir } from "os";
 
 import { parseFrontmatter } from "./frontmatter";
+import { resolveAgentModel } from "./model-routing";
 import { isWithinDirectory, sanitizeName } from "./sanitize";
 import { subagentRegistry } from "./subagent-registry";
 
@@ -177,6 +177,15 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
 
   const sessionDir = opts.sessionDir ?? createSessionDir(opts.id);
 
+  // Auto-resolve model from agent frontmatter if no explicit model provided
+  let effectiveModel = opts.model;
+  if (!effectiveModel) {
+    const agentDef = readAgentDef(opts.cwd, opts.agentName);
+    if (agentDef?.frontmatter) {
+      effectiveModel = resolveAgentModel(agentDef.frontmatter, opts.cwd);
+    }
+  }
+
   const state: SubagentEntry = {
     id: opts.id,
     agent: opts.agentName,
@@ -186,7 +195,7 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
     stderr: "",
     exitCode: -1,
     usage: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0 },
-    model: opts.model,
+    model: effectiveModel,
     createdAt: Date.now(),
     completedAt: undefined,
     process: undefined,
@@ -200,7 +209,7 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
   } else {
     args.push("--session-dir", sessionDir);
   }
-  if (opts.model) args.push("--model", opts.model);
+  if (effectiveModel) args.push("--model", effectiveModel);
   if (opts.tools && opts.tools.length > 0)
     args.push("--tools", opts.tools.join(","));
 

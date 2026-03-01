@@ -13,8 +13,11 @@ import { join } from "path";
 
 import type { AgentFrontmatter } from "./__helpers/frontmatter";
 import { parseFrontmatter } from "./__helpers/frontmatter";
+import { resolveAgentModel, getModelTier } from "./__helpers/model-routing";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { normalizeToolName } from "./__helpers/sanitize";
+
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 /** Parsed agent role from .pi/agents/*.md frontmatter. */
 interface AgentRole extends AgentFrontmatter {
@@ -30,7 +33,7 @@ interface AgentRole extends AgentFrontmatter {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaRoles(pi: any) {
+export default function lucaRoles(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
 
@@ -39,6 +42,13 @@ export default function lucaRoles(pi: any) {
 
   /** Original active tools before role was applied (for restoration). */
   let originalTools: string[] | null = null;
+
+  /** Original model before role was applied (for restoration). */
+  let originalModel: string | null = null;
+
+  /** Original thinking level before role was applied (for restoration). */
+  let originalThinkingLevel: string | null = null;
+  let thinkingLevelCaptured = false;
 
   /** Tools always allowed when a role is active (for role management). */
   const ROLE_MANAGEMENT_TOOLS = [
@@ -154,8 +164,33 @@ export default function lucaRoles(pi: any) {
         pi.setActiveTools(allowedTools);
       }
 
+      // Resolve and apply model for this role
+      const resolvedModel = resolveAgentModel(role, cwd);
+      if (pi.setModel) {
+        if (!originalModel) {
+          originalModel = pi.getModel?.() ?? null;
+        }
+        pi.setModel(resolvedModel);
+      }
+
+      // Set thinking level based on model tier
+      const tier = getModelTier(resolvedModel);
+      if (pi.setThinkingLevel) {
+        if (!thinkingLevelCaptured) {
+          originalThinkingLevel = pi.getThinkingLevel?.() ?? null;
+          thinkingLevelCaptured = true;
+        }
+        if (tier === "capable") {
+          pi.setThinkingLevel("high");
+        } else if (thinkingLevelCaptured) {
+          // Restore thinking level when switching to non-capable tier
+          pi.setThinkingLevel(originalThinkingLevel ?? "normal");
+        }
+      }
+
+      const modelInfo = pi.setModel ? ` | model: ${resolvedModel}` : "";
       return createTextResponse(
-        `Activated role "${role.name}" — allowed tools: ${role.tools.join(", ")}`,
+        `Activated role "${role.name}" — allowed tools: ${role.tools.join(", ")}${modelInfo}`,
       );
     },
   });
@@ -175,6 +210,19 @@ export default function lucaRoles(pi: any) {
       if (pi.setActiveTools && originalTools) {
         pi.setActiveTools(originalTools);
         originalTools = null;
+      }
+
+      // Restore original model
+      if (pi.setModel && originalModel) {
+        pi.setModel(originalModel);
+        originalModel = null;
+      }
+
+      // Restore original thinking level
+      if (pi.setThinkingLevel && thinkingLevelCaptured) {
+        pi.setThinkingLevel(originalThinkingLevel ?? "normal");
+        originalThinkingLevel = null;
+        thinkingLevelCaptured = false;
       }
 
       return createTextResponse(
@@ -204,7 +252,7 @@ export default function lucaRoles(pi: any) {
   });
 
   // Enforce tool restrictions via tool_call event (fallback for older Pi versions)
-  pi.on("tool_call", async (event: any, _ctx: any) => {
+  pi.on("tool_call", async (event: any, _ctx: PiExtensionContext) => {
     if (!activeRole) return; // No role active, allow all
     if (activeRole.tools.length === 0) return; // No restrictions defined
 
@@ -225,11 +273,23 @@ export default function lucaRoles(pi: any) {
     }
   });
 
-  // Re-apply role after session switch (setActiveTools resets on session switch)
-  pi.on("session_switch", async (_event: any, _ctx: any) => {
-    if (activeRole && pi.setActiveTools && activeRole.tools.length > 0) {
+  // Re-apply role after session switch (setActiveTools/setModel reset on switch)
+  pi.on("session_switch", async (_event: any, _ctx: PiExtensionContext) => {
+    if (!activeRole) return;
+
+    if (pi.setActiveTools && activeRole.tools.length > 0) {
       const allowedTools = [...activeRole.tools, ...ROLE_MANAGEMENT_TOOLS];
       pi.setActiveTools(allowedTools);
+    }
+
+    // Re-apply model routing for the active role
+    if (pi.setModel) {
+      const resolvedModel = resolveAgentModel(activeRole, cwd);
+      pi.setModel(resolvedModel);
+
+      if (getModelTier(resolvedModel) === "capable" && pi.setThinkingLevel) {
+        pi.setThinkingLevel("high");
+      }
     }
   });
 
@@ -239,6 +299,15 @@ export default function lucaRoles(pi: any) {
     if (originalTools && pi.setActiveTools) {
       pi.setActiveTools(originalTools);
       originalTools = null;
+    }
+    if (originalModel && pi.setModel) {
+      pi.setModel(originalModel);
+      originalModel = null;
+    }
+    if (thinkingLevelCaptured && pi.setThinkingLevel) {
+      pi.setThinkingLevel(originalThinkingLevel ?? "normal");
+      originalThinkingLevel = null;
+      thinkingLevelCaptured = false;
     }
   });
 }

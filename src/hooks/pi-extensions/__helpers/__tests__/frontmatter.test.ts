@@ -147,6 +147,53 @@ Verification agent body content...`;
       expect(result).toEqual(expected);
     });
 
+    test("parses model_tier field from frontmatter", () => {
+      const content = `---
+name: lu-executor
+description: Executes plans
+model: sonnet
+model_tier: balanced
+tools:
+  - Read
+  - Write
+---
+Body.`;
+
+      const result = parseFrontmatter(content);
+      expect(result).not.toBeNull();
+      expect(result!.model_tier).toBe("balanced");
+    });
+
+    test("parses model_tier=capable for deep-analysis agents", () => {
+      const content = `---
+name: code-architect
+description: Reviews architecture
+model: opus
+model_tier: capable
+tools:
+  - Read
+---
+Body.`;
+
+      const result = parseFrontmatter(content);
+      expect(result).not.toBeNull();
+      expect(result!.model_tier).toBe("capable");
+    });
+
+    test("model_tier is undefined when not present", () => {
+      const content = `---
+name: simple-agent
+description: No model tier
+tools:
+  - Read
+---
+Body.`;
+
+      const result = parseFrontmatter(content);
+      expect(result).not.toBeNull();
+      expect(result!.model_tier).toBeUndefined();
+    });
+
     test("handles frontmatter with extra whitespace in values", () => {
       const content = `---
 name:   spaced-agent

@@ -12,6 +12,8 @@
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
+import type { PiExtensionAPI } from "./__types/pi-context";
+
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { sanitizeName } from "./__helpers/sanitize";
@@ -51,7 +53,7 @@ interface ResearchSession {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaQueryExperts(pi: any) {
+export default function lucaQueryExperts(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const researchDir = join(cwd, ".planning", "research");
 

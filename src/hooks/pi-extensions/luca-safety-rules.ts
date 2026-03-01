@@ -15,6 +15,7 @@ import { join } from "path";
 import { notifySafe } from "./__helpers/notify";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
 
 /** Severity levels for safety rules. */
 type Severity = "critical" | "high" | "medium" | "low";
@@ -69,7 +70,7 @@ function normalizeForMatch(str: string): string {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaSafetyRules(pi: any) {
+export default function lucaSafetyRules(pi: PiExtensionAPI) {
   const cwd = process.cwd();
 
   /** Gate mode (default: warn). */
@@ -404,7 +405,7 @@ export default function lucaSafetyRules(pi: any) {
       params: { mode: string },
       _signal: any,
       _onUpdate: any,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
       const validModes = ["block", "warn", "log"];
       if (!validModes.includes(params.mode)) {
@@ -463,7 +464,7 @@ export default function lucaSafetyRules(pi: any) {
   });
 
   // Event: Check tool_call events against safety rules for command execution
-  pi.on("tool_call", async (event: any, ctx: any) => {
+  pi.on("tool_call", async (event: any, ctx: PiExtensionContext) => {
     // Only check Bash/shell tool calls
     const toolName = (event.toolName || "").toLowerCase();
     const SHELL_TOOLS = ["bash", "shell", "luca_tilldone", "luca_verify"];

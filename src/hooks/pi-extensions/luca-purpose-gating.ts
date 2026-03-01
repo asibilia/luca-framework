@@ -23,6 +23,8 @@ import {
   nextSubagentId,
 } from "./__helpers/subagent-registry";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 /** Purpose categories for agent classification. */
 type PurposeCategory =
   | "researcher"
@@ -62,7 +64,7 @@ interface DeferredTask {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaPurposeGating(pi: any) {
+export default function lucaPurposeGating(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
 
@@ -578,7 +580,7 @@ export default function lucaPurposeGating(pi: any) {
   });
 
   // Auto-discover agents on session start
-  pi.on("session_start", async (_event: any, _ctx: any) => {
+  pi.on("session_start", async (_event: any, _ctx: PiExtensionContext) => {
     taskIdCounter = 0;
     autoDiscoverAgents();
   });

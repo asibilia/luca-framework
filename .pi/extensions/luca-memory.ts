@@ -14,6 +14,8 @@ import { join } from "path";
 import { createTextResponse } from "./__helpers/response";
 import { isWithinDirectory } from "./__helpers/sanitize";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 /**
  * Pi extension: Cognitive memory system.
  *
@@ -23,7 +25,7 @@ import { isWithinDirectory } from "./__helpers/sanitize";
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaMemory(pi: any) {
+export default function lucaMemory(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
   const brainPath = join(planningDir, "BRAIN.md");
@@ -226,21 +228,90 @@ export default function lucaMemory(pi: any) {
    *
    * @param ctx - Pi event context
    */
-  function injectBrain(ctx: any): void {
+  function injectBrain(ctx: PiExtensionContext): void {
     if (!existsSync(brainPath)) return;
     const brain = readFileSync(brainPath, "utf-8");
     if (ctx?.addSystemContext) ctx.addSystemContext("luca-brain", brain);
   }
 
   // Inject BRAIN.md context at session start
-  pi.on("session_start", async (_event: any, ctx: any) => {
+  pi.on("session_start", async (_event: any, ctx: PiExtensionContext) => {
     injectBrain(ctx);
   });
 
   // Re-inject BRAIN.md before every agent turn (survives context compaction).
   // Uses the same ID ("luca-brain") so addSystemContext replaces the
   // previous injection rather than duplicating it.
-  pi.on("before_agent_start", async (_event: any, ctx: any) => {
+  pi.on("before_agent_start", async (_event: any, ctx: PiExtensionContext) => {
     injectBrain(ctx);
+  });
+
+  /**
+   * Extract candidate learnings from WORKING.md and persist to MEMORY.md.
+   *
+   * Finds the "## Candidate Learnings" section, extracts its content,
+   * and appends it to MEMORY.md as a timestamped snapshot. Returns true
+   * if learnings were extracted and persisted.
+   *
+   * @param label - Snapshot label (e.g., "Compaction", "Shutdown")
+   */
+  function extractAndPersistLearnings(label: string): boolean {
+    if (!existsSync(workingPath)) return false;
+
+    try {
+      const working = readFileSync(workingPath, "utf-8");
+
+      // Extract candidate learnings section
+      const lines = working.split("\n");
+      const learnings: string[] = [];
+      let inLearnings = false;
+      for (const line of lines) {
+        if (line.startsWith("## Candidate Learnings")) {
+          inLearnings = true;
+          continue;
+        }
+        if (inLearnings && line.startsWith("## ")) break;
+        if (inLearnings && line.trim()) learnings.push(line);
+      }
+
+      if (learnings.length === 0) return false;
+
+      // Append snapshot to MEMORY.md
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const snapshot = `\n## ${label} Snapshot (${timestamp})\n\n${learnings.join("\n")}\n`;
+
+      let existing = "";
+      if (existsSync(memoryPath)) {
+        existing = readFileSync(memoryPath, "utf-8");
+      }
+      writeFileSync(memoryPath, existing + snapshot, "utf-8");
+      return true;
+    } catch {
+      /* non-fatal — WORKING.md may be malformed */
+      return false;
+    }
+  }
+
+  // On session_compact: persist WORKING.md candidate learnings snapshot
+  pi.on("session_compact", async () => {
+    extractAndPersistLearnings("Compaction");
+  });
+
+  // On session_shutdown: extract learnings and add shutdown marker
+  pi.on("session_shutdown", async () => {
+    // Extract and persist any remaining candidate learnings
+    extractAndPersistLearnings("Shutdown");
+
+    // Write a shutdown marker to WORKING.md
+    if (!existsSync(workingPath)) return;
+    try {
+      const working = readFileSync(workingPath, "utf-8");
+      if (working.trim().length === 0) return;
+
+      const marker = `\n---\n_Session ended: ${new Date().toISOString()}_\n`;
+      writeFileSync(workingPath, working + marker, "utf-8");
+    } catch {
+      /* non-fatal */
+    }
   });
 }

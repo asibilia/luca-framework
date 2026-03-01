@@ -7,6 +7,7 @@ tools:
   - Glob
   - WebSearch
   - WebFetch
+model_tier: balanced
 background_spawnable: true
 purpose: researcher
 allowed_contexts:

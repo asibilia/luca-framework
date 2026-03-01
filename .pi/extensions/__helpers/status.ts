@@ -8,6 +8,7 @@
  * Source: src/hooks/pi-extensions/__helpers/status.ts
  * Deployed to: .pi/extensions/__helpers/status.ts
  */
+import type { PiExtensionContext } from "../__types/pi-context";
 
 /** Unicode box-drawing separator for status segments. */
 export const SEP = " \u2502 ";
@@ -48,7 +49,9 @@ export interface StatusFormatter {
  * @param ctx - Pi event context (may or may not have ui.theme)
  * @returns StatusFormatter with safe color functions and a hasTheme flag
  */
-export function createStatusFormatter(ctx: any): StatusFormatter {
+export function createStatusFormatter(
+  ctx: PiExtensionContext | null | undefined,
+): StatusFormatter {
   const theme = ctx?.ui?.theme;
   const hasTheme = Boolean(theme);
   const identity = (text: string) => text;

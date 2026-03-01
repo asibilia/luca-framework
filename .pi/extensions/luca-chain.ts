@@ -12,6 +12,8 @@
 import { existsSync } from "fs";
 import { join } from "path";
 
+import type { PiExtensionAPI } from "./__types/pi-context";
+
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
 import { isValidIdentifier } from "./__helpers/sanitize";
@@ -43,7 +45,7 @@ interface Chain {
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaChain(pi: any) {
+export default function lucaChain(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const agentsDir = join(cwd, ".pi", "agents");
 

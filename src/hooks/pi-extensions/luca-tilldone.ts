@@ -13,6 +13,8 @@
  * Source: src/hooks/pi-extensions/luca-tilldone.ts
  * Deployed to: .pi/extensions/luca-tilldone.ts
  */
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 import { runShellCommand } from "./__helpers/exec";
 import { createRegistry } from "./__helpers/registry";
 import { createJsonResponse, createTextResponse } from "./__helpers/response";
@@ -49,7 +51,7 @@ const MAX_OUTPUT_LENGTH = 1500;
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaTilldone(pi: any) {
+export default function lucaTilldone(pi: PiExtensionAPI) {
   const cwd = process.cwd();
 
   /** Active loops. */
@@ -130,12 +132,17 @@ export default function lucaTilldone(pi: any) {
         max_iterations?: number;
         timeout?: number;
       },
-      _signal: AbortSignal | undefined,
+      signal: AbortSignal | undefined,
       onUpdate:
         | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
         | undefined,
-      _ctx: any,
+      _ctx: PiExtensionContext,
     ) {
+      // Check for abort before starting
+      if (signal?.aborted) {
+        return createTextResponse("Cancelled by user");
+      }
+
       // Hard caps: max 10 iterations, 300s timeout per attempt
       const maxIterations = Math.min(params.max_iterations ?? 5, 10);
       const timeout = Math.min(params.timeout ?? 120, 300);
@@ -149,6 +156,16 @@ export default function lucaTilldone(pi: any) {
           name: params.name,
           status: "failed",
           message: `Max iterations (${maxIterations}) reached`,
+          total_attempts: iteration - 1,
+        });
+      }
+
+      // Check for abort between iterations
+      if (signal?.aborted) {
+        return createJsonResponse({
+          name: params.name,
+          status: "cancelled",
+          message: "Cancelled by user between iterations",
           total_attempts: iteration - 1,
         });
       }

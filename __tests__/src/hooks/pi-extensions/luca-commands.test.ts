@@ -6,29 +6,7 @@
  */
 import { describe, test, expect, beforeEach } from "bun:test";
 
-/**
- * Create a mock Pi context that records command registrations and event handlers.
- */
-function createMockPi() {
-  const tools: any[] = [];
-  const events: Array<{ event: string; handler: Function }> = [];
-  const commands = new Map<string, any>();
-
-  return {
-    tools,
-    events,
-    commands,
-    registerTool(tool: any) {
-      tools.push(tool);
-    },
-    on(event: string, handler: Function) {
-      events.push({ event, handler });
-    },
-    registerCommand(name: string, opts: any) {
-      commands.set(name, opts);
-    },
-  };
-}
+import { createMockPi } from "../__helpers/mock-pi";
 
 describe("luca-commands extension", () => {
   test("exports default function", async () => {
@@ -36,36 +14,36 @@ describe("luca-commands extension", () => {
     expect(typeof mod.default).toBe("function");
   });
 
-  test("registers 6 commands", async () => {
+  test("registers 9 commands", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    expect(pi.commands.size).toBe(6);
+    expect(mock.commands.size).toBe(9);
   });
 
   test("registers 0 tools (command-only extension)", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    expect(pi.tools.length).toBe(0);
+    expect(mock.tools.size).toBe(0);
   });
 
   test("registers 0 events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    expect(pi.events.length).toBe(0);
+    expect(mock.events.size).toBe(0);
   });
 
   test("registers /status command", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("status");
+    const cmd = mock.commands.get("status");
     expect(cmd).toBeDefined();
     expect(cmd.description).toContain("status");
     expect(typeof cmd.handler).toBe("function");
@@ -73,10 +51,10 @@ describe("luca-commands extension", () => {
 
   test("registers /track command", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("track");
+    const cmd = mock.commands.get("track");
     expect(cmd).toBeDefined();
     expect(cmd.description).toContain("subagent");
     expect(typeof cmd.handler).toBe("function");
@@ -84,10 +62,10 @@ describe("luca-commands extension", () => {
 
   test("registers /verify command", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("verify");
+    const cmd = mock.commands.get("verify");
     expect(cmd).toBeDefined();
     expect(cmd.description).toContain("verification");
     expect(typeof cmd.handler).toBe("function");
@@ -95,10 +73,10 @@ describe("luca-commands extension", () => {
 
   test("registers /todos command", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("todos");
+    const cmd = mock.commands.get("todos");
     expect(cmd).toBeDefined();
     expect(cmd.description).toContain("todos");
     expect(typeof cmd.handler).toBe("function");
@@ -106,10 +84,10 @@ describe("luca-commands extension", () => {
 
   test("registers /subagents command", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("subagents");
+    const cmd = mock.commands.get("subagents");
     expect(cmd).toBeDefined();
     expect(cmd.description).toContain("subagent");
     expect(typeof cmd.handler).toBe("function");
@@ -117,10 +95,10 @@ describe("luca-commands extension", () => {
 
   test("registers /safety command", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("safety");
+    const cmd = mock.commands.get("safety");
     expect(cmd).toBeDefined();
     expect(cmd.description).toContain("safety");
     expect(typeof cmd.handler).toBe("function");
@@ -128,10 +106,10 @@ describe("luca-commands extension", () => {
 
   test("/status handler calls ctx.ui.notify", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("status");
+    const cmd = mock.commands.get("status");
     let notifyMessage = "";
     let notifyLevel = "";
 
@@ -153,10 +131,10 @@ describe("luca-commands extension", () => {
 
   test("/track handler calls ctx.ui.notify with subagent summary", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("track");
+    const cmd = mock.commands.get("track");
     let notifyMessage = "";
     let notifyLevel = "";
 
@@ -178,10 +156,10 @@ describe("luca-commands extension", () => {
 
   test("/subagents handler calls ctx.ui.notify when no subagents", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("subagents");
+    const cmd = mock.commands.get("subagents");
     let notifyMessage = "";
 
     const mockCtx = {
@@ -198,10 +176,10 @@ describe("luca-commands extension", () => {
 
   test("/safety handler calls ctx.ui.notify", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
-    const cmd = pi.commands.get("safety");
+    const cmd = mock.commands.get("safety");
     let notifyMessage = "";
 
     const mockCtx = {
@@ -216,13 +194,100 @@ describe("luca-commands extension", () => {
     expect(notifyMessage).toContain("Safety");
   });
 
+  test("registers /switch-model command", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const mock = createMockPi();
+    mod.default(mock.api);
+
+    const cmd = mock.commands.get("switch-model");
+    expect(cmd).toBeDefined();
+    expect(cmd.description).toContain("model");
+    expect(typeof cmd.handler).toBe("function");
+  });
+
+  test("registers /set-complexity command", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const mock = createMockPi();
+    mod.default(mock.api);
+
+    const cmd = mock.commands.get("set-complexity");
+    expect(cmd).toBeDefined();
+    expect(cmd.description).toContain("complexity");
+    expect(typeof cmd.handler).toBe("function");
+  });
+
+  test("registers /config command", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const mock = createMockPi();
+    mod.default(mock.api);
+
+    const cmd = mock.commands.get("config");
+    expect(cmd).toBeDefined();
+    expect(cmd.description).toContain("config");
+    expect(typeof cmd.handler).toBe("function");
+  });
+
+  test("/switch-model handler cancels gracefully when no selection", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const mock = createMockPi();
+    mod.default(mock.api);
+
+    const cmd = mock.commands.get("switch-model");
+    let notifyMessage = "";
+
+    const mockCtx = {
+      ui: {
+        select: async () => undefined,
+        notify: (msg: string, _level: string) => {
+          notifyMessage = msg;
+        },
+      },
+    };
+
+    await cmd.handler({}, mockCtx);
+    expect(notifyMessage).toContain("cancelled");
+  });
+
+  test("/config handler shows config info", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const mock = createMockPi();
+    mod.default(mock.api);
+
+    const cmd = mock.commands.get("config");
+    let notifyMessage = "";
+
+    const mockCtx = {
+      ui: {
+        notify: (msg: string, _level: string) => {
+          notifyMessage = msg;
+        },
+      },
+    };
+
+    await cmd.handler({}, mockCtx);
+    expect(notifyMessage).toContain("Config");
+  });
+
+  test("registers 4 keybindings when pi.registerKeybinding available", async () => {
+    const mod = await import("~/hooks/pi-extensions/luca-commands");
+    const mock = createMockPi();
+    mod.default(mock.api);
+
+    expect(mock.keybindings.length).toBe(4);
+    const keys = mock.keybindings.map((kb) => kb.key);
+    expect(keys).toContain("ctrl+shift+s");
+    expect(keys).toContain("ctrl+shift+v");
+    expect(keys).toContain("ctrl+shift+t");
+    expect(keys).toContain("ctrl+shift+m");
+  });
+
   test("commands handle missing ctx.ui gracefully", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-commands");
-    const pi = createMockPi();
-    mod.default(pi);
+    const mock = createMockPi();
+    mod.default(mock.api);
 
     // All commands should not throw when ctx has no ui
-    for (const [_name, cmd] of pi.commands) {
+    for (const [_name, cmd] of mock.commands) {
       await cmd.handler({}, {});
       await cmd.handler({}, null);
       await cmd.handler({}, undefined);

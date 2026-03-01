@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v2.3.0 — Distribution & Model Routing (Phase 71-77)
+**Current Milestone:** v2.4.0 — Pi Platform Completion (Phase 78-80)
 
 ---
 
@@ -68,14 +68,44 @@
 
 ---
 
+## v2.4.0 — Pi Platform Completion
+
+**Goal:** Activate runtime model routing via `pi.setModel()`, add interactive dialogs and keyboard shortcuts, and improve tool resilience with AbortSignal support and session lifecycle handling.
+
+### Phase 78 — Runtime Model Routing
+
+**Goal:** Wire v2.3.0's model routing infrastructure into Pi runtime so agents run on their designated model tier. Add context introspection for adaptive behavior.
+
+**Depends on:** None
+
+- [x] Plan 78-A: model-routing.ts helper, pi.setModel() in roles, model-aware spawn, context introspection
+
+### Phase 79 — Interactive Dialogs & Shortcuts
+
+**Goal:** Add interactive user prompts for workflow gates and keyboard shortcuts for common actions.
+
+**Depends on:** Phase 78 (model routing needed for /switch-model command)
+
+- [x] Plan 79-A: dialogs.ts helper, interactive commands (/switch-model, /set-complexity, /config), keyboard shortcuts
+
+### Phase 80 — Tool Resilience & Session Lifecycle
+
+**Goal:** Add AbortSignal cancellation support, session lifecycle handling (compact/shutdown), structured details in tool returns, and custom message rendering.
+
+**Depends on:** None (independent of Phase 78-79)
+
+- [x] Plan 80-A: AbortSignal in verify/tilldone/subagents, session_compact/shutdown events, details field, message renderer
+
+---
+
 ## Backlog (Future)
 
-### v2.4.0 — Multi-Language Profiles
+### v2.5.0 — Multi-Language Profiles
 
 - Python, Go, Rust tech stack profiles with full opinionated rules
 - Mixed-stack project support (multiple profiles active simultaneously)
 
-### v2.5.0+ — Adaptive Learning
+### v2.6.0+ — Adaptive Learning
 
 - Procedure evolution via reinforcement learning patterns
 
@@ -104,4 +134,4 @@
 
 ---
 
-_Roadmap updated: 2026-02-28 (v2.3.0 milestone completed)_
+_Roadmap updated: 2026-02-28 (v2.4.0 milestone started)_

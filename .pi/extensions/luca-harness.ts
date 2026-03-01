@@ -17,9 +17,15 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
+
 import { runShellCommand } from "./__helpers/exec";
 import { notifySafe } from "./__helpers/notify";
-import { createJsonResponse, createTextResponse } from "./__helpers/response";
+import {
+  createJsonResponse,
+  createJsonResponseWithDetails,
+  createTextResponse,
+} from "./__helpers/response";
 
 /**
  * Pi extension: Verification harness runner.
@@ -30,7 +36,7 @@ import { createJsonResponse, createTextResponse } from "./__helpers/response";
  *
  * @param pi - Pi ExtensionAPI instance
  */
-export default function lucaHarness(pi: any) {
+export default function lucaHarness(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
   const configPath = join(planningDir, "config.json");
@@ -185,7 +191,7 @@ export default function lucaHarness(pi: any) {
       onUpdate:
         | ((update: { content: Array<{ type: "text"; text: string }> }) => void)
         | undefined,
-      ctx: any,
+      ctx: PiExtensionContext,
     ) {
       const config = loadConfig();
 
@@ -256,7 +262,18 @@ export default function lucaHarness(pi: any) {
         // Non-critical — /verify will report "no cached result"
       }
 
-      return createJsonResponse(summary);
+      return createJsonResponseWithDetails(summary, {
+        check_count: results.length,
+        passed_count: results.filter((r) => r.status === "passed").length,
+        failed_count: results.filter((r) => r.status !== "passed").length,
+        checks: results.map((r) => ({
+          name: r.name,
+          status: r.status,
+          duration_ms: r.duration,
+          has_errors: r.status !== "passed",
+        })),
+        total_duration_ms: summary.total_duration,
+      });
     },
   });
 
