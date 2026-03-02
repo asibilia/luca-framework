@@ -1,134 +1,61 @@
-# Requirements — v2.5.0 Operational Intelligence & Distribution Hardening
+# Requirements — v2.5.1 Code Health & Test Reliability
 
 ## Overview
 
-Make Luca's runtime smarter (real token accounting, context pruning, convergence detection, role-based routing), fix distribution blockers (version sync, harness-aware update), and lay the DX foundation (status command, doctor, presets) for community adoption.
+Address repo audit findings: eliminate `any` types in state domain, extract logic from impure barrels, fix the test isolation bug, and add missing context domain test coverage.
 
 ## Source
 
-- Todos: `.planning/todos/pending/01-25` (25 todos, 14 absorbed into v2.5.0)
-- WSJF Prioritization: lu-pm-planner session 2026-03-01
+- Todos: `.planning/todos/pending/27-30` (4 todos from repo audits)
+- Autopilot session: 2026-03-02
 
 ## Requirements
 
-### R1: Distribution Pipeline Fix
+### R1: State Domain Type Safety
 
-**Priority:** CRITICAL | **Source:** Todo #5
+**Priority:** HIGH | **Source:** Todo #27
 
-- ~~R1.1: LUCA_VERSION constant propagated correctly through build pipeline~~ **Complete**
-- ~~R1.2: `package.json` version and LUCA_VERSION in sync at publish time~~ **Complete**
-- ~~R1.3: npm publish pipeline functional with correct version metadata~~ **Complete**
-- ~~R1.4: Version reported by CLI matches published package version~~ **Complete**
+- R1.1: All guard functions in `src/state/guards.ts` use proper `MachineContext` and `MachineEvent` types instead of `any`
+- R1.2: `src/state/bridge.ts` `any` casts replaced with typed alternatives
+- R1.3: `src/state/persistence.ts` `any` usages replaced with proper types
+- R1.4: `src/state/machine.ts` `any` usage replaced with proper types
+- R1.5: TypeScript compiles cleanly with `bunx --bun tsc --noEmit`
 
-### R2: Harness-Aware Update Command
+### R2: Barrel File Purity
 
-**Priority:** HIGH | **Source:** Todo #10
+**Priority:** HIGH | **Source:** Todo #28
 
-- ~~R2.1: `bun luca update` reads `manifest.harnesses` to determine which harness dirs to update~~ **Complete**
-- ~~R2.2: Per-harness file diffing and conflict detection~~ **Complete**
-- ~~R2.3: New harness files scaffolded when harness added post-init~~ **Complete**
-- ~~R2.4: Removed harness files cleaned up when harness removed~~ **Complete**
+- R2.1: `src/rules/index.ts` — registry logic extracted to `__helpers/rule-registry.ts`
+- R2.2: `src/agents/index.ts` — agent registry extracted to `__helpers/agent-registry.ts`
+- R2.3: `src/skills/index.ts` — skill registry extracted to `__helpers/skill-registry.ts`
+- R2.4: `src/harness/parsers/index.ts` — parser registry extracted to `parsers/parser-registry.ts`
+- R2.5: `src/adapters/index.ts` — adapter factory extracted to `factory.ts`
+- R2.6: `src/utils/doctor/index.ts` — doctor logic extracted to `run-checks.ts`
+- R2.7: `src/index.ts` — CLI entry point extracted to `cli.ts` or `main.ts`
+- R2.8: All 7 barrel files contain only re-export statements after refactor
+- R2.9: All existing imports continue to resolve (no breaking changes)
 
-### R3: CLI Status Command
+### R3: Test Suite Isolation Fix
 
-**Priority:** HIGH | **Source:** Todo #19
+**Priority:** HIGH | **Source:** Todo #29
 
-- ~~R3.1: `bun luca status` command exists and is registered in CLI~~ **Complete**
-- ~~R3.2: Shows current version, active harnesses, config profile, test count~~ **Complete**
-- ~~R3.3: Shows state machine status (idle/active phase/milestone)~~ **Complete**
-- ~~R3.4: Clean, formatted terminal output~~ **Complete**
+- R3.1: Root cause of `validateBranding` module resolution failure identified
+- R3.2: Fix applied so all tests pass in a single `bun test` run
+- R3.3: No regressions — previously passing tests still pass
+- R3.4: Test count maintained or increased
 
-### R4: Harness-Aware Doctor
+### R4: Context Domain Test Coverage
 
-**Priority:** HIGH | **Source:** Todo #21
+**Priority:** MEDIUM | **Source:** Todo #30
 
-- ~~R4.1: `bun luca doctor` checks Bun runtime (not Node)~~ **Complete**
-- ~~R4.2: Per-harness directory validation (expected files exist)~~ **Complete**
-- ~~R4.3: Config schema validation against current config.json~~ **Complete**
-- ~~R4.4: Drift detection (source vs compiled output)~~ **Complete**
-
-### R5: Progressive Config Presets
-
-**Priority:** MEDIUM | **Source:** Todo #11
-
-- ~~R5.1: Three preset tiers: Starter, Standard, Full~~ **Complete**
-- ~~R5.2: Wizard offers preset selection during init~~ **Complete**
-- ~~R5.3: Each preset maps to a valid config.json with appropriate defaults~~ **Complete**
-- ~~R5.4: Preset can be changed post-init via config command~~ **Complete**
-
-### R6: Real Token Accounting
-
-**Priority:** HIGH | **Source:** Todo #2
-
-- ~~R6.1: Tokenizer integration (tiktoken or equivalent) replaces chars/4 heuristic~~ **Complete**
-- ~~R6.2: Quality zone boundaries calculated from real token counts~~ **Complete**
-- ~~R6.3: Budget calculations in iteration engine use real counts~~ **Complete**
-- ~~R6.4: Memory compression triggers based on accurate token measurement~~ **Complete**
-
-### R7: Role-Based Model Routing
-
-**Priority:** HIGH | **Source:** Todo #1
-
-- ~~R7.1: Agent roles mapped to model profiles (research->capable, execution->balanced, quick->fast)~~ **Complete**
-- ~~R7.2: Quality-zone-aware model upgrades (upgrade model when approaching degrading zone)~~ **Complete**
-- ~~R7.3: Model routing respects per-agent modelTier from agent definitions~~ **Complete**
-- ~~R7.4: Routing decisions logged for observability~~ **Complete**
-
-### R8: Context Pruning Extensions
-
-**Priority:** HIGH | **Source:** Todo #4
-
-- ~~R8.1: Stale ResultEnvelopes auto-digested at degrading zone~~ **Complete**
-- ~~R8.2: Section-level pruning with configurable retention policies~~ **Complete**
-- ~~R8.3: Pruning preserves critical context (active task, current plan)~~ **Complete**
-- ~~R8.4: Pruning events logged to WORKING.md~~ **Complete**
-
-### R9: WORKING.md Auto-Compaction
-
-**Priority:** MEDIUM | **Source:** Todo #25
-
-- ~~R9.1: Auto-compaction triggers at degrading quality zone~~ **Complete**
-- ~~R9.2: Sections compacted by age/relevance scoring~~ **Complete**
-- ~~R9.3: Compacted content summarized, not deleted~~ **Complete**
-- ~~R9.4: Session continues after compaction (no hard stop)~~ **Complete**
-
-### R10: Verification Parity Matrix
-
-**Priority:** MEDIUM | **Source:** Todo #22
-
-- ~~R10.1: Build-time structural assertions across all compilation formats~~ **Complete**
-- ~~R10.2: Agent count parity across .claude/, .cursor/, .pi/~~ **Complete**
-- ~~R10.3: Skill count parity verification~~ **Complete**
-- ~~R10.4: Rule count parity verification~~ **Complete**
-- ~~R10.5: Drift report generated as part of build pipeline~~ **Complete**
-
-### R11: Semantic Convergence Detection
-
-**Priority:** MEDIUM | **Source:** Todo #3
-
-- ~~R11.1: Cosine similarity added to convergence detector~~ **Complete**
-- ~~R11.2: Iteration loops terminate on semantically equivalent errors~~ **Complete**
-- ~~R11.3: Configurable similarity threshold~~ **Complete**
-- ~~R11.4: Convergence reason included in iteration log~~ **Complete**
-
-### R12: Agent Effectiveness Scorecard
-
-**Priority:** MEDIUM | **Source:** Todo #7
-
-- ~~R12.1: Per-agent telemetry aggregation (invocations, success rate, avg duration)~~ **Complete**
-- ~~R12.2: Scorecard data persisted across sessions~~ **Complete**
-- ~~R12.3: Scorecard queryable for routing decisions~~ **Complete**
-- ~~R12.4: Dashboard or report output available~~ **Complete**
-
-### R13: Compiler Plugin Registry
-
-**Priority:** MEDIUM | **Source:** Todo #8
-
-- ~~R13.1: Pluggable registry replaces hardcoded switch in compile.ts~~ **Complete**
-- ~~R13.2: Plugin interface defined for new compilation targets~~ **Complete**
-- ~~R13.3: Existing Claude/Cursor/Pi compilers refactored as plugins~~ **Complete**
-- ~~R13.4: Registration API for community-contributed targets~~ **Complete**
+- R4.1: Tests for `src/context/__schemas/context.schemas.ts` Zod schema validation
+- R4.2: Tests for `src/context/__helpers/context-assembler.ts`
+- R4.3: Tests for `src/context/__helpers/defaults.ts`
+- R4.4: Tests for `src/context/__helpers/resolve-context-tier.ts`
+- R4.5: Tests for `src/context/__helpers/result-aggregator.ts`
+- R4.6: Tests for `src/context/__helpers/result-envelope.ts`
+- R4.7: All new tests pass in isolation and in full suite
 
 ---
 
-_Requirements created: 2026-03-01_
+_Requirements created: 2026-03-02_

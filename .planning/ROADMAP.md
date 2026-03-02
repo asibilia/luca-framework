@@ -2,7 +2,25 @@
 
 ## Overview
 
-**Current Milestone:** (none — v2.5.0 complete, next milestone pending)
+**Current Milestone:** v2.5.1 — Code Health & Test Reliability
+
+---
+
+## Current Milestone: v2.5.1 — Code Health & Test Reliability
+
+**Goal:** Address repo audit findings — eliminate `any` types in state domain, extract logic from impure barrels, fix test isolation bug, and add missing context domain test coverage.
+
+### Phase 87 — Type Safety & Barrel Purity
+
+- [ ] 87-A: Type state guards — replace 23+ `any` usages with proper XState types (#27)
+- [ ] 87-B: Refactor 7 impure barrel files to pure re-exports (#28)
+
+### Phase 88 — Test Reliability & Coverage
+
+**Depends on:** Phase 87
+
+- [ ] 88-A: Fix validateBranding module resolution / test isolation bug (#29)
+- [ ] 88-B: Add context domain test coverage — 6 source files with 0 tests (#30)
 
 ---
 
