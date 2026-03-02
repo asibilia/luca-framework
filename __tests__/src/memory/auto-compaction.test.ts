@@ -9,6 +9,7 @@ import { estimateTokens } from "../../../src/memory/__helpers/token-estimator.ts
 import type {
   WorkingMemory,
   CompactionConfig,
+  WorkingMemorySection,
 } from "../../../src/memory/__schemas/memory.schemas";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ function makeWm(overrides: Partial<WorkingMemory> = {}): WorkingMemory {
   };
 }
 
-function makeSection(name: string, content: string, lastUpdated?: string) {
+function makeSection(name: WorkingMemorySection["name"], content: string, lastUpdated?: string) {
   return {
     name,
     content,

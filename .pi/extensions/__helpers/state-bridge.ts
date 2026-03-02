@@ -20,8 +20,9 @@
  * Source: src/hooks/pi-extensions/__helpers/state-bridge.ts
  * Deployed to: .pi/extensions/__helpers/state-bridge.ts
  */
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join } from "path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+import { randomUUID } from "crypto";
 
 import {
   COMPLEXITY_LEVELS,
@@ -254,22 +255,37 @@ export async function writeField(
     }
   }
 
-  // Check state exists
+  // Load or initialize state.json
   const statePath = join(cwd, STATE_FILE_PATH);
-  if (!existsSync(statePath)) {
-    return { success: false, error: "state.json not found" };
-  }
-
-  // Load the persisted state file directly for field mutation
-  // (same approach as bridge.ts handleSetField — we mutate the JSON
-  // directly rather than sending XState events, because SETTABLE_FIELDS
-  // are simple context overrides, not state transitions)
   let stateJson: any;
-  try {
-    const raw = readFileSync(statePath, "utf-8");
-    stateJson = JSON.parse(raw);
-  } catch {
-    return { success: false, error: "state.json contains invalid JSON" };
+
+  if (!existsSync(statePath)) {
+    // Auto-create a minimal state.json so the first write succeeds
+    mkdirSync(dirname(statePath), { recursive: true });
+    stateJson = {
+      value: "idle",
+      context: {
+        session_id: randomUUID(),
+        complexity: "MODERATE",
+        oversight: "milestone",
+        base_branch: "main",
+        current_phase: null,
+        current_plan_ids: [],
+        started_at: null,
+        last_transition_at: null,
+      },
+    };
+  } else {
+    // Load the persisted state file directly for field mutation
+    // (same approach as bridge.ts handleSetField — we mutate the JSON
+    // directly rather than sending XState events, because SETTABLE_FIELDS
+    // are simple context overrides, not state transitions)
+    try {
+      const raw = readFileSync(statePath, "utf-8");
+      stateJson = JSON.parse(raw);
+    } catch {
+      return { success: false, error: "state.json contains invalid JSON" };
+    }
   }
 
   if (!stateJson.context) {

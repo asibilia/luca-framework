@@ -36,13 +36,13 @@ export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 // ─── Model Routing ──────────────────────────────────────────────────────────
 
-export type ModelId = "opus" | "sonnet" | "haiku";
+export type ModelId = "gemini-3.1-pro-preview" | "gemini-3-flash-preview";
 export type ModelTier = "fast" | "balanced" | "capable";
 
 export const MODEL_TIER_TO_MODEL: Record<ModelTier, ModelId> = {
-  fast: "haiku",
-  balanced: "sonnet",
-  capable: "opus",
+  fast: "gemini-3-flash-preview",
+  balanced: "gemini-3.1-pro-preview",
+  capable: "gemini-3.1-pro-preview",
 };
 
 // ─── Settable Fields ────────────────────────────────────────────────────────

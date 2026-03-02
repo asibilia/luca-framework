@@ -34,38 +34,46 @@ function createTempProject(complexity: string | null): string {
 
 describe("model-routing helpers", () => {
   describe("MODEL_TIER_TO_MODEL mapping", () => {
-    test("fast maps to haiku", () => {
-      expect(MODEL_TIER_TO_MODEL["fast"]).toBe("haiku");
+    test("fast maps to gemini-3-flash-preview", () => {
+      expect(MODEL_TIER_TO_MODEL["fast"]).toBe("gemini-3-flash-preview");
     });
 
-    test("balanced maps to sonnet", () => {
-      expect(MODEL_TIER_TO_MODEL["balanced"]).toBe("sonnet");
+    test("balanced maps to gemini-3.1-pro-preview", () => {
+      expect(MODEL_TIER_TO_MODEL["balanced"]).toBe("gemini-3.1-pro-preview");
     });
 
-    test("capable maps to opus", () => {
-      expect(MODEL_TIER_TO_MODEL["capable"]).toBe("opus");
+    test("capable maps to gemini-3.1-pro-preview", () => {
+      expect(MODEL_TIER_TO_MODEL["capable"]).toBe("gemini-3.1-pro-preview");
     });
   });
 
   describe("COMPLEXITY_DEFAULT_MODEL mapping", () => {
-    test("TRIVIAL defaults to haiku", () => {
-      expect(COMPLEXITY_DEFAULT_MODEL["TRIVIAL"]).toBe("haiku");
+    test("TRIVIAL defaults to gemini-3-flash-preview", () => {
+      expect(COMPLEXITY_DEFAULT_MODEL["TRIVIAL"]).toBe(
+        "gemini-3-flash-preview",
+      );
     });
 
-    test("SIMPLE defaults to haiku", () => {
-      expect(COMPLEXITY_DEFAULT_MODEL["SIMPLE"]).toBe("haiku");
+    test("SIMPLE defaults to gemini-3-flash-preview", () => {
+      expect(COMPLEXITY_DEFAULT_MODEL["SIMPLE"]).toBe("gemini-3-flash-preview");
     });
 
-    test("MODERATE defaults to sonnet", () => {
-      expect(COMPLEXITY_DEFAULT_MODEL["MODERATE"]).toBe("sonnet");
+    test("MODERATE defaults to gemini-3.1-pro-preview", () => {
+      expect(COMPLEXITY_DEFAULT_MODEL["MODERATE"]).toBe(
+        "gemini-3.1-pro-preview",
+      );
     });
 
-    test("COMPLEX defaults to sonnet", () => {
-      expect(COMPLEXITY_DEFAULT_MODEL["COMPLEX"]).toBe("sonnet");
+    test("COMPLEX defaults to gemini-3.1-pro-preview", () => {
+      expect(COMPLEXITY_DEFAULT_MODEL["COMPLEX"]).toBe(
+        "gemini-3.1-pro-preview",
+      );
     });
 
-    test("CRITICAL defaults to opus", () => {
-      expect(COMPLEXITY_DEFAULT_MODEL["CRITICAL"]).toBe("opus");
+    test("CRITICAL defaults to gemini-3.1-pro-preview", () => {
+      expect(COMPLEXITY_DEFAULT_MODEL["CRITICAL"]).toBe(
+        "gemini-3.1-pro-preview",
+      );
     });
   });
 
@@ -134,12 +142,14 @@ describe("model-routing helpers", () => {
         name: "test",
         description: "test",
         tools: [],
-        model: "sonnet",
+        model: "gemini-3.1-pro-preview",
         model_tier: "capable",
       };
       const dir = createTempProject("CRITICAL");
       try {
-        expect(resolveAgentModel(fm, dir, "haiku")).toBe("haiku");
+        expect(resolveAgentModel(fm, dir, "gemini-3-flash-preview")).toBe(
+          "gemini-3-flash-preview",
+        );
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -150,12 +160,12 @@ describe("model-routing helpers", () => {
         name: "test",
         description: "test",
         tools: [],
-        model: "opus",
+        model: "gemini-3.1-pro-preview",
         model_tier: "fast",
       };
       const dir = createTempProject("TRIVIAL");
       try {
-        expect(resolveAgentModel(fm, dir)).toBe("opus");
+        expect(resolveAgentModel(fm, dir)).toBe("gemini-3.1-pro-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -170,13 +180,13 @@ describe("model-routing helpers", () => {
       };
       const dir = createTempProject("TRIVIAL");
       try {
-        expect(resolveAgentModel(fm, dir)).toBe("opus");
+        expect(resolveAgentModel(fm, dir)).toBe("gemini-3.1-pro-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
-    test("priority 3: fast tier maps to haiku", () => {
+    test("priority 3: fast tier maps to gemini-3-flash-preview", () => {
       const fm: AgentFrontmatter = {
         name: "test",
         description: "test",
@@ -185,13 +195,13 @@ describe("model-routing helpers", () => {
       };
       const dir = createTempProject("CRITICAL");
       try {
-        expect(resolveAgentModel(fm, dir)).toBe("haiku");
+        expect(resolveAgentModel(fm, dir)).toBe("gemini-3-flash-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
-    test("priority 3: balanced tier maps to sonnet", () => {
+    test("priority 3: balanced tier maps to gemini-3.1-pro-preview", () => {
       const fm: AgentFrontmatter = {
         name: "test",
         description: "test",
@@ -200,7 +210,7 @@ describe("model-routing helpers", () => {
       };
       const dir = createTempProject("TRIVIAL");
       try {
-        expect(resolveAgentModel(fm, dir)).toBe("sonnet");
+        expect(resolveAgentModel(fm, dir)).toBe("gemini-3.1-pro-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -214,13 +224,13 @@ describe("model-routing helpers", () => {
       };
       const dir = createTempProject("CRITICAL");
       try {
-        expect(resolveAgentModel(fm, dir)).toBe("opus");
+        expect(resolveAgentModel(fm, dir)).toBe("gemini-3.1-pro-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
-    test("priority 4: TRIVIAL complexity defaults to haiku", () => {
+    test("priority 4: TRIVIAL complexity defaults to gemini-3-flash-preview", () => {
       const fm: AgentFrontmatter = {
         name: "test",
         description: "test",
@@ -228,16 +238,16 @@ describe("model-routing helpers", () => {
       };
       const dir = createTempProject("TRIVIAL");
       try {
-        expect(resolveAgentModel(fm, dir)).toBe("haiku");
+        expect(resolveAgentModel(fm, dir)).toBe("gemini-3-flash-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
-    test("priority 5: universal fallback is sonnet when null frontmatter", () => {
+    test("priority 5: universal fallback is gemini-3.1-pro-preview when null frontmatter", () => {
       const dir = createTempProject(null);
       try {
-        expect(resolveAgentModel(null, dir)).toBe("sonnet");
+        expect(resolveAgentModel(null, dir)).toBe("gemini-3.1-pro-preview");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -252,7 +262,9 @@ describe("model-routing helpers", () => {
       };
       const dir = createTempProject("MODERATE");
       try {
-        expect(resolveAgentModel(fm, dir, "invalid-model")).toBe("haiku");
+        expect(resolveAgentModel(fm, dir, "invalid-model")).toBe(
+          "gemini-3-flash-preview",
+        );
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -260,16 +272,12 @@ describe("model-routing helpers", () => {
   });
 
   describe("getModelTier", () => {
-    test("opus returns capable", () => {
-      expect(getModelTier("opus")).toBe("capable");
+    test("gemini-3-flash-preview returns fast", () => {
+      expect(getModelTier("gemini-3-flash-preview")).toBe("fast");
     });
 
-    test("sonnet returns balanced", () => {
-      expect(getModelTier("sonnet")).toBe("balanced");
-    });
-
-    test("haiku returns fast", () => {
-      expect(getModelTier("haiku")).toBe("fast");
+    test("gemini-3.1-pro-preview returns balanced", () => {
+      expect(getModelTier("gemini-3.1-pro-preview")).toBe("balanced");
     });
 
     test("unknown model returns balanced", () => {

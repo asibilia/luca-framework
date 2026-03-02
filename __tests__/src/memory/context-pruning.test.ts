@@ -9,6 +9,7 @@ import {
 import { estimateTokens } from "../../../src/memory/__helpers/token-estimator.ts";
 import type {
   WorkingMemory,
+  WorkingMemorySection,
   PruningConfig,
   PruningEvent,
 } from "../../../src/memory/__schemas/memory.schemas";
@@ -24,7 +25,7 @@ function makeWm(overrides: Partial<WorkingMemory> = {}): WorkingMemory {
   };
 }
 
-function makeSection(name: string, content: string, lastUpdated?: string) {
+function makeSection(name: WorkingMemorySection["name"], content: string, lastUpdated?: string) {
   return {
     name,
     content,

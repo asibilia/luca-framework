@@ -10,7 +10,7 @@
  * 2. Agent frontmatter `model` field (pre-resolved by compiler)
  * 3. Agent frontmatter `model_tier` mapped to model name
  * 4. Complexity-level default model (from config.json matrix)
- * 5. Universal fallback: "sonnet"
+ * 5. Universal fallback: "gemini-3.1-pro-preview"
  *
  * Source: src/hooks/pi-extensions/__helpers/model-routing.ts
  * Deployed to: .pi/extensions/__helpers/model-routing.ts
@@ -23,11 +23,11 @@ import { readComplexity as bridgeReadComplexity } from "./state-bridge";
 
 /** Default model per complexity level (mirrors config.json matrix defaults). */
 const COMPLEXITY_DEFAULT_MODEL: Record<ComplexityLevel, ModelId> = {
-  TRIVIAL: "haiku",
-  SIMPLE: "haiku",
-  MODERATE: "sonnet",
-  COMPLEX: "sonnet",
-  CRITICAL: "opus",
+  TRIVIAL: "gemini-3-flash-preview",
+  SIMPLE: "gemini-3-flash-preview",
+  MODERATE: "gemini-3.1-pro-preview",
+  COMPLEX: "gemini-3.1-pro-preview",
+  CRITICAL: "gemini-3.1-pro-preview",
 };
 
 /**
@@ -56,7 +56,7 @@ export function readComplexityLevel(cwd: string): ComplexityLevel {
  * 2. Agent frontmatter `model` field (pre-resolved by compiler)
  * 3. Agent `model_tier` mapped via MODEL_TIER_TO_MODEL
  * 4. Complexity-level default from COMPLEXITY_DEFAULT_MODEL
- * 5. Universal fallback: "sonnet"
+ * 5. Universal fallback: "gemini-3.1-pro-preview"
  *
  * @param frontmatter - Parsed agent frontmatter (from parseFrontmatter)
  * @param cwd - Project root directory (for reading STATE.md complexity)
@@ -67,9 +67,9 @@ export function readComplexityLevel(cwd: string): ComplexityLevel {
  * ```typescript
  * const fm = parseFrontmatter(agentContent);
  * const model = resolveAgentModel(fm, process.cwd());
- * // "opus" if agent has model_tier: capable
- * // "sonnet" if agent has model: sonnet
- * // "haiku" at TRIVIAL complexity with no agent config
+ * // "gemini-3.1-pro-preview" if agent has model_tier: capable
+ * // "gemini-3.1-pro-preview" if agent has model: gemini-3.1-pro-preview
+ * // "gemini-3-flash-preview" at TRIVIAL complexity with no agent config
  * ```
  */
 export function resolveAgentModel(
@@ -102,17 +102,19 @@ export function resolveAgentModel(
   if (complexityDefault) return complexityDefault;
 
   // 5. Universal fallback
-  return "sonnet";
+  return "gemini-3.1-pro-preview";
 }
 
 /**
  * Check if a string is a valid ModelId.
  *
  * @param value - String to check
- * @returns true if the value is "opus", "sonnet", or "haiku"
+ * @returns true if the value is a valid Gemini model identifier
  */
 function isValidModelId(value: string): boolean {
-  return value === "opus" || value === "sonnet" || value === "haiku";
+  return (
+    value === "gemini-3.1-pro-preview" || value === "gemini-3-flash-preview"
+  );
 }
 
 /**
@@ -125,8 +127,7 @@ function isValidModelId(value: string): boolean {
  * @returns Tier label, or "balanced" if no match
  */
 export function getModelTier(model: string): string {
-  if (model === "opus") return "capable";
-  if (model === "haiku") return "fast";
+  if (model === "gemini-3-flash-preview") return "fast";
   return "balanced";
 }
 

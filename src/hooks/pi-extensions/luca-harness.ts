@@ -158,7 +158,13 @@ export default function lucaHarness(pi: PiExtensionAPI) {
      */
     renderCall(args: { checks?: string }, _theme: any) {
       const checks = args.checks ?? "all enabled";
-      return `Running verification: ${checks}`;
+      const text = `Running verification: ${checks}`;
+      return {
+        render(_width: number): string[] {
+          return text.split("\n");
+        },
+        invalidate() {},
+      };
     },
 
     /**
@@ -166,22 +172,35 @@ export default function lucaHarness(pi: PiExtensionAPI) {
      * Shown in Pi's TUI after the tool completes.
      */
     renderResult(result: any, _opts: any, _theme: any) {
+      let text: string;
       try {
-        const text = result.content?.[0]?.text;
-        if (!text) return "Verification complete";
-        const data = JSON.parse(text);
-        if (!data.status) return "Verification complete";
-        const icon = data.status === "passed" ? "PASS" : "FAIL";
-        const checks = (data.checks ?? [])
-          .map(
-            (c: any) =>
-              `  ${c.status === "passed" ? "+" : "x"} ${c.name} (${c.duration}ms)`,
-          )
-          .join("\n");
-        return `${icon} Verification ${data.status}\n${checks}\nTotal: ${data.total_duration}ms`;
+        const raw = result.content?.[0]?.text;
+        if (!raw) {
+          text = "Verification complete";
+        } else {
+          const data = JSON.parse(raw);
+          if (!data.status) {
+            text = "Verification complete";
+          } else {
+            const icon = data.status === "passed" ? "PASS" : "FAIL";
+            const checks = (data.checks ?? [])
+              .map(
+                (c: any) =>
+                  `  ${c.status === "passed" ? "+" : "x"} ${c.name} (${c.duration}ms)`,
+              )
+              .join("\n");
+            text = `${icon} Verification ${data.status}\n${checks}\nTotal: ${data.total_duration}ms`;
+          }
+        }
       } catch {
-        return "Verification complete";
+        text = "Verification complete";
       }
+      return {
+        render(_width: number): string[] {
+          return text.split("\n");
+        },
+        invalidate() {},
+      };
     },
 
     async execute(

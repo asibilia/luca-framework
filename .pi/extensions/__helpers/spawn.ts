@@ -36,6 +36,94 @@ const MAX_OUTPUT_CHARS = 8192;
 /** Maximum concurrent subagents (enforced globally across all extensions). */
 const MAX_SUBAGENTS = 8;
 
+/** Maps Claude Code tool names (lowercased) to pi CLI tool names. null = drop. */
+const PI_TOOL_MAP: Record<string, string | null> = {
+  read: "read",
+  write: "write",
+  edit: "edit",
+  bash: "bash",
+  grep: "grep",
+  glob: "find",
+  websearch: null,
+  webfetch: null,
+  task: null,
+  lsp: null,
+};
+
+/**
+ * Maps Claude Code tool names (lowercased) to pi extension file paths.
+ *
+ * Tools that cannot be mapped to pi built-in tools (PI_TOOL_MAP = null)
+ * may instead be provided by a pi extension loaded via `-e <path>`.
+ * This map enables automatic extension injection when subagents declare
+ * these tools in their frontmatter.
+ *
+ * websearch → luca-search.ts: Provides Google Custom Search via
+ *   the luca_web_search tool (requires GOOGLE_CSE_API_KEY + GOOGLE_CSE_ID).
+ * webfetch stays unmapped: no extension equivalent yet.
+ */
+const EXTENSION_TOOL_MAP: Record<string, string> = {
+  websearch: ".pi/extensions/luca-search.ts",
+};
+
+/**
+ * Map Claude Code tool names to pi-compatible names, dropping unmappable ones.
+ *
+ * Pi's valid tools are: read, bash, edit, write, grep, find, ls.
+ * Agent frontmatter uses Claude Code names (Read, Glob, WebSearch, etc.)
+ * which need translation. MCP tool prefixes are silently dropped.
+ *
+ * @param tools - Array of Claude Code tool names
+ * @returns Array of pi-compatible tool names
+ */
+export function mapToolsForPi(tools: string[]): string[] {
+  const mapped: string[] = [];
+  for (const tool of tools) {
+    const lower = tool.toLowerCase();
+    if (lower.startsWith("mcp__") || lower.startsWith("mcp_")) continue;
+    const piTool = PI_TOOL_MAP[lower];
+    if (piTool) mapped.push(piTool);
+  }
+  return mapped;
+}
+
+/**
+ * Determine which pi extensions are required for a set of Claude Code tools.
+ *
+ * Looks up each tool in EXTENSION_TOOL_MAP and returns a deduplicated
+ * list of extension file paths that must be loaded via `-e` flags.
+ *
+ * @param tools - Array of Claude Code tool names (e.g., ["Read", "WebSearch"])
+ * @returns Deduplicated array of extension file paths
+ */
+export function getRequiredExtensions(tools: string[]): string[] {
+  const extensions = new Set<string>();
+  for (const tool of tools) {
+    const ext = EXTENSION_TOOL_MAP[tool.toLowerCase()];
+    if (ext) extensions.add(ext);
+  }
+  return [...extensions];
+}
+
+/**
+ * Detect AI provider from env vars for pi subprocesses.
+ *
+ * Checks PI_PROVIDER first (explicit override), then falls back to
+ * detecting provider from API key env vars. The API key itself is
+ * NOT passed as a CLI arg for security (visible in `ps`); the
+ * subprocess inherits process.env so pi auto-detects from env vars.
+ *
+ * @returns Provider name or undefined if none detected
+ */
+export function detectPiProvider(): string | undefined {
+  const env = process.env;
+  if (env.PI_PROVIDER) return env.PI_PROVIDER;
+  if (env.ANTHROPIC_API_KEY) return "anthropic";
+  if (env.GOOGLE_API_KEY || env.GEMINI_API_KEY) return "google";
+  if (env.OPENAI_API_KEY) return "openai";
+  return undefined;
+}
+
 /** Result of reading an agent definition file. */
 export interface AgentDef {
   systemPrompt: string;
@@ -210,8 +298,23 @@ export function spawnPiSubprocess(opts: SpawnOptions): SubagentEntry {
     args.push("--session-dir", sessionDir);
   }
   if (effectiveModel) args.push("--model", effectiveModel);
-  if (opts.tools && opts.tools.length > 0)
-    args.push("--tools", opts.tools.join(","));
+  if (opts.tools && opts.tools.length > 0) {
+    const piTools = mapToolsForPi(opts.tools);
+    if (piTools.length > 0) {
+      args.push("--tools", piTools.join(","));
+    }
+
+    // Inject -e flags for tools provided by extensions (e.g., WebSearch → luca-web.ts)
+    const requiredExtensions = getRequiredExtensions(opts.tools);
+    for (const ext of requiredExtensions) {
+      args.push("-e", ext);
+    }
+  }
+
+  const provider = detectPiProvider();
+  if (provider) {
+    args.push("--provider", provider);
+  }
 
   let promptFile: string | undefined;
   if (opts.systemPrompt) {

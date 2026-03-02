@@ -43,13 +43,14 @@ describe("recordInvocation", () => {
     const scorecard = createScorecard();
     const updated = recordInvocation(scorecard, "lu-executor", true, 1500);
 
-    expect(updated.entries["lu-executor"]).toBeDefined();
-    expect(updated.entries["lu-executor"].invocation_count).toBe(1);
-    expect(updated.entries["lu-executor"].success_count).toBe(1);
-    expect(updated.entries["lu-executor"].failure_count).toBe(0);
-    expect(updated.entries["lu-executor"].total_duration_ms).toBe(1500);
-    expect(updated.entries["lu-executor"].avg_duration_ms).toBe(1500);
-    expect(updated.entries["lu-executor"].last_invoked).toBeTruthy();
+    const entry = updated.entries["lu-executor"];
+    expect(entry).toBeDefined();
+    expect(entry!.invocation_count).toBe(1);
+    expect(entry!.success_count).toBe(1);
+    expect(entry!.failure_count).toBe(0);
+    expect(entry!.total_duration_ms).toBe(1500);
+    expect(entry!.avg_duration_ms).toBe(1500);
+    expect(entry!.last_invoked).toBeTruthy();
   });
 
   test("increments existing entry counters", () => {
@@ -58,7 +59,7 @@ describe("recordInvocation", () => {
     scorecard = recordInvocation(scorecard, "lu-executor", true, 2000);
     scorecard = recordInvocation(scorecard, "lu-executor", false, 500);
 
-    const entry = scorecard.entries["lu-executor"];
+    const entry = scorecard.entries["lu-executor"]!;
     expect(entry.invocation_count).toBe(3);
     expect(entry.success_count).toBe(2);
     expect(entry.failure_count).toBe(1);
@@ -80,8 +81,8 @@ describe("recordInvocation", () => {
     scorecard = recordInvocation(scorecard, "lu-verifier", true, 500);
     scorecard = recordInvocation(scorecard, "lu-executor", false, 200);
 
-    expect(scorecard.entries["lu-executor"].invocation_count).toBe(2);
-    expect(scorecard.entries["lu-verifier"].invocation_count).toBe(1);
+    expect(scorecard.entries["lu-executor"]!.invocation_count).toBe(2);
+    expect(scorecard.entries["lu-verifier"]!.invocation_count).toBe(1);
   });
 });
 
@@ -108,13 +109,13 @@ describe("queryScorecard", () => {
       agent_name: "lu-executor",
     });
     expect(results).toHaveLength(1);
-    expect(results[0].agent_name).toBe("lu-executor");
+    expect(results[0]!.agent_name).toBe("lu-executor");
   });
 
   test("filters by minimum invocations", () => {
     const results = queryScorecard(scorecard, { min_invocations: 2 });
     expect(results).toHaveLength(1);
-    expect(results[0].agent_name).toBe("lu-executor");
+    expect(results[0]!.agent_name).toBe("lu-executor");
   });
 
   test("sorts by invocation_count descending", () => {
@@ -122,8 +123,8 @@ describe("queryScorecard", () => {
       sort_by: "invocation_count",
       sort_order: "desc",
     });
-    expect(results[0].agent_name).toBe("lu-executor");
-    expect(results[0].invocation_count).toBe(2);
+    expect(results[0]!.agent_name).toBe("lu-executor");
+    expect(results[0]!.invocation_count).toBe(2);
   });
 
   test("sorts by success_rate", () => {
@@ -132,7 +133,7 @@ describe("queryScorecard", () => {
       sort_order: "desc",
     });
     // lu-executor: 2/2 = 1.0, lu-verifier: 1/1 = 1.0, dx-advocate: 0/1 = 0.0
-    expect(results[results.length - 1].agent_name).toBe("dx-advocate");
+    expect(results[results.length - 1]!.agent_name).toBe("dx-advocate");
   });
 
   test("applies limit", () => {
@@ -169,9 +170,9 @@ describe("formatScorecardReport", () => {
     expect(report.entries).toHaveLength(2);
 
     // lu-executor has more invocations, should be first (sorted desc)
-    expect(report.entries[0].agent_name).toBe("lu-executor");
-    expect(report.entries[0].invocations).toBe(2);
-    expect(report.entries[0].success_rate).toBe(0.5);
+    expect(report.entries[0]!.agent_name).toBe("lu-executor");
+    expect(report.entries[0]!.invocations).toBe(2);
+    expect(report.entries[0]!.success_rate).toBe(0.5);
   });
 
   test("handles empty scorecard", () => {
@@ -191,7 +192,7 @@ describe("formatScorecardReport", () => {
     };
 
     const report = formatScorecardReport(scorecard);
-    expect(report.entries[0].success_rate).toBe(0);
+    expect(report.entries[0]!.success_rate).toBe(0);
   });
 });
 
@@ -216,9 +217,9 @@ describe("loadScorecard / saveScorecard", () => {
     await saveScorecard(scorecard, testPath);
     const loaded = await loadScorecard(testPath);
 
-    expect(loaded.entries["lu-executor"].invocation_count).toBe(1);
-    expect(loaded.entries["lu-executor"].success_count).toBe(1);
-    expect(loaded.entries["lu-verifier"].failure_count).toBe(1);
+    expect(loaded.entries["lu-executor"]!.invocation_count).toBe(1);
+    expect(loaded.entries["lu-executor"]!.success_count).toBe(1);
+    expect(loaded.entries["lu-verifier"]!.failure_count).toBe(1);
   });
 
   test("loadScorecard returns empty scorecard for missing file", async () => {

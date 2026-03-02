@@ -237,8 +237,8 @@ export function handleContextCheckThrottled(
   // Try Pi-native context usage first
   if (ctx?.getContextUsage) {
     const usage = ctx.getContextUsage();
-    const total = usage.totalTokens ?? usage.total ?? 0;
-    const limit = usage.maxTokens ?? usage.limit ?? 200_000;
+    const total = usage.tokens ?? 0;
+    const limit = usage.contextWindow ?? 200_000;
 
     if (limit > 0 && total > 0) {
       const ratio = total / limit;
@@ -309,8 +309,8 @@ export function handleContextMonitor(
 
   if (ctx?.getContextUsage) {
     const usage = ctx.getContextUsage();
-    const total = usage.totalTokens ?? usage.total ?? 0;
-    const limit = usage.maxTokens ?? usage.limit ?? 200_000;
+    const total = usage.tokens ?? 0;
+    const limit = usage.contextWindow ?? 200_000;
 
     if (limit > 0 && total > 0) {
       const ratio = total / limit;

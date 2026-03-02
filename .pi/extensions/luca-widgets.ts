@@ -29,12 +29,15 @@ import type {
   QualityZone,
   SubagentDashState,
   SubagentEntry,
+  ApiErrorState,
 } from "./__helpers/widget-renderers";
 import {
   renderWorkflow,
   renderVerify,
   renderContext,
   renderSubagents,
+  renderApiError,
+  parseApiError,
   getQualityZone,
 } from "./__helpers/widget-renderers";
 import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
@@ -52,6 +55,8 @@ interface WidgetState {
   verify: VerifyState | null;
   /** Subagent dashboard state. */
   subagentDash: SubagentDashState | null;
+  /** API error widget state. */
+  apiError: ApiErrorState | null;
   /** Context usage percentage (0-100). */
   contextPct: number;
   /** Quality degradation zone. */
@@ -83,6 +88,7 @@ function createInitialState(): WidgetState {
     tilldone: null,
     verify: null,
     subagentDash: null,
+    apiError: null,
     contextPct: -1,
     qualityZone: "PEAK",
     turnCount: 0,
@@ -106,7 +112,8 @@ function createInitialState(): WidgetState {
  */
 function parseToolResultJson(event: any): any {
   try {
-    const text = event?.result?.content?.[0]?.text;
+    // Pi's tool_result event has content directly on the event, not under .result
+    const text = event?.content?.[0]?.text;
     if (!text) return null;
     return JSON.parse(text);
   } catch {
@@ -410,6 +417,10 @@ export default function lucaWidgets(pi: PiExtensionAPI) {
     const subagentComponent = renderSubagents(state.subagentDash);
     ctx.ui.setWidget("luca-subagents", toWidgetFactory(subagentComponent));
 
+    // API error widget
+    const apiErrorComponent = renderApiError(state.apiError);
+    ctx.ui.setWidget("luca-api-error", toWidgetFactory(apiErrorComponent));
+
     // Context meter widget
     const contextComponent = renderContext(state.contextPct, state.qualityZone);
     ctx.ui.setWidget("luca-context", toWidgetFactory(contextComponent));
@@ -553,7 +564,7 @@ export default function lucaWidgets(pi: PiExtensionAPI) {
 
     // Handle text-only responses (luca_subagent_remove returns text, not JSON)
     if (!changed && toolName === "luca_subagent_remove" && state.subagentDash) {
-      const rawText = event?.result?.content?.[0]?.text ?? "";
+      const rawText = event?.content?.[0]?.text ?? "";
       const idMatch = rawText.match(/Subagent "([^"]+)"/);
       if (idMatch?.[1]) {
         state.subagentDash = removeSubagentEntry(
@@ -585,9 +596,14 @@ export default function lucaWidgets(pi: PiExtensionAPI) {
     state.activeTool = null;
   });
 
-  // Increment turn counter (internal state only)
-  pi.on("turn_start", async (_event: any, _ctx: PiExtensionContext) => {
+  // Increment turn counter + clear stale API errors (internal state only)
+  pi.on("turn_start", async (_event: any, ctx: PiExtensionContext) => {
     state.turnCount++;
+    // Clear error widget on successful turn start (model responded)
+    if (state.apiError) {
+      state.apiError = null;
+      updateWidgets(ctx);
+    }
   });
 
   // Poll context usage on turn end
@@ -596,11 +612,11 @@ export default function lucaWidgets(pi: PiExtensionAPI) {
 
     try {
       const usage = ctx.getContextUsage();
-      const total = usage?.totalTokens ?? usage?.total ?? 0;
-      const limit = usage?.maxTokens ?? usage?.limit ?? 0;
+      // Pi's ContextUsage: { tokens: number | null, contextWindow: number, percent: number | null }
+      const pct = usage?.percent;
 
-      if (limit > 0) {
-        state.contextPct = Math.round((total / limit) * 100);
+      if (pct !== null && pct !== undefined) {
+        state.contextPct = Math.round(pct);
         state.qualityZone = getQualityZone(state.contextPct);
 
         // Fire notifications at thresholds
@@ -635,6 +651,7 @@ export default function lucaWidgets(pi: PiExtensionAPI) {
     state.tilldone = null;
     state.verify = null;
     state.subagentDash = null;
+    state.apiError = null;
     state.turnCount = 0;
     state.activeTool = null;
     state.notifiedThresholds.clear();
@@ -653,4 +670,72 @@ export default function lucaWidgets(pi: PiExtensionAPI) {
     );
     updateWidgets(ctx);
   });
+
+  // ─── API Error handling ──────────────────────────────────
+
+  /**
+   * Process a raw error string: parse it, accumulate in state,
+   * show a notification and update the error widget.
+   */
+  function handleApiError(raw: string, ctx: PiExtensionContext): void {
+    const parsed = parseApiError(raw);
+    if (!parsed) return;
+
+    const now = Date.now();
+    if (!state.apiError) {
+      state.apiError = { errors: [], firstSeen: now, lastSeen: now };
+    }
+    state.apiError.errors.push(parsed);
+    state.apiError.lastSeen = now;
+
+    // Cap at 20 to prevent unbounded growth
+    if (state.apiError.errors.length > 20) {
+      state.apiError.errors = state.apiError.errors.slice(-20);
+    }
+
+    // Show notification for first error in a burst
+    if (state.apiError.errors.length === 1) {
+      notifySafe(ctx, `API ${parsed.code}: ${parsed.message}`, "error");
+    }
+
+    updateWidgets(ctx);
+  }
+
+  // Listen for error events (Pi may emit "error" or "api_error")
+  pi.on("error", async (event: any, ctx: PiExtensionContext) => {
+    const raw =
+      typeof event === "string"
+        ? event
+        : (event?.message ?? event?.error ?? JSON.stringify(event));
+    handleApiError(raw, ctx);
+  });
+
+  pi.on("api_error", async (event: any, ctx: PiExtensionContext) => {
+    const raw =
+      typeof event === "string"
+        ? event
+        : (event?.message ?? event?.error ?? JSON.stringify(event));
+    handleApiError(raw, ctx);
+  });
+
+  // Also register a message renderer for "api_error" custom type
+  // so errors sent via pi.sendMessage({ customType: "api_error" })
+  // are rendered cleanly inline in the conversation.
+  if (pi.registerMessageRenderer) {
+    pi.registerMessageRenderer(
+      "api_error",
+      (message: any, _opts?: any, _theme?: any) => {
+        const raw = message?.content ?? "";
+        const parsed = parseApiError(raw);
+        if (!parsed) return undefined;
+
+        const tempState: ApiErrorState = {
+          errors: [parsed],
+          firstSeen: Date.now(),
+          lastSeen: Date.now(),
+        };
+        return renderApiError(tempState) ?? undefined;
+      },
+    );
+  }
 }

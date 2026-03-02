@@ -124,8 +124,8 @@ describe("handleContextCheckThrottled", () => {
     const cwd = setupTmp();
     const ctx: PiExtensionContext = {
       getContextUsage: () => ({
-        totalTokens: 150_000,
-        maxTokens: 200_000,
+        tokens: 150_000,
+        contextWindow: 200_000, percent: null,
       }),
     };
 
@@ -139,8 +139,8 @@ describe("handleContextCheckThrottled", () => {
     const cwd = setupTmp();
     const ctx: PiExtensionContext = {
       getContextUsage: () => ({
-        totalTokens: 10_000,
-        maxTokens: 200_000,
+        tokens: 10_000,
+        contextWindow: 200_000, percent: null,
       }),
     };
 
@@ -152,8 +152,8 @@ describe("handleContextCheckThrottled", () => {
     const cwd = setupTmp();
     const ctx: PiExtensionContext = {
       getContextUsage: () => ({
-        totalTokens: 150_000,
-        maxTokens: 200_000,
+        tokens: 150_000,
+        contextWindow: 200_000, percent: null,
       }),
     };
 
@@ -186,8 +186,8 @@ describe("handleContextMonitor", () => {
     const cwd = setupTmp();
     const ctx: PiExtensionContext = {
       getContextUsage: () => ({
-        totalTokens: 10_000,
-        maxTokens: 200_000,
+        tokens: 10_000,
+        contextWindow: 200_000, percent: null,
       }),
     };
 
@@ -198,8 +198,8 @@ describe("handleContextMonitor", () => {
     const cwd = setupTmp();
     const ctx: PiExtensionContext = {
       getContextUsage: () => ({
-        totalTokens: 120_000,
-        maxTokens: 200_000,
+        tokens: 120_000,
+        contextWindow: 200_000, percent: null,
       }),
     };
 

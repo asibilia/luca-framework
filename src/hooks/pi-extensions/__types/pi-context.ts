@@ -36,8 +36,15 @@ export interface PiToolConfig {
     onUpdate?: any,
     ctx?: PiExtensionContext,
   ): Promise<ToolResponse>;
-  renderCall?(args: any, theme: any): string;
-  renderResult?(result: any, opts: any, theme: any): string;
+  renderCall?(
+    args: any,
+    theme: any,
+  ): { render(width: number): string[]; invalidate?(): void } | null;
+  renderResult?(
+    result: any,
+    opts: any,
+    theme: any,
+  ): { render(width: number): string[]; invalidate?(): void } | null;
 }
 
 /** Configuration for registering a slash command with Pi. */
@@ -88,10 +95,14 @@ export interface PiExtensionAPI {
     ) => void | Promise<void | { block: boolean; reason: string }>,
   ): void;
 
-  /** Register a custom message type renderer. */
+  /** Register a custom message type renderer. Returns a Component for pi-tui rendering. */
   registerMessageRenderer?(
     customType: string,
-    renderer: (message: PiMessage) => string,
+    renderer: (
+      message: PiMessage,
+      options?: { expanded?: boolean },
+      theme?: any,
+    ) => { render(width: number): string[]; invalidate?(): void } | undefined,
   ): void;
 
   /** Send a follow-up message to the conversation. */
@@ -150,8 +161,20 @@ export interface PiContextUI {
   /** Set a status message in the footer bar. */
   setStatus?(key: string, message: string): void;
 
-  /** Set a custom footer renderer. */
-  setFooter?(renderer: (theme: any) => string): void;
+  /** Set a custom footer component factory. Returns a Component with render/invalidate. */
+  setFooter?(
+    factory:
+      | ((
+          tui: any,
+          theme: any,
+          footerData: any,
+        ) => {
+          render(width: number): string[];
+          invalidate(): void;
+          dispose?(): void;
+        })
+      | undefined,
+  ): void;
 
   /** Register a persistent widget. Pass null factory to remove. */
   setWidget?(
@@ -195,9 +218,8 @@ export interface PiExtensionContext {
 
   /** Get context window token usage. */
   getContextUsage?(): {
-    totalTokens?: number;
-    total?: number;
-    maxTokens?: number;
-    limit?: number;
+    tokens: number | null;
+    contextWindow: number;
+    percent: number | null;
   };
 }

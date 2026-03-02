@@ -148,13 +148,6 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
       },
       required: ["agent", "task"],
     },
-    /**
-     * Render a human-readable summary of the tool call arguments.
-     */
-    renderCall(args: { agent: string; task: string }, _theme: any) {
-      return `Spawning subagent: ${args.agent}\nTask: ${args.task.slice(0, 100)}`;
-    },
-
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
@@ -283,27 +276,6 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
       },
       required: ["id"],
     },
-    /**
-     * Render a human-readable summary of the subagent result.
-     */
-    renderResult(result: any, _opts: any, _theme: any) {
-      try {
-        const text = result.content?.[0]?.text;
-        if (!text) return "Subagent result";
-        const data = JSON.parse(text);
-        if (!data.status) return "Subagent result";
-        const icon =
-          data.status === "completed"
-            ? "DONE"
-            : data.status === "running"
-              ? "..."
-              : "FAIL";
-        return `${icon} ${data.id} (${data.agent}) — ${data.status}\n${(data.output ?? "").slice(0, 200)}`;
-      } catch {
-        return "Subagent result";
-      }
-    },
-
     async execute(_toolCallId: string, params: { id: string }) {
       const state = subagentRegistry.get(params.id);
       if (!state) {
@@ -523,14 +495,19 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
           lines.push("");
           lines.push(message.content.slice(0, 500));
         }
-        return lines.join("\n");
+        return {
+          render(_width: number): string[] {
+            return lines;
+          },
+          invalidate() {},
+        };
       },
     );
   }
 
   // ─── Cleanup on session end ────────────────────────────
 
-  pi.on("session_start", async () => {
+  pi.on("session_start", async (_event: any, ctx: PiExtensionContext) => {
     // Clean up any stale subagents from previous sessions
     for (const state of subagentRegistry.values()) {
       await killWithEscalation(state);
@@ -539,6 +516,15 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
       }
     }
     resetSubagentRegistry();
+
+    // Inject subagent guidance into system prompt
+    ctx?.addSystemContext?.(
+      "luca-subagents",
+      "You have access to background subagents via luca_subagent_create. " +
+        "Use subagents for: parallel research tasks, running long tests in the background, " +
+        "delegating independent subtasks, or team dispatch via luca_dispatch_team. " +
+        "Use luca_subagent_list to check running subagents and luca_subagent_result to get their output.",
+    );
   });
 
   // Kill all running subagents and clean up on session shutdown

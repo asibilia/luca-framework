@@ -232,6 +232,7 @@ export function renderWorkflow(
         return lines;
       });
     },
+    invalidate() {},
   };
 }
 
@@ -273,6 +274,7 @@ export function renderVerify(state: VerifyState | null): PiTuiComponent | null {
         return lines;
       });
     },
+    invalidate() {},
   };
 }
 
@@ -310,11 +312,10 @@ export function renderContext(
               : `${zone} quality zone`;
 
         const meterLine = `${bar} ${pct}%  ${zoneLabel}`;
-        return [
-          `\u2502 ${padRight(truncate(meterLine, inner), inner)} \u2502`,
-        ];
+        return [`\u2502 ${padRight(truncate(meterLine, inner), inner)} \u2502`];
       });
     },
+    invalidate() {},
   };
 }
 
@@ -339,8 +340,12 @@ export function renderSubagents(
         const lines: string[] = [];
 
         // Summary header
-        const running = state.agents.filter((a) => a.status === "running").length;
-        const completed = state.agents.filter((a) => a.status === "completed").length;
+        const running = state.agents.filter(
+          (a) => a.status === "running",
+        ).length;
+        const completed = state.agents.filter(
+          (a) => a.status === "completed",
+        ).length;
         const failed = state.agents.filter(
           (a) => a.status === "failed" || a.status === "aborted",
         ).length;
@@ -355,19 +360,205 @@ export function renderSubagents(
         for (const agent of state.agents) {
           const icon = STEP_ICONS[agent.status] ?? "\u00b7";
           const durSec = Math.round(agent.duration_ms / 1000);
-          const durStr = durSec >= 60
-            ? `${Math.floor(durSec / 60)}m${durSec % 60}s`
-            : `${durSec}s`;
+          const durStr =
+            durSec >= 60
+              ? `${Math.floor(durSec / 60)}m${durSec % 60}s`
+              : `${durSec}s`;
           const nameWidth = Math.min(18, Math.max(8, inner - 30));
           const taskWidth = Math.max(10, inner - nameWidth - durStr.length - 8);
           const row = ` ${icon} ${padRight(truncate(agent.agent, nameWidth), nameWidth)} ${truncate(agent.task_preview, taskWidth)}  ${durStr}`;
-          lines.push(
-            `\u2502 ${padRight(truncate(row, inner), inner)} \u2502`,
-          );
+          lines.push(`\u2502 ${padRight(truncate(row, inner), inner)} \u2502`);
         }
 
         return lines;
       });
     },
+    invalidate() {},
+  };
+}
+
+// ─── API Error ─────────────────────────────────────────────
+
+/** Parsed API error information. */
+export interface ApiErrorInfo {
+  code: number;
+  status: string;
+  message: string;
+  retryAttempts?: number;
+}
+
+/** API error widget state. */
+export interface ApiErrorState {
+  errors: ApiErrorInfo[];
+  firstSeen: number;
+  lastSeen: number;
+}
+
+/**
+ * Parse a raw API error string into structured error info.
+ *
+ * Handles the double-nested JSON pattern common with provider APIs:
+ * ```
+ * {"error":{"message":"{\"error\":{\"code\":503,...}}","code":503,"status":"Service Unavailable"}}
+ * ```
+ *
+ * Also handles the retry wrapper:
+ * ```
+ * Retry failed after 3 attempts: {"error":{...}}
+ * ```
+ *
+ * @param raw - Raw error string (may include "Error: " prefix or retry wrapper)
+ * @returns Parsed error info, or null if not a recognizable API error
+ */
+export function parseApiError(raw: string): ApiErrorInfo | null {
+  if (!raw || typeof raw !== "string") return null;
+
+  let text = raw.trim();
+  let retryAttempts: number | undefined;
+
+  // Strip "Error: " prefix
+  if (text.startsWith("Error: ")) {
+    text = text.slice(7);
+  }
+
+  // Extract retry count: "Retry failed after N attempts: {...}"
+  const retryMatch = text.match(/^Retry failed after (\d+) attempts:\s*/);
+  if (retryMatch?.[1]) {
+    retryAttempts = parseInt(retryMatch[1], 10);
+    text = text.slice(retryMatch[0]?.length ?? 0);
+  }
+
+  try {
+    const outer = JSON.parse(text);
+    const err = outer?.error;
+    if (!err) return null;
+
+    // Try to parse the inner nested JSON message
+    let innerMessage = err.message ?? "";
+    let innerCode = err.code ?? 0;
+    let innerStatus = err.status ?? "";
+
+    if (typeof innerMessage === "string" && innerMessage.startsWith("{")) {
+      try {
+        const inner = JSON.parse(innerMessage);
+        if (inner?.error) {
+          innerMessage = inner.error.message ?? innerMessage;
+          innerCode = inner.error.code ?? innerCode;
+          innerStatus = inner.error.status ?? innerStatus;
+        }
+      } catch {
+        // Inner message is not JSON — use as-is
+      }
+    }
+
+    return {
+      code: innerCode,
+      status: innerStatus,
+      message: innerMessage,
+      retryAttempts,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deduplicate consecutive identical API errors.
+ *
+ * Groups errors by code+message and returns a count-annotated list.
+ * Prevents the widget from showing 5 identical 503 lines.
+ *
+ * @param errors - Array of parsed error infos
+ * @returns Deduplicated array with occurrence counts
+ */
+export function deduplicateErrors(
+  errors: ApiErrorInfo[],
+): Array<ApiErrorInfo & { count: number }> {
+  const groups: Array<ApiErrorInfo & { count: number }> = [];
+  for (const err of errors) {
+    const last = groups[groups.length - 1];
+    if (last && last.code === err.code && last.message === err.message) {
+      last.count++;
+      if (err.retryAttempts) last.retryAttempts = err.retryAttempts;
+    } else {
+      groups.push({ ...err, count: 1 });
+    }
+  }
+  return groups;
+}
+
+/** Status code to icon mapping. */
+const ERROR_ICONS: Record<number, string> = {
+  400: "\u2717", // ✗ Bad Request
+  401: "\u26d4", // ⛔ Unauthorized
+  403: "\u26d4", // ⛔ Forbidden
+  404: "\u2049", // ⁉ Not Found
+  429: "\u23f1", // ⏱ Rate Limited
+  500: "\u2620", // ☠ Internal Server Error
+  503: "\u23f3", // ⏳ Unavailable
+};
+
+/**
+ * Render the API error widget showing clean, human-readable error info.
+ *
+ * Replaces raw nested JSON with a clean box:
+ * ```
+ * ┌─ API Error ─────────────────────────┐
+ * │ ⏳ 503 UNAVAILABLE  (×4)            │
+ * │   High demand. Try again later.     │
+ * │   Retry failed after 3 attempts     │
+ * └─────────────────────────────────────┘
+ * ```
+ *
+ * @param state - API error state with parsed errors
+ * @returns pi-tui Component, or null if no errors
+ */
+export function renderApiError(
+  state: ApiErrorState | null,
+): PiTuiComponent | null {
+  if (!state || state.errors.length === 0) return null;
+
+  return {
+    render(width: number): string[] {
+      return renderWidgetBox(" API Error ", width, (inner) => {
+        const lines: string[] = [];
+        const grouped = deduplicateErrors(state.errors);
+
+        for (const err of grouped) {
+          const icon = ERROR_ICONS[err.code] ?? "\u2717";
+          const countStr = err.count > 1 ? `  (\u00d7${err.count})` : "";
+          const header = `${icon} ${err.code} ${err.status}${countStr}`;
+          lines.push(
+            `\u2502 ${padRight(truncate(header, inner), inner)} \u2502`,
+          );
+
+          // Message line (indented)
+          if (err.message) {
+            const msgLine = `  ${err.message}`;
+            lines.push(
+              `\u2502 ${padRight(truncate(msgLine, inner), inner)} \u2502`,
+            );
+          }
+
+          // Retry info
+          if (err.retryAttempts) {
+            const retryLine = `  Retry failed after ${err.retryAttempts} attempts`;
+            lines.push(
+              `\u2502 ${padRight(truncate(retryLine, inner), inner)} \u2502`,
+            );
+          }
+        }
+
+        // Timestamp
+        const elapsed = Math.round((Date.now() - state.firstSeen) / 1000);
+        const timeStr =
+          elapsed < 60 ? `${elapsed}s ago` : `${Math.floor(elapsed / 60)}m ago`;
+        const footer = `  First seen: ${timeStr}`;
+        lines.push(`\u2502 ${padRight(truncate(footer, inner), inner)} \u2502`);
+
+        return lines;
+      });
+    },
+    invalidate() {},
   };
 }

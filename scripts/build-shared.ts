@@ -63,6 +63,7 @@ export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-commands.ts",
   "luca-widgets.ts",
   "luca-work-tracking.ts",
+  "luca-search.ts",
 ] as const;
 
 /**
@@ -597,8 +598,8 @@ function generatePiAgentsMd(ruleSections: string[]): string {
  */
 function generatePiSettings(): object {
   return {
-    model: "claude-sonnet-4-6",
-    provider: "anthropic",
+    model: "gemini-3.1-pro-preview",
+    provider: "google",
     compaction: {
       enabled: true,
       threshold: 0.7,

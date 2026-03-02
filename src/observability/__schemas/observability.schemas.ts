@@ -61,7 +61,7 @@ export const scorecardQuerySchema = z.object({
   agent_name: z.string().optional(),
   min_invocations: z.number().int().nonnegative().optional(),
   sort_by: scorecardSortFieldSchema.optional(),
-  sort_order: z.enum(["asc", "desc"]).default("desc"),
+  sort_order: z.enum(["asc", "desc"]).optional(),
   limit: z.number().int().positive().optional(),
 });
 
