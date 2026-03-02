@@ -19,8 +19,8 @@
 
 **Depends on:** Phase 87
 
-- [ ] 88-A: Fix validateBranding module resolution / test isolation bug (#29)
-- [ ] 88-B: Add context domain test coverage — 6 source files with 0 tests (#30)
+- [ ] 88-A: Fix validateBranding module resolution / test isolation bug (#29) ⏸ PARKED — deep Bun module cache issue
+- [x] 88-B: Add context domain test coverage — 6 source files with 0 tests (#30)
 
 ---
 
