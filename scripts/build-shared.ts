@@ -45,12 +45,9 @@ import path from "path";
  *
  * This is the SINGLE SOURCE OF TRUTH for which extensions exist.
  * Both generatePiSettings() and generatePiOutputs() derive from this list.
- *
- * NOTE: "luca-hooks.ts" is NOT in this list because it is generated
- * from the hook registry (not copied from source). It is added
- * to settings.json separately by generatePiSettings().
  */
 export const PI_EXTENSION_FILES: readonly string[] = [
+  "luca-hooks.ts",
   "luca-state.ts",
   "luca-memory.ts",
   "luca-harness.ts",
@@ -66,6 +63,7 @@ export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-commands.ts",
   "luca-widgets.ts",
   "luca-work-tracking.ts",
+  "luca-search.ts",
 ] as const;
 
 /**
@@ -76,6 +74,7 @@ export const PI_EXTENSION_FILES: readonly string[] = [
  * Must be copied alongside extensions for imports to resolve.
  */
 export const PI_HELPER_FILES: readonly string[] = [
+  "luca-constants.ts",
   "sanitize.ts",
   "response.ts",
   "frontmatter.ts",
@@ -90,6 +89,10 @@ export const PI_HELPER_FILES: readonly string[] = [
   "model-routing.ts",
   "state-bridge.ts",
   "dialogs.ts",
+  "hook-handlers.ts",
+  "runtime-detect.ts",
+  "throttle.ts",
+  "session-init.ts",
 ] as const;
 // Note: index.ts barrel is NOT included — Pi auto-discovers
 // .pi/extensions/*/index.ts as extensions. Extensions import
@@ -595,16 +598,14 @@ function generatePiAgentsMd(ruleSections: string[]): string {
  */
 function generatePiSettings(): object {
   return {
-    model: "claude-sonnet-4-6",
-    provider: "anthropic",
+    model: "gemini-3.1-pro-preview",
+    provider: "google",
     compaction: {
       enabled: true,
       threshold: 0.7,
     },
     extensions: [
-      // Generated from hook registry (not a source file copy)
-      ".pi/extensions/luca-hooks.ts",
-      // Source file copies (derived from PI_EXTENSION_FILES)
+      // All extensions derived from PI_EXTENSION_FILES (single source of truth)
       ...PI_EXTENSION_FILES.map((f) => `.pi/extensions/${f}`),
     ],
     shell: "/bin/zsh",
@@ -668,7 +669,7 @@ async function generateHookOutputs(
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
   const resolved = resolveHookRegistry();
 
-  // Copy hook scripts to .claude/, .cursor/, and .pi/
+  // Copy hook scripts to .claude/ and .cursor/ (Pi uses native extension)
   for (const [_hookName, hookDef] of Object.entries(resolved)) {
     const srcPath = path.join(hookScriptsDir, hookDef.script);
     const srcFile = Bun.file(srcPath);
@@ -676,10 +677,6 @@ async function generateHookOutputs(
       const content = await srcFile.text();
       generated.set(`.claude/hooks/${hookDef.script}`, content);
       generated.set(`.cursor/hooks/${hookDef.script}`, content);
-      // Pi hooks: copy scripts that have a piEvent mapping
-      if (hookDef.piEvent) {
-        generated.set(`.pi/hooks/${hookDef.script}`, content);
-      }
     }
   }
 
@@ -699,9 +696,8 @@ async function generateHookOutputs(
     JSON.stringify(cursorHooksConfig, null, 2) + "\n",
   );
 
-  // Pi extension: generates luca-hooks.ts from hook registry
-  const piExtension = generatePiExtension(resolved);
-  generated.set(".pi/extensions/luca-hooks.ts", piExtension);
+  // Pi extension: luca-hooks.ts is now a source file in PI_EXTENSION_FILES
+  // (copied by generatePiOutputs, no longer generated from hook registry)
 }
 
 async function generatePluginOutputs(

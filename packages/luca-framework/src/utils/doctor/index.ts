@@ -8,17 +8,19 @@ export async function executeDoctor(
   logger.info("Running environment diagnostics...\n");
 
   // Import all checks
-  const { nodeVersionCheck } = await import("./checks/node-version");
+  const { bunRuntimeCheck } = await import("./checks/bun-runtime");
   const { cursorIdeCheck } = await import("./checks/cursor-ide");
   const { configValidationCheck } = await import("./checks/config-validation");
   const { harnessInstallationCheck } =
     await import("./checks/harness-installation");
+  const { driftDetectionCheck } = await import("./checks/drift-detection");
 
   const checks: DoctorCheck[] = [
-    nodeVersionCheck,
+    bunRuntimeCheck,
     cursorIdeCheck,
     configValidationCheck,
     harnessInstallationCheck,
+    driftDetectionCheck,
   ];
 
   // Run all checks in parallel

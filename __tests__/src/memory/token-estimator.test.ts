@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import {
   estimateTokens,
+  estimateTokensHeuristic,
   estimateFileTokens,
   estimateMemoryBudget,
 } from "../../../src/memory/__helpers/token-estimator.ts";
@@ -20,57 +21,108 @@ afterAll(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-// ─── estimateTokens ────────────────────────────────────────────────────────────
+// ─── estimateTokens (real tokenizer) ────────────────────────────────────────
 
 describe("estimateTokens", () => {
   test("empty string returns 0", () => {
     expect(estimateTokens("")).toBe(0);
   });
 
-  test("'hello world' (11 chars) returns 3 tokens", () => {
+  test("'hello world' returns a reasonable token count", () => {
+    const tokens = estimateTokens("hello world");
+    // Real tokenizer: "hello world" is 2 tokens in cl100k_base
+    expect(tokens).toBeGreaterThanOrEqual(1);
+    expect(tokens).toBeLessThanOrEqual(5);
+  });
+
+  test("single character returns at least 1", () => {
+    expect(estimateTokens("a")).toBeGreaterThanOrEqual(1);
+  });
+
+  test("short word returns a small token count", () => {
+    const tokens = estimateTokens("abcd");
+    expect(tokens).toBeGreaterThanOrEqual(1);
+    expect(tokens).toBeLessThanOrEqual(3);
+  });
+
+  test("slightly longer word returns a small token count", () => {
+    const tokens = estimateTokens("abcde");
+    expect(tokens).toBeGreaterThanOrEqual(1);
+    expect(tokens).toBeLessThanOrEqual(4);
+  });
+
+  test("long text (~1000 chars) returns a plausible token count", () => {
+    const longText = "a".repeat(1000);
+    const tokens = estimateTokens(longText);
+    // Real tokenizer should produce something in a reasonable range
+    expect(tokens).toBeGreaterThan(50);
+    expect(tokens).toBeLessThan(1000);
+  });
+
+  test("unicode text produces a positive token count", () => {
+    const emoji = "\u{1F600}"; // grinning face
+    const text = emoji.repeat(10);
+    const tokens = estimateTokens(text);
+    expect(tokens).toBeGreaterThan(0);
+  });
+
+  test("null-ish input returns 0", () => {
+    expect(estimateTokens("")).toBe(0);
+  });
+
+  test("multi-word sentence returns fewer tokens than character count", () => {
+    const text = "The quick brown fox jumps over the lazy dog.";
+    const tokens = estimateTokens(text);
+    expect(tokens).toBeGreaterThan(0);
+    expect(tokens).toBeLessThan(text.length);
+  });
+});
+
+// ─── estimateTokensHeuristic (fallback) ─────────────────────────────────────
+
+describe("estimateTokensHeuristic", () => {
+  test("empty string returns 0", () => {
+    expect(estimateTokensHeuristic("")).toBe(0);
+  });
+
+  test("'hello world' (11 chars) returns 3 tokens via chars/4 heuristic", () => {
     // 11 / 4 = 2.75, ceil = 3
-    expect(estimateTokens("hello world")).toBe(3);
+    expect(estimateTokensHeuristic("hello world")).toBe(3);
   });
 
   test("single character returns 1", () => {
     // 1 / 4 = 0.25, ceil = 1
-    expect(estimateTokens("a")).toBe(1);
+    expect(estimateTokensHeuristic("a")).toBe(1);
   });
 
   test("exactly 4 chars returns 1 token", () => {
     // 4 / 4 = 1, ceil = 1
-    expect(estimateTokens("abcd")).toBe(1);
+    expect(estimateTokensHeuristic("abcd")).toBe(1);
   });
 
   test("5 chars returns 2 tokens", () => {
     // 5 / 4 = 1.25, ceil = 2
-    expect(estimateTokens("abcde")).toBe(2);
+    expect(estimateTokensHeuristic("abcde")).toBe(2);
   });
 
   test("long text (~1000 chars) returns ~250 tokens", () => {
     const longText = "a".repeat(1000);
     // 1000 / 4 = 250 exactly
-    expect(estimateTokens(longText)).toBe(250);
+    expect(estimateTokensHeuristic(longText)).toBe(250);
   });
 
   test("unicode text estimates based on string length, not byte length", () => {
-    // Each emoji is 1-2 chars in JS string length but more bytes in UTF-8
     const emoji = "\u{1F600}"; // grinning face, 2 chars in JS
     const text = emoji.repeat(10); // 20 chars in JS
     // 20 / 4 = 5
-    expect(estimateTokens(text)).toBe(5);
-  });
-
-  test("null-ish input returns 0", () => {
-    // The function checks !text, so empty string or undefined-coerced values
-    expect(estimateTokens("")).toBe(0);
+    expect(estimateTokensHeuristic(text)).toBe(5);
   });
 });
 
 // ─── estimateFileTokens ────────────────────────────────────────────────────────
 
 describe("estimateFileTokens", () => {
-  test("existing file returns token count matching content length / 4", async () => {
+  test("existing file returns a positive token count", async () => {
     const content = "This is a test file with some content for estimation.";
     const filePath = join(tempDir, "test-file.txt");
     await Bun.write(filePath, content);
@@ -79,8 +131,7 @@ describe("estimateFileTokens", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const expectedTokens = Math.ceil(content.length / 4);
-      expect(result.data.tokens).toBe(expectedTokens);
+      expect(result.data.tokens).toBeGreaterThan(0);
       expect(result.data.bytes).toBeGreaterThan(0);
     }
   });
@@ -138,8 +189,8 @@ describe("estimateMemoryBudget", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const expected1 = Math.ceil(file1Content.length / 4);
-      const expected2 = Math.ceil(file2Content.length / 4);
+      const expected1 = estimateTokens(file1Content);
+      const expected2 = estimateTokens(file2Content);
 
       expect(result.data.total_tokens).toBe(expected1 + expected2);
       expect(result.data.breakdown).toHaveLength(2);
@@ -164,7 +215,7 @@ describe("estimateMemoryBudget", () => {
       // Only the existing file should be in the breakdown
       expect(result.data.breakdown).toHaveLength(1);
       expect(result.data.breakdown[0]!.source).toBe(existingPath);
-      expect(result.data.total_tokens).toBe(Math.ceil(fileContent.length / 4));
+      expect(result.data.total_tokens).toBe(estimateTokens(fileContent));
     }
   });
 

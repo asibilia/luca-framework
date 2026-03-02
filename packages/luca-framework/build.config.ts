@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
 import { defineBuildConfig } from "unbuild";
+
+const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 export default defineBuildConfig({
   entries: ["src/index", "src/state/index", "src/state/bridge"],
@@ -7,6 +10,12 @@ export default defineBuildConfig({
   rollup: {
     emitCJS: true,
     inlineDependencies: true,
+    replace: {
+      preventAssignment: true,
+      values: {
+        __LUCA_VERSION__: JSON.stringify(pkg.version),
+      },
+    },
   },
   externals: [
     "citty",

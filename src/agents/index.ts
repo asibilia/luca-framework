@@ -40,7 +40,13 @@ import { luPlannerAgent } from "./luca/lu-planner.agent";
 export { createAgent } from "./__helpers/create-agent";
 
 // Export model resolution
-export { resolveModel } from "./__helpers/resolve-model";
+export {
+  resolveModel,
+  resolveModelWithZone,
+  resolveModelWithDecision,
+} from "./__helpers/resolve-model";
+
+export type { ModelRoutingDecision } from "./__helpers/resolve-model";
 
 // Export types
 export type {

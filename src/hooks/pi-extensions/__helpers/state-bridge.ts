@@ -1,34 +1,34 @@
 /**
  * State bridge for Pi extensions.
  *
- * Provides TypeScript-native access to the Luca workflow state machine
- * via the `@alecsibilia/luca-framework/state` module. Pi extensions
- * import this helper to read/write workflow state, ensuring all state
- * mutations go through the typed state machine with proper validation.
+ * Provides TypeScript-native access to the Luca workflow state stored
+ * in .planning/state.json. Pi extensions import this helper to read/write
+ * workflow state, ensuring all state mutations go through validated paths.
  *
  * Read operations parse state.json synchronously for speed (model-routing
  * and other hot paths need synchronous access). Falls back to STATE.md
  * parsing when state.json is unavailable.
  *
- * Write operations use the persistence layer (loadPersistedActor) to
- * ensure XState validates context changes, then
- * regenerate STATE.md via the snapshot module.
+ * Write operations mutate state.json directly and defer STATE.md
+ * regeneration to the Bun-based bridge CLI
+ * (`packages/luca-framework/src/state/bridge.ts`).
+ *
+ * NOTE: This file uses node:fs (not Bun APIs) because Pi runs on Node.js.
+ * Constants are inlined from luca-constants.ts to avoid jiti resolution
+ * issues with the workspace symlink to @alecsibilia/luca-framework/state.
  *
  * Source: src/hooks/pi-extensions/__helpers/state-bridge.ts
  * Deployed to: .pi/extensions/__helpers/state-bridge.ts
  */
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+import { randomUUID } from "crypto";
 
 import {
   COMPLEXITY_LEVELS,
   SETTABLE_FIELDS as SETTABLE_FIELDS_ARRAY,
-  loadPersistedActor,
-  stateExists,
   STATE_FILE_PATH,
-  generateSnapshot,
-  getAllowedEvents,
-} from "@alecsibilia/luca-framework/state";
+} from "./luca-constants";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -255,22 +255,37 @@ export async function writeField(
     }
   }
 
-  // Check state exists (pass cwd-qualified path to avoid process.cwd() mismatch)
-  if (!(await stateExists(join(cwd, STATE_FILE_PATH)))) {
-    return { success: false, error: "state.json not found" };
-  }
-
-  // Load the persisted state file directly for field mutation
-  // (same approach as bridge.ts handleSetField — we mutate the JSON
-  // directly rather than sending XState events, because SETTABLE_FIELDS
-  // are simple context overrides, not state transitions)
+  // Load or initialize state.json
   const statePath = join(cwd, STATE_FILE_PATH);
   let stateJson: any;
-  try {
-    const stateFile = Bun.file(statePath);
-    stateJson = await stateFile.json();
-  } catch {
-    return { success: false, error: "state.json contains invalid JSON" };
+
+  if (!existsSync(statePath)) {
+    // Auto-create a minimal state.json so the first write succeeds
+    mkdirSync(dirname(statePath), { recursive: true });
+    stateJson = {
+      value: "idle",
+      context: {
+        session_id: randomUUID(),
+        complexity: "MODERATE",
+        oversight: "milestone",
+        base_branch: "main",
+        current_phase: null,
+        current_plan_ids: [],
+        started_at: null,
+        last_transition_at: null,
+      },
+    };
+  } else {
+    // Load the persisted state file directly for field mutation
+    // (same approach as bridge.ts handleSetField — we mutate the JSON
+    // directly rather than sending XState events, because SETTABLE_FIELDS
+    // are simple context overrides, not state transitions)
+    try {
+      const raw = readFileSync(statePath, "utf-8");
+      stateJson = JSON.parse(raw);
+    } catch {
+      return { success: false, error: "state.json contains invalid JSON" };
+    }
   }
 
   if (!stateJson.context) {
@@ -286,7 +301,7 @@ export async function writeField(
 
   // Write back state.json
   try {
-    await Bun.write(statePath, JSON.stringify(stateJson, null, 2));
+    writeFileSync(statePath, JSON.stringify(stateJson, null, 2), "utf-8");
   } catch (err) {
     return {
       success: false,
@@ -294,37 +309,10 @@ export async function writeField(
     };
   }
 
-  // Regenerate STATE.md from the persisted state via the snapshot module
-  try {
-    const loadResult = await loadPersistedActor(join(cwd, STATE_FILE_PATH));
-    if (loadResult.success) {
-      const snapshot = loadResult.data.getSnapshot();
-      const allowed = getAllowedEvents(snapshot);
-
-      // Read existing STATE.md for section preservation
-      let existingContent: string | undefined;
-      const mdPath = join(cwd, STATE_MD_REL);
-      try {
-        const mdFile = Bun.file(mdPath);
-        if (await mdFile.exists()) {
-          existingContent = await mdFile.text();
-        }
-      } catch {
-        /* no existing STATE.md */
-      }
-
-      const markdown = generateSnapshot({
-        state: String(snapshot.value),
-        context: snapshot.context,
-        existing_content: existingContent,
-        allowed_events: allowed,
-      });
-
-      await Bun.write(mdPath, markdown);
-    }
-  } catch {
-    // Non-fatal: state.json is already updated. STATE.md may be stale.
-  }
+  // NOTE: STATE.md regeneration is deferred to the Bun-based bridge CLI.
+  // The snapshot-sync hook will regenerate STATE.md from state.json on
+  // the next tool execution event, keeping them in sync without requiring
+  // Bun APIs or the XState persistence layer in this Node.js context.
 
   return { success: true, previous };
 }

@@ -48,6 +48,12 @@ export const initCommand = defineCommand({
       description:
         "Harness platforms, comma-separated (claude, cursor, pi). Default: claude,cursor",
     },
+    preset: {
+      type: "string",
+      description:
+        "Configuration preset (starter, standard, full). Default: standard",
+      alias: "p",
+    },
   },
   async run({ args }) {
     // Setup cleanup handler for SIGINT
@@ -96,7 +102,8 @@ export const initCommand = defineCommand({
       args.prefix ||
       args.stack ||
       args.tracker ||
-      args.harness
+      args.harness ||
+      args.preset
     ) {
       // Quick mode or explicit args
       logger.info("Using provided arguments / defaults");
@@ -106,6 +113,7 @@ export const initCommand = defineCommand({
         stack: args.stack,
         tracker: args.tracker,
         harness: args.harness,
+        preset: args.preset,
       });
     } else {
       // Interactive mode

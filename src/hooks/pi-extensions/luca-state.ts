@@ -283,7 +283,7 @@ export default function lucaState(pi: PiExtensionAPI) {
     const state = stateOverride ?? readState();
 
     if (ctx?.ui?.setFooter) {
-      ctx.ui.setFooter((_theme: any) => {
+      ctx.ui.setFooter((_tui: any, _theme: any, _footerData: any) => {
         const lines: string[] = [];
 
         // Line 1: Phase and plan
@@ -311,7 +311,13 @@ export default function lucaState(pi: PiExtensionAPI) {
           lines.push(`Active: ${activeTool}`);
         }
 
-        return lines.join("\n");
+        const content = lines;
+        return {
+          render(_width: number): string[] {
+            return content;
+          },
+          invalidate() {},
+        };
       });
     } else if (ctx?.ui?.setStatus) {
       // Fallback: single-line status for older Pi versions

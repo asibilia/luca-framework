@@ -101,7 +101,7 @@ describe("generatePiExtension", () => {
   test("uses custom hooksDir when provided", () => {
     const ext = generatePiExtension(registry, { hooksDir: "custom/hooks" });
     expect(ext).toContain("custom/hooks/");
-    expect(ext).not.toContain(".pi/hooks/");
+    expect(ext).not.toContain(".pi/hook-scripts/");
   });
 
   test("passes stdin JSON for tool_execution_end hooks", () => {

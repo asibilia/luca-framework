@@ -394,15 +394,17 @@ describe("token estimation", () => {
     }
   });
 
-  test("token estimate roughly matches content.length / 4", () => {
+  test("token estimate is in a plausible range relative to content length", () => {
     const result = parseMemoryContent(PATTERNS_SECTION);
 
     expect(result.success).toBe(true);
     if (result.success) {
       for (const entry of result.data) {
         if (entry.content.length > 0) {
-          const expected = Math.ceil(entry.content.length / 4);
-          expect(entry.token_estimate).toBe(expected);
+          // Real tokenizer produces fewer tokens than chars; heuristic uses chars/4.
+          // Token count should be positive and less than character count.
+          expect(entry.token_estimate).toBeGreaterThan(0);
+          expect(entry.token_estimate).toBeLessThan(entry.content.length);
         }
       }
     }

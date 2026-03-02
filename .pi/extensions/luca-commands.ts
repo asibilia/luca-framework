@@ -112,7 +112,11 @@ export default function lucaCommands(pi: PiExtensionAPI) {
     handler: async (_args: any, ctx: PiExtensionContext) => {
       const agents = subagentRegistry.values();
       if (agents.length === 0) {
-        notifySafe(ctx, "No subagents tracked", "info");
+        notifySafe(
+          ctx,
+          "No subagents running. The LLM can spawn background agents via luca_subagent_create.",
+          "info",
+        );
         return;
       }
 
@@ -206,7 +210,11 @@ export default function lucaCommands(pi: PiExtensionAPI) {
     handler: async (_args: any, ctx: PiExtensionContext) => {
       const agents = subagentRegistry.values();
       if (agents.length === 0) {
-        notifySafe(ctx, "No subagents tracked", "info");
+        notifySafe(
+          ctx,
+          "No subagents tracked. Ask the LLM to spawn a background subagent, or use /track for a quick status check.",
+          "info",
+        );
         return;
       }
 

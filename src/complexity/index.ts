@@ -16,6 +16,7 @@ export type {
   ComplexityConfig,
   ModelId,
   ModelTier,
+  RolePurpose,
 } from "./__schemas/complexity.schemas";
 
 // Schemas
@@ -36,6 +37,8 @@ export {
   COMPLEXITY_ORDER,
   COMPLEXITY_TIER,
   MODEL_TIER_TO_MODEL,
+  ROLE_MODEL_DEFAULTS,
+  ZONE_MODEL_ADJUSTMENTS,
   meetsThreshold,
   getTier,
 } from "./__schemas/complexity.schemas";

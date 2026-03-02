@@ -68,20 +68,92 @@ export function computeFingerprintOverlap(
 }
 
 /**
- * Compute the three convergence signals from classified error arrays.
+ * Tokenize an array of error messages into a term frequency map.
+ *
+ * Normalizes text to lowercase, strips non-alphanumeric characters,
+ * and filters single-character tokens. Returns a Map of term → count.
+ *
+ * @param messages - Array of error message strings
+ * @returns Map of term to frequency count
+ */
+function tokenize(messages: string[]): Map<string, number> {
+  const freq = new Map<string, number>();
+  for (const msg of messages) {
+    const terms = msg
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter((t) => t.length > 1);
+    for (const term of terms) {
+      freq.set(term, (freq.get(term) ?? 0) + 1);
+    }
+  }
+  return freq;
+}
+
+/**
+ * Compute semantic overlap between two sets of error messages
+ * using cosine similarity of term frequency vectors.
+ *
+ * Returns 0.0 if either set is empty or the messages are completely
+ * different. Returns 1.0 if the messages are identical in content.
+ *
+ * @param currentMessages - Error messages from current iteration
+ * @param previousMessages - Error messages from previous iteration
+ * @returns Cosine similarity coefficient (0.0 to 1.0)
+ */
+export function computeSemanticOverlap(
+  currentMessages: string[],
+  previousMessages: string[],
+): number {
+  if (currentMessages.length === 0 || previousMessages.length === 0) return 0;
+
+  const currentTf = tokenize(currentMessages);
+  const previousTf = tokenize(previousMessages);
+
+  // Build vocabulary from both sets
+  const vocab = new Set([...currentTf.keys(), ...previousTf.keys()]);
+  if (vocab.size === 0) return 0;
+
+  // Cosine similarity of TF vectors
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (const term of vocab) {
+    const a = currentTf.get(term) ?? 0;
+    const b = previousTf.get(term) ?? 0;
+    dotProduct += a * b;
+    normA += a * a;
+    normB += b * b;
+  }
+
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
+
+/**
+ * Compute convergence signals from classified error arrays.
  *
  * Excludes permanent errors from signal computation -- only active
  * (transient + correctable) errors contribute to convergence assessment.
  *
+ * Returns 3 signals by default. When `enableSemantic` is true (or the
+ * `--semantic` CLI flag is set), also computes and includes the optional
+ * `semantic_overlap` signal.
+ *
  * @param currentErrors - Classified errors from current iteration
  * @param previousErrors - Classified errors from previous iteration
  * @param artifactDelta - Number of files changed (from git diff --stat)
- * @returns The three convergence signals
+ * @param enableSemantic - Whether to compute the optional semantic_overlap signal
+ * @returns Convergence signals (3 or 4 depending on enableSemantic)
  */
 export function computeConvergenceSignals(
   currentErrors: ClassifiedError[],
   previousErrors: ClassifiedError[],
   artifactDelta: number,
+  enableSemantic: boolean = false,
 ): ConvergenceSignals {
   const currentActive = currentErrors.filter(
     (e) => e.classification !== "permanent",
@@ -90,7 +162,7 @@ export function computeConvergenceSignals(
     (e) => e.classification !== "permanent",
   );
 
-  return {
+  const signals: ConvergenceSignals = {
     error_count_delta: currentActive.length - previousActive.length,
     fingerprint_overlap: computeFingerprintOverlap(
       currentActive.map((e) => e.fingerprint),
@@ -98,21 +170,34 @@ export function computeConvergenceSignals(
     ),
     artifact_change_delta: artifactDelta,
   };
+
+  if (enableSemantic) {
+    signals.semantic_overlap = computeSemanticOverlap(
+      currentActive.map((e) => e.message),
+      previousActive.map((e) => e.message),
+    );
+  }
+
+  return signals;
 }
 
 /**
- * Assess convergence status from signals using the 2-of-3 composite rule.
+ * Assess convergence status from signals using the composite stale rule.
  *
  * A signal is considered "stale" when:
  * - error_count_delta >= 0 (no improvement or regression)
  * - fingerprint_overlap >= 0.8 (80%+ of errors are the same)
  * - artifact_change_delta === 0 (no files changed)
+ * - semantic_overlap >= 0.9 (90%+ of error content is equivalent) — when present
  *
- * If 2 of 3 signals are stale, the iteration is declared stalled.
- * If error_count_delta > 0 and any other signal is also stale, it is regressed.
- * Otherwise it is improved.
+ * With 3 signals (no semantic_overlap): 2-of-3 stale → stalled.
+ * With 4 signals (semantic_overlap present): 2-of-4 stale → stalled.
+ * The 4th signal provides additional stale detection for rewording errors.
  *
- * @param signals - The three convergence signals
+ * If error_count_delta > 0, the status is always "regressed".
+ * Otherwise, if stale threshold met, "stalled". Else "improved".
+ *
+ * @param signals - Convergence signals (3 or 4)
  * @param previousStaleCount - Number of consecutive stale iterations before this one
  * @param staleThreshold - How many consecutive stale before halting (default 2)
  * @returns Full convergence assessment with halt recommendation
@@ -127,6 +212,12 @@ export function assessConvergence(
     signals.fingerprint_overlap >= 0.8,
     signals.artifact_change_delta === 0,
   ];
+
+  // Add 4th signal when semantic_overlap is present
+  if (signals.semantic_overlap !== undefined) {
+    staleSignals.push(signals.semantic_overlap >= 0.9);
+  }
+
   const staleCount = staleSignals.filter(Boolean).length;
 
   let status: ConvergenceStatus;
@@ -158,7 +249,8 @@ export function assessConvergence(
  *     --previous='[{"fingerprint":"fp2","classification":"correctable",...}]' \
  *     --artifact-delta=3 \
  *     --previous-stale-count=0 \
- *     --stale-threshold=2
+ *     --stale-threshold=2 \
+ *     --semantic
  *
  * Outputs JSON ConvergenceResult to stdout.
  */
@@ -171,6 +263,10 @@ if (import.meta.main) {
     return arg ? arg.slice(prefix.length) : defaultValue;
   }
 
+  function hasFlag(name: string): boolean {
+    return args.includes(`--${name}`);
+  }
+
   try {
     const currentRaw = getArg("current", "[]");
     const previousRaw = getArg("previous", "[]");
@@ -180,6 +276,7 @@ if (import.meta.main) {
       10,
     );
     const staleThreshold = parseInt(getArg("stale-threshold", "2"), 10);
+    const enableSemantic = hasFlag("semantic");
 
     const currentParsed = classifiedErrorSchema
       .array()
@@ -192,6 +289,7 @@ if (import.meta.main) {
       currentParsed,
       previousParsed,
       artifactDelta,
+      enableSemantic,
     );
     const result = assessConvergence(
       signals,

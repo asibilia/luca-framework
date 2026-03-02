@@ -12,8 +12,15 @@ import type {
   BrandingConfig,
   ProjectContext,
   HarnessId,
+  PresetId,
 } from "../types";
 import { sanitizeJsonParse } from "./sanitize";
+import {
+  PRESETS,
+  VALID_PRESETS,
+  DEFAULT_PRESET,
+  getPresetDefaults,
+} from "./presets";
 
 /**
  * Run the interactive setup wizard.
@@ -127,7 +134,27 @@ export async function runWizard(
     return null;
   }
 
-  // Group 2.5: Harness selection
+  // Group 2.5: Preset selection
+  const presetOptions = VALID_PRESETS.map((id) => ({
+    value: id,
+    label: PRESETS[id].label,
+    hint: PRESETS[id].description,
+  }));
+
+  const selectedPreset = await p.select({
+    message: "Choose a configuration preset",
+    options: presetOptions,
+    initialValue: DEFAULT_PRESET,
+  });
+
+  if (p.isCancel(selectedPreset)) {
+    p.cancel("Setup cancelled.");
+    return null;
+  }
+
+  const presetDefaults = getPresetDefaults(selectedPreset as PresetId);
+
+  // Group 2.75: Harness selection (pre-filled from preset)
   const harnesses = await p.multiselect({
     message: "Which AI harness platforms do you use?",
     options: [
@@ -135,7 +162,7 @@ export async function runWizard(
       { value: "cursor", label: "Cursor IDE", hint: "(.cursor/ directory)" },
       { value: "pi", label: "Pi", hint: "(.pi/ directory)" },
     ],
-    initialValues: ["claude", "cursor"],
+    initialValues: presetDefaults.harnesses,
     required: true,
   });
 
@@ -174,6 +201,7 @@ export async function runWizard(
     stack: stack as string,
     workTracker: workTracker as "jira" | "github" | "none",
     harnesses: harnesses as HarnessId[],
+    preset: selectedPreset as PresetId,
   };
 }
 
@@ -199,6 +227,18 @@ export async function runWizard(
  * });
  * ```
  */
+/**
+ * Format branding validation errors into a human-readable string.
+ *
+ * @param errors - Record of field names to error messages
+ * @returns Semicolon-separated error string
+ */
+function formatBrandingErrors(errors: Record<string, string>): string {
+  return Object.entries(errors)
+    .map(([field, error]) => `${field}: ${error}`)
+    .join("; ");
+}
+
 export const VALID_STACKS = ["react-ts", "custom"] as const;
 export const VALID_TRACKERS = ["jira", "github", "none"] as const;
 export const VALID_HARNESSES: readonly HarnessId[] = [
@@ -216,6 +256,7 @@ export function createConfigFromArgs(args: {
   stack?: string;
   tracker?: string;
   harness?: string;
+  preset?: string;
 }): LucaConfig {
   // Validate provided branding fields before merging with defaults
   const providedBranding: Record<string, string> = {};
@@ -224,10 +265,9 @@ export function createConfigFromArgs(args: {
 
   const validation = validateBranding(providedBranding);
   if (!validation.valid) {
-    const errorMessages = Object.entries(validation.errors)
-      .map(([field, error]) => `${field}: ${error}`)
-      .join("; ");
-    throw new Error(`Invalid branding arguments: ${errorMessages}`);
+    throw new Error(
+      `Invalid branding arguments: ${formatBrandingErrors(validation.errors)}`,
+    );
   }
 
   // Validate --stack argument
@@ -250,8 +290,22 @@ export function createConfigFromArgs(args: {
     );
   }
 
+  // Validate and resolve --preset argument
+  let resolvedPreset: PresetId = DEFAULT_PRESET;
+  if (args.preset) {
+    if (!VALID_PRESETS.includes(args.preset as PresetId)) {
+      throw new Error(
+        `Invalid --preset value "${args.preset}". Valid options: ${VALID_PRESETS.join(", ")}`,
+      );
+    }
+    resolvedPreset = args.preset as PresetId;
+  }
+
+  const presetDefaults = getPresetDefaults(resolvedPreset);
+
   // Parse and validate --harness argument (comma-separated)
-  let harnesses: HarnessId[] = DEFAULT_HARNESSES;
+  // Falls back to preset defaults, then DEFAULT_HARNESSES
+  let harnesses: HarnessId[] = presetDefaults.harnesses;
   if (args.harness) {
     const parsed = args.harness.split(",").map((h) => h.trim()) as HarnessId[];
     const invalid = parsed.filter(
@@ -271,8 +325,11 @@ export function createConfigFromArgs(args: {
       commandPrefix: args.prefix,
     }),
     stack: args.stack || "custom",
-    workTracker: (args.tracker as "jira" | "github" | "none") || "none",
+    workTracker:
+      (args.tracker as "jira" | "github" | "none") ||
+      presetDefaults.workTracker,
     harnesses,
+    preset: resolvedPreset,
   };
 }
 
@@ -313,10 +370,9 @@ export async function loadConfigFromFile(
   const brandingInput = (parsed.branding || {}) as Record<string, string>;
   const validation = validateBranding(brandingInput);
   if (!validation.valid) {
-    const errorMessages = Object.entries(validation.errors)
-      .map(([field, error]) => `${field}: ${error}`)
-      .join("; ");
-    throw new Error(`Invalid branding in config file: ${errorMessages}`);
+    throw new Error(
+      `Invalid branding in config file: ${formatBrandingErrors(validation.errors)}`,
+    );
   }
 
   // Validate stack and workTracker values (same rules as createConfigFromArgs)

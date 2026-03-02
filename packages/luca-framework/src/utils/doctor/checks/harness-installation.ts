@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
 import { join } from "pathe";
 import type { CheckResult, DoctorCheck } from "../types";
 import { readManifest } from "../../manifest";
@@ -11,6 +11,18 @@ import type { HarnessId } from "../../../types";
 const HARNESS_DIRS: Record<HarnessId, string[]> = {
   claude: ["hooks", "agents", "rules", "skills"],
   cursor: ["hooks", "agents", "rules", "skills"],
+  pi: ["hooks"],
+};
+
+/**
+ * Key files expected per harness for deeper validation.
+ *
+ * These files are checked in addition to directory existence
+ * to catch partial or corrupted installations.
+ */
+const HARNESS_FILES: Record<HarnessId, string[]> = {
+  claude: ["settings.json"],
+  cursor: ["rules"],
   pi: ["hooks"],
 };
 
@@ -52,10 +64,27 @@ export const harnessInstallationCheck: DoctorCheck = {
         }
       }
 
-      if (missingDirs.length > 0) {
-        issues.push(
-          `  .${harnessId}/ missing subdirs: ${missingDirs.join(", ")}`,
-        );
+      // Check key files within the harness directory
+      const expectedFiles = HARNESS_FILES[harnessId] ?? [];
+      const missingFiles: string[] = [];
+
+      for (const file of expectedFiles) {
+        if (!existsSync(join(harnessDir, file))) {
+          missingFiles.push(file);
+        }
+      }
+
+      if (missingDirs.length > 0 || missingFiles.length > 0) {
+        if (missingDirs.length > 0) {
+          issues.push(
+            `  .${harnessId}/ missing subdirs: ${missingDirs.join(", ")}`,
+          );
+        }
+        if (missingFiles.length > 0) {
+          issues.push(
+            `  .${harnessId}/ missing files: ${missingFiles.join(", ")}`,
+          );
+        }
       } else {
         passed.push(harnessId);
       }

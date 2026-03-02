@@ -35,3 +35,43 @@ export type {
   PluginManifest,
   PluginManifestInput,
 } from "./__schemas/compilers.schemas";
+
+// Parity schemas and types (R10)
+export {
+  PARITY_ENTITY_TYPES,
+  parityEntityTypeSchema,
+  PARITY_FORMATS,
+  parityFormatSchema,
+  formatCountSchema,
+  contentParityCheckSchema,
+  parityReportSchema,
+} from "./__schemas/compilers.schemas";
+export type {
+  ParityEntityType,
+  ParityFormat,
+  FormatCount,
+  ContentParityCheck,
+  ParityReport,
+} from "./__schemas/compilers.schemas";
+
+// Parity verification functions (R10)
+export {
+  checkFormatParity,
+  checkContentParity,
+  generateParityReport,
+} from "./__helpers/parity";
+
+// Compiler plugin interface (R13)
+export type { CompilerPlugin } from "./__schemas/compilers.schemas";
+
+// Compiler plugin registry (R13)
+export {
+  registerCompilerPlugin,
+  getCompilerPlugin,
+  listCompilerPlugins,
+  listRegisteredFormats,
+  compileAgentViaRegistry,
+  compileSkillViaRegistry,
+  compileRuleViaRegistry,
+  resetCompilerPluginRegistry,
+} from "./__helpers/plugin-registry";

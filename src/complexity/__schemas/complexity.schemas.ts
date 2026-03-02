@@ -190,6 +190,73 @@ export const ComplexityConfigSchema = z.object({
 });
 export type ComplexityConfig = z.infer<typeof ComplexityConfigSchema>;
 
+/**
+ * Purpose category type for role-based model routing.
+ *
+ * Defined in the complexity domain (T0) to avoid upward dependency
+ * into agents (T2). Must be kept in sync with PurposeCategorySchema
+ * in agents/__schemas/agent.schemas.ts.
+ */
+export type RolePurpose =
+  | "researcher"
+  | "planner"
+  | "executor"
+  | "verifier"
+  | "reviewer"
+  | "synthesizer"
+  | "auditor"
+  | "general";
+
+/**
+ * Default model assignment per purpose category.
+ *
+ * Maps each agent purpose (role) to a recommended ModelId. This
+ * provides a sensible default when an agent has no explicit
+ * model_routing or model_tier, before falling back to the
+ * complexity gate default.
+ *
+ * Rationale:
+ * - researcher/planner/auditor: Deep analysis benefits from opus
+ * - executor/verifier/reviewer/synthesizer: Balanced throughput via sonnet
+ * - general: Lightweight classification via haiku
+ */
+export const ROLE_MODEL_DEFAULTS: Record<RolePurpose, ModelId> = {
+  researcher: "opus",
+  planner: "opus",
+  auditor: "opus",
+  executor: "sonnet",
+  verifier: "sonnet",
+  reviewer: "sonnet",
+  synthesizer: "sonnet",
+  general: "haiku",
+};
+
+/**
+ * Quality zone type for zone-aware model adjustments.
+ *
+ * Defined locally to avoid upward dependency into planner (T1).
+ * Must be kept in sync with QUALITY_ZONES in planner/__schemas/planner.schemas.ts.
+ */
+type ZoneLabel = "peak" | "good" | "degrading" | "stop";
+
+/**
+ * Zone-based model adjustments for quality-aware routing.
+ *
+ * When context usage enters degrading or stop zones, models are
+ * downgraded to conserve remaining context budget. In peak/good
+ * zones, no adjustment is needed (null = use resolved model as-is).
+ *
+ * Adjustment semantics:
+ * - null: No change, use the role/tier-resolved model
+ * - ModelId: Override to this model regardless of role resolution
+ */
+export const ZONE_MODEL_ADJUSTMENTS: Record<ZoneLabel, ModelId | null> = {
+  peak: null,
+  good: null,
+  degrading: "sonnet",
+  stop: "haiku",
+};
+
 /** Utility: check if a level meets or exceeds a threshold */
 export function meetsThreshold(
   level: ComplexityLevel,

@@ -1,5 +1,8 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { createContextMonitor } from "../../../src/memory/__helpers/context-monitor.ts";
+import {
+  createContextMonitor,
+  getCurrentZone,
+} from "../../../src/memory/__helpers/context-monitor.ts";
 import { join } from "node:path";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -403,5 +406,54 @@ describe("autoPersistWorking", () => {
       ).text();
       expect(workingContent).toContain(`zone: ${result.zone}`);
     }
+  });
+});
+
+// ─── estimation_method field ──────────────────────────────────────────────────
+
+describe("estimation_method", () => {
+  test("checkContextUsage includes estimation_method field", async () => {
+    const monitor = createContextMonitor({ project_dir: tempDir });
+    const usage = await monitor.checkContextUsage();
+
+    expect(usage.estimation_method).toBeDefined();
+    expect(["tiktoken", "heuristic"]).toContain(usage.estimation_method!);
+  });
+
+  test("estimation_method is tiktoken when js-tiktoken is available", async () => {
+    const monitor = createContextMonitor({ project_dir: tempDir });
+    const usage = await monitor.checkContextUsage();
+
+    // In this test environment, js-tiktoken should be available
+    expect(usage.estimation_method).toBe("tiktoken");
+  });
+});
+
+// ─── getCurrentZone ──────────────────────────────────────────────────────────
+
+describe("getCurrentZone", () => {
+  test("returns a valid QualityZone", async () => {
+    const zone = await getCurrentZone(tempDir);
+    expect(["peak", "good", "degrading", "stop"]).toContain(zone);
+  });
+
+  test("returns peak with large budget", async () => {
+    const zone = await getCurrentZone(tempDir, 100000);
+    expect(zone).toBe("peak");
+  });
+
+  test("returns stop with tiny budget", async () => {
+    const zone = await getCurrentZone(tempDir, 10);
+    expect(zone).toBe("stop");
+  });
+
+  test("handles non-existent project directory gracefully", async () => {
+    const emptyDir = await mkdtemp(join(tmpdir(), "ctx-zone-"));
+    const zone = await getCurrentZone(emptyDir);
+
+    // No files means 0 tokens, should be peak
+    expect(zone).toBe("peak");
+
+    await rm(emptyDir, { recursive: true, force: true });
   });
 });
