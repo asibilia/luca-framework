@@ -11,7 +11,6 @@
  */
 import { createActor } from "xstate";
 import type { Actor, AnyActorRef, Snapshot } from "xstate";
-import { unlinkSync } from "node:fs";
 import { workflowMachine } from "./machine";
 import type { WorkflowMachineInput } from "./machine";
 import type { Result } from "./types";
@@ -110,7 +109,11 @@ export async function loadPersistedActor(
       };
     }
 
-    const actor = createActor(workflowMachine, { snapshot } as any);
+    // Cast needed: persisted snapshot is parsed from JSON as Snapshot<unknown>,
+    // but createActor expects the machine's specific snapshot type.
+    const actor = createActor(workflowMachine, {
+      snapshot,
+    } as Parameters<typeof createActor<typeof workflowMachine>>[1]);
     actor.start();
     return { success: true, data: actor };
   } catch (err) {
@@ -146,7 +149,7 @@ export async function createFreshActor(
   overrides?: Partial<WorkflowMachineInput>,
 ): Promise<Result<Actor<typeof workflowMachine>>> {
   try {
-    let config: Record<string, any> = {};
+    let config: Record<string, unknown> = {};
 
     const configFile = Bun.file(configPath);
     if (await configFile.exists()) {
@@ -192,13 +195,10 @@ export async function clearPersistedState(
   filePath: string = STATE_FILE_PATH,
 ): Promise<Result<void>> {
   try {
-    try {
-      unlinkSync(filePath);
-    } catch (err: any) {
-      // ENOENT = file does not exist, which is fine (idempotent)
-      if (err?.code !== "ENOENT") {
-        throw err;
-      }
+    const file = Bun.file(filePath);
+    if (await file.exists()) {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(filePath);
     }
     return { success: true, data: undefined };
   } catch (err) {

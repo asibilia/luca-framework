@@ -10,7 +10,8 @@
  * @module luca-state/suspend-checkpoint
  */
 import { z } from "zod";
-import { mkdirSync, unlinkSync } from "node:fs";
+import { mkdirSync } from "node:fs";
+import { sanitizeJsonParse } from "./sanitize";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,8 @@ export async function loadSuspendCheckpoint(
     throw new Error(`No suspend checkpoint found for phase ${phaseId}`);
   }
 
-  const raw = await file.json();
+  const text = await file.text();
+  const raw = sanitizeJsonParse(text);
   return suspendCheckpointSchema.parse(raw);
 }
 
@@ -106,6 +108,7 @@ export async function clearSuspendCheckpoint(phaseId: number): Promise<void> {
   const file = Bun.file(filePath);
 
   if (await file.exists()) {
-    unlinkSync(filePath);
+    const { unlink } = await import("node:fs/promises");
+    await unlink(filePath);
   }
 }

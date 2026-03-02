@@ -2,7 +2,13 @@
 
 ## Overview
 
-**Current Milestone:** (none — v2.5.0 complete, next milestone pending)
+**Current Milestone:** Planning next
+
+---
+
+## Current Milestone
+
+_Planning next milestone_
 
 ---
 
@@ -47,7 +53,8 @@
 - **v2.3.0** — Distribution & Model Routing: 7 phases, 7 plans, 2315 tests. npm package distribution with multi-harness scaffolding, ModelTierSchema with per-agent model routing, 5-step resolve chain ([View Archive](milestones/v2.3.0-ROADMAP.md))
 - **v2.4.0** — Pi Platform Completion: 3 phases, 3 plans, 2411 tests. Runtime model routing via pi.setModel(), interactive dialogs & keyboard shortcuts, AbortSignal tool resilience, session lifecycle handling, agent role content refresh ([View Archive](milestones/v2.4.0-ROADMAP.md))
 - **v2.5.0** — Operational Intelligence & Distribution Hardening: 6 phases, 6 plans, 2694 tests. Real token accounting, context pruning, semantic convergence, role-based model routing, distribution blockers, CLI/DX foundation, observability scorecard, compiler plugin registry ([View Archive](milestones/v2.5.0-ROADMAP.md))
+- **v2.5.1** — Code Health & Test Reliability: 2 phases, 4 plans, 52 files changed. State domain type safety, 5 barrels purified, 134 context tests added, security hardening ([View Archive](milestones/v2.5.1-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-02 (v2.5.0 milestone archived)_
+_Roadmap updated: 2026-03-02 (v2.5.1 milestone archived)_

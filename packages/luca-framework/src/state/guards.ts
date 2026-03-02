@@ -15,6 +15,8 @@ import { shouldStartIteration } from "./utils/budget-utils";
 import { budgetStateSchema } from "./utils/budget-utils";
 import get from "lodash/get";
 
+import type { WorkflowContext, WorkflowEvent } from "./types";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -30,11 +32,14 @@ import get from "lodash/get";
  * @returns The field value, or undefined if not found
  */
 function getGateField(
-  context: { complexity: string; complexity_matrix: Record<string, any> },
+  context: Pick<WorkflowContext, "complexity" | "complexity_matrix">,
   field: string,
-  event?: { complexity?: string },
-): any {
-  const level = event?.complexity ?? context.complexity;
+  event?: WorkflowEvent,
+): unknown {
+  const level =
+    (event && "complexity" in event
+      ? (event as { complexity: string }).complexity
+      : undefined) ?? context.complexity;
   return get(context.complexity_matrix, `${level}.${field}`);
 }
 
@@ -60,7 +65,13 @@ export const workflowGuards = {
   // --- Complexity gating guards ---
 
   /** Research step should run (required or run for this complexity) */
-  shouldRunResearch: ({ context, event }: { context: any; event?: any }) => {
+  shouldRunResearch: ({
+    context,
+    event,
+  }: {
+    context: WorkflowContext;
+    event?: WorkflowEvent;
+  }) => {
     const activation = getGateField(context, "research", event) as
       | StepActivation
       | undefined;
@@ -68,7 +79,13 @@ export const workflowGuards = {
   },
 
   /** Discussion step should run (not skipped for this complexity) */
-  shouldRunDiscussion: ({ context, event }: { context: any; event?: any }) => {
+  shouldRunDiscussion: ({
+    context,
+    event,
+  }: {
+    context: WorkflowContext;
+    event?: WorkflowEvent;
+  }) => {
     const activation = getGateField(context, "discussion", event) as
       | StepActivation
       | undefined;
@@ -76,7 +93,13 @@ export const workflowGuards = {
   },
 
   /** UAT step should run */
-  shouldRunUAT: ({ context, event }: { context: any; event?: any }) => {
+  shouldRunUAT: ({
+    context,
+    event,
+  }: {
+    context: WorkflowContext;
+    event?: WorkflowEvent;
+  }) => {
     const activation = getGateField(context, "uat", event) as
       | StepActivation
       | undefined;
@@ -88,8 +111,8 @@ export const workflowGuards = {
     context,
     event,
   }: {
-    context: any;
-    event?: any;
+    context: WorkflowContext;
+    event?: WorkflowEvent;
   }) => {
     const capture = getGateField(context, "learningCapture", event) as
       | string
@@ -100,31 +123,37 @@ export const workflowGuards = {
   // --- Gate config guards ---
 
   /** A named gate is enabled in config.json gates section */
-  gateEnabled: ({ context }: { context: any }, params: { gate: string }) => {
+  gateEnabled: (
+    { context }: { context: WorkflowContext },
+    params: { gate: string },
+  ) => {
     return context.gates[params.gate] === true;
   },
 
   /** A named gate is disabled or absent in config.json gates section */
-  gateDisabled: ({ context }: { context: any }, params: { gate: string }) => {
+  gateDisabled: (
+    { context }: { context: WorkflowContext },
+    params: { gate: string },
+  ) => {
     return context.gates[params.gate] !== true;
   },
 
   // --- Oversight guards ---
 
   /** Current oversight level requires human approval for this transition */
-  needsHumanApproval: ({ context }: { context: any }) => {
+  needsHumanApproval: ({ context }: { context: WorkflowContext }) => {
     return context.oversight === "plan" || context.oversight === "phase";
   },
 
   /** Running in full-auto mode (no human gates) */
-  isFullAuto: ({ context }: { context: any }) => {
+  isFullAuto: ({ context }: { context: WorkflowContext }) => {
     return context.oversight === "full-auto";
   },
 
   // --- Budget / iteration guards ---
 
   /** Iteration budget allows another attempt */
-  withinBudget: ({ context }: { context: any }) => {
+  withinBudget: ({ context }: { context: WorkflowContext }) => {
     if (!context.iteration_budget) return true;
     const parsed = budgetStateSchema.safeParse(context.iteration_budget);
     if (!parsed.success) return false;
@@ -132,7 +161,7 @@ export const workflowGuards = {
   },
 
   /** Verification can be retried (attempts < max) */
-  canRetryVerification: ({ context }: { context: any }) => {
+  canRetryVerification: ({ context }: { context: WorkflowContext }) => {
     return context.verification_attempts < context.max_verification_attempts;
   },
 
@@ -140,7 +169,7 @@ export const workflowGuards = {
 
   /** Current complexity meets or exceeds a minimum threshold */
   meetsComplexityThreshold: (
-    { context }: { context: any },
+    { context }: { context: WorkflowContext },
     params: { min: ComplexityLevel },
   ) => {
     return meetsThreshold(context.complexity as ComplexityLevel, params.min);
@@ -150,14 +179,14 @@ export const workflowGuards = {
 
   /** A workflow config boolean is enabled */
   workflowConfigEnabled: (
-    { context }: { context: any },
+    { context }: { context: WorkflowContext },
     params: { key: string },
   ) => {
     return get(context.workflow_config, params.key) === true;
   },
 
   /** Autopilot has more phases to execute */
-  hasMorePhases: ({ context }: { context: any }) => {
+  hasMorePhases: ({ context }: { context: WorkflowContext }) => {
     const maxPhases = get(
       context.autopilot_config,
       "max_phases_per_session",
@@ -169,18 +198,18 @@ export const workflowGuards = {
   // --- State guards ---
 
   /** Machine has a current phase set */
-  hasCurrentPhase: ({ context }: { context: any }) => {
+  hasCurrentPhase: ({ context }: { context: WorkflowContext }) => {
     return (
       context.current_phase !== undefined && context.current_phase !== null
     );
   },
 
   /** Last phase completed successfully */
-  lastPhaseSucceeded: ({ context }: { context: any }) => {
+  lastPhaseSucceeded: ({ context }: { context: WorkflowContext }) => {
     if (!context.phase_results || context.phase_results.length === 0)
       return false;
     const last = context.phase_results[context.phase_results.length - 1];
-    return last.status === "passed";
+    return last !== undefined && last.status === "passed";
   },
 };
 

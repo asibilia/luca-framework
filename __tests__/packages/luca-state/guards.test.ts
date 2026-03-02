@@ -1,13 +1,21 @@
 import { describe, test, expect } from "bun:test";
-import { workflowGuards, guardNames } from "../../../packages/luca-framework/src/state/guards";
+import {
+  workflowGuards,
+  guardNames,
+} from "../../../packages/luca-framework/src/state/guards";
 import { DEFAULT_COMPLEXITY_MATRIX } from "../../../packages/luca-framework/src/state/defaults";
+import { initializeContext } from "../../../packages/luca-framework/src/state/types";
+import type { WorkflowContext } from "../../../packages/luca-framework/src/state/types";
 
 /**
- * Helper to build a minimal context object with a complexity matrix.
+ * Helper to build a full WorkflowContext with a complexity matrix.
+ * Uses initializeContext for defaults, then applies overrides.
  * Uses the DEFAULT_COMPLEXITY_MATRIX for realistic gating values.
  */
-function makeContext(overrides: Record<string, any> = {}) {
-  return {
+function makeContext(
+  overrides: Partial<WorkflowContext> = {},
+): WorkflowContext {
+  return initializeContext({
     complexity: "TRIVIAL",
     complexity_matrix: DEFAULT_COMPLEXITY_MATRIX,
     gates: {},
@@ -17,6 +25,22 @@ function makeContext(overrides: Record<string, any> = {}) {
     phase_results: [],
     workflow_config: {},
     autopilot_config: {},
+    ...overrides,
+  });
+}
+
+/** Helper to create a minimal phase result for testing */
+function makePhaseResult(
+  overrides: Partial<WorkflowContext["phase_results"][number]> & {
+    phase_id: number;
+  },
+): WorkflowContext["phase_results"][number] {
+  return {
+    status: "passed",
+    summary: "",
+    errors: [],
+    duration_ms: 0,
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -376,7 +400,10 @@ describe("hasMorePhases", () => {
 
   test("returns true when 2 results and max=3", () => {
     const ctx = makeContext({
-      phase_results: [{ phase_id: 1 }, { phase_id: 2 }],
+      phase_results: [
+        makePhaseResult({ phase_id: 1 }),
+        makePhaseResult({ phase_id: 2 }),
+      ],
       autopilot_config: { max_phases_per_session: 3 },
     });
     expect(workflowGuards.hasMorePhases({ context: ctx })).toBe(true);
@@ -384,7 +411,11 @@ describe("hasMorePhases", () => {
 
   test("returns false when 3 results and max=3", () => {
     const ctx = makeContext({
-      phase_results: [{ phase_id: 1 }, { phase_id: 2 }, { phase_id: 3 }],
+      phase_results: [
+        makePhaseResult({ phase_id: 1 }),
+        makePhaseResult({ phase_id: 2 }),
+        makePhaseResult({ phase_id: 3 }),
+      ],
       autopilot_config: { max_phases_per_session: 3 },
     });
     expect(workflowGuards.hasMorePhases({ context: ctx })).toBe(false);
@@ -400,7 +431,7 @@ describe("hasMorePhases", () => {
 
   test("returns false when 1 result and default max=1", () => {
     const ctx = makeContext({
-      phase_results: [{ phase_id: 1 }],
+      phase_results: [makePhaseResult({ phase_id: 1 })],
       autopilot_config: {},
     });
     expect(workflowGuards.hasMorePhases({ context: ctx })).toBe(false);
@@ -424,14 +455,14 @@ describe("hasCurrentPhase", () => {
 describe("lastPhaseSucceeded", () => {
   test("returns true when last phase status is passed", () => {
     const ctx = makeContext({
-      phase_results: [{ phase_id: 1, status: "passed" }],
+      phase_results: [makePhaseResult({ phase_id: 1, status: "passed" })],
     });
     expect(workflowGuards.lastPhaseSucceeded({ context: ctx })).toBe(true);
   });
 
   test("returns false when last phase status is failed", () => {
     const ctx = makeContext({
-      phase_results: [{ phase_id: 1, status: "failed" }],
+      phase_results: [makePhaseResult({ phase_id: 1, status: "failed" })],
     });
     expect(workflowGuards.lastPhaseSucceeded({ context: ctx })).toBe(false);
   });
