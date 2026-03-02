@@ -2,25 +2,13 @@
 
 ## Overview
 
-**Current Milestone:** v2.5.1 — Code Health & Test Reliability
+**Current Milestone:** Planning next
 
 ---
 
-## Current Milestone: v2.5.1 — Code Health & Test Reliability
+## Current Milestone
 
-**Goal:** Address repo audit findings — eliminate `any` types in state domain, extract logic from impure barrels, fix test isolation bug, and add missing context domain test coverage.
-
-### Phase 87 — Type Safety & Barrel Purity
-
-- [x] 87-A: Type state guards — replace 23+ `any` usages with proper XState types (#27)
-- [x] 87-B: Refactor 7 impure barrel files to pure re-exports (#28)
-
-### Phase 88 — Test Reliability & Coverage
-
-**Depends on:** Phase 87
-
-- [ ] 88-A: Fix validateBranding module resolution / test isolation bug (#29) ⏸ PARKED — deep Bun module cache issue
-- [x] 88-B: Add context domain test coverage — 6 source files with 0 tests (#30)
+_Planning next milestone_
 
 ---
 
@@ -65,7 +53,8 @@
 - **v2.3.0** — Distribution & Model Routing: 7 phases, 7 plans, 2315 tests. npm package distribution with multi-harness scaffolding, ModelTierSchema with per-agent model routing, 5-step resolve chain ([View Archive](milestones/v2.3.0-ROADMAP.md))
 - **v2.4.0** — Pi Platform Completion: 3 phases, 3 plans, 2411 tests. Runtime model routing via pi.setModel(), interactive dialogs & keyboard shortcuts, AbortSignal tool resilience, session lifecycle handling, agent role content refresh ([View Archive](milestones/v2.4.0-ROADMAP.md))
 - **v2.5.0** — Operational Intelligence & Distribution Hardening: 6 phases, 6 plans, 2694 tests. Real token accounting, context pruning, semantic convergence, role-based model routing, distribution blockers, CLI/DX foundation, observability scorecard, compiler plugin registry ([View Archive](milestones/v2.5.0-ROADMAP.md))
+- **v2.5.1** — Code Health & Test Reliability: 2 phases, 4 plans, 52 files changed. State domain type safety, 5 barrels purified, 134 context tests added, security hardening ([View Archive](milestones/v2.5.1-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-02 (v2.5.0 milestone archived)_
+_Roadmap updated: 2026-03-02 (v2.5.1 milestone archived)_
