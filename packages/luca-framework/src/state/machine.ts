@@ -21,10 +21,25 @@
  */
 import { setup, assign, createActor } from "xstate";
 import get from "lodash/get";
+
 import type { WorkflowContext, WorkflowEvent } from "./types";
 import { initializeContext } from "./types";
 import { workflowGuards } from "./guards";
 import { phaseActorMachine } from "./actors/phase-actor";
+
+// ─── Phase Actor Output Type ────────────────────────────────────────────────
+
+/**
+ * Output shape from the phase actor child machine.
+ *
+ * Matches the `output` defined in `phaseActorMachine.setup({ types: { output } })`.
+ * Used to type the `onDone` event in the parent workflow machine.
+ */
+interface PhaseActorOutput {
+  phase_id: number;
+  outcome: string;
+  outcome_reason: string;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,7 +64,7 @@ function getMaxFixIterations(context: WorkflowContext): number {
 
 /** Input type for creating a workflow machine actor */
 export type WorkflowMachineInput = Partial<WorkflowContext> & {
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 };
 
 // ─── Machine Definition ──────────────────────────────────────────────────────
@@ -234,29 +249,27 @@ export const workflowMachine = setup({
 
     /** Handle onDone output from the phase child actor */
     recordPhaseActorDone: assign({
-      phase_results: ({
-        context,
-        event,
-      }: {
-        context: WorkflowContext;
-        event: any;
-      }) => [
-        ...context.phase_results,
-        {
-          phase_id: event.output?.phase_id ?? context.current_phase ?? 0,
-          status:
-            event.output?.outcome === "passed"
-              ? ("passed" as const)
-              : ("failed" as const),
-          summary: event.output?.outcome_reason ?? "",
-          errors:
-            event.output?.outcome === "blocked"
-              ? [event.output.outcome_reason]
-              : [],
-          duration_ms: 0,
-          timestamp: new Date().toISOString(),
-        },
-      ],
+      phase_results: ({ context, event }) => {
+        // Cast event to access phase actor output — XState's DoneActorEvent
+        // carries `output` but the generic AssignArgs type doesn't expose it.
+        const output = (event as unknown as { output?: PhaseActorOutput })
+          .output;
+        return [
+          ...context.phase_results,
+          {
+            phase_id: output?.phase_id ?? context.current_phase ?? 0,
+            status:
+              output?.outcome === "passed"
+                ? ("passed" as const)
+                : ("failed" as const),
+            summary: output?.outcome_reason ?? "",
+            errors:
+              output?.outcome === "blocked" ? [output.outcome_reason] : [],
+            duration_ms: 0,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      },
       last_transition_at: () => new Date().toISOString(),
     }),
   },

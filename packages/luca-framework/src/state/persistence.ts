@@ -110,7 +110,11 @@ export async function loadPersistedActor(
       };
     }
 
-    const actor = createActor(workflowMachine, { snapshot } as any);
+    // Cast needed: persisted snapshot is parsed from JSON as Snapshot<unknown>,
+    // but createActor expects the machine's specific snapshot type.
+    const actor = createActor(workflowMachine, {
+      snapshot,
+    } as Parameters<typeof createActor<typeof workflowMachine>>[1]);
     actor.start();
     return { success: true, data: actor };
   } catch (err) {
@@ -146,7 +150,7 @@ export async function createFreshActor(
   overrides?: Partial<WorkflowMachineInput>,
 ): Promise<Result<Actor<typeof workflowMachine>>> {
   try {
-    let config: Record<string, any> = {};
+    let config: Record<string, unknown> = {};
 
     const configFile = Bun.file(configPath);
     if (await configFile.exists()) {
@@ -194,9 +198,13 @@ export async function clearPersistedState(
   try {
     try {
       unlinkSync(filePath);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // ENOENT = file does not exist, which is fine (idempotent)
-      if (err?.code !== "ENOENT") {
+      const isEnoent =
+        err instanceof Error &&
+        "code" in err &&
+        (err as NodeJS.ErrnoException).code === "ENOENT";
+      if (!isEnoent) {
         throw err;
       }
     }

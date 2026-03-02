@@ -150,7 +150,7 @@ async function handleSend(args: string[]): Promise<void> {
   }
 
   // Build event object from type + optional data
-  let eventObj: Record<string, any> = { type: eventType };
+  let eventObj: Record<string, unknown> = { type: eventType };
   const dataRaw = getArg(args, "data");
   if (dataRaw) {
     try {
