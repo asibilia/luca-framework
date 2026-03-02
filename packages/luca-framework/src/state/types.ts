@@ -474,11 +474,11 @@ export function initializeContext(
     ...inputFields,
     // Config-derived fields: only apply if not explicitly provided in input
     oversight:
-      input?.oversight ?? get(config, "autopilot.oversight", "milestone"),
-    gates: input?.gates ?? get(config, "gates", {}),
-    workflow_config: input?.workflow_config ?? get(config, "workflow", {}),
+      input?.oversight ?? get(config, "autopilot.oversight") ?? "milestone",
+    gates: get(config, "gates") ?? input?.gates ?? {},
+    workflow_config: get(config, "workflow") ?? input?.workflow_config ?? {},
     complexity_matrix:
-      input?.complexity_matrix ?? get(config, "complexity.matrix", {}),
-    autopilot_config: input?.autopilot_config ?? get(config, "autopilot", {}),
+      get(config, "complexity.matrix") ?? input?.complexity_matrix ?? {},
+    autopilot_config: get(config, "autopilot") ?? input?.autopilot_config ?? {},
   });
 }

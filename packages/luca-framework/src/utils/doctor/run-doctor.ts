@@ -1,5 +1,5 @@
 import { logger } from "../logger";
-import type { CheckResult, DoctorCheck } from "./types";
+import type { DoctorCheck } from "./types";
 
 export async function executeDoctor(
   options: { verbose?: boolean } = {},

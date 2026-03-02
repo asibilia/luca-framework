@@ -26,7 +26,7 @@ Priority-ordered by impurity severity:
 
 - [ ] T2: Extract doctor logic to `packages/luca-framework/src/utils/doctor/run-doctor.ts`
   - Move all orchestration, display, and exit code logic
-  - index.ts becomes `export { runDoctor } from "./run-doctor"`
+  - index.ts becomes `export { executeDoctor } from "./run-doctor"`
 
 - [ ] T3: Extract adapter factory to `packages/luca-framework/src/adapters/adapter-factory.ts`
   - Move createWorkTrackerAdapter and WorkTrackerConfig

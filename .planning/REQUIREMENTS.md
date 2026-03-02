@@ -25,12 +25,12 @@ Address repo audit findings: eliminate `any` types in state domain, extract logi
 
 **Priority:** HIGH | **Source:** Todo #28
 
-- R2.1: `src/rules/index.ts` — registry logic extracted to `__helpers/rule-registry.ts`
-- R2.2: `src/agents/index.ts` — agent registry extracted to `__helpers/agent-registry.ts`
-- R2.3: `src/skills/index.ts` — skill registry extracted to `__helpers/skill-registry.ts`
+- R2.1: `src/rules/index.ts` — registry logic extracted to `src/rules/__helpers/assemble-registry.ts`
+- R2.2: `src/agents/index.ts` — agent registry extracted to `src/agents/__helpers/build-agent-registry.ts`
+- R2.3: `src/skills/index.ts` — skill registry extracted to `src/skills/__helpers/build-skill-registry.ts`
 - R2.4: `src/harness/parsers/index.ts` — parser registry extracted to `parsers/parser-registry.ts`
-- R2.5: `src/adapters/index.ts` — adapter factory extracted to `factory.ts`
-- R2.6: `src/utils/doctor/index.ts` — doctor logic extracted to `run-checks.ts`
+- R2.5: `src/adapters/index.ts` — adapter factory extracted to `packages/luca-framework/src/adapters/adapter-factory.ts`
+- R2.6: `src/utils/doctor/index.ts` — doctor logic extracted to `packages/luca-framework/src/utils/doctor/run-doctor.ts`
 - R2.7: `src/index.ts` — CLI entry point extracted to `cli.ts` or `main.ts`
 - R2.8: All 7 barrel files contain only re-export statements after refactor
 - R2.9: All existing imports continue to resolve (no breaking changes)

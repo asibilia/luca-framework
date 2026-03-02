@@ -247,7 +247,9 @@ export const workflowMachine = setup({
             status:
               output?.outcome === "passed"
                 ? ("passed" as const)
-                : ("failed" as const),
+                : output?.outcome === "blocked"
+                  ? ("blocked" as const)
+                  : ("failed" as const),
             summary: output?.outcome_reason ?? "",
             errors:
               output?.outcome === "blocked" ? [output.outcome_reason] : [],
