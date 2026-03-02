@@ -92,7 +92,6 @@ export const workflowMachine = setup({
         return undefined;
       },
       started_at: () => new Date().toISOString(),
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Store intuition flags from preflight */
@@ -101,7 +100,6 @@ export const workflowMachine = setup({
         if (event.type === "PREFLIGHT_COMPLETE") return event.intuition_flags;
         return [];
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Set complexity level from routing */
@@ -110,7 +108,6 @@ export const workflowMachine = setup({
         if (event.type === "ROUTE_COMPLETE") return event.complexity;
         return "TRIVIAL" as const;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record phase completion result */
@@ -131,7 +128,6 @@ export const workflowMachine = setup({
         }
         return context.phase_results;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record phase failure */
@@ -156,20 +152,17 @@ export const workflowMachine = setup({
         if (event.type === "PHASE_FAILED") return event.error;
         return undefined;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Reset verification attempts counter for a new verification cycle */
     resetVerificationAttempts: assign({
       verification_attempts: () => 0,
       harness_result: () => undefined,
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Increment verification attempt counter */
     incrementVerificationAttempts: assign({
       verification_attempts: ({ context }) => context.verification_attempts + 1,
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record skip reason */
@@ -178,7 +171,6 @@ export const workflowMachine = setup({
         if (event.type === "SKIP") return event.reason;
         return undefined;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record abort reason and clear current phase */
@@ -188,7 +180,6 @@ export const workflowMachine = setup({
         return undefined;
       },
       current_phase: () => undefined,
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Reset machine context for a new session */
@@ -202,7 +193,6 @@ export const workflowMachine = setup({
       intuition_flags: () => [] as string[],
       skip_reason: () => undefined,
       last_error: () => undefined,
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record halt reason for paused state */
@@ -211,7 +201,6 @@ export const workflowMachine = setup({
         if (event.type === "VERIFY_HALTED") return event.reason;
         return undefined;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record suspend metadata when entering suspended state */
@@ -228,13 +217,11 @@ export const workflowMachine = setup({
         }
         return undefined;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Clear suspend metadata when resuming from suspended state */
     clearSuspendMetadata: assign({
       suspend_metadata: () => undefined,
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Record verification failure gaps */
@@ -244,7 +231,6 @@ export const workflowMachine = setup({
           return `Verification gaps: ${event.gaps.join(", ")}`;
         return undefined;
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
 
     /** Handle onDone output from the phase child actor */
@@ -270,7 +256,6 @@ export const workflowMachine = setup({
           },
         ];
       },
-      last_transition_at: () => new Date().toISOString(),
     }),
   },
 }).createMachine({

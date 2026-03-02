@@ -464,25 +464,21 @@ export function initializeContext(
   input?: Partial<WorkflowContext> & { config?: Record<string, unknown> },
 ): WorkflowContext {
   const config = input?.config ?? {};
-  // Internal construction — .parse() validates shape, data is computed (not external input)
+  // Internal construction — .parse() validates shape, data is computed (not external input).
+  // Spread all input fields first so callers (including tests) can override any context field,
+  // then apply config-derived defaults for fields that weren't explicitly provided.
+  const { config: _config, ...inputFields } = input ?? {};
   return workflowContextSchema.parse({
-    session_id: input?.session_id ?? crypto.randomUUID(),
-    ticket_id: input?.ticket_id,
-    github_issue: input?.github_issue,
-    branch: input?.branch,
-    base_branch: input?.base_branch ?? "main",
-    complexity: input?.complexity ?? "TRIVIAL",
+    session_id: crypto.randomUUID(),
+    started_at: new Date().toISOString(),
+    ...inputFields,
+    // Config-derived fields: only apply if not explicitly provided in input
     oversight:
       input?.oversight ?? get(config, "autopilot.oversight", "milestone"),
-    gates: get(config, "gates", input?.gates ?? {}),
-    workflow_config: get(config, "workflow", input?.workflow_config ?? {}),
-    complexity_matrix: get(
-      config,
-      "complexity.matrix",
-      input?.complexity_matrix ?? {},
-    ),
-    autopilot_config: get(config, "autopilot", input?.autopilot_config ?? {}),
-    max_verification_attempts: input?.max_verification_attempts ?? 3,
-    started_at: new Date().toISOString(),
+    gates: input?.gates ?? get(config, "gates", {}),
+    workflow_config: input?.workflow_config ?? get(config, "workflow", {}),
+    complexity_matrix:
+      input?.complexity_matrix ?? get(config, "complexity.matrix", {}),
+    autopilot_config: input?.autopilot_config ?? get(config, "autopilot", {}),
   });
 }

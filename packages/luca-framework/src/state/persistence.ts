@@ -11,7 +11,6 @@
  */
 import { createActor } from "xstate";
 import type { Actor, AnyActorRef, Snapshot } from "xstate";
-import { unlinkSync } from "node:fs";
 import { workflowMachine } from "./machine";
 import type { WorkflowMachineInput } from "./machine";
 import type { Result } from "./types";
@@ -196,17 +195,10 @@ export async function clearPersistedState(
   filePath: string = STATE_FILE_PATH,
 ): Promise<Result<void>> {
   try {
-    try {
-      unlinkSync(filePath);
-    } catch (err: unknown) {
-      // ENOENT = file does not exist, which is fine (idempotent)
-      const isEnoent =
-        err instanceof Error &&
-        "code" in err &&
-        (err as NodeJS.ErrnoException).code === "ENOENT";
-      if (!isEnoent) {
-        throw err;
-      }
+    const file = Bun.file(filePath);
+    if (await file.exists()) {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(filePath);
     }
     return { success: true, data: undefined };
   } catch (err) {

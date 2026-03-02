@@ -40,6 +40,7 @@
 import get from "lodash/get";
 import set from "lodash/set";
 import cloneDeep from "lodash/cloneDeep";
+import type { Actor } from "xstate";
 import {
   persistActor,
   loadPersistedActor,
@@ -48,8 +49,9 @@ import {
   STATE_FILE_PATH,
 } from "./persistence";
 import { workflowContextSchema, workflowEventSchema } from "./types";
+import { sanitizeJsonParse } from "./sanitize";
 import { buildTransitionRecord } from "./events";
-import { getAllowedEvents } from "./machine";
+import { getAllowedEvents, workflowMachine } from "./machine";
 import { generateSnapshot } from "./snapshot";
 import { getArg, hasFlag } from "./utils/cli-utils";
 import {
@@ -64,6 +66,39 @@ import {
 const STATE_MD_PATH = ".planning/STATE.md";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Read existing STATE.md, generate a fresh snapshot, and write it back.
+ *
+ * Centralizes the STATE.md regeneration pattern used by set-field,
+ * transition, snapshot, suspend, and resume-phase commands.
+ *
+ * @param actor - The actor whose snapshot provides state and context
+ */
+async function updateStateMd(
+  actor: Actor<typeof workflowMachine>,
+): Promise<void> {
+  const snapshot = actor.getSnapshot();
+  const allowed = getAllowedEvents(snapshot);
+
+  let existingContent: string | undefined;
+  try {
+    const mdFile = Bun.file(STATE_MD_PATH);
+    if (await mdFile.exists()) {
+      existingContent = await mdFile.text();
+    }
+  } catch {
+    // No existing STATE.md
+  }
+
+  const markdown = generateSnapshot({
+    state: String(snapshot.value),
+    context: snapshot.context,
+    existing_content: existingContent,
+    allowed_events: allowed,
+  });
+  await Bun.write(STATE_MD_PATH, markdown);
+}
 
 /**
  * Print usage information to stderr.
@@ -365,7 +400,8 @@ async function handleSetField(args: string[]): Promise<void> {
     value?: unknown;
   };
   try {
-    snapshotJson = await stateFile.json();
+    const text = await stateFile.text();
+    snapshotJson = sanitizeJsonParse(text) as typeof snapshotJson;
   } catch {
     console.error("State file contains invalid JSON");
     process.exit(2);
@@ -395,29 +431,10 @@ async function handleSetField(args: string[]): Promise<void> {
   snapshotJson.context = updatedContext;
   await Bun.write(STATE_FILE_PATH, JSON.stringify(snapshotJson, null, 2));
 
-  // Regenerate STATE.md
-  let existingContent: string | undefined;
-  try {
-    const mdFile = Bun.file(STATE_MD_PATH);
-    if (await mdFile.exists()) {
-      existingContent = await mdFile.text();
-    }
-  } catch {
-    // No existing STATE.md
-  }
-
-  // Load actor from updated state to get allowed events
+  // Regenerate STATE.md from updated state
   const loadResult = await loadPersistedActor();
   if (loadResult.success) {
-    const snapshot = loadResult.data.getSnapshot();
-    const allowed = getAllowedEvents(snapshot);
-    const markdown = generateSnapshot({
-      state: String(snapshot.value),
-      context: snapshot.context,
-      existing_content: existingContent,
-      allowed_events: allowed,
-    });
-    await Bun.write(STATE_MD_PATH, markdown);
+    await updateStateMd(loadResult.data);
   }
 
   console.log(
@@ -492,25 +509,7 @@ async function handleTransition(args: string[]): Promise<void> {
   }
 
   // Atomically update STATE.md
-  let existingContent: string | undefined;
-  try {
-    const stateFile = Bun.file(STATE_MD_PATH);
-    if (await stateFile.exists()) {
-      existingContent = await stateFile.text();
-    }
-  } catch {
-    // No existing STATE.md -- that's fine
-  }
-
-  const allowed = getAllowedEvents(nextSnapshot);
-  const markdown = generateSnapshot({
-    state: String(nextSnapshot.value),
-    context: nextSnapshot.context,
-    existing_content: existingContent,
-    allowed_events: allowed,
-  });
-
-  await Bun.write(STATE_MD_PATH, markdown);
+  await updateStateMd(actor);
 
   // Output transition record
   const { type: _type, ...eventData } = validation.data;
@@ -540,28 +539,9 @@ async function handleSnapshot(): Promise<void> {
   }
 
   const actor = result.data;
+  await updateStateMd(actor);
+
   const snapshot = actor.getSnapshot();
-  const allowed = getAllowedEvents(snapshot);
-
-  let existingContent: string | undefined;
-  try {
-    const stateFile = Bun.file(STATE_MD_PATH);
-    if (await stateFile.exists()) {
-      existingContent = await stateFile.text();
-    }
-  } catch {
-    // No existing STATE.md
-  }
-
-  const markdown = generateSnapshot({
-    state: String(snapshot.value),
-    context: snapshot.context,
-    existing_content: existingContent,
-    allowed_events: allowed,
-  });
-
-  await Bun.write(STATE_MD_PATH, markdown);
-
   console.log(
     JSON.stringify({
       snapshot_written: true,
@@ -772,24 +752,7 @@ async function handleSuspend(args: string[]): Promise<void> {
   });
 
   // Update STATE.md
-  let existingContent: string | undefined;
-  try {
-    const stateFile = Bun.file(STATE_MD_PATH);
-    if (await stateFile.exists()) {
-      existingContent = await stateFile.text();
-    }
-  } catch {
-    // No existing STATE.md
-  }
-
-  const nextAllowed = getAllowedEvents(nextSnapshot);
-  const markdown = generateSnapshot({
-    state: String(nextSnapshot.value),
-    context: nextSnapshot.context,
-    existing_content: existingContent,
-    allowed_events: nextAllowed,
-  });
-  await Bun.write(STATE_MD_PATH, markdown);
+  await updateStateMd(actor);
 
   console.log(
     JSON.stringify({
@@ -882,24 +845,7 @@ async function handleResumePhase(args: string[]): Promise<void> {
   }
 
   // Update STATE.md
-  let existingContent: string | undefined;
-  try {
-    const stateFile = Bun.file(STATE_MD_PATH);
-    if (await stateFile.exists()) {
-      existingContent = await stateFile.text();
-    }
-  } catch {
-    // No existing STATE.md
-  }
-
-  const allowed = getAllowedEvents(nextSnapshot);
-  const markdown = generateSnapshot({
-    state: String(nextSnapshot.value),
-    context: nextSnapshot.context,
-    existing_content: existingContent,
-    allowed_events: allowed,
-  });
-  await Bun.write(STATE_MD_PATH, markdown);
+  await updateStateMd(actor);
 
   // Clear checkpoint only after verified transition
   if (!keepCheckpoint) {
