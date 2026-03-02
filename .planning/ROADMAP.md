@@ -12,8 +12,8 @@
 
 ### Phase 87 — Type Safety & Barrel Purity
 
-- [ ] 87-A: Type state guards — replace 23+ `any` usages with proper XState types (#27)
-- [ ] 87-B: Refactor 7 impure barrel files to pure re-exports (#28)
+- [x] 87-A: Type state guards — replace 23+ `any` usages with proper XState types (#27)
+- [x] 87-B: Refactor 7 impure barrel files to pure re-exports (#28)
 
 ### Phase 88 — Test Reliability & Coverage
 
