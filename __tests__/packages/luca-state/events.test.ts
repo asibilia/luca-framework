@@ -5,7 +5,10 @@ import {
   isSignificantTransition,
   describeTransition,
 } from "../../../packages/luca-framework/src/state/events";
-import { transitionRecordSchema, initializeContext } from "../../../packages/luca-framework/src/state/types";
+import {
+  transitionRecordSchema,
+  initializeContext,
+} from "../../../packages/luca-framework/src/state/types";
 import type { WorkflowContext } from "../../../packages/luca-framework/src/state/types";
 
 /**
@@ -177,7 +180,9 @@ describe("extractContextSummary", () => {
       gates: { confirm_plan: true },
     });
     const summary = extractContextSummary(context);
-    expect(summary.gates).toBeUndefined();
+    expect(
+      (summary as unknown as Record<string, unknown>).gates,
+    ).toBeUndefined();
   });
 
   test("does NOT include complexity_matrix", () => {
@@ -185,7 +190,9 @@ describe("extractContextSummary", () => {
       complexity_matrix: { COMPLEX: { discussion: "run" } },
     });
     const summary = extractContextSummary(context);
-    expect(summary.complexity_matrix).toBeUndefined();
+    expect(
+      (summary as unknown as Record<string, unknown>).complexity_matrix,
+    ).toBeUndefined();
   });
 
   test("does NOT include autopilot_config", () => {
@@ -193,7 +200,9 @@ describe("extractContextSummary", () => {
       autopilot_config: { oversight: "full-auto" },
     });
     const summary = extractContextSummary(context);
-    expect(summary.autopilot_config).toBeUndefined();
+    expect(
+      (summary as unknown as Record<string, unknown>).autopilot_config,
+    ).toBeUndefined();
   });
 
   test("phases_completed reflects phase_results length", () => {

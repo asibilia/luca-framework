@@ -338,7 +338,7 @@ async function handleSetField(args: string[]): Promise<void> {
   }
 
   // Validate field is in allowlist
-  if (!SETTABLE_FIELDS.includes(fieldPath as any)) {
+  if (!(SETTABLE_FIELDS as readonly string[]).includes(fieldPath)) {
     console.error(
       `Field "${fieldPath}" is not settable via bridge. Allowed: ${SETTABLE_FIELDS.join(", ")}`,
     );
@@ -346,7 +346,7 @@ async function handleSetField(args: string[]): Promise<void> {
   }
 
   // Parse value: try JSON first, fall back to raw string
-  let value: any;
+  let value: unknown;
   try {
     value = JSON.parse(rawValue);
   } catch {
@@ -360,7 +360,10 @@ async function handleSetField(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  let snapshotJson: any;
+  let snapshotJson: Record<string, unknown> & {
+    context: Record<string, unknown>;
+    value?: unknown;
+  };
   try {
     snapshotJson = await stateFile.json();
   } catch {
@@ -446,7 +449,7 @@ async function handleTransition(args: string[]): Promise<void> {
   }
 
   // Build event object from type + optional data
-  let eventObj: Record<string, any> = { type: eventType };
+  let eventObj: Record<string, unknown> = { type: eventType };
   const dataRaw = getArg(args, "data");
   if (dataRaw) {
     try {

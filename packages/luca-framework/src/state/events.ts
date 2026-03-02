@@ -10,9 +10,34 @@
  * @module luca-state/events
  */
 import { transitionRecordSchema } from "./types";
-import type { TransitionRecord, WorkflowContext } from "./types";
+import type {
+  TransitionRecord,
+  WorkflowContext,
+  OversightLevel,
+} from "./types";
 
 // ─── Context Summary ─────────────────────────────────────────────────────────
+
+/**
+ * Minimal context summary for transition records and audit logs.
+ *
+ * Contains only the fields useful for debugging and tracking,
+ * excluding large objects like gates, complexity_matrix, and autopilot_config.
+ *
+ * Uses snake_case for all properties per API conventions.
+ */
+export interface ContextSummary {
+  session_id: string;
+  ticket_id: string | undefined;
+  complexity: string;
+  oversight: OversightLevel;
+  current_phase: number | undefined;
+  current_milestone: string | undefined;
+  verification_attempts: number;
+  phases_completed: number;
+  suspend_metadata: WorkflowContext["suspend_metadata"];
+  last_error: string | undefined;
+}
 
 /**
  * Extract a minimal context summary from the full workflow context.
@@ -31,7 +56,7 @@ import type { TransitionRecord, WorkflowContext } from "./types";
  */
 export function extractContextSummary(
   context: WorkflowContext,
-): Record<string, any> {
+): ContextSummary {
   return {
     session_id: context.session_id,
     ticket_id: context.ticket_id,
@@ -79,7 +104,7 @@ export function buildTransitionRecord(
   previousState: string,
   currentState: string,
   eventType: string,
-  eventData: Record<string, any> = {},
+  eventData: Record<string, unknown> = {},
   context: WorkflowContext,
   actionsExecuted: string[] = [],
 ): TransitionRecord {

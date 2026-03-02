@@ -7,6 +7,7 @@
  * Uses snake_case for all schema field names per API conventions.
  */
 import { z } from "zod";
+import get from "lodash/get";
 
 // ─── Result Type ────────────────────────────────────────────────────────────
 
@@ -159,9 +160,9 @@ export const workflowContextSchema = z.object({
 
   // Configuration (loaded from config.json at init)
   gates: z.record(z.string(), z.boolean()).default({}),
-  workflow_config: z.record(z.string(), z.any()).default({}),
-  complexity_matrix: z.record(z.string(), z.any()).default({}),
-  autopilot_config: z.record(z.string(), z.any()).default({}),
+  workflow_config: z.record(z.string(), z.unknown()).default({}),
+  complexity_matrix: z.record(z.string(), z.unknown()).default({}),
+  autopilot_config: z.record(z.string(), z.unknown()).default({}),
 
   // Execution tracking
   phase_results: z.array(phaseResultSchema).default([]),
@@ -428,9 +429,9 @@ export const transitionRecordSchema = z.object({
   previous_state: z.string(),
   current_state: z.string(),
   event_type: z.string(),
-  event_data: z.record(z.string(), z.any()).default({}),
+  event_data: z.record(z.string(), z.unknown()).default({}),
   actions_executed: z.array(z.string()).default([]),
-  context: z.record(z.string(), z.any()).default({}),
+  context: z.record(z.string(), z.unknown()).default({}),
   timestamp: z.string().default(""),
   session_id: z.string().default(""),
 });
@@ -460,7 +461,7 @@ export type TransitionRecord = z.infer<typeof transitionRecordSchema>;
  * ```
  */
 export function initializeContext(
-  input?: Partial<WorkflowContext> & { config?: Record<string, any> },
+  input?: Partial<WorkflowContext> & { config?: Record<string, unknown> },
 ): WorkflowContext {
   const config = input?.config ?? {};
   // Internal construction — .parse() validates shape, data is computed (not external input)
@@ -471,12 +472,16 @@ export function initializeContext(
     branch: input?.branch,
     base_branch: input?.base_branch ?? "main",
     complexity: input?.complexity ?? "TRIVIAL",
-    oversight: input?.oversight ?? config.autopilot?.oversight ?? "milestone",
-    gates: config.gates ?? input?.gates ?? {},
-    workflow_config: config.workflow ?? input?.workflow_config ?? {},
-    complexity_matrix:
-      config.complexity?.matrix ?? input?.complexity_matrix ?? {},
-    autopilot_config: config.autopilot ?? input?.autopilot_config ?? {},
+    oversight:
+      input?.oversight ?? get(config, "autopilot.oversight", "milestone"),
+    gates: get(config, "gates", input?.gates ?? {}),
+    workflow_config: get(config, "workflow", input?.workflow_config ?? {}),
+    complexity_matrix: get(
+      config,
+      "complexity.matrix",
+      input?.complexity_matrix ?? {},
+    ),
+    autopilot_config: get(config, "autopilot", input?.autopilot_config ?? {}),
     max_verification_attempts: input?.max_verification_attempts ?? 3,
     started_at: new Date().toISOString(),
   });
