@@ -1,5 +1,4 @@
 import orderBy from "lodash/orderBy";
-import filter from "lodash/filter";
 import groupBy from "lodash/groupBy";
 
 import {
