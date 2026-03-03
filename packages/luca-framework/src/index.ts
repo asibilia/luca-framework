@@ -1,33 +1,11 @@
-import { defineCommand, runMain as cittyRunMain } from "citty";
+/**
+ * Public API barrel for the Luca framework package.
+ *
+ * Re-exports only — no logic, no registries, no constants.
+ */
 
-import { LUCA_VERSION } from "./utils/manifest";
-
-const main = defineCommand({
-  meta: {
-    name: "luca",
-    version: LUCA_VERSION,
-    description:
-      "Luca CLI — scaffold and manage AI-powered development workflows",
-  },
-  subCommands: {
-    init: () => import("./commands/init").then((m) => m.initCommand),
-    update: () => import("./commands/update").then((m) => m.updateCommand),
-    status: () => import("./commands/status").then((m) => m.statusCommand),
-    doctor: () => import("./commands/doctor").then((m) => m.default),
-    "run:claude": () =>
-      import("./commands/run").then((m) => m.runClaudeCommand),
-    "run:cursor": () =>
-      import("./commands/run").then((m) => m.runCursorCommand),
-  },
-});
-
-export const runMain = () => {
-  // Non-blocking version check runs in background
-  import("./utils/version-check").then((m) => m.checkForUpdates());
-  return cittyRunMain(main);
-};
-
-export const runInit = () => import("./commands/init").then((m) => m.runInit());
+// CLI entry points
+export { runMain, runInit } from "./cli";
 
 // Re-export types for consumers
 export type {
