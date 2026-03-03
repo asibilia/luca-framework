@@ -186,8 +186,8 @@ export function buildMilestoneDebateResult(
   rebuttals: Rebuttal[],
   recommendations: UnifiedRecommendation[],
   phase: number = 0,
-): MilestoneDebateResult {
-  // Build core tribunal result
+): MilestoneDebateResult | null {
+  // Build core tribunal result (now nullable after safeParse migration)
   const tribunalResult = buildTribunalResult(
     phase,
     allFindings,
@@ -195,6 +195,13 @@ export function buildMilestoneDebateResult(
     rebuttals,
     recommendations,
   );
+
+  if (!tribunalResult) {
+    console.error(
+      `[milestone-debate] Failed to build tribunal result; cannot produce milestone debate result`,
+    );
+    return null;
+  }
 
   // Count cross-phase disagreements: disagreements where conflicting
   // findings reference files from different directories (heuristic for phases)
@@ -207,13 +214,22 @@ export function buildMilestoneDebateResult(
     disagreements,
   );
 
-  return milestoneDebateResultSchema.parse({
+  const parsed = milestoneDebateResultSchema.safeParse({
     milestone_version: milestoneVersion,
     reviewer_count: reviewerCount,
     cross_phase_disagreements: crossPhaseCount,
     tribunal_result: tribunalResult,
     consensus_summary: consensusSummary,
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[milestone-debate] Failed to parse milestone debate result: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
 
 /**
