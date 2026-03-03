@@ -1,8 +1,9 @@
 ---
 description: Enforce Zod schema-first parsing patterns over manual destructuring and default values
 globs:
-  - "**/*.{ts,tsx}"
-alwaysApply: true
+  - src/**/*.schemas.ts
+  - src/**/*.ts
+alwaysApply: false
 ---
 
 <rule>

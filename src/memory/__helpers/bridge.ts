@@ -5,38 +5,48 @@
  * and hook scripts. Wraps existing memory parsers/serializers in
  * shell-friendly commands with JSON output.
  *
- * Subcommands:
- *   read-memory          — Summary index of MEMORY.md entries (compact by default)
+ * Subcommands (JSON-first — JSON files are source of truth, MD files are views):
+ *   read-brain           — Read project brain (brain.json primary, BRAIN.md fallback)
+ *   read-memory          — Summary index of memory entries (compact by default)
  *   read-memory --tags   — Filtered full entries by tags
  *   read-memory --category — Filtered full entries by category
  *   read-memory --milestone — Milestone-scoped recall (scored by proximity + tags)
- *   read-working         — Parsed WORKING.md structure
- *   read-procedures      — Summary index of PROCEDURES.md entries
+ *   read-working         — Parsed working memory structure
+ *   read-procedures      — Summary index of procedure entries
  *   read-procedures --query — Scored procedure recall
  *   check-context        — Token usage across all memory files
  *   check-compression    — Compression recommendations
- *   append-working       — Append content to a WORKING.md section
- *   clear-working        — Reset WORKING.md to empty state
+ *   append-working       — Append content to a working memory section
+ *   clear-working        — Reset working memory to empty state
  *   update-procedure-stats — Update execution stats for a procedure
+ *   add-memory-entry     — Add a validated memory entry (JSON + MD dual-write)
+ *   snapshot-memory      — Regenerate all MD views from JSON sources
+ *   ensure-init          — Create JSON files if missing (with MD migration/generation)
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
  * Usage:
- *   bun run src/memory/bridge.ts read-memory
- *   bun run src/memory/bridge.ts read-memory --tags=coding,testing --limit=5
- *   bun run src/memory/bridge.ts read-memory --category=pattern --limit=3
- *   bun run src/memory/bridge.ts read-memory --milestone=v1.6.0 --tags=memory,recall --limit=10
- *   bun run src/memory/bridge.ts read-working
- *   bun run src/memory/bridge.ts read-procedures
- *   bun run src/memory/bridge.ts read-procedures --query="implement feature" --tags=api --limit=3
- *   bun run src/memory/bridge.ts check-context
- *   bun run src/memory/bridge.ts check-compression
- *   bun run src/memory/bridge.ts append-working --section=findings --content="Found bug in X"
- *   bun run src/memory/bridge.ts clear-working
- *   bun run src/memory/bridge.ts update-procedure-stats --id=proc-add-api --success=true
+ *   bun run src/memory/__helpers/bridge.ts read-brain
+ *   bun run src/memory/__helpers/bridge.ts read-memory
+ *   bun run src/memory/__helpers/bridge.ts read-memory --tags=coding,testing --limit=5
+ *   bun run src/memory/__helpers/bridge.ts read-memory --category=pattern --limit=3
+ *   bun run src/memory/__helpers/bridge.ts read-memory --milestone=v1.6.0 --tags=memory,recall --limit=10
+ *   bun run src/memory/__helpers/bridge.ts read-working
+ *   bun run src/memory/__helpers/bridge.ts read-procedures
+ *   bun run src/memory/__helpers/bridge.ts read-procedures --query="implement feature" --tags=api --limit=3
+ *   bun run src/memory/__helpers/bridge.ts check-context
+ *   bun run src/memory/__helpers/bridge.ts check-compression
+ *   bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="Found bug in X"
+ *   bun run src/memory/__helpers/bridge.ts clear-working
+ *   bun run src/memory/__helpers/bridge.ts update-procedure-stats --id=proc-add-api --success=true
+ *   bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Pattern","category":"pattern",...}'
+ *   bun run src/memory/__helpers/bridge.ts snapshot-memory
+ *   bun run src/memory/__helpers/bridge.ts ensure-init
  *
  * @module memory/bridge
  */
+import { z } from "zod";
+
 import { parseMemoryFile } from "./memory-parser.ts";
 import {
   parseWorkingMemory,
@@ -50,8 +60,28 @@ import { createContextMonitor } from "./context-monitor.ts";
 import { analyzeMemoryEntries } from "./compression.ts";
 import { scoreMilestoneRecall } from "./milestone-recall.ts";
 import { estimateTokens } from "./token-estimator.ts";
-import { WORKING_MEMORY_SECTIONS } from "../__schemas/memory.schemas";
+import {
+  readJsonFile,
+  writeJsonFile,
+  jsonFileExists,
+  BRAIN_JSON_PATH,
+  MEMORY_JSON_PATH,
+  WORKING_JSON_PATH,
+  PROCEDURES_JSON_PATH,
+} from "./json-persistence.ts";
+import { parseBrainFile } from "./brain-parser.ts";
+import { serializeBrain } from "./brain-serializer.ts";
+import { serializeMemoryEntries } from "./memory-serializer.ts";
+import {
+  WORKING_MEMORY_SECTIONS,
+  brainSchema,
+  memoryEntrySchema,
+  procedureEntrySchema,
+  workingMemorySchema,
+} from "../__schemas/memory.schemas";
 import { getArg } from "~/shared/__helpers/cli-utils";
+
+import type { MemoryEntry } from "../__schemas/memory.schemas";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -59,6 +89,7 @@ import { getArg } from "~/shared/__helpers/cli-utils";
 const MEMORY_PATH = ".planning/MEMORY.md";
 const WORKING_PATH = ".planning/WORKING.md";
 const PROCEDURES_PATH = ".planning/PROCEDURES.md";
+const BRAIN_PATH = ".planning/BRAIN.md";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -66,22 +97,27 @@ const PROCEDURES_PATH = ".planning/PROCEDURES.md";
  * Print usage information to stderr.
  */
 function printUsage(): void {
-  console.error(`Usage: bun run src/memory/bridge.ts <subcommand> [options]
+  console.error(`Usage: bun run src/memory/__helpers/bridge.ts <subcommand> [options]
 
 Subcommands:
-  read-memory            Summary index of MEMORY.md entries (compact)
+  read-brain             Read project brain (JSON-primary, BRAIN.md fallback)
+  read-memory            Summary index of memory entries (compact)
                          Options: --tags=t1,t2 --category=pattern --limit=N
                                   --milestone=v1.6.0 (scored recall by proximity)
-  read-working           Parsed WORKING.md structure
-  read-procedures        Summary index of PROCEDURES.md entries
+  read-working           Parsed working memory structure
+  read-procedures        Summary index of procedure entries
                          Options: --query="text" --tags=t1,t2 --limit=N
   check-context          Token usage across all memory files
-  check-compression      Compression recommendations for MEMORY.md
-  append-working         Append content to a WORKING.md section
+  check-compression      Compression recommendations for memory
+  append-working         Append content to a working memory section
                          Options: --section=name (required) --content="text" (required)
-  clear-working          Reset WORKING.md to empty state
+  clear-working          Reset working memory to empty state
   update-procedure-stats Update execution stats for a procedure
-                         Options: --id=proc-id (required) --success=true|false (required)`);
+                         Options: --id=proc-id (required) --success=true|false (required)
+  add-memory-entry       Add a new memory entry
+                         Options: --data='{"title":"...","category":"pattern",...}' (required)
+  snapshot-memory        Regenerate all MD views from JSON sources
+  ensure-init            Create JSON files if missing (with MD view generation)`);
 }
 
 // ─── Read Commands ──────────────────────────────────────────────────────────
@@ -103,10 +139,22 @@ export async function handleReadMemory(args: string[]): Promise<void> {
   const limitArg = getArg(args, "limit");
   const limit = limitArg ? parseInt(limitArg, 10) : 0;
 
-  const result = await parseMemoryFile(MEMORY_PATH);
+  // JSON-primary: try memory.json first, fall back to MEMORY.md
+  const jsonResult = await readJsonFile(
+    MEMORY_JSON_PATH,
+    z.array(memoryEntrySchema),
+  );
+  const mdResult = jsonResult.success
+    ? null
+    : await parseMemoryFile(MEMORY_PATH);
+  const memoryData: MemoryEntry[] | null = jsonResult.success
+    ? jsonResult.data
+    : mdResult?.success
+      ? mdResult.data
+      : null;
 
-  if (!result.success) {
-    // File doesn't exist or can't be parsed — graceful default
+  if (!memoryData) {
+    // No data source available — graceful default
     console.log(
       JSON.stringify({
         entries_count: 0,
@@ -125,7 +173,7 @@ export async function handleReadMemory(args: string[]): Promise<void> {
   if (milestoneArg) {
     const queryTags = tagsArg ? tagsArg.split(",").map((t) => t.trim()) : [];
 
-    let sourceEntries = result.data;
+    let sourceEntries = memoryData;
 
     // Apply tag filter before scoring (consistent with standard mode behavior)
     if (queryTags.length > 0) {
@@ -172,7 +220,7 @@ export async function handleReadMemory(args: string[]): Promise<void> {
 
   // ── Standard filter/summary mode ─────────────────────────────────────────
   const hasFilters = !!tagsArg || !!categoryArg;
-  let entries = result.data;
+  let entries = memoryData;
 
   // Apply tag filter
   if (tagsArg) {
@@ -201,12 +249,12 @@ export async function handleReadMemory(args: string[]): Promise<void> {
     const categories: Record<string, number> = {};
     let totalTokens = 0;
 
-    for (const entry of result.data) {
+    for (const entry of memoryData) {
       categories[entry.category] = (categories[entry.category] ?? 0) + 1;
       totalTokens += entry.token_estimate;
     }
 
-    const summaryEntries = (limit > 0 ? entries : result.data).map((e) => ({
+    const summaryEntries = (limit > 0 ? entries : memoryData).map((e) => ({
       id: e.id,
       title: e.title,
       category: e.category,
@@ -216,7 +264,7 @@ export async function handleReadMemory(args: string[]): Promise<void> {
 
     console.log(
       JSON.stringify({
-        entries_count: result.data.length,
+        entries_count: memoryData.length,
         categories,
         total_tokens: totalTokens,
         entries: summaryEntries,
@@ -233,10 +281,19 @@ export async function handleReadMemory(args: string[]): Promise<void> {
  */
 export async function handleReadWorking(): Promise<void> {
   try {
-    const file = Bun.file(WORKING_PATH);
-    const exists = await file.exists();
+    // JSON-primary: try working.json first
+    const jsonResult = await readJsonFile(
+      WORKING_JSON_PATH,
+      workingMemorySchema,
+    );
+    if (jsonResult.success) {
+      console.log(JSON.stringify(jsonResult.data));
+      return;
+    }
 
-    if (!exists) {
+    // Fallback: parse WORKING.md
+    const file = Bun.file(WORKING_PATH);
+    if (!(await file.exists())) {
       console.log(
         JSON.stringify({
           sections: [],
@@ -288,10 +345,22 @@ export async function handleReadProcedures(args: string[]): Promise<void> {
   const limitArg = getArg(args, "limit");
   const limit = limitArg ? parseInt(limitArg, 10) : 5;
 
-  const result = await parseProcedureFile(PROCEDURES_PATH);
+  // JSON-primary: try procedures.json first, fall back to PROCEDURES.md
+  const jsonResult = await readJsonFile(
+    PROCEDURES_JSON_PATH,
+    z.array(procedureEntrySchema),
+  );
+  const mdResult = jsonResult.success
+    ? null
+    : await parseProcedureFile(PROCEDURES_PATH);
+  const allEntries = jsonResult.success
+    ? jsonResult.data
+    : mdResult?.success
+      ? mdResult.data
+      : null;
 
-  if (!result.success) {
-    // File doesn't exist or can't be parsed — graceful default
+  if (!allEntries) {
+    // No data source available — graceful default
     console.log(
       JSON.stringify({
         active_count: 0,
@@ -301,8 +370,6 @@ export async function handleReadProcedures(args: string[]): Promise<void> {
     );
     return;
   }
-
-  const allEntries = result.data;
 
   if (queryArg) {
     // Scored recall mode
@@ -412,7 +479,7 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // Parse existing or create empty
+  // JSON-primary: load existing working memory or create empty
   let wm: {
     sections: any[];
     total_tokens: number;
@@ -425,12 +492,21 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
   };
 
   try {
-    const file = Bun.file(WORKING_PATH);
-    if (await file.exists()) {
-      const markdown = await file.text();
-      const result = parseWorkingMemory(markdown);
-      if (result.success) {
-        wm = result.data;
+    const jsonResult = await readJsonFile(
+      WORKING_JSON_PATH,
+      workingMemorySchema,
+    );
+    if (jsonResult.success) {
+      wm = jsonResult.data;
+    } else {
+      // Fallback: parse WORKING.md
+      const file = Bun.file(WORKING_PATH);
+      if (await file.exists()) {
+        const markdown = await file.text();
+        const result = parseWorkingMemory(markdown);
+        if (result.success) {
+          wm = result.data;
+        }
       }
     }
   } catch {
@@ -445,9 +521,10 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
     "append",
   );
 
-  // Write back
+  // Dual-write: JSON + MD
   const markdown = serializeWorkingMemory(updated);
   await Bun.write(WORKING_PATH, markdown);
+  await writeJsonFile(WORKING_JSON_PATH, updated);
 
   // Find the updated section for response
   const updatedSection = updated.sections.find((s) => s.name === sectionName);
@@ -479,8 +556,10 @@ export async function handleClearWorking(): Promise<void> {
     session_started_at: new Date().toISOString(),
   };
 
+  // Dual-write: JSON + MD
   const markdown = serializeWorkingMemory(cleared);
   await Bun.write(WORKING_PATH, markdown);
+  await writeJsonFile(WORKING_JSON_PATH, cleared);
 
   console.log(
     JSON.stringify({
@@ -516,9 +595,16 @@ export async function handleUpdateProcedureStats(
 
   const success = successArg === "true";
 
-  const result = await parseProcedureFile(PROCEDURES_PATH);
+  // JSON-primary: try procedures.json first, fall back to PROCEDURES.md
+  const jsonResult = await readJsonFile(
+    PROCEDURES_JSON_PATH,
+    z.array(procedureEntrySchema),
+  );
+  const result = jsonResult.success
+    ? jsonResult
+    : await parseProcedureFile(PROCEDURES_PATH);
   if (!result.success) {
-    console.error(`Failed to parse PROCEDURES.md: ${result.error}`);
+    console.error(`Failed to load procedures: ${result.error}`);
     process.exit(2);
   }
 
@@ -536,8 +622,10 @@ export async function handleUpdateProcedureStats(
   const allEntries = [...result.data];
   allEntries[entryIndex] = updated;
 
+  // Dual-write: JSON + MD
   const markdown = serializeProcedures(allEntries);
   await Bun.write(PROCEDURES_PATH, markdown);
+  await writeJsonFile(PROCEDURES_JSON_PATH, allEntries);
 
   console.log(
     JSON.stringify({
@@ -548,6 +636,241 @@ export async function handleUpdateProcedureStats(
       last_executed_at: updated.last_executed_at,
     }),
   );
+}
+
+// ─── JSON-First Commands ─────────────────────────────────────────────────────
+
+/**
+ * Read project brain (BRAIN.md / brain.json).
+ *
+ * JSON-primary: tries brain.json first, falls back to BRAIN.md parsing.
+ * Returns parsed Brain data or empty defaults.
+ */
+export async function handleReadBrain(): Promise<void> {
+  // JSON-primary: try brain.json first
+  const jsonResult = await readJsonFile(BRAIN_JSON_PATH, brainSchema);
+  if (jsonResult.success) {
+    console.log(JSON.stringify(jsonResult.data));
+    return;
+  }
+
+  // Fallback: parse BRAIN.md
+  const mdResult = await parseBrainFile(BRAIN_PATH);
+  if (mdResult.success) {
+    console.log(JSON.stringify(mdResult.data));
+    return;
+  }
+
+  // Neither exists — empty default
+  console.log(JSON.stringify(brainSchema.parse({})));
+}
+
+/**
+ * Add a new memory entry.
+ *
+ * Validates the entry against memoryEntrySchema, appends to memory.json,
+ * and regenerates MEMORY.md. Dual-write guarantee.
+ *
+ * @param args - CLI arguments (--data='{...}' required)
+ */
+export async function handleAddMemoryEntry(args: string[]): Promise<void> {
+  const dataArg = getArg(args, "data");
+  if (!dataArg) {
+    console.error("Missing --data argument (JSON string)");
+    process.exit(2);
+  }
+
+  // Parse and validate the new entry
+  let rawEntry: unknown;
+  try {
+    rawEntry = JSON.parse(dataArg);
+  } catch {
+    console.error("Invalid JSON in --data argument");
+    process.exit(2);
+  }
+
+  const entryResult = memoryEntrySchema.safeParse(rawEntry);
+  if (!entryResult.success) {
+    console.error(`Entry validation failed: ${entryResult.error.message}`);
+    process.exit(2);
+  }
+
+  const newEntry = entryResult.data;
+
+  // Load existing entries (JSON-primary, MD fallback)
+  let entries: MemoryEntry[] = [];
+  const jsonResult = await readJsonFile(
+    MEMORY_JSON_PATH,
+    z.array(memoryEntrySchema),
+  );
+  if (jsonResult.success) {
+    entries = jsonResult.data;
+  } else {
+    const mdResult = await parseMemoryFile(MEMORY_PATH);
+    if (mdResult.success) {
+      entries = mdResult.data;
+    }
+  }
+
+  // Append new entry
+  entries.push(newEntry);
+
+  // Dual-write: JSON + MD
+  await writeJsonFile(MEMORY_JSON_PATH, entries);
+  await Bun.write(MEMORY_PATH, serializeMemoryEntries(entries));
+
+  console.log(
+    JSON.stringify({
+      added: newEntry.title,
+      total_entries: entries.length,
+    }),
+  );
+}
+
+/**
+ * Regenerate all MD views from JSON sources.
+ *
+ * Useful for manual recovery or ensuring MD views are in sync.
+ */
+export async function handleSnapshotMemory(): Promise<void> {
+  const results: Record<string, string> = {};
+
+  // Brain: JSON → MD
+  const brainResult = await readJsonFile(BRAIN_JSON_PATH, brainSchema);
+  if (brainResult.success) {
+    await Bun.write(BRAIN_PATH, serializeBrain(brainResult.data));
+    results.brain = "regenerated";
+  } else {
+    results.brain = "skipped (no brain.json)";
+  }
+
+  // Memory: JSON → MD
+  const memResult = await readJsonFile(
+    MEMORY_JSON_PATH,
+    z.array(memoryEntrySchema),
+  );
+  if (memResult.success) {
+    await Bun.write(MEMORY_PATH, serializeMemoryEntries(memResult.data));
+    results.memory = "regenerated";
+  } else {
+    results.memory = "skipped (no memory.json)";
+  }
+
+  // Working: JSON → MD
+  const workingResult = await readJsonFile(
+    WORKING_JSON_PATH,
+    workingMemorySchema,
+  );
+  if (workingResult.success) {
+    await Bun.write(WORKING_PATH, serializeWorkingMemory(workingResult.data));
+    results.working = "regenerated";
+  } else {
+    results.working = "skipped (no working.json)";
+  }
+
+  // Procedures: JSON → MD
+  const procResult = await readJsonFile(
+    PROCEDURES_JSON_PATH,
+    z.array(procedureEntrySchema),
+  );
+  if (procResult.success) {
+    await Bun.write(PROCEDURES_PATH, serializeProcedures(procResult.data));
+    results.procedures = "regenerated";
+  } else {
+    results.procedures = "skipped (no procedures.json)";
+  }
+
+  console.log(JSON.stringify({ snapshot: results }));
+}
+
+/**
+ * Initialize JSON files if missing, with MD view generation.
+ *
+ * For each memory file (brain, memory, working, procedures):
+ * - If JSON exists, skip
+ * - If MD exists but not JSON, migrate MD → JSON
+ * - If neither exists, create empty JSON + MD
+ */
+export async function handleEnsureInit(): Promise<void> {
+  const results: Record<string, string> = {};
+
+  // Brain
+  if (!(await jsonFileExists(BRAIN_JSON_PATH))) {
+    const mdResult = await parseBrainFile(BRAIN_PATH);
+    if (mdResult.success) {
+      await writeJsonFile(BRAIN_JSON_PATH, mdResult.data);
+      results.brain = "migrated from BRAIN.md";
+    } else {
+      const empty = brainSchema.parse({});
+      await writeJsonFile(BRAIN_JSON_PATH, empty);
+      await Bun.write(BRAIN_PATH, serializeBrain(empty));
+      results.brain = "created empty";
+    }
+  } else {
+    results.brain = "exists";
+  }
+
+  // Memory
+  if (!(await jsonFileExists(MEMORY_JSON_PATH))) {
+    const mdResult = await parseMemoryFile(MEMORY_PATH);
+    if (mdResult.success) {
+      await writeJsonFile(MEMORY_JSON_PATH, mdResult.data);
+      results.memory = "migrated from MEMORY.md";
+    } else {
+      await writeJsonFile(MEMORY_JSON_PATH, []);
+      await Bun.write(MEMORY_PATH, serializeMemoryEntries([]));
+      results.memory = "created empty";
+    }
+  } else {
+    results.memory = "exists";
+  }
+
+  // Working
+  if (!(await jsonFileExists(WORKING_JSON_PATH))) {
+    const file = Bun.file(WORKING_PATH);
+    if (await file.exists()) {
+      const md = await file.text();
+      const parsed = parseWorkingMemory(md);
+      if (parsed.success) {
+        await writeJsonFile(WORKING_JSON_PATH, parsed.data);
+        results.working = "migrated from WORKING.md";
+      } else {
+        const empty = {
+          sections: [],
+          total_tokens: 0,
+          status: "cleared" as const,
+        };
+        await writeJsonFile(WORKING_JSON_PATH, empty);
+        results.working = "created empty";
+      }
+    } else {
+      const empty = {
+        sections: [],
+        total_tokens: 0,
+        status: "cleared" as const,
+      };
+      await writeJsonFile(WORKING_JSON_PATH, empty);
+      results.working = "created empty";
+    }
+  } else {
+    results.working = "exists";
+  }
+
+  // Procedures
+  if (!(await jsonFileExists(PROCEDURES_JSON_PATH))) {
+    const procResult = await parseProcedureFile(PROCEDURES_PATH);
+    if (procResult.success) {
+      await writeJsonFile(PROCEDURES_JSON_PATH, procResult.data);
+      results.procedures = "migrated from PROCEDURES.md";
+    } else {
+      await writeJsonFile(PROCEDURES_JSON_PATH, []);
+      results.procedures = "created empty";
+    }
+  } else {
+    results.procedures = "exists";
+  }
+
+  console.log(JSON.stringify({ initialized: true, files: results }));
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────────────
@@ -581,6 +904,18 @@ if (import.meta.main) {
         break;
       case "update-procedure-stats":
         await handleUpdateProcedureStats(args);
+        break;
+      case "read-brain":
+        await handleReadBrain();
+        break;
+      case "add-memory-entry":
+        await handleAddMemoryEntry(args);
+        break;
+      case "snapshot-memory":
+        await handleSnapshotMemory();
+        break;
+      case "ensure-init":
+        await handleEnsureInit();
         break;
       default:
         printUsage();

@@ -1,3 +1,13 @@
+---
+description: Standards for import statements and module organization
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+alwaysApply: true
+---
+
 # Standards for import statements and module organization
 
 ## rule

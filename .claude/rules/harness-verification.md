@@ -1,3 +1,12 @@
+---
+description: "Harness/Hook verification boundary: when full harness runs vs lightweight hooks"
+globs:
+  - "*.ts"
+  - "*.sh"
+  - .planning/config.json
+alwaysApply: true
+---
+
 # Harness/Hook verification boundary: when full harness runs vs lightweight hooks
 
 ## rule

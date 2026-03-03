@@ -6,8 +6,8 @@ import { ruleRegistry } from "../../../src/rules/index";
  *
  * With default config (opinionated_guidelines: true, tech_stack_profiles: ["typescript"]):
  * - 13 general rules (12 general + 1 lu-workflow)
- * - 8 typescript profile rules
- * - Total: 21 rules
+ * - 7 typescript profile rules (use-bun merged into bun-preference)
+ * - Total: 20 rules
  */
 
 // Known general rule names (always present regardless of profile config)
@@ -36,12 +36,11 @@ const TYPESCRIPT_RULE_NAMES = [
   "lodash-preference",
   "no-classes",
   "schema-first-parsing",
-  "use-bun-instead-of-node-vite-npm-pnpm",
 ];
 
 describe("ruleRegistry with default config", () => {
-  test("produces correct total rule count (21)", () => {
-    expect(Object.keys(ruleRegistry)).toHaveLength(21);
+  test("produces correct total rule count (20)", () => {
+    expect(Object.keys(ruleRegistry)).toHaveLength(20);
   });
 
   test("general rules are always present", () => {

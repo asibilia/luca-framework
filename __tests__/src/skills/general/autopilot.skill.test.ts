@@ -116,8 +116,8 @@ describe("autopilotSkill - content verification", () => {
     expect(output).toContain("WSJF");
   });
 
-  test("contains phase execution loop", () => {
-    expect(output).toContain("Phase Execution Loop");
+  test("contains level-based execution loop", () => {
+    expect(output).toContain("Level-Based Execution Loop");
     expect(output).toContain("Dependency Check");
     expect(output).toContain("Complexity Classification");
   });

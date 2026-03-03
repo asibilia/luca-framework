@@ -11,13 +11,15 @@ import { importStandardsRule } from "./import-standards.rule";
 import { lodashPreferenceRule } from "./lodash-preference.rule";
 import { noClassesRule } from "./no-classes.rule";
 import { schemaFirstParsingRule } from "./schema-first-parsing.rule";
-import { useBunRule } from "./use-bun-instead-of-node-vite-npm-pnpm.rule";
 
 import type { TechStackProfile } from "~/rules/__schemas/profile.schemas";
 
 /**
- * TypeScript profile containing 8 opinionated rules for
+ * TypeScript profile containing 7 opinionated rules for
  * TypeScript/JavaScript development conventions.
+ *
+ * Note: use-bun-instead-of-node-vite-npm-pnpm was merged into bun-preference
+ * (Phase 90-A context intelligence).
  */
 export const typescriptProfile: TechStackProfile = {
   name: "typescript",
@@ -30,6 +32,5 @@ export const typescriptProfile: TechStackProfile = {
     "lodash-preference": () => lodashPreferenceRule,
     "no-classes": () => noClassesRule,
     "schema-first-parsing": () => schemaFirstParsingRule,
-    "use-bun-instead-of-node-vite-npm-pnpm": () => useBunRule,
   },
 };

@@ -49,3 +49,9 @@ export {
   DEFAULT_COMPLEXITY_MATRIX,
   DEFAULT_COMPLEXITY_CONFIG,
 } from "./__helpers/defaults";
+
+// Complexity gating
+export {
+  DEBATE_QUALIFYING_COMPLEXITIES,
+  isDebateComplexity,
+} from "./__helpers/complexity-gate";

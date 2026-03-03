@@ -1,20 +1,15 @@
-# Project Brain
+# Project Project Brain
 
-> This file captures the project's identity, conventions, and personality. It's loaded at session start to provide cognitive context.
+> Auto-generated from brain.json. Do not edit directly — use the memory bridge.
 
-## Identity
+## Project Identity
 
-- **Project**: Luca Framework
-- **Domain**: Developer tooling / AI-assisted development
-- **Purpose**: Package the Luca workflow system into a distributable agent framework that any team can install and customize
-- **Vision**: Become the standard way teams adopt structured AI-assisted development workflows
 
 ## Stack
 
 - **Language**: TypeScript (CLI installer), Markdown (agents, skills, workflows)
 - **Framework**: Cursor IDE agent framework (MCP integration)
-- **Database**: File-based (.planning/ artifacts, JSON config)
-- **Key Dependencies**: Node.js 18+, Cursor IDE, Git, GitHub CLI (optional)
+- **Testing**: bun:test
 
 ## Architecture
 
@@ -44,57 +39,6 @@
   - Git integration (Jira → GitHub Issue → Branch → PR)
   - Iteration engine (src/iteration/ — budget, classifier, convergence, checkpoint)
 
-## Conventions
-
-### Code Style
-
-- TypeScript with strict mode
-- Functional patterns (no classes) — see `no-classes.mdc`
-- Single object argument with destructuring for functions
-- Zod schemas for all data parsing — see `schema-first-parsing.mdc`
-- Lodash over native array methods
-
-### File Naming
-
-- `kebab-case.ts` for all files — see `file-naming.mdc`
-- `UPPERCASE.md` for planning artifacts (BRAIN, MEMORY, WORKING, STATE)
-- `lu-*.md` prefix for framework agents
-
-### Commit Format
-
-- Conventional commits: `type(scope): description`
-- Types: feat, fix, docs, refactor, test, chore
-- Scope: cli, agents, skills, workflows, config
-
-### Testing
-
-- Verification-based (lu-verifier agent)
-- EXISTS → SUBSTANTIVE → WIRED verification levels
-- Learning capture after verification
-
-## Personality
-
-### Communication Style
-
-- Concise, direct, no filler
-- Technical accuracy over validation
-- Show progress with visual banners
-- Use structured output (tables, code blocks)
-
-### Development Preferences
-
-- Ship fast, learn, iterate
-- Plans are prompts (PLAN.md IS the prompt)
-- Stop before quality degrades (50% context limit)
-- Always verify, always capture learnings
-
-## Team Context
-
-- **Team Size**: Solo developer + AI
-- **Workflow**: Unified `/lu` entry point → routing → execution → verification → learning
-- **Review Process**: Configurable approval gates (plans, destructive, external)
-
 ---
 
-_Last updated: 2026-02-11_
-_Updated by: drift-prevention (Phase 17)_
+_Last updated: 2026-03-03T15:27:29.000Z_

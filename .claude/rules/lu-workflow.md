@@ -1,3 +1,10 @@
+---
+description: Luca workflow system for spec-driven development with cognitive memory
+globs:
+  - .planning/**/*
+alwaysApply: false
+---
+
 # Luca workflow system for spec-driven development with cognitive memory
 
 ## main

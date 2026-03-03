@@ -1,3 +1,10 @@
+---
+description: Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
 # Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
 
 ## rule

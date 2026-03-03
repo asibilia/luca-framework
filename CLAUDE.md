@@ -35,6 +35,7 @@ test("hello world", () => {
   - Build packages: `bun run build`
   - Build full pipeline (agents/skills/rules/hooks/plugin): `bun run build:all`
   - Drift check (built outputs vs source): `bun run check:drift`
+- **CRITICAL — Generated files**: `.claude/`, `.cursor/`, `.pi/` directories contain generated output. **Never edit files in these directories directly** — always edit the source in `src/` and run `bun run build:all`. Use `bun run check:drift` to verify.
 - **High-leverage gotchas**:
   - Some tests in `__tests__/scripts/` expect `bun run build:all` to have been run first because they validate artifacts under `dist/plugin/`.
   - ~29 tests in `packages/luca-framework` fail when run as part of the full suite due to a pre-existing module resolution issue; they **pass when run individually** (e.g. `bun test __tests__/packages/luca-framework/`).

@@ -1,3 +1,10 @@
+---
+description: "Module boundary: import direction rules and entity isolation"
+globs:
+  - src/**/*.ts
+alwaysApply: true
+---
+
 # Module boundary: import direction rules and entity isolation
 
 ## rule
@@ -81,8 +88,10 @@ The following cross-tier imports are known and accepted:
 
 | Source | Target | Reason |
 |--------|--------|--------|
-| `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas |
-| `harness/parsers/index.ts` | `~/harness/__schemas/harness.schemas` | Parser registry needs OutputParser type from own schemas |
+| `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas (T0 -> T2) |
+
+**Removed exceptions (resolved):**
+- `harness/parsers/parser-registry.ts` -> `~/harness/__schemas/harness.schemas` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
 
 New exceptions must be documented here and in this rule file before being committed.
 

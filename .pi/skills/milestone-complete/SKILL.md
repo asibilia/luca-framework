@@ -40,7 +40,7 @@ Before archiving, ensure all session learnings are captured:
 
    ```bash
    # Primary: Read working memory from memory bridge
-   bun run src/memory/bridge.ts read-working 2>/dev/null || cat .planning/WORKING.md 2>/dev/null
+   bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || cat .planning/WORKING.md 2>/dev/null
    ```
 
 2. **Invoke lu-learner** if candidate learnings exist
@@ -71,7 +71,7 @@ After archiving:
 
 ```bash
 # Primary: Clear WORKING.md via memory bridge
-bun run src/memory/bridge.ts clear-working 2>/dev/null || true
+bun run src/memory/__helpers/bridge.ts clear-working 2>/dev/null || true
 # Fallback: Reset from template
 cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
 ```

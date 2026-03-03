@@ -1,3 +1,5 @@
+import { getArg } from "~/shared/__helpers/cli-utils";
+
 import type { IterationRecord, LoopType } from "../__schemas/iteration.schemas";
 import { iterationRecordSchema } from "../__schemas/iteration.schemas";
 
@@ -292,16 +294,10 @@ if (import.meta.main) {
   const subcommand = Bun.argv[2];
   const args = Bun.argv.slice(3);
 
-  function getArg(name: string, defaultValue: string = ""): string {
-    const prefix = `--${name}=`;
-    const arg = args.find((a) => a.startsWith(prefix));
-    return arg ? arg.slice(prefix.length) : defaultValue;
-  }
-
   async function run() {
     switch (subcommand) {
       case "create": {
-        const recordRaw = getArg("record");
+        const recordRaw = getArg(args, "record");
         if (!recordRaw) {
           console.error("Missing --record argument");
           process.exit(2);
@@ -313,7 +309,7 @@ if (import.meta.main) {
         break;
       }
       case "rollback": {
-        const tag = getArg("tag");
+        const tag = getArg(args, "tag");
         if (!tag) {
           console.error("Missing --tag argument");
           process.exit(2);
@@ -324,7 +320,7 @@ if (import.meta.main) {
         break;
       }
       case "read": {
-        const tag = getArg("tag");
+        const tag = getArg(args, "tag");
         if (!tag) {
           console.error("Missing --tag argument");
           process.exit(2);
@@ -335,7 +331,7 @@ if (import.meta.main) {
         break;
       }
       case "prune": {
-        const phase = parseInt(getArg("phase", "0"), 10);
+        const phase = parseInt(getArg(args, "phase", "0"), 10);
         if (!phase) {
           console.error("Missing --phase argument");
           process.exit(2);
@@ -346,7 +342,7 @@ if (import.meta.main) {
         break;
       }
       case "artifact-delta": {
-        const fromRef = getArg("from-ref") || undefined;
+        const fromRef = getArg(args, "from-ref") || undefined;
         const delta = await getArtifactDelta(fromRef);
         console.log(JSON.stringify({ artifact_delta: delta }));
         process.exit(0);

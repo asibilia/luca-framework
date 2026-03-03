@@ -8,7 +8,13 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v2.4.0 — Shipped)
+## Current State (v2.6.2 — Shipped)
+
+**Last Shipped:** v2.6.2 — Convention & DRY Cleanup (2026-03-03)
+
+Closed convention gaps and tech debt from v2.6.1 audit. Fixed barrel import violations, aligned conventions (lodash orderBy, safeParse, sanitizeForTemplate hardening, node:crypto prefix). Extracted 4 DRY helpers: countResolutions(), safeParseOrThrow(), diagnostic prompt factory, lodash groupBy migration. 3150 tests (3150 pass, 0 fail), 85 files changed.
+
+## Previous State (v2.4.0)
 
 **Last Shipped:** v2.4.0 — Pi Platform Completion (2026-03-01)
 

@@ -47,7 +47,18 @@
   "hooks": {
     "enabled": true,
     "formatter": "bunx --bun prettier --write",
-    "formatterExtensions": [".ts", ".tsx", ".js", ".jsx", ".css", ".json", ".md", ".yaml", ".yml", ".html"],
+    "formatterExtensions": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".css",
+      ".json",
+      ".md",
+      ".yaml",
+      ".yml",
+      ".html"
+    ],
     "typeChecker": "bunx --bun tsc --noEmit",
     "typeCheckExtensions": [".ts", ".tsx"],
     "preCommitChecks": ["bun test", "bunx --bun tsc --noEmit"],
@@ -63,10 +74,34 @@
     "maxFixIterations": 3,
     "failFast": false,
     "checks": [
-      { "name": "test", "command": "bun test", "enabled": true, "timeout": 120, "parser": "bun-test" },
-      { "name": "typecheck", "command": "bunx --bun tsc --noEmit", "enabled": true, "timeout": 60, "parser": "tsc" },
-      { "name": "lint", "command": "bunx --bun eslint . --format json", "enabled": false, "timeout": 60, "parser": "eslint" },
-      { "name": "build", "command": "bun run build:all", "enabled": false, "timeout": 120, "parser": "generic" }
+      {
+        "name": "test",
+        "command": "bun test",
+        "enabled": true,
+        "timeout": 120,
+        "parser": "bun-test"
+      },
+      {
+        "name": "typecheck",
+        "command": "bunx --bun tsc --noEmit",
+        "enabled": true,
+        "timeout": 60,
+        "parser": "tsc"
+      },
+      {
+        "name": "lint",
+        "command": "bunx --bun eslint . --format json",
+        "enabled": false,
+        "timeout": 60,
+        "parser": "eslint"
+      },
+      {
+        "name": "build",
+        "command": "bun run build:all",
+        "enabled": false,
+        "timeout": 120,
+        "parser": "generic"
+      }
     ]
   },
   "complexity": {
@@ -99,7 +134,7 @@
         "research": "optional",
         "discussion": "optional",
         "planVerificationIterations": 1,
-        "harnessFixIterations": 3,
+        "harnessFixIterations": 2,
         "verificationMode": "standard",
         "codeReviewAgents": ["dx-advocate", "code-simplifier"],
         "uat": "optional",
@@ -110,9 +145,14 @@
         "research": "required",
         "discussion": "run",
         "planVerificationIterations": 2,
-        "harnessFixIterations": 3,
+        "harnessFixIterations": 2,
         "verificationMode": "full",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier", "code-architect", "tailwind-auditor"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier",
+          "code-architect",
+          "tailwind-auditor"
+        ],
         "uat": "required",
         "learningCapture": "full"
       },
@@ -121,9 +161,15 @@
         "research": "required",
         "discussion": "required",
         "planVerificationIterations": 3,
-        "harnessFixIterations": 5,
+        "harnessFixIterations": 3,
         "verificationMode": "full+human",
-        "codeReviewAgents": ["dx-advocate", "code-simplifier", "code-architect", "tailwind-auditor", "security-auditor"],
+        "codeReviewAgents": [
+          "dx-advocate",
+          "code-simplifier",
+          "code-architect",
+          "tailwind-auditor",
+          "security-auditor"
+        ],
         "uat": "required+thorough",
         "learningCapture": "full+debrief"
       }

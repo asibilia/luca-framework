@@ -251,10 +251,10 @@ if [ "$EFFECTIVE_TIER" = "T1" ]; then LIMIT=5; elif [ "$EFFECTIVE_TIER" = "T2" ]
 
 if [ -n "$CURRENT_MILESTONE" ]; then
   # Milestone-scoped recall: scored by proximity + tag relevance
-  MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --milestone="$CURRENT_MILESTONE" --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
+  MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --milestone="$CURRENT_MILESTONE" --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
 else
   # Fallback: standard tag-based recall without milestone scoring
-  MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
+  MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
 fi
 ```
 

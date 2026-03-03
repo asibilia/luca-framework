@@ -1,5 +1,5 @@
 /**
- * Generic rule description
+ * Use lodash functions over built-in JavaScript equivalents for consistency and safety
  */
 import { createRule } from "~/rules/__helpers/create-rule";
 import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
@@ -7,7 +7,9 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 // Define the lodash-preference rule configuration
 const lodashPreferenceConfig: RuleConfig = {
   frontmatter: {
-    description: `Generic rule description`,
+    description: `Use lodash functions over built-in JavaScript equivalents for consistency and safety`,
+    globs: ["src/**/*.ts", "packages/**/*.ts"],
+    alwaysApply: false,
   },
   sections: [
     {

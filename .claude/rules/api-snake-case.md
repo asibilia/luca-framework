@@ -1,3 +1,11 @@
+---
+description: API payloads must use snake_case for consistency with backend conventions
+globs:
+  - src/**/*.schemas.ts
+  - "**/*.schemas.ts"
+alwaysApply: false
+---
+
 # API payloads must use snake_case for consistency with backend conventions
 
 ## rule

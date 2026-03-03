@@ -345,6 +345,59 @@ Collect results from all reviewer agents:
 | 3   | "Nice work!" | General  | Acknowledgment only |
 \`\`\`
 
+### Step 4.5: Split Verdict Debate (Conditional)
+
+**Gate check:** Skip this step if no split verdicts are detected (all comments have a clear majority). This step adds ~30-40k tokens per split verdict.
+
+After aggregating validator results from Step 4, check for split verdicts — comments where validators produced a tie (e.g., 3-3) or narrow majority (e.g., 3-2). Use the \`detectVerdictSplits()\` helper from \`src/skills/__helpers/pr-verdict-debate.ts\` to identify splits.
+
+For each comment where validators produced a split verdict:
+
+**Step 4.5.1: Dissenter Argument**
+
+Spawn a sub-agent using the dissenting validator type to articulate the strongest dissent. Use the \`buildDissenterPrompt()\` helper to generate the prompt:
+
+\`\`\`python
+Task(
+  prompt="""{dissenter_prompt_from_buildDissenterPrompt}""",
+  subagent_type="{dissenting_agent_type}",
+  description="Dissent: comment #{comment_id}"
+)
+\`\`\`
+
+**Step 4.5.2: Majority Response**
+
+After the dissenter returns, spawn a sub-agent using the majority validator type to respond. Use the \`buildMajorityResponsePrompt()\` helper:
+
+\`\`\`python
+Task(
+  prompt="""{majority_response_prompt_from_buildMajorityResponsePrompt}""",
+  subagent_type="{majority_agent_type}",
+  description="Respond: comment #{comment_id}"
+)
+\`\`\`
+
+**Step 4.5.3: Present Both Perspectives**
+
+Use \`buildSplitVerdictResult()\` and \`formatSplitVerdictForPR()\` to build and display the result:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca >>> SPLIT VERDICT: Comment #{comment_id}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Split: {split_ratio}
+Majority: {position} ({count} validators)
+Dissent: {position} ({count} validators)
+
+Recommendation: {fix | disagree | defer_to_human}
+Confidence: {confidence}
+
+Both Perspectives: {both_perspectives_summary}
+\`\`\`
+
+Update the "Disputed Concerns" table from Step 4 to include split verdict debate information when it ran. For split verdicts resolved as "defer_to_human", these will be surfaced in Step 9's summary.
+
 ### Step 5: Create Fix Plan
 
 **MANDATORY**: You MUST spawn a lu-planner sub-agent to create fix plans. Do NOT plan fixes yourself.
@@ -557,6 +610,16 @@ gh pr comment \${PR_NUMBER} --body "$(cat <<'EOF'
 |---------|----------|
 | \${COMMENT_2} | Respectfully disagree because... |
 
+### Contested Comments (Human Review Requested)
+
+If any split verdicts from Step 4.5 were resolved as "defer_to_human", include them here:
+
+| Comment | Split | Majority | Dissent | Recommendation |
+|---------|-------|----------|---------|----------------|
+| #{id}   | 3-3   | Valid    | Invalid | Defer to human |
+
+(Omit this section if no split verdicts were deferred to human.)
+
 ### No Action Needed
 - \${INFO_COMMENT_1}
 
@@ -623,7 +686,7 @@ Wait or provide GITHUB_TOKEN with higher limits.
 \`\`\`
 
 **Validation disagreement:**
-If reviewer agents disagree, escalate to user with both perspectives.
+When reviewer agents disagree (split verdict), Step 4.5 triggers an automated debate round where the dissenting side articulates their argument and the majority responds. Both perspectives are presented with agent attribution. If the debate cannot resolve the disagreement, it escalates to the user as "defer_to_human" in the PR summary.
 
 ## Integration with /lu
 

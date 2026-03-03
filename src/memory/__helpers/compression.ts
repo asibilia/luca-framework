@@ -1,3 +1,5 @@
+import groupBy from "lodash/groupBy";
+
 import type {
   MemoryEntry,
   CompressionRecommendation,
@@ -97,7 +99,7 @@ export function analyzeMemoryEntries(
 
   // Track which entries have already been marked as duplicate targets
   const duplicateTargets = new Set<string>();
-  for (const [, ids] of duplicateMap) {
+  for (const ids of Object.values(duplicateMap)) {
     if (ids.length > 1) {
       // First occurrence is the "original", rest are duplicates
       for (let i = 1; i < ids.length; i++) {
@@ -112,7 +114,7 @@ export function analyzeMemoryEntries(
     // Check if this entry is a duplicate (not the first occurrence)
     if (duplicateTargets.has(entry.id)) {
       const normalizedTitle = normalizeTitle(entry.title);
-      const groupIds = duplicateMap.get(normalizedTitle) ?? [];
+      const groupIds = duplicateMap[normalizedTitle] ?? [];
       const originalId = groupIds[0] ?? entry.id;
 
       recommendations.push({
@@ -215,17 +217,13 @@ function assignStrategy(
  * @param entries - Array of memory entries to check
  * @returns Map of normalized title to array of entry IDs
  */
-function detectDuplicates(entries: MemoryEntry[]): Map<string, string[]> {
-  const groups = new Map<string, string[]>();
-
-  for (const entry of entries) {
-    const normalized = normalizeTitle(entry.title);
-    const existing = groups.get(normalized) ?? [];
-    existing.push(entry.id);
-    groups.set(normalized, existing);
+function detectDuplicates(entries: MemoryEntry[]): Record<string, string[]> {
+  const grouped = groupBy(entries, (e) => normalizeTitle(e.title));
+  const result: Record<string, string[]> = {};
+  for (const [key, group] of Object.entries(grouped)) {
+    result[key] = group.map((e) => e.id);
   }
-
-  return groups;
+  return result;
 }
 
 /**

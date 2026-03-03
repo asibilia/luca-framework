@@ -2,6 +2,56 @@ import { z } from "zod";
 
 import { qualityZoneSchema } from "~/planner/__schemas/planner.schemas";
 
+// ─── Brain Schema ─────────────────────────────────────────────────────────────
+
+/**
+ * Project identity schema for BRAIN.md / brain.json.
+ *
+ * Captures the project's personality, stack, architecture, and conventions.
+ * Loaded at session start by lu-cognition for cognitive pre-flight.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const brainSchema = z.object({
+  /** Project display name */
+  project_name: z.string().default("Project"),
+  /** Project domain (e.g., "developer tooling", "fintech") */
+  domain: z.string().default(""),
+  /** Project purpose / one-line description */
+  purpose: z.string().default(""),
+  /** Technology stack */
+  stack: z
+    .object({
+      /** Primary language */
+      language: z.string().default("TypeScript"),
+      /** Primary framework */
+      framework: z.string().default(""),
+      /** Build tool */
+      build: z.string().default(""),
+      /** Test framework */
+      testing: z.string().default("bun:test"),
+      /** Styling approach (optional) */
+      styling: z.string().optional(),
+    })
+    .default({
+      language: "TypeScript",
+      framework: "",
+      build: "",
+      testing: "bun:test",
+    }),
+  /** High-level architecture patterns */
+  architecture_patterns: z.string().default(""),
+  /** Code conventions summary */
+  code_conventions: z.string().default(""),
+  /** Freeform development preferences */
+  development_preferences: z.record(z.string(), z.string()).default({}),
+  /** ISO 8601 timestamp of last update */
+  updated_at: z.string().optional(),
+});
+
+/** Project identity from BRAIN.md / brain.json. */
+export type Brain = z.infer<typeof brainSchema>;
+
 // ─── Memory Entry Schema ───────────────────────────────────────────────────────
 
 /**

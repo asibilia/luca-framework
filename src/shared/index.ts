@@ -8,6 +8,8 @@
  * - Section formatting (Cursor/Claude format converters)
  * - YAML frontmatter formatting
  * - JSON sanitization and config validation
+ * - Template sanitization for prompt injection prevention
+ * - Tribunal schemas, detection, and rebuttal infrastructure
  */
 
 // ─── Types and Schemas ─────────────────────────────────────────────────────────
@@ -32,6 +34,10 @@ export {
 export type { Section } from "./__helpers/format";
 export { formatFrontmatter } from "./__helpers/utils";
 
+// ─── Template Sanitization ───────────────────────────────────────────────────
+
+export { sanitizeForTemplate } from "./__helpers/sanitize-template";
+
 // ─── Validation ─────────────────────────────────────────────────────────────────
 
 export {
@@ -44,3 +50,63 @@ export {
   safeValidateSkillConfig,
   safeValidateRuleConfig,
 } from "./__helpers/validation-utils";
+
+// ─── Tribunal Schemas ──────────────────────────────────────────────────────────
+
+export {
+  reviewFindingSchema,
+  CONFLICT_TYPES,
+  conflictTypeSchema,
+  disagreementSchema,
+  REBUTTAL_RESOLUTIONS,
+  rebuttalResolutionSchema,
+  rebuttalSchema,
+  unifiedRecommendationSchema,
+  tribunalResultSchema,
+} from "./__schemas/tribunal.schemas";
+
+export type {
+  ReviewFinding,
+  ConflictType,
+  Disagreement,
+  RebuttalResolution,
+  Rebuttal,
+  UnifiedRecommendation,
+  TribunalResult,
+} from "./__schemas/tribunal.schemas";
+
+// ─── Tribunal Detection ────────────────────────────────────────────────────────
+
+export {
+  normalizeFindings,
+  detectDisagreements,
+  shouldRunTribunal,
+} from "./__helpers/tribunal-detector";
+
+// ─── Tribunal Rebuttals ────────────────────────────────────────────────────────
+
+export {
+  buildRebuttalPrompts,
+  resolveRebuttals,
+  buildTribunalResult,
+} from "./__helpers/tribunal-rebuttals";
+
+export type { RebuttalPromptPair } from "./__helpers/tribunal-rebuttals";
+
+// ─── Resolution Counting ─────────────────────────────────────────────────────
+
+export { countResolutions } from "./__helpers/resolution-counts";
+export type { ResolutionCounts } from "./__helpers/resolution-counts";
+
+// ─── Tribunal Consensus ───────────────────────────────────────────────────────
+
+export { resolveMajorityVote } from "./__helpers/tribunal-consensus";
+
+export type {
+  VotablePerspective,
+  MajorityVoteResult,
+} from "./__helpers/tribunal-consensus";
+
+// ─── Parsing Utilities ──────────────────────────────────────────────────────
+
+export { safeParseOrThrow } from "./__helpers/safe-parse-or-throw";

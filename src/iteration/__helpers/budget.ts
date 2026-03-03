@@ -1,3 +1,5 @@
+import { getArg } from "~/shared/__helpers/cli-utils";
+
 import type { BudgetState, BudgetStatus } from "../__schemas/iteration.schemas";
 import { budgetStateSchema } from "../__schemas/iteration.schemas";
 
@@ -265,24 +267,21 @@ if (import.meta.main) {
   const subcommand = Bun.argv[2];
   const args = Bun.argv.slice(3);
 
-  function getArg(name: string, defaultValue: string = ""): string {
-    const prefix = `--${name}=`;
-    const arg = args.find((a) => a.startsWith(prefix));
-    return arg ? arg.slice(prefix.length) : defaultValue;
-  }
-
   try {
     switch (subcommand) {
       case "create": {
-        const maxIterations = parseInt(getArg("max-iterations", "3"), 10);
-        const softStopPercent = parseInt(getArg("soft-stop-percent", "80"), 10);
+        const maxIterations = parseInt(getArg(args, "max-iterations", "3"), 10);
+        const softStopPercent = parseInt(
+          getArg(args, "soft-stop-percent", "80"),
+          10,
+        );
         const state = createBudgetState(maxIterations, softStopPercent);
         console.log(JSON.stringify(state, null, 2));
         process.exit(0);
         break;
       }
       case "assess": {
-        const stateRaw = getArg("state");
+        const stateRaw = getArg(args, "state");
         if (!stateRaw) {
           console.error("Missing --state argument");
           process.exit(2);
@@ -294,7 +293,7 @@ if (import.meta.main) {
         break;
       }
       case "advance": {
-        const stateRaw = getArg("state");
+        const stateRaw = getArg(args, "state");
         if (!stateRaw) {
           console.error("Missing --state argument");
           process.exit(2);
@@ -306,7 +305,7 @@ if (import.meta.main) {
         break;
       }
       case "should-start": {
-        const stateRaw = getArg("state");
+        const stateRaw = getArg(args, "state");
         if (!stateRaw) {
           console.error("Missing --state argument");
           process.exit(2);

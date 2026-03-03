@@ -129,6 +129,105 @@ export const contextDocumentSetSchema = z.object({
 export type ContextDocumentSet = z.infer<typeof contextDocumentSetSchema>;
 
 // ---------------------------------------------------------------------------
+// Pre-flight hydration schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for pre-flight context hydration.
+ *
+ * Controls which deterministic codebase snapshots are collected before
+ * major operations. Parameters scale with task complexity.
+ *
+ * Uses snake_case for API compatibility.
+ */
+export const hydrationConfigSchema = z.object({
+  /** Maximum depth for file tree traversal */
+  file_tree_depth: z.number().int().min(1).max(10).default(3),
+  /** Whether to discover test files */
+  include_tests: z.boolean().default(false),
+  /** Number of recent git commits to include */
+  git_history_count: z.number().int().min(0).max(50).default(10),
+  /** Whether to extract the import dependency graph */
+  include_imports: z.boolean().default(false),
+});
+
+/** Hydration configuration type derived from schema */
+export type HydrationConfig = z.infer<typeof hydrationConfigSchema>;
+
+/**
+ * A single entry in the file tree snapshot.
+ *
+ * Uses snake_case for API compatibility.
+ */
+export const fileTreeEntrySchema = z.object({
+  /** Relative file path from project root */
+  path: z.string(),
+  /** Entry type: "blob" for file, "tree" for directory */
+  type: z.enum(["blob", "tree"]),
+});
+
+/** File tree entry type derived from schema */
+export type FileTreeEntry = z.infer<typeof fileTreeEntrySchema>;
+
+/**
+ * A single git commit summary.
+ *
+ * Uses snake_case for API compatibility.
+ */
+export const gitCommitSummarySchema = z.object({
+  /** Short commit hash */
+  hash: z.string(),
+  /** Commit subject line */
+  subject: z.string(),
+  /** Author name */
+  author: z.string(),
+  /** ISO 8601 date string */
+  date: z.string(),
+});
+
+/** Git commit summary type derived from schema */
+export type GitCommitSummary = z.infer<typeof gitCommitSummarySchema>;
+
+/**
+ * An edge in the import dependency graph.
+ *
+ * Uses snake_case for API compatibility.
+ */
+export const importEdgeSchema = z.object({
+  /** Source file (the importing file) */
+  source: z.string(),
+  /** Target module specifier (the imported module) */
+  target: z.string(),
+});
+
+/** Import edge type derived from schema */
+export type ImportEdge = z.infer<typeof importEdgeSchema>;
+
+/**
+ * Complete pre-flight hydration snapshot.
+ *
+ * Collected before major operations to provide deterministic codebase
+ * context. Content scales based on HydrationConfig parameters.
+ *
+ * Uses snake_case for API compatibility.
+ */
+export const preFlightSnapshotSchema = z.object({
+  /** File tree entries from git ls-tree */
+  file_tree: z.array(fileTreeEntrySchema).default([]),
+  /** Discovered test file paths */
+  test_files: z.array(z.string()).default([]),
+  /** Recent git commit summaries */
+  git_history: z.array(gitCommitSummarySchema).default([]),
+  /** Import dependency graph edges */
+  import_graph: z.array(importEdgeSchema).default([]),
+  /** Timestamp of snapshot creation (ISO 8601) */
+  created_at: z.string(),
+});
+
+/** Pre-flight snapshot type derived from schema */
+export type PreFlightSnapshot = z.infer<typeof preFlightSnapshotSchema>;
+
+// ---------------------------------------------------------------------------
 // Utility functions
 // ---------------------------------------------------------------------------
 

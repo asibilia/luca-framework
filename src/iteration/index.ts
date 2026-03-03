@@ -78,6 +78,28 @@ export {
   assessConvergence,
 } from "./__helpers/convergence";
 
+export type { ConvergenceDebateOptions } from "./__helpers/convergence";
+
+// Stall debate schemas
+export {
+  STALL_DEBATE_STRATEGIES,
+  stallDebateStrategySchema,
+  stallDebateInputSchema,
+  stallDebateOutputSchema,
+} from "./__schemas/stall-debate.schemas";
+
+export type {
+  StallDebateStrategy,
+  StallDebateInput,
+  StallDebateOutput,
+} from "./__schemas/stall-debate.schemas";
+
+// Stall debate evaluator
+export {
+  shouldAttemptDebate,
+  evaluateStallDebate,
+} from "./__helpers/stall-debate";
+
 // Error classification
 export {
   classifySingleError,
@@ -108,3 +130,29 @@ export {
 } from "./__helpers/budget";
 
 export type { TokenBudgetAssessment } from "./__helpers/budget";
+
+// Metrics schemas
+export {
+  iterationMetricsSchema,
+  planQualityMetricsSchema,
+  reviewMetricsSchema,
+  convergenceMetricsSchema,
+  metricsFileSchema,
+} from "./__schemas/metrics.schemas";
+
+export type {
+  IterationMetrics,
+  PlanQualityMetrics,
+  ReviewMetrics,
+  ConvergenceMetrics,
+  MetricsFile,
+} from "./__schemas/metrics.schemas";
+
+// Metrics collection
+export {
+  buildIterationMetrics,
+  buildPlanQualityMetrics,
+  buildReviewMetrics,
+  buildConvergenceMetrics,
+  appendMetrics,
+} from "./__helpers/metrics-collector";

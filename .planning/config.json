@@ -129,7 +129,7 @@
         "research": "optional",
         "discussion": "optional",
         "planVerificationIterations": 1,
-        "harnessFixIterations": 3,
+        "harnessFixIterations": 2,
         "verifyFixIterations": 1,
         "verificationMode": "standard",
         "codeReviewAgents": [
@@ -144,8 +144,8 @@
         "research": "required",
         "discussion": "run",
         "planVerificationIterations": 2,
-        "harnessFixIterations": 3,
-        "verifyFixIterations": 2,
+        "harnessFixIterations": 2,
+        "verifyFixIterations": 1,
         "verificationMode": "full",
         "codeReviewAgents": [
           "dx-advocate",
@@ -161,8 +161,8 @@
         "research": "required",
         "discussion": "required",
         "planVerificationIterations": 3,
-        "harnessFixIterations": 5,
-        "verifyFixIterations": 3,
+        "harnessFixIterations": 3,
+        "verifyFixIterations": 2,
         "verificationMode": "full+human",
         "codeReviewAgents": [
           "dx-advocate",

@@ -89,11 +89,11 @@ First, read the required context:
 
 ```bash
 # Primary: Read working memory from memory bridge (structured JSON)
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "No working memory")
 # Primary: Read memory summary from memory bridge (compact index)
-MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
+MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
 # Fallback: Read MEMORY.md directly
 MEMORY_CONTENT=$(cat .planning/MEMORY.md 2>/dev/null || echo "No memory file")
 VERIFICATION_RESULT="[from verifier return value]"
@@ -162,7 +162,7 @@ Throughout execution, log to WORKING.md:
 
 ```bash
 # Primary: Log execution progress via memory bridge
-bun run src/memory/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
+bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
 # Fallback: Append directly to WORKING.md
 echo "- $(date -u +%H:%M) [Plan X complete - finding Y]" >> .planning/WORKING.md
 ```
@@ -300,7 +300,7 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 # Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
@@ -581,6 +581,12 @@ PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
   console.log(c.iteration?.promotion_threshold ?? 3);
 ")
 
+# Extract stall debate setting (default: true)
+STALL_DEBATE_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.stall_debate_enabled ?? true);
+")
+
 # Override mode if --mode flag was passed
 MODE="${MODE_FLAG:-$DEFAULT_MODE}"
 ```
@@ -668,7 +674,23 @@ SHOULD_HALT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs')
 STALE_COUNT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).consecutive_stale)")
 ```
 
-If `SHOULD_HALT` is true: display convergence failure, exit loop with outcome "convergence_failure".
+**Stall Debate (when enabled):**
+
+If `SHOULD_HALT` is true AND `STALL_DEBATE_ENABLED` is true:
+
+1. Extract the debate result from CONVERGENCE JSON: `DEBATE_STRATEGY`, `DEBATE_CONFIDENCE`, `DEBATE_REASONING`
+2. If `DEBATE_STRATEGY` is NOT "halt": override `SHOULD_HALT=false`
+3. Display debate outcome:
+```
+◆ Stall Debate: {DEBATE_STRATEGY} (confidence: {DEBATE_CONFIDENCE})
+  Reasoning: {DEBATE_REASONING}
+```
+4. Act on strategy:
+   - `retry_with_context_promotion`: Promote executor context tier for next iteration
+   - `retry_with_error_focus`: Include top error patterns in next executor prompt
+   - `retry_with_rollback`: Rollback to previous checkpoint before next iteration
+
+If `SHOULD_HALT` is true (after debate, if applicable): display convergence failure, exit loop with outcome "convergence_failure".
 
 Display convergence status:
 
@@ -814,7 +836,7 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 # Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
@@ -889,8 +911,122 @@ Route by returned status:
 - `passed` → continue to Step 8 (Code Quality Review)
 - `human_needed` → present items, get approval, then continue to Step 8
 - `gaps_found` → proceed to Step 7.5 (Loop B: Verify Fix Loop)
+- `human_needed` with T1/T3 conflict → proceed to Step 7.25 (Verification Tribunal)
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered `/phase-plan {X} --gaps`.
+
+### 7.25. Verification Tribunal (Conditional)
+
+**Skip if:** `workflow.verification_tribunal_enabled: false` in config (default: true), OR complexity is below COMPLEX, OR no T1/T3 conflict detected.
+
+**When to trigger:** The verifier returned `human_needed` AND the verification report shows a T1/T3 signal conflict (T1 STRONG PASS with T3 PARTIAL or FAIL, or T1 PARTIAL with T3 PARTIAL).
+
+**Gate check:**
+
+```bash
+VT_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.verification_tribunal_enabled ?? true);
+")
+```
+
+**When enabled at COMPLEX+ complexity with T1/T3 conflict:**
+
+1. **Extract conflict signal**: Parse the verifier's T1 and T3 signal statuses and evidence from VERIFICATION.md
+2. **Build diagnostic prompts**: Generate three prompts using the conflict signal — one for each diagnostic agent
+3. **Spawn three diagnostic agents in PARALLEL**:
+
+```python
+# Spawn lu-test-writer diagnostic
+Task(
+  prompt="""
+<diagnostic_context>
+{test_writer_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Analyze the T1/T3 conflict from your perspective as test coverage expert.
+</diagnostic_context>
+""",
+  subagent_type="lu-test-writer",
+  model="{diagnostic_model}",
+  description="Test Writer Diagnostic"
+)
+
+# Spawn lu-verifier diagnostic (IN PARALLEL)
+Task(
+  prompt="""
+<diagnostic_context>
+{verifier_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Re-examine your T3 analysis for potential over-specification.
+</diagnostic_context>
+""",
+  subagent_type="lu-verifier",
+  model="{diagnostic_model}",
+  description="Verifier Diagnostic"
+)
+
+# Spawn lu-integration-checker diagnostic (IN PARALLEL)
+Task(
+  prompt="""
+<diagnostic_context>
+{integration_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Analyze cross-component wiring for integration gaps.
+</diagnostic_context>
+""",
+  subagent_type="lu-integration-checker",
+  model="{diagnostic_model}",
+  description="Integration Diagnostic"
+)
+```
+
+**Do NOT proceed until ALL three diagnostic Tasks return.**
+
+4. **Parse diagnostic responses**: Extract CATEGORY, CONFIDENCE, EVIDENCE, and ACTION from each agent's response
+5. **Resolve tribunal**: Majority vote determines consensus category. If three-way split, use highest confidence as tiebreaker
+6. **Route by consensus category**:
+
+| Category | Action |
+|----------|--------|
+| `tests_incomplete` | Flag for test augmentation — existing tests don't cover the goal specification |
+| `goal_over_specified` | Adjust verification — T3 must-haves exceed plan scope |
+| `wiring_issue` | Flag for integration fix — components exist but aren't connected |
+
+**Display tribunal results:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > VERIFICATION TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value                          |
+| --------------------- | ------------------------------ |
+| Conflict type         | {conflict_type}                |
+| T1 status             | {t1_status}                    |
+| T3 status             | {t3_status}                    |
+| Consensus category    | {consensus_category}           |
+| Consensus confidence  | {consensus_confidence}         |
+| Dissenting agent      | {dissent_agent or "None"}      |
+| Token cost            | ~{estimated_token_cost}        |
+```
+
+7. **Append tribunal result to VERIFICATION.md**:
+
+Add a new section `### Verification Tribunal` to the existing VERIFICATION.md with the tribunal results, perspectives, and recommended remediation.
+
+8. **Continue based on category**:
+   - If `tests_incomplete`: Present to user with recommendation to augment tests, then continue to Step 8
+   - If `goal_over_specified`: Note that verification may be overly strict, adjust status to `passed` if user approves, then continue to Step 8
+   - If `wiring_issue`: Proceed to Step 7.5 (Loop B) with integration fix focus
 
 ### 7.5. Loop B: Verify Fix Loop
 
@@ -1276,6 +1412,50 @@ description="Security review"
 
 **Merge findings:** Combine all issues, deduplicate by file:line.
 
+### 8.5. Design Tribunal (Conditional)
+
+**Skip if:** Complexity is below COMPLEX, OR `workflow.tribunal_enabled: false` in config (default: true), OR no disagreements detected.
+
+**Gate check:**
+
+```bash
+TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.tribunal_enabled ?? true);
+")
+```
+
+**When enabled at COMPLEX+ complexity:**
+
+1. **Normalize findings**: Parse all reviewer outputs into structured ReviewFinding format
+2. **Detect disagreements**: Group findings by file:line and identify severity mismatches, scope overlaps, and contradictions
+3. **Gate check**: If no disagreements involve CRITICAL or HIGH findings, skip tribunal
+4. **Build rebuttal prompts**: For each disagreement, generate challenger/defender prompt pairs
+5. **Spawn rebuttal agents**: Send prompts to challenger and defender agents in PARALLEL
+6. **Resolve rebuttals**: Aggregate rebuttal outcomes into unified recommendations with confidence scores
+7. **Build tribunal result**: Compile final result with metrics
+
+**Display tribunal results:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > DESIGN TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value |
+| --------------------- | ----- |
+| Total findings        | {N}   |
+| Disagreements found   | {N}   |
+| Rebuttals conducted   | {N}   |
+| Findings withdrawn    | {N}   |
+| Findings modified     | {N}   |
+| Debate token cost     | ~{N}  |
+```
+
+**Record tribunal metrics** using `buildReviewMetrics` from 91-A (set `debate_enabled: true`, `disagreements_detected: N`).
+
+**Replace merged findings** with the tribunal's unified recommendations for Step 8.1.
+
 ### 8.1. Handle Code Review Results
 
 **Route based on findings:**
@@ -1462,6 +1642,10 @@ All code reviews passed ✓
 ```
 
 - Spawn parallel debug agents to diagnose root causes
+- **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
+  - Gate: `root_cause_tribunal_enabled` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
+  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
 - Spawn lu-planner in --gaps mode to create fix plans
 - Spawn lu-plan-checker to verify fix plans
 - Present ready status:

@@ -151,21 +151,20 @@ Route to: \\\`lu-router\\\`
 </step>
 
 <step name="load_brain">
-Load project identity from BRAIN.md:
+Load project identity via the memory bridge (JSON-primary, BRAIN.md fallback):
 
 \`\`\`bash
-cat .planning/BRAIN.md 2>/dev/null
+bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null
 \`\`\`
 
-If exists, extract:
+From the returned JSON, extract:
 
-- Project identity and purpose
-- Stack and architecture
-- Code conventions
-- Development preferences
-- Communication style
+- Project identity and purpose (project_name, domain, purpose)
+- Stack and architecture (stack, architecture_patterns)
+- Code conventions (code_conventions)
+- Development preferences (development_preferences)
 
-If missing, note "No BRAIN.md - operating without project identity context"
+If the bridge returns empty defaults, note "No brain data - operating without project identity context"
 </step>
 
 <step name="extract_keywords">
@@ -266,10 +265,10 @@ if [ "$EFFECTIVE_TIER" = "T1" ]; then LIMIT=5; elif [ "$EFFECTIVE_TIER" = "T2" ]
 
 if [ -n "$CURRENT_MILESTONE" ]; then
   # Milestone-scoped recall: scored by proximity + tag relevance
-  MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --milestone="$CURRENT_MILESTONE" --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
+  MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --milestone="$CURRENT_MILESTONE" --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
 else
   # Fallback: standard tag-based recall without milestone scoring
-  MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
+  MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
 fi
 \`\`\`
 
@@ -281,10 +280,10 @@ Milestone-scoped recall scores each entry using a weighted formula:
 
 Entries are returned sorted by composite score, so the most relevant entries for the current milestone and task context appear first.
 
-**If milestone recall is unavailable**, fall back to manual recall:
+**If milestone recall is unavailable**, fall back to reading memory via bridge:
 
 \`\`\`bash
-cat .planning/MEMORY.md 2>/dev/null
+bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null
 \`\`\`
 
 **Tag-Based Pre-Filtering (before scoring):**

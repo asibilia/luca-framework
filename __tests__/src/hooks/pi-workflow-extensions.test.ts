@@ -689,12 +689,12 @@ describe("luca-widgets extension", () => {
     expect(pi.tools.length).toBe(0);
   });
 
-  test("subscribes to 7 events", async () => {
+  test("subscribes to 9 events", async () => {
     const mod = await import("~/hooks/pi-extensions/luca-widgets");
     const pi = createMockPi();
     mod.default(pi);
 
-    expect(pi.events.length).toBe(7);
+    expect(pi.events.length).toBe(9);
   });
 
   test("subscribes to tool_result, tool_call, tool_execution_end, turn_start, turn_end, agent_start, and session_compact", async () => {
@@ -736,24 +736,23 @@ describe("luca-widgets extension", () => {
     };
 
     // Simulate luca_define_chain tool_result
+    // Pi's tool_result event has content directly on the event, not under .result
     await handler(
       {
         toolName: "luca_define_chain",
-        result: {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                chain: "test-chain",
-                steps: [
-                  { agent: "lu-planner", task: "Plan it" },
-                  { agent: "lu-executor", task: "Build it" },
-                ],
-                total_steps: 2,
-              }),
-            },
-          ],
-        },
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              chain: "test-chain",
+              steps: [
+                { agent: "lu-planner", task: "Plan it" },
+                { agent: "lu-executor", task: "Build it" },
+              ],
+              total_steps: 2,
+            }),
+          },
+        ],
       },
       mockCtx,
     );
@@ -790,22 +789,21 @@ describe("luca-widgets extension", () => {
       },
     };
 
+    // Pi's tool_result event has content directly on the event, not under .result
     await handler(
       {
         toolName: "luca_tilldone",
-        result: {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                name: "test-loop",
-                iteration: 2,
-                max_iterations: 5,
-                status: "failed",
-              }),
-            },
-          ],
-        },
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              name: "test-loop",
+              iteration: 2,
+              max_iterations: 5,
+              status: "failed",
+            }),
+          },
+        ],
       },
       mockCtx,
     );
@@ -834,23 +832,22 @@ describe("luca-widgets extension", () => {
       },
     };
 
+    // Pi's tool_result event has content directly on the event, not under .result
     await handler(
       {
         toolName: "luca_verify",
-        result: {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                status: "failed",
-                checks: [
-                  { name: "test", status: "passed", duration: 2100 },
-                  { name: "typecheck", status: "failed", duration: 1400 },
-                ],
-              }),
-            },
-          ],
-        },
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              status: "failed",
+              checks: [
+                { name: "test", status: "passed", duration: 2100 },
+                { name: "typecheck", status: "failed", duration: 1400 },
+              ],
+            }),
+          },
+        ],
       },
       mockCtx,
     );
@@ -886,21 +883,20 @@ describe("luca-widgets extension", () => {
     };
 
     // First, set a chain widget
+    // Pi's tool_result event has content directly on the event, not under .result
     await toolResultHandler(
       {
         toolName: "luca_define_chain",
-        result: {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                chain: "old-chain",
-                steps: [{ agent: "lu-planner", task: "Plan" }],
-                total_steps: 1,
-              }),
-            },
-          ],
-        },
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              chain: "old-chain",
+              steps: [{ agent: "lu-planner", task: "Plan" }],
+              total_steps: 1,
+            }),
+          },
+        ],
       },
       mockCtx,
     );
@@ -1301,6 +1297,9 @@ describe("renderCall/renderResult source presence", () => {
 
     expect(source).toContain("renderCall(");
     expect(source).toContain("renderResult(");
+    // Verify they are sync functions (no async keyword before them)
+    expect(source).not.toMatch(/async\s+renderCall/);
+    expect(source).not.toMatch(/async\s+renderResult/);
   });
 });
 

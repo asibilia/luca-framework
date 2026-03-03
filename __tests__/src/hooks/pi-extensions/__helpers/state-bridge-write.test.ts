@@ -180,12 +180,19 @@ describe("writeField", () => {
 
   // ── stateExists gate ────────────────────────────────────────
 
-  test("returns error when state.json is missing (stateExists false)", async () => {
-    mockStateExistsReturn = false;
+  test("auto-creates state.json when missing and writes successfully", async () => {
+    // writeField no longer calls the mocked stateExists — it uses existsSync
+    // directly and auto-creates a minimal state.json if the file is absent.
     tempDir = mkdtempSync(join(tmpdir(), "state-bridge-write-test-"));
+    mkdirSync(join(tempDir, ".planning"), { recursive: true });
+    // No state.json on disk
     const result = await writeField(tempDir, "complexity", "MODERATE");
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("state.json not found");
+    expect(result.success).toBe(true);
+
+    // Verify state.json was auto-created with the written value
+    const created = readTempState(tempDir);
+    expect(created.context.complexity).toBe("MODERATE");
+    expect(created.value).toBe("idle"); // default initial value
   });
 
   // ── Full write path ─────────────────────────────────────────

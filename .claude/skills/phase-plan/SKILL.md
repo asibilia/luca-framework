@@ -45,7 +45,7 @@ Before planning begins, run cognitive pre-flight:
 1. **Load BRAIN.md** for project conventions:
 
    ```bash
-   cat .planning/BRAIN.md 2>/dev/null
+   bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null || cat .planning/BRAIN.md 2>/dev/null
    ```
 
    Extract: architecture patterns, code conventions, development preferences
@@ -63,7 +63,7 @@ Before planning begins, run cognitive pre-flight:
 
    \`\`\`bash
    # Primary: Scored procedure recall via memory bridge (filters active, scores by relevance)
-   PROCEDURES_JSON=$(bun run src/memory/bridge.ts read-procedures --query="{phase_description}" --tags={phase_tags} --limit=5 2>/dev/null || echo '{"entries":[]}')
+   PROCEDURES_JSON=$(bun run src/memory/__helpers/bridge.ts read-procedures --query="{phase_description}" --tags={phase_tags} --limit=5 2>/dev/null || echo '{"entries":[]}')
    # Fallback: Read PROCEDURES.md directly
    PROCEDURES_CONTENT=$(cat .planning/PROCEDURES.md 2>/dev/null || echo "")
    \`\`\`
@@ -319,7 +319,7 @@ REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No req
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
 VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
 # Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
