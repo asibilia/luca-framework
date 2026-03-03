@@ -108,3 +108,29 @@ export {
 } from "./__helpers/budget";
 
 export type { TokenBudgetAssessment } from "./__helpers/budget";
+
+// Metrics schemas
+export {
+  iterationMetricsSchema,
+  planQualityMetricsSchema,
+  reviewMetricsSchema,
+  convergenceMetricsSchema,
+  metricsFileSchema,
+} from "./__schemas/metrics.schemas";
+
+export type {
+  IterationMetrics,
+  PlanQualityMetrics,
+  ReviewMetrics,
+  ConvergenceMetrics,
+  MetricsFile,
+} from "./__schemas/metrics.schemas";
+
+// Metrics collection
+export {
+  buildIterationMetrics,
+  buildPlanQualityMetrics,
+  buildReviewMetrics,
+  buildConvergenceMetrics,
+  appendMetrics,
+} from "./__helpers/metrics-collector";
