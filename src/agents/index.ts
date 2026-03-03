@@ -28,45 +28,6 @@ export type {
   ModelRoutingConfig,
 } from "./__schemas/agent.schemas";
 
-// Tribunal schemas
-export {
-  reviewFindingSchema,
-  CONFLICT_TYPES,
-  conflictTypeSchema,
-  disagreementSchema,
-  REBUTTAL_RESOLUTIONS,
-  rebuttalResolutionSchema,
-  rebuttalSchema,
-  unifiedRecommendationSchema,
-  tribunalResultSchema,
-} from "./__schemas/tribunal.schemas";
-
-export type {
-  ReviewFinding,
-  ConflictType,
-  Disagreement,
-  RebuttalResolution,
-  Rebuttal,
-  UnifiedRecommendation,
-  TribunalResult,
-} from "./__schemas/tribunal.schemas";
-
-// Tribunal detection
-export {
-  normalizeFindings,
-  detectDisagreements,
-  shouldRunTribunal,
-} from "./__helpers/tribunal-detector";
-
-// Tribunal rebuttals
-export {
-  buildRebuttalPrompts,
-  resolveRebuttals,
-  buildTribunalResult,
-} from "./__helpers/tribunal-rebuttals";
-
-export type { RebuttalPromptPair } from "./__helpers/tribunal-rebuttals";
-
 // Verification tribunal schemas
 export {
   T1_STATUSES,
