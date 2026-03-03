@@ -20,6 +20,10 @@ import { luPhaseResearcherAgent } from "../general/lu-phase-researcher.agent";
 import { luPlanCheckerAgent } from "../general/lu-plan-checker.agent";
 import { luPmPlannerAgent } from "../general/lu-pm-planner.agent";
 import { luPrReviewerAgent } from "../general/lu-pr-reviewer.agent";
+import { luRoadmapArchitectAgent } from "../general/lu-roadmap-architect.agent";
+import { luRoadmapPrioritizerAgent } from "../general/lu-roadmap-prioritizer.agent";
+import { luRoadmapQaAgent } from "../general/lu-roadmap-qa.agent";
+import { luRoadmapSynthesizerAgent } from "../general/lu-roadmap-synthesizer.agent";
 import { luRepoArchitectAgent } from "../general/lu-repo-architect.agent";
 import { luProjectResearcherAgent } from "../general/lu-project-researcher.agent";
 import { luResearchSynthesizerAgent } from "../general/lu-research-synthesizer.agent";
@@ -61,6 +65,10 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-plan-checker": () => luPlanCheckerAgent,
   "lu-pm-planner": () => luPmPlannerAgent,
   "lu-pr-reviewer": () => luPrReviewerAgent,
+  "lu-roadmap-architect": () => luRoadmapArchitectAgent,
+  "lu-roadmap-prioritizer": () => luRoadmapPrioritizerAgent,
+  "lu-roadmap-qa": () => luRoadmapQaAgent,
+  "lu-roadmap-synthesizer": () => luRoadmapSynthesizerAgent,
   "lu-repo-architect": () => luRepoArchitectAgent,
   "lu-project-researcher": () => luProjectResearcherAgent,
   "lu-research-synthesizer": () => luResearchSynthesizerAgent,
