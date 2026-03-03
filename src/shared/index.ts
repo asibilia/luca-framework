@@ -93,6 +93,11 @@ export {
 
 export type { RebuttalPromptPair } from "./__helpers/tribunal-rebuttals";
 
+// ─── Resolution Counting ─────────────────────────────────────────────────────
+
+export { countResolutions } from "./__helpers/resolution-counts";
+export type { ResolutionCounts } from "./__helpers/resolution-counts";
+
 // ─── Tribunal Consensus ───────────────────────────────────────────────────────
 
 export { resolveMajorityVote } from "./__helpers/tribunal-consensus";
@@ -101,3 +106,7 @@ export type {
   VotablePerspective,
   MajorityVoteResult,
 } from "./__helpers/tribunal-consensus";
+
+// ─── Parsing Utilities ──────────────────────────────────────────────────────
+
+export { safeParseOrThrow } from "./__helpers/safe-parse-or-throw";
