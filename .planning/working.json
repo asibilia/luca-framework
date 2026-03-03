@@ -2,9 +2,9 @@
   "sections": [
     {
       "name": "session_info",
-      "content": "Auto-persisted at 2026-03-03T16:21:55Z (zone: stop)\n\nAuto-persisted at 2026-03-03T16:39:07Z (zone: degrading)\n\nAuto-persisted at 2026-03-03T16:43:16Z (zone: stop)",
-      "token_estimate": 73,
-      "last_updated_at": "2026-03-03T16:43:16.844Z"
+      "content": "Auto-persisted at 2026-03-03T16:21:55Z (zone: stop)\n\nAuto-persisted at 2026-03-03T16:39:07Z (zone: degrading)\n\nAuto-persisted at 2026-03-03T16:43:16Z (zone: stop)\n\nAuto-persisted at 2026-03-03T16:46:20Z (zone: stop)\n\nAuto-persisted at 2026-03-03T16:48:45Z (zone: stop)\n\nAuto-persisted at 2026-03-03T16:51:42Z (zone: stop)\n\nAuto-persisted at 2026-03-03T17:08:21Z (zone: stop)\n\nAuto-persisted at 2026-03-03T17:08:26Z (zone: stop)\n\nAuto-persisted at 2026-03-03T17:12:12Z (zone: stop)\n\nAuto-persisted at 2026-03-03T17:39:18Z (zone: stop)\n\nAuto-persisted at 2026-03-03T17:53:51Z (zone: stop)\n\nAuto-persisted at 2026-03-03T17:54:55Z (zone: stop)",
+      "token_estimate": 289,
+      "last_updated_at": "2026-03-03T17:54:55.644Z"
     },
     {
       "name": "memory_recall",
@@ -33,7 +33,7 @@
       "token_estimate": 0
     }
   ],
-  "total_tokens": 75,
+  "total_tokens": 291,
   "status": "cleared",
   "session_started_at": "2026-03-03T15:34:04.576Z"
 }
