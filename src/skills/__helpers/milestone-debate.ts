@@ -7,6 +7,8 @@
  *
  * @module milestone-debate
  */
+import filter from "lodash/filter";
+
 import {
   normalizeFindings,
   detectDisagreements,
@@ -253,18 +255,25 @@ function generateConsensusSummary(
     return "No disagreements detected. All reviewers are in consensus.";
   }
 
-  const upheldCount = rebuttals.filter((r) => r.resolution === "upheld").length;
-  const withdrawnCount = rebuttals.filter(
+  const upheldCount = filter(
+    rebuttals,
+    (r) => r.resolution === "upheld",
+  ).length;
+  const withdrawnCount = filter(
+    rebuttals,
     (r) => r.resolution === "withdrawn",
   ).length;
-  const modifiedCount = rebuttals.filter(
+  const modifiedCount = filter(
+    rebuttals,
     (r) => r.resolution === "modified",
   ).length;
 
-  const highConfidence = recommendations.filter(
+  const highConfidence = filter(
+    recommendations,
     (r) => r.confidence > 0.8,
   ).length;
-  const contested = recommendations.filter(
+  const contested = filter(
+    recommendations,
     (r) => r.confidence >= 0.5 && r.confidence <= 0.8,
   ).length;
 
