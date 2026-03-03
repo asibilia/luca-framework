@@ -10,7 +10,7 @@
  */
 import { z } from "zod";
 
-import { COMPLEXITY_LEVELS } from "~/complexity/__schemas/complexity.schemas";
+import { COMPLEXITY_LEVELS } from "~/complexity";
 import { tribunalResultSchema } from "~/shared/__schemas/tribunal.schemas";
 
 /**
