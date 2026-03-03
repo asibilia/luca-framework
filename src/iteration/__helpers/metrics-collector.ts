@@ -1,5 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 
+import { getArg } from "~/shared/__helpers/cli-utils";
+
 import type {
   LoopResult,
   LoopConfig,
@@ -293,17 +295,11 @@ if (import.meta.main) {
   const args = Bun.argv.slice(2);
   const command = args[0];
 
-  function getArg(name: string, defaultValue: string = ""): string {
-    const prefix = `--${name}=`;
-    const arg = args.find((a) => a.startsWith(prefix));
-    return arg ? arg.slice(prefix.length) : defaultValue;
-  }
-
   if (command === "append") {
     try {
-      const category = getArg("category") as MetricCategory;
-      const dataRaw = getArg("data");
-      const metricsPath = getArg("path", DEFAULT_METRICS_PATH);
+      const category = getArg(args, "category") as MetricCategory;
+      const dataRaw = getArg(args, "data");
+      const metricsPath = getArg(args, "path", DEFAULT_METRICS_PATH);
 
       if (!category || !dataRaw) {
         console.error("Usage: append --category=<category> --data='<json>'");

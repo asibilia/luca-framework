@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 
 import type { ParsedError } from "~/harness/__schemas/harness.schemas";
+import { getArg, hasFlag } from "~/shared/__helpers/cli-utils";
 import type {
   ErrorFingerprint,
   ConvergenceSignals,
@@ -310,26 +311,16 @@ export function assessConvergence(
 if (import.meta.main) {
   const args = Bun.argv.slice(2);
 
-  function getArg(name: string, defaultValue: string = ""): string {
-    const prefix = `--${name}=`;
-    const arg = args.find((a) => a.startsWith(prefix));
-    return arg ? arg.slice(prefix.length) : defaultValue;
-  }
-
-  function hasFlag(name: string): boolean {
-    return args.includes(`--${name}`);
-  }
-
   try {
-    const currentRaw = getArg("current", "[]");
-    const previousRaw = getArg("previous", "[]");
-    const artifactDelta = parseInt(getArg("artifact-delta", "0"), 10);
+    const currentRaw = getArg(args, "current", "[]");
+    const previousRaw = getArg(args, "previous", "[]");
+    const artifactDelta = parseInt(getArg(args, "artifact-delta", "0"), 10);
     const previousStaleCount = parseInt(
-      getArg("previous-stale-count", "0"),
+      getArg(args, "previous-stale-count", "0"),
       10,
     );
-    const staleThreshold = parseInt(getArg("stale-threshold", "2"), 10);
-    const enableSemantic = hasFlag("semantic");
+    const staleThreshold = parseInt(getArg(args, "stale-threshold", "2"), 10);
+    const enableSemantic = hasFlag(args, "semantic");
 
     const currentParsed = classifiedErrorSchema
       .array()

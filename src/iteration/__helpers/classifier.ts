@@ -2,6 +2,7 @@ import type {
   CheckResult,
   ParsedError,
 } from "~/harness/__schemas/harness.schemas";
+import { getArg } from "~/shared/__helpers/cli-utils";
 import type {
   ClassifiedError,
   ErrorClass,
@@ -163,16 +164,13 @@ export function partitionByClass(errors: ClassifiedError[]): {
 if (import.meta.main) {
   const args = Bun.argv.slice(2);
 
-  function getArg(name: string, defaultValue: string = ""): string {
-    const prefix = `--${name}=`;
-    const arg = args.find((a) => a.startsWith(prefix));
-    return arg ? arg.slice(prefix.length) : defaultValue;
-  }
-
   try {
-    const harnessResultRaw = getArg("harness-result", '{"checks":[]}');
-    const ledgerRaw = getArg("ledger", "{}");
-    const promotionThreshold = parseInt(getArg("promotion-threshold", "3"), 10);
+    const harnessResultRaw = getArg(args, "harness-result", '{"checks":[]}');
+    const ledgerRaw = getArg(args, "ledger", "{}");
+    const promotionThreshold = parseInt(
+      getArg(args, "promotion-threshold", "3"),
+      10,
+    );
 
     const harnessResult = JSON.parse(harnessResultRaw);
     const ledger = JSON.parse(ledgerRaw) as Record<string, number>;
