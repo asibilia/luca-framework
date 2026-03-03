@@ -246,15 +246,16 @@ describe("buildTribunalResult", () => {
       recommendations,
     );
 
-    expect(result.phase).toBe(91);
-    expect(result.total_findings).toBe(2);
-    expect(result.disagreements_detected).toBe(1);
-    expect(result.rebuttals_conducted).toBe(1);
-    expect(result.findings_withdrawn).toBe(0);
-    expect(result.findings_modified).toBe(0);
-    expect(result.unified_recommendations).toHaveLength(2);
-    expect(result.debate_token_cost).toBe(400); // 1 rebuttal * 400
-    expect(result.timestamp).toBeTruthy();
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(91);
+    expect(result!.total_findings).toBe(2);
+    expect(result!.disagreements_detected).toBe(1);
+    expect(result!.rebuttals_conducted).toBe(1);
+    expect(result!.findings_withdrawn).toBe(0);
+    expect(result!.findings_modified).toBe(0);
+    expect(result!.unified_recommendations).toHaveLength(2);
+    expect(result!.debate_token_cost).toBe(400); // 1 rebuttal * 400
+    expect(result!.timestamp).toBeTruthy();
   });
 
   test("tracks withdrawn and modified counts", () => {
@@ -285,18 +286,20 @@ describe("buildTribunalResult", () => {
       recommendations,
     );
 
-    expect(result.findings_withdrawn).toBe(1);
-    expect(result.findings_modified).toBe(1);
-    expect(result.debate_token_cost).toBe(800); // 2 rebuttals * 400
+    expect(result).not.toBeNull();
+    expect(result!.findings_withdrawn).toBe(1);
+    expect(result!.findings_modified).toBe(1);
+    expect(result!.debate_token_cost).toBe(800); // 2 rebuttals * 400
   });
 
   test("handles empty inputs", () => {
     const result = buildTribunalResult(91, [], [], [], []);
 
-    expect(result.phase).toBe(91);
-    expect(result.total_findings).toBe(0);
-    expect(result.disagreements_detected).toBe(0);
-    expect(result.rebuttals_conducted).toBe(0);
-    expect(result.debate_token_cost).toBe(0);
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(91);
+    expect(result!.total_findings).toBe(0);
+    expect(result!.disagreements_detected).toBe(0);
+    expect(result!.rebuttals_conducted).toBe(0);
+    expect(result!.debate_token_cost).toBe(0);
   });
 });

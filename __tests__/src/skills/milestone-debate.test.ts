@@ -408,7 +408,8 @@ describe("buildMilestoneDebateResult", () => {
       92,
     );
 
-    expect(result.cross_phase_disagreements).toBe(1);
+    expect(result).not.toBeNull();
+    expect(result!.cross_phase_disagreements).toBe(1);
   });
 
   test("generates consensus summary from unified recommendations", () => {
@@ -435,8 +436,9 @@ describe("buildMilestoneDebateResult", () => {
       92,
     );
 
-    expect(result.consensus_summary).toContain("disagreement(s)");
-    expect(result.consensus_summary).toContain("upheld");
+    expect(result).not.toBeNull();
+    expect(result!.consensus_summary).toContain("disagreement(s)");
+    expect(result!.consensus_summary).toContain("upheld");
   });
 
   test("includes correct milestone metadata", () => {
@@ -453,9 +455,10 @@ describe("buildMilestoneDebateResult", () => {
       92,
     );
 
-    expect(result.milestone_version).toBe("v2.5.1");
-    expect(result.reviewer_count).toBe(5);
-    expect(result.tribunal_result.phase).toBe(92);
+    expect(result).not.toBeNull();
+    expect(result!.milestone_version).toBe("v2.5.1");
+    expect(result!.reviewer_count).toBe(5);
+    expect(result!.tribunal_result.phase).toBe(92);
   });
 
   test("consensus summary indicates no disagreements when empty", () => {
@@ -472,8 +475,9 @@ describe("buildMilestoneDebateResult", () => {
       92,
     );
 
-    expect(result.consensus_summary).toContain("No disagreements");
-    expect(result.consensus_summary).toContain("consensus");
+    expect(result).not.toBeNull();
+    expect(result!.consensus_summary).toContain("No disagreements");
+    expect(result!.consensus_summary).toContain("consensus");
   });
 
   test("handles withdrawn findings in summary", () => {
@@ -500,7 +504,8 @@ describe("buildMilestoneDebateResult", () => {
       92,
     );
 
-    expect(result.consensus_summary).toContain("withdrawn");
+    expect(result).not.toBeNull();
+    expect(result!.consensus_summary).toContain("withdrawn");
   });
 });
 
@@ -551,11 +556,12 @@ describe("full pipeline integration", () => {
       92,
     );
 
-    expect(result.milestone_version).toBe("v2.5.1");
-    expect(result.reviewer_count).toBe(2);
-    expect(result.tribunal_result.total_findings).toBe(findings.length);
-    expect(result.tribunal_result.rebuttals_conducted).toBe(rebuttals.length);
-    expect(result.consensus_summary).toBeTruthy();
+    expect(result).not.toBeNull();
+    expect(result!.milestone_version).toBe("v2.5.1");
+    expect(result!.reviewer_count).toBe(2);
+    expect(result!.tribunal_result.total_findings).toBe(findings.length);
+    expect(result!.tribunal_result.rebuttals_conducted).toBe(rebuttals.length);
+    expect(result!.consensus_summary).toBeTruthy();
   });
 
   test("empty disagreements produce no debate activity", () => {
@@ -578,11 +584,12 @@ describe("full pipeline integration", () => {
       92,
     );
 
-    expect(result.tribunal_result.disagreements_detected).toBe(0);
-    expect(result.tribunal_result.rebuttals_conducted).toBe(0);
-    expect(result.tribunal_result.findings_withdrawn).toBe(0);
-    expect(result.tribunal_result.findings_modified).toBe(0);
-    expect(result.consensus_summary).toContain("No disagreements");
+    expect(result).not.toBeNull();
+    expect(result!.tribunal_result.disagreements_detected).toBe(0);
+    expect(result!.tribunal_result.rebuttals_conducted).toBe(0);
+    expect(result!.tribunal_result.findings_withdrawn).toBe(0);
+    expect(result!.tribunal_result.findings_modified).toBe(0);
+    expect(result!.consensus_summary).toContain("No disagreements");
   });
 
   test("debate result aggregates counts correctly", () => {
@@ -627,11 +634,12 @@ describe("full pipeline integration", () => {
       92,
     );
 
-    expect(result.tribunal_result.total_findings).toBe(3);
-    expect(result.tribunal_result.rebuttals_conducted).toBe(3);
-    expect(result.tribunal_result.findings_withdrawn).toBe(1);
-    expect(result.tribunal_result.findings_modified).toBe(1);
-    expect(result.tribunal_result.debate_token_cost).toBe(1200); // 3 * 400
+    expect(result).not.toBeNull();
+    expect(result!.tribunal_result.total_findings).toBe(3);
+    expect(result!.tribunal_result.rebuttals_conducted).toBe(3);
+    expect(result!.tribunal_result.findings_withdrawn).toBe(1);
+    expect(result!.tribunal_result.findings_modified).toBe(1);
+    expect(result!.tribunal_result.debate_token_cost).toBe(1200); // 3 * 400
   });
 });
 

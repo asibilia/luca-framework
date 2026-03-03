@@ -422,7 +422,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.final_recommendation).toBe("fix");
+    expect(result).not.toBeNull();
+    expect(result!.final_recommendation).toBe("fix");
   });
 
   test("returns 'disagree' when majority says invalid and is upheld", () => {
@@ -444,7 +445,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.final_recommendation).toBe("disagree");
+    expect(result).not.toBeNull();
+    expect(result!.final_recommendation).toBe("disagree");
   });
 
   test("returns 'defer_to_human' when dissent acknowledged", () => {
@@ -452,7 +454,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "dissent_acknowledged" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.final_recommendation).toBe("defer_to_human");
+    expect(result).not.toBeNull();
+    expect(result!.final_recommendation).toBe("defer_to_human");
   });
 
   test("returns 'defer_to_human' when escalated", () => {
@@ -460,7 +463,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "escalate_to_human" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.final_recommendation).toBe("defer_to_human");
+    expect(result).not.toBeNull();
+    expect(result!.final_recommendation).toBe("defer_to_human");
   });
 
   test("confidence is 0.5 for ties with majority upheld", () => {
@@ -472,7 +476,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.confidence).toBe(0.5);
+    expect(result).not.toBeNull();
+    expect(result!.confidence).toBe(0.5);
   });
 
   test("confidence is 0.65 for narrow splits with majority upheld", () => {
@@ -484,7 +489,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.confidence).toBe(0.65);
+    expect(result).not.toBeNull();
+    expect(result!.confidence).toBe(0.65);
   });
 
   test("confidence reduced by 0.1 when dissent acknowledged", () => {
@@ -496,8 +502,9 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "dissent_acknowledged" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
+    expect(result).not.toBeNull();
     // tie base 0.5 - 0.1 = 0.4
-    expect(result.confidence).toBe(0.4);
+    expect(result!.confidence).toBe(0.4);
   });
 
   test("confidence is 0.3 when escalated to human", () => {
@@ -505,7 +512,8 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "escalate_to_human" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.confidence).toBe(0.3);
+    expect(result).not.toBeNull();
+    expect(result!.confidence).toBe(0.3);
   });
 
   test("includes both_perspectives_summary", () => {
@@ -513,8 +521,9 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.both_perspectives_summary).toContain("3-3 split");
-    expect(result.both_perspectives_summary).toContain("validators");
+    expect(result).not.toBeNull();
+    expect(result!.both_perspectives_summary).toContain("3-3 split");
+    expect(result!.both_perspectives_summary).toContain("validators");
   });
 
   test("preserves comment metadata", () => {
@@ -526,9 +535,10 @@ describe("buildSplitVerdictResult", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
 
     const result = buildSplitVerdictResult(split, rebuttals);
-    expect(result.comment_id).toBe("c-42");
-    expect(result.comment_text).toBe("Test comment");
-    expect(result.split_ratio).toBe("2-2");
+    expect(result).not.toBeNull();
+    expect(result!.comment_id).toBe("c-42");
+    expect(result!.comment_text).toBe("Test comment");
+    expect(result!.split_ratio).toBe("2-2");
   });
 
   test("handles empty rebuttals array", () => {
@@ -537,8 +547,9 @@ describe("buildSplitVerdictResult", () => {
     // Empty rebuttals → allUpheld is vacuously true (every() on empty = true)
     // majority is valid → "fix"
     const result = buildSplitVerdictResult(split, []);
-    expect(result.final_recommendation).toBe("fix");
-    expect(result.rebuttals).toHaveLength(0);
+    expect(result).not.toBeNull();
+    expect(result!.final_recommendation).toBe("fix");
+    expect(result!.rebuttals).toHaveLength(0);
   });
 });
 
@@ -552,7 +563,7 @@ describe("formatSplitVerdictForPR", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
     const result = buildSplitVerdictResult(split, rebuttals);
 
-    const markdown = formatSplitVerdictForPR(result);
+    const markdown = formatSplitVerdictForPR(result!);
     expect(markdown).toContain("**Split Verdict");
     expect(markdown).toContain("**Resolution:**");
   });
@@ -562,7 +573,7 @@ describe("formatSplitVerdictForPR", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
     const result = buildSplitVerdictResult(split, rebuttals);
 
-    const markdown = formatSplitVerdictForPR(result);
+    const markdown = formatSplitVerdictForPR(result!);
     expect(markdown).toContain("3-3");
   });
 
@@ -571,7 +582,7 @@ describe("formatSplitVerdictForPR", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
     const result = buildSplitVerdictResult(split, rebuttals);
 
-    const markdown = formatSplitVerdictForPR(result);
+    const markdown = formatSplitVerdictForPR(result!);
     expect(markdown).toContain("confidence: 0.50");
   });
 
@@ -580,7 +591,7 @@ describe("formatSplitVerdictForPR", () => {
     const rebuttals = [makeRebuttal({ resolution: "majority_upheld" })];
     const result = buildSplitVerdictResult(split, rebuttals);
 
-    const markdown = formatSplitVerdictForPR(result);
+    const markdown = formatSplitVerdictForPR(result!);
     expect(markdown).toContain("validators");
     expect(markdown).toContain("split");
   });
@@ -597,7 +608,7 @@ describe("formatSplitVerdictForPR", () => {
     ];
     const result = buildSplitVerdictResult(split, rebuttals);
 
-    const markdown = formatSplitVerdictForPR(result);
+    const markdown = formatSplitVerdictForPR(result!);
     expect(markdown).toContain("performance-auditor");
     expect(markdown).toContain("Performance impact is negligible");
     expect(markdown).toContain("Security outweighs performance here");
@@ -608,7 +619,7 @@ describe("formatSplitVerdictForPR", () => {
     const rebuttals = [makeRebuttal({ resolution: "escalate_to_human" })];
     const result = buildSplitVerdictResult(split, rebuttals);
 
-    const markdown = formatSplitVerdictForPR(result);
+    const markdown = formatSplitVerdictForPR(result!);
     expect(markdown).toContain("escalate to human");
   });
 });

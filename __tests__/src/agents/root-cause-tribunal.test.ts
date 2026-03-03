@@ -327,10 +327,11 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.consensus_category).toBe("verified_fix");
-    expect(result.resolution).toBe("verified_fix");
-    expect(result.phase).toBe(93);
-    expect(result.perspectives).toHaveLength(3);
+    expect(result).not.toBeNull();
+    expect(result!.consensus_category).toBe("verified_fix");
+    expect(result!.resolution).toBe("verified_fix");
+    expect(result!.phase).toBe(93);
+    expect(result!.perspectives).toHaveLength(3);
   });
 
   test("resolves majority symptom_treatment (2-1) with resolution needs_deeper_investigation", () => {
@@ -358,10 +359,11 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.consensus_category).toBe("symptom_treatment");
-    expect(result.resolution).toBe("needs_deeper_investigation");
-    expect(result.dissenting_perspective).toBeDefined();
-    expect(result.dissenting_perspective!.agent).toBe("lu-debugger");
+    expect(result).not.toBeNull();
+    expect(result!.consensus_category).toBe("symptom_treatment");
+    expect(result!.resolution).toBe("needs_deeper_investigation");
+    expect(result!.dissenting_perspective).toBeDefined();
+    expect(result!.dissenting_perspective!.agent).toBe("lu-debugger");
   });
 
   test("handles 3-way split (picks highest confidence)", () => {
@@ -389,10 +391,11 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
+    expect(result).not.toBeNull();
     // Highest confidence (0.9) wins: symptom_treatment
-    expect(result.consensus_category).toBe("symptom_treatment");
-    expect(result.resolution).toBe("needs_deeper_investigation");
-    expect(result.dissenting_perspective).toBeDefined();
+    expect(result!.consensus_category).toBe("symptom_treatment");
+    expect(result!.resolution).toBe("needs_deeper_investigation");
+    expect(result!.dissenting_perspective).toBeDefined();
   });
 
   test("maps verified_fix category to resolution verified_fix", () => {
@@ -408,8 +411,9 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.resolution).toBe("verified_fix");
-    expect(result.recommended_action).toContain("Proceed with commit");
+    expect(result).not.toBeNull();
+    expect(result!.resolution).toBe("verified_fix");
+    expect(result!.recommended_action).toContain("Proceed with commit");
   });
 
   test("maps symptom_treatment category to resolution needs_deeper_investigation", () => {
@@ -425,8 +429,9 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.resolution).toBe("needs_deeper_investigation");
-    expect(result.recommended_action).toContain("symptom");
+    expect(result).not.toBeNull();
+    expect(result!.resolution).toBe("needs_deeper_investigation");
+    expect(result!.recommended_action).toContain("symptom");
   });
 
   test("maps side_effects category to resolution needs_deeper_investigation", () => {
@@ -442,8 +447,9 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.resolution).toBe("needs_deeper_investigation");
-    expect(result.recommended_action).toContain("side effects");
+    expect(result).not.toBeNull();
+    expect(result!.resolution).toBe("needs_deeper_investigation");
+    expect(result!.recommended_action).toContain("side effects");
   });
 
   test("maps incomplete_fix category to resolution needs_deeper_investigation", () => {
@@ -459,8 +465,9 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.resolution).toBe("needs_deeper_investigation");
-    expect(result.recommended_action).toContain("Expand scope");
+    expect(result).not.toBeNull();
+    expect(result!.resolution).toBe("needs_deeper_investigation");
+    expect(result!.recommended_action).toContain("Expand scope");
   });
 
   test("records dissenting perspective when present", () => {
@@ -488,10 +495,13 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.consensus_category).toBe("verified_fix");
-    expect(result.dissenting_perspective).toBeDefined();
-    expect(result.dissenting_perspective!.agent).toBe("lu-integration-checker");
-    expect(result.dissenting_perspective!.category_assessment).toBe(
+    expect(result).not.toBeNull();
+    expect(result!.consensus_category).toBe("verified_fix");
+    expect(result!.dissenting_perspective).toBeDefined();
+    expect(result!.dissenting_perspective!.agent).toBe(
+      "lu-integration-checker",
+    );
+    expect(result!.dissenting_perspective!.category_assessment).toBe(
       "side_effects",
     );
   });
@@ -509,7 +519,8 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(result.estimated_token_cost).toBe(24000);
+    expect(result).not.toBeNull();
+    expect(result!.estimated_token_cost).toBe(24000);
   });
 
   test("result timestamp is a valid string", () => {
@@ -525,7 +536,8 @@ describe("resolveRootCauseTribunal", () => {
 
     const result = resolveRootCauseTribunal(93, fixSignal, perspectives);
 
-    expect(typeof result.timestamp).toBe("string");
-    expect(result.timestamp.length).toBeGreaterThan(0);
+    expect(result).not.toBeNull();
+    expect(typeof result!.timestamp).toBe("string");
+    expect(result!.timestamp.length).toBeGreaterThan(0);
   });
 });

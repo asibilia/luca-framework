@@ -103,13 +103,14 @@ describe("buildIterationMetrics", () => {
 
     const metrics = buildIterationMetrics(result, config);
 
-    expect(metrics.phase).toBe(91);
-    expect(metrics.loop).toBe("harness");
-    expect(metrics.actual_iteration_count).toBe(2);
-    expect(metrics.outcome).toBe("all_passed");
-    expect(metrics.stall_events).toBe(0);
-    expect(metrics.debate_changed_outcome).toBe(false);
-    expect(metrics.timestamp).toBeTruthy();
+    expect(metrics).not.toBeNull();
+    expect(metrics!.phase).toBe(91);
+    expect(metrics!.loop).toBe("harness");
+    expect(metrics!.actual_iteration_count).toBe(2);
+    expect(metrics!.outcome).toBe("all_passed");
+    expect(metrics!.stall_events).toBe(0);
+    expect(metrics!.debate_changed_outcome).toBe(false);
+    expect(metrics!.timestamp).toBeTruthy();
   });
 
   test("counts stall events from iteration history", () => {
@@ -164,7 +165,8 @@ describe("buildIterationMetrics", () => {
     const config = makeLoopConfig();
 
     const metrics = buildIterationMetrics(result, config);
-    expect(metrics.stall_events).toBe(2);
+    expect(metrics).not.toBeNull();
+    expect(metrics!.stall_events).toBe(2);
   });
 
   test("records debate_changed_outcome when true", () => {
@@ -172,7 +174,8 @@ describe("buildIterationMetrics", () => {
     const config = makeLoopConfig();
 
     const metrics = buildIterationMetrics(result, config, true);
-    expect(metrics.debate_changed_outcome).toBe(true);
+    expect(metrics).not.toBeNull();
+    expect(metrics!.debate_changed_outcome).toBe(true);
   });
 });
 
@@ -188,14 +191,15 @@ describe("buildPlanQualityMetrics", () => {
       0,
     );
 
-    expect(metrics.plan_id).toBe("91-A");
-    expect(metrics.phase).toBe(91);
-    expect(metrics.wsjf_score).toBe(8.5);
-    expect(metrics.complexity).toBe("MODERATE");
-    expect(metrics.execution_duration_ms).toBe(120000);
-    expect(metrics.outcome).toBe("success");
-    expect(metrics.gap_count).toBe(0);
-    expect(metrics.timestamp).toBeTruthy();
+    expect(metrics).not.toBeNull();
+    expect(metrics!.plan_id).toBe("91-A");
+    expect(metrics!.phase).toBe(91);
+    expect(metrics!.wsjf_score).toBe(8.5);
+    expect(metrics!.complexity).toBe("MODERATE");
+    expect(metrics!.execution_duration_ms).toBe(120000);
+    expect(metrics!.outcome).toBe("success");
+    expect(metrics!.gap_count).toBe(0);
+    expect(metrics!.timestamp).toBeTruthy();
   });
 });
 
@@ -210,37 +214,40 @@ describe("buildReviewMetrics", () => {
 
     const metrics = buildReviewMetrics(91, findings);
 
-    expect(metrics.phase).toBe(91);
-    expect(metrics.reviewer_count).toBe(3);
-    expect(metrics.total_issues).toBe(4);
-    expect(metrics.issues_by_severity).toEqual({
+    expect(metrics).not.toBeNull();
+    expect(metrics!.phase).toBe(91);
+    expect(metrics!.reviewer_count).toBe(3);
+    expect(metrics!.total_issues).toBe(4);
+    expect(metrics!.issues_by_severity).toEqual({
       HIGH: 2,
       MEDIUM: 1,
       LOW: 1,
     });
-    expect(metrics.issues_by_agent).toEqual({
+    expect(metrics!.issues_by_agent).toEqual({
       "dx-advocate": 2,
       "code-simplifier": 1,
       "code-architect": 1,
     });
-    expect(metrics.debate_enabled).toBe(false);
-    expect(metrics.disagreements_detected).toBe(0);
+    expect(metrics!.debate_enabled).toBe(false);
+    expect(metrics!.disagreements_detected).toBe(0);
   });
 
   test("handles empty findings", () => {
     const metrics = buildReviewMetrics(91, []);
 
-    expect(metrics.reviewer_count).toBe(0);
-    expect(metrics.total_issues).toBe(0);
-    expect(metrics.issues_by_severity).toEqual({});
-    expect(metrics.issues_by_agent).toEqual({});
+    expect(metrics).not.toBeNull();
+    expect(metrics!.reviewer_count).toBe(0);
+    expect(metrics!.total_issues).toBe(0);
+    expect(metrics!.issues_by_severity).toEqual({});
+    expect(metrics!.issues_by_agent).toEqual({});
   });
 
   test("records debate fields when provided", () => {
     const metrics = buildReviewMetrics(91, [], true, 3);
 
-    expect(metrics.debate_enabled).toBe(true);
-    expect(metrics.disagreements_detected).toBe(3);
+    expect(metrics).not.toBeNull();
+    expect(metrics!.debate_enabled).toBe(true);
+    expect(metrics!.disagreements_detected).toBe(3);
   });
 });
 
@@ -259,16 +266,17 @@ describe("buildConvergenceMetrics", () => {
 
     const metrics = buildConvergenceMetrics(91, convergenceResult, "harness");
 
-    expect(metrics.phase).toBe(91);
-    expect(metrics.loop).toBe("harness");
-    expect(metrics.premature_halt).toBe(true);
-    expect(metrics.total_stale_count).toBe(2);
-    expect(metrics.signals_at_halt).toEqual({
+    expect(metrics).not.toBeNull();
+    expect(metrics!.phase).toBe(91);
+    expect(metrics!.loop).toBe("harness");
+    expect(metrics!.premature_halt).toBe(true);
+    expect(metrics!.total_stale_count).toBe(2);
+    expect(metrics!.signals_at_halt).toEqual({
       error_count_delta: 0,
       fingerprint_overlap: 0.95,
       artifact_change_delta: 0,
     });
-    expect(metrics.debate_override).toBe(false);
+    expect(metrics!.debate_override).toBe(false);
   });
 
   test("maps convergence result to metrics (no halt case)", () => {
@@ -285,8 +293,9 @@ describe("buildConvergenceMetrics", () => {
 
     const metrics = buildConvergenceMetrics(91, convergenceResult, "verify");
 
-    expect(metrics.premature_halt).toBe(false);
-    expect(metrics.signals_at_halt).toBeUndefined();
+    expect(metrics).not.toBeNull();
+    expect(metrics!.premature_halt).toBe(false);
+    expect(metrics!.signals_at_halt).toBeUndefined();
   });
 
   test("records debate override", () => {
@@ -307,7 +316,8 @@ describe("buildConvergenceMetrics", () => {
       "harness",
       true,
     );
-    expect(metrics.debate_override).toBe(true);
+    expect(metrics).not.toBeNull();
+    expect(metrics!.debate_override).toBe(true);
   });
 });
 

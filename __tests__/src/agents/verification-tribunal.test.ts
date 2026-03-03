@@ -241,11 +241,12 @@ describe("resolveVerificationTribunal", () => {
 
     const result = resolveVerificationTribunal(92, conflict, perspectives);
 
-    expect(result.consensus_category).toBe("tests_incomplete");
-    expect(result.phase).toBe(92);
-    expect(result.perspectives).toHaveLength(3);
-    expect(result.estimated_token_cost).toBe(10500);
-    expect(result.timestamp).toBeTruthy();
+    expect(result).not.toBeNull();
+    expect(result!.consensus_category).toBe("tests_incomplete");
+    expect(result!.phase).toBe(92);
+    expect(result!.perspectives).toHaveLength(3);
+    expect(result!.estimated_token_cost).toBe(10500);
+    expect(result!.timestamp).toBeTruthy();
   });
 
   test("resolves majority agreement (2-1)", () => {
@@ -273,9 +274,10 @@ describe("resolveVerificationTribunal", () => {
 
     const result = resolveVerificationTribunal(92, conflict, perspectives);
 
-    expect(result.consensus_category).toBe("tests_incomplete");
-    expect(result.dissenting_perspective).toBeDefined();
-    expect(result.dissenting_perspective!.agent).toBe("lu-verifier");
+    expect(result).not.toBeNull();
+    expect(result!.consensus_category).toBe("tests_incomplete");
+    expect(result!.dissenting_perspective).toBeDefined();
+    expect(result!.dissenting_perspective!.agent).toBe("lu-verifier");
   });
 
   test("resolves three-way split using highest confidence", () => {
@@ -303,9 +305,10 @@ describe("resolveVerificationTribunal", () => {
 
     const result = resolveVerificationTribunal(92, conflict, perspectives);
 
+    expect(result).not.toBeNull();
     // Highest confidence (0.9) wins: goal_over_specified
-    expect(result.consensus_category).toBe("goal_over_specified");
-    expect(result.dissenting_perspective).toBeDefined();
+    expect(result!.consensus_category).toBe("goal_over_specified");
+    expect(result!.dissenting_perspective).toBeDefined();
   });
 
   test("maps tests_incomplete to appropriate remediation", () => {
@@ -321,7 +324,8 @@ describe("resolveVerificationTribunal", () => {
 
     const result = resolveVerificationTribunal(92, conflict, perspectives);
 
-    expect(result.recommended_remediation).toContain("additional tests");
+    expect(result).not.toBeNull();
+    expect(result!.recommended_remediation).toContain("additional tests");
   });
 
   test("maps goal_over_specified to appropriate remediation", () => {
@@ -337,7 +341,8 @@ describe("resolveVerificationTribunal", () => {
 
     const result = resolveVerificationTribunal(92, conflict, perspectives);
 
-    expect(result.recommended_remediation).toContain("must-have truths");
+    expect(result).not.toBeNull();
+    expect(result!.recommended_remediation).toContain("must-have truths");
   });
 
   test("maps wiring_issue to appropriate remediation", () => {
@@ -353,6 +358,7 @@ describe("resolveVerificationTribunal", () => {
 
     const result = resolveVerificationTribunal(92, conflict, perspectives);
 
-    expect(result.recommended_remediation).toContain("wiring gaps");
+    expect(result).not.toBeNull();
+    expect(result!.recommended_remediation).toContain("wiring gaps");
   });
 });
