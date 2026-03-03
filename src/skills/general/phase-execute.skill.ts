@@ -1652,6 +1652,10 @@ All code reviews passed ✓
 \`\`\`
 
 - Spawn parallel debug agents to diagnose root causes
+- **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
+  - Gate: \`root_cause_tribunal_enabled\` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
+  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
 - Spawn lu-planner in --gaps mode to create fix plans
 - Spawn lu-plan-checker to verify fix plans
 - Present ready status:
