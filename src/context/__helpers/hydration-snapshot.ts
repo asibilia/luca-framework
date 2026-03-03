@@ -390,11 +390,27 @@ export async function generatePreFlightSnapshot(
     config.include_imports ? extractImportGraph(cwd) : Promise.resolve([]),
   ]);
 
-  return preFlightSnapshotSchema.parse({
+  const result = preFlightSnapshotSchema.safeParse({
     file_tree: fileTree,
     test_files: testFiles,
     git_history: gitHistory,
     import_graph: importGraph,
     created_at: new Date().toISOString(),
   });
+
+  if (!result.success) {
+    console.error(
+      `[hydration-snapshot] Failed to parse pre-flight snapshot: ${result.error.message}`,
+    );
+    // Return minimal valid snapshot
+    return {
+      file_tree: fileTree,
+      test_files: testFiles,
+      git_history: gitHistory,
+      import_graph: importGraph,
+      created_at: new Date().toISOString(),
+    } as PreFlightSnapshot;
+  }
+
+  return result.data;
 }
