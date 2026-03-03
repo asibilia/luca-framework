@@ -581,10 +581,10 @@ PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
   console.log(c.iteration?.promotion_threshold ?? 3);
 ")
 
-# Extract stall debate setting (opt-in, default false)
+# Extract stall debate setting (default: true)
 STALL_DEBATE_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.iteration?.stall_debate_enabled ?? false);
+  console.log(c.iteration?.stall_debate_enabled ?? true);
 ")
 
 # Override mode if --mode flag was passed
@@ -1414,14 +1414,14 @@ description="Security review"
 
 ### 8.5. Design Tribunal (Conditional)
 
-**Skip if:** Complexity is below COMPLEX, OR `workflow.tribunal_enabled: false` in config (default: false), OR no disagreements detected.
+**Skip if:** Complexity is below COMPLEX, OR `workflow.tribunal_enabled: false` in config (default: true), OR no disagreements detected.
 
 **Gate check:**
 
 ```bash
 TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.workflow?.tribunal_enabled ?? false);
+  console.log(c.workflow?.tribunal_enabled ?? true);
 ")
 ```
 
@@ -1642,6 +1642,10 @@ All code reviews passed ✓
 ```
 
 - Spawn parallel debug agents to diagnose root causes
+- **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
+  - Gate: `root_cause_tribunal_enabled` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
+  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
 - Spawn lu-planner in --gaps mode to create fix plans
 - Spawn lu-plan-checker to verify fix plans
 - Present ready status:

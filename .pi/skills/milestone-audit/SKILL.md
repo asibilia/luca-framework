@@ -342,7 +342,7 @@ description="Milestone security review"
 
 \`\`\`bash
 # Read debate config
-DEBATE_ENABLED=$(cat .planning/config.json 2>/dev/null | grep -o '"milestone_debate_enabled"[[:space:]]*:[[:space:]]*[a-z]*' | grep -o '[a-z]*$' || echo "false")
+DEBATE_ENABLED=$(cat .planning/config.json 2>/dev/null | grep -o '"milestone_debate_enabled"[[:space:]]*:[[:space:]]*[a-z]*' | grep -o '[a-z]*$' || echo "true")
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 \`\`\`
 
