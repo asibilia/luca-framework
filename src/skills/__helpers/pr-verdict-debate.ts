@@ -235,7 +235,7 @@ RESPONSE: [your response]`;
 export function buildSplitVerdictResult(
   split: VerdictSplit,
   rebuttals: VerdictRebuttal[],
-): SplitVerdictResult {
+): SplitVerdictResult | null {
   // Determine the majority's position
   const majorityIsValid = split.valid_count >= split.invalid_count;
 
@@ -278,7 +278,7 @@ export function buildSplitVerdictResult(
     rebuttals,
   );
 
-  return splitVerdictResultSchema.parse({
+  const parsed = splitVerdictResultSchema.safeParse({
     comment_id: split.comment_id,
     comment_text: split.comment_text,
     split_ratio: split.split_ratio,
@@ -287,6 +287,15 @@ export function buildSplitVerdictResult(
     confidence,
     both_perspectives_summary: bothPerspectivesSummary,
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[pr-verdict-debate] Failed to parse split verdict result: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
 
 /**
