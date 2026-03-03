@@ -11,6 +11,8 @@
  * PR validation context where disagreements are about the validity of
  * a concern rather than severity or scope of a finding.
  */
+import filter from "lodash/filter";
+
 import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import {
   verdictSplitSchema,
@@ -69,8 +71,8 @@ export function detectVerdictSplits(
     // Need at least 2 verdicts to have a split
     if (commentVerdicts.length < 2) continue;
 
-    const validVerdicts = commentVerdicts.filter((v) => v.valid);
-    const invalidVerdicts = commentVerdicts.filter((v) => !v.valid);
+    const validVerdicts = filter(commentVerdicts, (v) => v.valid);
+    const invalidVerdicts = filter(commentVerdicts, (v) => !v.valid);
 
     const validCount = validVerdicts.length;
     const invalidCount = invalidVerdicts.length;
