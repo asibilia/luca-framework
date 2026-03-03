@@ -591,10 +591,10 @@ PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
   console.log(c.iteration?.promotion_threshold ?? 3);
 ")
 
-# Extract stall debate setting (opt-in, default false)
+# Extract stall debate setting (default: true)
 STALL_DEBATE_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.iteration?.stall_debate_enabled ?? false);
+  console.log(c.iteration?.stall_debate_enabled ?? true);
 ")
 
 # Override mode if --mode flag was passed
@@ -1424,14 +1424,14 @@ description="Security review"
 
 ### 8.5. Design Tribunal (Conditional)
 
-**Skip if:** Complexity is below COMPLEX, OR \`workflow.tribunal_enabled: false\` in config (default: false), OR no disagreements detected.
+**Skip if:** Complexity is below COMPLEX, OR \`workflow.tribunal_enabled: false\` in config (default: true), OR no disagreements detected.
 
 **Gate check:**
 
 \`\`\`bash
 TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.workflow?.tribunal_enabled ?? false);
+  console.log(c.workflow?.tribunal_enabled ?? true);
 ")
 \`\`\`
 
