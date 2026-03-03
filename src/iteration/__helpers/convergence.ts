@@ -1,5 +1,7 @@
 import { createHash } from "crypto";
 
+import filter from "lodash/filter";
+
 import type { ParsedError } from "~/harness/__schemas/harness.schemas";
 import { getArg, hasFlag } from "~/shared/__helpers/cli-utils";
 import type {
@@ -161,10 +163,12 @@ export function computeConvergenceSignals(
   artifactDelta: number,
   enableSemantic: boolean = false,
 ): ConvergenceSignals {
-  const currentActive = currentErrors.filter(
+  const currentActive = filter(
+    currentErrors,
     (e) => e.classification !== "permanent",
   );
-  const previousActive = previousErrors.filter(
+  const previousActive = filter(
+    previousErrors,
     (e) => e.classification !== "permanent",
   );
 
