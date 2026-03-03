@@ -66,3 +66,38 @@ export {
 } from "./__helpers/tribunal-rebuttals";
 
 export type { RebuttalPromptPair } from "./__helpers/tribunal-rebuttals";
+
+// Verification tribunal schemas
+export {
+  T1_STATUSES,
+  t1StatusSchema,
+  T3_STATUSES,
+  t3StatusSchema,
+  VERIFICATION_CONFLICT_TYPES,
+  verificationConflictTypeSchema,
+  conflictSignalSchema,
+  CONFLICT_CATEGORIES,
+  conflictCategorySchema,
+  diagnosticPerspectiveSchema,
+  verificationTribunalResultSchema,
+} from "./__schemas/verification-tribunal.schemas";
+
+export type {
+  T1Status,
+  T3Status,
+  VerificationConflictType,
+  ConflictSignal,
+  ConflictCategory,
+  DiagnosticPerspective,
+  VerificationTribunalResult,
+} from "./__schemas/verification-tribunal.schemas";
+
+// Verification tribunal helpers
+export {
+  detectT1T3Conflict,
+  shouldRunVerificationTribunal,
+  buildTestWriterDiagnosticPrompt,
+  buildVerifierDiagnosticPrompt,
+  buildIntegrationDiagnosticPrompt,
+  resolveVerificationTribunal,
+} from "./__helpers/verification-tribunal";
