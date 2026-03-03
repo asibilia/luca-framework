@@ -1,3 +1,6 @@
+import orderBy from "lodash/orderBy";
+import filter from "lodash/filter";
+
 import type { ConvergenceResult } from "../__schemas/iteration.schemas";
 import { stallDebateOutputSchema } from "../__schemas/stall-debate.schemas";
 import type {
@@ -101,10 +104,12 @@ export function evaluateStallDebate(
   }
 
   // Rule 3: Majority correctable errors → error focus strategy
-  const correctableCount = current_errors.filter(
+  const correctableCount = filter(
+    current_errors,
     (e) => e.classification === "correctable",
   ).length;
-  const totalActive = current_errors.filter(
+  const totalActive = filter(
+    current_errors,
     (e) => e.classification !== "permanent",
   ).length;
   const correctableRatio = totalActive > 0 ? correctableCount / totalActive : 0;
@@ -118,8 +123,11 @@ export function evaluateStallDebate(
         sourceCounts.set(key, (sourceCounts.get(key) ?? 0) + 1);
       }
     }
-    const topSources = Array.from(sourceCounts.entries())
-      .sort((a, b) => b[1] - a[1])
+    const topSources = orderBy(
+      Array.from(sourceCounts.entries()),
+      ([, count]) => count,
+      "desc",
+    )
       .slice(0, 3)
       .map(([source]) => source);
 
