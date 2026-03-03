@@ -326,12 +326,27 @@ if (import.meta.main) {
     const staleThreshold = parseInt(getArg(args, "stale-threshold", "2"), 10);
     const enableSemantic = hasFlag(args, "semantic");
 
-    const currentParsed = classifiedErrorSchema
+    const currentResult = classifiedErrorSchema
       .array()
-      .parse(JSON.parse(currentRaw));
-    const previousParsed = classifiedErrorSchema
+      .safeParse(JSON.parse(currentRaw));
+    if (!currentResult.success) {
+      console.error(
+        `[convergence] Invalid --current JSON: ${currentResult.error.message}`,
+      );
+      process.exit(2);
+    }
+    const currentParsed = currentResult.data;
+
+    const previousResult = classifiedErrorSchema
       .array()
-      .parse(JSON.parse(previousRaw));
+      .safeParse(JSON.parse(previousRaw));
+    if (!previousResult.success) {
+      console.error(
+        `[convergence] Invalid --previous JSON: ${previousResult.error.message}`,
+      );
+      process.exit(2);
+    }
+    const previousParsed = previousResult.data;
 
     const signals = computeConvergenceSignals(
       currentParsed,
