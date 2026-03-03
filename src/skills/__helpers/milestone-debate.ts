@@ -25,10 +25,7 @@ import type {
   UnifiedRecommendation,
 } from "~/shared/__schemas/tribunal.schemas";
 import type { RebuttalPromptPair } from "~/shared/__helpers/tribunal-rebuttals";
-import {
-  COMPLEXITY_ORDER,
-  type ComplexityLevel,
-} from "~/complexity/__schemas/complexity.schemas";
+import { COMPLEXITY_ORDER, type ComplexityLevel } from "~/complexity";
 
 import { milestoneDebateResultSchema } from "~/skills/__schemas/milestone-debate.schemas";
 import type {
