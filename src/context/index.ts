@@ -15,6 +15,11 @@ export type {
   ContextConfig,
   BudgetAllocation,
   ContextDocumentSet,
+  HydrationConfig,
+  FileTreeEntry,
+  GitCommitSummary,
+  ImportEdge,
+  PreFlightSnapshot,
 } from "./__schemas/context.schemas";
 
 export type {
@@ -36,6 +41,11 @@ export {
   contextConfigSchema,
   budgetAllocationSchema,
   contextDocumentSetSchema,
+  hydrationConfigSchema,
+  fileTreeEntrySchema,
+  gitCommitSummarySchema,
+  importEdgeSchema,
+  preFlightSnapshotSchema,
 } from "./__schemas/context.schemas";
 
 export {
@@ -113,3 +123,16 @@ export {
   aggregateResults,
   aggregatedResultSchema,
 } from "./__helpers/result-aggregator";
+
+// ---------------------------------------------------------------------------
+// Hydration
+// ---------------------------------------------------------------------------
+
+export {
+  fileTreeSnapshot,
+  discoverTestFiles,
+  recentGitHistory,
+  extractImportGraph,
+  complexityToHydrationConfig,
+  generatePreFlightSnapshot,
+} from "./__helpers/hydration-snapshot";
