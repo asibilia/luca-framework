@@ -34,7 +34,12 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 - `lu-roadmap-qa` — Testing gap analysis and QA impact for roadmap revision (swarm specialist)
 - `lu-roadmap-synthesizer` — Merges specialist analyses into unified roadmap proposal (swarm synthesizer)
 
-**CRITICAL:** You are an orchestrator. Do NOT execute plans, verify code, or review code yourself. Invoke the appropriate sub-skills and sub-agents as described below.
+**CRITICAL — WORKFLOW COMPLIANCE IS MANDATORY:**
+
+1. You are an **orchestrator**. Do NOT execute plans, verify code, or review code yourself. Invoke the appropriate sub-skills and sub-agents as described below.
+2. **Every step in this skill spec is a binding instruction, not a suggestion.** You MUST NOT skip, simplify, or substitute workflow steps — even if you believe an alternative approach would produce equivalent results. The workflow exists because specific tool usage (TeamCreate, SendMessage, Skill, Task) was intentionally designed and validated.
+3. **If a step says to use TeamCreate, you MUST use TeamCreate.** If a step says to use Skill, you MUST use Skill. Do not replace TeamCreate with parallel Task calls. Do not replace sub-agent delegation with self-performed analysis. Do not rationalize deviations with "functionally equivalent" reasoning.
+4. **The only valid way to skip a step is when the spec explicitly provides a skip condition** (e.g., complexity gating, `--no-swarm` flag, oversight level). If no skip condition is documented, the step is mandatory.
 </main>
 
 ## configuration
@@ -192,6 +197,9 @@ done
 ```
 
 **Branch based on SWARM_ENABLED:**
+
+> **MANDATORY ROUTING — DO NOT SKIP OR SUBSTITUTE:**
+> The path below is determined by the SWARM_ENABLED flag. If SWARM_ENABLED == true (the default), you MUST follow Path B and use TeamCreate to create a formal agent team. You MUST NOT substitute parallel Task calls for TeamCreate — they are not equivalent. The team infrastructure (TeamCreate, SendMessage, shared task lists) exists for coordination, auditability, and architectural consistency. Path A is ONLY valid when `--no-swarm` is explicitly passed or `swarm_enabled: false` is set in config.json.
 
 ---
 
@@ -623,6 +631,8 @@ LEVEL_INDEX=0
 Check the level's mode:
 - If **SERIAL** (1 phase): execute via Steps 4a-4i (existing serial path)
 - If **PARALLEL** (2+ phases, SWARM_ENABLED): execute via Steps 4-swarm-a through 4-swarm-h
+
+> **MANDATORY:** When the level mode is PARALLEL, you MUST use TeamCreate to create an agent team and spawn teammates via Task with `team_name`. Do NOT substitute with individual Task calls or attempt to execute parallel phases yourself. The team infrastructure ensures proper coordination, worktree isolation, and merge sequencing.
 
 ---
 

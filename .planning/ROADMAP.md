@@ -2,19 +2,67 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v2.6.0 — Code Health & Context Intelligence
 
 ---
 
 ## Current Milestone
 
-_Planning next milestone_
+### v2.6.0 — Code Health & Context Intelligence
+
+**Goal:** Resolve remaining v2.5.1 carryover (test isolation, barrel purity), tighten iteration tuning, improve context efficiency (rule scoping, pre-flight hydration), and validate lightweight debate patterns (stall-vs-retry).
+
+**Scoped by:** Autopilot roadmap revision swarm (3 specialists + synthesizer, 2026-03-03)
+
+#### Phase 89: Code Health Carryover
+
+**Goal:** Fix CI-blocking test isolation bug, clean remaining impure barrels, tighten iteration caps.
+
+- [ ] 89-A — Fix validateBranding module resolution / test suite isolation (#29)
+- [ ] 89-B — Refactor remaining impure barrel files (#28, reduced scope — 5 of 7 already cleaned in v2.5.1)
+- [ ] 89-C — Tighten harness iteration caps: MODERATE 3→2, COMPLEX 3→2, CRITICAL 5→3 (#32)
+
+**Depends on:** None
+
+#### Phase 90: Context Intelligence
+
+**Goal:** Reduce context saturation via directory-scoped rules, expand pre-flight hydration for better first-pass accuracy.
+
+- [ ] 90-A — Scope rules by directory/domain (#33)
+- [ ] 90-B — Expand pre-flight context hydration (#34)
+
+**Depends on:** Phase 89
+
+#### Phase 91: Convergence Debate
+
+**Goal:** Add lightweight stall-vs-retry debate to iteration loop as debate pattern proof-of-concept.
+
+- [ ] 91-A — Stall-vs-retry convergence debate (#40)
+
+**Depends on:** Phase 89 (specifically 89-C)
+
+#### Phase 92: Milestone Verification & Release
+
+**Goal:** Full harness verification, milestone audit, archive.
+
+- [ ] 92-A — Full harness (test + typecheck + drift), milestone audit, archive
+
+**Depends on:** Phases 89, 90, 91
 
 ---
 
 ## Backlog (Future)
 
-### v2.6.0 — Adaptive Learning & Ecosystem
+### v2.7.0 — Debate Architecture
+
+- Design Tribunal: phase-execute code review debate (#36)
+- Ground truth tracking for debate measurement (#41)
+- Milestone audit adversarial debate round (#35)
+- Verification Tribunal for T1/T3 conflicts (#37)
+- Root Cause Tribunal for debug fix validation (#38)
+- PR address split verdict debate (#39)
+
+### v2.8.0 — Adaptive Learning & Ecosystem
 
 - Cross-session procedure replay engine (#12)
 - Adaptive complexity self-tuning (#13)
@@ -57,4 +105,4 @@ _Planning next milestone_
 
 ---
 
-_Roadmap updated: 2026-03-02 (v2.5.1 milestone archived)_
+_Roadmap updated: 2026-03-03 (v2.6.0 milestone scoped by autopilot swarm — 3 specialists + synthesizer)_
