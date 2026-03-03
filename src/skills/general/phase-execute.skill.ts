@@ -927,7 +927,7 @@ Route by returned status:
 
 ### 7.25. Verification Tribunal (Conditional)
 
-**Skip if:** \`workflow.verification_tribunal_enabled: false\` in config (default: false), OR complexity is below COMPLEX, OR no T1/T3 conflict detected.
+**Skip if:** \`workflow.verification_tribunal_enabled: false\` in config (default: true), OR complexity is below COMPLEX, OR no T1/T3 conflict detected.
 
 **When to trigger:** The verifier returned \`human_needed\` AND the verification report shows a T1/T3 signal conflict (T1 STRONG PASS with T3 PARTIAL or FAIL, or T1 PARTIAL with T3 PARTIAL).
 
@@ -936,7 +936,7 @@ Route by returned status:
 \`\`\`bash
 VT_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.workflow?.verification_tribunal_enabled ?? false);
+  console.log(c.workflow?.verification_tribunal_enabled ?? true);
 ")
 \`\`\`
 

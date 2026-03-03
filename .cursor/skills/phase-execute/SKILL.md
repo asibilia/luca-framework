@@ -912,8 +912,122 @@ Route by returned status:
 - `passed` → continue to Step 8 (Code Quality Review)
 - `human_needed` → present items, get approval, then continue to Step 8
 - `gaps_found` → proceed to Step 7.5 (Loop B: Verify Fix Loop)
+- `human_needed` with T1/T3 conflict → proceed to Step 7.25 (Verification Tribunal)
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered `/phase-plan {X} --gaps`.
+
+### 7.25. Verification Tribunal (Conditional)
+
+**Skip if:** `workflow.verification_tribunal_enabled: false` in config (default: true), OR complexity is below COMPLEX, OR no T1/T3 conflict detected.
+
+**When to trigger:** The verifier returned `human_needed` AND the verification report shows a T1/T3 signal conflict (T1 STRONG PASS with T3 PARTIAL or FAIL, or T1 PARTIAL with T3 PARTIAL).
+
+**Gate check:**
+
+```bash
+VT_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.verification_tribunal_enabled ?? true);
+")
+```
+
+**When enabled at COMPLEX+ complexity with T1/T3 conflict:**
+
+1. **Extract conflict signal**: Parse the verifier's T1 and T3 signal statuses and evidence from VERIFICATION.md
+2. **Build diagnostic prompts**: Generate three prompts using the conflict signal — one for each diagnostic agent
+3. **Spawn three diagnostic agents in PARALLEL**:
+
+```python
+# Spawn lu-test-writer diagnostic
+Task(
+  prompt="""
+<diagnostic_context>
+{test_writer_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Analyze the T1/T3 conflict from your perspective as test coverage expert.
+</diagnostic_context>
+""",
+  subagent_type="lu-test-writer",
+  model="{diagnostic_model}",
+  description="Test Writer Diagnostic"
+)
+
+# Spawn lu-verifier diagnostic (IN PARALLEL)
+Task(
+  prompt="""
+<diagnostic_context>
+{verifier_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Re-examine your T3 analysis for potential over-specification.
+</diagnostic_context>
+""",
+  subagent_type="lu-verifier",
+  model="{diagnostic_model}",
+  description="Verifier Diagnostic"
+)
+
+# Spawn lu-integration-checker diagnostic (IN PARALLEL)
+Task(
+  prompt="""
+<diagnostic_context>
+{integration_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Analyze cross-component wiring for integration gaps.
+</diagnostic_context>
+""",
+  subagent_type="lu-integration-checker",
+  model="{diagnostic_model}",
+  description="Integration Diagnostic"
+)
+```
+
+**Do NOT proceed until ALL three diagnostic Tasks return.**
+
+4. **Parse diagnostic responses**: Extract CATEGORY, CONFIDENCE, EVIDENCE, and ACTION from each agent's response
+5. **Resolve tribunal**: Majority vote determines consensus category. If three-way split, use highest confidence as tiebreaker
+6. **Route by consensus category**:
+
+| Category | Action |
+|----------|--------|
+| `tests_incomplete` | Flag for test augmentation — existing tests don't cover the goal specification |
+| `goal_over_specified` | Adjust verification — T3 must-haves exceed plan scope |
+| `wiring_issue` | Flag for integration fix — components exist but aren't connected |
+
+**Display tribunal results:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > VERIFICATION TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value                          |
+| --------------------- | ------------------------------ |
+| Conflict type         | {conflict_type}                |
+| T1 status             | {t1_status}                    |
+| T3 status             | {t3_status}                    |
+| Consensus category    | {consensus_category}           |
+| Consensus confidence  | {consensus_confidence}         |
+| Dissenting agent      | {dissent_agent or "None"}      |
+| Token cost            | ~{estimated_token_cost}        |
+```
+
+7. **Append tribunal result to VERIFICATION.md**:
+
+Add a new section `### Verification Tribunal` to the existing VERIFICATION.md with the tribunal results, perspectives, and recommended remediation.
+
+8. **Continue based on category**:
+   - If `tests_incomplete`: Present to user with recommendation to augment tests, then continue to Step 8
+   - If `goal_over_specified`: Note that verification may be overly strict, adjust status to `passed` if user approves, then continue to Step 8
+   - If `wiring_issue`: Proceed to Step 7.5 (Loop B) with integration fix focus
 
 ### 7.5. Loop B: Verify Fix Loop
 
