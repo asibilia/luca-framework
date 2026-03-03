@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 
-import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+import { isDebateComplexity } from "~/complexity";
 
 import {
   reviewFindingSchema,
