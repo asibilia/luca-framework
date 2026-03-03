@@ -334,7 +334,95 @@ description="Milestone security review"
 - **tailwind-auditor**: "Dynamic color system usage, shadcn anti-patterns (text-muted-foreground, bg-primary), Tailwind consistency"
 - **security-auditor**: "Auth patterns consistency, API security across all endpoints, data flow"
 
-**Merge findings:** Combine all issues, categorize by severity and cross-phase flag.
+**Merge findings:** Combine all issues, categorize by severity and cross-phase flag. Store each reviewer's raw output keyed by agent name for potential debate analysis.
+
+### 4.5 Adversarial Debate Round (Conditional)
+
+**Gate check:**
+
+\`\`\`bash
+# Read debate config
+DEBATE_ENABLED=$(cat .planning/config.json 2>/dev/null | grep -o '"milestone_debate_enabled"[[:space:]]*:[[:space:]]*[a-z]*' | grep -o '[a-z]*$' || echo "false")
+COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+\`\`\`
+
+**Skip if:** \`DEBATE_ENABLED\` is "false" OR complexity is below COMPLEX, OR no disagreements detected among reviewer outputs from Step 4.
+
+**If all gates pass, proceed with debate:**
+
+#### 4.5.1 Normalize and Detect
+
+Collect all 5 code reviewer outputs (excluding integration checker) from Step 4.
+
+- Normalize findings using tribunal detector
+- Detect disagreements by file:line grouping
+- Check severity gate (CRITICAL/HIGH required)
+
+**Display tribunal start banner if disagreements found:**
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca >>> MILESTONE DEBATE ROUND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{N} disagreements detected across {M} reviewers.
+Running adversarial rebuttal round...
+\`\`\`
+
+#### 4.5.2 Rebuttal Round
+
+For each disagreement, spawn challenger and defender in PARALLEL:
+
+\`\`\`\`python
+# For each disagreement: spawn challenger and defender
+# Use the SAME reviewer agent type as the original finding
+
+Task(
+  prompt="""
+{challenger_prompt from buildRebuttalPrompts, augmented with milestone context}
+""",
+  subagent_type="{challenger_agent_type}",
+  description="Challenge: {finding_summary}"
+)
+
+Task(
+  prompt="""
+{defender_prompt from buildRebuttalPrompts, augmented with milestone context}
+""",
+  subagent_type="{defender_agent_type}",
+  description="Defend: {finding_summary}"
+)
+\`\`\`\`
+
+**Do NOT proceed until ALL rebuttal Tasks return.**
+
+#### 4.5.3 Resolve and Unify
+
+Parse rebuttal responses. For each:
+- Determine resolution: upheld, withdrawn, or modified
+- Calculate confidence scores
+- Build unified recommendations
+
+#### 4.5.4 Display Debate Results
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca >>> DEBATE COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value |
+|-----------------------|-------|
+| Disagreements found   | {N}   |
+| Rebuttals conducted   | {N}   |
+| Findings withdrawn    | {N}   |
+| Findings modified     | {N}   |
+| Consensus confidence  | {avg} |
+| Estimated token cost  | {N}   |
+\`\`\`
+
+#### 4.5.5 Replace Merged Findings
+
+Replace the raw merged findings from Step 4 with unified recommendations from the debate. The unified recommendations carry confidence scores and debate history, which are used in Step 5 for the audit report.
 
 ### 5. Create Audit Report
 
@@ -343,9 +431,39 @@ Location: `.planning/v{version}-MILESTONE-AUDIT.md`
 Include:
 - Requirements status
 - Integration status
-- Code quality findings (from step 4)
+- Code quality findings (from step 4, or unified recommendations if debate ran)
 - Gaps identified
 - Tech debt (populated from code review findings)
+
+**If debate ran (Step 4.5),** add a Debate Analysis section after code quality findings:
+
+\`\`\`markdown
+### Debate Analysis
+
+**Disagreements Resolved:** {N}
+**Findings Withdrawn after Challenge:** {N}
+**Findings Modified after Challenge:** {N}
+
+#### High-Confidence Findings (>0.8)
+
+| Finding | Severity | File | Confidence | Debate Status |
+|---------|----------|------|------------|---------------|
+| {issue} | {sev}    | {f}  | {conf}     | upheld/unchallenged |
+
+#### Contested Findings (0.5-0.8)
+
+| Finding | Severity | File | Confidence | Challenge Summary |
+|---------|----------|------|------------|-------------------|
+| {issue} | {sev}    | {f}  | {conf}     | {summary}         |
+
+#### Withdrawn Findings
+
+| Original Finding | Original Severity | Withdrawn By | Reason |
+|------------------|-------------------|--------------|--------|
+| {issue}          | {sev}             | {agent}      | {why}  |
+\`\`\`
+
+**If debate did NOT run,** omit the Debate Analysis section entirely. The report should be identical to the pre-debate format.
 
 ### 6. Present Results
 
@@ -378,6 +496,7 @@ Luca ► MILESTONE v{version} AUDIT ⚠
 Requirements: {X}/{Y} complete
 Integration: {status}
 Code quality: {N} issues found
+Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} modified}
 
 ### Gaps Found
 
@@ -412,6 +531,10 @@ Code quality: {N} issues found
 - [ ] Tech debt populated from code review findings
 - [ ] MILESTONE-AUDIT.md created
 - [ ] Gaps clearly identified
+- [ ] Debate round evaluated (gate check performed; debate ran if gates passed)
+- [ ] If debate ran: unified recommendations replace raw merged findings
+- [ ] If debate ran: audit report includes Debate Analysis section
+- [ ] If debate skipped: behavior identical to pre-debate milestone-audit
 
 ## Next Steps
 

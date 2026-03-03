@@ -70,7 +70,7 @@ CURRENT_MILESTONE=$(bun run "$BRIDGE_PATH" read-status 2>/dev/null \
 if [ -n "$CURRENT_MILESTONE" ] && [ -f .planning/MEMORY.md ]; then
   # Milestone-scoped recall via memory bridge
   # Tags come from Step 2 keyword extraction
-  RECALL_JSON=$(bun run src/memory/bridge.ts read-memory \
+  RECALL_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory \
     --milestone="${CURRENT_MILESTONE}" \
     --tags="${TASK_TAGS}" \
     --limit=5 2>/dev/null)
@@ -98,7 +98,7 @@ back to tag-based filtering:
 ```bash
 # Fallback: tag-based filtering via bridge
 if [ -f .planning/MEMORY.md ]; then
-  RECALL_JSON=$(bun run src/memory/bridge.ts read-memory \
+  RECALL_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory \
     --tags="${TASK_TAGS}" \
     --limit=5 2>/dev/null)
   echo "$RECALL_JSON"

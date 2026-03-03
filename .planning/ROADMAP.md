@@ -21,6 +21,11 @@
 - [x] 89-A — Fix validateBranding module resolution / test suite isolation (todo-29)
 - [x] 89-B — Refactor remaining impure barrel files (todo-28, reduced scope — 5 of 7 already cleaned in v2.5.1)
 - [x] 89-C — Tighten harness iteration caps: MODERATE 3→2, COMPLEX 3→2, CRITICAL 5→3 (todo-32)
+- [x] 89-D — JSON-first memory bridge migration: JSON files (brain.json, memory.json, working.json, procedures.json) as source of truth with MD views as generated output (dual-write guarantee)
+- [x] 89-E — Agent source files updated to use memory bridge CLI exclusively — no direct `cat .planning/*.md` or `echo >> .planning/*.md` (lu-cognition, lu-executor, lu-learner, lu-discuss-researcher)
+- [x] 89-F — Session-start hook updated for JSON-first memory initialization with `ensure-init` bridge command
+
+**Key files (89-D/E/F):** `src/memory/__helpers/bridge.ts` (extended), `src/memory/__helpers/json-persistence.ts` (new), `src/memory/__helpers/brain-parser.ts` (new), `src/memory/__helpers/brain-serializer.ts` (new), `src/memory/__helpers/memory-serializer.ts` (new), `src/memory/__schemas/memory.schemas.ts` (brainSchema added), `src/hooks/scripts/session-start.sh`, `__tests__/src/memory/bridge.test.ts`
 
 **Depends on:** None
 
@@ -116,4 +121,4 @@
 
 ---
 
-_Roadmap updated: 2026-03-03 (v2.6.0 milestone scoped by autopilot swarm; debate architecture absorbed into milestone per user request)_
+_Roadmap updated: 2026-03-03 (v2.6.0 milestone scoped by autopilot swarm; debate architecture absorbed into milestone per user request; Phase 89 extended with JSON-first memory bridge migration 89-D/E/F)_

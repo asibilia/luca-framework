@@ -31,6 +31,25 @@ No `.env` is required for core development; Jira-related env vars are optional a
 | ------- | ----------- |
 |         |             |
 
+## Generated Files — Never Edit Directly
+
+**CRITICAL**: The `.claude/`, `.cursor/`, and `.pi/` directories contain **generated files**. Never edit them directly — they are overwritten by `bun run build:all`.
+
+| Generated directory | Source                                          |
+| ------------------- | ----------------------------------------------- |
+| `.claude/agents/`   | `src/agents/` (compiled by `src/compilers/`)    |
+| `.cursor/agents/`   | `src/agents/` (compiled by `src/compilers/`)    |
+| `.pi/agents/`       | `src/agents/` (compiled by `src/compilers/`)    |
+| `.claude/skills/`   | `src/skills/` (compiled by `src/compilers/`)    |
+| `.cursor/skills/`   | `src/skills/` (compiled by `src/compilers/`)    |
+| `.pi/skills/`       | `src/skills/` (compiled by `src/compilers/`)    |
+| `.claude/rules/`    | `src/rules/` (compiled by `src/compilers/`)     |
+| `.cursor/rules/`    | `src/rules/` (compiled by `src/compilers/`)     |
+| `.claude/hooks/`    | `src/hooks/scripts/` (copied by build pipeline) |
+| `.cursor/hooks/`    | `src/hooks/scripts/` (copied by build pipeline) |
+
+**Always edit source files in `src/`**, then run `bun run build:all` to regenerate outputs. Use `bun run check:drift` to verify built outputs match sources.
+
 ## Coding Standards
 
 **IMPORTANT**: Read [docs/style-guide/coding-standards.md](docs/style-guide/coding-standards.md) for complete rules.

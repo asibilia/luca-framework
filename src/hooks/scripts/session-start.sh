@@ -28,6 +28,13 @@ run_bridge() {
   fi
 }
 
+# Memory bridge helper (JSON-first memory system)
+run_memory_bridge() {
+  if [ -f "${CLAUDE_PROJECT_DIR:-.}/src/memory/__helpers/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/src/memory/__helpers/bridge.ts" "$@"
+  fi
+}
+
 # Read stdin JSON (standard hook pattern)
 INPUT=$(cat)
 
@@ -62,68 +69,10 @@ mkdir -p "$PLANNING_DIR"
 
 CREATED=""
 
-# Step 3a: Create MEMORY.md if missing
-if [ ! -f "$PLANNING_DIR/MEMORY.md" ]; then
-  cat > "$PLANNING_DIR/MEMORY.md" << 'MEMORY_EOF'
-# Luca Memory
-
-> Long-term learning storage. Updated after verified work.
-
-## Patterns
-
-<!-- Validated approaches that work -->
-
-## Decisions
-
-<!-- Past choices with rationale -->
-
-## Pitfalls
-
-<!-- Known issues to avoid -->
-
-## Preferences
-
-<!-- User and project preferences -->
-
----
-
-*Luca Memory initialized*
-MEMORY_EOF
-  CREATED="${CREATED}MEMORY.md "
-fi
-
-# Step 3b: Create WORKING.md if missing
-if [ ! -f "$PLANNING_DIR/WORKING.md" ]; then
-  cat > "$PLANNING_DIR/WORKING.md" << 'WORKING_EOF'
-# Luca Working Memory
-
-> Active session memory. Cleared after learning extraction.
-
-## Current Context
-
-- **Task:** None
-- **Started:** N/A
-
-## Findings
-
-<!-- Immediate discoveries -->
-
-## Hypotheses
-
-<!-- For debugging -->
-
-## Candidate Learnings
-
-<!-- To be verified before committing to MEMORY.md -->
-
----
-
-*Luca Working Memory initialized*
-WORKING_EOF
-  CREATED="${CREATED}WORKING.md "
-fi
-
-# Step 3c: Create STATE.md if missing
+# Step 3: Create STATE.md if missing (memory bridge handles MEMORY.md, WORKING.md, etc.)
+# NOTE: MEMORY.md, WORKING.md, BRAIN.md, and PROCEDURES.md are now managed by the
+# memory bridge (JSON-first). The bridge ensure-init command (Step 6b below) creates
+# JSON files as source of truth and generates MD views. Do NOT create these files here.
 if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
   cat > "$PLANNING_DIR/STATE.md" << 'STATE_EOF'
 # Project State
@@ -196,7 +145,9 @@ if [ -f "$STATE_JSON" ]; then
 else
   # No state.json -- initialize fresh
   run_bridge ensure-init 2>/dev/null || true
-  CREATED="${CREATED}state.json "
+  if [ -f "$STATE_JSON" ]; then
+    CREATED="${CREATED}state.json "
+  fi
 fi
 
 # Step 4: Detect runtime
@@ -317,7 +268,8 @@ else
 fi
 
 # Step 6: Create BRAIN.md if missing (with auto-detection)
-if [ ! -f "$PLANNING_DIR/BRAIN.md" ]; then
+# Only auto-detect if NEITHER brain.json NOR BRAIN.md exist
+if [ ! -f "$PLANNING_DIR/brain.json" ] && [ ! -f "$PLANNING_DIR/BRAIN.md" ]; then
   HOOK_PLANNING_DIR="$PLANNING_DIR" HOOK_PROJECT_DIR="$PROJECT_DIR" bun -e "
     const path = require('path');
     const planningDir = process.env.HOOK_PLANNING_DIR;
@@ -424,6 +376,13 @@ if [ ! -f "$PLANNING_DIR/BRAIN.md" ]; then
   "
   CREATED="${CREATED}BRAIN.md "
 fi
+
+# Step 6b: Initialize JSON-first memory files via bridge
+# Creates brain.json, memory.json, working.json, procedures.json if missing.
+# If BRAIN.md was just auto-detected above, this migrates it to brain.json.
+# If MD files exist but JSON don't, this migrates them.
+# If neither exist, creates empty JSON + MD files.
+run_memory_bridge ensure-init 2>/dev/null || true
 
 # Step 7: Write environment variables for the session (if supported)
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then

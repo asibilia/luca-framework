@@ -247,20 +247,13 @@ If no existing tag fits:
 <execution_flow>
 
 <step name="load_working" priority="first">
-Read current working memory (JSON-first, with WORKING.md fallback):
+Read current working memory via bridge (JSON-primary, WORKING.md fallback):
 
 ```bash
-# Primary: Read working.json via memory bridge (typed, validated)
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working-json 2>/dev/null)
-if [ $? -eq 0 ] && [ -n "$WORKING_JSON" ]; then
-  echo "$WORKING_JSON"
-else
-  # Fallback: Read WORKING.md directly
-  cat .planning/WORKING.md 2>/dev/null
-fi
+bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null
 ```
 
-Parse sections:
+Parse returned JSON sections:
 
 - Session info (what workflow ran)
 - Memory recall (what was loaded)
@@ -271,17 +264,10 @@ Parse sections:
   </step>
 
 <step name="load_memory">
-Read existing long-term memory (JSON-first, with MEMORY.md fallback):
+Read existing long-term memory via bridge (JSON-primary, MEMORY.md fallback):
 
 ```bash
-# Primary: Read memory.json via memory bridge (typed, validated)
-MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory-json 2>/dev/null)
-if [ $? -eq 0 ] && [ -n "$MEMORY_JSON" ]; then
-  echo "$MEMORY_JSON"
-else
-  # Fallback: Read MEMORY.md directly
-  cat .planning/MEMORY.md 2>/dev/null
-fi
+bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null
 ```
 
 Build index of existing entries to avoid duplication:
@@ -290,7 +276,7 @@ Build index of existing entries to avoid duplication:
 - Decision titles
 - Pitfall names
 
-If neither memory.json nor MEMORY.md exists, will create from template.
+If no memory data exists, the bridge returns an empty entries array.
 </step>
 
 <step name="extract_patterns">
@@ -434,58 +420,29 @@ Confidence levels:
   </step>
 
 <step name="write_memory">
-Write new entries via memory bridge (JSON-first, with MEMORY.md fallback):
+Add new entries via the memory bridge (dual-writes JSON + MD):
 
-**Primary: Use `add-memory-entry` bridge command** (writes memory.json + regenerates MEMORY.md):
+For each validated learning, call add-memory-entry with a JSON payload:
 
 ```bash
-# Add a pattern entry
-bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Pattern Name","category":"pattern","content":"Description of the approach","tags":["coding","patterns"],"confidence":"low","agent":"lu-learner"}'
-
-# Add a decision entry
-bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Decision Title","category":"decision","content":"Context and rationale","tags":["architecture","decisions"],"confidence":"medium","agent":"lu-learner"}'
-
-# Add a pitfall entry
-bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Pitfall Name","category":"pitfall","content":"What happened and how to avoid","tags":["pitfalls","debugging"],"confidence":"low","agent":"lu-learner"}'
+bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Pattern Name","category":"pattern","content":"Description of what was learned","tags":["relevant","tags"],"confidence":"low","agent":"lu-learner"}'
 ```
 
-**Fallback: Direct MEMORY.md write** (if bridge fails):
-
-1. Add new patterns under ## Patterns section
-2. Add new decisions under ## Decisions section
-3. Add new pitfalls under ## Pitfalls section
-4. Update statistics at bottom
-
-If neither memory.json nor MEMORY.md exists, create from template first.
+Repeat for each new pattern, decision, or pitfall. The bridge:
+- Validates the entry against the schema
+- Appends to memory.json
+- Regenerates MEMORY.md from the JSON source
 
 </step>
 
 <step name="clear_working">
-Reset WORKING.md for next session:
+Reset working memory for next session via bridge (dual-writes JSON + MD):
 
-1. Update status checkboxes:
-
-```markdown
-_Session Status_
-
-- [ ] Active
-- [x] Learnings extracted
-- [x] Ready to clear
+```bash
+bun run src/memory/__helpers/bridge.ts clear-working 2>/dev/null
 ```
 
-1. Archive or clear content (preserve template structure)
-
-2. Write cleared WORKING.md:
-
-```markdown
-# Working Memory
-
-> Session-specific memory. Initialized by lu-cognition at workflow start.
-
-_Status: Cleared after learning extraction_
-_Last session: [timestamp]_
-_Learnings extracted: [N] patterns, [N] decisions, [N] pitfalls_
-```
+The bridge resets working.json to empty sections with "cleared" status and regenerates WORKING.md.
 
 </step>
 

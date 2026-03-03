@@ -74,10 +74,10 @@ Extract from your prompt context:
 
 ### Step 2: Read BRAIN.md
 
-If BRAIN.md content was not provided in your prompt, read it:
+If brain data was not provided in your prompt, read it via the memory bridge:
 
 \`\`\`bash
-cat .planning/BRAIN.md 2>/dev/null
+bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null
 \`\`\`
 
 Extract:
