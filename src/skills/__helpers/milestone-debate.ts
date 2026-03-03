@@ -9,6 +9,7 @@
  */
 import filter from "lodash/filter";
 
+import { countResolutions } from "~/shared/__helpers/resolution-counts";
 import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import {
   normalizeFindings,
@@ -271,18 +272,11 @@ function generateConsensusSummary(
     return "No disagreements detected. All reviewers are in consensus.";
   }
 
-  const upheldCount = filter(
-    rebuttals,
-    (r) => r.resolution === "upheld",
-  ).length;
-  const withdrawnCount = filter(
-    rebuttals,
-    (r) => r.resolution === "withdrawn",
-  ).length;
-  const modifiedCount = filter(
-    rebuttals,
-    (r) => r.resolution === "modified",
-  ).length;
+  const {
+    upheld: upheldCount,
+    withdrawn: withdrawnCount,
+    modified: modifiedCount,
+  } = countResolutions(rebuttals);
 
   const highConfidence = filter(
     recommendations,
