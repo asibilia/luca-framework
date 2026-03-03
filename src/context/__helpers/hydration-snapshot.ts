@@ -7,8 +7,7 @@
  *
  * @module
  */
-import { readFileSync, existsSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join } from "node:path";
 
 import type {
   FileTreeEntry,
@@ -241,10 +240,11 @@ export async function extractImportGraph(
 
     for (const filePath of files) {
       const fullPath = join(cwd, filePath);
-      if (!existsSync(fullPath)) continue;
+      const bunFile = Bun.file(fullPath);
+      if (!(await bunFile.exists())) continue;
 
       try {
-        const content = readFileSync(fullPath, "utf-8");
+        const content = await bunFile.text();
         let match: RegExpExecArray | null;
 
         // Reset lastIndex for each file
