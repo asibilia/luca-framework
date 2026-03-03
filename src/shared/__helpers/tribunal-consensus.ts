@@ -7,6 +7,7 @@
  *
  * T0-compliant: imports nothing from src/.
  */
+import orderBy from "lodash/orderBy";
 
 /**
  * Minimum interface a perspective must satisfy to participate in majority vote.
@@ -103,9 +104,7 @@ export function resolveMajorityVote<
     );
   } else {
     // Three-way split: use highest confidence
-    const sorted = [...perspectives].sort(
-      (a, b) => b.confidence - a.confidence,
-    );
+    const sorted = orderBy([...perspectives], (p) => p.confidence, "desc");
     consensusCategory = sorted[0]!.category_assessment;
     consensusVoters = [sorted[0]!];
     // The other two are dissenters; pick the one with higher confidence
