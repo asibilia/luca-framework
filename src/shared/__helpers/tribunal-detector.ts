@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import groupBy from "lodash/groupBy";
 
 import { isDebateComplexity } from "~/complexity";
 
@@ -136,19 +137,10 @@ export function detectDisagreements(findings: ReviewFinding[]): Disagreement[] {
   let idCounter = 0;
 
   // Group findings by file:line
-  const groups = new Map<string, ReviewFinding[]>();
-  for (const finding of findings) {
-    const key = `${finding.file}:${finding.line}`;
-    const group = groups.get(key);
-    if (group) {
-      group.push(finding);
-    } else {
-      groups.set(key, [finding]);
-    }
-  }
+  const groups = groupBy(findings, (f) => `${f.file}:${f.line}`);
 
   // Analyze each group for conflicts
-  for (const [, group] of groups) {
+  for (const group of Object.values(groups)) {
     // Only check groups with findings from multiple agents
     const agents = new Set(group.map((f) => f.source_agent));
     if (agents.size < 2) continue;
