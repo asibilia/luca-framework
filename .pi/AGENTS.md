@@ -223,8 +223,8 @@ These steps run regardless of complexity:
 | Research | Skip | Skip | Optional | Required | Required |
 | Discussion | Skip | Skip | Optional | Run | Required |
 | Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
-| Harness fix iterations | 1 | 2 | 3 | 3 | 5 |
-| Verify fix iterations | 0 | 1 | 1 | 2 | 3 |
+| Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
+| Verify fix iterations | 0 | 1 | 1 | 1 | 2 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
 | Code review: dx-advocate | Skip | Skip | Run | Run | Run |
 | Code review: code-simplifier | Skip | Skip | Run | Run | Run |
@@ -870,7 +870,7 @@ The following cross-tier imports are known and accepted:
 | Source | Target | Reason |
 |--------|--------|--------|
 | `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas |
-| `harness/parsers/index.ts` | `~/harness/__schemas/harness.schemas` | Parser registry needs OutputParser type from own schemas |
+| `harness/parsers/parser-registry.ts` | `~/harness/__schemas/harness.schemas` | Parser registry needs OutputParser type from own schemas |
 
 New exceptions must be documented here and in this rule file before being committed.
 

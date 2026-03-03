@@ -493,7 +493,7 @@ Proceed to commit the task (implementation + test file together).
 
 When tests fail after implementation (GREEN phase not achieved), retry the implementation:
 
-**Retry budget:** Use the same `harnessFixIterations` from the complexity matrix (read from `.planning/config.json`). Default: 3 iterations for MODERATE complexity.
+**Retry budget:** Use the same `harnessFixIterations` from the complexity matrix (read from `.planning/config.json`). Default: 2 iterations for MODERATE complexity.
 
 **For each retry iteration:**
 
