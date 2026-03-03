@@ -1,5 +1,6 @@
 import orderBy from "lodash/orderBy";
 import filter from "lodash/filter";
+import groupBy from "lodash/groupBy";
 
 import {
   rebuttalSchema,
@@ -197,19 +198,10 @@ export function resolveRebuttals(
 ): UnifiedRecommendation[] {
   const recommendations: UnifiedRecommendation[] = [];
   const disputedFindingIds = new Set(rebuttals.map((r) => r.finding_id));
-  const rebuttalsByFinding = new Map<string, Rebuttal[]>();
-
-  for (const rebuttal of rebuttals) {
-    const existing = rebuttalsByFinding.get(rebuttal.finding_id);
-    if (existing) {
-      existing.push(rebuttal);
-    } else {
-      rebuttalsByFinding.set(rebuttal.finding_id, [rebuttal]);
-    }
-  }
+  const rebuttalsByFinding = groupBy(rebuttals, (r) => r.finding_id);
 
   for (const finding of allFindings) {
-    const findingRebuttals = rebuttalsByFinding.get(finding.id) ?? [];
+    const findingRebuttals = rebuttalsByFinding[finding.id] ?? [];
 
     if (!disputedFindingIds.has(finding.id)) {
       // Undisputed finding: full confidence
