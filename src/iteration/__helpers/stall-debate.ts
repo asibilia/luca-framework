@@ -11,6 +11,34 @@ import type {
 /** Context tier promotion order */
 const TIER_ORDER = ["T0", "T1", "T2", "T3"];
 
+/** Default halt output returned when schema validation fails */
+const HALT_FALLBACK: StallDebateOutput = {
+  recommended_strategy: "halt",
+  confidence: 0.0,
+  reasoning: "Schema validation failed; defaulting to halt for safety.",
+  strategy_params: {},
+};
+
+/**
+ * Safely parse stall debate output, falling back to halt on failure.
+ *
+ * Parse failures in the stall debate path should never crash the loop;
+ * the safest default when we cannot produce a valid output is to halt.
+ *
+ * @param data - Raw data to parse against stallDebateOutputSchema
+ * @returns Validated StallDebateOutput, or HALT_FALLBACK on parse failure
+ */
+function safeParseStallOutput(data: unknown): StallDebateOutput {
+  const parsed = stallDebateOutputSchema.safeParse(data);
+  if (!parsed.success) {
+    console.error(
+      `[stall-debate] Failed to parse output: ${parsed.error.message}`,
+    );
+    return HALT_FALLBACK;
+  }
+  return parsed.data;
+}
+
 /**
  * Determine whether a stall debate should be attempted.
  *
@@ -78,7 +106,7 @@ export function evaluateStallDebate(
 
   // Rule 1: No budget remaining — must halt
   if (budget_remaining <= 0) {
-    return stallDebateOutputSchema.parse({
+    return safeParseStallOutput({
       recommended_strategy: "halt",
       confidence: 1.0,
       reasoning: "No budget remaining. Cannot retry regardless of error state.",
@@ -92,7 +120,7 @@ export function evaluateStallDebate(
 
   if (signals.fingerprint_overlap >= 0.9 && canPromote) {
     const nextTier = TIER_ORDER[tierIndex + 1];
-    return stallDebateOutputSchema.parse({
+    return safeParseStallOutput({
       recommended_strategy: "retry_with_context_promotion",
       confidence: 0.7,
       reasoning: `High fingerprint overlap (${signals.fingerprint_overlap.toFixed(2)}) indicates same errors repeating. Promoting context from ${context_tier} to ${nextTier} may provide executor with additional information to resolve stalled errors.`,
@@ -131,7 +159,7 @@ export function evaluateStallDebate(
       .slice(0, 3)
       .map(([source]) => source);
 
-    return stallDebateOutputSchema.parse({
+    return safeParseStallOutput({
       recommended_strategy: "retry_with_error_focus",
       confidence: 0.6,
       reasoning: `${correctableCount}/${totalActive} active errors (${(correctableRatio * 100).toFixed(0)}%) are correctable. Retrying with focused error context for top patterns: ${topSources.join(", ")}.`,
@@ -144,7 +172,7 @@ export function evaluateStallDebate(
 
   // Rule 4: Artifact changes detected but errors unchanged → rollback
   if (signals.artifact_change_delta > 0 && signals.error_count_delta >= 0) {
-    return stallDebateOutputSchema.parse({
+    return safeParseStallOutput({
       recommended_strategy: "retry_with_rollback",
       confidence: 0.5,
       reasoning: `Files were changed (${signals.artifact_change_delta} artifacts) but errors did not decrease (delta: ${signals.error_count_delta}). Changes may have introduced new issues. Rolling back and retrying with different approach.`,
@@ -156,7 +184,7 @@ export function evaluateStallDebate(
   }
 
   // Default: Halt with low confidence
-  return stallDebateOutputSchema.parse({
+  return safeParseStallOutput({
     recommended_strategy: "halt",
     confidence: 0.3,
     reasoning:
