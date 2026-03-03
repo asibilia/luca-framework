@@ -28,7 +28,11 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 - `lu-cognition` — Cognitive pre-flight at session start
 - `lu-router` — Classify complexity for each phase
-- `lu-pm-planner` — WSJF scoring and backlog prioritization (extended mode for roadmap revision)
+- `lu-pm-planner` — WSJF scoring and backlog prioritization (fallback for `--no-swarm` roadmap revision)
+- `lu-roadmap-architect` — Architectural impact analysis for roadmap revision (swarm specialist)
+- `lu-roadmap-prioritizer` — WSJF scoring and milestone scoping for roadmap revision (swarm specialist)
+- `lu-roadmap-qa` — Testing gap analysis and QA impact for roadmap revision (swarm specialist)
+- `lu-roadmap-synthesizer` — Merges specialist analyses into unified roadmap proposal (swarm synthesizer)
 
 **CRITICAL:** You are an orchestrator. Do NOT execute plans, verify code, or review code yourself. Invoke the appropriate sub-skills and sub-agents as described below.
 </main>
@@ -176,7 +180,7 @@ If UNPLANNED_COUNT == 0: Skip to Step 3.
 
 **Only runs when unplanned todos exist (Step 1c found UNPLANNED_COUNT > 0).**
 
-### 2a. Spawn lu-pm-planner in Extended Mode
+### 2a. Analyze Pending Todos
 
 Read all todo contents for the prompt:
 
@@ -187,7 +191,13 @@ for f in .planning/todos/pending/*.md; do
 done
 ```
 
-Spawn the prioritizer:
+**Branch based on SWARM_ENABLED:**
+
+---
+
+#### Path A: Single-Agent (--no-swarm fallback)
+
+**If SWARM_ENABLED == false:** Use the original single lu-pm-planner agent path.
 
 ```
 Task(
@@ -225,6 +235,208 @@ Task(
 """
 )
 ```
+
+Skip to Step 2b with the lu-pm-planner's ResultEnvelope.
+
+---
+
+#### Path B: Team-Based Swarm (default)
+
+**If SWARM_ENABLED == true (default):** Use a 3-specialist + 1-synthesizer swarm for richer analysis.
+
+##### 2a-swarm-i. Create Roadmap Revision Team
+
+```
+TeamCreate(
+  team_name: "roadmap-revision-{timestamp}",
+  description: "Specialist swarm for roadmap revision analysis"
+)
+```
+
+Create 3 tasks for the specialist agents:
+
+```
+TaskCreate(
+  subject: "Architectural impact analysis",
+  description: "Analyze pending todos for architectural risk, dependency ordering, and domain boundary impact",
+  activeForm: "Analyzing architecture impact"
+)
+
+TaskCreate(
+  subject: "WSJF scoring and prioritization",
+  description: "Score pending todos by WSJF and recommend phase absorption, new phases, or milestones",
+  activeForm: "Scoring todos by WSJF"
+)
+
+TaskCreate(
+  subject: "QA and testing gap analysis",
+  description: "Assess QA impact, testing gaps, tech debt severity, and verification requirements",
+  activeForm: "Analyzing QA impact"
+)
+```
+
+##### 2a-swarm-ii. Spawn 3 Specialists in Parallel
+
+```
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "architect",
+  subagent_type: "general-purpose",
+  prompt: """
+  You are a roadmap architect specialist (lu-roadmap-architect role).
+
+  **All Pending Todos:**
+  {TODO_CONTENTS}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Current STATE.md:**
+  {STATE_CONTENT}
+
+  **Instructions:**
+  1. Read all pending todos and the current roadmap
+  2. Explore the src/ directory structure to understand domain layout and dependency tiers (T0-T3)
+  3. For each todo, assess: domain boundary impact, dependency tier implications, cross-cutting concerns, circular dependency risk
+  4. Rate each todo: LOW / MEDIUM / HIGH architectural risk
+  5. Recommend phase placement and ordering constraints
+  6. Send your complete ResultEnvelope to the lead via SendMessage
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with status, summary, artifacts (per-todo risk + placement), issues (warnings)
+  """
+)
+
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "prioritizer",
+  subagent_type: "general-purpose",
+  prompt: """
+  You are a roadmap prioritizer specialist (lu-roadmap-prioritizer role).
+
+  **All Pending Todos:**
+  {TODO_CONTENTS}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Current STATE.md:**
+  {STATE_CONTENT}
+
+  **Instructions:**
+  1. Read all pending todos and the current roadmap
+  2. Score each todo using WSJF: (Business Value + Time Criticality + Risk Reduction) / Effort
+  3. Effort mapping: TRIVIAL=1, SIMPLE=2, MODERATE=3, COMPLEX=5, CRITICAL=8
+  4. For each todo, recommend: absorb (into which phase), new-phase (with goal), or new-milestone
+  5. Rank all todos by WSJF descending
+  6. Send your complete ResultEnvelope to the lead via SendMessage
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with status, summary, artifacts (per-todo WSJF + action), issues (warnings)
+  """
+)
+
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "qa-analyst",
+  subagent_type: "general-purpose",
+  prompt: """
+  You are a roadmap QA specialist (lu-roadmap-qa role).
+
+  **All Pending Todos:**
+  {TODO_CONTENTS}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Current STATE.md:**
+  {STATE_CONTENT}
+
+  **Instructions:**
+  1. Read all pending todos and the current roadmap
+  2. Survey test infrastructure: Glob for __tests__/**/*.test.ts, read bunfig.toml
+  3. For each todo, assess: affected test suites, testing gaps, tech debt severity, CI/CD impact, verification requirements
+  4. Rate each todo: LOW / MEDIUM / HIGH QA impact
+  5. Recommend verification mode per todo: Quick / Standard / Full / Full+Human
+  6. Send your complete ResultEnvelope to the lead via SendMessage
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with status, summary, artifacts (per-todo QA impact + verification), issues (warnings)
+  """
+)
+```
+
+##### 2a-swarm-iii. Collect Specialist Results
+
+Wait for all 3 specialists to send their ResultEnvelopes (10-minute timeout per specialist).
+
+**Graceful degradation:**
+- If 1 specialist times out or errors: proceed with 2 specialist outputs, note the gap
+- If 2 specialists time out: proceed with 1 output, set confidence to LOW
+- If all 3 fail: fall back to Path A (single lu-pm-planner)
+
+##### 2a-swarm-iv. Spawn Synthesizer
+
+After collecting specialist outputs, spawn the synthesizer with all results:
+
+```
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "synthesizer",
+  subagent_type: "general-purpose",
+  prompt: """
+  You are a roadmap synthesizer (lu-roadmap-synthesizer role).
+
+  **Architect Analysis:**
+  {ARCHITECT_RESULT}
+
+  **Prioritizer Analysis:**
+  {PRIORITIZER_RESULT}
+
+  **QA Analysis:**
+  {QA_RESULT}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Instructions:**
+  1. Cross-reference all 3 specialist analyses per todo
+  2. Resolve conflicts (priority vs architecture, priority vs QA)
+  3. Build unified phase ordering: architectural prerequisites first, then high-WSJF items
+  4. Group related todos into phases based on domain affinity, effort similarity, shared test requirements
+  5. Assign verification modes per phase based on QA analysis
+  6. Flag milestone-worthy items
+  7. Produce a unified ResultEnvelope matching the format Step 2b expects
+
+  **Conflict resolution rules:**
+  - Architecture safety > WSJF priority (isolate HIGH-risk items even if prioritizer says absorb)
+  - QA prerequisites > priority ordering (test infrastructure before consumers)
+  - When architect + QA both flag HIGH: strongly recommend isolation + Full verification
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with:
+  - status: "success"
+  - summary: Human-readable revision proposal with change table
+  - artifacts: Each proposed change (new phases, reordered phases, todos absorbed)
+  - issues: All specialist warnings + synthesis-level concerns
+  """
+)
+```
+
+##### 2a-swarm-v. Cleanup and Continue
+
+1. Shutdown all teammates:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "architect")
+   SendMessage(type: "shutdown_request", recipient: "prioritizer")
+   SendMessage(type: "shutdown_request", recipient: "qa-analyst")
+   SendMessage(type: "shutdown_request", recipient: "synthesizer")
+   TeamDelete()
+   ```
+
+2. Feed the synthesizer's ResultEnvelope into Step 2b (unchanged).
+
+---
 
 ### 2b. Present Proposed Changes
 
