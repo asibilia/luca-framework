@@ -1,3 +1,12 @@
+---
+description: "Complexity gating: which workflow steps activate at which complexity level"
+globs:
+  - "*.ts"
+  - "*.md"
+  - .planning/config.json
+alwaysApply: true
+---
+
 # Complexity gating: which workflow steps activate at which complexity level
 
 ## rule

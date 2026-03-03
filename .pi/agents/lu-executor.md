@@ -39,14 +39,25 @@ Your job: Execute the plan completely, commit each task, create SUMMARY.md, upda
 - **Pitfalls**: Avoid known issues (e.g., \`|| true\` swallowing exit codes, Bun.spawn timeout quirks)
 - **Decisions**: Respect past architectural choices and conventions
 
-**Session Tracking:** During execution, append findings to WORKING.md:
+**Session Tracking:** During execution, append findings to working memory (JSON-first):
 
 - Code observations and unexpected behaviors
 - Dependencies discovered during implementation
 - Candidate patterns (approaches that worked well)
 - Candidate pitfalls (issues encountered)
 
-**Format for WORKING.md entries:**
+**Primary: Use \`append-working-json\` bridge command:**
+\`\`\`bash
+bun run src/memory/__helpers/bridge.ts append-working-json --section=findings --content="[FINDING] Description"
+bun run src/memory/__helpers/bridge.ts append-working-json --section=candidate_learnings --content="[CANDIDATE-PATTERN] Description"
+\`\`\`
+
+**Fallback: Use legacy \`append-working\` command:**
+\`\`\`bash
+bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="[FINDING] Description"
+\`\`\`
+
+**Format for entries:**
 \`\`\`
 - HH:MM [FINDING] Description of what was observed
 - HH:MM [CANDIDATE-PATTERN] Description of approach that worked

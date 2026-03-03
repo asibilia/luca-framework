@@ -1,3 +1,12 @@
+---
+description: "State machine bridge CLI reference: how to read/write state via the typed bridge layer"
+globs:
+  - src/state/**
+  - .planning/**
+  - packages/luca-framework/src/state/**
+alwaysApply: false
+---
+
 # State machine bridge CLI reference: how to read/write state via the typed bridge layer
 
 ## rule

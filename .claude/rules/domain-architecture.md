@@ -1,3 +1,10 @@
+---
+description: "Domain architecture: archetypes, dependency tiers, and structural invariants"
+globs:
+  - src/**/*.ts
+alwaysApply: true
+---
+
 # Domain architecture: archetypes, dependency tiers, and structural invariants
 
 ## rule

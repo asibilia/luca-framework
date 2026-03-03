@@ -1,3 +1,10 @@
+---
+description: "Module boundary: import direction rules and entity isolation"
+globs:
+  - src/**/*.ts
+alwaysApply: true
+---
+
 # Module boundary: import direction rules and entity isolation
 
 ## rule

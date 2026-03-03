@@ -139,10 +139,17 @@ Route to: \`lu-router\`
 </step>
 
 <step name="load_brain">
-Load project identity from BRAIN.md:
+Load project identity from brain.json (JSON-first, with BRAIN.md fallback):
 
 ```bash
-cat .planning/BRAIN.md 2>/dev/null
+# Primary: Read brain.json via memory bridge (typed, validated)
+BRAIN_JSON=$(bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null)
+if [ $? -eq 0 ] && [ -n "$BRAIN_JSON" ]; then
+  echo "$BRAIN_JSON"
+else
+  # Fallback: Read BRAIN.md directly
+  cat .planning/BRAIN.md 2>/dev/null
+fi
 ```
 
 If exists, extract:
@@ -153,7 +160,7 @@ If exists, extract:
 - Development preferences
 - Communication style
 
-If missing, note "No BRAIN.md - operating without project identity context"
+If missing, note "No brain.json or BRAIN.md - operating without project identity context"
 </step>
 
 <step name="extract_keywords">
@@ -457,7 +464,18 @@ _Session Status_
 - [ ] Ready to clear
 ```
 
-Write to `.planning/WORKING.md`
+**Primary: Use \`clear-working-json\` + \`append-working-json\` bridge commands:**
+
+\`\`\`bash
+# Clear and initialize working.json (also regenerates WORKING.md)
+bun run src/memory/__helpers/bridge.ts clear-working-json
+
+# Populate each section
+bun run src/memory/__helpers/bridge.ts append-working-json --section=session_info --content="Started: [timestamp], Workflow: [name], Phase: [phase]"
+bun run src/memory/__helpers/bridge.ts append-working-json --section=memory_recall --content="Patterns loaded: [list], Decisions recalled: [list], Pitfalls flagged: [list]"
+\`\`\`
+
+**Fallback: Write to \`.planning/WORKING.md\` directly** (if bridge unavailable)
 </step>
 
 <step name="intuition_check">

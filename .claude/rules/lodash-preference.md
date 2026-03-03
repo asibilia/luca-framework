@@ -1,4 +1,12 @@
-# Generic rule description
+---
+description: Use lodash functions over built-in JavaScript equivalents for consistency and safety
+globs:
+  - src/**/*.ts
+  - packages/**/*.ts
+alwaysApply: false
+---
+
+# Use lodash functions over built-in JavaScript equivalents for consistency and safety
 
 ## rule
 

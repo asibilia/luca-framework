@@ -247,10 +247,17 @@ If no existing tag fits:
 <execution_flow>
 
 <step name="load_working" priority="first">
-Read current working memory:
+Read current working memory (JSON-first, with WORKING.md fallback):
 
 ```bash
-cat .planning/WORKING.md 2>/dev/null
+# Primary: Read working.json via memory bridge (typed, validated)
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working-json 2>/dev/null)
+if [ $? -eq 0 ] && [ -n "$WORKING_JSON" ]; then
+  echo "$WORKING_JSON"
+else
+  # Fallback: Read WORKING.md directly
+  cat .planning/WORKING.md 2>/dev/null
+fi
 ```
 
 Parse sections:
@@ -264,10 +271,17 @@ Parse sections:
   </step>
 
 <step name="load_memory">
-Read existing long-term memory:
+Read existing long-term memory (JSON-first, with MEMORY.md fallback):
 
 ```bash
-cat .planning/MEMORY.md 2>/dev/null
+# Primary: Read memory.json via memory bridge (typed, validated)
+MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory-json 2>/dev/null)
+if [ $? -eq 0 ] && [ -n "$MEMORY_JSON" ]; then
+  echo "$MEMORY_JSON"
+else
+  # Fallback: Read MEMORY.md directly
+  cat .planning/MEMORY.md 2>/dev/null
+fi
 ```
 
 Build index of existing entries to avoid duplication:
@@ -276,7 +290,7 @@ Build index of existing entries to avoid duplication:
 - Decision titles
 - Pitfall names
 
-If MEMORY.md doesn't exist, will create from template.
+If neither memory.json nor MEMORY.md exists, will create from template.
 </step>
 
 <step name="extract_patterns">
@@ -420,21 +434,29 @@ Confidence levels:
   </step>
 
 <step name="write_memory">
-Append new entries to MEMORY.md:
+Write new entries via memory bridge (JSON-first, with MEMORY.md fallback):
+
+**Primary: Use `add-memory-entry` bridge command** (writes memory.json + regenerates MEMORY.md):
+
+```bash
+# Add a pattern entry
+bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Pattern Name","category":"pattern","content":"Description of the approach","tags":["coding","patterns"],"confidence":"low","agent":"lu-learner"}'
+
+# Add a decision entry
+bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Decision Title","category":"decision","content":"Context and rationale","tags":["architecture","decisions"],"confidence":"medium","agent":"lu-learner"}'
+
+# Add a pitfall entry
+bun run src/memory/__helpers/bridge.ts add-memory-entry --data='{"title":"Pitfall Name","category":"pitfall","content":"What happened and how to avoid","tags":["pitfalls","debugging"],"confidence":"low","agent":"lu-learner"}'
+```
+
+**Fallback: Direct MEMORY.md write** (if bridge fails):
 
 1. Add new patterns under ## Patterns section
 2. Add new decisions under ## Decisions section
 3. Add new pitfalls under ## Pitfalls section
 4. Update statistics at bottom
 
-If MEMORY.md doesn't exist, create from template first.
-
-```bash
-# Ensure .planning directory exists
-mkdir -p .planning
-
-# Write updated MEMORY.md
-```
+If neither memory.json nor MEMORY.md exists, create from template first.
 
 </step>
 

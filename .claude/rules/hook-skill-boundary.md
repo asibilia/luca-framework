@@ -1,3 +1,13 @@
+---
+description: "Hook/Skill boundary: when to use deterministic hooks vs interactive skills"
+globs:
+  - "*.ts"
+  - "*.sh"
+  - .claude/settings.json
+  - .cursor/hooks.json
+alwaysApply: true
+---
+
 # Hook/Skill boundary: when to use deterministic hooks vs interactive skills
 
 ## rule
