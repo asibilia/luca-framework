@@ -404,7 +404,7 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
           research: "optional",
           discussion: "optional",
           planVerificationIterations: 1,
-          harnessFixIterations: 3,
+          harnessFixIterations: 2,
           verificationMode: "standard",
           codeReviewAgents: ["dx-advocate", "code-simplifier"],
           uat: "optional",
@@ -415,7 +415,7 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
           research: "required",
           discussion: "run",
           planVerificationIterations: 2,
-          harnessFixIterations: 3,
+          harnessFixIterations: 2,
           verificationMode: "full",
           codeReviewAgents: [
             "dx-advocate",
@@ -431,7 +431,7 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
           research: "required",
           discussion: "required",
           planVerificationIterations: 3,
-          harnessFixIterations: 5,
+          harnessFixIterations: 3,
           verificationMode: "full+human",
           codeReviewAgents: [
             "dx-advocate",
