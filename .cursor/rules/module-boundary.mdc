@@ -86,7 +86,7 @@ The following cross-tier imports are known and accepted:
 | Source | Target | Reason |
 |--------|--------|--------|
 | `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas |
-| `harness/parsers/index.ts` | `~/harness/__schemas/harness.schemas` | Parser registry needs OutputParser type from own schemas |
+| `harness/parsers/parser-registry.ts` | `~/harness/__schemas/harness.schemas` | Parser registry needs OutputParser type from own schemas |
 
 New exceptions must be documented here and in this rule file before being committed.
 
