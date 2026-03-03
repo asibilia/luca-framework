@@ -18,11 +18,11 @@
 
 **Goal:** Resolve the CRITICAL entity isolation violation and HIGH-priority code duplication.
 
-- [ ] 95-A — Extract shared tribunal infrastructure to `src/shared/` (T0): move tribunal schemas (`reviewFindingSchema`, `disagreementSchema`, `rebuttalSchema`, `unifiedRecommendationSchema`, `tribunalResultSchema`) and helpers (`normalizeFindings`, `detectDisagreements`, `shouldRunTribunal`, `buildRebuttalPrompts`, `buildTribunalResult`) from `src/agents/` to `src/shared/__schemas/tribunal.schemas.ts` and `src/shared/__helpers/tribunal-*.ts`. Update imports in both agents and skills domains.
-- [ ] 95-B — Extract shared `resolveMajorityVote<T>()` utility from duplicated logic in `verification-tribunal.ts` and `root-cause-tribunal.ts` (~40 lines identical). Place in `src/shared/__helpers/tribunal-consensus.ts`.
-- [ ] 95-C — Extract `isDebateComplexity(complexity: string): boolean` helper from 3 duplicated checks in `tribunal-detector.ts`, `root-cause-tribunal.ts`, `verification-tribunal.ts`. Place in `src/shared/__helpers/complexity-gate.ts` or `src/complexity/__helpers/`.
-- [ ] 95-D — Deduplicate `getArg()`/`hasFlag()` local closures in 5 iteration helpers (`convergence.ts`, `metrics-collector.ts`, `classifier.ts`, `checkpoint.ts`, `budget.ts`). Replace with imports from `~/shared/__helpers/cli-utils`.
-- [ ] 95-E — Update `module-boundary.md` documented exceptions table if any cross-tier imports remain after extraction.
+- [x] 95-A — Extract shared tribunal infrastructure to `src/shared/` (T0): move tribunal schemas (`reviewFindingSchema`, `disagreementSchema`, `rebuttalSchema`, `unifiedRecommendationSchema`, `tribunalResultSchema`) and helpers (`normalizeFindings`, `detectDisagreements`, `shouldRunTribunal`, `buildRebuttalPrompts`, `buildTribunalResult`) from `src/agents/` to `src/shared/__schemas/tribunal.schemas.ts` and `src/shared/__helpers/tribunal-*.ts`. Update imports in both agents and skills domains.
+- [x] 95-B — Extract shared `resolveMajorityVote<T>()` utility from duplicated logic in `verification-tribunal.ts` and `root-cause-tribunal.ts` (~40 lines identical). Place in `src/shared/__helpers/tribunal-consensus.ts`.
+- [x] 95-C — Extract `isDebateComplexity(complexity: string): boolean` helper from 3 duplicated checks in `tribunal-detector.ts`, `root-cause-tribunal.ts`, `verification-tribunal.ts`. Place in `src/complexity/__helpers/complexity-gate.ts`.
+- [x] 95-D — Deduplicate `getArg()`/`hasFlag()` local closures in 5 iteration helpers (`convergence.ts`, `metrics-collector.ts`, `classifier.ts`, `checkpoint.ts`, `budget.ts`). Replace with imports from `~/shared/__helpers/cli-utils`.
+- [x] 95-E — Update `module-boundary.md` documented exceptions table if any cross-tier imports remain after extraction.
 
 #### Phase 96: Convention Alignment & Security Hardening
 
