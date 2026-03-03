@@ -1,4 +1,4 @@
-import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+import { isDebateComplexity } from "~/complexity";
 import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import { resolveMajorityVote } from "~/shared/__helpers/tribunal-consensus";
 
