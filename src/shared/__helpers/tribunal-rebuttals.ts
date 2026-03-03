@@ -1,3 +1,6 @@
+import orderBy from "lodash/orderBy";
+import filter from "lodash/filter";
+
 import {
   rebuttalSchema,
   unifiedRecommendationSchema,
@@ -65,9 +68,7 @@ export function buildRebuttalPrompts(
 
     // For severity mismatch: higher severity defends, lower severity challenges
     // For scope overlap: first finding defends, second challenges
-    const sorted = [...findings].sort(
-      (a, b) => severityRank(b.severity) - severityRank(a.severity),
-    );
+    const sorted = orderBy(findings, (f) => severityRank(f.severity), "desc");
 
     const defender = sorted[0]!;
     const challenger = sorted[1]!;
@@ -226,13 +227,16 @@ export function resolveRebuttals(
     }
 
     // Disputed finding: calculate confidence based on rebuttal outcomes
-    const upheldCount = findingRebuttals.filter(
+    const upheldCount = filter(
+      findingRebuttals,
       (r) => r.resolution === "upheld",
     ).length;
-    const withdrawnCount = findingRebuttals.filter(
+    const withdrawnCount = filter(
+      findingRebuttals,
       (r) => r.resolution === "withdrawn",
     ).length;
-    const modifiedCount = findingRebuttals.filter(
+    const modifiedCount = filter(
+      findingRebuttals,
       (r) => r.resolution === "modified",
     ).length;
     const totalRebuttals = findingRebuttals.length;
@@ -291,10 +295,12 @@ export function buildTribunalResult(
   rebuttals: Rebuttal[],
   recommendations: UnifiedRecommendation[],
 ): TribunalResult {
-  const withdrawnCount = rebuttals.filter(
+  const withdrawnCount = filter(
+    rebuttals,
     (r) => r.resolution === "withdrawn",
   ).length;
-  const modifiedCount = rebuttals.filter(
+  const modifiedCount = filter(
+    rebuttals,
     (r) => r.resolution === "modified",
   ).length;
 
