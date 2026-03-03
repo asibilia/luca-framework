@@ -12,9 +12,9 @@ describe("profileRegistry", () => {
     expect(profileNames).toHaveLength(4);
   });
 
-  test("typescript profile has 8 rules", () => {
+  test("typescript profile has 7 rules", () => {
     const ts = profileRegistry["typescript"]!();
-    expect(Object.keys(ts.rules)).toHaveLength(8);
+    expect(Object.keys(ts.rules)).toHaveLength(7);
   });
 
   test("python profile has 0 rules (placeholder)", () => {
@@ -56,7 +56,6 @@ describe("typescript profile rule factories", () => {
     "lodash-preference",
     "no-classes",
     "schema-first-parsing",
-    "use-bun-instead-of-node-vite-npm-pnpm",
   ];
 
   test("contains expected rule names", () => {

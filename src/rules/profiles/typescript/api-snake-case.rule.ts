@@ -8,8 +8,8 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 const apiSnakeCaseConfig: RuleConfig = {
   frontmatter: {
     description: `API payloads must use snake_case for consistency with backend conventions`,
-    globs: ["**/*.ts", "**/*.tsx"],
-    alwaysApply: true,
+    globs: ["src/**/*.schemas.ts", "**/*.schemas.ts"],
+    alwaysApply: false,
   },
   sections: [
     {

@@ -8,8 +8,12 @@ const stateMachineBridgeConfig: RuleConfig = {
   frontmatter: {
     description:
       "State machine bridge CLI reference: how to read/write state via the typed bridge layer",
-    globs: ["*.ts", "*.sh", ".planning/STATE.md"],
-    alwaysApply: true,
+    globs: [
+      "src/state/**",
+      ".planning/**",
+      "packages/luca-framework/src/state/**",
+    ],
+    alwaysApply: false,
   },
   sections: [
     {

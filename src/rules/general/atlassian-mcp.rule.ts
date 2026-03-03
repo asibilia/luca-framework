@@ -8,8 +8,7 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 const atlassianMcpConfig: RuleConfig = {
   frontmatter: {
     description: `Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow`,
-    globs: ["**/*.ts", "**/*.tsx", "**/*.md"],
-    alwaysApply: true,
+    alwaysApply: false,
   },
   sections: [
     {

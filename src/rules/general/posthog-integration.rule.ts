@@ -8,8 +8,8 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 const posthogIntegrationConfig: RuleConfig = {
   frontmatter: {
     description: `apply when interacting with PostHog/analytics tasks`,
-
-    alwaysApply: true,
+    globs: ["**/analytics/**", "**/posthog/**", "**/tracking/**"],
+    alwaysApply: false,
   },
   sections: [
     {

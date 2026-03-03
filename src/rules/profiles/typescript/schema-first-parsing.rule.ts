@@ -8,8 +8,8 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 const schemaFirstParsingConfig: RuleConfig = {
   frontmatter: {
     description: `Enforce Zod schema-first parsing patterns over manual destructuring and default values`,
-    globs: ["**/*.{ts,tsx}"],
-    alwaysApply: true,
+    globs: ["src/**/*.schemas.ts", "src/**/*.ts"],
+    alwaysApply: false,
   },
   sections: [
     {
