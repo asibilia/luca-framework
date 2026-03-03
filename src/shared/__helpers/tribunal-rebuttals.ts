@@ -14,6 +14,7 @@ import type {
   UnifiedRecommendation,
   TribunalResult,
 } from "../__schemas/tribunal.schemas";
+import { countResolutions } from "./resolution-counts";
 import { sanitizeForTemplate } from "./sanitize-template";
 
 /**
@@ -219,18 +220,11 @@ export function resolveRebuttals(
     }
 
     // Disputed finding: calculate confidence based on rebuttal outcomes
-    const upheldCount = filter(
-      findingRebuttals,
-      (r) => r.resolution === "upheld",
-    ).length;
-    const withdrawnCount = filter(
-      findingRebuttals,
-      (r) => r.resolution === "withdrawn",
-    ).length;
-    const modifiedCount = filter(
-      findingRebuttals,
-      (r) => r.resolution === "modified",
-    ).length;
+    const {
+      upheld: upheldCount,
+      withdrawn: withdrawnCount,
+      modified: modifiedCount,
+    } = countResolutions(findingRebuttals);
     const totalRebuttals = findingRebuttals.length;
 
     // Skip withdrawn findings
