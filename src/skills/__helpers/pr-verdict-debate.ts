@@ -12,6 +12,7 @@
  * a concern rather than severity or scope of a finding.
  */
 import filter from "lodash/filter";
+import groupBy from "lodash/groupBy";
 
 import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import {
@@ -55,19 +56,11 @@ export function detectVerdictSplits(
   if (verdicts.length === 0) return [];
 
   // Group verdicts by comment_id
-  const byComment = new Map<string, ValidatorVerdict[]>();
-  for (const verdict of verdicts) {
-    const existing = byComment.get(verdict.comment_id);
-    if (existing) {
-      existing.push(verdict);
-    } else {
-      byComment.set(verdict.comment_id, [verdict]);
-    }
-  }
+  const byComment = groupBy(verdicts, (v) => v.comment_id);
 
   const splits: VerdictSplit[] = [];
 
-  for (const [commentId, commentVerdicts] of byComment) {
+  for (const [commentId, commentVerdicts] of Object.entries(byComment)) {
     // Need at least 2 verdicts to have a split
     if (commentVerdicts.length < 2) continue;
 
