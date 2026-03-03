@@ -18,9 +18,9 @@
 
 **Goal:** Fix CI-blocking test isolation bug, clean remaining impure barrels, tighten iteration caps.
 
-- [ ] 89-A — Fix validateBranding module resolution / test suite isolation (todo-29)
-- [ ] 89-B — Refactor remaining impure barrel files (todo-28, reduced scope — 5 of 7 already cleaned in v2.5.1)
-- [ ] 89-C — Tighten harness iteration caps: MODERATE 3→2, COMPLEX 3→2, CRITICAL 5→3 (todo-32)
+- [x] 89-A — Fix validateBranding module resolution / test suite isolation (todo-29)
+- [x] 89-B — Refactor remaining impure barrel files (todo-28, reduced scope — 5 of 7 already cleaned in v2.5.1)
+- [x] 89-C — Tighten harness iteration caps: MODERATE 3→2, COMPLEX 3→2, CRITICAL 5→3 (todo-32)
 
 **Depends on:** None
 
