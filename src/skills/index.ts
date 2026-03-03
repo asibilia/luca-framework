@@ -50,3 +50,21 @@ export {
   buildSplitVerdictResult,
   formatSplitVerdictForPR,
 } from "./__helpers/pr-verdict-debate";
+
+// Milestone debate schemas
+export {
+  milestoneDebateConfigSchema,
+  milestoneDebateResultSchema,
+} from "./__schemas/milestone-debate.schemas";
+
+export type {
+  MilestoneDebateConfig,
+  MilestoneDebateResult,
+} from "./__schemas/milestone-debate.schemas";
+
+// Milestone debate helpers
+export {
+  shouldRunMilestoneDebate,
+  buildMilestoneRebuttalContext,
+  buildMilestoneDebateResult,
+} from "./__helpers/milestone-debate";
