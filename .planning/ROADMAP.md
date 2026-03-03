@@ -25,10 +25,10 @@
 
 **Goal:** Extract shared helpers for duplicated patterns identified in the v2.6.1 audit.
 
-- [ ] 98-A — Extract resolution-counting helper from 3 duplicated filter patterns (upheld/withdrawn/modified) in `tribunal-rebuttals.ts`, `buildTribunalResult`, and `milestone-debate.ts:274`.
-- [ ] 98-B — Refactor 3 diagnostic prompt builders in `verification-tribunal.ts:137` that share ~80% identical structure into a factory/template pattern.
-- [ ] 98-C — Extract safeParse-or-throw utility from repeated 4-case switch pattern in `metrics-collector.ts:316`.
-- [ ] 98-D — Replace manual "group into Map" idiom with lodash `groupBy` in 4 files including `tribunal-rebuttals.ts:200`.
+- [x] 98-A — Extract resolution-counting helper from 3 duplicated filter patterns (upheld/withdrawn/modified) in `tribunal-rebuttals.ts`, `buildTribunalResult`, and `milestone-debate.ts:274`.
+- [x] 98-B — Refactor 3 diagnostic prompt builders in `verification-tribunal.ts:137` that share ~80% identical structure into a factory/template pattern.
+- [x] 98-C — Extract safeParse-or-throw utility from repeated 4-case switch pattern in `metrics-collector.ts:316`.
+- [x] 98-D — Replace manual "group into Map" idiom with lodash `groupBy` in 4 files including `tribunal-rebuttals.ts:200`.
 
 ---
 
