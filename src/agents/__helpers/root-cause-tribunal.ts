@@ -291,7 +291,7 @@ export function resolveRootCauseTribunal(
     RootCausePerspective,
     RootCausePerspective,
   ],
-): RootCauseTribunalResult {
+): RootCauseTribunalResult | null {
   const vote = resolveMajorityVote<
     RootCauseChallengeCategory,
     RootCausePerspective
@@ -300,7 +300,7 @@ export function resolveRootCauseTribunal(
   // Estimate token cost: ~8k per participant prompt (3 participants = ~24k)
   const estimatedTokenCost = 24000;
 
-  const result = rootCauseTribunalResultSchema.parse({
+  const parsed = rootCauseTribunalResultSchema.safeParse({
     phase,
     proposed_fix_signal: fixSignal,
     perspectives,
@@ -313,5 +313,12 @@ export function resolveRootCauseTribunal(
     timestamp: new Date().toISOString(),
   });
 
-  return result;
+  if (!parsed.success) {
+    console.error(
+      `[root-cause-tribunal] Failed to parse tribunal result: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
