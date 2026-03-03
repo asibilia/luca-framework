@@ -329,7 +329,7 @@ describe("appendMetrics", () => {
     const raw = readFileSync(TEST_METRICS_PATH, "utf-8");
     const parsed = metricsFileSchema.parse(JSON.parse(raw));
     expect(parsed.iteration_metrics).toHaveLength(1);
-    expect(parsed.iteration_metrics[0].phase).toBe(91);
+    expect(parsed.iteration_metrics[0]!.phase).toBe(91);
   });
 
   test("appends to existing file", () => {

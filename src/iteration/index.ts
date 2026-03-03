@@ -78,6 +78,28 @@ export {
   assessConvergence,
 } from "./__helpers/convergence";
 
+export type { ConvergenceDebateOptions } from "./__helpers/convergence";
+
+// Stall debate schemas
+export {
+  STALL_DEBATE_STRATEGIES,
+  stallDebateStrategySchema,
+  stallDebateInputSchema,
+  stallDebateOutputSchema,
+} from "./__schemas/stall-debate.schemas";
+
+export type {
+  StallDebateStrategy,
+  StallDebateInput,
+  StallDebateOutput,
+} from "./__schemas/stall-debate.schemas";
+
+// Stall debate evaluator
+export {
+  shouldAttemptDebate,
+  evaluateStallDebate,
+} from "./__helpers/stall-debate";
+
 // Error classification
 export {
   classifySingleError,

@@ -591,6 +591,12 @@ PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
   console.log(c.iteration?.promotion_threshold ?? 3);
 ")
 
+# Extract stall debate setting (opt-in, default false)
+STALL_DEBATE_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.stall_debate_enabled ?? false);
+")
+
 # Override mode if --mode flag was passed
 MODE="\${MODE_FLAG:-$DEFAULT_MODE}"
 \`\`\`
@@ -678,7 +684,23 @@ SHOULD_HALT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs')
 STALE_COUNT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).consecutive_stale)")
 \`\`\`
 
-If \`SHOULD_HALT\` is true: display convergence failure, exit loop with outcome "convergence_failure".
+**Stall Debate (when enabled):**
+
+If \`SHOULD_HALT\` is true AND \`STALL_DEBATE_ENABLED\` is true:
+
+1. Extract the debate result from CONVERGENCE JSON: \`DEBATE_STRATEGY\`, \`DEBATE_CONFIDENCE\`, \`DEBATE_REASONING\`
+2. If \`DEBATE_STRATEGY\` is NOT "halt": override \`SHOULD_HALT=false\`
+3. Display debate outcome:
+\`\`\`
+◆ Stall Debate: {DEBATE_STRATEGY} (confidence: {DEBATE_CONFIDENCE})
+  Reasoning: {DEBATE_REASONING}
+\`\`\`
+4. Act on strategy:
+   - \`retry_with_context_promotion\`: Promote executor context tier for next iteration
+   - \`retry_with_error_focus\`: Include top error patterns in next executor prompt
+   - \`retry_with_rollback\`: Rollback to previous checkpoint before next iteration
+
+If \`SHOULD_HALT\` is true (after debate, if applicable): display convergence failure, exit loop with outcome "convergence_failure".
 
 Display convergence status:
 

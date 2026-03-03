@@ -9,6 +9,11 @@ import type {
   ClassifiedError,
 } from "../__schemas/iteration.schemas";
 import { classifiedErrorSchema } from "../__schemas/iteration.schemas";
+import type { StallDebateInput } from "../__schemas/stall-debate.schemas";
+import {
+  shouldAttemptDebate as shouldDebateGate,
+  evaluateStallDebate,
+} from "./stall-debate";
 
 /**
  * Create a stable fingerprint for a ParsedError.
@@ -182,6 +187,16 @@ export function computeConvergenceSignals(
 }
 
 /**
+ * Options for debate-aware convergence assessment.
+ */
+export interface ConvergenceDebateOptions {
+  /** Whether stall debate is enabled */
+  debate_enabled: boolean;
+  /** Stall debate input data (required when debate_enabled is true) */
+  debate_input?: StallDebateInput;
+}
+
+/**
  * Assess convergence status from signals using the composite stale rule.
  *
  * A signal is considered "stale" when:
@@ -197,15 +212,21 @@ export function computeConvergenceSignals(
  * If error_count_delta > 0, the status is always "regressed".
  * Otherwise, if stale threshold met, "stalled". Else "improved".
  *
+ * When `debateOptions.debate_enabled` is true and a stall is detected,
+ * the stall debate evaluator runs. If it recommends a non-halt strategy,
+ * `should_halt` is overridden to false and the debate result is attached.
+ *
  * @param signals - Convergence signals (3 or 4)
  * @param previousStaleCount - Number of consecutive stale iterations before this one
  * @param staleThreshold - How many consecutive stale before halting (default 2)
- * @returns Full convergence assessment with halt recommendation
+ * @param debateOptions - Optional debate configuration (default: debate disabled)
+ * @returns Full convergence assessment with halt recommendation and optional debate result
  */
 export function assessConvergence(
   signals: ConvergenceSignals,
   previousStaleCount: number,
   staleThreshold: number = 2,
+  debateOptions?: ConvergenceDebateOptions,
 ): ConvergenceResult {
   const staleSignals = [
     signals.error_count_delta >= 0,
@@ -232,11 +253,43 @@ export function assessConvergence(
   const consecutiveStale =
     status === "stalled" || status === "regressed" ? previousStaleCount + 1 : 0;
 
+  let shouldHalt = consecutiveStale >= staleThreshold;
+
+  // Run stall debate when enabled and halt is recommended
+  let debateResult: ConvergenceResult["debate_result"] | undefined;
+
+  if (
+    shouldHalt &&
+    debateOptions?.debate_enabled &&
+    debateOptions.debate_input
+  ) {
+    if (
+      shouldDebateGate(
+        {
+          signals,
+          status,
+          consecutive_stale: consecutiveStale,
+          should_halt: shouldHalt,
+        },
+        debateOptions.debate_input.budget_remaining,
+      )
+    ) {
+      const result = evaluateStallDebate(debateOptions.debate_input);
+      debateResult = result;
+
+      // Override halt if debate recommends retry
+      if (result.recommended_strategy !== "halt") {
+        shouldHalt = false;
+      }
+    }
+  }
+
   return {
     signals,
     status,
     consecutive_stale: consecutiveStale,
-    should_halt: consecutiveStale >= staleThreshold,
+    should_halt: shouldHalt,
+    ...(debateResult ? { debate_result: debateResult } : {}),
   };
 }
 

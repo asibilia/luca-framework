@@ -94,6 +94,18 @@ export const convergenceResultSchema = z.object({
   consecutive_stale: z.number().int().nonnegative(),
   /** Whether the loop should halt due to convergence failure (2+ consecutive stale) */
   should_halt: z.boolean(),
+  /**
+   * Optional stall debate result, populated when debate is enabled
+   * and a stall condition triggers evaluation.
+   */
+  debate_result: z
+    .object({
+      recommended_strategy: z.string(),
+      confidence: z.number().min(0).max(1),
+      reasoning: z.string(),
+      strategy_params: z.record(z.string(), z.unknown()).default({}),
+    })
+    .optional(),
 });
 export type ConvergenceResult = z.infer<typeof convergenceResultSchema>;
 
