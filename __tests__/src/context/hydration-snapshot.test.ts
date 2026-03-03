@@ -186,7 +186,7 @@ describe("recentGitHistory", () => {
 
   test("hash is a short hash (7+ chars)", async () => {
     const history = await recentGitHistory(1, PROJECT_ROOT);
-    expect(history[0].hash.length).toBeGreaterThanOrEqual(7);
+    expect(history[0]!.hash.length).toBeGreaterThanOrEqual(7);
   });
 
   test("returns empty array for invalid cwd", async () => {
