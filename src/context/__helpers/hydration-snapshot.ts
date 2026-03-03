@@ -303,37 +303,58 @@ export async function extractImportGraph(
 export function complexityToHydrationConfig(
   complexity: ComplexityLevel,
 ): HydrationConfig {
+  let raw: Record<string, unknown>;
+
   switch (complexity) {
     case "TRIVIAL":
-      return hydrationConfigSchema.parse({
+      raw = {
         file_tree_depth: 2,
         include_tests: false,
         git_history_count: 5,
         include_imports: false,
-      });
+      };
+      break;
     case "SIMPLE":
-      return hydrationConfigSchema.parse({
+      raw = {
         file_tree_depth: 2,
         include_tests: true,
         git_history_count: 5,
         include_imports: false,
-      });
+      };
+      break;
     case "MODERATE":
-      return hydrationConfigSchema.parse({
+      raw = {
         file_tree_depth: 3,
         include_tests: true,
         git_history_count: 10,
         include_imports: true,
-      });
+      };
+      break;
     case "COMPLEX":
     case "CRITICAL":
-      return hydrationConfigSchema.parse({
+      raw = {
         file_tree_depth: 4,
         include_tests: true,
         git_history_count: 15,
         include_imports: true,
-      });
+      };
+      break;
   }
+
+  const result = hydrationConfigSchema.safeParse(raw);
+  if (!result.success) {
+    console.error(
+      `[hydration-snapshot] Invalid hydration config for ${complexity}: ${result.error.message}`,
+    );
+    // Fallback to MODERATE defaults
+    return hydrationConfigSchema.parse({
+      file_tree_depth: 3,
+      include_tests: true,
+      git_history_count: 10,
+      include_imports: true,
+    });
+  }
+  return result.data;
 }
 
 // ---------------------------------------------------------------------------
