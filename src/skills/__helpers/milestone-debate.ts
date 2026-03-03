@@ -9,6 +9,7 @@
  */
 import filter from "lodash/filter";
 
+import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import {
   normalizeFindings,
   detectDisagreements,
@@ -145,10 +146,12 @@ export function buildMilestoneRebuttalContext(
   const basePairs = buildRebuttalPrompts(disagreements);
 
   // Augment prompts with milestone context
+  const safeMilestoneVersion = sanitizeForTemplate(milestoneVersion);
+
   return basePairs.map((pair) => ({
     ...pair,
-    challenger_prompt: `[Milestone ${milestoneVersion} Audit Context]\n\nThis debate occurs during a milestone-wide audit reviewing changes across ALL phases. Consider cross-phase implications when making your argument.\n\n${pair.challenger_prompt}`,
-    defender_prompt: `[Milestone ${milestoneVersion} Audit Context]\n\nThis debate occurs during a milestone-wide audit reviewing changes across ALL phases. Consider cross-phase implications when making your argument.\n\n${pair.defender_prompt}`,
+    challenger_prompt: `[Milestone ${safeMilestoneVersion} Audit Context]\n\nThis debate occurs during a milestone-wide audit reviewing changes across ALL phases. Consider cross-phase implications when making your argument.\n\n${pair.challenger_prompt}`,
+    defender_prompt: `[Milestone ${safeMilestoneVersion} Audit Context]\n\nThis debate occurs during a milestone-wide audit reviewing changes across ALL phases. Consider cross-phase implications when making your argument.\n\n${pair.defender_prompt}`,
   }));
 }
 
