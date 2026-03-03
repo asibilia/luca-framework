@@ -28,8 +28,8 @@
 
 **Goal:** Reduce context saturation via directory-scoped rules, expand pre-flight hydration for better first-pass accuracy.
 
-- [ ] 90-A — Scope rules by directory/domain (todo-33)
-- [ ] 90-B — Expand pre-flight context hydration (todo-34)
+- [x] 90-A — Scope rules by directory/domain (todo-33)
+- [x] 90-B — Expand pre-flight context hydration (todo-34)
 
 **Depends on:** Phase 89
 
@@ -37,9 +37,9 @@
 
 **Goal:** Build debate infrastructure: ground truth tracking for measurement, lightweight stall-vs-retry debate PoC, and Design Tribunal as the full debate pattern proof-of-concept.
 
-- [ ] 91-A — Ground truth tracking for debate measurement (todo-41)
-- [ ] 91-B — Stall-vs-retry convergence debate (todo-40)
-- [ ] 91-C — Design Tribunal: phase-execute code review debate PoC (todo-36)
+- [x] 91-A — Ground truth tracking for debate measurement (todo-41)
+- [x] 91-B — Stall-vs-retry convergence debate (todo-40)
+- [x] 91-C — Design Tribunal: phase-execute code review debate PoC (todo-36)
 
 **Depends on:** Phase 89 (specifically 89-C for 91-B; 91-A is independent)
 
