@@ -4,7 +4,7 @@
 
 ## What Was Built
 
-Added a Verification Tribunal that diagnoses conflicts between T1 (harness/test) and T3 (goal-backward analysis) signals during phase verification. When lu-verifier detects that tests pass but goal-backward analysis finds partial or failed objectives, three diagnostic agents (lu-test-writer, lu-verifier, lu-integration-checker) are spawned in parallel to independently assess the root cause. The tribunal resolves via majority vote (with highest-confidence tiebreaker for three-way splits) into one of three actionable categories: tests_incomplete, goal_over_specified, or wiring_issue. Each category maps to specific remediation guidance. Gated behind config flag (verification_tribunal_enabled, default: false) and COMPLEX+ complexity.
+Added a Verification Tribunal that diagnoses conflicts between T1 (harness/test) and T3 (goal-backward analysis) signals during phase verification. When lu-verifier detects that tests pass but goal-backward analysis finds partial or failed objectives, three diagnostic agents (lu-test-writer, lu-verifier, lu-integration-checker) are spawned in parallel to independently assess the root cause. The tribunal resolves via majority vote (with highest-confidence tiebreaker for three-way splits) into one of three actionable categories: tests_incomplete, goal_over_specified, or wiring_issue. Each category maps to specific remediation guidance. Gated behind config flag (verification_tribunal_enabled, default: true) and COMPLEX+ complexity.
 
 ## Files Created
 
@@ -31,7 +31,7 @@ Added a Verification Tribunal that diagnoses conflicts between T1 (harness/test)
 
 4. **Conflict type detection aligned with lu-verifier signal matrix**: The three conflict types (t1_pass_t3_partial, t1_pass_t3_fail, t1_partial_t3_partial) map directly to the Signal Priority Matrix in lu-verifier Step 9. T1 fail and T1 absent are excluded since they have deterministic routing (gaps_found and T3-as-primary, respectively).
 
-5. **Opt-in by default**: verification_tribunal_enabled defaults to false in config. When disabled, phase-execute behavior is identical to pre-tribunal version.
+5. **Enabled by default**: verification_tribunal_enabled defaults to true in config. When disabled, phase-execute behavior is identical to pre-tribunal version.
 
 ## Verification
 

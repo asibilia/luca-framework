@@ -52,9 +52,9 @@
 
 **Goal:** Expand debate patterns to milestone audit, verification conflicts, and PR address validation — all building on Design Tribunal infrastructure from Phase 91.
 
-- [ ] 92-A — Milestone audit adversarial debate round (todo-35)
-- [ ] 92-B — Verification Tribunal for T1/T3 conflicts (todo-37)
-- [ ] 92-C — PR address split verdict debate (todo-39)
+- [x] 92-A — Milestone audit adversarial debate round (todo-35)
+- [x] 92-B — Verification Tribunal for T1/T3 conflicts (todo-37)
+- [x] 92-C — PR address split verdict debate (todo-39)
 
 **Depends on:** Phase 91 (specifically 91-C — Design Tribunal PoC)
 
