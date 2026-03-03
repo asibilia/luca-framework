@@ -2,36 +2,33 @@
 
 ## Overview
 
-**Current Milestone:** v2.6.1 — Audit Gap Closure
+**Current Milestone:** v2.6.2 — Convention & DRY Cleanup
 
 ---
 
 ## Current Milestone
 
-### v2.6.1 — Audit Gap Closure
+### v2.6.2 — Convention & DRY Cleanup
 
-**Goal:** Close gaps identified by v2.6.0 milestone audit. Two phases: structural architecture cleanup (High priority), then convention alignment and security hardening (Medium priority).
+**Goal:** Close convention gaps and tech debt identified by v2.6.1 milestone audit. Two phases: mechanical fixes (barrel imports, convention alignment, security hardening), then DRY pattern extraction.
 
-**Source:** `.planning/v2.6.0-MILESTONE-AUDIT.md`
+**Source:** `.planning/v2.6.1-MILESTONE-AUDIT.md`
 
-#### Phase 95: Tribunal Architecture & DRY Cleanup
+#### Phase 97: Import Barrel & Convention Fixes
 
-**Goal:** Resolve the CRITICAL entity isolation violation and HIGH-priority code duplication.
+**Goal:** Fix Rule 4 barrel violations, remaining convention gaps, and security hardening edge cases.
 
-- [x] 95-A — Extract shared tribunal infrastructure to `src/shared/` (T0): move tribunal schemas (`reviewFindingSchema`, `disagreementSchema`, `rebuttalSchema`, `unifiedRecommendationSchema`, `tribunalResultSchema`) and helpers (`normalizeFindings`, `detectDisagreements`, `shouldRunTribunal`, `buildRebuttalPrompts`, `buildTribunalResult`) from `src/agents/` to `src/shared/__schemas/tribunal.schemas.ts` and `src/shared/__helpers/tribunal-*.ts`. Update imports in both agents and skills domains.
-- [x] 95-B — Extract shared `resolveMajorityVote<T>()` utility from duplicated logic in `verification-tribunal.ts` and `root-cause-tribunal.ts` (~40 lines identical). Place in `src/shared/__helpers/tribunal-consensus.ts`.
-- [x] 95-C — Extract `isDebateComplexity(complexity: string): boolean` helper from 3 duplicated checks in `tribunal-detector.ts`, `root-cause-tribunal.ts`, `verification-tribunal.ts`. Place in `src/complexity/__helpers/complexity-gate.ts`.
-- [x] 95-D — Deduplicate `getArg()`/`hasFlag()` local closures in 5 iteration helpers (`convergence.ts`, `metrics-collector.ts`, `classifier.ts`, `checkpoint.ts`, `budget.ts`). Replace with imports from `~/shared/__helpers/cli-utils`.
-- [x] 95-E — Update `module-boundary.md` documented exceptions table if any cross-tier imports remain after extraction.
+- [x] 97-A — Fix 3x `complexity/__helpers/` direct imports in `tribunal-detector.ts`, `verification-tribunal.ts`, `root-cause-tribunal.ts` → use `~/complexity` barrel. Fix 2x `~/complexity/__schemas/` direct imports in `milestone-debate.ts` and `milestone-debate.schemas.ts` → use barrel. Remove dual-export of tribunal symbols from `agents/index.ts`.
+- [x] 97-B — Fix 1x `.sort()` → lodash `orderBy` in `tribunal-consensus.ts:106`. Convert 2x `.parse()` → `.safeParse()` in `hydration-snapshot.ts:308,372`. Add `sanitizeForTemplate()` to 2x unsanitized fields: `source_agent`/`file` in `tribunal-rebuttals.ts:121` and `milestoneVersion` in `milestone-debate.ts:153`. Fix 2x bare `"crypto"` → `"node:crypto"` in `tribunal-detector.ts` and `convergence.ts`. Fix `sanitizeForTemplate` to strip trailing `}` after `${` removal and add Unicode bidi control character defense.
 
-#### Phase 96: Convention Alignment & Security Hardening
+#### Phase 98: DRY Pattern Extraction
 
-**Goal:** Align all v2.6.0 files with project conventions (Bun APIs, lodash, safeParse) and close prompt injection gaps.
+**Goal:** Extract shared helpers for duplicated patterns identified in the v2.6.1 audit.
 
-- [x] 96-A — Migrate `src/iteration/__helpers/metrics-collector.ts` from bare `'fs'` to Bun.file()/Bun.write() APIs. Migrate `src/context/__helpers/hydration-snapshot.ts` from `node:fs` to Bun.file().
-- [x] 96-B — Add `sanitizeForTemplate()` to tribunal prompt construction in `root-cause-tribunal.ts`, `verification-tribunal.ts`, `tribunal-rebuttals.ts`, and `pr-verdict-debate.ts`. Apply to all AI-generated free-text fields before prompt interpolation.
-- [x] 96-C — Replace native `.sort()` with lodash `orderBy` and native `.filter()` with lodash `filter` across all v2.6.0 debate/tribunal files (~10 files, ~20 call sites).
-- [x] 96-D — Convert `.parse()` to `.safeParse()` with error handling across ~25 call sites in tribunal result builders and metrics-collector.
+- [ ] 98-A — Extract resolution-counting helper from 3 duplicated filter patterns (upheld/withdrawn/modified) in `tribunal-rebuttals.ts`, `buildTribunalResult`, and `milestone-debate.ts:274`.
+- [ ] 98-B — Refactor 3 diagnostic prompt builders in `verification-tribunal.ts:137` that share ~80% identical structure into a factory/template pattern.
+- [ ] 98-C — Extract safeParse-or-throw utility from repeated 4-case switch pattern in `metrics-collector.ts:316`.
+- [ ] 98-D — Replace manual "group into Map" idiom with lodash `groupBy` in 4 files including `tribunal-rebuttals.ts:200`.
 
 ---
 
@@ -78,7 +75,8 @@
 - **v2.5.0** — Operational Intelligence & Distribution Hardening: 6 phases, 6 plans, 2694 tests. Real token accounting, context pruning, semantic convergence, role-based model routing, distribution blockers, CLI/DX foundation, observability scorecard, compiler plugin registry ([View Archive](milestones/v2.5.0-ROADMAP.md))
 - **v2.5.1** — Code Health & Test Reliability: 2 phases, 4 plans, 52 files changed. State domain type safety, 5 barrels purified, 134 context tests added, security hardening ([View Archive](milestones/v2.5.1-ROADMAP.md))
 - **v2.6.0** — Code Health, Context Intelligence & Debate Architecture: 6 phases, 17 plans, 60 commits, 250 files changed, 3109 tests. Test isolation fix, JSON-first memory bridge, directory-scoped rules, pre-flight hydration, 7 debate/tribunal patterns (Design Tribunal, Verification Tribunal, Root Cause Tribunal, milestone audit debate, PR split verdict, stall-vs-retry, ground truth metrics) ([View Archive](milestones/v2.6.0-ROADMAP.md))
+- **v2.6.1** — Audit Gap Closure: 2 phases, 9 requirements, 95 files changed, 3146 tests. Tribunal architecture extraction to shared, entity isolation fix, DRY cleanup, Bun API migration, sanitizeForTemplate, lodash alignment, safeParse conversion ([View Archive](milestones/v2.6.1-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-03 (v2.6.1 gap closure phases added from v2.6.0 audit)_
+_Roadmap updated: 2026-03-03 (v2.6.2 convention & DRY cleanup phases added from v2.6.1 audit)_
