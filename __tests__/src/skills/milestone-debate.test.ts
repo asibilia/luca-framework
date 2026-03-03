@@ -10,13 +10,13 @@ import {
   buildMilestoneRebuttalContext,
   buildMilestoneDebateResult,
 } from "../../../src/skills/__helpers/milestone-debate";
-import { normalizeFindings } from "../../../src/agents/__helpers/tribunal-detector";
-import { resolveRebuttals } from "../../../src/agents/__helpers/tribunal-rebuttals";
+import { normalizeFindings } from "../../../src/shared/__helpers/tribunal-detector";
+import { resolveRebuttals } from "../../../src/shared/__helpers/tribunal-rebuttals";
 import type {
   ReviewFinding,
   Disagreement,
   Rebuttal,
-} from "../../../src/agents/__schemas/tribunal.schemas";
+} from "../../../src/shared/__schemas/tribunal.schemas";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -525,7 +525,7 @@ describe("full pipeline integration", () => {
     // Use findings to detect disagreements for prompts
     const {
       detectDisagreements,
-    } = require("../../../src/agents/__helpers/tribunal-detector");
+    } = require("../../../src/shared/__helpers/tribunal-detector");
     const disagreements = detectDisagreements(findings);
     const prompts = buildMilestoneRebuttalContext(disagreements, "v2.5.1");
     expect(prompts.length).toBeGreaterThan(0);

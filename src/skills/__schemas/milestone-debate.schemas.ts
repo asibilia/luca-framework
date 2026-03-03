@@ -1,7 +1,7 @@
 /**
  * Milestone debate schemas for adversarial debate rounds in milestone audits.
  *
- * Extends the tribunal infrastructure from ~/agents with milestone-specific
+ * Extends the tribunal infrastructure from ~/shared with milestone-specific
  * metadata for cross-phase disagreement tracking and consensus reporting.
  *
  * Uses snake_case for all schema properties per API conventions.
@@ -11,7 +11,7 @@
 import { z } from "zod";
 
 import { COMPLEXITY_LEVELS } from "~/complexity/__schemas/complexity.schemas";
-import { tribunalResultSchema } from "~/agents/__schemas/tribunal.schemas";
+import { tribunalResultSchema } from "~/shared/__schemas/tribunal.schemas";
 
 /**
  * Configuration for the milestone audit debate round.

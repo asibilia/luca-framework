@@ -3,7 +3,7 @@
  *
  * Coordinates the adversarial debate flow specific to milestone audits,
  * bridging between independent review outputs and the tribunal
- * infrastructure from ~/agents. All functions are pure (no I/O).
+ * infrastructure from ~/shared. All functions are pure (no I/O).
  *
  * @module milestone-debate
  */
@@ -11,18 +11,18 @@ import {
   normalizeFindings,
   detectDisagreements,
   shouldRunTribunal,
-} from "~/agents/__helpers/tribunal-detector";
+} from "~/shared/__helpers/tribunal-detector";
 import {
   buildRebuttalPrompts,
   buildTribunalResult,
-} from "~/agents/__helpers/tribunal-rebuttals";
+} from "~/shared/__helpers/tribunal-rebuttals";
 import type {
   ReviewFinding,
   Disagreement,
   Rebuttal,
   UnifiedRecommendation,
-} from "~/agents/__schemas/tribunal.schemas";
-import type { RebuttalPromptPair } from "~/agents/__helpers/tribunal-rebuttals";
+} from "~/shared/__schemas/tribunal.schemas";
+import type { RebuttalPromptPair } from "~/shared/__helpers/tribunal-rebuttals";
 import {
   COMPLEXITY_ORDER,
   type ComplexityLevel,

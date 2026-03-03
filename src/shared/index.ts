@@ -8,6 +8,7 @@
  * - Section formatting (Cursor/Claude format converters)
  * - YAML frontmatter formatting
  * - JSON sanitization and config validation
+ * - Tribunal schemas, detection, and rebuttal infrastructure
  */
 
 // ─── Types and Schemas ─────────────────────────────────────────────────────────
@@ -44,3 +45,45 @@ export {
   safeValidateSkillConfig,
   safeValidateRuleConfig,
 } from "./__helpers/validation-utils";
+
+// ─── Tribunal Schemas ──────────────────────────────────────────────────────────
+
+export {
+  reviewFindingSchema,
+  CONFLICT_TYPES,
+  conflictTypeSchema,
+  disagreementSchema,
+  REBUTTAL_RESOLUTIONS,
+  rebuttalResolutionSchema,
+  rebuttalSchema,
+  unifiedRecommendationSchema,
+  tribunalResultSchema,
+} from "./__schemas/tribunal.schemas";
+
+export type {
+  ReviewFinding,
+  ConflictType,
+  Disagreement,
+  RebuttalResolution,
+  Rebuttal,
+  UnifiedRecommendation,
+  TribunalResult,
+} from "./__schemas/tribunal.schemas";
+
+// ─── Tribunal Detection ────────────────────────────────────────────────────────
+
+export {
+  normalizeFindings,
+  detectDisagreements,
+  shouldRunTribunal,
+} from "./__helpers/tribunal-detector";
+
+// ─── Tribunal Rebuttals ────────────────────────────────────────────────────────
+
+export {
+  buildRebuttalPrompts,
+  resolveRebuttals,
+  buildTribunalResult,
+} from "./__helpers/tribunal-rebuttals";
+
+export type { RebuttalPromptPair } from "./__helpers/tribunal-rebuttals";
