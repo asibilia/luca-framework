@@ -312,7 +312,7 @@ describe("buildConvergenceMetrics", () => {
 });
 
 describe("appendMetrics", () => {
-  test("creates new file when absent", () => {
+  test("creates new file when absent", async () => {
     const entry = {
       phase: 91,
       loop: "harness",
@@ -323,7 +323,7 @@ describe("appendMetrics", () => {
       timestamp: "2026-03-03T12:00:00Z",
     };
 
-    appendMetrics(TEST_METRICS_PATH, entry, "iteration_metrics");
+    await appendMetrics(TEST_METRICS_PATH, entry, "iteration_metrics");
 
     expect(existsSync(TEST_METRICS_PATH)).toBe(true);
     const raw = readFileSync(TEST_METRICS_PATH, "utf-8");
@@ -332,7 +332,7 @@ describe("appendMetrics", () => {
     expect(parsed.iteration_metrics[0]!.phase).toBe(91);
   });
 
-  test("appends to existing file", () => {
+  test("appends to existing file", async () => {
     const entry1 = {
       phase: 91,
       loop: "harness",
@@ -350,15 +350,15 @@ describe("appendMetrics", () => {
       timestamp: "2026-03-03T12:01:00Z",
     };
 
-    appendMetrics(TEST_METRICS_PATH, entry1, "iteration_metrics");
-    appendMetrics(TEST_METRICS_PATH, entry2, "iteration_metrics");
+    await appendMetrics(TEST_METRICS_PATH, entry1, "iteration_metrics");
+    await appendMetrics(TEST_METRICS_PATH, entry2, "iteration_metrics");
 
     const raw = readFileSync(TEST_METRICS_PATH, "utf-8");
     const parsed = metricsFileSchema.parse(JSON.parse(raw));
     expect(parsed.iteration_metrics).toHaveLength(2);
   });
 
-  test("appends to different categories", () => {
+  test("appends to different categories", async () => {
     const iterEntry = {
       phase: 91,
       loop: "harness",
@@ -375,8 +375,8 @@ describe("appendMetrics", () => {
       timestamp: "2026-03-03T12:00:00Z",
     };
 
-    appendMetrics(TEST_METRICS_PATH, iterEntry, "iteration_metrics");
-    appendMetrics(TEST_METRICS_PATH, planEntry, "plan_quality_metrics");
+    await appendMetrics(TEST_METRICS_PATH, iterEntry, "iteration_metrics");
+    await appendMetrics(TEST_METRICS_PATH, planEntry, "plan_quality_metrics");
 
     const raw = readFileSync(TEST_METRICS_PATH, "utf-8");
     const parsed = metricsFileSchema.parse(JSON.parse(raw));
@@ -384,13 +384,13 @@ describe("appendMetrics", () => {
     expect(parsed.plan_quality_metrics).toHaveLength(1);
   });
 
-  test("rejects invalid data for category", () => {
+  test("rejects invalid data for category", async () => {
     const badEntry = {
       invalid_field: "bad",
     };
 
-    expect(() =>
+    expect(
       appendMetrics(TEST_METRICS_PATH, badEntry, "iteration_metrics"),
-    ).toThrow();
+    ).rejects.toThrow();
   });
 });

@@ -8,6 +8,7 @@
  * - Section formatting (Cursor/Claude format converters)
  * - YAML frontmatter formatting
  * - JSON sanitization and config validation
+ * - Template sanitization for prompt injection prevention
  * - Tribunal schemas, detection, and rebuttal infrastructure
  */
 
@@ -32,6 +33,10 @@ export {
 } from "./__helpers/format";
 export type { Section } from "./__helpers/format";
 export { formatFrontmatter } from "./__helpers/utils";
+
+// ─── Template Sanitization ───────────────────────────────────────────────────
+
+export { sanitizeForTemplate } from "./__helpers/sanitize-template";
 
 // ─── Validation ─────────────────────────────────────────────────────────────────
 

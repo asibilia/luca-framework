@@ -1,5 +1,3 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
-
 import { getArg } from "~/shared/__helpers/cli-utils";
 
 import type {
@@ -220,8 +218,9 @@ export function buildConvergenceMetrics(
  * @param metricsPath - Path to the metrics JSON file
  * @returns Parsed and validated MetricsFile
  */
-function readMetricsFile(metricsPath: string): MetricsFile {
-  if (!existsSync(metricsPath)) {
+async function readMetricsFile(metricsPath: string): Promise<MetricsFile> {
+  const file = Bun.file(metricsPath);
+  if (!(await file.exists())) {
     return {
       version: "1.0",
       iteration_metrics: [],
@@ -231,7 +230,7 @@ function readMetricsFile(metricsPath: string): MetricsFile {
     };
   }
 
-  const raw = readFileSync(metricsPath, "utf-8");
+  const raw = await file.text();
   const parsed = JSON.parse(raw);
   return metricsFileSchema.parse(parsed);
 }
@@ -252,32 +251,36 @@ function readMetricsFile(metricsPath: string): MetricsFile {
  * appendMetrics(".planning/metrics.json", iterationEntry, "iteration_metrics");
  * ```
  */
-export function appendMetrics(
+export async function appendMetrics(
   metricsPath: string,
   entry: unknown,
   category: MetricCategory,
-): void {
-  const file = readMetricsFile(metricsPath);
+): Promise<void> {
+  const metricsFile = await readMetricsFile(metricsPath);
 
   // Validate and append to the correct category
   switch (category) {
     case "iteration_metrics":
-      file.iteration_metrics.push(iterationMetricsSchema.parse(entry));
+      metricsFile.iteration_metrics.push(iterationMetricsSchema.parse(entry));
       break;
     case "plan_quality_metrics":
-      file.plan_quality_metrics.push(planQualityMetricsSchema.parse(entry));
+      metricsFile.plan_quality_metrics.push(
+        planQualityMetricsSchema.parse(entry),
+      );
       break;
     case "review_metrics":
-      file.review_metrics.push(reviewMetricsSchema.parse(entry));
+      metricsFile.review_metrics.push(reviewMetricsSchema.parse(entry));
       break;
     case "convergence_metrics":
-      file.convergence_metrics.push(convergenceMetricsSchema.parse(entry));
+      metricsFile.convergence_metrics.push(
+        convergenceMetricsSchema.parse(entry),
+      );
       break;
   }
 
   // Validate the entire file before writing
-  metricsFileSchema.parse(file);
-  writeFileSync(metricsPath, JSON.stringify(file, null, 2) + "\n");
+  metricsFileSchema.parse(metricsFile);
+  await Bun.write(metricsPath, JSON.stringify(metricsFile, null, 2) + "\n");
 }
 
 /**
@@ -314,7 +317,7 @@ if (import.meta.main) {
       }
 
       const entry = JSON.parse(dataRaw);
-      appendMetrics(metricsPath, entry, category);
+      await appendMetrics(metricsPath, entry, category);
       console.log(
         JSON.stringify({ success: true, category, path: metricsPath }),
       );
