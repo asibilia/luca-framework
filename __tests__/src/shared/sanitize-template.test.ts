@@ -11,7 +11,7 @@ describe("sanitizeForTemplate", () => {
   });
 
   test("strips template injection sequences (${...})", () => {
-    expect(sanitizeForTemplate("hello ${injected}")).toBe("hello injected}");
+    expect(sanitizeForTemplate("hello ${injected}")).toBe("hello ");
   });
 
   test("replaces newlines with spaces", () => {
@@ -48,7 +48,7 @@ describe("sanitizeForTemplate", () => {
   });
 
   test("strips nested template literal attempts", () => {
-    expect(sanitizeForTemplate("`${`nested`}`")).toBe("nested}");
+    expect(sanitizeForTemplate("`${`nested`}`")).toBe("");
   });
 
   test("preserves Unicode text (non-control characters)", () => {
@@ -60,6 +60,12 @@ describe("sanitizeForTemplate", () => {
   });
 
   test("handles string with only injection characters", () => {
-    expect(sanitizeForTemplate("`${}\n\r\x00")).toBe("}  ");
+    expect(sanitizeForTemplate("`${}\n\r\x00")).toBe("  ");
+  });
+
+  test("strips Unicode bidi control characters", () => {
+    expect(sanitizeForTemplate("text \u202Ewith bidi\u202C chars")).toBe(
+      "text with bidi chars",
+    );
   });
 });
