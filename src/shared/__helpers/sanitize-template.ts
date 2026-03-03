@@ -25,19 +25,24 @@
  * @example
  * ```typescript
  * sanitizeForTemplate("hello `world` ${injected}")
- * // "hello world injected}"
+ * // "hello world "
  *
  * sanitizeForTemplate("line1\nline2\rline3")
  * // "line1 line2 line3"
  *
  * sanitizeForTemplate("normal text")
  * // "normal text"
+ *
+ * sanitizeForTemplate("text \u202Ewith bidi\u202C chars")
+ * // "text with bidi chars"
  * ```
  */
 export function sanitizeForTemplate(str: string): string {
   return str
     .replace(/`/g, "")
-    .replace(/\$\{/g, "")
+    .replace(/\$\{[^}]*\}/g, "") // Remove complete ${...} sequences
+    .replace(/\$\{/g, "") // Remove any remaining unclosed ${
+    .replace(/[\u202A-\u202E\u2066-\u2069]/g, "") // Strip bidi control chars
     .replace(/[\n\r]/g, " ")
     .replace(/[\x00-\x1f\x7f]/g, "");
 }
