@@ -1308,6 +1308,50 @@ description="Security review"
 
 **Merge findings:** Combine all issues, deduplicate by file:line.
 
+### 8.5. Design Tribunal (Conditional)
+
+**Skip if:** Complexity is below COMPLEX, OR \`workflow.tribunal_enabled: false\` in config (default: false), OR no disagreements detected.
+
+**Gate check:**
+
+\`\`\`bash
+TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.tribunal_enabled ?? false);
+")
+\`\`\`
+
+**When enabled at COMPLEX+ complexity:**
+
+1. **Normalize findings**: Parse all reviewer outputs into structured ReviewFinding format
+2. **Detect disagreements**: Group findings by file:line and identify severity mismatches, scope overlaps, and contradictions
+3. **Gate check**: If no disagreements involve CRITICAL or HIGH findings, skip tribunal
+4. **Build rebuttal prompts**: For each disagreement, generate challenger/defender prompt pairs
+5. **Spawn rebuttal agents**: Send prompts to challenger and defender agents in PARALLEL
+6. **Resolve rebuttals**: Aggregate rebuttal outcomes into unified recommendations with confidence scores
+7. **Build tribunal result**: Compile final result with metrics
+
+**Display tribunal results:**
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > DESIGN TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value |
+| --------------------- | ----- |
+| Total findings        | {N}   |
+| Disagreements found   | {N}   |
+| Rebuttals conducted   | {N}   |
+| Findings withdrawn    | {N}   |
+| Findings modified     | {N}   |
+| Debate token cost     | ~{N}  |
+\`\`\`
+
+**Record tribunal metrics** using \`buildReviewMetrics\` from 91-A (set \`debate_enabled: true\`, \`disagreements_detected: N\`).
+
+**Replace merged findings** with the tribunal's unified recommendations for Step 8.1.
+
 ### 8.1. Handle Code Review Results
 
 **Route based on findings:**
