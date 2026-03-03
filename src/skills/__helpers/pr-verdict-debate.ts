@@ -11,6 +11,7 @@
  * PR validation context where disagreements are about the validity of
  * a concern rather than severity or scope of a finding.
  */
+import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import {
   verdictSplitSchema,
   splitVerdictResultSchema,
@@ -142,15 +143,15 @@ export function buildDissenterPrompt(split: VerdictSplit): string {
     : split.valid_verdicts;
 
   const majorityReasoning = majorityVerdicts
-    .map((v) => `- ${v.agent}: ${v.reasoning}`)
+    .map((v) => `- ${v.agent}: ${sanitizeForTemplate(v.reasoning)}`)
     .join("\n");
   const minorityReasoning = minorityVerdicts
-    .map((v) => `- ${v.agent}: ${v.reasoning}`)
+    .map((v) => `- ${v.agent}: ${sanitizeForTemplate(v.reasoning)}`)
     .join("\n");
 
   return `A PR review comment has produced a split verdict among validators.
 
-**Original Comment:** ${split.comment_text}
+**Original Comment:** ${sanitizeForTemplate(split.comment_text)}
 
 **Majority Position (${majorityCount} validators):** The concern is ${majorityPosition}
 **Majority Reasoning:**
@@ -193,10 +194,10 @@ export function buildMajorityResponsePrompt(
 
   return `A dissenting validator challenges the majority position on a PR comment.
 
-**Original Comment:** ${split.comment_text}
+**Original Comment:** ${sanitizeForTemplate(split.comment_text)}
 
 **Your Position (${majorityCount} validators):** The concern is ${majorityPosition}
-**Dissenter Challenge:** ${dissenterArgument}
+**Dissenter Challenge:** ${sanitizeForTemplate(dissenterArgument)}
 
 Respond in 2-3 sentences. Either:
 1. Uphold your position with counter-evidence
