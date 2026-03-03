@@ -1,3 +1,6 @@
+import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+import { resolveMajorityVote } from "~/shared/__helpers/tribunal-consensus";
+
 import {
   proposedFixSignalSchema,
   rootCauseTribunalResultSchema,
@@ -86,8 +89,7 @@ export function shouldRunRootCauseTribunal(
 ): boolean {
   if (!fixSignal) return false;
 
-  const qualifyingComplexities = ["COMPLEX", "CRITICAL"];
-  if (!qualifyingComplexities.includes(complexity.toUpperCase())) {
+  if (!isDebateComplexity(complexity)) {
     return false;
   }
 
@@ -289,50 +291,10 @@ export function resolveRootCauseTribunal(
     RootCausePerspective,
   ],
 ): RootCauseTribunalResult {
-  // Count votes per category
-  const votes = new Map<RootCauseChallengeCategory, RootCausePerspective[]>();
-  for (const perspective of perspectives) {
-    const category = perspective.category_assessment;
-    const existing = votes.get(category);
-    if (existing) {
-      existing.push(perspective);
-    } else {
-      votes.set(category, [perspective]);
-    }
-  }
-
-  // Find majority (2+ votes) or highest-confidence tiebreaker
-  let consensusCategory: RootCauseChallengeCategory;
-  let consensusVoters: RootCausePerspective[];
-  let dissenter: RootCausePerspective | undefined;
-
-  // Check for majority
-  const majority = [...votes.entries()].find(
-    ([, voters]) => voters.length >= 2,
-  );
-
-  if (majority) {
-    consensusCategory = majority[0];
-    consensusVoters = majority[1];
-    // Find dissenter (if any)
-    dissenter = perspectives.find(
-      (p) => p.category_assessment !== consensusCategory,
-    );
-  } else {
-    // Three-way split: use highest confidence
-    const sorted = [...perspectives].sort(
-      (a, b) => b.confidence - a.confidence,
-    );
-    consensusCategory = sorted[0]!.category_assessment;
-    consensusVoters = [sorted[0]!];
-    // The other two are dissenters; pick the one with higher confidence
-    dissenter = sorted[1];
-  }
-
-  // Calculate consensus confidence (average of agreeing voters)
-  const consensusConfidence =
-    consensusVoters.reduce((sum, p) => sum + p.confidence, 0) /
-    consensusVoters.length;
+  const vote = resolveMajorityVote<
+    RootCauseChallengeCategory,
+    RootCausePerspective
+  >(perspectives);
 
   // Estimate token cost: ~8k per participant prompt (3 participants = ~24k)
   const estimatedTokenCost = 24000;
@@ -341,11 +303,11 @@ export function resolveRootCauseTribunal(
     phase,
     proposed_fix_signal: fixSignal,
     perspectives,
-    consensus_category: consensusCategory,
-    consensus_confidence: Math.round(consensusConfidence * 100) / 100,
-    dissenting_perspective: dissenter,
-    resolution: RESOLUTION_MAP[consensusCategory],
-    recommended_action: ACTION_MAP[consensusCategory],
+    consensus_category: vote.consensus_category,
+    consensus_confidence: vote.consensus_confidence,
+    dissenting_perspective: vote.dissenter,
+    resolution: RESOLUTION_MAP[vote.consensus_category],
+    recommended_action: ACTION_MAP[vote.consensus_category],
     estimated_token_cost: estimatedTokenCost,
     timestamp: new Date().toISOString(),
   });

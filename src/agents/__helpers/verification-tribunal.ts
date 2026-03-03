@@ -1,3 +1,6 @@
+import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+import { resolveMajorityVote } from "~/shared/__helpers/tribunal-consensus";
+
 import {
   conflictSignalSchema,
   verificationTribunalResultSchema,
@@ -118,8 +121,7 @@ export function shouldRunVerificationTribunal(
 ): boolean {
   if (!conflict) return false;
 
-  const qualifyingComplexities = ["COMPLEX", "CRITICAL"];
-  return qualifyingComplexities.includes(complexity.toUpperCase());
+  return isDebateComplexity(complexity);
 }
 
 /**
@@ -294,50 +296,9 @@ export function resolveVerificationTribunal(
     DiagnosticPerspective,
   ],
 ): VerificationTribunalResult {
-  // Count votes per category
-  const votes = new Map<ConflictCategory, DiagnosticPerspective[]>();
-  for (const perspective of perspectives) {
-    const category = perspective.category_assessment;
-    const existing = votes.get(category);
-    if (existing) {
-      existing.push(perspective);
-    } else {
-      votes.set(category, [perspective]);
-    }
-  }
-
-  // Find majority (2+ votes) or highest-confidence tiebreaker
-  let consensusCategory: ConflictCategory;
-  let consensusVoters: DiagnosticPerspective[];
-  let dissenter: DiagnosticPerspective | undefined;
-
-  // Check for majority
-  const majority = [...votes.entries()].find(
-    ([, voters]) => voters.length >= 2,
+  const vote = resolveMajorityVote<ConflictCategory, DiagnosticPerspective>(
+    perspectives,
   );
-
-  if (majority) {
-    consensusCategory = majority[0];
-    consensusVoters = majority[1];
-    // Find dissenter (if any)
-    dissenter = perspectives.find(
-      (p) => p.category_assessment !== consensusCategory,
-    );
-  } else {
-    // Three-way split: use highest confidence
-    const sorted = [...perspectives].sort(
-      (a, b) => b.confidence - a.confidence,
-    );
-    consensusCategory = sorted[0]!.category_assessment;
-    consensusVoters = [sorted[0]!];
-    // The other two are dissenters; pick the one with higher confidence
-    dissenter = sorted[1];
-  }
-
-  // Calculate consensus confidence (average of agreeing voters)
-  const consensusConfidence =
-    consensusVoters.reduce((sum, p) => sum + p.confidence, 0) /
-    consensusVoters.length;
 
   // Estimate token cost: ~3500 tokens per diagnostic prompt (3 agents)
   const estimatedTokenCost = 10500;
@@ -346,10 +307,10 @@ export function resolveVerificationTribunal(
     phase,
     conflict_signal: conflict,
     perspectives,
-    consensus_category: consensusCategory,
-    consensus_confidence: Math.round(consensusConfidence * 100) / 100,
-    dissenting_perspective: dissenter,
-    recommended_remediation: REMEDIATION_MAP[consensusCategory],
+    consensus_category: vote.consensus_category,
+    consensus_confidence: vote.consensus_confidence,
+    dissenting_perspective: vote.dissenter,
+    recommended_remediation: REMEDIATION_MAP[vote.consensus_category],
     estimated_token_cost: estimatedTokenCost,
     timestamp: new Date().toISOString(),
   });

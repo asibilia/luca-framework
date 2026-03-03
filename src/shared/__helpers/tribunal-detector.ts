@@ -1,5 +1,7 @@
 import { createHash } from "crypto";
 
+import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+
 import {
   reviewFindingSchema,
   disagreementSchema,
@@ -219,8 +221,7 @@ export function shouldRunTribunal(
   complexity: string,
 ): boolean {
   // Gate: Only COMPLEX and CRITICAL complexity
-  const qualifyingComplexities = ["COMPLEX", "CRITICAL"];
-  if (!qualifyingComplexities.includes(complexity.toUpperCase())) {
+  if (!isDebateComplexity(complexity)) {
     return false;
   }
 
