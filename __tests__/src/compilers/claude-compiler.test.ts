@@ -38,10 +38,13 @@ describe("Claude-format compile functions", () => {
     expect(result).toBe(skill.toClaudeFormat());
   });
 
-  test("compileRuleClaude delegates to rule.toClaudeFormat()", () => {
+  test("compileRuleClaude adds frontmatter for scoped rules", () => {
     const rule = createTestRule(validRuleConfig);
     const result = compileRuleClaude(rule);
-    expect(result).toBe(rule.toClaudeFormat());
+    // Scoped rules (alwaysApply: false or globs) get YAML frontmatter prepended
+    expect(result).toContain(rule.toClaudeFormat());
+    expect(result).toContain("---");
+    expect(result).toContain("description:");
   });
 
   test("compileAgent with CLAUDE format matches compileAgentClaude", () => {

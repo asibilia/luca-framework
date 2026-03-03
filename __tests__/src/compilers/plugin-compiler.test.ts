@@ -247,8 +247,9 @@ describe("Plugin compile functions", () => {
       expect(output).toContain(
         "All TypeScript files must use kebab-case names.",
       );
-      // Rules do not emit YAML frontmatter in Claude format
-      expect(output).not.toContain("---");
+      // Scoped rules (with globs) now include YAML frontmatter in Claude format
+      expect(output).toContain("---");
+      expect(output).toContain("description:");
     });
   });
 
