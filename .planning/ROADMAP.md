@@ -2,77 +2,13 @@
 
 ## Overview
 
-**Current Milestone:** v2.6.0 — Code Health, Context Intelligence & Debate Architecture
+**Current Milestone:** None — backlog available for next milestone
 
 ---
 
 ## Current Milestone
 
-### v2.6.0 — Code Health, Context Intelligence & Debate Architecture
-
-**Goal:** Resolve v2.5.1 carryover (test isolation, barrel purity), tighten iteration tuning, improve context efficiency (rule scoping, pre-flight hydration), build debate infrastructure (ground truth tracking, Design Tribunal PoC), and expand debate patterns across verification, debugging, and milestone audit.
-
-**Scoped by:** Autopilot roadmap revision swarm (3 specialists + synthesizer, 2026-03-03); debate architecture absorbed per user request (2026-03-03)
-
-#### Phase 89: Code Health Carryover
-
-**Goal:** Fix CI-blocking test isolation bug, clean remaining impure barrels, tighten iteration caps.
-
-- [x] 89-A — Fix validateBranding module resolution / test suite isolation (todo-29)
-- [x] 89-B — Refactor remaining impure barrel files (todo-28, reduced scope — 5 of 7 already cleaned in v2.5.1)
-- [x] 89-C — Tighten harness iteration caps: MODERATE 3→2, COMPLEX 3→2, CRITICAL 5→3 (todo-32)
-- [x] 89-D — JSON-first memory bridge migration: JSON files (brain.json, memory.json, working.json, procedures.json) as source of truth with MD views as generated output (dual-write guarantee)
-- [x] 89-E — Agent source files updated to use memory bridge CLI exclusively — no direct `cat .planning/*.md` or `echo >> .planning/*.md` (lu-cognition, lu-executor, lu-learner, lu-discuss-researcher)
-- [x] 89-F — Session-start hook updated for JSON-first memory initialization with `ensure-init` bridge command
-
-**Key files (89-D/E/F):** `src/memory/__helpers/bridge.ts` (extended), `src/memory/__helpers/json-persistence.ts` (new), `src/memory/__helpers/brain-parser.ts` (new), `src/memory/__helpers/brain-serializer.ts` (new), `src/memory/__helpers/memory-serializer.ts` (new), `src/memory/__schemas/memory.schemas.ts` (brainSchema added), `src/hooks/scripts/session-start.sh`, `__tests__/src/memory/bridge.test.ts`
-
-**Depends on:** None
-
-#### Phase 90: Context Intelligence
-
-**Goal:** Reduce context saturation via directory-scoped rules, expand pre-flight hydration for better first-pass accuracy.
-
-- [x] 90-A — Scope rules by directory/domain (todo-33)
-- [x] 90-B — Expand pre-flight context hydration (todo-34)
-
-**Depends on:** Phase 89
-
-#### Phase 91: Debate Foundation
-
-**Goal:** Build debate infrastructure: ground truth tracking for measurement, lightweight stall-vs-retry debate PoC, and Design Tribunal as the full debate pattern proof-of-concept.
-
-- [x] 91-A — Ground truth tracking for debate measurement (todo-41)
-- [x] 91-B — Stall-vs-retry convergence debate (todo-40)
-- [x] 91-C — Design Tribunal: phase-execute code review debate PoC (todo-36)
-
-**Depends on:** Phase 89 (specifically 89-C for 91-B; 91-A is independent)
-
-#### Phase 92: Debate Expansion
-
-**Goal:** Expand debate patterns to milestone audit, verification conflicts, and PR address validation — all building on Design Tribunal infrastructure from Phase 91.
-
-- [x] 92-A — Milestone audit adversarial debate round (todo-35)
-- [x] 92-B — Verification Tribunal for T1/T3 conflicts (todo-37)
-- [x] 92-C — PR address split verdict debate (todo-39)
-
-**Depends on:** Phase 91 (specifically 91-C — Design Tribunal PoC)
-
-#### Phase 93: Debate Advanced
-
-**Goal:** Root cause tribunal combining debug diagnosis with verification tribunal patterns.
-
-- [x] 93-A — Root Cause Tribunal for debug fix validation (todo-38)
-
-**Depends on:** Phase 92 (specifically 92-B — Verification Tribunal)
-
-#### Phase 94: Milestone Verification & Release
-
-**Goal:** Full harness verification, milestone audit, archive.
-
-- [ ] 94-A — Full harness (test + typecheck + drift), milestone audit, archive
-
-**Depends on:** Phases 89, 90, 91, 92, 93
+_No active milestone. Run `/autopilot` or `/milestone-new` to start the next milestone._
 
 ---
 
@@ -118,7 +54,8 @@
 - **v2.4.0** — Pi Platform Completion: 3 phases, 3 plans, 2411 tests. Runtime model routing via pi.setModel(), interactive dialogs & keyboard shortcuts, AbortSignal tool resilience, session lifecycle handling, agent role content refresh ([View Archive](milestones/v2.4.0-ROADMAP.md))
 - **v2.5.0** — Operational Intelligence & Distribution Hardening: 6 phases, 6 plans, 2694 tests. Real token accounting, context pruning, semantic convergence, role-based model routing, distribution blockers, CLI/DX foundation, observability scorecard, compiler plugin registry ([View Archive](milestones/v2.5.0-ROADMAP.md))
 - **v2.5.1** — Code Health & Test Reliability: 2 phases, 4 plans, 52 files changed. State domain type safety, 5 barrels purified, 134 context tests added, security hardening ([View Archive](milestones/v2.5.1-ROADMAP.md))
+- **v2.6.0** — Code Health, Context Intelligence & Debate Architecture: 6 phases, 17 plans, 60 commits, 250 files changed, 3109 tests. Test isolation fix, JSON-first memory bridge, directory-scoped rules, pre-flight hydration, 7 debate/tribunal patterns (Design Tribunal, Verification Tribunal, Root Cause Tribunal, milestone audit debate, PR split verdict, stall-vs-retry, ground truth metrics) ([View Archive](milestones/v2.6.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-03 (v2.6.0 milestone scoped by autopilot swarm; debate architecture absorbed into milestone per user request; Phase 89 extended with JSON-first memory bridge migration 89-D/E/F)_
+_Roadmap updated: 2026-03-03 (v2.6.0 milestone complete and archived)_
