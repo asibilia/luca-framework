@@ -1,4 +1,5 @@
 import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import { resolveMajorityVote } from "~/shared/__helpers/tribunal-consensus";
 
 import {
@@ -121,13 +122,13 @@ export function buildDebuggerDefensePrompt(
 ): string {
   return `You are defending your proposed fix in a Root Cause Tribunal.
 
-**Root Cause:** ${fixSignal.root_cause}
+**Root Cause:** ${sanitizeForTemplate(fixSignal.root_cause)}
 
-**Proposed Fix:** ${fixSignal.proposed_fix}
+**Proposed Fix:** ${sanitizeForTemplate(fixSignal.proposed_fix)}
 
 **Files Changed:** ${fixSignal.files_changed.join(", ")}
 
-**Evidence Summary:** ${fixSignal.evidence_summary}
+**Evidence Summary:** ${sanitizeForTemplate(fixSignal.evidence_summary)}
 
 **Your Role:** As lu-debugger, you proposed this fix. Now defend it against challenges.
 
@@ -165,13 +166,13 @@ export function buildVerifierChallengePrompt(
 ): string {
   return `You are challenging a proposed fix in a Root Cause Tribunal.
 
-**Root Cause (claimed):** ${fixSignal.root_cause}
+**Root Cause (claimed):** ${sanitizeForTemplate(fixSignal.root_cause)}
 
-**Proposed Fix:** ${fixSignal.proposed_fix}
+**Proposed Fix:** ${sanitizeForTemplate(fixSignal.proposed_fix)}
 
 **Files Changed:** ${fixSignal.files_changed.join(", ")}
 
-**Evidence Summary:** ${fixSignal.evidence_summary}
+**Evidence Summary:** ${sanitizeForTemplate(fixSignal.evidence_summary)}
 
 **Your Role:** As lu-verifier, independently challenge whether this fix addresses the true root cause.
 
@@ -208,13 +209,13 @@ ACTION: [1-2 sentences recommending what to do next]`;
 export function buildArbiterPrompt(fixSignal: ProposedFixSignal): string {
   return `You are the arbiter in a Root Cause Tribunal, providing a neutral assessment.
 
-**Root Cause (claimed):** ${fixSignal.root_cause}
+**Root Cause (claimed):** ${sanitizeForTemplate(fixSignal.root_cause)}
 
-**Proposed Fix:** ${fixSignal.proposed_fix}
+**Proposed Fix:** ${sanitizeForTemplate(fixSignal.proposed_fix)}
 
 **Files Changed:** ${fixSignal.files_changed.join(", ")}
 
-**Evidence Summary:** ${fixSignal.evidence_summary}
+**Evidence Summary:** ${sanitizeForTemplate(fixSignal.evidence_summary)}
 
 **Your Role:** As lu-integration-checker, provide a neutral assessment of the fix's correctness and scope.
 
