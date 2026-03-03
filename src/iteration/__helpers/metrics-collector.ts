@@ -1,6 +1,7 @@
 import filter from "lodash/filter";
 
 import { getArg } from "~/shared/__helpers/cli-utils";
+import { safeParseOrThrow } from "~/shared/__helpers/safe-parse-or-throw";
 
 import type {
   LoopResult,
@@ -315,43 +316,43 @@ export async function appendMetrics(
   // Validate and append to the correct category
   switch (category) {
     case "iteration_metrics": {
-      const parsed = iterationMetricsSchema.safeParse(entry);
-      if (!parsed.success) {
-        throw new Error(
-          `[metrics-collector] Invalid iteration_metrics entry: ${parsed.error.message}`,
-        );
-      }
-      metricsFile.iteration_metrics.push(parsed.data);
+      metricsFile.iteration_metrics.push(
+        safeParseOrThrow(
+          iterationMetricsSchema,
+          entry,
+          "[metrics-collector] Invalid iteration_metrics entry",
+        ),
+      );
       break;
     }
     case "plan_quality_metrics": {
-      const parsed = planQualityMetricsSchema.safeParse(entry);
-      if (!parsed.success) {
-        throw new Error(
-          `[metrics-collector] Invalid plan_quality_metrics entry: ${parsed.error.message}`,
-        );
-      }
-      metricsFile.plan_quality_metrics.push(parsed.data);
+      metricsFile.plan_quality_metrics.push(
+        safeParseOrThrow(
+          planQualityMetricsSchema,
+          entry,
+          "[metrics-collector] Invalid plan_quality_metrics entry",
+        ),
+      );
       break;
     }
     case "review_metrics": {
-      const parsed = reviewMetricsSchema.safeParse(entry);
-      if (!parsed.success) {
-        throw new Error(
-          `[metrics-collector] Invalid review_metrics entry: ${parsed.error.message}`,
-        );
-      }
-      metricsFile.review_metrics.push(parsed.data);
+      metricsFile.review_metrics.push(
+        safeParseOrThrow(
+          reviewMetricsSchema,
+          entry,
+          "[metrics-collector] Invalid review_metrics entry",
+        ),
+      );
       break;
     }
     case "convergence_metrics": {
-      const parsed = convergenceMetricsSchema.safeParse(entry);
-      if (!parsed.success) {
-        throw new Error(
-          `[metrics-collector] Invalid convergence_metrics entry: ${parsed.error.message}`,
-        );
-      }
-      metricsFile.convergence_metrics.push(parsed.data);
+      metricsFile.convergence_metrics.push(
+        safeParseOrThrow(
+          convergenceMetricsSchema,
+          entry,
+          "[metrics-collector] Invalid convergence_metrics entry",
+        ),
+      );
       break;
     }
   }

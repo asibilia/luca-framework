@@ -126,18 +126,36 @@ export function shouldRunVerificationTribunal(
 }
 
 /**
- * Build the diagnostic prompt for lu-test-writer to analyze a T1/T3 conflict.
+ * Configuration for a diagnostic prompt perspective.
  *
- * The test writer perspective focuses on test coverage gaps: whether the
- * existing tests adequately cover the plan specification.
+ * Each diagnostic agent in the verification tribunal uses the same
+ * prompt template but with different role context and evaluation
+ * questions. This interface captures those differences.
+ */
+interface DiagnosticPromptConfig {
+  opening_qualifier: string;
+  role: string;
+  role_description: string;
+  questions: [string, string, string];
+}
+
+/**
+ * Factory function that builds a diagnostic prompt from a config.
+ *
+ * Produces the shared prompt template used by all three tribunal
+ * diagnosticians (lu-test-writer, lu-verifier, lu-integration-checker).
+ * Only the role name, role description, opening qualifier, and three
+ * evaluation questions differ between perspectives.
  *
  * @param conflict - The conflict signal to diagnose
- * @returns Prompt string for lu-test-writer diagnostic analysis
+ * @param config - Perspective-specific configuration
+ * @returns Formatted prompt string for the diagnostic agent
  */
-export function buildTestWriterDiagnosticPrompt(
+function buildDiagnosticPrompt(
   conflict: ConflictSignal,
+  config: DiagnosticPromptConfig,
 ): string {
-  return `You are diagnosing a conflict between test results (T1) and goal-backward analysis (T3).
+  return `You are diagnosing a conflict between test results (T1) and ${config.opening_qualifier} (T3).
 
 **Conflict Type:** ${conflict.conflict_type}
 
@@ -147,12 +165,12 @@ ${sanitizeForTemplate(conflict.t1_evidence)}
 **T3 Signal (${conflict.t3_status}):**
 ${sanitizeForTemplate(conflict.t3_evidence)}
 
-**Your Role:** As lu-test-writer, analyze whether the existing tests adequately cover the plan specification.
+**Your Role:** As ${config.role}, ${config.role_description}.
 
 **Evaluate:**
-1. Do the passing tests actually verify the goal's intent, or just surface-level behavior?
-2. Are there specification requirements that have NO corresponding test?
-3. Could the tests be passing with stubs, mocks, or incomplete implementations?
+1. ${config.questions[0]}
+2. ${config.questions[1]}
+3. ${config.questions[2]}
 
 **Categorize the root cause as ONE of:**
 - \`tests_incomplete\`: Tests pass but don't cover the full goal specification
@@ -164,6 +182,31 @@ CATEGORY: tests_incomplete | goal_over_specified | wiring_issue
 CONFIDENCE: 0.0 to 1.0
 EVIDENCE: [2-3 sentences explaining your reasoning]
 ACTION: [1-2 sentences recommending what to do next]`;
+}
+
+/**
+ * Build the diagnostic prompt for lu-test-writer to analyze a T1/T3 conflict.
+ *
+ * The test writer perspective focuses on test coverage gaps: whether the
+ * existing tests adequately cover the plan specification.
+ *
+ * @param conflict - The conflict signal to diagnose
+ * @returns Prompt string for lu-test-writer diagnostic analysis
+ */
+export function buildTestWriterDiagnosticPrompt(
+  conflict: ConflictSignal,
+): string {
+  return buildDiagnosticPrompt(conflict, {
+    opening_qualifier: "goal-backward analysis",
+    role: "lu-test-writer",
+    role_description:
+      "analyze whether the existing tests adequately cover the plan specification",
+    questions: [
+      "Do the passing tests actually verify the goal's intent, or just surface-level behavior?",
+      "Are there specification requirements that have NO corresponding test?",
+      "Could the tests be passing with stubs, mocks, or incomplete implementations?",
+    ],
+  });
 }
 
 /**
@@ -178,33 +221,17 @@ ACTION: [1-2 sentences recommending what to do next]`;
 export function buildVerifierDiagnosticPrompt(
   conflict: ConflictSignal,
 ): string {
-  return `You are diagnosing a conflict between test results (T1) and your own goal-backward analysis (T3).
-
-**Conflict Type:** ${conflict.conflict_type}
-
-**T1 Signal (${conflict.t1_status}):**
-${sanitizeForTemplate(conflict.t1_evidence)}
-
-**T3 Signal (${conflict.t3_status}):**
-${sanitizeForTemplate(conflict.t3_evidence)}
-
-**Your Role:** As lu-verifier, critically re-examine your T3 goal-backward analysis for this conflict.
-
-**Evaluate:**
-1. Were the must-have truths appropriately scoped for the plan's actual objectives?
-2. Did the goal-backward analysis introduce requirements beyond what the plan specified?
-3. Is the T3 PARTIAL/FAIL status based on missing implementation or missing specification?
-
-**Categorize the root cause as ONE of:**
-- \`tests_incomplete\`: Tests pass but don't cover the full goal specification
-- \`goal_over_specified\`: The goal-backward analysis expects more than the plan intended
-- \`wiring_issue\`: Tests pass in isolation but cross-component integration is broken
-
-**Respond in this exact format:**
-CATEGORY: tests_incomplete | goal_over_specified | wiring_issue
-CONFIDENCE: 0.0 to 1.0
-EVIDENCE: [2-3 sentences explaining your reasoning]
-ACTION: [1-2 sentences recommending what to do next]`;
+  return buildDiagnosticPrompt(conflict, {
+    opening_qualifier: "your own goal-backward analysis",
+    role: "lu-verifier",
+    role_description:
+      "critically re-examine your T3 goal-backward analysis for this conflict",
+    questions: [
+      "Were the must-have truths appropriately scoped for the plan's actual objectives?",
+      "Did the goal-backward analysis introduce requirements beyond what the plan specified?",
+      "Is the T3 PARTIAL/FAIL status based on missing implementation or missing specification?",
+    ],
+  });
 }
 
 /**
@@ -219,33 +246,17 @@ ACTION: [1-2 sentences recommending what to do next]`;
 export function buildIntegrationDiagnosticPrompt(
   conflict: ConflictSignal,
 ): string {
-  return `You are diagnosing a conflict between test results (T1) and goal-backward analysis (T3).
-
-**Conflict Type:** ${conflict.conflict_type}
-
-**T1 Signal (${conflict.t1_status}):**
-${sanitizeForTemplate(conflict.t1_evidence)}
-
-**T3 Signal (${conflict.t3_status}):**
-${sanitizeForTemplate(conflict.t3_evidence)}
-
-**Your Role:** As lu-integration-checker, analyze whether cross-component wiring is the root cause of this conflict.
-
-**Evaluate:**
-1. Could unit tests pass while integration between components is broken?
-2. Are there import/export connections that exist on paper but fail at runtime?
-3. Is there a disconnect between what's tested (unit behavior) and what's needed (integrated behavior)?
-
-**Categorize the root cause as ONE of:**
-- \`tests_incomplete\`: Tests pass but don't cover the full goal specification
-- \`goal_over_specified\`: The goal-backward analysis expects more than the plan intended
-- \`wiring_issue\`: Tests pass in isolation but cross-component integration is broken
-
-**Respond in this exact format:**
-CATEGORY: tests_incomplete | goal_over_specified | wiring_issue
-CONFIDENCE: 0.0 to 1.0
-EVIDENCE: [2-3 sentences explaining your reasoning]
-ACTION: [1-2 sentences recommending what to do next]`;
+  return buildDiagnosticPrompt(conflict, {
+    opening_qualifier: "goal-backward analysis",
+    role: "lu-integration-checker",
+    role_description:
+      "analyze whether cross-component wiring is the root cause of this conflict",
+    questions: [
+      "Could unit tests pass while integration between components is broken?",
+      "Are there import/export connections that exist on paper but fail at runtime?",
+      "Is there a disconnect between what's tested (unit behavior) and what's needed (integrated behavior)?",
+    ],
+  });
 }
 
 /**
