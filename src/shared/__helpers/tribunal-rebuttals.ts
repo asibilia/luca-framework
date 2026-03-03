@@ -294,7 +294,7 @@ export function buildTribunalResult(
   disagreements: Disagreement[],
   rebuttals: Rebuttal[],
   recommendations: UnifiedRecommendation[],
-): TribunalResult {
+): TribunalResult | null {
   const withdrawnCount = filter(
     rebuttals,
     (r) => r.resolution === "withdrawn",
@@ -307,7 +307,7 @@ export function buildTribunalResult(
   // Estimate token cost: ~200 tokens per prompt pair
   const estimatedTokenCost = rebuttals.length * 400;
 
-  return tribunalResultSchema.parse({
+  const parsed = tribunalResultSchema.safeParse({
     phase,
     total_findings: allFindings.length,
     disagreements_detected: disagreements.length,
@@ -318,4 +318,13 @@ export function buildTribunalResult(
     debate_token_cost: estimatedTokenCost,
     timestamp: new Date().toISOString(),
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[tribunal-rebuttals] Failed to parse tribunal result: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
