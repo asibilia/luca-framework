@@ -101,3 +101,29 @@ export {
   buildIntegrationDiagnosticPrompt,
   resolveVerificationTribunal,
 } from "./__helpers/verification-tribunal";
+
+// Root cause tribunal schemas
+export {
+  ROOT_CAUSE_CHALLENGE_CATEGORIES,
+  rootCauseChallengeCategorySchema,
+  proposedFixSignalSchema,
+  rootCausePerspectiveSchema,
+  rootCauseTribunalResultSchema,
+} from "./__schemas/root-cause-tribunal.schemas";
+
+export type {
+  RootCauseChallengeCategory,
+  ProposedFixSignal,
+  RootCausePerspective,
+  RootCauseTribunalResult,
+} from "./__schemas/root-cause-tribunal.schemas";
+
+// Root cause tribunal helpers
+export {
+  detectProposedFix,
+  shouldRunRootCauseTribunal,
+  buildDebuggerDefensePrompt,
+  buildVerifierChallengePrompt,
+  buildArbiterPrompt,
+  resolveRootCauseTribunal,
+} from "./__helpers/root-cause-tribunal";
