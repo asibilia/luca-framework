@@ -1,3 +1,5 @@
+import filter from "lodash/filter";
+
 import { getArg } from "~/shared/__helpers/cli-utils";
 
 import type {
@@ -54,12 +56,13 @@ export function buildIterationMetrics(
   loopResult: LoopResult,
   config: LoopConfig,
   debateChangedOutcome: boolean = false,
-): IterationMetrics {
-  const stallEvents = loopResult.history.iterations.filter(
+): IterationMetrics | null {
+  const stallEvents = filter(
+    loopResult.history.iterations,
     (r) => r.convergence_status === "stalled",
   ).length;
 
-  return iterationMetricsSchema.parse({
+  const parsed = iterationMetricsSchema.safeParse({
     phase: config.phase,
     loop: config.loop_type,
     predicted_stall_point: 0,
@@ -69,6 +72,15 @@ export function buildIterationMetrics(
     debate_changed_outcome: debateChangedOutcome,
     timestamp: new Date().toISOString(),
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[metrics-collector] Failed to build iteration metrics: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
 
 /**
@@ -99,8 +111,8 @@ export function buildPlanQualityMetrics(
   executionDurationMs: number,
   outcome: string,
   gapCount: number,
-): PlanQualityMetrics {
-  return planQualityMetricsSchema.parse({
+): PlanQualityMetrics | null {
+  const parsed = planQualityMetricsSchema.safeParse({
     plan_id: planId,
     phase,
     wsjf_score: wsjfScore,
@@ -110,6 +122,15 @@ export function buildPlanQualityMetrics(
     gap_count: gapCount,
     timestamp: new Date().toISOString(),
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[metrics-collector] Failed to build plan quality metrics: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
 
 /**
@@ -147,7 +168,7 @@ export function buildReviewMetrics(
   findings: ReviewerFinding[],
   debateEnabled: boolean = false,
   disagreementsDetected: number = 0,
-): ReviewMetrics {
+): ReviewMetrics | null {
   const issuesBySeverity: Record<string, number> = {};
   const issuesByAgent: Record<string, number> = {};
   const agentNames = new Set<string>();
@@ -161,7 +182,7 @@ export function buildReviewMetrics(
     agentNames.add(agent);
   }
 
-  return reviewMetricsSchema.parse({
+  const parsed = reviewMetricsSchema.safeParse({
     phase,
     reviewer_count: agentNames.size,
     total_issues: findings.length,
@@ -171,6 +192,15 @@ export function buildReviewMetrics(
     disagreements_detected: disagreementsDetected,
     timestamp: new Date().toISOString(),
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[metrics-collector] Failed to build review metrics: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
 
 /**
@@ -195,8 +225,8 @@ export function buildConvergenceMetrics(
   convergenceResult: ConvergenceResult,
   loop: "harness" | "verify",
   debateOverride: boolean = false,
-): ConvergenceMetrics {
-  return convergenceMetricsSchema.parse({
+): ConvergenceMetrics | null {
+  const parsed = convergenceMetricsSchema.safeParse({
     phase,
     loop,
     premature_halt: convergenceResult.should_halt,
@@ -210,6 +240,15 @@ export function buildConvergenceMetrics(
     debate_override: debateOverride,
     timestamp: new Date().toISOString(),
   });
+
+  if (!parsed.success) {
+    console.error(
+      `[metrics-collector] Failed to build convergence metrics: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
 
 /**
@@ -231,8 +270,23 @@ async function readMetricsFile(metricsPath: string): Promise<MetricsFile> {
   }
 
   const raw = await file.text();
-  const parsed = JSON.parse(raw);
-  return metricsFileSchema.parse(parsed);
+  const jsonData = JSON.parse(raw);
+  const parsed = metricsFileSchema.safeParse(jsonData);
+
+  if (!parsed.success) {
+    console.error(
+      `[metrics-collector] Corrupt metrics file at ${metricsPath}, returning empty: ${parsed.error.message}`,
+    );
+    return {
+      version: "1.0",
+      iteration_metrics: [],
+      plan_quality_metrics: [],
+      review_metrics: [],
+      convergence_metrics: [],
+    };
+  }
+
+  return parsed.data;
 }
 
 /**
@@ -260,27 +314,59 @@ export async function appendMetrics(
 
   // Validate and append to the correct category
   switch (category) {
-    case "iteration_metrics":
-      metricsFile.iteration_metrics.push(iterationMetricsSchema.parse(entry));
+    case "iteration_metrics": {
+      const parsed = iterationMetricsSchema.safeParse(entry);
+      if (!parsed.success) {
+        throw new Error(
+          `[metrics-collector] Invalid iteration_metrics entry: ${parsed.error.message}`,
+        );
+      }
+      metricsFile.iteration_metrics.push(parsed.data);
       break;
-    case "plan_quality_metrics":
-      metricsFile.plan_quality_metrics.push(
-        planQualityMetricsSchema.parse(entry),
-      );
+    }
+    case "plan_quality_metrics": {
+      const parsed = planQualityMetricsSchema.safeParse(entry);
+      if (!parsed.success) {
+        throw new Error(
+          `[metrics-collector] Invalid plan_quality_metrics entry: ${parsed.error.message}`,
+        );
+      }
+      metricsFile.plan_quality_metrics.push(parsed.data);
       break;
-    case "review_metrics":
-      metricsFile.review_metrics.push(reviewMetricsSchema.parse(entry));
+    }
+    case "review_metrics": {
+      const parsed = reviewMetricsSchema.safeParse(entry);
+      if (!parsed.success) {
+        throw new Error(
+          `[metrics-collector] Invalid review_metrics entry: ${parsed.error.message}`,
+        );
+      }
+      metricsFile.review_metrics.push(parsed.data);
       break;
-    case "convergence_metrics":
-      metricsFile.convergence_metrics.push(
-        convergenceMetricsSchema.parse(entry),
-      );
+    }
+    case "convergence_metrics": {
+      const parsed = convergenceMetricsSchema.safeParse(entry);
+      if (!parsed.success) {
+        throw new Error(
+          `[metrics-collector] Invalid convergence_metrics entry: ${parsed.error.message}`,
+        );
+      }
+      metricsFile.convergence_metrics.push(parsed.data);
       break;
+    }
   }
 
   // Validate the entire file before writing
-  metricsFileSchema.parse(metricsFile);
-  await Bun.write(metricsPath, JSON.stringify(metricsFile, null, 2) + "\n");
+  const fileValidation = metricsFileSchema.safeParse(metricsFile);
+  if (!fileValidation.success) {
+    throw new Error(
+      `[metrics-collector] Metrics file validation failed after append: ${fileValidation.error.message}`,
+    );
+  }
+  await Bun.write(
+    metricsPath,
+    JSON.stringify(fileValidation.data, null, 2) + "\n",
+  );
 }
 
 /**
