@@ -2,13 +2,36 @@
 
 ## Overview
 
-**Current Milestone:** None — backlog available for next milestone
+**Current Milestone:** v2.6.1 — Audit Gap Closure
 
 ---
 
 ## Current Milestone
 
-_No active milestone. Run `/autopilot` or `/milestone-new` to start the next milestone._
+### v2.6.1 — Audit Gap Closure
+
+**Goal:** Close gaps identified by v2.6.0 milestone audit. Two phases: structural architecture cleanup (High priority), then convention alignment and security hardening (Medium priority).
+
+**Source:** `.planning/v2.6.0-MILESTONE-AUDIT.md`
+
+#### Phase 95: Tribunal Architecture & DRY Cleanup
+
+**Goal:** Resolve the CRITICAL entity isolation violation and HIGH-priority code duplication.
+
+- [ ] 95-A — Extract shared tribunal infrastructure to `src/shared/` (T0): move tribunal schemas (`reviewFindingSchema`, `disagreementSchema`, `rebuttalSchema`, `unifiedRecommendationSchema`, `tribunalResultSchema`) and helpers (`normalizeFindings`, `detectDisagreements`, `shouldRunTribunal`, `buildRebuttalPrompts`, `buildTribunalResult`) from `src/agents/` to `src/shared/__schemas/tribunal.schemas.ts` and `src/shared/__helpers/tribunal-*.ts`. Update imports in both agents and skills domains.
+- [ ] 95-B — Extract shared `resolveMajorityVote<T>()` utility from duplicated logic in `verification-tribunal.ts` and `root-cause-tribunal.ts` (~40 lines identical). Place in `src/shared/__helpers/tribunal-consensus.ts`.
+- [ ] 95-C — Extract `isDebateComplexity(complexity: string): boolean` helper from 3 duplicated checks in `tribunal-detector.ts`, `root-cause-tribunal.ts`, `verification-tribunal.ts`. Place in `src/shared/__helpers/complexity-gate.ts` or `src/complexity/__helpers/`.
+- [ ] 95-D — Deduplicate `getArg()`/`hasFlag()` local closures in 5 iteration helpers (`convergence.ts`, `metrics-collector.ts`, `classifier.ts`, `checkpoint.ts`, `budget.ts`). Replace with imports from `~/shared/__helpers/cli-utils`.
+- [ ] 95-E — Update `module-boundary.md` documented exceptions table if any cross-tier imports remain after extraction.
+
+#### Phase 96: Convention Alignment & Security Hardening
+
+**Goal:** Align all v2.6.0 files with project conventions (Bun APIs, lodash, safeParse) and close prompt injection gaps.
+
+- [ ] 96-A — Migrate `src/iteration/__helpers/metrics-collector.ts` from bare `'fs'` to Bun.file()/Bun.write() APIs. Migrate `src/context/__helpers/hydration-snapshot.ts` from `node:fs` to Bun.file().
+- [ ] 96-B — Add `sanitizeForTemplate()` to tribunal prompt construction in `root-cause-tribunal.ts`, `verification-tribunal.ts`, `tribunal-rebuttals.ts`, and `pr-verdict-debate.ts`. Apply to all AI-generated free-text fields before prompt interpolation.
+- [ ] 96-C — Replace native `.sort()` with lodash `orderBy` and native `.filter()` with lodash `filter` across all v2.6.0 debate/tribunal files (~10 files, ~20 call sites).
+- [ ] 96-D — Convert `.parse()` to `.safeParse()` with error handling across ~25 call sites in tribunal result builders and metrics-collector.
 
 ---
 
@@ -58,4 +81,4 @@ _No active milestone. Run `/autopilot` or `/milestone-new` to start the next mil
 
 ---
 
-_Roadmap updated: 2026-03-03 (v2.6.0 milestone complete and archived)_
+_Roadmap updated: 2026-03-03 (v2.6.1 gap closure phases added from v2.6.0 audit)_

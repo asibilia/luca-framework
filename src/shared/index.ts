@@ -87,3 +87,12 @@ export {
 } from "./__helpers/tribunal-rebuttals";
 
 export type { RebuttalPromptPair } from "./__helpers/tribunal-rebuttals";
+
+// ─── Tribunal Consensus ───────────────────────────────────────────────────────
+
+export { resolveMajorityVote } from "./__helpers/tribunal-consensus";
+
+export type {
+  VotablePerspective,
+  MajorityVoteResult,
+} from "./__helpers/tribunal-consensus";
