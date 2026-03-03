@@ -1,4 +1,5 @@
 import { isDebateComplexity } from "~/complexity/__helpers/complexity-gate";
+import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
 import { resolveMajorityVote } from "~/shared/__helpers/tribunal-consensus";
 
 import {
@@ -141,10 +142,10 @@ export function buildTestWriterDiagnosticPrompt(
 **Conflict Type:** ${conflict.conflict_type}
 
 **T1 Signal (${conflict.t1_status}):**
-${conflict.t1_evidence}
+${sanitizeForTemplate(conflict.t1_evidence)}
 
 **T3 Signal (${conflict.t3_status}):**
-${conflict.t3_evidence}
+${sanitizeForTemplate(conflict.t3_evidence)}
 
 **Your Role:** As lu-test-writer, analyze whether the existing tests adequately cover the plan specification.
 
@@ -182,10 +183,10 @@ export function buildVerifierDiagnosticPrompt(
 **Conflict Type:** ${conflict.conflict_type}
 
 **T1 Signal (${conflict.t1_status}):**
-${conflict.t1_evidence}
+${sanitizeForTemplate(conflict.t1_evidence)}
 
 **T3 Signal (${conflict.t3_status}):**
-${conflict.t3_evidence}
+${sanitizeForTemplate(conflict.t3_evidence)}
 
 **Your Role:** As lu-verifier, critically re-examine your T3 goal-backward analysis for this conflict.
 
@@ -223,10 +224,10 @@ export function buildIntegrationDiagnosticPrompt(
 **Conflict Type:** ${conflict.conflict_type}
 
 **T1 Signal (${conflict.t1_status}):**
-${conflict.t1_evidence}
+${sanitizeForTemplate(conflict.t1_evidence)}
 
 **T3 Signal (${conflict.t3_status}):**
-${conflict.t3_evidence}
+${sanitizeForTemplate(conflict.t3_evidence)}
 
 **Your Role:** As lu-integration-checker, analyze whether cross-component wiring is the root cause of this conflict.
 
