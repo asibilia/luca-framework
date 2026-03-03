@@ -282,7 +282,7 @@ TaskCreate(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "architect",
-  subagent_type: "general-purpose",
+  subagent_type: "lu-roadmap-architect",
   prompt: """
   You are a roadmap architect specialist (lu-roadmap-architect role).
 
@@ -311,7 +311,7 @@ Task(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "prioritizer",
-  subagent_type: "general-purpose",
+  subagent_type: "lu-roadmap-prioritizer",
   prompt: """
   You are a roadmap prioritizer specialist (lu-roadmap-prioritizer role).
 
@@ -340,7 +340,7 @@ Task(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "qa-analyst",
-  subagent_type: "general-purpose",
+  subagent_type: "lu-roadmap-qa",
   prompt: """
   You are a roadmap QA specialist (lu-roadmap-qa role).
 
@@ -384,7 +384,7 @@ After collecting specialist outputs, spawn the synthesizer with all results:
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "synthesizer",
-  subagent_type: "general-purpose",
+  subagent_type: "lu-roadmap-synthesizer",
   prompt: """
   You are a roadmap synthesizer (lu-roadmap-synthesizer role).
 
@@ -441,14 +441,14 @@ Task(
 
 ### 2b. Present Proposed Changes
 
-Display the lu-pm-planner's proposal:
+Display the proposal ResultEnvelope:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Luca AUTOPILOT ► ROADMAP REVISION PROPOSAL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{summary from lu-pm-planner}
+{summary from proposal ResultEnvelope}
 
 | Change | Detail |
 |--------|--------|
