@@ -10,6 +10,7 @@ import type {
   UnifiedRecommendation,
   TribunalResult,
 } from "../__schemas/tribunal.schemas";
+import { sanitizeForTemplate } from "./sanitize-template";
 
 /**
  * A prompt pair for a single rebuttal round.
@@ -119,13 +120,13 @@ function buildChallengerPrompt(
 **File:** ${defendedFinding.file}:${defendedFinding.line}
 **Original Finding (${defendedFinding.source_agent}):**
 - Severity: ${defendedFinding.severity}
-- Issue: ${defendedFinding.issue}
-- Suggestion: ${defendedFinding.suggestion}
+- Issue: ${sanitizeForTemplate(defendedFinding.issue)}
+- Suggestion: ${sanitizeForTemplate(defendedFinding.suggestion)}
 
 **Your Assessment (${challengerFinding.source_agent}):**
 - Severity: ${challengerFinding.severity}
-- Issue: ${challengerFinding.issue}
-- Suggestion: ${challengerFinding.suggestion}
+- Issue: ${sanitizeForTemplate(challengerFinding.issue)}
+- Suggestion: ${sanitizeForTemplate(challengerFinding.suggestion)}
 
 **Conflict Type:** ${disagreement.conflict_type}
 
@@ -150,13 +151,13 @@ function buildDefenderPrompt(
 **Your Finding (${defendedFinding.source_agent}):**
 - File: ${defendedFinding.file}:${defendedFinding.line}
 - Severity: ${defendedFinding.severity}
-- Issue: ${defendedFinding.issue}
-- Suggestion: ${defendedFinding.suggestion}
+- Issue: ${sanitizeForTemplate(defendedFinding.issue)}
+- Suggestion: ${sanitizeForTemplate(defendedFinding.suggestion)}
 
 **Challenger (${challengerFinding.source_agent}) Assessment:**
 - Severity: ${challengerFinding.severity}
-- Issue: ${challengerFinding.issue}
-- Suggestion: ${challengerFinding.suggestion}
+- Issue: ${sanitizeForTemplate(challengerFinding.issue)}
+- Suggestion: ${sanitizeForTemplate(challengerFinding.suggestion)}
 
 **Conflict Type:** ${disagreement.conflict_type}
 
