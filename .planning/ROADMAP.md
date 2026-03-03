@@ -28,10 +28,10 @@
 
 **Goal:** Align all v2.6.0 files with project conventions (Bun APIs, lodash, safeParse) and close prompt injection gaps.
 
-- [ ] 96-A — Migrate `src/iteration/__helpers/metrics-collector.ts` from bare `'fs'` to Bun.file()/Bun.write() APIs. Migrate `src/context/__helpers/hydration-snapshot.ts` from `node:fs` to Bun.file().
-- [ ] 96-B — Add `sanitizeForTemplate()` to tribunal prompt construction in `root-cause-tribunal.ts`, `verification-tribunal.ts`, `tribunal-rebuttals.ts`, and `pr-verdict-debate.ts`. Apply to all AI-generated free-text fields before prompt interpolation.
-- [ ] 96-C — Replace native `.sort()` with lodash `orderBy` and native `.filter()` with lodash `filter` across all v2.6.0 debate/tribunal files (~10 files, ~20 call sites).
-- [ ] 96-D — Convert `.parse()` to `.safeParse()` with error handling across ~25 call sites in tribunal result builders and metrics-collector.
+- [x] 96-A — Migrate `src/iteration/__helpers/metrics-collector.ts` from bare `'fs'` to Bun.file()/Bun.write() APIs. Migrate `src/context/__helpers/hydration-snapshot.ts` from `node:fs` to Bun.file().
+- [x] 96-B — Add `sanitizeForTemplate()` to tribunal prompt construction in `root-cause-tribunal.ts`, `verification-tribunal.ts`, `tribunal-rebuttals.ts`, and `pr-verdict-debate.ts`. Apply to all AI-generated free-text fields before prompt interpolation.
+- [x] 96-C — Replace native `.sort()` with lodash `orderBy` and native `.filter()` with lodash `filter` across all v2.6.0 debate/tribunal files (~10 files, ~20 call sites).
+- [x] 96-D — Convert `.parse()` to `.safeParse()` with error handling across ~25 call sites in tribunal result builders and metrics-collector.
 
 ---
 
