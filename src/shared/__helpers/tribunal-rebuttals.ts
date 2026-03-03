@@ -281,14 +281,8 @@ export function buildTribunalResult(
   rebuttals: Rebuttal[],
   recommendations: UnifiedRecommendation[],
 ): TribunalResult | null {
-  const withdrawnCount = filter(
-    rebuttals,
-    (r) => r.resolution === "withdrawn",
-  ).length;
-  const modifiedCount = filter(
-    rebuttals,
-    (r) => r.resolution === "modified",
-  ).length;
+  const { withdrawn: withdrawnCount, modified: modifiedCount } =
+    countResolutions(rebuttals);
 
   // Estimate token cost: ~200 tokens per prompt pair
   const estimatedTokenCost = rebuttals.length * 400;
