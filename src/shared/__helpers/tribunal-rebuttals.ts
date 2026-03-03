@@ -118,13 +118,13 @@ function buildChallengerPrompt(
 ): string {
   return `You are reviewing a code review finding that you disagree with.
 
-**File:** ${defendedFinding.file}:${defendedFinding.line}
-**Original Finding (${defendedFinding.source_agent}):**
+**File:** ${sanitizeForTemplate(defendedFinding.file)}:${defendedFinding.line}
+**Original Finding (${sanitizeForTemplate(defendedFinding.source_agent)}):**
 - Severity: ${defendedFinding.severity}
 - Issue: ${sanitizeForTemplate(defendedFinding.issue)}
 - Suggestion: ${sanitizeForTemplate(defendedFinding.suggestion)}
 
-**Your Assessment (${challengerFinding.source_agent}):**
+**Your Assessment (${sanitizeForTemplate(challengerFinding.source_agent)}):**
 - Severity: ${challengerFinding.severity}
 - Issue: ${sanitizeForTemplate(challengerFinding.issue)}
 - Suggestion: ${sanitizeForTemplate(challengerFinding.suggestion)}
@@ -149,13 +149,13 @@ function buildDefenderPrompt(
 ): string {
   return `Your code review finding is being challenged by another reviewer.
 
-**Your Finding (${defendedFinding.source_agent}):**
-- File: ${defendedFinding.file}:${defendedFinding.line}
+**Your Finding (${sanitizeForTemplate(defendedFinding.source_agent)}):**
+- File: ${sanitizeForTemplate(defendedFinding.file)}:${defendedFinding.line}
 - Severity: ${defendedFinding.severity}
 - Issue: ${sanitizeForTemplate(defendedFinding.issue)}
 - Suggestion: ${sanitizeForTemplate(defendedFinding.suggestion)}
 
-**Challenger (${challengerFinding.source_agent}) Assessment:**
+**Challenger (${sanitizeForTemplate(challengerFinding.source_agent)}) Assessment:**
 - Severity: ${challengerFinding.severity}
 - Issue: ${sanitizeForTemplate(challengerFinding.issue)}
 - Suggestion: ${sanitizeForTemplate(challengerFinding.suggestion)}
