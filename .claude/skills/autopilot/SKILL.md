@@ -113,7 +113,7 @@ Unless the session already has cognitive context loaded:
 ```
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/bridge.ts clear-working)."
+  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/__helpers/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/__helpers/bridge.ts clear-working)."
 )
 ```
 
@@ -757,7 +757,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to `[x]`
-3. Log to WORKING.md via bridge: `bun run src/memory/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"`
+3. Log to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"`
 4. Display:
 
 ```
@@ -1277,7 +1277,7 @@ bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 ```
 
-3. Log final status to WORKING.md via bridge: `bun run src/memory/bridge.ts append-working --section=findings --content="Autopilot session complete"`
+3. Log final status to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="Autopilot session complete"`
 4. Commit session metadata:
 
 ```bash

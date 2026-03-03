@@ -1,0 +1,15 @@
+{
+  "project_name": "Project",
+  "domain": "",
+  "purpose": "",
+  "stack": {
+    "language": "TypeScript (CLI installer), Markdown (agents, skills, workflows)",
+    "framework": "Cursor IDE agent framework (MCP integration)",
+    "build": "",
+    "testing": "bun:test"
+  },
+  "architecture_patterns": "- **Pattern**: Orchestrator/sub-agent model with memory system\n- **Source of Truth**: `src/` directory contains all agent, skill, rule, and hook source files\n- **Build Pipeline**: `src/` → `bun run build:all` → `.claude/` + `.cursor/` (generated outputs, NEVER edit directly)\n- **Drift Prevention**: Pre-commit hook + `bun run check:drift` + CI test suite detect output/source divergence\n- **Structure**:\n  - `src/agents/` — Agent source (.agent.ts) → compiled to `.claude/agents/` + `.cursor/agents/`\n  - `src/skills/` — Skill source (.skill.ts) → compiled to `.claude/skills/` + `.cursor/skills/`\n  - `src/rules/` — Rule source (.rule.ts) → compiled to `.claude/rules/` + `.cursor/rules/`\n  - `src/hooks/` — Hook registry + shell scripts → compiled to `.claude/hooks/` + `.cursor/hooks/`\n  - `src/compilers/` — Compilation logic and plugin manifest schemas\n  - `src/complexity/` — Complexity gating system (five levels, three tiers)\n  - `src/context/` — Context tier management (T0-T3)\n  - `src/harness/` — Verification harness (test/typecheck/lint/build runners)\n  - `src/iteration/` — Iteration engine (budget, classifier, convergence, checkpoint)\n  - `src/*/__schemas/` — Shared Zod schemas per domain (internal infrastructure, `__` prefix)\n  - `src/*/__helpers/` — Shared utilities per domain (internal infrastructure, `__` prefix)\n  - `src/*/index.ts` — Registries mapping entity names to classes/metadata\n  - `.planning/` — Runtime artifacts (BRAIN, MEMORY, WORKING, STATE)\n  - `packages/luca-framework/templates/` — Scaffolding templates for `luca init`\n- **Import Conventions**: `~/` alias for cross-domain imports (resolves to `src/`), `./` for same-domain\n- **Key Modules**:\n  - Memory system (BRAIN.md → MEMORY.md → WORKING.md)\n  - Workflow engine (skills → agents → verification → learning)\n  - Git integration (Jira → GitHub Issue → Branch → PR)\n  - Iteration engine (src/iteration/ — budget, classifier, convergence, checkpoint)",
+  "code_conventions": "",
+  "development_preferences": {},
+  "updated_at": "2026-03-03T15:27:29.000Z"
+}

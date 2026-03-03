@@ -94,11 +94,11 @@ First, read the required context:
 
 ```bash
 # Primary: Read working memory from memory bridge (structured JSON)
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "No working memory")
 # Primary: Read memory summary from memory bridge (compact index)
-MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
+MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
 # Fallback: Read MEMORY.md directly
 MEMORY_CONTENT=$(cat .planning/MEMORY.md 2>/dev/null || echo "No memory file")
 VERIFICATION_RESULT="[from verifier return value]"
@@ -167,7 +167,7 @@ Throughout execution, log to WORKING.md:
 
 ```bash
 # Primary: Log execution progress via memory bridge
-bun run src/memory/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
+bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
 # Fallback: Append directly to WORKING.md
 echo "- $(date -u +%H:%M) [Plan X complete - finding Y]" >> .planning/WORKING.md
 ```
@@ -305,7 +305,7 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 # Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 ```
@@ -586,6 +586,12 @@ PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
   console.log(c.iteration?.promotion_threshold ?? 3);
 ")
 
+# Extract stall debate setting (opt-in, default false)
+STALL_DEBATE_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.stall_debate_enabled ?? false);
+")
+
 # Override mode if --mode flag was passed
 MODE="${MODE_FLAG:-$DEFAULT_MODE}"
 ```
@@ -673,7 +679,23 @@ SHOULD_HALT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs')
 STALE_COUNT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).consecutive_stale)")
 ```
 
-If `SHOULD_HALT` is true: display convergence failure, exit loop with outcome "convergence_failure".
+**Stall Debate (when enabled):**
+
+If `SHOULD_HALT` is true AND `STALL_DEBATE_ENABLED` is true:
+
+1. Extract the debate result from CONVERGENCE JSON: `DEBATE_STRATEGY`, `DEBATE_CONFIDENCE`, `DEBATE_REASONING`
+2. If `DEBATE_STRATEGY` is NOT "halt": override `SHOULD_HALT=false`
+3. Display debate outcome:
+```
+◆ Stall Debate: {DEBATE_STRATEGY} (confidence: {DEBATE_CONFIDENCE})
+  Reasoning: {DEBATE_REASONING}
+```
+4. Act on strategy:
+   - `retry_with_context_promotion`: Promote executor context tier for next iteration
+   - `retry_with_error_focus`: Include top error patterns in next executor prompt
+   - `retry_with_rollback`: Rollback to previous checkpoint before next iteration
+
+If `SHOULD_HALT` is true (after debate, if applicable): display convergence failure, exit loop with outcome "convergence_failure".
 
 Display convergence status:
 
@@ -819,7 +841,7 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 # Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
@@ -1280,6 +1302,50 @@ description="Security review"
 **Do NOT proceed until ALL reviewer Tasks return.**
 
 **Merge findings:** Combine all issues, deduplicate by file:line.
+
+### 8.5. Design Tribunal (Conditional)
+
+**Skip if:** Complexity is below COMPLEX, OR `workflow.tribunal_enabled: false` in config (default: false), OR no disagreements detected.
+
+**Gate check:**
+
+```bash
+TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.tribunal_enabled ?? false);
+")
+```
+
+**When enabled at COMPLEX+ complexity:**
+
+1. **Normalize findings**: Parse all reviewer outputs into structured ReviewFinding format
+2. **Detect disagreements**: Group findings by file:line and identify severity mismatches, scope overlaps, and contradictions
+3. **Gate check**: If no disagreements involve CRITICAL or HIGH findings, skip tribunal
+4. **Build rebuttal prompts**: For each disagreement, generate challenger/defender prompt pairs
+5. **Spawn rebuttal agents**: Send prompts to challenger and defender agents in PARALLEL
+6. **Resolve rebuttals**: Aggregate rebuttal outcomes into unified recommendations with confidence scores
+7. **Build tribunal result**: Compile final result with metrics
+
+**Display tribunal results:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > DESIGN TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value |
+| --------------------- | ----- |
+| Total findings        | {N}   |
+| Disagreements found   | {N}   |
+| Rebuttals conducted   | {N}   |
+| Findings withdrawn    | {N}   |
+| Findings modified     | {N}   |
+| Debate token cost     | ~{N}  |
+```
+
+**Record tribunal metrics** using `buildReviewMetrics` from 91-A (set `debate_enabled: true`, `disagreements_detected: N`).
+
+**Replace merged findings** with the tribunal's unified recommendations for Step 8.1.
 
 ### 8.1. Handle Code Review Results
 

@@ -16,6 +16,7 @@
 // ─── Types and Schemas ─────────────────────────────────────────────────────────
 
 export {
+  brainSchema,
   memoryEntrySchema,
   compressionStrategySchema,
   compressionRecommendationSchema,
@@ -32,6 +33,7 @@ export {
 } from "./__schemas/memory.schemas";
 
 export type {
+  Brain,
   MemoryEntry,
   CompressionStrategy,
   CompressionRecommendation,

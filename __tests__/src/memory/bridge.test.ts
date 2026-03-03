@@ -8,11 +8,17 @@ const BRIDGE = "src/memory/__helpers/bridge.ts";
 const MEMORY_PATH = ".planning/MEMORY.md";
 const WORKING_PATH = ".planning/WORKING.md";
 const PROCEDURES_PATH = ".planning/PROCEDURES.md";
+const MEMORY_JSON_PATH = ".planning/memory.json";
+const WORKING_JSON_PATH = ".planning/working.json";
+const PROCEDURES_JSON_PATH = ".planning/procedures.json";
 
 /** Backup original file contents for restore after tests. */
 let memoryBackup: string | null = null;
 let workingBackup: string | null = null;
 let proceduresBackup: string | null = null;
+let memoryJsonBackup: string | null = null;
+let workingJsonBackup: string | null = null;
+let proceduresJsonBackup: string | null = null;
 
 /**
  * Run a memory bridge CLI subcommand and return parsed result.
@@ -66,6 +72,24 @@ async function backupFiles() {
         proceduresBackup = v;
       },
     ],
+    [
+      MEMORY_JSON_PATH,
+      (v: string | null) => {
+        memoryJsonBackup = v;
+      },
+    ],
+    [
+      WORKING_JSON_PATH,
+      (v: string | null) => {
+        workingJsonBackup = v;
+      },
+    ],
+    [
+      PROCEDURES_JSON_PATH,
+      (v: string | null) => {
+        proceduresJsonBackup = v;
+      },
+    ],
   ] as const) {
     try {
       const file = Bun.file(path as string);
@@ -88,6 +112,9 @@ async function restoreFiles() {
     [MEMORY_PATH, memoryBackup],
     [WORKING_PATH, workingBackup],
     [PROCEDURES_PATH, proceduresBackup],
+    [MEMORY_JSON_PATH, memoryJsonBackup],
+    [WORKING_JSON_PATH, workingJsonBackup],
+    [PROCEDURES_JSON_PATH, proceduresJsonBackup],
   ] as const) {
     if (backup !== null) {
       await Bun.write(path as string, backup as string);
@@ -102,12 +129,25 @@ async function restoreFiles() {
 }
 
 /**
+ * Remove a file if it exists (for "does not exist" tests).
+ */
+function removeFile(path: string) {
+  try {
+    unlinkSync(path);
+  } catch {
+    // May not exist
+  }
+}
+
+/**
  * Write a fixture MEMORY.md with known entries.
  */
 async function writeFixtureMemory() {
+  // Remove JSON so bridge falls through to MD fixture
+  removeFile(MEMORY_JSON_PATH);
   await Bun.write(
     MEMORY_PATH,
-    `# Long-term Memory
+    `# Project Memory
 
 ## Patterns
 
@@ -165,6 +205,8 @@ async function writeFixtureMemory() {
  * Write a fixture WORKING.md with known sections.
  */
 async function writeFixtureWorking() {
+  // Remove JSON so bridge falls through to MD fixture
+  removeFile(WORKING_JSON_PATH);
   await Bun.write(
     WORKING_PATH,
     `# Working Memory
@@ -198,6 +240,8 @@ _Session Status_
  * Write a fixture PROCEDURES.md with known entries.
  */
 async function writeFixtureProcedures() {
+  // Remove JSON so bridge falls through to MD fixture
+  removeFile(PROCEDURES_JSON_PATH);
   await Bun.write(
     PROCEDURES_PATH,
     `# Procedures
@@ -284,11 +328,8 @@ afterEach(async () => {
 
 describe("memory bridge read-memory", () => {
   test("returns empty defaults when MEMORY.md does not exist", async () => {
-    try {
-      unlinkSync(MEMORY_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(MEMORY_PATH);
+    removeFile(MEMORY_JSON_PATH);
     const { exitCode, json } = await runBridge("read-memory");
     expect(exitCode).toBe(0);
     expect(json.entries_count).toBe(0);
@@ -460,11 +501,8 @@ describe("memory bridge read-memory --milestone", () => {
   });
 
   test("returns graceful empty when MEMORY.md does not exist", async () => {
-    try {
-      unlinkSync(MEMORY_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(MEMORY_PATH);
+    removeFile(MEMORY_JSON_PATH);
     const { exitCode, json } = await runBridge(
       "read-memory",
       "--milestone=v1.6.0",
@@ -479,11 +517,8 @@ describe("memory bridge read-memory --milestone", () => {
 
 describe("memory bridge read-working", () => {
   test("returns empty defaults when WORKING.md does not exist", async () => {
-    try {
-      unlinkSync(WORKING_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(WORKING_PATH);
+    removeFile(WORKING_JSON_PATH);
     const { exitCode, json } = await runBridge("read-working");
     expect(exitCode).toBe(0);
     expect(json.sections).toEqual([]);
@@ -492,6 +527,7 @@ describe("memory bridge read-working", () => {
   });
 
   test("returns parsed working memory structure", async () => {
+    removeFile(WORKING_JSON_PATH);
     await writeFixtureWorking();
     const { exitCode, json } = await runBridge("read-working");
     expect(exitCode).toBe(0);
@@ -510,11 +546,8 @@ describe("memory bridge read-working", () => {
 
 describe("memory bridge read-procedures", () => {
   test("returns empty defaults when PROCEDURES.md does not exist", async () => {
-    try {
-      unlinkSync(PROCEDURES_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(PROCEDURES_PATH);
+    removeFile(PROCEDURES_JSON_PATH);
     const { exitCode, json } = await runBridge("read-procedures");
     expect(exitCode).toBe(0);
     expect(json.active_count).toBe(0);
@@ -602,6 +635,7 @@ describe("memory bridge check-compression", () => {
 
 describe("memory bridge append-working", () => {
   test("appends content to a section", async () => {
+    removeFile(WORKING_JSON_PATH);
     await writeFixtureWorking();
     const { exitCode, json } = await runBridge(
       "append-working",
@@ -624,11 +658,8 @@ describe("memory bridge append-working", () => {
   });
 
   test("creates WORKING.md if it does not exist", async () => {
-    try {
-      unlinkSync(WORKING_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(WORKING_PATH);
+    removeFile(WORKING_JSON_PATH);
     const { exitCode, json } = await runBridge(
       "append-working",
       "--section=findings",
@@ -692,11 +723,8 @@ describe("memory bridge clear-working", () => {
   });
 
   test("creates WORKING.md if it does not exist", async () => {
-    try {
-      unlinkSync(WORKING_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(WORKING_PATH);
+    removeFile(WORKING_JSON_PATH);
     const { exitCode, json } = await runBridge("clear-working");
     expect(exitCode).toBe(0);
     expect(json.cleared).toBe(true);
@@ -710,6 +738,7 @@ describe("memory bridge clear-working", () => {
 
 describe("memory bridge update-procedure-stats", () => {
   test("updates execution stats for success", async () => {
+    removeFile(PROCEDURES_JSON_PATH);
     await writeFixtureProcedures();
     const { exitCode, json } = await runBridge(
       "update-procedure-stats",
@@ -725,6 +754,7 @@ describe("memory bridge update-procedure-stats", () => {
   });
 
   test("updates execution stats for failure", async () => {
+    removeFile(PROCEDURES_JSON_PATH);
     await writeFixtureProcedures();
     const { exitCode, json } = await runBridge(
       "update-procedure-stats",
@@ -766,19 +796,16 @@ describe("memory bridge update-procedure-stats", () => {
     expect(stderr).toContain("not found");
   });
 
-  test("errors when PROCEDURES.md does not exist", async () => {
-    try {
-      unlinkSync(PROCEDURES_PATH);
-    } catch {
-      // May not exist
-    }
+  test("errors when procedures data does not exist", async () => {
+    removeFile(PROCEDURES_PATH);
+    removeFile(PROCEDURES_JSON_PATH);
     const { exitCode, stderr } = await runBridge(
       "update-procedure-stats",
       "--id=proc-add-api-endpoint",
       "--success=true",
     );
     expect(exitCode).toBe(2);
-    expect(stderr).toContain("Failed to parse");
+    expect(stderr).toContain("Failed to load");
   });
 });
 
@@ -786,11 +813,8 @@ describe("memory bridge update-procedure-stats", () => {
 
 describe("memory bridge round-trips", () => {
   test("append-working then read-working preserves content", async () => {
-    try {
-      unlinkSync(WORKING_PATH);
-    } catch {
-      // May not exist
-    }
+    removeFile(WORKING_PATH);
+    removeFile(WORKING_JSON_PATH);
 
     // Write initial content
     await runBridge(
@@ -814,6 +838,7 @@ describe("memory bridge round-trips", () => {
   });
 
   test("clear-working then append-working starts fresh", async () => {
+    removeFile(WORKING_JSON_PATH);
     await writeFixtureWorking();
 
     // Clear

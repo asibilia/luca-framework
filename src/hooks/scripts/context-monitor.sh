@@ -189,7 +189,7 @@ if [ "$FINAL_LEVEL" = "CRITICAL" ] || [ "$FINAL_LEVEL" = "HIGH" ]; then
   if [ "$FINAL_LEVEL" = "CRITICAL" ]; then
     ZONE="stop"
   fi
-  bun run src/memory/bridge.ts append-working \
+  bun run src/memory/__helpers/bridge.ts append-working \
     --section=session_info \
     --content="Auto-persisted at $(date -u +%Y-%m-%dT%H:%M:%SZ) (zone: $ZONE)" \
     2>/dev/null || true

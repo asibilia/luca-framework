@@ -23,14 +23,23 @@ import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
  * (long-term learnings), and WORKING.md (session context), plus
  * appending to WORKING.md sections during active sessions.
  *
+ * JSON-first: Reads .planning/*.json as primary source of truth,
+ * falling back to .planning/*.md for backward compatibility.
+ * Writes to BOTH JSON and MD to maintain dual-write guarantee.
+ *
+ * NOTE: This file uses node:fs (not Bun APIs) because Pi runs on Node.js.
+ *
  * @param pi - Pi ExtensionAPI instance
  */
 export default function lucaMemory(pi: PiExtensionAPI) {
   const cwd = process.cwd();
   const planningDir = join(cwd, ".planning");
   const brainPath = join(planningDir, "BRAIN.md");
+  const brainJsonPath = join(planningDir, "brain.json");
   const memoryPath = join(planningDir, "MEMORY.md");
+  const memoryJsonPath = join(planningDir, "memory.json");
   const workingPath = join(planningDir, "WORKING.md");
+  const workingJsonPath = join(planningDir, "working.json");
 
   /**
    * Read a planning file safely with path traversal protection.
@@ -52,6 +61,32 @@ export default function lucaMemory(pi: PiExtensionAPI) {
     return readFileSync(filePath, "utf-8");
   }
 
+  /**
+   * Read JSON file as primary source, falling back to MD.
+   *
+   * Follows the JSON-first pattern established by state-bridge.ts.
+   * Returns parsed JSON string if available, otherwise reads the MD file.
+   *
+   * @param jsonPath - Path to the JSON source of truth
+   * @param mdPath - Path to the MD fallback
+   * @param mdLabel - Label for error messages
+   * @returns File content as string
+   */
+  function readJsonFirst(
+    jsonPath: string,
+    mdPath: string,
+    mdLabel: string,
+  ): string {
+    if (existsSync(jsonPath)) {
+      try {
+        return readFileSync(jsonPath, "utf-8");
+      } catch {
+        /* fall through to MD */
+      }
+    }
+    return readPlanningFile(mdPath, mdLabel);
+  }
+
   // Tool: Read BRAIN.md (project identity)
   pi.registerTool({
     name: "luca_read_brain",
@@ -60,7 +95,7 @@ export default function lucaMemory(pi: PiExtensionAPI) {
       "Read BRAIN.md — the project identity file containing stack, architecture, conventions, and preferences. Load this at session start for full project context.",
     parameters: {},
     async execute() {
-      const content = readPlanningFile(brainPath, "BRAIN.md");
+      const content = readJsonFirst(brainJsonPath, brainPath, "BRAIN.md");
       return createTextResponse(content);
     },
   });
@@ -82,6 +117,42 @@ export default function lucaMemory(pi: PiExtensionAPI) {
       },
     },
     async execute(_toolCallId: string, params: { category?: string }) {
+      // JSON-primary: try memory.json first for structured data
+      if (existsSync(memoryJsonPath)) {
+        try {
+          const raw = readFileSync(memoryJsonPath, "utf-8");
+          const entries = JSON.parse(raw) as Array<{
+            category?: string;
+            title?: string;
+            content?: string;
+            tags?: string[];
+            confidence?: string;
+          }>;
+
+          if (Array.isArray(entries)) {
+            // Filter by category if specified
+            const filtered = params.category
+              ? entries.filter(
+                  (e) =>
+                    e.category?.toLowerCase() ===
+                    params.category!.toLowerCase(),
+                )
+              : entries;
+
+            if (filtered.length === 0 && params.category) {
+              return createTextResponse(
+                `No "${params.category}" entries found in memory`,
+              );
+            }
+
+            return createTextResponse(JSON.stringify(filtered, null, 2));
+          }
+        } catch {
+          /* fall through to MD */
+        }
+      }
+
+      // Fallback: read MEMORY.md
       const content = readPlanningFile(memoryPath, "MEMORY.md");
       if (content.startsWith("MEMORY.md not found")) {
         return createTextResponse(content);
@@ -89,7 +160,6 @@ export default function lucaMemory(pi: PiExtensionAPI) {
 
       // If category filter specified, extract only that section
       if (params.category) {
-        const sectionHeader = `## ${params.category.charAt(0).toUpperCase() + params.category.slice(1)}`;
         const lines = content.split("\n");
         const sectionLines: string[] = [];
         let inSection = false;
@@ -126,7 +196,7 @@ export default function lucaMemory(pi: PiExtensionAPI) {
       "Read WORKING.md — the active session memory containing current task context, findings, hypotheses, and candidate learnings.",
     parameters: {},
     async execute() {
-      const content = readPlanningFile(workingPath, "WORKING.md");
+      const content = readJsonFirst(workingJsonPath, workingPath, "WORKING.md");
       return createTextResponse(content);
     },
   });
@@ -190,6 +260,53 @@ export default function lucaMemory(pi: PiExtensionAPI) {
         existing = readFileSync(workingPath, "utf-8");
       }
 
+      // Dual-write: update working.json if it exists
+      if (existsSync(workingJsonPath)) {
+        try {
+          const raw = readFileSync(workingJsonPath, "utf-8");
+          const workingJson = JSON.parse(raw) as {
+            sections: Array<{
+              name: string;
+              content: string;
+              token_estimate: number;
+              last_updated_at?: string;
+            }>;
+          };
+
+          if (Array.isArray(workingJson.sections)) {
+            const section = workingJson.sections.find(
+              (s) => s.name === params.section,
+            );
+            if (section) {
+              section.content = section.content
+                ? `${section.content}\n${params.content}`
+                : params.content;
+              section.token_estimate = Math.ceil(
+                section.content.split(/\s+/).length * 1.3,
+              );
+              section.last_updated_at = new Date().toISOString();
+            } else {
+              workingJson.sections.push({
+                name: params.section,
+                content: params.content,
+                token_estimate: Math.ceil(
+                  params.content.split(/\s+/).length * 1.3,
+                ),
+                last_updated_at: new Date().toISOString(),
+              });
+            }
+            writeFileSync(
+              workingJsonPath,
+              JSON.stringify(workingJson, null, 2),
+              "utf-8",
+            );
+          }
+        } catch {
+          /* non-fatal — continue with MD write */
+        }
+      }
+
+      // Write to WORKING.md (always, for backward compatibility)
       // Find section and append, or create section if missing
       if (existing.includes(header)) {
         // Find the end of the section (next ## header or EOF)
@@ -229,8 +346,13 @@ export default function lucaMemory(pi: PiExtensionAPI) {
    * @param ctx - Pi event context
    */
   function injectBrain(ctx: PiExtensionContext): void {
-    if (!existsSync(brainPath)) return;
-    const brain = readFileSync(brainPath, "utf-8");
+    // JSON-primary: try brain.json first, fall back to BRAIN.md
+    const brain = readJsonFirst(brainJsonPath, brainPath, "BRAIN.md");
+    if (
+      brain.startsWith("BRAIN.md not found") ||
+      brain.startsWith("BRAIN.md path escapes")
+    )
+      return;
     if (ctx?.addSystemContext) ctx.addSystemContext("luca-brain", brain);
   }
 
@@ -276,8 +398,39 @@ export default function lucaMemory(pi: PiExtensionAPI) {
 
       if (learnings.length === 0) return false;
 
-      // Append snapshot to MEMORY.md
       const timestamp = new Date().toISOString().slice(0, 10);
+
+      // Dual-write: append to memory.json if it exists
+      if (existsSync(memoryJsonPath)) {
+        try {
+          const raw = readFileSync(memoryJsonPath, "utf-8");
+          const entries = JSON.parse(raw) as Array<Record<string, any>>;
+          if (Array.isArray(entries)) {
+            entries.push({
+              id: `snapshot-${label.toLowerCase()}-${timestamp}`,
+              category: "pattern",
+              title: `${label} Snapshot`,
+              content: learnings.join("\n"),
+              tags: ["auto-extracted", label.toLowerCase()],
+              confidence: "low",
+              added_at: timestamp,
+              recall_count: 0,
+              token_estimate: Math.ceil(
+                learnings.join("\n").split(/\s+/).length * 1.3,
+              ),
+            });
+            writeFileSync(
+              memoryJsonPath,
+              JSON.stringify(entries, null, 2),
+              "utf-8",
+            );
+          }
+        } catch {
+          /* non-fatal */
+        }
+      }
+
+      // Always write to MEMORY.md for backward compatibility
       const snapshot = `\n## ${label} Snapshot (${timestamp})\n\n${learnings.join("\n")}\n`;
 
       let existing = "";

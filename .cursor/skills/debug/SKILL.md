@@ -96,11 +96,11 @@ Read cognitive context if available:
 
 ```bash
 # Primary: Read memory from memory bridge (filtered by debugging-relevant tags)
-MEMORY_JSON=$(bun run src/memory/bridge.ts read-memory --tags=debugging,pitfalls,coding --limit=10 2>/dev/null || echo '{"entries":[]}')
+MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --tags=debugging,pitfalls,coding --limit=10 2>/dev/null || echo '{"entries":[]}')
 # Fallback: Read MEMORY.md directly
 MEMORY_CONTENT=$(cat .planning/MEMORY.md 2>/dev/null || echo "No memory file")
 # Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
+WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
 # Fallback: Read WORKING.md directly
 WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "No working memory")
 ```

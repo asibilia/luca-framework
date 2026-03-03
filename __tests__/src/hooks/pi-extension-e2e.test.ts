@@ -160,16 +160,24 @@ describe("Pi extension E2E: tool responses", () => {
     expect(typeof data).toBe("object");
   });
 
-  test("luca_read_brain returns BRAIN.md content", async () => {
+  test("luca_read_brain returns brain content (JSON-first or MD fallback)", async () => {
     const result = await callTool(tools, "luca_read_brain");
     expectPiResponse(result);
-    expect(result.content[0].text).toContain("Project Brain");
+    // JSON-first returns brain.json (contains project_name), MD fallback returns BRAIN.md (contains "Project Brain")
+    const text = result.content[0].text;
+    expect(
+      text.includes("project_name") || text.includes("Project Brain"),
+    ).toBe(true);
   });
 
-  test("luca_read_memory returns MEMORY.md content", async () => {
+  test("luca_read_memory returns memory content (JSON-first or MD fallback)", async () => {
     const result = await callTool(tools, "luca_read_memory");
     expectPiResponse(result);
-    expect(result.content[0].text).toContain("Long-term Memory");
+    // JSON-first returns memory.json (array with category field), MD fallback returns MEMORY.md (contains "Project Memory")
+    const text = result.content[0].text;
+    expect(text.includes("category") || text.includes("Project Memory")).toBe(
+      true,
+    );
   });
 
   test("luca_read_complexity returns level and tier", async () => {
