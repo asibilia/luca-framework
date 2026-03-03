@@ -296,7 +296,7 @@ export function resolveVerificationTribunal(
     DiagnosticPerspective,
     DiagnosticPerspective,
   ],
-): VerificationTribunalResult {
+): VerificationTribunalResult | null {
   const vote = resolveMajorityVote<ConflictCategory, DiagnosticPerspective>(
     perspectives,
   );
@@ -304,7 +304,7 @@ export function resolveVerificationTribunal(
   // Estimate token cost: ~3500 tokens per diagnostic prompt (3 agents)
   const estimatedTokenCost = 10500;
 
-  const result = verificationTribunalResultSchema.parse({
+  const parsed = verificationTribunalResultSchema.safeParse({
     phase,
     conflict_signal: conflict,
     perspectives,
@@ -316,5 +316,12 @@ export function resolveVerificationTribunal(
     timestamp: new Date().toISOString(),
   });
 
-  return result;
+  if (!parsed.success) {
+    console.error(
+      `[verification-tribunal] Failed to parse tribunal result: ${parsed.error.message}`,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
