@@ -208,6 +208,11 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-discuss-researcher": "Research",
   // Quality (repo-level)
   "lu-repo-architect": "Quality",
+  // Roadmap
+  "lu-roadmap-architect": "Specialty",
+  "lu-roadmap-prioritizer": "Specialty",
+  "lu-roadmap-qa": "Quality",
+  "lu-roadmap-synthesizer": "Specialty",
   // Specialty
   "lu-roadmapper": "Specialty",
   "lu-pm-planner": "Specialty",

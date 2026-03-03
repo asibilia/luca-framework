@@ -89,7 +89,7 @@ describe("Pi extension E2E: loading", () => {
     { file: "luca-purpose-gating.ts", tools: 6, events: 1 },
     { file: "luca-subagents.ts", tools: 5, events: 2 },
     { file: "luca-commands.ts", tools: 0, events: 0, commands: 9 },
-    { file: "luca-widgets.ts", tools: 0, events: 7 },
+    { file: "luca-widgets.ts", tools: 0, events: 9 },
     { file: "luca-work-tracking.ts", tools: 5, events: 2 },
     { file: "luca-hooks.ts", tools: 0, events: 9 },
   ];
@@ -712,7 +712,8 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
   test("luca_verify renderCall returns human-readable description", async () => {
     const mock = await loadExtension("luca-harness.ts");
     const tool = mock.tools.get("luca_verify");
-    const text = tool!.renderCall({ checks: "test,typecheck" }, {});
+    const component = tool!.renderCall({ checks: "test,typecheck" }, {});
+    const text = component.render(80).join("\n");
     expect(text).toContain("verification");
     expect(text).toContain("test,typecheck");
   });
@@ -720,7 +721,8 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
   test("luca_verify renderCall handles missing checks", async () => {
     const mock = await loadExtension("luca-harness.ts");
     const tool = mock.tools.get("luca_verify");
-    const text = tool!.renderCall({}, {});
+    const component = tool!.renderCall({}, {});
+    const text = component.render(80).join("\n");
     expect(text).toContain("all enabled");
   });
 
@@ -742,7 +744,8 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
         },
       ],
     };
-    const text = tool!.renderResult(result, {}, {});
+    const component = tool!.renderResult(result, {}, {});
+    const text = component.render(80).join("\n");
     expect(text).toContain("FAIL");
     expect(text).toContain("test");
     expect(text).toContain("typecheck");
@@ -752,7 +755,8 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
   test("luca_verify renderResult handles malformed result gracefully", async () => {
     const mock = await loadExtension("luca-harness.ts");
     const tool = mock.tools.get("luca_verify");
-    const text = tool!.renderResult({ content: [] }, {}, {});
+    const component = tool!.renderResult({ content: [] }, {}, {});
+    const text = component.render(80).join("\n");
     expect(text).toBe("Verification complete");
   });
 
@@ -766,10 +770,11 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
   test("luca_subagent_create renderCall shows agent and task preview", async () => {
     const mock = await loadExtension("luca-subagents.ts");
     const tool = mock.tools.get("luca_subagent_create");
-    const text = tool!.renderCall(
+    const component = tool!.renderCall(
       { agent: "lu-executor", task: "Build the feature with tests" },
       {},
     );
+    const text = component.render(80).join("\n");
     expect(text).toContain("lu-executor");
     expect(text).toContain("Build the feature");
   });
@@ -797,7 +802,8 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
         },
       ],
     };
-    const text = tool!.renderResult(result, {}, {});
+    const component = tool!.renderResult(result, {}, {});
+    const text = component.render(80).join("\n");
     expect(text).toContain("DONE");
     expect(text).toContain("lu-executor");
     expect(text).toContain("All tests pass");
@@ -806,7 +812,8 @@ describe("Pi extension E2E: renderCall and renderResult", () => {
   test("luca_subagent_result renderResult handles malformed result", async () => {
     const mock = await loadExtension("luca-subagents.ts");
     const tool = mock.tools.get("luca_subagent_result");
-    const text = tool!.renderResult({ content: [] }, {}, {});
+    const component = tool!.renderResult({ content: [] }, {}, {});
+    const text = component.render(80).join("\n");
     expect(text).toBe("Subagent result");
   });
 });
@@ -957,11 +964,17 @@ describe("Pi extension E2E: setFooter", () => {
     expect(footerRenderer).not.toBeNull();
     expect(typeof footerRenderer).toBe("function");
 
-    // Call the renderer to verify multi-line output
-    const output = footerRenderer({});
-    expect(typeof output).toBe("string");
+    // Call the renderer — it returns a component with render() and invalidate()
+    const component = footerRenderer({}, {}, {});
+    expect(component).toBeDefined();
+    expect(typeof component.render).toBe("function");
+
+    // Render returns string[] lines
+    const lines = component.render(80);
+    expect(Array.isArray(lines)).toBe(true);
+    expect(lines.length).toBeGreaterThan(0);
+    const output = lines.join("\n");
     expect(output).toContain("Phase");
-    expect(output).toContain("\n");
   });
 
   test("luca-state falls back to setStatus when setFooter unavailable", async () => {

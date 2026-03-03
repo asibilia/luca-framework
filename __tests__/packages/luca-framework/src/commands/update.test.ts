@@ -1,27 +1,22 @@
-import { describe, test, expect, mock, beforeEach, afterEach, spyOn } from 'bun:test';
 import {
-  existsSync as _existsSync,
-  statSync as _statSync,
-  readdirSync as _readdirSync,
-  readFileSync as _readFileSync,
-  writeFileSync as _writeFileSync,
-  mkdirSync as _mkdirSync,
-  rmSync as _rmSync,
-  createReadStream as _createReadStream,
-  createWriteStream as _createWriteStream,
-} from 'fs';
+  describe,
+  test,
+  expect,
+  mock,
+  beforeEach,
+  afterEach,
+  spyOn,
+} from "bun:test";
+import * as realFs from "fs";
+import * as realFsPromises from "fs/promises";
+import type {
+  LucaManifest,
+  FileComparison,
+} from "../../../../../packages/luca-framework/src/types";
 import {
-  readFile as _readFile,
-  writeFile as _writeFile,
-  mkdir as _mkdir,
-  rm as _rm,
-  cp as _cp,
-  readdir as _readdir,
-  mkdtemp as _mkdtemp,
-  stat as _stat,
-} from 'fs/promises';
-import type { LucaManifest, FileComparison } from '../../../../../packages/luca-framework/src/types';
-import { validLucaManifest, validBrandingConfig } from '../../../../utils/fixtures';
+  validLucaManifest,
+  validBrandingConfig,
+} from "../../../../utils/fixtures";
 
 // ---------------------------------------------------------------------------
 // Sentinel error thrown by the mocked process.exit so execution halts
@@ -31,7 +26,7 @@ class ProcessExitError extends Error {
   code: number;
   constructor(code: number) {
     super(`process.exit(${code})`);
-    this.name = 'ProcessExitError';
+    this.name = "ProcessExitError";
     this.code = code;
   }
 }
@@ -69,37 +64,37 @@ function makeComparisons(opts: {
   for (let i = 0; i < (opts.unchanged ?? 0); i++) {
     comparisons.push({
       path: `file-unchanged-${i}.md`,
-      status: 'unchanged',
-      originalHash: 'hash-a',
-      currentHash: 'hash-a',
-      newHash: 'hash-b',
+      status: "unchanged",
+      originalHash: "hash-a",
+      currentHash: "hash-a",
+      newHash: "hash-b",
     });
   }
   for (let i = 0; i < (opts.modified ?? 0); i++) {
     comparisons.push({
       path: `file-modified-${i}.md`,
-      status: 'user-modified',
-      originalHash: 'hash-a',
-      currentHash: 'hash-c',
-      newHash: 'hash-b',
+      status: "user-modified",
+      originalHash: "hash-a",
+      currentHash: "hash-c",
+      newHash: "hash-b",
     });
   }
   for (let i = 0; i < (opts.newFiles ?? 0); i++) {
     comparisons.push({
       path: `file-new-${i}.md`,
-      status: 'new',
+      status: "new",
       originalHash: null,
       currentHash: null,
-      newHash: 'hash-b',
+      newHash: "hash-b",
     });
   }
   for (let i = 0; i < (opts.deleted ?? 0); i++) {
     comparisons.push({
       path: `file-deleted-${i}.md`,
-      status: 'deleted',
-      originalHash: 'hash-a',
+      status: "deleted",
+      originalHash: "hash-a",
       currentHash: null,
-      newHash: 'hash-b',
+      newHash: "hash-b",
     });
   }
   return comparisons;
@@ -112,9 +107,11 @@ function makeComparisons(opts: {
 beforeEach(() => {
   mockReadManifest = mock(() => Promise.resolve(testManifest));
   mockWriteManifest = mock(() => Promise.resolve());
-  mockCompareFiles = mock(() => Promise.resolve(makeComparisons({ unchanged: 2, newFiles: 1 })));
-  mockHashContent = mock(() => 'mock-hash');
-  mockGetTemplatesDir = mock(() => '/fake/templates');
+  mockCompareFiles = mock(() =>
+    Promise.resolve(makeComparisons({ unchanged: 2, newFiles: 1 })),
+  );
+  mockHashContent = mock(() => "mock-hash");
+  mockGetTemplatesDir = mock(() => "/fake/templates");
   mockProcessTemplate = mock((content: string) => Promise.resolve(content));
   mockProcessFilename = mock((filename: string) => filename);
   mockCreateBrandingContext = mock(() => ({ branding: validBrandingConfig }));
@@ -122,7 +119,7 @@ beforeEach(() => {
   mockCancel = mock(() => {});
   mockSpinnerStart = mock(() => {});
   mockSpinnerStop = mock(() => {});
-  mockSelect = mock(async () => 'theirs');
+  mockSelect = mock(async () => "theirs");
   mockLogger = {
     info: mock(() => {}),
     error: mock(() => {}),
@@ -135,36 +132,48 @@ beforeEach(() => {
   };
 
   // Mock modules
-  mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-    readManifest: mockReadManifest,
-    writeManifest: mockWriteManifest,
-    compareFiles: mockCompareFiles,
-    hashContent: mockHashContent,
-  }));
+  mock.module(
+    "../../../../../packages/luca-framework/src/utils/manifest",
+    () => ({
+      readManifest: mockReadManifest,
+      writeManifest: mockWriteManifest,
+      compareFiles: mockCompareFiles,
+      hashContent: mockHashContent,
+    }),
+  );
 
-  mock.module('../../../../../packages/luca-framework/src/utils/template', () => ({
-    getTemplatesDir: mockGetTemplatesDir,
-    processTemplate: mockProcessTemplate,
-    processFilename: mockProcessFilename,
-    getAllFiles: mock(async () => []),
-    isTemplateFile: mock(() => true),
-  }));
+  mock.module(
+    "../../../../../packages/luca-framework/src/utils/template",
+    () => ({
+      getTemplatesDir: mockGetTemplatesDir,
+      processTemplate: mockProcessTemplate,
+      processFilename: mockProcessFilename,
+      getAllFiles: mock(async () => []),
+      isTemplateFile: mock(() => true),
+    }),
+  );
 
-  mock.module('../../../../../packages/luca-framework/src/utils/branding', () => ({
-    createBrandingContext: mockCreateBrandingContext,
-  }));
+  mock.module(
+    "../../../../../packages/luca-framework/src/utils/branding",
+    () => ({
+      createBrandingContext: mockCreateBrandingContext,
+    }),
+  );
 
-  mock.module('../../../../../packages/luca-framework/src/utils/logger', () => ({
-    logger: mockLogger,
-  }));
+  mock.module(
+    "../../../../../packages/luca-framework/src/utils/logger",
+    () => ({
+      logger: mockLogger,
+    }),
+  );
 
   // Mock fs modules used directly in update.ts.
-  // Include captured real exports to avoid breaking other test files
-  // that share the global mock scope in bun test.
-  mock.module('fs/promises', () => ({
-    mkdtemp: _mkdtemp,
-    stat: _stat,
-    readFile: mock(async () => 'template-content'),
+  // CRITICAL: Spread ALL real exports to avoid breaking other test files
+  // that share the global mock scope in bun test. Only override the
+  // specific functions that update.ts needs mocked.
+  mock.module("fs/promises", () => ({
+    ...realFsPromises,
+    readFile: mock(async () => "template-content"),
     writeFile: mock(async () => {}),
     cp: mock(async () => {}),
     rm: mock(async () => {}),
@@ -172,35 +181,29 @@ beforeEach(() => {
     readdir: mock(async () => []),
   }));
 
-  mock.module('fs', () => ({
-    statSync: _statSync,
-    readdirSync: _readdirSync,
-    readFileSync: _readFileSync,
-    writeFileSync: _writeFileSync,
-    mkdirSync: _mkdirSync,
-    rmSync: _rmSync,
-    createReadStream: _createReadStream,
-    createWriteStream: _createWriteStream,
-    existsSync: mock(() => false),
+  mock.module("fs", () => ({
+    ...realFs,
   }));
 
-  mock.module('@clack/prompts', () => ({
+  mock.module("@clack/prompts", () => ({
     intro: mock(() => {}),
     outro: mockOutro,
     cancel: mockCancel,
     note: mock(() => {}),
     log: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}) },
     spinner: () => ({ start: mockSpinnerStart, stop: mockSpinnerStop }),
-    isCancel: (value: unknown) => typeof value === 'symbol',
+    isCancel: (value: unknown) => typeof value === "symbol",
     group: mock(async () => null),
     select: mockSelect,
     confirm: mock(async () => true),
-    text: mock(async () => 'default'),
+    text: mock(async () => "default"),
   }));
 
-  processExitSpy = spyOn(process, 'exit').mockImplementation((code?: number | string | null | undefined) => {
-    throw new ProcessExitError(typeof code === 'number' ? code : 1);
-  });
+  processExitSpy = spyOn(process, "exit").mockImplementation(
+    (code?: number | string | null | undefined) => {
+      throw new ProcessExitError(typeof code === "number" ? code : 1);
+    },
+  );
 });
 
 afterEach(() => {
@@ -212,7 +215,8 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 async function loadUpdateCommand() {
-  const mod = await import('../../../../../packages/luca-framework/src/commands/update.ts');
+  const mod =
+    await import("../../../../../packages/luca-framework/src/commands/update.ts");
   return mod.updateCommand;
 }
 
@@ -230,15 +234,18 @@ async function runCommand(args: Record<string, unknown> = {}) {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('update command', () => {
-  test('exits with code 1 when no manifest found (Luca not installed)', async () => {
+describe("update command", () => {
+  test("exits with code 1 when no manifest found (Luca not installed)", async () => {
     mockReadManifest = mock(() => Promise.resolve(null));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
     await runCommand();
 
@@ -246,15 +253,15 @@ describe('update command', () => {
     expect(mockLogger.error).toHaveBeenCalled();
   });
 
-  test('exits with code 1 when both --accept-theirs and --accept-mine are provided', async () => {
-    await runCommand({ 'accept-theirs': true, 'accept-mine': true });
+  test("exits with code 1 when both --accept-theirs and --accept-mine are provided", async () => {
+    await runCommand({ "accept-theirs": true, "accept-mine": true });
 
     expect(processExitSpy).toHaveBeenCalledWith(1);
     expect(mockLogger.error).toHaveBeenCalled();
   });
 
-  test('shows dry run summary and returns without changes when --dry-run is set', async () => {
-    await runCommand({ 'dry-run': true });
+  test("shows dry run summary and returns without changes when --dry-run is set", async () => {
+    await runCommand({ "dry-run": true });
 
     // Should NOT exit (no process.exit call)
     expect(processExitSpy).not.toHaveBeenCalled();
@@ -263,14 +270,17 @@ describe('update command', () => {
     expect(mockWriteManifest).not.toHaveBeenCalled();
   });
 
-  test('returns early when nothing to update', async () => {
+  test("returns early when nothing to update", async () => {
     mockCompareFiles = mock(() => Promise.resolve([]));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
     await runCommand();
 
@@ -279,15 +289,20 @@ describe('update command', () => {
     expect(mockWriteManifest).not.toHaveBeenCalled();
   });
 
-  test('processes update when files have changes (no conflicts)', async () => {
+  test("processes update when files have changes (no conflicts)", async () => {
     // Set up comparisons with unchanged and new files only (no conflicts)
-    mockCompareFiles = mock(() => Promise.resolve(makeComparisons({ unchanged: 3, newFiles: 2 })));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+    mockCompareFiles = mock(() =>
+      Promise.resolve(makeComparisons({ unchanged: 3, newFiles: 2 })),
+    );
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
     await runCommand();
 
@@ -295,30 +310,39 @@ describe('update command', () => {
     expect(mockOutro).toHaveBeenCalled();
   });
 
-  test('exits with code 0 when user cancels conflict resolution', async () => {
+  test("exits with code 0 when user cancels conflict resolution", async () => {
     // Set up comparisons with conflicts
-    mockCompareFiles = mock(() => Promise.resolve(makeComparisons({ unchanged: 1, modified: 2 })));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+    mockCompareFiles = mock(() =>
+      Promise.resolve(makeComparisons({ unchanged: 1, modified: 2 })),
+    );
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
     // User selects "cancel"
-    mockSelect = mock(async () => 'cancel');
-    mock.module('@clack/prompts', () => ({
+    mockSelect = mock(async () => "cancel");
+    mock.module("@clack/prompts", () => ({
       intro: mock(() => {}),
       outro: mockOutro,
       cancel: mockCancel,
       note: mock(() => {}),
-      log: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}) },
+      log: {
+        info: mock(() => {}),
+        warn: mock(() => {}),
+        error: mock(() => {}),
+      },
       spinner: () => ({ start: mockSpinnerStart, stop: mockSpinnerStop }),
-      isCancel: (value: unknown) => typeof value === 'symbol',
+      isCancel: (value: unknown) => typeof value === "symbol",
       group: mock(async () => null),
       select: mockSelect,
       confirm: mock(async () => true),
-      text: mock(async () => 'default'),
+      text: mock(async () => "default"),
     }));
 
     await runCommand();
@@ -326,14 +350,19 @@ describe('update command', () => {
     expect(processExitSpy).toHaveBeenCalledWith(0);
   });
 
-  test('skips conflict prompt when --force flag is used', async () => {
-    mockCompareFiles = mock(() => Promise.resolve(makeComparisons({ unchanged: 1, modified: 2 })));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+  test("skips conflict prompt when --force flag is used", async () => {
+    mockCompareFiles = mock(() =>
+      Promise.resolve(makeComparisons({ unchanged: 1, modified: 2 })),
+    );
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
     await runCommand({ force: true });
 
@@ -343,32 +372,42 @@ describe('update command', () => {
     expect(mockOutro).toHaveBeenCalled();
   });
 
-  test('skips conflict prompt when --accept-theirs is used', async () => {
-    mockCompareFiles = mock(() => Promise.resolve(makeComparisons({ unchanged: 1, modified: 1 })));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+  test("skips conflict prompt when --accept-theirs is used", async () => {
+    mockCompareFiles = mock(() =>
+      Promise.resolve(makeComparisons({ unchanged: 1, modified: 1 })),
+    );
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
-    await runCommand({ 'accept-theirs': true });
+    await runCommand({ "accept-theirs": true });
 
     expect(mockSelect).not.toHaveBeenCalled();
     expect(processExitSpy).not.toHaveBeenCalled();
     expect(mockOutro).toHaveBeenCalled();
   });
 
-  test('skips conflict prompt when --accept-mine is used', async () => {
-    mockCompareFiles = mock(() => Promise.resolve(makeComparisons({ unchanged: 1, modified: 1 })));
-    mock.module('../../../../../packages/luca-framework/src/utils/manifest', () => ({
-      readManifest: mockReadManifest,
-      writeManifest: mockWriteManifest,
-      compareFiles: mockCompareFiles,
-      hashContent: mockHashContent,
-    }));
+  test("skips conflict prompt when --accept-mine is used", async () => {
+    mockCompareFiles = mock(() =>
+      Promise.resolve(makeComparisons({ unchanged: 1, modified: 1 })),
+    );
+    mock.module(
+      "../../../../../packages/luca-framework/src/utils/manifest",
+      () => ({
+        readManifest: mockReadManifest,
+        writeManifest: mockWriteManifest,
+        compareFiles: mockCompareFiles,
+        hashContent: mockHashContent,
+      }),
+    );
 
-    await runCommand({ 'accept-mine': true });
+    await runCommand({ "accept-mine": true });
 
     expect(mockSelect).not.toHaveBeenCalled();
     expect(processExitSpy).not.toHaveBeenCalled();

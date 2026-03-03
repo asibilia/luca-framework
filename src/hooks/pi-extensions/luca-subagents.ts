@@ -148,6 +148,23 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
       },
       required: ["agent", "task"],
     },
+
+    /**
+     * Render a human-readable summary of the tool call arguments.
+     * Shown in Pi's TUI when the tool is invoked.
+     */
+    renderCall(args: { agent?: string; task?: string }, _theme: any) {
+      const agent = args.agent ?? "unknown";
+      const taskPreview = (args.task ?? "").slice(0, 60);
+      const text = `Spawning subagent: ${agent} — ${taskPreview}`;
+      return {
+        render(_width: number): string[] {
+          return text.split("\n");
+        },
+        invalidate() {},
+      };
+    },
+
     async execute(
       _toolCallId: string,
       params: { agent: string; task: string; model?: string },
@@ -276,6 +293,46 @@ export default function lucaSubagents(pi: PiExtensionAPI) {
       },
       required: ["id"],
     },
+
+    /**
+     * Render a human-readable summary of the subagent result.
+     * Shown in Pi's TUI after the tool completes.
+     */
+    renderResult(result: any, _opts: any, _theme: any) {
+      let text: string;
+      try {
+        const raw = result.content?.[0]?.text;
+        if (!raw) {
+          text = "Subagent result";
+        } else {
+          const data = JSON.parse(raw);
+          if (!data.status) {
+            text = "Subagent result";
+          } else {
+            const icon =
+              data.status === "completed"
+                ? "DONE"
+                : data.status === "failed"
+                  ? "FAIL"
+                  : data.status === "aborted"
+                    ? "STOP"
+                    : "...";
+            const agent = data.agent ?? "unknown";
+            const output = data.output ? `\n${data.output.slice(0, 300)}` : "";
+            text = `${icon} Subagent "${data.id ?? "?"}" (${agent}) — ${data.status}${output}`;
+          }
+        }
+      } catch {
+        text = "Subagent result";
+      }
+      return {
+        render(_width: number): string[] {
+          return text.split("\n");
+        },
+        invalidate() {},
+      };
+    },
+
     async execute(_toolCallId: string, params: { id: string }) {
       const state = subagentRegistry.get(params.id);
       if (!state) {

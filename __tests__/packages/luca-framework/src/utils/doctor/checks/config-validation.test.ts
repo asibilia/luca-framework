@@ -7,37 +7,19 @@ import {
   afterEach,
   spyOn,
 } from "bun:test";
-import { existsSync as _existsSync } from "fs";
-import {
-  mkdtemp as _mkdtemp,
-  rm as _rm,
-  writeFile as _writeFile,
-  mkdir as _mkdir,
-  readFile as _readFile,
-} from "fs/promises";
+import * as realFs from "fs";
+import * as realFsPromises from "fs/promises";
 
-// Capture real fs functions BEFORE any mock.module takes effect.
+// Capture real fs modules BEFORE any mock.module takes effect.
 // In bun test, mock.module is global and persistent across files, so
 // other tests (e.g. update.test.ts) may have already mocked fs.
-// Static imports capture the real bindings at module init time.
-const realExistsSync = _existsSync;
-const realMkdtemp = _mkdtemp;
-const realRm = _rm;
-const realWriteFile = _writeFile;
-const realMkdir = _mkdir;
-const realReadFile = _readFile;
 
-// Restore real fs for the config-validation check module.
-mock.module("fs", () => ({
-  existsSync: realExistsSync,
-}));
-mock.module("fs/promises", () => ({
-  readFile: realReadFile,
-  mkdtemp: realMkdtemp,
-  rm: realRm,
-  writeFile: realWriteFile,
-  mkdir: realMkdir,
-}));
+// Restore FULL real fs for the config-validation check module.
+// CRITICAL: Must spread ALL exports — exporting only a subset (e.g. just
+// existsSync) would break other test files that import writeFileSync,
+// readFileSync, mkdirSync, etc. from "fs" in the same bun test run.
+mock.module("fs", () => ({ ...realFs }));
+mock.module("fs/promises", () => ({ ...realFsPromises }));
 
 // Dynamic import AFTER mock restoration so the module picks up the real fs
 const { configValidationCheck } =
@@ -48,12 +30,12 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 async function createTempDir(): Promise<string> {
-  return realMkdtemp(join(tmpdir(), "luca-test-"));
+  return realFsPromises.mkdtemp(join(tmpdir(), "luca-test-"));
 }
 
 async function cleanupTempDir(dirPath: string): Promise<void> {
   try {
-    await realRm(dirPath, { recursive: true, force: true });
+    await realFsPromises.rm(dirPath, { recursive: true, force: true });
   } catch {}
 }
 
@@ -64,8 +46,8 @@ async function setupTempProject(
   for (const [relativePath, content] of Object.entries(files)) {
     const fullPath = join(dir, relativePath);
     const parentDir = fullPath.substring(0, fullPath.lastIndexOf("/"));
-    await realMkdir(parentDir, { recursive: true });
-    await realWriteFile(fullPath, content, "utf-8");
+    await realFsPromises.mkdir(parentDir, { recursive: true });
+    await realFsPromises.writeFile(fullPath, content, "utf-8");
   }
   return dir;
 }
