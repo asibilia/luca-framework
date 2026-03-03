@@ -8,13 +8,13 @@
 
 Luca classifies task complexity into five levels, grouped into three behavioral tiers:
 
-| Level | Tier | File Count | Scope | Risk |
-|-------|------|-----------|-------|------|
-| TRIVIAL | Lightweight | 1 | Single component | Low |
-| SIMPLE | Lightweight | 2-3 | Related components | Low-Medium |
-| MODERATE | Standard | 3-5 | Feature-scoped | Medium |
-| COMPLEX | Thorough | 5-10 | Cross-cutting | High |
-| CRITICAL | Thorough | 10+ / architectural | System-wide | Very High |
+| Level    | Tier        | File Count          | Scope              | Risk       |
+| -------- | ----------- | ------------------- | ------------------ | ---------- |
+| TRIVIAL  | Lightweight | 1                   | Single component   | Low        |
+| SIMPLE   | Lightweight | 2-3                 | Related components | Low-Medium |
+| MODERATE | Standard    | 3-5                 | Feature-scoped     | Medium     |
+| COMPLEX  | Thorough    | 5-10                | Cross-cutting      | High       |
+| CRITICAL | Thorough    | 10+ / architectural | System-wide        | Very High  |
 
 ## Always-On Steps (Cannot Be Gated)
 
@@ -32,22 +32,22 @@ These steps run regardless of complexity:
 
 ## Complexity Matrix
 
-| Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|------|---------|--------|----------|---------|----------|
-| Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
-| Harness fix iterations | 1 | 2 | 3 | 3 | 5 |
-| Verify fix iterations | 0 | 1 | 1 | 2 | 3 |
-| Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| Code review: dx-advocate | Skip | Skip | Run | Run | Run |
-| Code review: code-simplifier | Skip | Skip | Run | Run | Run |
-| Code review: code-architect | Skip | Skip | Skip | Run | Run |
-| Code review: tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| Code review: security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
+| Step                          | TRIVIAL | SIMPLE | MODERATE | COMPLEX  | CRITICAL          |
+| ----------------------------- | ------- | ------ | -------- | -------- | ----------------- |
+| Cognitive pre-flight          | Lite    | Lite   | Full     | Full     | Full              |
+| Research                      | Skip    | Skip   | Optional | Required | Required          |
+| Discussion                    | Skip    | Skip   | Optional | Run      | Required          |
+| Plan verification             | 0 iter  | 0 iter | 1 iter   | 2 iter   | 3 iter            |
+| Harness fix iterations        | 1       | 2      | 2        | 2        | 3                 |
+| Verify fix iterations         | 0       | 1      | 1        | 1        | 2                 |
+| Verification mode             | Quick   | Quick  | Standard | Full     | Full+Human        |
+| Code review: dx-advocate      | Skip    | Skip   | Run      | Run      | Run               |
+| Code review: code-simplifier  | Skip    | Skip   | Run      | Run      | Run               |
+| Code review: code-architect   | Skip    | Skip   | Skip     | Run      | Run               |
+| Code review: tailwind-auditor | Skip    | Skip   | If UI    | If UI    | Run               |
+| Code review: security-auditor | Skip    | Skip   | If auth  | If auth  | Always            |
+| UAT                           | Skip    | Skip   | Optional | Required | Required+Thorough |
+| Learning capture              | Skip    | Brief  | Standard | Full     | Full+Debrief      |
 
 ## How to Apply
 
@@ -61,6 +61,7 @@ These steps run regardless of complexity:
 6. If the step says "Run" or "Required", always execute
 
 **Complexity is set by:**
+
 - lu-router (automatic inference)
 - \`--complexity=<level>\` flag (manual override)
 - Persisted in STATE.md for session continuity

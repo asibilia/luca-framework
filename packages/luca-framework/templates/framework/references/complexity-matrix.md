@@ -6,13 +6,13 @@ Luca uses five complexity levels to gate workflow steps. Each level determines w
 
 ## Levels
 
-| Level | Files | Scope | Risk | Time | Route |
-|-------|-------|-------|------|------|-------|
-| TRIVIAL | 1 | Single component | Low | < 15 min | Direct execute |
-| SIMPLE | 2-3 | Related components | Low-Med | 15-30 min | Direct execute |
-| MODERATE | 3-5 | Feature-scoped | Medium | 30-60 min | Quick plan + execute |
-| COMPLEX | 5-10 | Cross-cutting | High | 1-3 hours | Full pipeline |
-| CRITICAL | 10+ / architectural | System-wide | Very High | 3+ hours | Full pipeline + enhanced |
+| Level    | Files               | Scope              | Risk      | Time      | Route                    |
+| -------- | ------------------- | ------------------ | --------- | --------- | ------------------------ |
+| TRIVIAL  | 1                   | Single component   | Low       | < 15 min  | Direct execute           |
+| SIMPLE   | 2-3                 | Related components | Low-Med   | 15-30 min | Direct execute           |
+| MODERATE | 3-5                 | Feature-scoped     | Medium    | 30-60 min | Quick plan + execute     |
+| COMPLEX  | 5-10                | Cross-cutting      | High      | 1-3 hours | Full pipeline            |
+| CRITICAL | 10+ / architectural | System-wide        | Very High | 3+ hours  | Full pipeline + enhanced |
 
 ## Behavioral Tiers
 
@@ -24,21 +24,21 @@ Five levels, three effective tiers:
 
 ## Gating Matrix
 
-| Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|------|---------|--------|----------|---------|----------|
-| Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
-| Harness fix iterations | 1 | 2 | 3 | 3 | 5 |
-| Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| dx-advocate | Skip | Skip | Run | Run | Run |
-| code-simplifier | Skip | Skip | Run | Run | Run |
-| code-architect | Skip | Skip | Skip | Run | Run |
-| tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
+| Step                   | TRIVIAL | SIMPLE | MODERATE | COMPLEX  | CRITICAL          |
+| ---------------------- | ------- | ------ | -------- | -------- | ----------------- |
+| Cognitive pre-flight   | Lite    | Lite   | Full     | Full     | Full              |
+| Research               | Skip    | Skip   | Optional | Required | Required          |
+| Discussion             | Skip    | Skip   | Optional | Run      | Required          |
+| Plan verification      | 0 iter  | 0 iter | 1 iter   | 2 iter   | 3 iter            |
+| Harness fix iterations | 1       | 2      | 2        | 2        | 3                 |
+| Verification mode      | Quick   | Quick  | Standard | Full     | Full+Human        |
+| dx-advocate            | Skip    | Skip   | Run      | Run      | Run               |
+| code-simplifier        | Skip    | Skip   | Run      | Run      | Run               |
+| code-architect         | Skip    | Skip   | Skip     | Run      | Run               |
+| tailwind-auditor       | Skip    | Skip   | If UI    | If UI    | Run               |
+| security-auditor       | Skip    | Skip   | If auth  | If auth  | Always            |
+| UAT                    | Skip    | Skip   | Optional | Required | Required+Thorough |
+| Learning capture       | Skip    | Brief  | Standard | Full     | Full+Debrief      |
 
 ## Always-On Steps
 
@@ -57,27 +57,32 @@ These always run regardless of complexity:
 ## Classification Signals
 
 ### TRIVIAL
+
 - "fix", "update", "change" single item
 - No external services, no type/schema changes
 - Intuition flags: none or OPPORTUNITY only
 
 ### SIMPLE
+
 - "add", "create" small utility or component
 - Related files in same module
 - Clear pattern to follow
 
 ### MODERATE
+
 - "add", "create", "implement" feature
 - Multiple related files
 - Intuition flags: may have CAUTION
 
 ### COMPLEX
+
 - "design", "refactor", "migrate"
 - External service integration
 - Database schema changes
 - Intuition flags: RISK or UNKNOWN
 
 ### CRITICAL
+
 - "architect", "overhaul", "redesign"
 - System-wide impact
 - Multiple RISK/UNKNOWN flags
