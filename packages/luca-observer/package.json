@@ -24,6 +24,7 @@
   "devDependencies": {
     "@eslint/js": "^9",
     "@next/eslint-plugin-next": "^15",
+    "@tailwindcss/cli": "^4.2.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
