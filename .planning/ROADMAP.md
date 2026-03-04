@@ -144,7 +144,7 @@
 - [x] Delete dead observer code (14 API routes, 7 lib files, polling hook)
 - [x] Maintain JSON fallback writes for backward compatibility (dual-write pattern)
 - [x] Add tests for SpacetimeDB query helper and rewritten bridge functions
-- [ ] End-to-end verification: typecheck + test suite pass with SpacetimeDB integration
+- [x] End-to-end verification: typecheck + test suite pass with SpacetimeDB integration
 
 ### Phase 108 — Observer Security Hardening
 
