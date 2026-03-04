@@ -1043,6 +1043,8 @@ async function handleResumePhase(args: string[]): Promise<void> {
   // Load checkpoint: try SpacetimeDB first, fall back to file
   let checkpoint;
   try {
+    // phaseId is parsed via parseInt(phaseStr, 10) and validated as a finite
+    // non-negative integer above — safe to interpolate directly into SQL.
     const row = await queryOne<{ checkpointJson: string }>(
       `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
     );

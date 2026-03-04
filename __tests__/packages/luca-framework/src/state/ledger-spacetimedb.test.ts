@@ -236,6 +236,55 @@ describe("readLedger (SpacetimeDB path)", () => {
   });
 });
 
+// --- Tests: readLedger SQL injection prevention (integration) -----------------
+
+describe("readLedger SQL injection prevention (integration)", () => {
+  test("throws before any fetch call for malicious session_id", async () => {
+    await expect(
+      readLedger({ session_id: "'; DROP TABLE ledger_entries; --" }),
+    ).rejects.toThrow("Invalid session_id format");
+
+    // fetch should NOT have been called — validation throws before SQL construction
+    const sqlCalls = fetchCalls.filter((c) =>
+      c.url.includes("/v1/database/luca-observer/sql"),
+    );
+    expect(sqlCalls).toHaveLength(0);
+  });
+
+  test("throws before any fetch call for unknown event_type", async () => {
+    await expect(readLedger({ event_type: "malicious_event" })).rejects.toThrow(
+      "Invalid event_type",
+    );
+
+    const sqlCalls = fetchCalls.filter((c) =>
+      c.url.includes("/v1/database/luca-observer/sql"),
+    );
+    expect(sqlCalls).toHaveLength(0);
+  });
+
+  test("throws before any fetch call for session_id with null byte", async () => {
+    await expect(readLedger({ session_id: "abc\x00def" })).rejects.toThrow(
+      "Invalid session_id format",
+    );
+
+    const sqlCalls = fetchCalls.filter((c) =>
+      c.url.includes("/v1/database/luca-observer/sql"),
+    );
+    expect(sqlCalls).toHaveLength(0);
+  });
+
+  test("throws before any fetch call for session_id over 256 chars", async () => {
+    await expect(readLedger({ session_id: "a".repeat(257) })).rejects.toThrow(
+      "Invalid session_id format",
+    );
+
+    const sqlCalls = fetchCalls.filter((c) =>
+      c.url.includes("/v1/database/luca-observer/sql"),
+    );
+    expect(sqlCalls).toHaveLength(0);
+  });
+});
+
 // --- Tests: appendLedgerEntry SpacetimeDB path --------------------------------
 
 describe("appendLedgerEntry (SpacetimeDB path)", () => {

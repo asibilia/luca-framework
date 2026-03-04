@@ -113,12 +113,12 @@ export function callReducer(
       ...opts,
       signal: AbortSignal.timeout(2000),
     }).catch((retryErr) => {
-      if (process.env.LUCA_DEBUG) {
-        console.error(
-          `[observer-emitter] Reducer ${reducerName} retry failed:`,
-          (retryErr as Error).message,
-        );
-      }
+      // Always log retry failures — this represents actual data loss.
+      // First-attempt failures are LUCA_DEBUG-only because a retry follows.
+      console.error(
+        `[observer-emitter] Reducer ${reducerName} retry failed (data loss):`,
+        (retryErr as Error).message,
+      );
     });
   });
 }

@@ -216,6 +216,67 @@ describe("ledger SQL safety", () => {
     });
   });
 
+  describe("session_id edge cases", () => {
+    test("rejects unicode characters in session_id", () => {
+      expect(() =>
+        validateLedgerFilters({
+          session_id: "session\u0041\u0042\u4e2d\u6587",
+        }),
+      ).toThrow("Invalid session_id format");
+    });
+
+    test("rejects percent-encoded single quote in session_id", () => {
+      // Double-encoding attack: %27 is URL-encoded single quote
+      expect(() =>
+        validateLedgerFilters({
+          session_id: "abc%27def",
+        }),
+      ).toThrow("Invalid session_id format");
+    });
+
+    test("rejects null byte in session_id", () => {
+      expect(() =>
+        validateLedgerFilters({
+          session_id: "abc\x00def",
+        }),
+      ).toThrow("Invalid session_id format");
+    });
+
+    test("rejects session_id longer than 256 characters", () => {
+      const longId = "a".repeat(257);
+      expect(() => validateLedgerFilters({ session_id: longId })).toThrow(
+        "Invalid session_id format",
+      );
+    });
+
+    test("accepts session_id of exactly 256 characters", () => {
+      const maxId = "a".repeat(256);
+      const result = validateLedgerFilters({ session_id: maxId });
+      expect(result.session_id).toBe(maxId);
+    });
+  });
+
+  describe("event_type edge cases", () => {
+    test("rejects event_type with uppercase casing variation", () => {
+      // The allowlist is case-sensitive; 'start' is not in the list
+      expect(() => validateLedgerFilters({ event_type: "start" })).toThrow(
+        "Invalid event_type",
+      );
+    });
+
+    test("rejects event_type with mixed casing", () => {
+      expect(() =>
+        validateLedgerFilters({ event_type: "Phase_Started" }),
+      ).toThrow("Invalid event_type");
+    });
+
+    test("rejects event_type with leading whitespace", () => {
+      expect(() => validateLedgerFilters({ event_type: " START" })).toThrow(
+        "Invalid event_type",
+      );
+    });
+  });
+
   describe("combined filters", () => {
     test("validates all filters together", () => {
       const result = validateLedgerFilters({

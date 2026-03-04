@@ -255,7 +255,10 @@ export function validateLedgerFilters(filters: LedgerFilters): LedgerFilters {
   const validated: LedgerFilters = {};
 
   if (filters.session_id) {
-    if (!SAFE_SESSION_ID_RE.test(filters.session_id)) {
+    if (
+      filters.session_id.length > 256 ||
+      !SAFE_SESSION_ID_RE.test(filters.session_id)
+    ) {
       throw new Error(`Invalid session_id format: ${filters.session_id}`);
     }
     validated.session_id = filters.session_id;
@@ -331,16 +334,23 @@ export async function readLedger(
   try {
     const whereClauses: string[] = [];
     if (validatedFilters.session_id) {
+      // Defense-in-depth: primary validation is validateLedgerFilters() above.
+      // The .replace() here is a secondary safety layer; validated values
+      // already match /^[a-zA-Z0-9_-]+$/ and cannot contain single quotes.
       whereClauses.push(
         `session_id = '${validatedFilters.session_id.replace(/'/g, "''")}'`,
       );
     }
     if (validatedFilters.event_type) {
+      // Defense-in-depth: primary validation is validateLedgerFilters() above.
+      // event_type is allowlist-validated; .replace() is belt-and-suspenders.
       whereClauses.push(
         `event_type = '${validatedFilters.event_type.replace(/'/g, "''")}'`,
       );
     }
     if (validatedFilters.since) {
+      // Defense-in-depth: primary validation is validateLedgerFilters() above.
+      // since is ISO8601 regex-validated; .replace() is belt-and-suspenders.
       whereClauses.push(
         `timestamp >= '${validatedFilters.since.replace(/'/g, "''")}'`,
       );
