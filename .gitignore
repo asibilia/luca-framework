@@ -40,5 +40,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .claude/.session-lock
 .claude/.build-manifest.json
 
+# test temp directories
+.tmp-test-*
+
 # next.js
 .next
