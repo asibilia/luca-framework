@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import type { WorkflowSnapshot } from "./types";
-import { WorkflowSnapshotSchema } from "./types";
+import type { WorkflowSnapshot, LedgerEntry } from "./types";
+import { WorkflowSnapshotSchema, LedgerEntrySchema } from "./types";
 
 /**
  * Resolve and validate a project directory parameter.
@@ -88,6 +88,78 @@ export async function readMetrics(
     return JSON.parse(content) as Record<string, unknown>;
   } catch {
     return {};
+  }
+}
+
+/**
+ * Read and parse entries from .planning/session-ledger.jsonl.
+ *
+ * Reads the JSONL file, validates each line with safeParse (skipping
+ * corrupted entries), and applies optional filters.
+ *
+ * @param projectDir - The root project directory (defaults to cwd)
+ * @param filters - Optional filter criteria
+ * @returns Array of validated LedgerEntry objects
+ *
+ * @example
+ * ```typescript
+ * // Read all entries
+ * const all = await readLedgerEntries();
+ *
+ * // Read last 10 entries for a specific session
+ * const recent = await readLedgerEntries(undefined, {
+ *   tail: 10,
+ *   session_id: "abc-123",
+ * });
+ * ```
+ */
+export async function readLedgerEntries(
+  projectDir?: string,
+  filters?: {
+    session_id?: string;
+    event_type?: string;
+    tail?: number;
+    limit?: number;
+  },
+): Promise<LedgerEntry[]> {
+  const dir = resolveProjectDir(projectDir);
+  const ledgerPath = join(dir, ".planning", "session-ledger.jsonl");
+
+  try {
+    const content = await readFile(ledgerPath, "utf-8");
+    let lines = content.trim().split("\n").filter(Boolean);
+
+    if (filters?.tail && filters.tail > 0) {
+      lines = lines.slice(-filters.tail);
+    }
+
+    const entries: LedgerEntry[] = [];
+    for (const line of lines) {
+      try {
+        const parsed = LedgerEntrySchema.safeParse(JSON.parse(line));
+        if (parsed.success) {
+          entries.push(parsed.data);
+        }
+      } catch {
+        // Skip malformed JSON lines
+      }
+    }
+
+    let filtered = entries;
+
+    if (filters?.session_id) {
+      filtered = filtered.filter((e) => e.session_id === filters.session_id);
+    }
+    if (filters?.event_type) {
+      filtered = filtered.filter((e) => e.event_type === filters.event_type);
+    }
+    if (filters?.limit && filters.limit > 0) {
+      filtered = filtered.slice(0, filters.limit);
+    }
+
+    return filtered;
+  } catch {
+    return [];
   }
 }
 
