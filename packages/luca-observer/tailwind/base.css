@@ -69,6 +69,25 @@ html.light {
   --color-event-context: #475569;
 }
 
+/**
+ * Dark mode color palette overrides.
+ *
+ * When `html.dark` is set, event tokens are independently configurable.
+ * Currently matches :root values; edit here to diverge for dark mode.
+ */
+html.dark {
+  --color-event-session: #8b5cf6;
+  --color-event-tool: #3b82f6;
+  --color-event-state: #22c55e;
+  --color-event-harness: #f59e0b;
+  --color-event-iteration: #06b6d4;
+  --color-event-convergence: #ec4899;
+  --color-event-tribunal: #f97316;
+  --color-event-memory: #a855f7;
+  --color-event-commit: #10b981;
+  --color-event-context: #64748b;
+}
+
 body {
   background: var(--color-background);
   color: var(--color-foreground);
