@@ -23,7 +23,7 @@ describe("Harness result persistence roundtrip", () => {
 
   test("harness-result.json written in snake_case is readable by observer", async () => {
     const { readHarnessResult } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     // Simulate what the harness runner writes (snake_case)
     const harnessOutput = {

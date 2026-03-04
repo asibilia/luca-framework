@@ -3,9 +3,9 @@ import { test, expect, describe } from "bun:test";
 describe("SSE event roundtrip", () => {
   test("insertEvent stores and broadcasts event", async () => {
     const { insertEvent, queryEvents } =
-      await import("../../../packages/luca-observer/src/lib/db");
+      await import("../../../packages/luca-observer/lib/db");
     const { broadcastEvent, addSSEClient, removeSSEClient } =
-      await import("../../../packages/luca-observer/src/lib/sse");
+      await import("../../../packages/luca-observer/lib/sse");
 
     // Track broadcast events
     const received: unknown[] = [];
@@ -50,9 +50,9 @@ describe("SSE event roundtrip", () => {
 
   test("broadcast silently handles disconnected clients", async () => {
     const { insertEvent } =
-      await import("../../../packages/luca-observer/src/lib/db");
+      await import("../../../packages/luca-observer/lib/db");
     const { broadcastEvent, addSSEClient } =
-      await import("../../../packages/luca-observer/src/lib/sse");
+      await import("../../../packages/luca-observer/lib/sse");
 
     // Create a controller that throws (simulating disconnected client)
     const badController = {

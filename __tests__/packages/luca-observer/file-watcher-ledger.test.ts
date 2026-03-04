@@ -27,14 +27,14 @@ describe("readLedgerEntries", () => {
   test("returns empty array when ledger file does not exist", async () => {
     // Import dynamically to avoid module resolution issues in monorepo
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
     const entries = await readLedgerEntries(tmpDir);
     expect(entries).toEqual([]);
   });
 
   test("parses valid JSONL entries", async () => {
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const validEntry = {
       previous_state: "idle",
@@ -60,7 +60,7 @@ describe("readLedgerEntries", () => {
 
   test("skips corrupted lines without throwing", async () => {
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const validEntry = {
       previous_state: "idle",
@@ -88,7 +88,7 @@ describe("readLedgerEntries", () => {
 
   test("filters by session_id", async () => {
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const entry1 = {
       previous_state: "idle",
@@ -119,7 +119,7 @@ describe("readLedgerEntries", () => {
 
   test("filters by event_type", async () => {
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const entry1 = {
       previous_state: "idle",
@@ -152,7 +152,7 @@ describe("readLedgerEntries", () => {
 
   test("applies tail filter before parsing", async () => {
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const lines: string[] = [];
     for (let i = 0; i < 10; i++) {
@@ -182,7 +182,7 @@ describe("readLedgerEntries", () => {
 
   test("applies limit filter", async () => {
     const { readLedgerEntries } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const lines: string[] = [];
     for (let i = 0; i < 10; i++) {

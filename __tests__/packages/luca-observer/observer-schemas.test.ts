@@ -4,7 +4,7 @@ describe("Observer Zod schemas", () => {
   describe("LedgerEntrySchema", () => {
     test("accepts valid ledger entry", async () => {
       const { LedgerEntrySchema } =
-        await import("../../../packages/luca-observer/src/lib/types");
+        await import("../../../packages/luca-observer/lib/types");
 
       const valid = {
         previous_state: "idle",
@@ -25,7 +25,7 @@ describe("Observer Zod schemas", () => {
 
     test("requires sequence_number", async () => {
       const { LedgerEntrySchema } =
-        await import("../../../packages/luca-observer/src/lib/types");
+        await import("../../../packages/luca-observer/lib/types");
 
       const missing = {
         previous_state: "idle",
@@ -39,7 +39,7 @@ describe("Observer Zod schemas", () => {
 
     test("applies defaults for optional fields", async () => {
       const { LedgerEntrySchema } =
-        await import("../../../packages/luca-observer/src/lib/types");
+        await import("../../../packages/luca-observer/lib/types");
 
       const minimal = {
         previous_state: "idle",
@@ -61,7 +61,7 @@ describe("Observer Zod schemas", () => {
   describe("HarnessResultSnapshotSchema", () => {
     test("accepts valid harness result", async () => {
       const { HarnessResultSnapshotSchema } =
-        await import("../../../packages/luca-observer/src/lib/types");
+        await import("../../../packages/luca-observer/lib/types");
 
       const valid = {
         status: "passed",
@@ -88,7 +88,7 @@ describe("Observer Zod schemas", () => {
 
     test("rejects invalid status value", async () => {
       const { HarnessResultSnapshotSchema } =
-        await import("../../../packages/luca-observer/src/lib/types");
+        await import("../../../packages/luca-observer/lib/types");
 
       const invalid = {
         status: "unknown",
@@ -101,7 +101,7 @@ describe("Observer Zod schemas", () => {
 
     test("validates nested check result structure", async () => {
       const { HarnessResultSnapshotSchema } =
-        await import("../../../packages/luca-observer/src/lib/types");
+        await import("../../../packages/luca-observer/lib/types");
 
       const withErrors = {
         status: "failed",

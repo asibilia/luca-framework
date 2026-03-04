@@ -23,14 +23,14 @@ describe("readHarnessResult", () => {
 
   test("returns null when harness-result.json does not exist", async () => {
     const { readHarnessResult } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
     const result = await readHarnessResult(tmpDir);
     expect(result).toBeNull();
   });
 
   test("parses valid harness result JSON", async () => {
     const { readHarnessResult } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const validResult = {
       status: "passed",
@@ -63,7 +63,7 @@ describe("readHarnessResult", () => {
 
   test("returns null for invalid JSON", async () => {
     const { readHarnessResult } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const resultPath = join(tmpDir, ".planning", "harness-result.json");
     writeFileSync(resultPath, "NOT VALID JSON {{{");
@@ -74,7 +74,7 @@ describe("readHarnessResult", () => {
 
   test("returns null for JSON with wrong shape", async () => {
     const { readHarnessResult } =
-      await import("../../../packages/luca-observer/src/lib/file-watcher");
+      await import("../../../packages/luca-observer/lib/file-watcher");
 
     const wrongShape = { foo: "bar", status: "unknown_value" };
 
