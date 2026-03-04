@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   async headers() {
@@ -24,21 +26,27 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              // 'unsafe-inline' and 'unsafe-eval' intentionally omitted:
-              // Next.js 13+ App Router does not require either for server
-              // components. Removing them blocks injected inline scripts and
-              // eval-based code, closing a HIGH-severity XSS vector.
-              "script-src 'self'",
-              // 'unsafe-inline' retained for style-src — required by Next.js
-              // CSS-in-JS at build time for style hydration.
-              "style-src 'self' 'unsafe-inline'",
-              "connect-src 'self'",
-              "img-src 'self' data:",
-              "font-src 'self'",
-              "frame-ancestors 'none'",
-            ].join("; "),
+            value: isDev
+              ? // Dev: allow eval and inline scripts for Next.js HMR/Fast Refresh
+                [
+                  "default-src 'self'",
+                  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+                  "style-src 'self' 'unsafe-inline'",
+                  "connect-src 'self'",
+                  "img-src 'self' data:",
+                  "font-src 'self'",
+                  "frame-ancestors 'none'",
+                ].join("; ")
+              : // Production: strict CSP — no eval or inline scripts
+                [
+                  "default-src 'self'",
+                  "script-src 'self'",
+                  "style-src 'self' 'unsafe-inline'",
+                  "connect-src 'self'",
+                  "img-src 'self' data:",
+                  "font-src 'self'",
+                  "frame-ancestors 'none'",
+                ].join("; "),
           },
         ],
       },

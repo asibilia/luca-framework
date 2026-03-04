@@ -199,20 +199,20 @@
 
 **Depends on:** Phase 110
 
-- [ ] Replace `process.cwd()` fallback with `resolveProjectDir()` in notes/route.ts POST handler
-- [ ] Extract `statusColors` map to shared location (convergence-chart + iteration-timeline)
-- [ ] Extract `formatTimestamp` utility (session-plan-overview + transition-log)
-- [ ] Extract `formatChars`/`formatSize` utility (context-usage-bar + working-sections)
-- [ ] Replace readMetrics parallel implementation with existing `readJsonSnapshot` helper
-- [ ] Add system preference dark mode detection in app/layout.tsx (replace hardcoded `className="dark"`)
-- [ ] Add dark mode CSS variants for `event-*` color tokens in globals.css
-- [ ] Make convergence-chart height responsive (replace hardcoded 300px)
-- [ ] Migrate 16 `color-mix` instances from `srgb` to `oklab` color space
-- [ ] Replace `text-[10px]` arbitrary values with design system scale
-- [ ] Add `font-mono` class to timestamp displays in transition-log
-- [ ] Replace inline `calc()` styles with Tailwind utilities in quality-zone
-- [ ] Add `type="button"` to 4 button elements missing the attribute
-- [ ] Add `open` command browser launch warning/confirmation
+- [x] Replace `process.cwd()` fallback with `resolveProjectDir()` in notes/route.ts POST handler
+- [x] Extract `statusColors` map to shared location (convergence-chart + iteration-timeline)
+- [x] Extract `formatTimestamp` utility (session-plan-overview + transition-log)
+- [x] Extract `formatChars`/`formatSize` utility (context-usage-bar + working-sections)
+- [x] Replace readMetrics parallel implementation with existing `readJsonSnapshot` helper
+- [x] Add system preference dark mode detection in app/layout.tsx (replace hardcoded `className="dark"`)
+- [x] Add dark mode CSS variants for `event-*` color tokens in globals.css
+- [x] Make convergence-chart height responsive (replace hardcoded 300px)
+- [x] Migrate 16 `color-mix` instances from `srgb` to `oklab` color space
+- [x] Replace `text-[10px]` arbitrary values with design system scale
+- [x] Add `font-mono` class to timestamp displays in transition-log
+- [x] Replace inline `calc()` styles with Tailwind utilities in quality-zone
+- [x] Add `type="button"` to 4 button elements missing the attribute
+- [x] Add `open` command browser launch warning/confirmation
 
 ---
 

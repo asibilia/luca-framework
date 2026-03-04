@@ -16,7 +16,7 @@ import { resolve } from "node:path";
  * @throws Error if the resolved path is outside cwd
  */
 export function resolveProjectDir(projectDir?: string): string {
-  const base = process.cwd();
+  const base = process.env.LUCA_PROJECT_DIR || process.cwd();
   if (!projectDir) return base;
 
   const resolved = resolve(base, projectDir);

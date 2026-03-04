@@ -1,34 +1,22 @@
 {
   "name": "@alecsibilia/luca-observer",
   "version": "0.1.0",
-  "type": "module",
   "bin": {
     "luca-observer": "./bin/luca-observer.js"
   },
-  "scripts": {
-    "dev": "next dev --port 3456",
-    "build": "next build",
-    "start": "next start --port 3456",
-    "css:build": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --minify",
-    "css:dev": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css",
-    "css:watch": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --watch",
-    "lint": "eslint app/ components/ hooks/ lib/ stores/",
-    "lint:fix": "eslint app/ components/ hooks/ lib/ stores/ --fix"
-  },
   "dependencies": {
+    "jotai": "^2",
+    "lodash": "^4.17.23",
     "next": "^15",
     "react": "^19",
     "react-dom": "^19",
-    "lodash": "^4.17.23",
-    "zod": "^3.23.8",
-    "jotai": "^2"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.23",
     "@eslint/js": "^9",
     "@next/eslint-plugin-next": "^15",
     "@tailwindcss/cli": "^4.2.1",
-    "tailwindcss": "^4",
+    "@types/lodash": "^4.17.23",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -37,7 +25,19 @@
     "eslint-plugin-prettier": "^5",
     "globals": "^17.4.0",
     "prettier": "^3",
+    "tailwindcss": "^4",
     "typescript": "^5",
     "typescript-eslint": "^8"
-  }
+  },
+  "scripts": {
+    "build": "next build",
+    "css:build": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --minify",
+    "css:dev": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css",
+    "css:watch": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --watch",
+    "dev": "next dev --port 3456",
+    "lint": "eslint app/ components/ hooks/ lib/ stores/",
+    "lint:fix": "eslint app/ components/ hooks/ lib/ stores/ --fix",
+    "start": "next start --port 3456"
+  },
+  "type": "module"
 }

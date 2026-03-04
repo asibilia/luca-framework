@@ -54,6 +54,23 @@ export function useEventStream(maxEvents = 200) {
   }, [maxEvents]);
 
   useEffect(() => {
+    // Load historical events from the in-memory store before connecting SSE
+    fetch(`/api/events-query?limit=${maxEvents}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.events) return;
+        const parsed = data.events
+          .map((e: unknown) => StoredEventSchema.safeParse(e))
+          .filter((r: { success: boolean }) => r.success)
+          .map((r: { data: StoredEvent }) => r.data);
+        if (parsed.length > 0) {
+          setEvents(parsed);
+        }
+      })
+      .catch(() => {
+        // Non-critical — SSE will deliver new events regardless
+      });
+
     connect();
 
     return () => {
@@ -62,6 +79,7 @@ export function useEventStream(maxEvents = 200) {
         clearTimeout(retryTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connect]);
 
   const clear = useCallback(() => {

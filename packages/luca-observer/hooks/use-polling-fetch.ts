@@ -43,6 +43,12 @@ export function usePollingFetch<T>(
       if (parsed.success) {
         setData(parsed.data);
         setError(null);
+      } else {
+        console.warn(
+          `[usePollingFetch] Schema validation failed for ${url}:`,
+          parsed.error.issues,
+        );
+        setError(`Schema validation failed for ${url}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
