@@ -13,6 +13,11 @@ export type {
   CheckResult,
   HarnessResult,
   OutputParser,
+  MiddlewareContext,
+  CheckMiddlewareConfig,
+  MiddlewarePipelineConfig,
+  MiddlewareResult,
+  CheckMiddleware,
 } from "./__schemas/harness.schemas";
 export {
   CheckConfigSchema,
@@ -21,4 +26,8 @@ export {
   CheckResultSchema,
   HarnessResultSchema,
   DEFAULT_HARNESS_CONFIG,
+  MiddlewareContextSchema,
+  CheckMiddlewareConfigSchema,
+  MiddlewarePipelineConfigSchema,
+  MiddlewareResultSchema,
 } from "./__schemas/harness.schemas";
