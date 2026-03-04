@@ -30,17 +30,24 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  INPUT="{}"
+fi
 
 # Use CLAUDE_PROJECT_DIR env var (consistent with other hooks)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 
 # Extract session end reason (for logging)
 END_REASON=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  process.stdout.write(data.reason || 'unknown');
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    process.stdout.write(data.reason || 'unknown');
+  } catch { process.stdout.write('unknown'); }
+" 2>/dev/null || echo "unknown")
 
 # ─── SEC-02: Sanitize END_REASON ───────────────────────────────────────
 # Allow only alphanumeric, spaces, hyphens, underscores, and periods.

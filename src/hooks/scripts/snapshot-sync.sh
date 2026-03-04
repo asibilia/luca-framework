@@ -38,8 +38,8 @@ run_bridge() {
   fi
 }
 
-# Read stdin JSON (standard hook pattern)
-INPUT=$(cat)
+# Read stdin JSON (standard hook pattern — consumed but not parsed)
+INPUT=$(cat || true)
 
 # Throttle: skip if last sync was recent
 THROTTLE_FILE="/tmp/.luca-snapshot-sync-ts"

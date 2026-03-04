@@ -31,16 +31,23 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  exit 0
+fi
 
 # Extract file path using bun -e (no jq dependency)
 # Claude Code: tool_input.file_path, Cursor: file_path (top-level)
 FILE_PATH=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const filePath = data.tool_input?.file_path ?? data.file_path;
-  if (filePath) process.stdout.write(filePath);
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const filePath = data.tool_input?.file_path ?? data.file_path;
+    if (filePath) process.stdout.write(filePath);
+  } catch { /* malformed JSON — skip formatting */ }
+" 2>/dev/null || true)
 
 # Exit early if no file path extracted
 if [ -z "$FILE_PATH" ]; then

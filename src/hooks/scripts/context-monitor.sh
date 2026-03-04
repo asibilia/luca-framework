@@ -44,16 +44,23 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  INPUT="{}"
+fi
 
 # Check stop_hook_active (Claude) or loop_count (Cursor) to prevent infinite loops
 # If this Stop was triggered by a previous Stop hook, exit immediately
 IS_ACTIVE=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const active = data.stop_hook_active || (data.loop_count > 0) || false;
-  process.stdout.write(String(active));
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const active = data.stop_hook_active || (data.loop_count > 0) || false;
+    process.stdout.write(String(active));
+  } catch { process.stdout.write('false'); }
+" 2>/dev/null || echo "false")
 
 if [ "$IS_ACTIVE" = "true" ]; then
   exit 0
@@ -61,10 +68,12 @@ fi
 
 # Extract transcript path
 TRANSCRIPT_PATH=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const tp = data.transcript_path;
-  if (tp) process.stdout.write(tp);
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const tp = data.transcript_path;
+    if (tp) process.stdout.write(tp);
+  } catch { /* malformed JSON — no transcript path */ }
+" 2>/dev/null || true)
 
 # ─── SEC-01: Validate transcript path ──────────────────────────────────
 # Reject relative paths and paths outside $HOME to prevent
