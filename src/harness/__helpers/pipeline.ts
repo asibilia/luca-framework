@@ -95,7 +95,7 @@ export function buildMiddlewareResult(
   error?: string,
 ): MiddlewareResult {
   const pipelineDuration = performance.now() - pipelineStartTime;
-  return MiddlewareResultSchema.parse({
+  const resultParse = MiddlewareResultSchema.safeParse({
     pipelineDuration,
     middlewareTiming:
       ctx.metadata?.timing_duration_ms != null
@@ -105,4 +105,13 @@ export function buildMiddlewareResult(
     pipelineStatus: error ? "error" : "completed",
     pipelineError: error,
   });
+  // If schema validation fails (shouldn't happen for computed data), return safe defaults
+  return resultParse.success
+    ? resultParse.data
+    : {
+        pipelineDuration: 0,
+        middlewareTiming: {},
+        metadata: {},
+        pipelineStatus: "error" as const,
+      };
 }

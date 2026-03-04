@@ -178,11 +178,21 @@ async function runCheckWithMiddleware(
   const pipelineStartTime = performance.now();
 
   try {
-    const ctxInput = MiddlewareContextSchema.parse({
+    const ctxResult = MiddlewareContextSchema.safeParse({
       check,
       projectDir,
       metadata: {},
     });
+    if (!ctxResult.success) {
+      // Fall back to direct execution — middleware context is computed, not external input,
+      // but safeParse prevents unexpected throws
+      console.warn(
+        "[harness] Failed to build middleware context:",
+        ctxResult.error.message,
+      );
+      return runCheck(check, projectDir);
+    }
+    const ctxInput = ctxResult.data;
 
     const pipeline = composePipeline(middlewares);
 
