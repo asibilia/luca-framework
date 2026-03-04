@@ -10,6 +10,18 @@ import type { StoredEvent, ObserverEvent, SessionRecord } from "./types";
  * HMR-safe: uses globalThis to survive Next.js hot module replacement.
  */
 
+/**
+ * Maximum number of events retained in the in-memory store.
+ *
+ * Oldest events are evicted once the cap is reached to prevent
+ * unbounded memory growth. Configurable via LUCA_OBSERVER_MAX_EVENTS
+ * env var (minimum floor: 100).
+ */
+export const MAX_EVENTS: number = Math.max(
+  100,
+  Number(process.env.LUCA_OBSERVER_MAX_EVENTS) || 10_000,
+);
+
 interface EventStore {
   events: StoredEvent[];
   sessions: Map<string, SessionRecord>;
@@ -44,6 +56,11 @@ export function insertEvent(event: ObserverEvent): StoredEvent {
     timestamp_ms: Date.now(),
   };
   store.events.push(stored);
+
+  // Evict oldest events when cap is exceeded
+  while (store.events.length > MAX_EVENTS) {
+    store.events.shift();
+  }
 
   // Update session event count
   if (event.session_id) {

@@ -1,4 +1,4 @@
-import { addSSEClient, removeSSEClient } from "~/lib/sse";
+import { addSSEClient, removeSSEClient, canAcceptSSEClient } from "~/lib/sse";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,9 @@ export const dynamic = "force-dynamic";
  * An initial heartbeat comment (`: heartbeat`) is sent immediately
  * upon connection to confirm the stream is live. Disconnected clients
  * are automatically cleaned up when their controller throws on enqueue.
+ *
+ * Returns 503 Service Unavailable with Retry-After: 30 when the
+ * maximum number of concurrent SSE connections has been reached.
  *
  * Response headers:
  *   Content-Type: text/event-stream
@@ -31,6 +34,15 @@ export const dynamic = "force-dynamic";
  * ```
  */
 export async function GET() {
+  if (!canAcceptSSEClient()) {
+    return new Response("SSE connection limit reached", {
+      status: 503,
+      headers: {
+        "Retry-After": "30",
+      },
+    });
+  }
+
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       addSSEClient(controller);
