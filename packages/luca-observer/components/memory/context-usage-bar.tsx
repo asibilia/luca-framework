@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 
+import { formatChars } from "~/lib/format";
+
 /**
  * Segment definition for the context usage bar.
  */
@@ -35,16 +37,6 @@ function zoneColor(percentage: number): string {
   if (percentage < 50) return "info";
   if (percentage < 70) return "warning";
   return "destructive";
-}
-
-/**
- * Format character count for compact display.
- */
-function formatChars(chars: number): string {
-  if (chars === 0) return "0";
-  if (chars < 1000) return chars.toString();
-  if (chars < 100_000) return `${(chars / 1000).toFixed(1)}k`;
-  return `${(chars / 1000).toFixed(0)}k`;
 }
 
 /**
@@ -126,7 +118,7 @@ export function ContextUsageBar({
             className="rounded-sm px-1.5 py-0.5 font-mono text-xs font-medium"
             style={{
               color: `var(--color-${zone})`,
-              backgroundColor: `color-mix(in srgb, var(--color-${zone}) 15%, transparent)`,
+              backgroundColor: `color-mix(in oklab, var(--color-${zone}) 15%, transparent)`,
             }}
           >
             {totalPercentage.toFixed(1)}%

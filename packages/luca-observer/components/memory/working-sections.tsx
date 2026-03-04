@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 
+import { formatSize } from "~/lib/format";
+
 /**
  * A parsed section from WORKING.md.
  */
@@ -47,15 +49,6 @@ function parseSections(content: string): WorkingSection[] {
   flush();
 
   return sections;
-}
-
-/**
- * Format byte/character count for display.
- */
-function formatSize(chars: number): string {
-  if (chars === 0) return "0 chars";
-  if (chars < 1000) return `${chars} chars`;
-  return `${(chars / 1000).toFixed(1)}k chars`;
 }
 
 /**
@@ -139,8 +132,8 @@ function SectionPanel({ section }: { section: WorkingSection }) {
                 ? "var(--color-success)"
                 : "var(--color-muted-foreground)",
               backgroundColor: section.hasContent
-                ? "color-mix(in srgb, var(--color-success) 15%, transparent)"
-                : "color-mix(in srgb, var(--color-muted-foreground) 10%, transparent)",
+                ? "color-mix(in oklab, var(--color-success) 15%, transparent)"
+                : "color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)",
             }}
           >
             {section.hasContent ? "Active" : "Empty"}
