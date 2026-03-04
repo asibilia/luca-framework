@@ -24,6 +24,7 @@ export function JsonViewer({
     <div className="overflow-hidden rounded border border-border">
       {isLong && (
         <button
+          type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="w-full border-b border-border bg-muted px-2 py-1 text-left font-mono text-xs text-muted-foreground hover:text-foreground"
         >

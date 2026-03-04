@@ -24,6 +24,7 @@ export function RecentEvents({
         title="Live Event Feed"
         actions={
           <button
+            type="button"
             onClick={onClear}
             className="rounded border border-border px-2 py-1 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           >

@@ -19,6 +19,7 @@ export function Header() {
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-2 md:px-4">
       <div className="flex items-center gap-2 md:gap-3">
         <button
+          type="button"
           onClick={() => setIsOpen(!isOpen)}
           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Toggle sidebar"
@@ -29,6 +30,7 @@ export function Header() {
       </div>
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={toggleTheme}
           className="rounded p-1 font-mono text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
