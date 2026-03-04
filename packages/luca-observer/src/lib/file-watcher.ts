@@ -5,11 +5,17 @@ import type {
   WorkflowSnapshot,
   LedgerEntry,
   HarnessResultSnapshot,
+  IterationRecordSnapshot,
+  SessionPlanSnapshot,
+  TribunalResultSnapshot,
 } from "./types";
 import {
   WorkflowSnapshotSchema,
   LedgerEntrySchema,
   HarnessResultSnapshotSchema,
+  IterationRecordSnapshotSchema,
+  SessionPlanSnapshotSchema,
+  TribunalResultSnapshotSchema,
 } from "./types";
 
 /**
@@ -43,7 +49,7 @@ function resolveProjectDir(projectDir?: string): string {
  * @returns Parsed workflow snapshot
  */
 export async function readWorkflowState(
-  projectDir?: string
+  projectDir?: string,
 ): Promise<WorkflowSnapshot> {
   const dir = resolveProjectDir(projectDir);
   const statePath = join(dir, ".planning", "STATE.md");
@@ -86,7 +92,7 @@ export async function readMemoryFiles(projectDir?: string): Promise<{
  * @returns Parsed metrics JSON or empty object
  */
 export async function readMetrics(
-  projectDir?: string
+  projectDir?: string,
 ): Promise<Record<string, unknown>> {
   const dir = resolveProjectDir(projectDir);
   const metricsPath = join(dir, ".planning", "metrics.json");
@@ -128,7 +134,7 @@ export async function readLedgerEntries(
     event_type?: string;
     tail?: number;
     limit?: number;
-  }
+  },
 ): Promise<LedgerEntry[]> {
   const dir = resolveProjectDir(projectDir);
   const ledgerPath = join(dir, ".planning", "session-ledger.jsonl");
@@ -189,7 +195,7 @@ export async function readLedgerEntries(
  * ```
  */
 export async function readHarnessResult(
-  projectDir?: string
+  projectDir?: string,
 ): Promise<HarnessResultSnapshot | null> {
   const dir = resolveProjectDir(projectDir);
   const resultPath = join(dir, ".planning", "harness-result.json");
@@ -201,6 +207,112 @@ export async function readHarnessResult(
       return parsed.data;
     }
     return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read iteration checkpoint files from .planning/checkpoints/.
+ *
+ * Reads all JSON files in the checkpoints directory, validates each
+ * with safeParse, and returns them sorted by iteration number.
+ *
+ * @param projectDir - The root project directory (defaults to cwd)
+ * @returns Array of validated IterationRecordSnapshot objects
+ *
+ * @example
+ * ```typescript
+ * const history = await readIterationHistory();
+ * console.log(`${history.length} iteration checkpoints found`);
+ * ```
+ */
+export async function readIterationHistory(
+  projectDir?: string,
+): Promise<IterationRecordSnapshot[]> {
+  const dir = resolveProjectDir(projectDir);
+  const checkpointsDir = join(dir, ".planning", "checkpoints");
+
+  try {
+    const { readdir } = await import("node:fs/promises");
+    const files = await readdir(checkpointsDir);
+    const jsonFiles = files.filter((f) => f.endsWith(".json"));
+
+    const records: IterationRecordSnapshot[] = [];
+    for (const file of jsonFiles) {
+      try {
+        const content = await readFile(join(checkpointsDir, file), "utf-8");
+        const parsed = IterationRecordSnapshotSchema.safeParse(
+          JSON.parse(content),
+        );
+        if (parsed.success) {
+          records.push(parsed.data);
+        }
+      } catch {
+        // Skip malformed checkpoint files
+      }
+    }
+
+    // Sort by iteration number ascending
+    return records.sort((a, b) => a.iteration - b.iteration);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Read the current session plan from .planning/session-plan.json.
+ *
+ * @param projectDir - The root project directory (defaults to cwd)
+ * @returns Parsed SessionPlanSnapshot or null if file does not exist
+ *
+ * @example
+ * ```typescript
+ * const plan = await readSessionPlan();
+ * if (plan) {
+ *   console.log(`Plan has ${plan.items.length} items`);
+ * }
+ * ```
+ */
+export async function readSessionPlan(
+  projectDir?: string,
+): Promise<SessionPlanSnapshot | null> {
+  const dir = resolveProjectDir(projectDir);
+  const planPath = join(dir, ".planning", "session-plan.json");
+
+  try {
+    const content = await readFile(planPath, "utf-8");
+    const parsed = SessionPlanSnapshotSchema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the latest tribunal result from .planning/tribunal-result.json.
+ *
+ * @param projectDir - The root project directory (defaults to cwd)
+ * @returns Parsed TribunalResultSnapshot or null if file does not exist
+ *
+ * @example
+ * ```typescript
+ * const result = await readTribunalResult();
+ * if (result) {
+ *   console.log(`Tribunal: ${result.total_findings} findings`);
+ * }
+ * ```
+ */
+export async function readTribunalResult(
+  projectDir?: string,
+): Promise<TribunalResultSnapshot | null> {
+  const dir = resolveProjectDir(projectDir);
+  const resultPath = join(dir, ".planning", "tribunal-result.json");
+
+  try {
+    const content = await readFile(resultPath, "utf-8");
+    const parsed = TribunalResultSnapshotSchema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
