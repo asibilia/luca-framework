@@ -3,122 +3,130 @@
  *
  * Maps hook names to metadata objects. The build scripts use this
  * metadata to copy shell scripts and generate platform-specific configs.
+ *
+ * Two registries are maintained:
+ * - canonicalHookRegistry: Platform-independent definitions (source of truth)
+ * - hookRegistry: Legacy format with platform-specific fields (backward compat)
+ *
+ * The legacy hookRegistry delegates to canonicalHookRegistry via canonicalToLegacy().
  */
 
+import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { HookDefinition } from "../__schemas/hook.schemas";
+import { canonicalToLegacy } from "./platform-adapters";
 
-export const hookRegistry: Record<string, () => HookDefinition> = {
+// ─── Canonical hook registry (platform-independent, source of truth) ────────
+
+/**
+ * Canonical hook registry with platform-independent definitions.
+ *
+ * Each hook is defined once using semantic event names and unified
+ * filter fields. Platform adapters derive Claude/Cursor/Pi-specific
+ * configs from these definitions.
+ */
+export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   "post-edit-format": () => ({
-    event: "PostToolUse",
-    cursorEvent: "afterFileEdit",
-    piEvent: "tool_execution_end",
-    matcher: "Edit|Write",
-    cursorMatcher: undefined,
-    piMatcher: ["edit", "write"],
+    event: "post_tool_use",
+    tool_filter: "Edit|Write",
     script: "post-edit-format.sh",
     timeout: 10,
     async: false,
-    statusMessage: "Formatting...",
+    status_message: "Formatting...",
   }),
   "post-edit-typecheck": () => ({
-    event: "PostToolUse",
-    cursorEvent: "afterFileEdit",
-    piEvent: "tool_execution_end",
-    matcher: "Edit|Write",
-    cursorMatcher: undefined,
-    piMatcher: ["edit", "write"],
+    event: "post_tool_use",
+    tool_filter: "Edit|Write",
     script: "post-edit-typecheck.sh",
     timeout: 30,
     async: true,
-    statusMessage: "Type-checking...",
+    status_message: "Type-checking...",
   }),
   "pre-commit-gate": () => ({
-    event: "PreToolUse",
-    cursorEvent: "beforeShellExecution",
-    piEvent: "tool_call",
-    matcher: "Bash",
-    cursorMatcher:
+    event: "pre_tool_use",
+    tool_filter: "Bash",
+    command_filter:
       "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
-    piMatcher: ["bash"],
     script: "pre-commit-gate.sh",
     timeout: 120,
     async: false,
-    statusMessage: "Running pre-commit checks...",
+    status_message: "Running pre-commit checks...",
   }),
   "pre-commit-drift-check": () => ({
-    event: "PreToolUse",
-    cursorEvent: "beforeShellExecution",
-    piEvent: "tool_call",
-    matcher: "Bash",
-    cursorMatcher:
+    event: "pre_tool_use",
+    tool_filter: "Bash",
+    command_filter:
       "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
-    piMatcher: ["bash"],
     script: "pre-commit-drift-check.sh",
     timeout: 60,
     async: false,
-    statusMessage: "Checking output drift...",
+    status_message: "Checking output drift...",
   }),
   "context-check-throttled": () => ({
-    event: "PostToolUse",
-    cursorEvent: "afterFileEdit",
-    piEvent: "tool_execution_end",
-    matcher: undefined,
-    cursorMatcher: undefined,
-    piMatcher: undefined,
+    event: "post_tool_use",
     script: "context-check-throttled.sh",
     timeout: 10,
     async: true,
-    statusMessage: "Checking context...",
+    status_message: "Checking context...",
   }),
   "snapshot-sync": () => ({
-    event: "PostToolUse",
-    cursorEvent: "afterFileEdit",
-    piEvent: "tool_execution_end",
-    matcher: undefined,
-    cursorMatcher: undefined,
-    piMatcher: undefined,
+    event: "post_tool_use",
     script: "snapshot-sync.sh",
     timeout: 10,
     async: true,
-    statusMessage: "Syncing STATE.md...",
+    status_message: "Syncing STATE.md...",
   }),
   "context-monitor": () => ({
-    event: "Stop",
-    cursorEvent: "stop",
-    piEvent: "session_shutdown",
-    matcher: undefined,
-    cursorMatcher: undefined,
-    piMatcher: undefined,
+    event: "stop",
     script: "context-monitor.sh",
     timeout: 5,
     async: false,
-    statusMessage: "Checking context usage...",
+    status_message: "Checking context usage...",
   }),
   "session-persist": () => ({
-    event: "SessionEnd",
-    cursorEvent: "sessionEnd",
-    piEvent: "session_shutdown",
-    matcher: undefined,
-    cursorMatcher: undefined,
-    piMatcher: undefined,
+    event: "session_end",
     script: "session-persist.sh",
     timeout: 10,
     async: false,
-    statusMessage: "Saving session state...",
+    status_message: "Saving session state...",
   }),
   "session-start": () => ({
-    event: "SessionStart",
-    cursorEvent: "sessionStart",
-    piEvent: "session_start",
-    matcher: undefined,
-    cursorMatcher: undefined,
-    piMatcher: undefined,
+    event: "session_start",
     script: "session-start.sh",
     timeout: 15,
     async: false,
-    statusMessage: "Initializing Luca...",
+    status_message: "Initializing Luca...",
   }),
 };
+
+/**
+ * Resolve all canonical hooks into a flat Record<string, CanonicalHook>.
+ * Convenience helper for consumers that need the resolved canonical registry.
+ */
+export function resolveCanonicalRegistry(): Record<string, CanonicalHook> {
+  return Object.fromEntries(
+    Object.entries(canonicalHookRegistry).map(([name, thunk]) => [
+      name,
+      thunk(),
+    ]),
+  );
+}
+
+// ─── Legacy hook registry (backward compatible) ─────────────────────────────
+
+/**
+ * Legacy hook registry with platform-specific fields.
+ *
+ * Delegates to canonicalHookRegistry via canonicalToLegacy() for
+ * backward compatibility. Consumers that depend on HookDefinition
+ * format continue to work unchanged.
+ */
+export const hookRegistry: Record<string, () => HookDefinition> =
+  Object.fromEntries(
+    Object.entries(canonicalHookRegistry).map(([name, thunk]) => [
+      name,
+      () => canonicalToLegacy(thunk()),
+    ]),
+  );
 
 /**
  * Resolve all hookRegistry thunks into a flat Record<string, HookDefinition>.
