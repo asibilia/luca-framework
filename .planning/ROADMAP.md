@@ -2,26 +2,91 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v2.7.0 — Observability & Verification Infrastructure
+
+---
+
+## v2.7.0 — Observability & Verification Infrastructure
+
+**Theme:** Make Luca's internal operations visible and verifiable. The luca-observer web dashboard is the centerpiece, supported by event infrastructure (ledger), verification pipeline (middleware), hook canonicalization, and DX polish.
+
+**Included Todos:** #25, #6, #24, #9, #20
+
+### Phase 97 — Test Infrastructure & Event Foundation
+
+**Goal:** Establish test infrastructure for observer package and build the event ledger that feeds dashboard data.
+
+**Depends on:** None
+
+- [ ] Observer test infrastructure: package-local `__tests__/`, bun:test config, mock patterns
+- [ ] Observer scaffolding cleanup: gitignore `.next/`, fix `base.css`, remove unused deps, clean empty `machines/` dir
+- [ ] Tests for `observer-emitter.ts` in luca-framework
+- [ ] Append-only session ledger (`ledger.ts`) in state domain extending `bridge.ts` (#6)
+- [ ] Ledger schema + bridge CLI commands (read-ledger, filter, tail)
+
+### Phase 98 — Verification Pipeline
+
+**Goal:** Build harness middleware so observer's verification pages have real data to display.
+
+**Depends on:** Phase 97
+
+- [ ] CheckMiddlewareSchema in harness schemas (#24)
+- [ ] Middleware pipeline in harness runner (workspace-scoping, output-capture, timing)
+- [ ] Integration with existing harness runner
+- [ ] Middleware tests (pipeline ordering, error handling, empty pipeline)
+
+### Phase 99 — Observer Foundation MVP
+
+**Goal:** Complete core observer pages with real data from ledger + harness middleware.
+
+**Depends on:** Phase 98
+
+- [ ] Schema bridge connecting observer to luca-framework state (#25)
+- [ ] Dashboard overview page (real data, not stubs)
+- [ ] Workflow state machine page (state visualization, transitions)
+- [ ] Harness/verification results page
+- [ ] SSE event stream integration tests
+
+### Phase 100 — Observer Deep Pages & Hook Portability
+
+**Goal:** Complete remaining observer pages and canonicalize hook format.
+
+**Depends on:** Phase 99
+
+- [ ] Iterations & convergence page (#25)
+- [ ] Planning (WSJF) page (#25)
+- [ ] Memory system page (#25)
+- [ ] Tribunal & debate page (#25)
+- [ ] Agent activity page (#25)
+- [ ] Canonical hook format with platform adapters (claude, cursor, pi) (#9)
+- [ ] Hook portability regression tests across all 3 platforms
+
+### Phase 101 — Polish, DX & Finalization
+
+**Goal:** Polish observer UI, add interactive tour, finalize all packages.
+
+**Depends on:** Phase 100
+
+- [ ] Observer UI polish: loading states, error boundaries, responsive layout, dark mode (#25)
+- [ ] Post-init interactive tour with @clack/prompts (#20)
+- [ ] End-to-end integration test: hooks fire -> ledger records -> observer displays
+- [ ] Hook portability finalization and drift check (#9)
+- [ ] Documentation for observer deployment
 
 ---
 
 ## Backlog (Future)
 
-### v2.7.0 — Adaptive Learning & Ecosystem
+### v2.8.0 — Adaptive Learning & Ecosystem
 
 - Cross-session procedure replay engine (#12)
 - Adaptive complexity self-tuning (#13)
 - Reflective meta-cognition for plan quality (#15)
-- Append-only session ledger / DAG (#6)
-- Hook portability abstraction layer (#9)
 - Portable cognitive profiles / cross-project memory (#14)
 - Cross-agent interop scanner (#16)
 - Plugin marketplace with community registry (#17)
 - Semantic memory embeddings with vector recall (#18)
-- Post-init interactive tour (#20)
 - Selective skill scaffolding (#23)
-- Harness tool middleware for verification (#24)
 
 ---
 
@@ -54,4 +119,4 @@
 
 ---
 
-_Roadmap updated: 2026-03-03 (v2.6.2 archived)_
+_Roadmap updated: 2026-03-04 (v2.7.0 milestone started)_
