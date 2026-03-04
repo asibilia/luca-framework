@@ -11,6 +11,7 @@ import { z } from "zod";
 import { requireApiKey } from "~/lib/auth";
 import { insertEvent } from "~/lib/db";
 import { resolveProjectDir } from "~/lib/resolve-project-dir";
+import { sanitizeZodIssues } from "~/lib/sanitize-zod";
 import { broadcastEvent } from "~/lib/sse";
 
 export const dynamic = "force-dynamic";
@@ -193,7 +194,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "invalid_payload",
-          details: parseResult.error.issues,
+          details: sanitizeZodIssues(parseResult.error.issues),
         },
         { status: 400 },
       );

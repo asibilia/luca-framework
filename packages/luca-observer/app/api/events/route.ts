@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireApiKey } from "~/lib/auth";
 import { insertEvent } from "~/lib/db";
+import { sanitizeZodIssues } from "~/lib/sanitize-zod";
 import { broadcastEvent } from "~/lib/sse";
 import { ObserverEventSchema } from "~/lib/types";
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "invalid_payload",
-          details: parseResult.error.issues,
+          details: sanitizeZodIssues(parseResult.error.issues),
         },
         { status: 400 },
       );

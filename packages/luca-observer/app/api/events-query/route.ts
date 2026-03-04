@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireApiKey } from "~/lib/auth";
 import { queryEvents, getEventCount } from "~/lib/db";
+import { sanitizeZodIssues } from "~/lib/sanitize-zod";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error: "invalid_query_params",
-        details: parseResult.error.issues,
+        details: sanitizeZodIssues(parseResult.error.issues),
       },
       { status: 400 },
     );
