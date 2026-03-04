@@ -18,11 +18,11 @@
 
 **Depends on:** None
 
-- [ ] Observer test infrastructure: package-local `__tests__/`, bun:test config, mock patterns
-- [ ] Observer scaffolding cleanup: gitignore `.next/`, fix `base.css`, remove unused deps, clean empty `machines/` dir
-- [ ] Tests for `observer-emitter.ts` in luca-framework
-- [ ] Append-only session ledger (`ledger.ts`) in state domain extending `bridge.ts` (#6)
-- [ ] Ledger schema + bridge CLI commands (read-ledger, filter, tail)
+- [x] Observer test infrastructure: package-local `__tests__/`, bun:test config, mock patterns
+- [x] Observer scaffolding cleanup: gitignore `.next/`, fix `base.css`, remove unused deps, clean empty `machines/` dir
+- [x] Tests for `observer-emitter.ts` in luca-framework
+- [x] Append-only session ledger (`ledger.ts`) in state domain extending `bridge.ts` (#6)
+- [x] Ledger schema + bridge CLI commands (read-ledger, filter, tail)
 
 ### Phase 98 — Verification Pipeline
 
