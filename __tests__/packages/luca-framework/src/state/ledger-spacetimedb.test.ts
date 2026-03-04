@@ -220,17 +220,13 @@ describe("readLedger (SpacetimeDB path)", () => {
     expect(entries[1]!.sequence_number).toBe(4);
   });
 
-  test("escapes single quotes in filter values", async () => {
-    mockSpacetimeDB([]);
-
-    await readLedger({ session_id: "it's a test" });
-
-    const sqlCall = fetchCalls.find((c) =>
-      c.url.includes("/v1/database/luca-observer/sql"),
+  test("rejects session_id containing single quotes (SQL injection prevention)", async () => {
+    // The implementation uses validate-and-reject (not escape) for session_id.
+    // SAFE_SESSION_ID_RE only allows alphanumeric, hyphens, and underscores.
+    // Values with apostrophes are rejected before any SQL is constructed.
+    await expect(readLedger({ session_id: "it's a test" })).rejects.toThrow(
+      "Invalid session_id format",
     );
-    // v2.0: body is raw SQL string, not JSON
-    const body = sqlCall!.init?.body as string;
-    expect(body).toContain("it''s a test");
   });
 
   test("falls back to JSONL when SpacetimeDB unavailable", async () => {
