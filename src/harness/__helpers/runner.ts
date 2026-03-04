@@ -230,7 +230,7 @@ export async function runHarness(
     ? "passed"
     : "failed";
 
-  return {
+  const result: HarnessResult = {
     status: overallStatus,
     checks: results,
     totalErrors,
@@ -238,6 +238,32 @@ export async function runHarness(
     duration: Date.now() - startTime,
     timestamp: new Date().toISOString(),
   };
+
+  // Persist result for observer consumption
+  try {
+    const resultPath = join(projectDir, ".planning", "harness-result.json");
+    const snakeCaseResult = {
+      status: result.status,
+      checks: result.checks.map((c) => ({
+        name: c.name,
+        status: c.status,
+        exit_code: c.exitCode,
+        errors: c.errors,
+        warnings: c.warnings,
+        raw_output: c.rawOutput,
+        duration: c.duration,
+      })),
+      total_errors: result.totalErrors,
+      total_warnings: result.totalWarnings,
+      duration: result.duration,
+      timestamp: result.timestamp,
+    };
+    await Bun.write(resultPath, JSON.stringify(snakeCaseResult, null, 2));
+  } catch {
+    // Best-effort persistence -- do not fail the harness run
+  }
+
+  return result;
 }
 
 // CLI entry point
