@@ -182,6 +182,7 @@ export async function appendLedgerEntry(
     result: entry.current_state,
     timestamp: Date.now(),
     detailsJson: JSON.stringify(entry),
+    sequenceNumber: entry.sequence_number,
   });
 
   // Backup: append to local JSONL file

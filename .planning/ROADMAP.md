@@ -230,9 +230,9 @@
 
 **Todos:** #30, #32
 
-- [ ] Migrate notes page from deleted `/api/notes` to SpacetimeDB hooks (`useNotes()` + `create_note` reducer) (#30)
-- [ ] Replace "SSE Connected" header with actual SpacetimeDB connection status indicator (green/yellow/red) (#32)
-- [ ] Update stale code comments referencing SSE/polling endpoints
+- [x] Migrate notes page from deleted `/api/notes` to SpacetimeDB hooks (`useNotes()` + `create_note` reducer) (#30)
+- [x] Replace "SSE Connected" header with actual SpacetimeDB connection status indicator (green/yellow/red) (#32)
+- [x] Update stale code comments referencing SSE/polling endpoints
 
 ### Phase 113 — Framework Data Safety Hardening
 
@@ -242,10 +242,10 @@
 
 **Todos:** #31, #33
 
-- [ ] Add error logging + optional retry to observer-emitter reducer calls (replace silent `.catch(() => {})`) (#31)
-- [ ] Add `LUCA_DEBUG=true` env var for verbose SpacetimeDB fallback logging across bridge reads (#31)
-- [ ] Replace manual SQL escaping in ledger.ts with strict input validation (UUID format, allowlists, ISO8601) (#33)
-- [ ] Add tests for malicious SQL input scenarios (#33)
+- [x] Add error logging + optional retry to observer-emitter reducer calls (replace silent `.catch(() => {})`) (#31)
+- [x] Add `LUCA_DEBUG=true` env var for verbose SpacetimeDB fallback logging across bridge reads (#31)
+- [x] Replace manual SQL escaping in ledger.ts with strict input validation (UUID format, allowlists, ISO8601) (#33)
+- [x] Add tests for malicious SQL input scenarios (#33)
 
 ---
 

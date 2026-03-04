@@ -1,36 +1,18 @@
 {
-  "status": "failed",
+  "status": "passed",
   "checks": [
     {
-      "name": "test",
-      "status": "timeout",
-      "exit_code": -1,
-      "errors": [],
-      "warnings": [],
-      "raw_output": "Command timed out after 120s",
-      "duration": 120000
-    },
-    {
-      "name": "typecheck",
+      "name": "echo-all-disabled",
       "status": "passed",
       "exit_code": 0,
       "errors": [],
       "warnings": [],
-      "raw_output": "",
-      "duration": 3462
-    },
-    {
-      "name": "build",
-      "status": "passed",
-      "exit_code": 0,
-      "errors": [],
-      "warnings": [],
-      "raw_output": "No drift detected. All outputs match source.\nActive profiles: typescript\n\n$ bun run ./scripts/check-drift.ts\n",
-      "duration": 177
+      "raw_output": "all disabled\n",
+      "duration": 4
     }
   ],
   "total_errors": 0,
   "total_warnings": 0,
-  "duration": 123641,
-  "timestamp": "2026-03-04T23:01:33.308Z"
+  "duration": 4,
+  "timestamp": "2026-03-04T23:16:21.869Z"
 }
