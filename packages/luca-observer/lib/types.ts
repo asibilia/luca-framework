@@ -1,6 +1,33 @@
 import { z } from "zod";
 
 /**
+ * Observer-local type definitions.
+ *
+ * ## Schema Coupling Policy
+ *
+ * Several schemas in this file are intentional observer-local mirrors of
+ * schemas defined in `packages/luca-framework/src/state/` and
+ * `packages/luca-framework/src/harness/`. They are duplicated — NOT imported —
+ * to avoid a cross-package runtime dependency between luca-observer (Next.js app)
+ * and luca-framework (Node/Bun CLI tool).
+ *
+ * **When luca-framework schemas change**, the corresponding observer-local mirrors
+ * must be updated manually:
+ * - `LedgerEntrySchema` mirrors `ledger.ts::ledgerEntrySchema`
+ * - `HarnessResultSnapshotSchema` mirrors `harness.schemas.ts::HarnessResultSchema`
+ *   (with snake_case field names; the original uses camelCase for internal use)
+ * - `IterationRecordSnapshotSchema` mirrors luca-framework iteration schemas
+ * - `SessionPlanSnapshotSchema` mirrors luca-framework planner schemas
+ * - `TribunalResultSnapshotSchema` mirrors luca-framework tribunal schemas
+ *
+ * All observer-local schemas use snake_case for API compatibility, even when
+ * the source schema uses camelCase for internal TypeScript use.
+ *
+ * @see packages/luca-framework/src/state/ledger.ts
+ * @see packages/luca-framework/src/harness/__schemas/harness.schemas.ts
+ */
+
+/**
  * API Request: Observer event ingestion payload.
  *
  * Received from Luca hooks via HTTP POST.
@@ -81,11 +108,17 @@ export type WorkflowSnapshot = z.infer<typeof WorkflowSnapshotSchema>;
 
 // ─── Ledger Entry Schema ─────────────────────────────────────────────────────
 
+// NOTE: Observer-local mirror of luca-framework's LedgerEntry
 /**
  * Observer-local mirror of luca-framework's TransitionRecord + LedgerEntry.
  *
  * Represents a single state machine transition recorded in session-ledger.jsonl.
  * Locally defined to avoid cross-package dependency.
+ *
+ * Source: packages/luca-framework/src/state/ledger.ts::ledgerEntrySchema
+ * Differences: none — field names and types are identical.
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const LedgerEntrySchema = z.object({
@@ -105,10 +138,16 @@ export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
 
 // ─── Harness Result Snapshot Schemas ─────────────────────────────────────────
 
+// NOTE: Observer-local mirrors of luca-framework's harness check schemas (snake_case fields)
 /**
  * Observer-local mirror of luca-framework's ParsedError.
  *
  * A single parsed error from toolchain output.
+ *
+ * Source: packages/luca-framework/src/harness/__schemas/harness.schemas.ts::parsedErrorSchema
+ * Differences: field names identical; source uses camelCase internally but these match API output.
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const ParsedErrorSnapshotSchema = z.object({
@@ -126,6 +165,11 @@ export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>;
  * Observer-local mirror of luca-framework's CheckResult.
  *
  * Result of a single harness check (test, typecheck, lint, build).
+ *
+ * Source: packages/luca-framework/src/harness/__schemas/harness.schemas.ts::checkResultSchema
+ * Differences: uses snake_case (source may use camelCase for internal TypeScript types).
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const CheckResultSnapshotSchema = z.object({
@@ -144,6 +188,11 @@ export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>;
  * Observer-local mirror of luca-framework's HarnessResult.
  *
  * Aggregate result of running all harness checks.
+ *
+ * Source: packages/luca-framework/src/harness/__schemas/harness.schemas.ts::HarnessResultSchema
+ * Differences: uses snake_case (source uses camelCase for internal TypeScript types).
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const HarnessResultSnapshotSchema = z.object({
@@ -159,10 +208,15 @@ export type HarnessResultSnapshot = z.infer<typeof HarnessResultSnapshotSchema>;
 
 // ─── Iteration Snapshot Schemas ──────────────────────────────────────────────
 
+// NOTE: Observer-local mirrors of luca-framework's iteration schemas
 /**
  * Observer-local mirror of luca-framework's ConvergenceSignals.
  *
  * Multi-signal convergence metrics for an iteration.
+ *
+ * Source: packages/luca-framework/src/iteration/ convergence schemas
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const ConvergenceSignalsSnapshotSchema = z.object({
@@ -222,10 +276,15 @@ export type BudgetStateSnapshot = z.infer<typeof BudgetStateSnapshotSchema>;
 
 // ─── Planning Snapshot Schemas ───────────────────────────────────────────────
 
+// NOTE: Observer-local mirrors of luca-framework's planner schemas
 /**
  * Observer-local mirror of luca-framework's WSJFScoredItem.
  *
  * A todo item with computed WSJF score.
+ *
+ * Source: packages/luca-framework/src/planner/ WSJF schemas
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const WSJFScoredItemSnapshotSchema = z.object({
@@ -261,10 +320,15 @@ export type SessionPlanSnapshot = z.infer<typeof SessionPlanSnapshotSchema>;
 
 // ─── Tribunal Snapshot Schemas ───────────────────────────────────────────────
 
+// NOTE: Observer-local mirrors of luca-framework's tribunal/code-review schemas
 /**
  * Observer-local mirror of luca-framework's ReviewFinding.
  *
  * A single finding from a code reviewer agent.
+ *
+ * Source: packages/luca-framework/src/ tribunal/code-review schemas
+ * Update this schema when the source schema changes.
+ *
  * Uses snake_case for API compatibility.
  */
 export const ReviewFindingSnapshotSchema = z.object({
