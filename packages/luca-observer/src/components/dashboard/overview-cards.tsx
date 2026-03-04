@@ -1,6 +1,8 @@
 "use client";
 
 import { useWorkflowState } from "~/hooks/use-workflow-state";
+import { useLedger } from "~/hooks/use-ledger";
+import { useHarnessResult } from "~/hooks/use-harness-result";
 import { WORKFLOW_STATES, COMPLEXITY_LEVELS } from "~/lib/constants";
 
 import type { StoredEvent } from "~/lib/types";
@@ -8,10 +10,13 @@ import type { StoredEvent } from "~/lib/types";
 /**
  * Dashboard overview cards showing key metrics.
  *
- * Displays workflow state, complexity, event count, and phase.
+ * Displays workflow state, complexity, event count, phase,
+ * harness status, and transition count.
  */
 export function OverviewCards({ events }: { events: StoredEvent[] }) {
   const { data } = useWorkflowState();
+  const { totalCount: transitionCount } = useLedger(50);
+  const { result: harnessResult, hasResult: hasHarness } = useHarnessResult();
 
   const stateKey = data?.workflow_state ?? "idle";
   const complexityKey = data?.complexity ?? "MODERATE";
@@ -48,10 +53,31 @@ export function OverviewCards({ events }: { events: StoredEvent[] }) {
       subtitle: oversight,
       color: "info",
     },
+    {
+      title: "Harness",
+      value: hasHarness
+        ? harnessResult?.status === "passed"
+          ? "Passed"
+          : "Failed"
+        : "No Run",
+      subtitle: hasHarness
+        ? `${harnessResult?.total_errors ?? 0} errors, ${harnessResult?.total_warnings ?? 0} warnings`
+        : undefined,
+      color: hasHarness
+        ? harnessResult?.status === "passed"
+          ? "success"
+          : "destructive"
+        : "muted-foreground",
+    },
+    {
+      title: "Transitions",
+      value: transitionCount.toString(),
+      color: "accent",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
       {cards.map((card) => (
         <div
           key={card.title}
