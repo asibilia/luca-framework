@@ -65,6 +65,7 @@ import {
 } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
+import { emitObserverEvent } from "./observer-emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -468,6 +469,17 @@ async function handleSetField(args: string[]): Promise<void> {
       state: String(snapshotJson.value),
     }),
   );
+
+  // Emit to observer dashboard (fire-and-forget)
+  emitObserverEvent("state.field_set", {
+    session_id: (updatedContext.session_id as string) ?? undefined,
+    payload: {
+      field: fieldPath,
+      value,
+      previous_value: previousValue ?? null,
+      state: String(snapshotJson.value),
+    },
+  });
 }
 
 // ─── Transition Command ─────────────────────────────────────────────────────
@@ -550,6 +562,18 @@ async function handleTransition(args: string[]): Promise<void> {
   });
 
   console.log(JSON.stringify(record, null, 2));
+
+  // Emit to observer dashboard (fire-and-forget)
+  emitObserverEvent("state.transition", {
+    session_id: nextSnapshot.context.session_id,
+    phase_id: nextSnapshot.context.current_phase ?? undefined,
+    payload: {
+      previous_state: String(prevState),
+      current_state: String(nextSnapshot.value),
+      event_type: eventType,
+      complexity: nextSnapshot.context.complexity,
+    },
+  });
 }
 
 // ─── Snapshot Command ───────────────────────────────────────────────────────
@@ -795,6 +819,19 @@ async function handleSuspend(args: string[]): Promise<void> {
       current_state: String(nextSnapshot.value),
     }),
   );
+
+  // Emit to observer dashboard (fire-and-forget)
+  emitObserverEvent("state.suspended", {
+    session_id: sessionId,
+    phase_id: phaseId,
+    payload: {
+      reason,
+      wave_index: waveIndex,
+      completed_task_ids: completedTaskIds,
+      previous_state: String(prevState),
+      current_state: String(nextSnapshot.value),
+    },
+  });
 }
 
 // ─── Resume Phase Command ────────────────────────────────────────────────────
@@ -903,6 +940,19 @@ async function handleResumePhase(args: string[]): Promise<void> {
       checkpoint_cleared: !keepCheckpoint,
     }),
   );
+
+  // Emit to observer dashboard (fire-and-forget)
+  emitObserverEvent("state.resumed", {
+    session_id: checkpoint.session_id,
+    phase_id: phaseId,
+    payload: {
+      wave_index: checkpoint.wave_index,
+      completed_task_ids: checkpoint.completed_task_ids,
+      previous_state: String(prevState),
+      current_state: String(nextSnapshot.value),
+      checkpoint_cleared: !keepCheckpoint,
+    },
+  });
 }
 
 // ─── Read Ledger Command ────────────────────────────────────────────────────
