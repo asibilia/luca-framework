@@ -11,6 +11,7 @@
  *   read-phase       — Read current phase info (graceful fallback)
  *   read-status      — Read comprehensive workflow status (graceful fallback)
  *   read-field       — Read an arbitrary context field (errors on missing state)
+ *   read-ledger      — Read session ledger entries with optional filters
  *   set-field        — Set an allowlisted context field + persist + regenerate STATE.md
  *   transition       — Send event + persist + update STATE.md atomically
  *   snapshot         — Generate/update STATE.md from current state
@@ -27,6 +28,8 @@
  *   luca-state read-phase
  *   luca-state read-status
  *   luca-state read-field --field=session_id
+ *   luca-state read-ledger --tail=5
+ *   luca-state read-ledger --session=abc-123 --event=START
  *   luca-state set-field --field=current_milestone --value="v2.0"
  *   luca-state transition --event=START [--data=json]
  *   luca-state snapshot
@@ -49,6 +52,7 @@ import {
   STATE_FILE_PATH,
 } from "./persistence";
 import { workflowContextSchema, workflowEventSchema } from "./types";
+import type { TransitionRecord } from "./types";
 import { sanitizeJsonParse } from "./sanitize";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents, workflowMachine } from "./machine";
@@ -59,6 +63,8 @@ import {
   loadSuspendCheckpoint,
   clearSuspendCheckpoint,
 } from "./suspend-checkpoint";
+import { readLedger, appendLedgerEntry } from "./ledger";
+import type { LedgerFilters } from "./ledger";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -113,6 +119,8 @@ Subcommands:
   read-status       Read comprehensive workflow status (defaults if not initialized)
   read-field        Read an arbitrary context field (errors on missing state)
                     Options: --field=path (required, lodash get path)
+  read-ledger       Read session ledger entries with optional filters
+                    Options: --session=id, --event=type, --since=iso, --limit=N, --tail=N
   set-field         Set an allowlisted context field, persist, and regenerate STATE.md
                     Options: --field=name (required), --value=json-or-string (required)
   transition        Send event, persist state, and update STATE.md
@@ -437,6 +445,21 @@ async function handleSetField(args: string[]): Promise<void> {
     await updateStateMd(loadResult.data);
   }
 
+  // Append field change to session ledger (fire-and-forget, non-blocking)
+  const fieldRecord: TransitionRecord = {
+    previous_state: String(snapshotJson.value),
+    current_state: String(snapshotJson.value), // State doesn't change on field set
+    event_type: "field_set",
+    event_data: { field: fieldPath, value },
+    actions_executed: [],
+    context: {},
+    timestamp: new Date().toISOString(),
+    session_id: (updatedContext.session_id as string) ?? "",
+  };
+  appendLedgerEntry(fieldRecord).catch((err) => {
+    console.error("[bridge] Failed to append ledger entry for field_set:", err);
+  });
+
   console.log(
     JSON.stringify({
       field: fieldPath,
@@ -520,6 +543,12 @@ async function handleTransition(args: string[]): Promise<void> {
     eventData,
     nextSnapshot.context,
   );
+
+  // Append to session ledger (fire-and-forget, non-blocking)
+  appendLedgerEntry(record).catch((err) => {
+    console.error("[bridge] Failed to append ledger entry:", err);
+  });
+
   console.log(JSON.stringify(record, null, 2));
 }
 
@@ -876,6 +905,60 @@ async function handleResumePhase(args: string[]): Promise<void> {
   );
 }
 
+// ─── Read Ledger Command ────────────────────────────────────────────────────
+
+/**
+ * Read and filter entries from the session ledger.
+ *
+ * Delegates to `readLedger()` from the ledger module with CLI-parsed filters.
+ * If no filters are specified, defaults to `tail=20` for a quick overview.
+ *
+ * @param args - CLI arguments:
+ *   --session=string (optional) Filter by session ID
+ *   --event=string   (optional) Filter by event type
+ *   --since=string   (optional) Filter entries with timestamp >= since
+ *   --limit=N        (optional) Cap result count
+ *   --tail=N         (optional) Read last N entries from file before filtering
+ *
+ * @example
+ * ```sh
+ * luca-state read-ledger --tail=5
+ * luca-state read-ledger --session=abc-123 --event=START
+ * luca-state read-ledger --since=2026-03-01T00:00:00Z --limit=10
+ * ```
+ */
+async function handleReadLedger(args: string[]): Promise<void> {
+  const filters: LedgerFilters = {};
+  const sessionArg = getArg(args, "session");
+  if (sessionArg) filters.session_id = sessionArg;
+  const eventArg = getArg(args, "event");
+  if (eventArg) filters.event_type = eventArg;
+  const sinceArg = getArg(args, "since");
+  if (sinceArg) filters.since = sinceArg;
+  const limitArg = getArg(args, "limit");
+  if (limitArg) {
+    const n = parseInt(limitArg, 10);
+    if (!Number.isNaN(n) && n > 0) filters.limit = n;
+  }
+  const tailArg = getArg(args, "tail");
+  if (tailArg) {
+    const n = parseInt(tailArg, 10);
+    if (!Number.isNaN(n) && n > 0) filters.tail = n;
+  }
+  // Default to tail=20 if no filters specified
+  if (
+    !filters.session_id &&
+    !filters.event_type &&
+    !filters.since &&
+    filters.limit === undefined &&
+    filters.tail === undefined
+  ) {
+    filters.tail = 20;
+  }
+  const entries = await readLedger(filters);
+  console.log(JSON.stringify(entries, null, 2));
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -926,6 +1009,9 @@ export async function runBridgeCli(): Promise<void> {
     case "resume-phase":
       await handleResumePhase(args);
       break;
+    case "read-ledger":
+      await handleReadLedger(args);
+      break;
     default:
       printUsage();
       process.exit(2);
@@ -948,6 +1034,7 @@ export {
   handleReadPhase,
   handleReadStatus,
   handleReadField,
+  handleReadLedger,
   handleSetField,
   handleTransition,
   handleSnapshot,
