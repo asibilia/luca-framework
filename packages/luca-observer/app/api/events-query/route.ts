@@ -5,16 +5,30 @@ import { queryEvents, getEventCount } from "~/lib/db";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/events-query — Query stored events with filters.
+ * GET /api/events-query -- Query stored events with filters.
  *
- * Supports query parameters:
- * - session_id: Filter by session
- * - event_type: Filter by event type
- * - limit: Max results (default 50)
- * - offset: Pagination offset
- * - since_id: Only events after this ID
+ * Returns events from the in-memory event store, with optional filtering
+ * and pagination. Events are returned newest-first.
+ *
+ * Query parameters:
+ *   - session_id (string, optional): Filter events by session ID
+ *   - event_type (string, optional): Filter events by type (e.g. "session.start")
+ *   - limit (number, optional): Maximum number of results (default: 50)
+ *   - offset (number, optional): Pagination offset (default: 0)
+ *   - since_id (number, optional): Only return events with ID greater than this value
+ *
+ * Response (200):
+ *   { events: StoredEvent[], total_count: number, limit: number, offset: number }
+ *
+ * Response (500):
+ *   { error: "failed_to_query_events" }
  *
  * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```bash
+ * curl "http://localhost:3456/api/events-query?limit=10&event_type=session.start"
+ * ```
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -42,7 +56,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_query_events" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

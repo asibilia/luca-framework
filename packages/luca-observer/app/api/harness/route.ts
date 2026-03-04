@@ -7,10 +7,32 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/harness -- Read latest harness verification result.
  *
- * Reads .planning/harness-result.json and returns the parsed snapshot.
- * Returns null fields if no harness result exists yet.
+ * Reads .planning/harness-result.json and validates it with
+ * HarnessResultSnapshotSchema. Returns the parsed result including
+ * overall status, per-check results (test, typecheck, lint, build),
+ * parsed errors with file/line details, and timing data.
+ * Returns null if the file does not exist or is invalid.
+ *
+ * Query parameters:
+ *   - dir (string, optional): Project directory path (defaults to LUCA_PROJECT_DIR or cwd)
+ *
+ * Response (200):
+ *   { result: HarnessResultSnapshot | null, has_result: boolean }
+ *
+ *   Where HarnessResultSnapshot contains:
+ *   { status: "passed"|"failed", checks: CheckResultSnapshot[],
+ *     total_errors: number, total_warnings: number,
+ *     duration: number, timestamp: string }
+ *
+ * Response (500):
+ *   { error: "failed_to_read_harness_result" }
  *
  * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```bash
+ * curl http://localhost:3456/api/harness
+ * ```
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -26,7 +48,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_harness_result" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

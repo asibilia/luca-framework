@@ -7,11 +7,29 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/agents -- Read agent activity summary.
  *
- * Aggregates agent activity from in-memory SSE events by filtering
- * for events with an agent_name field. Returns a per-agent summary
- * with invocation counts, durations, and event history.
+ * Aggregates agent activity from the in-memory event store by filtering
+ * for events with a non-empty agent_name field. Groups events by agent
+ * name and computes per-agent metrics: invocation count, total duration,
+ * last invocation timestamp, and a chronological event history.
+ *
+ * Response (200):
+ *   { agents: AgentSummary[], total_count: number }
+ *
+ *   Where each AgentSummary contains:
+ *   { agent_name: string, invocation_count: number,
+ *     last_invoked_at: string, total_duration_ms: number,
+ *     events: Array<{ event_type: string, timestamp: string,
+ *       duration_ms?: number, status?: string }> }
+ *
+ * Response (500):
+ *   { error: "failed_to_read_agents" }
  *
  * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```bash
+ * curl http://localhost:3456/api/agents
+ * ```
  */
 export async function GET() {
   try {

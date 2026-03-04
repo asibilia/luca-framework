@@ -31,7 +31,7 @@ function resolveProjectDir(projectDir?: string): string {
  */
 function parseNoteFile(
   filename: string,
-  content: string
+  content: string,
 ): {
   filename: string;
   priority: string;
@@ -74,10 +74,32 @@ function parseNoteFile(
 }
 
 /**
- * GET /api/notes — Read pending and done developer notes.
+ * GET /api/notes -- Read pending and done developer notes.
  *
- * Returns { pending: [...], done: [...] } with note metadata.
+ * Reads markdown files from .planning/notes/ (pending) and
+ * .planning/notes/done/ (consumed). Each note file is parsed for
+ * frontmatter (priority, created, status) and body text. Returns
+ * up to 50 notes per category, sorted alphabetically by filename.
+ *
+ * Query parameters:
+ *   - dir (string, optional): Project directory path (defaults to LUCA_PROJECT_DIR or cwd)
+ *
+ * Response (200):
+ *   { pending: Note[], done: Note[] }
+ *
+ *   Where each Note contains:
+ *   { filename: string, priority: "next"|"whenever",
+ *     created: string, status: string, body: string }
+ *
+ * Response (500):
+ *   { error: "failed_to_read_notes" }
+ *
  * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```bash
+ * curl http://localhost:3456/api/notes
+ * ```
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -89,7 +111,7 @@ export async function GET(request: Request) {
     const doneDir = join(notesDir, "done");
 
     const readNotes = async (
-      dirPath: string
+      dirPath: string,
     ): Promise<ReturnType<typeof parseNoteFile>[]> => {
       try {
         const files = await readdir(dirPath);
@@ -102,7 +124,7 @@ export async function GET(request: Request) {
           mdFiles.map(async (f) => {
             const content = await readFile(join(dirPath, f), "utf-8");
             return parseNoteFile(f, content);
-          })
+          }),
         );
         return notes;
       } catch {
@@ -119,7 +141,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_notes" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -135,10 +157,35 @@ const CreateNoteSchema = z.object({
 });
 
 /**
- * POST /api/notes — Create a new developer note.
+ * POST /api/notes -- Create a new developer note.
  *
- * Creates a note file on disk and emits a note.added event.
+ * Creates a markdown note file in .planning/notes/ with frontmatter
+ * (priority, created timestamp, status) and the note body. The filename
+ * is generated from the priority prefix, Unix timestamp, and a slugified
+ * excerpt of the text. Also emits a "note.added" event into the
+ * in-memory event store and broadcasts it to SSE clients.
+ *
+ * Request body (JSON):
+ *   - text (string, required): Note body text (min 1 character)
+ *   - priority ("next"|"whenever", optional): Priority level (default: "next")
+ *
+ * Response (200):
+ *   { filename: string, received: true }
+ *
+ * Response (400):
+ *   { error: "invalid_payload", details: [...] }
+ *
+ * Response (500):
+ *   { error: "failed_to_create_note" }
+ *
  * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```bash
+ * curl -X POST http://localhost:3456/api/notes \
+ *   -H "Content-Type: application/json" \
+ *   -d '{"text":"Review error handling in planner","priority":"next"}'
+ * ```
  */
 export async function POST(request: Request) {
   try {
@@ -151,7 +198,7 @@ export async function POST(request: Request) {
           error: "invalid_payload",
           details: parseResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -200,7 +247,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_create_note" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

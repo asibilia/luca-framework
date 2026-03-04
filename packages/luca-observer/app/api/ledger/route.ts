@@ -7,14 +7,30 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/ledger -- Read session ledger entries.
  *
- * Reads .planning/session-ledger.jsonl and returns parsed entries.
- * Supports query parameters:
- * - session_id: Filter by session ID
- * - event_type: Filter by event type
- * - tail: Read only the last N raw lines before parsing
- * - limit: Cap the number of returned entries
+ * Reads .planning/session-ledger.jsonl line by line, validates each
+ * entry with LedgerEntrySchema (skipping malformed lines), and returns
+ * the parsed entries with optional filtering.
+ *
+ * Query parameters:
+ *   - dir (string, optional): Project directory path (defaults to LUCA_PROJECT_DIR or cwd)
+ *   - session_id (string, optional): Filter entries by session ID
+ *   - event_type (string, optional): Filter entries by event type
+ *   - tail (number, optional): Read only the last N raw lines before parsing/filtering
+ *   - limit (number, optional): Cap the number of returned entries (default: 100)
+ *
+ * Response (200):
+ *   { entries: LedgerEntry[], total_count: number }
+ *
+ * Response (500):
+ *   { error: "failed_to_read_ledger" }
  *
  * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```bash
+ * curl http://localhost:3456/api/ledger
+ * curl "http://localhost:3456/api/ledger?tail=20&session_id=abc-123"
+ * ```
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -41,7 +57,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_ledger" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
