@@ -1,6 +1,12 @@
 /**
  * Type definitions for the Luca verification harness.
  *
+ * **Internal-only schemas** — not used as API request/response payloads.
+ * Uses camelCase per TypeScript conventions for internal runtime types.
+ * The harness runner serializes to snake_case when writing
+ * `harness-result.json` for external consumption (see runner.ts
+ * `snakeCaseResult` transform in `runHarness()`).
+ *
  * The harness orchestrates running test/lint/typecheck/build as a single
  * command, parses toolchain output into structured errors, and returns
  * typed results.
@@ -130,9 +136,11 @@ export type HarnessConfig = z.infer<typeof HarnessConfigSchema>;
 export const CheckResultSchema = z.object({
   name: z.string(),
   status: z.enum(["passed", "failed", "skipped", "timeout"]),
+  /** Internal: check process exit code */
   exitCode: z.number().int(),
   errors: z.array(ParsedErrorSchema),
   warnings: z.array(ParsedErrorSchema),
+  /** Internal: truncated combined stdout+stderr output */
   rawOutput: z.string(),
   duration: z.number().nonnegative(),
   /** Middleware pipeline result metadata (present when middleware is enabled) */
@@ -144,7 +152,9 @@ export type CheckResult = z.infer<typeof CheckResultSchema>;
 export const HarnessResultSchema = z.object({
   status: z.enum(["passed", "failed"]),
   checks: z.array(CheckResultSchema),
+  /** Internal: total error count across all checks */
   totalErrors: z.number().int().nonnegative(),
+  /** Internal: total warning count across all checks */
   totalWarnings: z.number().int().nonnegative(),
   duration: z.number().nonnegative(),
   timestamp: z.string(),
