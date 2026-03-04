@@ -170,6 +170,50 @@
 - [x] Fix budget-gauge.tsx destructuring default (move to Zod schema)
 - [x] Replace 2 type assertions with safeParse in use-event-stream.ts and use-metrics.ts
 
+### Phase 110 — Security & Convention Hardening II
+
+**Goal:** Close re-audit HIGH-severity security gaps and convention violations. Extend auth to GET routes, harden API key comparison, tighten CSP, fix module conventions.
+
+**Depends on:** Phase 109
+
+- [x] Extend auth middleware to 5 unauthenticated GET endpoints (stream, events-query, ledger, notes GET, route-factory routes)
+- [x] Replace `===` API key comparison with `crypto.timingSafeEqual()` in auth middleware
+- [x] Remove `unsafe-eval` and `unsafe-inline` from CSP header in next.config.ts
+- [x] Validate `event_type` query param against allowed values in event routes
+- [x] Fix bare `"path"` imports → `"node:path"` in runner.ts, output-capture.ts
+- [x] Clarify harness schema documentation: mark as internal-only (not API-facing), fix camelCase docs
+- [x] Migrate HookDefinitionSchema to snake_case (`hookType` → `hook_type`, etc.)
+- [x] Replace `parse()` with `safeParse()` in runner.ts, pipeline.ts
+- [x] Fix pipeline.ts `~/` alias import to use relative import (observer convention)
+- [x] Move observer-emitter.ts to `__helpers/` per domain architecture rule
+- [x] Convert LedgerFilters from `interface` to `type` alias
+- [x] Document observer-local schema coupling with luca-framework schemas
+- [x] Document db.ts mutable store thread-safety model
+- [x] Fix import grouping in notes/route.ts (node: imports separated from relative)
+- [x] Sanitize Zod validation errors before returning to client (strip internal paths)
+- [x] Remove dead `priorityMatch` variable
+
+### Phase 111 — DRY Extraction & Tailwind Polish
+
+**Goal:** Close re-audit DRY violations and Tailwind/styling issues. Extract shared utilities, fix dark mode system, align color tokens and design system values.
+
+**Depends on:** Phase 110
+
+- [ ] Replace `process.cwd()` fallback with `resolveProjectDir()` in notes/route.ts POST handler
+- [ ] Extract `statusColors` map to shared location (convergence-chart + iteration-timeline)
+- [ ] Extract `formatTimestamp` utility (session-plan-overview + transition-log)
+- [ ] Extract `formatChars`/`formatSize` utility (context-usage-bar + working-sections)
+- [ ] Replace readMetrics parallel implementation with existing `readJsonSnapshot` helper
+- [ ] Add system preference dark mode detection in app/layout.tsx (replace hardcoded `className="dark"`)
+- [ ] Add dark mode CSS variants for `event-*` color tokens in globals.css
+- [ ] Make convergence-chart height responsive (replace hardcoded 300px)
+- [ ] Migrate 16 `color-mix` instances from `srgb` to `oklab` color space
+- [ ] Replace `text-[10px]` arbitrary values with design system scale
+- [ ] Add `font-mono` class to timestamp displays in transition-log
+- [ ] Replace inline `calc()` styles with Tailwind utilities in quality-zone
+- [ ] Add `type="button"` to 4 button elements missing the attribute
+- [ ] Add `open` command browser launch warning/confirmation
+
 ---
 
 ## Backlog (Future)
