@@ -126,7 +126,7 @@ function SectionPanel({ section }: { section: WorkingSection }) {
             {section.heading}
           </span>
           <span
-            className="rounded px-1.5 py-0.5 font-mono text-[10px] font-medium"
+            className="rounded px-1.5 py-0.5 font-mono text-xs font-medium"
             style={{
               color: section.hasContent
                 ? "var(--color-success)"
