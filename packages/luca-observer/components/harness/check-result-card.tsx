@@ -24,7 +24,8 @@ export function CheckResultCard({ check }: { check: CheckResultSnapshot }) {
     timeout: { label: "Timeout", color: "warning" },
   };
 
-  const config = statusConfig[check.status] ?? statusConfig.skipped;
+  const defaultConfig = { label: "Skipped", color: "muted-foreground" };
+  const config = statusConfig[check.status] ?? defaultConfig;
   const durationSeconds = (check.duration / 1000).toFixed(1);
 
   return (
