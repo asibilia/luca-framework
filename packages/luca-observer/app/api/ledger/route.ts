@@ -13,19 +13,29 @@ export const dynamic = "force-dynamic";
  * Validates and coerces query string parameters for ledger filtering.
  * Uses snake_case for API compatibility.
  *
+ * `event_type` accepts dot-separated lowercase alphanumeric words
+ * (e.g. "session.start", "tool.use", "commit.pre") with a max length
+ * of 100. This prevents injection while remaining open to arbitrary
+ * user-defined event types from hook scripts.
+ *
  * @example
  * ```typescript
  * const params = LedgerQueryParamsSchema.parse({
  *   tail: "20",
  *   session_id: "abc-123",
+ *   event_type: "session.start",
  * });
- * // { tail: 20, session_id: "abc-123", limit: 100 }
+ * // { tail: 20, session_id: "abc-123", event_type: "session.start", limit: 100 }
  * ```
  */
 const LedgerQueryParamsSchema = z.object({
   dir: z.string().optional(),
   session_id: z.string().optional(),
-  event_type: z.string().optional(),
+  event_type: z
+    .string()
+    .regex(/^[a-z0-9_]+(?:\.[a-z0-9_]+)*$/)
+    .max(100)
+    .optional(),
   tail: z.coerce.number().int().min(1).max(10000).optional(),
   limit: z.coerce.number().int().min(1).max(10000).default(100),
 });

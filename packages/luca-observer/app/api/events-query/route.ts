@@ -13,6 +13,11 @@ export const dynamic = "force-dynamic";
  * Validates and coerces query string parameters for event filtering.
  * Uses snake_case for API compatibility.
  *
+ * `event_type` accepts dot-separated lowercase alphanumeric words
+ * (e.g. "session.start", "tool.use", "commit.pre") with a max length
+ * of 100. This prevents injection while remaining open to arbitrary
+ * user-defined event types from hook scripts.
+ *
  * @example
  * ```typescript
  * const params = EventQueryParamsSchema.parse({
@@ -24,7 +29,11 @@ export const dynamic = "force-dynamic";
  */
 const EventQueryParamsSchema = z.object({
   session_id: z.string().optional(),
-  event_type: z.string().optional(),
+  event_type: z
+    .string()
+    .regex(/^[a-z0-9_]+(?:\.[a-z0-9_]+)*$/)
+    .max(100)
+    .optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(50),
   offset: z.coerce.number().int().min(0).max(100000).default(0),
   since_id: z.coerce.number().int().min(0).optional(),
