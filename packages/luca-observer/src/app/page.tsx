@@ -3,15 +3,19 @@
 import { PageContainer } from "~/components/layout/page-container";
 import { OverviewCards } from "~/components/dashboard/overview-cards";
 import { RecentEvents } from "~/components/dashboard/recent-events";
+import { RecentTransitions } from "~/components/dashboard/recent-transitions";
 import { useEventStream } from "~/hooks/use-event-stream";
+import { useLedger } from "~/hooks/use-ledger";
 
 /**
  * Dashboard overview page.
  *
- * Shows real-time overview cards and live event feed.
+ * Shows real-time overview cards, live event feed, and recent
+ * state machine transitions from the session ledger.
  */
 export default function DashboardPage() {
   const { events, connected, clear } = useEventStream();
+  const { entries: ledgerEntries } = useLedger(20);
 
   return (
     <PageContainer
@@ -33,7 +37,10 @@ export default function DashboardPage() {
       }
     >
       <OverviewCards events={events} />
-      <RecentEvents events={events} onClear={clear} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <RecentEvents events={events} onClear={clear} />
+        <RecentTransitions entries={ledgerEntries} />
+      </div>
     </PageContainer>
   );
 }
