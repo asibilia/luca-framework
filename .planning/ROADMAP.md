@@ -41,11 +41,11 @@
 
 **Depends on:** Phase 98
 
-- [ ] Schema bridge connecting observer to luca-framework state (#25)
-- [ ] Dashboard overview page (real data, not stubs)
-- [ ] Workflow state machine page (state visualization, transitions)
-- [ ] Harness/verification results page
-- [ ] SSE event stream integration tests
+- [x] Schema bridge connecting observer to luca-framework state (#25)
+- [x] Dashboard overview page (real data, not stubs)
+- [x] Workflow state machine page (state visualization, transitions)
+- [x] Harness/verification results page
+- [x] SSE event stream integration tests
 
 ### Phase 100 — Observer Deep Pages & Hook Portability
 
