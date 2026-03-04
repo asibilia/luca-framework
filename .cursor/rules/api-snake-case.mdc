@@ -347,4 +347,5 @@ Internal-only schemas can use camelCase, but snake_case is preferred for consist
 - **✅ Team Consistency**: Frontend and backend teams use same conventions
 - **✅ Type Safety**: Zod validation catches property name errors at dev time
 
+ 
 </rule>

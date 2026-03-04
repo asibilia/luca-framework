@@ -4,7 +4,6 @@
 > Source: src/rules/ → compiled via `bun run build:all`
 
 ---
-
 description: Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
 ---
 
@@ -181,7 +180,6 @@ When reviewing code that interacts with Jira:
 ---
 
 ---
-
 description: "Complexity gating: which workflow steps activate at which complexity level"
 ---
 
@@ -248,7 +246,6 @@ These steps run regardless of complexity:
 6. If the step says "Run" or "Required", always execute
 
 **Complexity is set by:**
-
 - lu-router (automatic inference)
 - \`--complexity=<level>\` flag (manual override)
 - Persisted in STATE.md for session continuity
@@ -266,16 +263,14 @@ Config booleans and per-invocation flags take precedence over complexity gating.
 ---
 
 ---
-
-description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness
+description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
 ---
 
-# Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness
+# Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
 
 ## rule
 
 - **Required Rule Structure:**
-
   ```markdown
   ---
   description: Clear, one-line description of what the rule enforces
@@ -295,7 +290,6 @@ description: Guidelines for creating and maintaining Cursor rules to ensure cons
 
 - **Code Examples:**
   - Use language-specific code blocks
-
   ```typescript
   // ✅ DO: Show good examples
   const goodExample = true;
@@ -327,7 +321,6 @@ description: Guidelines for creating and maintaining Cursor rules to ensure cons
 ---
 
 ---
-
 description: "Domain architecture: archetypes, dependency tiers, and structural invariants"
 ---
 
@@ -447,7 +440,6 @@ The only `.ts` file allowed at the domain root is `index.ts`. All other code liv
 ---
 
 ---
-
 description: Enforce kebab-case file naming conventions
 ---
 
@@ -457,7 +449,6 @@ description: Enforce kebab-case file naming conventions
 
 - **File Names**: ALWAYS use kebab-case (lowercase with dashes) for all file names
   - ✅ **Correct Examples:**
-
     ```
     user-profile.tsx
     auth-utils.ts
@@ -466,9 +457,7 @@ description: Enforce kebab-case file naming conventions
     task-archive.ts
     package-utils.ts
     ```
-
   - ❌ **Avoid These:**
-
     ```
     userProfile.tsx      (camelCase)
     AuthUtils.ts        (PascalCase)
@@ -480,16 +469,13 @@ description: Enforce kebab-case file naming conventions
 
 - **Directory Names**: Use kebab-case for all directory names
   - ✅ **Correct Examples:**
-
     ```
     components/auth-wizard/
     utils/file-helpers/
     tests/unit/
     packages-dev/task-archive/
     ```
-
   - ❌ **Avoid These:**
-
     ```
     components/AuthWizard/     (PascalCase)
     utils/fileHelpers/        (camelCase)
@@ -526,7 +512,6 @@ description: Enforce kebab-case file naming conventions
 ---
 
 ---
-
 description: "Harness/Hook verification boundary: when full harness runs vs lightweight hooks"
 ---
 
@@ -575,7 +560,6 @@ The harness is thorough (runs all 4 check types), produces structured output, an
 ---
 
 ---
-
 description: "Hook/Skill boundary: when to use deterministic hooks vs interactive skills"
 ---
 
@@ -637,7 +621,6 @@ description: "Hook/Skill boundary: when to use deterministic hooks vs interactiv
 ---
 
 ---
-
 description: Mandatory documentation requirements for all new functionality and modifications
 ---
 
@@ -800,7 +783,6 @@ Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conv
 ---
 
 ---
-
 description: "Module boundary: import direction rules and entity isolation"
 ---
 
@@ -890,7 +872,6 @@ The following cross-tier imports are known and accepted:
 | `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas (T0 -> T2) |
 
 **Removed exceptions (resolved):**
-
 - `harness/parsers/parser-registry.ts` -> `~/harness/__schemas/harness.schemas` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
 
 New exceptions must be documented here and in this rule file before being committed.
@@ -908,7 +889,6 @@ Every domain's `index.ts` is a pure barrel — it contains ONLY re-export statem
 ---
 
 ---
-
 description: apply when interacting with PostHog/analytics tasks
 ---
 
@@ -939,11 +919,10 @@ Before creating any new event or property names, consult with the developer for 
 ---
 
 ---
-
-description: Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices
+description: Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
 ---
 
-# Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices
+# Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
 
 ## rule
 
@@ -975,7 +954,6 @@ description: Guidelines for continuously improving Cursor rules based on emergin
     - Implementation details have changed
 
 - **Example Pattern Recognition:**
-
   ```typescript
   // If you see repeated patterns like:
   const data = await prisma.user.findMany({
@@ -1018,7 +996,6 @@ Follow [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc) for proper rule fo
 ---
 
 ---
-
 description: "State machine bridge CLI reference: how to read/write state via the typed bridge layer"
 ---
 
@@ -1058,26 +1035,18 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 Always use the bridge as primary, with STATE.md fallback:
 
 \`\`\`bash
-
 # Primary: Read state from state machine (typed, validated)
-
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-
 # Fallback: Read STATE.md directly (backward compatibility)
-
 STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
 
 ### Reading Complexity
 
 \`\`\`bash
-
 # Primary: Read complexity from bridge
-
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
-
 # Fallback: grep STATE.md directly
-
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 fi
@@ -1086,25 +1055,17 @@ fi
 ### Writing State (Transitions)
 
 \`\`\`bash
-
 # Primary: Transition via bridge (updates state machine + STATE.md)
-
 bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
-
 # STATE.md is also updated directly for backward compatibility
-
 \`\`\`
 
 ### Initializing State
 
 \`\`\`bash
-
 # Primary: Initialize via bridge
-
 bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
-
 # Fallback: Create STATE.md directly
-
 cat > .planning/STATE.md << 'EOF'
 ...
 EOF
@@ -1136,7 +1097,6 @@ This ensures the workflow never breaks due to bridge issues.
 ---
 
 ---
-
 description: Luca workflow system for spec-driven development with cognitive memory
 ---
 
@@ -1240,7 +1200,6 @@ Before major operations, Luca runs cognitive pre-flight:
 ---
 
 ---
-
 description: API payloads must use snake_case for consistency with backend conventions
 ---
 
@@ -1591,7 +1550,6 @@ Internal-only schemas can use camelCase, but snake_case is preferred for consist
 ---
 
 ---
-
 description: Use Bun package manager and runtime over npm or yarn where applicable
 ---
 
@@ -1785,7 +1743,6 @@ When updating existing scripts or documentation:
 ---
 
 ---
-
 description: Functional API Reuse & Architecture Rule
 ---
 
@@ -2043,7 +2000,6 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
 ---
 
 ---
-
 description: Standards for import statements and module organization
 ---
 
@@ -2249,7 +2205,6 @@ Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conv
 ---
 
 ---
-
 description: Use lodash functions over built-in JavaScript equivalents for consistency and safety
 ---
 
@@ -2450,7 +2405,6 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
 ---
 
 ---
-
 description: Prohibit class usage in favor of functional programming patterns
 ---
 
@@ -2633,7 +2587,6 @@ This rule is enforced through:
 ---
 
 ---
-
 description: Enforce Zod schema-first parsing patterns over manual destructuring and default values
 ---
 

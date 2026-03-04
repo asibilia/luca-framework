@@ -138,6 +138,38 @@
 - [ ] Replace or augment existing data layer with SpacetimeDB reducers/subscriptions
 - [ ] Verify real-time sync works end-to-end with observer dashboard
 
+### Phase 108 — Observer Security Hardening
+
+**Goal:** Close all HIGH-severity security gaps identified in the v2.7.0 milestone audit. Harden the observer API surface against DoS, path traversal, and unauthenticated access.
+
+**Depends on:** Phase 99
+
+- [x] Add API key authentication (LUCA_OBSERVER_API_KEY env var) to POST routes (/api/events, /api/notes)
+- [x] Add event store eviction cap (MAX_EVENTS with oldest-first eviction in db.ts)
+- [x] Add SSE connection limit, heartbeat interval, and idle timeout to stream route
+- [x] Fix symlink path traversal: use realpathSync in resolveProjectDir before startsWith check
+- [x] Add Content-Security-Policy header to next.config.ts
+- [x] Validate query param ranges (limit, tail, offset, since_id) with NaN/range clamping
+- [x] Add LUCA_OBSERVER_URL localhost validation in observer-emitter.ts (SSRF protection)
+- [x] Wire observer-emitter into bridge.ts transitions for TypeScript-native event emission
+
+### Phase 109 — Observer DRY & Convention Alignment
+
+**Goal:** Close MEDIUM/LOW-severity DRY violations and convention gaps from the v2.7.0 milestone audit. Extract shared utilities, align with Bun/lodash/schema-first conventions.
+
+**Depends on:** Phase 108
+
+- [ ] Extract generic `usePollingFetch<T>` hook, refactor 9 polling hooks to use it (~350 lines saved)
+- [ ] Extract `readJsonSnapshot<T>` helper in file-watcher.ts, collapse 3 identical read functions
+- [ ] DRY resolveProjectDir: export from file-watcher.ts, remove duplicate in notes/route.ts
+- [ ] Extract API route factory for 6 structurally identical GET handlers
+- [ ] Migrate file-watcher.ts and notes/route.ts from node:fs/promises to Bun.file API
+- [ ] Migrate ledger.ts from mixed node:fs/Bun.file to consistent Bun.file usage
+- [ ] Replace 7 Array.sort/reverse instances with lodash orderBy
+- [ ] Fix 2 Tailwind table header inconsistencies (agent-scorecard-table, findings-table)
+- [ ] Fix budget-gauge.tsx destructuring default (move to Zod schema)
+- [ ] Replace 2 type assertions with safeParse in use-event-stream.ts and use-metrics.ts
+
 ---
 
 ## Backlog (Future)
