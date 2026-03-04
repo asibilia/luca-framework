@@ -119,7 +119,7 @@ export function DisagreementsPanel({
                 className="mt-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium"
                 style={{
                   color: `var(--color-${ct.color})`,
-                  backgroundColor: `color-mix(in srgb, var(--color-${ct.color}) 15%, transparent)`,
+                  backgroundColor: `color-mix(in oklab, var(--color-${ct.color}) 15%, transparent)`,
                 }}
               >
                 {ct.type}

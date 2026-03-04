@@ -135,7 +135,7 @@ export function RebuttalTimeline({
                     className="rounded px-2 py-0.5 font-mono text-xs font-medium"
                     style={{
                       color: `var(--color-${r.color})`,
-                      backgroundColor: `color-mix(in srgb, var(--color-${r.color}) 15%, transparent)`,
+                      backgroundColor: `color-mix(in oklab, var(--color-${r.color}) 15%, transparent)`,
                     }}
                   >
                     {r.label}

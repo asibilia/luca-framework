@@ -91,7 +91,7 @@ function IterationCard({ iteration }: { iteration: IterationRecordSnapshot }) {
             className="rounded px-2 py-0.5 font-mono text-xs font-medium"
             style={{
               color: `var(--color-${color})`,
-              backgroundColor: `color-mix(in srgb, var(--color-${color}) 15%, transparent)`,
+              backgroundColor: `color-mix(in oklab, var(--color-${color}) 15%, transparent)`,
             }}
           >
             {iteration.convergence_status}

@@ -63,7 +63,7 @@ export function BudgetGauge(rawProps: BudgetGaugeProps) {
           className="rounded px-2 py-0.5 font-mono text-xs font-medium"
           style={{
             color: `var(--color-${config.color})`,
-            backgroundColor: `color-mix(in srgb, var(--color-${config.color}) 15%, transparent)`,
+            backgroundColor: `color-mix(in oklab, var(--color-${config.color}) 15%, transparent)`,
           }}
         >
           {config.label}

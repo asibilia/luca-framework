@@ -148,7 +148,7 @@ function CategorySection({ section }: { section: MemorySection }) {
             className="rounded px-2 py-0.5 font-mono text-xs font-medium"
             style={{
               color: `var(--color-${section.color})`,
-              backgroundColor: `color-mix(in srgb, var(--color-${section.color}) 15%, transparent)`,
+              backgroundColor: `color-mix(in oklab, var(--color-${section.color}) 15%, transparent)`,
             }}
           >
             {section.label}

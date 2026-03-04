@@ -78,7 +78,7 @@ export function QualityZoneIndicator({
               className="relative flex items-center justify-center py-2 font-mono text-xs font-bold transition-opacity"
               style={{
                 width: `${widthPercent}%`,
-                backgroundColor: `color-mix(in srgb, var(--color-${zone.color}) ${isActive ? "30%" : "12%"}, transparent)`,
+                backgroundColor: `color-mix(in oklab, var(--color-${zone.color}) ${isActive ? "30%" : "12%"}, transparent)`,
                 color: `var(--color-${zone.color})`,
                 opacity: isActive ? 1 : 0.5,
                 outline: isActive
@@ -131,7 +131,7 @@ export function QualityZoneIndicator({
                   className="ml-auto rounded px-1.5 py-0.5 font-mono text-xs font-bold"
                   style={{
                     color: `var(--color-${zone.color})`,
-                    backgroundColor: `color-mix(in srgb, var(--color-${zone.color}) 15%, transparent)`,
+                    backgroundColor: `color-mix(in oklab, var(--color-${zone.color}) 15%, transparent)`,
                   }}
                 >
                   ACTIVE

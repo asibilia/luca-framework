@@ -147,7 +147,7 @@ export function WSJFScoreTable({
                         style={{
                           color: "var(--color-warning)",
                           backgroundColor:
-                            "color-mix(in srgb, var(--color-warning) 15%, transparent)",
+                            "color-mix(in oklab, var(--color-warning) 15%, transparent)",
                         }}
                       >
                         BIG ROCK
@@ -167,7 +167,7 @@ export function WSJFScoreTable({
                     className="rounded px-2 py-0.5 font-mono text-xs font-medium"
                     style={{
                       color: `var(--color-${complexityColor})`,
-                      backgroundColor: `color-mix(in srgb, var(--color-${complexityColor}) 15%, transparent)`,
+                      backgroundColor: `color-mix(in oklab, var(--color-${complexityColor}) 15%, transparent)`,
                     }}
                   >
                     {complexityConfig?.label ?? item.complexity}
@@ -179,7 +179,7 @@ export function WSJFScoreTable({
                       className="rounded px-2 py-0.5 font-mono text-xs font-medium"
                       style={{
                         color: `var(--color-${zoneColor})`,
-                        backgroundColor: `color-mix(in srgb, var(--color-${zoneColor}) 15%, transparent)`,
+                        backgroundColor: `color-mix(in oklab, var(--color-${zoneColor}) 15%, transparent)`,
                       }}
                     >
                       {item.assigned_zone}

@@ -109,7 +109,7 @@ export function FindingsTable({
                   style={{
                     color: "var(--color-info)",
                     backgroundColor:
-                      "color-mix(in srgb, var(--color-info) 15%, transparent)",
+                      "color-mix(in oklab, var(--color-info) 15%, transparent)",
                   }}
                 >
                   Upheld
@@ -129,7 +129,7 @@ export function FindingsTable({
                   style={{
                     color: "var(--color-warning)",
                     backgroundColor:
-                      "color-mix(in srgb, var(--color-warning) 15%, transparent)",
+                      "color-mix(in oklab, var(--color-warning) 15%, transparent)",
                   }}
                 >
                   Modified
@@ -149,7 +149,7 @@ export function FindingsTable({
                   style={{
                     color: "var(--color-destructive)",
                     backgroundColor:
-                      "color-mix(in srgb, var(--color-destructive) 15%, transparent)",
+                      "color-mix(in oklab, var(--color-destructive) 15%, transparent)",
                   }}
                 >
                   Withdrawn
