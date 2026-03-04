@@ -1,18 +1,7 @@
 "use client";
 
+import { formatDateTime } from "~/lib/format";
 import type { SessionPlanSnapshot } from "~/lib/types";
-
-/**
- * Format an ISO timestamp string to a locale date-time string.
- */
-function formatTimestamp(ts: string): string {
-  if (!ts) return "--";
-  try {
-    return new Date(ts).toLocaleString();
-  } catch {
-    return ts;
-  }
-}
 
 /**
  * Summary card showing the current session plan metadata.
@@ -71,7 +60,7 @@ export function SessionPlanOverview({
           Session Plan
         </p>
         <span className="font-mono text-xs text-muted-foreground">
-          {formatTimestamp(plan.generated_at)}
+          {formatDateTime(plan.generated_at)}
         </span>
       </div>
 

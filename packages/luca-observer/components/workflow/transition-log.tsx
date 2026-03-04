@@ -5,6 +5,7 @@ import { useState } from "react";
 import orderBy from "lodash/orderBy";
 
 import { WORKFLOW_STATES } from "~/lib/constants";
+import { formatTime } from "~/lib/format";
 import { EventBadge } from "~/components/shared/event-badge";
 import { JsonViewer } from "~/components/shared/json-viewer";
 import type { LedgerEntry } from "~/lib/types";
@@ -18,22 +19,6 @@ function stateColor(stateKey: string): string {
   const config =
     WORKFLOW_STATES[stateKey as keyof typeof WORKFLOW_STATES] ?? null;
   return `var(--color-${config?.color ?? "muted-foreground"})`;
-}
-
-/**
- * Format an ISO timestamp string to a compact locale time string.
- */
-function formatTimestamp(ts: string): string {
-  if (!ts) return "--";
-  try {
-    return new Date(ts).toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  } catch {
-    return ts;
-  }
 }
 
 /**
@@ -137,7 +122,7 @@ export function TransitionLog({ entries }: { entries: LedgerEntry[] }) {
                   <EventBadge eventType={entry.event_type} />
                 </td>
                 <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground align-top">
-                  {formatTimestamp(entry.timestamp)}
+                  {formatTime(entry.timestamp)}
                 </td>
               </tr>
             );
