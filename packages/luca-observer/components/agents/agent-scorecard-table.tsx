@@ -1,5 +1,7 @@
 "use client";
 
+import orderBy from "lodash/orderBy";
+
 import { SectionHeader } from "~/components/layout/section-header";
 import type { AgentActivitySnapshot } from "~/lib/types";
 
@@ -51,9 +53,7 @@ export function AgentScorecardTable({
   onSelectAgent?: (agentName: string) => void;
   selectedAgent?: string;
 }) {
-  const sorted = [...agents].sort(
-    (a, b) => b.invocation_count - a.invocation_count,
-  );
+  const sorted = orderBy(agents, "invocation_count", "desc");
 
   return (
     <div className="flex flex-col gap-3">
@@ -69,22 +69,12 @@ export function AgentScorecardTable({
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left font-mono text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-2 font-semibold text-muted-foreground">
-                  Agent
-                </th>
-                <th className="px-4 py-2 text-right font-semibold text-muted-foreground">
-                  Invocations
-                </th>
-                <th className="px-4 py-2 text-right font-semibold text-muted-foreground">
-                  Total Duration
-                </th>
-                <th className="px-4 py-2 text-right font-semibold text-muted-foreground">
-                  Avg Duration
-                </th>
-                <th className="px-4 py-2 text-right font-semibold text-muted-foreground">
-                  Last Invoked
-                </th>
+              <tr className="border-b border-border bg-muted/50 font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="px-4 py-2">Agent</th>
+                <th className="px-4 py-2 text-right">Invocations</th>
+                <th className="px-4 py-2 text-right">Total Duration</th>
+                <th className="px-4 py-2 text-right">Avg Duration</th>
+                <th className="px-4 py-2 text-right">Last Invoked</th>
               </tr>
             </thead>
             <tbody>

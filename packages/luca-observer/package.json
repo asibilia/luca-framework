@@ -19,10 +19,12 @@
     "next": "^15",
     "react": "^19",
     "react-dom": "^19",
+    "lodash": "^4.17.23",
     "zod": "^3.23.8",
     "jotai": "^2"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.23",
     "@eslint/js": "^9",
     "@next/eslint-plugin-next": "^15",
     "@tailwindcss/cli": "^4.2.1",

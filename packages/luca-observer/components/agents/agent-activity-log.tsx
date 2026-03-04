@@ -1,5 +1,7 @@
 "use client";
 
+import orderBy from "lodash/orderBy";
+
 import { EventBadge } from "~/components/shared/event-badge";
 import { SectionHeader } from "~/components/layout/section-header";
 import type { AgentActivitySnapshot } from "~/lib/types";
@@ -43,9 +45,7 @@ function flattenEvents(
     }
   }
 
-  return events.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
+  return orderBy(events, (e) => new Date(e.timestamp).getTime(), "desc");
 }
 
 /**

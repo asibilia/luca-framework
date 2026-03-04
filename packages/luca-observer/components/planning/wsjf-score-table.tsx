@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import orderBy from "lodash/orderBy";
+
 import { COMPLEXITY_LEVELS } from "~/lib/constants";
 import type { WSJFScoredItemSnapshot } from "~/lib/types";
 
@@ -68,15 +70,7 @@ export function WSJFScoreTable({
     }
   };
 
-  const sorted = [...items].sort((a, b) => {
-    const mul = sortDirection === "asc" ? 1 : -1;
-    if (sortField === "wsjf_score") return mul * (a.wsjf_score - b.wsjf_score);
-    if (sortField === "title") return mul * a.title.localeCompare(b.title);
-    if (sortField === "area") return mul * a.area.localeCompare(b.area);
-    if (sortField === "complexity")
-      return mul * a.complexity.localeCompare(b.complexity);
-    return 0;
-  });
+  const sorted = orderBy(items, [sortField], [sortDirection]);
 
   const sortIndicator = (field: SortField) => {
     if (sortField !== field) return "";

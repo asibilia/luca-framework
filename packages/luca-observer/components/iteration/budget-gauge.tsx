@@ -1,5 +1,22 @@
 "use client";
 
+import { z } from "zod";
+
+/**
+ * Props schema for BudgetGauge component.
+ *
+ * Defines all props with Zod validation. The softStopPercent default
+ * is defined here (schema-first) rather than in destructuring.
+ */
+const BudgetGaugePropsSchema = z.object({
+  currentIteration: z.number(),
+  maxIterations: z.number(),
+  softStopPercent: z.number().default(80),
+  status: z.string(),
+});
+
+type BudgetGaugeProps = z.infer<typeof BudgetGaugePropsSchema>;
+
 /**
  * Horizontal progress bar showing iteration budget consumption.
  *
@@ -11,17 +28,9 @@
  * @param softStopPercent - Soft-stop threshold percentage (default 80)
  * @param status - Budget status: under_budget, soft_stop, or exceeded
  */
-export function BudgetGauge({
-  currentIteration,
-  maxIterations,
-  softStopPercent = 80,
-  status,
-}: {
-  currentIteration: number;
-  maxIterations: number;
-  softStopPercent?: number;
-  status: string;
-}) {
+export function BudgetGauge(rawProps: BudgetGaugeProps) {
+  const { currentIteration, maxIterations, softStopPercent, status } =
+    BudgetGaugePropsSchema.parse(rawProps);
   const usagePercent = Math.min(
     (currentIteration / Math.max(maxIterations, 1)) * 100,
     100,

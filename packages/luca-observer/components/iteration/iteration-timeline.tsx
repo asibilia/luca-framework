@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import orderBy from "lodash/orderBy";
+
 import type { IterationRecordSnapshot } from "~/lib/types";
 
 /**
@@ -30,7 +32,7 @@ export function IterationTimeline({
   }
 
   // Newest first
-  const sorted = [...iterations].reverse();
+  const sorted = orderBy(iterations, "iteration", "desc");
 
   return (
     <div className="rounded-lg border border-border p-4">

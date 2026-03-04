@@ -1,5 +1,7 @@
 "use client";
 
+import orderBy from "lodash/orderBy";
+
 import { SectionHeader } from "~/components/layout/section-header";
 import { WORKFLOW_STATES } from "~/lib/constants";
 import type { LedgerEntry } from "~/lib/types";
@@ -30,7 +32,7 @@ export function RecentTransitions({ entries }: { entries: LedgerEntry[] }) {
   }
 
   // Show newest first
-  const sorted = [...entries].reverse();
+  const sorted = orderBy(entries, "sequence_number", "desc");
 
   return (
     <div className="flex flex-col gap-3">

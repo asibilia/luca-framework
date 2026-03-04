@@ -1,5 +1,6 @@
 import { join } from "node:path";
 
+import orderBy from "lodash/orderBy";
 import type { z, ZodTypeDef } from "zod";
 
 import type {
@@ -268,7 +269,7 @@ export async function readIterationHistory(
     }
 
     // Sort by iteration number ascending
-    return records.sort((a, b) => a.iteration - b.iteration);
+    return orderBy(records, "iteration", "asc");
   } catch {
     return [];
   }

@@ -95,16 +95,10 @@ export function FindingsTable({
       <div className="px-4 pb-3">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
-              <th className="py-2 text-left font-mono text-xs font-medium text-muted-foreground">
-                Resolution
-              </th>
-              <th className="py-2 text-right font-mono text-xs font-medium text-muted-foreground">
-                Count
-              </th>
-              <th className="py-2 text-right font-mono text-xs font-medium text-muted-foreground">
-                Percent
-              </th>
+            <tr className="border-b border-border font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <th className="py-2 text-left">Resolution</th>
+              <th className="py-2 text-right">Count</th>
+              <th className="py-2 text-right">Percent</th>
             </tr>
           </thead>
           <tbody>

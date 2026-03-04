@@ -1,3 +1,5 @@
+import orderBy from "lodash/orderBy";
+
 import type { StoredEvent, ObserverEvent, SessionRecord } from "./types";
 
 /**
@@ -121,7 +123,7 @@ export function queryEvents(filters?: {
   }
 
   // Return newest first
-  result = [...result].reverse();
+  result = orderBy(result, "id", "desc");
 
   if (filters?.offset) {
     result = result.slice(filters.offset);
@@ -153,7 +155,7 @@ export function upsertSession(session: SessionRecord) {
  */
 export function getSessions(): SessionRecord[] {
   const store = getStore();
-  return [...store.sessions.values()].reverse();
+  return orderBy([...store.sessions.values()], "started_at", "desc");
 }
 
 /**

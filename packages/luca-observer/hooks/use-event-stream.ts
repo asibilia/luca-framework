@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+import { StoredEventSchema } from "~/lib/types";
 import type { StoredEvent } from "~/lib/types";
 
 /**
@@ -33,9 +34,10 @@ export function useEventStream(maxEvents = 200) {
 
     es.onmessage = (event) => {
       try {
-        const parsed = JSON.parse(event.data) as StoredEvent;
+        const result = StoredEventSchema.safeParse(JSON.parse(event.data));
+        if (!result.success) return;
         setEvents((prev) => {
-          const next = [parsed, ...prev];
+          const next = [result.data, ...prev];
           return next.length > maxEvents ? next.slice(0, maxEvents) : next;
         });
       } catch {

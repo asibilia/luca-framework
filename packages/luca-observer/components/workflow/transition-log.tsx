@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import orderBy from "lodash/orderBy";
+
 import { WORKFLOW_STATES } from "~/lib/constants";
 import { EventBadge } from "~/components/shared/event-badge";
 import { JsonViewer } from "~/components/shared/json-viewer";
@@ -64,7 +66,7 @@ export function TransitionLog({ entries }: { entries: LedgerEntry[] }) {
     );
   }
 
-  const reversed = [...entries].reverse();
+  const reversed = orderBy(entries, "sequence_number", "desc");
 
   return (
     <div className="max-h-96 overflow-auto rounded-lg border border-border">
