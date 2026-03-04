@@ -3,13 +3,17 @@
 import { useAtom } from "jotai";
 
 import { sidebarOpenAtom } from "~/stores/sidebar";
+import { themeAtom } from "~/stores/theme";
 import { StatusIndicator } from "~/components/shared/status-indicator";
 
 /**
- * Top header bar with sidebar toggle and session status.
+ * Top header bar with sidebar toggle, theme toggle, and session status.
  */
 export function Header() {
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
+  const [theme, setTheme] = useAtom(themeAtom);
+
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-2 md:px-4">
@@ -24,6 +28,14 @@ export function Header() {
         <StatusIndicator />
       </div>
       <div className="flex items-center gap-2">
+        <button
+          onClick={toggleTheme}
+          className="rounded p-1 font-mono text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        >
+          {theme === "dark" ? "sun" : "moon"}
+        </button>
         <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
           SSE Connected
         </span>
