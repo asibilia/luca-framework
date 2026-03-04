@@ -79,8 +79,8 @@
 
 **Depends on:** Phase 99
 
-- [ ] Add Tailwind build/dev/watch scripts to luca-observer package.json
-- [ ] Verify Tailwind CSS compilation pipeline works end-to-end
+- [x] Add Tailwind build/dev/watch scripts to luca-observer package.json
+- [x] Verify Tailwind CSS compilation pipeline works end-to-end
 
 ### Phase 103 — ESLint Config
 
