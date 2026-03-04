@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-
 import { z } from "zod";
 
-import type { IterationRecordSnapshot } from "~/lib/types";
 import { IterationRecordSnapshotSchema } from "~/lib/types";
+
+import { usePollingFetch } from "./use-polling-fetch";
 
 /**
  * API Response schema for /api/iterations.
@@ -27,32 +26,15 @@ const IterationsResponseSchema = z.object({
  * @returns Object with iterations array, loading state, and error
  */
 export function useIterationHistory(intervalMs = 15000) {
-  const [iterations, setIterations] = useState<IterationRecordSnapshot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = usePollingFetch(
+    "/api/iterations",
+    IterationsResponseSchema,
+    intervalMs,
+  );
 
-  const fetchIterations = useCallback(async () => {
-    try {
-      const res = await fetch("/api/iterations");
-      if (!res.ok) throw new Error("Failed to fetch iterations");
-      const json = await res.json();
-      const parsed = IterationsResponseSchema.safeParse(json);
-      if (parsed.success) {
-        setIterations(parsed.data.iterations);
-        setError(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchIterations();
-    const interval = setInterval(fetchIterations, intervalMs);
-    return () => clearInterval(interval);
-  }, [fetchIterations, intervalMs]);
-
-  return { iterations, loading, error };
+  return {
+    iterations: data?.iterations ?? [],
+    loading,
+    error,
+  };
 }

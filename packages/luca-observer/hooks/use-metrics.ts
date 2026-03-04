@@ -1,6 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { z } from "zod";
+
+import { usePollingFetch } from "./use-polling-fetch";
+
+/**
+ * Permissive schema for /api/metrics response.
+ *
+ * Metrics are a free-form key-value map; this schema validates the
+ * shape without constraining individual metric keys.
+ */
+const MetricsResponseSchema = z.record(z.unknown());
 
 /**
  * React hook for polling metrics from the API.
@@ -11,29 +21,5 @@ import { useEffect, useState, useCallback } from "react";
  * @returns Object with data, loading state, and error
  */
 export function useMetrics(intervalMs = 10000) {
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMetrics = useCallback(async () => {
-    try {
-      const res = await fetch("/api/metrics");
-      if (!res.ok) throw new Error("Failed to fetch metrics");
-      const json = await res.json();
-      setData(json as Record<string, unknown>);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, intervalMs);
-    return () => clearInterval(interval);
-  }, [fetchMetrics, intervalMs]);
-
-  return { data, loading, error };
+  return usePollingFetch("/api/metrics", MetricsResponseSchema, intervalMs);
 }

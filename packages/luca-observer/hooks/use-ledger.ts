@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-
 import { z } from "zod";
 
-import type { LedgerEntry } from "~/lib/types";
 import { LedgerEntrySchema } from "~/lib/types";
+
+import { usePollingFetch } from "./use-polling-fetch";
 
 /**
  * API Response schema for /api/ledger.
@@ -28,34 +27,16 @@ const LedgerResponseSchema = z.object({
  * @returns Object with entries, total count, loading state, and error
  */
 export function useLedger(tail = 50, intervalMs = 10000) {
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = usePollingFetch(
+    `/api/ledger?tail=${tail}`,
+    LedgerResponseSchema,
+    intervalMs,
+  );
 
-  const fetchLedger = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/ledger?tail=${tail}`);
-      if (!res.ok) throw new Error("Failed to fetch ledger");
-      const json = await res.json();
-      const parsed = LedgerResponseSchema.safeParse(json);
-      if (parsed.success) {
-        setEntries(parsed.data.entries);
-        setTotalCount(parsed.data.total_count);
-        setError(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [tail]);
-
-  useEffect(() => {
-    fetchLedger();
-    const interval = setInterval(fetchLedger, intervalMs);
-    return () => clearInterval(interval);
-  }, [fetchLedger, intervalMs]);
-
-  return { entries, totalCount, loading, error };
+  return {
+    entries: data?.entries ?? [],
+    totalCount: data?.total_count ?? 0,
+    loading,
+    error,
+  };
 }

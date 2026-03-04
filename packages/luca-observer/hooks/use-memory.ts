@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-
 import { z } from "zod";
+
+import { usePollingFetch } from "./use-polling-fetch";
 
 /**
  * API Response schema for /api/memory.
@@ -27,32 +27,5 @@ export type MemoryFiles = z.infer<typeof MemoryResponseSchema>;
  * @returns Object with data (MemoryFiles), loading state, and error
  */
 export function useMemory(intervalMs = 10000) {
-  const [data, setData] = useState<MemoryFiles | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMemory = useCallback(async () => {
-    try {
-      const res = await fetch("/api/memory");
-      if (!res.ok) throw new Error("Failed to fetch memory");
-      const json = await res.json();
-      const parsed = MemoryResponseSchema.safeParse(json);
-      if (parsed.success) {
-        setData(parsed.data);
-        setError(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMemory();
-    const interval = setInterval(fetchMemory, intervalMs);
-    return () => clearInterval(interval);
-  }, [fetchMemory, intervalMs]);
-
-  return { data, loading, error };
+  return usePollingFetch("/api/memory", MemoryResponseSchema, intervalMs);
 }

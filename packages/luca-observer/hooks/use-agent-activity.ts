@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-
 import { z } from "zod";
 
-import type { AgentActivitySnapshot } from "~/lib/types";
 import { AgentActivitySnapshotSchema } from "~/lib/types";
+
+import { usePollingFetch } from "./use-polling-fetch";
 
 /**
  * API Response schema for /api/agents.
@@ -27,32 +26,15 @@ const AgentsResponseSchema = z.object({
  * @returns Object with agents array, loading state, and error
  */
 export function useAgentActivity(intervalMs = 15000) {
-  const [agents, setAgents] = useState<AgentActivitySnapshot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = usePollingFetch(
+    "/api/agents",
+    AgentsResponseSchema,
+    intervalMs,
+  );
 
-  const fetchAgents = useCallback(async () => {
-    try {
-      const res = await fetch("/api/agents");
-      if (!res.ok) throw new Error("Failed to fetch agents");
-      const json = await res.json();
-      const parsed = AgentsResponseSchema.safeParse(json);
-      if (parsed.success) {
-        setAgents(parsed.data.agents);
-        setError(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAgents();
-    const interval = setInterval(fetchAgents, intervalMs);
-    return () => clearInterval(interval);
-  }, [fetchAgents, intervalMs]);
-
-  return { agents, loading, error };
+  return {
+    agents: data?.agents ?? [],
+    loading,
+    error,
+  };
 }
