@@ -37,7 +37,7 @@ describe("SSE event roundtrip", () => {
     // Verify stored in database
     const events = queryEvents({ event_type: "test.roundtrip" });
     expect(events.length).toBeGreaterThanOrEqual(1);
-    expect(events[0].event_type).toBe("test.roundtrip");
+    expect(events[0]!.event_type).toBe("test.roundtrip");
 
     // Verify broadcast received
     expect(received).toHaveLength(1);

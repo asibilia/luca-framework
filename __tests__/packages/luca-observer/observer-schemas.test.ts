@@ -133,8 +133,8 @@ describe("Observer Zod schemas", () => {
       const result = HarnessResultSnapshotSchema.safeParse(withErrors);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.checks[0].errors).toHaveLength(1);
-        expect(result.data.checks[0].errors[0].file).toBe("src/index.ts");
+        expect(result.data.checks[0]!.errors).toHaveLength(1);
+        expect(result.data.checks[0]!.errors[0]!.file).toBe("src/index.ts");
       }
     });
   });

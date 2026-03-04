@@ -54,8 +54,8 @@ describe("readLedgerEntries", () => {
 
     const entries = await readLedgerEntries(tmpDir);
     expect(entries).toHaveLength(1);
-    expect(entries[0].current_state).toBe("preflight");
-    expect(entries[0].sequence_number).toBe(0);
+    expect(entries[0]!.current_state).toBe("preflight");
+    expect(entries[0]!.sequence_number).toBe(0);
   });
 
   test("skips corrupted lines without throwing", async () => {
@@ -83,7 +83,7 @@ describe("readLedgerEntries", () => {
 
     const entries = await readLedgerEntries(tmpDir);
     expect(entries).toHaveLength(1);
-    expect(entries[0].current_state).toBe("routing");
+    expect(entries[0]!.current_state).toBe("routing");
   });
 
   test("filters by session_id", async () => {
@@ -114,7 +114,7 @@ describe("readLedgerEntries", () => {
       session_id: "session-a",
     });
     expect(entries).toHaveLength(1);
-    expect(entries[0].session_id).toBe("session-a");
+    expect(entries[0]!.session_id).toBe("session-a");
   });
 
   test("filters by event_type", async () => {
@@ -147,7 +147,7 @@ describe("readLedgerEntries", () => {
 
     const entries = await readLedgerEntries(tmpDir, { event_type: "START" });
     expect(entries).toHaveLength(1);
-    expect(entries[0].event_type).toBe("START");
+    expect(entries[0]!.event_type).toBe("START");
   });
 
   test("applies tail filter before parsing", async () => {
@@ -177,7 +177,7 @@ describe("readLedgerEntries", () => {
 
     const entries = await readLedgerEntries(tmpDir, { tail: 3 });
     expect(entries).toHaveLength(3);
-    expect(entries[0].sequence_number).toBe(7);
+    expect(entries[0]!.sequence_number).toBe(7);
   });
 
   test("applies limit filter", async () => {

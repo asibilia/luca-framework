@@ -74,11 +74,11 @@ describe("Harness result persistence roundtrip", () => {
     expect(result).not.toBeNull();
     expect(result!.status).toBe("failed");
     expect(result!.checks).toHaveLength(2);
-    expect(result!.checks[0].status).toBe("passed");
-    expect(result!.checks[1].status).toBe("failed");
-    expect(result!.checks[1].errors).toHaveLength(1);
-    expect(result!.checks[1].errors[0].file).toBe("src/index.ts");
-    expect(result!.checks[1].errors[0].line).toBe(15);
+    expect(result!.checks[0]!.status).toBe("passed");
+    expect(result!.checks[1]!.status).toBe("failed");
+    expect(result!.checks[1]!.errors).toHaveLength(1);
+    expect(result!.checks[1]!.errors[0]!.file).toBe("src/index.ts");
+    expect(result!.checks[1]!.errors[0]!.line).toBe(15);
     expect(result!.total_errors).toBe(1);
   });
 });
