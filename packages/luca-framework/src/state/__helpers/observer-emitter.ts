@@ -2,8 +2,8 @@
  * Observer emitter — fire-and-forget event emission to luca-observer.
  *
  * Extracted utility to keep bridge.ts free of network I/O.
- * Only emits when LUCA_OBSERVER_URL is set. Silently fails if
- * the observer is not running.
+ * Defaults to http://localhost:3456 (matching shell hook convention).
+ * Silently fails if the observer is not running.
  *
  * SSRF Protection: Only localhost addresses are allowed as emission
  * targets to prevent server-side request forgery.
@@ -51,7 +51,7 @@ export function isLocalhostUrl(rawUrl: string): boolean {
 /**
  * Emit a fire-and-forget event to the Luca Observer dashboard.
  *
- * Does nothing if LUCA_OBSERVER_URL is not set.
+ * Defaults to http://localhost:3456 if LUCA_OBSERVER_URL is not set.
  * Refuses to emit if LUCA_OBSERVER_URL does not point to localhost (SSRF guard).
  * Silently catches all errors to avoid disrupting the caller.
  *
@@ -62,7 +62,7 @@ export function emitObserverEvent(
   eventType: string,
   data: Record<string, unknown> = {},
 ) {
-  const url = process.env.LUCA_OBSERVER_URL;
+  const url = process.env.LUCA_OBSERVER_URL || "http://localhost:3456";
   if (!url) return;
 
   if (!isLocalhostUrl(url)) {

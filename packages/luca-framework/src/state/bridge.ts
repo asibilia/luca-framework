@@ -65,7 +65,7 @@ import {
 } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
-import { emitObserverEvent } from "./observer-emitter";
+import { emitObserverEvent } from "./__helpers/observer-emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
