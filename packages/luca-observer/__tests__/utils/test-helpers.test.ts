@@ -32,8 +32,8 @@ describe("createFetchMock", () => {
     });
 
     expect(mock.calls).toHaveLength(1);
-    expect(mock.calls[0].url).toBe("http://localhost:3456/api/events");
-    expect(mock.calls[0].init?.method).toBe("POST");
+    expect(mock.calls[0]!.url).toBe("http://localhost:3456/api/events");
+    expect(mock.calls[0]!.init?.method).toBe("POST");
 
     const body = await response.text();
     expect(body).toBe('{"status":"ok"}');
@@ -60,9 +60,9 @@ describe("createFetchMock", () => {
     await fetch("http://example.com/c");
 
     expect(mock.calls).toHaveLength(3);
-    expect(mock.calls[0].url).toBe("http://example.com/a");
-    expect(mock.calls[1].url).toBe("http://example.com/b");
-    expect(mock.calls[2].url).toBe("http://example.com/c");
+    expect(mock.calls[0]!.url).toBe("http://example.com/a");
+    expect(mock.calls[1]!.url).toBe("http://example.com/b");
+    expect(mock.calls[2]!.url).toBe("http://example.com/c");
   });
 
   test("restores original fetch on cleanup", async () => {
@@ -102,7 +102,7 @@ describe("createFailingFetchMock", () => {
     }
 
     expect(mock.calls).toHaveLength(1);
-    expect(mock.calls[0].url).toBe("http://example.com/fail");
+    expect(mock.calls[0]!.url).toBe("http://example.com/fail");
   });
 
   test("rejects with custom error", async () => {
