@@ -67,11 +67,11 @@
 
 **Depends on:** Phase 100
 
-- [ ] Observer UI polish: loading states, error boundaries, responsive layout, dark mode (#25)
-- [ ] Post-init interactive tour with @clack/prompts (#20)
-- [ ] End-to-end integration test: hooks fire -> ledger records -> observer displays
-- [ ] Hook portability finalization and drift check (#9)
-- [ ] Documentation for observer deployment
+- [x] Observer UI polish: loading states, error boundaries, responsive layout, dark mode (#25)
+- [x] Post-init interactive tour with @clack/prompts (#20)
+- [x] End-to-end integration test: hooks fire -> ledger records -> observer displays
+- [x] Hook portability finalization and drift check (#9)
+- [x] Documentation for observer deployment
 
 ### Phase 102 — Tailwind Build Commands
 
@@ -99,10 +99,10 @@
 
 **Depends on:** None
 
-- [ ] Move content folders from `src/` to package root
-- [ ] Update all import paths and tsconfig path mappings
-- [ ] Update Next.js config if needed
-- [ ] Verify build and dev server work after restructure
+- [x] Move content folders from `src/` to package root
+- [x] Update all import paths and tsconfig path mappings
+- [x] Update Next.js config if needed
+- [x] Verify build and dev server work after restructure
 
 ### Phase 105 — Remove PostCSS & Align Tailwind Setup
 
@@ -110,10 +110,10 @@
 
 **Depends on:** Phase 102
 
-- [ ] Remove postcss and postcss.config from luca-observer
-- [ ] Port Tailwind setup from joes-book--next repo
-- [ ] Update CSS imports and Tailwind directives to match reference repo
-- [ ] Verify Tailwind styles compile correctly without PostCSS
+- [x] Remove postcss and postcss.config from luca-observer
+- [x] Port Tailwind setup from joes-book--next repo
+- [x] Update CSS imports and Tailwind directives to match reference repo
+- [x] Verify Tailwind styles compile correctly without PostCSS
 
 ### Phase 106 — Modernize Next.js Config
 
