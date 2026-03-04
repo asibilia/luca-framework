@@ -191,6 +191,111 @@ export async function appendLedgerEntry(
   return entry;
 }
 
+// ─── Filter Validation ───────────────────────────────────────────────────
+
+/**
+ * Regex for safe session IDs: alphanumeric, hyphens, and underscores only.
+ * Rejects any characters that could be used for SQL injection (quotes, semicolons, etc.).
+ */
+const SAFE_SESSION_ID_RE = /^[a-zA-Z0-9_-]+$/;
+
+/** Regex for ISO 8601 date/datetime strings. */
+const ISO8601_RE =
+  /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+
+/**
+ * Valid event types that can appear in ledger entries.
+ *
+ * Used as an allowlist to prevent SQL injection via event_type filter.
+ */
+const VALID_EVENT_TYPES = [
+  "phase_started",
+  "phase_completed",
+  "transition",
+  "error",
+  "checkpoint",
+  "metric",
+  "decision",
+  "field_set",
+  "START",
+  "PLAN_LOADED",
+  "PHASE_STARTED",
+  "PHASE_COMPLETED",
+  "VERIFY_START",
+  "VERIFY_PASS",
+  "VERIFY_FAIL",
+  "FIX_APPLIED",
+  "COMPLETE",
+  "SUSPEND",
+  "RESUME_PHASE",
+  "RESET",
+] as const;
+
+/**
+ * Validate ledger filter values to prevent SQL injection.
+ *
+ * Checks that filter values match expected formats before they are
+ * interpolated into SQL queries. Throws on invalid input.
+ *
+ * @param filters - Raw filter values from CLI or API
+ * @returns Validated filter values safe for query interpolation
+ * @throws Error if any filter value has an invalid format
+ *
+ * @example
+ * ```typescript
+ * const safe = validateLedgerFilters({
+ *   session_id: "session-abc-123",
+ *   event_type: "transition",
+ *   since: "2024-01-15T00:00:00Z",
+ *   limit: 50,
+ * });
+ * ```
+ */
+export function validateLedgerFilters(filters: LedgerFilters): LedgerFilters {
+  const validated: LedgerFilters = {};
+
+  if (filters.session_id) {
+    if (!SAFE_SESSION_ID_RE.test(filters.session_id)) {
+      throw new Error(`Invalid session_id format: ${filters.session_id}`);
+    }
+    validated.session_id = filters.session_id;
+  }
+
+  if (filters.event_type) {
+    if (
+      !(VALID_EVENT_TYPES as readonly string[]).includes(filters.event_type)
+    ) {
+      throw new Error(`Invalid event_type: ${filters.event_type}`);
+    }
+    validated.event_type = filters.event_type;
+  }
+
+  if (filters.since) {
+    if (!ISO8601_RE.test(filters.since)) {
+      throw new Error(`Invalid since format: ${filters.since}`);
+    }
+    validated.since = filters.since;
+  }
+
+  if (filters.limit != null) {
+    const n = Number(filters.limit);
+    if (!Number.isInteger(n) || n < 1 || n > 1000) {
+      throw new Error(`Invalid limit: ${filters.limit}`);
+    }
+    validated.limit = n;
+  }
+
+  if (filters.tail != null) {
+    const n = Number(filters.tail);
+    if (!Number.isInteger(n) || n < 1 || n > 1000) {
+      throw new Error(`Invalid tail: ${filters.tail}`);
+    }
+    validated.tail = n;
+  }
+
+  return validated;
+}
+
 // ─── Read ───────────────────────────────────────────────────────────────────
 
 /**
@@ -219,21 +324,26 @@ export async function readLedger(
   filters: LedgerFilters = {},
   ledgerPath: string = LEDGER_PATH,
 ): Promise<LedgerEntry[]> {
+  // Validate filter values before building SQL to prevent injection
+  const validatedFilters = validateLedgerFilters(filters);
+
   // Primary: try SpacetimeDB
   try {
     const whereClauses: string[] = [];
-    if (filters.session_id) {
+    if (validatedFilters.session_id) {
       whereClauses.push(
-        `session_id = '${filters.session_id.replace(/'/g, "''")}'`,
+        `session_id = '${validatedFilters.session_id.replace(/'/g, "''")}'`,
       );
     }
-    if (filters.event_type) {
+    if (validatedFilters.event_type) {
       whereClauses.push(
-        `event_type = '${filters.event_type.replace(/'/g, "''")}'`,
+        `event_type = '${validatedFilters.event_type.replace(/'/g, "''")}'`,
       );
     }
-    if (filters.since) {
-      whereClauses.push(`timestamp >= '${filters.since.replace(/'/g, "''")}'`);
+    if (validatedFilters.since) {
+      whereClauses.push(
+        `timestamp >= '${validatedFilters.since.replace(/'/g, "''")}'`,
+      );
     }
 
     let sql = "SELECT * FROM ledger_entries";
@@ -241,15 +351,15 @@ export async function readLedger(
       sql += ` WHERE ${whereClauses.join(" AND ")}`;
     }
     sql += " ORDER BY sequence_number ASC";
-    if (filters.limit) {
-      sql += ` LIMIT ${filters.limit}`;
+    if (validatedFilters.limit) {
+      sql += ` LIMIT ${validatedFilters.limit}`;
     }
 
     const rows = await queryTable<LedgerEntry>(sql);
     if (rows.length > 0) {
       // Apply tail filter after query (SpacetimeDB may not support OFFSET well)
-      if (filters.tail !== undefined && filters.tail > 0) {
-        return rows.slice(-filters.tail);
+      if (validatedFilters.tail !== undefined && validatedFilters.tail > 0) {
+        return rows.slice(-validatedFilters.tail);
       }
       return rows;
     }
@@ -266,8 +376,8 @@ export async function readLedger(
   const text = await file.text();
   let lines = text.trim().split("\n").filter(Boolean);
 
-  if (filters.tail !== undefined && filters.tail > 0) {
-    lines = lines.slice(-filters.tail);
+  if (validatedFilters.tail !== undefined && validatedFilters.tail > 0) {
+    lines = lines.slice(-validatedFilters.tail);
   }
 
   const entries: LedgerEntry[] = [];
@@ -289,18 +399,22 @@ export async function readLedger(
 
   let filtered = entries;
 
-  if (filters.session_id) {
-    filtered = filtered.filter((e) => e.session_id === filters.session_id);
+  if (validatedFilters.session_id) {
+    filtered = filtered.filter(
+      (e) => e.session_id === validatedFilters.session_id,
+    );
   }
-  if (filters.event_type) {
-    filtered = filtered.filter((e) => e.event_type === filters.event_type);
+  if (validatedFilters.event_type) {
+    filtered = filtered.filter(
+      (e) => e.event_type === validatedFilters.event_type,
+    );
   }
-  if (filters.since) {
-    const sinceVal = filters.since;
+  if (validatedFilters.since) {
+    const sinceVal = validatedFilters.since;
     filtered = filtered.filter((e) => e.timestamp >= sinceVal);
   }
-  if (filters.limit !== undefined && filters.limit > 0) {
-    filtered = filtered.slice(0, filters.limit);
+  if (validatedFilters.limit !== undefined && validatedFilters.limit > 0) {
+    filtered = filtered.slice(0, validatedFilters.limit);
   }
 
   return filtered;

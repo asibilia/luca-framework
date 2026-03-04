@@ -93,13 +93,33 @@ export function callReducer(
 
   const reducerUrl = buildReducerUrl(url, reducerName);
 
-  fetch(reducerUrl, {
+  const opts: RequestInit = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),
     signal: AbortSignal.timeout(2000),
-  }).catch(() => {
-    // Intentionally swallowed — SpacetimeDB is optional
+  };
+
+  fetch(reducerUrl, opts).catch(async (err) => {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        `[observer-emitter] Reducer ${reducerName} failed, retrying:`,
+        (err as Error).message,
+      );
+    }
+    // Single retry after 1s for transient failures
+    await new Promise((r) => setTimeout(r, 1000));
+    return fetch(reducerUrl, {
+      ...opts,
+      signal: AbortSignal.timeout(2000),
+    }).catch((retryErr) => {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          `[observer-emitter] Reducer ${reducerName} retry failed:`,
+          (retryErr as Error).message,
+        );
+      }
+    });
   });
 }
 

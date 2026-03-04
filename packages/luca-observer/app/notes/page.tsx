@@ -1,90 +1,71 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+import orderBy from "lodash/orderBy";
+import { useTable, useReducer } from "spacetimedb/react";
 
 import { PageContainer } from "~/components/layout/page-container";
-import { useEventStream } from "~/hooks/use-event-stream";
-
-/**
- * Note shape returned from the /api/notes endpoint.
- */
-interface Note {
-  filename: string;
-  priority: string;
-  created: string;
-  status: string;
-  body: string;
-}
+import { tables, reducers } from "~/module_bindings";
 
 /**
  * Notes page — Developer notes queue dashboard.
  *
  * Shows an input form for adding notes, a pending notes list,
  * and a collapsible done/consumed notes list. Updates in real-time
- * via SSE when notes are added or consumed by hooks.
+ * via SpacetimeDB subscriptions.
  */
 export default function NotesPage() {
   const [text, setText] = useState("");
   const [priority, setPriority] = useState<"next" | "whenever">("next");
-  const [pending, setPending] = useState<Note[]>([]);
-  const [done, setDone] = useState<Note[]>([]);
   const [showDone, setShowDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { events } = useEventStream();
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchNotes = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notes");
-      if (res.ok) {
-        const data = await res.json();
-        setPending(data.pending ?? []);
-        setDone(data.done ?? []);
-      }
-    } catch {
-      // Silently fail — will retry on next event
-    }
-  }, []);
+  const [rows, isLoading] = useTable(tables.notes);
+  const createNote = useReducer(reducers.createNote);
 
-  // Fetch notes on mount
-  useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
-
-  // Refetch when note events arrive via SSE
-  useEffect(() => {
-    const noteEvent = events.find(
-      (e) => e.event_type === "note.added" || e.event_type === "note.consumed"
+  const { pending, done } = useMemo(() => {
+    const pendingNotes = orderBy(
+      rows.filter((r) => r.status === "pending"),
+      (r) => Number(r.createdAt),
+      "desc",
     );
-    if (noteEvent) {
-      fetchNotes();
-    }
-  }, [events, fetchNotes]);
+    const doneNotes = orderBy(
+      rows.filter((r) => r.status === "consumed" || r.status === "done"),
+      (r) => Number(r.consumedAt ?? r.createdAt),
+      "desc",
+    );
+    return { pending: pendingNotes, done: doneNotes };
+  }, [rows]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim() || submitting) return;
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!text.trim() || submitting) return;
 
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), priority }),
-      });
-      if (res.ok) {
+      setSubmitting(true);
+      setError(null);
+      try {
+        const filename = `note-${Date.now()}.md`;
+        await createNote({
+          filename,
+          body: text.trim(),
+          priority,
+          createdAt: BigInt(Date.now()),
+        });
         setText("");
-        await fetchNotes();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create note");
+      } finally {
+        setSubmitting(false);
       }
-    } catch {
-      // Form stays populated so user can retry
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    },
+    [text, priority, submitting, createNote],
+  );
 
-  const formatAge = (created: string): string => {
-    if (!created) return "";
-    const ms = Date.now() - new Date(created).getTime();
+  const formatAge = (timestamp: bigint): string => {
+    const ms = Date.now() - Number(timestamp);
     const mins = Math.floor(ms / 60000);
     if (mins < 1) return "just now";
     if (mins < 60) return `${mins}m ago`;
@@ -130,6 +111,7 @@ export default function NotesPage() {
             {submitting ? "Adding..." : "Add Note"}
           </button>
         </div>
+        {error && <p className="font-mono text-xs text-destructive">{error}</p>}
       </form>
 
       {/* Pending notes */}
@@ -137,7 +119,13 @@ export default function NotesPage() {
         <h2 className="font-mono text-sm font-medium text-foreground">
           Pending ({pending.length})
         </h2>
-        {pending.length === 0 ? (
+        {isLoading ? (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center">
+            <p className="font-mono text-sm text-muted-foreground animate-pulse">
+              Loading notes...
+            </p>
+          </div>
+        ) : pending.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-8 text-center">
             <p className="font-mono text-sm text-muted-foreground">
               No pending notes. Use the form above or{" "}
@@ -166,7 +154,7 @@ export default function NotesPage() {
                     {note.body}
                   </p>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {formatAge(note.created)}
+                    {formatAge(note.createdAt)}
                   </p>
                 </div>
               </div>
@@ -201,7 +189,7 @@ export default function NotesPage() {
                       {note.body}
                     </p>
                     <p className="mt-1 font-mono text-xs text-muted-foreground">
-                      {formatAge(note.created)}
+                      {formatAge(note.consumedAt ?? note.createdAt)}
                     </p>
                   </div>
                 </div>

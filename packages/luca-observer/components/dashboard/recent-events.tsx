@@ -36,15 +36,8 @@ export function RecentEvents({
       {events.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center">
           <p className="font-mono text-sm text-muted-foreground">
-            No events yet. Start a Luca workflow to see events appear here.
-          </p>
-          <p className="mt-2 font-mono text-xs text-muted-foreground">
-            Or test with:{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5">
-              curl -X POST http://localhost:3456/api/events -H
-              &quot;Content-Type: application/json&quot; -d
-              &apos;&#123;&quot;event_type&quot;:&quot;test&quot;,&quot;session_id&quot;:&quot;test-1&quot;&#125;&apos;
-            </code>
+            No events yet. Start a Luca workflow to see events stream here in
+            real-time via SpacetimeDB.
           </p>
         </div>
       ) : (

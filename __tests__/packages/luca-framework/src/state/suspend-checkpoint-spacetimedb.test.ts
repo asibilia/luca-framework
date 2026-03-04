@@ -43,7 +43,7 @@ beforeEach(() => {
   globalThis.fetch = (async (url: any, init?: any) => {
     fetchCalls.push({ url: String(url), init });
     throw new Error("Connection refused");
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 });
 
 afterEach(() => {
@@ -109,7 +109,7 @@ function mockSpacetimeDBQuery(rowObjects: Record<string, unknown>[]) {
     }
 
     throw new Error(`Unexpected URL: ${urlStr}`);
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 }
 
 // --- Tests: suspendCheckpointSchema -------------------------------------------
@@ -157,7 +157,7 @@ describe("createSuspendCheckpoint", () => {
     globalThis.fetch = (async (url: any, init?: any) => {
       fetchCalls.push({ url: String(url), init });
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const cp = makeCheckpoint({ phase_id: 42 });
     await createSuspendCheckpoint(cp);
@@ -181,7 +181,7 @@ describe("createSuspendCheckpoint", () => {
     globalThis.fetch = (async (url: any, init?: any) => {
       fetchCalls.push({ url: String(url), init });
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const cp = makeCheckpoint({ phase_id: 999 });
     const filePath = await createSuspendCheckpoint(cp);
@@ -255,7 +255,7 @@ describe("clearSuspendCheckpoint", () => {
     globalThis.fetch = (async (url: any, init?: any) => {
       fetchCalls.push({ url: String(url), init });
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     await clearSuspendCheckpoint(42);
 
@@ -272,7 +272,7 @@ describe("clearSuspendCheckpoint", () => {
     globalThis.fetch = (async (url: any, init?: any) => {
       fetchCalls.push({ url: String(url), init });
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     // Should not throw even though no file exists
     await expect(clearSuspendCheckpoint(99999)).resolves.toBeUndefined();

@@ -10,7 +10,7 @@
 
 **Theme:** Make Luca's internal operations visible and verifiable. The luca-observer web dashboard is the centerpiece, supported by event infrastructure (ledger), verification pipeline (middleware), hook canonicalization, and DX polish.
 
-**Included Todos:** #25, #6, #24, #9, #20
+**Included Todos:** #25, #6, #24, #9, #20, #30, #31, #32, #33
 
 ### Phase 97 — Test Infrastructure & Event Foundation
 
@@ -137,14 +137,14 @@
 - [x] Design schema modules for observer data (16 tables, 19 reducers)
 - [x] Migrate observer hooks to `useTable()` (15 hooks)
 - [x] Add fire-and-forget SpacetimeDB writes to state/memory bridges
-- [ ] Add missing tables (workflow_config, suspend_checkpoints) and procedures_json field
-- [ ] Create SpacetimeDB HTTP query helper for non-React framework code
-- [ ] Rewrite framework read paths (persistence, bridge, ledger, checkpoints) to query SpacetimeDB
-- [ ] Rewrite memory bridge read paths to query SpacetimeDB
-- [ ] Delete dead observer code (14 API routes, 7 lib files, polling hook)
-- [ ] Remove JSON file write code from framework (state.json, session-ledger.jsonl)
-- [ ] Add tests for SpacetimeDB query helper and rewritten bridge functions
-- [ ] End-to-end verification with live SpacetimeDB instance
+- [x] Add missing tables (workflow_config, suspend_checkpoints) and procedures_json field
+- [x] Create SpacetimeDB HTTP query helper for non-React framework code
+- [x] Rewrite framework read paths (persistence, bridge, ledger, checkpoints) to query SpacetimeDB
+- [x] Rewrite memory bridge read paths to query SpacetimeDB
+- [x] Delete dead observer code (14 API routes, 7 lib files, polling hook)
+- [x] Maintain JSON fallback writes for backward compatibility (dual-write pattern)
+- [x] Add tests for SpacetimeDB query helper and rewritten bridge functions
+- [ ] End-to-end verification: typecheck + test suite pass with SpacetimeDB integration
 
 ### Phase 108 — Observer Security Hardening
 
@@ -222,11 +222,93 @@
 - [x] Add `type="button"` to 4 button elements missing the attribute
 - [x] Add `open` command browser launch warning/confirmation
 
+### Phase 112 — Observer SpacetimeDB Migration Completion
+
+**Goal:** Fix broken features and stale UI left over from the SSE → SpacetimeDB migration. Notes page is non-functional, header shows false connection status.
+
+**Depends on:** Phase 111
+
+**Todos:** #30, #32
+
+- [ ] Migrate notes page from deleted `/api/notes` to SpacetimeDB hooks (`useNotes()` + `create_note` reducer) (#30)
+- [ ] Replace "SSE Connected" header with actual SpacetimeDB connection status indicator (green/yellow/red) (#32)
+- [ ] Update stale code comments referencing SSE/polling endpoints
+
+### Phase 113 — Framework Data Safety Hardening
+
+**Goal:** Eliminate silent data loss from fire-and-forget reducer calls and close SQL injection risk in ledger query builder.
+
+**Depends on:** Phase 111
+
+**Todos:** #31, #33
+
+- [ ] Add error logging + optional retry to observer-emitter reducer calls (replace silent `.catch(() => {})`) (#31)
+- [ ] Add `LUCA_DEBUG=true` env var for verbose SpacetimeDB fallback logging across bridge reads (#31)
+- [ ] Replace manual SQL escaping in ledger.ts with strict input validation (UUID format, allowlists, ISO8601) (#33)
+- [ ] Add tests for malicious SQL input scenarios (#33)
+
 ---
 
 ## Backlog (Future)
 
-### v2.8.0 — Adaptive Learning & Ecosystem
+### v2.8.0 — Audit Remediation & Adaptive Learning
+
+**Audit Remediation (P1-P2 from repo review audit, 2026-03-04):**
+
+_P1 — Agentic:_
+
+- Define missing `shouldRunDiscussion` guard in XState machine (#34)
+- Add timeout/auto-transition to phase actor idle state (#35)
+
+_P1 — Data:_
+
+- Improve dual-write consistency between SpacetimeDB and JSON (#36)
+
+_P1 — DX:_
+
+- Document and fix test suite fragility — 29 tests fail in full run (#37)
+- Add debug logging for SpacetimeDB fallback behavior (#39)
+
+_P1 — UI:_
+
+- Clean up all stale SSE/API references in observer UI (#38)
+
+_P2 — UI:_
+
+- Standardize loading states with LoadingSkeleton component (#40)
+- Add React error boundaries to observer dashboard pages (#41)
+- Accessibility pass on observer dashboard (#47)
+- Add missing empty states to observer pages (#49)
+
+_P2 — Data:_
+
+- Implement TTL cleanup for high-volume SpacetimeDB tables (#42)
+- Fix sequence number race condition in ledger (#43)
+- Add unique constraints to singleton SpacetimeDB tables (#48)
+
+_P2 — DX:_
+
+- Fix bridge CLI documentation — 14 vs 15 subcommands (#45)
+- Deduplicate sanitizeJsonParse — 3 copies in codebase (#46)
+- Document observability domain in architecture docs (#50)
+- Add automatic stale session lock cleanup to build system (#51)
+
+_P2 — Agentic:_
+
+- Enforce complexity gating matrix in XState guards (#44)
+- Add agent health check system (#52)
+- Add stall detection and retry limits to verification loop (#53)
+
+_P3 — Agentic:_
+
+- Implement skill dependency graph (#54)
+- Enhance tribunal debate with consensus model (#55)
+
+_P3 — Data:_
+
+- Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
+
+**Ecosystem & Learning:**
 
 - Cross-session procedure replay engine (#12)
 - Adaptive complexity self-tuning (#13)
@@ -268,4 +350,4 @@
 
 ---
 
-_Roadmap updated: 2026-03-04 (v2.7.0 milestone started)_
+_Roadmap updated: 2026-03-04 (v2.7.0 phases 112-113 added from repo audit P0 findings)_

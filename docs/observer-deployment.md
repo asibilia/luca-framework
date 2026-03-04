@@ -4,19 +4,20 @@ Comprehensive guide for deploying and running the luca-observer dashboard -- a r
 
 ## Overview
 
-Luca Observer is a Next.js dashboard that reads the `.planning/` directory of any Luca-managed project and displays workflow state, event streams, iteration convergence, harness results, tribunal debates, memory files, and more. It is read-only: it never writes to `.planning/` (except for the Notes feature, which creates note files).
+Luca Observer is a Next.js 15 dashboard that connects to a SpacetimeDB instance via WebSocket and displays real-time workflow state, event streams, iteration convergence, harness results, tribunal debates, memory files, cost tracking, and more. It is read-only: all data comes from SpacetimeDB table subscriptions.
 
 The observer provides:
 
-- Real-time Server-Sent Events (SSE) feed of workflow events
-- State machine visualization with transition logs
+- Real-time WebSocket-based event feed (via SpacetimeDB subscriptions)
+- Workflow state visualization with transition logs
 - Iteration convergence charts and budget gauges
 - Harness verification results with parsed error details
 - WSJF session planning tables with quality zone indicators
-- Memory file viewer (BRAIN.md, MEMORY.md, WORKING.md)
+- Memory file viewer (BRAIN, MEMORY, WORKING, PROCEDURES)
 - Tribunal debate findings, disagreements, and rebuttals
-- Agent activity scorecards and invocation logs
-- Developer notes queue with priority support
+- Cost tracking and token usage analytics
+- Decision audit trail with rationale
+- Developer notes queue
 
 ## Prerequisites
 
@@ -24,7 +25,7 @@ The observer provides:
 
 2. **luca-framework monorepo**: The observer lives at `packages/luca-observer/` inside the luca-framework monorepo.
 
-3. **A `.planning/` directory**: The target project must have a `.planning/` directory (created automatically by Luca workflows). The observer gracefully handles missing files, so a bare `.planning/` directory is sufficient to start.
+3. **SpacetimeDB**: A running SpacetimeDB instance with the `luca-observer` module published. See [architecture-overview.md](architecture-overview.md) for setup commands.
 
 ## Quick Start
 
@@ -127,33 +128,55 @@ luca-observer --help
 
 ## Environment Variables
 
-| Variable             | Default                   | Description                                              |
-| -------------------- | ------------------------- | -------------------------------------------------------- |
-| `LUCA_PROJECT_DIR`   | Current working directory | Root of the project whose `.planning/` directory to read |
-| `LUCA_OBSERVER_PORT` | `3456`                    | Default port (overridden by `--port` flag)               |
-| `LUCA_OBSERVER_DIR`  | Current working directory | Default project directory (overridden by `--dir` flag)   |
+| Variable                         | Default                   | Description                                           |
+| -------------------------------- | ------------------------- | ----------------------------------------------------- |
+| `NEXT_PUBLIC_SPACETIMEDB_URI`    | `ws://localhost:3000`     | SpacetimeDB WebSocket URI for real-time subscriptions |
+| `NEXT_PUBLIC_SPACETIMEDB_MODULE` | `luca-observer`           | SpacetimeDB module/database name                      |
+| `LUCA_OBSERVER_PORT`             | `3456`                    | Default port (overridden by `--port` flag)            |
+| `LUCA_PROJECT_DIR`               | Current working directory | Project root (used for local file fallback reads)     |
 
 CLI flags take precedence over environment variables. Environment variables take precedence over built-in defaults.
 
-## Project Directory Requirements
+## SpacetimeDB Setup
 
-The observer reads the following files from the `.planning/` directory. All files are optional -- the dashboard shows empty states for missing data.
+The observer requires a running SpacetimeDB instance with the `luca-observer` module published.
 
-| File                             | Purpose                                             | Dashboard Page      |
-| -------------------------------- | --------------------------------------------------- | ------------------- |
-| `.planning/STATE.md`             | Workflow state snapshot (phase, complexity, branch) | Workflow, Dashboard |
-| `.planning/state.json`           | Typed state machine state                           | Workflow            |
-| `.planning/session-ledger.jsonl` | Event log with state transitions                    | Dashboard, Workflow |
-| `.planning/harness-result.json`  | Latest harness verification result                  | Harness             |
-| `.planning/checkpoints/*.json`   | Iteration checkpoint records                        | Iterations          |
-| `.planning/session-plan.json`    | WSJF-scored session plan                            | Planning            |
-| `.planning/tribunal-result.json` | Design Tribunal debate result                       | Tribunal            |
-| `.planning/metrics.json`         | Aggregated session metrics                          | Dashboard           |
-| `.planning/BRAIN.md`             | Project identity file                               | Memory              |
-| `.planning/MEMORY.md`            | Long-term learning file                             | Memory              |
-| `.planning/WORKING.md`           | Session working memory                              | Memory              |
-| `.planning/notes/*.md`           | Pending developer notes                             | Notes               |
-| `.planning/notes/done/*.md`      | Consumed developer notes                            | Notes               |
+### Local Development
+
+```bash
+# Start SpacetimeDB locally
+spacetime start
+
+# Publish the module
+spacetime publish luca-observer --module-path packages/luca-spacetime/spacetimedb
+
+# Regenerate client bindings (after schema changes)
+spacetime generate --lang typescript \
+  --out-dir packages/luca-observer/module_bindings \
+  --module-path packages/luca-spacetime/spacetimedb
+```
+
+### Data Sources
+
+The observer reads all data from SpacetimeDB tables via WebSocket subscriptions. The framework writes to these tables via fire-and-forget HTTP reducer calls.
+
+| SpacetimeDB Table     | Dashboard Page      | Purpose                                    |
+| --------------------- | ------------------- | ------------------------------------------ |
+| `workflow_state`      | Dashboard, Overview | Workflow state, phase, complexity          |
+| `observer_events`     | Events              | Real-time event feed                       |
+| `iteration_records`   | Iterations          | Per-iteration convergence data             |
+| `harness_results`     | Harness             | Verification pass/fail results             |
+| `session_plans`       | Plan                | WSJF-scored session plan                   |
+| `tribunal_results`    | Tribunal            | Design Tribunal debate results             |
+| `memory_files`        | Memory              | BRAIN, MEMORY, WORKING, PROCEDURES content |
+| `cost_tracking`       | Cost                | Session cost aggregation                   |
+| `token_usage`         | Cost                | Per-call token breakdown                   |
+| `decision_logs`       | Decisions           | Decision audit trail                       |
+| `metrics`             | Dashboard           | Aggregated session metrics                 |
+| `notes`               | Notes               | Developer notes                            |
+| `ledger_entries`      | Dashboard           | State transition log                       |
+| `context_snapshots`   | Context             | Context window snapshots                   |
+| `suspend_checkpoints` | (internal)          | Phase suspend/resume data                  |
 
 ## Troubleshooting
 
@@ -181,23 +204,40 @@ lsof -ti:3456 | xargs kill -9
 
 **Causes and fixes:**
 
-1. **Wrong project directory**: Ensure the observer points at the correct project root. Pass `--dir /path/to/project` or set `LUCA_PROJECT_DIR`.
+1. **SpacetimeDB not running**: Ensure SpacetimeDB is running (`spacetime start`) and the module is published (`spacetime publish luca-observer --module-path packages/luca-spacetime/spacetimedb`).
 
-2. **Missing `.planning/` directory**: The target project needs a `.planning/` directory with at least one data file. Run a Luca workflow to generate these files.
+2. **Wrong module name**: Check that `NEXT_PUBLIC_SPACETIMEDB_MODULE` matches the published module name (default: `luca-observer`).
 
-3. **Files not yet created**: Some files (e.g., `harness-result.json`, `tribunal-result.json`) only appear after specific workflow phases execute. The dashboard shows placeholder states until data exists.
+3. **No data written yet**: Tables are empty until the framework writes to them. Run a Luca workflow to populate data, or seed test data via `curl` to reducer endpoints.
 
-### SSE connection disconnected
+4. **Stale module bindings**: If you changed the SpacetimeDB schema, regenerate bindings with `spacetime generate` and restart the observer.
 
-**Symptom:** The "Live" indicator in the dashboard header turns red / shows "Disconnected".
+### WebSocket connection failed
+
+**Symptom:** Console shows `WebSocket connection to 'ws://localhost:3000/v1/database/...' failed`.
 
 **Causes and fixes:**
 
-1. **Server stopped**: The Next.js dev server may have crashed. Check the terminal where `bun run dev` is running for errors and restart if needed.
+1. **SpacetimeDB not running**: Start it with `spacetime start`.
 
-2. **Network interruption**: The SSE connection auto-reconnects. If it does not, reload the browser page.
+2. **Wrong URI**: Check `NEXT_PUBLIC_SPACETIMEDB_URI` points to the correct SpacetimeDB host (default: `ws://localhost:3000`).
 
-3. **Proxy/firewall interference**: If running behind a reverse proxy, ensure it does not buffer SSE responses. Set the `X-Accel-Buffering: no` header (the observer already sends this).
+3. **Wrong module name**: Check `NEXT_PUBLIC_SPACETIMEDB_MODULE` matches the published module name.
+
+### DataView / deserialization errors
+
+**Symptom:** Console shows `RangeError: Offset is outside the bounds of the DataView`.
+
+**Cause:** Module bindings are out of date with the published schema.
+
+**Solution:** Regenerate bindings and restart:
+
+```bash
+spacetime generate --lang typescript \
+  --out-dir packages/luca-observer/module_bindings \
+  --module-path packages/luca-spacetime/spacetimedb
+# Then restart the observer
+```
 
 ### CSS not loading
 
@@ -227,12 +267,14 @@ The observer uses strict TypeScript with path aliases (`~/*` maps to the package
 
 The observer fits into the Luca development loop as a passive monitoring tool:
 
-1. **Hooks emit events**: Luca's hook scripts (session-start, pre-commit-gate, context-check) emit structured events. These can be sent to the observer's `POST /api/events` endpoint to appear in the real-time feed.
+1. **Framework writes to SpacetimeDB**: The framework calls SpacetimeDB reducers via HTTP POST (fire-and-forget) through `observer-emitter.ts`. If SpacetimeDB is down, errors are silently swallowed — the framework continues operating without observability.
 
-2. **File-based data**: Most observer data comes from reading `.planning/` files on disk. The observer polls these files periodically (every 5-10 seconds depending on the hook) rather than requiring push-based integration.
+2. **Hooks emit events**: Luca's hook scripts emit events via `curl` to SpacetimeDB reducer endpoints (e.g., `POST /v1/database/luca-observer/call/ingest_event`).
 
-3. **No framework dependency**: The observer does not import from `luca-framework` or `luca-state`. All types are mirrored locally in `lib/types.ts`. This keeps the observer independently deployable.
+3. **Observer subscribes via WebSocket**: The observer connects to SpacetimeDB via WebSocket and receives real-time table updates. No polling, no SSE — all data is push-based.
 
-4. **Session lifecycle**: The observer tracks sessions via `session.start` and `session.end` events. Each session appears in the session selector, allowing you to filter the event feed by session.
+4. **No framework dependency**: The observer does not import from `luca-framework` or `luca-state`. All types come from auto-generated SpacetimeDB module bindings (`module_bindings/`).
 
-5. **Read-only guarantee**: The observer never modifies workflow state, plans, or checkpoints. The only write operation is the Notes feature, which creates markdown files in `.planning/notes/`.
+5. **Read-only guarantee**: The observer never modifies workflow state, plans, or checkpoints. It only reads from SpacetimeDB table subscriptions.
+
+For full architecture details, see [architecture-overview.md](architecture-overview.md).

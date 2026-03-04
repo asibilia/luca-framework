@@ -14,7 +14,7 @@ import { useLedger } from "~/hooks/use-ledger";
  * a context panel showing session/phase/complexity metadata, and a
  * scrollable transition log from the session ledger.
  *
- * Polls /api/state every 5s and /api/ledger every 10s for live updates.
+ * Subscribes to SpacetimeDB tables for real-time updates.
  */
 export default function WorkflowPage() {
   const { data: workflowState, loading: stateLoading } = useWorkflowState();

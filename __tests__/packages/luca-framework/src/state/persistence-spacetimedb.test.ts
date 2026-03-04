@@ -41,7 +41,7 @@ beforeEach(() => {
   globalThis.fetch = (async (url: any, init?: any) => {
     fetchCalls.push({ url: String(url), init });
     throw new Error("Connection refused");
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 });
 
 afterEach(() => {
@@ -98,7 +98,7 @@ function mockSpacetimeDBQuery(rowObjects: Record<string, unknown>[]) {
     }
 
     throw new Error(`Unexpected URL: ${urlStr}`);
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 }
 
 // --- Tests: stateExists --------------------------------------------------------
@@ -150,7 +150,7 @@ describe("persistActor", () => {
     globalThis.fetch = (async (url: any, init?: any) => {
       fetchCalls.push({ url: String(url), init });
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const mockActor = {
       getPersistedSnapshot: () => ({ value: "executing", context: {} }),
@@ -206,7 +206,9 @@ describe("loadPersistedActor", () => {
 
     // Should fail because neither SpacetimeDB nor JSON file exists
     expect(result.success).toBe(false);
-    expect(result.error).toContain("State file not found");
+    if (!result.success) {
+      expect(result.error).toContain("State file not found");
+    }
   });
 
   test("queries workflow_state table from SpacetimeDB", async () => {

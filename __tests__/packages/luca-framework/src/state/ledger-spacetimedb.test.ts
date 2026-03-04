@@ -40,7 +40,7 @@ beforeEach(() => {
   globalThis.fetch = (async (url: any, init?: any) => {
     fetchCalls.push({ url: String(url), init });
     throw new Error("Connection refused");
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 });
 
 afterEach(() => {
@@ -108,7 +108,7 @@ function mockSpacetimeDB(rowObjects: Record<string, unknown>[]) {
     }
 
     throw new Error(`Unexpected URL: ${urlStr}`);
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 }
 
 // --- Tests: readLedger SpacetimeDB path ----------------------------------------
@@ -270,7 +270,7 @@ describe("appendLedgerEntry (SpacetimeDB path)", () => {
       }
 
       throw new Error(`Unexpected URL: ${urlStr}`);
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const entry = await appendLedgerEntry(makeRecord());
 

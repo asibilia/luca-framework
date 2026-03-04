@@ -1,19 +1,33 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { useSpacetimeDB } from "spacetimedb/react";
 
 import { sidebarOpenAtom } from "~/stores/sidebar";
 import { themeAtom } from "~/stores/theme";
 import { StatusIndicator } from "~/components/shared/status-indicator";
 
 /**
- * Top header bar with sidebar toggle, theme toggle, and session status.
+ * Top header bar with sidebar toggle, theme toggle, and connection status.
  */
 export function Header() {
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
   const [theme, setTheme] = useAtom(themeAtom);
+  const { isActive, connectionError } = useSpacetimeDB();
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+
+  const connectionLabel = connectionError
+    ? "Disconnected"
+    : isActive
+      ? "SpacetimeDB"
+      : "Connecting...";
+
+  const dotColor = connectionError
+    ? "bg-destructive"
+    : isActive
+      ? "bg-success"
+      : "bg-warning";
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-2 md:px-4">
@@ -39,9 +53,9 @@ export function Header() {
           {theme === "dark" ? "sun" : "moon"}
         </button>
         <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
-          SSE Connected
+          {connectionLabel}
         </span>
-        <span className="h-2 w-2 rounded-full bg-success" />
+        <span className={`h-2 w-2 rounded-full ${dotColor}`} />
       </div>
     </header>
   );

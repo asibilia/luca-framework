@@ -159,8 +159,13 @@ async function handleReadComplexity(): Promise<void> {
       );
       return;
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for read-complexity, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: JSON file
@@ -204,8 +209,13 @@ async function handleReadOversight(): Promise<void> {
       );
       return;
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for read-oversight, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: JSON file
@@ -256,8 +266,13 @@ async function handleReadPhase(): Promise<void> {
       );
       return;
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for read-phase, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: JSON file
@@ -358,8 +373,13 @@ async function handleReadStatus(): Promise<void> {
       );
       return;
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for read-status, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: JSON file
@@ -427,8 +447,13 @@ async function handleReadField(args: string[]): Promise<void> {
       console.log(JSON.stringify({ field: fieldPath, value }));
       return;
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for read-field, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: JSON file
@@ -520,8 +545,13 @@ async function handleSetField(args: string[]): Promise<void> {
       } as typeof snapshotJson;
       fromSpacetimeDB = true;
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for set-field read, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: read from JSON file
@@ -1019,8 +1049,13 @@ async function handleResumePhase(args: string[]): Promise<void> {
     if (row && row.checkpointJson) {
       checkpoint = JSON.parse(row.checkpointJson);
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[bridge] SpacetimeDB unavailable for resume-phase checkpoint, falling back to file:",
+        (err as Error).message,
+      );
+    }
   }
 
   if (!checkpoint) {

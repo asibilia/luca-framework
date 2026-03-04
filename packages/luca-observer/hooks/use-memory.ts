@@ -10,6 +10,7 @@ export type MemoryFiles = {
   brain: string;
   memory: string;
   working: string;
+  procedures: string;
 };
 
 /**
@@ -32,6 +33,7 @@ export function useMemory() {
       brain: row.brainJson ?? "",
       memory: row.memoryJson ?? "",
       working: row.workingJson ?? "",
+      procedures: row.proceduresJson ?? "",
     };
   }, [rows]);
 

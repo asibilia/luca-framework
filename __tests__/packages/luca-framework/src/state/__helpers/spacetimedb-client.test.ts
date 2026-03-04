@@ -77,7 +77,7 @@ beforeEach(() => {
         headers: { "Content-Type": "application/json" },
       },
     );
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 });
 
 afterEach(() => {
@@ -183,7 +183,7 @@ describe("queryTable", () => {
         new Response(JSON.stringify(v2Response), {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const result = await queryTable<{ id: number; name: string }>(
         "SELECT * FROM test",
@@ -200,7 +200,7 @@ describe("queryTable", () => {
         new Response(JSON.stringify(v2Response), {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const result = await queryTable<{ id: number }>("SELECT * FROM test");
       expect(result).toEqual([]);
@@ -211,7 +211,7 @@ describe("queryTable", () => {
         new Response(JSON.stringify([]), {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const result = await queryTable("SELECT * FROM test");
       expect(result).toEqual([]);
@@ -222,7 +222,7 @@ describe("queryTable", () => {
         new Response(JSON.stringify(null), {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        })) as typeof fetch;
+        })) as unknown as typeof fetch;
 
       const result = await queryTable("SELECT * FROM test");
       expect(result).toEqual([]);
@@ -232,7 +232,9 @@ describe("queryTable", () => {
   describe("error handling", () => {
     test("throws on non-OK HTTP response", async () => {
       globalThis.fetch = (async () =>
-        new Response("Table not found", { status: 404 })) as typeof fetch;
+        new Response("Table not found", {
+          status: 404,
+        })) as unknown as typeof fetch;
 
       await expect(queryTable("SELECT * FROM missing")).rejects.toThrow(
         "[spacetimedb-client] Query failed (404)",
@@ -241,7 +243,9 @@ describe("queryTable", () => {
 
     test("throws on 500 server error", async () => {
       globalThis.fetch = (async () =>
-        new Response("Internal error", { status: 500 })) as typeof fetch;
+        new Response("Internal error", {
+          status: 500,
+        })) as unknown as typeof fetch;
 
       await expect(queryTable("SELECT * FROM test")).rejects.toThrow(
         "[spacetimedb-client] Query failed (500)",
@@ -251,7 +255,7 @@ describe("queryTable", () => {
     test("throws on fetch rejection (network error)", async () => {
       globalThis.fetch = (async () => {
         throw new Error("Connection refused");
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       await expect(queryTable("SELECT 1")).rejects.toThrow(
         "Connection refused",
@@ -322,7 +326,7 @@ describe("queryOne", () => {
       new Response(JSON.stringify(v2Response), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
 
     const result = await queryOne<{ id: number; name: string }>(
       "SELECT * FROM test",
@@ -336,7 +340,7 @@ describe("queryOne", () => {
       new Response(JSON.stringify(v2Response), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
 
     const result = await queryOne("SELECT * FROM test WHERE id = 999");
     expect(result).toBeNull();

@@ -151,7 +151,14 @@ async function getSpacetimeDBClient(): Promise<{
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(args),
         signal: AbortSignal.timeout(2000),
-      }).catch(() => {});
+      }).catch((err) => {
+        if (process.env.LUCA_DEBUG) {
+          console.error(
+            `[memory-bridge] Reducer ${reducerName} failed:`,
+            (err as Error).message,
+          );
+        }
+      });
     };
 
     return { queryOne: _queryOne, callReducer: _callReducer };
@@ -246,8 +253,13 @@ export async function handleReadMemory(args: string[]): Promise<void> {
         if (parsed.success) memoryData = parsed.data;
       }
     }
-  } catch {
-    // SpacetimeDB unavailable -- fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[memory-bridge] SpacetimeDB unavailable for read-memory, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: JSON file, then MD
@@ -408,8 +420,13 @@ export async function handleReadWorking(): Promise<void> {
           }
         }
       }
-    } catch {
-      // SpacetimeDB unavailable -- fall through
+    } catch (err) {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          "[memory-bridge] SpacetimeDB unavailable for read-working, falling back to JSON:",
+          (err as Error).message,
+        );
+      }
     }
 
     // JSON file fallback
@@ -843,8 +860,13 @@ export async function handleReadBrain(): Promise<void> {
         }
       }
     }
-  } catch {
-    // SpacetimeDB unavailable -- fall through
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[memory-bridge] SpacetimeDB unavailable for read-brain, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // JSON file fallback

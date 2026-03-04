@@ -36,7 +36,7 @@ export default function AgentsPage() {
           </p>
           <p className="mt-2 font-mono text-sm text-muted-foreground">
             Agent activity will appear here when agents are invoked during
-            workflow execution. Events are captured via SSE.
+            workflow execution. Events stream in real-time via SpacetimeDB.
           </p>
         </div>
       ) : (

@@ -37,7 +37,7 @@ export function useLedger(tail = 50) {
         context: {} as Record<string, unknown>,
         timestamp: "",
         session_id: row.sessionId,
-        sequence_number: Number(row.id),
+        sequence_number: Number(row.sequenceNumber),
         parent_id: null,
       };
     });

@@ -379,7 +379,7 @@ export const save_checkpoint = spacetimedb.reducer(
     ];
     if (existing.length > 0) {
       ctx.db.suspendCheckpoints.id.update({
-        ...existing[0],
+        ...existing[0]!,
         checkpointJson: args.checkpointJson,
       });
     } else {
