@@ -31,15 +31,22 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  exit 0
+fi
 
 # Extract the Bash command being executed
 COMMAND=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const cmd = data.tool_input?.command ?? data.command ?? '';
-  process.stdout.write(cmd);
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const cmd = data.tool_input?.command ?? data.command ?? '';
+    process.stdout.write(cmd);
+  } catch { process.stdout.write(''); }
+" 2>/dev/null || true)
 
 # Fast exit: Not a commit command? Allow immediately.
 case "$COMMAND" in

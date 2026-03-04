@@ -53,8 +53,8 @@ run_memory_bridge() {
   fi
 }
 
-# Read stdin JSON (standard hook pattern)
-INPUT=$(cat)
+# Read stdin JSON (standard hook pattern — consumed but not parsed)
+INPUT=$(cat || true)
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 PLANNING_DIR="$PROJECT_DIR/.planning"

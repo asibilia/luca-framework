@@ -45,8 +45,13 @@ run_bridge() {
   fi
 }
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  exit 0
+fi
 
 # ─── COMMAND EXTRACTION: SECURITY NOTES ───────────────────────────────
 #
@@ -75,10 +80,12 @@ INPUT=$(cat)
 #     variables (like HOOK_CMD="$COMMAND" bun -e "...") — NOT arguments
 # ──────────────────────────────────────────────────────────────────────
 COMMAND=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const cmd = data.tool_input?.command ?? data.command ?? '';
-  process.stdout.write(cmd);
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const cmd = data.tool_input?.command ?? data.command ?? '';
+    process.stdout.write(cmd);
+  } catch { process.stdout.write(''); }
+" 2>/dev/null || true)
 
 # Fast exit: Not a commit command? Allow immediately.
 # This check must be near-instant since it runs on EVERY Bash call.

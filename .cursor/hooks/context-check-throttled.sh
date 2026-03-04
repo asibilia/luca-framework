@@ -12,7 +12,7 @@
 # Pi:          { "tool_input": { ... } }   (varies by tool)
 #
 # This hook does not parse stdin — it uses throttle-based context monitoring.
-# Stdin is consumed (cat) but not inspected.
+# Stdin is not consumed (no cat call). Platform closes the pipe automatically.
 # ─── STDOUT CONTRACT ─────────────────────────────────────────────────
 # On urgent notes:
 #   { "systemMessage": "[Developer Notes] Urgent notes to incorporate: ..." }
