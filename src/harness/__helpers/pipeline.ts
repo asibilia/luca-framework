@@ -27,7 +27,7 @@ import type {
   MiddlewareResult,
 } from "~/harness/__schemas/harness.schemas";
 import { MiddlewareResultSchema } from "~/harness/__schemas/harness.schemas";
-import { middlewareRegistry } from "~/harness/middleware/middleware-registry";
+import { middlewareRegistry } from "~/harness/middleware";
 
 /**
  * Chain an array of middleware into a single execution function using the

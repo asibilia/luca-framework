@@ -97,11 +97,11 @@ describe("createTimingMiddleware", () => {
     expect(result.exitCode).toBe(1);
   });
 
-  test("timing_duration_ms is a positive number after execution", async () => {
+  test("timing_duration_ms is set on ctx after execution", async () => {
     const middleware = createTimingMiddleware();
     const ctx = makeCtx();
 
-    const next = async (innerCtx: MiddlewareContext): Promise<CheckResult> => {
+    const next = async (_innerCtx: MiddlewareContext): Promise<CheckResult> => {
       // Small delay to ensure measurable duration
       await new Promise((resolve) => setTimeout(resolve, 5));
       return makeResult();
@@ -109,35 +109,15 @@ describe("createTimingMiddleware", () => {
 
     await middleware(ctx, next);
 
-    // The middleware mutates the enrichedCtx, but we access via the closure's ctx
-    // The timing metadata is set on enrichedCtx after next returns.
-    // Since enrichedCtx is internal, we verify through the pipeline composition tests.
-    // Here we just verify the result is passed through correctly.
-    // Direct metadata check: the enrichedCtx variable is internal but we can
-    // observe via a wrapper.
-    let finalCtx: MiddlewareContext | undefined;
-    const ctx2 = makeCtx();
-
-    // Create a wrapper that captures the context after timing middleware runs
-    const timingMw = createTimingMiddleware();
-    const wrappingNext = async (
-      innerCtx: MiddlewareContext,
-    ): Promise<CheckResult> => {
-      // This next will be called by timing middleware with enrichedCtx
-      finalCtx = innerCtx;
-      return makeResult();
-    };
-
-    await timingMw(ctx2, wrappingNext);
-
-    // After timing completes, the enrichedCtx has timing metadata mutated onto it
-    // but we can't directly observe it from outside. The timing_start_hr is set
-    // before next(), and timing_duration_ms is set after. The relevant test is
-    // that the middleware pipeline integration works correctly (see pipeline tests).
-    // For unit-level: verify timing_start_hr is a valid performance.now() value
-    expect(finalCtx!.metadata.timing_start_hr).toBeDefined();
-    expect(typeof finalCtx!.metadata.timing_start_hr).toBe("number");
-    expect((finalCtx!.metadata.timing_start_hr as number) > 0).toBe(true);
+    // ctx is mutated directly by timing middleware, so timing data
+    // is visible on the original ctx reference
+    expect(ctx.metadata.timing_start_hr).toBeDefined();
+    expect(typeof ctx.metadata.timing_start_hr).toBe("number");
+    expect((ctx.metadata.timing_start_hr as number) > 0).toBe(true);
+    expect(ctx.metadata.timing_duration_ms).toBeDefined();
+    expect(typeof ctx.metadata.timing_duration_ms).toBe("number");
+    expect((ctx.metadata.timing_duration_ms as number) >= 0).toBe(true);
+    expect(ctx.endedAt).toBeDefined();
   });
 
   test("preserves existing metadata from context", async () => {
