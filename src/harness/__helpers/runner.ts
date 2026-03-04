@@ -26,7 +26,7 @@ import {
   resolveMiddleware,
   buildMiddlewareResult,
 } from "./pipeline";
-import { join } from "path";
+import { join } from "node:path";
 
 const RAW_OUTPUT_MAX_LINES = 50;
 
