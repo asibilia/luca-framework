@@ -42,6 +42,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # test temp directories
 .tmp-test-*
+__tests__/integration/.tmp/
 
 # next.js
 .next
