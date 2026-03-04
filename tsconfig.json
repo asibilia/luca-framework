@@ -31,5 +31,8 @@
       "~/*": ["./src/*"]
     }
   },
-  "exclude": ["packages/luca-framework/templates/harness"]
+  "exclude": [
+    "packages/luca-framework/templates/harness",
+    "packages/luca-observer"
+  ]
 }

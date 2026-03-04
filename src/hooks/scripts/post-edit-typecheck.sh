@@ -135,4 +135,18 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
   "
 fi
 
+# Emit observer event (fire-and-forget)
+OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
+if [ $TSC_EXIT -eq 0 ]; then
+  curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"event_type\":\"typecheck.pass\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"file\":\"$FILE_PATH\"}}" \
+    >/dev/null 2>&1 &
+else
+  curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"event_type\":\"typecheck.fail\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"file\":\"$FILE_PATH\",\"error_count\":\"$LINE_COUNT\"}}" \
+    >/dev/null 2>&1 &
+fi
+
 exit 0

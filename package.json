@@ -19,12 +19,13 @@
   },
   "private": true,
   "scripts": {
-    "build": "bun run --filter '*' build",
+    "build": "bun run --filter '!@alecsibilia/luca-observer' build",
     "build:all": "bun run ./scripts/build-all.ts && bun run build:templates",
     "build:templates": "bun run ./scripts/copy-harness-templates.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
     "test": "bun test",
+    "test:observer": "cd packages/luca-observer && bun test",
     "test:coverage": "bun test --coverage",
     "test:watch": "bun test --watch",
     "commit": "bunx --bun @alecsibilia/commit"

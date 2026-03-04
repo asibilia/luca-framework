@@ -1,0 +1,27 @@
+{
+  "name": "@alecsibilia/luca-observer",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "luca-observer": "./bin/luca-observer.js"
+  },
+  "scripts": {
+    "dev": "next dev --port 3456",
+    "build": "next build",
+    "start": "next start --port 3456"
+  },
+  "dependencies": {
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "zod": "^3.23.8",
+    "jotai": "^2"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

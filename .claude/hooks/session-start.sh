@@ -430,4 +430,12 @@ if [ -n "$CREATED" ]; then
   "
 fi
 
+# Step 10: Emit observer event (fire-and-forget)
+OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
+SESSION_ID=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=session_id 2>/dev/null || echo "unknown")
+curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"event_type\":\"session.start\",\"session_id\":\"$SESSION_ID\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"runtime\":\"$RUNTIME\",\"created\":\"$CREATED\"}}" \
+  >/dev/null 2>&1 &
+
 exit 0

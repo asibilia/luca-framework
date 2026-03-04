@@ -75,4 +75,11 @@ else
   printf '\n\n---\n*Session ended: %s (reason: %s)*\n' "$TIMESTAMP" "$END_REASON" >> "$WORKING_MD"
 fi
 
+# Emit observer event (fire-and-forget)
+OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
+curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"event_type\":\"session.end\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"reason\":\"$END_REASON\"}}" \
+  >/dev/null 2>&1 &
+
 exit 0
