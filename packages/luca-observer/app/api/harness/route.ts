@@ -37,4 +37,5 @@ export const GET = createFileReaderRoute(
   readHarnessResult,
   "failed_to_read_harness_result",
   { type: "nullable", key: "result" },
+  { requireAuth: true },
 );

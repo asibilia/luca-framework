@@ -31,4 +31,5 @@ export const GET = createFileReaderRoute(
   readMetrics,
   "failed_to_read_metrics",
   { type: "direct" },
+  { requireAuth: true },
 );

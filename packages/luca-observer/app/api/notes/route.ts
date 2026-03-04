@@ -93,6 +93,9 @@ function parseNoteFile(
  * ```
  */
 export async function GET(request: Request) {
+  const authError = requireApiKey(request);
+  if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
   const projectDir = searchParams.get("dir") ?? undefined;
 

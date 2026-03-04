@@ -1,3 +1,4 @@
+import { requireApiKey } from "~/lib/auth";
 import { addSSEClient, removeSSEClient, canAcceptSSEClient } from "~/lib/sse";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,9 @@ export const dynamic = "force-dynamic";
  * An initial heartbeat comment (`: heartbeat`) is sent immediately
  * upon connection to confirm the stream is live. Disconnected clients
  * are automatically cleaned up when their controller throws on enqueue.
+ *
+ * Returns 401 Unauthorized when LUCA_OBSERVER_API_KEY is set and the
+ * request omits or provides an incorrect X-API-Key header.
  *
  * Returns 503 Service Unavailable with Retry-After: 30 when the
  * maximum number of concurrent SSE connections has been reached.
@@ -30,10 +34,13 @@ export const dynamic = "force-dynamic";
  *
  * @example
  * ```bash
- * curl -N http://localhost:3456/api/stream
+ * curl -N -H "X-API-Key: secret" http://localhost:3456/api/stream
  * ```
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const authError = requireApiKey(request);
+  if (authError) return authError;
+
   if (!canAcceptSSEClient()) {
     return new Response("SSE connection limit reached", {
       status: 503,

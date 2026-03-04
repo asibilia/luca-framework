@@ -32,4 +32,5 @@ export const GET = createFileReaderRoute(
   readMemoryFiles,
   "failed_to_read_memory",
   { type: "direct" },
+  { requireAuth: true },
 );

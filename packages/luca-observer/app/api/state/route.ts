@@ -35,4 +35,5 @@ export const GET = createFileReaderRoute(
   readWorkflowState,
   "failed_to_read_state",
   { type: "direct" },
+  { requireAuth: true },
 );

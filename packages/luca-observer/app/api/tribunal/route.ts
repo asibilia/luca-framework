@@ -38,4 +38,5 @@ export const GET = createFileReaderRoute(
   readTribunalResult,
   "failed_to_read_tribunal",
   { type: "nullable", key: "result" },
+  { requireAuth: true },
 );

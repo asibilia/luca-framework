@@ -39,4 +39,5 @@ export const GET = createFileReaderRoute(
   readIterationHistory,
   "failed_to_read_iterations",
   { type: "array", key: "iterations" },
+  { requireAuth: true },
 );

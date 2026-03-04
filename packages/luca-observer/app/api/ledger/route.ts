@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { z } from "zod";
 
+import { requireApiKey } from "~/lib/auth";
 import { readLedgerEntries } from "~/lib/file-watcher";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,9 @@ const LedgerQueryParamsSchema = z.object({
  * ```
  */
 export async function GET(request: Request) {
+  const authError = requireApiKey(request);
+  if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
 
   const raw: Record<string, string | undefined> = {

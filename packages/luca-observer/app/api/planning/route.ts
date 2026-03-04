@@ -37,4 +37,5 @@ export const GET = createFileReaderRoute(
   readSessionPlan,
   "failed_to_read_planning",
   { type: "nullable", key: "plan" },
+  { requireAuth: true },
 );
