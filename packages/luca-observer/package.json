@@ -20,8 +20,16 @@
     "jotai": "^2"
   },
   "devDependencies": {
+    "@eslint/js": "^9",
+    "@next/eslint-plugin-next": "^15",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "eslint": "^9",
+    "eslint-plugin-import": "^2",
+    "eslint-plugin-prettier": "^5",
+    "globals": "^17.4.0",
+    "prettier": "^3",
+    "typescript": "^5",
+    "typescript-eslint": "^8"
   }
 }
