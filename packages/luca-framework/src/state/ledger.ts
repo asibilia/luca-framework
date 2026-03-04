@@ -50,13 +50,13 @@ export type LedgerEntry = z.infer<typeof ledgerEntrySchema>;
  * `tail` is applied before other filters (reads last N lines from file).
  * `limit` is applied after all other filters (caps result count).
  */
-export interface LedgerFilters {
+export type LedgerFilters = {
   session_id?: string;
   event_type?: string;
   since?: string;
   limit?: number;
   tail?: number;
-}
+};
 
 // ─── Sequence Tracking ──────────────────────────────────────────────────────
 
