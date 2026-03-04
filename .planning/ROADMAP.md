@@ -121,10 +121,10 @@
 
 **Depends on:** Phase 104
 
-- [ ] Fetch and review next.config from joes-book--next repo
-- [ ] Research latest Next.js docs for Bun runtime compatibility
-- [ ] Update luca-observer next.config to modern conventions
-- [ ] Verify dev server and build work with updated config
+- [x] Fetch and review next.config from joes-book--next repo
+- [x] Research latest Next.js docs for Bun runtime compatibility
+- [x] Update luca-observer next.config to modern conventions
+- [x] Verify dev server and build work with updated config
 
 ### Phase 107 — SpacetimeDB Integration
 
