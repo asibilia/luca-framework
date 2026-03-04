@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { readHarnessResult } from "~/lib/file-watcher";
+import { createFileReaderRoute } from "~/lib/route-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -34,21 +33,8 @@ export const dynamic = "force-dynamic";
  * curl http://localhost:3456/api/harness
  * ```
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const projectDir = searchParams.get("dir") ?? undefined;
-
-  try {
-    const result = await readHarnessResult(projectDir);
-
-    return NextResponse.json({
-      result,
-      has_result: result !== null,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "failed_to_read_harness_result" },
-      { status: 500 },
-    );
-  }
-}
+export const GET = createFileReaderRoute(
+  readHarnessResult,
+  "failed_to_read_harness_result",
+  { type: "nullable", key: "result" },
+);

@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { readTribunalResult } from "~/lib/file-watcher";
+import { createFileReaderRoute } from "~/lib/route-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -35,21 +34,8 @@ export const dynamic = "force-dynamic";
  * curl http://localhost:3456/api/tribunal
  * ```
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const projectDir = searchParams.get("dir") ?? undefined;
-
-  try {
-    const result = await readTribunalResult(projectDir);
-
-    return NextResponse.json({
-      result,
-      has_result: result !== null,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "failed_to_read_tribunal" },
-      { status: 500 },
-    );
-  }
-}
+export const GET = createFileReaderRoute(
+  readTribunalResult,
+  "failed_to_read_tribunal",
+  { type: "nullable", key: "result" },
+);

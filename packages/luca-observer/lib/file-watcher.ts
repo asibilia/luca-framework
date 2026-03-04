@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import type { z, ZodTypeDef } from "zod";
+
 import type {
   WorkflowSnapshot,
   LedgerEntry,
@@ -18,6 +20,43 @@ import {
   TribunalResultSnapshotSchema,
 } from "./types";
 import { resolveProjectDir } from "./resolve-project-dir";
+
+/**
+ * Read, parse, and validate a JSON snapshot from .planning/.
+ *
+ * Encapsulates the common pattern of reading a JSON file from the
+ * planning directory, parsing it, and validating with a Zod schema.
+ * Returns null if the file does not exist, contains invalid JSON,
+ * or fails schema validation.
+ *
+ * @param filename - The filename relative to .planning/ (e.g. "harness-result.json")
+ * @param schema - Zod schema to validate the parsed JSON
+ * @param projectDir - The root project directory (defaults to cwd)
+ * @returns Parsed and validated data, or null on any failure
+ *
+ * @example
+ * ```typescript
+ * const result = await readJsonSnapshot(
+ *   "harness-result.json",
+ *   HarnessResultSnapshotSchema,
+ * );
+ * ```
+ */
+async function readJsonSnapshot<T>(
+  filename: string,
+  schema: z.ZodType<T, ZodTypeDef, unknown>,
+  projectDir?: string,
+): Promise<T | null> {
+  const dir = resolveProjectDir(projectDir);
+  const filePath = join(dir, ".planning", filename);
+  try {
+    const content = await readFile(filePath, "utf-8");
+    const parsed = schema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Read workflow state from .planning/STATE.md.
@@ -177,19 +216,11 @@ export async function readLedgerEntries(
 export async function readHarnessResult(
   projectDir?: string,
 ): Promise<HarnessResultSnapshot | null> {
-  const dir = resolveProjectDir(projectDir);
-  const resultPath = join(dir, ".planning", "harness-result.json");
-
-  try {
-    const content = await readFile(resultPath, "utf-8");
-    const parsed = HarnessResultSnapshotSchema.safeParse(JSON.parse(content));
-    if (parsed.success) {
-      return parsed.data;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return readJsonSnapshot(
+    "harness-result.json",
+    HarnessResultSnapshotSchema,
+    projectDir,
+  );
 }
 
 /**
@@ -257,16 +288,11 @@ export async function readIterationHistory(
 export async function readSessionPlan(
   projectDir?: string,
 ): Promise<SessionPlanSnapshot | null> {
-  const dir = resolveProjectDir(projectDir);
-  const planPath = join(dir, ".planning", "session-plan.json");
-
-  try {
-    const content = await readFile(planPath, "utf-8");
-    const parsed = SessionPlanSnapshotSchema.safeParse(JSON.parse(content));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
+  return readJsonSnapshot(
+    "session-plan.json",
+    SessionPlanSnapshotSchema,
+    projectDir,
+  );
 }
 
 /**
@@ -286,16 +312,11 @@ export async function readSessionPlan(
 export async function readTribunalResult(
   projectDir?: string,
 ): Promise<TribunalResultSnapshot | null> {
-  const dir = resolveProjectDir(projectDir);
-  const resultPath = join(dir, ".planning", "tribunal-result.json");
-
-  try {
-    const content = await readFile(resultPath, "utf-8");
-    const parsed = TribunalResultSnapshotSchema.safeParse(JSON.parse(content));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
+  return readJsonSnapshot(
+    "tribunal-result.json",
+    TribunalResultSnapshotSchema,
+    projectDir,
+  );
 }
 
 /**

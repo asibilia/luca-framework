@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { readMetrics } from "~/lib/file-watcher";
+import { createFileReaderRoute } from "~/lib/route-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +27,8 @@ export const dynamic = "force-dynamic";
  * curl http://localhost:3456/api/metrics
  * ```
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const projectDir = searchParams.get("dir") ?? undefined;
-
-  try {
-    const metrics = await readMetrics(projectDir);
-    return NextResponse.json(metrics);
-  } catch {
-    return NextResponse.json(
-      { error: "failed_to_read_metrics" },
-      { status: 500 },
-    );
-  }
-}
+export const GET = createFileReaderRoute(
+  readMetrics,
+  "failed_to_read_metrics",
+  { type: "direct" },
+);

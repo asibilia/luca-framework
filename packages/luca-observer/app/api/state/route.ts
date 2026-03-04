@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { readWorkflowState } from "~/lib/file-watcher";
+import { createFileReaderRoute } from "~/lib/route-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -32,17 +31,8 @@ export const dynamic = "force-dynamic";
  * curl "http://localhost:3456/api/state?dir=/path/to/project"
  * ```
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const projectDir = searchParams.get("dir") ?? undefined;
-
-  try {
-    const state = await readWorkflowState(projectDir);
-    return NextResponse.json(state);
-  } catch {
-    return NextResponse.json(
-      { error: "failed_to_read_state" },
-      { status: 500 },
-    );
-  }
-}
+export const GET = createFileReaderRoute(
+  readWorkflowState,
+  "failed_to_read_state",
+  { type: "direct" },
+);

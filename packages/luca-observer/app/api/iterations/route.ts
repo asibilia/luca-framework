@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { readIterationHistory } from "~/lib/file-watcher";
+import { createFileReaderRoute } from "~/lib/route-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -36,21 +35,8 @@ export const dynamic = "force-dynamic";
  * curl http://localhost:3456/api/iterations
  * ```
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const projectDir = searchParams.get("dir") ?? undefined;
-
-  try {
-    const iterations = await readIterationHistory(projectDir);
-
-    return NextResponse.json({
-      iterations,
-      total_count: iterations.length,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "failed_to_read_iterations" },
-      { status: 500 },
-    );
-  }
-}
+export const GET = createFileReaderRoute(
+  readIterationHistory,
+  "failed_to_read_iterations",
+  { type: "array", key: "iterations" },
+);
