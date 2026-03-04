@@ -434,3 +434,276 @@ describe("canonical event coverage", () => {
     expect(cursorEvents.size).toBe(5);
   });
 });
+
+// ─── Edge cases: hooks without tool_filter ───────────────────────────────────
+
+describe("hooks without tool_filter", () => {
+  // Hooks like context-check-throttled and snapshot-sync have no tool_filter,
+  // meaning they fire on ALL tool events. Verify platform configs are valid
+  // and matchers are correctly omitted (undefined/absent).
+
+  test("context-check-throttled produces valid configs without matchers", () => {
+    const canonical = resolveCanonicalRegistry();
+    const hook = canonical["context-check-throttled"]!;
+    expect(hook.tool_filter).toBeUndefined();
+    expect(hook.command_filter).toBeUndefined();
+
+    const claude = adaptForClaude(hook);
+    const cursor = adaptForCursor(hook);
+    const pi = adaptForPi(hook);
+
+    // All events should be defined
+    expect(claude.event).toBe("PostToolUse");
+    expect(cursor.event).toBe("afterFileEdit");
+    expect(pi.event).toBe("tool_execution_end");
+
+    // All matchers should be undefined (fire on all tools)
+    expect(claude.matcher).toBeUndefined();
+    expect(cursor.matcher).toBeUndefined();
+    expect(pi.matcher).toBeUndefined();
+  });
+
+  test("snapshot-sync produces valid configs without matchers", () => {
+    const canonical = resolveCanonicalRegistry();
+    const hook = canonical["snapshot-sync"]!;
+    expect(hook.tool_filter).toBeUndefined();
+
+    const claude = adaptForClaude(hook);
+    const cursor = adaptForCursor(hook);
+    const pi = adaptForPi(hook);
+
+    expect(claude.matcher).toBeUndefined();
+    expect(cursor.matcher).toBeUndefined();
+    expect(pi.matcher).toBeUndefined();
+  });
+
+  test("context-monitor (stop event) produces valid configs without matchers", () => {
+    const canonical = resolveCanonicalRegistry();
+    const hook = canonical["context-monitor"]!;
+    expect(hook.event).toBe("stop");
+
+    const claude = adaptForClaude(hook);
+    const cursor = adaptForCursor(hook);
+    const pi = adaptForPi(hook);
+
+    // stop event maps correctly on all platforms
+    expect(claude.event).toBe("Stop");
+    expect(cursor.event).toBe("stop");
+    expect(pi.event).toBe("session_shutdown");
+
+    // No matchers for stop event
+    expect(claude.matcher).toBeUndefined();
+    expect(cursor.matcher).toBeUndefined();
+    expect(pi.matcher).toBeUndefined();
+  });
+
+  test("session-persist (session_end event) produces valid Cursor mapping", () => {
+    const canonical = resolveCanonicalRegistry();
+    const hook = canonical["session-persist"]!;
+    expect(hook.event).toBe("session_end");
+
+    const cursor = adaptForCursor(hook);
+    expect(cursor.event).toBe("sessionEnd");
+    expect(cursor.matcher).toBeUndefined();
+  });
+});
+
+// ─── Edge cases: hooks with both tool_filter and command_filter ──────────────
+
+describe("hooks with both tool_filter and command_filter", () => {
+  // pre-commit-gate and pre-commit-drift-check have both filters.
+  // Claude uses tool_filter as matcher, Cursor uses command_filter,
+  // Pi uses tool_filter split into array.
+
+  test("pre-commit-gate produces correct matchers on all platforms", () => {
+    const canonical = resolveCanonicalRegistry();
+    const hook = canonical["pre-commit-gate"]!;
+    expect(hook.tool_filter).toBe("Bash");
+    expect(hook.command_filter).toBeDefined();
+
+    const claude = adaptForClaude(hook);
+    const cursor = adaptForCursor(hook);
+    const pi = adaptForPi(hook);
+
+    // Claude gets tool_filter as matcher
+    expect(claude.matcher).toBe("Bash");
+    // Cursor gets command_filter as matcher (substring patterns)
+    expect(cursor.matcher).toBe(hook.command_filter);
+    // Pi gets tool_filter split into lowercase array
+    expect(pi.matcher).toEqual(["bash"]);
+  });
+
+  test("pre-commit-drift-check produces correct matchers on all platforms", () => {
+    const canonical = resolveCanonicalRegistry();
+    const hook = canonical["pre-commit-drift-check"]!;
+    expect(hook.tool_filter).toBe("Bash");
+    expect(hook.command_filter).toBeDefined();
+
+    const claude = adaptForClaude(hook);
+    const cursor = adaptForCursor(hook);
+    const pi = adaptForPi(hook);
+
+    expect(claude.matcher).toBe("Bash");
+    expect(cursor.matcher).toBe(hook.command_filter);
+    expect(pi.matcher).toEqual(["bash"]);
+  });
+});
+
+// ─── Edge cases: Pi array matcher format ─────────────────────────────────────
+
+describe("Pi array matcher format", () => {
+  // Pi uses string arrays for tool matchers. Verify pipe-separated
+  // tool_filter values are correctly split and lowercased.
+
+  test("adaptForPi splits 'Edit|Write' into ['edit', 'write']", () => {
+    const result = adaptForPi({
+      event: "post_tool_use",
+      tool_filter: "Edit|Write",
+      script: "test.sh",
+      timeout: 10,
+      async: false,
+    });
+    expect(result.matcher).toEqual(["edit", "write"]);
+  });
+
+  test("adaptForPi splits single tool_filter into single-element array", () => {
+    const result = adaptForPi({
+      event: "pre_tool_use",
+      tool_filter: "Bash",
+      script: "test.sh",
+      timeout: 10,
+      async: false,
+    });
+    expect(result.matcher).toEqual(["bash"]);
+  });
+
+  test("adaptForPi splits multi-tool filter into correct array", () => {
+    const result = adaptForPi({
+      event: "post_tool_use",
+      tool_filter: "Edit|Write|Read|Grep",
+      script: "test.sh",
+      timeout: 10,
+      async: false,
+    });
+    expect(result.matcher).toEqual(["edit", "write", "read", "grep"]);
+  });
+
+  test("adaptForPi returns undefined matcher when no tool_filter", () => {
+    const result = adaptForPi({
+      event: "session_start",
+      script: "test.sh",
+      timeout: 15,
+      async: false,
+    });
+    expect(result.matcher).toBeUndefined();
+  });
+});
+
+// ─── Edge cases: empty canonical registry ────────────────────────────────────
+
+describe("empty canonical registry handling", () => {
+  test("config generators handle empty canonical registry", () => {
+    const emptyRegistry: Record<
+      string,
+      import("../../../src/hooks/index").CanonicalHook
+    > = {};
+    const commandPrefix = '"$CLAUDE_PROJECT_DIR"/.claude/hooks';
+
+    const claudeConfig = generateClaudeHooksConfigFromCanonical(emptyRegistry, {
+      commandPrefix,
+    });
+    const cursorConfig = generateCursorHooksConfigFromCanonical(emptyRegistry);
+    const piExtension = generatePiExtensionFromCanonical(emptyRegistry);
+
+    // Should produce empty but valid configs
+    expect(claudeConfig).toEqual({});
+    expect(cursorConfig).toEqual({ version: 1, hooks: {} });
+    // Pi extension should be valid TypeScript with no handlers
+    expect(piExtension).toContain("export default function lucaHooks");
+  });
+});
+
+// ─── Edge cases: round-trip consistency ──────────────────────────────────────
+
+describe("round-trip consistency", () => {
+  // Verify: canonical -> legacy -> verify output matches directly calling legacy registry.
+  // The legacy hookRegistry is built from canonicalHookRegistry via canonicalToLegacy.
+  // Both should produce identical platform configs.
+
+  test("canonical -> legacy -> config matches direct legacy registry output", () => {
+    const canonical = resolveCanonicalRegistry();
+    const legacyFromCanonical: Record<
+      string,
+      import("../../../src/hooks/index").HookDefinition
+    > = {};
+    for (const [name, hook] of Object.entries(canonical)) {
+      legacyFromCanonical[name] = canonicalToLegacy(hook);
+    }
+
+    const directLegacy = resolveHookRegistry();
+
+    // Both should have identical keys
+    expect(Object.keys(legacyFromCanonical).sort()).toEqual(
+      Object.keys(directLegacy).sort(),
+    );
+
+    // Each hook should have identical fields
+    for (const name of Object.keys(directLegacy)) {
+      const direct = directLegacy[name]!;
+      const roundTripped = legacyFromCanonical[name]!;
+
+      expect(roundTripped.event).toBe(direct.event);
+      expect(roundTripped.cursorEvent).toBe(direct.cursorEvent);
+      expect(roundTripped.piEvent).toBe(direct.piEvent);
+      expect(roundTripped.matcher).toBe(direct.matcher);
+      expect(roundTripped.cursorMatcher).toBe(direct.cursorMatcher);
+      expect(JSON.stringify(roundTripped.piMatcher)).toBe(
+        JSON.stringify(direct.piMatcher),
+      );
+      expect(roundTripped.script).toBe(direct.script);
+      expect(roundTripped.timeout).toBe(direct.timeout);
+      expect(roundTripped.async).toBe(direct.async);
+      expect(roundTripped.statusMessage).toBe(direct.statusMessage);
+    }
+  });
+});
+
+// ─── Edge cases: all platform mappings are non-empty (Task 101-04-2) ────────
+
+describe("all platform mappings non-empty", () => {
+  // Unit test verifying that every hook in the canonical registry
+  // produces non-undefined, non-empty event names for all 3 platforms.
+
+  test("every canonical hook maps to non-empty events for all 3 platforms", () => {
+    const canonical = resolveCanonicalRegistry();
+
+    for (const [name, hook] of Object.entries(canonical)) {
+      const claude = adaptForClaude(hook);
+      const cursor = adaptForCursor(hook);
+      const pi = adaptForPi(hook);
+
+      // Event names must be defined and non-empty
+      expect(claude.event).toBeTruthy();
+      expect(cursor.event).toBeTruthy();
+      expect(pi.event).toBeTruthy();
+
+      // Event names must be strings
+      expect(typeof claude.event).toBe("string");
+      expect(typeof cursor.event).toBe("string");
+      expect(typeof pi.event).toBe("string");
+
+      // Event names must have length > 0
+      expect(claude.event.length).toBeGreaterThan(0);
+      expect(cursor.event.length).toBeGreaterThan(0);
+      expect(pi.event.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("no platform adapter returns undefined for any canonical event", () => {
+    for (const event of CANONICAL_EVENTS) {
+      expect(CLAUDE_EVENT_MAP[event]).toBeDefined();
+      expect(CURSOR_EVENT_MAP[event]).toBeDefined();
+      expect(PI_EVENT_MAP[event]).toBeDefined();
+    }
+  });
+});
