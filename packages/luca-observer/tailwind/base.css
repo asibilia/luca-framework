@@ -34,6 +34,41 @@
   --radius-lg: 0.5rem;
 }
 
+/**
+ * Light mode color palette overrides.
+ *
+ * When `html.light` is set (via ThemeSync from the themeAtom),
+ * all CSS custom properties switch to light-friendly values.
+ * Event colors are darkened slightly for readability on white backgrounds.
+ */
+html.light {
+  --color-background: #fafafa;
+  --color-foreground: #0a0a0a;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-border: #e4e4e7;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+  --color-accent: #2563eb;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-warning: #d97706;
+  --color-success: #16a34a;
+  --color-info: #0891b2;
+
+  /* Event colors — darkened for light background readability */
+  --color-event-session: #7c3aed;
+  --color-event-tool: #2563eb;
+  --color-event-state: #16a34a;
+  --color-event-harness: #d97706;
+  --color-event-iteration: #0891b2;
+  --color-event-convergence: #db2777;
+  --color-event-tribunal: #ea580c;
+  --color-event-memory: #9333ea;
+  --color-event-commit: #059669;
+  --color-event-context: #475569;
+}
+
 body {
   background: var(--color-background);
   color: var(--color-foreground);
