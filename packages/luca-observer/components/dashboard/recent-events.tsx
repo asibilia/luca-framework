@@ -62,8 +62,8 @@ function EventRow({ event }: { event: StoredEvent }) {
 
   return (
     <div className="group rounded border border-border bg-card p-3 transition-colors hover:border-muted-foreground/30">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2 md:gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
           <EventBadge eventType={event.event_type} />
           {event.agent_name && (
             <span className="font-mono text-xs text-muted-foreground">

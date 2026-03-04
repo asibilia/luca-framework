@@ -67,8 +67,8 @@ export function TransitionLog({ entries }: { entries: LedgerEntry[] }) {
   const reversed = [...entries].reverse();
 
   return (
-    <div className="max-h-96 overflow-y-auto rounded-lg border border-border">
-      <table className="w-full">
+    <div className="max-h-96 overflow-auto rounded-lg border border-border">
+      <table className="w-full min-w-[480px]">
         <thead className="sticky top-0 bg-card">
           <tr className="border-b border-border font-mono text-xs uppercase tracking-wider text-muted-foreground">
             <th className="px-3 py-2 text-left">#</th>

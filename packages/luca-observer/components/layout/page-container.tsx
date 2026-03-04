@@ -20,7 +20,7 @@ export function PageContainer({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-4 p-3 md:gap-6 md:p-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-mono text-xl font-bold tracking-tight">

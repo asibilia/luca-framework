@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -7,21 +9,29 @@ import { useAtom } from "jotai";
 
 import { sidebarOpenAtom } from "~/stores/sidebar";
 import { NAV_ITEMS } from "~/lib/constants";
+import { useMediaQuery } from "~/hooks/use-media-query";
 
 /**
  * Sidebar navigation component.
  *
  * Renders the navigation items defined in constants.
  * Highlights the active route. Collapsible via Jotai atom.
+ * Auto-collapses below 768px viewport width.
  */
 export function Sidebar() {
   const pathname = usePathname();
-  const [isOpen] = useAtom(sidebarOpenAtom);
+  const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  // Auto-collapse sidebar on mobile, auto-expand on desktop
+  useEffect(() => {
+    setIsOpen(isDesktop);
+  }, [isDesktop, setIsOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <div className="h-6 w-6 rounded bg-accent" />
         <span className="font-mono text-sm font-bold tracking-tight">
