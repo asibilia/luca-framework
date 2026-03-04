@@ -5,7 +5,6 @@ import { useState } from "react";
 import { WORKFLOW_STATES } from "~/lib/constants";
 import { EventBadge } from "~/components/shared/event-badge";
 import { JsonViewer } from "~/components/shared/json-viewer";
-
 import type { LedgerEntry } from "~/lib/types";
 
 /**

@@ -1,5 +1,4 @@
 import { EVENT_TYPES } from "~/lib/constants";
-
 import type { EventTypeName } from "~/lib/constants";
 
 /**

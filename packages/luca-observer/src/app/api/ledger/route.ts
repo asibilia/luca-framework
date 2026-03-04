@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_ledger" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

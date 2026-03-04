@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_metrics" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

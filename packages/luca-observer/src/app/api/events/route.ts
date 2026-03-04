@@ -25,7 +25,7 @@ export async function POST(request: Request) {
           error: "invalid_payload",
           details: parseResult.error.issues,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 

@@ -53,8 +53,7 @@ export default function NotesPage() {
   // Refetch when note events arrive via SSE
   useEffect(() => {
     const noteEvent = events.find(
-      (e) =>
-        e.event_type === "note.added" || e.event_type === "note.consumed",
+      (e) => e.event_type === "note.added" || e.event_type === "note.consumed"
     );
     if (noteEvent) {
       fetchNotes();
@@ -142,8 +141,8 @@ export default function NotesPage() {
           <div className="rounded-lg border border-dashed border-border p-8 text-center">
             <p className="font-mono text-sm text-muted-foreground">
               No pending notes. Use the form above or{" "}
-              <code className="rounded bg-muted px-1 py-0.5">/note</code> to
-              add one.
+              <code className="rounded bg-muted px-1 py-0.5">/note</code> to add
+              one.
             </p>
           </div>
         ) : (

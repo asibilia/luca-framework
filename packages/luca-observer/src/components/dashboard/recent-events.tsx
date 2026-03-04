@@ -3,7 +3,6 @@
 import { EventBadge } from "~/components/shared/event-badge";
 import { JsonViewer } from "~/components/shared/json-viewer";
 import { SectionHeader } from "~/components/layout/section-header";
-
 import type { StoredEvent } from "~/lib/types";
 
 /**

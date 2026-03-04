@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import { useAtom } from "jotai";
 
 import { sidebarOpenAtom } from "~/stores/sidebar";

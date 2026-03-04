@@ -16,7 +16,7 @@ export async function GET() {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_sessions" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

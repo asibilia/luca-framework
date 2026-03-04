@@ -43,7 +43,7 @@ function resolveProjectDir(projectDir?: string): string {
  * @returns Parsed workflow snapshot
  */
 export async function readWorkflowState(
-  projectDir?: string,
+  projectDir?: string
 ): Promise<WorkflowSnapshot> {
   const dir = resolveProjectDir(projectDir);
   const statePath = join(dir, ".planning", "STATE.md");
@@ -86,7 +86,7 @@ export async function readMemoryFiles(projectDir?: string): Promise<{
  * @returns Parsed metrics JSON or empty object
  */
 export async function readMetrics(
-  projectDir?: string,
+  projectDir?: string
 ): Promise<Record<string, unknown>> {
   const dir = resolveProjectDir(projectDir);
   const metricsPath = join(dir, ".planning", "metrics.json");
@@ -128,7 +128,7 @@ export async function readLedgerEntries(
     event_type?: string;
     tail?: number;
     limit?: number;
-  },
+  }
 ): Promise<LedgerEntry[]> {
   const dir = resolveProjectDir(projectDir);
   const ledgerPath = join(dir, ".planning", "session-ledger.jsonl");
@@ -189,7 +189,7 @@ export async function readLedgerEntries(
  * ```
  */
 export async function readHarnessResult(
-  projectDir?: string,
+  projectDir?: string
 ): Promise<HarnessResultSnapshot | null> {
   const dir = resolveProjectDir(projectDir);
   const resultPath = join(dir, ".planning", "harness-result.json");

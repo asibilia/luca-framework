@@ -19,7 +19,7 @@ export async function GET() {
     },
     cancel(controller) {
       removeSSEClient(
-        controller as ReadableStreamDefaultController<Uint8Array>,
+        controller as ReadableStreamDefaultController<Uint8Array>
       );
     },
   });

@@ -1,7 +1,6 @@
 "use client";
 
 import { COMPLEXITY_LEVELS } from "~/lib/constants";
-
 import type { WorkflowSnapshot } from "~/lib/types";
 
 /**

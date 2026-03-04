@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, basename, resolve } from "node:path";
+import { join, resolve } from "node:path";
+
+import { NextResponse } from "next/server";
+
 import { z } from "zod";
 
 import { insertEvent } from "~/lib/db";
@@ -29,7 +31,7 @@ function resolveProjectDir(projectDir?: string): string {
  */
 function parseNoteFile(
   filename: string,
-  content: string,
+  content: string
 ): {
   filename: string;
   priority: string;
@@ -87,7 +89,7 @@ export async function GET(request: Request) {
     const doneDir = join(notesDir, "done");
 
     const readNotes = async (
-      dirPath: string,
+      dirPath: string
     ): Promise<ReturnType<typeof parseNoteFile>[]> => {
       try {
         const files = await readdir(dirPath);
@@ -100,7 +102,7 @@ export async function GET(request: Request) {
           mdFiles.map(async (f) => {
             const content = await readFile(join(dirPath, f), "utf-8");
             return parseNoteFile(f, content);
-          }),
+          })
         );
         return notes;
       } catch {
@@ -117,7 +119,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_read_notes" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -149,7 +151,7 @@ export async function POST(request: Request) {
           error: "invalid_payload",
           details: parseResult.error.issues,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -198,7 +200,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "failed_to_create_note" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { Providers } from "./providers";
+import type { Metadata } from "next";
+
 import { Sidebar } from "~/components/layout/sidebar";
 import { Header } from "~/components/layout/header";
+
+import { Providers } from "./providers";
 
 import "./globals.css";
 
