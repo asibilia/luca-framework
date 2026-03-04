@@ -53,13 +53,13 @@
 
 **Depends on:** Phase 99
 
-- [ ] Iterations & convergence page (#25)
-- [ ] Planning (WSJF) page (#25)
-- [ ] Memory system page (#25)
-- [ ] Tribunal & debate page (#25)
-- [ ] Agent activity page (#25)
-- [ ] Canonical hook format with platform adapters (claude, cursor, pi) (#9)
-- [ ] Hook portability regression tests across all 3 platforms
+- [x] Iterations & convergence page (#25)
+- [x] Planning (WSJF) page (#25)
+- [x] Memory system page (#25)
+- [x] Tribunal & debate page (#25)
+- [x] Agent activity page (#25)
+- [x] Canonical hook format with platform adapters (claude, cursor, pi) (#9)
+- [x] Hook portability regression tests across all 3 platforms
 
 ### Phase 101 — Polish, DX & Finalization
 
