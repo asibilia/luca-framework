@@ -35,7 +35,7 @@ export function ConvergenceChart({
         Error Convergence
       </h3>
 
-      <div className="mt-4 flex items-end gap-1" style={{ height: "160px" }}>
+      <div className="mt-4 flex h-40 items-end gap-1">
         {iterations.map((iter, idx) => {
           const heightPercent = (iter.error_count / maxErrors) * 100;
           const color =
