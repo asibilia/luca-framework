@@ -6,7 +6,10 @@
  */
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 
-import { emitObserverEvent } from "../../../../../packages/luca-framework/src/state/observer-emitter";
+import {
+  emitObserverEvent,
+  isLocalhostUrl,
+} from "../../../../../packages/luca-framework/src/state/observer-emitter";
 
 // --- Test State ----------------------------------------------------------------
 
@@ -126,5 +129,83 @@ describe("emitObserverEvent", () => {
       // AbortSignal.timeout() creates an AbortSignal -- verify it exists
       expect(signal).toBeInstanceOf(AbortSignal);
     });
+  });
+
+  describe("SSRF protection", () => {
+    test("refuses to emit to non-localhost URL", () => {
+      process.env.LUCA_OBSERVER_URL = "http://evil.com:3456";
+      emitObserverEvent("test.event");
+      expect(fetchCalls).toHaveLength(0);
+    });
+
+    test("refuses to emit to remote IP address", () => {
+      process.env.LUCA_OBSERVER_URL = "http://203.0.113.1:3456";
+      emitObserverEvent("test.event");
+      expect(fetchCalls).toHaveLength(0);
+    });
+
+    test("allows emission to localhost", () => {
+      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      emitObserverEvent("test.event");
+      expect(fetchCalls).toHaveLength(1);
+    });
+
+    test("allows emission to 127.0.0.1", () => {
+      process.env.LUCA_OBSERVER_URL = "http://127.0.0.1:3456";
+      emitObserverEvent("test.event");
+      expect(fetchCalls).toHaveLength(1);
+    });
+
+    test("allows emission to [::1]", () => {
+      process.env.LUCA_OBSERVER_URL = "http://[::1]:3456";
+      emitObserverEvent("test.event");
+      expect(fetchCalls).toHaveLength(1);
+    });
+
+    test("refuses to emit when URL is malformed", () => {
+      process.env.LUCA_OBSERVER_URL = "not-a-valid-url";
+      emitObserverEvent("test.event");
+      expect(fetchCalls).toHaveLength(0);
+    });
+  });
+});
+
+// --- isLocalhostUrl unit tests -------------------------------------------------
+
+describe("isLocalhostUrl", () => {
+  test("returns true for http://localhost:3000", () => {
+    expect(isLocalhostUrl("http://localhost:3000")).toBe(true);
+  });
+
+  test("returns true for http://127.0.0.1:3000", () => {
+    expect(isLocalhostUrl("http://127.0.0.1:3000")).toBe(true);
+  });
+
+  test("returns true for http://[::1]:3000", () => {
+    expect(isLocalhostUrl("http://[::1]:3000")).toBe(true);
+  });
+
+  test("returns true for https://localhost:443", () => {
+    expect(isLocalhostUrl("https://localhost:443")).toBe(true);
+  });
+
+  test("returns false for http://evil.com", () => {
+    expect(isLocalhostUrl("http://evil.com")).toBe(false);
+  });
+
+  test("returns false for http://203.0.113.1:3000", () => {
+    expect(isLocalhostUrl("http://203.0.113.1:3000")).toBe(false);
+  });
+
+  test("returns false for malformed URL", () => {
+    expect(isLocalhostUrl("not-a-url")).toBe(false);
+  });
+
+  test("returns false for empty string", () => {
+    expect(isLocalhostUrl("")).toBe(false);
+  });
+
+  test("returns false for localhost without scheme", () => {
+    expect(isLocalhostUrl("localhost:3000")).toBe(false);
   });
 });
