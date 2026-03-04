@@ -40,7 +40,7 @@ export type CanonicalEvent = z.infer<typeof canonicalEventSchema>;
 export const CanonicalHookSchema = z.object({
   /** Platform-independent lifecycle event */
   event: canonicalEventSchema,
-  /** Tool name regex filter (undefined = always fire). Maps to Claude matcher, Pi piMatcher, etc. */
+  /** Tool name regex filter (undefined = always fire). Maps to Claude matcher, Pi pi_matcher, etc. */
   tool_filter: z.string().optional(),
   /** Command substring filter for pre_tool_use hooks (e.g., commit command patterns) */
   command_filter: z.string().optional(),
@@ -61,15 +61,15 @@ export const HookDefinitionSchema = z.object({
   /** Claude Code hook event name (PascalCase) */
   event: z.string(),
   /** Cursor hook event name (camelCase) */
-  cursorEvent: z.string(),
+  cursor_event: z.string(),
   /** Pi extension event name (snake_case) — undefined means hook is not compiled for Pi */
-  piEvent: z.string().optional(),
+  pi_event: z.string().optional(),
   /** Regex matcher for Claude Code tool name filtering (undefined = always fire) */
   matcher: z.string().optional(),
   /** Regex matcher for Cursor filtering (undefined = always fire) */
-  cursorMatcher: z.string().optional(),
+  cursor_matcher: z.string().optional(),
   /** Pi tool names that trigger this hook (undefined = always fire) */
-  piMatcher: z.array(z.string()).optional(),
+  pi_matcher: z.array(z.string()).optional(),
   /** Shell script filename in src/hooks/scripts/ */
   script: z.string(),
   /** Timeout in seconds */
@@ -77,7 +77,7 @@ export const HookDefinitionSchema = z.object({
   /** Run asynchronously in background (Claude Code only, ignored by Cursor) */
   async: z.boolean(),
   /** Status message shown while hook runs (Claude Code only) */
-  statusMessage: z.string().optional(),
+  status_message: z.string().optional(),
 });
 export type HookDefinition = z.infer<typeof HookDefinitionSchema>;
 

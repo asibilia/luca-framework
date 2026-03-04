@@ -204,15 +204,15 @@ describe("canonicalToLegacy roundtrip", () => {
     });
 
     expect(legacy.event).toBe("PostToolUse");
-    expect(legacy.cursorEvent).toBe("afterFileEdit");
-    expect(legacy.piEvent).toBe("tool_execution_end");
+    expect(legacy.cursor_event).toBe("afterFileEdit");
+    expect(legacy.pi_event).toBe("tool_execution_end");
     expect(legacy.matcher).toBe("Edit|Write");
-    expect(legacy.cursorMatcher).toBeUndefined();
-    expect(legacy.piMatcher).toEqual(["edit", "write"]);
+    expect(legacy.cursor_matcher).toBeUndefined();
+    expect(legacy.pi_matcher).toEqual(["edit", "write"]);
     expect(legacy.script).toBe("post-edit-format.sh");
     expect(legacy.timeout).toBe(10);
     expect(legacy.async).toBe(false);
-    expect(legacy.statusMessage).toBe("Formatting...");
+    expect(legacy.status_message).toBe("Formatting...");
   });
 
   test("converts canonical hook with command_filter correctly", () => {
@@ -228,13 +228,13 @@ describe("canonicalToLegacy roundtrip", () => {
     });
 
     expect(legacy.event).toBe("PreToolUse");
-    expect(legacy.cursorEvent).toBe("beforeShellExecution");
-    expect(legacy.piEvent).toBe("tool_call");
+    expect(legacy.cursor_event).toBe("beforeShellExecution");
+    expect(legacy.pi_event).toBe("tool_call");
     expect(legacy.matcher).toBe("Bash");
-    expect(legacy.cursorMatcher).toBe(
+    expect(legacy.cursor_matcher).toBe(
       "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
     );
-    expect(legacy.piMatcher).toEqual(["bash"]);
+    expect(legacy.pi_matcher).toEqual(["bash"]);
   });
 
   test("converts canonical hook without filters correctly", () => {
@@ -247,11 +247,11 @@ describe("canonicalToLegacy roundtrip", () => {
     });
 
     expect(legacy.event).toBe("Stop");
-    expect(legacy.cursorEvent).toBe("stop");
-    expect(legacy.piEvent).toBe("session_shutdown");
+    expect(legacy.cursor_event).toBe("stop");
+    expect(legacy.pi_event).toBe("session_shutdown");
     expect(legacy.matcher).toBeUndefined();
-    expect(legacy.cursorMatcher).toBeUndefined();
-    expect(legacy.piMatcher).toBeUndefined();
+    expect(legacy.cursor_matcher).toBeUndefined();
+    expect(legacy.pi_matcher).toBeUndefined();
   });
 
   test("all canonical registry entries roundtrip to valid legacy definitions", () => {
@@ -259,8 +259,8 @@ describe("canonicalToLegacy roundtrip", () => {
     for (const [name, hook] of Object.entries(canonical)) {
       const legacy = canonicalToLegacy(hook);
       expect(legacy.event).toBeDefined();
-      expect(legacy.cursorEvent).toBeDefined();
-      expect(legacy.piEvent).toBeDefined();
+      expect(legacy.cursor_event).toBeDefined();
+      expect(legacy.pi_event).toBeDefined();
       expect(legacy.script).toBe(hook.script);
       expect(legacy.timeout).toBe(hook.timeout);
       expect(legacy.async).toBe(hook.async);
@@ -428,7 +428,7 @@ describe("canonical event coverage", () => {
   test("hook events map to the correct number of Cursor events", () => {
     const legacy = resolveHookRegistry();
     const cursorEvents = new Set(
-      Object.values(legacy).map((h) => h.cursorEvent),
+      Object.values(legacy).map((h) => h.cursor_event),
     );
     // Should have 5 Cursor events: afterFileEdit, beforeShellExecution, stop, sessionEnd, sessionStart
     expect(cursorEvents.size).toBe(5);
@@ -653,17 +653,17 @@ describe("round-trip consistency", () => {
       const roundTripped = legacyFromCanonical[name]!;
 
       expect(roundTripped.event).toBe(direct.event);
-      expect(roundTripped.cursorEvent).toBe(direct.cursorEvent);
-      expect(roundTripped.piEvent).toBe(direct.piEvent);
+      expect(roundTripped.cursor_event).toBe(direct.cursor_event);
+      expect(roundTripped.pi_event).toBe(direct.pi_event);
       expect(roundTripped.matcher).toBe(direct.matcher);
-      expect(roundTripped.cursorMatcher).toBe(direct.cursorMatcher);
-      expect(JSON.stringify(roundTripped.piMatcher)).toBe(
-        JSON.stringify(direct.piMatcher),
+      expect(roundTripped.cursor_matcher).toBe(direct.cursor_matcher);
+      expect(JSON.stringify(roundTripped.pi_matcher)).toBe(
+        JSON.stringify(direct.pi_matcher),
       );
       expect(roundTripped.script).toBe(direct.script);
       expect(roundTripped.timeout).toBe(direct.timeout);
       expect(roundTripped.async).toBe(direct.async);
-      expect(roundTripped.statusMessage).toBe(direct.statusMessage);
+      expect(roundTripped.status_message).toBe(direct.status_message);
     }
   });
 });

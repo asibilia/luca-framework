@@ -304,7 +304,7 @@ export function generateClaudeHooksConfig(
     };
 
     if (def.async) hookEntry.async = true;
-    if (def.statusMessage) hookEntry.statusMessage = def.statusMessage;
+    if (def.status_message) hookEntry.statusMessage = def.status_message;
 
     group.hooks.push(hookEntry);
   }
@@ -320,7 +320,7 @@ export function generateClaudeHooksConfig(
  * generates a single `luca-hooks.ts` extension that:
  *
  * 1. Subscribes to the mapped Pi event for each hook
- * 2. Filters by tool name when a piMatcher is set
+ * 2. Filters by tool name when a pi_matcher is set
  * 3. Executes the original shell script via child_process
  * 4. Returns `{ block: true }` for decision hooks (tool_call) on failure
  *
@@ -342,7 +342,7 @@ export function generatePiExtension(
   const handlerBlocks: string[] = [];
 
   for (const [hookName, def] of Object.entries(registry)) {
-    if (!def.piEvent) continue;
+    if (!def.pi_event) continue;
 
     // Validate script path to prevent traversal and injection
     if (!validateScriptPath(def.script)) {
@@ -352,15 +352,15 @@ export function generatePiExtension(
       continue;
     }
 
-    const isDecisionHook = def.piEvent === "tool_call";
+    const isDecisionHook = def.pi_event === "tool_call";
     const timeoutMs = def.timeout * 1000;
     const matcherCheck = buildPiMatcherCheck(def);
     const stdinBuilder = buildPiStdinJson(def);
 
     // Sanitize interpolated values to prevent template injection
     const safeHookName = sanitizeForTemplate(hookName);
-    const safeStatusMessage = def.statusMessage
-      ? sanitizeForTemplate(def.statusMessage)
+    const safeStatusMessage = def.status_message
+      ? sanitizeForTemplate(def.status_message)
       : safeHookName;
     const safeScript = sanitizeForTemplate(def.script);
 
@@ -369,7 +369,7 @@ export function generatePiExtension(
       : "";
 
     handlerBlocks.push(`  // ${safeHookName}: ${safeStatusMessage}
-  pi.on("${def.piEvent}", async (event, ctx) => {${matcherCheck}
+  pi.on("${def.pi_event}", async (event, ctx) => {${matcherCheck}
     try {
       execSync(\`sh "\${cwd}/${hooksDir}/${safeScript}"\`, {
         input: ${stdinBuilder},
@@ -406,10 +406,10 @@ ${handlerBlocks.join("\n\n")}
  * Returns an early-return statement or empty string.
  */
 function buildPiMatcherCheck(def: HookDefinition): string {
-  if (!def.piMatcher || def.piMatcher.length === 0) return "";
+  if (!def.pi_matcher || def.pi_matcher.length === 0) return "";
 
-  if (def.piEvent === "tool_call" || def.piEvent === "tool_execution_end") {
-    const toolNames = def.piMatcher.map((t) => `"${t}"`).join(", ");
+  if (def.pi_event === "tool_call" || def.pi_event === "tool_execution_end") {
+    const toolNames = def.pi_matcher.map((t) => `"${t}"`).join(", ");
     // For pre-commit hooks, also check for commit commands
     if (def.event === "PreToolUse" && def.matcher === "Bash") {
       return `
@@ -430,10 +430,10 @@ function buildPiMatcherCheck(def: HookDefinition): string {
  * Matches the format the shell scripts expect from their platform.
  */
 function buildPiStdinJson(def: HookDefinition): string {
-  if (def.piEvent === "tool_call") {
+  if (def.pi_event === "tool_call") {
     return `JSON.stringify({ tool_input: { command: event.input?.command || "" } })`;
   }
-  if (def.piEvent === "tool_execution_end") {
+  if (def.pi_event === "tool_execution_end") {
     return `JSON.stringify({ tool_input: { file_path: event.input?.file_path || "" } })`;
   }
   // Session events: minimal JSON
@@ -448,7 +448,7 @@ function buildPiStdinJson(def: HookDefinition): string {
  * - camelCase event names (afterFileEdit, beforeShellExecution, stop, sessionEnd)
  * - Flat array per event (no matcher-grouping)
  * - Relative command paths (.cursor/hooks/<script>)
- * - No async or statusMessage fields
+ * - No async or status_message fields
  */
 export function generateCursorHooksConfig(
   registry: Record<string, HookDefinition>,
@@ -456,7 +456,7 @@ export function generateCursorHooksConfig(
   const hooks: Record<string, Array<Record<string, unknown>>> = {};
 
   for (const [_name, def] of Object.entries(registry)) {
-    const eventName = def.cursorEvent;
+    const eventName = def.cursor_event;
     if (!hooks[eventName]) {
       hooks[eventName] = [];
     }
@@ -466,8 +466,8 @@ export function generateCursorHooksConfig(
       timeout: def.timeout,
     };
 
-    if (def.cursorMatcher) {
-      entry.matcher = def.cursorMatcher;
+    if (def.cursor_matcher) {
+      entry.matcher = def.cursor_matcher;
     }
 
     hooks[eventName].push(entry);

@@ -159,14 +159,14 @@ export function canonicalToLegacy(hook: CanonicalHook): HookDefinition {
 
   return {
     event: claude.event,
-    cursorEvent: cursor.event,
-    piEvent: pi.event,
+    cursor_event: cursor.event,
+    pi_event: pi.event,
     matcher: claude.matcher as string | undefined,
-    cursorMatcher: cursor.matcher as string | undefined,
-    piMatcher: pi.matcher as string[] | undefined,
+    cursor_matcher: cursor.matcher as string | undefined,
+    pi_matcher: pi.matcher as string[] | undefined,
     script: hook.script,
     timeout: hook.timeout,
     async: hook.async,
-    statusMessage: hook.status_message,
+    status_message: hook.status_message,
   };
 }
