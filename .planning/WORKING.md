@@ -88,19 +88,39 @@ Auto-persisted at 2026-03-04T00:42:29Z (zone: stop)
 
 ## Memory Recall
 
-
 ## Planning Notes
-
 
 ## Findings
 
+### Phase 97-01: Observer Scaffolding Cleanup (2026-03-04)
+
+- Empty `machines/` directory removed -- XState never used in observer
+- Broken `build:styles` script removed -- referenced nonexistent `./tailwind/base.css`; Tailwind v4 handles this via `@import "tailwindcss"` in globals.css
+- Unused deps removed: xstate (^5), lodash (^4.17.23), @types/lodash (^4.17.23) -- all zero imports
+- `.next/` gitignore coverage confirmed via `git ls-files` -- root pattern `.next` covers all depths
+- Full regression pass: 3165 tests, 0 failures; tsc clean
+
+### Phase 98-04: Middleware Pipeline Tests (2026-03-04)
+
+- Created 6 test files with 57 tests total, 0 failures
+- Files: middleware-schemas, timing-middleware, workspace-scope-middleware, output-capture-middleware, pipeline, runner-middleware
+- All tests pass in 161ms; test coverage covers schemas, individual middleware, pipeline composition (onion ordering, short-circuit, error propagation), and runner integration
+- Commit: `test(98-04): add middleware pipeline tests` on branch 44--v2.7.0-observability-verification
+
+### Phase 98 Complete (2026-03-04)
+
+- Phase 98 (Verification Pipeline) verified and completed
+- 4 plans executed: schemas, middleware implementations, runner integration, pipeline tests
+- Code review found HIGH: ctx spread-copy broke timing data propagation — fixed by mutating ctx directly
+- Code review found MEDIUM: node:fs in output-capture — replaced with Bun shell
+- 122 harness tests pass after all fixes
+- Verification: PASSED at EXISTS, SUBSTANTIVE, WIRED levels
 
 ## Hypotheses
 
 Fresh hypothesis
 
 ## Candidate Learnings
-
 
 ---
 

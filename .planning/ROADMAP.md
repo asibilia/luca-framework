@@ -30,10 +30,10 @@
 
 **Depends on:** Phase 97
 
-- [ ] CheckMiddlewareSchema in harness schemas (#24)
-- [ ] Middleware pipeline in harness runner (workspace-scoping, output-capture, timing)
-- [ ] Integration with existing harness runner
-- [ ] Middleware tests (pipeline ordering, error handling, empty pipeline)
+- [x] CheckMiddlewareSchema in harness schemas (#24)
+- [x] Middleware pipeline in harness runner (workspace-scoping, output-capture, timing)
+- [x] Integration with existing harness runner
+- [x] Middleware tests (pipeline ordering, error handling, empty pipeline)
 
 ### Phase 99 — Observer Foundation MVP
 
