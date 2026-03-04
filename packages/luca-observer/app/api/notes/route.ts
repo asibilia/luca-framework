@@ -5,7 +5,6 @@ import { readdir, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
-
 import { z } from "zod";
 
 import { requireApiKey } from "~/lib/auth";
@@ -47,11 +46,6 @@ function parseNoteFile(
 
     const statusMatch = fm.match(/status:\s*(.+)/);
     if (statusMatch) status = statusMatch[1]!.trim();
-
-    const priorityMatch = fm.match(/priority:\s*(.+)/);
-    if (priorityMatch) {
-      // Frontmatter priority takes precedence
-    }
   }
 
   // Fallback: extract timestamp from filename
