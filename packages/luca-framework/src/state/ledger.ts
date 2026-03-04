@@ -10,8 +10,10 @@
  * @module luca-state/ledger
  */
 import { z } from "zod";
-import { appendFile } from "node:fs/promises";
-import { mkdirSync, existsSync } from "node:fs";
+// Exception: appendFile kept from node:fs/promises — Bun.write does not
+// support native append mode, and read-then-write is not atomic for a
+// concurrent-append ledger. mkdir kept for directory creation (no Bun equivalent).
+import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { transitionRecordSchema } from "./types";
@@ -124,7 +126,8 @@ export function _resetSequenceCounter(): void {
  *
  * Assigns monotonically increasing sequence numbers and parent IDs.
  * Creates the ledger file and parent directories if they do not exist.
- * Uses `node:fs/promises.appendFile` for atomic append-only writes.
+ * Uses `node:fs/promises` appendFile for atomic append-only writes
+ * (kept as documented exception -- Bun.write lacks native append mode).
  *
  * @param record - The transition record to append
  * @param ledgerPath - Path to the ledger file (defaults to LEDGER_PATH)
@@ -161,9 +164,7 @@ export async function appendLedgerEntry(
   });
 
   const dir = dirname(ledgerPath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
+  await mkdir(dir, { recursive: true });
 
   const line = JSON.stringify(entry) + "\n";
   await appendFile(ledgerPath, line, "utf-8");

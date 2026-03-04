@@ -1,4 +1,7 @@
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+// Exception: readdir and mkdir kept from node:fs/promises — Bun has no
+// standalone mkdir equivalent and readdir is simpler than Bun.Glob for
+// listing + slicing a bounded set of files.
+import { readdir, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -110,7 +113,7 @@ export async function GET(request: Request) {
 
         const notes = await Promise.all(
           mdFiles.map(async (f) => {
-            const content = await readFile(join(dirPath, f), "utf-8");
+            const content = await Bun.file(join(dirPath, f)).text();
             return parseNoteFile(f, content);
           }),
         );
@@ -221,7 +224,7 @@ export async function POST(request: Request) {
       "",
     ].join("\n");
 
-    await writeFile(join(notesDir, filename), content, "utf-8");
+    await Bun.write(join(notesDir, filename), content);
 
     // Emit observer event
     const stored = insertEvent({

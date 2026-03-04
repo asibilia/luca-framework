@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { z, ZodTypeDef } from "zod";
@@ -50,7 +49,7 @@ async function readJsonSnapshot<T>(
   const dir = resolveProjectDir(projectDir);
   const filePath = join(dir, ".planning", filename);
   try {
-    const content = await readFile(filePath, "utf-8");
+    const content = await Bun.file(filePath).text();
     const parsed = schema.safeParse(JSON.parse(content));
     return parsed.success ? parsed.data : null;
   } catch {
@@ -74,7 +73,7 @@ export async function readWorkflowState(
   const statePath = join(dir, ".planning", "STATE.md");
 
   try {
-    const content = await readFile(statePath, "utf-8");
+    const content = await Bun.file(statePath).text();
     return parseStateMd(content);
   } catch {
     return WorkflowSnapshotSchema.parse({});
@@ -96,9 +95,15 @@ export async function readMemoryFiles(projectDir?: string): Promise<{
   const planningDir = join(dir, ".planning");
 
   const [brain, memory, working] = await Promise.all([
-    readFile(join(planningDir, "BRAIN.md"), "utf-8").catch(() => ""),
-    readFile(join(planningDir, "MEMORY.md"), "utf-8").catch(() => ""),
-    readFile(join(planningDir, "WORKING.md"), "utf-8").catch(() => ""),
+    Bun.file(join(planningDir, "BRAIN.md"))
+      .text()
+      .catch(() => ""),
+    Bun.file(join(planningDir, "MEMORY.md"))
+      .text()
+      .catch(() => ""),
+    Bun.file(join(planningDir, "WORKING.md"))
+      .text()
+      .catch(() => ""),
   ]);
 
   return { brain, memory, working };
@@ -117,7 +122,7 @@ export async function readMetrics(
   const metricsPath = join(dir, ".planning", "metrics.json");
 
   try {
-    const content = await readFile(metricsPath, "utf-8");
+    const content = await Bun.file(metricsPath).text();
     return JSON.parse(content) as Record<string, unknown>;
   } catch {
     return {};
@@ -159,7 +164,7 @@ export async function readLedgerEntries(
   const ledgerPath = join(dir, ".planning", "session-ledger.jsonl");
 
   try {
-    const content = await readFile(ledgerPath, "utf-8");
+    const content = await Bun.file(ledgerPath).text();
     let lines = content.trim().split("\n").filter(Boolean);
 
     if (filters?.tail && filters.tail > 0) {
@@ -245,14 +250,12 @@ export async function readIterationHistory(
   const checkpointsDir = join(dir, ".planning", "checkpoints");
 
   try {
-    const { readdir } = await import("node:fs/promises");
-    const files = await readdir(checkpointsDir);
-    const jsonFiles = files.filter((f) => f.endsWith(".json"));
-
+    const glob = new Bun.Glob("*.json");
     const records: IterationRecordSnapshot[] = [];
-    for (const file of jsonFiles) {
+
+    for await (const file of glob.scan({ cwd: checkpointsDir })) {
       try {
-        const content = await readFile(join(checkpointsDir, file), "utf-8");
+        const content = await Bun.file(join(checkpointsDir, file)).text();
         const parsed = IterationRecordSnapshotSchema.safeParse(
           JSON.parse(content),
         );
