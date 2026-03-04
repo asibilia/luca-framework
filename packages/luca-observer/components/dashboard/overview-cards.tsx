@@ -3,6 +3,8 @@
 import { useWorkflowState } from "~/hooks/use-workflow-state";
 import { useLedger } from "~/hooks/use-ledger";
 import { useHarnessResult } from "~/hooks/use-harness-result";
+import { useCostTracking } from "~/hooks/use-cost-tracking";
+import { useContextHealth } from "~/hooks/use-context-health";
 import { WORKFLOW_STATES, COMPLEXITY_LEVELS } from "~/lib/constants";
 import type { StoredEvent } from "~/lib/types";
 
@@ -16,6 +18,8 @@ export function OverviewCards({ events }: { events: StoredEvent[] }) {
   const { data } = useWorkflowState();
   const { totalCount: transitionCount } = useLedger(50);
   const { result: harnessResult, hasResult: hasHarness } = useHarnessResult();
+  const { totalCost } = useCostTracking();
+  const { health, latest: latestContext } = useContextHealth();
 
   const stateKey = data?.workflow_state ?? "idle";
   const complexityKey = data?.complexity ?? "MODERATE";
@@ -73,10 +77,30 @@ export function OverviewCards({ events }: { events: StoredEvent[] }) {
       value: transitionCount.toString(),
       color: "accent",
     },
+    {
+      title: "Session Cost",
+      value: `$${(totalCost / 100).toFixed(2)}`,
+      color: "info",
+    },
+    {
+      title: "Context Health",
+      value: health.charAt(0).toUpperCase() + health.slice(1),
+      subtitle: latestContext
+        ? `${latestContext.context_percent}% used`
+        : undefined,
+      color:
+        health === "peak"
+          ? "success"
+          : health === "good"
+            ? "info"
+            : health === "degrading"
+              ? "warning"
+              : "destructive",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-8">
       {cards.map((card) => (
         <div
           key={card.title}

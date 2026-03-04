@@ -5,6 +5,8 @@ import { ConvergenceChart } from "~/components/iteration/convergence-chart";
 import { BudgetGauge } from "~/components/iteration/budget-gauge";
 import { ErrorClassificationBreakdown } from "~/components/iteration/error-classification-breakdown";
 import { IterationTimeline } from "~/components/iteration/iteration-timeline";
+import { TokenUsageChart } from "~/components/iteration/token-usage-chart";
+import { ContextPressureTimeline } from "~/components/iteration/context-pressure-timeline";
 import { useIterationHistory } from "~/hooks/use-iteration-history";
 
 /**
@@ -50,6 +52,7 @@ export default function IterationsPage() {
             <BudgetGauge
               currentIteration={currentIteration}
               maxIterations={maxIterations}
+              softStopPercent={80}
               status={
                 lastIteration?.stale_count !== undefined &&
                 lastIteration.stale_count > 1
@@ -57,6 +60,10 @@ export default function IterationsPage() {
                   : "under_budget"
               }
             />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <TokenUsageChart />
+            <ContextPressureTimeline />
           </div>
           <ErrorClassificationBreakdown iterations={iterations} />
           <IterationTimeline iterations={iterations} />

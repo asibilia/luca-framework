@@ -72,6 +72,8 @@ export const NAV_ITEMS = [
   { href: "/memory", label: "Memory", icon: "Brain" },
   { href: "/tribunal", label: "Tribunal", icon: "Scale" },
   { href: "/agents", label: "Agents", icon: "Bot" },
+  { href: "/cost", label: "Cost", icon: "DollarSign" },
+  { href: "/decisions", label: "Decisions", icon: "GitPullRequest" },
   { href: "/notes", label: "Notes", icon: "StickyNote" },
 ] as const;
 

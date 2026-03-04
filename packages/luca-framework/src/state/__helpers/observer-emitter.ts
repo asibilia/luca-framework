@@ -1,9 +1,9 @@
 /**
- * Observer emitter — fire-and-forget event emission to luca-observer.
+ * Observer emitter — fire-and-forget event emission to SpacetimeDB.
  *
- * Extracted utility to keep bridge.ts free of network I/O.
- * Defaults to http://localhost:3456 (matching shell hook convention).
- * Silently fails if the observer is not running.
+ * Sends events to SpacetimeDB via its HTTP reducer API.
+ * Defaults to http://localhost:3000 (SpacetimeDB standalone default).
+ * Silently fails if SpacetimeDB is not running.
  *
  * SSRF Protection: Only localhost addresses are allowed as emission
  * targets to prevent server-side request forgery.
@@ -12,7 +12,7 @@
  * ```typescript
  * import { emitObserverEvent } from './observer-emitter'
  * emitObserverEvent('state.transition', {
- *   session_id: 'abc-123',
+ *   sessionId: 'abc-123',
  *   payload: { from: 'executing', to: 'verifying' },
  * })
  * ```
@@ -20,6 +20,12 @@
 
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Default SpacetimeDB URL. */
+const DEFAULT_SPACETIMEDB_URL = "http://localhost:3000";
+
+/** Database name for the observer module. */
+const DATABASE_NAME = "luca-observer";
 
 /**
  * Validate that a URL points to a localhost address.
@@ -49,11 +55,59 @@ export function isLocalhostUrl(rawUrl: string): boolean {
 }
 
 /**
- * Emit a fire-and-forget event to the Luca Observer dashboard.
+ * Build the SpacetimeDB reducer HTTP API URL.
  *
- * Defaults to http://localhost:3456 if LUCA_OBSERVER_URL is not set.
- * Refuses to emit if LUCA_OBSERVER_URL does not point to localhost (SSRF guard).
+ * @param baseUrl - The SpacetimeDB base URL (e.g., http://localhost:3000)
+ * @param reducerName - The reducer function name (e.g., ingest_event)
+ * @returns The full URL for the reducer call
+ */
+function buildReducerUrl(baseUrl: string, reducerName: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  return `${base}/database/${DATABASE_NAME}/call/${reducerName}`;
+}
+
+/**
+ * Call a SpacetimeDB reducer via HTTP API (fire-and-forget).
+ *
+ * This is the low-level function used by all higher-level emitters.
  * Silently catches all errors to avoid disrupting the caller.
+ *
+ * @param reducerName - The reducer function name
+ * @param args - The arguments to pass to the reducer
+ */
+export function callReducer(
+  reducerName: string,
+  args: Record<string, unknown>,
+): void {
+  const url =
+    process.env.LUCA_SPACETIMEDB_URL ||
+    process.env.LUCA_OBSERVER_URL ||
+    DEFAULT_SPACETIMEDB_URL;
+
+  if (!isLocalhostUrl(url)) {
+    console.error(
+      `[observer-emitter] SpacetimeDB URL must point to localhost. Refusing to call: ${url}`,
+    );
+    return;
+  }
+
+  const reducerUrl = buildReducerUrl(url, reducerName);
+
+  fetch(reducerUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ args }),
+    signal: AbortSignal.timeout(2000),
+  }).catch(() => {
+    // Intentionally swallowed — SpacetimeDB is optional
+  });
+}
+
+/**
+ * Emit a fire-and-forget event to SpacetimeDB via the ingest_event reducer.
+ *
+ * This is the primary ingestion function that replaces the old HTTP POST
+ * to /api/events. The ingest_event reducer also upserts the sessions table.
  *
  * @param eventType - The event type string (e.g., 'state.transition')
  * @param data - Additional event data to include in the payload
@@ -61,38 +115,108 @@ export function isLocalhostUrl(rawUrl: string): boolean {
 export function emitObserverEvent(
   eventType: string,
   data: Record<string, unknown> = {},
-) {
-  const url = process.env.LUCA_OBSERVER_URL || "http://localhost:3456";
-  if (!url) return;
+): void {
+  callReducer("ingest_event", {
+    eventType,
+    sessionId: (data.sessionId as string) || (data.session_id as string) || "",
+    agentName: (data.agentName as string) || (data.agent_name as string) || "",
+    toolName: (data.toolName as string) || (data.tool_name as string) || "",
+    filePath: (data.filePath as string) || (data.file_path as string) || "",
+    durationMs:
+      (data.durationMs as number) || (data.duration_ms as number) || 0,
+    eventData: JSON.stringify(data),
+    timestamp: Date.now(),
+  });
+}
 
-  if (!isLocalhostUrl(url)) {
-    console.error(
-      `[observer-emitter] LUCA_OBSERVER_URL must point to localhost. Refusing to emit to: ${url}`,
-    );
-    return;
-  }
+/**
+ * Log a tool call to SpacetimeDB via the log_tool_call reducer.
+ *
+ * @param params - Tool call parameters
+ */
+export function logToolCall(params: {
+  sessionId: string;
+  toolName: string;
+  durationMs: number;
+  inputSize: number;
+  outputSize: number;
+  turnNumber: number;
+}): void {
+  callReducer("log_tool_call", {
+    ...params,
+    timestamp: Date.now(),
+  });
+}
 
-  const payload = {
-    event_type: eventType,
-    timestamp: new Date().toISOString(),
-    ...data,
-  };
+/**
+ * Log token usage to SpacetimeDB via the log_token_usage reducer.
+ *
+ * @param params - Token usage parameters
+ */
+export function logTokenUsage(params: {
+  sessionId: string;
+  turnNumber: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}): void {
+  callReducer("log_token_usage", {
+    ...params,
+    timestamp: Date.now(),
+  });
+}
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+/**
+ * Update cost tracking in SpacetimeDB via the update_cost reducer.
+ *
+ * @param params - Cost tracking parameters
+ */
+export function updateCost(params: {
+  sessionId: string;
+  inputCostCents: number;
+  outputCostCents: number;
+  totalCostCents: number;
+  turnCount: number;
+}): void {
+  callReducer("update_cost", {
+    ...params,
+    timestamp: Date.now(),
+  });
+}
 
-  const apiKey = process.env.LUCA_OBSERVER_API_KEY;
-  if (apiKey) {
-    headers["X-API-Key"] = apiKey;
-  }
+/**
+ * Snapshot context usage to SpacetimeDB via the snapshot_context reducer.
+ *
+ * @param params - Context snapshot parameters
+ */
+export function snapshotContext(params: {
+  sessionId: string;
+  contextPercent: number;
+  messageCount: number;
+  estimatedTokens: number;
+  phase: string;
+}): void {
+  callReducer("snapshot_context", {
+    ...params,
+    timestamp: Date.now(),
+  });
+}
 
-  fetch(`${url}/api/events`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(2000),
-  }).catch(() => {
-    // Intentionally swallowed — observer is optional
+/**
+ * Log a decision to SpacetimeDB via the log_decision reducer.
+ *
+ * @param params - Decision log parameters
+ */
+export function logDecision(params: {
+  sessionId: string;
+  decisionType: string;
+  chosenApproach: string;
+  alternativesJson: string;
+  reasoning: string;
+}): void {
+  callReducer("log_decision", {
+    ...params,
+    timestamp: Date.now(),
   });
 }

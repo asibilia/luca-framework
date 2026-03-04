@@ -6,6 +6,7 @@ import { PageContainer } from "~/components/layout/page-container";
 import { AgentScorecardTable } from "~/components/agents/agent-scorecard-table";
 import { AgentActivityLog } from "~/components/agents/agent-activity-log";
 import { AgentRegistryPanel } from "~/components/agents/agent-registry-panel";
+import { ToolCallAnalytics } from "~/components/agents/tool-call-analytics";
 import { useAgentActivity } from "~/hooks/use-agent-activity";
 
 export default function AgentsPage() {
@@ -52,6 +53,7 @@ export default function AgentsPage() {
               agentInvocationCounts={invocationCounts}
             />
           </div>
+          <ToolCallAnalytics />
         </div>
       )}
     </PageContainer>

@@ -1,41 +1,38 @@
 "use client";
 
-import { z } from "zod";
+import { useMemo } from "react";
 
-import { TribunalResultSnapshotSchema } from "~/lib/types";
+import { useTable } from "spacetimedb/react";
 
-import { usePollingFetch } from "./use-polling-fetch";
-
-/**
- * API Response schema for /api/tribunal.
- *
- * Uses snake_case for API compatibility.
- */
-const TribunalResponseSchema = z.object({
-  result: TribunalResultSnapshotSchema.nullable().default(null),
-  has_result: z.boolean().default(false),
-});
+import { tables } from "~/module_bindings";
 
 /**
- * React hook for polling tribunal result from the API.
+ * React hook for real-time tribunal result from SpacetimeDB.
  *
- * Polls /api/tribunal at the specified interval to get the latest
- * tribunal/debate result.
+ * Subscribes to the tribunal_results table (singleton, id=1) and returns
+ * the latest tribunal/debate result. Replaces the polling-based implementation.
  *
- * @param intervalMs - Polling interval in milliseconds (default 15000)
  * @returns Object with result, hasResult flag, loading state, and error
  */
-export function useTribunal(intervalMs = 15000) {
-  const { data, loading, error } = usePollingFetch(
-    "/api/tribunal",
-    TribunalResponseSchema,
-    intervalMs,
-  );
+export function useTribunal() {
+  const [rows, isLoading] = useTable(tables.tribunalResults);
+
+  const { result, hasResult } = useMemo(() => {
+    const row = rows[0];
+    if (!row || !row.resultJson) return { result: null, hasResult: false };
+
+    try {
+      const parsed = JSON.parse(row.resultJson);
+      return { result: parsed, hasResult: true };
+    } catch {
+      return { result: null, hasResult: false };
+    }
+  }, [rows]);
 
   return {
-    result: data?.result ?? null,
-    hasResult: data?.has_result ?? false,
-    loading,
-    error,
+    result,
+    hasResult,
+    loading: isLoading,
+    error: null as string | null,
   };
 }

@@ -1,41 +1,38 @@
 "use client";
 
-import { z } from "zod";
+import { useMemo } from "react";
 
-import { SessionPlanSnapshotSchema } from "~/lib/types";
+import { useTable } from "spacetimedb/react";
 
-import { usePollingFetch } from "./use-polling-fetch";
-
-/**
- * API Response schema for /api/planning.
- *
- * Uses snake_case for API compatibility.
- */
-const PlanningResponseSchema = z.object({
-  plan: SessionPlanSnapshotSchema.nullable().default(null),
-  has_plan: z.boolean().default(false),
-});
+import { tables } from "~/module_bindings";
 
 /**
- * React hook for polling session plan from the API.
+ * React hook for real-time session plan from SpacetimeDB.
  *
- * Polls /api/planning at the specified interval to get the current
- * session plan with WSJF scores.
+ * Subscribes to the session_plans table (singleton, id=1) and returns
+ * the current session plan with WSJF scores. Replaces the polling-based implementation.
  *
- * @param intervalMs - Polling interval in milliseconds (default 15000)
  * @returns Object with plan, hasPlan flag, loading state, and error
  */
-export function usePlanning(intervalMs = 15000) {
-  const { data, loading, error } = usePollingFetch(
-    "/api/planning",
-    PlanningResponseSchema,
-    intervalMs,
-  );
+export function usePlanning() {
+  const [rows, isLoading] = useTable(tables.sessionPlans);
+
+  const { plan, hasPlan } = useMemo(() => {
+    const row = rows[0];
+    if (!row || !row.planJson) return { plan: null, hasPlan: false };
+
+    try {
+      const parsed = JSON.parse(row.planJson);
+      return { plan: parsed, hasPlan: true };
+    } catch {
+      return { plan: null, hasPlan: false };
+    }
+  }, [rows]);
 
   return {
-    plan: data?.plan ?? null,
-    hasPlan: data?.has_plan ?? false,
-    loading,
-    error,
+    plan,
+    hasPlan,
+    loading: isLoading,
+    error: null as string | null,
   };
 }

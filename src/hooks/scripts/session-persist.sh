@@ -60,6 +60,25 @@ END_REASON="${END_REASON:0:100}"
 # Remove session lock (before any other cleanup — most important action)
 rm -f "$PROJECT_DIR/.claude/.session-lock"
 
+# Emit session.end event to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+# Read session_id from state.json if available
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"session.end\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{\\\"reason\\\":\\\"$END_REASON\\\"}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
+
 WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
 
 # Exit if WORKING.md doesn't exist

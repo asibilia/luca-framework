@@ -65,7 +65,7 @@ import {
 } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
-import { emitObserverEvent } from "./__helpers/observer-emitter";
+import { callReducer, emitObserverEvent } from "./__helpers/observer-emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -444,6 +444,18 @@ async function handleSetField(args: string[]): Promise<void> {
   const loadResult = await loadPersistedActor();
   if (loadResult.success) {
     await updateStateMd(loadResult.data);
+
+    // Fire-and-forget: sync workflow state to SpacetimeDB
+    const snap = loadResult.data.getSnapshot();
+    callReducer("update_workflow_state", {
+      workflowState: String(snap.value),
+      currentPhase: snap.context.current_phase ?? "",
+      complexity: snap.context.complexity ?? "TRIVIAL",
+      oversight: snap.context.oversight ?? "milestone",
+      sessionId: snap.context.session_id ?? "",
+      ticketId: snap.context.ticket_id ?? "",
+      contextJson: JSON.stringify(snap.context),
+    });
   }
 
   // Append field change to session ledger (fire-and-forget, non-blocking)
@@ -545,6 +557,32 @@ async function handleTransition(args: string[]): Promise<void> {
 
   // Atomically update STATE.md
   await updateStateMd(actor);
+
+  // Fire-and-forget: sync workflow state to SpacetimeDB
+  callReducer("update_workflow_state", {
+    workflowState: String(nextSnapshot.value),
+    currentPhase: nextSnapshot.context.current_phase ?? "",
+    complexity: nextSnapshot.context.complexity ?? "TRIVIAL",
+    oversight: nextSnapshot.context.oversight ?? "milestone",
+    sessionId: nextSnapshot.context.session_id ?? "",
+    ticketId: nextSnapshot.context.ticket_id ?? "",
+    contextJson: JSON.stringify(nextSnapshot.context),
+  });
+
+  // Fire-and-forget: append ledger entry for this transition
+  callReducer("append_ledger_entry", {
+    sessionId: nextSnapshot.context.session_id ?? "",
+    phase: String(nextSnapshot.context.current_phase ?? ""),
+    plan: "",
+    action: `transition:${eventType}`,
+    result: String(nextSnapshot.value),
+    timestamp: Date.now(),
+    detailsJson: JSON.stringify({
+      from: String(prevState),
+      to: String(nextSnapshot.value),
+      event: eventType,
+    }),
+  });
 
   // Output transition record
   const { type: _type, ...eventData } = validation.data;
@@ -649,6 +687,18 @@ async function handleEnsureInit(args: string[]): Promise<void> {
   }
 
   const snapshot = actor.getSnapshot();
+
+  // Fire-and-forget: sync initial workflow state to SpacetimeDB
+  callReducer("update_workflow_state", {
+    workflowState: String(snapshot.value),
+    currentPhase: snapshot.context.current_phase ?? "",
+    complexity: snapshot.context.complexity ?? "TRIVIAL",
+    oversight: snapshot.context.oversight ?? "milestone",
+    sessionId: snapshot.context.session_id ?? "",
+    ticketId: snapshot.context.ticket_id ?? "",
+    contextJson: JSON.stringify(snapshot.context),
+  });
+
   console.log(
     JSON.stringify({
       initialized: true,

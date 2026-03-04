@@ -48,17 +48,23 @@ const QUALITY_ZONES = [
  * with percentage labels at boundaries. The current zone is visually
  * highlighted with a ring and opacity contrast.
  *
+ * When contextPercent is provided, a position marker is rendered on the
+ * zone bar showing the exact context usage position.
+ *
  * @param currentZone - The currently active zone key (peak/good/degrading/stop)
+ * @param contextPercent - Optional real context usage percentage (0-100)
  *
  * @example
  * ```tsx
- * <QualityZoneIndicator currentZone="good" />
+ * <QualityZoneIndicator currentZone="good" contextPercent={42} />
  * ```
  */
 export function QualityZoneIndicator({
   currentZone,
+  contextPercent,
 }: {
   currentZone?: string;
+  contextPercent?: number;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -67,7 +73,7 @@ export function QualityZoneIndicator({
       </p>
 
       {/* Zone bar */}
-      <div className="mt-3 flex overflow-hidden rounded-md">
+      <div className="relative mt-3 flex overflow-hidden rounded-md">
         {QUALITY_ZONES.map((zone) => {
           const isActive = currentZone === zone.key;
           const widthPercent = zone.end - zone.start;
@@ -91,6 +97,25 @@ export function QualityZoneIndicator({
             </div>
           );
         })}
+
+        {/* Context usage position marker */}
+        {contextPercent !== undefined && (
+          <div
+            className="pointer-events-none absolute top-0 h-full"
+            style={{
+              left: `${Math.min(Math.max(contextPercent, 0), 100)}%`,
+              transform: "translateX(-50%)",
+            }}
+          >
+            <div
+              className="h-full w-0.5"
+              style={{ backgroundColor: "var(--color-foreground)" }}
+            />
+            <div className="-translate-x-1/2 mt-0.5 whitespace-nowrap rounded bg-foreground px-1 py-0.5 font-mono text-xs font-bold text-background">
+              {contextPercent}%
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Percentage boundary labels */}

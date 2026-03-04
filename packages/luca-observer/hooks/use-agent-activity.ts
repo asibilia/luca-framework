@@ -1,40 +1,73 @@
 "use client";
 
-import { z } from "zod";
+import { useMemo } from "react";
 
-import { AgentActivitySnapshotSchema } from "~/lib/types";
+import { useTable } from "spacetimedb/react";
 
-import { usePollingFetch } from "./use-polling-fetch";
-
-/**
- * API Response schema for /api/agents.
- *
- * Uses snake_case for API compatibility.
- */
-const AgentsResponseSchema = z.object({
-  agents: z.array(AgentActivitySnapshotSchema).default([]),
-  total_count: z.number().default(0),
-});
+import { tables } from "~/module_bindings";
 
 /**
- * React hook for polling agent activity from the API.
+ * React hook for real-time agent activity from SpacetimeDB.
  *
- * Polls /api/agents at the specified interval to get the latest
- * agent activity summary derived from SSE events.
+ * Subscribes to the observer_events table and derives agent activity
+ * summaries from events with agent_name. Replaces the polling-based implementation.
  *
- * @param intervalMs - Polling interval in milliseconds (default 15000)
  * @returns Object with agents array, loading state, and error
  */
-export function useAgentActivity(intervalMs = 15000) {
-  const { data, loading, error } = usePollingFetch(
-    "/api/agents",
-    AgentsResponseSchema,
-    intervalMs,
-  );
+export function useAgentActivity() {
+  const [rows, isLoading] = useTable(tables.observerEvents);
 
-  return {
-    agents: data?.agents ?? [],
-    loading,
-    error,
-  };
+  const agents = useMemo(() => {
+    const agentMap = new Map<
+      string,
+      {
+        invocationCount: number;
+        lastInvokedAt: bigint;
+        totalDurationMs: bigint;
+        events: Array<{
+          event_type: string;
+          timestamp: string;
+          duration_ms?: number;
+          status?: string;
+        }>;
+      }
+    >();
+
+    for (const row of rows) {
+      if (!row.agentName) continue;
+
+      const existing = agentMap.get(row.agentName);
+      const event = {
+        event_type: row.eventType,
+        timestamp: "",
+        duration_ms: Number(row.durationMs),
+      };
+
+      if (existing) {
+        existing.invocationCount += 1;
+        if (row.timestamp > existing.lastInvokedAt) {
+          existing.lastInvokedAt = row.timestamp;
+        }
+        existing.totalDurationMs += row.durationMs;
+        existing.events.push(event);
+      } else {
+        agentMap.set(row.agentName, {
+          invocationCount: 1,
+          lastInvokedAt: row.timestamp,
+          totalDurationMs: row.durationMs,
+          events: [event],
+        });
+      }
+    }
+
+    return Array.from(agentMap.entries()).map(([name, data]) => ({
+      agent_name: name,
+      invocation_count: data.invocationCount,
+      last_invoked_at: undefined as string | undefined,
+      total_duration_ms: Number(data.totalDurationMs),
+      events: data.events,
+    }));
+  }, [rows]);
+
+  return { agents, loading: isLoading, error: null as string | null };
 }

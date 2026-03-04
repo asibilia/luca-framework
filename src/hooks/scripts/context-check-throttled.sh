@@ -100,4 +100,28 @@ if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
   printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE" "$ZONE"
 fi
 
+# Emit context snapshot to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+CONTEXT_PERCENT=$(printf '%s' "$RESULT" | bun -e "
+  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(Math.round(d.usage_percent || 0))); } catch { process.stdout.write('0'); }
+" 2>/dev/null || echo "0")
+EST_TOKENS=$(printf '%s' "$RESULT" | bun -e "
+  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(d.total_tokens || 0)); } catch { process.stdout.write('0'); }
+" 2>/dev/null || echo "0")
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/snapshot_context" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"sessionId\":\"$SESSION_ID\",\"contextPercent\":$CONTEXT_PERCENT,\"messageCount\":0,\"estimatedTokens\":$EST_TOKENS,\"phase\":\"\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
+
 exit 0

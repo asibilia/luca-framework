@@ -1,90 +1,61 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 
-import { StoredEventSchema } from "~/lib/types";
-import type { StoredEvent } from "~/lib/types";
+import orderBy from "lodash/orderBy";
+import { useTable } from "spacetimedb/react";
+
+import { tables } from "~/module_bindings";
 
 /**
- * React hook for consuming the SSE event stream.
+ * React hook for real-time event stream from SpacetimeDB.
  *
- * Connects to /api/stream and accumulates received events.
- * Automatically reconnects on disconnect with exponential backoff.
+ * Subscribes to the observer_events table and returns the most recent
+ * events. Replaces the SSE-based EventSource implementation.
  *
- * @param maxEvents - Maximum number of events to keep in memory (default 200)
+ * @param maxEvents - Maximum number of events to keep (default 200)
  * @returns Object with events array, connection status, and clear function
  */
 export function useEventStream(maxEvents = 200) {
-  const [events, setEvents] = useState<StoredEvent[]>([]);
-  const [connected, setConnected] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rows, isLoading] = useTable(tables.observerEvents);
+  const [cleared, setCleared] = useState(false);
+  const [clearTimestamp, setClearTimestamp] = useState<bigint>(0n);
 
-  const connect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+  const events = useMemo(() => {
+    if (cleared && rows.length === 0) return [];
 
-    const es = new EventSource("/api/stream");
-    eventSourceRef.current = es;
+    const filtered = cleared
+      ? rows.filter((r) => r.timestamp > clearTimestamp)
+      : rows;
 
-    es.onopen = () => {
-      setConnected(true);
-    };
+    const mapped = filtered.map((row) => ({
+      id: Number(row.id),
+      event_type: row.eventType,
+      session_id: row.sessionId ?? undefined,
+      timestamp: undefined as string | undefined,
+      timestamp_ms: Number(row.timestamp),
+      payload: undefined as Record<string, unknown> | undefined,
+      agent_name: row.agentName ?? undefined,
+      tool_name: row.toolName ?? undefined,
+      file_path: row.filePath ?? undefined,
+      duration_ms: Number(row.durationMs) || undefined,
+    }));
 
-    es.onmessage = (event) => {
-      try {
-        const result = StoredEventSchema.safeParse(JSON.parse(event.data));
-        if (!result.success) return;
-        setEvents((prev) => {
-          const next = [result.data, ...prev];
-          return next.length > maxEvents ? next.slice(0, maxEvents) : next;
-        });
-      } catch {
-        // Ignore unparseable messages (heartbeats, etc.)
-      }
-    };
-
-    es.onerror = () => {
-      setConnected(false);
-      es.close();
-      // Reconnect after 3 seconds
-      retryTimeoutRef.current = setTimeout(connect, 3000);
-    };
-  }, [maxEvents]);
-
-  useEffect(() => {
-    // Load historical events from the in-memory store before connecting SSE
-    fetch(`/api/events-query?limit=${maxEvents}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data?.events) return;
-        const parsed = data.events
-          .map((e: unknown) => StoredEventSchema.safeParse(e))
-          .filter((r: { success: boolean }) => r.success)
-          .map((r: { data: StoredEvent }) => r.data);
-        if (parsed.length > 0) {
-          setEvents(parsed);
-        }
-      })
-      .catch(() => {
-        // Non-critical — SSE will deliver new events regardless
-      });
-
-    connect();
-
-    return () => {
-      eventSourceRef.current?.close();
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connect]);
+    const sorted = orderBy(mapped, "timestamp_ms", "desc");
+    return sorted.slice(0, maxEvents);
+  }, [rows, maxEvents, cleared, clearTimestamp]);
 
   const clear = useCallback(() => {
-    setEvents([]);
-  }, []);
+    const maxTs =
+      rows.length > 0
+        ? rows.reduce((max, r) => (r.timestamp > max ? r.timestamp : max), 0n)
+        : 0n;
+    setClearTimestamp(maxTs);
+    setCleared(true);
+  }, [rows]);
+
+  // SpacetimeDB subscription is always "connected" once loaded
+  const connected = !isLoading;
 
   return { events, connected, clear };
 }

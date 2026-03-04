@@ -444,7 +444,19 @@ if [ -d "$PLANNING_DIR/notes" ]; then
   fi
 fi
 
-# Step 9: Output summary if anything was created
+# Step 9: Emit session.start event to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+SESSION_ID=$(run_bridge read-field --field=session_id 2>/dev/null | bun -e "
+  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(d.value || ''); } catch { process.stdout.write(''); }
+" 2>/dev/null || echo "")
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"session.start\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
+
+# Step 10: Output summary if anything was created
 if [ -n "$CREATED" ]; then
   HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
     const created = process.env.HOOK_CREATED.trim();
@@ -467,13 +479,5 @@ elif [ -n "$NOTES_MSG" ]; then
     process.stdout.write(JSON.stringify(output));
   "
 fi
-
-# Step 10: Emit observer event (fire-and-forget)
-OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
-SESSION_ID=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=session_id 2>/dev/null || echo "unknown")
-curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
-  -H "Content-Type: application/json" \
-  -d "{\"event_type\":\"session.start\",\"session_id\":\"$SESSION_ID\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"runtime\":\"$RUNTIME\",\"created\":\"$CREATED\"}}" \
-  >/dev/null 2>&1 &
 
 exit 0

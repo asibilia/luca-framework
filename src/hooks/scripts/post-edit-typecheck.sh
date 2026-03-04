@@ -157,18 +157,26 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
   "
 fi
 
-# Emit observer event (fire-and-forget)
-OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
-if [ $TSC_EXIT -eq 0 ]; then
-  curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+# Emit typecheck result to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ]; then
+  EVENT_TYPE="typecheck.pass"
+  if [ $TSC_EXIT -ne 0 ]; then
+    EVENT_TYPE="typecheck.fail"
+  fi
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
     -H "Content-Type: application/json" \
-    -d "{\"event_type\":\"typecheck.pass\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"file\":\"$FILE_PATH\"}}" \
-    >/dev/null 2>&1 &
-else
-  curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
-    -H "Content-Type: application/json" \
-    -d "{\"event_type\":\"typecheck.fail\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"file\":\"$FILE_PATH\",\"error_count\":\"$LINE_COUNT\"}}" \
-    >/dev/null 2>&1 &
+    -d "{\"args\":{\"eventType\":\"$EVENT_TYPE\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"tsc\",\"filePath\":\"$FILE_PATH\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
 fi
 
 exit 0

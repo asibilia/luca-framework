@@ -1,17 +1,38 @@
 "use client";
 
-import { WorkflowSnapshotSchema } from "~/lib/types";
+import { useMemo } from "react";
 
-import { usePollingFetch } from "./use-polling-fetch";
+import { useTable } from "spacetimedb/react";
+
+import { tables } from "~/module_bindings";
 
 /**
- * React hook for polling workflow state from the API.
+ * React hook for real-time workflow state from SpacetimeDB.
  *
- * Polls /api/state every 5 seconds to get the latest STATE.md contents.
+ * Subscribes to the workflow_state table (singleton, id=1) and returns
+ * the latest workflow snapshot. Replaces the polling-based implementation.
  *
- * @param intervalMs - Polling interval in milliseconds (default 5000)
  * @returns Object with data, loading state, and error
  */
-export function useWorkflowState(intervalMs = 5000) {
-  return usePollingFetch("/api/state", WorkflowSnapshotSchema, intervalMs);
+export function useWorkflowState() {
+  const [rows, isLoading] = useTable(tables.workflowState);
+
+  const data = useMemo(() => {
+    const row = rows[0];
+    if (!row) return null;
+
+    return {
+      workflow_state: row.workflowState ?? "idle",
+      current_phase: row.currentPhase ? Number(row.currentPhase) : 0,
+      current_plan: "",
+      complexity: row.complexity ?? "MODERATE",
+      oversight: row.oversight ?? "milestone",
+      ticket_id: row.ticketId ?? "",
+      branch: "",
+      session_id: row.sessionId ?? "",
+      errors: [] as string[],
+    };
+  }, [rows]);
+
+  return { data, loading: isLoading, error: null as string | null };
 }

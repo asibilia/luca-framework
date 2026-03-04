@@ -1,25 +1,32 @@
 "use client";
 
-import { z } from "zod";
+import { useMemo } from "react";
 
-import { usePollingFetch } from "./use-polling-fetch";
+import { useTable } from "spacetimedb/react";
 
-/**
- * Permissive schema for /api/metrics response.
- *
- * Metrics are a free-form key-value map; this schema validates the
- * shape without constraining individual metric keys.
- */
-const MetricsResponseSchema = z.record(z.unknown());
+import { tables } from "~/module_bindings";
 
 /**
- * React hook for polling metrics from the API.
+ * React hook for real-time metrics from SpacetimeDB.
  *
- * Polls /api/metrics every 10 seconds.
+ * Subscribes to the metrics table (singleton, id=1) and returns
+ * the parsed metrics object. Replaces the polling-based implementation.
  *
- * @param intervalMs - Polling interval in milliseconds (default 10000)
  * @returns Object with data, loading state, and error
  */
-export function useMetrics(intervalMs = 10000) {
-  return usePollingFetch("/api/metrics", MetricsResponseSchema, intervalMs);
+export function useMetrics() {
+  const [rows, isLoading] = useTable(tables.metrics);
+
+  const data = useMemo((): Record<string, unknown> | null => {
+    const row = rows[0];
+    if (!row || !row.metricsJson) return null;
+
+    try {
+      return JSON.parse(row.metricsJson);
+    } catch {
+      return null;
+    }
+  }, [rows]);
+
+  return { data, loading: isLoading, error: null as string | null };
 }

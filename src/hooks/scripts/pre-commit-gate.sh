@@ -248,12 +248,23 @@ ${ERRORS}"
   exit 2
 fi
 
-# Emit observer event — commit allowed
-OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
-curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
-  -H "Content-Type: application/json" \
-  -d "{\"event_type\":\"commit.allowed\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
-  >/dev/null 2>&1 &
+# All checks passed — emit commit event to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"commit.passed\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"git\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
 
-# All checks passed — allow the commit
+# Allow the commit
 exit 0

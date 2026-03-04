@@ -91,6 +91,40 @@ const WORKING_PATH = ".planning/WORKING.md";
 const PROCEDURES_PATH = ".planning/PROCEDURES.md";
 const BRAIN_PATH = ".planning/BRAIN.md";
 
+// ─── SpacetimeDB Sync ──────────────────────────────────────────────────────
+
+/**
+ * Fire-and-forget sync of memory files to SpacetimeDB.
+ * Reads current JSON files and sends to update_memory_files reducer.
+ * Failures are silently ignored — local JSON files remain authoritative.
+ */
+async function syncMemoryToSpacetimeDB(): Promise<void> {
+  try {
+    const url =
+      process.env.LUCA_SPACETIMEDB_URL ||
+      process.env.LUCA_OBSERVER_URL ||
+      "http://localhost:3000";
+    const brainJson = await readJsonFile(BRAIN_JSON_PATH).catch(() => ({}));
+    const memoryJson = await readJsonFile(MEMORY_JSON_PATH).catch(() => []);
+    const workingJson = await readJsonFile(WORKING_JSON_PATH).catch(() => ({}));
+    fetch(`${url}/database/luca-observer/call/update_memory_files`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        args: {
+          brainJson: JSON.stringify(brainJson),
+          memoryJson: JSON.stringify(memoryJson),
+          workingJson: JSON.stringify(workingJson),
+          timestamp: Date.now(),
+        },
+      }),
+      signal: AbortSignal.timeout(2000),
+    }).catch(() => {});
+  } catch {
+    // Silently ignore — SpacetimeDB is optional observability layer
+  }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
@@ -525,6 +559,7 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
   const markdown = serializeWorkingMemory(updated);
   await Bun.write(WORKING_PATH, markdown);
   await writeJsonFile(WORKING_JSON_PATH, updated);
+  syncMemoryToSpacetimeDB();
 
   // Find the updated section for response
   const updatedSection = updated.sections.find((s) => s.name === sectionName);
@@ -560,6 +595,7 @@ export async function handleClearWorking(): Promise<void> {
   const markdown = serializeWorkingMemory(cleared);
   await Bun.write(WORKING_PATH, markdown);
   await writeJsonFile(WORKING_JSON_PATH, cleared);
+  syncMemoryToSpacetimeDB();
 
   console.log(
     JSON.stringify({
@@ -718,6 +754,7 @@ export async function handleAddMemoryEntry(args: string[]): Promise<void> {
   // Dual-write: JSON + MD
   await writeJsonFile(MEMORY_JSON_PATH, entries);
   await Bun.write(MEMORY_PATH, serializeMemoryEntries(entries));
+  syncMemoryToSpacetimeDB();
 
   console.log(
     JSON.stringify({
@@ -870,6 +907,7 @@ export async function handleEnsureInit(): Promise<void> {
     results.procedures = "exists";
   }
 
+  syncMemoryToSpacetimeDB();
   console.log(JSON.stringify({ initialized: true, files: results }));
 }
 
