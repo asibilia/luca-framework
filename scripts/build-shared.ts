@@ -164,6 +164,8 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   "session-resume": "Session",
   // Debug
   debug: "Debug",
+  // Notes
+  note: "Workflow",
   // Reference (auto-invoked rules)
   "rule-lu-workflow": "Reference",
   "rule-complexity-gating": "Reference",
