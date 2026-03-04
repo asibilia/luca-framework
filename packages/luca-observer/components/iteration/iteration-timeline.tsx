@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import orderBy from "lodash/orderBy";
 
+import { CONVERGENCE_STATUS_COLORS } from "~/lib/constants";
 import type { IterationRecordSnapshot } from "~/lib/types";
 
 /**
@@ -58,14 +59,9 @@ export function IterationTimeline({
 function IterationCard({ iteration }: { iteration: IterationRecordSnapshot }) {
   const [expanded, setExpanded] = useState(false);
 
-  const statusColors: Record<string, string> = {
-    improved: "success",
-    stalled: "warning",
-    regressed: "destructive",
-  };
-
   const color =
-    statusColors[iteration.convergence_status] ?? "muted-foreground";
+    CONVERGENCE_STATUS_COLORS[iteration.convergence_status] ??
+    "muted-foreground";
   const durationSeconds = (iteration.duration_ms / 1000).toFixed(1);
   const deltaLabel =
     iteration.error_delta > 0

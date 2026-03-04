@@ -75,4 +75,16 @@ export const NAV_ITEMS = [
   { href: "/notes", label: "Notes", icon: "StickyNote" },
 ] as const;
 
+/**
+ * Convergence status to CSS color token mapping.
+ *
+ * Used by iteration charts and timelines to color-code convergence
+ * status badges and bars.
+ */
+export const CONVERGENCE_STATUS_COLORS: Record<string, string> = {
+  improved: "success",
+  stalled: "warning",
+  regressed: "destructive",
+} as const;
+
 export const DEFAULT_PORT = 3456;

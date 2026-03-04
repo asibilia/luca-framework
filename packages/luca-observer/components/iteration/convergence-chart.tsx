@@ -1,5 +1,6 @@
 "use client";
 
+import { CONVERGENCE_STATUS_COLORS } from "~/lib/constants";
 import type { IterationRecordSnapshot } from "~/lib/types";
 
 /**
@@ -28,12 +29,6 @@ export function ConvergenceChart({
 
   const maxErrors = Math.max(...iterations.map((i) => i.error_count), 1);
 
-  const statusColors: Record<string, string> = {
-    improved: "success",
-    stalled: "warning",
-    regressed: "destructive",
-  };
-
   return (
     <div className="rounded-lg border border-border p-4">
       <h3 className="font-mono text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -44,7 +39,8 @@ export function ConvergenceChart({
         {iterations.map((iter, idx) => {
           const heightPercent = (iter.error_count / maxErrors) * 100;
           const color =
-            statusColors[iter.convergence_status] ?? "muted-foreground";
+            CONVERGENCE_STATUS_COLORS[iter.convergence_status] ??
+            "muted-foreground";
           const deltaLabel =
             iter.error_delta > 0
               ? `+${iter.error_delta}`
@@ -96,7 +92,7 @@ export function ConvergenceChart({
           Max: {maxErrors} errors
         </span>
         <span className="mx-1 text-muted-foreground/30">|</span>
-        {Object.entries(statusColors).map(([status, color]) => (
+        {Object.entries(CONVERGENCE_STATUS_COLORS).map(([status, color]) => (
           <span
             key={status}
             className="flex items-center gap-1 font-mono text-xs"
