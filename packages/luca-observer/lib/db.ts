@@ -5,11 +5,34 @@ import type { StoredEvent, ObserverEvent, SessionRecord } from "./types";
 /**
  * In-memory event store.
  *
- * For Phase 1, we use an in-memory store instead of SpacetimeDB.
- * SpacetimeDB integration will be added in a future phase once the
- * SDK compatibility with Next.js App Router is verified.
+ * ## Design
  *
- * HMR-safe: uses globalThis to survive Next.js hot module replacement.
+ * Uses an in-memory JavaScript object on `globalThis` to survive Next.js
+ * hot module replacement (HMR) during development. For Phase 1 we use this
+ * in-memory store instead of SpacetimeDB; SpacetimeDB integration will be
+ * added in a future phase once SDK compatibility with Next.js App Router is
+ * verified.
+ *
+ * ## Thread-Safety Model
+ *
+ * Node.js (and Bun) run JavaScript on a single thread with an event loop.
+ * All request handlers in Next.js run on the same thread. Therefore:
+ * - Array mutations (`push`, `shift`) are NOT subject to data races
+ * - Counter increments (`nextId++`, `total_events++`) are NOT subject to races
+ * - No locking, mutexes, or atomic operations are needed
+ *
+ * **Limitation**: This store is process-local. If the observer is deployed
+ * across multiple processes (e.g., PM2 cluster mode, multiple Kubernetes pods),
+ * events are NOT shared between processes. For multi-process deployments, replace
+ * the globalThis store with an external store (Redis, SpacetimeDB, etc.).
+ *
+ * ## Memory Management
+ *
+ * Events are capped at MAX_EVENTS (default 10,000, configurable via
+ * LUCA_OBSERVER_MAX_EVENTS). Oldest events are evicted when the cap is exceeded.
+ * Sessions are not evicted automatically.
+ *
+ * @see SpacetimeDB integration planned for a future phase
  */
 
 /**
@@ -30,6 +53,13 @@ interface EventStore {
   nextId: number;
 }
 
+/**
+ * Get or initialize the singleton event store.
+ *
+ * Uses globalThis to survive Next.js HMR — module-level variables are
+ * re-initialized on each HMR reload, but globalThis persists for the
+ * lifetime of the process.
+ */
 function getStore(): EventStore {
   const key = "__observer_event_store" as const;
   const g = globalThis as unknown as Record<string, EventStore | undefined>;
