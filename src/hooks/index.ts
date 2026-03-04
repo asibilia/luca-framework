@@ -39,7 +39,14 @@ export {
 } from "./__helpers/platform-adapters";
 export type { PlatformHookConfig } from "./__helpers/platform-adapters";
 
-// Config generators
+// Config generators — canonical (preferred)
+export {
+  generateClaudeHooksConfigFromCanonical,
+  generateCursorHooksConfigFromCanonical,
+  generatePiExtensionFromCanonical,
+} from "./__helpers/config-generators";
+
+// Config generators — legacy (backward compatible)
 export {
   generateClaudeHooksConfig,
   generateCursorHooksConfig,
