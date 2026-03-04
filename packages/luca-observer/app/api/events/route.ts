@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { requireApiKey } from "~/lib/auth";
 import { insertEvent } from "~/lib/db";
 import { broadcastEvent } from "~/lib/sse";
 import { ObserverEventSchema } from "~/lib/types";
@@ -46,6 +47,9 @@ export const dynamic = "force-dynamic";
  * ```
  */
 export async function POST(request: Request) {
+  const authError = requireApiKey(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const parseResult = ObserverEventSchema.safeParse(body);
