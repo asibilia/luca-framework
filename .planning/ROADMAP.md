@@ -159,16 +159,16 @@
 
 **Depends on:** Phase 108
 
-- [ ] Extract generic `usePollingFetch<T>` hook, refactor 9 polling hooks to use it (~350 lines saved)
-- [ ] Extract `readJsonSnapshot<T>` helper in file-watcher.ts, collapse 3 identical read functions
-- [ ] DRY resolveProjectDir: export from file-watcher.ts, remove duplicate in notes/route.ts
-- [ ] Extract API route factory for 6 structurally identical GET handlers
-- [ ] Migrate file-watcher.ts and notes/route.ts from node:fs/promises to Bun.file API
-- [ ] Migrate ledger.ts from mixed node:fs/Bun.file to consistent Bun.file usage
-- [ ] Replace 7 Array.sort/reverse instances with lodash orderBy
-- [ ] Fix 2 Tailwind table header inconsistencies (agent-scorecard-table, findings-table)
-- [ ] Fix budget-gauge.tsx destructuring default (move to Zod schema)
-- [ ] Replace 2 type assertions with safeParse in use-event-stream.ts and use-metrics.ts
+- [x] Extract generic `usePollingFetch<T>` hook, refactor 9 polling hooks to use it (~350 lines saved)
+- [x] Extract `readJsonSnapshot<T>` helper in file-watcher.ts, collapse 3 identical read functions
+- [x] DRY resolveProjectDir: export from file-watcher.ts, remove duplicate in notes/route.ts
+- [x] Extract API route factory for 6 structurally identical GET handlers
+- [x] Migrate file-watcher.ts and notes/route.ts from node:fs/promises to Bun.file API
+- [x] Migrate ledger.ts from mixed node:fs/Bun.file to consistent Bun.file usage
+- [x] Replace 7 Array.sort/reverse instances with lodash orderBy
+- [x] Fix 2 Tailwind table header inconsistencies (agent-scorecard-table, findings-table)
+- [x] Fix budget-gauge.tsx destructuring default (move to Zod schema)
+- [x] Replace 2 type assertions with safeParse in use-event-stream.ts and use-metrics.ts
 
 ---
 
