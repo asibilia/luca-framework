@@ -9,7 +9,7 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import {
   emitObserverEvent,
   isLocalhostUrl,
-} from "../../../../../packages/luca-framework/src/state/observer-emitter";
+} from "../../../../../../packages/luca-framework/src/state/__helpers/observer-emitter";
 
 // --- Test State ----------------------------------------------------------------
 
