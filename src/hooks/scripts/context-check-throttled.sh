@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 # context-check-throttled.sh -- PostToolUse throttled context monitor
 #
-# Hook event: PostToolUse (async)
+# Canonical event: post_tool_use (no tool_filter)
+# Platform events: Claude=PostToolUse, Cursor=afterFileEdit, Pi=tool_execution_end
 # Type: Command hook (asynchronous, does not block tool use)
 # Timeout: 10 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { ... } }  (varies by tool)
+# Cursor:      { ... }                     (varies by tool)
+# Pi:          { "tool_input": { ... } }   (varies by tool)
+#
+# This hook does not parse stdin — it uses throttle-based context monitoring.
+# Stdin is consumed (cat) but not inspected.
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On urgent notes:
+#   { "systemMessage": "[Developer Notes] Urgent notes to incorporate: ..." }
+# On degrading/stop context:
+#   { "systemMessage": "Context usage at X% (zone: degrading/stop). ..." }
+# On healthy context: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (async hook, non-blocking)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Runs the TypeScript context monitor module on a throttled basis.
 # Skips execution if the last check was less than 60 seconds ago

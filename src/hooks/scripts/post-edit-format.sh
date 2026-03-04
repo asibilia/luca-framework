@@ -1,13 +1,25 @@
 #!/usr/bin/env bash
 # post-edit-format.sh — Auto-format files after Edit/Write operations
 #
-# Hook event: PostToolUse (matcher: Edit|Write)
+# Canonical event: post_tool_use (tool_filter: Edit|Write)
+# Platform events: Claude=PostToolUse, Cursor=afterFileEdit, Pi=tool_execution_end
 # Type: Command hook (synchronous)
 # Timeout: 10 seconds
 #
-# Reads the edited file path from stdin JSON (tool_input.file_path),
-# determines the appropriate formatter based on file extension, and
-# runs it in-place. Non-blocking: exits 0 regardless of formatter outcome.
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { "file_path": "/path/to/file.ts" } }
+# Cursor:      { "file_path": "/path/to/file.ts" }
+# Pi:          { "tool_input": { "file_path": "/path/to/file.ts" } }
+#
+# Extraction: data.tool_input?.file_path ?? data.file_path
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# No stdout output (formatting is silent, non-blocking)
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = success (always exits 0, formatting is non-blocking)
+# ──────────────────────────────────────────────────────────────────────
+#
+# Reads the edited file path from stdin JSON, determines the appropriate
+# formatter based on file extension, and runs it in-place.
 #
 # Runtime detection: Reads .planning/config.json for "runtime" field,
 # falls back to command -v detection. Uses bunx or npx for formatter accordingly.
