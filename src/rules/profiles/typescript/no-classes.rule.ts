@@ -186,7 +186,7 @@ This rule is enforced through:
 - Architecture decision records
 - Team consensus and standards
 
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards.`,
+`,
       order: 1,
     },
   ],

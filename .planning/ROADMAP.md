@@ -73,6 +73,71 @@
 - [ ] Hook portability finalization and drift check (#9)
 - [ ] Documentation for observer deployment
 
+### Phase 102 — Tailwind Build Commands
+
+**Goal:** Add Tailwind CSS build commands to the luca-observer package.json for proper CSS compilation workflow.
+
+**Depends on:** Phase 99
+
+- [ ] Add Tailwind build/dev/watch scripts to luca-observer package.json
+- [ ] Verify Tailwind CSS compilation pipeline works end-to-end
+
+### Phase 103 — ESLint Config
+
+**Goal:** Port ESLint configuration from joes-book--next repo (https://github.com/asibilia/joes-book--next) into luca-observer, including installing ESLint and all required plugins/presets.
+
+**Depends on:** None
+
+- [ ] Clone/fetch ESLint config from asibilia/joes-book--next repo
+- [ ] Install ESLint and required dependencies in luca-observer
+- [ ] Adapt config for luca-observer's project structure
+- [ ] Verify lint passes on existing codebase
+
+### Phase 104 — Observer Directory Restructure
+
+**Goal:** Move luca-observer content folders (app/, lib/, components/, etc.) from under `src/` to the package root, following standard Next.js conventions.
+
+**Depends on:** None
+
+- [ ] Move content folders from `src/` to package root
+- [ ] Update all import paths and tsconfig path mappings
+- [ ] Update Next.js config if needed
+- [ ] Verify build and dev server work after restructure
+
+### Phase 105 — Remove PostCSS & Align Tailwind Setup
+
+**Goal:** Remove PostCSS and align Tailwind CSS setup with the joes-book--next repo (https://github.com/asibilia/joes-book--next), using the same Tailwind configuration approach.
+
+**Depends on:** Phase 102
+
+- [ ] Remove postcss and postcss.config from luca-observer
+- [ ] Port Tailwind setup from joes-book--next repo
+- [ ] Update CSS imports and Tailwind directives to match reference repo
+- [ ] Verify Tailwind styles compile correctly without PostCSS
+
+### Phase 106 — Modernize Next.js Config
+
+**Goal:** Update luca-observer's Next.js config to match the joes-book--next repo (https://github.com/asibilia/joes-book--next) and align with latest Next.js + Bun documentation.
+
+**Depends on:** Phase 104
+
+- [ ] Fetch and review next.config from joes-book--next repo
+- [ ] Research latest Next.js docs for Bun runtime compatibility
+- [ ] Update luca-observer next.config to modern conventions
+- [ ] Verify dev server and build work with updated config
+
+### Phase 107 — SpacetimeDB Integration
+
+**Goal:** Integrate SpacetimeDB (https://spacetimedb.com/) into luca-observer for real-time data persistence and synchronization.
+
+**Depends on:** Phase 99
+
+- [ ] Research SpacetimeDB SDK and TypeScript/Bun compatibility
+- [ ] Install SpacetimeDB client SDK
+- [ ] Design schema modules for observer data (events, state, sessions)
+- [ ] Replace or augment existing data layer with SpacetimeDB reducers/subscriptions
+- [ ] Verify real-time sync works end-to-end with observer dashboard
+
 ---
 
 ## Backlog (Future)

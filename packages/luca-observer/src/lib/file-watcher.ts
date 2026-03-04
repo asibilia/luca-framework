@@ -1,8 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import type { WorkflowSnapshot, LedgerEntry } from "./types";
-import { WorkflowSnapshotSchema, LedgerEntrySchema } from "./types";
+import type {
+  WorkflowSnapshot,
+  LedgerEntry,
+  HarnessResultSnapshot,
+} from "./types";
+import {
+  WorkflowSnapshotSchema,
+  LedgerEntrySchema,
+  HarnessResultSnapshotSchema,
+} from "./types";
 
 /**
  * Resolve and validate a project directory parameter.
@@ -160,6 +168,41 @@ export async function readLedgerEntries(
     return filtered;
   } catch {
     return [];
+  }
+}
+
+/**
+ * Read the latest harness result from .planning/harness-result.json.
+ *
+ * Validates the file contents with safeParse and returns null if
+ * the file does not exist, is empty, or contains invalid JSON.
+ *
+ * @param projectDir - The root project directory (defaults to cwd)
+ * @returns Parsed HarnessResultSnapshot or null if file does not exist
+ *
+ * @example
+ * ```typescript
+ * const result = await readHarnessResult();
+ * if (result) {
+ *   console.log(`Harness ${result.status}: ${result.total_errors} errors`);
+ * }
+ * ```
+ */
+export async function readHarnessResult(
+  projectDir?: string,
+): Promise<HarnessResultSnapshot | null> {
+  const dir = resolveProjectDir(projectDir);
+  const resultPath = join(dir, ".planning", "harness-result.json");
+
+  try {
+    const content = await readFile(resultPath, "utf-8");
+    const parsed = HarnessResultSnapshotSchema.safeParse(JSON.parse(content));
+    if (parsed.success) {
+      return parsed.data;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

@@ -1,6 +1,6 @@
 # 97-06 Summary: Developer Notes Queue
 
-## Status: IN PROGRESS
+## Status: COMPLETE
 
 ## Description
 
@@ -11,6 +11,7 @@ Implements a "soft interrupt" mechanism for developer notes — file-per-note in
 | File | Purpose |
 |------|---------|
 | `src/skills/general/note.skill.ts` | `/note` skill for adding developer notes |
+| `src/skills/__helpers/build-skill-registry.ts` | Updated — registered `noteSkill` |
 | `packages/luca-observer/src/app/api/notes/route.ts` | GET/POST API for notes |
 | `packages/luca-observer/src/app/notes/page.tsx` | Observer notes dashboard page |
 
@@ -25,6 +26,7 @@ Implements a "soft interrupt" mechanism for developer notes — file-per-note in
 
 ## Verification
 
-- [ ] `bun run build:all` succeeds
-- [ ] `bunx --bun tsc --noEmit` passes
-- [ ] `bun test` passes
+- [x] `bun run build:all` succeeds (47 skills including `note`)
+- [x] `bun run check:drift` passes
+- [x] `bunx --bun tsc --noEmit` passes (zero errors)
+- [x] `bun test` passes (3254 tests, 0 failures, 10304 expect() calls)

@@ -23,6 +23,9 @@ export const EVENT_TYPES = {
   "tests.fail": { label: "Tests Fail", color: "event-harness" },
   "commit.blocked": { label: "Commit Blocked", color: "event-harness" },
   "commit.allowed": { label: "Commit Allowed", color: "event-commit" },
+  "note.added": { label: "Note Added", color: "event-memory" },
+  "phase.added": { label: "Phase Added", color: "event-state" },
+  "note.consumed": { label: "Note Consumed", color: "event-commit" },
 } as const;
 
 export type EventTypeName = keyof typeof EVENT_TYPES;
@@ -69,6 +72,7 @@ export const NAV_ITEMS = [
   { href: "/memory", label: "Memory", icon: "Brain" },
   { href: "/tribunal", label: "Tribunal", icon: "Scale" },
   { href: "/agents", label: "Agents", icon: "Bot" },
+  { href: "/notes", label: "Notes", icon: "StickyNote" },
 ] as const;
 
 export const DEFAULT_PORT = 3456;

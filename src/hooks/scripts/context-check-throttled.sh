@@ -35,8 +35,32 @@ fi
 # Update timestamp
 date +%s > "$THROTTLE_FILE"
 
-# --- Run context monitor ---
+# --- Check for urgent developer notes ---
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+NOTES_DIR="$PROJECT_DIR/.planning/notes"
+if [ -d "$NOTES_DIR" ]; then
+  URGENT_NOTES=$(ls "$NOTES_DIR"/0-*.md 2>/dev/null | head -5)
+  if [ -n "$URGENT_NOTES" ]; then
+    NOTE_CONTENT=""
+    for note_file in $URGENT_NOTES; do
+      # Extract body (skip frontmatter between --- delimiters)
+      BODY=$(sed -n '/^---$/,/^---$/!p' "$note_file" | tr '\n' ' ' | xargs)
+      NOTE_CONTENT="${NOTE_CONTENT}\n- ${BODY}"
+      # Move to done/
+      mkdir -p "$NOTES_DIR/done"
+      mv "$note_file" "$NOTES_DIR/done/" 2>/dev/null || true
+    done
+    # Emit observer event (fire-and-forget)
+    curl -s --max-time 1 "${LUCA_OBSERVER_URL:-http://localhost:3456}/api/events" -X POST \
+      -H "Content-Type: application/json" \
+      -d "{\"event_type\":\"note.consumed\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+      >/dev/null 2>&1 &
+    printf '{"systemMessage": "[Developer Notes] Urgent notes to incorporate:%b"}' "$NOTE_CONTENT"
+    exit 0
+  fi
+fi
+
+# --- Run context monitor ---
 
 # Run the TypeScript context monitor and capture output
 # Suppress stderr to avoid noise from missing files

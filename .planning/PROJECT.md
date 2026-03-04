@@ -102,7 +102,7 @@ v2.1.0 — Pi Library Integration (2026-02-27). Pi as first-class output target 
 **Packageability concerns identified:**
 
 - 10+ locations with hardcoded PT-/ENG- ticket prefixes
-- Company-specific references (Percent, percent-ui, mypercent.atlassian.net)
+- Company-specific references
 - Hardcoded GitHub repository references
 - Absolute path dependencies to `.cursor/luca/`
 - No npm package or installation script
