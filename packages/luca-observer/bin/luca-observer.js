@@ -58,7 +58,15 @@ process.env.LUCA_PROJECT_DIR = projectDir;
 
 console.log(`\n  luca-observer v0.1.0`);
 console.log(`  Dashboard: http://localhost:${port}`);
-console.log(`  Project:   ${projectDir}\n`);
+console.log(`  Project:   ${projectDir}`);
+
+if (values.open) {
+  console.log(
+    `  Browser: will open http://localhost:${port} after server starts\n`,
+  );
+} else {
+  console.log("");
+}
 
 const args = ["next", "dev", "--port", port];
 
