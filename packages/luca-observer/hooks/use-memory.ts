@@ -18,7 +18,6 @@ export type MemoryFiles = {
  *
  * Subscribes to the memory_files table (singleton, id=1) and returns
  * the latest BRAIN.md, MEMORY.md, and WORKING.md content.
- * Replaces the polling-based implementation.
  *
  * @returns Object with data (MemoryFiles), loading state, and error
  */

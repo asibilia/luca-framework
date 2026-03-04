@@ -10,7 +10,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time metrics from SpacetimeDB.
  *
  * Subscribes to the metrics table (singleton, id=1) and returns
- * the parsed metrics object. Replaces the polling-based implementation.
+ * the parsed metrics object.
  *
  * @returns Object with data, loading state, and error
  */

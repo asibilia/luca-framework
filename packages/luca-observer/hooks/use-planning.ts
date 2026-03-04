@@ -10,7 +10,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time session plan from SpacetimeDB.
  *
  * Subscribes to the session_plans table (singleton, id=1) and returns
- * the current session plan with WSJF scores. Replaces the polling-based implementation.
+ * the current session plan with WSJF scores.
  *
  * @returns Object with plan, hasPlan flag, loading state, and error
  */

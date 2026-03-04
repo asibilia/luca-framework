@@ -14,7 +14,7 @@ import type { HarnessResultSnapshot } from "~/lib/types";
  * React hook for real-time harness result from SpacetimeDB.
  *
  * Subscribes to the harness_results table (singleton, id=1) and returns
- * the latest verification harness result. Replaces the polling-based implementation.
+ * the latest verification harness result.
  *
  * @returns Object with result, hasResult flag, loading state, and error
  */

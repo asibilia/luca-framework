@@ -10,7 +10,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time workflow state from SpacetimeDB.
  *
  * Subscribes to the workflow_state table (singleton, id=1) and returns
- * the latest workflow snapshot. Replaces the polling-based implementation.
+ * the latest workflow snapshot.
  *
  * @returns Object with data, loading state, and error
  */

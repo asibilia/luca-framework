@@ -11,7 +11,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time event stream from SpacetimeDB.
  *
  * Subscribes to the observer_events table and returns the most recent
- * events. Replaces the SSE-based EventSource implementation.
+ * events.
  *
  * @param maxEvents - Maximum number of events to keep (default 200)
  * @returns Object with events array, connection status, and clear function

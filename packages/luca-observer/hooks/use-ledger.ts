@@ -11,7 +11,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time ledger entries from SpacetimeDB.
  *
  * Subscribes to the ledger_entries table and returns the most recent
- * entries ordered by timestamp. Replaces the polling-based implementation.
+ * entries ordered by timestamp.
  *
  * @param tail - Number of most recent entries to return (default 50)
  * @returns Object with entries, total count, loading state, and error

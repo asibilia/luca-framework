@@ -10,7 +10,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time agent activity from SpacetimeDB.
  *
  * Subscribes to the observer_events table and derives agent activity
- * summaries from events with agent_name. Replaces the polling-based implementation.
+ * summaries from events with agent_name.
  *
  * @returns Object with agents array, loading state, and error
  */

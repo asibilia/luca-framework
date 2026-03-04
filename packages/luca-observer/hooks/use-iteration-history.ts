@@ -11,7 +11,7 @@ import { tables } from "~/module_bindings";
  * React hook for real-time iteration history from SpacetimeDB.
  *
  * Subscribes to the iteration_records table and returns all iteration
- * checkpoints with convergence status. Replaces the polling-based implementation.
+ * checkpoints with convergence status.
  *
  * @returns Object with iterations array, loading state, and error
  */

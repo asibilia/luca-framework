@@ -14,7 +14,7 @@ import { useIterationHistory } from "~/hooks/use-iteration-history";
  *
  * Displays a convergence chart, budget gauge, error classification
  * breakdown, and detailed iteration timeline. All data sourced from
- * the useIterationHistory polling hook.
+ * the useIterationHistory hook.
  */
 export default function IterationsPage() {
   const { iterations, loading } = useIterationHistory();
