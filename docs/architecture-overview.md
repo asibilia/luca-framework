@@ -47,7 +47,7 @@ luca-framework/                         # Monorepo root
 │       ├── spacetime.json              # Server config (maincloud)
 │       └── spacetime.local.json        # Local dev config
 │
-├── src/                                # Domain source (13 domains across 4 tiers)
+├── src/                                # Domain source (14 domains across 4 tiers)
 │   ├── agents/                         # T2 Entity — agent definitions
 │   ├── skills/                         # T2 Entity — skill definitions
 │   ├── rules/                          # T2 Entity — rule definitions
@@ -57,6 +57,7 @@ luca-framework/                         # Monorepo root
 │   ├── planner/                        # T1 Core — cost model, scheduler, WSJF scoring
 │   ├── iteration/                      # T1 Core — budget, convergence, checkpoint
 │   ├── harness/                        # T1 Core — verification runner
+│   ├── observability/                  # T1 Core — agent scorecard engine
 │   ├── shared/                         # T0 Foundation — cross-cutting utilities
 │   ├── complexity/                     # T0 Foundation — complexity gating matrix
 │   ├── compilers/                      # T3 Build — TS → markdown compilers
@@ -80,12 +81,12 @@ luca-framework/                         # Monorepo root
 
 ### Dependency Tiers
 
-| Tier          | Domains                                      | Role                                        |
-| ------------- | -------------------------------------------- | ------------------------------------------- |
-| T0 Foundation | shared, complexity                           | Imported by many, imports nothing from src/ |
-| T1 Core       | context, planner, harness, iteration, memory | Import T0 only                              |
-| T2 Entity     | agents, skills, rules                        | Import T0-T1; parallel, never cross-import  |
-| T3 Build      | compilers, hooks                             | Terminal; imported by nothing in src/       |
+| Tier          | Domains                                                     | Role                                        |
+| ------------- | ----------------------------------------------------------- | ------------------------------------------- |
+| T0 Foundation | shared, complexity                                          | Imported by many, imports nothing from src/ |
+| T1 Core       | context, planner, harness, iteration, memory, observability | Import T0 only                              |
+| T2 Entity     | agents, skills, rules                                       | Import T0-T1; parallel, never cross-import  |
+| T3 Build      | compilers, hooks                                            | Terminal; imported by nothing in src/       |
 
 ---
 
@@ -591,7 +592,6 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 
 - **Remove dead legacy code**: 14 API routes, 7 lib files, and polling hook in luca-observer are unreachable (hooks use `useTable()` now)
 - **Type-check the full monorepo**: `bunx --bun tsc --noEmit` across all packages
-- **Update observer-architecture.md**: Current version documents the old JSON/SSE architecture
 
 ### Short-Term
 
