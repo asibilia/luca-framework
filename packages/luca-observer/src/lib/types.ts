@@ -78,3 +78,81 @@ export const WorkflowSnapshotSchema = z.object({
 });
 
 export type WorkflowSnapshot = z.infer<typeof WorkflowSnapshotSchema>;
+
+// ─── Ledger Entry Schema ─────────────────────────────────────────────────────
+
+/**
+ * Observer-local mirror of luca-framework's TransitionRecord + LedgerEntry.
+ *
+ * Represents a single state machine transition recorded in session-ledger.jsonl.
+ * Locally defined to avoid cross-package dependency.
+ * Uses snake_case for API compatibility.
+ */
+export const LedgerEntrySchema = z.object({
+  previous_state: z.string(),
+  current_state: z.string(),
+  event_type: z.string(),
+  event_data: z.record(z.unknown()).default({}),
+  actions_executed: z.array(z.string()).default([]),
+  context: z.record(z.unknown()).default({}),
+  timestamp: z.string().default(""),
+  session_id: z.string().default(""),
+  sequence_number: z.number().int().nonnegative(),
+  parent_id: z.number().int().nonnegative().nullable().default(null),
+});
+
+export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
+
+// ─── Harness Result Snapshot Schemas ─────────────────────────────────────────
+
+/**
+ * Observer-local mirror of luca-framework's ParsedError.
+ *
+ * A single parsed error from toolchain output.
+ * Uses snake_case for API compatibility.
+ */
+export const ParsedErrorSnapshotSchema = z.object({
+  file: z.string(),
+  line: z.number().optional(),
+  column: z.number().optional(),
+  message: z.string(),
+  code: z.string().optional(),
+  severity: z.enum(["error", "warning"]),
+});
+
+export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>;
+
+/**
+ * Observer-local mirror of luca-framework's CheckResult.
+ *
+ * Result of a single harness check (test, typecheck, lint, build).
+ * Uses snake_case for API compatibility.
+ */
+export const CheckResultSnapshotSchema = z.object({
+  name: z.string(),
+  status: z.enum(["passed", "failed", "skipped", "timeout"]),
+  exit_code: z.number().int(),
+  errors: z.array(ParsedErrorSnapshotSchema).default([]),
+  warnings: z.array(ParsedErrorSnapshotSchema).default([]),
+  raw_output: z.string().default(""),
+  duration: z.number().nonnegative().default(0),
+});
+
+export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>;
+
+/**
+ * Observer-local mirror of luca-framework's HarnessResult.
+ *
+ * Aggregate result of running all harness checks.
+ * Uses snake_case for API compatibility.
+ */
+export const HarnessResultSnapshotSchema = z.object({
+  status: z.enum(["passed", "failed"]),
+  checks: z.array(CheckResultSnapshotSchema).default([]),
+  total_errors: z.number().int().nonnegative().default(0),
+  total_warnings: z.number().int().nonnegative().default(0),
+  duration: z.number().nonnegative().default(0),
+  timestamp: z.string().default(""),
+});
+
+export type HarnessResultSnapshot = z.infer<typeof HarnessResultSnapshotSchema>;
