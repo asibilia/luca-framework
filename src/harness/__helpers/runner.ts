@@ -11,13 +11,21 @@ import type {
   HarnessResult,
   CheckResult,
   CheckConfig,
+  MiddlewareContext,
+  MiddlewarePipelineConfig,
 } from "../__schemas/harness.schemas";
 import {
   HarnessConfigSchema,
   DEFAULT_HARNESS_CONFIG,
+  MiddlewareContextSchema,
 } from "../__schemas/harness.schemas";
 import { parserRegistry } from "../parsers";
 import { sanitizeJsonParse } from "~/shared/__helpers/validation-utils";
+import {
+  composePipeline,
+  resolveMiddleware,
+  buildMiddlewareResult,
+} from "./pipeline";
 import { join } from "path";
 
 const RAW_OUTPUT_MAX_LINES = 50;
@@ -138,6 +146,64 @@ async function runCheck(
   }
 }
 
+/**
+ * Wrap a check execution with the middleware pipeline when configured.
+ *
+ * If no middleware is configured or the pipeline is disabled, calls runCheck
+ * directly. On pipeline error, falls back to direct runCheck execution so
+ * middleware failures never break the harness.
+ *
+ * @param check - The check configuration to execute
+ * @param projectDir - Working directory for the check
+ * @param pipelineConfig - Optional middleware pipeline configuration
+ * @returns CheckResult, optionally enriched with middlewareResult metadata
+ */
+async function runCheckWithMiddleware(
+  check: CheckConfig,
+  projectDir: string,
+  pipelineConfig?: MiddlewarePipelineConfig,
+): Promise<CheckResult> {
+  // No pipeline or pipeline disabled — direct execution
+  if (!pipelineConfig?.enabled || !pipelineConfig.middleware.length) {
+    return runCheck(check, projectDir);
+  }
+
+  const middlewares = resolveMiddleware(pipelineConfig.middleware);
+
+  // No middleware resolved (all disabled/unknown) — direct execution
+  if (middlewares.length === 0) {
+    return runCheck(check, projectDir);
+  }
+
+  const pipelineStartTime = performance.now();
+
+  try {
+    const ctxInput = MiddlewareContextSchema.parse({
+      check,
+      projectDir,
+      metadata: {},
+    });
+
+    const pipeline = composePipeline(middlewares);
+
+    // The core executor is the innermost function — it calls runCheck
+    const coreExecutor = async (
+      _ctx: MiddlewareContext,
+    ): Promise<CheckResult> => runCheck(check, projectDir);
+
+    const result = await pipeline(ctxInput, coreExecutor);
+    const middlewareResult = buildMiddlewareResult(ctxInput, pipelineStartTime);
+
+    return { ...result, middlewareResult };
+  } catch (e) {
+    // Pipeline error — fall back to direct execution (never breaks harness)
+    console.warn(
+      `[harness] Middleware pipeline error for ${check.name}: ${(e as Error).message} -- falling back to direct execution`,
+    );
+    return runCheck(check, projectDir);
+  }
+}
+
 export async function runHarness(
   config: HarnessConfig,
   projectDir: string,
@@ -147,7 +213,11 @@ export async function runHarness(
   const results: CheckResult[] = [];
 
   for (const check of enabledChecks) {
-    const result = await runCheck(check, projectDir);
+    const result = await runCheckWithMiddleware(
+      check,
+      projectDir,
+      config.middlewarePipeline,
+    );
     results.push(result);
     if (config.failFast && result.status === "failed") break;
   }

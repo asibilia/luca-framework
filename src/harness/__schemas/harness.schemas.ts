@@ -135,6 +135,8 @@ export const CheckResultSchema = z.object({
   warnings: z.array(ParsedErrorSchema),
   rawOutput: z.string(),
   duration: z.number().nonnegative(),
+  /** Middleware pipeline result metadata (present when middleware is enabled) */
+  middlewareResult: MiddlewareResultSchema.optional(),
 });
 export type CheckResult = z.infer<typeof CheckResultSchema>;
 
@@ -187,4 +189,12 @@ export const DEFAULT_HARNESS_CONFIG: HarnessConfig = HarnessConfigSchema.parse({
       parser: "generic",
     },
   ],
+  middlewarePipeline: {
+    enabled: true,
+    middleware: [
+      { name: "timing", enabled: true },
+      { name: "workspace-scope", enabled: true },
+      { name: "output-capture", enabled: true },
+    ],
+  },
 });

@@ -5,6 +5,11 @@
  */
 
 export { runHarness, loadHarnessConfig } from "./__helpers/runner";
+export {
+  composePipeline,
+  resolveMiddleware,
+  buildMiddlewareResult,
+} from "./__helpers/pipeline";
 export { parserRegistry } from "./parsers";
 export type {
   HarnessConfig,
@@ -31,3 +36,9 @@ export {
   MiddlewarePipelineConfigSchema,
   MiddlewareResultSchema,
 } from "./__schemas/harness.schemas";
+export { middlewareRegistry, DEFAULT_MIDDLEWARE_ORDER } from "./middleware";
+export {
+  createTimingMiddleware,
+  createWorkspaceScopeMiddleware,
+  createOutputCaptureMiddleware,
+} from "./middleware";
