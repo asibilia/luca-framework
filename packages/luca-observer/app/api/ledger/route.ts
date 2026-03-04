@@ -1,8 +1,33 @@
 import { NextResponse } from "next/server";
 
+import { z } from "zod";
+
 import { readLedgerEntries } from "~/lib/file-watcher";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * API Query: Ledger query parameters.
+ *
+ * Validates and coerces query string parameters for ledger filtering.
+ * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```typescript
+ * const params = LedgerQueryParamsSchema.parse({
+ *   tail: "20",
+ *   session_id: "abc-123",
+ * });
+ * // { tail: 20, session_id: "abc-123", limit: 100 }
+ * ```
+ */
+const LedgerQueryParamsSchema = z.object({
+  dir: z.string().optional(),
+  session_id: z.string().optional(),
+  event_type: z.string().optional(),
+  tail: z.coerce.number().int().min(1).max(10000).optional(),
+  limit: z.coerce.number().int().min(1).max(10000).default(100),
+});
 
 /**
  * GET /api/ledger -- Read session ledger entries.
@@ -15,11 +40,14 @@ export const dynamic = "force-dynamic";
  *   - dir (string, optional): Project directory path (defaults to LUCA_PROJECT_DIR or cwd)
  *   - session_id (string, optional): Filter entries by session ID
  *   - event_type (string, optional): Filter entries by event type
- *   - tail (number, optional): Read only the last N raw lines before parsing/filtering
- *   - limit (number, optional): Cap the number of returned entries (default: 100)
+ *   - tail (number, optional): Read only the last N raw lines before parsing/filtering (max: 10000)
+ *   - limit (number, optional): Cap the number of returned entries (default: 100, max: 10000)
  *
  * Response (200):
  *   { entries: LedgerEntry[], total_count: number }
+ *
+ * Response (400):
+ *   { error: "invalid_query_params", details: [...] }
  *
  * Response (500):
  *   { error: "failed_to_read_ledger" }
@@ -34,21 +62,32 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const projectDir = searchParams.get("dir") ?? undefined;
+
+  const raw: Record<string, string | undefined> = {
+    dir: searchParams.get("dir") ?? undefined,
+    session_id: searchParams.get("session_id") ?? undefined,
+    event_type: searchParams.get("event_type") ?? undefined,
+  };
+
+  // Only include numeric params if they are present in the query string
+  if (searchParams.has("tail")) raw.tail = searchParams.get("tail")!;
+  if (searchParams.has("limit")) raw.limit = searchParams.get("limit")!;
+
+  const parseResult = LedgerQueryParamsSchema.safeParse(raw);
+
+  if (!parseResult.success) {
+    return NextResponse.json(
+      {
+        error: "invalid_query_params",
+        details: parseResult.error.issues,
+      },
+      { status: 400 },
+    );
+  }
 
   try {
-    const filters = {
-      session_id: searchParams.get("session_id") ?? undefined,
-      event_type: searchParams.get("event_type") ?? undefined,
-      tail: searchParams.has("tail")
-        ? parseInt(searchParams.get("tail")!, 10)
-        : undefined,
-      limit: searchParams.has("limit")
-        ? parseInt(searchParams.get("limit")!, 10)
-        : 100,
-    };
-
-    const entries = await readLedgerEntries(projectDir, filters);
+    const { dir, ...filters } = parseResult.data;
+    const entries = await readLedgerEntries(dir, filters);
 
     return NextResponse.json({
       entries,

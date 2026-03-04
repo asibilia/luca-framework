@@ -1,8 +1,33 @@
 import { NextResponse } from "next/server";
 
+import { z } from "zod";
+
 import { queryEvents, getEventCount } from "~/lib/db";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * API Query: Event query parameters.
+ *
+ * Validates and coerces query string parameters for event filtering.
+ * Uses snake_case for API compatibility.
+ *
+ * @example
+ * ```typescript
+ * const params = EventQueryParamsSchema.parse({
+ *   limit: "10",
+ *   event_type: "session.start",
+ * });
+ * // { limit: 10, offset: 0, event_type: "session.start" }
+ * ```
+ */
+const EventQueryParamsSchema = z.object({
+  session_id: z.string().optional(),
+  event_type: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
+  offset: z.coerce.number().int().min(0).max(100000).default(0),
+  since_id: z.coerce.number().int().min(0).optional(),
+});
 
 /**
  * GET /api/events-query -- Query stored events with filters.
@@ -13,12 +38,15 @@ export const dynamic = "force-dynamic";
  * Query parameters:
  *   - session_id (string, optional): Filter events by session ID
  *   - event_type (string, optional): Filter events by type (e.g. "session.start")
- *   - limit (number, optional): Maximum number of results (default: 50)
- *   - offset (number, optional): Pagination offset (default: 0)
+ *   - limit (number, optional): Maximum number of results (default: 50, max: 1000)
+ *   - offset (number, optional): Pagination offset (default: 0, max: 100000)
  *   - since_id (number, optional): Only return events with ID greater than this value
  *
  * Response (200):
  *   { events: StoredEvent[], total_count: number, limit: number, offset: number }
+ *
+ * Response (400):
+ *   { error: "invalid_query_params", details: [...] }
  *
  * Response (500):
  *   { error: "failed_to_query_events" }
@@ -33,17 +61,31 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
-  try {
-    const filters = {
-      session_id: searchParams.get("session_id") ?? undefined,
-      event_type: searchParams.get("event_type") ?? undefined,
-      limit: parseInt(searchParams.get("limit") ?? "50", 10),
-      offset: parseInt(searchParams.get("offset") ?? "0", 10),
-      since_id: searchParams.has("since_id")
-        ? parseInt(searchParams.get("since_id")!, 10)
-        : undefined,
-    };
+  const raw: Record<string, string | undefined> = {
+    session_id: searchParams.get("session_id") ?? undefined,
+    event_type: searchParams.get("event_type") ?? undefined,
+  };
 
+  // Only include numeric params if they are present in the query string
+  if (searchParams.has("limit")) raw.limit = searchParams.get("limit")!;
+  if (searchParams.has("offset")) raw.offset = searchParams.get("offset")!;
+  if (searchParams.has("since_id"))
+    raw.since_id = searchParams.get("since_id")!;
+
+  const parseResult = EventQueryParamsSchema.safeParse(raw);
+
+  if (!parseResult.success) {
+    return NextResponse.json(
+      {
+        error: "invalid_query_params",
+        details: parseResult.error.issues,
+      },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const filters = parseResult.data;
     const events = queryEvents(filters);
     const total_count = getEventCount();
 

@@ -1,28 +1,16 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 import { NextResponse } from "next/server";
 
 import { z } from "zod";
 
+import { requireApiKey } from "~/lib/auth";
 import { insertEvent } from "~/lib/db";
+import { resolveProjectDir } from "~/lib/resolve-project-dir";
 import { broadcastEvent } from "~/lib/sse";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Resolve project directory with path traversal protection.
- */
-function resolveProjectDir(projectDir?: string): string {
-  const base = process.cwd();
-  if (!projectDir) return base;
-
-  const resolved = resolve(base, projectDir);
-  if (!resolved.startsWith(base)) {
-    throw new Error("Directory outside project boundary");
-  }
-  return resolved;
-}
 
 /**
  * Parse a note file into structured data.
@@ -188,6 +176,9 @@ const CreateNoteSchema = z.object({
  * ```
  */
 export async function POST(request: Request) {
+  const authError = requireApiKey(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const parseResult = CreateNoteSchema.safeParse(body);

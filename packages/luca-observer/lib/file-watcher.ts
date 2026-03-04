@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 import type {
   WorkflowSnapshot,
@@ -17,27 +17,7 @@ import {
   SessionPlanSnapshotSchema,
   TribunalResultSnapshotSchema,
 } from "./types";
-
-/**
- * Resolve and validate a project directory parameter.
- *
- * Prevents path traversal by ensuring the resolved path starts
- * with the current working directory. Returns cwd if no dir provided.
- *
- * @param projectDir - User-supplied directory parameter
- * @returns Validated absolute directory path
- * @throws Error if the resolved path is outside cwd
- */
-function resolveProjectDir(projectDir?: string): string {
-  const base = process.cwd();
-  if (!projectDir) return base;
-
-  const resolved = resolve(base, projectDir);
-  if (!resolved.startsWith(base)) {
-    throw new Error("Directory outside project boundary");
-  }
-  return resolved;
-}
+import { resolveProjectDir } from "./resolve-project-dir";
 
 /**
  * Read workflow state from .planning/STATE.md.
