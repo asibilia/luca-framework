@@ -152,6 +152,7 @@ export const append_ledger_entry = spacetimedb.reducer(
     result: t.string(),
     timestamp: t.u64(),
     detailsJson: t.string(),
+    sequenceNumber: t.u64(),
   },
   (ctx, args) => {
     ctx.db.ledgerEntries.insert({
@@ -163,6 +164,7 @@ export const append_ledger_entry = spacetimedb.reducer(
       result: args.result,
       timestamp: args.timestamp,
       detailsJson: args.detailsJson,
+      sequenceNumber: args.sequenceNumber,
     });
   },
 );
@@ -250,6 +252,7 @@ export const update_memory_files = spacetimedb.reducer(
     brainJson: t.string(),
     memoryJson: t.string(),
     workingJson: t.string(),
+    proceduresJson: t.string(),
     timestamp: t.u64(),
   },
   (ctx, args) => {
@@ -260,6 +263,7 @@ export const update_memory_files = spacetimedb.reducer(
         brainJson: args.brainJson,
         memoryJson: args.memoryJson,
         workingJson: args.workingJson,
+        proceduresJson: args.proceduresJson,
         timestamp: args.timestamp,
       });
     } else {
@@ -268,6 +272,7 @@ export const update_memory_files = spacetimedb.reducer(
         brainJson: args.brainJson,
         memoryJson: args.memoryJson,
         workingJson: args.workingJson,
+        proceduresJson: args.proceduresJson,
         timestamp: args.timestamp,
       });
     }
@@ -334,6 +339,74 @@ export const complete_note = spacetimedb.reducer(
       status: "completed",
       consumedAt: args.consumedAt,
     });
+  },
+);
+
+/** Update the singleton workflow config (id=1). Creates if missing. */
+export const update_workflow_config = spacetimedb.reducer(
+  {
+    configJson: t.string(),
+  },
+  (ctx, args) => {
+    const existing = ctx.db.workflowConfig.id.find(1n);
+    if (existing) {
+      ctx.db.workflowConfig.id.update({
+        ...existing,
+        configJson: args.configJson,
+      });
+    } else {
+      ctx.db.workflowConfig.insert({
+        id: 1n,
+        configJson: args.configJson,
+      });
+    }
+  },
+);
+
+/** Save a suspend checkpoint for a phase. Upserts by phaseId. */
+export const save_checkpoint = spacetimedb.reducer(
+  {
+    phaseId: t.string(),
+    checkpointJson: t.string(),
+  },
+  (ctx, args) => {
+    if (!args.phaseId) throw new SenderError("phaseId is required");
+    // Find existing checkpoint for this phase via index
+    const existing = [
+      ...ctx.db.suspendCheckpoints.suspend_checkpoints_phase_id.filter(
+        args.phaseId,
+      ),
+    ];
+    if (existing.length > 0) {
+      ctx.db.suspendCheckpoints.id.update({
+        ...existing[0],
+        checkpointJson: args.checkpointJson,
+      });
+    } else {
+      ctx.db.suspendCheckpoints.insert({
+        id: 0n,
+        phaseId: args.phaseId,
+        checkpointJson: args.checkpointJson,
+      });
+    }
+  },
+);
+
+/** Delete a suspend checkpoint by phaseId. */
+export const delete_checkpoint = spacetimedb.reducer(
+  {
+    phaseId: t.string(),
+  },
+  (ctx, args) => {
+    if (!args.phaseId) throw new SenderError("phaseId is required");
+    const existing = [
+      ...ctx.db.suspendCheckpoints.suspend_checkpoints_phase_id.filter(
+        args.phaseId,
+      ),
+    ];
+    for (const row of existing) {
+      ctx.db.suspendCheckpoints.id.delete(row.id);
+    }
   },
 );
 

@@ -128,15 +128,23 @@
 
 ### Phase 107 — SpacetimeDB Integration
 
-**Goal:** Integrate SpacetimeDB (https://spacetimedb.com/) into luca-observer for real-time data persistence and synchronization.
+**Goal:** Promote SpacetimeDB to sole source of truth for all Luca workflow data. Replace JSON file persistence with SpacetimeDB reads/writes across framework, observer, and memory systems.
 
 **Depends on:** Phase 99
 
-- [ ] Research SpacetimeDB SDK and TypeScript/Bun compatibility
-- [ ] Install SpacetimeDB client SDK
-- [ ] Design schema modules for observer data (events, state, sessions)
-- [ ] Replace or augment existing data layer with SpacetimeDB reducers/subscriptions
-- [ ] Verify real-time sync works end-to-end with observer dashboard
+- [x] Research SpacetimeDB SDK and TypeScript/Bun compatibility
+- [x] Install SpacetimeDB client SDK (v2.0.2)
+- [x] Design schema modules for observer data (16 tables, 19 reducers)
+- [x] Migrate observer hooks to `useTable()` (15 hooks)
+- [x] Add fire-and-forget SpacetimeDB writes to state/memory bridges
+- [ ] Add missing tables (workflow_config, suspend_checkpoints) and procedures_json field
+- [ ] Create SpacetimeDB HTTP query helper for non-React framework code
+- [ ] Rewrite framework read paths (persistence, bridge, ledger, checkpoints) to query SpacetimeDB
+- [ ] Rewrite memory bridge read paths to query SpacetimeDB
+- [ ] Delete dead observer code (14 API routes, 7 lib files, polling hook)
+- [ ] Remove JSON file write code from framework (state.json, session-ledger.jsonl)
+- [ ] Add tests for SpacetimeDB query helper and rewritten bridge functions
+- [ ] End-to-end verification with live SpacetimeDB instance
 
 ### Phase 108 — Observer Security Hardening
 

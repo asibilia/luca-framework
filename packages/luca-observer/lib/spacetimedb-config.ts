@@ -11,4 +11,4 @@ export const SPACETIMEDB_URI =
 
 /** The name of the published SpacetimeDB module. */
 export const MODULE_NAME =
-  process.env.NEXT_PUBLIC_SPACETIMEDB_MODULE ?? "luca-spacetime";
+  process.env.NEXT_PUBLIC_SPACETIMEDB_MODULE ?? "luca-observer";

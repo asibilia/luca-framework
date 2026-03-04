@@ -1,9 +1,9 @@
 /**
  * High-level CLI bridge for the Luca workflow state machine.
  *
- * Provides convenience subcommands targeted at skill/agent prompts
- * and hook scripts. This is a separate entry point from cli.ts,
- * which is the lower-level machine API.
+ * SpacetimeDB-primary: all read functions query SpacetimeDB first with
+ * graceful JSON file fallback. Write functions call SpacetimeDB reducers.
+ * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
  * Subcommands:
  *   read-complexity  — Read current complexity level (graceful fallback)
@@ -66,6 +66,7 @@ import {
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
 import { callReducer, emitObserverEvent } from "./__helpers/observer-emitter";
+import { queryOne } from "./__helpers/spacetimedb-client";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -77,14 +78,15 @@ const STATE_MD_PATH = ".planning/STATE.md";
 /**
  * Read existing STATE.md, generate a fresh snapshot, and write it back.
  *
- * Centralizes the STATE.md regeneration pattern used by set-field,
- * transition, snapshot, suspend, and resume-phase commands.
+ * Gated by LUCA_EXPORT_MD env var. If not set to "true", this is a no-op.
  *
  * @param actor - The actor whose snapshot provides state and context
  */
 async function updateStateMd(
   actor: Actor<typeof workflowMachine>,
 ): Promise<void> {
+  if (process.env.LUCA_EXPORT_MD !== "true") return;
+
   const snapshot = actor.getSnapshot();
   const allowed = getAllowedEvents(snapshot);
 
@@ -142,10 +144,26 @@ Subcommands:
 /**
  * Read the current complexity level.
  *
+ * SpacetimeDB-primary with JSON file fallback.
  * Returns "TRIVIAL" as default if state is not initialized.
- * Never errors on missing state.
  */
 async function handleReadComplexity(): Promise<void> {
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ complexity: string }>(
+      "SELECT complexity FROM workflow_state WHERE id = 1",
+    );
+    if (row) {
+      console.log(
+        JSON.stringify({ complexity: row.complexity, initialized: true }),
+      );
+      return;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: JSON file
   const exists = await stateExists();
 
   if (!exists) {
@@ -171,10 +189,26 @@ async function handleReadComplexity(): Promise<void> {
 /**
  * Read the current oversight level.
  *
+ * SpacetimeDB-primary with JSON file fallback.
  * Returns "milestone" as default if state is not initialized.
- * Never errors on missing state.
  */
 async function handleReadOversight(): Promise<void> {
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ oversight: string }>(
+      "SELECT oversight FROM workflow_state WHERE id = 1",
+    );
+    if (row) {
+      console.log(
+        JSON.stringify({ oversight: row.oversight, initialized: true }),
+      );
+      return;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: JSON file
   const exists = await stateExists();
 
   if (!exists) {
@@ -200,36 +234,50 @@ async function handleReadOversight(): Promise<void> {
 /**
  * Read current phase information.
  *
+ * SpacetimeDB-primary with JSON file fallback.
  * Returns null/empty defaults if state is not initialized.
- * Never errors on missing state.
  */
 async function handleReadPhase(): Promise<void> {
-  const exists = await stateExists();
-
-  if (!exists) {
-    console.log(
-      JSON.stringify({
-        current_phase: null,
-        current_milestone: null,
-        current_plan_ids: [],
-        current_wave_count: 0,
-        initialized: false,
-      }),
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ contextJson: string }>(
+      "SELECT contextJson FROM workflow_state WHERE id = 1",
     );
+    if (row && row.contextJson) {
+      const ctx = JSON.parse(row.contextJson);
+      console.log(
+        JSON.stringify({
+          current_phase: ctx.current_phase ?? null,
+          current_milestone: ctx.current_milestone ?? null,
+          current_plan_ids: ctx.current_plan_ids ?? [],
+          current_wave_count: ctx.current_wave_count ?? 0,
+          initialized: true,
+        }),
+      );
+      return;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: JSON file
+  const defaults = {
+    current_phase: null,
+    current_milestone: null,
+    current_plan_ids: [] as string[],
+    current_wave_count: 0,
+    initialized: false,
+  };
+
+  const exists = await stateExists();
+  if (!exists) {
+    console.log(JSON.stringify(defaults));
     return;
   }
 
   const result = await loadPersistedActor();
   if (!result.success) {
-    console.log(
-      JSON.stringify({
-        current_phase: null,
-        current_milestone: null,
-        current_plan_ids: [],
-        current_wave_count: 0,
-        initialized: false,
-      }),
-    );
+    console.log(JSON.stringify(defaults));
     return;
   }
 
@@ -249,9 +297,8 @@ async function handleReadPhase(): Promise<void> {
 /**
  * Read comprehensive workflow status.
  *
+ * SpacetimeDB-primary with JSON file fallback.
  * Returns key fields from the workflow context in a single JSON object.
- * Falls back to sensible defaults if state is not initialized.
- * Never errors on missing state.
  */
 async function handleReadStatus(): Promise<void> {
   const defaults = {
@@ -275,6 +322,47 @@ async function handleReadStatus(): Promise<void> {
     last_error: null,
   };
 
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{
+      workflowState: string;
+      complexity: string;
+      oversight: string;
+      contextJson: string;
+    }>("SELECT * FROM workflow_state WHERE id = 1");
+    if (row && row.contextJson) {
+      const ctx = JSON.parse(row.contextJson);
+      console.log(
+        JSON.stringify({
+          initialized: true,
+          state: row.workflowState ?? "idle",
+          complexity: row.complexity ?? ctx.complexity ?? "TRIVIAL",
+          oversight: row.oversight ?? ctx.oversight ?? "milestone",
+          current_phase: ctx.current_phase ?? null,
+          current_milestone: ctx.current_milestone ?? null,
+          current_plan_ids: ctx.current_plan_ids ?? [],
+          current_wave_count: ctx.current_wave_count ?? 0,
+          ticket_id: ctx.ticket_id ?? null,
+          github_issue: ctx.github_issue ?? null,
+          branch: ctx.branch ?? null,
+          base_branch: ctx.base_branch ?? "main",
+          session_id: ctx.session_id ?? null,
+          started_at: ctx.started_at ?? null,
+          last_transition_at: ctx.last_transition_at ?? null,
+          verification_attempts: ctx.verification_attempts ?? 0,
+          phase_results_count: Array.isArray(ctx.phase_results)
+            ? ctx.phase_results.length
+            : 0,
+          last_error: ctx.last_error ?? null,
+        }),
+      );
+      return;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: JSON file
   const exists = await stateExists();
   if (!exists) {
     console.log(JSON.stringify(defaults));
@@ -316,6 +404,7 @@ async function handleReadStatus(): Promise<void> {
 /**
  * Read an arbitrary context field by lodash path.
  *
+ * SpacetimeDB-primary with JSON file fallback.
  * Unlike the read-* convenience commands, this errors on missing state.
  *
  * @param args - CLI arguments (--field=path required)
@@ -327,6 +416,22 @@ async function handleReadField(args: string[]): Promise<void> {
     process.exit(2);
   }
 
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ contextJson: string }>(
+      "SELECT contextJson FROM workflow_state WHERE id = 1",
+    );
+    if (row && row.contextJson) {
+      const ctx = JSON.parse(row.contextJson);
+      const value = get(ctx, fieldPath);
+      console.log(JSON.stringify({ field: fieldPath, value }));
+      return;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: JSON file
   const result = await loadPersistedActor();
   if (!result.success) {
     console.error(result.error);
@@ -362,9 +467,8 @@ const SETTABLE_FIELDS = [
 /**
  * Set an allowlisted context field, persist state, and regenerate STATE.md.
  *
- * This bypasses the event model for fields that don't have a corresponding
- * workflow event. It directly mutates the persisted snapshot context,
- * validates the result against the context schema, and regenerates STATE.md.
+ * SpacetimeDB-primary: reads context from SpacetimeDB, modifies the field,
+ * calls the reducer to persist. Falls back to JSON file read-modify-write.
  *
  * @param args - CLI arguments (--field=name required, --value=json-or-string required)
  */
@@ -397,28 +501,49 @@ async function handleSetField(args: string[]): Promise<void> {
     value = rawValue;
   }
 
-  // Load the persisted state file directly (not the actor)
-  const stateFile = Bun.file(STATE_FILE_PATH);
-  if (!(await stateFile.exists())) {
-    console.error("State file not found. Run ensure-init first.");
-    process.exit(2);
-  }
-
+  // Primary: try SpacetimeDB read-modify-write
   let snapshotJson: Record<string, unknown> & {
     context: Record<string, unknown>;
     value?: unknown;
   };
+  let fromSpacetimeDB = false;
+
   try {
-    const text = await stateFile.text();
-    snapshotJson = sanitizeJsonParse(text) as typeof snapshotJson;
+    const row = await queryOne<{ contextJson: string; workflowState: string }>(
+      "SELECT * FROM workflow_state WHERE id = 1",
+    );
+    if (row && row.contextJson) {
+      const ctx = JSON.parse(row.contextJson);
+      snapshotJson = {
+        context: ctx,
+        value: row.workflowState ?? "idle",
+      } as typeof snapshotJson;
+      fromSpacetimeDB = true;
+    }
   } catch {
-    console.error("State file contains invalid JSON");
-    process.exit(2);
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: read from JSON file
+  if (!fromSpacetimeDB!) {
+    const stateFile = Bun.file(STATE_FILE_PATH);
+    if (!(await stateFile.exists())) {
+      console.error("State file not found. Run ensure-init first.");
+      process.exit(2);
+    }
+
+    try {
+      const text = await stateFile.text();
+      snapshotJson = sanitizeJsonParse(text) as typeof snapshotJson;
+    } catch {
+      console.error("State file contains invalid JSON");
+      process.exit(2);
+    }
   }
 
   // Capture previous value and set new value
-  const previousValue = get(snapshotJson.context, fieldPath);
-  const updatedContext = cloneDeep(snapshotJson.context);
+  const previousValue = get(snapshotJson!.context, fieldPath);
+  const updatedContext = cloneDeep(snapshotJson!.context);
   set(updatedContext, fieldPath, value);
 
   // Validate the updated context
@@ -436,32 +561,29 @@ async function handleSetField(args: string[]): Promise<void> {
   // Update the timestamp
   updatedContext.last_transition_at = new Date().toISOString();
 
-  // Write back
-  snapshotJson.context = updatedContext;
-  await Bun.write(STATE_FILE_PATH, JSON.stringify(snapshotJson, null, 2));
+  // Write to SpacetimeDB via reducer
+  callReducer("update_workflow_state", {
+    workflowState: String(snapshotJson!.value),
+    currentPhase: (updatedContext.current_phase as string) ?? "",
+    complexity: (updatedContext.complexity as string) ?? "TRIVIAL",
+    oversight: (updatedContext.oversight as string) ?? "milestone",
+    sessionId: (updatedContext.session_id as string) ?? "",
+    ticketId: (updatedContext.ticket_id as string) ?? "",
+    contextJson: JSON.stringify(updatedContext),
+  });
 
-  // Regenerate STATE.md from updated state
-  const loadResult = await loadPersistedActor();
-  if (loadResult.success) {
-    await updateStateMd(loadResult.data);
-
-    // Fire-and-forget: sync workflow state to SpacetimeDB
-    const snap = loadResult.data.getSnapshot();
-    callReducer("update_workflow_state", {
-      workflowState: String(snap.value),
-      currentPhase: snap.context.current_phase ?? "",
-      complexity: snap.context.complexity ?? "TRIVIAL",
-      oversight: snap.context.oversight ?? "milestone",
-      sessionId: snap.context.session_id ?? "",
-      ticketId: snap.context.ticket_id ?? "",
-      contextJson: JSON.stringify(snap.context),
-    });
+  // Optional: update STATE.md gated by env var
+  if (process.env.LUCA_EXPORT_MD === "true") {
+    const loadResult = await loadPersistedActor();
+    if (loadResult.success) {
+      await updateStateMd(loadResult.data);
+    }
   }
 
   // Append field change to session ledger (fire-and-forget, non-blocking)
   const fieldRecord: TransitionRecord = {
-    previous_state: String(snapshotJson.value),
-    current_state: String(snapshotJson.value), // State doesn't change on field set
+    previous_state: String(snapshotJson!.value),
+    current_state: String(snapshotJson!.value), // State doesn't change on field set
     event_type: "field_set",
     event_data: { field: fieldPath, value },
     actions_executed: [],
@@ -478,7 +600,7 @@ async function handleSetField(args: string[]): Promise<void> {
       field: fieldPath,
       value,
       previous_value: previousValue ?? null,
-      state: String(snapshotJson.value),
+      state: String(snapshotJson!.value),
     }),
   );
 
@@ -489,7 +611,7 @@ async function handleSetField(args: string[]): Promise<void> {
       field: fieldPath,
       value,
       previous_value: previousValue ?? null,
-      state: String(snapshotJson.value),
+      state: String(snapshotJson!.value),
     },
   });
 }
@@ -499,9 +621,8 @@ async function handleSetField(args: string[]): Promise<void> {
 /**
  * Send an event, persist state, and atomically update STATE.md.
  *
- * After the event is sent and state.json is persisted, reads the
- * current STATE.md (if it exists), generates a new snapshot preserving
- * existing sections, and writes it.
+ * After the event is sent and state is persisted to SpacetimeDB,
+ * optionally generates STATE.md (gated by LUCA_EXPORT_MD).
  *
  * @param args - CLI arguments (--event=TYPE required, --data=json optional)
  */
@@ -555,19 +676,8 @@ async function handleTransition(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // Atomically update STATE.md
+  // Optionally update STATE.md (gated by env var)
   await updateStateMd(actor);
-
-  // Fire-and-forget: sync workflow state to SpacetimeDB
-  callReducer("update_workflow_state", {
-    workflowState: String(nextSnapshot.value),
-    currentPhase: nextSnapshot.context.current_phase ?? "",
-    complexity: nextSnapshot.context.complexity ?? "TRIVIAL",
-    oversight: nextSnapshot.context.oversight ?? "milestone",
-    sessionId: nextSnapshot.context.session_id ?? "",
-    ticketId: nextSnapshot.context.ticket_id ?? "",
-    contextJson: JSON.stringify(nextSnapshot.context),
-  });
 
   // Fire-and-forget: append ledger entry for this transition
   callReducer("append_ledger_entry", {
@@ -630,7 +740,12 @@ async function handleSnapshot(): Promise<void> {
   }
 
   const actor = result.data;
+
+  // Force STATE.md generation for explicit snapshot command
+  const origEnv = process.env.LUCA_EXPORT_MD;
+  process.env.LUCA_EXPORT_MD = "true";
   await updateStateMd(actor);
+  process.env.LUCA_EXPORT_MD = origEnv;
 
   const snapshot = actor.getSnapshot();
   console.log(
@@ -688,17 +803,6 @@ async function handleEnsureInit(args: string[]): Promise<void> {
 
   const snapshot = actor.getSnapshot();
 
-  // Fire-and-forget: sync initial workflow state to SpacetimeDB
-  callReducer("update_workflow_state", {
-    workflowState: String(snapshot.value),
-    currentPhase: snapshot.context.current_phase ?? "",
-    complexity: snapshot.context.complexity ?? "TRIVIAL",
-    oversight: snapshot.context.oversight ?? "milestone",
-    sessionId: snapshot.context.session_id ?? "",
-    ticketId: snapshot.context.ticket_id ?? "",
-    contextJson: JSON.stringify(snapshot.context),
-  });
-
   console.log(
     JSON.stringify({
       initialized: true,
@@ -754,11 +858,6 @@ async function handleGateCheck(args: string[]): Promise<void> {
  *   --reason=string (optional) Reason for suspension (default: "manual")
  *   --wave=N (optional) Wave index to resume from (default: 0)
  *   --tasks=id1,id2 (optional) Comma-separated completed task IDs
- *
- * @example
- * ```sh
- * luca-state suspend --phase=42 --reason=context_exhaustion --wave=1 --tasks=42-01-T1,42-01-T2
- * ```
  */
 async function handleSuspend(args: string[]): Promise<void> {
   const phaseStr = getArg(args, "phase");
@@ -854,7 +953,7 @@ async function handleSuspend(args: string[]): Promise<void> {
     session_id: sessionId,
   });
 
-  // Update STATE.md
+  // Optionally update STATE.md (gated by env var)
   await updateStateMd(actor);
 
   console.log(
@@ -889,18 +988,12 @@ async function handleSuspend(args: string[]): Promise<void> {
 /**
  * Load a suspend checkpoint and resume the phase in the state machine.
  *
- * Reads the checkpoint file via the suspend-checkpoint module, sends
- * RESUME_PHASE to the state machine, verifies the transition occurred,
- * and only then clears the checkpoint file.
+ * SpacetimeDB-primary: tries loading checkpoint from SpacetimeDB,
+ * falls back to file-based checkpoint module.
  *
  * @param args - CLI arguments:
  *   --phase=N (required) Phase number to resume
  *   --keep-checkpoint (optional) Don't delete checkpoint after loading
- *
- * @example
- * ```sh
- * luca-state resume-phase --phase=42
- * ```
  */
 async function handleResumePhase(args: string[]): Promise<void> {
   const phaseStr = getArg(args, "phase");
@@ -917,15 +1010,30 @@ async function handleResumePhase(args: string[]): Promise<void> {
 
   const keepCheckpoint = hasFlag(args, "keep-checkpoint");
 
-  // Load checkpoint via suspend-checkpoint module (validates schema)
+  // Load checkpoint: try SpacetimeDB first, fall back to file
   let checkpoint;
   try {
-    checkpoint = await loadSuspendCheckpoint(phaseId);
-  } catch (err) {
-    console.error(
-      err instanceof Error ? err.message : `Failed to load checkpoint: ${err}`,
+    const row = await queryOne<{ checkpointJson: string }>(
+      `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
     );
-    process.exit(2);
+    if (row && row.checkpointJson) {
+      checkpoint = JSON.parse(row.checkpointJson);
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  if (!checkpoint) {
+    try {
+      checkpoint = await loadSuspendCheckpoint(phaseId);
+    } catch (err) {
+      console.error(
+        err instanceof Error
+          ? err.message
+          : `Failed to load checkpoint: ${err}`,
+      );
+      process.exit(2);
+    }
   }
 
   // Load actor and send RESUME_PHASE event
@@ -960,7 +1068,7 @@ async function handleResumePhase(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // Update STATE.md
+  // Optionally update STATE.md (gated by env var)
   await updateStateMd(actor);
 
   // Clear checkpoint only after verified transition
@@ -1019,13 +1127,6 @@ async function handleResumePhase(args: string[]): Promise<void> {
  *   --since=string   (optional) Filter entries with timestamp >= since
  *   --limit=N        (optional) Cap result count
  *   --tail=N         (optional) Read last N entries from file before filtering
- *
- * @example
- * ```sh
- * luca-state read-ledger --tail=5
- * luca-state read-ledger --session=abc-123 --event=START
- * luca-state read-ledger --since=2026-03-01T00:00:00Z --limit=10
- * ```
  */
 async function handleReadLedger(args: string[]): Promise<void> {
   const filters: LedgerFilters = {};

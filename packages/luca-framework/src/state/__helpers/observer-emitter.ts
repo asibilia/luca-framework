@@ -24,8 +24,8 @@ const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 /** Default SpacetimeDB URL. */
 const DEFAULT_SPACETIMEDB_URL = "http://localhost:3000";
 
-/** Database name for the observer module. */
-const DATABASE_NAME = "luca-observer";
+/** Database name for the observer module (configurable via LUCA_SPACETIMEDB_DB). */
+const DATABASE_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
 
 /**
  * Validate that a URL points to a localhost address.
@@ -63,7 +63,7 @@ export function isLocalhostUrl(rawUrl: string): boolean {
  */
 function buildReducerUrl(baseUrl: string, reducerName: string): string {
   const base = baseUrl.replace(/\/+$/, "");
-  return `${base}/database/${DATABASE_NAME}/call/${reducerName}`;
+  return `${base}/v1/database/${DATABASE_NAME}/call/${reducerName}`;
 }
 
 /**
@@ -96,7 +96,7 @@ export function callReducer(
   fetch(reducerUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ args }),
+    body: JSON.stringify(args),
     signal: AbortSignal.timeout(2000),
   }).catch(() => {
     // Intentionally swallowed — SpacetimeDB is optional

@@ -79,6 +79,7 @@ export const LedgerEntries = table(
     result: t.string(),
     timestamp: t.u64(),
     detailsJson: t.string(),
+    sequenceNumber: t.u64(),
   },
 );
 
@@ -142,7 +143,7 @@ export const TribunalResults = table(
   },
 );
 
-/** Singleton (id=1). BRAIN/MEMORY/WORKING file contents. */
+/** Singleton (id=1). BRAIN/MEMORY/WORKING/PROCEDURES file contents. */
 export const MemoryFiles = table(
   { name: "memory_files", public: true },
   {
@@ -150,6 +151,7 @@ export const MemoryFiles = table(
     brainJson: t.string(),
     memoryJson: t.string(),
     workingJson: t.string(),
+    proceduresJson: t.string(),
     timestamp: t.u64(),
   },
 );
@@ -175,6 +177,36 @@ export const Notes = table(
     status: t.string(),
     createdAt: t.u64(),
     consumedAt: t.u64().optional(),
+  },
+);
+
+/** Singleton (id=1). Full workflow config JSON. */
+export const WorkflowConfig = table(
+  { name: "workflow_config", public: true },
+  {
+    id: t.u64().primaryKey(),
+    configJson: t.string(),
+  },
+);
+
+/** Suspend checkpoint data per phase. */
+export const SuspendCheckpoints = table(
+  {
+    name: "suspend_checkpoints",
+    public: true,
+    indexes: [
+      {
+        accessor: "suspend_checkpoints_phase_id",
+        name: "suspend_checkpoints_phase_id",
+        algorithm: "btree" as const,
+        columns: ["phaseId"],
+      },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    phaseId: t.string(),
+    checkpointJson: t.string(),
   },
 );
 
@@ -305,6 +337,8 @@ const spacetimedb = schema({
   memoryFiles: MemoryFiles,
   metrics: Metrics,
   notes: Notes,
+  workflowConfig: WorkflowConfig,
+  suspendCheckpoints: SuspendCheckpoints,
   toolCalls: ToolCalls,
   tokenUsage: TokenUsage,
   costTracking: CostTracking,

@@ -1,23 +1,21 @@
 /**
  * Append-only session ledger for the Luca workflow state machine.
  *
- * Records every state machine transition as a JSONL entry with sequence
- * numbers and parent IDs, enabling session replay, debugging, and richer
- * learning extraction.
+ * SpacetimeDB-primary: reads query SpacetimeDB first, falls back to
+ * JSONL file. Writes call the SpacetimeDB reducer.
  *
  * Uses snake_case for all schema fields per API conventions.
  *
  * @module luca-state/ledger
  */
 import { z } from "zod";
-// Exception: appendFile kept from node:fs/promises — Bun.write does not
-// support native append mode, and read-then-write is not atomic for a
-// concurrent-append ledger. mkdir kept for directory creation (no Bun equivalent).
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { transitionRecordSchema } from "./types";
 import type { TransitionRecord } from "./types";
+import { queryTable, queryOne } from "./__helpers/spacetimedb-client";
+import { callReducer } from "./__helpers/observer-emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -66,8 +64,8 @@ let _nextSeq: number | null = null;
 /**
  * Get the next sequence number for the ledger.
  *
- * On first call, seeds from the last line of the existing ledger file.
- * Subsequent calls return cached incrementing values for performance.
+ * SpacetimeDB-primary: queries MAX(sequence_number). Falls back to
+ * reading the last line of the JSONL file.
  *
  * @param ledgerPath - Path to the ledger file
  * @returns The next available sequence number
@@ -81,6 +79,20 @@ async function getNextSequenceNumber(
     return seq;
   }
 
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ max_seq: number }>(
+      "SELECT MAX(sequence_number) as max_seq FROM ledger_entries",
+    );
+    if (row && typeof row.max_seq === "number") {
+      _nextSeq = row.max_seq + 2;
+      return row.max_seq + 1;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: read from JSONL file
   const file = Bun.file(ledgerPath);
   if (!(await file.exists())) {
     _nextSeq = 1;
@@ -124,10 +136,8 @@ export function _resetSequenceCounter(): void {
 /**
  * Append a transition record to the session ledger.
  *
- * Assigns monotonically increasing sequence numbers and parent IDs.
- * Creates the ledger file and parent directories if they do not exist.
- * Uses `node:fs/promises` appendFile for atomic append-only writes
- * (kept as documented exception -- Bun.write lacks native append mode).
+ * SpacetimeDB-primary: calls the `append_ledger_entry` reducer.
+ * Also appends to the local JSONL file as fallback/backup.
  *
  * @param record - The transition record to append
  * @param ledgerPath - Path to the ledger file (defaults to LEDGER_PATH)
@@ -163,11 +173,20 @@ export async function appendLedgerEntry(
     parent_id: parentId,
   });
 
-  const dir = dirname(ledgerPath);
-  await mkdir(dir, { recursive: true });
+  // Primary: write to SpacetimeDB via reducer
+  callReducer("append_ledger_entry", {
+    sessionId: entry.session_id ?? "",
+    phase: "",
+    plan: "",
+    action: entry.event_type,
+    result: entry.current_state,
+    timestamp: Date.now(),
+    detailsJson: JSON.stringify(entry),
+  });
 
-  const line = JSON.stringify(entry) + "\n";
-  await appendFile(ledgerPath, line, "utf-8");
+  // Backup: append to local JSONL file
+  await mkdir(dirname(ledgerPath), { recursive: true });
+  await appendFile(ledgerPath, JSON.stringify(entry) + "\n", "utf-8");
 
   return entry;
 }
@@ -175,18 +194,10 @@ export async function appendLedgerEntry(
 // ─── Read ───────────────────────────────────────────────────────────────────
 
 /**
- * Read and filter ledger entries from the session ledger file.
+ * Read and filter ledger entries from the session ledger.
  *
- * Reads all lines from the JSONL file, parses each with safeParse
- * (skipping corrupted entries), and applies filters.
- *
- * Filter application order:
- * 1. `tail` — take last N raw lines before parsing
- * 2. Parse all lines with safeParse (skip invalid)
- * 3. `session_id` — match exact session ID
- * 4. `event_type` — match exact event type
- * 5. `since` — entries with timestamp >= since
- * 6. `limit` — cap result count
+ * SpacetimeDB-primary: queries SpacetimeDB with SQL WHERE clauses.
+ * Falls back to reading the JSONL file.
  *
  * @param filters - Optional filters to apply
  * @param ledgerPath - Path to the ledger file (defaults to LEDGER_PATH)
@@ -208,6 +219,45 @@ export async function readLedger(
   filters: LedgerFilters = {},
   ledgerPath: string = LEDGER_PATH,
 ): Promise<LedgerEntry[]> {
+  // Primary: try SpacetimeDB
+  try {
+    const whereClauses: string[] = [];
+    if (filters.session_id) {
+      whereClauses.push(
+        `session_id = '${filters.session_id.replace(/'/g, "''")}'`,
+      );
+    }
+    if (filters.event_type) {
+      whereClauses.push(
+        `event_type = '${filters.event_type.replace(/'/g, "''")}'`,
+      );
+    }
+    if (filters.since) {
+      whereClauses.push(`timestamp >= '${filters.since.replace(/'/g, "''")}'`);
+    }
+
+    let sql = "SELECT * FROM ledger_entries";
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ${whereClauses.join(" AND ")}`;
+    }
+    sql += " ORDER BY sequence_number ASC";
+    if (filters.limit) {
+      sql += ` LIMIT ${filters.limit}`;
+    }
+
+    const rows = await queryTable<LedgerEntry>(sql);
+    if (rows.length > 0) {
+      // Apply tail filter after query (SpacetimeDB may not support OFFSET well)
+      if (filters.tail !== undefined && filters.tail > 0) {
+        return rows.slice(-filters.tail);
+      }
+      return rows;
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: read from JSONL file
   const file = Bun.file(ledgerPath);
   if (!(await file.exists())) {
     return [];
