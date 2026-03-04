@@ -88,10 +88,10 @@
 
 **Depends on:** None
 
-- [ ] Clone/fetch ESLint config from asibilia/joes-book--next repo
-- [ ] Install ESLint and required dependencies in luca-observer
-- [ ] Adapt config for luca-observer's project structure
-- [ ] Verify lint passes on existing codebase
+- [x] Clone/fetch ESLint config from asibilia/joes-book--next repo
+- [x] Install ESLint and required dependencies in luca-observer
+- [x] Adapt config for luca-observer's project structure
+- [x] Verify lint passes on existing codebase
 
 ### Phase 104 — Observer Directory Restructure
 
