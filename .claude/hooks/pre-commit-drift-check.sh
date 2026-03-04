@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
 # pre-commit-drift-check.sh — Block commits when output files drift from source
 #
-# Hook event: PreToolUse (matcher: Bash)
+# Canonical event: pre_tool_use (tool_filter: Bash)
+# Platform events: Claude=PreToolUse, Cursor=beforeShellExecution, Pi=tool_call
 # Type: Command hook (synchronous)
 # Timeout: 60 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { "command": "git commit -m 'msg'" } }
+# Cursor:      { "command": "git commit -m 'msg'" }
+# Pi:          { "tool_input": { "command": "git commit -m 'msg'" } }
+#
+# Extraction: data.tool_input?.command ?? data.command ?? ''
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On block (drift detected):
+#   Claude: { "hookSpecificOutput": { "permissionDecision": "deny", "permissionDecisionReason": "..." } }
+#   Cursor: { "permission": "deny", "user_message": "..." }
+# On allow: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = allow (command proceeds)
+# 2 = block (commit denied)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Intercepts all Bash tool calls. For non-commit commands, exits 0 immediately
 # (near-zero overhead). For commit commands that touch generated output files or
 # their source, runs the drift check and blocks if drift is detected.
-#
-# Exit codes:
-#   0 = allow (command proceeds)
-#   2 = block (commit denied, stderr fed to Claude)
-#
-# JSON decision output for PreToolUse:
-#   { "hookSpecificOutput": { "permissionDecision": "deny", "permissionDecisionReason": "..." } }
 
 set -euo pipefail
 

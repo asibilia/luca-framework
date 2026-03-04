@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 # session-persist.sh — Save session state on exit
 #
-# Hook event: SessionEnd
+# Canonical event: session_end
+# Platform events: Claude=SessionEnd, Cursor=sessionEnd, Pi=session_shutdown
 # Type: Command hook (synchronous)
 # Timeout: 10 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "reason": "user_exit" | "timeout" | ... }
+# Cursor:      { "reason": "..." }
+# Pi:          {}
+#
+# Extraction: data.reason || 'unknown'
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# No stdout output (session persistence is silent)
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (SessionEnd hooks cannot block termination)
+# ──────────────────────────────────────────────────────────────────────
 #
 # When a session ends, this hook:
 # 1. Checks if .planning/WORKING.md exists

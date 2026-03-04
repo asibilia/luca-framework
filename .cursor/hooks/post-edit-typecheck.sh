@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
 # post-edit-typecheck.sh — Async type-check after TypeScript file edits
 #
-# Hook event: PostToolUse (matcher: Edit|Write)
+# Canonical event: post_tool_use (tool_filter: Edit|Write)
+# Platform events: Claude=PostToolUse, Cursor=afterFileEdit, Pi=tool_execution_end
 # Type: Command hook (async: true)
 # Timeout: 30 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { "file_path": "/path/to/file.ts" } }
+# Cursor:      { "file_path": "/path/to/file.ts" }
+# Pi:          { "tool_input": { "file_path": "/path/to/file.ts" } }
+#
+# Extraction: data.tool_input?.file_path ?? data.file_path
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On type errors (async delivery):
+#   { "systemMessage": "TypeScript type errors found after editing ..." }
+# On success: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = success (always exits 0, type-check is async feedback)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Reads the edited file path from stdin JSON, checks if it is a TypeScript
 # file, and runs tsc --noEmit if so. Since this hook is async, results are

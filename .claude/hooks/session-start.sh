@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 # session-start.sh -- Initialize .planning/ directory for Luca
 #
-# Hook event: SessionStart
+# Canonical event: session_start
+# Platform events: Claude=SessionStart, Cursor=sessionStart, Pi=session_start
 # Type: Command hook (synchronous)
 # Timeout: 15 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: {}  (no meaningful payload)
+# Cursor:      {}  (no meaningful payload)
+# Pi:          {}  (no meaningful payload)
+#
+# Stdin is consumed (cat) but not inspected for session_start.
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On first init:
+#   Claude: { "systemMessage": "[Luca] Initialized .planning/ directory. Created: ..." }
+#   Cursor: { "followup_message": "[Luca] Initialized .planning/ directory. Created: ..." }
+# On missing bun:
+#   { "systemMessage": "[Luca] Bun is not installed. ..." }
+# On resume (nothing created): no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (session start should never block)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Creates .planning/ directory with BRAIN.md, MEMORY.md, WORKING.md,
 # STATE.md, ROADMAP.md, and config.json on first session. Subsequent

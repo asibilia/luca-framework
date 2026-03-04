@@ -1,9 +1,26 @@
 #!/usr/bin/env bash
 # context-monitor.sh -- Warn when context usage appears high
 #
-# Hook event: Stop
+# Canonical event: stop
+# Platform events: Claude=Stop, Cursor=stop, Pi=session_shutdown
 # Type: Command hook (synchronous)
 # Timeout: 5 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "stop_hook_active": bool, "transcript_path": "/path/..." }
+# Cursor:      { "loop_count": number }
+# Pi:          {}
+#
+# Extraction (loop guard): data.stop_hook_active || data.loop_count > 0
+# Extraction (transcript): data.transcript_path
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On context warning:
+#   Claude: { "systemMessage": "[Context Monitor: LEVEL] ..." }
+#   Cursor: { "followup_message": "[Context Monitor: LEVEL] ..." }
+# On healthy context: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (context check is advisory)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Checks context usage via two signals (higher severity wins):
 #
