@@ -9,11 +9,11 @@
     "dev": "next dev --port 3456",
     "build": "next build",
     "start": "next start --port 3456",
-    "css:build": "tailwindcss -i src/app/globals.css -o public/globals.css --minify",
-    "css:dev": "tailwindcss -i src/app/globals.css -o public/globals.css",
-    "css:watch": "tailwindcss -i src/app/globals.css -o public/globals.css --watch",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix"
+    "css:build": "tailwindcss -i app/globals.css -o public/globals.css --minify",
+    "css:dev": "tailwindcss -i app/globals.css -o public/globals.css",
+    "css:watch": "tailwindcss -i app/globals.css -o public/globals.css --watch",
+    "lint": "eslint app/ components/ hooks/ lib/ stores/",
+    "lint:fix": "eslint app/ components/ hooks/ lib/ stores/ --fix"
   },
   "dependencies": {
     "next": "^15",
