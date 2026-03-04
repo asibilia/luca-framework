@@ -207,7 +207,7 @@ export async function POST(request: Request) {
       .slice(0, 50);
 
     const filename = `${prefix}-${timestamp}-${slug}.md`;
-    const notesDir = join(process.cwd(), ".planning", "notes");
+    const notesDir = join(resolveProjectDir(), ".planning", "notes");
 
     await mkdir(notesDir, { recursive: true });
 
