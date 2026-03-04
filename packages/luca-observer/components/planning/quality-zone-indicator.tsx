@@ -94,12 +94,14 @@ export function QualityZoneIndicator({
       </div>
 
       {/* Percentage boundary labels */}
-      <div className="mt-1 flex justify-between font-mono text-xs text-muted-foreground">
+      <div
+        className="mt-1 font-mono text-xs text-muted-foreground"
+        style={{ display: "grid", gridTemplateColumns: "30% 20% 20% 30%" }}
+      >
         <span>0%</span>
-        <span style={{ marginLeft: "calc(30% - 1ch)" }}>30%</span>
-        <span>50%</span>
-        <span>70%</span>
-        <span>100%</span>
+        <span className="text-center">30%</span>
+        <span className="text-center">50%</span>
+        <span className="text-right">70%</span>
       </div>
 
       {/* Zone descriptions */}
