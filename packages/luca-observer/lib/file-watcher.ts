@@ -1,7 +1,8 @@
 import { join } from "node:path";
 
 import orderBy from "lodash/orderBy";
-import type { z, ZodTypeDef } from "zod";
+import { z } from "zod";
+import type { ZodTypeDef } from "zod";
 
 import type {
   WorkflowSnapshot,
@@ -113,21 +114,21 @@ export async function readMemoryFiles(projectDir?: string): Promise<{
 /**
  * Read metrics.json from .planning/.
  *
+ * Delegates to readJsonSnapshot with a permissive record schema.
+ *
  * @param projectDir - The root project directory
  * @returns Parsed metrics JSON or empty object
  */
 export async function readMetrics(
   projectDir?: string,
 ): Promise<Record<string, unknown>> {
-  const dir = resolveProjectDir(projectDir);
-  const metricsPath = join(dir, ".planning", "metrics.json");
-
-  try {
-    const content = await Bun.file(metricsPath).text();
-    return JSON.parse(content) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
+  return (
+    (await readJsonSnapshot(
+      "metrics.json",
+      z.record(z.unknown()),
+      projectDir,
+    )) ?? {}
+  );
 }
 
 /**
