@@ -91,7 +91,7 @@ export function TransitionLog({ entries }: { entries: LedgerEntry[] }) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       {entry.session_id && (
-                        <p className="text-muted-foreground">
+                        <p className="font-mono text-xs text-muted-foreground">
                           <span className="text-foreground/60">Session:</span>{" "}
                           {entry.session_id}
                         </p>
