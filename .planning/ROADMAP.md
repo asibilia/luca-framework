@@ -2,33 +2,57 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval
+
+---
+
+## v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval
+
+### Phase 118: Security & Data Reliability
+
+**Goal:** Fix all P0 data/security issues and harden SpacetimeDB persistence layer.
+
+- [ ] Fix SQL injection risk in ledger query builder (#33)
+- [ ] Add retry + error logging to fire-and-forget reducer calls (#31)
+- [ ] Improve dual-write consistency between SpacetimeDB and JSON (#36)
+- [ ] Add debug logging for SpacetimeDB fallback behavior (#39)
+
+### Phase 119: UI Migration Cleanup
+
+**Goal:** Complete SpacetimeDB migration in observer UI — fix broken pages and remove stale references.
+
+- [ ] Fix notes page — calls deleted API endpoints (#30)
+- [ ] Fix header — shows 'SSE Connected' with hardcoded green dot (#32)
+- [ ] Clean up all stale SSE/API references in observer UI (#38)
+
+### Phase 120: Audit Findings Persistence
+
+**Goal:** Build structured audit findings persistence layer using SpacetimeDB so review findings survive context compaction.
+
+**Depends on:** Phase 118
+
+- [ ] Audit Findings Persistence & Retrieval System (#57)
+
+### Phase 121: Skill Eval Framework
+
+**Goal:** Add eval testing, description optimization, and measurement infrastructure for agent skills.
+
+- [ ] Skill Eval Framework: Test, Measure, and Refine Agent Skills (#58)
 
 ---
 
 ## Backlog (Future)
 
-### v2.8.0 — Audit Remediation & Adaptive Learning
-
-**Audit Remediation (P1-P2 from repo review audit, 2026-03-04):**
+### Remaining Audit Remediation (from repo review audit, 2026-03-04)
 
 _P1 — Agentic:_
 
 - Define missing `shouldRunDiscussion` guard in XState machine (#34)
 - Add timeout/auto-transition to phase actor idle state (#35)
 
-_P1 — Data:_
-
-- Improve dual-write consistency between SpacetimeDB and JSON (#36)
-
 _P1 — DX:_
 
 - Document and fix test suite fragility — 29 tests fail in full run (#37)
-- Add debug logging for SpacetimeDB fallback behavior (#39)
-
-_P1 — UI:_
-
-- Clean up all stale SSE/API references in observer UI (#38)
 
 _P2 — UI:_
 
@@ -108,4 +132,4 @@ _P3 — Data:_
 
 ---
 
-_Roadmap updated: 2026-03-05 (v2.7.0 archived)_
+_Roadmap updated: 2026-03-05 (v2.8.0 active — 4 phases, 9 todos)_
