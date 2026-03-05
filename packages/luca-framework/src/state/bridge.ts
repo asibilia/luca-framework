@@ -709,21 +709,6 @@ async function handleTransition(args: string[]): Promise<void> {
   // Optionally update STATE.md (gated by env var)
   await updateStateMd(actor);
 
-  // Fire-and-forget: append ledger entry for this transition
-  callReducer("append_ledger_entry", {
-    sessionId: nextSnapshot.context.session_id ?? "",
-    phase: String(nextSnapshot.context.current_phase ?? ""),
-    plan: "",
-    action: `transition:${eventType}`,
-    result: String(nextSnapshot.value),
-    timestamp: Date.now(),
-    detailsJson: JSON.stringify({
-      from: String(prevState),
-      to: String(nextSnapshot.value),
-      event: eventType,
-    }),
-  });
-
   // Output transition record
   const { type: _type, ...eventData } = validation.data;
   const record = buildTransitionRecord(
