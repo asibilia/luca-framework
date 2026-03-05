@@ -12,7 +12,7 @@ import { z } from "zod";
  * and luca-framework (Node/Bun CLI tool).
  *
  * **When luca-framework schemas change**, the corresponding observer-local mirrors
- * must be updated manually:
+ * must be updated manually. Run `bun run check:observer-drift` to detect mismatches:
  * - `LedgerEntrySchema` mirrors `ledger.ts::ledgerEntrySchema`
  * - `HarnessResultSnapshotSchema` mirrors `harness.schemas.ts::HarnessResultSchema`
  *   (with snake_case field names; the original uses camelCase for internal use)

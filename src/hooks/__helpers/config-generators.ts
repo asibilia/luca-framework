@@ -23,7 +23,7 @@ import {
 import {
   sanitizeForTemplate,
   validateScriptPath,
-} from "../pi-extensions/__helpers/sanitize";
+} from "../pi-extensions/__helpers";
 
 // ─── Canonical config generators (preferred API) ────────────────────────────
 
