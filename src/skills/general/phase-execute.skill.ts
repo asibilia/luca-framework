@@ -1529,11 +1529,10 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Signal Verification and Update State
 
-Signal verification passed and update state via bridge:
+Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — if learningCapture is enabled, the machine transitions to \`learning\` state and expects LEARN_COMPLETE before committing.
 
 \`\`\`bash
 bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
 \`\`\`
 
 Also update STATE.md directly for backward compatibility.
@@ -1559,6 +1558,12 @@ This removes all \`iter/{phase}/*\` git tags and \`.planning/checkpoints/iter-{p
 git add .
 bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
 \`\`\`\`
+
+Signal commit complete via bridge (after the actual commit succeeds):
+
+\`\`\`bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+\`\`\`
 
 ### 12. User Acceptance Testing (UAT)
 
