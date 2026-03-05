@@ -69,10 +69,13 @@ async function initAndStart() {
 beforeEach(() => {
   ensurePlanningDir();
   cleanupStateFiles();
+  // Enable STATE.md generation so transition/set-field tests can verify it
+  process.env.LUCA_EXPORT_MD = "true";
 });
 
 afterEach(() => {
   cleanupStateFiles();
+  delete process.env.LUCA_EXPORT_MD;
 });
 
 // ─── read-complexity ────────────────────────────────────────────────────────
@@ -177,7 +180,7 @@ describe("bridge read-field", () => {
       "--field=session_id",
     );
     expect(exitCode).toBe(2);
-    expect(stderr).toContain("not found");
+    expect(stderr).toContain("not initialized");
   });
 });
 

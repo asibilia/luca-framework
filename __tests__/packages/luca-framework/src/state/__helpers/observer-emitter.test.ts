@@ -32,6 +32,11 @@ beforeEach(() => {
     LUCA_OBSERVER_URL: process.env.LUCA_OBSERVER_URL,
   };
 
+  // Clear SpacetimeDB URL so tests can control URL resolution explicitly.
+  // Tests that need LUCA_SPACETIMEDB_URL set it directly in the test body.
+  delete process.env.LUCA_SPACETIMEDB_URL;
+  delete process.env.LUCA_OBSERVER_URL;
+
   // Default mock: capture calls and resolve successfully
   globalThis.fetch = ((url: any, init?: any) => {
     fetchCalls.push({ url: String(url), init });

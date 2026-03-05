@@ -30,6 +30,7 @@
     "generate:bindings": "bun run --filter @alecsibilia/luca-observer generate:bindings",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
     "test": "bun test",
+    "test:all": "bun test",
     "test:coverage": "bun test --coverage",
     "test:observer": "cd packages/luca-observer && bun test",
     "test:watch": "bun test --watch"

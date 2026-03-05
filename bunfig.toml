@@ -1,5 +1,6 @@
 [test]
 root = "."
+preload = ["./scripts/test-preload.ts"]
 coverage = true
 coverageDir = "coverage"
 coverageReporter = ["text", "lcov"]

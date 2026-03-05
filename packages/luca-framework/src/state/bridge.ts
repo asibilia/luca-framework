@@ -498,6 +498,10 @@ async function handleSetField(args: string[]): Promise<void> {
     contextJson: JSON.stringify(updatedContext),
   });
 
+  // Persist updated context to local JSON file (dual-write)
+  const updatedJson = { ...snapshotJson!, context: updatedContext };
+  await Bun.write(STATE_FILE_PATH, JSON.stringify(updatedJson, null, 2));
+
   // Optional: update STATE.md gated by env var
   if (process.env.LUCA_EXPORT_MD === "true") {
     const loadResult = await loadPersistedActor();
