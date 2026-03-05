@@ -343,6 +343,41 @@ Loop back to Step 4 to handle the return.
       order: 1,
     },
   ],
+  evals: [
+    {
+      prompt:
+        "The API returns 500 errors intermittently when users submit the payment form.",
+      expected:
+        "Gathers symptoms (expected vs actual behavior, error messages, timeline, reproduction steps), then spawns lu-debugger sub-agent with full context.",
+      criteria: [
+        "Asks structured symptom-gathering questions before investigating",
+        "Spawns lu-debugger sub-agent instead of investigating directly",
+        "Passes symptoms and memory context to the debugger",
+      ],
+    },
+    {
+      prompt:
+        "The debugger returned ROOT CAUSE FOUND: race condition in the database connection pool.",
+      expected:
+        "Displays root cause and evidence, offers options: fix now, plan fix, or manual fix.",
+      criteria: [
+        "Parses ROOT CAUSE FOUND from debugger return",
+        "Presents root cause summary to user",
+        "Offers actionable next-step options",
+      ],
+    },
+    {
+      prompt:
+        "The debugger hit a CHECKPOINT REACHED after testing 3 hypotheses. User says to continue investigating.",
+      expected:
+        "Spawns a fresh lu-debugger continuation agent with checkpoint state and user response.",
+      criteria: [
+        "Reads checkpoint state from debug session file",
+        "Spawns NEW lu-debugger agent for continuation",
+        "Includes previous investigation state in continuation context",
+      ],
+    },
+  ],
 };
 
 export const debugSkill = createSkill(debugConfig);

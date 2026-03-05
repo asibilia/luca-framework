@@ -542,6 +542,97 @@ export const log_decision = spacetimedb.reducer(
   },
 );
 
+// ─── Audit Findings Reducers ──────────────────────────────────
+
+/** Append a new audit finding. */
+export const append_audit_finding = spacetimedb.reducer(
+  {
+    sessionId: t.string(),
+    phase: t.string(),
+    sourceAgent: t.string(),
+    severity: t.string(),
+    category: t.string(),
+    filePath: t.string(),
+    lineStart: t.u64(),
+    lineEnd: t.u64(),
+    finding: t.string(),
+    suggestedFix: t.string(),
+    contextSnippet: t.string(),
+    createdAt: t.u64(),
+  },
+  (ctx, args) => {
+    ctx.db.auditFindings.insert({
+      id: 0n,
+      sessionId: args.sessionId,
+      phase: args.phase,
+      sourceAgent: args.sourceAgent,
+      severity: args.severity,
+      category: args.category,
+      filePath: args.filePath,
+      lineStart: args.lineStart,
+      lineEnd: args.lineEnd,
+      finding: args.finding,
+      suggestedFix: args.suggestedFix,
+      contextSnippet: args.contextSnippet,
+      status: "pending",
+      resolutionNotes: "",
+      createdAt: args.createdAt,
+      resolvedAt: 0n,
+    });
+  },
+);
+
+/** Update the status of an existing audit finding. */
+export const update_finding_status = spacetimedb.reducer(
+  {
+    findingId: t.u64(),
+    status: t.string(),
+    resolutionNotes: t.string(),
+    resolvedAt: t.u64(),
+  },
+  (ctx, args) => {
+    const existing = ctx.db.auditFindings.id.find(args.findingId);
+    if (!existing) throw new SenderError("Audit finding not found");
+    ctx.db.auditFindings.id.update({
+      ...existing,
+      status: args.status,
+      resolutionNotes: args.resolutionNotes,
+      resolvedAt: args.resolvedAt,
+    });
+  },
+);
+
+/** Bulk dismiss all findings matching a session and optional filters. */
+export const bulk_dismiss_findings = spacetimedb.reducer(
+  {
+    sessionId: t.string(),
+    category: t.string(),
+    severity: t.string(),
+    reason: t.string(),
+    resolvedAt: t.u64(),
+  },
+  (ctx, args) => {
+    if (!args.sessionId) throw new SenderError("sessionId is required");
+    const allRows = [...ctx.db.auditFindings.iter()];
+    const matches = allRows.filter((row) => row.sessionId === args.sessionId);
+    for (const row of matches) {
+      // Skip already-resolved or dismissed findings
+      if (row.status === "resolved" || row.status === "dismissed") continue;
+      // Apply category filter if provided
+      if (args.category && row.category !== args.category) continue;
+      // Apply severity filter if provided
+      if (args.severity && row.severity !== args.severity) continue;
+
+      ctx.db.auditFindings.id.update({
+        ...row,
+        status: "dismissed",
+        resolutionNotes: args.reason,
+        resolvedAt: args.resolvedAt,
+      });
+    }
+  },
+);
+
 // ─── Export Placeholders ───────────────────────────────────────
 
 /** Placeholder for JSON export. No-op for now. */

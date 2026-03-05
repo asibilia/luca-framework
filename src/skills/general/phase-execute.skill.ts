@@ -1758,6 +1758,41 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
       order: 1,
     },
   ],
+  evals: [
+    {
+      prompt:
+        "Execute phase 5 which has plans 5.1 (no deps), 5.2 (depends on 5.1), and 5.3 (no deps).",
+      expected:
+        "Plans 5.1 and 5.3 execute in parallel (wave 1), plan 5.2 executes in wave 2 after 5.1 completes.",
+      criteria: [
+        "Groups independent plans into the same wave for parallel execution",
+        "Respects dependency ordering between waves",
+        "Spawns lu-executor sub-agents for each plan",
+      ],
+    },
+    {
+      prompt:
+        "Phase execution completed but bun test reports 2 failures. What happens next?",
+      expected:
+        "Harness detects test failures, spawns executor to fix, re-runs harness (up to max iterations).",
+      criteria: [
+        "Runs verification harness after wave execution",
+        "Spawns fix executor on harness failure",
+        "Respects max harness fix iteration limit",
+      ],
+    },
+    {
+      prompt:
+        "All plans in phase 8 have executed and harness passes. What state transitions occur?",
+      expected:
+        "Phase marked complete in STATE.md, lu-verifier runs, lu-learner captures learnings, code review agents spawn.",
+      criteria: [
+        "Updates STATE.md with phase completion",
+        "Invokes lu-verifier for goal verification",
+        "Triggers learning capture via lu-learner",
+      ],
+    },
+  ],
 };
 
 export const phaseExecuteSkill = createSkill(phaseExecuteConfig);
