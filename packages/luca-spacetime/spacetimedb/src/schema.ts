@@ -323,6 +323,46 @@ export const DecisionLogs = table(
   },
 );
 
+// ─── Audit Findings ──────────────────────────────────────────
+
+/** Review agent findings persistence. */
+export const AuditFindings = table(
+  {
+    name: "audit_findings",
+    public: true,
+    indexes: [
+      {
+        name: "audit_findings_session_id",
+        algorithm: "btree" as const,
+        columns: ["sessionId"],
+      },
+      {
+        name: "audit_findings_file_path",
+        algorithm: "btree" as const,
+        columns: ["filePath"],
+      },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    sessionId: t.string(),
+    phase: t.string(),
+    sourceAgent: t.string(),
+    severity: t.string(),
+    category: t.string(),
+    filePath: t.string(),
+    lineStart: t.u64(),
+    lineEnd: t.u64(),
+    finding: t.string(),
+    suggestedFix: t.string(),
+    contextSnippet: t.string(),
+    status: t.string(),
+    resolutionNotes: t.string(),
+    createdAt: t.u64(),
+    resolvedAt: t.u64(),
+  },
+);
+
 // ─── Schema Export ─────────────────────────────────────────────
 
 const spacetimedb = schema({
@@ -344,6 +384,7 @@ const spacetimedb = schema({
   costTracking: CostTracking,
   contextSnapshots: ContextSnapshots,
   decisionLogs: DecisionLogs,
+  auditFindings: AuditFindings,
 });
 
 export default spacetimedb;

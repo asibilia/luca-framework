@@ -162,3 +162,30 @@ export {
   snapshotContext,
   logDecision,
 } from "./__helpers/observer-emitter";
+
+// ─── Audit Findings ────────────────────────────────────────────────────────
+
+export {
+  persistFinding,
+  markFindingResolved,
+  markFindingDismissed,
+  queryPendingFindings,
+  queryFindingsForFile,
+  getFindingsSummary,
+} from "./__helpers/audit-findings";
+
+export {
+  auditFindingSchema,
+  persistFindingParamsSchema,
+  findingFiltersSchema,
+  findingsSummarySchema,
+  FINDING_SEVERITIES,
+  FINDING_STATUSES,
+} from "./__schemas/audit-findings.schemas";
+
+export type {
+  AuditFinding,
+  PersistFindingParams,
+  FindingFilters,
+  FindingsSummary,
+} from "./__schemas/audit-findings.schemas";
