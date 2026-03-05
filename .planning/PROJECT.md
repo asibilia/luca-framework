@@ -8,19 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v2.7.0 — Shipped)
+## Current State (v2.8.0 — Shipped)
 
-**Last Shipped:** v2.7.0 — Observability & Verification Infrastructure (2026-03-05)
+**Last Shipped:** v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval (2026-03-05)
 
-Full observability stack: luca-observer web dashboard (Next.js + Tailwind, 10+ pages), SpacetimeDB real-time infrastructure (16 tables, 19 reducers replacing JSON persistence), event ledger + verification pipeline (harness middleware), security hardening (SSRF, CSP, API auth, SQL injection, 35+ test cases), DRY consolidation (useFilteredTable, readWithFallback, safeJsonParse, EmptyState), hook portability (3-platform canonical format). 21 phases, 54 plans, 205 commits, 210 files changed, 3477 tests.
+P0 audit triage (7 findings verified resolved), dual-write hardening (JSON backup + LUCA_DEBUG logging), SpacetimeDB audit findings persistence (15-column table, 2 btree indexes, 3 reducers, 6 client helpers, 21 tests), skill eval framework (SkillEvalSchema with prompt/expected/criteria, 9 evals across 3 skills, CLI runner script, 16 tests). 3 phases, 5 commits, 27 files changed, 3514 tests.
+
+## Previous State (v2.7.0)
+
+v2.7.0 — Observability & Verification Infrastructure (2026-03-05). Full observability stack: luca-observer web dashboard, SpacetimeDB real-time infrastructure (16 tables, 19 reducers), security hardening, DRY consolidation, hook portability. 21 phases, 54 plans, 205 commits, 3477 tests.
 
 ## Previous State (v2.6.2)
 
 v2.6.2 — Convention & DRY Cleanup (2026-03-03). Barrel import fixes, convention alignment, DRY extraction. 3150 tests, 85 files changed.
-
-## Previous State (v2.6.0)
-
-v2.6.0 — Code Health, Context Intelligence & Debate Architecture (2026-03-03). 7 debate/tribunal patterns, JSON-first memory bridge, directory-scoped rules. 3109 tests, 250 files changed.
 
 **Capabilities (shipped):**
 

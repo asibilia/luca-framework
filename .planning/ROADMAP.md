@@ -2,35 +2,35 @@
 
 ## Overview
 
-**Current Milestone:** v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval
+**Current Milestone:** Planning next
 
 ---
 
-## v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval
+## Next — v2.8.0 Audit Gap Closure (Phases 122-123)
 
-### Phase 118: P0 Triage & Dual-Write Hardening (COMPLETE)
+### Phase 122: SpacetimeDB Reducer Hardening (from v2.8.0 audit)
 
-**Goal:** Verify P0 audit findings resolved in v2.7.0, close todos, fix remaining dual-write gap.
+**Goal:** Add server-side input validation and index usage to SpacetimeDB audit finding reducers.
 
-- [x] Fix SQL injection risk in ledger query builder (#33) — resolved in v2.7.0
-- [x] Add retry + error logging to fire-and-forget reducer calls (#31) — resolved in v2.7.0
-- [x] Fix notes page — calls deleted API endpoints (#30) — resolved in v2.7.0
-- [x] Fix header — shows 'SSE Connected' with hardcoded green dot (#32) — resolved in v2.7.0
-- [x] Clean up all stale SSE/API references in observer UI (#38) — resolved in v2.7.0
-- [x] Add debug logging for SpacetimeDB fallback behavior (#39) — resolved in v2.7.0
-- [x] Improve dual-write consistency between SpacetimeDB and JSON (#36) — added JSON backup write + LUCA_DEBUG logging to persistence.ts
+- [ ] Add server-side enum validation for severity field in append_audit_finding reducer (audit #1)
+- [ ] Add server-side enum validation for status field in update_finding_status reducer (audit #2)
+- [ ] Replace full table scan with index lookup in bulk_dismiss_findings + document single-user authz assumption (audit #3)
+- [ ] Add defense-in-depth escaping for severity filter in SQL queries (audit LOW)
+- [ ] Add length cap on resolutionNotes parameter (audit LOW)
 
-### Phase 120: Audit Findings Persistence (COMPLETE)
+### Phase 123: v2.8.0 DRY & Convention Cleanup (from v2.8.0 audit)
 
-**Goal:** Build structured audit findings persistence layer using SpacetimeDB so review findings survive context compaction.
+**Goal:** Close DRY violations, fix barrel imports, and align conventions identified by milestone audit.
 
-- [x] Audit Findings Persistence & Retrieval System (#57) — SpacetimeDB audit_findings table (15 columns, 2 btree indexes), 3 reducers (append_audit_finding, update_finding_status, bulk_dismiss_findings), 6 client helpers, Zod schemas, 21 tests
-
-### Phase 121: Skill Eval Framework (COMPLETE)
-
-**Goal:** Add eval testing, description optimization, and measurement infrastructure for agent skills.
-
-- [x] Skill Eval Framework: Test, Measure, and Refine Agent Skills (#58) — SkillEvalSchema extension, evals for phase-execute/git-commit/debug (9 evals total), bun run eval:skills runner script, 16 tests
+- [ ] Extract shared SQL sanitization utility from audit-findings.ts + ledger.ts (audit #4)
+- [ ] Extract createEmptySummary factory — deduplicate emptySummary construction (audit #5)
+- [ ] Extract updateFindingStatus helper from twin markFindingResolved/markFindingDismissed (audit #6)
+- [ ] Derive severityOrder from FINDING_SEVERITIES instead of hardcoded map (audit #7)
+- [ ] Fix barrel-first imports in eval-skills.ts and skill-eval.test.ts (audit #8)
+- [ ] Replace Array.sort() with lodash orderBy in audit-findings.ts (audit #9)
+- [ ] Fix snake_case in internal EvalEntry/EvalSummary types to camelCase (audit #10)
+- [ ] Export SkillConfigSchema from src/skills/index.ts barrel (audit LOW)
+- [ ] Truncate echoed value in validateFilterString error message (audit LOW)
 
 ---
 
@@ -122,7 +122,8 @@ _P3 — Data:_
 - **v2.6.1** — Audit Gap Closure: 2 phases, 9 requirements, 95 files changed, 3146 tests. Tribunal architecture extraction to shared, entity isolation fix, DRY cleanup, Bun API migration, sanitizeForTemplate, lodash alignment, safeParse conversion ([View Archive](milestones/v2.6.1-ROADMAP.md))
 - **v2.6.2** — Convention & DRY Cleanup: 2 phases, 6 plans, 85 files changed, 3150 tests. Barrel import fixes, convention alignment (orderBy, safeParse, sanitize hardening, node:crypto), DRY extraction (countResolutions, safeParseOrThrow, diagnostic prompt factory, groupBy migration) ([View Archive](milestones/v2.6.2-ROADMAP.md))
 - **v2.7.0** — Observability & Verification Infrastructure: 21 phases, 54 plans, 205 commits, 210 files changed, 3477 tests. luca-observer web dashboard (10+ pages), SpacetimeDB real-time infrastructure (16 tables, 19 reducers), event ledger + verification pipeline, security hardening (SSRF, CSP, API auth, SQL injection), DRY consolidation (useFilteredTable, readWithFallback, safeJsonParse, EmptyState), hook portability (3-platform) ([View Archive](milestones/v2.7.0-ROADMAP.md))
+- **v2.8.0** — Critical Remediation, Audit Persistence & Skill Eval: 3 phases, 5 commits, 27 files changed, 3514 tests. P0 triage & dual-write hardening, SpacetimeDB audit findings persistence (15-col table, 3 reducers, 6 helpers), skill eval framework (SkillEvalSchema, 9 evals, runner script) ([View Archive](milestones/v2.8.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-05 (v2.8.0 complete — 3 phases, 9 todos closed, 37 new tests)_
+_Roadmap updated: 2026-03-05 (v2.8.0 archived, gap closure phases 122-123 queued)_
