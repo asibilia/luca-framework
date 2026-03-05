@@ -50,6 +50,85 @@
 - [x] Confirm `existsSync` is Bun-re-exported (no migration needed)
 - [x] Document: `appendFile` in ledger.ts has explicit comment explaining no Bun equivalent
 
+### Phase 126: Observer Dashboard Polish (NEW)
+
+**Goal:** Improve observer dashboard UI/UX and reliability
+
+- [ ] Replace inline loading states with LoadingSkeleton component (#40)
+- [ ] Add React error boundaries to observer dashboard pages (#41)
+- [ ] Add missing empty states to observer pages (#49)
+- [ ] Add todo tracking to observer dashboard (#64)
+- [ ] Accessibility pass on observer dashboard (#47)
+
+### Phase 127: SpacetimeDB Data Integrity (NEW)
+
+**Goal:** Fix data integrity issues in SpacetimeDB
+
+- [ ] Implement TTL cleanup for high-volume SpacetimeDB tables (#42)
+- [ ] Fix sequence number race condition in ledger (#43)
+- [ ] Add unique constraints to singleton SpacetimeDB tables (#48)
+
+### Phase 128: Bridge & Build DX (NEW)
+
+**Goal:** Fix documentation and build system issues
+
+- [ ] Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
+- [ ] Deduplicate sanitizeJsonParse (3 copies in codebase) (#46)
+- [ ] Document observability domain in architecture docs (#50)
+- [ ] Add automatic stale session lock cleanup to build system (#51)
+- [ ] Align context pruning with domain architecture (#59)
+- [ ] Verify harness-aware update command template collection (#60)
+- [ ] Harden dual-write with divergence detection (#62)
+
+### Phase 129: Agent System Improvements (NEW)
+
+**Goal:** Improve agent reliability and orchestration
+
+- [ ] Define missing `shouldRunDiscussion` guard in XState machine (#34)
+- [ ] Add timeout/auto-transition to phase actor idle state (#35)
+- [ ] Enforce complexity gating matrix in XState guards (#44)
+- [ ] Add agent health check system (#52)
+- [ ] Add stall detection and retry limits to verification loop (#53)
+- [ ] Implement skill dependency graph (#54)
+- [ ] Enhance tribunal debate with consensus model (#55)
+
+### Phase 130: Learning & Cross-Session Features (NEW)
+
+**Goal:** Implement advanced learning and cross-project memory
+
+- [ ] Cross-session procedure replay engine (#12)
+- [ ] Adaptive complexity self-tuning (#13)
+- [ ] Portable cognitive profiles (cross-project memory) (#14)
+- [ ] Reflective meta-cognition for plan quality (#15)
+- [ ] Cross-agent interop scanner (#16)
+- [ ] Semantic memory embeddings with vector recall (#18)
+- [ ] Selective skill scaffolding (core vs extended) (#23)
+
+### Phase 131: Ecosystem & Distribution (NEW)
+
+**Goal:** Build out ecosystem features
+
+- [ ] Hook portability abstraction layer (#09)
+- [ ] Plugin marketplace with community registry (#17)
+- [ ] Post-init interactive tour (#20)
+
+### Phase 132: Replace Complexity Gating with Model Routing (NEW)
+
+**Goal:** Replace complexity-based step skipping with per-agent model routing
+
+- [ ] Audit all complexity reads for step-skipping behavior
+- [ ] Add modelTier field to agent definitions
+- [ ] Replace skip/run matrix with model-routing table
+- [ ] Create granular sub-agents for different model tiers
+- [ ] Remove or repurpose complexity matrix
+
+### Phase 133: Additional v2.9.0 Audit Remediation (NEW)
+
+**Goal:** Close remaining gaps identified in v2.8.0 done-todo audit
+
+- [ ] Rename SpacetimeDB memory fields from *Json to *Md (#65)
+- [ ] Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
+
 ---
 
 ## Backlog (Future)
