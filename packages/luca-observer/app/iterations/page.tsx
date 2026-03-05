@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { ConvergenceChart } from "~/components/iteration/convergence-chart";
 import { BudgetGauge } from "~/components/iteration/budget-gauge";
 import { ErrorClassificationBreakdown } from "~/components/iteration/error-classification-breakdown";
@@ -30,21 +31,12 @@ export default function IterationsPage() {
       subtitle="Convergence tracking and error classification"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground animate-pulse">
-            Loading iteration data...
-          </p>
-        </div>
+        <EmptyState message="Loading iteration data..." />
       ) : iterations.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <p className="font-mono text-lg font-bold text-muted-foreground">
-            No Iterations Yet
-          </p>
-          <p className="mt-2 font-mono text-sm text-muted-foreground">
-            Iteration data will appear here when the harness or verification
-            loop runs and records checkpoint data.
-          </p>
-        </div>
+        <EmptyState
+          title="No Iterations Yet"
+          message="Iteration data will appear here when the harness or verification loop runs and records checkpoint data."
+        />
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">

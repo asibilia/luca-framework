@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { StateDiagram } from "~/components/workflow/state-diagram";
 import { TransitionLog } from "~/components/workflow/transition-log";
 import { WorkflowContextPanel } from "~/components/workflow/workflow-context-panel";
@@ -51,11 +52,7 @@ export default function WorkflowPage() {
           Transition Log
         </p>
         {ledgerLoading ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <p className="font-mono text-xs text-muted-foreground animate-pulse">
-              Loading ledger...
-            </p>
-          </div>
+          <EmptyState message="Loading ledger..." />
         ) : (
           <TransitionLog entries={entries} />
         )}

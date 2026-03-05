@@ -7,6 +7,8 @@ import { useTable } from "spacetimedb/react";
 import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
+import type { SessionPlanSnapshot } from "~/lib/types";
+
 /**
  * React hook for real-time session plan from SpacetimeDB.
  *
@@ -22,7 +24,7 @@ export function usePlanning() {
     const row = rows[0];
     if (!row || !row.planJson) return { plan: null, hasPlan: false };
 
-    const parsed = safeJsonParse<Record<string, unknown> | null>(
+    const parsed = safeJsonParse<SessionPlanSnapshot | null>(
       row.planJson,
       null,
     );

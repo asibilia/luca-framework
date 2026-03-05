@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { BrainPanel } from "~/components/memory/brain-panel";
 import { MemoryEntries } from "~/components/memory/memory-entries";
 import { WorkingSections } from "~/components/memory/working-sections";
@@ -16,11 +17,7 @@ export default function MemoryPage() {
       subtitle="BRAIN, MEMORY, and WORKING file viewer"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground animate-pulse">
-            Loading memory files...
-          </p>
-        </div>
+        <EmptyState message="Loading memory files..." />
       ) : (
         <div className="space-y-6">
           <ContextUsageBar

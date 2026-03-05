@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { HarnessSummaryBanner } from "~/components/harness/harness-summary-banner";
 import { CheckResultCard } from "~/components/harness/check-result-card";
 import { useHarnessResult } from "~/hooks/use-harness-result";
@@ -20,11 +21,7 @@ export default function HarnessPage() {
       subtitle="Verification check results and error details"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            Loading harness results...
-          </p>
-        </div>
+        <EmptyState message="Loading harness results..." />
       ) : (
         <div className="space-y-4">
           <HarnessSummaryBanner result={result} />

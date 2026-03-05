@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { CumulativeCostCurve } from "~/components/cost/cumulative-cost-curve";
 import { CostBreakdown } from "~/components/cost/cost-breakdown";
 import { TokenUsageTrends } from "~/components/cost/token-usage-trends";
@@ -26,11 +27,7 @@ export default function CostPage() {
       subtitle="Token usage, cost tracking, and session comparison"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            Loading cost data...
-          </p>
-        </div>
+        <EmptyState message="Loading cost data..." />
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

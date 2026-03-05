@@ -7,6 +7,8 @@ import { useTable } from "spacetimedb/react";
 import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
+import type { TribunalResultSnapshot } from "~/lib/types";
+
 /**
  * React hook for real-time tribunal result from SpacetimeDB.
  *
@@ -22,7 +24,7 @@ export function useTribunal() {
     const row = rows[0];
     if (!row || !row.resultJson) return { result: null, hasResult: false };
 
-    const parsed = safeJsonParse<Record<string, unknown> | null>(
+    const parsed = safeJsonParse<TribunalResultSnapshot | null>(
       row.resultJson,
       null,
     );

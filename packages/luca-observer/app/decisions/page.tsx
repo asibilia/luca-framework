@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { DecisionTimeline } from "~/components/decisions/decision-timeline";
 import { useDecisionTrail } from "~/hooks/use-decision-trail";
 
@@ -19,17 +20,9 @@ export default function DecisionsPage() {
       subtitle="Decision audit trail with reasoning and alternatives"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            Loading decisions...
-          </p>
-        </div>
+        <EmptyState message="Loading decisions..." />
       ) : decisions.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            No decisions recorded yet.
-          </p>
-        </div>
+        <EmptyState message="No decisions recorded yet." />
       ) : (
         <DecisionTimeline decisions={decisions} />
       )}

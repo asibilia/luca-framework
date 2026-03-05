@@ -6,6 +6,7 @@ import orderBy from "lodash/orderBy";
 import { useTable, useReducer } from "spacetimedb/react";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { tables, reducers } from "~/module_bindings";
 
 /**
@@ -120,11 +121,7 @@ export default function NotesPage() {
           Pending ({pending.length})
         </h2>
         {isLoading ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <p className="font-mono text-sm text-muted-foreground animate-pulse">
-              Loading notes...
-            </p>
-          </div>
+          <EmptyState message="Loading notes..." />
         ) : pending.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-8 text-center">
             <p className="font-mono text-sm text-muted-foreground">

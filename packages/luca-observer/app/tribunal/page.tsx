@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { TribunalSummaryBanner } from "~/components/tribunal/tribunal-summary-banner";
 import { FindingsTable } from "~/components/tribunal/findings-table";
 import { DisagreementsPanel } from "~/components/tribunal/disagreements-panel";
@@ -23,21 +24,12 @@ export default function TribunalPage() {
       subtitle="Debate results, findings, and rebuttals"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground animate-pulse">
-            Loading tribunal data...
-          </p>
-        </div>
+        <EmptyState message="Loading tribunal data..." />
       ) : !hasResult ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <p className="font-mono text-lg font-bold text-muted-foreground">
-            No Tribunal Run
-          </p>
-          <p className="mt-2 font-mono text-sm text-muted-foreground">
-            Tribunal data will appear here when a code review with debate is
-            triggered at MODERATE+ complexity.
-          </p>
-        </div>
+        <EmptyState
+          title="No Tribunal Run"
+          message="Tribunal data will appear here when a code review with debate is triggered at MODERATE+ complexity."
+        />
       ) : (
         <div className="space-y-6">
           <TribunalSummaryBanner result={result} />

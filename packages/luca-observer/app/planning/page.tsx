@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { SessionPlanOverview } from "~/components/planning/session-plan-overview";
 import { WSJFScoreTable } from "~/components/planning/wsjf-score-table";
 import { QualityZoneIndicator } from "~/components/planning/quality-zone-indicator";
@@ -20,21 +21,12 @@ export default function PlanningPage() {
       subtitle="WSJF scores, session plans, and quality zones"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground animate-pulse">
-            Loading planning data...
-          </p>
-        </div>
+        <EmptyState message="Loading planning data..." />
       ) : !hasPlan ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <p className="font-mono text-lg font-bold text-muted-foreground">
-            No Session Plan
-          </p>
-          <p className="mt-2 font-mono text-sm text-muted-foreground">
-            A session plan will appear here when the planner generates
-            WSJF-scored items for the current session.
-          </p>
-        </div>
+        <EmptyState
+          title="No Session Plan"
+          message="A session plan will appear here when the planner generates WSJF-scored items for the current session."
+        />
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { EmptyState } from "~/components/shared/empty-state";
 import { AgentScorecardTable } from "~/components/agents/agent-scorecard-table";
 import { AgentActivityLog } from "~/components/agents/agent-activity-log";
 import { AgentRegistryPanel } from "~/components/agents/agent-registry-panel";
@@ -24,21 +25,12 @@ export default function AgentsPage() {
       subtitle="Agent activity, scorecards, and model routing"
     >
       {loading ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground animate-pulse">
-            Loading agent data...
-          </p>
-        </div>
+        <EmptyState message="Loading agent data..." />
       ) : agents.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <p className="font-mono text-lg font-bold text-muted-foreground">
-            No Agent Activity
-          </p>
-          <p className="mt-2 font-mono text-sm text-muted-foreground">
-            Agent activity will appear here when agents are invoked during
-            workflow execution. Events stream in real-time via SpacetimeDB.
-          </p>
-        </div>
+        <EmptyState
+          title="No Agent Activity"
+          message="Agent activity will appear here when agents are invoked during workflow execution. Events stream in real-time via SpacetimeDB."
+        />
       ) : (
         <div className="space-y-6">
           <AgentScorecardTable
