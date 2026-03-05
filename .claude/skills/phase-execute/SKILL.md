@@ -1517,7 +1517,7 @@ Wait for user response, then proceed accordingly.
 
 **If clean (or LOW only):** Continue to step 9.
 
-### 9. Update Roadmap and State
+### 9. Signal Verification and Update State
 
 Signal verification passed and update state via bridge:
 

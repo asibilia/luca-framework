@@ -21,7 +21,6 @@ The following WAS migrated:
 The following still use node:fs:
 
 - Files importing `node:fs/promises` (unlink, readFile, writeFile patterns)
-- Files importing `node:path` instead of Bun equivalents
 - Approximately 7 files in `packages/luca-framework/src/` with remaining `node:fs` imports
 
 ## Task
@@ -30,7 +29,7 @@ The following still use node:fs:
 2. For each file, replace with Bun equivalents:
    - `readFile` -> `Bun.file(path).text()`
    - `writeFile` -> `Bun.write(path, content)`
-   - `unlink` -> `Bun.$\`rm ${path}\`` (no direct Bun equivalent)
+   - `unlink` -> keep using `node:fs/promises` unlink (no safe Bun equivalent)
    - `node:path` -> keep (Bun re-exports node:path, no migration needed)
 3. Test affected files after migration
 

@@ -219,15 +219,19 @@ function syncMemoryViaReducer(
   const working = workingMemorySchema.safeParse(workingData);
   const procedures = z.array(procedureEntrySchema).safeParse(proceduresData);
 
-  callReducerFn("update_memory_files", {
-    brainJson: brain.success ? serializeBrain(brain.data) : "",
-    memoryJson: memory.success ? serializeMemoryEntries(memory.data) : "",
-    workingJson: working.success ? serializeWorkingMemory(working.data) : "",
-    proceduresJson: procedures.success
-      ? serializeProcedures(procedures.data)
-      : "",
-    timestamp: Date.now(),
-  });
+  // Only include fields that parsed successfully to avoid wiping stored data
+  const payload: Record<string, unknown> = { timestamp: Date.now() };
+  if (brain.success) payload.brainJson = serializeBrain(brain.data);
+  if (memory.success) payload.memoryJson = serializeMemoryEntries(memory.data);
+  if (working.success)
+    payload.workingJson = serializeWorkingMemory(working.data);
+  if (procedures.success)
+    payload.proceduresJson = serializeProcedures(procedures.data);
+
+  // Skip reducer call entirely if no fields parsed successfully
+  if (Object.keys(payload).length <= 1) return;
+
+  callReducerFn("update_memory_files", payload);
 }
 
 // ─── Read Commands ──────────────────────────────────────────────────────────
