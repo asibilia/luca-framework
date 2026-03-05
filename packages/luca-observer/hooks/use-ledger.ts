@@ -30,12 +30,14 @@ export function useLedger(tail = 50) {
 
       return {
         previous_state: "",
-        current_state: row.action,
-        event_type: row.result,
+        current_state: row.result,
+        event_type: row.action,
         event_data: eventData,
         actions_executed: [] as string[],
         context: {} as Record<string, unknown>,
-        timestamp: "",
+        timestamp: row.timestamp
+          ? new Date(Number(row.timestamp)).toISOString()
+          : "",
         session_id: row.sessionId,
         sequence_number: Number(row.sequenceNumber),
         parent_id: null,
