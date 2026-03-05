@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Developer Note
 
 Capture ideas as roadmap phases (default) or queue notes for agent pickup.
@@ -181,5 +180,4 @@ Advisory reminder at pre-commit time. Not auto-consumed — agent reads and acts
 - [ ] Note modes: file created in `.planning/notes/` with correct prefix
 - [ ] Observer event emitted (fire-and-forget)
 - [ ] User sees confirmation with appropriate next steps
-</main>
 </main>

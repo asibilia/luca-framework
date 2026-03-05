@@ -62,7 +62,7 @@ if [ -d "$NOTES_DIR" ]; then
     NOTE_CONTENT=""
     for note_file in $URGENT_NOTES; do
       # Extract body (skip frontmatter between --- delimiters)
-      BODY=$(sed -n '/^---$/,/^---$/!p' "$note_file" | tr '\n' ' ' | xargs)
+      BODY=$(awk '/^---$/ {f=!f; next} !f' "$note_file" | tr '\n' ' ' | xargs)
       NOTE_CONTENT="${NOTE_CONTENT}\n- ${BODY}"
       # Move to done/
       mkdir -p "$NOTES_DIR/done"
@@ -117,7 +117,7 @@ CONTEXT_PERCENT=$(printf '%s' "$RESULT" | bun -e "
 EST_TOKENS=$(printf '%s' "$RESULT" | bun -e "
   try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(d.total_tokens || 0)); } catch { process.stdout.write('0'); }
 " 2>/dev/null || echo "0")
-if [ -n "$SESSION_ID" ]; then
+if [ -n "$SESSION_ID" ] && [ -n "${RESULT:-}" ]; then
   curl -s -X POST "$STDB_URL/database/luca-observer/call/snapshot_context" \
     -H "Content-Type: application/json" \
     -d "{\"args\":{\"sessionId\":\"$SESSION_ID\",\"contextPercent\":$CONTEXT_PERCENT,\"messageCount\":0,\"estimatedTokens\":$EST_TOKENS,\"phase\":\"\",\"timestamp\":$(date +%s)000}}" \

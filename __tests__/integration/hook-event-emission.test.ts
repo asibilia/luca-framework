@@ -159,8 +159,7 @@ describe("Hook Event Emission", () => {
       //
       // Any of [0, 1, 2] is acceptable here because we're testing
       // commit pattern detection, not the quality checks themselves.
-      expect(result.exitCode).toBeGreaterThanOrEqual(0);
-      expect(result.exitCode).toBeLessThanOrEqual(2);
+      expect([0, 1, 2]).toContain(result.exitCode);
 
       // If it blocked (exit 2), stdout should contain deny JSON
       if (result.exitCode === 2) {
@@ -194,8 +193,7 @@ describe("Hook Event Emission", () => {
         );
       }
       // Exit 0 (pass), 1 (script error), or 2 (blocked) are all valid
-      expect(result.exitCode).toBeGreaterThanOrEqual(0);
-      expect(result.exitCode).toBeLessThanOrEqual(2);
+      expect([0, 1, 2]).toContain(result.exitCode);
     });
   });
 

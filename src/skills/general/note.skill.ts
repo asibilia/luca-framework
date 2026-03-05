@@ -14,8 +14,7 @@ const noteConfig: SkillConfig = {
   sections: [
     {
       title: "main",
-      content: `<main>
-# Luca Developer Note
+      content: `# Luca Developer Note
 
 Capture ideas as roadmap phases (default) or queue notes for agent pickup.
 
@@ -189,8 +188,7 @@ Advisory reminder at pre-commit time. Not auto-consumed — agent reads and acts
 - [ ] Phase mode: directory created, roadmap updated, state updated
 - [ ] Note modes: file created in \`.planning/notes/\` with correct prefix
 - [ ] Observer event emitted (fire-and-forget)
-- [ ] User sees confirmation with appropriate next steps
-</main>`,
+- [ ] User sees confirmation with appropriate next steps`,
       order: 1,
     },
   ],

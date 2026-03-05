@@ -237,12 +237,30 @@ ${ERRORS}"
     process.stdout.write(JSON.stringify(output));
   "
 
-  # Emit observer event — commit blocked
+  # Emit observer event — commit blocked (legacy REST)
   OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
   curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
     -H "Content-Type: application/json" \
     -d "{\"event_type\":\"commit.blocked\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"test_exit\":$TEST_EXIT,\"tsc_exit\":$TSC_EXIT}}" \
     >/dev/null 2>&1 &
+
+  # Emit commit.blocked to SpacetimeDB (fire-and-forget)
+  STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+  BLOCK_SESSION_ID=""
+  if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+    BLOCK_SESSION_ID=$(bun -e "
+      try {
+        const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+        process.stdout.write(s.context?.session_id || '');
+      } catch { process.stdout.write(''); }
+    " 2>/dev/null || echo "")
+  fi
+  if [ -n "$BLOCK_SESSION_ID" ]; then
+    curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+      -H "Content-Type: application/json" \
+      -d "{\"args\":{\"eventType\":\"commit.blocked\",\"sessionId\":\"$BLOCK_SESSION_ID\",\"agentName\":\"\",\"toolName\":\"git\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{\\\"test_exit\\\":$TEST_EXIT,\\\"tsc_exit\\\":$TSC_EXIT}\",\"timestamp\":$(date +%s)000}}" \
+      --connect-timeout 1 --max-time 2 &>/dev/null &
+  fi
 
   # Exit 2 = block
   exit 2
