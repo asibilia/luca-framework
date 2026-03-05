@@ -13,7 +13,7 @@ import { tables } from "~/module_bindings";
  * Subscribes to the metrics table (singleton, id=1) and returns
  * the parsed metrics object.
  *
- * @returns Object with data, loading state, and error
+ * @returns Object with data and loading state
  */
 export function useMetrics() {
   const [rows, isLoading] = useTable(tables.metrics);
@@ -25,5 +25,5 @@ export function useMetrics() {
     return safeJsonParse<Record<string, unknown> | null>(row.metricsJson, null);
   }, [rows]);
 
-  return { data, loading: isLoading, error: null as string | null };
+  return { data, loading: isLoading };
 }

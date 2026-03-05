@@ -43,5 +43,5 @@ export function useIterationHistory() {
     return orderBy(mapped, "iteration", "asc");
   }, [rows]);
 
-  return { iterations, loading: isLoading, error: null as string | null };
+  return { iterations, loading: isLoading };
 }

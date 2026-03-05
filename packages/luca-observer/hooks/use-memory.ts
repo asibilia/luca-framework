@@ -19,7 +19,7 @@ export type MemoryFiles = {
  * Subscribes to the memory_files table (singleton, id=1) and returns
  * the latest BRAIN.md, MEMORY.md, and WORKING.md content.
  *
- * @returns Object with data (MemoryFiles), loading state, and error
+ * @returns Object with data (MemoryFiles) and loading state
  */
 export function useMemory() {
   const [rows, isLoading] = useTable(tables.memoryFiles);
@@ -36,5 +36,5 @@ export function useMemory() {
     };
   }, [rows]);
 
-  return { data, loading: isLoading, error: null as string | null };
+  return { data, loading: isLoading };
 }

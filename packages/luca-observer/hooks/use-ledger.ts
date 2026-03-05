@@ -15,7 +15,7 @@ import { tables } from "~/module_bindings";
  * entries ordered by timestamp.
  *
  * @param tail - Number of most recent entries to return (default 50)
- * @returns Object with entries, total count, loading state, and error
+ * @returns Object with entries, total count, and loading state
  */
 export function useLedger(tail = 50) {
   const [rows, isLoading] = useTable(tables.ledgerEntries);
@@ -54,6 +54,5 @@ export function useLedger(tail = 50) {
     entries,
     totalCount,
     loading: isLoading,
-    error: null as string | null,
   };
 }

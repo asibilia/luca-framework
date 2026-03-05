@@ -13,7 +13,7 @@ import { tables } from "~/module_bindings";
  * Subscribes to the session_plans table (singleton, id=1) and returns
  * the current session plan with WSJF scores.
  *
- * @returns Object with plan, hasPlan flag, loading state, and error
+ * @returns Object with plan, hasPlan flag, and loading state
  */
 export function usePlanning() {
   const [rows, isLoading] = useTable(tables.sessionPlans);
@@ -35,6 +35,5 @@ export function usePlanning() {
     plan,
     hasPlan,
     loading: isLoading,
-    error: null as string | null,
   };
 }

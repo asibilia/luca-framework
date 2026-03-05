@@ -12,7 +12,7 @@ import { tables } from "~/module_bindings";
  * Subscribes to the workflow_state table (singleton, id=1) and returns
  * the latest workflow snapshot.
  *
- * @returns Object with data, loading state, and error
+ * @returns Object with data and loading state
  */
 export function useWorkflowState() {
   const [rows, isLoading] = useTable(tables.workflowState);
@@ -34,5 +34,5 @@ export function useWorkflowState() {
     };
   }, [rows]);
 
-  return { data, loading: isLoading, error: null as string | null };
+  return { data, loading: isLoading };
 }

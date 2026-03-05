@@ -13,7 +13,7 @@ import { tables } from "~/module_bindings";
  * Subscribes to the tribunal_results table (singleton, id=1) and returns
  * the latest tribunal/debate result.
  *
- * @returns Object with result, hasResult flag, loading state, and error
+ * @returns Object with result, hasResult flag, and loading state
  */
 export function useTribunal() {
   const [rows, isLoading] = useTable(tables.tribunalResults);
@@ -35,6 +35,5 @@ export function useTribunal() {
     result,
     hasResult,
     loading: isLoading,
-    error: null as string | null,
   };
 }
