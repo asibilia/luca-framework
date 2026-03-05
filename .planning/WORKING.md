@@ -2,13 +2,16 @@
 
 ## Session Info
 
-- **Started**: (new session)
-- **Workflow**: idle
+Auto-persisted at 2026-03-05T16:29:42Z (zone: stop)
 
-## Findings
+---
 
-(none yet)
+_Session Status_
 
-## Candidate Learnings
+- [ ] Active
+- [ ] Learnings extracted
+- [x] Ready to clear
 
-(none yet)
+
+---
+*Session ended: 2026-03-05T16:29:45Z (reason: clear)*
