@@ -247,6 +247,76 @@
 - [x] Replace manual SQL escaping in ledger.ts with strict input validation (UUID format, allowlists, ISO8601) (#33)
 - [x] Add tests for malicious SQL input scenarios (#33)
 
+### Phase 114 — Integration & Data Pipeline Fixes
+
+**Goal:** Fix all integration gaps and data pipeline issues: harness→SpacetimeDB wiring, useLedger field mapping, camelCase→snake_case reducer payloads, double ledger write, and syntax cleanup.
+
+**Depends on:** Phase 113
+
+**Priority:** Must (integration correctness)
+
+**Gap closure:** Audit issues #7 (HIGH), #1 (HIGH), #11 (HIGH), plus MEDIUM integration gaps
+
+- [ ] Wire harness runner to call `update_harness_result` SpacetimeDB reducer after writing JSON results
+- [ ] Fix `useLedger` field mapping: `row.action`→`event_type`, `row.result`→`current_state` (currently inverted)
+- [ ] Fix `useLedger` timestamp: convert SpacetimeDB timestamp instead of mapping to empty string
+- [ ] Fix double ledger write in `bridge.ts:712` — reducer called twice per transition with conflicting payloads
+- [ ] Convert all 12 `callReducer` payloads from camelCase to snake_case across observer-emitter.ts + 4 other files
+- [ ] Clean up `!fromSpacetimeDB!` suspicious syntax in observer-emitter.ts
+
+### Phase 115 — Observer DRY & Hook Consolidation
+
+**Goal:** Eliminate critical code duplication in observer: module_bindings triplication, phantom error fields, duplicated hook pipelines, and shared utilities extraction.
+
+**Depends on:** Phase 114
+
+**Priority:** Must (DRY / maintainability)
+
+**Gap closure:** Audit issues CRITICAL #1, HIGH #2-5, MEDIUM JSON.parse/EmptyState duplication
+
+- [ ] Consolidate module_bindings from 3 copies (~130 files each) to single canonical location with aliases
+- [ ] Remove phantom `error: null as string | null` from all 14 observer hooks
+- [ ] Extract `useFilteredTable` factory hook from 5 duplicated filter/sort/slice pipelines (use-token-usage, use-tool-calls, use-decision-trail, use-context-health, use-cost-tracking)
+- [ ] Extract `safeJsonParse` utility from 6 hooks with identical JSON.parse try/catch blocks
+- [ ] Extract shared `EmptyState` component from 7 duplicated empty state UI patterns
+- [ ] Consolidate SpacetimeDB connection constants (URL, DB name, env vars) from observer-emitter.ts + spacetimedb-client.ts into shared config
+
+### Phase 116 — Framework Architecture & Bridge Cleanup
+
+**Goal:** Reduce bridge boilerplate, fix cross-domain imports, add observer schema sync, migrate node:fs to Bun, and add security annotations.
+
+**Depends on:** Phase 114
+
+**Priority:** Should (architecture / convention)
+
+**Gap closure:** Audit issues HIGH #5-6, MEDIUM architecture/security findings
+
+- [ ] Extract `readWithFallback` helper from 5 duplicated SpacetimeDB-primary + JSON-fallback read handlers in bridge.ts (~30 lines each)
+- [ ] Fix cross-subdirectory `__helpers/` import in config-generators.ts (importing from pi-extensions/\_\_helpers/sanitize)
+- [ ] Add automated sync mechanism or drift check for observer-local schema mirrors in lib/types.ts
+- [ ] Migrate `node:fs` usage to Bun.file API in ledger.ts and suspend-checkpoint.ts
+- [ ] Add security annotation to `queryTable()` raw SQL in spacetimedb-client.ts
+- [ ] Add circuit breaker pattern documentation for callReducer error handling
+
+### Phase 117 — Observer Styling & Security Hardening
+
+**Goal:** Fix Tailwind arbitrary values, add dark mode support, improve responsive layout, and close security hardening recommendations.
+
+**Depends on:** Phase 115
+
+**Priority:** Should (UI polish / security)
+
+**Gap closure:** Audit issues CRITICAL #2, HIGH #8-10, MEDIUM security recommendations
+
+- [ ] Replace hardcoded `lg:grid-cols-[1fr_320px]` in detail-layout.tsx with standard Tailwind grid or theme extension
+- [ ] Add dark mode support to all observer pages (currently light-only color values)
+- [ ] Fix overly aggressive responsive grid overrides in observer components
+- [ ] Replace arbitrary `max-w-[1400px]` container width with Tailwind theme value
+- [ ] Extend SSRF allowlist to include `0.0.0.0` and numeric IP representations
+- [ ] Fix production CSP `connect-src` to not hardcode `ws://localhost:3000`
+- [ ] Remove `unsafe-inline` from style-src in CSP
+- [ ] Sanitize error messages that reflect raw input; fix shell injection surface in luca-observer.js open command
+
 ---
 
 ## Backlog (Future)
@@ -350,4 +420,4 @@ _P3 — Data:_
 
 ---
 
-_Roadmap updated: 2026-03-04 (v2.7.0 phases 112-113 added from repo audit P0 findings)_
+_Roadmap updated: 2026-03-04 (v2.7.0 gap closure phases 114-117 added from milestone audit)_
