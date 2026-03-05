@@ -266,4 +266,16 @@ describe("isLocalhostUrl", () => {
   test("returns false for localhost without scheme", () => {
     expect(isLocalhostUrl("localhost:3000")).toBe(false);
   });
+
+  test("returns true for http://0.0.0.0:3000", () => {
+    expect(isLocalhostUrl("http://0.0.0.0:3000")).toBe(true);
+  });
+
+  test("returns true for zero-padded 127.000.000.001", () => {
+    expect(isLocalhostUrl("http://127.000.000.001:3000")).toBe(true);
+  });
+
+  test("returns false for 127.0.0.1.evil.com (subdomain trick)", () => {
+    expect(isLocalhostUrl("http://127.0.0.1.evil.com:3000")).toBe(false);
+  });
 });

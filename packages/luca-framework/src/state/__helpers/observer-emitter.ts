@@ -21,30 +21,57 @@
 import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
-const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
+
+/**
+ * Normalize a hostname to catch numeric IP bypass attempts.
+ *
+ * Handles representations like:
+ * - `127.000.000.001` (zero-padded octets)
+ * - Other non-canonical dotted-decimal forms
+ *
+ * Strips leading zeros from each octet to produce canonical form
+ * (e.g., `127.000.000.001` -> `127.0.0.1`).
+ *
+ * @param hostname - The hostname string to normalize
+ * @returns The normalized hostname string
+ */
+function normalizeHostname(hostname: string): string {
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return hostname
+      .split(".")
+      .map((octet) => String(parseInt(octet, 10)))
+      .join(".");
+  }
+  return hostname;
+}
 
 /**
  * Validate that a URL points to a localhost address.
  *
  * Used as an SSRF guard to ensure LUCA_OBSERVER_URL cannot be
- * pointed at arbitrary remote hosts.
+ * pointed at arbitrary remote hosts. Normalizes hostnames to
+ * prevent bypasses via zero-padded octets (e.g., 127.000.000.001).
  *
  * @param rawUrl - The URL string to validate
  * @returns true if the URL is a valid localhost URL
  *
  * @example
  * ```typescript
- * isLocalhostUrl('http://localhost:3000')   // true
- * isLocalhostUrl('http://127.0.0.1:3000')  // true
- * isLocalhostUrl('http://[::1]:3000')       // true
- * isLocalhostUrl('http://evil.com:3000')    // false
- * isLocalhostUrl('not-a-url')               // false
+ * isLocalhostUrl('http://localhost:3000')        // true
+ * isLocalhostUrl('http://127.0.0.1:3000')       // true
+ * isLocalhostUrl('http://0.0.0.0:3000')         // true
+ * isLocalhostUrl('http://[::1]:3000')            // true
+ * isLocalhostUrl('http://127.000.000.001:3000') // true (normalized)
+ * isLocalhostUrl('http://evil.com:3000')         // false
+ * isLocalhostUrl('not-a-url')                    // false
  * ```
  */
 export function isLocalhostUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
-    return ALLOWED_HOSTS.has(parsed.hostname);
+    const hostname = normalizeHostname(parsed.hostname);
+    return ALLOWED_HOSTS.has(hostname);
   } catch {
     return false;
   }
