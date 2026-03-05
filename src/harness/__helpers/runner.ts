@@ -269,6 +269,34 @@ export async function runHarness(
       timestamp: result.timestamp,
     };
     await Bun.write(resultPath, JSON.stringify(snakeCaseResult, null, 2));
+
+    // Fire-and-forget: send harness results to SpacetimeDB for observer dashboard.
+    // Uses camelCase field names to match SpacetimeDB module_bindings schema.
+    // Plain numbers (not BigInt) because JSON.stringify cannot serialize BigInt.
+    try {
+      const stdbUrl =
+        process.env.LUCA_SPACETIMEDB_URL ||
+        process.env.LUCA_OBSERVER_URL ||
+        "http://localhost:3000";
+      const dbName = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
+      const reducerUrl = `${stdbUrl.replace(/\/+$/, "")}/v1/database/${dbName}/call/update_harness_result`;
+      fetch(reducerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passed: result.status === "passed",
+          totalErrors: result.totalErrors,
+          totalWarnings: result.totalWarnings,
+          checksJson: JSON.stringify(result.checks),
+          timestamp: Date.now(),
+        }),
+        signal: AbortSignal.timeout(2000),
+      }).catch(() => {
+        // Best-effort — SpacetimeDB may not be running
+      });
+    } catch {
+      // Best-effort — never fail the harness run
+    }
   } catch {
     // Best-effort persistence -- do not fail the harness run
   }
