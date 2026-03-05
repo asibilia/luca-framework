@@ -101,7 +101,7 @@ if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
 fi
 
 # Emit context snapshot to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
 SESSION_ID=""
 if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   SESSION_ID=$(bun -e "

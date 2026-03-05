@@ -14,8 +14,7 @@ export const DATABASE_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
 /**
  * Resolve the SpacetimeDB base URL from environment variables.
  *
- * Checks LUCA_SPACETIMEDB_URL, then LUCA_OBSERVER_URL, then falls back
- * to the default localhost URL.
+ * Checks LUCA_SPACETIMEDB_URL, then falls back to the default localhost URL.
  *
  * @returns The resolved base URL
  *
@@ -26,9 +25,5 @@ export const DATABASE_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
  * ```
  */
 export function resolveStdbUrl(): string {
-  return (
-    process.env.LUCA_SPACETIMEDB_URL ||
-    process.env.LUCA_OBSERVER_URL ||
-    DEFAULT_SPACETIMEDB_URL
-  );
+  return process.env.LUCA_SPACETIMEDB_URL || DEFAULT_SPACETIMEDB_URL;
 }

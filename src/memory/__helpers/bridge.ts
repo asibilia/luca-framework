@@ -104,10 +104,7 @@ async function getSpacetimeDBClient(): Promise<{
 
   try {
     // Use the observer-emitter URL resolution and SSRF validation
-    const url =
-      process.env.LUCA_SPACETIMEDB_URL ||
-      process.env.LUCA_OBSERVER_URL ||
-      "http://localhost:3000";
+    const url = process.env.LUCA_SPACETIMEDB_URL || "http://localhost:3000";
     const dbName = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
 
     _queryOne = async <T>(sql: string): Promise<T | null> => {

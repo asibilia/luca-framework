@@ -275,9 +275,7 @@ export async function runHarness(
     // Plain numbers (not BigInt) because JSON.stringify cannot serialize BigInt.
     try {
       const stdbUrl =
-        process.env.LUCA_SPACETIMEDB_URL ||
-        process.env.LUCA_OBSERVER_URL ||
-        "http://localhost:3000";
+        process.env.LUCA_SPACETIMEDB_URL || "http://localhost:3000";
       const dbName = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
       const reducerUrl = `${stdbUrl.replace(/\/+$/, "")}/v1/database/${dbName}/call/update_harness_result`;
       fetch(reducerUrl, {

@@ -61,7 +61,7 @@ END_REASON="${END_REASON:0:100}"
 rm -f "$PROJECT_DIR/.claude/.session-lock"
 
 # Emit session.end event to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-${LUCA_OBSERVER_URL:-http://localhost:3000}}"
+STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
 # Read session_id from state.json if available
 SESSION_ID=""
 if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
