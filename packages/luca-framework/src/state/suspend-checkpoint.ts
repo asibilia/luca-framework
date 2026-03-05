@@ -10,7 +10,7 @@
  * @module luca-state/suspend-checkpoint
  */
 import { z } from "zod";
-import { mkdirSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { sanitizeJsonParse } from "./sanitize";
 import { queryOne } from "./__helpers/spacetimedb-client";
 import { callReducer } from "./__helpers/observer-emitter";
@@ -72,7 +72,7 @@ export async function createSuspendCheckpoint(
   });
 
   // Backup: write to local file
-  mkdirSync(CHECKPOINTS_DIR, { recursive: true });
+  await mkdir(CHECKPOINTS_DIR, { recursive: true });
   const filePath = `${CHECKPOINTS_DIR}/suspend-${parsed.phase_id}.json`;
   await Bun.write(filePath, JSON.stringify(parsed, null, 2));
   return filePath;
@@ -95,6 +95,7 @@ export async function loadSuspendCheckpoint(
 ): Promise<SuspendCheckpoint> {
   // Primary: try SpacetimeDB
   try {
+    // phaseId is parseInt-validated and Number.isFinite-checked — safe for interpolation.
     const row = await queryOne<{ checkpointJson: string }>(
       `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
     );

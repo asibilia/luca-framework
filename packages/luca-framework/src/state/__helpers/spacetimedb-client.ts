@@ -25,15 +25,53 @@ const QUERY_TIMEOUT_MS = 2000;
  * Posts to `${url}/database/${dbName}/sql` with the query string.
  * Validates the URL is localhost before making the request.
  *
- * @param sql - The SQL query to execute
+ * @security **Raw SQL Interface** -- This function passes the `sql` parameter
+ * directly to SpacetimeDB's SQL HTTP API without parameterization. SpacetimeDB
+ * does not currently support prepared statements via its HTTP API.
+ *
+ * **Injection Mitigation Strategy (defense-in-depth):**
+ * 1. **Static SQL**: Most callers use static SQL strings with no interpolation
+ *    (e.g., `"SELECT * FROM workflow_state WHERE id = 1"`).
+ * 2. **Validated integers**: Callers that interpolate values use `parseInt()`
+ *    with `Number.isFinite()` validation before interpolation (e.g.,
+ *    `phaseId` in bridge.ts and suspend-checkpoint.ts).
+ * 3. **Allowlist validation**: Dynamic string values (session_id, event_type)
+ *    are validated via `validateLedgerFilters()` in ledger.ts, which uses
+ *    regex allowlists and enum checks before any SQL interpolation.
+ * 4. **Belt-and-suspenders escaping**: Even after validation, string values
+ *    are escaped with `.replace(/'/g, "''")` as a secondary safety layer.
+ * 5. **Localhost-only**: SSRF guard ensures queries only target localhost,
+ *    limiting blast radius even if injection occurs.
+ *
+ * **Safe caller patterns:**
+ * - `bridge.ts`: All read handlers use static SQL or validated integers
+ * - `ledger.ts`: Uses `validateLedgerFilters()` before building WHERE clauses
+ * - `suspend-checkpoint.ts`: Uses `parseInt()`-validated `phaseId`
+ *
+ * **Do NOT** pass unsanitized user input to this function. All callers must
+ * validate/sanitize interpolated values before constructing the SQL string.
+ *
+ * @param sql - The SQL query to execute. Must use only static strings or
+ *   pre-validated values. Never interpolate raw user input.
  * @returns Array of rows matching the query
  * @throws If the query fails or SpacetimeDB is unreachable
  *
  * @example
  * ```typescript
- * const entries = await queryTable<LedgerEntry>(
- *   "SELECT * FROM ledger_entries WHERE session_id = 'abc-123'"
+ * // Safe: static SQL
+ * const state = await queryTable<WorkflowState>(
+ *   "SELECT * FROM workflow_state WHERE id = 1"
  * );
+ *
+ * // Safe: parseInt-validated integer
+ * const phaseId = parseInt(rawPhaseId, 10);
+ * if (!Number.isFinite(phaseId)) throw new Error("Invalid phase");
+ * const checkpoint = await queryTable<Checkpoint>(
+ *   `SELECT * FROM suspend_checkpoints WHERE phaseId = ${phaseId}`
+ * );
+ *
+ * // UNSAFE: raw string interpolation
+ * // const bad = await queryTable(`SELECT * FROM t WHERE name = '${userInput}'`);
  * ```
  */
 export async function queryTable<T>(sql: string): Promise<T[]> {

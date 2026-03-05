@@ -68,8 +68,49 @@ function buildReducerUrl(baseUrl: string, reducerName: string): string {
  * This is the low-level function used by all higher-level emitters.
  * Silently catches all errors to avoid disrupting the caller.
  *
- * @param reducerName - The reducer function name
- * @param args - The arguments to pass to the reducer
+ * ## Retry Pattern
+ *
+ * Uses a simple single-retry strategy:
+ * 1. Attempt the HTTP POST with a 2s timeout
+ * 2. On failure, wait 1s and retry once with a fresh 2s timeout
+ * 3. If the retry also fails, log the error and give up
+ *
+ * First-attempt failures are only logged when `LUCA_DEBUG` is set,
+ * since a retry follows. Retry failures are always logged because
+ * they represent actual data loss.
+ *
+ * ## Limitations
+ *
+ * - **No circuit breaker**: If SpacetimeDB is down, every call attempt
+ *   will fail and retry, adding ~3s of latency per call (2s timeout +
+ *   1s delay + 2s retry timeout). With multiple concurrent emitters
+ *   (state transitions, ledger entries, observer events), this can
+ *   accumulate. However, since all calls are fire-and-forget (never
+ *   awaited by the caller), this latency is absorbed by background
+ *   promises and does not block the workflow.
+ *
+ * - **No backoff**: The retry uses a fixed 1s delay. For transient
+ *   network issues this is usually sufficient; for sustained outages
+ *   it does not help but also does not cause harm (fire-and-forget).
+ *
+ * - **No state tracking**: Each call is independent. There is no
+ *   shared "SpacetimeDB is down" flag to avoid unnecessary attempts.
+ *
+ * ## When to Add a Full Circuit Breaker
+ *
+ * A circuit breaker (with open/half-open/closed states) would be
+ * warranted if:
+ * 1. Callers start awaiting reducer results (not fire-and-forget)
+ * 2. The retry timeout accumulation causes observable workflow delays
+ * 3. SpacetimeDB outages become frequent enough to waste resources
+ * 4. Rate limiting or backpressure signals need to be respected
+ *
+ * Until any of these conditions arise, the current single-retry
+ * pattern is the correct trade-off: simple, no external dependencies,
+ * and no workflow disruption.
+ *
+ * @param reducerName - The reducer function name (e.g., "ingest_event")
+ * @param args - The arguments to pass to the reducer (JSON-serializable)
  */
 export function callReducer(
   reducerName: string,
