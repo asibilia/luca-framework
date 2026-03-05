@@ -343,7 +343,11 @@ async function handleReadField(args: string[]): Promise<void> {
     fromRow: (row: { contextJson: string }) => {
       if (!row.contextJson) return null;
       const ctx = JSON.parse(row.contextJson);
-      return { field: fieldPath, value: get(ctx, fieldPath) };
+      const value = get(ctx, fieldPath);
+      // Return null when value is missing so readWithFallback
+      // falls through to the JSON file where the data may exist.
+      if (value === undefined) return null;
+      return { field: fieldPath, value };
     },
     fromSnapshot: (ctx) => ({
       field: fieldPath,
@@ -681,6 +685,12 @@ async function handleEnsureInit(args: string[]): Promise<void> {
     // State already exists -- return current info
     const loadResult = await loadPersistedActor();
     if (loadResult.success) {
+      // Re-persist to SpacetimeDB to ensure it stays in sync with
+      // the local JSON file. Without this, SpacetimeDB can stay stale
+      // if a previous persist failed (fire-and-forget) and hooks that
+      // read SpacetimeDB as primary will get empty/outdated values.
+      await persistActor(loadResult.data);
+
       const snapshot = loadResult.data.getSnapshot();
       console.log(
         JSON.stringify({

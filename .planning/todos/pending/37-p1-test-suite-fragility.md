@@ -23,3 +23,4 @@ priority: P1
 - New developers will run `bun test`, get failures, assume they broke something
 - CI/CD cannot validate the full suite
 - Only mentioned in CLAUDE.md — not in README, troubleshooting, or test docs
+- Merged with todo #61 (full-suite-test-isolation-fix) which describes the same root cause from the v2.8.0 done-todo audit

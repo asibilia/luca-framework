@@ -11,7 +11,7 @@ export { skillRegistry } from "./__helpers/build-skill-registry";
 export { createSkill } from "./__helpers/create-skill";
 
 // Schemas
-export { SkillEvalSchema } from "./__schemas/skill.schemas";
+export { SkillConfigSchema, SkillEvalSchema } from "./__schemas/skill.schemas";
 
 // Types
 export type {

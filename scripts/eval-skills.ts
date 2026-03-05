@@ -11,8 +11,7 @@
  * is future work. This script validates eval schemas and reports what would
  * be tested.
  */
-import { skillRegistry } from "~/skills/__helpers/build-skill-registry";
-import { SkillEvalSchema } from "~/skills/__schemas/skill.schemas";
+import { skillRegistry, SkillEvalSchema } from "~/skills";
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -26,6 +25,8 @@ const jsonOutput = args.includes("--json");
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+// NOTE: These types use snake_case because they serialize to JSON output.
+// Changing to camelCase would break consumers of `--json` output.
 type EvalEntry = {
   skill: string;
   description: string;

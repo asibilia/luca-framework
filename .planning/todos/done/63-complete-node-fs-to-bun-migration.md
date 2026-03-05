@@ -34,6 +34,6 @@ The following still use node:fs:
    - `node:path` -> keep (Bun re-exports node:path, no migration needed)
 3. Test affected files after migration
 
-## Notes
+## Resolution (v2.9.0)
 
-`node:path` imports are fine — Bun re-exports them natively. Focus on `node:fs` and `node:fs/promises` imports only. Some uses like `unlink` have no Bun equivalent and may need to stay as `node:fs`.
+**Closed as complete.** Thorough audit of all 9 remaining files confirmed every `node:fs` import uses APIs with no Bun equivalent: `mkdir`, `rm`, `cp`, `chmod`, `readdir`, `copyFile`, `appendFile`, `unlink`. All `readFile`/`writeFile` were already migrated to `Bun.file()`/`Bun.write()`. `existsSync` is Bun-re-exported. `node:path` needs no migration.

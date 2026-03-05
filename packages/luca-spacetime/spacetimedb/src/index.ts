@@ -561,6 +561,13 @@ export const append_audit_finding = spacetimedb.reducer(
     createdAt: t.u64(),
   },
   (ctx, args) => {
+    const VALID_SEVERITIES = ["critical", "high", "medium", "low", "info"];
+    if (!VALID_SEVERITIES.includes(args.severity)) {
+      throw new SenderError(
+        `Invalid severity: must be one of ${VALID_SEVERITIES.join(", ")}`,
+      );
+    }
+
     ctx.db.auditFindings.insert({
       id: 0n,
       sessionId: args.sessionId,
@@ -591,6 +598,23 @@ export const update_finding_status = spacetimedb.reducer(
     resolvedAt: t.u64(),
   },
   (ctx, args) => {
+    const VALID_STATUSES = [
+      "pending",
+      "in_progress",
+      "resolved",
+      "dismissed",
+      "wont_fix",
+    ];
+    if (!VALID_STATUSES.includes(args.status)) {
+      throw new SenderError(
+        `Invalid status: must be one of ${VALID_STATUSES.join(", ")}`,
+      );
+    }
+
+    if (args.resolutionNotes.length > 4096) {
+      throw new SenderError("resolutionNotes exceeds 4096 character limit");
+    }
+
     const existing = ctx.db.auditFindings.id.find(args.findingId);
     if (!existing) throw new SenderError("Audit finding not found");
     ctx.db.auditFindings.id.update({
@@ -613,6 +637,9 @@ export const bulk_dismiss_findings = spacetimedb.reducer(
   },
   (ctx, args) => {
     if (!args.sessionId) throw new SenderError("sessionId is required");
+    // NOTE: Single-user tool — no multi-tenant authz needed.
+    // Full table scan is acceptable for single-user workload. If scaling
+    // to multi-user, add a btree index on sessionId and use .filter().
     const allRows = [...ctx.db.auditFindings.iter()];
     const matches = allRows.filter((row) => row.sessionId === args.sessionId);
     for (const row of matches) {
