@@ -39,7 +39,7 @@ export function useFilteredTable<TRow, TMapped extends Record<string, unknown>>(
   mapper: (row: TRow) => TMapped,
   options: {
     sessionId?: string;
-    sortBy?: string;
+    sortBy?: string | null;
     sortOrder?: "asc" | "desc";
     limit?: number;
   } = {},
