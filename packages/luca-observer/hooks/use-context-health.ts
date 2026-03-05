@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-
-import orderBy from "lodash/orderBy";
-import { useTable } from "spacetimedb/react";
+import { useCallback, useMemo } from "react";
 
 import { tables } from "~/module_bindings";
+
+import { useFilteredTable } from "./use-filtered-table";
 
 /**
  * React hook for real-time context-window health from SpacetimeDB.
@@ -18,14 +17,16 @@ import { tables } from "~/module_bindings";
  * @returns Object with snapshots, latest snapshot, health status, and loading state
  */
 export function useContextHealth(sessionId?: string, limit = 50) {
-  const [rows, isLoading] = useTable(tables.contextSnapshots);
-
-  const { snapshots, latest, health } = useMemo(() => {
-    const filtered = sessionId
-      ? rows.filter((r) => r.sessionId === sessionId)
-      : rows;
-
-    const mapped = filtered.map((row) => ({
+  const mapper = useCallback(
+    (row: {
+      id: bigint;
+      sessionId: string;
+      contextPercent: bigint;
+      messageCount: bigint;
+      estimatedTokens: bigint;
+      phase: string;
+      timestamp: bigint;
+    }) => ({
       id: Number(row.id),
       session_id: row.sessionId,
       context_percent: Number(row.contextPercent),
@@ -33,13 +34,19 @@ export function useContextHealth(sessionId?: string, limit = 50) {
       estimated_tokens: Number(row.estimatedTokens),
       phase: row.phase,
       timestamp: Number(row.timestamp),
-    }));
+    }),
+    [],
+  );
 
-    const sorted = orderBy(mapped, "timestamp", "desc");
-    const limited = sorted.slice(0, limit);
-    const latest = limited[0] ?? null;
+  const { rows: snapshots, loading } = useFilteredTable(
+    tables.contextSnapshots,
+    mapper,
+    { sessionId, limit },
+  );
 
-    // Determine health based on context usage percentage
+  const { latest, health } = useMemo(() => {
+    const latest = snapshots[0] ?? null;
+
     let health: "peak" | "good" | "degrading" | "critical" = "peak";
     if (latest) {
       const pct = latest.context_percent;
@@ -48,13 +55,13 @@ export function useContextHealth(sessionId?: string, limit = 50) {
       else if (pct >= 30) health = "good";
     }
 
-    return { snapshots: limited, latest, health };
-  }, [rows, sessionId, limit]);
+    return { latest, health };
+  }, [snapshots]);
 
   return {
     snapshots,
     latest,
     health,
-    loading: isLoading,
+    loading,
   };
 }
