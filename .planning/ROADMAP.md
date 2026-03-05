@@ -274,12 +274,12 @@
 
 **Gap closure:** Audit issues CRITICAL #1, HIGH #2-5, MEDIUM JSON.parse/EmptyState duplication
 
-- [ ] Consolidate module_bindings from 3 copies (~130 files each) to single canonical location with aliases
-- [ ] Remove phantom `error: null as string | null` from all 14 observer hooks
-- [ ] Extract `useFilteredTable` factory hook from 5 duplicated filter/sort/slice pipelines (use-token-usage, use-tool-calls, use-decision-trail, use-context-health, use-cost-tracking)
-- [ ] Extract `safeJsonParse` utility from 6 hooks with identical JSON.parse try/catch blocks
-- [ ] Extract shared `EmptyState` component from 7 duplicated empty state UI patterns
-- [ ] ~~Consolidate SpacetimeDB connection constants~~ (moved to Phase 114, Task 1.1)
+- [x] Consolidate module_bindings from 3 copies (~130 files each) to single canonical location with aliases
+- [x] Remove phantom `error: null as string | null` from all 14 observer hooks
+- [x] Extract `useFilteredTable` factory hook from 5 duplicated filter/sort/slice pipelines (use-token-usage, use-tool-calls, use-decision-trail, use-context-health, use-cost-tracking)
+- [x] Extract `safeJsonParse` utility from 6 hooks with identical JSON.parse try/catch blocks
+- [x] Extract shared `EmptyState` component from 7 duplicated empty state UI patterns
+- [x] ~~Consolidate SpacetimeDB connection constants~~ (moved to Phase 114, Task 1.1)
 
 ### Phase 116 — Framework Architecture & Bridge Cleanup
 
