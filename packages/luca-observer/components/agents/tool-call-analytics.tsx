@@ -2,6 +2,7 @@
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { useToolCalls } from "~/hooks/use-tool-calls";
 
 /**
@@ -14,23 +15,11 @@ export function ToolCallAnalytics() {
   const { toolCalls, loading } = useToolCalls();
 
   if (loading) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          Loading tool analytics...
-        </p>
-      </div>
-    );
+    return <EmptyState message="Loading tool analytics..." />;
   }
 
   if (toolCalls.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No tool call data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No tool call data" />;
   }
 
   // Aggregate by tool name

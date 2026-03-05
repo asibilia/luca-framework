@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import type { IterationRecordSnapshot } from "~/lib/types";
 
 /**
@@ -16,13 +17,7 @@ export function ErrorClassificationBreakdown({
   iterations: IterationRecordSnapshot[];
 }) {
   if (iterations.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No error classification data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No error classification data" />;
   }
 
   const classifications = [

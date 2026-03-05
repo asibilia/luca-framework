@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import type { HarnessResultSnapshot } from "~/lib/types";
 
 /**
@@ -17,14 +18,10 @@ export function HarnessSummaryBanner({
 }) {
   if (!result) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-lg font-bold text-muted-foreground">
-          No Harness Run
-        </p>
-        <p className="mt-1 font-mono text-sm text-muted-foreground">
-          Run the verification harness to see results here.
-        </p>
-      </div>
+      <EmptyState
+        title="No Harness Run"
+        message="Run the verification harness to see results here."
+      />
     );
   }
 

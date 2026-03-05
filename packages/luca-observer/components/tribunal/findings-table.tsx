@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Findings table showing aggregate tribunal finding metrics.
  *
@@ -23,11 +25,7 @@ export function FindingsTable({
 }) {
   if (totalFindings === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No findings recorded in this tribunal session.
-        </p>
-      </div>
+      <EmptyState message="No findings recorded in this tribunal session." />
     );
   }
 

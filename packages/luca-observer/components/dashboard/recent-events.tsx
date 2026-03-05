@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { EventBadge } from "~/components/shared/event-badge";
 import { JsonViewer } from "~/components/shared/json-viewer";
 import { SectionHeader } from "~/components/layout/section-header";
@@ -34,12 +35,7 @@ export function RecentEvents({
       />
 
       {events.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            No events yet. Start a Luca workflow to see events stream here in
-            real-time via SpacetimeDB.
-          </p>
-        </div>
+        <EmptyState message="No events yet. Start a Luca workflow to see events stream here in real-time via SpacetimeDB." />
       ) : (
         <div className="flex flex-col gap-1">
           {events.map((event) => (

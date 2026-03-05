@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { CONVERGENCE_STATUS_COLORS } from "~/lib/constants";
 import type { IterationRecordSnapshot } from "~/lib/types";
 
@@ -18,13 +19,7 @@ export function ConvergenceChart({
   iterations: IterationRecordSnapshot[];
 }) {
   if (iterations.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No iteration data to chart
-        </p>
-      </div>
-    );
+    return <EmptyState message="No iteration data to chart" />;
   }
 
   const maxErrors = Math.max(...iterations.map((i) => i.error_count), 1);

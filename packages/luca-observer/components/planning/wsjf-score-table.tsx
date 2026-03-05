@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { COMPLEXITY_LEVELS } from "~/lib/constants";
 import type { WSJFScoredItemSnapshot } from "~/lib/types";
 
@@ -52,13 +53,7 @@ export function WSJFScoreTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   if (items.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No WSJF-scored items in this plan
-        </p>
-      </div>
-    );
+    return <EmptyState message="No WSJF-scored items in this plan" />;
   }
 
   const handleSort = (field: SortField) => {

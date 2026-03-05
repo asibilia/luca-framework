@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Token usage trends displayed as grouped vertical bars.
  *
@@ -19,13 +21,7 @@ export function TokenUsageTrends({
   }[];
 }) {
   if (tokenUsage.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No token usage data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No token usage data" />;
   }
 
   // Show at most 20 recent turns

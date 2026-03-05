@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Horizontal bar breakdown of costs by session.
  *
@@ -19,13 +21,7 @@ export function CostBreakdown({
   }[];
 }) {
   if (costs.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No cost breakdown data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No cost breakdown data" />;
   }
 
   const maxCost = Math.max(...costs.map((c) => c.total_cost_cents), 1);

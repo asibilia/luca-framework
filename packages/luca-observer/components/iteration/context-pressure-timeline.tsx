@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { useContextHealth } from "~/hooks/use-context-health";
 
 /**
@@ -23,23 +24,11 @@ export function ContextPressureTimeline() {
   const { snapshots, loading } = useContextHealth();
 
   if (loading) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          Loading context data...
-        </p>
-      </div>
-    );
+    return <EmptyState message="Loading context data..." />;
   }
 
   if (snapshots.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No context snapshot data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No context snapshot data" />;
   }
 
   // Chronological order

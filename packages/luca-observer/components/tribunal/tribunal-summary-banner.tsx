@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import type { TribunalResultSnapshot } from "~/lib/types";
 
 /**
@@ -18,15 +19,10 @@ export function TribunalSummaryBanner({
 }) {
   if (!result) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-lg font-bold text-muted-foreground">
-          No Tribunal Run
-        </p>
-        <p className="mt-1 font-mono text-sm text-muted-foreground">
-          Tribunal data will appear here when a code review with debate is
-          triggered at MODERATE+ complexity.
-        </p>
-      </div>
+      <EmptyState
+        title="No Tribunal Run"
+        message="Tribunal data will appear here when a code review with debate is triggered at MODERATE+ complexity."
+      />
     );
   }
 

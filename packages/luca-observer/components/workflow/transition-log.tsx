@@ -6,6 +6,7 @@ import orderBy from "lodash/orderBy";
 
 import { WORKFLOW_STATES } from "~/lib/constants";
 import { formatTime } from "~/lib/format";
+import { EmptyState } from "~/components/shared/empty-state";
 import { EventBadge } from "~/components/shared/event-badge";
 import { JsonViewer } from "~/components/shared/json-viewer";
 import type { LedgerEntry } from "~/lib/types";
@@ -42,13 +43,7 @@ export function TransitionLog({ entries }: { entries: LedgerEntry[] }) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   if (entries.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No transitions recorded yet
-        </p>
-      </div>
-    );
+    return <EmptyState message="No transitions recorded yet" />;
   }
 
   const reversed = orderBy(entries, "sequence_number", "desc");

@@ -2,6 +2,8 @@
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Cumulative cost curve rendered as a CSS-only area chart.
  *
@@ -16,13 +18,7 @@ export function CumulativeCostCurve({
   costs: { total_cost_cents: number; session_id: string; timestamp: number }[];
 }) {
   if (costs.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No cost data to chart
-        </p>
-      </div>
-    );
+    return <EmptyState message="No cost data to chart" />;
   }
 
   const sorted = orderBy(costs, "timestamp", "asc");

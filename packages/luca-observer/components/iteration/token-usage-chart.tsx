@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { useTokenUsage } from "~/hooks/use-token-usage";
 
 /**
@@ -12,23 +13,11 @@ export function TokenUsageChart() {
   const { tokenUsage, totals, loading } = useTokenUsage();
 
   if (loading) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          Loading token data...
-        </p>
-      </div>
-    );
+    return <EmptyState message="Loading token data..." />;
   }
 
   if (tokenUsage.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No token usage data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No token usage data" />;
   }
 
   // Show most recent 20 turns in chronological order

@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Known memory categories with display metadata.
  */
@@ -81,14 +83,10 @@ function parseSections(content: string): MemorySection[] {
 export function MemoryEntries({ content }: { content: string }) {
   if (!content.trim()) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-sm font-bold text-muted-foreground">
-          No MEMORY.md
-        </p>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          Long-term learnings will appear here.
-        </p>
-      </div>
+      <EmptyState
+        title="No MEMORY.md"
+        message="Long-term learnings will appear here."
+      />
     );
   }
 

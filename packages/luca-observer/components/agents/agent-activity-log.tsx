@@ -2,6 +2,7 @@
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { EventBadge } from "~/components/shared/event-badge";
 import { SectionHeader } from "~/components/layout/section-header";
 import type { AgentActivitySnapshot } from "~/lib/types";
@@ -99,13 +100,13 @@ export function AgentActivityLog({
       />
 
       {events.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            {selectedAgent
+        <EmptyState
+          message={
+            selectedAgent
               ? `No events recorded for ${selectedAgent}.`
-              : "No agent events recorded yet."}
-          </p>
-        </div>
+              : "No agent events recorded yet."
+          }
+        />
       ) : (
         <div className="max-h-96 overflow-y-auto rounded-lg border border-border">
           <div className="flex flex-col gap-0.5 p-1">

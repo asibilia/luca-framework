@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDateTime } from "~/lib/format";
+import { EmptyState } from "~/components/shared/empty-state";
 import type { SessionPlanSnapshot } from "~/lib/types";
 
 /**
@@ -24,14 +25,10 @@ export function SessionPlanOverview({
 }) {
   if (!plan) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-lg font-bold text-muted-foreground">
-          No Plan
-        </p>
-        <p className="mt-1 font-mono text-sm text-muted-foreground">
-          No session plan has been generated yet.
-        </p>
-      </div>
+      <EmptyState
+        title="No Plan"
+        message="No session plan has been generated yet."
+      />
     );
   }
 

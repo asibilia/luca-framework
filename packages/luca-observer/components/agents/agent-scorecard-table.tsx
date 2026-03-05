@@ -2,6 +2,7 @@
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { SectionHeader } from "~/components/layout/section-header";
 import type { AgentActivitySnapshot } from "~/lib/types";
 
@@ -60,11 +61,7 @@ export function AgentScorecardTable({
       <SectionHeader title="Agent Scorecard" />
 
       {sorted.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            No agent activity recorded yet.
-          </p>
-        </div>
+        <EmptyState message="No agent activity recorded yet." />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left font-mono text-sm">

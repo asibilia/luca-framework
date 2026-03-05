@@ -2,6 +2,8 @@
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Table comparing costs across sessions.
  *
@@ -23,13 +25,7 @@ export function SessionCostTable({
   }[];
 }) {
   if (costs.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No session cost data
-        </p>
-      </div>
-    );
+    return <EmptyState message="No session cost data" />;
   }
 
   const sorted = orderBy(costs, "total_cost_cents", "desc");

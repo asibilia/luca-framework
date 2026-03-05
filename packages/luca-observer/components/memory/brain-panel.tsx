@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "~/components/shared/empty-state";
+
 /**
  * Panel rendering BRAIN.md content with section-aware formatting.
  *
@@ -11,14 +13,10 @@
 export function BrainPanel({ content }: { content: string }) {
   if (!content.trim()) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-sm font-bold text-muted-foreground">
-          No BRAIN.md
-        </p>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          Create a BRAIN.md file to define project identity.
-        </p>
-      </div>
+      <EmptyState
+        title="No BRAIN.md"
+        message="Create a BRAIN.md file to define project identity."
+      />
     );
   }
 

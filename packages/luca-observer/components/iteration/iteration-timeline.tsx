@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { CONVERGENCE_STATUS_COLORS } from "~/lib/constants";
 import type { IterationRecordSnapshot } from "~/lib/types";
 
@@ -23,13 +24,7 @@ export function IterationTimeline({
   iterations: IterationRecordSnapshot[];
 }) {
   if (iterations.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="font-mono text-sm text-muted-foreground">
-          No iteration history
-        </p>
-      </div>
-    );
+    return <EmptyState message="No iteration history" />;
   }
 
   // Newest first

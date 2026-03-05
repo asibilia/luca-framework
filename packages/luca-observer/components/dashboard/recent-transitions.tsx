@@ -2,6 +2,7 @@
 
 import orderBy from "lodash/orderBy";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { SectionHeader } from "~/components/layout/section-header";
 import { WORKFLOW_STATES } from "~/lib/constants";
 import type { LedgerEntry } from "~/lib/types";
@@ -22,11 +23,7 @@ export function RecentTransitions({ entries }: { entries: LedgerEntry[] }) {
     return (
       <div className="flex flex-col gap-3">
         <SectionHeader title="Recent Transitions" />
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="font-mono text-sm text-muted-foreground">
-            No transitions recorded yet. Start a workflow to see state changes.
-          </p>
-        </div>
+        <EmptyState message="No transitions recorded yet. Start a workflow to see state changes." />
       </div>
     );
   }

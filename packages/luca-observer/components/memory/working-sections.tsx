@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 
+import { EmptyState } from "~/components/shared/empty-state";
 import { formatSize } from "~/lib/format";
 
 /**
@@ -63,14 +64,10 @@ function parseSections(content: string): WorkingSection[] {
 export function WorkingSections({ content }: { content: string }) {
   if (!content.trim()) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-6 text-center">
-        <p className="font-mono text-sm font-bold text-muted-foreground">
-          No WORKING.md
-        </p>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          Session memory will appear here during active work.
-        </p>
-      </div>
+      <EmptyState
+        title="No WORKING.md"
+        message="Session memory will appear here during active work."
+      />
     );
   }
 
