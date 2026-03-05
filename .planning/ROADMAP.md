@@ -291,12 +291,12 @@
 
 **Gap closure:** Audit issues HIGH #5-6, MEDIUM architecture/security findings
 
-- [ ] Extract `readWithFallback` helper from 5 duplicated SpacetimeDB-primary + JSON-fallback read handlers in bridge.ts (~30 lines each)
-- [ ] Fix cross-subdirectory `__helpers/` import in config-generators.ts (importing from pi-extensions/\_\_helpers/sanitize)
-- [ ] Add automated sync mechanism or drift check for observer-local schema mirrors in lib/types.ts
-- [ ] Migrate `node:fs` usage to Bun.file API in ledger.ts and suspend-checkpoint.ts
-- [ ] Add security annotation to `queryTable()` raw SQL in spacetimedb-client.ts
-- [ ] Add circuit breaker pattern documentation for callReducer error handling
+- [x] Extract `readWithFallback` helper from 5 duplicated SpacetimeDB-primary + JSON-fallback read handlers in bridge.ts (~30 lines each)
+- [x] Fix cross-subdirectory `__helpers/` import in config-generators.ts (importing from pi-extensions/\_\_helpers/sanitize)
+- [x] Add automated sync mechanism or drift check for observer-local schema mirrors in lib/types.ts
+- [x] Migrate `node:fs` usage to Bun.file API in ledger.ts and suspend-checkpoint.ts
+- [x] Add security annotation to `queryTable()` raw SQL in spacetimedb-client.ts
+- [x] Add circuit breaker pattern documentation for callReducer error handling
 
 ### Phase 117 — Observer Styling & Security Hardening
 
