@@ -67,6 +67,7 @@ import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
 import { callReducer, emitObserverEvent } from "./__helpers/observer-emitter";
 import { queryOne } from "./__helpers/spacetimedb-client";
+import { readWithFallback } from "./__helpers/read-with-fallback";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -148,47 +149,20 @@ Subcommands:
  * Returns "TRIVIAL" as default if state is not initialized.
  */
 async function handleReadComplexity(): Promise<void> {
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{ complexity: string }>(
-      "SELECT complexity FROM workflow_state WHERE id = 1",
-    );
-    if (row) {
-      console.log(
-        JSON.stringify({ complexity: row.complexity, initialized: true }),
-      );
-      return;
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for read-complexity, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
-  }
-
-  // Fallback: JSON file
-  const exists = await stateExists();
-
-  if (!exists) {
-    console.log(JSON.stringify({ complexity: "TRIVIAL", initialized: false }));
-    return;
-  }
-
-  const result = await loadPersistedActor();
-  if (!result.success) {
-    console.log(JSON.stringify({ complexity: "TRIVIAL", initialized: false }));
-    return;
-  }
-
-  const snapshot = result.data.getSnapshot();
-  console.log(
-    JSON.stringify({
-      complexity: snapshot.context.complexity,
+  const result = await readWithFallback({
+    label: "read-complexity",
+    sql: "SELECT complexity FROM workflow_state WHERE id = 1",
+    fromRow: (row: { complexity: string }) => ({
+      complexity: row.complexity,
       initialized: true,
     }),
-  );
+    fromSnapshot: (ctx) => ({
+      complexity: ctx.complexity as string,
+      initialized: true,
+    }),
+    defaults: { complexity: "TRIVIAL", initialized: false },
+  });
+  console.log(JSON.stringify(result));
 }
 
 /**
@@ -198,47 +172,20 @@ async function handleReadComplexity(): Promise<void> {
  * Returns "milestone" as default if state is not initialized.
  */
 async function handleReadOversight(): Promise<void> {
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{ oversight: string }>(
-      "SELECT oversight FROM workflow_state WHERE id = 1",
-    );
-    if (row) {
-      console.log(
-        JSON.stringify({ oversight: row.oversight, initialized: true }),
-      );
-      return;
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for read-oversight, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
-  }
-
-  // Fallback: JSON file
-  const exists = await stateExists();
-
-  if (!exists) {
-    console.log(JSON.stringify({ oversight: "milestone", initialized: false }));
-    return;
-  }
-
-  const result = await loadPersistedActor();
-  if (!result.success) {
-    console.log(JSON.stringify({ oversight: "milestone", initialized: false }));
-    return;
-  }
-
-  const snapshot = result.data.getSnapshot();
-  console.log(
-    JSON.stringify({
-      oversight: snapshot.context.oversight,
+  const result = await readWithFallback({
+    label: "read-oversight",
+    sql: "SELECT oversight FROM workflow_state WHERE id = 1",
+    fromRow: (row: { oversight: string }) => ({
+      oversight: row.oversight,
       initialized: true,
     }),
-  );
+    fromSnapshot: (ctx) => ({
+      oversight: ctx.oversight as string,
+      initialized: true,
+    }),
+    defaults: { oversight: "milestone", initialized: false },
+  });
+  console.log(JSON.stringify(result));
 }
 
 /**
@@ -248,65 +195,36 @@ async function handleReadOversight(): Promise<void> {
  * Returns null/empty defaults if state is not initialized.
  */
 async function handleReadPhase(): Promise<void> {
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{ contextJson: string }>(
-      "SELECT contextJson FROM workflow_state WHERE id = 1",
-    );
-    if (row && row.contextJson) {
+  const result = await readWithFallback({
+    label: "read-phase",
+    sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
+    fromRow: (row: { contextJson: string }) => {
+      if (!row.contextJson) return null;
       const ctx = JSON.parse(row.contextJson);
-      console.log(
-        JSON.stringify({
-          current_phase: ctx.current_phase ?? null,
-          current_milestone: ctx.current_milestone ?? null,
-          current_plan_ids: ctx.current_plan_ids ?? [],
-          current_wave_count: ctx.current_wave_count ?? 0,
-          initialized: true,
-        }),
-      );
-      return;
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for read-phase, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
-  }
-
-  // Fallback: JSON file
-  const defaults = {
-    current_phase: null,
-    current_milestone: null,
-    current_plan_ids: [] as string[],
-    current_wave_count: 0,
-    initialized: false,
-  };
-
-  const exists = await stateExists();
-  if (!exists) {
-    console.log(JSON.stringify(defaults));
-    return;
-  }
-
-  const result = await loadPersistedActor();
-  if (!result.success) {
-    console.log(JSON.stringify(defaults));
-    return;
-  }
-
-  const snapshot = result.data.getSnapshot();
-  const ctx = snapshot.context;
-  console.log(
-    JSON.stringify({
-      current_phase: ctx.current_phase ?? null,
-      current_milestone: ctx.current_milestone ?? null,
-      current_plan_ids: ctx.current_plan_ids,
-      current_wave_count: ctx.current_wave_count,
+      return {
+        current_phase: ctx.current_phase ?? null,
+        current_milestone: ctx.current_milestone ?? null,
+        current_plan_ids: ctx.current_plan_ids ?? [],
+        current_wave_count: ctx.current_wave_count ?? 0,
+        initialized: true,
+      };
+    },
+    fromSnapshot: (ctx) => ({
+      current_phase: (ctx.current_phase as number | null) ?? null,
+      current_milestone: (ctx.current_milestone as string | null) ?? null,
+      current_plan_ids: ctx.current_plan_ids as string[],
+      current_wave_count: ctx.current_wave_count as number,
       initialized: true,
     }),
-  );
+    defaults: {
+      current_phase: null as number | null,
+      current_milestone: null as string | null,
+      current_plan_ids: [] as string[],
+      current_wave_count: 0,
+      initialized: false,
+    },
+  });
+  console.log(JSON.stringify(result));
 }
 
 /**
@@ -316,109 +234,86 @@ async function handleReadPhase(): Promise<void> {
  * Returns key fields from the workflow context in a single JSON object.
  */
 async function handleReadStatus(): Promise<void> {
-  const defaults = {
+  const statusDefaults = {
     initialized: false,
     state: "idle",
     complexity: "TRIVIAL",
     oversight: "milestone",
-    current_phase: null,
-    current_milestone: null,
+    current_phase: null as number | null,
+    current_milestone: null as string | null,
     current_plan_ids: [] as string[],
     current_wave_count: 0,
-    ticket_id: null,
-    github_issue: null,
-    branch: null,
+    ticket_id: null as string | null,
+    github_issue: null as string | null,
+    branch: null as string | null,
     base_branch: "main",
-    session_id: null,
-    started_at: null,
-    last_transition_at: null,
+    session_id: null as string | null,
+    started_at: null as string | null,
+    last_transition_at: null as string | null,
     verification_attempts: 0,
     phase_results_count: 0,
-    last_error: null,
+    last_error: null as string | null,
   };
 
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{
+  const result = await readWithFallback({
+    label: "read-status",
+    sql: "SELECT * FROM workflow_state WHERE id = 1",
+    fromRow: (row: {
       workflowState: string;
       complexity: string;
       oversight: string;
       contextJson: string;
-    }>("SELECT * FROM workflow_state WHERE id = 1");
-    if (row && row.contextJson) {
+    }) => {
+      if (!row.contextJson) return null;
       const ctx = JSON.parse(row.contextJson);
-      console.log(
-        JSON.stringify({
-          initialized: true,
-          state: row.workflowState ?? "idle",
-          complexity: row.complexity ?? ctx.complexity ?? "TRIVIAL",
-          oversight: row.oversight ?? ctx.oversight ?? "milestone",
-          current_phase: ctx.current_phase ?? null,
-          current_milestone: ctx.current_milestone ?? null,
-          current_plan_ids: ctx.current_plan_ids ?? [],
-          current_wave_count: ctx.current_wave_count ?? 0,
-          ticket_id: ctx.ticket_id ?? null,
-          github_issue: ctx.github_issue ?? null,
-          branch: ctx.branch ?? null,
-          base_branch: ctx.base_branch ?? "main",
-          session_id: ctx.session_id ?? null,
-          started_at: ctx.started_at ?? null,
-          last_transition_at: ctx.last_transition_at ?? null,
-          verification_attempts: ctx.verification_attempts ?? 0,
-          phase_results_count: Array.isArray(ctx.phase_results)
-            ? ctx.phase_results.length
-            : 0,
-          last_error: ctx.last_error ?? null,
-        }),
-      );
-      return;
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for read-status, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
-  }
-
-  // Fallback: JSON file
-  const exists = await stateExists();
-  if (!exists) {
-    console.log(JSON.stringify(defaults));
-    return;
-  }
-
-  const result = await loadPersistedActor();
-  if (!result.success) {
-    console.log(JSON.stringify(defaults));
-    return;
-  }
-
-  const snapshot = result.data.getSnapshot();
-  const ctx = snapshot.context;
-  console.log(
-    JSON.stringify({
+      return {
+        initialized: true,
+        state: row.workflowState ?? "idle",
+        complexity: row.complexity ?? ctx.complexity ?? "TRIVIAL",
+        oversight: row.oversight ?? ctx.oversight ?? "milestone",
+        current_phase: ctx.current_phase ?? null,
+        current_milestone: ctx.current_milestone ?? null,
+        current_plan_ids: ctx.current_plan_ids ?? [],
+        current_wave_count: ctx.current_wave_count ?? 0,
+        ticket_id: ctx.ticket_id ?? null,
+        github_issue: ctx.github_issue ?? null,
+        branch: ctx.branch ?? null,
+        base_branch: ctx.base_branch ?? "main",
+        session_id: ctx.session_id ?? null,
+        started_at: ctx.started_at ?? null,
+        last_transition_at: ctx.last_transition_at ?? null,
+        verification_attempts: ctx.verification_attempts ?? 0,
+        phase_results_count: Array.isArray(ctx.phase_results)
+          ? ctx.phase_results.length
+          : 0,
+        last_error: ctx.last_error ?? null,
+      };
+    },
+    fromSnapshot: (ctx, stateValue) => ({
       initialized: true,
-      state: String(snapshot.value),
-      complexity: ctx.complexity,
-      oversight: ctx.oversight,
-      current_phase: ctx.current_phase ?? null,
-      current_milestone: ctx.current_milestone ?? null,
-      current_plan_ids: ctx.current_plan_ids,
-      current_wave_count: ctx.current_wave_count,
-      ticket_id: ctx.ticket_id ?? null,
-      github_issue: ctx.github_issue ?? null,
-      branch: ctx.branch ?? null,
-      base_branch: ctx.base_branch,
-      session_id: ctx.session_id,
-      started_at: ctx.started_at ?? null,
-      last_transition_at: ctx.last_transition_at ?? null,
-      verification_attempts: ctx.verification_attempts,
-      phase_results_count: ctx.phase_results.length,
-      last_error: ctx.last_error ?? null,
+      state: stateValue,
+      complexity: (ctx.complexity as string) ?? "TRIVIAL",
+      oversight: (ctx.oversight as string) ?? "milestone",
+      current_phase: (ctx.current_phase as number | null) ?? null,
+      current_milestone: (ctx.current_milestone as string | null) ?? null,
+      current_plan_ids: (ctx.current_plan_ids as string[]) ?? [],
+      current_wave_count: (ctx.current_wave_count as number) ?? 0,
+      ticket_id: (ctx.ticket_id as string | null) ?? null,
+      github_issue: (ctx.github_issue as string | null) ?? null,
+      branch: (ctx.branch as string | null) ?? null,
+      base_branch: (ctx.base_branch as string) ?? "main",
+      session_id: (ctx.session_id as string) ?? null,
+      started_at: (ctx.started_at as string | null) ?? null,
+      last_transition_at: (ctx.last_transition_at as string | null) ?? null,
+      verification_attempts: (ctx.verification_attempts as number) ?? 0,
+      phase_results_count: Array.isArray(ctx.phase_results)
+        ? (ctx.phase_results as unknown[]).length
+        : 0,
+      last_error: (ctx.last_error as string | null) ?? null,
     }),
-  );
+    defaults: statusDefaults,
+  });
+  console.log(JSON.stringify(result));
 }
 
 /**
@@ -436,36 +331,27 @@ async function handleReadField(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{ contextJson: string }>(
-      "SELECT contextJson FROM workflow_state WHERE id = 1",
-    );
-    if (row && row.contextJson) {
+  const result = await readWithFallback({
+    label: "read-field",
+    sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
+    fromRow: (row: { contextJson: string }) => {
+      if (!row.contextJson) return null;
       const ctx = JSON.parse(row.contextJson);
-      const value = get(ctx, fieldPath);
-      console.log(JSON.stringify({ field: fieldPath, value }));
-      return;
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for read-field, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
-  }
+      return { field: fieldPath, value: get(ctx, fieldPath) };
+    },
+    fromSnapshot: (ctx) => ({
+      field: fieldPath,
+      value: get(ctx, fieldPath),
+    }),
+    defaults: null as { field: string; value: unknown } | null,
+  });
 
-  // Fallback: JSON file
-  const result = await loadPersistedActor();
-  if (!result.success) {
-    console.error(result.error);
+  if (result === null) {
+    console.error("State not initialized. Run ensure-init first.");
     process.exit(2);
   }
 
-  const snapshot = result.data.getSnapshot();
-  const value = get(snapshot.context, fieldPath);
-  console.log(JSON.stringify({ field: fieldPath, value }));
+  console.log(JSON.stringify(result));
 }
 
 // ─── Set Field Command ──────────────────────────────────────────────────────

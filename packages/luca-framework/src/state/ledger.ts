@@ -9,6 +9,8 @@
  * @module luca-state/ledger
  */
 import { z } from "zod";
+// node:fs/promises retained: Bun.write() does not support append mode.
+// appendFile is the correct API for the append-only ledger pattern.
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
