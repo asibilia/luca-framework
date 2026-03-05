@@ -10,10 +10,14 @@ export { skillRegistry } from "./__helpers/build-skill-registry";
 // Factory function
 export { createSkill } from "./__helpers/create-skill";
 
+// Schemas
+export { SkillEvalSchema } from "./__schemas/skill.schemas";
+
 // Types
 export type {
   BaseSkill,
   SkillConfig,
+  SkillEval,
   SkillFrontmatter,
   SkillSection,
 } from "./__schemas/skill.schemas";
