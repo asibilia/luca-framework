@@ -212,11 +212,13 @@ function syncMemoryViaReducer(
   brainJson: unknown,
   memoryJson: unknown,
   workingJson: unknown,
+  proceduresJson: unknown,
 ): void {
   callReducerFn("update_memory_files", {
     brainJson: JSON.stringify(brainJson),
     memoryJson: JSON.stringify(memoryJson),
     workingJson: JSON.stringify(workingJson),
+    proceduresJson: JSON.stringify(proceduresJson),
     timestamp: Date.now(),
   });
 }
@@ -691,11 +693,20 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
       error: "read failed",
       data: undefined,
     }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false as const,
+      error: "read failed",
+      data: undefined,
+    }));
     syncMemoryViaReducer(
       client.callReducer,
       brainJson.success ? brainJson.data : {},
       memoryJson.success ? memoryJson.data : [],
       updated,
+      proceduresJson.success ? proceduresJson.data : [],
     );
   }
 
@@ -752,11 +763,20 @@ export async function handleClearWorking(): Promise<void> {
       error: "read failed",
       data: undefined,
     }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false as const,
+      error: "read failed",
+      data: undefined,
+    }));
     syncMemoryViaReducer(
       client.callReducer,
       brainJson.success ? brainJson.data : {},
       memoryJson.success ? memoryJson.data : [],
       cleared,
+      proceduresJson.success ? proceduresJson.data : [],
     );
   }
 
@@ -958,11 +978,20 @@ export async function handleAddMemoryEntry(args: string[]): Promise<void> {
       error: "read failed",
       data: {},
     }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: [],
+    }));
     syncMemoryViaReducer(
       client.callReducer,
       brainJson.success ? brainJson.data : {},
       entries,
       workingJson.success ? workingJson.data : {},
+      proceduresJson.success ? proceduresJson.data : [],
     );
   }
 
@@ -1143,11 +1172,20 @@ export async function handleEnsureInit(): Promise<void> {
       error: "read failed",
       data: {},
     }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: [],
+    }));
     syncMemoryViaReducer(
       client.callReducer,
       brainJson.success ? brainJson.data : {},
       memoryJson.success ? memoryJson.data : [],
       workingJson.success ? workingJson.data : {},
+      proceduresJson.success ? proceduresJson.data : [],
     );
   }
 

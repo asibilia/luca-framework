@@ -308,14 +308,14 @@
 
 **Gap closure:** Audit issues CRITICAL #2, HIGH #8-10, MEDIUM security recommendations
 
-- [ ] Replace hardcoded `lg:grid-cols-[1fr_320px]` in detail-layout.tsx with standard Tailwind grid or theme extension
-- [ ] Add dark mode support to all observer pages (currently light-only color values)
-- [ ] Fix overly aggressive responsive grid overrides in observer components
-- [ ] Replace arbitrary `max-w-[1400px]` container width with Tailwind theme value
-- [ ] Extend SSRF allowlist to include `0.0.0.0` and numeric IP representations
-- [ ] Fix production CSP `connect-src` to not hardcode `ws://localhost:3000`
-- [ ] Remove `unsafe-inline` from style-src in CSP
-- [ ] Sanitize error messages that reflect raw input; fix shell injection surface in luca-observer.js open command
+- [x] Replace hardcoded `lg:grid-cols-[1fr_320px]` in detail-layout.tsx with standard Tailwind grid or theme extension
+- [x] Add dark mode support to all observer pages (currently light-only color values)
+- [x] Fix overly aggressive responsive grid overrides in observer components
+- [x] Replace arbitrary `max-w-[1400px]` container width with Tailwind theme value
+- [x] Extend SSRF allowlist to include `0.0.0.0` and numeric IP representations
+- [x] Fix production CSP `connect-src` to not hardcode `ws://localhost:3000`
+- [x] Remove `unsafe-inline` from style-src in CSP
+- [x] Sanitize error messages that reflect raw input; fix shell injection surface in luca-observer.js open command
 
 ---
 
