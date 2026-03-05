@@ -11,8 +11,8 @@ export function DetailLayout({
   sidebar: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="flex flex-col gap-6">{main}</div>
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="flex flex-col gap-6 lg:col-span-2">{main}</div>
       <div className="flex flex-col gap-6">{sidebar}</div>
     </div>
   );
