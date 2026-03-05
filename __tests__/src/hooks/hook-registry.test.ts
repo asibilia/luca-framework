@@ -119,12 +119,12 @@ describe("hookRegistry", () => {
     ]);
   });
 
-  test("every hook has a cursorEvent field", () => {
+  test("every hook has a cursor_event field", () => {
     for (const [name, thunk] of Object.entries(hookRegistry)) {
       const def = thunk();
-      expect(def.cursorEvent).toBeDefined();
-      expect(typeof def.cursorEvent).toBe("string");
-      expect(def.cursorEvent.length).toBeGreaterThan(0);
+      expect(def.cursor_event).toBeDefined();
+      expect(typeof def.cursor_event).toBe("string");
+      expect(def.cursor_event.length).toBeGreaterThan(0);
     }
   });
 });

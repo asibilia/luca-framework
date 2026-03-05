@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
 # post-edit-typecheck.sh — Async type-check after TypeScript file edits
 #
-# Hook event: PostToolUse (matcher: Edit|Write)
+# Canonical event: post_tool_use (tool_filter: Edit|Write)
+# Platform events: Claude=PostToolUse, Cursor=afterFileEdit, Pi=tool_execution_end
 # Type: Command hook (async: true)
 # Timeout: 30 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { "file_path": "/path/to/file.ts" } }
+# Cursor:      { "file_path": "/path/to/file.ts" }
+# Pi:          { "tool_input": { "file_path": "/path/to/file.ts" } }
+#
+# Extraction: data.tool_input?.file_path ?? data.file_path
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On type errors (async delivery):
+#   { "systemMessage": "TypeScript type errors found after editing ..." }
+# On success: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = success (always exits 0, type-check is async feedback)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Reads the edited file path from stdin JSON, checks if it is a TypeScript
 # file, and runs tsc --noEmit if so. Since this hook is async, results are
@@ -19,16 +34,23 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  exit 0
+fi
 
 # Extract file path using bun -e
 # Claude Code: tool_input.file_path, Cursor: file_path (top-level)
 FILE_PATH=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const filePath = data.tool_input?.file_path ?? data.file_path;
-  if (filePath) process.stdout.write(filePath);
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const filePath = data.tool_input?.file_path ?? data.file_path;
+    if (filePath) process.stdout.write(filePath);
+  } catch { /* malformed JSON — skip type-check */ }
+" 2>/dev/null || true)
 
 # Exit early if no file path
 if [ -z "$FILE_PATH" ]; then
@@ -133,6 +155,28 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
     };
     process.stdout.write(JSON.stringify(msg));
   "
+fi
+
+# Emit typecheck result to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ]; then
+  EVENT_TYPE="typecheck.pass"
+  if [ $TSC_EXIT -ne 0 ]; then
+    EVENT_TYPE="typecheck.fail"
+  fi
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"$EVENT_TYPE\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"tsc\",\"filePath\":\"$FILE_PATH\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
 fi
 
 exit 0

@@ -11,6 +11,10 @@ export interface ProjectContext {
   hasTypeScript: boolean;
   /** Project name from package.json */
   projectName: string | null;
+  /** Harness platforms detected on disk (e.g., ["claude", "cursor"]) */
+  detectedHarnesses?: string[];
+  /** Suggested first command based on detected harness (e.g., "/lu") */
+  suggestedFirstCommand?: string;
 }
 
 export interface BrandingConfig {

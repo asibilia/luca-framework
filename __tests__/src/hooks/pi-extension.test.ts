@@ -74,20 +74,20 @@ describe("generatePiExtension", () => {
     expect(ext).toContain("timeout: 30000");
   });
 
-  test("skips hooks without piEvent", () => {
+  test("skips hooks without pi_event", () => {
     const partial: Record<string, HookDefinition> = {
       "has-pi": {
         event: "PostToolUse",
-        cursorEvent: "afterFileEdit",
-        piEvent: "tool_execution_end",
+        cursor_event: "afterFileEdit",
+        pi_event: "tool_execution_end",
         script: "has-pi.sh",
         timeout: 10,
         async: false,
       },
       "no-pi": {
         event: "PostToolUse",
-        cursorEvent: "afterFileEdit",
-        piEvent: undefined,
+        cursor_event: "afterFileEdit",
+        pi_event: undefined,
         script: "no-pi.sh",
         timeout: 10,
         async: false,
@@ -119,10 +119,10 @@ describe("generatePiExtension", () => {
     expect(ext).toContain("JSON.stringify({})");
   });
 
-  test("generates handler for every hook with piEvent", () => {
+  test("generates handler for every hook with pi_event", () => {
     const ext = generatePiExtension(registry);
     const hooksWithPiEvent = Object.entries(registry).filter(
-      ([, def]) => def.piEvent,
+      ([, def]) => def.pi_event,
     );
     for (const [, def] of hooksWithPiEvent) {
       expect(ext).toContain(def.script);
@@ -133,10 +133,10 @@ describe("generatePiExtension", () => {
 describe("hook registry Pi event mappings", () => {
   const registry = resolveHookRegistry();
 
-  test("all hooks have piEvent defined", () => {
+  test("all hooks have pi_event defined", () => {
     for (const [name, def] of Object.entries(registry)) {
-      expect(def.piEvent).toBeDefined();
-      expect(typeof def.piEvent).toBe("string");
+      expect(def.pi_event).toBeDefined();
+      expect(typeof def.pi_event).toBe("string");
     }
   });
 
@@ -145,7 +145,7 @@ describe("hook registry Pi event mappings", () => {
       ([, def]) => def.event === "PostToolUse",
     );
     for (const [, def] of postToolUseHooks) {
-      expect(def.piEvent).toBe("tool_execution_end");
+      expect(def.pi_event).toBe("tool_execution_end");
     }
   });
 
@@ -154,7 +154,7 @@ describe("hook registry Pi event mappings", () => {
       ([, def]) => def.event === "PreToolUse",
     );
     for (const [, def] of preToolUseHooks) {
-      expect(def.piEvent).toBe("tool_call");
+      expect(def.pi_event).toBe("tool_call");
     }
   });
 
@@ -163,7 +163,7 @@ describe("hook registry Pi event mappings", () => {
       ([, def]) => def.event === "SessionStart",
     );
     for (const [, def] of sessionStartHooks) {
-      expect(def.piEvent).toBe("session_start");
+      expect(def.pi_event).toBe("session_start");
     }
   });
 
@@ -172,26 +172,26 @@ describe("hook registry Pi event mappings", () => {
       ([, def]) => def.event === "SessionEnd" || def.event === "Stop",
     );
     for (const [, def] of endHooks) {
-      expect(def.piEvent).toBe("session_shutdown");
+      expect(def.pi_event).toBe("session_shutdown");
     }
   });
 
-  test("edit/write hooks have piMatcher with edit and write", () => {
+  test("edit/write hooks have pi_matcher with edit and write", () => {
     const editHooks = Object.entries(registry).filter(
       ([, def]) => def.matcher === "Edit|Write",
     );
     for (const [, def] of editHooks) {
-      expect(def.piMatcher).toContain("edit");
-      expect(def.piMatcher).toContain("write");
+      expect(def.pi_matcher).toContain("edit");
+      expect(def.pi_matcher).toContain("write");
     }
   });
 
-  test("pre-commit hooks have piMatcher with bash", () => {
+  test("pre-commit hooks have pi_matcher with bash", () => {
     const preCommitHooks = Object.entries(registry).filter(
       ([, def]) => def.event === "PreToolUse" && def.matcher === "Bash",
     );
     for (const [, def] of preCommitHooks) {
-      expect(def.piMatcher).toContain("bash");
+      expect(def.pi_matcher).toContain("bash");
     }
   });
 });

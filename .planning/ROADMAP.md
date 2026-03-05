@@ -8,20 +8,73 @@
 
 ## Backlog (Future)
 
-### v2.7.0 — Adaptive Learning & Ecosystem
+### v2.8.0 — Audit Remediation & Adaptive Learning
+
+**Audit Remediation (P1-P2 from repo review audit, 2026-03-04):**
+
+_P1 — Agentic:_
+
+- Define missing `shouldRunDiscussion` guard in XState machine (#34)
+- Add timeout/auto-transition to phase actor idle state (#35)
+
+_P1 — Data:_
+
+- Improve dual-write consistency between SpacetimeDB and JSON (#36)
+
+_P1 — DX:_
+
+- Document and fix test suite fragility — 29 tests fail in full run (#37)
+- Add debug logging for SpacetimeDB fallback behavior (#39)
+
+_P1 — UI:_
+
+- Clean up all stale SSE/API references in observer UI (#38)
+
+_P2 — UI:_
+
+- Standardize loading states with LoadingSkeleton component (#40)
+- Add React error boundaries to observer dashboard pages (#41)
+- Accessibility pass on observer dashboard (#47)
+- Add missing empty states to observer pages (#49)
+
+_P2 — Data:_
+
+- Implement TTL cleanup for high-volume SpacetimeDB tables (#42)
+- Fix sequence number race condition in ledger (#43)
+- Add unique constraints to singleton SpacetimeDB tables (#48)
+
+_P2 — DX:_
+
+- Fix bridge CLI documentation — 14 vs 15 subcommands (#45)
+- Deduplicate sanitizeJsonParse — 3 copies in codebase (#46)
+- Document observability domain in architecture docs (#50)
+- Add automatic stale session lock cleanup to build system (#51)
+
+_P2 — Agentic:_
+
+- Enforce complexity gating matrix in XState guards (#44)
+- Add agent health check system (#52)
+- Add stall detection and retry limits to verification loop (#53)
+
+_P3 — Agentic:_
+
+- Implement skill dependency graph (#54)
+- Enhance tribunal debate with consensus model (#55)
+
+_P3 — Data:_
+
+- Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
+
+**Ecosystem & Learning:**
 
 - Cross-session procedure replay engine (#12)
 - Adaptive complexity self-tuning (#13)
 - Reflective meta-cognition for plan quality (#15)
-- Append-only session ledger / DAG (#6)
-- Hook portability abstraction layer (#9)
 - Portable cognitive profiles / cross-project memory (#14)
 - Cross-agent interop scanner (#16)
 - Plugin marketplace with community registry (#17)
 - Semantic memory embeddings with vector recall (#18)
-- Post-init interactive tour (#20)
 - Selective skill scaffolding (#23)
-- Harness tool middleware for verification (#24)
 
 ---
 
@@ -51,7 +104,8 @@
 - **v2.6.0** — Code Health, Context Intelligence & Debate Architecture: 6 phases, 17 plans, 60 commits, 250 files changed, 3109 tests. Test isolation fix, JSON-first memory bridge, directory-scoped rules, pre-flight hydration, 7 debate/tribunal patterns (Design Tribunal, Verification Tribunal, Root Cause Tribunal, milestone audit debate, PR split verdict, stall-vs-retry, ground truth metrics) ([View Archive](milestones/v2.6.0-ROADMAP.md))
 - **v2.6.1** — Audit Gap Closure: 2 phases, 9 requirements, 95 files changed, 3146 tests. Tribunal architecture extraction to shared, entity isolation fix, DRY cleanup, Bun API migration, sanitizeForTemplate, lodash alignment, safeParse conversion ([View Archive](milestones/v2.6.1-ROADMAP.md))
 - **v2.6.2** — Convention & DRY Cleanup: 2 phases, 6 plans, 85 files changed, 3150 tests. Barrel import fixes, convention alignment (orderBy, safeParse, sanitize hardening, node:crypto), DRY extraction (countResolutions, safeParseOrThrow, diagnostic prompt factory, groupBy migration) ([View Archive](milestones/v2.6.2-ROADMAP.md))
+- **v2.7.0** — Observability & Verification Infrastructure: 21 phases, 54 plans, 205 commits, 210 files changed, 3477 tests. luca-observer web dashboard (10+ pages), SpacetimeDB real-time infrastructure (16 tables, 19 reducers), event ledger + verification pipeline, security hardening (SSRF, CSP, API auth, SQL injection), DRY consolidation (useFilteredTable, readWithFallback, safeJsonParse, EmptyState), hook portability (3-platform) ([View Archive](milestones/v2.7.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-03 (v2.6.2 archived)_
+_Roadmap updated: 2026-03-05 (v2.7.0 archived)_

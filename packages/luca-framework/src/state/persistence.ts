@@ -1,20 +1,22 @@
 /**
  * State persistence layer for the Luca workflow state machine.
  *
- * Provides functions to persist, load, and manage XState actor snapshots
- * in `.planning/state.json`. This enables session resume across CLI
- * invocations and agent restarts.
+ * SpacetimeDB-primary: reads query SpacetimeDB first, falls back to
+ * `.planning/state.json`. Writes go to SpacetimeDB reducers; optional
+ * STATE.md generation is gated by `LUCA_EXPORT_MD=true`.
  *
  * Uses snake_case for all persisted JSON properties per API conventions.
  *
  * @module luca-state/persistence
  */
 import { createActor } from "xstate";
-import type { Actor, AnyActorRef, Snapshot } from "xstate";
+import type { Actor, Snapshot } from "xstate";
 import { workflowMachine } from "./machine";
 import type { WorkflowMachineInput } from "./machine";
 import type { Result } from "./types";
 import { sanitizeJsonParse } from "./sanitize";
+import { queryOne } from "./__helpers/spacetimedb-client";
+import { callReducer } from "./__helpers/observer-emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -24,13 +26,13 @@ export const STATE_FILE_PATH = ".planning/state.json";
 // ─── Persistence Functions ──────────────────────────────────────────────────
 
 /**
- * Persist an actor's snapshot to the state file.
+ * Persist an actor's snapshot to SpacetimeDB.
  *
- * Uses `actor.getPersistedSnapshot()` to obtain a JSON-serializable
- * representation of the actor's state, then writes it to disk.
+ * Calls the `update_workflow_state` reducer with the actor's persisted
+ * snapshot. STATE.md generation is gated by LUCA_EXPORT_MD env var.
  *
  * @param actor - The running XState actor to persist
- * @param filePath - Path to write the state file (default: STATE_FILE_PATH)
+ * @param filePath - Unused (kept for backward compatibility signature)
  * @returns Result with the file path on success, or error message on failure
  *
  * @example
@@ -43,13 +45,24 @@ export const STATE_FILE_PATH = ".planning/state.json";
  * ```
  */
 export async function persistActor(
-  actor: AnyActorRef,
+  actor: { getPersistedSnapshot: () => unknown; getSnapshot: () => any },
   filePath: string = STATE_FILE_PATH,
 ): Promise<Result<string>> {
   try {
     const snapshot = actor.getPersistedSnapshot();
-    const json = JSON.stringify(snapshot, null, 2);
-    await Bun.write(filePath, json);
+    const snap = actor.getSnapshot();
+
+    // Primary: write to SpacetimeDB via reducer
+    callReducer("update_workflow_state", {
+      workflowState: String(snap.value),
+      currentPhase: snap.context.current_phase ?? "",
+      complexity: snap.context.complexity ?? "TRIVIAL",
+      oversight: snap.context.oversight ?? "milestone",
+      sessionId: snap.context.session_id ?? "",
+      ticketId: snap.context.ticket_id ?? "",
+      contextJson: JSON.stringify(snap.context),
+    });
+
     return { success: true, data: filePath };
   } catch (err) {
     return {
@@ -60,13 +73,12 @@ export async function persistActor(
 }
 
 /**
- * Load a previously persisted actor from the state file.
+ * Load a previously persisted actor.
  *
- * Reads the persisted snapshot from disk and creates a new actor
- * instance from it, allowing the workflow to resume from where it
- * left off.
+ * SpacetimeDB-primary: queries workflow_state for the context JSON,
+ * then reconstructs the actor. Falls back to reading .planning/state.json.
  *
- * @param filePath - Path to the state file (default: STATE_FILE_PATH)
+ * @param filePath - Path to the state file (fallback)
  * @returns Result with the restored actor on success, or error message on failure
  *
  * @example
@@ -81,6 +93,24 @@ export async function persistActor(
 export async function loadPersistedActor(
   filePath: string = STATE_FILE_PATH,
 ): Promise<Result<Actor<typeof workflowMachine>>> {
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ contextJson: string }>(
+      "SELECT * FROM workflow_state WHERE id = 1",
+    );
+    if (row && row.contextJson) {
+      const snapshot = sanitizeJsonParse(row.contextJson) as Snapshot<unknown>;
+      const actor = createActor(workflowMachine, {
+        snapshot,
+      } as Parameters<typeof createActor<typeof workflowMachine>>[1]);
+      actor.start();
+      return { success: true, data: actor };
+    }
+  } catch {
+    // SpacetimeDB unavailable — fall through to JSON file
+  }
+
+  // Fallback: read from JSON file
   try {
     const file = Bun.file(filePath);
 
@@ -127,11 +157,10 @@ export async function loadPersistedActor(
 /**
  * Create a fresh actor from config.json and optional context overrides.
  *
- * Reads `.planning/config.json` (if available) to populate gates,
- * workflow_config, complexity_matrix, and autopilot_config. Falls back
- * to defaults if the config file is missing or invalid.
+ * SpacetimeDB-primary: queries workflow_config for configuration,
+ * falls back to reading .planning/config.json from disk.
  *
- * @param configPath - Path to config.json (default: ".planning/config.json")
+ * @param configPath - Path to config.json (fallback)
  * @param overrides - Optional partial context overrides
  * @returns Result with the new actor on success, or error message on failure
  *
@@ -151,12 +180,27 @@ export async function createFreshActor(
   try {
     let config: Record<string, unknown> = {};
 
-    const configFile = Bun.file(configPath);
-    if (await configFile.exists()) {
-      try {
-        config = await configFile.json();
-      } catch {
-        // Invalid config JSON -- proceed with defaults
+    // Primary: try SpacetimeDB for config
+    try {
+      const row = await queryOne<{ configJson: string }>(
+        "SELECT * FROM workflow_config WHERE id = 1",
+      );
+      if (row && row.configJson) {
+        config = JSON.parse(row.configJson);
+      }
+    } catch {
+      // SpacetimeDB unavailable — fall through to file
+    }
+
+    // Fallback: read config from disk if SpacetimeDB didn't provide it
+    if (Object.keys(config).length === 0) {
+      const configFile = Bun.file(configPath);
+      if (await configFile.exists()) {
+        try {
+          config = await configFile.json();
+        } catch {
+          // Invalid config JSON -- proceed with defaults
+        }
       }
     }
 
@@ -210,10 +254,13 @@ export async function clearPersistedState(
 }
 
 /**
- * Check whether a persisted state file exists and is non-empty.
+ * Check whether persisted state exists.
  *
- * @param filePath - Path to the state file (default: STATE_FILE_PATH)
- * @returns true if the file exists and has content, false otherwise
+ * SpacetimeDB-primary: queries for a row count. Falls back to
+ * checking if the JSON file exists and is non-empty.
+ *
+ * @param filePath - Path to the state file (fallback)
+ * @returns true if state exists, false otherwise
  *
  * @example
  * ```typescript
@@ -225,6 +272,17 @@ export async function clearPersistedState(
 export async function stateExists(
   filePath: string = STATE_FILE_PATH,
 ): Promise<boolean> {
+  // Primary: try SpacetimeDB
+  try {
+    const row = await queryOne<{ cnt: number }>(
+      "SELECT COUNT(*) as cnt FROM workflow_state",
+    );
+    if (row && row.cnt > 0) return true;
+  } catch {
+    // SpacetimeDB unavailable — fall through
+  }
+
+  // Fallback: check JSON file
   try {
     const file = Bun.file(filePath);
     if (!(await file.exists())) return false;

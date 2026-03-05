@@ -39,3 +39,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # session management
 .claude/.session-lock
 .claude/.build-manifest.json
+
+# test temp directories
+.tmp-test-*
+__tests__/integration/.tmp/
+
+# next.js
+.next

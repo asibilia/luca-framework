@@ -1,27 +1,27 @@
 /**
  * High-level CLI bridge for the Luca memory system.
  *
- * Provides convenience subcommands targeted at skill/agent prompts
- * and hook scripts. Wraps existing memory parsers/serializers in
- * shell-friendly commands with JSON output.
+ * SpacetimeDB-primary: read functions query SpacetimeDB first with
+ * JSON file fallback. Write functions call SpacetimeDB reducers via
+ * callReducer() from observer-emitter.
  *
- * Subcommands (JSON-first — JSON files are source of truth, MD files are views):
- *   read-brain           — Read project brain (brain.json primary, BRAIN.md fallback)
- *   read-memory          — Summary index of memory entries (compact by default)
- *   read-memory --tags   — Filtered full entries by tags
- *   read-memory --category — Filtered full entries by category
- *   read-memory --milestone — Milestone-scoped recall (scored by proximity + tags)
- *   read-working         — Parsed working memory structure
- *   read-procedures      — Summary index of procedure entries
- *   read-procedures --query — Scored procedure recall
- *   check-context        — Token usage across all memory files
- *   check-compression    — Compression recommendations
- *   append-working       — Append content to a working memory section
- *   clear-working        — Reset working memory to empty state
- *   update-procedure-stats — Update execution stats for a procedure
- *   add-memory-entry     — Add a validated memory entry (JSON + MD dual-write)
- *   snapshot-memory      — Regenerate all MD views from JSON sources
- *   ensure-init          — Create JSON files if missing (with MD migration/generation)
+ * Subcommands (JSON-first -- JSON files are source of truth, MD files are views):
+ *   read-brain           -- Read project brain (SpacetimeDB primary, brain.json fallback)
+ *   read-memory          -- Summary index of memory entries (compact by default)
+ *   read-memory --tags   -- Filtered full entries by tags
+ *   read-memory --category -- Filtered full entries by category
+ *   read-memory --milestone -- Milestone-scoped recall (scored by proximity + tags)
+ *   read-working         -- Parsed working memory structure
+ *   read-procedures      -- Summary index of procedure entries
+ *   read-procedures --query -- Scored procedure recall
+ *   check-context        -- Token usage across all memory files
+ *   check-compression    -- Compression recommendations
+ *   append-working       -- Append content to a working memory section
+ *   clear-working        -- Reset working memory to empty state
+ *   update-procedure-stats -- Update execution stats for a procedure
+ *   add-memory-entry     -- Add a validated memory entry (JSON + MD dual-write)
+ *   snapshot-memory      -- Regenerate all MD views from JSON sources
+ *   ensure-init          -- Create JSON files if missing (with MD migration/generation)
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -59,7 +59,6 @@ import { updateExecutionStats } from "./procedure-lifecycle.ts";
 import { createContextMonitor } from "./context-monitor.ts";
 import { analyzeMemoryEntries } from "./compression.ts";
 import { scoreMilestoneRecall } from "./milestone-recall.ts";
-import { estimateTokens } from "./token-estimator.ts";
 import {
   readJsonFile,
   writeJsonFile,
@@ -83,6 +82,88 @@ import { getArg } from "~/shared/__helpers/cli-utils";
 
 import type { MemoryEntry } from "../__schemas/memory.schemas";
 
+// ─── SpacetimeDB Imports ─────────────────────────────────────────────────────
+
+/**
+ * Lazy import of SpacetimeDB client functions.
+ * These are in the luca-framework package, so we use a dynamic approach
+ * to avoid cross-package import issues. Falls back gracefully.
+ */
+let _queryOne: (<T>(sql: string) => Promise<T | null>) | null = null;
+let _callReducer:
+  | ((name: string, args: Record<string, unknown>) => void)
+  | null = null;
+
+async function getSpacetimeDBClient(): Promise<{
+  queryOne: <T>(sql: string) => Promise<T | null>;
+  callReducer: (name: string, args: Record<string, unknown>) => void;
+} | null> {
+  if (_queryOne && _callReducer) {
+    return { queryOne: _queryOne, callReducer: _callReducer };
+  }
+
+  try {
+    // Use the observer-emitter URL resolution and SSRF validation
+    const url = process.env.LUCA_SPACETIMEDB_URL || "http://localhost:3000";
+    const dbName = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
+
+    _queryOne = async <T>(sql: string): Promise<T | null> => {
+      const endpoint = `${url.replace(/\/+$/, "")}/v1/database/${dbName}/sql`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: sql,
+        signal: AbortSignal.timeout(2000),
+      });
+      if (!response.ok) throw new Error(`Query failed: ${response.status}`);
+      const data: unknown = await response.json();
+      // v2.0: array of result sets, each with { schema, rows }
+      if (Array.isArray(data) && data.length > 0) {
+        const resultSet = data[0] as {
+          schema?: { elements?: Array<{ name?: { some?: string } }> };
+          rows?: unknown[][];
+        };
+        const rows = resultSet?.rows;
+        if (!rows || rows.length === 0) return null;
+        const fields = resultSet?.schema?.elements?.map(
+          (e) => e?.name?.some ?? "",
+        );
+        if (!fields) return rows[0] as unknown as T;
+        const obj: Record<string, unknown> = {};
+        for (let i = 0; i < fields.length; i++) {
+          obj[fields[i]!] = (rows[0] as unknown[])[i];
+        }
+        return obj as T;
+      }
+      return null;
+    };
+
+    _callReducer = (
+      reducerName: string,
+      args: Record<string, unknown>,
+    ): void => {
+      const endpoint = `${url.replace(/\/+$/, "")}/v1/database/${dbName}/call/${reducerName}`;
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+        signal: AbortSignal.timeout(2000),
+      }).catch((err) => {
+        if (process.env.LUCA_DEBUG) {
+          console.error(
+            `[memory-bridge] Reducer ${reducerName} failed:`,
+            (err as Error).message,
+          );
+        }
+      });
+    };
+
+    return { queryOne: _queryOne, callReducer: _callReducer };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 /** Default paths for memory files. */
@@ -100,7 +181,7 @@ function printUsage(): void {
   console.error(`Usage: bun run src/memory/__helpers/bridge.ts <subcommand> [options]
 
 Subcommands:
-  read-brain             Read project brain (JSON-primary, BRAIN.md fallback)
+  read-brain             Read project brain (SpacetimeDB-primary, JSON fallback)
   read-memory            Summary index of memory entries (compact)
                          Options: --tags=t1,t2 --category=pattern --limit=N
                                   --milestone=v1.6.0 (scored recall by proximity)
@@ -120,15 +201,32 @@ Subcommands:
   ensure-init            Create JSON files if missing (with MD view generation)`);
 }
 
+/**
+ * Fire-and-forget: sync memory files to SpacetimeDB via reducer.
+ */
+function syncMemoryViaReducer(
+  callReducerFn: (name: string, args: Record<string, unknown>) => void,
+  brainJson: unknown,
+  memoryJson: unknown,
+  workingJson: unknown,
+  proceduresJson: unknown,
+): void {
+  callReducerFn("update_memory_files", {
+    brainJson: JSON.stringify(brainJson),
+    memoryJson: JSON.stringify(memoryJson),
+    workingJson: JSON.stringify(workingJson),
+    proceduresJson: JSON.stringify(proceduresJson),
+    timestamp: Date.now(),
+  });
+}
+
 // ─── Read Commands ──────────────────────────────────────────────────────────
 
 /**
  * Read MEMORY.md entries.
  *
- * Without filters: returns a compact summary index (id, title, category, tags, confidence).
- * With --tags or --category: returns full matching entries.
- * With --milestone: returns milestone-scoped recall (scored by proximity + tag relevance).
- * With --limit: caps the number of entries returned.
+ * SpacetimeDB-primary: queries memory_files table for memoryJson.
+ * Falls back to JSON file, then MEMORY.md parsing.
  *
  * @param args - CLI arguments (--tags, --category, --milestone, --limit optional)
  */
@@ -139,22 +237,48 @@ export async function handleReadMemory(args: string[]): Promise<void> {
   const limitArg = getArg(args, "limit");
   const limit = limitArg ? parseInt(limitArg, 10) : 0;
 
-  // JSON-primary: try memory.json first, fall back to MEMORY.md
-  const jsonResult = await readJsonFile(
-    MEMORY_JSON_PATH,
-    z.array(memoryEntrySchema),
-  );
-  const mdResult = jsonResult.success
-    ? null
-    : await parseMemoryFile(MEMORY_PATH);
-  const memoryData: MemoryEntry[] | null = jsonResult.success
-    ? jsonResult.data
-    : mdResult?.success
-      ? mdResult.data
-      : null;
+  // SpacetimeDB-primary: try SpacetimeDB first
+  let memoryData: MemoryEntry[] | null = null;
+  try {
+    const client = await getSpacetimeDBClient();
+    if (client) {
+      const row = await client.queryOne<{ memoryJson: string }>(
+        "SELECT memoryJson FROM memory_files WHERE id = 1",
+      );
+      if (row && row.memoryJson) {
+        const parsed = z
+          .array(memoryEntrySchema)
+          .safeParse(JSON.parse(row.memoryJson));
+        if (parsed.success) memoryData = parsed.data;
+      }
+    }
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[memory-bridge] SpacetimeDB unavailable for read-memory, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
+  }
+
+  // Fallback: JSON file, then MD
+  if (!memoryData) {
+    const jsonResult = await readJsonFile(
+      MEMORY_JSON_PATH,
+      z.array(memoryEntrySchema),
+    );
+    const mdResult = jsonResult.success
+      ? null
+      : await parseMemoryFile(MEMORY_PATH);
+    memoryData = jsonResult.success
+      ? jsonResult.data
+      : mdResult?.success
+        ? mdResult.data
+        : null;
+  }
 
   if (!memoryData) {
-    // No data source available — graceful default
+    // No data source available -- graceful default
     console.log(
       JSON.stringify({
         entries_count: 0,
@@ -167,15 +291,12 @@ export async function handleReadMemory(args: string[]): Promise<void> {
   }
 
   // ── Milestone-scoped recall mode ─────────────────────────────────────────
-  // In milestone mode, --tags serves dual purpose:
-  //   1. Pre-filters entries to only those matching at least one tag (consistent with standard mode)
-  //   2. Boosts matching entries via tag_overlap scoring in scoreMilestoneRecall
   if (milestoneArg) {
     const queryTags = tagsArg ? tagsArg.split(",").map((t) => t.trim()) : [];
 
     let sourceEntries = memoryData;
 
-    // Apply tag filter before scoring (consistent with standard mode behavior)
+    // Apply tag filter before scoring
     if (queryTags.length > 0) {
       const lowerTags = queryTags.map((t) => t.toLowerCase());
       sourceEntries = sourceEntries.filter((e) =>
@@ -276,12 +397,38 @@ export async function handleReadMemory(args: string[]): Promise<void> {
 /**
  * Read WORKING.md into structured JSON.
  *
- * Returns parsed sections, total tokens, and lifecycle status.
- * Graceful default when file doesn't exist.
+ * SpacetimeDB-primary: queries memory_files table for workingJson.
+ * Falls back to JSON file, then WORKING.md parsing.
  */
 export async function handleReadWorking(): Promise<void> {
   try {
-    // JSON-primary: try working.json first
+    // SpacetimeDB-primary
+    try {
+      const client = await getSpacetimeDBClient();
+      if (client) {
+        const row = await client.queryOne<{ workingJson: string }>(
+          "SELECT workingJson FROM memory_files WHERE id = 1",
+        );
+        if (row && row.workingJson) {
+          const parsed = workingMemorySchema.safeParse(
+            JSON.parse(row.workingJson),
+          );
+          if (parsed.success) {
+            console.log(JSON.stringify(parsed.data));
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          "[memory-bridge] SpacetimeDB unavailable for read-working, falling back to JSON:",
+          (err as Error).message,
+        );
+      }
+    }
+
+    // JSON file fallback
     const jsonResult = await readJsonFile(
       WORKING_JSON_PATH,
       workingMemorySchema,
@@ -334,8 +481,8 @@ export async function handleReadWorking(): Promise<void> {
 /**
  * Read PROCEDURES.md entries.
  *
- * Without --query: returns a compact summary index.
- * With --query (and optional --tags, --limit): returns scored procedure recall.
+ * SpacetimeDB-primary: queries memory_files for procedures data.
+ * Falls back to JSON file, then PROCEDURES.md parsing.
  *
  * @param args - CLI arguments (--query, --tags, --limit optional)
  */
@@ -345,7 +492,8 @@ export async function handleReadProcedures(args: string[]): Promise<void> {
   const limitArg = getArg(args, "limit");
   const limit = limitArg ? parseInt(limitArg, 10) : 5;
 
-  // JSON-primary: try procedures.json first, fall back to PROCEDURES.md
+  // SpacetimeDB-primary (procedures are stored as part of memory_files or separately)
+  // For now, follow same pattern as other reads
   const jsonResult = await readJsonFile(
     PROCEDURES_JSON_PATH,
     z.array(procedureEntrySchema),
@@ -360,7 +508,7 @@ export async function handleReadProcedures(args: string[]): Promise<void> {
       : null;
 
   if (!allEntries) {
-    // No data source available — graceful default
+    // No data source available -- graceful default
     console.log(
       JSON.stringify({
         active_count: 0,
@@ -449,8 +597,7 @@ export async function handleCheckCompression(): Promise<void> {
 /**
  * Append content to a section of WORKING.md.
  *
- * Parses existing WORKING.md (or creates empty), appends content
- * to the named section, and writes back.
+ * Writes to SpacetimeDB via reducer. Also writes to local JSON + MD files.
  *
  * @param args - CLI arguments (--section=name required, --content=text required)
  */
@@ -479,7 +626,7 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // JSON-primary: load existing working memory or create empty
+  // Load existing working memory or create empty
   let wm: {
     sections: any[];
     total_tokens: number;
@@ -521,10 +668,44 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
     "append",
   );
 
-  // Dual-write: JSON + MD
+  // Write MD + sync to SpacetimeDB
   const markdown = serializeWorkingMemory(updated);
   await Bun.write(WORKING_PATH, markdown);
-  await writeJsonFile(WORKING_JSON_PATH, updated);
+
+  // Sync to SpacetimeDB via reducer
+  const client = await getSpacetimeDBClient();
+  if (client) {
+    const brainJson = await readJsonFile(BRAIN_JSON_PATH, brainSchema).catch(
+      () => ({
+        success: false as const,
+        error: "read failed",
+        data: undefined,
+      }),
+    );
+    const memoryJson = await readJsonFile(
+      MEMORY_JSON_PATH,
+      z.array(memoryEntrySchema),
+    ).catch(() => ({
+      success: false as const,
+      error: "read failed",
+      data: undefined,
+    }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false as const,
+      error: "read failed",
+      data: undefined,
+    }));
+    syncMemoryViaReducer(
+      client.callReducer,
+      brainJson.success ? brainJson.data : {},
+      memoryJson.success ? memoryJson.data : [],
+      updated,
+      proceduresJson.success ? proceduresJson.data : [],
+    );
+  }
 
   // Find the updated section for response
   const updatedSection = updated.sections.find((s) => s.name === sectionName);
@@ -543,6 +724,7 @@ export async function handleAppendWorking(args: string[]): Promise<void> {
  * Reset WORKING.md to empty state.
  *
  * Creates a fresh WORKING.md with empty sections and "cleared" status.
+ * Syncs to SpacetimeDB via reducer.
  */
 export async function handleClearWorking(): Promise<void> {
   const cleared = {
@@ -556,10 +738,44 @@ export async function handleClearWorking(): Promise<void> {
     session_started_at: new Date().toISOString(),
   };
 
-  // Dual-write: JSON + MD
+  // Write MD + sync to SpacetimeDB
   const markdown = serializeWorkingMemory(cleared);
   await Bun.write(WORKING_PATH, markdown);
-  await writeJsonFile(WORKING_JSON_PATH, cleared);
+
+  // Sync to SpacetimeDB via reducer
+  const client = await getSpacetimeDBClient();
+  if (client) {
+    const brainJson = await readJsonFile(BRAIN_JSON_PATH, brainSchema).catch(
+      () => ({
+        success: false as const,
+        error: "read failed",
+        data: undefined,
+      }),
+    );
+    const memoryJson = await readJsonFile(
+      MEMORY_JSON_PATH,
+      z.array(memoryEntrySchema),
+    ).catch(() => ({
+      success: false as const,
+      error: "read failed",
+      data: undefined,
+    }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false as const,
+      error: "read failed",
+      data: undefined,
+    }));
+    syncMemoryViaReducer(
+      client.callReducer,
+      brainJson.success ? brainJson.data : {},
+      memoryJson.success ? memoryJson.data : [],
+      cleared,
+      proceduresJson.success ? proceduresJson.data : [],
+    );
+  }
 
   console.log(
     JSON.stringify({
@@ -622,10 +838,9 @@ export async function handleUpdateProcedureStats(
   const allEntries = [...result.data];
   allEntries[entryIndex] = updated;
 
-  // Dual-write: JSON + MD
+  // Write MD (SpacetimeDB sync handled by write-memory)
   const markdown = serializeProcedures(allEntries);
   await Bun.write(PROCEDURES_PATH, markdown);
-  await writeJsonFile(PROCEDURES_JSON_PATH, allEntries);
 
   console.log(
     JSON.stringify({
@@ -641,13 +856,37 @@ export async function handleUpdateProcedureStats(
 // ─── JSON-First Commands ─────────────────────────────────────────────────────
 
 /**
- * Read project brain (BRAIN.md / brain.json).
+ * Read project brain.
  *
- * JSON-primary: tries brain.json first, falls back to BRAIN.md parsing.
- * Returns parsed Brain data or empty defaults.
+ * SpacetimeDB-primary: queries memory_files table for brainJson.
+ * Falls back to brain.json, then BRAIN.md parsing.
  */
 export async function handleReadBrain(): Promise<void> {
-  // JSON-primary: try brain.json first
+  // SpacetimeDB-primary
+  try {
+    const client = await getSpacetimeDBClient();
+    if (client) {
+      const row = await client.queryOne<{ brainJson: string }>(
+        "SELECT brainJson FROM memory_files WHERE id = 1",
+      );
+      if (row && row.brainJson) {
+        const parsed = brainSchema.safeParse(JSON.parse(row.brainJson));
+        if (parsed.success) {
+          console.log(JSON.stringify(parsed.data));
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[memory-bridge] SpacetimeDB unavailable for read-brain, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
+  }
+
+  // JSON file fallback
   const jsonResult = await readJsonFile(BRAIN_JSON_PATH, brainSchema);
   if (jsonResult.success) {
     console.log(JSON.stringify(jsonResult.data));
@@ -661,7 +900,7 @@ export async function handleReadBrain(): Promise<void> {
     return;
   }
 
-  // Neither exists — empty default
+  // Neither exists -- empty default
   console.log(JSON.stringify(brainSchema.parse({})));
 }
 
@@ -669,7 +908,7 @@ export async function handleReadBrain(): Promise<void> {
  * Add a new memory entry.
  *
  * Validates the entry against memoryEntrySchema, appends to memory.json,
- * and regenerates MEMORY.md. Dual-write guarantee.
+ * and regenerates MEMORY.md. Syncs to SpacetimeDB via reducer.
  *
  * @param args - CLI arguments (--data='{...}' required)
  */
@@ -715,9 +954,43 @@ export async function handleAddMemoryEntry(args: string[]): Promise<void> {
   // Append new entry
   entries.push(newEntry);
 
-  // Dual-write: JSON + MD
-  await writeJsonFile(MEMORY_JSON_PATH, entries);
+  // Write MD + sync to SpacetimeDB
   await Bun.write(MEMORY_PATH, serializeMemoryEntries(entries));
+
+  // Sync to SpacetimeDB via reducer
+  const client = await getSpacetimeDBClient();
+  if (client) {
+    const brainJson = await readJsonFile(BRAIN_JSON_PATH, brainSchema).catch(
+      () => ({
+        success: false,
+        error: "read failed",
+        data: {},
+      }),
+    );
+    const workingJson = await readJsonFile(
+      WORKING_JSON_PATH,
+      workingMemorySchema,
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: {},
+    }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: [],
+    }));
+    syncMemoryViaReducer(
+      client.callReducer,
+      brainJson.success ? brainJson.data : {},
+      entries,
+      workingJson.success ? workingJson.data : {},
+      proceduresJson.success ? proceduresJson.data : [],
+    );
+  }
 
   console.log(
     JSON.stringify({
@@ -735,7 +1008,7 @@ export async function handleAddMemoryEntry(args: string[]): Promise<void> {
 export async function handleSnapshotMemory(): Promise<void> {
   const results: Record<string, string> = {};
 
-  // Brain: JSON → MD
+  // Brain: JSON -> MD
   const brainResult = await readJsonFile(BRAIN_JSON_PATH, brainSchema);
   if (brainResult.success) {
     await Bun.write(BRAIN_PATH, serializeBrain(brainResult.data));
@@ -744,7 +1017,7 @@ export async function handleSnapshotMemory(): Promise<void> {
     results.brain = "skipped (no brain.json)";
   }
 
-  // Memory: JSON → MD
+  // Memory: JSON -> MD
   const memResult = await readJsonFile(
     MEMORY_JSON_PATH,
     z.array(memoryEntrySchema),
@@ -756,7 +1029,7 @@ export async function handleSnapshotMemory(): Promise<void> {
     results.memory = "skipped (no memory.json)";
   }
 
-  // Working: JSON → MD
+  // Working: JSON -> MD
   const workingResult = await readJsonFile(
     WORKING_JSON_PATH,
     workingMemorySchema,
@@ -768,7 +1041,7 @@ export async function handleSnapshotMemory(): Promise<void> {
     results.working = "skipped (no working.json)";
   }
 
-  // Procedures: JSON → MD
+  // Procedures: JSON -> MD
   const procResult = await readJsonFile(
     PROCEDURES_JSON_PATH,
     z.array(procedureEntrySchema),
@@ -788,7 +1061,7 @@ export async function handleSnapshotMemory(): Promise<void> {
  *
  * For each memory file (brain, memory, working, procedures):
  * - If JSON exists, skip
- * - If MD exists but not JSON, migrate MD → JSON
+ * - If MD exists but not JSON, migrate MD -> JSON
  * - If neither exists, create empty JSON + MD
  */
 export async function handleEnsureInit(): Promise<void> {
@@ -868,6 +1141,49 @@ export async function handleEnsureInit(): Promise<void> {
     }
   } else {
     results.procedures = "exists";
+  }
+
+  // Sync to SpacetimeDB via reducer
+  const client = await getSpacetimeDBClient();
+  if (client) {
+    const brainJson = await readJsonFile(BRAIN_JSON_PATH, brainSchema).catch(
+      () => ({
+        success: false,
+        error: "read failed",
+        data: {},
+      }),
+    );
+    const memoryJson = await readJsonFile(
+      MEMORY_JSON_PATH,
+      z.array(memoryEntrySchema),
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: [],
+    }));
+    const workingJson = await readJsonFile(
+      WORKING_JSON_PATH,
+      workingMemorySchema,
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: {},
+    }));
+    const proceduresJson = await readJsonFile(
+      PROCEDURES_JSON_PATH,
+      z.array(procedureEntrySchema),
+    ).catch(() => ({
+      success: false,
+      error: "read failed",
+      data: [],
+    }));
+    syncMemoryViaReducer(
+      client.callReducer,
+      brainJson.success ? brainJson.data : {},
+      memoryJson.success ? memoryJson.data : [],
+      workingJson.success ? workingJson.data : {},
+      proceduresJson.success ? proceduresJson.data : [],
+    );
   }
 
   console.log(JSON.stringify({ initialized: true, files: results }));

@@ -1,6 +1,6 @@
 # Agent Framework Documentation
 
-This directory contains documentation for the AI agent framework in percent-ui.
+This directory contains documentation for the AI agent framework.
 
 ## Luca (lu)
 

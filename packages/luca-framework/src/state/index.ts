@@ -138,3 +138,27 @@ export {
   suspendCheckpointSchema,
 } from "./suspend-checkpoint";
 export type { SuspendCheckpoint } from "./suspend-checkpoint";
+
+// ─── Ledger ─────────────────────────────────────────────────────────────────
+
+export {
+  appendLedgerEntry,
+  readLedger,
+  ledgerEntrySchema,
+  LEDGER_PATH,
+  _resetSequenceCounter,
+} from "./ledger";
+export type { LedgerEntry, LedgerFilters } from "./ledger";
+
+// ─── Observer Emitter (SpacetimeDB) ────────────────────────────────────────
+
+export {
+  emitObserverEvent,
+  callReducer,
+  isLocalhostUrl,
+  logToolCall,
+  logTokenUsage,
+  updateCost,
+  snapshotContext,
+  logDecision,
+} from "./__helpers/observer-emitter";

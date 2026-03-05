@@ -8,29 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v2.6.2 — Shipped)
+## Current State (v2.7.0 — Shipped)
 
-**Last Shipped:** v2.6.2 — Convention & DRY Cleanup (2026-03-03)
+**Last Shipped:** v2.7.0 — Observability & Verification Infrastructure (2026-03-05)
 
-Closed convention gaps and tech debt from v2.6.1 audit. Fixed barrel import violations, aligned conventions (lodash orderBy, safeParse, sanitizeForTemplate hardening, node:crypto prefix). Extracted 4 DRY helpers: countResolutions(), safeParseOrThrow(), diagnostic prompt factory, lodash groupBy migration. 3150 tests (3150 pass, 0 fail), 85 files changed.
+Full observability stack: luca-observer web dashboard (Next.js + Tailwind, 10+ pages), SpacetimeDB real-time infrastructure (16 tables, 19 reducers replacing JSON persistence), event ledger + verification pipeline (harness middleware), security hardening (SSRF, CSP, API auth, SQL injection, 35+ test cases), DRY consolidation (useFilteredTable, readWithFallback, safeJsonParse, EmptyState), hook portability (3-platform canonical format). 21 phases, 54 plans, 205 commits, 210 files changed, 3477 tests.
 
-## Previous State (v2.4.0)
+## Previous State (v2.6.2)
 
-**Last Shipped:** v2.4.0 — Pi Platform Completion (2026-03-01)
+v2.6.2 — Convention & DRY Cleanup (2026-03-03). Barrel import fixes, convention alignment, DRY extraction. 3150 tests, 85 files changed.
 
-Activated runtime model routing via `pi.setModel()` with per-agent model tier assignment and context introspection for adaptive behavior. Added interactive dialogs and keyboard shortcuts (`/switch-model`, `/set-complexity`, `/config`). Improved tool resilience with AbortSignal cancellation support in verify/tilldone/subagents, session lifecycle handling (compact/shutdown events), structured details in tool returns, and custom message rendering. Refreshed all agent role content across 3 platforms. 2411 tests (2411 pass, 0 fail), 134 files changed.
+## Previous State (v2.6.0)
 
-## Previous State (v2.3.0)
-
-v2.3.0 — Distribution & Model Routing (2026-02-28). Published `@alecsibilia/luca-framework` as installable npm package with multi-harness scaffolding. ModelTierSchema with per-agent model routing, 5-step resolve chain. 2315 tests.
-
-## Previous State (v2.2.0)
-
-v2.2.0 — Pi Platform Maturity (2026-02-27). DRY cleanup, E2E runtime validation, background subagent spawning, Pi API learnings. 15 extensions, 49 tools. 2271 tests.
-
-## Previous State (v2.1.0)
-
-v2.1.0 — Pi Library Integration (2026-02-27). Pi as first-class output target with 12 TypeScript extensions, 39 tools, 3-platform compilation. 2106 tests.
+v2.6.0 — Code Health, Context Intelligence & Debate Architecture (2026-03-03). 7 debate/tribunal patterns, JSON-first memory bridge, directory-scoped rules. 3109 tests, 250 files changed.
 
 **Capabilities (shipped):**
 
@@ -102,7 +92,7 @@ v2.1.0 — Pi Library Integration (2026-02-27). Pi as first-class output target 
 **Packageability concerns identified:**
 
 - 10+ locations with hardcoded PT-/ENG- ticket prefixes
-- Company-specific references (Percent, percent-ui, mypercent.atlassian.net)
+- Company-specific references
 - Hardcoded GitHub repository references
 - Absolute path dependencies to `.cursor/luca/`
 - No npm package or installation script
@@ -129,4 +119,4 @@ v2.1.0 — Pi Library Integration (2026-02-27). Pi as first-class output target 
 
 ---
 
-_Last updated: 2026-02-25 — v1.8.0 milestone completed_
+_Last updated: 2026-03-05 — v2.7.0 milestone completed_

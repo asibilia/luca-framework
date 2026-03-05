@@ -11,14 +11,22 @@ import type {
   HarnessResult,
   CheckResult,
   CheckConfig,
+  MiddlewareContext,
+  MiddlewarePipelineConfig,
 } from "../__schemas/harness.schemas";
 import {
   HarnessConfigSchema,
   DEFAULT_HARNESS_CONFIG,
+  MiddlewareContextSchema,
 } from "../__schemas/harness.schemas";
 import { parserRegistry } from "../parsers";
 import { sanitizeJsonParse } from "~/shared/__helpers/validation-utils";
-import { join } from "path";
+import {
+  composePipeline,
+  resolveMiddleware,
+  buildMiddlewareResult,
+} from "./pipeline";
+import { join } from "node:path";
 
 const RAW_OUTPUT_MAX_LINES = 50;
 
@@ -138,6 +146,74 @@ async function runCheck(
   }
 }
 
+/**
+ * Wrap a check execution with the middleware pipeline when configured.
+ *
+ * If no middleware is configured or the pipeline is disabled, calls runCheck
+ * directly. On pipeline error, falls back to direct runCheck execution so
+ * middleware failures never break the harness.
+ *
+ * @param check - The check configuration to execute
+ * @param projectDir - Working directory for the check
+ * @param pipelineConfig - Optional middleware pipeline configuration
+ * @returns CheckResult, optionally enriched with middlewareResult metadata
+ */
+async function runCheckWithMiddleware(
+  check: CheckConfig,
+  projectDir: string,
+  pipelineConfig?: MiddlewarePipelineConfig,
+): Promise<CheckResult> {
+  // No pipeline or pipeline disabled — direct execution
+  if (!pipelineConfig?.enabled || !pipelineConfig.middleware.length) {
+    return runCheck(check, projectDir);
+  }
+
+  const middlewares = resolveMiddleware(pipelineConfig.middleware);
+
+  // No middleware resolved (all disabled/unknown) — direct execution
+  if (middlewares.length === 0) {
+    return runCheck(check, projectDir);
+  }
+
+  const pipelineStartTime = performance.now();
+
+  try {
+    const ctxResult = MiddlewareContextSchema.safeParse({
+      check,
+      projectDir,
+      metadata: {},
+    });
+    if (!ctxResult.success) {
+      // Fall back to direct execution — middleware context is computed, not external input,
+      // but safeParse prevents unexpected throws
+      console.warn(
+        "[harness] Failed to build middleware context:",
+        ctxResult.error.message,
+      );
+      return runCheck(check, projectDir);
+    }
+    const ctxInput = ctxResult.data;
+
+    const pipeline = composePipeline(middlewares);
+
+    // The core executor is the innermost function — it calls runCheck
+    const coreExecutor = async (
+      _ctx: MiddlewareContext,
+    ): Promise<CheckResult> => runCheck(check, projectDir);
+
+    const result = await pipeline(ctxInput, coreExecutor);
+    const middlewareResult = buildMiddlewareResult(ctxInput, pipelineStartTime);
+
+    return { ...result, middlewareResult };
+  } catch (e) {
+    // Pipeline error — fall back to direct execution (never breaks harness)
+    console.warn(
+      `[harness] Middleware pipeline error for ${check.name}: ${(e as Error).message} -- falling back to direct execution`,
+    );
+    return runCheck(check, projectDir);
+  }
+}
+
 export async function runHarness(
   config: HarnessConfig,
   projectDir: string,
@@ -147,7 +223,11 @@ export async function runHarness(
   const results: CheckResult[] = [];
 
   for (const check of enabledChecks) {
-    const result = await runCheck(check, projectDir);
+    const result = await runCheckWithMiddleware(
+      check,
+      projectDir,
+      config.middlewarePipeline,
+    );
     results.push(result);
     if (config.failFast && result.status === "failed") break;
   }
@@ -160,7 +240,7 @@ export async function runHarness(
     ? "passed"
     : "failed";
 
-  return {
+  const result: HarnessResult = {
     status: overallStatus,
     checks: results,
     totalErrors,
@@ -168,6 +248,58 @@ export async function runHarness(
     duration: Date.now() - startTime,
     timestamp: new Date().toISOString(),
   };
+
+  // Persist result for observer consumption
+  try {
+    const resultPath = join(projectDir, ".planning", "harness-result.json");
+    const snakeCaseResult = {
+      status: result.status,
+      checks: result.checks.map((c) => ({
+        name: c.name,
+        status: c.status,
+        exit_code: c.exitCode,
+        errors: c.errors,
+        warnings: c.warnings,
+        raw_output: c.rawOutput,
+        duration: c.duration,
+      })),
+      total_errors: result.totalErrors,
+      total_warnings: result.totalWarnings,
+      duration: result.duration,
+      timestamp: result.timestamp,
+    };
+    await Bun.write(resultPath, JSON.stringify(snakeCaseResult, null, 2));
+
+    // Fire-and-forget: send harness results to SpacetimeDB for observer dashboard.
+    // Uses camelCase field names to match SpacetimeDB module_bindings schema.
+    // Plain numbers (not BigInt) because JSON.stringify cannot serialize BigInt.
+    try {
+      const stdbUrl =
+        process.env.LUCA_SPACETIMEDB_URL || "http://localhost:3000";
+      const dbName = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
+      const reducerUrl = `${stdbUrl.replace(/\/+$/, "")}/v1/database/${dbName}/call/update_harness_result`;
+      fetch(reducerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passed: result.status === "passed",
+          totalErrors: result.totalErrors,
+          totalWarnings: result.totalWarnings,
+          checksJson: JSON.stringify(result.checks),
+          timestamp: Date.now(),
+        }),
+        signal: AbortSignal.timeout(2000),
+      }).catch(() => {
+        // Best-effort — SpacetimeDB may not be running
+      });
+    } catch {
+      // Best-effort — never fail the harness run
+    }
+  } catch {
+    // Best-effort persistence -- do not fail the harness run
+  }
+
+  return result;
 }
 
 // CLI entry point

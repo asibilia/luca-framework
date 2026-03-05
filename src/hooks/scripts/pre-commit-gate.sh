@@ -1,9 +1,26 @@
 #!/usr/bin/env bash
 # pre-commit-gate.sh — Block commits when quality checks fail
 #
-# Hook event: PreToolUse (matcher: Bash)
+# Canonical event: pre_tool_use (tool_filter: Bash)
+# Platform events: Claude=PreToolUse, Cursor=beforeShellExecution, Pi=tool_call
 # Type: Command hook (synchronous)
 # Timeout: 120 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { "command": "git commit -m 'msg'" } }
+# Cursor:      { "command": "git commit -m 'msg'" }
+# Pi:          { "tool_input": { "command": "git commit -m 'msg'" } }
+#
+# Extraction: data.tool_input?.command ?? data.command ?? ''
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On block (quality checks fail):
+#   Claude: { "hookSpecificOutput": { "permissionDecision": "deny", "permissionDecisionReason": "..." } }
+#   Cursor: { "permission": "deny", "user_message": "..." }
+# On allow: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = allow (command proceeds)
+# 2 = block (commit denied)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Intercepts all Bash tool calls. For non-commit commands, exits 0 immediately
 # (near-zero overhead). For commit commands, runs quality checks (tests + tsc)
@@ -11,13 +28,6 @@
 #
 # Runtime detection: Reads .planning/config.json for "runtime" field,
 # falls back to command -v detection. Uses bun or node/npm/npx accordingly.
-#
-# Exit codes:
-#   0 = allow (command proceeds)
-#   2 = block (commit denied, stderr fed to Claude)
-#
-# JSON decision output for PreToolUse:
-#   { "hookSpecificOutput": { "permissionDecision": "deny", "permissionDecisionReason": "..." } }
 #
 # Uses `bun -e` for JSON parsing instead of jq (project convention).
 
@@ -35,8 +45,13 @@ run_bridge() {
   fi
 }
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  exit 0
+fi
 
 # ─── COMMAND EXTRACTION: SECURITY NOTES ───────────────────────────────
 #
@@ -65,10 +80,12 @@ INPUT=$(cat)
 #     variables (like HOOK_CMD="$COMMAND" bun -e "...") — NOT arguments
 # ──────────────────────────────────────────────────────────────────────
 COMMAND=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  const cmd = data.tool_input?.command ?? data.command ?? '';
-  process.stdout.write(cmd);
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    const cmd = data.tool_input?.command ?? data.command ?? '';
+    process.stdout.write(cmd);
+  } catch { process.stdout.write(''); }
+" 2>/dev/null || true)
 
 # Fast exit: Not a commit command? Allow immediately.
 # This check must be near-instant since it runs on EVERY Bash call.
@@ -83,6 +100,16 @@ case "$COMMAND" in
 esac
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+
+# --- Advisory: pending developer notes ---
+NOTES_DIR="$PROJECT_DIR/.planning/notes"
+if [ -d "$NOTES_DIR" ]; then
+  ALL_NOTES=$(ls "$NOTES_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  URGENT_NOTES=$(ls "$NOTES_DIR"/0-*.md 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$ALL_NOTES" -gt 0 ]; then
+    echo "[Developer Notes] $ALL_NOTES pending note(s) ($URGENT_NOTES urgent). Review .planning/notes/ before committing." >&2
+  fi
+fi
 
 # Step 0: Sync STATE.md from state machine (if available)
 # This ensures commits always contain a STATE.md matching machine state.
@@ -210,9 +237,52 @@ ${ERRORS}"
     process.stdout.write(JSON.stringify(output));
   "
 
+  # Emit observer event — commit blocked (legacy REST)
+  OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
+  curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"event_type\":\"commit.blocked\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"test_exit\":$TEST_EXIT,\"tsc_exit\":$TSC_EXIT}}" \
+    >/dev/null 2>&1 &
+
+  # Emit commit.blocked to SpacetimeDB (fire-and-forget)
+  STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+  BLOCK_SESSION_ID=""
+  if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+    BLOCK_SESSION_ID=$(bun -e "
+      try {
+        const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+        process.stdout.write(s.context?.session_id || '');
+      } catch { process.stdout.write(''); }
+    " 2>/dev/null || echo "")
+  fi
+  if [ -n "$BLOCK_SESSION_ID" ]; then
+    curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+      -H "Content-Type: application/json" \
+      -d "{\"args\":{\"eventType\":\"commit.blocked\",\"sessionId\":\"$BLOCK_SESSION_ID\",\"agentName\":\"\",\"toolName\":\"git\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{\\\"test_exit\\\":$TEST_EXIT,\\\"tsc_exit\\\":$TSC_EXIT}\",\"timestamp\":$(date +%s)000}}" \
+      --connect-timeout 1 --max-time 2 &>/dev/null &
+  fi
+
   # Exit 2 = block
   exit 2
 fi
 
-# All checks passed — allow the commit
+# All checks passed — emit commit event to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"commit.passed\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"git\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
+
+# Allow the commit
 exit 0

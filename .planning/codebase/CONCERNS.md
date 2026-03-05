@@ -20,14 +20,12 @@
 
 **Company-Specific References:**
 
-- Issue: "Percent", "percent-ui", "mypercent.atlassian.net" hardcoded in documentation and examples
 - Files: `.cursor/plans/luca_framework_cleanup_6ab900eb.plan.md`, `docs/agent-framework/README.md`, `.cursor/agents/product.md`, `.cursor/rules/atlassian-mcp.mdc`
 - Impact: Documentation confusing for non-Percent users, examples don't match their environment
 - Fix approach: Replace with generic placeholders (YOUR_COMPANY, YOUR_PROJECT, $JIRA_BASE_URL), add configuration examples
 
 **GitHub Repository Hardcoding:**
 
-- Issue: `cadence-group/percent-ui` hardcoded in QA consolidation skill
 - Files: `.cursor/skills/qa-consolidate/SKILL.md` (line 150 mentions replacing this)
 - Impact: QA consolidation workflow breaks for other repositories
 - Fix approach: Use `$GITHUB_REPO` environment variable or `gh repo view --json nameWithOwner`

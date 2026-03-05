@@ -1547,8 +1547,6 @@ Internal-only schemas can use camelCase, but snake_case is preferred for consist
 - **✅ Team Consistency**: Frontend and backend teams use same conventions
 - **✅ Type Safety**: Zod validation catches property name errors at dev time
 
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards and [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization.
-
 ---
 
 ---
@@ -1741,8 +1739,6 @@ When updating existing scripts or documentation:
 2. **Update documentation** to reference Bun commands
 3. **Test thoroughly** to ensure Bun compatibility
 4. **Update package.json scripts** to assume Bun execution context
-
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards.
 
 ---
 
@@ -2587,8 +2583,6 @@ This rule is enforced through:
 - Linting rules (if available)
 - Architecture decision records
 - Team consensus and standards
-
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards.
 
 ---
 

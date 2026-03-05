@@ -1,8 +1,23 @@
 #!/usr/bin/env bash
 # snapshot-sync.sh -- Sync STATE.md from state machine (throttled)
 #
-# Hook event: PostToolUse (async)
+# Canonical event: post_tool_use (no tool_filter)
+# Platform events: Claude=PostToolUse, Cursor=afterFileEdit, Pi=tool_execution_end
+# Type: Command hook (asynchronous)
 # Timeout: 10 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { ... } }  (varies by tool)
+# Cursor:      { ... }                     (varies by tool)
+# Pi:          { "tool_input": { ... } }   (varies by tool)
+#
+# This hook does not parse stdin — it performs throttled state sync.
+# Stdin is consumed (cat) but not inspected.
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# No stdout output (state sync is silent)
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (async hook, non-blocking)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Regenerates .planning/STATE.md from .planning/state.json
 # on a throttled basis (skip if last sync was within 120 seconds).
@@ -23,8 +38,8 @@ run_bridge() {
   fi
 }
 
-# Read stdin JSON (standard hook pattern)
-INPUT=$(cat)
+# Read stdin JSON (standard hook pattern — consumed but not parsed)
+INPUT=$(cat || true)
 
 # Throttle: skip if last sync was recent
 THROTTLE_FILE="/tmp/.luca-snapshot-sync-ts"

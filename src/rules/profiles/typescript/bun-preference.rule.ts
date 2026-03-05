@@ -197,7 +197,7 @@ When updating existing scripts or documentation:
 3. **Test thoroughly** to ensure Bun compatibility
 4. **Update package.json scripts** to assume Bun execution context
 
-Follow [percent-ui.mdc](mdc:.cursor/rules/percent-ui.mdc) for general coding standards.`,
+ `,
       order: 1,
     },
   ],

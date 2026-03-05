@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "echo-all-disabled",
+      "status": "passed",
+      "exit_code": 0,
+      "errors": [],
+      "warnings": [],
+      "raw_output": "all disabled\n",
+      "duration": 4
+    }
+  ],
+  "total_errors": 0,
+  "total_warnings": 0,
+  "duration": 4,
+  "timestamp": "2026-03-05T16:23:58.992Z"
+}

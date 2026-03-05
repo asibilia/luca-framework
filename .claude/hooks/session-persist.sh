@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 # session-persist.sh — Save session state on exit
 #
-# Hook event: SessionEnd
+# Canonical event: session_end
+# Platform events: Claude=SessionEnd, Cursor=sessionEnd, Pi=session_shutdown
 # Type: Command hook (synchronous)
 # Timeout: 10 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "reason": "user_exit" | "timeout" | ... }
+# Cursor:      { "reason": "..." }
+# Pi:          {}
+#
+# Extraction: data.reason || 'unknown'
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# No stdout output (session persistence is silent)
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (SessionEnd hooks cannot block termination)
+# ──────────────────────────────────────────────────────────────────────
 #
 # When a session ends, this hook:
 # 1. Checks if .planning/WORKING.md exists
@@ -17,17 +30,24 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Read stdin JSON
-INPUT=$(cat)
+# Read stdin JSON (may be empty for some platforms)
+INPUT=$(cat || true)
+
+# Handle empty or malformed stdin gracefully
+if [ -z "$INPUT" ]; then
+  INPUT="{}"
+fi
 
 # Use CLAUDE_PROJECT_DIR env var (consistent with other hooks)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 
 # Extract session end reason (for logging)
 END_REASON=$(printf '%s' "$INPUT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  process.stdout.write(data.reason || 'unknown');
-")
+  try {
+    const data = JSON.parse(await Bun.stdin.text());
+    process.stdout.write(data.reason || 'unknown');
+  } catch { process.stdout.write('unknown'); }
+" 2>/dev/null || echo "unknown")
 
 # ─── SEC-02: Sanitize END_REASON ───────────────────────────────────────
 # Allow only alphanumeric, spaces, hyphens, underscores, and periods.
@@ -39,6 +59,25 @@ END_REASON="${END_REASON:0:100}"
 
 # Remove session lock (before any other cleanup — most important action)
 rm -f "$PROJECT_DIR/.claude/.session-lock"
+
+# Emit session.end event to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+# Read session_id from state.json if available
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"session.end\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{\\\"reason\\\":\\\"$END_REASON\\\"}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
 
 WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
 
@@ -74,5 +113,12 @@ else
   # No session-end marker — append one
   printf '\n\n---\n*Session ended: %s (reason: %s)*\n' "$TIMESTAMP" "$END_REASON" >> "$WORKING_MD"
 fi
+
+# Emit observer event (fire-and-forget)
+OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
+curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"event_type\":\"session.end\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"reason\":\"$END_REASON\"}}" \
+  >/dev/null 2>&1 &
 
 exit 0

@@ -54,6 +54,11 @@ export const initCommand = defineCommand({
         "Configuration preset (starter, standard, full). Default: standard",
       alias: "p",
     },
+    "no-tour": {
+      type: "boolean",
+      description: "Skip the post-init interactive tour",
+      default: false,
+    },
   },
   async run({ args }) {
     // Setup cleanup handler for SIGINT
@@ -167,6 +172,16 @@ Files created:
 - .planning/manifest.json (installation tracking)
 - ${harnessNames} (harness-specific files)
     `);
+
+    // Offer interactive tour (unless --quick, --no-tour, or --config)
+    if (!args.quick && !args["no-tour"] && !args.config) {
+      try {
+        const { runTour } = await import("../utils/tour");
+        await runTour(config, context);
+      } catch {
+        // Tour errors are non-fatal
+      }
+    }
   },
 });
 

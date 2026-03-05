@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 # session-start.sh -- Initialize .planning/ directory for Luca
 #
-# Hook event: SessionStart
+# Canonical event: session_start
+# Platform events: Claude=SessionStart, Cursor=sessionStart, Pi=session_start
 # Type: Command hook (synchronous)
 # Timeout: 15 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: {}  (no meaningful payload)
+# Cursor:      {}  (no meaningful payload)
+# Pi:          {}  (no meaningful payload)
+#
+# Stdin is consumed (cat) but not inspected for session_start.
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On first init:
+#   Claude: { "systemMessage": "[Luca] Initialized .planning/ directory. Created: ..." }
+#   Cursor: { "followup_message": "[Luca] Initialized .planning/ directory. Created: ..." }
+# On missing bun:
+#   { "systemMessage": "[Luca] Bun is not installed. ..." }
+# On resume (nothing created): no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (session start should never block)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Creates .planning/ directory with BRAIN.md, MEMORY.md, WORKING.md,
 # STATE.md, ROADMAP.md, and config.json on first session. Subsequent
@@ -35,8 +53,8 @@ run_memory_bridge() {
   fi
 }
 
-# Read stdin JSON (standard hook pattern)
-INPUT=$(cat)
+# Read stdin JSON (standard hook pattern — consumed but not parsed)
+INPUT=$(cat || true)
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 PLANNING_DIR="$PROJECT_DIR/.planning"
@@ -66,6 +84,7 @@ fi
 
 # Step 2: Create .planning/ directory if missing
 mkdir -p "$PLANNING_DIR"
+mkdir -p "$PLANNING_DIR/notes/done"
 
 CREATED=""
 
@@ -416,12 +435,43 @@ HOOK_PROJECT_DIR_LOCK="$PROJECT_DIR" bun -e "
   await Bun.write(lockPath, JSON.stringify(payload, null, 2) + '\n');
 "
 
-# Step 9: Output summary if anything was created
+# Step 8b: Check for pending developer notes from previous sessions
+NOTES_MSG=""
+if [ -d "$PLANNING_DIR/notes" ]; then
+  PENDING_NOTES=$(ls "$PLANNING_DIR/notes"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$PENDING_NOTES" -gt 0 ]; then
+    NOTES_MSG=" $PENDING_NOTES developer note(s) pending."
+  fi
+fi
+
+# Step 9: Emit session.start event to SpacetimeDB (fire-and-forget)
+STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+SESSION_ID=$(run_bridge read-field --field=session_id 2>/dev/null | bun -e "
+  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(d.value || ''); } catch { process.stdout.write(''); }
+" 2>/dev/null || echo "")
+if [ -n "$SESSION_ID" ]; then
+  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
+    -H "Content-Type: application/json" \
+    -d "{\"args\":{\"eventType\":\"session.start\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
+    --connect-timeout 1 --max-time 2 &>/dev/null &
+fi
+
+# Step 10: Output summary if anything was created
 if [ -n "$CREATED" ]; then
-  HOOK_CREATED="$CREATED" bun -e "
+  HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
     const created = process.env.HOOK_CREATED.trim();
+    const notesSuffix = process.env.HOOK_NOTES_MSG || '';
     const files = created.split(' ').filter(Boolean);
-    const msg = '[Luca] Initialized .planning/ directory. Created: ' + files.join(', ');
+    const msg = '[Luca] Initialized .planning/ directory. Created: ' + files.join(', ') + notesSuffix;
+    const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
+    const output = isClaude
+      ? { systemMessage: msg }
+      : { followup_message: msg };
+    process.stdout.write(JSON.stringify(output));
+  "
+elif [ -n "$NOTES_MSG" ]; then
+  HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
+    const msg = '[Luca]' + process.env.HOOK_NOTES_MSG;
     const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
     const output = isClaude
       ? { systemMessage: msg }
