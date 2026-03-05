@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import orderBy from "lodash/orderBy";
 import { useTable } from "spacetimedb/react";
 
+import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
 /**
@@ -21,12 +22,10 @@ export function useLedger(tail = 50) {
 
   const { entries, totalCount } = useMemo(() => {
     const mapped = rows.map((row) => {
-      let eventData: Record<string, unknown> = {};
-      try {
-        eventData = JSON.parse(row.detailsJson || "{}");
-      } catch {
-        // Ignore malformed JSON
-      }
+      const eventData = safeJsonParse<Record<string, unknown>>(
+        row.detailsJson,
+        {},
+      );
 
       return {
         previous_state: "",

@@ -24,6 +24,7 @@
     "build:templates": "bun run ./scripts/copy-harness-templates.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
     "commit": "bunx --bun @alecsibilia/commit",
+    "dev:observer": "bun run --filter @alecsibilia/luca-observer dev",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",

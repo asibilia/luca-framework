@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import orderBy from "lodash/orderBy";
 import { useTable } from "spacetimedb/react";
 
+import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
 /**
@@ -15,7 +16,7 @@ import { tables } from "~/module_bindings";
  *
  * @param sessionId - Optional session ID to filter by
  * @param limit - Maximum number of decisions to return (default 50)
- * @returns Object with decisions array, loading state, and error
+ * @returns Object with decisions array and loading state
  */
 export function useDecisionTrail(sessionId?: string, limit = 50) {
   const [rows, isLoading] = useTable(tables.decisionLogs);
@@ -26,12 +27,7 @@ export function useDecisionTrail(sessionId?: string, limit = 50) {
       : rows;
 
     const mapped = filtered.map((row) => {
-      let alternatives: string[] = [];
-      try {
-        alternatives = JSON.parse(row.alternativesJson || "[]");
-      } catch {
-        // Ignore malformed JSON
-      }
+      const alternatives = safeJsonParse<string[]>(row.alternativesJson, []);
 
       return {
         id: Number(row.id),

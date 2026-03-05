@@ -15,7 +15,7 @@ import { tables } from "~/module_bindings";
  *
  * @param sessionId - Optional session ID to filter by
  * @param limit - Maximum number of rows to return (default 100)
- * @returns Object with toolCalls array, loading state, and error
+ * @returns Object with toolCalls array and loading state
  */
 export function useToolCalls(sessionId?: string, limit = 100) {
   const [rows, isLoading] = useTable(tables.toolCalls);
@@ -40,5 +40,5 @@ export function useToolCalls(sessionId?: string, limit = 100) {
     return sorted.slice(0, limit);
   }, [rows, sessionId, limit]);
 
-  return { toolCalls, loading: isLoading, error: null as string | null };
+  return { toolCalls, loading: isLoading };
 }

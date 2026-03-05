@@ -15,7 +15,7 @@ import { tables } from "~/module_bindings";
  *
  * @param sessionId - Optional session ID to filter by
  * @param limit - Maximum number of rows to return (default 100)
- * @returns Object with tokenUsage array, totals summary, loading state, and error
+ * @returns Object with tokenUsage array, totals summary, and loading state
  */
 export function useTokenUsage(sessionId?: string, limit = 100) {
   const [rows, isLoading] = useTable(tables.tokenUsage);
@@ -63,6 +63,5 @@ export function useTokenUsage(sessionId?: string, limit = 100) {
     tokenUsage,
     totals,
     loading: isLoading,
-    error: null as string | null,
   };
 }
