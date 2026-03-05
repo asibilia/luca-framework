@@ -44,5 +44,5 @@ export function useDecisionTrail(sessionId?: string, limit = 50) {
     return sorted.slice(0, limit);
   }, [rows, sessionId, limit]);
 
-  return { decisions, loading: isLoading, error: null as string | null };
+  return { decisions, loading: isLoading };
 }

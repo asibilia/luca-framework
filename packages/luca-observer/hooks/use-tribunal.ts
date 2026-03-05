@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { useTable } from "spacetimedb/react";
 
+import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
 /**
@@ -21,12 +22,13 @@ export function useTribunal() {
     const row = rows[0];
     if (!row || !row.resultJson) return { result: null, hasResult: false };
 
-    try {
-      const parsed = JSON.parse(row.resultJson);
-      return { result: parsed, hasResult: true };
-    } catch {
-      return { result: null, hasResult: false };
-    }
+    const parsed = safeJsonParse<Record<string, unknown> | null>(
+      row.resultJson,
+      null,
+    );
+    return parsed
+      ? { result: parsed, hasResult: true }
+      : { result: null, hasResult: false };
   }, [rows]);
 
   return {

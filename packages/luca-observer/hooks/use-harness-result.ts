@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useTable } from "spacetimedb/react";
 import { z } from "zod";
 
+import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 import { CheckResultSnapshotSchema } from "~/lib/types";
 
@@ -16,7 +17,7 @@ import type { HarnessResultSnapshot } from "~/lib/types";
  * Subscribes to the harness_results table (singleton, id=1) and returns
  * the latest verification harness result.
  *
- * @returns Object with result, hasResult flag, loading state, and error
+ * @returns Object with result, hasResult flag, and loading state
  */
 export function useHarnessResult() {
   const [rows, isLoading] = useTable(tables.harnessResults);
@@ -25,20 +26,19 @@ export function useHarnessResult() {
     const row = rows[0];
     if (!row) return { result: null, hasResult: false };
 
-    let checks: z.infer<typeof CheckResultSnapshotSchema>[] = [];
-    try {
-      const rawChecks = JSON.parse(row.checksJson || "[]");
-      if (Array.isArray(rawChecks)) {
-        for (const c of rawChecks) {
-          const parsed = CheckResultSnapshotSchema.safeParse(c);
-          if (parsed.success) {
-            checks.push(parsed.data);
-          }
-        }
-      }
-    } catch {
-      // Ignore malformed JSON
-    }
+    const rawChecks = safeJsonParse<unknown[]>(row.checksJson, []);
+    const checks = Array.isArray(rawChecks)
+      ? rawChecks
+          .map((c) => CheckResultSnapshotSchema.safeParse(c))
+          .filter(
+            (
+              r,
+            ): r is z.SafeParseSuccess<
+              z.infer<typeof CheckResultSnapshotSchema>
+            > => r.success,
+          )
+          .map((r) => r.data)
+      : [];
 
     return {
       result: {
@@ -57,6 +57,5 @@ export function useHarnessResult() {
     result,
     hasResult,
     loading: isLoading,
-    error: null as string | null,
   };
 }

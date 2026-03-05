@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { useTable } from "spacetimedb/react";
 
+import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
 /**
@@ -21,11 +22,7 @@ export function useMetrics() {
     const row = rows[0];
     if (!row || !row.metricsJson) return null;
 
-    try {
-      return JSON.parse(row.metricsJson);
-    } catch {
-      return null;
-    }
+    return safeJsonParse<Record<string, unknown> | null>(row.metricsJson, null);
   }, [rows]);
 
   return { data, loading: isLoading, error: null as string | null };

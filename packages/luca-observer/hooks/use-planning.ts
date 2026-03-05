@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { useTable } from "spacetimedb/react";
 
+import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
 
 /**
@@ -21,12 +22,13 @@ export function usePlanning() {
     const row = rows[0];
     if (!row || !row.planJson) return { plan: null, hasPlan: false };
 
-    try {
-      const parsed = JSON.parse(row.planJson);
-      return { plan: parsed, hasPlan: true };
-    } catch {
-      return { plan: null, hasPlan: false };
-    }
+    const parsed = safeJsonParse<Record<string, unknown> | null>(
+      row.planJson,
+      null,
+    );
+    return parsed
+      ? { plan: parsed, hasPlan: true }
+      : { plan: null, hasPlan: false };
   }, [rows]);
 
   return {
