@@ -26,13 +26,14 @@ export const STATE_FILE_PATH = ".planning/state.json";
 // ─── Persistence Functions ──────────────────────────────────────────────────
 
 /**
- * Persist an actor's snapshot to SpacetimeDB.
+ * Persist an actor's snapshot to both SpacetimeDB and local JSON.
  *
- * Calls the `update_workflow_state` reducer with the actor's persisted
- * snapshot. STATE.md generation is gated by LUCA_EXPORT_MD env var.
+ * Dual-write: calls the `update_workflow_state` reducer (fire-and-forget)
+ * AND writes the snapshot to the local JSON file. This ensures the fallback
+ * file stays current even if SpacetimeDB is unavailable.
  *
  * @param actor - The running XState actor to persist
- * @param filePath - Unused (kept for backward compatibility signature)
+ * @param filePath - Path to the local JSON backup file
  * @returns Result with the file path on success, or error message on failure
  *
  * @example
@@ -52,7 +53,7 @@ export async function persistActor(
     const snapshot = actor.getPersistedSnapshot();
     const snap = actor.getSnapshot();
 
-    // Primary: write to SpacetimeDB via reducer
+    // Primary: write to SpacetimeDB via reducer (fire-and-forget with retry)
     callReducer("update_workflow_state", {
       workflowState: String(snap.value),
       currentPhase: snap.context.current_phase ?? "",
@@ -62,6 +63,18 @@ export async function persistActor(
       ticketId: snap.context.ticket_id ?? "",
       contextJson: JSON.stringify(snap.context),
     });
+
+    // Backup: write snapshot to local JSON file
+    try {
+      await Bun.write(filePath, JSON.stringify(snapshot, null, 2));
+    } catch (jsonErr) {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          "[persistence] Failed to write local JSON backup:",
+          (jsonErr as Error).message,
+        );
+      }
+    }
 
     return { success: true, data: filePath };
   } catch (err) {
@@ -106,8 +119,13 @@ export async function loadPersistedActor(
       actor.start();
       return { success: true, data: actor };
     }
-  } catch {
-    // SpacetimeDB unavailable — fall through to JSON file
+  } catch (err) {
+    if (process.env.LUCA_DEBUG) {
+      console.error(
+        "[persistence] SpacetimeDB unavailable, falling back to JSON:",
+        (err as Error).message,
+      );
+    }
   }
 
   // Fallback: read from JSON file
@@ -188,8 +206,13 @@ export async function createFreshActor(
       if (row && row.configJson) {
         config = JSON.parse(row.configJson);
       }
-    } catch {
-      // SpacetimeDB unavailable — fall through to file
+    } catch (err) {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          "[persistence] SpacetimeDB unavailable for config, falling back to file:",
+          (err as Error).message,
+        );
+      }
     }
 
     // Fallback: read config from disk if SpacetimeDB didn't provide it

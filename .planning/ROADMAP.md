@@ -8,28 +8,21 @@
 
 ## v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval
 
-### Phase 118: Security & Data Reliability
+### Phase 118: P0 Triage & Dual-Write Hardening (COMPLETE)
 
-**Goal:** Fix all P0 data/security issues and harden SpacetimeDB persistence layer.
+**Goal:** Verify P0 audit findings resolved in v2.7.0, close todos, fix remaining dual-write gap.
 
-- [ ] Fix SQL injection risk in ledger query builder (#33)
-- [ ] Add retry + error logging to fire-and-forget reducer calls (#31)
-- [ ] Improve dual-write consistency between SpacetimeDB and JSON (#36)
-- [ ] Add debug logging for SpacetimeDB fallback behavior (#39)
-
-### Phase 119: UI Migration Cleanup
-
-**Goal:** Complete SpacetimeDB migration in observer UI — fix broken pages and remove stale references.
-
-- [ ] Fix notes page — calls deleted API endpoints (#30)
-- [ ] Fix header — shows 'SSE Connected' with hardcoded green dot (#32)
-- [ ] Clean up all stale SSE/API references in observer UI (#38)
+- [x] Fix SQL injection risk in ledger query builder (#33) — resolved in v2.7.0
+- [x] Add retry + error logging to fire-and-forget reducer calls (#31) — resolved in v2.7.0
+- [x] Fix notes page — calls deleted API endpoints (#30) — resolved in v2.7.0
+- [x] Fix header — shows 'SSE Connected' with hardcoded green dot (#32) — resolved in v2.7.0
+- [x] Clean up all stale SSE/API references in observer UI (#38) — resolved in v2.7.0
+- [x] Add debug logging for SpacetimeDB fallback behavior (#39) — resolved in v2.7.0
+- [x] Improve dual-write consistency between SpacetimeDB and JSON (#36) — added JSON backup write + LUCA_DEBUG logging to persistence.ts
 
 ### Phase 120: Audit Findings Persistence
 
 **Goal:** Build structured audit findings persistence layer using SpacetimeDB so review findings survive context compaction.
-
-**Depends on:** Phase 118
 
 - [ ] Audit Findings Persistence & Retrieval System (#57)
 
@@ -132,4 +125,4 @@ _P3 — Data:_
 
 ---
 
-_Roadmap updated: 2026-03-05 (v2.8.0 active — 4 phases, 9 todos)_
+_Roadmap updated: 2026-03-05 (v2.8.0 active — Phase 118 complete, Phases 120-121 in progress)_
