@@ -125,6 +125,12 @@ Subcommands:
                     Options: --field=path (required, lodash get path)
   read-ledger       Read session ledger entries with optional filters
                     Options: --session=id, --event=type, --since=iso, --limit=N, --tail=N
+  emit-event        Emit a fire-and-forget observer event to SpacetimeDB
+                    Options: --type=eventType (required), --session=id, --agent=name,
+                             --tool=name, --file=path, --duration=ms, --data=json
+  emit-context-snapshot  Emit a context-window snapshot to SpacetimeDB
+                    Options: --session=id (required), --percent=N, --messages=N,
+                             --tokens=N, --phase=name
   set-field         Set an allowlisted context field, persist, and regenerate STATE.md
                     Options: --field=name (required), --value=json-or-string (required)
   transition        Send event, persist state, and update STATE.md
@@ -1068,6 +1074,96 @@ async function handleReadLedger(args: string[]): Promise<void> {
   console.log(JSON.stringify(entries, null, 2));
 }
 
+// ─── Emit Event Command ──────────────────────────────────────────────────────
+
+/**
+ * Emit a fire-and-forget observer event to SpacetimeDB via `emitObserverEvent`.
+ *
+ * Thin CLI wrapper so hooks can call the bridge instead of using raw curl
+ * with duplicated URL/format logic.
+ *
+ * @param args - CLI arguments:
+ *   --type=string   (required) Event type (e.g., "session.start")
+ *   --session=string (optional) Session ID
+ *   --agent=string   (optional) Agent name
+ *   --tool=string    (optional) Tool name
+ *   --file=string    (optional) File path
+ *   --duration=N     (optional) Duration in ms
+ *   --data=json      (optional) Additional event data JSON
+ */
+function handleEmitEvent(args: string[]): void {
+  const eventType = getArg(args, "type");
+  if (!eventType) {
+    console.error("Missing --type argument");
+    process.exit(2);
+  }
+
+  const sessionId = getArg(args, "session") ?? "";
+  const agentName = getArg(args, "agent") ?? "";
+  const toolName = getArg(args, "tool") ?? "";
+  const filePath = getArg(args, "file") ?? "";
+  const durationMs = parseInt(getArg(args, "duration") ?? "0", 10) || 0;
+
+  let extraData: Record<string, unknown> = {};
+  const dataArg = getArg(args, "data");
+  if (dataArg) {
+    try {
+      extraData = JSON.parse(dataArg);
+    } catch {
+      // Not valid JSON — ignore
+    }
+  }
+
+  emitObserverEvent(eventType, {
+    sessionId,
+    agentName,
+    toolName,
+    filePath,
+    durationMs,
+    ...extraData,
+  });
+
+  console.log(JSON.stringify({ emitted: true, eventType, sessionId }));
+}
+
+// ─── Emit Context Snapshot Command ──────────────────────────────────────────
+
+/**
+ * Emit a context-window snapshot to SpacetimeDB via `snapshotContext`.
+ *
+ * @param args - CLI arguments:
+ *   --session=string  (required) Session ID
+ *   --percent=N       (optional) Context usage percentage
+ *   --messages=N      (optional) Message count
+ *   --tokens=N        (optional) Estimated tokens
+ *   --phase=string    (optional) Current phase
+ */
+function handleEmitContextSnapshot(args: string[]): void {
+  const sessionId = getArg(args, "session");
+  if (!sessionId) {
+    console.error("Missing --session argument");
+    process.exit(2);
+  }
+
+  const contextPercent = parseInt(getArg(args, "percent") ?? "0", 10) || 0;
+  const messageCount = parseInt(getArg(args, "messages") ?? "0", 10) || 0;
+  const estimatedTokens = parseInt(getArg(args, "tokens") ?? "0", 10) || 0;
+  const phase = getArg(args, "phase") ?? "";
+
+  callReducer("snapshot_context", {
+    sessionId,
+    contextPercent,
+    messageCount,
+    estimatedTokens,
+    phase,
+    timestamp: Date.now(),
+  });
+
+  console.log(
+    JSON.stringify({ emitted: true, type: "context_snapshot", sessionId }),
+  );
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1121,6 +1217,12 @@ export async function runBridgeCli(): Promise<void> {
     case "read-ledger":
       await handleReadLedger(args);
       break;
+    case "emit-event":
+      handleEmitEvent(args);
+      break;
+    case "emit-context-snapshot":
+      handleEmitContextSnapshot(args);
+      break;
     default:
       printUsage();
       process.exit(2);
@@ -1151,5 +1253,7 @@ export {
   handleGateCheck,
   handleSuspend,
   handleResumePhase,
+  handleEmitEvent,
+  handleEmitContextSnapshot,
   SETTABLE_FIELDS,
 };

@@ -37,6 +37,15 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
+# Cascading bridge lookup: installed bin → monorepo source → skip
+run_bridge() {
+  if command -v luca-bridge &>/dev/null; then
+    luca-bridge "$@"
+  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
+  fi
+}
+
 # --- Throttle check ---
 THROTTLE_FILE="/tmp/.luca-context-check-ts"
 THROTTLE_SECONDS=60
@@ -68,11 +77,8 @@ if [ -d "$NOTES_DIR" ]; then
       mkdir -p "$NOTES_DIR/done"
       mv "$note_file" "$NOTES_DIR/done/" 2>/dev/null || true
     done
-    # Emit observer event (fire-and-forget)
-    curl -s --max-time 1 "${LUCA_OBSERVER_URL:-http://localhost:3456}/api/events" -X POST \
-      -H "Content-Type: application/json" \
-      -d "{\"event_type\":\"note.consumed\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
-      >/dev/null 2>&1 &
+    # Emit note.consumed via bridge (fire-and-forget)
+    run_bridge emit-event --type=note.consumed &>/dev/null &
     printf '{"systemMessage": "[Developer Notes] Urgent notes to incorporate:%b"}' "$NOTE_CONTENT"
     exit 0
   fi
@@ -100,8 +106,7 @@ if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
   printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE" "$ZONE"
 fi
 
-# Emit context snapshot to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+# Emit context snapshot via bridge (fire-and-forget)
 SESSION_ID=""
 if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   SESSION_ID=$(bun -e "
@@ -111,17 +116,14 @@ if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
     } catch { process.stdout.write(''); }
   " 2>/dev/null || echo "")
 fi
-CONTEXT_PERCENT=$(printf '%s' "$RESULT" | bun -e "
-  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(Math.round(d.usage_percent || 0))); } catch { process.stdout.write('0'); }
-" 2>/dev/null || echo "0")
-EST_TOKENS=$(printf '%s' "$RESULT" | bun -e "
-  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(d.total_tokens || 0)); } catch { process.stdout.write('0'); }
-" 2>/dev/null || echo "0")
 if [ -n "$SESSION_ID" ] && [ -n "${RESULT:-}" ]; then
-  curl -s -X POST "$STDB_URL/database/luca-observer/call/snapshot_context" \
-    -H "Content-Type: application/json" \
-    -d "{\"args\":{\"sessionId\":\"$SESSION_ID\",\"contextPercent\":$CONTEXT_PERCENT,\"messageCount\":0,\"estimatedTokens\":$EST_TOKENS,\"phase\":\"\",\"timestamp\":$(date +%s)000}}" \
-    --connect-timeout 1 --max-time 2 &>/dev/null &
+  CONTEXT_PERCENT=$(printf '%s' "$RESULT" | bun -e "
+    try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(Math.round(d.usage_percent || 0))); } catch { process.stdout.write('0'); }
+  " 2>/dev/null || echo "0")
+  EST_TOKENS=$(printf '%s' "$RESULT" | bun -e "
+    try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(d.total_tokens || 0)); } catch { process.stdout.write('0'); }
+  " 2>/dev/null || echo "0")
+  run_bridge emit-context-snapshot --session="$SESSION_ID" --percent="$CONTEXT_PERCENT" --tokens="$EST_TOKENS" &>/dev/null &
 fi
 
 exit 0

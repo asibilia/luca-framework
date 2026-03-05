@@ -450,10 +450,7 @@ SESSION_ID=$(run_bridge read-field --field=session_id 2>/dev/null | bun -e "
   try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(d.value || ''); } catch { process.stdout.write(''); }
 " 2>/dev/null || echo "")
 if [ -n "$SESSION_ID" ]; then
-  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
-    -H "Content-Type: application/json" \
-    -d "{\"args\":{\"eventType\":\"session.start\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
-    --connect-timeout 1 --max-time 2 &>/dev/null &
+  run_bridge emit-event --type=session.start --session="$SESSION_ID" &>/dev/null &
 fi
 
 # Step 10: Output summary if anything was created

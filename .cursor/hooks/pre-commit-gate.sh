@@ -237,15 +237,7 @@ ${ERRORS}"
     process.stdout.write(JSON.stringify(output));
   "
 
-  # Emit observer event — commit blocked (legacy REST)
-  OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
-  curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
-    -H "Content-Type: application/json" \
-    -d "{\"event_type\":\"commit.blocked\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"test_exit\":$TEST_EXIT,\"tsc_exit\":$TSC_EXIT}}" \
-    >/dev/null 2>&1 &
-
-  # Emit commit.blocked to SpacetimeDB (fire-and-forget)
-  STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+  # Emit commit.blocked via bridge (fire-and-forget)
   BLOCK_SESSION_ID=""
   if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
     BLOCK_SESSION_ID=$(bun -e "
@@ -256,18 +248,14 @@ ${ERRORS}"
     " 2>/dev/null || echo "")
   fi
   if [ -n "$BLOCK_SESSION_ID" ]; then
-    curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
-      -H "Content-Type: application/json" \
-      -d "{\"args\":{\"eventType\":\"commit.blocked\",\"sessionId\":\"$BLOCK_SESSION_ID\",\"agentName\":\"\",\"toolName\":\"git\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{\\\"test_exit\\\":$TEST_EXIT,\\\"tsc_exit\\\":$TSC_EXIT}\",\"timestamp\":$(date +%s)000}}" \
-      --connect-timeout 1 --max-time 2 &>/dev/null &
+    run_bridge emit-event --type=commit.blocked --session="$BLOCK_SESSION_ID" --tool=git --data="{\"test_exit\":$TEST_EXIT,\"tsc_exit\":$TSC_EXIT}" &>/dev/null &
   fi
 
   # Exit 2 = block
   exit 2
 fi
 
-# All checks passed — emit commit event to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+# All checks passed — emit commit event via bridge (fire-and-forget)
 SESSION_ID=""
 if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   SESSION_ID=$(bun -e "
@@ -278,10 +266,7 @@ if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   " 2>/dev/null || echo "")
 fi
 if [ -n "$SESSION_ID" ]; then
-  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
-    -H "Content-Type: application/json" \
-    -d "{\"args\":{\"eventType\":\"commit.passed\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"git\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
-    --connect-timeout 1 --max-time 2 &>/dev/null &
+  run_bridge emit-event --type=commit.passed --session="$SESSION_ID" --tool=git &>/dev/null &
 fi
 
 # Allow the commit
