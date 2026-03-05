@@ -257,12 +257,12 @@
 
 **Gap closure:** Audit issues #7 (HIGH), #1 (HIGH), #11 (HIGH), plus MEDIUM integration gaps
 
-- [ ] Wire harness runner to call `update_harness_result` SpacetimeDB reducer after writing JSON results
-- [ ] Fix `useLedger` field mapping: `row.action`→`event_type`, `row.result`→`current_state` (currently inverted)
-- [ ] Fix `useLedger` timestamp: convert SpacetimeDB timestamp instead of mapping to empty string
-- [ ] Fix double ledger write in `bridge.ts:712` — reducer called twice per transition with conflicting payloads
-- [ ] Consolidate SpacetimeDB connection constants into shared config module
-- [ ] Clean up `!fromSpacetimeDB!` suspicious syntax in bridge.ts
+- [x] Wire harness runner to call `update_harness_result` SpacetimeDB reducer after writing JSON results
+- [x] Fix `useLedger` field mapping: `row.action`→`event_type`, `row.result`→`current_state` (currently inverted)
+- [x] Fix `useLedger` timestamp: convert SpacetimeDB timestamp instead of mapping to empty string
+- [x] Fix double ledger write in `bridge.ts:712` — reducer called twice per transition with conflicting payloads
+- [x] Consolidate SpacetimeDB connection constants into shared config module
+- [x] Clean up `!fromSpacetimeDB!` suspicious syntax in bridge.ts
 
 ### Phase 115 — Observer DRY & Hook Consolidation
 
