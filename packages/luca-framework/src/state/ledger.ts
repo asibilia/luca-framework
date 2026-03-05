@@ -66,8 +66,12 @@ let _nextSeq: number | null = null;
 /**
  * Get the next sequence number for the ledger.
  *
- * SpacetimeDB-primary: queries MAX(sequence_number). Falls back to
- * reading the last line of the JSONL file.
+ * SpacetimeDB-primary: queries COUNT(*) to derive the next sequence
+ * number (append-only ledger with contiguous 0-based sequence numbers).
+ * Falls back to reading the last line of the JSONL file.
+ *
+ * Note: SpacetimeDB v2 SQL only supports COUNT(*) as an aggregate —
+ * MAX/MIN/SUM/AVG are not supported.
  *
  * @param ledgerPath - Path to the ledger file
  * @returns The next available sequence number
@@ -82,13 +86,22 @@ async function getNextSequenceNumber(
   }
 
   // Primary: try SpacetimeDB
+  // COUNT(*) is the only aggregate supported in SpacetimeDB v2 SQL.
+  // For an append-only ledger with contiguous 0-based sequence numbers:
+  //   count = 0 → next_seq = 0 (first entry)
+  //   count = N → next_seq = N (since max_seq = N - 1)
   try {
-    const row = await queryOne<{ max_seq: number }>(
-      "SELECT MAX(sequence_number) as max_seq FROM ledger_entries",
+    const row = await queryOne<{ n: number | bigint }>(
+      "SELECT COUNT(*) as n FROM ledger_entries",
     );
-    if (row && typeof row.max_seq === "number") {
-      _nextSeq = row.max_seq + 2;
-      return row.max_seq + 1;
+    if (row && row.n != null) {
+      const count = Number(row.n);
+      if (count === 0) {
+        _nextSeq = 1;
+        return 0;
+      }
+      _nextSeq = count + 1;
+      return count;
     }
   } catch {
     // SpacetimeDB unavailable — fall through
@@ -359,22 +372,30 @@ export async function readLedger(
       );
     }
 
+    // SpacetimeDB v2 SQL does not support ORDER BY or aggregate functions
+    // beyond COUNT(*). LIMIT is supported but meaningless without ordering
+    // for our use case. Fetch all matching rows, sort and limit client-side.
     let sql = "SELECT * FROM ledger_entries";
     if (whereClauses.length > 0) {
       sql += ` WHERE ${whereClauses.join(" AND ")}`;
     }
-    sql += " ORDER BY sequence_number ASC";
-    if (validatedFilters.limit) {
-      sql += ` LIMIT ${validatedFilters.limit}`;
-    }
 
     const rows = await queryTable<LedgerEntry>(sql);
     if (rows.length > 0) {
-      // Apply tail filter after query (SpacetimeDB may not support OFFSET well)
+      // Sort client-side (ORDER BY not supported in SpacetimeDB v2 SQL)
+      rows.sort(
+        (a, b) => Number(a.sequence_number) - Number(b.sequence_number),
+      );
+      let result = rows;
+      // Apply tail filter (last N entries)
       if (validatedFilters.tail !== undefined && validatedFilters.tail > 0) {
-        return rows.slice(-validatedFilters.tail);
+        result = result.slice(-validatedFilters.tail);
       }
-      return rows;
+      // Apply limit filter (first N entries of result)
+      if (validatedFilters.limit) {
+        result = result.slice(0, validatedFilters.limit);
+      }
+      return result;
     }
   } catch {
     // SpacetimeDB unavailable — fall through

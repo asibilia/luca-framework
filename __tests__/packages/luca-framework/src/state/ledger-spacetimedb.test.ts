@@ -175,7 +175,7 @@ describe("readLedger (SpacetimeDB path)", () => {
     expect(body).toContain("timestamp >= '2026-03-01T00:00:00.000Z'");
   });
 
-  test("builds SQL with LIMIT", async () => {
+  test("does not include LIMIT in SQL (applied client-side)", async () => {
     mockSpacetimeDB([]);
 
     await readLedger({ limit: 5 });
@@ -184,10 +184,10 @@ describe("readLedger (SpacetimeDB path)", () => {
       c.url.includes("/v1/database/luca-observer/sql"),
     );
     const body = sqlCall!.init?.body as string;
-    expect(body).toContain("LIMIT 5");
+    expect(body).not.toContain("LIMIT");
   });
 
-  test("includes ORDER BY sequence_number ASC", async () => {
+  test("does not include ORDER BY in SQL (unsupported in SpacetimeDB v2)", async () => {
     mockSpacetimeDB([]);
 
     await readLedger({});
@@ -196,7 +196,49 @@ describe("readLedger (SpacetimeDB path)", () => {
       c.url.includes("/v1/database/luca-observer/sql"),
     );
     const body = sqlCall!.init?.body as string;
-    expect(body).toContain("ORDER BY sequence_number ASC");
+    expect(body).not.toContain("ORDER BY");
+  });
+
+  test("applies limit client-side after sorting", async () => {
+    const rows = Array.from({ length: 5 }, (_, i) => ({
+      previous_state: "idle",
+      current_state: "preflight",
+      event_type: "START",
+      event_data: {},
+      actions_executed: [],
+      context: {},
+      timestamp: `2026-03-03T${String(i + 10).padStart(2, "0")}:00:00.000Z`,
+      session_id: "abc",
+      sequence_number: i,
+      parent_id: i === 0 ? null : i - 1,
+    }));
+    mockSpacetimeDB(rows);
+
+    const entries = await readLedger({ limit: 3 });
+    expect(entries.length).toBe(3);
+    expect(entries[0]!.sequence_number).toBe(0);
+    expect(entries[2]!.sequence_number).toBe(2);
+  });
+
+  test("sorts results client-side by sequence_number", async () => {
+    // Return rows in reverse order to verify client-side sorting
+    const rows = [2, 0, 4, 1, 3].map((i) => ({
+      previous_state: "idle",
+      current_state: "preflight",
+      event_type: "START",
+      event_data: {},
+      actions_executed: [],
+      context: {},
+      timestamp: `2026-03-03T${String(i + 10).padStart(2, "0")}:00:00.000Z`,
+      session_id: "abc",
+      sequence_number: i,
+      parent_id: i === 0 ? null : i - 1,
+    }));
+    mockSpacetimeDB(rows);
+
+    const entries = await readLedger({});
+    expect(entries.length).toBe(5);
+    expect(entries.map((e) => e.sequence_number)).toEqual([0, 1, 2, 3, 4]);
   });
 
   test("applies tail filter on SpacetimeDB results", async () => {
@@ -297,10 +339,10 @@ describe("appendLedgerEntry (SpacetimeDB path)", () => {
       callCount++;
 
       if (urlStr.includes("/v1/database/luca-observer/sql")) {
-        // Return max sequence number (v2.0 format)
+        // Return COUNT(*) = 5 (v2.0 format)
         const v2 = [
           {
-            schema: { elements: [{ name: { some: "max_seq" } }] },
+            schema: { elements: [{ name: { some: "n" } }] },
             rows: [[5]],
           },
         ];
@@ -331,14 +373,14 @@ describe("appendLedgerEntry (SpacetimeDB path)", () => {
     expect(body.sessionId).toBe("test-session-001");
   });
 
-  test("uses SpacetimeDB MAX query for sequence number seeding", async () => {
-    mockSpacetimeDB([{ max_seq: 10 }]);
+  test("uses SpacetimeDB COUNT query for sequence number seeding", async () => {
+    mockSpacetimeDB([{ n: 10 }]);
 
     const entry = await appendLedgerEntry(makeRecord());
 
-    // Should use sequence 11 (MAX + 1)
-    expect(entry.sequence_number).toBe(11);
-    expect(entry.parent_id).toBe(10);
+    // COUNT=10 means max_seq=9, so next_seq=10
+    expect(entry.sequence_number).toBe(10);
+    expect(entry.parent_id).toBe(9);
   });
 
   test("returns entry with correct sequence when SpacetimeDB unavailable", async () => {
@@ -365,8 +407,8 @@ describe("appendLedgerEntry (SpacetimeDB path)", () => {
 // --- Tests: getNextSequenceNumber SpacetimeDB path ----------------------------
 
 describe("sequence number from SpacetimeDB", () => {
-  test("queries MAX(sequence_number) from SpacetimeDB", async () => {
-    mockSpacetimeDB([{ max_seq: 42 }]);
+  test("queries COUNT(*) from SpacetimeDB (MAX not supported)", async () => {
+    mockSpacetimeDB([{ n: 42 }]);
 
     const entry = await appendLedgerEntry(makeRecord());
 
@@ -377,20 +419,23 @@ describe("sequence number from SpacetimeDB", () => {
 
     // v2.0: body is raw SQL string, not JSON
     const body = sqlCall!.init?.body as string;
-    expect(body).toContain("MAX(sequence_number)");
+    expect(body).toContain("COUNT(*)");
     expect(body).toContain("ledger_entries");
+    expect(body).not.toContain("MAX");
 
-    expect(entry.sequence_number).toBe(43);
+    // COUNT=42 → next_seq=42
+    expect(entry.sequence_number).toBe(42);
   });
 
   test("caches sequence number after first query", async () => {
-    mockSpacetimeDB([{ max_seq: 10 }]);
+    mockSpacetimeDB([{ n: 10 }]);
 
     const entry1 = await appendLedgerEntry(makeRecord());
     const entry2 = await appendLedgerEntry(makeRecord());
 
-    expect(entry1.sequence_number).toBe(11);
-    expect(entry2.sequence_number).toBe(12);
+    // COUNT=10 → first gets 10, second gets 11
+    expect(entry1.sequence_number).toBe(10);
+    expect(entry2.sequence_number).toBe(11);
 
     // Only one SQL query should have been made (for the first entry)
     const sqlCalls = fetchCalls.filter((c) =>
