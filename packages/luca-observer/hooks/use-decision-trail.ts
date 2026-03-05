@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-
-import orderBy from "lodash/orderBy";
-import { useTable } from "spacetimedb/react";
+import { useCallback } from "react";
 
 import { safeJsonParse } from "~/lib/safe-json-parse";
 import { tables } from "~/module_bindings";
+
+import { useFilteredTable } from "./use-filtered-table";
 
 /**
  * React hook for real-time decision audit trail from SpacetimeDB.
@@ -19,14 +18,16 @@ import { tables } from "~/module_bindings";
  * @returns Object with decisions array and loading state
  */
 export function useDecisionTrail(sessionId?: string, limit = 50) {
-  const [rows, isLoading] = useTable(tables.decisionLogs);
-
-  const decisions = useMemo(() => {
-    const filtered = sessionId
-      ? rows.filter((r) => r.sessionId === sessionId)
-      : rows;
-
-    const mapped = filtered.map((row) => {
+  const mapper = useCallback(
+    (row: {
+      id: bigint;
+      sessionId: string;
+      decisionType: string;
+      chosenApproach: string;
+      alternativesJson: string;
+      reasoning: string;
+      timestamp: bigint;
+    }) => {
       const alternatives = safeJsonParse<string[]>(row.alternativesJson, []);
 
       return {
@@ -38,11 +39,15 @@ export function useDecisionTrail(sessionId?: string, limit = 50) {
         reasoning: row.reasoning,
         timestamp: Number(row.timestamp),
       };
-    });
+    },
+    [],
+  );
 
-    const sorted = orderBy(mapped, "timestamp", "desc");
-    return sorted.slice(0, limit);
-  }, [rows, sessionId, limit]);
+  const { rows: decisions, loading } = useFilteredTable(
+    tables.decisionLogs,
+    mapper,
+    { sessionId, limit },
+  );
 
-  return { decisions, loading: isLoading };
+  return { decisions, loading };
 }
