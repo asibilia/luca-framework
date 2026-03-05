@@ -12,7 +12,7 @@ import { tables } from "~/module_bindings";
  * Subscribes to the observer_events table and derives agent activity
  * summaries from events with agent_name.
  *
- * @returns Object with agents array, loading state, and error
+ * @returns Object with agents array and loading state
  */
 export function useAgentActivity() {
   const [rows, isLoading] = useTable(tables.observerEvents);
@@ -69,5 +69,5 @@ export function useAgentActivity() {
     }));
   }, [rows]);
 
-  return { agents, loading: isLoading, error: null as string | null };
+  return { agents, loading: isLoading };
 }

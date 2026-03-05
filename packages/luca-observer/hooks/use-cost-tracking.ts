@@ -13,7 +13,7 @@ import { tables } from "~/module_bindings";
  * cost summaries.
  *
  * @param sessionId - Optional session ID to filter by
- * @returns Object with cost data, loading state, and error
+ * @returns Object with cost data and loading state
  */
 export function useCostTracking(sessionId?: string) {
   const [rows, isLoading] = useTable(tables.costTracking);
@@ -44,6 +44,5 @@ export function useCostTracking(sessionId?: string) {
     cost,
     totalCost,
     loading: isLoading,
-    error: null as string | null,
   };
 }

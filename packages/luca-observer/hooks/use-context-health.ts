@@ -15,7 +15,7 @@ import { tables } from "~/module_bindings";
  *
  * @param sessionId - Optional session ID to filter by
  * @param limit - Maximum number of snapshots to return (default 50)
- * @returns Object with snapshots, latest snapshot, health status, loading state, and error
+ * @returns Object with snapshots, latest snapshot, health status, and loading state
  */
 export function useContextHealth(sessionId?: string, limit = 50) {
   const [rows, isLoading] = useTable(tables.contextSnapshots);
@@ -56,6 +56,5 @@ export function useContextHealth(sessionId?: string, limit = 50) {
     latest,
     health,
     loading: isLoading,
-    error: null as string | null,
   };
 }

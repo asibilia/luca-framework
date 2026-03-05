@@ -13,7 +13,7 @@ import { tables } from "~/module_bindings";
  * Subscribes to the iteration_records table and returns all iteration
  * checkpoints with convergence status.
  *
- * @returns Object with iterations array, loading state, and error
+ * @returns Object with iterations array and loading state
  */
 export function useIterationHistory() {
   const [rows, isLoading] = useTable(tables.iterationRecords);
