@@ -555,7 +555,7 @@ async function handleSetField(args: string[]): Promise<void> {
   }
 
   // Fallback: read from JSON file
-  if (!fromSpacetimeDB!) {
+  if (!fromSpacetimeDB) {
     const stateFile = Bun.file(STATE_FILE_PATH);
     if (!(await stateFile.exists())) {
       console.error("State file not found. Run ensure-init first.");

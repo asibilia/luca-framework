@@ -249,7 +249,7 @@
 
 ### Phase 114 — Integration & Data Pipeline Fixes
 
-**Goal:** Fix all integration gaps and data pipeline issues: harness→SpacetimeDB wiring, useLedger field mapping, camelCase→snake_case reducer payloads, double ledger write, and syntax cleanup.
+**Goal:** Fix all integration gaps and data pipeline issues: harness→SpacetimeDB wiring, useLedger field mapping, config consolidation, double ledger write, and syntax cleanup.
 
 **Depends on:** Phase 113
 
@@ -261,8 +261,8 @@
 - [ ] Fix `useLedger` field mapping: `row.action`→`event_type`, `row.result`→`current_state` (currently inverted)
 - [ ] Fix `useLedger` timestamp: convert SpacetimeDB timestamp instead of mapping to empty string
 - [ ] Fix double ledger write in `bridge.ts:712` — reducer called twice per transition with conflicting payloads
-- [ ] Convert all 12 `callReducer` payloads from camelCase to snake_case across observer-emitter.ts + 4 other files
-- [ ] Clean up `!fromSpacetimeDB!` suspicious syntax in observer-emitter.ts
+- [ ] Consolidate SpacetimeDB connection constants into shared config module
+- [ ] Clean up `!fromSpacetimeDB!` suspicious syntax in bridge.ts
 
 ### Phase 115 — Observer DRY & Hook Consolidation
 
@@ -279,7 +279,7 @@
 - [ ] Extract `useFilteredTable` factory hook from 5 duplicated filter/sort/slice pipelines (use-token-usage, use-tool-calls, use-decision-trail, use-context-health, use-cost-tracking)
 - [ ] Extract `safeJsonParse` utility from 6 hooks with identical JSON.parse try/catch blocks
 - [ ] Extract shared `EmptyState` component from 7 duplicated empty state UI patterns
-- [ ] Consolidate SpacetimeDB connection constants (URL, DB name, env vars) from observer-emitter.ts + spacetimedb-client.ts into shared config
+- [ ] ~~Consolidate SpacetimeDB connection constants~~ (moved to Phase 114, Task 1.1)
 
 ### Phase 116 — Framework Architecture & Bridge Cleanup
 

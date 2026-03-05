@@ -10,35 +10,12 @@
  * @module luca-state/spacetimedb-client
  */
 import { isLocalhostUrl } from "./observer-emitter";
+import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-/** Default SpacetimeDB URL (matches observer-emitter). */
-const DEFAULT_STDB_URL = "http://localhost:3000";
-
-/** Database name for the observer module (configurable via LUCA_SPACETIMEDB_DB). */
-const DB_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
-
 /** Timeout for all SpacetimeDB queries (ms). */
 const QUERY_TIMEOUT_MS = 2000;
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Resolve the SpacetimeDB base URL from environment variables.
- *
- * Checks `LUCA_SPACETIMEDB_URL`, then `LUCA_OBSERVER_URL`, then falls back
- * to the default localhost URL.
- *
- * @returns The resolved base URL
- */
-function getStdbUrl(): string {
-  return (
-    process.env.LUCA_SPACETIMEDB_URL ||
-    process.env.LUCA_OBSERVER_URL ||
-    DEFAULT_STDB_URL
-  );
-}
 
 // ─── Query Functions ────────────────────────────────────────────────────────
 
@@ -60,7 +37,7 @@ function getStdbUrl(): string {
  * ```
  */
 export async function queryTable<T>(sql: string): Promise<T[]> {
-  const url = getStdbUrl();
+  const url = resolveStdbUrl();
 
   if (!isLocalhostUrl(url)) {
     throw new Error(
@@ -68,7 +45,7 @@ export async function queryTable<T>(sql: string): Promise<T[]> {
     );
   }
 
-  const endpoint = `${url.replace(/\/+$/, "")}/v1/database/${DB_NAME}/sql`;
+  const endpoint = `${url.replace(/\/+$/, "")}/v1/database/${DATABASE_NAME}/sql`;
 
   const response = await fetch(endpoint, {
     method: "POST",

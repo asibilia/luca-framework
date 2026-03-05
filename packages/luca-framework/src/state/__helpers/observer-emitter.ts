@@ -21,11 +21,7 @@
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** Default SpacetimeDB URL. */
-const DEFAULT_SPACETIMEDB_URL = "http://localhost:3000";
-
-/** Database name for the observer module (configurable via LUCA_SPACETIMEDB_DB). */
-const DATABASE_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
+import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 /**
  * Validate that a URL points to a localhost address.
@@ -79,10 +75,7 @@ export function callReducer(
   reducerName: string,
   args: Record<string, unknown>,
 ): void {
-  const url =
-    process.env.LUCA_SPACETIMEDB_URL ||
-    process.env.LUCA_OBSERVER_URL ||
-    DEFAULT_SPACETIMEDB_URL;
+  const url = resolveStdbUrl();
 
   if (!isLocalhostUrl(url)) {
     console.error(

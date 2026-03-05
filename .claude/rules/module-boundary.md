@@ -1,0 +1,106 @@
+---
+description: "Module boundary: import direction rules and entity isolation"
+globs:
+  - src/**/*.ts
+alwaysApply: true
+---
+
+# Module boundary: import direction rules and entity isolation
+
+## rule
+
+# Module Boundary Rules
+
+## Dependency Tier Map
+
+```
+T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
+T1 Core:        context, planner, harness, iteration, memory  (import T0 only)
+T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
+T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
+```
+
+## Rule 1 — Downward-Only Imports
+
+A file in tier N may import from tiers 0 through N-1 only. Never import upward.
+
+```typescript
+// ✅ T1 (planner) importing T0 (complexity)
+import { COMPLEXITY_ORDER } from "~/complexity";
+
+// ✅ T2 (agents) importing T1 (context)
+import type { ContextConfig } from "~/context";
+
+// ❌ T0 (shared) importing T1 (memory) — upward dependency
+import { compress } from "~/memory";
+
+// ❌ T1 (harness) importing T2 (agents) — upward dependency
+import { agentRegistry } from "~/agents";
+```
+
+## Rule 2 — Entity Isolation
+
+Entity domains (agents, skills, rules) are parallel and MUST NEVER cross-import.
+
+```typescript
+// ❌ agents importing from skills
+import { someSkill } from "~/skills";
+
+// ❌ rules importing from agents
+import { someAgent } from "~/agents";
+
+// ❌ skills importing from rules
+import { someRule } from "~/rules";
+```
+
+Entity domains may import from T0 (shared, complexity) and T1 (context, planner, etc.) only.
+
+## Rule 3 — Barrel-First Cross-Domain Imports
+
+When importing from another domain, prefer the barrel (`~/domain`). Direct deep imports into `__schemas/` are allowed when only specific types are needed.
+
+```typescript
+// ✅ Preferred: barrel import
+import { ComplexityGateSchema } from "~/complexity";
+import type { HarnessResult } from "~/harness";
+
+// ✅ Acceptable: direct schema import for specificity
+import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
+```
+
+## Rule 4 — __helpers/ Encapsulation
+
+Never import directly from another domain's `__helpers/`. These are internal implementation details.
+
+```typescript
+// ❌ Cross-domain import into __helpers/
+import { runCheck } from "~/harness/__helpers/runner";
+
+// ✅ Import via barrel
+import { runHarness } from "~/harness";
+```
+
+**Exception**: `shared/__helpers/*` may be imported directly by any domain, because shared barrels everything and direct imports are sometimes needed for path specificity (e.g., `~/shared/__helpers/validation-utils`).
+
+## Rule 5 — Documented Exceptions
+
+The following cross-tier imports are known and accepted:
+
+| Source | Target | Reason |
+|--------|--------|--------|
+| `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas (T0 -> T2) |
+
+**Removed exceptions (resolved):**
+- `harness/parsers/parser-registry.ts` -> `~/harness/__schemas/harness.schemas` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
+
+New exceptions must be documented here and in this rule file before being committed.
+
+## Enforcement
+
+- **Convention**: All developers and AI agents follow these rules
+- **Automated**: `bun run scripts/check-domain-boundaries.ts` validates tier compliance
+- **Pre-commit**: Boundary violations are flagged during code review
+
+## Barrel Index Invariant
+
+Every domain's `index.ts` is a pure barrel — it contains ONLY re-export statements (`export { ... } from` and `export type { ... } from`). No logic, no schemas, no registries, no constants.
