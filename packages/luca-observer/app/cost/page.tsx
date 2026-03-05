@@ -30,7 +30,7 @@ export default function CostPage() {
         <EmptyState message="Loading cost data..." />
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="font-mono text-xs text-muted-foreground">
                 Total Cost
