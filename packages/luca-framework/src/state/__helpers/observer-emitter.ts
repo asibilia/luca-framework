@@ -18,10 +18,10 @@
  * ```
  */
 
+import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
+
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 /**
  * Validate that a URL points to a localhost address.
