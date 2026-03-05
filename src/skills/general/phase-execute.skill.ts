@@ -1529,10 +1529,11 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Update Roadmap and State
 
-Update ROADMAP.md and state via bridge (falls back to STATE.md):
+Signal verification passed and update state via bridge:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
 \`\`\`
 
 Also update STATE.md directly for backward compatibility.

@@ -203,19 +203,29 @@ Subcommands:
 
 /**
  * Fire-and-forget: sync memory files to SpacetimeDB via reducer.
+ *
+ * Serializes to markdown (not JSON) because observer components
+ * parse the stored strings as markdown with ## headings.
  */
 function syncMemoryViaReducer(
   callReducerFn: (name: string, args: Record<string, unknown>) => void,
-  brainJson: unknown,
-  memoryJson: unknown,
-  workingJson: unknown,
-  proceduresJson: unknown,
+  brainData: unknown,
+  memoryData: unknown,
+  workingData: unknown,
+  proceduresData: unknown,
 ): void {
+  const brain = brainSchema.safeParse(brainData);
+  const memory = z.array(memoryEntrySchema).safeParse(memoryData);
+  const working = workingMemorySchema.safeParse(workingData);
+  const procedures = z.array(procedureEntrySchema).safeParse(proceduresData);
+
   callReducerFn("update_memory_files", {
-    brainJson: JSON.stringify(brainJson),
-    memoryJson: JSON.stringify(memoryJson),
-    workingJson: JSON.stringify(workingJson),
-    proceduresJson: JSON.stringify(proceduresJson),
+    brainJson: brain.success ? serializeBrain(brain.data) : "",
+    memoryJson: memory.success ? serializeMemoryEntries(memory.data) : "",
+    workingJson: working.success ? serializeWorkingMemory(working.data) : "",
+    proceduresJson: procedures.success
+      ? serializeProcedures(procedures.data)
+      : "",
     timestamp: Date.now(),
   });
 }
