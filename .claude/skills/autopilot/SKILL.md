@@ -117,7 +117,13 @@ Task(
 )
 ```
 
-### 0d. Display Session Start
+### 0d. Display Session Start & Initialize State Machine
+
+Transition state machine from idle to preflight:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=START 2>/dev/null || true
+```
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -130,6 +136,12 @@ Auto-plan:     {AUTO_PLAN}
 Backlog scan:  {BACKLOG_SCAN}
 Cross-milestone: {CROSS_MILESTONE}
 Swarm:         {SWARM_ENABLED} (max {MAX_PARALLEL} parallel)
+```
+
+After cognitive pre-flight completes, transition to routing:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
 ```
 
 ## backlog_scan
@@ -685,10 +697,10 @@ Task(
 )
 ```
 
-Write complexity via bridge (falls back to STATE.md):
+Write complexity via bridge (transitions state machine from routing to planning/discussing):
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition set-complexity --complexity="{COMPLEXITY}" 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
 ```
 
 ### 4d. Discussion (Complexity-Gated)
@@ -722,6 +734,12 @@ If PLAN_COUNT == 0 and AUTO_PLAN == false:
 - Continue to next phase
 
 If PLAN_COUNT > 0: skip planning (plans already exist).
+
+Transition state machine to executing:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=PLAN_COMPLETE 2>/dev/null || true
+```
 
 ### 4f. Execution
 
@@ -1008,7 +1026,7 @@ After all executors in this level complete (or are marked failed/timed out):
 4. Add failed/timed-out phases to PARKED_PHASES with reasons
 5. Update state via bridge:
    ```bash
-   bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+   bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
    ```
 6. Log to WORKING.md via bridge
 
@@ -1267,7 +1285,7 @@ Duration:   {session duration}
 1. Update state via bridge (falls back to STATE.md):
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
 ```
 
 2. Regenerate STATE.md via bridge snapshot:

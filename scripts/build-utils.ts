@@ -95,7 +95,10 @@ export async function cleanDirectory(
         removed.push(fullPath);
       }
     } catch (error) {
-      console.warn(`⚠ Failed to clean ${fullPath}:`, error);
+      // ENOENT is expected when parallel cleans race (parent removes child dir)
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.warn(`⚠ Failed to clean ${fullPath}:`, error);
+      }
     }
   }
 
@@ -126,7 +129,9 @@ export async function cleanSkillsDirectory(dir: string): Promise<string[]> {
         removed.push(fullPath);
       }
     } catch (error) {
-      console.warn(`⚠ Failed to clean ${fullPath}:`, error);
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.warn(`⚠ Failed to clean ${fullPath}:`, error);
+      }
     }
   }
 
