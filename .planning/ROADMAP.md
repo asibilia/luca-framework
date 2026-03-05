@@ -20,17 +20,17 @@
 - [x] Add debug logging for SpacetimeDB fallback behavior (#39) — resolved in v2.7.0
 - [x] Improve dual-write consistency between SpacetimeDB and JSON (#36) — added JSON backup write + LUCA_DEBUG logging to persistence.ts
 
-### Phase 120: Audit Findings Persistence
+### Phase 120: Audit Findings Persistence (COMPLETE)
 
 **Goal:** Build structured audit findings persistence layer using SpacetimeDB so review findings survive context compaction.
 
-- [ ] Audit Findings Persistence & Retrieval System (#57)
+- [x] Audit Findings Persistence & Retrieval System (#57) — SpacetimeDB audit_findings table (15 columns, 2 btree indexes), 3 reducers (append_audit_finding, update_finding_status, bulk_dismiss_findings), 6 client helpers, Zod schemas, 21 tests
 
-### Phase 121: Skill Eval Framework
+### Phase 121: Skill Eval Framework (COMPLETE)
 
 **Goal:** Add eval testing, description optimization, and measurement infrastructure for agent skills.
 
-- [ ] Skill Eval Framework: Test, Measure, and Refine Agent Skills (#58)
+- [x] Skill Eval Framework: Test, Measure, and Refine Agent Skills (#58) — SkillEvalSchema extension, evals for phase-execute/git-commit/debug (9 evals total), bun run eval:skills runner script, 16 tests
 
 ---
 
@@ -125,4 +125,4 @@ _P3 — Data:_
 
 ---
 
-_Roadmap updated: 2026-03-05 (v2.8.0 active — Phase 118 complete, Phases 120-121 in progress)_
+_Roadmap updated: 2026-03-05 (v2.8.0 complete — 3 phases, 9 todos closed, 37 new tests)_

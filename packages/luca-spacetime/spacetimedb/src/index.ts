@@ -613,9 +613,8 @@ export const bulk_dismiss_findings = spacetimedb.reducer(
   },
   (ctx, args) => {
     if (!args.sessionId) throw new SenderError("sessionId is required");
-    const matches = [
-      ...ctx.db.auditFindings.audit_findings_session_id.filter(args.sessionId),
-    ];
+    const allRows = [...ctx.db.auditFindings.iter()];
+    const matches = allRows.filter((row) => row.sessionId === args.sessionId);
     for (const row of matches) {
       // Skip already-resolved or dismissed findings
       if (row.status === "resolved" || row.status === "dismissed") continue;

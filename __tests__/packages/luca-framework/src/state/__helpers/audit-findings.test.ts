@@ -326,7 +326,9 @@ describe("queryFindingsForFile", () => {
 describe("getFindingsSummary", () => {
   test("returns zeroed summary when SpacetimeDB is unavailable", async () => {
     globalThis.fetch = ((_url: any, _init?: any) =>
-      Promise.reject(new Error("Connection refused"))) as typeof fetch;
+      Promise.reject(
+        new Error("Connection refused"),
+      )) as unknown as typeof fetch;
 
     const summary = await getFindingsSummary("session-abc");
     expect(summary.total).toBe(0);
