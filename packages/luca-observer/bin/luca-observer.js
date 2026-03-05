@@ -13,7 +13,7 @@
  */
 
 import { parseArgs } from "node:util";
-import { execSync, spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -81,14 +81,20 @@ const child = spawn("bunx", args, {
 
 if (values.open) {
   setTimeout(() => {
-    const url = `http://localhost:${port}`;
+    // Validate port is numeric to prevent shell injection
+    const sanitizedPort = String(parseInt(port, 10));
+    if (sanitizedPort !== port || isNaN(parseInt(port, 10))) {
+      console.error(`  Invalid port: ${port}`);
+      return;
+    }
+    const url = `http://localhost:${sanitizedPort}`;
     try {
-      // macOS
-      execSync(`open ${url}`, { stdio: "ignore" });
+      // macOS — use execFileSync to avoid shell interpretation
+      execFileSync("open", [url], { stdio: "ignore" });
     } catch {
       try {
-        // Linux
-        execSync(`xdg-open ${url}`, { stdio: "ignore" });
+        // Linux — use execFileSync to avoid shell interpretation
+        execFileSync("xdg-open", [url], { stdio: "ignore" });
       } catch {
         // Fallback: just print URL
         console.log(`  Open: ${url}`);
