@@ -2,35 +2,53 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v2.9.0 — Audit Gap Closure & Test Reliability
 
 ---
 
-## Next — v2.8.0 Audit Gap Closure (Phases 122-123)
+## v2.9.0 — Audit Gap Closure & Test Reliability
 
 ### Phase 122: SpacetimeDB Reducer Hardening (from v2.8.0 audit)
 
 **Goal:** Add server-side input validation and index usage to SpacetimeDB audit finding reducers.
 
-- [ ] Add server-side enum validation for severity field in append_audit_finding reducer (audit #1)
-- [ ] Add server-side enum validation for status field in update_finding_status reducer (audit #2)
-- [ ] Replace full table scan with index lookup in bulk_dismiss_findings + document single-user authz assumption (audit #3)
-- [ ] Add defense-in-depth escaping for severity filter in SQL queries (audit LOW)
-- [ ] Add length cap on resolutionNotes parameter (audit LOW)
+- [x] Add server-side enum validation for severity field in append_audit_finding reducer (audit #1)
+- [x] Add server-side enum validation for status field in update_finding_status reducer (audit #2)
+- [x] Replace full table scan with index lookup in bulk_dismiss_findings + document single-user authz assumption (audit #3)
+- [x] Add defense-in-depth escaping for severity filter in SQL queries (audit LOW)
+- [x] Add length cap on resolutionNotes parameter (audit LOW)
 
 ### Phase 123: v2.8.0 DRY & Convention Cleanup (from v2.8.0 audit)
 
 **Goal:** Close DRY violations, fix barrel imports, and align conventions identified by milestone audit.
 
 - [ ] Extract shared SQL sanitization utility from audit-findings.ts + ledger.ts (audit #4)
-- [ ] Extract createEmptySummary factory — deduplicate emptySummary construction (audit #5)
-- [ ] Extract updateFindingStatus helper from twin markFindingResolved/markFindingDismissed (audit #6)
-- [ ] Derive severityOrder from FINDING_SEVERITIES instead of hardcoded map (audit #7)
-- [ ] Fix barrel-first imports in eval-skills.ts and skill-eval.test.ts (audit #8)
-- [ ] Replace Array.sort() with lodash orderBy in audit-findings.ts (audit #9)
-- [ ] Fix snake_case in internal EvalEntry/EvalSummary types to camelCase (audit #10)
-- [ ] Export SkillConfigSchema from src/skills/index.ts barrel (audit LOW)
-- [ ] Truncate echoed value in validateFilterString error message (audit LOW)
+- [x] Extract createEmptySummary factory — deduplicate emptySummary construction (audit #5)
+- [x] Extract updateFindingStatus helper from twin markFindingResolved/markFindingDismissed (audit #6)
+- [x] Derive severityOrder from FINDING_SEVERITIES instead of hardcoded map (audit #7)
+- [x] Fix barrel-first imports in eval-skills.ts and skill-eval.test.ts (audit #8)
+- [x] Replace Array.sort() with lodash orderBy in audit-findings.ts (audit #9)
+- [x] Fix snake_case in internal EvalEntry/EvalSummary types to camelCase (audit #10)
+- [x] Export SkillConfigSchema from src/skills/index.ts barrel (audit LOW)
+- [x] Truncate echoed value in validateFilterString error message (audit LOW)
+
+### Phase 124: Test Suite Isolation Fix (#37)
+
+**Goal:** Root-cause and fix the 29-test full-suite module resolution failure so `bun test` passes reliably.
+
+- [ ] Root-cause module resolution issue causing 29 tests to fail in full suite
+- [ ] Fix the resolution so all tests pass in both individual and full-suite runs
+- [ ] Remove the known-issue caveat from CLAUDE.md once fixed
+- [ ] Add `bun run test:all` script that validates the full suite
+
+### Phase 125: Complete node:fs to Bun Migration (#63) — CLOSED
+
+**Result:** Audit found 9 files with `node:fs` imports, all using APIs with no Bun equivalent (`mkdir`, `rm`, `cp`, `chmod`, `readdir`, `copyFile`, `appendFile`, `unlink`). Migration is already complete where possible. Remaining imports are justified.
+
+- [x] Identify all remaining `node:fs` and `node:fs/promises` imports (9 files, all justified)
+- [x] Verify no readFile/writeFile remain (confirmed — already migrated to Bun.file/Bun.write)
+- [x] Confirm `existsSync` is Bun-re-exported (no migration needed)
+- [x] Document: `appendFile` in ledger.ts has explicit comment explaining no Bun equivalent
 
 ---
 
@@ -53,6 +71,7 @@ _P2 — UI:_
 - Add React error boundaries to observer dashboard pages (#41)
 - Accessibility pass on observer dashboard (#47)
 - Add missing empty states to observer pages (#49)
+- Add todo tracking to observer dashboard (#64)
 
 _P2 — Data:_
 
@@ -66,6 +85,9 @@ _P2 — DX:_
 - Deduplicate sanitizeJsonParse — 3 copies in codebase (#46)
 - Document observability domain in architecture docs (#50)
 - Add automatic stale session lock cleanup to build system (#51)
+- Align context pruning domain placement (#59 — may close "by design")
+- Verify harness-aware update template collection (#60 — verification only)
+- Evaluate dual-write divergence detection (#62 — may close "by design")
 
 _P2 — Agentic:_
 
@@ -77,10 +99,16 @@ _P3 — Agentic:_
 
 - Implement skill dependency graph (#54)
 - Enhance tribunal debate with consensus model (#55)
+- Hook portability abstraction layer (#09)
+- Replace complexity gating with per-agent model routing (architectural)
 
 _P3 — Data:_
 
 - Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
+
+_P3 — DX:_
+
+- Post-init interactive tour (#20)
 
 **Ecosystem & Learning:**
 
@@ -126,4 +154,4 @@ _P3 — Data:_
 
 ---
 
-_Roadmap updated: 2026-03-05 (v2.8.0 archived, gap closure phases 122-123 queued)_
+_Roadmap updated: 2026-03-05 (v2.9.0 milestone created, 9 unplanned todos integrated, #61 merged into #37)_

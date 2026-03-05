@@ -43,6 +43,9 @@ beforeEach(() => {
     LUCA_OBSERVER_URL: process.env.LUCA_OBSERVER_URL,
   };
 
+  // Point to localhost so SSRF check passes with mocked fetch
+  process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
+
   // Default mock: capture calls and resolve successfully
   globalThis.fetch = ((url: any, init?: any) => {
     fetchCalls.push({ url: String(url), init });

@@ -55,10 +55,13 @@ async function runBridge(
 beforeEach(() => {
   ensurePlanningDir();
   cleanupStateFiles();
+  // Enable STATE.md generation so snapshot sync tests can verify it
+  process.env.LUCA_EXPORT_MD = "true";
 });
 
 afterEach(() => {
   cleanupStateFiles();
+  delete process.env.LUCA_EXPORT_MD;
 });
 
 // ─── T5.1: Fresh init creates state.json ────────────────────────────────────

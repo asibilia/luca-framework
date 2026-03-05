@@ -160,7 +160,7 @@ describe("readLedger (SpacetimeDB path)", () => {
       c.url.includes("/v1/database/luca-observer/sql"),
     );
     const body = sqlCall!.init?.body as string;
-    expect(body).toContain("event_type = 'START'");
+    expect(body).toContain("action = 'START'");
   });
 
   test("builds SQL with since filter", async () => {
@@ -172,7 +172,9 @@ describe("readLedger (SpacetimeDB path)", () => {
       c.url.includes("/v1/database/luca-observer/sql"),
     );
     const body = sqlCall!.init?.body as string;
-    expect(body).toContain("timestamp >= '2026-03-01T00:00:00.000Z'");
+    // SpacetimeDB stores timestamps as U64 milliseconds, not ISO strings
+    const expectedMs = new Date("2026-03-01T00:00:00.000Z").getTime();
+    expect(body).toContain(`timestamp >= ${expectedMs}`);
   });
 
   test("does not include LIMIT in SQL (applied client-side)", async () => {

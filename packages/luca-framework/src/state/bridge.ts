@@ -125,6 +125,12 @@ Subcommands:
                     Options: --field=path (required, lodash get path)
   read-ledger       Read session ledger entries with optional filters
                     Options: --session=id, --event=type, --since=iso, --limit=N, --tail=N
+  emit-event        Emit a fire-and-forget observer event to SpacetimeDB
+                    Options: --type=eventType (required), --session=id, --agent=name,
+                             --tool=name, --file=path, --duration=ms, --data=json
+  emit-context-snapshot  Emit a context-window snapshot to SpacetimeDB
+                    Options: --session=id (required), --percent=N, --messages=N,
+                             --tokens=N, --phase=name
   set-field         Set an allowlisted context field, persist, and regenerate STATE.md
                     Options: --field=name (required), --value=json-or-string (required)
   transition        Send event, persist state, and update STATE.md
@@ -337,7 +343,11 @@ async function handleReadField(args: string[]): Promise<void> {
     fromRow: (row: { contextJson: string }) => {
       if (!row.contextJson) return null;
       const ctx = JSON.parse(row.contextJson);
-      return { field: fieldPath, value: get(ctx, fieldPath) };
+      const value = get(ctx, fieldPath);
+      // Return null when value is missing so readWithFallback
+      // falls through to the JSON file where the data may exist.
+      if (value === undefined) return null;
+      return { field: fieldPath, value };
     },
     fromSnapshot: (ctx) => ({
       field: fieldPath,
@@ -487,6 +497,10 @@ async function handleSetField(args: string[]): Promise<void> {
     ticketId: (updatedContext.ticket_id as string) ?? "",
     contextJson: JSON.stringify(updatedContext),
   });
+
+  // Persist updated context to local JSON file (dual-write)
+  const updatedJson = { ...snapshotJson!, context: updatedContext };
+  await Bun.write(STATE_FILE_PATH, JSON.stringify(updatedJson, null, 2));
 
   // Optional: update STATE.md gated by env var
   if (process.env.LUCA_EXPORT_MD === "true") {
@@ -675,6 +689,12 @@ async function handleEnsureInit(args: string[]): Promise<void> {
     // State already exists -- return current info
     const loadResult = await loadPersistedActor();
     if (loadResult.success) {
+      // Re-persist to SpacetimeDB to ensure it stays in sync with
+      // the local JSON file. Without this, SpacetimeDB can stay stale
+      // if a previous persist failed (fire-and-forget) and hooks that
+      // read SpacetimeDB as primary will get empty/outdated values.
+      await persistActor(loadResult.data);
+
       const snapshot = loadResult.data.getSnapshot();
       console.log(
         JSON.stringify({
@@ -1068,6 +1088,96 @@ async function handleReadLedger(args: string[]): Promise<void> {
   console.log(JSON.stringify(entries, null, 2));
 }
 
+// ─── Emit Event Command ──────────────────────────────────────────────────────
+
+/**
+ * Emit a fire-and-forget observer event to SpacetimeDB via `emitObserverEvent`.
+ *
+ * Thin CLI wrapper so hooks can call the bridge instead of using raw curl
+ * with duplicated URL/format logic.
+ *
+ * @param args - CLI arguments:
+ *   --type=string   (required) Event type (e.g., "session.start")
+ *   --session=string (optional) Session ID
+ *   --agent=string   (optional) Agent name
+ *   --tool=string    (optional) Tool name
+ *   --file=string    (optional) File path
+ *   --duration=N     (optional) Duration in ms
+ *   --data=json      (optional) Additional event data JSON
+ */
+function handleEmitEvent(args: string[]): void {
+  const eventType = getArg(args, "type");
+  if (!eventType) {
+    console.error("Missing --type argument");
+    process.exit(2);
+  }
+
+  const sessionId = getArg(args, "session") ?? "";
+  const agentName = getArg(args, "agent") ?? "";
+  const toolName = getArg(args, "tool") ?? "";
+  const filePath = getArg(args, "file") ?? "";
+  const durationMs = parseInt(getArg(args, "duration") ?? "0", 10) || 0;
+
+  let extraData: Record<string, unknown> = {};
+  const dataArg = getArg(args, "data");
+  if (dataArg) {
+    try {
+      extraData = JSON.parse(dataArg);
+    } catch {
+      // Not valid JSON — ignore
+    }
+  }
+
+  emitObserverEvent(eventType, {
+    sessionId,
+    agentName,
+    toolName,
+    filePath,
+    durationMs,
+    ...extraData,
+  });
+
+  console.log(JSON.stringify({ emitted: true, eventType, sessionId }));
+}
+
+// ─── Emit Context Snapshot Command ──────────────────────────────────────────
+
+/**
+ * Emit a context-window snapshot to SpacetimeDB via `snapshotContext`.
+ *
+ * @param args - CLI arguments:
+ *   --session=string  (required) Session ID
+ *   --percent=N       (optional) Context usage percentage
+ *   --messages=N      (optional) Message count
+ *   --tokens=N        (optional) Estimated tokens
+ *   --phase=string    (optional) Current phase
+ */
+function handleEmitContextSnapshot(args: string[]): void {
+  const sessionId = getArg(args, "session");
+  if (!sessionId) {
+    console.error("Missing --session argument");
+    process.exit(2);
+  }
+
+  const contextPercent = parseInt(getArg(args, "percent") ?? "0", 10) || 0;
+  const messageCount = parseInt(getArg(args, "messages") ?? "0", 10) || 0;
+  const estimatedTokens = parseInt(getArg(args, "tokens") ?? "0", 10) || 0;
+  const phase = getArg(args, "phase") ?? "";
+
+  callReducer("snapshot_context", {
+    sessionId,
+    contextPercent,
+    messageCount,
+    estimatedTokens,
+    phase,
+    timestamp: Date.now(),
+  });
+
+  console.log(
+    JSON.stringify({ emitted: true, type: "context_snapshot", sessionId }),
+  );
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1121,6 +1231,12 @@ export async function runBridgeCli(): Promise<void> {
     case "read-ledger":
       await handleReadLedger(args);
       break;
+    case "emit-event":
+      handleEmitEvent(args);
+      break;
+    case "emit-context-snapshot":
+      handleEmitContextSnapshot(args);
+      break;
     default:
       printUsage();
       process.exit(2);
@@ -1151,5 +1267,7 @@ export {
   handleGateCheck,
   handleSuspend,
   handleResumePhase,
+  handleEmitEvent,
+  handleEmitContextSnapshot,
   SETTABLE_FIELDS,
 };

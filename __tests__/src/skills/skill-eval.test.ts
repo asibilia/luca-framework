@@ -3,11 +3,7 @@
  * and eval runner loading.
  */
 import { describe, test, expect } from "bun:test";
-import {
-  SkillEvalSchema,
-  SkillConfigSchema,
-} from "~/skills/__schemas/skill.schemas";
-import { skillRegistry } from "~/skills/__helpers/build-skill-registry";
+import { SkillConfigSchema, SkillEvalSchema, skillRegistry } from "~/skills";
 
 // ---------------------------------------------------------------------------
 // SkillEvalSchema validation

@@ -245,6 +245,10 @@ const VALID_EVENT_TYPES = [
   "SUSPEND",
   "RESUME_PHASE",
   "RESET",
+  "HARNESS_COMPLETE",
+  "ROUTE_COMPLETE",
+  "PLAN_COMPLETE",
+  "DISCUSS_COMPLETE",
 ] as const;
 
 /**
@@ -360,16 +364,16 @@ export async function readLedger(
     if (validatedFilters.event_type) {
       // Defense-in-depth: primary validation is validateLedgerFilters() above.
       // event_type is allowlist-validated; .replace() is belt-and-suspenders.
+      // SpacetimeDB column is `action`, not `event_type`.
       whereClauses.push(
-        `event_type = '${validatedFilters.event_type.replace(/'/g, "''")}'`,
+        `action = '${validatedFilters.event_type.replace(/'/g, "''")}'`,
       );
     }
     if (validatedFilters.since) {
       // Defense-in-depth: primary validation is validateLedgerFilters() above.
-      // since is ISO8601 regex-validated; .replace() is belt-and-suspenders.
-      whereClauses.push(
-        `timestamp >= '${validatedFilters.since.replace(/'/g, "''")}'`,
-      );
+      // since is ISO8601 regex-validated; convert to U64 ms for SpacetimeDB.
+      const sinceMs = new Date(validatedFilters.since).getTime();
+      whereClauses.push(`timestamp >= ${sinceMs}`);
     }
 
     // SpacetimeDB v2 SQL does not support ORDER BY or aggregate functions

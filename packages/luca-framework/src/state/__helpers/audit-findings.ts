@@ -8,6 +8,8 @@
  *
  * @module luca-state/audit-findings
  */
+import orderBy from "lodash/orderBy";
+
 import { callReducer } from "./observer-emitter";
 import { queryTable } from "./spacetimedb-client";
 
@@ -39,9 +41,51 @@ const SAFE_STRING_RE = /^[a-zA-Z0-9_\-./: ]+$/;
  */
 function validateFilterString(value: string, fieldName: string): string {
   if (value.length > 512 || !SAFE_STRING_RE.test(value)) {
-    throw new Error(`Invalid ${fieldName} format: ${value}`);
+    throw new Error(
+      `Invalid ${fieldName} format: ${value.slice(0, 50)}${value.length > 50 ? "..." : ""}`,
+    );
   }
   return value;
+}
+
+// ─── Internal Factories ─────────────────────────────────────────────────────
+
+/**
+ * Create a zeroed-out findings summary with all severity/status keys.
+ */
+function createEmptySummary(): FindingsSummary {
+  return {
+    total: 0,
+    by_severity: Object.fromEntries(
+      FINDING_SEVERITIES.map((s) => [s, 0]),
+    ) as FindingsSummary["by_severity"],
+    by_category: {},
+    by_status: Object.fromEntries(
+      FINDING_STATUSES.map((s) => [s, 0]),
+    ) as FindingsSummary["by_status"],
+  };
+}
+
+/**
+ * Update the status of an audit finding.
+ * Shared implementation for markFindingResolved and markFindingDismissed.
+ */
+function updateFindingStatus(
+  findingId: number,
+  status: string,
+  resolutionNotes: string,
+): void {
+  if (!Number.isFinite(findingId) || findingId < 0) {
+    console.error("[audit-findings] Invalid findingId:", findingId);
+    return;
+  }
+
+  callReducer("update_finding_status", {
+    findingId,
+    status,
+    resolutionNotes,
+    resolvedAt: Date.now(),
+  });
 }
 
 // ─── Write Helpers ──────────────────────────────────────────────────────────
@@ -117,17 +161,7 @@ export function markFindingResolved(
   findingId: number,
   resolutionNotes?: string,
 ): void {
-  if (!Number.isFinite(findingId) || findingId < 0) {
-    console.error("[audit-findings] Invalid findingId:", findingId);
-    return;
-  }
-
-  callReducer("update_finding_status", {
-    findingId,
-    status: "resolved",
-    resolutionNotes: resolutionNotes ?? "",
-    resolvedAt: Date.now(),
-  });
+  updateFindingStatus(findingId, "resolved", resolutionNotes ?? "");
 }
 
 /**
@@ -144,17 +178,7 @@ export function markFindingResolved(
  * ```
  */
 export function markFindingDismissed(findingId: number, reason: string): void {
-  if (!Number.isFinite(findingId) || findingId < 0) {
-    console.error("[audit-findings] Invalid findingId:", findingId);
-    return;
-  }
-
-  callReducer("update_finding_status", {
-    findingId,
-    status: "dismissed",
-    resolutionNotes: reason,
-    resolvedAt: Date.now(),
-  });
+  updateFindingStatus(findingId, "dismissed", reason);
 }
 
 // ─── Query Helpers ──────────────────────────────────────────────────────────
@@ -195,7 +219,8 @@ export async function queryPendingFindings(
       if (validatedFilters.success) {
         const f = validatedFilters.data;
         if (f.severity) {
-          whereClauses.push(`severity = '${f.severity}'`);
+          const safeSeverity = validateFilterString(f.severity, "severity");
+          whereClauses.push(`severity = '${safeSeverity.replace(/'/g, "''")}'`);
         }
         if (f.category) {
           const safeCategory = validateFilterString(f.category, "category");
@@ -253,19 +278,11 @@ export async function queryFindingsForFile(
     const rows = await queryTable<AuditFinding>(sql);
 
     // Sort client-side by severity (ORDER BY not supported in SpacetimeDB v2 SQL)
-    const severityOrder: Record<string, number> = {
-      critical: 0,
-      high: 1,
-      medium: 2,
-      low: 3,
-      info: 4,
-    };
-    rows.sort(
-      (a, b) =>
-        (severityOrder[a.severity] ?? 5) - (severityOrder[b.severity] ?? 5),
+    const severityOrder: Record<string, number> = Object.fromEntries(
+      FINDING_SEVERITIES.map((s, i) => [s, i]),
     );
 
-    return rows;
+    return orderBy(rows, [(r) => severityOrder[r.severity] ?? 5], ["asc"]);
   } catch {
     // SpacetimeDB unavailable — return empty array
     return [];
@@ -290,16 +307,7 @@ export async function queryFindingsForFile(
 export async function getFindingsSummary(
   sessionId: string,
 ): Promise<FindingsSummary> {
-  const emptySummary: FindingsSummary = {
-    total: 0,
-    by_severity: Object.fromEntries(
-      FINDING_SEVERITIES.map((s) => [s, 0]),
-    ) as FindingsSummary["by_severity"],
-    by_category: {},
-    by_status: Object.fromEntries(
-      FINDING_STATUSES.map((s) => [s, 0]),
-    ) as FindingsSummary["by_status"],
-  };
+  const emptySummary = createEmptySummary();
 
   try {
     const safeSessionId = validateFilterString(sessionId, "session_id");
@@ -310,16 +318,8 @@ export async function getFindingsSummary(
 
     if (rows.length === 0) return emptySummary;
 
-    const summary: FindingsSummary = {
-      total: rows.length,
-      by_severity: Object.fromEntries(
-        FINDING_SEVERITIES.map((s) => [s, 0]),
-      ) as FindingsSummary["by_severity"],
-      by_category: {},
-      by_status: Object.fromEntries(
-        FINDING_STATUSES.map((s) => [s, 0]),
-      ) as FindingsSummary["by_status"],
-    };
+    const summary = createEmptySummary();
+    summary.total = rows.length;
 
     for (const row of rows) {
       const severity = row.severity as keyof FindingsSummary["by_severity"];

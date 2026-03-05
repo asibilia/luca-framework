@@ -38,7 +38,6 @@ test("hello world", () => {
 - **CRITICAL — Generated files**: `.claude/`, `.cursor/`, `.pi/` directories contain generated output. **Never edit files in these directories directly** — always edit the source in `src/` and run `bun run build:all`. Use `bun run check:drift` to verify.
 - **High-leverage gotchas**:
   - Some tests in `__tests__/scripts/` expect `bun run build:all` to have been run first because they validate artifacts under `dist/plugin/`.
-  - ~29 tests in `packages/luca-framework` fail when run as part of the full suite due to a pre-existing module resolution issue; they **pass when run individually** (e.g. `bun test __tests__/packages/luca-framework/`).
   - There is **no ESLint configuration**; linting is effectively TypeScript type checking.
   - Bun is required (repo uses `bun.lock` and `bunfig.toml`). If Bun is missing, install it before running any commands.
   - No `.env` is required for core development; Jira adapter env vars are optional.

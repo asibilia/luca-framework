@@ -34,6 +34,15 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
+# Cascading bridge lookup: installed bin → monorepo source → skip
+run_bridge() {
+  if command -v luca-bridge &>/dev/null; then
+    luca-bridge "$@"
+  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
+  fi
+}
+
 # Read stdin JSON (may be empty for some platforms)
 INPUT=$(cat || true)
 
@@ -157,8 +166,11 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
   "
 fi
 
-# Emit typecheck result to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+# Emit typecheck result via bridge (fire-and-forget)
+EVENT_TYPE="typecheck.pass"
+if [ $TSC_EXIT -ne 0 ]; then
+  EVENT_TYPE="typecheck.fail"
+fi
 SESSION_ID=""
 if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   SESSION_ID=$(bun -e "
@@ -169,14 +181,7 @@ if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   " 2>/dev/null || echo "")
 fi
 if [ -n "$SESSION_ID" ]; then
-  EVENT_TYPE="typecheck.pass"
-  if [ $TSC_EXIT -ne 0 ]; then
-    EVENT_TYPE="typecheck.fail"
-  fi
-  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
-    -H "Content-Type: application/json" \
-    -d "{\"args\":{\"eventType\":\"$EVENT_TYPE\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"tsc\",\"filePath\":\"$FILE_PATH\",\"durationMs\":0,\"eventData\":\"{}\",\"timestamp\":$(date +%s)000}}" \
-    --connect-timeout 1 --max-time 2 &>/dev/null &
+  run_bridge emit-event --type="$EVENT_TYPE" --session="$SESSION_ID" --tool=tsc --file="$FILE_PATH" &>/dev/null &
 fi
 
 exit 0

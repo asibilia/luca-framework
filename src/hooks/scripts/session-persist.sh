@@ -30,6 +30,15 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
+# Cascading bridge lookup: installed bin → monorepo source → skip
+run_bridge() {
+  if command -v luca-bridge &>/dev/null; then
+    luca-bridge "$@"
+  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
+  fi
+}
+
 # Read stdin JSON (may be empty for some platforms)
 INPUT=$(cat || true)
 
@@ -60,8 +69,7 @@ END_REASON="${END_REASON:0:100}"
 # Remove session lock (before any other cleanup — most important action)
 rm -f "$PROJECT_DIR/.claude/.session-lock"
 
-# Emit session.end event to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
+# Emit session.end event to SpacetimeDB (fire-and-forget via bridge)
 # Read session_id from state.json if available
 SESSION_ID=""
 if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
@@ -73,10 +81,7 @@ if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
   " 2>/dev/null || echo "")
 fi
 if [ -n "$SESSION_ID" ]; then
-  curl -s -X POST "$STDB_URL/database/luca-observer/call/ingest_event" \
-    -H "Content-Type: application/json" \
-    -d "{\"args\":{\"eventType\":\"session.end\",\"sessionId\":\"$SESSION_ID\",\"agentName\":\"\",\"toolName\":\"\",\"filePath\":\"\",\"durationMs\":0,\"eventData\":\"{\\\"reason\\\":\\\"$END_REASON\\\"}\",\"timestamp\":$(date +%s)000}}" \
-    --connect-timeout 1 --max-time 2 &>/dev/null &
+  run_bridge emit-event --type=session.end --session="$SESSION_ID" --data="{\"reason\":\"$END_REASON\"}" &>/dev/null &
 fi
 
 WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
@@ -114,11 +119,6 @@ else
   printf '\n\n---\n*Session ended: %s (reason: %s)*\n' "$TIMESTAMP" "$END_REASON" >> "$WORKING_MD"
 fi
 
-# Emit observer event (fire-and-forget)
-OBSERVER_URL="${LUCA_OBSERVER_URL:-http://localhost:3456}"
-curl -s --max-time 1 "$OBSERVER_URL/api/events" -X POST \
-  -H "Content-Type: application/json" \
-  -d "{\"event_type\":\"session.end\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"payload\":{\"reason\":\"$END_REASON\"}}" \
-  >/dev/null 2>&1 &
+# Legacy /api/events endpoint removed — SpacetimeDB reducer call above handles emission
 
 exit 0

@@ -72,10 +72,13 @@ async function runCli(
 beforeEach(() => {
   ensurePlanningDir();
   cleanupStateFiles();
+  // Enable STATE.md generation so transition tests can verify it
+  process.env.LUCA_EXPORT_MD = "true";
 });
 
 afterEach(() => {
   cleanupStateFiles();
+  delete process.env.LUCA_EXPORT_MD;
 });
 
 // ─── Bridge + CLI Interop ───────────────────────────────────────────────────
