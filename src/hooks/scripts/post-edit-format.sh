@@ -108,9 +108,9 @@ RUNTIME=$(read_runtime)
 
 # Select formatter command based on runtime
 if [ "$RUNTIME" = "bun" ]; then
-  FORMATTER_CMD="bunx --bun prettier --write"
+  FORMATTER_CMD=(bunx --bun prettier --write)
 else
-  FORMATTER_CMD="npx prettier --write"
+  FORMATTER_CMD=(npx prettier --write)
 fi
 
 # Map extensions to formatter commands
@@ -118,27 +118,27 @@ fi
 case ".$EXT" in
   .ts|.tsx|.js|.jsx|.mjs|.cjs)
     # TypeScript/JavaScript — use Prettier
-    $FORMATTER_CMD "$FILE_PATH" 2>/dev/null || true
+    "${FORMATTER_CMD[@]}" "$FILE_PATH" 2>/dev/null || true
     ;;
   .json)
     # JSON — use Prettier
-    $FORMATTER_CMD "$FILE_PATH" 2>/dev/null || true
+    "${FORMATTER_CMD[@]}" "$FILE_PATH" 2>/dev/null || true
     ;;
   .css|.scss|.less)
     # Stylesheets — use Prettier
-    $FORMATTER_CMD "$FILE_PATH" 2>/dev/null || true
+    "${FORMATTER_CMD[@]}" "$FILE_PATH" 2>/dev/null || true
     ;;
   .html|.htm)
     # HTML — use Prettier
-    $FORMATTER_CMD "$FILE_PATH" 2>/dev/null || true
+    "${FORMATTER_CMD[@]}" "$FILE_PATH" 2>/dev/null || true
     ;;
   .md|.mdx)
     # Markdown — use Prettier
-    $FORMATTER_CMD "$FILE_PATH" 2>/dev/null || true
+    "${FORMATTER_CMD[@]}" "$FILE_PATH" 2>/dev/null || true
     ;;
   .yaml|.yml)
     # YAML — use Prettier
-    $FORMATTER_CMD "$FILE_PATH" 2>/dev/null || true
+    "${FORMATTER_CMD[@]}" "$FILE_PATH" 2>/dev/null || true
     ;;
   *)
     # Unknown extension — skip formatting

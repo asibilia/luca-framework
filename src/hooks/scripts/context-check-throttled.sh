@@ -47,7 +47,8 @@ run_bridge() {
 }
 
 # --- Throttle check ---
-THROTTLE_FILE="/tmp/.luca-context-check-ts"
+PROJECT_HASH=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
+THROTTLE_FILE="/tmp/.luca-context-check-${PROJECT_HASH}-ts"
 THROTTLE_SECONDS=60
 
 if [ -f "$THROTTLE_FILE" ]; then
@@ -66,10 +67,11 @@ date +%s > "$THROTTLE_FILE"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 NOTES_DIR="$PROJECT_DIR/.planning/notes"
 if [ -d "$NOTES_DIR" ]; then
-  URGENT_NOTES=$(ls "$NOTES_DIR"/0-*.md 2>/dev/null | head -5)
-  if [ -n "$URGENT_NOTES" ]; then
+  URGENT_NOTES=()
+  while IFS= read -r f; do URGENT_NOTES+=("$f"); done < <(find "$NOTES_DIR" -maxdepth 1 -name '0-*.md' 2>/dev/null | head -5)
+  if [ "${#URGENT_NOTES[@]}" -gt 0 ]; then
     NOTE_CONTENT=""
-    for note_file in $URGENT_NOTES; do
+    for note_file in "${URGENT_NOTES[@]}"; do
       # Extract body (skip frontmatter between --- delimiters)
       BODY=$(awk '/^---$/ {f=!f; next} !f' "$note_file" | tr '\n' ' ' | xargs)
       NOTE_CONTENT="${NOTE_CONTENT}\n- ${BODY}"

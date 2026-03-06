@@ -38,11 +38,12 @@ run_bridge() {
   fi
 }
 
-# Read stdin JSON (standard hook pattern — consumed but not parsed)
-INPUT=$(cat || true)
+# Drain stdin (standard hook pattern — consumed but not parsed)
+cat > /dev/null 2>&1 || true
 
 # Throttle: skip if last sync was recent
-THROTTLE_FILE="/tmp/.luca-snapshot-sync-ts"
+PROJECT_HASH=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
+THROTTLE_FILE="/tmp/.luca-snapshot-sync-${PROJECT_HASH}-ts"
 THROTTLE_SECONDS=120
 
 if [ -f "$THROTTLE_FILE" ]; then

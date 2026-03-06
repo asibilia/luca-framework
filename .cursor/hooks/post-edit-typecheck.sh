@@ -133,14 +133,14 @@ read_runtime() {
 RUNTIME=$(read_runtime)
 
 if [ "$RUNTIME" = "bun" ]; then
-  TSC_CMD="bunx --bun tsc --noEmit"
+  TSC_CMD=(bunx --bun tsc --noEmit)
 else
-  TSC_CMD="npx tsc --noEmit"
+  TSC_CMD=(npx tsc --noEmit)
 fi
 
 # Run type-checker (project-wide, since types are interconnected)
 set +e
-TSC_OUTPUT=$(cd "$PROJECT_DIR" && $TSC_CMD 2>&1)
+TSC_OUTPUT=$(cd "$PROJECT_DIR" && "${TSC_CMD[@]}" 2>&1)
 TSC_EXIT=$?
 set -e
 

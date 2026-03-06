@@ -104,8 +104,8 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 # --- Advisory: pending developer notes ---
 NOTES_DIR="$PROJECT_DIR/.planning/notes"
 if [ -d "$NOTES_DIR" ]; then
-  ALL_NOTES=$(ls "$NOTES_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ')
-  URGENT_NOTES=$(ls "$NOTES_DIR"/0-*.md 2>/dev/null | wc -l | tr -d ' ')
+  ALL_NOTES=$(find "$NOTES_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+  URGENT_NOTES=$(find "$NOTES_DIR" -maxdepth 1 -name '0-*.md' 2>/dev/null | wc -l | tr -d ' ')
   if [ "$ALL_NOTES" -gt 0 ]; then
     echo "[Developer Notes] $ALL_NOTES pending note(s) ($URGENT_NOTES urgent). Review .planning/notes/ before committing." >&2
   fi
