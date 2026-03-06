@@ -21,6 +21,10 @@ const luLearnerConfig: AgentConfig = {
       promotable_to: "T2",
       isolation: "none",
     },
+    model_routing: {
+      default_model: "haiku",
+      complexity_overrides: { CRITICAL: "sonnet" },
+    },
     background_spawnable: true,
     purpose: "synthesizer",
     allowed_contexts: ["synthesis", "learning", "summarization"],

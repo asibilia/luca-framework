@@ -24,7 +24,11 @@ const luPlannerConfig: AgentConfig = {
     },
     model_routing: {
       default_model: "sonnet",
-      complexity_overrides: { COMPLEX: "opus", CRITICAL: "opus" },
+      complexity_overrides: {
+        TRIVIAL: "haiku",
+        COMPLEX: "opus",
+        CRITICAL: "opus",
+      },
     },
     background_spawnable: false,
     purpose: "planner",

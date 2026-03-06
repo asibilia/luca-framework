@@ -23,6 +23,11 @@ const luRouterConfig: AgentConfig = {
     },
     model_routing: {
       default_model: "haiku",
+      complexity_overrides: {
+        MODERATE: "sonnet",
+        COMPLEX: "sonnet",
+        CRITICAL: "sonnet",
+      },
     },
     background_spawnable: false,
     purpose: "general",

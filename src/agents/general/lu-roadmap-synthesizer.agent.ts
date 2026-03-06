@@ -24,6 +24,14 @@ const luRoadmapSynthesizerConfig: AgentConfig = {
       promotable_to: "T2",
       isolation: "warm",
     },
+    model_routing: {
+      default_model: "sonnet",
+      complexity_overrides: {
+        TRIVIAL: "haiku",
+        COMPLEX: "opus",
+        CRITICAL: "opus",
+      },
+    },
     background_spawnable: true,
     purpose: "synthesizer",
     allowed_contexts: ["planning", "roadmap", "synthesis"],

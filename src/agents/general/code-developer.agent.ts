@@ -20,6 +20,10 @@ const codeDeveloperConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
+    model_routing: {
+      default_model: "opus",
+      complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "sonnet" },
+    },
     background_spawnable: false,
     purpose: "executor",
     allowed_contexts: ["execution", "implementation", "coding"],

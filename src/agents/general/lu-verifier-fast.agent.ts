@@ -26,6 +26,7 @@ const luVerifierFastConfig: AgentConfig = {
     },
     model_routing: {
       default_model: "haiku",
+      complexity_overrides: { CRITICAL: "sonnet" },
     },
     background_spawnable: true,
     purpose: "verifier",

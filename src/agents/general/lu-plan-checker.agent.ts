@@ -21,6 +21,14 @@ const luPlanCheckerConfig: AgentConfig = {
       promotable_to: "T2",
       isolation: "none",
     },
+    model_routing: {
+      default_model: "sonnet",
+      complexity_overrides: {
+        TRIVIAL: "haiku",
+        COMPLEX: "opus",
+        CRITICAL: "opus",
+      },
+    },
     background_spawnable: true,
     purpose: "verifier",
     allowed_contexts: ["verification", "testing", "validation"],

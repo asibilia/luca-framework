@@ -20,6 +20,14 @@ const productConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
+    model_routing: {
+      default_model: "sonnet",
+      complexity_overrides: {
+        TRIVIAL: "haiku",
+        COMPLEX: "opus",
+        CRITICAL: "opus",
+      },
+    },
     background_spawnable: false,
     purpose: "general",
     allowed_contexts: ["any"],
