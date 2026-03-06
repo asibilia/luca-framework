@@ -36,10 +36,10 @@
 
 **Goal:** Root-cause and fix the 29-test full-suite module resolution failure so `bun test` passes reliably.
 
-- [ ] Root-cause module resolution issue causing 29 tests to fail in full suite
-- [ ] Fix the resolution so all tests pass in both individual and full-suite runs
-- [ ] Remove the known-issue caveat from CLAUDE.md once fixed
-- [ ] Add `bun run test:all` script that validates the full suite
+- [x] Root-cause module resolution issue causing 29 tests to fail in full suite
+- [x] Fix the resolution so all tests pass in both individual and full-suite runs
+- [x] Remove the known-issue caveat from CLAUDE.md once fixed
+- [x] Add `bun run test:all` script that validates the full suite
 
 ### Phase 125: Complete node:fs to Bun Migration (#63) — CLOSED
 
