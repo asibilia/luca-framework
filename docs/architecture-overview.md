@@ -47,7 +47,7 @@ luca-framework/                         # Monorepo root
 │       ├── spacetime.json              # Server config (maincloud)
 │       └── spacetime.local.json        # Local dev config
 │
-├── src/                                # Domain source (14 domains across 4 tiers)
+├── src/                                # Domain source (13 domains across 4 tiers)
 │   ├── agents/                         # T2 Entity — agent definitions
 │   ├── skills/                         # T2 Entity — skill definitions
 │   ├── rules/                          # T2 Entity — rule definitions
