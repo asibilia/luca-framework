@@ -7,6 +7,7 @@ import { useTable, useReducer } from "spacetimedb/react";
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { tables, reducers } from "~/module_bindings";
 
 /**
@@ -116,49 +117,51 @@ export default function NotesPage() {
       </form>
 
       {/* Pending notes */}
-      <div className="flex flex-col gap-3">
-        <h2 className="font-mono text-sm font-medium text-foreground">
-          Pending ({pending.length})
-        </h2>
-        {isLoading ? (
-          <EmptyState message="Loading notes..." />
-        ) : pending.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <p className="font-mono text-sm text-muted-foreground">
-              No pending notes. Use the form above or{" "}
-              <code className="rounded bg-muted px-1 py-0.5">/note</code> to add
-              one.
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {pending.map((note) => (
-              <div
-                key={note.filename}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
-              >
-                <span
-                  className={`mt-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium ${
-                    note.priority === "next"
-                      ? "bg-warning/10 text-warning"
-                      : "bg-muted text-muted-foreground"
-                  }`}
+      <ErrorBoundary name="PendingNotesList">
+        <div className="flex flex-col gap-3">
+          <h2 className="font-mono text-sm font-medium text-foreground">
+            Pending ({pending.length})
+          </h2>
+          {isLoading ? (
+            <EmptyState message="Loading notes..." />
+          ) : pending.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <p className="font-mono text-sm text-muted-foreground">
+                No pending notes. Use the form above or{" "}
+                <code className="rounded bg-muted px-1 py-0.5">/note</code> to add
+                one.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {pending.map((note) => (
+                <div
+                  key={note.filename}
+                  className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
                 >
-                  {note.priority}
-                </span>
-                <div className="flex-1">
-                  <p className="font-mono text-sm text-foreground">
-                    {note.body}
-                  </p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {formatAge(note.createdAt)}
-                  </p>
+                  <span
+                    className={`mt-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium ${
+                      note.priority === "next"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {note.priority}
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-mono text-sm text-foreground">
+                      {note.body}
+                    </p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      {formatAge(note.createdAt)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </ErrorBoundary>
 
       {/* Done notes (collapsible) */}
       {done.length > 0 && (
