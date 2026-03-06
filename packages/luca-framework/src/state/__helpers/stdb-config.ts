@@ -16,8 +16,12 @@ export const DATABASE_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
  *
  * Resolution order:
  * 1. LUCA_SPACETIMEDB_URL (preferred)
- * 2. LUCA_OBSERVER_URL (legacy fallback)
- * 3. DEFAULT_SPACETIMEDB_URL (http://localhost:3000)
+ * 2. DEFAULT_SPACETIMEDB_URL (http://localhost:3000)
+ *
+ * Note: LUCA_OBSERVER_URL was previously in this fallback chain but was
+ * removed because it points to the Next.js observer app (port 3456), NOT
+ * SpacetimeDB (port 3000). Including it caused SpacetimeDB SQL queries
+ * to hit the Next.js server, producing 404s.
  *
  * @returns The resolved base URL
  *
@@ -28,9 +32,5 @@ export const DATABASE_NAME = process.env.LUCA_SPACETIMEDB_DB || "luca-observer";
  * ```
  */
 export function resolveStdbUrl(): string {
-  return (
-    process.env.LUCA_SPACETIMEDB_URL ||
-    process.env.LUCA_OBSERVER_URL ||
-    DEFAULT_SPACETIMEDB_URL
-  );
+  return process.env.LUCA_SPACETIMEDB_URL || DEFAULT_SPACETIMEDB_URL;
 }

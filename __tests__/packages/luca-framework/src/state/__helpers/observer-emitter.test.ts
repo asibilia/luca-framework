@@ -10,6 +10,7 @@ import {
   emitObserverEvent,
   callReducer,
   isLocalhostUrl,
+  _resetEmitterCircuitBreaker,
 } from "../../../../../../packages/luca-framework/src/state/__helpers/observer-emitter";
 
 // --- Test State ----------------------------------------------------------------
@@ -27,15 +28,14 @@ let envBackup: Record<string, string | undefined> = {};
 
 beforeEach(() => {
   fetchCalls = [];
+  _resetEmitterCircuitBreaker();
   envBackup = {
     LUCA_SPACETIMEDB_URL: process.env.LUCA_SPACETIMEDB_URL,
-    LUCA_OBSERVER_URL: process.env.LUCA_OBSERVER_URL,
   };
 
   // Clear SpacetimeDB URL so tests can control URL resolution explicitly.
   // Tests that need LUCA_SPACETIMEDB_URL set it directly in the test body.
   delete process.env.LUCA_SPACETIMEDB_URL;
-  delete process.env.LUCA_OBSERVER_URL;
 
   // Default mock: capture calls and resolve successfully
   globalThis.fetch = ((url: any, init?: any) => {
@@ -80,27 +80,27 @@ describe("callReducer", () => {
       expect(fetchCalls[0]!.url).toStartWith("http://localhost:4000/");
     });
 
-    test("falls back to LUCA_OBSERVER_URL", () => {
+    test("does NOT fall back to LUCA_OBSERVER_URL (different service)", () => {
       delete process.env.LUCA_SPACETIMEDB_URL;
       process.env.LUCA_OBSERVER_URL = "http://localhost:5000";
 
       callReducer("test_reducer", {});
 
-      expect(fetchCalls[0]!.url).toStartWith("http://localhost:5000/");
+      // Should use default localhost:3000, NOT the observer URL
+      expect(fetchCalls[0]!.url).toStartWith("http://localhost:3000/");
     });
   });
 
   describe("request construction", () => {
     test("sends POST with JSON body containing flat args (no wrapper)", () => {
-      delete process.env.LUCA_SPACETIMEDB_URL;
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
 
       callReducer("ingest_event", { eventType: "test", sessionId: "abc" });
 
       expect(fetchCalls).toHaveLength(1);
       const call = fetchCalls[0]!;
       expect(call.url).toBe(
-        "http://localhost:3456/v1/database/luca-observer/call/ingest_event",
+        "http://localhost:3000/v1/database/luca-observer/call/ingest_event",
       );
       expect(call.init?.method).toBe("POST");
       expect(call.init?.headers).toEqual({
@@ -117,7 +117,7 @@ describe("callReducer", () => {
 describe("emitObserverEvent", () => {
   describe("payload construction", () => {
     test("calls ingest_event reducer with correct payload", () => {
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
       emitObserverEvent("state.transition", {
         session_id: "abc-123",
       });
@@ -126,7 +126,7 @@ describe("emitObserverEvent", () => {
 
       const call = fetchCalls[0]!;
       expect(call.url).toBe(
-        "http://localhost:3456/v1/database/luca-observer/call/ingest_event",
+        "http://localhost:3000/v1/database/luca-observer/call/ingest_event",
       );
       expect(call.init?.method).toBe("POST");
 
@@ -136,7 +136,7 @@ describe("emitObserverEvent", () => {
     });
 
     test("includes numeric timestamp in payload", () => {
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
       const before = Date.now();
       emitObserverEvent("test.event");
       const after = Date.now();
@@ -151,7 +151,7 @@ describe("emitObserverEvent", () => {
     });
 
     test("serializes event data to eventData JSON string", () => {
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
       emitObserverEvent("test.event", {
         extra: "data",
         nested: { key: "value" },
@@ -166,7 +166,7 @@ describe("emitObserverEvent", () => {
 
   describe("error handling", () => {
     test("silently swallows fetch rejection without throwing", () => {
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
 
       globalThis.fetch = ((url: any, init?: any) => {
         fetchCalls.push({ url: String(url), init });
@@ -181,7 +181,7 @@ describe("emitObserverEvent", () => {
 
   describe("timeout configuration", () => {
     test("passes AbortSignal.timeout(2000) in fetch options", () => {
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3000";
       emitObserverEvent("test.event");
 
       expect(fetchCalls).toHaveLength(1);
@@ -194,39 +194,36 @@ describe("emitObserverEvent", () => {
   describe("SSRF protection", () => {
     test("refuses to emit to non-localhost URL", () => {
       process.env.LUCA_SPACETIMEDB_URL = "http://evil.com:3456";
-      delete process.env.LUCA_OBSERVER_URL;
       emitObserverEvent("test.event");
       expect(fetchCalls).toHaveLength(0);
     });
 
     test("refuses to emit to remote IP address", () => {
       process.env.LUCA_SPACETIMEDB_URL = "http://203.0.113.1:3456";
-      delete process.env.LUCA_OBSERVER_URL;
       emitObserverEvent("test.event");
       expect(fetchCalls).toHaveLength(0);
     });
 
     test("allows emission to localhost", () => {
-      process.env.LUCA_OBSERVER_URL = "http://localhost:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://localhost:3456";
       emitObserverEvent("test.event");
       expect(fetchCalls).toHaveLength(1);
     });
 
     test("allows emission to 127.0.0.1", () => {
-      process.env.LUCA_OBSERVER_URL = "http://127.0.0.1:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://127.0.0.1:3456";
       emitObserverEvent("test.event");
       expect(fetchCalls).toHaveLength(1);
     });
 
     test("allows emission to [::1]", () => {
-      process.env.LUCA_OBSERVER_URL = "http://[::1]:3456";
+      process.env.LUCA_SPACETIMEDB_URL = "http://[::1]:3456";
       emitObserverEvent("test.event");
       expect(fetchCalls).toHaveLength(1);
     });
 
     test("refuses to emit when URL is malformed", () => {
       process.env.LUCA_SPACETIMEDB_URL = "not-a-valid-url";
-      delete process.env.LUCA_OBSERVER_URL;
       emitObserverEvent("test.event");
       expect(fetchCalls).toHaveLength(0);
     });

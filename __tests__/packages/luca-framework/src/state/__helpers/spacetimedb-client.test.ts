@@ -14,6 +14,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
 import {
   queryTable,
   queryOne,
+  _resetCircuitBreaker,
 } from "../../../../../../packages/luca-framework/src/state/__helpers/spacetimedb-client";
 
 // --- Test State ----------------------------------------------------------------
@@ -59,9 +60,9 @@ function makeV2Response(
 
 beforeEach(() => {
   fetchCalls = [];
+  _resetCircuitBreaker();
   envBackup = {
     LUCA_SPACETIMEDB_URL: process.env.LUCA_SPACETIMEDB_URL,
-    LUCA_OBSERVER_URL: process.env.LUCA_OBSERVER_URL,
   };
 
   // Default: point to localhost so SSRF check passes
@@ -142,31 +143,91 @@ describe("queryTable", () => {
   });
 
   describe("URL resolution", () => {
-    test("prefers LUCA_SPACETIMEDB_URL over LUCA_OBSERVER_URL", async () => {
+    test("uses LUCA_SPACETIMEDB_URL when set", async () => {
       process.env.LUCA_SPACETIMEDB_URL = "http://localhost:4000";
-      process.env.LUCA_OBSERVER_URL = "http://localhost:5000";
 
       await queryTable("SELECT 1");
 
       expect(fetchCalls[0]!.url).toStartWith("http://localhost:4000/");
     });
 
-    test("falls back to LUCA_OBSERVER_URL when LUCA_SPACETIMEDB_URL not set", async () => {
+    test("does NOT fall back to LUCA_OBSERVER_URL (different service)", async () => {
       delete process.env.LUCA_SPACETIMEDB_URL;
       process.env.LUCA_OBSERVER_URL = "http://localhost:5000";
 
       await queryTable("SELECT 1");
 
-      expect(fetchCalls[0]!.url).toStartWith("http://localhost:5000/");
+      // Should use default localhost:3000, NOT the observer URL
+      expect(fetchCalls[0]!.url).toStartWith("http://localhost:3000/");
+
+      // Clean up
+      delete process.env.LUCA_OBSERVER_URL;
     });
 
     test("falls back to default localhost:3000 when no env vars set", async () => {
       delete process.env.LUCA_SPACETIMEDB_URL;
-      delete process.env.LUCA_OBSERVER_URL;
 
       await queryTable("SELECT 1");
 
       expect(fetchCalls[0]!.url).toStartWith("http://localhost:3000/");
+    });
+  });
+
+  describe("circuit breaker", () => {
+    test("returns empty array when circuit is open (recent failure)", async () => {
+      // First call fails with 404 — trips circuit breaker
+      globalThis.fetch = (async () =>
+        new Response("Not found", { status: 404 })) as unknown as typeof fetch;
+
+      await expect(queryTable("SELECT 1")).rejects.toThrow();
+
+      // Reset fetch mock to succeed
+      fetchCalls = [];
+      globalThis.fetch = (async (url: any, init?: any) => {
+        fetchCalls.push({ url: String(url), init });
+        return new Response(
+          JSON.stringify([{ schema: { elements: [] }, rows: [] }]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }) as unknown as typeof fetch;
+
+      // Second call should be skipped (circuit open)
+      const result = await queryTable("SELECT 1");
+      expect(result).toEqual([]);
+      expect(fetchCalls).toHaveLength(0);
+    });
+
+    test("resets circuit breaker on success", async () => {
+      _resetCircuitBreaker();
+
+      await queryTable("SELECT 1");
+      expect(fetchCalls).toHaveLength(1);
+    });
+
+    test("resets circuit breaker after connection error", async () => {
+      // Trip the circuit
+      globalThis.fetch = (async () => {
+        throw new Error("Connection refused");
+      }) as unknown as typeof fetch;
+
+      await expect(queryTable("SELECT 1")).rejects.toThrow();
+
+      // Manually reset (simulating cooldown expiry)
+      _resetCircuitBreaker();
+
+      // Should attempt again
+      fetchCalls = [];
+      globalThis.fetch = (async (url: any, init?: any) => {
+        fetchCalls.push({ url: String(url), init });
+        return new Response(
+          JSON.stringify([{ schema: { elements: [] }, rows: [] }]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }) as unknown as typeof fetch;
+
+      const result = await queryTable("SELECT 1");
+      expect(result).toEqual([]);
+      expect(fetchCalls).toHaveLength(1);
     });
   });
 

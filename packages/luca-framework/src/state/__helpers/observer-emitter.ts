@@ -23,6 +23,24 @@ import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
 
+/** Cooldown period after a connection failure (ms). */
+const EMITTER_COOLDOWN_MS = 30_000;
+
+/**
+ * Timestamp of the last emitter failure. When set, subsequent calls are
+ * silently dropped until the cooldown expires. Prevents hammering a
+ * non-SpacetimeDB server with repeated requests.
+ */
+let _emitterLastFailureAt = 0;
+
+/**
+ * Reset the emitter circuit breaker.
+ * Exported for testing only.
+ */
+export function _resetEmitterCircuitBreaker(): void {
+  _emitterLastFailureAt = 0;
+}
+
 /**
  * Normalize a hostname to catch numeric IP bypass attempts.
  *
@@ -49,7 +67,7 @@ function normalizeHostname(hostname: string): string {
 /**
  * Validate that a URL points to a localhost address.
  *
- * Used as an SSRF guard to ensure LUCA_OBSERVER_URL cannot be
+ * Used as an SSRF guard to ensure LUCA_SPACETIMEDB_URL cannot be
  * pointed at arbitrary remote hosts. Normalizes hostnames to
  * prevent bypasses via zero-padded octets (e.g., 127.000.000.001).
  *
@@ -143,6 +161,14 @@ export function callReducer(
   reducerName: string,
   args: Record<string, unknown>,
 ): void {
+  // Circuit breaker: skip if SpacetimeDB was recently unreachable.
+  if (
+    _emitterLastFailureAt > 0 &&
+    Date.now() - _emitterLastFailureAt < EMITTER_COOLDOWN_MS
+  ) {
+    return;
+  }
+
   const url = resolveStdbUrl();
 
   if (!isLocalhostUrl(url)) {
@@ -161,27 +187,46 @@ export function callReducer(
     signal: AbortSignal.timeout(2000),
   };
 
-  fetch(reducerUrl, opts).catch(async (err) => {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        `[observer-emitter] Reducer ${reducerName} failed, retrying:`,
-        (err as Error).message,
-      );
-    }
-    // Single retry after 1s for transient failures
-    await new Promise((r) => setTimeout(r, 1000));
-    return fetch(reducerUrl, {
-      ...opts,
-      signal: AbortSignal.timeout(2000),
-    }).catch((retryErr) => {
-      // Always log retry failures — this represents actual data loss.
-      // First-attempt failures are LUCA_DEBUG-only because a retry follows.
-      console.error(
-        `[observer-emitter] Reducer ${reducerName} retry failed (data loss):`,
-        (retryErr as Error).message,
-      );
+  fetch(reducerUrl, opts)
+    .then((res) => {
+      if (!res.ok) {
+        // Non-2xx (e.g., 404 from wrong server) — trip circuit breaker
+        _emitterLastFailureAt = Date.now();
+      } else {
+        // Success — reset circuit breaker
+        _emitterLastFailureAt = 0;
+      }
+    })
+    .catch(async (err) => {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          `[observer-emitter] Reducer ${reducerName} failed, retrying:`,
+          (err as Error).message,
+        );
+      }
+      // Single retry after 1s for transient failures
+      await new Promise((r) => setTimeout(r, 1000));
+      return fetch(reducerUrl, {
+        ...opts,
+        signal: AbortSignal.timeout(2000),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            _emitterLastFailureAt = Date.now();
+          } else {
+            _emitterLastFailureAt = 0;
+          }
+        })
+        .catch((retryErr) => {
+          // Trip circuit breaker on retry failure
+          _emitterLastFailureAt = Date.now();
+          // Always log retry failures — this represents actual data loss.
+          console.error(
+            `[observer-emitter] Reducer ${reducerName} retry failed (data loss):`,
+            (retryErr as Error).message,
+          );
+        });
     });
-  });
 }
 
 /**
