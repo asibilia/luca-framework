@@ -177,39 +177,73 @@ async function updateStateMd(
 }
 
 /**
- * Print usage information to stderr.
+ * All valid subcommand names for the bridge CLI.
  */
-function printUsage(): void {
-  console.error(`Usage: luca-state <subcommand> [options]
+const VALID_SUBCOMMANDS = [
+  "read-status",
+  "read-complexity",
+  "read-oversight",
+  "read-phase",
+  "read-field",
+  "read-ledger",
+  "set-field",
+  "transition",
+  "ensure-init",
+  "snapshot",
+  "gate-check",
+  "suspend",
+  "resume-phase",
+  "emit-event",
+  "emit-context-snapshot",
+] as const;
 
-Subcommands:
-  read-complexity   Read current complexity level (TRIVIAL if not initialized)
-  read-oversight    Read current oversight level (milestone if not initialized)
-  read-phase        Read current phase info (null defaults if not initialized)
-  read-status       Read comprehensive workflow status (defaults if not initialized)
-  read-field        Read an arbitrary context field (errors on missing state)
-                    Options: --field=path (required, lodash get path)
-  read-ledger       Read session ledger entries with optional filters
-                    Options: --session=id, --event=type, --since=iso, --limit=N, --tail=N
-  emit-event        Emit a fire-and-forget observer event to SpacetimeDB
-                    Options: --type=eventType (required), --session=id, --agent=name,
-                             --tool=name, --file=path, --duration=ms, --data=json
-  emit-context-snapshot  Emit a context-window snapshot to SpacetimeDB
-                    Options: --session=id (required), --percent=N, --messages=N,
-                             --tokens=N, --phase=name
-  set-field         Set an allowlisted context field, persist, and regenerate STATE.md
-                    Options: --field=name (required), --value=json-or-string (required)
-  transition        Send event, persist state, and update STATE.md
-                    Options: --event=TYPE (required), --data=json (optional)
-  snapshot          Generate STATE.md from current machine state
-  ensure-init       Initialize state if not already initialized
-                    Options: --force (overwrite existing state)
-  gate-check        Check if a named gate is enabled
-                    Options: --gate=name (required)
-  suspend           Create checkpoint and suspend current phase
-                    Options: --phase=N (required), --reason=string, --wave=N, --tasks=id1,id2
-  resume-phase      Load checkpoint and resume a suspended phase
-                    Options: --phase=N (required), --keep-checkpoint`);
+/**
+ * Formatted help text for the bridge CLI.
+ *
+ * Organized by command category (read, write, lifecycle, observability)
+ * with option descriptions for each subcommand.
+ */
+const HELP_TEXT = `luca-state — CLI bridge for the Luca workflow state machine
+
+Usage: luca-state <subcommand> [options]
+
+Read commands:
+  read-status            Read comprehensive workflow status
+  read-complexity        Read current complexity level
+  read-oversight         Read current oversight level
+  read-phase             Read current phase info
+  read-field             Read an arbitrary context field (--field=path)
+  read-ledger            Read session ledger entries (--tail=N, --session=id)
+
+Write commands:
+  set-field              Set a context field (--field=name --value=json)
+  transition             Send workflow event (--event=TYPE [--data=json])
+
+Lifecycle commands:
+  ensure-init            Initialize state if not present ([--force])
+  snapshot               Generate STATE.md from current state
+  gate-check             Check if a gate is enabled (--gate=name)
+  suspend                Suspend a phase (--phase=N [--reason=str])
+  resume-phase           Resume a suspended phase (--phase=N)
+
+Observability commands:
+  emit-event             Emit observer event (--type=eventType [--session=id])
+  emit-context-snapshot  Emit context snapshot (--session=id [--percent=N])
+
+Options:
+  --help, -h             Show this help message`;
+
+/**
+ * Print help text to stdout (for --help) or stderr (for errors).
+ *
+ * @param stream - Output stream: "stdout" for --help, "stderr" for errors
+ */
+function printUsage(stream: "stdout" | "stderr" = "stderr"): void {
+  if (stream === "stdout") {
+    console.log(HELP_TEXT);
+  } else {
+    console.error(HELP_TEXT);
+  }
 }
 
 // ─── Read Commands (Graceful Fallback) ──────────────────────────────────────
@@ -1264,6 +1298,18 @@ export async function runBridgeCli(): Promise<void> {
   const subcommand = Bun.argv[2];
   const args = Bun.argv.slice(3);
 
+  // Handle --help / -h anywhere, or no subcommand at all
+  if (
+    !subcommand ||
+    subcommand === "--help" ||
+    subcommand === "-h" ||
+    args.includes("--help") ||
+    args.includes("-h")
+  ) {
+    printUsage("stdout");
+    process.exit(0);
+  }
+
   switch (subcommand) {
     case "read-complexity":
       await handleReadComplexity();
@@ -1311,7 +1357,9 @@ export async function runBridgeCli(): Promise<void> {
       handleEmitContextSnapshot(args);
       break;
     default:
-      printUsage();
+      console.error(
+        `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
+      );
       process.exit(2);
   }
 }
@@ -1343,4 +1391,5 @@ export {
   handleEmitEvent,
   handleEmitContextSnapshot,
   SETTABLE_FIELDS,
+  VALID_SUBCOMMANDS,
 };
