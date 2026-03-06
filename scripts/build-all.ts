@@ -46,6 +46,13 @@ async function main() {
     process.exit(0);
   }
 
+  // Sub-agents running inside an active session inherit LUCA_SESSION_ACTIVE=1.
+  // They should always be allowed to build (they ARE the session). Blocking them
+  // causes freezes when the orchestrator waits on a sub-agent that exited with
+  // error due to the lock the parent session created.
+  // See docs/decisions/session-lock-bypass.md for full rationale.
+  const sessionActive = process.env.LUCA_SESSION_ACTIVE === "1";
+
   if (await lockFile.exists()) {
     let hoursOld = 0;
     try {
@@ -63,6 +70,8 @@ async function main() {
         `\n⚠ Removing stale session lock (${hoursOld === Infinity ? "malformed" : `${Math.round(hoursOld)}h old`})\n`,
       );
       await Bun.file(lockPath).unlink();
+    } else if (sessionActive) {
+      // Sub-agent inside the active session — safe to proceed without warning
     } else if (forceFlag) {
       console.warn(
         `\n⚠ Session lock detected (${Math.round(hoursOld)}h old) — proceeding anyway (--force)\n`,

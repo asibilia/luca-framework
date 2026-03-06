@@ -407,6 +407,10 @@ run_memory_bridge ensure-init 2>/dev/null || true
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export LUCA_RUNTIME=$RUNTIME" >> "$CLAUDE_ENV_FILE"
   echo "export LUCA_PLANNING_DIR=$PLANNING_DIR" >> "$CLAUDE_ENV_FILE"
+  # Signal to sub-processes (including sub-agents running build:all) that a
+  # session is active. build-all.ts checks this to auto-bypass the session lock
+  # instead of blocking or requiring --force. See docs/decisions/session-lock-bypass.md.
+  echo "export LUCA_SESSION_ACTIVE=1" >> "$CLAUDE_ENV_FILE"
 fi
 
 # Step 8: Create session lock file (with build manifest snapshot)
