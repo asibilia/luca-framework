@@ -84,7 +84,32 @@ export const COMPLEXITY_CLASSIFICATIONS: Record<
   },
 };
 
-/** The default gating matrix */
+/**
+ * The default gating matrix.
+ *
+ * DEPRECATION NOTICE — Step Activation Fields
+ * =============================================
+ * The following fields in each gate entry are deprecated and retained
+ * solely for backward compatibility with existing skill/rule consumers:
+ *
+ *   - `research`        — replaced by MODEL_ROUTING_TABLE entry for lu-phase-researcher
+ *   - `discussion`      — replaced by MODEL_ROUTING_TABLE entry for lu-discuss-researcher
+ *   - `codeReviewAgents` — replaced by MODEL_ROUTING_TABLE entries for each reviewer agent
+ *   - `uat`             — replaced by `verificationMode` + MODEL_ROUTING_TABLE for lu-verifier
+ *   - `learningCapture` — replaced by MODEL_ROUTING_TABLE entry for lu-learner
+ *
+ * The forward-looking replacement is the centralized model routing table
+ * in `src/complexity/__helpers/model-routing.ts` (MODEL_ROUTING_TABLE),
+ * which maps (agent name, complexity level) -> model tier. Use
+ * `resolveModelForAgent(agentName, complexity)` to determine the
+ * appropriate tier for any agent at any complexity level.
+ *
+ * These matrix values are retained so that skill consumers
+ * (phase-plan.skill.ts, phase-execute.skill.ts) and rule consumers
+ * (complexity-gating.rule.ts) continue to work without modification.
+ * They will be removed once all consumers are migrated to use the
+ * routing table directly.
+ */
 export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
   TRIVIAL: {
     cognitivePreflight: "lite",
