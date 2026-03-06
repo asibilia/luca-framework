@@ -29,41 +29,8 @@ export default function CostPage() {
       subtitle="Token usage, cost tracking, and session comparison"
     >
       {loading ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="font-mono text-xs text-muted-foreground animate-pulse">
-                Total Cost
-              </p>
-              <p className="mt-1 font-mono text-2xl font-bold text-foreground animate-pulse">
-                $0.00
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="font-mono text-xs text-muted-foreground animate-pulse">
-                Input Tokens
-              </p>
-              <p className="mt-1 font-mono text-2xl font-bold text-foreground animate-pulse">
-                0
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="font-mono text-xs text-muted-foreground animate-pulse">
-                Output Tokens
-              </p>
-              <p className="mt-1 font-mono text-2xl font-bold text-foreground animate-pulse">
-                0
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="font-mono text-xs text-muted-foreground animate-pulse">
-                Cache Read Tokens
-              </p>
-              <p className="mt-1 font-mono text-2xl font-bold text-foreground animate-pulse">
-                0
-              </p>
-            </div>
-          </div>
+        <div className="flex flex-col gap-6">
+          <LoadingSkeleton variant="card" />
           <LoadingSkeleton variant="chart" />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <LoadingSkeleton variant="chart" />
@@ -77,7 +44,7 @@ export default function CostPage() {
           message="Cost tracking data will appear here when sessions are executed and token usage is recorded. Metrics include total cost, input/output tokens, and cache usage."
         />
       ) : (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="font-mono text-xs text-muted-foreground">
