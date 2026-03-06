@@ -2,6 +2,7 @@
 
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { EmptyState } from "~/components/shared/empty-state";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { type Todo, useTodos } from "~/hooks/use-todos";
 
 /**
@@ -11,12 +12,25 @@ import { type Todo, useTodos } from "~/hooks/use-todos";
  * with clear visual differentiation between states.
  */
 export function TodoTracker() {
-  const { todos, loading } = useTodos();
+  const { todos, loading, error, refetch } = useTodos();
 
   if (loading) {
+    return <LoadingSkeleton variant="card" />;
+  }
+
+  if (error) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <p className="font-mono text-xs text-muted-foreground">Loading todos...</p>
+      <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+        <p className="font-mono text-sm text-destructive">
+          Failed to load todos: {error}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-2 rounded bg-destructive px-3 py-1 font-mono text-xs text-destructive-foreground hover:bg-destructive/80"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -58,7 +72,8 @@ function TodoSection({
 }) {
   const bgColor = variant === "pending" ? "bg-warning/10" : "bg-success/10";
   const textColor = variant === "pending" ? "text-warning" : "text-success";
-  const borderColor = variant === "pending" ? "border-warning" : "border-success";
+  const borderColor =
+    variant === "pending" ? "border-warning" : "border-success";
 
   return (
     <div className={`rounded-lg border ${borderColor} ${bgColor} p-4`}>
@@ -76,7 +91,9 @@ function TodoSection({
             <div className="flex items-start justify-between gap-2">
               <h4
                 className={`font-mono text-sm font-medium ${
-                  variant === "done" ? "line-through text-muted-foreground" : "text-foreground"
+                  variant === "done"
+                    ? "line-through text-muted-foreground"
+                    : "text-foreground"
                 }`}
               >
                 {todo.title}
