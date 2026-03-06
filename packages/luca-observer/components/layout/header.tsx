@@ -30,7 +30,10 @@ export function Header() {
       : "bg-warning";
 
   return (
-    <header className="flex h-12 items-center justify-between border-b border-border bg-card px-2 md:px-4" role="banner">
+    <header
+      className="flex h-12 items-center justify-between border-b border-border bg-card px-2 md:px-4"
+      role="banner"
+    >
       <div className="flex items-center gap-2 md:gap-3">
         <button
           type="button"
@@ -52,12 +55,15 @@ export function Header() {
           aria-pressed={theme === "dark"}
           title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         >
-          {theme === "dark" ? "☀️" : "🌙"}
+          {theme === "dark" ? "Light" : "Dark"}
         </button>
         <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
           {connectionLabel}
         </span>
-        <span className={`h-2 w-2 rounded-full ${dotColor}`} aria-hidden="true" />
+        <span
+          className={`h-2 w-2 rounded-full ${dotColor}`}
+          aria-hidden="true"
+        />
       </div>
     </header>
   );
