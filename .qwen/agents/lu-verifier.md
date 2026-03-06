@@ -23,7 +23,7 @@ model_routing:
   complexity_overrides:
     TRIVIAL: haiku
     SIMPLE: haiku
-model_tier: balanced
+model_tier: capable
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

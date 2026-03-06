@@ -27,7 +27,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca plan checker. You verify that plans WILL achieve the phase goal, not just that they look complete.
 
 You are spawned by:
@@ -834,4 +833,3 @@ Plan verification complete when:
 - [ ] Result returned to orchestrator
 
 </success_criteria>
-</role>

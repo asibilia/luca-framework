@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Autopilot
 
 Autonomous orchestrator that drives the full Luca workflow: backlog scan, WSJF prioritization, roadmap revision, phase planning, execution, and milestone completion — with configurable human oversight levels.
@@ -41,7 +40,6 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 2. **Every step in this skill spec is a binding instruction, not a suggestion.** You MUST NOT skip, simplify, or substitute workflow steps — even if you believe an alternative approach would produce equivalent results. The workflow exists because specific tool usage (TeamCreate, SendMessage, Skill, Task) was intentionally designed and validated.
 3. **If a step says to use TeamCreate, you MUST use TeamCreate.** If a step says to use Skill, you MUST use Skill. Do not replace TeamCreate with parallel Task calls. Do not replace sub-agent delegation with self-performed analysis. Do not rationalize deviations with "functionally equivalent" reasoning.
 4. **The only valid way to skip a step is when the spec explicitly provides a skip condition** (e.g., complexity gating, `--no-swarm` flag, oversight level). If no skip condition is documented, the step is mandatory.
-</main>
 </main>
 
 <configuration>
@@ -709,7 +707,7 @@ bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COM
 Check the current workflow state to see if the state machine routed to discussion or skipped it based on complexity.
 
 ```bash
-STATE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | jq -r '.state')
+STATE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | bun -e "const s=await Bun.stdin.text();try{console.log(JSON.parse(s).state??'')}catch{}")
 ```
 
 - If STATE == "planning": skip to 4e

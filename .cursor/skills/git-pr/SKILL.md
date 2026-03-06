@@ -4,7 +4,6 @@ description: Create a pull request with conventional formatting and submit for r
 ---
 
 <main>
-<main>
 # Git Pull Request
 
 Create a pull request with proper formatting.
@@ -52,5 +51,4 @@ Generated with [Claude Code](https://claude.com/claude-code)
 - Feature branches typically target the **main** branch (or a release branch)
 - Include "Closes PROJ-####" or "Fixes #issue" when applicable
 - Adjust base branch based on your team's workflow
-</main>
 </main>

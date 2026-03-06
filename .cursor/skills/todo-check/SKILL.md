@@ -4,7 +4,6 @@ description: List pending todos and select one to work on next.
 ---
 
 <main>
-<main>
 # Luca Check Todos
 
 List pending todos and select one to work on.
@@ -73,5 +72,4 @@ List pending todos and select one to work on.
 **Also available:**
 - `/progress` — Return to planned work
 - `/todo-add` — Capture additional todos
-</main>
 </main>

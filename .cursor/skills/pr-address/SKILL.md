@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Address PR
 
 Address pull request review comments through a coordinated agent swarm that validates concerns, plans fixes, executes changes, verifies updates, and responds to GitHub comments.
@@ -707,5 +706,4 @@ This skill can be invoked:
 
 - `/progress` — Check overall project status
 - `/help` — Review available commands
-</main>
 </main>

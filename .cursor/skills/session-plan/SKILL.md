@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Session Planner
 
 Plan the next AI coding session (or week) by analyzing pending todos, scoring them with WSJF, and scheduling an optimal session plan.
@@ -111,5 +110,4 @@ If `{ARGUMENTS}` specifies more than 1 session:
 3. Show weekly allocation: 60% needle movers, 25% quick wins, 10% maintenance, 5% reserve
 4. Display deferred items that didn't fit in the weekly plan
 
-</main>
 </main>

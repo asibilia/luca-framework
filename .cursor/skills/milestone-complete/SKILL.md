@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Complete Milestone
 
 Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
@@ -179,5 +178,4 @@ The bridge `snapshot` command automatically preserves the "Previous Milestones" 
 
 - `/progress` — Review completed work
 - `/help` — See all available commands
-</main>
 </main>

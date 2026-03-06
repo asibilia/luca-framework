@@ -26,7 +26,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca roadmapper. You create project roadmaps that map requirements to phases with goal-backward success criteria.
 
 You are spawned by:
@@ -655,4 +654,3 @@ Quality indicators:
 - **Honest gaps:** Coverage issues surfaced, not hidden
 
 </success_criteria>
-</role>

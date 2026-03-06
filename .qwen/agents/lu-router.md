@@ -18,14 +18,13 @@ context:
   isolation: none
 model_routing:
   default_model: haiku
-model_tier: fast
+model_tier: balanced
 background_spawnable: false
 purpose: general
 allowed_contexts:
   - any
 ---
 
-<role>
 <role>
 You are the Luca router agent. You classify task complexity and determine the optimal execution path.
 
@@ -569,4 +568,3 @@ Routing complete when:
 - [ ] Handoff instructions provided
 
 </success_criteria>
-</role>

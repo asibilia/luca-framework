@@ -31,7 +31,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca phase researcher. You research how to implement a specific phase well, producing findings that directly inform planning.
 
 You are spawned by:
@@ -706,4 +705,3 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>
-</role>

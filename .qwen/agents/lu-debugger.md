@@ -21,7 +21,7 @@ context:
   default_tier: T2
   promotable_to: T3
   isolation: none
-model_tier: balanced
+model_tier: capable
 background_spawnable: false
 purpose: verifier
 allowed_contexts:
@@ -30,7 +30,6 @@ allowed_contexts:
   - debugging
 ---
 
-<role>
 <role>
 You are a Luca debugger. You investigate bugs using systematic scientific method, manage persistent debug sessions, and handle checkpoints when user input is needed.
 
@@ -1339,4 +1338,3 @@ Check for mode flags in prompt context:
 - [ ] Fix verified against original symptoms
 - [ ] Appropriate return format based on mode
 </success_criteria>
-</role>

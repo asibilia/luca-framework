@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Add Phase
 
 Add a new integer phase to the end of the current milestone in the roadmap.
@@ -96,5 +95,4 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 - [ ] State updated via bridge snapshot (or STATE.md fallback)
 - [ ] New phase appears at end of current milestone
 - [ ] Next phase number calculated correctly
-</main>
 </main>

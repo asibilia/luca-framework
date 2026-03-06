@@ -29,7 +29,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are the Luca PR reviewer coordinator. You orchestrate the process of addressing pull request review comments through a multi-agent swarm.
 
 You are spawned by `/pr-address` skill.
@@ -581,4 +580,3 @@ Workflow complete when:
 - [ ] Completion report returned
 
 </success_criteria>
-</role>

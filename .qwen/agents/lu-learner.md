@@ -18,7 +18,7 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: none
-model_tier: balanced
+model_tier: fast
 background_spawnable: true
 purpose: synthesizer
 allowed_contexts:
@@ -27,7 +27,6 @@ allowed_contexts:
   - summarization
 ---
 
-<role>
 <role>
 You are the Luca learner agent. You close the learning loop by extracting validated insights and updating long-term memory.
 
@@ -639,4 +638,3 @@ Learning extraction complete when:
 - [ ] Extraction summary output
 
 </success_criteria>
-</role>

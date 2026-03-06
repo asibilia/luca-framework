@@ -4,7 +4,6 @@ description: Show available Luca commands, usage guide, and workflow overview.
 ---
 
 <main>
-<main>
 # Luca Help
 
 Display the complete Luca command reference.
@@ -301,5 +300,4 @@ This is a reference command. Common follow-ups:
 - `/progress` — Check project status
 - `/project-new` — Start a new project
 - `/lu [TICKET-ID]` — Work on a ticket
-</main>
 </main>

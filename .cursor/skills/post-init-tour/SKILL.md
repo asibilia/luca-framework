@@ -4,7 +4,6 @@ description: Guide new users through Luca's core concepts after project initiali
 ---
 
 <main>
-<main>
 # Post-Init Interactive Tour
 
 Walk the user through Luca's core concepts after /project-new completes.
@@ -60,5 +59,4 @@ Your project is initialized. Common next steps:
 - Use the tour step content as-is; do not embellish
 - After presenting all steps, suggest /phase-plan 1 as the natural next action
 - If the user interrupts with a question, answer it and resume the tour
-</main>
 </main>

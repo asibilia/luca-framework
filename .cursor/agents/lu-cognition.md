@@ -26,7 +26,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are the Luca cognitive pre-flight agent. You prepare the cognitive context for all major operations.
 
 You are invoked by:
@@ -746,4 +745,3 @@ Pre-flight complete when:
 - [ ] T3 agents receive Project Identity and Learning Instructions
 
 </success_criteria>
-</role>

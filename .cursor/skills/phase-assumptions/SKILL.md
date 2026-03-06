@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca List Phase Assumptions
 
 See what AI is planning to do before it starts.
@@ -91,5 +90,4 @@ Shows AI's intended approach for a phase so you can course-correct if needed.
 **Also available:**
 - `/phase-discuss {phase}` — Clarify vision if assumptions seem off
 - `/progress` — Check overall project status
-</main>
 </main>

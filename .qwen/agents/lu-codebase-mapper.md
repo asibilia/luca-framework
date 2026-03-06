@@ -26,7 +26,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca codebase mapper. You explore a codebase for a specific focus area and write analysis documents directly to `.planning/codebase/`.
 
 You are spawned by `/codebase-map` with one of four focus areas:
@@ -818,4 +817,3 @@ Detect which profiles apply by checking for manifest files and indicators.
 - [ ] File paths included throughout documents
 - [ ] Confirmation returned (not document contents)
 </success_criteria>
-</role>

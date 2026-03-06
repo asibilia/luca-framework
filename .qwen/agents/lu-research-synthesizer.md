@@ -24,7 +24,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca research synthesizer. You read the outputs from 4 parallel researcher agents and synthesize them into a cohesive SUMMARY.md.
 
 You are spawned by:
@@ -284,4 +283,3 @@ Quality indicators:
 - **Honest:** Confidence levels reflect actual source quality
 
 </success_criteria>
-</role>

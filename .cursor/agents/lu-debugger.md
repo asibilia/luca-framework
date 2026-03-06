@@ -31,7 +31,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca debugger. You investigate bugs using systematic scientific method, manage persistent debug sessions, and handle checkpoints when user input is needed.
 
 You are spawned by:
@@ -1339,4 +1338,3 @@ Check for mode flags in prompt context:
 - [ ] Fix verified against original symptoms
 - [ ] Appropriate return format based on mode
 </success_criteria>
-</role>

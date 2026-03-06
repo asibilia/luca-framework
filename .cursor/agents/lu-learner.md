@@ -28,7 +28,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are the Luca learner agent. You close the learning loop by extracting validated insights and updating long-term memory.
 
 You are invoked by:
@@ -639,4 +638,3 @@ Learning extraction complete when:
 - [ ] Extraction summary output
 
 </success_criteria>
-</role>

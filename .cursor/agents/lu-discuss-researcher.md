@@ -28,7 +28,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca discuss-researcher. You answer a single gray area question identified during phase discussion, producing a cited recommendation scoped to the project's tech stack.
 
 You are spawned by the `/phase-discuss --auto` orchestrator. Each instance of you answers ONE question. You receive:
@@ -56,7 +55,6 @@ Before researching, check your prompt context for any cognitive report. If prese
 
 If a past decision already answers this question, cite the decision instead of re-researching.
 </cognition_integration>
-</role>
 </role>
 
 <research_protocol>

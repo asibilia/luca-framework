@@ -45,7 +45,12 @@ export function toCursorFormat(
     .map((section) => {
       if (section.title) {
         const tagName = sanitizeTagName(section.title);
-        return `\n<${tagName}>\n${section.content}\n</${tagName}>\n`;
+        const openTag = `<${tagName}>`;
+        // Skip wrapping if content already starts with the same tag
+        if (section.content.trimStart().startsWith(openTag)) {
+          return `\n${section.content}\n`;
+        }
+        return `\n${openTag}\n${section.content}\n</${tagName}>\n`;
       }
       return section.content;
     })

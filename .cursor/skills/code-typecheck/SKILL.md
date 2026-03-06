@@ -4,7 +4,6 @@ description: Run TypeScript type checking on the codebase or a specific workspac
 ---
 
 <main>
-<main>
 # Code Typecheck
 
 Run TypeScript type checking on the codebase.
@@ -21,5 +20,4 @@ Run TypeScript type checking on the codebase.
 
 - Turborepo parallelizes type checking across all workspaces
 - Use specific workspace path to check only that package
-</main>
 </main>

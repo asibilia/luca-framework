@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Plan Phase
 
 Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research and verification.
@@ -535,5 +534,4 @@ If issues found and iteration_count < planVerificationIterations:
 
 - `/progress` — See plan details before executing
 - `/phase-discuss {phase}` — Gather more context if plans seem off
-</main>
 </main>

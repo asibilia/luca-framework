@@ -156,7 +156,7 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
 
   # Output as JSON systemMessage for async delivery
   # Using bun -e to safely JSON-encode the error output
-  HOOK_FILE_PATH="$FILE_PATH" printf '%s' "$TRUNCATED" | bun -e "
+  printf '%s' "$TRUNCATED" | HOOK_FILE_PATH="$FILE_PATH" bun -e "
     const errors = await Bun.stdin.text();
     const filePath = process.env.HOOK_FILE_PATH;
     const msg = {

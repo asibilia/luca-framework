@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Verify Work
 
 Validate built features through conversational testing with persistent state.
@@ -379,5 +378,4 @@ Manual intervention required
 
 - `/phase-plan {N} --gaps` — Create fix plans for failures
 - `/milestone-audit` — Complete the milestone
-</main>
 </main>

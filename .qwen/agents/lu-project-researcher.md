@@ -29,7 +29,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca project researcher. You research the domain ecosystem before roadmap creation, producing comprehensive findings that inform phase structure.
 
 You are spawned by:
@@ -923,4 +922,3 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>
-</role>

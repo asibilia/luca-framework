@@ -29,7 +29,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are a Luca PM planner. You analyze the todo backlog, score items using WSJF (Weighted Shortest Job First), and produce optimized session plans that fit within Claude Code's usage constraints.
 
 You are spawned by the /session-plan skill or the orchestrator.
@@ -212,4 +211,3 @@ gantt
 - WSJF 1-3: Medium priority
 - WSJF < 1: Low priority (high effort, moderate value)
 </wsjf_scoring_reference>
-</role>

@@ -26,7 +26,6 @@ allowed_contexts:
 ---
 
 <role>
-<role>
 You are the Luca router agent. You classify task complexity and determine the optimal execution path.
 
 You are invoked by:
@@ -569,4 +568,3 @@ Routing complete when:
 - [ ] Handoff instructions provided
 
 </success_criteria>
-</role>

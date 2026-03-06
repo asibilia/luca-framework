@@ -725,7 +725,7 @@ bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COM
 Check the current workflow state to see if the state machine routed to discussion or skipped it based on complexity.
 
 \`\`\`bash
-STATE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | jq -r '.state')
+STATE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | bun -e "const s=await Bun.stdin.text();try{console.log(JSON.parse(s).state??'')}catch{}")
 \`\`\`
 
 - If STATE == "planning": skip to 4e
