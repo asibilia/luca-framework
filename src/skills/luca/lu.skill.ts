@@ -177,15 +177,15 @@ After the handler skill completes, spawn lu-verifier:
 Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
 \`\`\`
 
-### Step 6: Learning Capture (complexity-gated)
+### Step 6: Learning Capture (always runs)
 
-For MODERATE+ complexity, spawn lu-learner:
+Always spawn lu-learner (model tier resolved from routing table per complexity):
 
 \`\`\`
 Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Read working memory via bridge (bun run src/memory/__helpers/bridge.ts read-working). Capture patterns, decisions, and pitfalls to MEMORY.md. Clear working memory via bridge after extraction (bun run src/memory/__helpers/bridge.ts clear-working).")
 \`\`\`
 
-For TRIVIAL/SIMPLE: Skip learning capture.
+The lu-learner model tier is resolved via \`resolveModelForAgent("lu-learner", complexity)\`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.
 
 ### Step 7: Commit (if on feature branch)
 

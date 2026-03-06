@@ -44,33 +44,32 @@ These steps run regardless of complexity:
 
 ## Complexity Matrix
 
+All workflow steps now always run. Complexity controls **model tier** (via the routing table) and **iteration counts**, not step activation. Steps are never skipped based on complexity alone.
+
 | Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
 |------|---------|--------|----------|---------|----------|
 | Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
+| Research | Run (fast) | Run (balanced) | Run (balanced) | Run (capable) | Run (capable) |
+| Discussion | Run (fast) | Run (balanced) | Run (balanced) | Run (capable) | Run (capable) |
+| Plan verification | 1 iter | 1 iter | 1 iter | 2 iter | 3 iter |
 | Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
-| Verify fix iterations | 0 | 1 | 1 | 1 | 2 |
+| Verify fix iterations | 1 | 1 | 1 | 1 | 2 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| Code review: dx-advocate | Skip | Skip | Run | Run | Run |
-| Code review: code-simplifier | Skip | Skip | Run | Run | Run |
-| Code review: code-architect | Skip | Skip | Skip | Run | Run |
-| Code review: tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| Code review: security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
+| Code review: all reviewers | Run (fast) | Run (balanced) | Run (capable) | Run (capable) | Run (capable) |
+| UAT | Run (quick) | Run (quick) | Run (standard) | Run (full) | Run (full+human) |
+| Learning capture | Standard (fast) | Standard (fast) | Standard (fast) | Full (fast) | Full+Debrief (balanced) |
+
+Model tiers in parentheses are resolved from \\\`MODEL_ROUTING_TABLE\\\` in \\\`src/complexity/__helpers/model-routing.ts\\\` via \\\`resolveModelForAgent(agentName, complexity)\\\`.
 
 ## How to Apply
 
-**Before spawning optional sub-agents**, check the current task complexity:
+**Before spawning sub-agents**, resolve their model tier from the routing table:
 
 1. Read complexity from STATE.md \\\`Task Complexity:\\\` field
 2. If not set, read from lu-router's classification output
-3. Look up the step in the matrix above
-4. If the step says "Skip" for the current level, skip it
-5. If the step says "Optional", skip unless the user or config explicitly enables it
-6. If the step says "Run" or "Required", always execute
+3. Call \\\`resolveModelForAgent(agentName, complexity)\\\` to get the model tier
+4. All steps run at every complexity level — only the model tier varies
+5. Flag-based overrides (\\\`--skip-review\\\`, \\\`--skip-uat\\\`, \\\`--skip-research\\\`) still allow explicit skipping
 
 **Complexity is set by:**
 - lu-router (automatic inference)

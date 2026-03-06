@@ -202,15 +202,15 @@ fi
 
 **If \`--skip-research\` flag:** Skip to step 6.
 
-**Complexity gate:** Research is skipped for TRIVIAL and SIMPLE levels, optional for MODERATE, required for COMPLEX and CRITICAL.
+**Always runs** (model tier for lu-phase-researcher resolved from routing table per complexity). The \`--skip-research\` flag still allows skipping entirely.
 
-| Complexity | Research |
-|------------|----------|
-| TRIVIAL | Skip |
-| SIMPLE | Skip |
-| MODERATE | Run if \`workflow.research: true\` (default) |
-| COMPLEX | Always run |
-| CRITICAL | Always run |
+| Complexity | Research | Model Tier (from routing table) |
+|------------|----------|---------------------------------|
+| TRIVIAL | Run | fast |
+| SIMPLE | Run | balanced |
+| MODERATE | Run | balanced |
+| COMPLEX | Run | capable |
+| CRITICAL | Run | capable |
 
 Read complexity from bridge (falls back to STATE.md \`Task Complexity:\` field):
 
@@ -218,7 +218,7 @@ Read complexity from bridge (falls back to STATE.md \`Task Complexity:\` field):
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 \`\`\`
 
-If TRIVIAL or SIMPLE, skip to step 6 (equivalent to --skip-research).
+The researcher model tier is resolved via \`resolveModelForAgent("lu-phase-researcher", complexity)\`.
 
 **Check config for research setting:**
 
@@ -408,17 +408,17 @@ Display:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \`\`\`
 
-**Complexity gate:** Plan verification is skipped for TRIVIAL and SIMPLE, runs with scaled iterations for MODERATE and above.
+**Always runs** (iteration count scales with complexity, model tier for lu-plan-checker resolved from routing table).
 
-| Complexity | Plan Verification |
-|------------|------------------|
-| TRIVIAL | Skip entirely |
-| SIMPLE | Skip entirely |
-| MODERATE | 1 iteration |
-| COMPLEX | 2 iterations |
-| CRITICAL | 3 iterations |
+| Complexity | Plan Verification Iterations | Model Tier (from routing table) |
+|------------|-----------------------------|---------------------------------|
+| TRIVIAL | 1 iteration | fast |
+| SIMPLE | 1 iteration | balanced |
+| MODERATE | 1 iteration | balanced |
+| COMPLEX | 2 iterations | capable |
+| CRITICAL | 3 iterations | capable |
 
-If complexity is TRIVIAL or SIMPLE: Skip steps 10-12 entirely (no plan-checker, no revision loop). Proceed directly to step 13 (Present Final Status).
+The plan-checker model tier is resolved via \`resolveModelForAgent("lu-plan-checker", complexity)\`.
 
 **MANDATORY**: You MUST spawn a lu-plan-checker sub-agent. Do NOT attempt to verify plans yourself.
 
