@@ -63,10 +63,10 @@
 **Verification:** Full
 **Est:** ~3-4 days
 
-- [ ] PLAN: Add stall detection and retry limits to verification loop (#53)
-- [ ] PLAN: Add agent health check system (#52)
-- [ ] PLAN: Implement skill dependency graph (#54)
-- [ ] PLAN: Enhance tribunal debate with consensus model (#55)
+- [x] PLAN: Add stall detection and retry limits to verification loop (#53) — already implemented (state machine + stall-detector)
+- [x] PLAN: Add agent health check system (#52) — already implemented (health-check.ts)
+- [x] PLAN: Implement skill dependency graph (#54) — already implemented (dependency-graph.ts + schemas)
+- [x] PLAN: Enhance tribunal debate with consensus model (#55) — already implemented (consensus-resolver.ts + schemas)
 
 ### Phase 6: Model Routing Redesign
 
