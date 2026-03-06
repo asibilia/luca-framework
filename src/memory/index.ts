@@ -121,6 +121,21 @@ export {
 
 export { recallProcedures } from "./__helpers/procedure-recall.ts";
 
+// ─── Procedure Replay ───────────────────────────────────────────────────────
+
+export {
+  findReplayableProcedures,
+  adaptProcedureToContext,
+  replayProcedure,
+  ProcedureReplayContextSchema,
+  ProcedureReplayResultSchema,
+} from "./__helpers/procedure-replay.ts";
+
+export type {
+  ProcedureReplayContext,
+  ProcedureReplayResult,
+} from "./__helpers/procedure-replay.ts";
+
 // ─── Procedure Lifecycle ────────────────────────────────────────────────────
 
 export {
@@ -185,6 +200,17 @@ export type {
   CompactionResult,
 } from "./__schemas/memory.schemas";
 
+// ─── Semantic Search ──────────────────────────────────────────────────────
+
+export {
+  tokenize,
+  computeTfIdf,
+  cosineSimilarity,
+  semanticRecall,
+} from "./__helpers/semantic-search.ts";
+
+export type { SemanticRecallResult } from "./__helpers/semantic-search.ts";
+
 // ─── Memory Bridge ─────────────────────────────────────────────────────────
 
 export {
@@ -197,3 +223,33 @@ export {
   handleClearWorking,
   handleUpdateProcedureStats,
 } from "./__helpers/bridge.ts";
+
+// ─── Cognitive Profile ────────────────────────────────────────────────────
+
+export {
+  CognitiveProfileSchema,
+  ImportResultSchema,
+  exportCognitiveProfile,
+  importCognitiveProfile,
+} from "./__helpers/cognitive-profile.ts";
+
+export type {
+  CognitiveProfile,
+  ImportResult,
+} from "./__helpers/cognitive-profile.ts";
+
+// ─── Meta-Cognition ──────────────────────────────────────────────────────
+
+export {
+  ReflectionSchema,
+  QualityAssessmentSchema,
+  PastOutcomeSchema,
+  assessPlanQuality,
+  generateReflection,
+} from "./__helpers/meta-cognition.ts";
+
+export type {
+  Reflection,
+  QualityAssessment,
+  PastOutcome,
+} from "./__helpers/meta-cognition.ts";
