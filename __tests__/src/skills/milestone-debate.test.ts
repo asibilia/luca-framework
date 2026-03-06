@@ -10,7 +10,7 @@ import {
   buildMilestoneRebuttalContext,
   buildMilestoneDebateResult,
 } from "../../../src/skills/__helpers/milestone-debate";
-import { normalizeFindings } from "../../../src/shared/__helpers/tribunal-detector";
+import { normalizeFindings, detectDisagreements } from "../../../src/shared/__helpers/tribunal-detector";
 import { resolveRebuttals } from "../../../src/shared/__helpers/tribunal-rebuttals";
 import type {
   ReviewFinding,
@@ -528,9 +528,6 @@ describe("full pipeline integration", () => {
 
     // Step 3: Build rebuttal prompts
     // Use findings to detect disagreements for prompts
-    const {
-      detectDisagreements,
-    } = require("../../../src/shared/__helpers/tribunal-detector");
     const disagreements = detectDisagreements(findings);
     const prompts = buildMilestoneRebuttalContext(disagreements, "v2.5.1");
     expect(prompts.length).toBeGreaterThan(0);

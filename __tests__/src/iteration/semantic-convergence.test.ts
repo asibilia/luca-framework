@@ -5,6 +5,7 @@ import {
   assessConvergence,
 } from "../../../src/iteration/__helpers/convergence";
 import type { ClassifiedError } from "../../../src/iteration/__schemas/iteration.schemas";
+import { convergenceSignalsSchema } from "../../../src/iteration/__schemas/iteration.schemas";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────
 
@@ -238,9 +239,6 @@ describe("assessConvergence with semantic_overlap", () => {
 
 describe("convergenceSignalsSchema", () => {
   test("validates without semantic_overlap (backward compat)", () => {
-    const {
-      convergenceSignalsSchema,
-    } = require("../../../src/iteration/__schemas/iteration.schemas");
     const result = convergenceSignalsSchema.safeParse({
       error_count_delta: -1,
       fingerprint_overlap: 0.5,
@@ -251,9 +249,6 @@ describe("convergenceSignalsSchema", () => {
   });
 
   test("validates with semantic_overlap present", () => {
-    const {
-      convergenceSignalsSchema,
-    } = require("../../../src/iteration/__schemas/iteration.schemas");
     const result = convergenceSignalsSchema.safeParse({
       error_count_delta: 0,
       fingerprint_overlap: 0.8,
@@ -262,13 +257,12 @@ describe("convergenceSignalsSchema", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data.semantic_overlap).toBe(0.92);
+    if (result.success) {
+      expect(result.data.semantic_overlap).toBe(0.92);
+    }
   });
 
   test("rejects semantic_overlap outside 0-1 range", () => {
-    const {
-      convergenceSignalsSchema,
-    } = require("../../../src/iteration/__schemas/iteration.schemas");
     const result = convergenceSignalsSchema.safeParse({
       error_count_delta: 0,
       fingerprint_overlap: 0.5,

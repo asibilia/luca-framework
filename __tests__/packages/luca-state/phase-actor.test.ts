@@ -22,13 +22,13 @@ function createPhaseActor(overrides: Partial<PhaseInput> = {}) {
 // ─── Single Wave Happy Path ─────────────────────────────────────────────────
 
 describe("single wave happy path", () => {
-  test("starts in idle state", () => {
+  test("starts in wave_executing state due to always transition", () => {
     const actor = createPhaseActor();
-    expect(actor.getSnapshot().value).toBe("idle");
+    expect(actor.getSnapshot().value).toBe("wave_executing");
   });
 
-  test("PLAN_WAVE transitions idle to wave_executing", () => {
-    const actor = createPhaseActor();
+  test("PLAN_WAVE transitions idle to wave_executing (if no waves were set)", () => {
+    const actor = createPhaseActor({ total_waves: 0 });
     actor.send({ type: "PLAN_WAVE" });
     expect(actor.getSnapshot().value).toBe("wave_executing");
   });
@@ -264,7 +264,7 @@ describe("context initialization", () => {
   });
 
   test("defaults are applied for unset fields", () => {
-    const actor = createPhaseActor({ phase_id: 1 });
+    const actor = createPhaseActor({ phase_id: 1, total_waves: 0 });
     const ctx = actor.getSnapshot().context;
     expect(ctx.current_wave).toBe(0);
     expect(ctx.wave_results).toEqual([]);

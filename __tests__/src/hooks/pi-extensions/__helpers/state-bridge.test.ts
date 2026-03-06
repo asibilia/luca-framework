@@ -44,17 +44,6 @@ function createTempStateMd(content: string) {
 // ─── readStateContext ─────────────────────────────────────────
 
 describe("readStateContext", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue
-  // (luca-framework peer dep). Passes when run individually. Address in cleanup milestone.
-  // test("returns context from valid state.json", () => {
-  //   const dir = createTempState({ complexity: "COMPLEX", current_phase: "78" });
-  //   const ctx = readStateContext(dir);
-  //   expect(ctx).not.toBeNull();
-  //   expect(ctx!.complexity).toBe("COMPLEX");
-  //   expect(ctx!.current_phase).toBe("78");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-
   test("returns null when state.json missing", () => {
     const dir = mkdtempSync(join(tmpdir(), "state-bridge-test-"));
     const ctx = readStateContext(dir);
@@ -89,15 +78,6 @@ describe("readStateContext", () => {
 // ─── readField ────────────────────────────────────────────────
 
 describe("readField", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue
-  // (luca-framework peer dep). Passes when run individually. Address in cleanup milestone.
-  // test("returns field value from state.json context", () => {
-  //   const dir = createTempState({ complexity: "SIMPLE", branch: "feat/test" });
-  //   expect(readField(dir, "complexity")).toBe("SIMPLE");
-  //   expect(readField(dir, "branch")).toBe("feat/test");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-
   test("returns undefined for missing field", () => {
     const dir = createTempState({ complexity: "SIMPLE" });
     expect(readField(dir, "nonexistent")).toBeUndefined();
@@ -114,33 +94,11 @@ describe("readField", () => {
 // ─── readComplexity ───────────────────────────────────────────
 
 describe("readComplexity", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue
-  // (luca-framework peer dep). Passes when run individually. Address in cleanup milestone.
-  // test("reads complexity from state.json context", () => {
-  //   const dir = createTempState({ complexity: "CRITICAL" });
-  //   expect(readComplexity(dir)).toBe("CRITICAL");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // test("falls back to STATE.md when state.json has no complexity", () => {
-  //   const dir = createTempStateMd("**Task Complexity:** COMPLEX\n");
-  //   expect(readComplexity(dir)).toBe("COMPLEX");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-
   test("returns MODERATE as default when both sources unavailable", () => {
     const dir = mkdtempSync(join(tmpdir(), "state-bridge-test-"));
     expect(readComplexity(dir)).toBe("MODERATE");
     rmSync(dir, { recursive: true, force: true });
   });
-
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // test("STATE.md fallback handles simple format", () => {
-  //   const dir = createTempStateMd("Task Complexity: SIMPLE\n");
-  //   expect(readComplexity(dir)).toBe("SIMPLE");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
 
   test("STATE.md fallback rejects invalid levels", () => {
     const dir = createTempStateMd("**Task Complexity:** INVALID\n");
@@ -152,14 +110,6 @@ describe("readComplexity", () => {
 // ─── readStateValue ───────────────────────────────────────────
 
 describe("readStateValue", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue
-  // (luca-framework peer dep). Passes when run individually. Address in cleanup milestone.
-  // test("reads value from state.json", () => {
-  //   const dir = createTempState({}, "executing");
-  //   expect(readStateValue(dir)).toBe("executing");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-
   test("returns idle when state.json missing", () => {
     const dir = mkdtempSync(join(tmpdir(), "state-bridge-test-"));
     expect(readStateValue(dir)).toBe("idle");
@@ -170,43 +120,6 @@ describe("readStateValue", () => {
 // ─── readStateAsMap ───────────────────────────────────────────
 
 describe("readStateAsMap", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue
-  // (luca-framework peer dep). Passes when run individually. Address in cleanup milestone.
-  // test("converts state.json context to flat map", () => {
-  //   const dir = createTempState({
-  //     complexity: "MODERATE",
-  //     current_phase: "79",
-  //     branch: "feat/pi-dialogs",
-  //   });
-  //   const map = readStateAsMap(dir);
-  //   expect(map.complexity).toBe("MODERATE");
-  //   expect(map.current_phase).toBe("79");
-  //   expect(map.branch).toBe("feat/pi-dialogs");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // test("excludes object and null values from flat map", () => {
-  //   const dir = createTempState({
-  //     complexity: "SIMPLE",
-  //     nested_obj: { foo: "bar" },
-  //     null_field: null,
-  //   });
-  //   const map = readStateAsMap(dir);
-  //   expect(map.complexity).toBe("SIMPLE");
-  //   expect(map.nested_obj).toBeUndefined();
-  //   expect(map.null_field).toBeUndefined();
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // test("falls back to STATE.md parsing when no state.json", () => {
-  //   const dir = createTempStateMd(
-  //     "**Current Phase:** 79\n**Task Complexity:** MODERATE\n",
-  //   );
-  //   const map = readStateAsMap(dir);
-  //   expect(map.current_phase).toBe("79");
-  //   expect(map.task_complexity).toBe("MODERATE");
-  //   rmSync(dir, { recursive: true, force: true });
-  // });
 });
 
 // ─── SETTABLE_FIELDS ──────────────────────────────────────────

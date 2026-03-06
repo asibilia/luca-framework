@@ -19,43 +19,6 @@ import {
 } from "../../../src/planner/__helpers/cost-model";
 
 describe("planner integration", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // Passes when run individually. Address in cleanup milestone.
-  // test("end-to-end: parse -> score -> schedule -> plan", async () => {
-  //   const todos = await parseTodos();
-  //   expect(todos.length).toBeGreaterThan(0);
-  //   const scored = todos.map((todo, i) =>
-  //     scoreItem({
-  //       todo_path: todo.file_path,
-  //       title: todo.title,
-  //       area: todo.area,
-  //       business_value: Math.min(10, 5 + i),
-  //       time_criticality: Math.min(10, 3 + i),
-  //       risk_reduction: Math.min(10, 2 + i),
-  //       complexity: i % 2 === 0 ? "MODERATE" : "SIMPLE",
-  //       dependency_free: i !== 0,
-  //     }),
-  //   );
-  //   const ranked = rankByWSJF(scored);
-  //   expect(ranked.length).toBe(scored.length);
-  //   for (let i = 1; i < ranked.length; i++) {
-  //     expect(ranked[i]!.wsjf_score).toBeLessThanOrEqual(
-  //       ranked[i - 1]!.wsjf_score,
-  //     );
-  //   }
-  //   const session = scheduleSession(ranked);
-  //   expect(session.items.length).toBeGreaterThan(0);
-  //   expect(session.rationale).toBeTruthy();
-  //   expect(session.generated_at).toBeTruthy();
-  //   for (const item of session.items) {
-  //     expect(item.assigned_zone).toBeDefined();
-  //   }
-  //   if (session.items.length > 0) {
-  //     expect(session.mermaid_gantt).toBeTruthy();
-  //     expect(session.mermaid_gantt).toContain("gantt");
-  //   }
-  // });
-
   test("end-to-end: parse -> score -> weekly plan", async () => {
     const todos = await parseTodos();
     if (todos.length === 0) return;

@@ -17,6 +17,7 @@ import type { Result } from "./types";
 import { sanitizeJsonParse } from "./sanitize";
 import { queryOne } from "./__helpers/spacetimedb-client";
 import { callReducer } from "./__helpers/observer-emitter";
+import { initializeContext } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -106,29 +107,6 @@ export async function persistActor(
 export async function loadPersistedActor(
   filePath: string = STATE_FILE_PATH,
 ): Promise<Result<Actor<typeof workflowMachine>>> {
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{ contextJson: string }>(
-      "SELECT * FROM workflow_state WHERE id = 1",
-    );
-    if (row && row.contextJson) {
-      const snapshot = sanitizeJsonParse(row.contextJson) as Snapshot<unknown>;
-      const actor = createActor(workflowMachine, {
-        snapshot,
-      } as Parameters<typeof createActor<typeof workflowMachine>>[1]);
-      actor.start();
-      return { success: true, data: actor };
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[persistence] SpacetimeDB unavailable, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
-  }
-
-  // Fallback: read from JSON file
   try {
     const file = Bun.file(filePath);
 
@@ -147,9 +125,12 @@ export async function loadPersistedActor(
       };
     }
 
-    let snapshot: Snapshot<unknown>;
+    let snapshot: any;
     try {
-      snapshot = sanitizeJsonParse(text) as Snapshot<unknown>;
+      snapshot = sanitizeJsonParse(text);
+      if (!snapshot.status) snapshot.status = 'active';
+      if (!snapshot.children) snapshot.children = {};
+      if (!snapshot.historyValue) snapshot.historyValue = {};
     } catch {
       return {
         success: false,
@@ -157,12 +138,18 @@ export async function loadPersistedActor(
       };
     }
 
-    // Cast needed: persisted snapshot is parsed from JSON as Snapshot<unknown>,
-    // but createActor expects the machine's specific snapshot type.
+    const context = initializeContext((snapshot as any).context || {});
+    const fullSnapshot = {
+      ...(snapshot as any),
+      context,
+    } as Snapshot<unknown>;
+
     const actor = createActor(workflowMachine, {
-      snapshot,
+      snapshot: fullSnapshot,
     } as Parameters<typeof createActor<typeof workflowMachine>>[1]);
+
     actor.start();
+
     return { success: true, data: actor };
   } catch (err) {
     return {
@@ -172,25 +159,6 @@ export async function loadPersistedActor(
   }
 }
 
-/**
- * Create a fresh actor from config.json and optional context overrides.
- *
- * SpacetimeDB-primary: queries workflow_config for configuration,
- * falls back to reading .planning/config.json from disk.
- *
- * @param configPath - Path to config.json (fallback)
- * @param overrides - Optional partial context overrides
- * @returns Result with the new actor on success, or error message on failure
- *
- * @example
- * ```typescript
- * const result = await createFreshActor();
- * if (result.success) {
- *   const actor = result.data;
- *   actor.send({ type: "START", ticket_id: "PROJ-1" });
- * }
- * ```
- */
 export async function createFreshActor(
   configPath: string = ".planning/config.json",
   overrides?: Partial<WorkflowMachineInput>,

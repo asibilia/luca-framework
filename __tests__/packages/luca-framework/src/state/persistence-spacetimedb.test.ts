@@ -200,32 +200,47 @@ describe("persistActor", () => {
 // --- Tests: loadPersistedActor -------------------------------------------------
 
 describe("loadPersistedActor", () => {
-  test("falls back to JSON file when SpacetimeDB unavailable", async () => {
-    // Default mock throws "Connection refused"
+  test("fails when state JSON file does not exist", async () => {
     const result = await loadPersistedActor("/tmp/nonexistent-state.json");
 
-    // Should fail because neither SpacetimeDB nor JSON file exists
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toContain("State file not found");
     }
   });
 
-  test("queries workflow_state table from SpacetimeDB", async () => {
-    // Mock SpacetimeDB response (but with invalid context so actor creation fails gracefully)
-    mockSpacetimeDBQuery([]);
+  test("reads actor snapshot from local JSON file", async () => {
+    const testPath = "/tmp/test-load-actor.json";
+    const testSnapshot = {
+      value: "idle",
+      context: {
+        current_phase: 1,
+        complexity: "MODERATE",
+        oversight: "milestone",
+        session_id: "test-123",
+        ticket_id: "PROJ-1",
+      },
+      status: "active",
+      children: {},
+      historyValue: {},
+    };
 
-    await loadPersistedActor("/tmp/nonexistent-state.json");
+    await Bun.write(testPath, JSON.stringify(testSnapshot));
 
-    const sqlCall = fetchCalls.find((c) =>
-      c.url.includes("/v1/database/luca-observer/sql"),
-    );
-    expect(sqlCall).toBeDefined();
-
-    // v2.0: body is raw SQL string, not JSON
-    const body = sqlCall!.init?.body as string;
-    expect(body).toContain("workflow_state");
-    expect(body).toContain("id = 1");
+    try {
+      const result = await loadPersistedActor(testPath);
+      if (!result.success) {
+        console.error("Test debug - loadPersistedActor error:", result.error);
+      }
+      expect(result.success).toBe(true);
+    } finally {
+      try {
+        // Clean up by writing empty file
+        await Bun.write(testPath, "");
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   });
 });
 

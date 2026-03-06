@@ -10,6 +10,7 @@ import {
   saveScorecard,
 } from "../../../src/observability/__helpers/scorecard";
 import type { Scorecard } from "../../../src/observability/__schemas/observability.schemas";
+import { scorecardSchema, scorecardEntrySchema } from "../../../src/observability/__schemas/observability.schemas";
 
 // ─── R12.1: Entry Creation ──────────────────────────────────────────────────
 
@@ -241,10 +242,6 @@ describe("loadScorecard / saveScorecard", () => {
 
 describe("scorecardSchema validation", () => {
   test("validates a well-formed scorecard", () => {
-    const {
-      scorecardSchema,
-    } = require("../../../src/observability/__schemas/observability.schemas");
-
     const result = scorecardSchema.safeParse({
       entries: {
         "lu-executor": {
@@ -264,10 +261,6 @@ describe("scorecardSchema validation", () => {
   });
 
   test("rejects negative invocation count", () => {
-    const {
-      scorecardEntrySchema,
-    } = require("../../../src/observability/__schemas/observability.schemas");
-
     const result = scorecardEntrySchema.safeParse({
       agent_name: "test",
       invocation_count: -1,

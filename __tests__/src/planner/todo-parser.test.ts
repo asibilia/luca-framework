@@ -262,35 +262,6 @@ source: manual
 /* ------------------------------------------------------------------ */
 
 describe("parseTodos", () => {
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // Passes when run individually. Address in cleanup milestone.
-  // test("returns TodoMetadata[] from actual .planning/todos/pending/ directory", async () => {
-  //   const todos = await parseTodos(".planning/todos/pending");
-  //   expect(todos.length).toBeGreaterThan(0);
-  //   for (const todo of todos) {
-  //     expect(todo.title).toBeTruthy();
-  //     expect(todo.area).toBeTruthy();
-  //     expect(todo.created).toBeTruthy();
-  //     expect(todo.source).toBeTruthy();
-  //     expect(todo.file_path).toBeTruthy();
-  //     expect(todo.file_path).toContain(".planning/todos/pending/");
-  //   }
-  // });
-
-  // TODO(cleanup): Fails in full suite due to module resolution issue.
-  // Passes when run individually. Address in cleanup milestone.
-  // test("each item has required fields", async () => {
-  //   const todos = await parseTodos(".planning/todos/pending");
-  //   expect(todos.length).toBeGreaterThan(0);
-  //   for (const todo of todos) {
-  //     expect(typeof todo.title).toBe("string");
-  //     expect(typeof todo.area).toBe("string");
-  //     expect(typeof todo.created).toBe("string");
-  //     expect(typeof todo.source).toBe("string");
-  //     expect(typeof todo.file_path).toBe("string");
-  //   }
-  // });
-
   test("returns empty array for missing directory", async () => {
     const result = await parseTodos("/nonexistent/path/that/does/not/exist");
     expect(result).toEqual([]);
