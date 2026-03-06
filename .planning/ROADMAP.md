@@ -105,14 +105,23 @@
 
 ## Deferred (v3.1.0+)
 
-| Todo | Title                           | Reason                                                        |
-| ---- | ------------------------------- | ------------------------------------------------------------- |
-| #37  | Test suite fragility            | Testing reintroduction is a dedicated future effort           |
-| #56  | JSON blob normalization         | BREAKING schema change — defer until #65 field rename settles |
-| #13  | Adaptive complexity self-tuning | Depends on Phase 6 (model routing) completing and stabilizing |
-| #15  | Reflective meta-cognition       | Depends on #12 (procedure replay) from Phase 8                |
-| #16  | Cross-agent interop scanner     | New domain creation — needs #50 first, defer to v3.1.0        |
-| #18  | Semantic memory embeddings      | Depends on learning pipeline (Phase 8) stabilizing            |
+| Todo | Title                                 | Reason                                                        |
+| ---- | ------------------------------------- | ------------------------------------------------------------- |
+| #37  | Test suite fragility                  | Testing reintroduction is a dedicated future effort           |
+| #56  | JSON blob normalization               | BREAKING schema change — defer until #65 field rename settles |
+| #13  | Adaptive complexity self-tuning       | Depends on Phase 6 (model routing) completing and stabilizing |
+| #15  | Reflective meta-cognition             | Depends on #12 (procedure replay) from Phase 8                |
+| #16  | Cross-agent interop scanner           | New domain creation — needs #50 first, defer to v3.1.0        |
+| #18  | Semantic memory embeddings            | Depends on learning pipeline (Phase 8) stabilizing            |
+| #66  | Observer Lucide icons sidebar         | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
+| #67  | Observer color system depth           | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
+| #68  | Observer typography overhaul          | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
+| #69  | Observer dashboard layout redesign    | Major redesign — new milestone territory                      |
+| #70  | Observer charting library             | New dependency — beyond Phase 4 scope, dedicated UI milestone |
+| #71  | Observer animations/motion            | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
+| #72  | Observer state diagram redesign       | Feature enhancement — beyond Phase 4 scope                    |
+| #73  | Observer time range/session picker    | Feature enhancement — beyond Phase 4 scope                    |
+| #74  | Observer command palette/keyboard nav | Feature enhancement — beyond Phase 4 scope                    |
 
 ## New Milestone Candidates
 
