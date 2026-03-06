@@ -1011,22 +1011,40 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 
 ## Bridge CLI Commands
 
-### Read Commands
+### Read Commands (6)
 
 | Command | Description | Output |
 |---------|-------------|--------|
-| \`bun run packages/luca-framework/src/state/bridge.ts read-status\` | Read full state | JSON with phase, plan, status, complexity |
-| \`bun run packages/luca-framework/src/state/bridge.ts read-complexity\` | Read complexity level | JSON with complexity field |
-| \`bun run packages/luca-framework/src/state/bridge.ts ensure-init\` | Initialize state if not present | Creates state machine + STATE.md |
+| \`read-status\` | Read comprehensive workflow status | JSON with state, phase, complexity, oversight |
+| \`read-complexity\` | Read current complexity level | JSON with complexity field |
+| \`read-oversight\` | Read current oversight level | JSON with oversight field |
+| \`read-phase\` | Read current phase info | JSON with phase, milestone, plan IDs |
+| \`read-field --field=path\` | Read an arbitrary context field | JSON with field path and value |
+| \`read-ledger [--tail=N] [--session=id]\` | Read session ledger entries | JSON array of ledger entries |
 
-### Transition Commands
+### Write Commands (2)
 
 | Command | Description |
 |---------|-------------|
-| \`bun run packages/luca-framework/src/state/bridge.ts transition set-complexity --complexity=MODERATE\` | Set task complexity |
-| \`bun run packages/luca-framework/src/state/bridge.ts transition complete-phase\` | Mark current phase complete |
-| \`bun run packages/luca-framework/src/state/bridge.ts transition start-phase --phase=N\` | Start a new phase |
-| \`bun run packages/luca-framework/src/state/bridge.ts transition start-plan --plan=N\` | Start a new plan |
+| \`set-field --field=name --value=json\` | Set an allowlisted context field and persist |
+| \`transition --event=TYPE [--data=json]\` | Send a workflow event and persist state |
+
+### Lifecycle Commands (5)
+
+| Command | Description |
+|---------|-------------|
+| \`ensure-init [--force]\` | Initialize state if not present |
+| \`snapshot\` | Generate STATE.md from current state |
+| \`gate-check --gate=name\` | Check if a named gate is enabled |
+| \`suspend --phase=N [--reason=str]\` | Create checkpoint and suspend phase |
+| \`resume-phase --phase=N\` | Load checkpoint and resume phase |
+
+### Observability Commands (2)
+
+| Command | Description |
+|---------|-------------|
+| \`emit-event --type=eventType [--session=id]\` | Emit observer event to SpacetimeDB |
+| \`emit-context-snapshot --session=id [--percent=N]\` | Emit context-window snapshot |
 
 ## Usage Patterns
 

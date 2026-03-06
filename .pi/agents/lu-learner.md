@@ -6,7 +6,7 @@ tools:
   - Write
   - Glob
   - Grep
-model_tier: balanced
+model_tier: fast
 background_spawnable: true
 purpose: synthesizer
 allowed_contexts:

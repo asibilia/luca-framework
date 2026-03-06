@@ -96,3 +96,15 @@ export {
   buildArbiterPrompt,
   resolveRootCauseTribunal,
 } from "./__helpers/root-cause-tribunal";
+
+// Interop scanner
+export {
+  InteropFindingSchema,
+  InteropReportSchema,
+  scanAgentInterop,
+} from "./__helpers/interop-scanner";
+
+export type {
+  InteropFinding,
+  InteropReport,
+} from "./__helpers/interop-scanner";

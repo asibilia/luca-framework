@@ -7,7 +7,7 @@ tools:
   - Grep
   - Glob
 model: sonnet
-model_tier: balanced
+model_tier: capable
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

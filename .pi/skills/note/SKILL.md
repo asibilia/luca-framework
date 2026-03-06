@@ -70,12 +70,12 @@ When no flag is provided, the message becomes a new phase in the current milesto
 
    - Add entry under "Roadmap Evolution" in STATE.md
 
-9. **Emit observer event:**
+9. **Emit observer event (via SpacetimeDB reducer):**
 
    \`\`\`bash
-   curl -s --max-time 1 "${LUCA_OBSERVER_URL:-http://localhost:3456}/api/events" -X POST \
-     -H "Content-Type: application/json" \
-     -d '{"event_type":"phase.added","timestamp":"<ISO>","payload":{"phase":"<N>","description":"<message>","directory":"<path>"}}'
+   bun run packages/luca-framework/src/state/bridge.ts emit-event phase.added \
+     --session-id="${SESSION_ID:-}" \
+     --payload='{"phase":"<N>","description":"<message>","directory":"<path>"}' 2>/dev/null || true
    \`\`\`
 
 10. **Confirm:**
@@ -129,12 +129,12 @@ Queue a note picked up within 60 seconds by the context-check hook.
      The note message text.
      ```
 
-4. **Emit observer event:**
+4. **Emit observer event (via SpacetimeDB reducer):**
 
    \`\`\`bash
-   curl -s --max-time 1 "${LUCA_OBSERVER_URL:-http://localhost:3456}/api/events" -X POST \
-     -H "Content-Type: application/json" \
-     -d '{"event_type":"note.added","timestamp":"<ISO>","payload":{"priority":"next","file":"<filename>"}}'
+   bun run packages/luca-framework/src/state/bridge.ts emit-event note.added \
+     --session-id="${SESSION_ID:-}" \
+     --payload='{"priority":"next","file":"<filename>"}' 2>/dev/null || true
    \`\`\`
 
 5. **Confirm:**
