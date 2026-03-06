@@ -12,6 +12,7 @@ import orderBy from "lodash/orderBy";
 
 import { callReducer } from "./observer-emitter";
 import { queryTable } from "./spacetimedb-client";
+import { escapeSqlString, validateAndEscapeSqlString, validateFilterString } from "./sql-sanitize";
 
 import type {
   AuditFinding,
@@ -28,25 +29,7 @@ import {
 
 // ─── Validation ─────────────────────────────────────────────────────────────
 
-/** Regex for safe string values — alphanumeric, hyphens, underscores, dots, slashes. */
-const SAFE_STRING_RE = /^[a-zA-Z0-9_\-./: ]+$/;
-
-/**
- * Validate a string filter value for safe SQL interpolation.
- *
- * @param value - The value to validate
- * @param fieldName - The field name for error messages
- * @returns The validated string
- * @throws If the value contains unsafe characters
- */
-function validateFilterString(value: string, fieldName: string): string {
-  if (value.length > 512 || !SAFE_STRING_RE.test(value)) {
-    throw new Error(
-      `Invalid ${fieldName} format: ${value.slice(0, 50)}${value.length > 50 ? "..." : ""}`,
-    );
-  }
-  return value;
-}
+// validateFilterString is imported from the shared sql-sanitize utility
 
 // ─── Internal Factories ─────────────────────────────────────────────────────
 

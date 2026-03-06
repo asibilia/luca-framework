@@ -22,7 +22,7 @@
 
 **Goal:** Close DRY violations, fix barrel imports, and align conventions identified by milestone audit.
 
-- [ ] Extract shared SQL sanitization utility from audit-findings.ts + ledger.ts (audit #4)
+- [x] Extract shared SQL sanitization utility from audit-findings.ts + ledger.ts (audit #4)
 - [x] Extract createEmptySummary factory — deduplicate emptySummary construction (audit #5)
 - [x] Extract updateFindingStatus helper from twin markFindingResolved/markFindingDismissed (audit #6)
 - [x] Derive severityOrder from FINDING_SEVERITIES instead of hardcoded map (audit #7)

@@ -18,6 +18,7 @@ import { transitionRecordSchema } from "./types";
 import type { TransitionRecord } from "./types";
 import { queryTable, queryOne } from "./__helpers/spacetimedb-client";
 import { callReducer } from "./__helpers/observer-emitter";
+import { escapeSqlString } from "./__helpers/sql-sanitize";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -355,18 +356,18 @@ export async function readLedger(
     const whereClauses: string[] = [];
     if (validatedFilters.session_id) {
       // Defense-in-depth: primary validation is validateLedgerFilters() above.
-      // The .replace() here is a secondary safety layer; validated values
+      // escapeSqlString is a belt-and-suspenders measure; validated values
       // already match /^[a-zA-Z0-9_-]+$/ and cannot contain single quotes.
       whereClauses.push(
-        `session_id = '${validatedFilters.session_id.replace(/'/g, "''")}'`,
+        `session_id = '${escapeSqlString(validatedFilters.session_id)}'`,
       );
     }
     if (validatedFilters.event_type) {
       // Defense-in-depth: primary validation is validateLedgerFilters() above.
-      // event_type is allowlist-validated; .replace() is belt-and-suspenders.
+      // event_type is allowlist-validated; escapeSqlString is belt-and-suspenders.
       // SpacetimeDB column is `action`, not `event_type`.
       whereClauses.push(
-        `action = '${validatedFilters.event_type.replace(/'/g, "''")}'`,
+        `action = '${escapeSqlString(validatedFilters.event_type)}'`,
       );
     }
     if (validatedFilters.since) {
