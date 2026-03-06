@@ -71,6 +71,11 @@ export default function CostPage() {
           </div>
           <LoadingSkeleton variant="table" rows={8} columns={5} />
         </div>
+      ) : totalCost === 0 && (!Array.isArray(cost) || cost.length === 0) ? (
+        <EmptyState
+          title="No Cost Data"
+          message="Cost tracking data will appear here when sessions are executed and token usage is recorded. Metrics include total cost, input/output tokens, and cache usage."
+        />
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">

@@ -27,12 +27,17 @@ export default function HarnessPage() {
           <LoadingSkeleton variant="card" />
           <LoadingSkeleton variant="table" rows={6} columns={4} />
         </div>
+      ) : !result ? (
+        <EmptyState
+          title="No Harness Results"
+          message="Harness verification results will appear here after the verification harness runs. Results include check status, error details, and raw output."
+        />
       ) : (
         <div className="space-y-4">
           <ErrorBoundary name="HarnessSummaryBanner">
             <HarnessSummaryBanner result={result} />
           </ErrorBoundary>
-          {result && result.checks.length > 0 && (
+          {result.checks.length > 0 ? (
             <ErrorBoundary name="CheckResultList">
               <div className="space-y-3">
                 <h3 className="font-mono text-sm font-medium text-foreground">
@@ -45,6 +50,8 @@ export default function HarnessPage() {
                 ))}
               </div>
             </ErrorBoundary>
+          ) : (
+            <EmptyState message="No checks were run in this harness session." />
           )}
         </div>
       )}

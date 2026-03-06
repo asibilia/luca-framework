@@ -59,6 +59,11 @@ export default function WorkflowPage() {
         </p>
         {ledgerLoading ? (
           <LoadingSkeleton variant="table" rows={5} columns={3} />
+        ) : entries.length === 0 ? (
+          <EmptyState
+            title="No Transitions Recorded"
+            message="State transitions will appear here as the workflow executes. The log shows the last 50 entries."
+          />
         ) : (
           <ErrorBoundary name="TransitionLog">
             <TransitionLog entries={entries} />
