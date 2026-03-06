@@ -77,6 +77,55 @@ export async function persistActor(
       }
     }
 
+    // Dual-write divergence detection: verify the local JSON matches intent
+    try {
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        const written = sanitizeJsonParse(await file.text()) as {
+          value?: unknown;
+          context?: Record<string, unknown>;
+        };
+        const writtenCtx = written.context ?? {};
+
+        const divergences: string[] = [];
+
+        if (
+          String(written.value ?? "") !== String(snap.value) &&
+          written.value !== undefined
+        ) {
+          divergences.push(
+            `state: json="${String(written.value)}" vs intended="${String(snap.value)}"`,
+          );
+        }
+        if (
+          writtenCtx.complexity !== undefined &&
+          String(writtenCtx.complexity) !==
+            String(snap.context.complexity ?? "")
+        ) {
+          divergences.push(
+            `complexity: json="${writtenCtx.complexity}" vs intended="${snap.context.complexity}"`,
+          );
+        }
+        if (
+          writtenCtx.current_phase !== undefined &&
+          String(writtenCtx.current_phase ?? "") !==
+            String(snap.context.current_phase ?? "")
+        ) {
+          divergences.push(
+            `phase: json="${writtenCtx.current_phase}" vs intended="${snap.context.current_phase}"`,
+          );
+        }
+
+        if (divergences.length > 0) {
+          console.warn(
+            `[dual-write] Divergence detected after persist: ${divergences.join(", ")}`,
+          );
+        }
+      }
+    } catch {
+      // Divergence check is best-effort — never block on failure
+    }
+
     return { success: true, data: filePath };
   } catch (err) {
     return {
@@ -128,7 +177,7 @@ export async function loadPersistedActor(
     let snapshot: any;
     try {
       snapshot = sanitizeJsonParse(text);
-      if (!snapshot.status) snapshot.status = 'active';
+      if (!snapshot.status) snapshot.status = "active";
       if (!snapshot.children) snapshot.children = {};
       if (!snapshot.historyValue) snapshot.historyValue = {};
     } catch {
