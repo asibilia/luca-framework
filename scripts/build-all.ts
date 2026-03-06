@@ -8,8 +8,10 @@
  * results to .cursor/, .claude/, and dist/plugin/.
  *
  * Usage:
- *   bun run build:all          # via package.json script
- *   bun ./scripts/build-all.ts # direct invocation
+ *   bun run build:all                       # via package.json script
+ *   bun ./scripts/build-all.ts              # direct invocation
+ *   bun run build:all --force               # override session lock and build
+ *   bun run build:all --cleanup-stale-locks # remove lock file without building
  *
  * Output paths:
  *   .cursor/agents/*.md
@@ -29,8 +31,20 @@ async function main() {
   // 0. Session lock guard — refuse to build during active sessions
   // =========================================================================
   const forceFlag = process.argv.includes("--force");
+  const cleanupFlag = process.argv.includes("--cleanup-stale-locks");
   const lockPath = path.join(process.cwd(), ".claude", ".session-lock");
   const lockFile = Bun.file(lockPath);
+
+  // Handle --cleanup-stale-locks: remove the lock file and exit without building
+  if (cleanupFlag) {
+    if (await lockFile.exists()) {
+      await lockFile.unlink();
+      console.log("Session lock removed successfully.");
+    } else {
+      console.log("No stale lock found.");
+    }
+    process.exit(0);
+  }
 
   if (await lockFile.exists()) {
     let hoursOld = 0;
