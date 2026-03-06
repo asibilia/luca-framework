@@ -50,15 +50,15 @@
 - [x] Confirm `existsSync` is Bun-re-exported (no migration needed)
 - [x] Document: `appendFile` in ledger.ts has explicit comment explaining no Bun equivalent
 
-### Phase 126: Observer Dashboard Polish (NEW)
+### Phase 126: Observer Dashboard Polish
 
 **Goal:** Improve observer dashboard UI/UX and reliability
 
-- [ ] Replace inline loading states with LoadingSkeleton component (#40)
-- [ ] Add React error boundaries to observer dashboard pages (#41)
-- [ ] Add missing empty states to observer pages (#49)
-- [ ] Add todo tracking to observer dashboard (#64)
-- [ ] Accessibility pass on observer dashboard (#47)
+- [x] Replace inline loading states with LoadingSkeleton component (#40)
+- [x] Add React error boundaries to observer dashboard pages (#41)
+- [x] Add missing empty states to observer pages (#49)
+- [x] Add todo tracking to observer dashboard (#64)
+- [x] Accessibility pass on observer dashboard (#47)
 
 ### Phase 127: SpacetimeDB Data Integrity (NEW)
 
