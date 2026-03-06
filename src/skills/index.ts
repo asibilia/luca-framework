@@ -72,3 +72,31 @@ export {
   buildMilestoneRebuttalContext,
   buildMilestoneDebateResult,
 } from "./__helpers/milestone-debate";
+
+// Skill scaffolding
+export {
+  classifySkill,
+  scaffoldSkillSet,
+  skillClassificationSchema,
+  skillProfileSchema,
+  scaffoldResultSchema,
+} from "./__helpers/scaffolding";
+
+export type {
+  SkillClassification,
+  SkillProfile,
+  ScaffoldResult,
+} from "./__helpers/scaffolding";
+
+// Plugin marketplace
+export {
+  PluginRegistryEntrySchema,
+  PluginRegistrySchema,
+  searchRegistry,
+  validatePlugin,
+} from "./__helpers/marketplace";
+
+export type {
+  PluginRegistryEntry,
+  PluginRegistry,
+} from "./__helpers/marketplace";
