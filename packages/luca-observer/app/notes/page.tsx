@@ -125,13 +125,7 @@ export default function NotesPage() {
           {isLoading ? (
             <EmptyState message="Loading notes..." />
           ) : pending.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <p className="font-mono text-sm text-muted-foreground">
-                No pending notes. Use the form above or{" "}
-                <code className="rounded bg-muted px-1 py-0.5">/note</code> to add
-                one.
-              </p>
-            </div>
+            <EmptyState message="No pending notes. Use the form above or /note to add one." />
           ) : (
             <div className="flex flex-col gap-2">
               {pending.map((note) => (
