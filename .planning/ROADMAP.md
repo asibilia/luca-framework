@@ -126,8 +126,8 @@
 
 **Goal:** Close remaining gaps identified in v2.8.0 done-todo audit
 
-- [ ] Rename SpacetimeDB memory fields from *Json to *Md (#65)
-- [ ] Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
+- [x] Rename SpacetimeDB memory fields from *Json to *Md (#65)
+- [x] Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
 
 ---
 
