@@ -7,6 +7,10 @@ import {
   ModelRoutingRowSchema,
   ModelRoutingTableSchema,
 } from "../../../src/complexity/__helpers/model-routing";
+import {
+  resolveModel,
+  resolveModelWithDecision,
+} from "../../../src/agents/__helpers/resolve-model";
 
 describe("DEFAULT_COMPLEXITY_TIERS", () => {
   test("TRIVIAL and SIMPLE map to fast", () => {
@@ -113,5 +117,106 @@ describe("getRoutingRow", () => {
   test("returns default row for unknown agent", () => {
     const row = getRoutingRow("nonexistent-agent");
     expect(row).toEqual(DEFAULT_COMPLEXITY_TIERS);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: routing table participates in resolveModel() priority chain
+// ---------------------------------------------------------------------------
+
+describe("resolveModel integration with routing table", () => {
+  const gate = { default_model: "sonnet" as const };
+
+  test("routing table is consulted at step 3.5 for agent in table", () => {
+    // lu-executor at CRITICAL: table says capable -> opus
+    // No model_routing, no model_tier on agent => routing table wins
+    expect(resolveModel({}, "CRITICAL", gate, "lu-executor")).toBe("opus");
+  });
+
+  test("routing table falls through to defaults for unknown agent", () => {
+    // Unknown agent at MODERATE: default tier is balanced -> sonnet
+    expect(resolveModel({}, "MODERATE", gate, "some-new-agent")).toBe("sonnet");
+  });
+
+  test("per-agent frontmatter overrides beat routing table", () => {
+    const agent = {
+      model_routing: {
+        default_model: "haiku" as const,
+        complexity_overrides: { CRITICAL: "opus" as const },
+      },
+    };
+    // Override beats routing table
+    expect(resolveModel(agent, "CRITICAL", gate, "lu-cognition")).toBe("opus");
+    // Agent default beats routing table
+    expect(resolveModel(agent, "MODERATE", gate, "lu-cognition")).toBe("haiku");
+  });
+
+  test("model_tier beats routing table", () => {
+    const agent = { model_tier: "fast" as const };
+    // model_tier fast -> haiku, even though routing table for lu-executor at CRITICAL = capable
+    expect(resolveModel(agent, "CRITICAL", gate, "lu-executor")).toBe("haiku");
+  });
+
+  test("routing table beats purpose-based defaults", () => {
+    // lu-cognition at CRITICAL: table says fast -> haiku
+    // purpose "researcher" would give opus, but routing table is higher priority
+    const agent = { purpose: "researcher" as const };
+    expect(resolveModel(agent, "CRITICAL", gate, "lu-cognition")).toBe(
+      "haiku",
+    );
+  });
+
+  test("resolveModelWithDecision reports routing_table source", () => {
+    const decision = resolveModelWithDecision(
+      {},
+      "CRITICAL",
+      gate,
+      undefined,
+      "lu-verifier",
+    );
+    expect(decision.model).toBe("opus");
+    expect(decision.source).toBe("routing_table");
+    expect(decision.reason).toContain("lu-verifier");
+    expect(decision.reason).toContain("capable");
+  });
+
+  test("full priority chain: override > default > tier > table > purpose > gate > fallback", () => {
+    // 1. Complexity override wins
+    const overrideAgent = {
+      model_routing: {
+        default_model: "sonnet" as const,
+        complexity_overrides: { CRITICAL: "opus" as const },
+      },
+      model_tier: "fast" as const,
+    };
+    expect(resolveModel(overrideAgent, "CRITICAL", gate, "lu-cognition")).toBe(
+      "opus",
+    );
+
+    // 2. Agent default model wins over model_tier
+    expect(resolveModel(overrideAgent, "MODERATE", gate, "lu-cognition")).toBe(
+      "sonnet",
+    );
+
+    // 3. Model tier wins over routing table
+    const tierAgent = { model_tier: "capable" as const };
+    expect(resolveModel(tierAgent, "TRIVIAL", gate, "lu-cognition")).toBe(
+      "opus",
+    );
+
+    // 3.5. Routing table wins over purpose
+    const purposeAgent = { purpose: "researcher" as const };
+    expect(resolveModel(purposeAgent, "CRITICAL", gate, "lu-cognition")).toBe(
+      "haiku",
+    );
+
+    // 4. Purpose wins over gate (no agentName)
+    expect(resolveModel(purposeAgent, "CRITICAL", gate)).toBe("opus");
+
+    // 5. Gate default when nothing
+    expect(resolveModel({}, "MODERATE", gate)).toBe("sonnet");
+
+    // 6. Universal fallback
+    expect(resolveModel({}, "MODERATE", {} as any)).toBe("sonnet");
   });
 });

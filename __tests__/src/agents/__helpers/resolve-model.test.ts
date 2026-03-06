@@ -164,6 +164,91 @@ describe("resolveModel", () => {
   });
 
   // -----------------------------------------------------------------------
+  // routing table resolution (step 3.5)
+  // -----------------------------------------------------------------------
+
+  test("routing table is consulted when agentName provided and no higher priority", () => {
+    // lu-executor at CRITICAL: routing table says "capable" -> opus
+    const agent = {};
+    expect(resolveModel(agent, "CRITICAL", gateWithModel, "lu-executor")).toBe(
+      "opus",
+    );
+  });
+
+  test("routing table returns haiku for fast-tier agent at TRIVIAL", () => {
+    // lu-cognition is always fast -> haiku
+    const agent = {};
+    expect(resolveModel(agent, "TRIVIAL", gateWithModel, "lu-cognition")).toBe(
+      "haiku",
+    );
+  });
+
+  test("routing table returns sonnet for balanced-tier at MODERATE", () => {
+    // lu-router at MODERATE: routing table says "balanced" -> sonnet
+    const agent = {};
+    expect(resolveModel(agent, "MODERATE", gateWithModel, "lu-router")).toBe(
+      "sonnet",
+    );
+  });
+
+  test("routing table uses defaults for unknown agent", () => {
+    // Unknown agent at CRITICAL: default tier is "capable" -> opus
+    const agent = {};
+    expect(
+      resolveModel(agent, "CRITICAL", gateWithModel, "unknown-agent"),
+    ).toBe("opus");
+  });
+
+  test("model_tier takes priority over routing table", () => {
+    // Agent has model_tier: fast, but routing table for lu-executor at CRITICAL = capable
+    const agent = { model_tier: "fast" as const };
+    expect(resolveModel(agent, "CRITICAL", gateWithModel, "lu-executor")).toBe(
+      "haiku",
+    );
+  });
+
+  test("model_routing.default_model takes priority over routing table", () => {
+    const agent = {
+      model_routing: { default_model: "haiku" as const },
+    };
+    expect(resolveModel(agent, "CRITICAL", gateWithModel, "lu-executor")).toBe(
+      "haiku",
+    );
+  });
+
+  test("complexity_overrides takes priority over routing table", () => {
+    const agent = {
+      model_routing: {
+        default_model: "sonnet" as const,
+        complexity_overrides: { CRITICAL: "opus" as const },
+      },
+    };
+    expect(resolveModel(agent, "CRITICAL", gateWithModel, "lu-cognition")).toBe(
+      "opus",
+    );
+  });
+
+  test("routing table takes priority over purpose", () => {
+    // No model_tier, no model_routing, but agentName provided
+    // lu-cognition at CRITICAL: routing table says "fast" -> haiku
+    // purpose "general" would also give haiku, but let's test with a
+    // purpose that would give a different result
+    const agent = { purpose: "researcher" as const };
+    // Without agentName, purpose "researcher" -> opus
+    expect(resolveModel(agent, "CRITICAL", gateWithModel)).toBe("opus");
+    // With agentName for lu-cognition, routing table (fast -> haiku) wins over purpose
+    expect(
+      resolveModel(agent, "CRITICAL", gateWithModel, "lu-cognition"),
+    ).toBe("haiku");
+  });
+
+  test("routing table is skipped when agentName not provided", () => {
+    // Without agentName, falls through to purpose/gate/fallback
+    const agent = {};
+    expect(resolveModel(agent, "CRITICAL", gateWithModel)).toBe("sonnet");
+  });
+
+  // -----------------------------------------------------------------------
   // purpose-based resolution (v2.5.0)
   // -----------------------------------------------------------------------
 
@@ -437,6 +522,33 @@ describe("resolveModelWithDecision", () => {
     expect(decision.model).toBe("sonnet");
     expect(decision.source).toBe("universal_fallback");
     expect(decision.reason).toContain("Universal fallback");
+  });
+
+  test("returns routing_table source when agentName provided and no higher priority", () => {
+    const decision = resolveModelWithDecision(
+      {},
+      "CRITICAL",
+      gate,
+      undefined,
+      "lu-executor",
+    );
+    expect(decision.model).toBe("opus");
+    expect(decision.source).toBe("routing_table");
+    expect(decision.reason).toContain("Routing table");
+    expect(decision.reason).toContain("lu-executor");
+  });
+
+  test("routing_table source not used when model_tier is set", () => {
+    const agent = { model_tier: "fast" as const };
+    const decision = resolveModelWithDecision(
+      agent,
+      "CRITICAL",
+      gate,
+      undefined,
+      "lu-executor",
+    );
+    expect(decision.model).toBe("haiku");
+    expect(decision.source).toBe("model_tier");
   });
 
   test("applies zone adjustment and returns zone_adjustment source", () => {
