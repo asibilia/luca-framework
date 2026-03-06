@@ -1,16 +1,15 @@
 "use client";
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
+import {
+  ErrorBoundary as ReactErrorBoundary,
+  type FallbackProps,
+} from "react-error-boundary";
 
-interface Props {
+interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
   name?: string;
-}
-
-interface State {
-  hasError: boolean;
-  error: Error | null;
 }
 
 /**
@@ -19,6 +18,8 @@ interface State {
  * Wraps data-dependent sections to catch rendering errors and display
  * a user-friendly fallback UI with retry functionality.
  *
+ * Uses react-error-boundary internally -- no class component needed.
+ *
  * @example
  * ```tsx
  * <ErrorBoundary name="AgentTable">
@@ -26,46 +27,71 @@ interface State {
  * </ErrorBoundary>
  * ```
  */
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[ErrorBoundary${this.props.name ? `:${this.props.name}` : ""}]`, error, errorInfo);
-  }
-
-  override render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      return (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-1">
-              <h3 className="font-mono text-sm font-medium text-destructive">
-                Some data could not be loaded
-              </h3>
-              {this.state.error && (
-                <p className="mt-1 font-mono text-xs text-muted-foreground">
-                  {this.state.error.message}
-                </p>
-              )}
-              <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="mt-3 rounded-md bg-accent px-3 py-1.5 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-              >
-                Try again
-              </button>
-            </div>
-          </div>
-        </div>
+export function ErrorBoundary({
+  children,
+  fallback,
+  name,
+}: ErrorBoundaryProps) {
+  const handleError = useCallback(
+    (error: unknown, info: { componentStack?: string | null }) => {
+      console.error(
+        `[ErrorBoundary${name ? `:${name}` : ""}]`,
+        error,
+        info.componentStack,
       );
-    }
+    },
+    [name],
+  );
 
-    return this.props.children;
+  if (fallback !== undefined) {
+    return (
+      <ReactErrorBoundary fallback={fallback} onError={handleError}>
+        {children}
+      </ReactErrorBoundary>
+    );
   }
+
+  return (
+    <ReactErrorBoundary
+      FallbackComponent={DefaultFallback}
+      onError={handleError}
+    >
+      {children}
+    </ReactErrorBoundary>
+  );
+}
+
+/**
+ * Default fallback UI matching the original error boundary design.
+ */
+function DefaultFallback({ error, resetErrorBoundary }: FallbackProps) {
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : null;
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex-1">
+          <h3 className="font-mono text-sm font-medium text-destructive">
+            Some data could not be loaded
+          </h3>
+          {errorMessage && (
+            <p className="mt-1 font-mono text-xs text-muted-foreground">
+              {errorMessage}
+            </p>
+          )}
+          <button
+            onClick={resetErrorBoundary}
+            className="mt-3 rounded-md bg-accent px-3 py-1.5 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
