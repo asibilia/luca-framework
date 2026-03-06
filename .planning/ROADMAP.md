@@ -50,11 +50,11 @@
 **Verification:** Standard
 **Est:** ~2 days
 
-- [ ] PLAN: Standardize loading states with LoadingSkeleton (#40)
-- [ ] PLAN: Add React error boundaries to observer pages (#41)
-- [ ] PLAN: Add missing empty states to observer pages (#49)
-- [ ] PLAN: Accessibility pass on observer dashboard (#47)
-- [ ] PLAN: Add todo tracking to observer dashboard (#64)
+- [x] PLAN: Standardize loading states with LoadingSkeleton (#40)
+- [x] PLAN: Add React error boundaries to observer pages (#41)
+- [x] PLAN: Add missing empty states to observer pages (#49)
+- [x] PLAN: Accessibility pass on observer dashboard (#47)
+- [x] PLAN: Add todo tracking to observer dashboard (#64)
 
 ### Phase 5: Agentic Reliability
 
