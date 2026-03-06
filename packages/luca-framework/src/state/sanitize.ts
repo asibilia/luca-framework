@@ -9,7 +9,7 @@
  * Copies exist in:
  * - packages/luca-framework/src/utils/sanitize.ts
  * - packages/luca-framework/src/state/sanitize.ts (this file)
- * - src/shared/validation-utils.ts
+ * - src/shared/__helpers/validation-utils.ts
  *
  * @module luca-state/sanitize
  */
