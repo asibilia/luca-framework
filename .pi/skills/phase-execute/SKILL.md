@@ -495,6 +495,32 @@ If a sub-agent returns plain text instead of JSON, wrap it as:
 
 This ensures all sub-agent outputs can be uniformly aggregated.
 
+### 5.2 Prune Sub-Agent Output (Context Preservation)
+
+**CRITICAL: After parsing each sub-agent result, immediately discard the raw output and retain ONLY the parsed envelope fields.**
+
+Sub-agents can return very large outputs (50-100k+ tokens each). If you keep the full raw output in your working context while planning the next steps (harness, verification, code review, learning capture), you will exhaust the context window and freeze.
+
+**Rules:**
+
+1. Parse the result envelope per Step 5.1
+2. Store ONLY these fields per agent: `status`, `summary` (max 500 chars), `artifacts` (paths only), `issues` (severity + message, max 10)
+3. **Discard** the full raw output text — do NOT reference it again
+4. Build a compact phase summary table for downstream steps:
+
+```
+| Plan | Status | Summary | Issues |
+|------|--------|---------|--------|
+| 01-01 | success | Brief summary | 0 |
+| 01-02 | success | Brief summary | 1 |
+```
+
+5. Pass ONLY this compact summary to downstream agents (verifier, reviewers, learner)
+
+**Why:** Parallel sub-agents returning ~200k+ combined tokens cause the orchestrator context to spike into the degradation zone (70%+), leading to freezes or extremely slow responses. This pruning step keeps the orchestrator lean for the remaining 6+ steps it must complete.
+
+> **Future work:** A structured context-budget system will replace this manual pruning. See `docs/decisions/orchestrator-context-pruning.md` for the decision record and migration plan.
+
 ### 6. Commit Orchestrator Corrections
 
 ```bash
