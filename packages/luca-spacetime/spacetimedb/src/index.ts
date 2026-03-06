@@ -1,11 +1,22 @@
 import spacetimedb from "./schema";
 export default spacetimedb;
 import { t, SenderError } from "spacetimedb/server";
+import { ScheduleAt } from "spacetimedb";
+import { CleanupSchedule, reducerRef } from "./cleanup-schedule";
 
 // ─── Lifecycle Hooks ───────────────────────────────────────────
 
-export const init = spacetimedb.init((_ctx) => {
-  // Called when the module is initially published
+export const init = spacetimedb.init((ctx) => {
+  // Seed the first TTL cleanup job (runs 1 hour after module publish)
+  const MICROS_PER_HOUR = 3_600_000_000n;
+  const firstRun = ctx.timestamp.microsSinceUnixEpoch + MICROS_PER_HOUR;
+  ctx.db.cleanupSchedule.insert({
+    scheduledId: 0n,
+    scheduledAt: ScheduleAt.time(firstRun),
+    eventsMaxAgeHours: 24n,
+    usageMaxAgeHours: 168n,
+    preserveCount: 1000n,
+  });
 });
 
 export const onConnect = spacetimedb.clientConnected((_ctx) => {
@@ -659,6 +670,69 @@ export const bulk_dismiss_findings = spacetimedb.reducer(
     }
   },
 );
+
+// ─── TTL Cleanup (Scheduled) ──────────────────────────────────
+
+/** Scheduled reducer: cleans up old observer_events and token_usage rows. */
+export const run_ttl_cleanup = spacetimedb.reducer(
+  { arg: CleanupSchedule.rowType },
+  (ctx, { arg }) => {
+    const nowMicros = ctx.timestamp.microsSinceUnixEpoch;
+    const MICROS_PER_HOUR = 3_600_000_000n;
+
+    const eventsMaxAge =
+      arg.eventsMaxAgeHours > 0n ? arg.eventsMaxAgeHours : 24n;
+    const usageMaxAge = arg.usageMaxAgeHours > 0n ? arg.usageMaxAgeHours : 168n;
+    const preserve = arg.preserveCount > 0n ? arg.preserveCount : 1000n;
+
+    // --- Clean observer_events ---
+    const eventsCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
+    const allEvents = [...ctx.db.observerEvents.iter()];
+    // Sort newest-first so we can preserve the most recent N
+    allEvents.sort((a, b) => Number(b.timestamp - a.timestamp));
+
+    let eventsDeleted = 0;
+    for (let i = 0; i < allEvents.length; i++) {
+      const evt = allEvents[i]!;
+      // Always keep the first `preserve` rows; delete the rest if older than cutoff
+      if (BigInt(i) >= preserve && evt.timestamp < eventsCutoff) {
+        ctx.db.observerEvents.id.delete(evt.id);
+        eventsDeleted++;
+      }
+    }
+
+    // --- Clean token_usage ---
+    const usageCutoff = nowMicros - usageMaxAge * MICROS_PER_HOUR;
+    const allUsage = [...ctx.db.tokenUsage.iter()];
+    allUsage.sort((a, b) => Number(b.timestamp - a.timestamp));
+
+    let usageDeleted = 0;
+    for (let i = 0; i < allUsage.length; i++) {
+      const row = allUsage[i]!;
+      if (BigInt(i) >= preserve && row.timestamp < usageCutoff) {
+        ctx.db.tokenUsage.id.delete(row.id);
+        usageDeleted++;
+      }
+    }
+
+    console.log(
+      `TTL cleanup: deleted ${eventsDeleted} events, ${usageDeleted} usage records`,
+    );
+
+    // Schedule the next cleanup (1 hour from now)
+    const nextRun = nowMicros + MICROS_PER_HOUR;
+    ctx.db.cleanupSchedule.insert({
+      scheduledId: 0n,
+      scheduledAt: ScheduleAt.time(nextRun),
+      eventsMaxAgeHours: arg.eventsMaxAgeHours,
+      usageMaxAgeHours: arg.usageMaxAgeHours,
+      preserveCount: arg.preserveCount,
+    });
+  },
+);
+
+// Wire up the scheduled table's reducer reference
+reducerRef.current = run_ttl_cleanup;
 
 // ─── Export Placeholders ───────────────────────────────────────
 

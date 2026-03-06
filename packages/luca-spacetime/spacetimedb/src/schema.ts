@@ -1,4 +1,5 @@
 import { schema, table, t } from "spacetimedb/server";
+import { CleanupSchedule } from "./cleanup-schedule";
 
 // ─── Core Tables ───────────────────────────────────────────────
 
@@ -385,6 +386,7 @@ const spacetimedb = schema({
   contextSnapshots: ContextSnapshots,
   decisionLogs: DecisionLogs,
   auditFindings: AuditFindings,
+  cleanupSchedule: CleanupSchedule,
 });
 
 export default spacetimedb;
