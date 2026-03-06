@@ -120,6 +120,51 @@ export const workflowGuards = {
     return capture !== "skip" && capture !== undefined;
   },
 
+  /**
+   * Code review should run for this complexity level.
+   *
+   * Based on the complexity matrix, code review agents are spawned
+   * for MODERATE+ complexity. The matrix stores this as the
+   * `codeReviewAgents` array — non-empty means review should run.
+   * Also respects `workflow_config.code_review` override.
+   */
+  shouldRunCodeReview: ({
+    context,
+    event,
+  }: {
+    context: WorkflowContext;
+    event?: WorkflowEvent;
+  }) => {
+    // Config override takes precedence
+    if (context.workflow_config.code_review === false) return false;
+    const agents = getGateField(context, "codeReviewAgents", event) as
+      | string[]
+      | undefined;
+    return Array.isArray(agents) && agents.length > 0;
+  },
+
+  /**
+   * Learning step has a specific depth level for the current complexity.
+   *
+   * Returns the learning capture mode ("skip" | "brief" | "standard" | "full" | "full+debrief").
+   * Guard returns true when depth is at least "standard" (MODERATE+).
+   * For the full gating (brief vs standard), use shouldCaptureLearnings.
+   */
+  shouldRunLearning: ({
+    context,
+    event,
+  }: {
+    context: WorkflowContext;
+    event?: WorkflowEvent;
+  }) => {
+    const capture = getGateField(context, "learningCapture", event) as
+      | string
+      | undefined;
+    return (
+      capture === "standard" || capture === "full" || capture === "full+debrief"
+    );
+  },
+
   // --- Gate config guards ---
 
   /** A named gate is enabled in config.json gates section */

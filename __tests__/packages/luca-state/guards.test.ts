@@ -49,11 +49,13 @@ function makePhaseResult(
 
 describe("guardNames", () => {
   test("exports all guard function names", () => {
-    expect(guardNames.length).toBeGreaterThanOrEqual(14);
+    expect(guardNames.length).toBeGreaterThanOrEqual(16);
     expect(guardNames).toContain("shouldRunResearch");
     expect(guardNames).toContain("shouldRunDiscussion");
     expect(guardNames).toContain("shouldRunUAT");
     expect(guardNames).toContain("shouldCaptureLearnings");
+    expect(guardNames).toContain("shouldRunCodeReview");
+    expect(guardNames).toContain("shouldRunLearning");
     expect(guardNames).toContain("gateEnabled");
     expect(guardNames).toContain("gateDisabled");
     expect(guardNames).toContain("needsHumanApproval");
@@ -508,5 +510,71 @@ describe("workflowConfigEnabled", () => {
         { key: "code_review" },
       ),
     ).toBe(false);
+  });
+});
+
+// ─── shouldRunCodeReview ────────────────────────────────────────────────────
+
+describe("shouldRunCodeReview", () => {
+  test("returns false for TRIVIAL (codeReviewAgents=[])", () => {
+    const ctx = makeContext({ complexity: "TRIVIAL" });
+    expect(workflowGuards.shouldRunCodeReview({ context: ctx })).toBe(false);
+  });
+
+  test("returns false for SIMPLE (codeReviewAgents=[])", () => {
+    const ctx = makeContext({ complexity: "SIMPLE" });
+    expect(workflowGuards.shouldRunCodeReview({ context: ctx })).toBe(false);
+  });
+
+  test("returns true for MODERATE (codeReviewAgents=[dx-advocate, code-simplifier])", () => {
+    const ctx = makeContext({ complexity: "MODERATE" });
+    expect(workflowGuards.shouldRunCodeReview({ context: ctx })).toBe(true);
+  });
+
+  test("returns true for COMPLEX (codeReviewAgents has 4 agents)", () => {
+    const ctx = makeContext({ complexity: "COMPLEX" });
+    expect(workflowGuards.shouldRunCodeReview({ context: ctx })).toBe(true);
+  });
+
+  test("returns true for CRITICAL (codeReviewAgents has 5 agents)", () => {
+    const ctx = makeContext({ complexity: "CRITICAL" });
+    expect(workflowGuards.shouldRunCodeReview({ context: ctx })).toBe(true);
+  });
+
+  test("returns false when workflow_config.code_review is false (override)", () => {
+    const ctx = makeContext({
+      complexity: "CRITICAL",
+      workflow_config: { code_review: false },
+    });
+    expect(workflowGuards.shouldRunCodeReview({ context: ctx })).toBe(false);
+  });
+});
+
+// ─── shouldRunLearning ──────────────────────────────────────────────────────
+
+describe("shouldRunLearning", () => {
+  test("returns false for TRIVIAL (learningCapture=skip)", () => {
+    const ctx = makeContext({ complexity: "TRIVIAL" });
+    expect(workflowGuards.shouldRunLearning({ context: ctx })).toBe(false);
+  });
+
+  test("returns false for SIMPLE (learningCapture=brief)", () => {
+    const ctx = makeContext({ complexity: "SIMPLE" });
+    expect(workflowGuards.shouldRunLearning({ context: ctx })).toBe(false);
+  });
+
+  test("returns true for MODERATE (learningCapture=standard)", () => {
+    const ctx = makeContext({ complexity: "MODERATE" });
+    expect(workflowGuards.shouldRunLearning({ context: ctx })).toBe(true);
+  });
+
+  test("returns true for COMPLEX (learningCapture=full)", () => {
+    const ctx = makeContext({ complexity: "COMPLEX" });
+    expect(workflowGuards.shouldRunLearning({ context: ctx })).toBe(true);
+  });
+
+  test("returns true for CRITICAL (learningCapture=full+debrief)", () => {
+    const ctx = makeContext({ complexity: "CRITICAL" });
+    expect(workflowGuards.shouldRunLearning({ context: ctx })).toBe(true);
   });
 });
