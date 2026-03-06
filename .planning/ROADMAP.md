@@ -89,8 +89,8 @@
 - [x] Enforce complexity gating matrix in XState guards (#44)
 - [x] Add agent health check system (#52)
 - [x] Add stall detection and retry limits to verification loop (#53)
-- [ ] Implement skill dependency graph (#54)
-- [ ] Enhance tribunal debate with consensus model (#55)
+- [x] Implement skill dependency graph (#54)
+- [x] Enhance tribunal debate with consensus model (#55)
 
 ### Phase 130: Learning & Cross-Session Features (NEW)
 
@@ -119,8 +119,8 @@
 - [x] Audit all complexity reads for step-skipping behavior
 - [x] Add modelTier field to agent definitions
 - [x] Replace skip/run matrix with model-routing table
-- [ ] Create granular sub-agents for different model tiers
-- [ ] Remove or repurpose complexity matrix
+- [x] Create granular sub-agents for different model tiers
+- [x] Mark deprecated fields with migration guidance (removal deferred until consumers migrated)
 
 ### Phase 133: Additional v2.9.0 Audit Remediation (NEW)
 
@@ -128,6 +128,27 @@
 
 - [x] Rename SpacetimeDB memory fields from *Json to *Md (#65)
 - [x] Evaluate normalizing JSON blob fields in SpacetimeDB schema (#56)
+
+### Phase 134: v2.9.0 Audit — Security & DRY Fixes (NEW)
+
+**Goal:** Fix HIGH-severity findings from v2.9.0 milestone audit (double SQL escaping, duplicate circuit breaker)
+
+- [x] Remove redundant `.replace(/'/g, "''")` after `validateFilterString()` in audit-findings.ts (H1 — 7 locations)
+- [x] Extract shared `createCircuitBreaker()` utility from observer-emitter.ts + spacetimedb-client.ts (H2)
+- [x] Clean up circuit breaker state update duplication in observer-emitter.ts (M1)
+- [x] Move `severityOrder` to module-level const in audit-findings.ts (M2)
+- [x] Extract `createEnumMap()` helper from `createEmptySummary()` in audit-findings.ts (M3)
+
+### Phase 135: v2.9.0 Audit — Observer Convention Alignment (NEW)
+
+**Goal:** Fix MEDIUM-severity observer UI findings from v2.9.0 milestone audit
+
+- [ ] Convert ErrorBoundary from class to functional component (M4)
+- [ ] Replace cost page inline loading with LoadingSkeleton component (M5)
+- [ ] Fix LoadingSkeleton spacing inconsistency — use gap instead of space-y (M6)
+- [ ] Add focus:ring-offset-2 to notes page collapsible button (M7)
+- [ ] Add aria-busy to LoadingSkeleton component (L6)
+- [ ] Replace emoji theme toggle with icon component in header (L4)
 
 ---
 
