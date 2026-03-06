@@ -2,6 +2,7 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { SessionPlanOverview } from "~/components/planning/session-plan-overview";
 import { WSJFScoreTable } from "~/components/planning/wsjf-score-table";
@@ -37,16 +38,22 @@ export default function PlanningPage() {
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <SessionPlanOverview plan={plan} />
-            <QualityZoneIndicator
-              currentZone={currentZone}
-              contextPercent={contextPercent}
-            />
+            <ErrorBoundary name="SessionPlanOverview">
+              <SessionPlanOverview plan={plan} />
+            </ErrorBoundary>
+            <ErrorBoundary name="QualityZoneIndicator">
+              <QualityZoneIndicator
+                currentZone={currentZone}
+                contextPercent={contextPercent}
+              />
+            </ErrorBoundary>
           </div>
-          <WSJFScoreTable
-            items={plan?.items ?? []}
-            bigRockIndex={plan?.big_rock_index}
-          />
+          <ErrorBoundary name="WSJFScoreTable">
+            <WSJFScoreTable
+              items={plan?.items ?? []}
+              bigRockIndex={plan?.big_rock_index}
+            />
+          </ErrorBoundary>
         </div>
       )}
     </PageContainer>

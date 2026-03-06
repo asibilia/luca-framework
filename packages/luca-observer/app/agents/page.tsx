@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { AgentScorecardTable } from "~/components/agents/agent-scorecard-table";
 import { AgentActivityLog } from "~/components/agents/agent-activity-log";
@@ -34,19 +35,27 @@ export default function AgentsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <AgentScorecardTable
-            agents={agents}
-            onSelectAgent={setSelectedAgent}
-            selectedAgent={selectedAgent}
-          />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <AgentActivityLog agents={agents} selectedAgent={selectedAgent} />
-            <AgentRegistryPanel
-              activeAgents={activeAgents}
-              agentInvocationCounts={invocationCounts}
+          <ErrorBoundary name="AgentScorecardTable">
+            <AgentScorecardTable
+              agents={agents}
+              onSelectAgent={setSelectedAgent}
+              selectedAgent={selectedAgent}
             />
+          </ErrorBoundary>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ErrorBoundary name="AgentActivityLog">
+              <AgentActivityLog agents={agents} selectedAgent={selectedAgent} />
+            </ErrorBoundary>
+            <ErrorBoundary name="AgentRegistryPanel">
+              <AgentRegistryPanel
+                activeAgents={activeAgents}
+                agentInvocationCounts={invocationCounts}
+              />
+            </ErrorBoundary>
           </div>
-          <ToolCallAnalytics />
+          <ErrorBoundary name="ToolCallAnalytics">
+            <ToolCallAnalytics />
+          </ErrorBoundary>
         </div>
       )}
     </PageContainer>

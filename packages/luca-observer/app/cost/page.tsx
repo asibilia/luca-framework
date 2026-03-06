@@ -2,6 +2,7 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { CumulativeCostCurve } from "~/components/cost/cumulative-cost-curve";
 import { CostBreakdown } from "~/components/cost/cost-breakdown";
@@ -107,18 +108,26 @@ export default function CostPage() {
             </div>
           </div>
 
-          <CumulativeCostCurve
-            costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
-          />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <TokenUsageTrends tokenUsage={tokenUsage} />
-            <CostBreakdown
+          <ErrorBoundary name="CumulativeCostCurve">
+            <CumulativeCostCurve
               costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
             />
+          </ErrorBoundary>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ErrorBoundary name="TokenUsageTrends">
+              <TokenUsageTrends tokenUsage={tokenUsage} />
+            </ErrorBoundary>
+            <ErrorBoundary name="CostBreakdown">
+              <CostBreakdown
+                costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
+              />
+            </ErrorBoundary>
           </div>
-          <SessionCostTable
-            costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
-          />
+          <ErrorBoundary name="SessionCostTable">
+            <SessionCostTable
+              costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
+            />
+          </ErrorBoundary>
         </div>
       )}
     </PageContainer>

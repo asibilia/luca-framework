@@ -2,6 +2,7 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { DecisionTimeline } from "~/components/decisions/decision-timeline";
 import { useDecisionTrail } from "~/hooks/use-decision-trail";
@@ -25,7 +26,9 @@ export default function DecisionsPage() {
       ) : decisions.length === 0 ? (
         <EmptyState message="No decisions recorded yet." />
       ) : (
-        <DecisionTimeline decisions={decisions} />
+        <ErrorBoundary name="DecisionTimeline">
+          <DecisionTimeline decisions={decisions} />
+        </ErrorBoundary>
       )}
     </PageContainer>
   );
