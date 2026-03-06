@@ -2,13 +2,132 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign
 
 ---
 
-## Backlog (Future)
+## v3.0.0 Phases
 
-(Empty — all v2.9.0 backlog items were completed)
+### Phase 1: Documentation & DX Quick Wins
+
+**Goal:** Close documentation drift, fix DX blockers, build momentum
+**Depends on:** Nothing
+**Verification:** Quick
+**Est:** ~1 day
+
+- [ ] PLAN: Document observability domain in architecture docs (#50)
+- [ ] PLAN: Add stale session lock cleanup to build system (#51)
+- [ ] PLAN: Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
+
+### Phase 2: DRY & Code Health
+
+**Goal:** Eliminate code duplication, complete Bun API migration
+**Depends on:** Nothing (parallel-safe with Phase 1)
+**Verification:** Quick
+**Est:** ~1 day
+
+- [ ] PLAN: Deduplicate sanitizeJsonParse — 3 copies to shared (#46)
+- [ ] PLAN: Complete node:fs to Bun API migration (#63)
+
+### Phase 3: SpacetimeDB Schema Migrations
+
+**Goal:** Harden SpacetimeDB schema correctness, add retention policies, fix naming
+**Depends on:** Nothing (but must complete before Phase 4)
+**Verification:** Standard
+**Est:** ~2-3 days
+
+- [ ] PLAN: Rename SpacetimeDB memory fields *Json to *Md (#65) — BREAKING
+- [ ] PLAN: Add unique constraints to singleton tables (#48)
+- [ ] PLAN: Implement TTL cleanup + indexes for high-volume tables (#42)
+- [ ] PLAN: Fix sequence number race condition in ledger (#43)
+
+> Schema migration note: Single `--clear-database` after all changes land.
+
+### Phase 4: Observer Dashboard Polish
+
+**Goal:** Bring observer dashboard to production quality — error handling, accessibility, empty states
+**Depends on:** Phase 3 (schema field renames affect observer data hooks)
+**Verification:** Standard
+**Est:** ~2 days
+
+- [ ] PLAN: Standardize loading states with LoadingSkeleton (#40)
+- [ ] PLAN: Add React error boundaries to observer pages (#41)
+- [ ] PLAN: Add missing empty states to observer pages (#49)
+- [ ] PLAN: Accessibility pass on observer dashboard (#47)
+- [ ] PLAN: Add todo tracking to observer dashboard (#64)
+
+### Phase 5: Agentic Reliability
+
+**Goal:** Add safety nets to agent execution — stall detection, health checks, dependency ordering
+**Depends on:** Nothing (can parallel with Phases 3-4)
+**Verification:** Full
+**Est:** ~3-4 days
+
+- [ ] PLAN: Add stall detection and retry limits to verification loop (#53)
+- [ ] PLAN: Add agent health check system (#52)
+- [ ] PLAN: Implement skill dependency graph (#54)
+- [ ] PLAN: Enhance tribunal debate with consensus model (#55)
+
+### Phase 6: Model Routing Redesign
+
+**Goal:** Replace complexity gating step-skipping with per-agent model routing
+**Depends on:** Phase 5 (agent system must be stable before architectural redesign)
+**Verification:** Full + Human
+**Est:** ~4-5 days
+
+- [ ] PLAN: Replace complexity gating with per-agent model routing (replace-complexity-gating)
+
+> Architectural note: T0 Foundation change affecting all complexity consumers.
+> Must complete before #13 (self-tuning, deferred to v3.1.0).
+
+### Phase 7: Hook & Ecosystem Infrastructure
+
+**Goal:** Hook portability, first-run experience, distribution flexibility
+**Depends on:** Phase 6 (hooks reference complexity/model routing)
+**Verification:** Standard
+**Est:** ~3-4 days
+
+- [ ] PLAN: Hook portability abstraction layer (#09)
+- [ ] PLAN: Post-init interactive tour (#20)
+- [ ] PLAN: Selective skill scaffolding — core vs extended (#23)
+
+### Phase 8: Learning Pipeline Foundation
+
+**Goal:** Close the learning loop — procedures auto-replay, cross-project memory
+**Depends on:** Phase 6 (learning features reference model routing for tier decisions)
+**Verification:** Full
+**Est:** ~3-4 days
+
+- [ ] PLAN: Cross-session procedure replay engine (#12)
+- [ ] PLAN: Portable cognitive profiles — cross-project memory (#14)
+
+---
+
+## Deferred (v3.1.0+)
+
+| Todo | Title                           | Reason                                                        |
+| ---- | ------------------------------- | ------------------------------------------------------------- |
+| #37  | Test suite fragility            | Testing reintroduction is a dedicated future effort           |
+| #56  | JSON blob normalization         | BREAKING schema change — defer until #65 field rename settles |
+| #13  | Adaptive complexity self-tuning | Depends on Phase 6 (model routing) completing and stabilizing |
+| #15  | Reflective meta-cognition       | Depends on #12 (procedure replay) from Phase 8                |
+| #16  | Cross-agent interop scanner     | New domain creation — needs #50 first, defer to v3.1.0        |
+| #18  | Semantic memory embeddings      | Depends on learning pipeline (Phase 8) stabilizing            |
+
+## New Milestone Candidates
+
+| Todo | Target | Reason                                                                                 |
+| ---- | ------ | -------------------------------------------------------------------------------------- |
+| #17  | v4.0.0 | Plugin Marketplace — CRITICAL effort, needs registry infra, T3->T2 tier violation risk |
+
+## Closed (By Design)
+
+| Todo | Reason                                                                                  |
+| ---- | --------------------------------------------------------------------------------------- |
+| #59  | Context pruning works correctly in memory/ (T1). Domain placement question, not a bug.  |
+| #60  | Harness-aware update command works. Verification gap, not functionality gap.            |
+| #61  | Duplicate of #37. Tests intentionally removed per MEMORY.md.                            |
+| #62  | Dual-write atomicity — current JSON backup is pragmatic. Over-engineering for dev tool. |
 
 ---
 
@@ -29,19 +148,19 @@
 - **v1.8.0** — Functional Architecture & Bridge Unification: 3 phases, 8 plans, 8 requirements, 1763 tests ([View Archive](milestones/v1.8.0-ROADMAP.md))
 - **v1.9.0** — Repo Consistency Cleanup: 1 phase, 3 plans, 1763 tests ([View Archive](milestones/v1.9.0-ROADMAP.md))
 - **v2.0.0** — Unified Package & Intelligent Routing: 5 phases, 14 plans, 1808 tests ([View Archive](milestones/v2.0.0-ROADMAP.md))
-- **v2.1.0** — Pi Library Integration: 7 phases, 22 plans, 2106 tests. Pi as first-class output target with 12 TypeScript extensions, 39 tools, 3-platform compilation, input sanitization, shared helpers ([View Archive](milestones/v2.1.0-ROADMAP.md))
-- **v2.2.0** — Pi Platform Maturity: 4 phases, 10 plans, 2271 tests. DRY cleanup, E2E runtime validation, background subagent spawning, Pi API learnings — 15 extensions, 49 tools ([View Archive](milestones/v2.2.0-ROADMAP.md))
-- **v2.3.0** — Distribution & Model Routing: 7 phases, 7 plans, 2315 tests. npm package distribution with multi-harness scaffolding, ModelTierSchema with per-agent model routing, 5-step resolve chain ([View Archive](milestones/v2.3.0-ROADMAP.md))
-- **v2.4.0** — Pi Platform Completion: 3 phases, 3 plans, 2411 tests. Runtime model routing via pi.setModel(), interactive dialogs & keyboard shortcuts, AbortSignal tool resilience, session lifecycle handling, agent role content refresh ([View Archive](milestones/v2.4.0-ROADMAP.md))
-- **v2.5.0** — Operational Intelligence & Distribution Hardening: 6 phases, 6 plans, 2694 tests. Real token accounting, context pruning, semantic convergence, role-based model routing, distribution blockers, CLI/DX foundation, observability scorecard, compiler plugin registry ([View Archive](milestones/v2.5.0-ROADMAP.md))
-- **v2.5.1** — Code Health & Test Reliability: 2 phases, 4 plans, 52 files changed. State domain type safety, 5 barrels purified, 134 context tests added, security hardening ([View Archive](milestones/v2.5.1-ROADMAP.md))
-- **v2.6.0** — Code Health, Context Intelligence & Debate Architecture: 6 phases, 17 plans, 60 commits, 250 files changed, 3109 tests. Test isolation fix, JSON-first memory bridge, directory-scoped rules, pre-flight hydration, 7 debate/tribunal patterns (Design Tribunal, Verification Tribunal, Root Cause Tribunal, milestone audit debate, PR split verdict, stall-vs-retry, ground truth metrics) ([View Archive](milestones/v2.6.0-ROADMAP.md))
-- **v2.6.1** — Audit Gap Closure: 2 phases, 9 requirements, 95 files changed, 3146 tests. Tribunal architecture extraction to shared, entity isolation fix, DRY cleanup, Bun API migration, sanitizeForTemplate, lodash alignment, safeParse conversion ([View Archive](milestones/v2.6.1-ROADMAP.md))
-- **v2.6.2** — Convention & DRY Cleanup: 2 phases, 6 plans, 85 files changed, 3150 tests. Barrel import fixes, convention alignment (orderBy, safeParse, sanitize hardening, node:crypto), DRY extraction (countResolutions, safeParseOrThrow, diagnostic prompt factory, groupBy migration) ([View Archive](milestones/v2.6.2-ROADMAP.md))
-- **v2.7.0** — Observability & Verification Infrastructure: 21 phases, 54 plans, 205 commits, 210 files changed, 3477 tests. luca-observer web dashboard (10+ pages), SpacetimeDB real-time infrastructure (16 tables, 19 reducers), event ledger + verification pipeline, security hardening (SSRF, CSP, API auth, SQL injection), DRY consolidation (useFilteredTable, readWithFallback, safeJsonParse, EmptyState), hook portability (3-platform) ([View Archive](milestones/v2.7.0-ROADMAP.md))
-- **v2.8.0** — Critical Remediation, Audit Persistence & Skill Eval: 3 phases, 5 commits, 27 files changed, 3514 tests. P0 triage & dual-write hardening, SpacetimeDB audit findings persistence (15-col table, 3 reducers, 6 helpers), skill eval framework (SkillEvalSchema, 9 evals, runner script) ([View Archive](milestones/v2.8.0-ROADMAP.md))
-- **v2.9.0** — Audit Gap Closure & Test Reliability: 14 phases, 52 commits, 572 files changed. SpacetimeDB reducer hardening, test suite isolation fix, observer dashboard polish (LoadingSkeleton, ErrorBoundary, accessibility), SpacetimeDB data integrity (TTL, race fix, unique constraints), agent system improvements (XState guards, health checks, stall detection, skill dependency graph, tribunal consensus), learning & ecosystem (procedure replay, self-tuning, cognitive profiles, semantic embeddings, hook portability, plugin marketplace, interactive tour), model routing (replaced complexity step-skipping), 2 audit gap closure phases ([View Archive](milestones/v2.9.0-ROADMAP.md))
+- **v2.1.0** — Pi Library Integration: 7 phases, 22 plans, 2106 tests ([View Archive](milestones/v2.1.0-ROADMAP.md))
+- **v2.2.0** — Pi Platform Maturity: 4 phases, 10 plans, 2271 tests ([View Archive](milestones/v2.2.0-ROADMAP.md))
+- **v2.3.0** — Distribution & Model Routing: 7 phases, 7 plans, 2315 tests ([View Archive](milestones/v2.3.0-ROADMAP.md))
+- **v2.4.0** — Pi Platform Completion: 3 phases, 3 plans, 2411 tests ([View Archive](milestones/v2.4.0-ROADMAP.md))
+- **v2.5.0** — Operational Intelligence & Distribution Hardening: 6 phases, 6 plans, 2694 tests ([View Archive](milestones/v2.5.0-ROADMAP.md))
+- **v2.5.1** — Code Health & Test Reliability: 2 phases, 4 plans, 52 files changed ([View Archive](milestones/v2.5.1-ROADMAP.md))
+- **v2.6.0** — Code Health, Context Intelligence & Debate Architecture: 6 phases, 17 plans, 60 commits, 250 files changed, 3109 tests ([View Archive](milestones/v2.6.0-ROADMAP.md))
+- **v2.6.1** — Audit Gap Closure: 2 phases, 9 requirements, 95 files changed, 3146 tests ([View Archive](milestones/v2.6.1-ROADMAP.md))
+- **v2.6.2** — Convention & DRY Cleanup: 2 phases, 6 plans, 85 files changed, 3150 tests ([View Archive](milestones/v2.6.2-ROADMAP.md))
+- **v2.7.0** — Observability & Verification Infrastructure: 21 phases, 54 plans, 205 commits, 210 files changed, 3477 tests ([View Archive](milestones/v2.7.0-ROADMAP.md))
+- **v2.8.0** — Critical Remediation, Audit Persistence & Skill Eval: 3 phases, 5 commits, 27 files changed, 3514 tests ([View Archive](milestones/v2.8.0-ROADMAP.md))
+- **v2.9.0** — Audit Gap Closure & Test Reliability: 14 phases, 52 commits, 572 files changed ([View Archive](milestones/v2.9.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-06 (v2.9.0 milestone archived)_
+_Roadmap updated: 2026-03-06 (v3.0.0 milestone created from 35-todo backlog triage)_
