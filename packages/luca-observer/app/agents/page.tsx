@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { AgentScorecardTable } from "~/components/agents/agent-scorecard-table";
 import { AgentActivityLog } from "~/components/agents/agent-activity-log";
 import { AgentRegistryPanel } from "~/components/agents/agent-registry-panel";
@@ -25,7 +26,7 @@ export default function AgentsPage() {
       subtitle="Agent activity, scorecards, and model routing"
     >
       {loading ? (
-        <EmptyState message="Loading agent data..." />
+        <LoadingSkeleton variant="card" />
       ) : agents.length === 0 ? (
         <EmptyState
           title="No Agent Activity"

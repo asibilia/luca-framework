@@ -2,6 +2,7 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { HarnessSummaryBanner } from "~/components/harness/harness-summary-banner";
 import { CheckResultCard } from "~/components/harness/check-result-card";
 import { useHarnessResult } from "~/hooks/use-harness-result";
@@ -21,7 +22,10 @@ export default function HarnessPage() {
       subtitle="Verification check results and error details"
     >
       {loading ? (
-        <EmptyState message="Loading harness results..." />
+        <div className="space-y-4">
+          <LoadingSkeleton variant="card" />
+          <LoadingSkeleton variant="table" rows={6} columns={4} />
+        </div>
       ) : (
         <div className="space-y-4">
           <HarnessSummaryBanner result={result} />

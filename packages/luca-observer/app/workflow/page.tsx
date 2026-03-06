@@ -2,6 +2,7 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { StateDiagram } from "~/components/workflow/state-diagram";
 import { TransitionLog } from "~/components/workflow/transition-log";
 import { WorkflowContextPanel } from "~/components/workflow/workflow-context-panel";
@@ -52,7 +53,7 @@ export default function WorkflowPage() {
           Transition Log
         </p>
         {ledgerLoading ? (
-          <EmptyState message="Loading ledger..." />
+          <LoadingSkeleton variant="table" rows={5} columns={3} />
         ) : (
           <TransitionLog entries={entries} />
         )}

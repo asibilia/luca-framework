@@ -2,6 +2,7 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { DecisionTimeline } from "~/components/decisions/decision-timeline";
 import { useDecisionTrail } from "~/hooks/use-decision-trail";
 
@@ -20,7 +21,7 @@ export default function DecisionsPage() {
       subtitle="Decision audit trail with reasoning and alternatives"
     >
       {loading ? (
-        <EmptyState message="Loading decisions..." />
+        <LoadingSkeleton variant="table" rows={8} columns={3} />
       ) : decisions.length === 0 ? (
         <EmptyState message="No decisions recorded yet." />
       ) : (
