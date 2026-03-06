@@ -72,13 +72,13 @@
 
 **Goal:** Fix documentation and build system issues
 
-- [ ] Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
-- [ ] Deduplicate sanitizeJsonParse (3 copies in codebase) (#46)
-- [ ] Document observability domain in architecture docs (#50)
-- [ ] Add automatic stale session lock cleanup to build system (#51)
-- [ ] Align context pruning with domain architecture (#59)
-- [ ] Verify harness-aware update command template collection (#60)
-- [ ] Harden dual-write with divergence detection (#62)
+- [x] Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
+- [x] Deduplicate sanitizeJsonParse (3 copies in codebase) (#46)
+- [x] Document observability domain in architecture docs (#50)
+- [x] Add automatic stale session lock cleanup to build system (#51)
+- [x] Align context pruning with domain architecture (#59)
+- [x] Verify harness-aware update command template collection (#60)
+- [x] Harden dual-write with divergence detection (#62)
 
 ### Phase 129: Agent System Improvements (NEW)
 
