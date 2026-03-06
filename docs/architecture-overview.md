@@ -27,7 +27,7 @@ luca-framework/                         # Monorepo root
 │   │       │   ├── spacetimedb-client.ts   # HTTP SQL query client for SpacetimeDB reads
 │   │       │   └── observer-emitter.ts     # Fire-and-forget reducer calls for SpacetimeDB writes
 │   │       ├── persistence.ts              # State load/save (SpacetimeDB-primary, JSON fallback)
-│   │       ├── bridge.ts                   # CLI bridge with 14 subcommands
+│   │       ├── bridge.ts                   # CLI bridge with 15 subcommands
 │   │       ├── ledger.ts                   # Append-only event ledger
 │   │       ├── suspend-checkpoint.ts       # Phase suspend/resume checkpoints
 │   │       └── machine.ts                  # XState v5 state machine definition
@@ -126,11 +126,12 @@ phase:idle → phase:pre-flight → phase:executing → phase:verifying
 
 **File**: `packages/luca-framework/src/state/bridge.ts`
 
-The bridge provides a shell-friendly interface with **14 subcommands**:
+The bridge provides a shell-friendly interface with **15 subcommands**:
 
-**Read commands**: `read-status`, `read-complexity`, `read-oversight`, `read-phase`, `read-field`
-**Write commands**: `set-field`, `transition` (with sub-transitions: `set-complexity`, `complete-phase`, `start-phase`, `start-plan`)
-**Lifecycle**: `ensure-init`, `suspend`, `resume-phase`
+**Read commands**: `read-status`, `read-complexity`, `read-oversight`, `read-phase`, `read-field`, `read-ledger`
+**Write commands**: `set-field`, `transition` (event dispatch with `--event=TYPE`)
+**Lifecycle**: `ensure-init`, `snapshot`, `gate-check`, `suspend`, `resume-phase`
+**Observability**: `emit-event`, `emit-context-snapshot`
 
 All reads query SpacetimeDB first, fall back to local JSON. All writes use dual-write (SpacetimeDB reducer + local JSON).
 
@@ -170,9 +171,70 @@ Before major operations, Luca loads:
 3. Initialize WORKING.md → session context
 4. Generate intuition flags → RISK, CAUTION, OPPORTUNITY, UNKNOWN
 
+### Context Pruning and Auto-Compaction
+
+Context pruning and auto-compaction live within the memory domain (`src/memory/`) because they are fundamentally memory management operations:
+
+- **Context pruning** (`src/memory/__helpers/context-pruning.ts`): Removes stale content from WORKING.md sections based on configurable retention policies. Activates at the "degrading" quality zone. Pure functions -- caller handles I/O.
+- **Auto-compaction** (`src/memory/__helpers/auto-compaction.ts`): Scores sections by age/relevance/size and compacts the lowest-value sections into summaries. Also triggers at the "degrading" zone. Pure functions -- caller handles I/O.
+
+Both modules share schemas defined in `src/memory/__schemas/memory.schemas.ts` (retention policies, pruning events/results, section scores, compaction config/results) and depend on the memory domain's token estimator. This placement is architecturally correct: context pruning manages working memory size and token budgets, which is squarely within the memory domain's responsibility.
+
 ---
 
-## 5. SpacetimeDB Integration
+## 5. Observability Domain
+
+The observability layer spans three architectural components, each serving a distinct role:
+
+### 5.1 `src/observability/` -- Agent Scorecard Engine (T1 Core)
+
+**Files**: `src/observability/__schemas/observability.schemas.ts`, `src/observability/__helpers/scorecard.ts`
+
+A T1 Core domain that tracks per-agent effectiveness metrics:
+
+- **Scorecard entries**: Per-agent telemetry (invocation count, success/failure rates, average duration)
+- **Scorecard queries**: Filtering and sorting for model routing decisions (e.g., prefer agents with higher success rates)
+- **Scorecard reports**: Formatted output for dashboard display and audit
+
+This domain is consumed by the routing layer to make data-driven agent selection decisions. It reads/writes a local scorecard JSON file and is independent of the SpacetimeDB event flow.
+
+### 5.2 `packages/luca-spacetime/` -- SpacetimeDB Server Module
+
+**Files**: `packages/luca-spacetime/spacetimedb/src/schema.ts` (18 tables), `packages/luca-spacetime/spacetimedb/src/index.ts` (21 reducers), `packages/luca-spacetime/spacetimedb/src/cleanup-schedule.ts`
+
+The persistent state layer. Defines the database schema and reducers that store all workflow telemetry, state, and memory. Acts as the shared backend between the framework (write path via HTTP reducer calls) and the observer dashboard (read path via WebSocket subscriptions).
+
+### 5.3 `packages/luca-observer/` -- Real-Time Dashboard (Next.js 15)
+
+**Files**: 11 App Router pages, 16 React hooks, Tremor + Tailwind UI
+
+A Next.js 15 dashboard that subscribes to SpacetimeDB tables via WebSocket. Renders real-time workflow state, event feeds, iteration convergence, harness results, memory contents, cost tracking, and decision audit trails. No client-side state management -- all data comes from SpacetimeDB subscriptions via `useTable()` hooks.
+
+### 5.4 Event Flow
+
+```
+src/ domain code (agents, skills, hooks)
+    |
+    v  (fire-and-forget HTTP POST to reducers)
+packages/luca-spacetime/ (SpacetimeDB tables)
+    |
+    v  (WebSocket subscription push)
+packages/luca-observer/ (React dashboard via useTable() hooks)
+```
+
+The `src/observability/` scorecard engine operates independently from this event flow -- it reads/writes a local scorecard JSON file and is queried by the routing layer at decision time.
+
+### 5.5 Relationship to Core Domains
+
+| Component                  | Tier             | Depends On     | Consumed By                                    |
+| -------------------------- | ---------------- | -------------- | ---------------------------------------------- |
+| `src/observability/`       | T1 Core          | T0 (shared)    | Routing layer, report generation               |
+| `packages/luca-spacetime/` | External package | --             | luca-framework (writes), luca-observer (reads) |
+| `packages/luca-observer/`  | External package | luca-spacetime | End user (browser)                             |
+
+---
+
+## 6. SpacetimeDB Integration (Detail)
 
 ### Module Definition
 
@@ -322,7 +384,7 @@ Args are flat JSON — **not** wrapped in `{"args": {...}}`.
 
 ---
 
-## 6. Observer Dashboard
+## 7. Observer Dashboard (Detail)
 
 ### Technology Stack
 
@@ -389,7 +451,7 @@ The root layout wraps all pages in `<SpacetimeDBProvider>` with a memoized `DbCo
 
 ---
 
-## 7. Hook System
+## 8. Hook System
 
 ### 8 Shell Hooks
 
@@ -418,7 +480,7 @@ curl -s -X POST "http://localhost:3000/v1/database/luca-observer/call/ingest_eve
 
 ---
 
-## 8. `/lu` Workflow Pipeline
+## 9. `/lu` Workflow Pipeline
 
 The unified `/lu` command routes through a 10-step pipeline:
 
@@ -489,7 +551,7 @@ The unified `/lu` command routes through a 10-step pipeline:
 
 ---
 
-## 9. Configuration System
+## 10. Configuration System
 
 ### Hierarchical Config
 
@@ -525,7 +587,7 @@ The unified `/lu` command routes through a 10-step pipeline:
 
 ---
 
-## 10. Ledger System
+## 11. Ledger System
 
 **File**: `packages/luca-framework/src/state/ledger.ts`
 
@@ -541,7 +603,7 @@ Entry types: `phase_started`, `phase_completed`, `transition`, `error`, `checkpo
 
 ---
 
-## 11. Suspend/Resume Checkpoints
+## 12. Suspend/Resume Checkpoints
 
 **File**: `packages/luca-framework/src/state/suspend-checkpoint.ts`
 
@@ -557,7 +619,7 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 
 ---
 
-## 12. Key Integration Points for Verification
+## 13. Key Integration Points for Verification
 
 ### End-to-End Data Flow Test
 
@@ -586,7 +648,7 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 
 ---
 
-## 13. Areas for Improvement
+## 14. Areas for Improvement
 
 ### Immediate
 
@@ -617,7 +679,7 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 
 ---
 
-## 14. Commands Reference
+## 15. Commands Reference
 
 ```bash
 # Development
