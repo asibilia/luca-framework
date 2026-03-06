@@ -3,7 +3,13 @@ import { CleanupSchedule } from "./cleanup-schedule";
 
 // ─── Core Tables ───────────────────────────────────────────────
 
-/** Singleton (id=1). XState workflow state snapshot. */
+/**
+ * Singleton table (id=1). XState workflow state snapshot.
+ *
+ * Enforced by reducer `update_workflow_state` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const WorkflowState = table(
   { name: "workflow_state", public: true },
   {
@@ -84,7 +90,13 @@ export const LedgerEntries = table(
   },
 );
 
-/** Singleton (id=1). Latest harness run results. */
+/**
+ * Singleton table (id=1). Latest harness run results.
+ *
+ * Enforced by reducer `update_harness_result` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const HarnessResults = table(
   { name: "harness_results", public: true },
   {
@@ -124,7 +136,13 @@ export const IterationRecords = table(
   },
 );
 
-/** Singleton (id=1). Full session plan JSON. */
+/**
+ * Singleton table (id=1). Full session plan JSON.
+ *
+ * Enforced by reducer `update_session_plan` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const SessionPlans = table(
   { name: "session_plans", public: true },
   {
@@ -134,7 +152,13 @@ export const SessionPlans = table(
   },
 );
 
-/** Singleton (id=1). Full tribunal result JSON. */
+/**
+ * Singleton table (id=1). Full tribunal result JSON.
+ *
+ * Enforced by reducer `update_tribunal_result` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const TribunalResults = table(
   { name: "tribunal_results", public: true },
   {
@@ -144,7 +168,13 @@ export const TribunalResults = table(
   },
 );
 
-/** Singleton (id=1). BRAIN/MEMORY/WORKING/PROCEDURES file contents. */
+/**
+ * Singleton table (id=1). BRAIN/MEMORY/WORKING/PROCEDURES file contents.
+ *
+ * Enforced by reducer `update_memory_files` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const MemoryFiles = table(
   { name: "memory_files", public: true },
   {
@@ -157,7 +187,13 @@ export const MemoryFiles = table(
   },
 );
 
-/** Singleton (id=1). Aggregated metrics snapshot. */
+/**
+ * Singleton table (id=1). Aggregated metrics snapshot.
+ *
+ * Enforced by reducer `update_metrics` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const Metrics = table(
   { name: "metrics", public: true },
   {
@@ -181,7 +217,13 @@ export const Notes = table(
   },
 );
 
-/** Singleton (id=1). Full workflow config JSON. */
+/**
+ * Singleton table (id=1). Full workflow config JSON.
+ *
+ * Enforced by reducer `update_workflow_config` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const WorkflowConfig = table(
   { name: "workflow_config", public: true },
   {

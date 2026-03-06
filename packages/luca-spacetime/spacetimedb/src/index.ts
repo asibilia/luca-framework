@@ -225,55 +225,60 @@ export const append_iteration_record = spacetimedb.reducer(
   },
 );
 
-/** Update the singleton session plan (id=1). Creates if missing. */
+/**
+ * Upsert the singleton session plan (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_session_plan = spacetimedb.reducer(
   {
     planJson: t.string(),
     timestamp: t.u64(),
   },
   (ctx, args) => {
-    const existing = ctx.db.sessionPlans.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      planJson: args.planJson,
+      timestamp: args.timestamp,
+    };
+    const existing = ctx.db.sessionPlans.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.sessionPlans.id.update({
-        ...existing,
-        planJson: args.planJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.sessionPlans.id.update({ ...existing, ...row });
     } else {
-      ctx.db.sessionPlans.insert({
-        id: 1n,
-        planJson: args.planJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.sessionPlans.insert(row);
     }
   },
 );
 
-/** Update the singleton tribunal result (id=1). Creates if missing. */
+/**
+ * Upsert the singleton tribunal result (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_tribunal_result = spacetimedb.reducer(
   {
     resultJson: t.string(),
     timestamp: t.u64(),
   },
   (ctx, args) => {
-    const existing = ctx.db.tribunalResults.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      resultJson: args.resultJson,
+      timestamp: args.timestamp,
+    };
+    const existing = ctx.db.tribunalResults.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.tribunalResults.id.update({
-        ...existing,
-        resultJson: args.resultJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.tribunalResults.id.update({ ...existing, ...row });
     } else {
-      ctx.db.tribunalResults.insert({
-        id: 1n,
-        resultJson: args.resultJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.tribunalResults.insert(row);
     }
   },
 );
 
-/** Update the singleton memory files (id=1). Creates if missing. */
+/**
+ * Upsert the singleton memory files (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_memory_files = spacetimedb.reducer(
   {
     brainJson: t.string(),
@@ -283,49 +288,45 @@ export const update_memory_files = spacetimedb.reducer(
     timestamp: t.u64(),
   },
   (ctx, args) => {
-    const existing = ctx.db.memoryFiles.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      brainJson: args.brainJson,
+      memoryJson: args.memoryJson,
+      workingJson: args.workingJson,
+      proceduresJson: args.proceduresJson,
+      timestamp: args.timestamp,
+    };
+    const existing = ctx.db.memoryFiles.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.memoryFiles.id.update({
-        ...existing,
-        brainJson: args.brainJson,
-        memoryJson: args.memoryJson,
-        workingJson: args.workingJson,
-        proceduresJson: args.proceduresJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.memoryFiles.id.update({ ...existing, ...row });
     } else {
-      ctx.db.memoryFiles.insert({
-        id: 1n,
-        brainJson: args.brainJson,
-        memoryJson: args.memoryJson,
-        workingJson: args.workingJson,
-        proceduresJson: args.proceduresJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.memoryFiles.insert(row);
     }
   },
 );
 
-/** Update the singleton metrics (id=1). Creates if missing. */
+/**
+ * Upsert the singleton metrics (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_metrics = spacetimedb.reducer(
   {
     metricsJson: t.string(),
     timestamp: t.u64(),
   },
   (ctx, args) => {
-    const existing = ctx.db.metrics.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      metricsJson: args.metricsJson,
+      timestamp: args.timestamp,
+    };
+    const existing = ctx.db.metrics.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.metrics.id.update({
-        ...existing,
-        metricsJson: args.metricsJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.metrics.id.update({ ...existing, ...row });
     } else {
-      ctx.db.metrics.insert({
-        id: 1n,
-        metricsJson: args.metricsJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.metrics.insert(row);
     }
   },
 );
@@ -369,23 +370,25 @@ export const complete_note = spacetimedb.reducer(
   },
 );
 
-/** Update the singleton workflow config (id=1). Creates if missing. */
+/**
+ * Upsert the singleton workflow config (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_workflow_config = spacetimedb.reducer(
   {
     configJson: t.string(),
   },
   (ctx, args) => {
-    const existing = ctx.db.workflowConfig.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      configJson: args.configJson,
+    };
+    const existing = ctx.db.workflowConfig.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.workflowConfig.id.update({
-        ...existing,
-        configJson: args.configJson,
-      });
+      ctx.db.workflowConfig.id.update({ ...existing, ...row });
     } else {
-      ctx.db.workflowConfig.insert({
-        id: 1n,
-        configJson: args.configJson,
-      });
+      ctx.db.workflowConfig.insert(row);
     }
   },
 );
