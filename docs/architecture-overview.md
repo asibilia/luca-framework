@@ -195,7 +195,7 @@ Before major operations, Luca loads:
 | `token_usage`         | Per-call token tracking                | model, inputTokens, outputTokens, cost                          |
 | `tool_calls`          | Tool invocation log                    | toolName, args, result, durationMs                              |
 | `cost_tracking`       | Session cost aggregation               | sessionId, totalCost, totalTokens                               |
-| `memory_files`        | Memory tier contents                   | brainJson, memoryJson, workingJson, proceduresJson              |
+| `memory_files`        | Memory tier contents                   | brainMd, memoryMd, workingMd, proceduresMd                      |
 | `session_plans`       | WSJF-scored plan items                 | planJson                                                        |
 | `context_snapshots`   | Context window snapshots               | snapshotJson                                                    |
 | `ledger_entries`      | Append-only state transition log       | sessionId, sequenceNumber, entryType, entryJson                 |

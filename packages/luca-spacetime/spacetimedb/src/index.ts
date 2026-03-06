@@ -281,20 +281,20 @@ export const update_tribunal_result = spacetimedb.reducer(
  */
 export const update_memory_files = spacetimedb.reducer(
   {
-    brainJson: t.string(),
-    memoryJson: t.string(),
-    workingJson: t.string(),
-    proceduresJson: t.string(),
+    brainMd: t.string(),
+    memoryMd: t.string(),
+    workingMd: t.string(),
+    proceduresMd: t.string(),
     timestamp: t.u64(),
   },
   (ctx, args) => {
     const SINGLETON_ID = 1n;
     const row = {
       id: SINGLETON_ID,
-      brainJson: args.brainJson,
-      memoryJson: args.memoryJson,
-      workingJson: args.workingJson,
-      proceduresJson: args.proceduresJson,
+      brainMd: args.brainMd,
+      memoryMd: args.memoryMd,
+      workingMd: args.workingMd,
+      proceduresMd: args.proceduresMd,
       timestamp: args.timestamp,
     };
     const existing = ctx.db.memoryFiles.id.find(SINGLETON_ID);

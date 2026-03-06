@@ -29,10 +29,10 @@ export function useMemory() {
     if (!row) return null;
 
     return {
-      brain: row.brainJson ?? "",
-      memory: row.memoryJson ?? "",
-      working: row.workingJson ?? "",
-      procedures: row.proceduresJson ?? "",
+      brain: row.brainMd ?? "",
+      memory: row.memoryMd ?? "",
+      working: row.workingMd ?? "",
+      procedures: row.proceduresMd ?? "",
     };
   }, [rows]);
 

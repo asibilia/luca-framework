@@ -179,10 +179,10 @@ export const MemoryFiles = table(
   { name: "memory_files", public: true },
   {
     id: t.u64().primaryKey(),
-    brainJson: t.string(),
-    memoryJson: t.string(),
-    workingJson: t.string(),
-    proceduresJson: t.string(),
+    brainMd: t.string(),
+    memoryMd: t.string(),
+    workingMd: t.string(),
+    proceduresMd: t.string(),
     timestamp: t.u64(),
   },
 );

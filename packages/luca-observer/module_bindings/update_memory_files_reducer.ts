@@ -11,9 +11,9 @@ import {
 } from "spacetimedb";
 
 export default {
-  brainJson: __t.string(),
-  memoryJson: __t.string(),
-  workingJson: __t.string(),
-  proceduresJson: __t.string(),
+  brainMd: __t.string(),
+  memoryMd: __t.string(),
+  workingMd: __t.string(),
+  proceduresMd: __t.string(),
   timestamp: __t.u64(),
 };
