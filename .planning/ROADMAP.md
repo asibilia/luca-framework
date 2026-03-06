@@ -84,11 +84,11 @@
 
 **Goal:** Improve agent reliability and orchestration
 
-- [ ] Define missing `shouldRunDiscussion` guard in XState machine (#34)
-- [ ] Add timeout/auto-transition to phase actor idle state (#35)
-- [ ] Enforce complexity gating matrix in XState guards (#44)
-- [ ] Add agent health check system (#52)
-- [ ] Add stall detection and retry limits to verification loop (#53)
+- [x] Define missing `shouldRunDiscussion` guard in XState machine (#34)
+- [x] Add timeout/auto-transition to phase actor idle state (#35)
+- [x] Enforce complexity gating matrix in XState guards (#44)
+- [x] Add agent health check system (#52)
+- [x] Add stall detection and retry limits to verification loop (#53)
 - [ ] Implement skill dependency graph (#54)
 - [ ] Enhance tribunal debate with consensus model (#55)
 
