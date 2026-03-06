@@ -55,11 +55,20 @@ async function main() {
       );
     } else {
       console.error(
-        `\n✖ Build blocked: an active session is in progress (${Math.round(hoursOld)}h old)`,
+        `\nBuild blocked: an active session is in progress (${Math.round(hoursOld)}h old).`,
       );
+      console.error("");
+      console.error("Recovery options:");
+      console.error("  1. Wait for the session to end naturally");
       console.error(
-        "  Run with --force to override, or end the session first.\n",
+        "  2. Run with --force to override the lock and build anyway",
       );
+      console.error(`  3. Manually delete the lock: rm ${lockPath}`);
+      console.error(
+        "  4. Run with --cleanup-stale-locks to remove the lock without building",
+      );
+      console.error("");
+      console.error("Locks older than 4 hours are automatically removed.\n");
       process.exit(1);
     }
   }
