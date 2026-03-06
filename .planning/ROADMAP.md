@@ -96,29 +96,29 @@
 
 **Goal:** Implement advanced learning and cross-project memory
 
-- [ ] Cross-session procedure replay engine (#12)
-- [ ] Adaptive complexity self-tuning (#13)
-- [ ] Portable cognitive profiles (cross-project memory) (#14)
-- [ ] Reflective meta-cognition for plan quality (#15)
-- [ ] Cross-agent interop scanner (#16)
-- [ ] Semantic memory embeddings with vector recall (#18)
-- [ ] Selective skill scaffolding (core vs extended) (#23)
+- [x] Cross-session procedure replay engine (#12)
+- [x] Adaptive complexity self-tuning (#13)
+- [x] Portable cognitive profiles (cross-project memory) (#14)
+- [x] Reflective meta-cognition for plan quality (#15)
+- [x] Cross-agent interop scanner (#16)
+- [x] Semantic memory embeddings with vector recall (#18)
+- [x] Selective skill scaffolding (core vs extended) (#23)
 
 ### Phase 131: Ecosystem & Distribution (NEW)
 
 **Goal:** Build out ecosystem features
 
-- [ ] Hook portability abstraction layer (#09)
-- [ ] Plugin marketplace with community registry (#17)
-- [ ] Post-init interactive tour (#20)
+- [x] Hook portability abstraction layer (#09)
+- [x] Plugin marketplace with community registry (#17)
+- [x] Post-init interactive tour (#20)
 
 ### Phase 132: Replace Complexity Gating with Model Routing (NEW)
 
 **Goal:** Replace complexity-based step skipping with per-agent model routing
 
-- [ ] Audit all complexity reads for step-skipping behavior
-- [ ] Add modelTier field to agent definitions
-- [ ] Replace skip/run matrix with model-routing table
+- [x] Audit all complexity reads for step-skipping behavior
+- [x] Add modelTier field to agent definitions
+- [x] Replace skip/run matrix with model-routing table
 - [ ] Create granular sub-agents for different model tiers
 - [ ] Remove or repurpose complexity matrix
 
