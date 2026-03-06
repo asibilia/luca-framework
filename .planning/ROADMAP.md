@@ -36,10 +36,10 @@
 **Verification:** Standard
 **Est:** ~2-3 days
 
-- [ ] PLAN: Rename SpacetimeDB memory fields *Json to *Md (#65) — BREAKING
-- [ ] PLAN: Add unique constraints to singleton tables (#48)
-- [ ] PLAN: Implement TTL cleanup + indexes for high-volume tables (#42)
-- [ ] PLAN: Fix sequence number race condition in ledger (#43)
+- [x] PLAN: Rename SpacetimeDB memory fields *Json to *Md (#65) — already complete (prior milestone)
+- [x] PLAN: Add unique constraints to singleton tables (#48) — already enforced by PK design
+- [x] PLAN: Implement TTL cleanup + indexes for high-volume tables (#42) — eventType/timestamp indexes added
+- [x] PLAN: Fix sequence number race condition in ledger (#43) — already fixed server-side atomically
 
 > Schema migration note: Single `--clear-database` after all changes land.
 
