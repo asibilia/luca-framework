@@ -143,12 +143,12 @@
 
 **Goal:** Fix MEDIUM-severity observer UI findings from v2.9.0 milestone audit
 
-- [ ] Convert ErrorBoundary from class to functional component (M4)
-- [ ] Replace cost page inline loading with LoadingSkeleton component (M5)
-- [ ] Fix LoadingSkeleton spacing inconsistency — use gap instead of space-y (M6)
-- [ ] Add focus:ring-offset-2 to notes page collapsible button (M7)
-- [ ] Add aria-busy to LoadingSkeleton component (L6)
-- [ ] Replace emoji theme toggle with icon component in header (L4)
+- [x] Convert ErrorBoundary from class to functional component (M4)
+- [x] Replace cost page inline loading with LoadingSkeleton component (M5)
+- [x] Fix LoadingSkeleton spacing inconsistency — use gap instead of space-y (M6)
+- [x] Add focus:ring-offset-2 to notes page collapsible button (M7)
+- [x] Add aria-busy to LoadingSkeleton component (L6)
+- [x] Replace emoji theme toggle with icon component in header (L4)
 
 ---
 
