@@ -81,7 +81,10 @@ export const ingest_event = spacetimedb.reducer(
   },
 );
 
-/** Update the singleton workflow state (id=1). Creates if missing. */
+/**
+ * Upsert the singleton workflow state (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_workflow_state = spacetimedb.reducer(
   {
     workflowState: t.string(),
@@ -93,34 +96,30 @@ export const update_workflow_state = spacetimedb.reducer(
     contextJson: t.string(),
   },
   (ctx, args) => {
-    const existing = ctx.db.workflowState.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      workflowState: args.workflowState,
+      currentPhase: args.currentPhase,
+      complexity: args.complexity,
+      oversight: args.oversight,
+      sessionId: args.sessionId,
+      ticketId: args.ticketId,
+      contextJson: args.contextJson,
+    };
+    const existing = ctx.db.workflowState.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.workflowState.id.update({
-        ...existing,
-        workflowState: args.workflowState,
-        currentPhase: args.currentPhase,
-        complexity: args.complexity,
-        oversight: args.oversight,
-        sessionId: args.sessionId,
-        ticketId: args.ticketId,
-        contextJson: args.contextJson,
-      });
+      ctx.db.workflowState.id.update({ ...existing, ...row });
     } else {
-      ctx.db.workflowState.insert({
-        id: 1n,
-        workflowState: args.workflowState,
-        currentPhase: args.currentPhase,
-        complexity: args.complexity,
-        oversight: args.oversight,
-        sessionId: args.sessionId,
-        ticketId: args.ticketId,
-        contextJson: args.contextJson,
-      });
+      ctx.db.workflowState.insert(row);
     }
   },
 );
 
-/** Update the singleton harness result (id=1). Creates if missing. */
+/**
+ * Upsert the singleton harness result (id=1).
+ * Singleton contract: always targets id=1n. PK uniqueness prevents duplicates.
+ */
 export const update_harness_result = spacetimedb.reducer(
   {
     passed: t.bool(),
@@ -130,30 +129,31 @@ export const update_harness_result = spacetimedb.reducer(
     timestamp: t.u64(),
   },
   (ctx, args) => {
-    const existing = ctx.db.harnessResults.id.find(1n);
+    const SINGLETON_ID = 1n;
+    const row = {
+      id: SINGLETON_ID,
+      passed: args.passed,
+      totalErrors: args.totalErrors,
+      totalWarnings: args.totalWarnings,
+      checksJson: args.checksJson,
+      timestamp: args.timestamp,
+    };
+    const existing = ctx.db.harnessResults.id.find(SINGLETON_ID);
     if (existing) {
-      ctx.db.harnessResults.id.update({
-        ...existing,
-        passed: args.passed,
-        totalErrors: args.totalErrors,
-        totalWarnings: args.totalWarnings,
-        checksJson: args.checksJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.harnessResults.id.update({ ...existing, ...row });
     } else {
-      ctx.db.harnessResults.insert({
-        id: 1n,
-        passed: args.passed,
-        totalErrors: args.totalErrors,
-        totalWarnings: args.totalWarnings,
-        checksJson: args.checksJson,
-        timestamp: args.timestamp,
-      });
+      ctx.db.harnessResults.insert(row);
     }
   },
 );
 
-/** Append a ledger entry. */
+/**
+ * Append a ledger entry.
+ *
+ * sequenceNumber is computed server-side (max + 1 for the session) to
+ * prevent race conditions under concurrent writes. Reducers are
+ * transactional, so this is atomic.
+ */
 export const append_ledger_entry = spacetimedb.reducer(
   {
     sessionId: t.string(),
@@ -163,9 +163,25 @@ export const append_ledger_entry = spacetimedb.reducer(
     result: t.string(),
     timestamp: t.u64(),
     detailsJson: t.string(),
-    sequenceNumber: t.u64(),
   },
   (ctx, args) => {
+    // Compute next sequence number atomically inside the reducer.
+    // SpacetimeDB multi-column unique constraints are not supported,
+    // so uniqueness of (sessionId, sequenceNumber) is enforced here
+    // by the transactional nature of reducers.
+    // NOTE: The ledger_entries_session_id index lacks an accessor, so we
+    // use iter() + manual filter. Acceptable for single-user workload.
+    const sessionEntries = [...ctx.db.ledgerEntries.iter()].filter(
+      (e) => e.sessionId === args.sessionId,
+    );
+    let maxSeq = -1n;
+    for (const entry of sessionEntries) {
+      if (entry.sequenceNumber > maxSeq) {
+        maxSeq = entry.sequenceNumber;
+      }
+    }
+    const nextSeq = maxSeq + 1n;
+
     ctx.db.ledgerEntries.insert({
       id: 0n,
       sessionId: args.sessionId,
@@ -175,7 +191,7 @@ export const append_ledger_entry = spacetimedb.reducer(
       result: args.result,
       timestamp: args.timestamp,
       detailsJson: args.detailsJson,
-      sequenceNumber: args.sequenceNumber,
+      sequenceNumber: nextSeq,
     });
   },
 );
