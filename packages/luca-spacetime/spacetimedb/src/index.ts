@@ -19,8 +19,20 @@ export const init = spacetimedb.init((ctx) => {
   });
 });
 
-export const onConnect = spacetimedb.clientConnected((_ctx) => {
-  // Called every time a new client connects
+export const onConnect = spacetimedb.clientConnected((ctx) => {
+  // Safety check: if the cleanup schedule chain broke, re-seed it
+  const scheduleRows = [...ctx.db.cleanupSchedule.iter()];
+  if (scheduleRows.length === 0) {
+    const MICROS_PER_HOUR = 3_600_000_000n;
+    const firstRun = ctx.timestamp.microsSinceUnixEpoch + MICROS_PER_HOUR;
+    ctx.db.cleanupSchedule.insert({
+      scheduledId: 0n,
+      scheduledAt: ScheduleAt.time(firstRun),
+      eventsMaxAgeHours: 24n,
+      usageMaxAgeHours: 168n,
+      preserveCount: 1000n,
+    });
+  }
 });
 
 export const onDisconnect = spacetimedb.clientDisconnected((_ctx) => {
@@ -45,6 +57,8 @@ export const ingest_event = spacetimedb.reducer(
     timestamp: t.u64(),
   },
   (ctx, args) => {
+    if (!args.sessionId) throw new SenderError("sessionId is required");
+
     // Append event
     ctx.db.observerEvents.insert({
       id: 0n,
@@ -96,6 +110,19 @@ export const update_workflow_state = spacetimedb.reducer(
     contextJson: t.string(),
   },
   (ctx, args) => {
+    const VALID_COMPLEXITIES = [
+      "TRIVIAL",
+      "SIMPLE",
+      "MODERATE",
+      "COMPLEX",
+      "CRITICAL",
+    ];
+    if (!VALID_COMPLEXITIES.includes(args.complexity)) {
+      throw new SenderError(
+        `Invalid complexity: must be one of ${VALID_COMPLEXITIES.join(", ")}`,
+      );
+    }
+
     const SINGLETON_ID = 1n;
     const row = {
       id: SINGLETON_ID,
@@ -165,15 +192,15 @@ export const append_ledger_entry = spacetimedb.reducer(
     detailsJson: t.string(),
   },
   (ctx, args) => {
+    if (!args.sessionId) throw new SenderError("sessionId is required");
+
     // Compute next sequence number atomically inside the reducer.
     // SpacetimeDB multi-column unique constraints are not supported,
     // so uniqueness of (sessionId, sequenceNumber) is enforced here
     // by the transactional nature of reducers.
-    // NOTE: The ledger_entries_session_id index lacks an accessor, so we
-    // use iter() + manual filter. Acceptable for single-user workload.
-    const sessionEntries = [...ctx.db.ledgerEntries.iter()].filter(
-      (e) => e.sessionId === args.sessionId,
-    );
+    const sessionEntries = [
+      ...ctx.db.ledgerEntries.ledger_entries_session_id.filter(args.sessionId),
+    ];
     let maxSeq = -1n;
     for (const entry of sessionEntries) {
       if (entry.sequenceNumber > maxSeq) {
@@ -341,6 +368,12 @@ export const create_note = spacetimedb.reducer(
   },
   (ctx, args) => {
     if (!args.filename) throw new SenderError("filename is required");
+    const VALID_PRIORITIES = ["low", "medium", "high", "critical"];
+    if (!VALID_PRIORITIES.includes(args.priority)) {
+      throw new SenderError(
+        `Invalid priority: must be one of ${VALID_PRIORITIES.join(", ")}`,
+      );
+    }
     ctx.db.notes.insert({
       id: 0n,
       filename: args.filename,
@@ -377,12 +410,14 @@ export const complete_note = spacetimedb.reducer(
 export const update_workflow_config = spacetimedb.reducer(
   {
     configJson: t.string(),
+    timestamp: t.u64(),
   },
   (ctx, args) => {
     const SINGLETON_ID = 1n;
     const row = {
       id: SINGLETON_ID,
       configJson: args.configJson,
+      timestamp: args.timestamp,
     };
     const existing = ctx.db.workflowConfig.id.find(SINGLETON_ID);
     if (existing) {
@@ -614,7 +649,7 @@ export const append_audit_finding = spacetimedb.reducer(
       status: "pending",
       resolutionNotes: "",
       createdAt: args.createdAt,
-      resolvedAt: 0n,
+      resolvedAt: undefined,
     });
   },
 );
@@ -667,11 +702,9 @@ export const bulk_dismiss_findings = spacetimedb.reducer(
   },
   (ctx, args) => {
     if (!args.sessionId) throw new SenderError("sessionId is required");
-    // NOTE: Single-user tool — no multi-tenant authz needed.
-    // Full table scan is acceptable for single-user workload. If scaling
-    // to multi-user, add a btree index on sessionId and use .filter().
-    const allRows = [...ctx.db.auditFindings.iter()];
-    const matches = allRows.filter((row) => row.sessionId === args.sessionId);
+    const matches = [
+      ...ctx.db.auditFindings.audit_findings_session_id.filter(args.sessionId),
+    ];
     for (const row of matches) {
       // Skip already-resolved or dismissed findings
       if (row.status === "resolved" || row.status === "dismissed") continue;
@@ -704,11 +737,24 @@ export const run_ttl_cleanup = spacetimedb.reducer(
     const usageMaxAge = arg.usageMaxAgeHours > 0n ? arg.usageMaxAgeHours : 168n;
     const preserve = arg.preserveCount > 0n ? arg.preserveCount : 1000n;
 
+    // Schedule the next cleanup FIRST (1 hour from now) to ensure the
+    // chain continues even if deletions below throw an error.
+    const nextRun = nowMicros + MICROS_PER_HOUR;
+    ctx.db.cleanupSchedule.insert({
+      scheduledId: 0n,
+      scheduledAt: ScheduleAt.time(nextRun),
+      eventsMaxAgeHours: arg.eventsMaxAgeHours,
+      usageMaxAgeHours: arg.usageMaxAgeHours,
+      preserveCount: arg.preserveCount,
+    });
+
     // --- Clean observer_events ---
     const eventsCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
     const allEvents = [...ctx.db.observerEvents.iter()];
     // Sort newest-first so we can preserve the most recent N
-    allEvents.sort((a, b) => Number(b.timestamp - a.timestamp));
+    allEvents.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
+    );
 
     let eventsDeleted = 0;
     for (let i = 0; i < allEvents.length; i++) {
@@ -723,7 +769,9 @@ export const run_ttl_cleanup = spacetimedb.reducer(
     // --- Clean token_usage ---
     const usageCutoff = nowMicros - usageMaxAge * MICROS_PER_HOUR;
     const allUsage = [...ctx.db.tokenUsage.iter()];
-    allUsage.sort((a, b) => Number(b.timestamp - a.timestamp));
+    allUsage.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
+    );
 
     let usageDeleted = 0;
     for (let i = 0; i < allUsage.length; i++) {
@@ -734,19 +782,89 @@ export const run_ttl_cleanup = spacetimedb.reducer(
       }
     }
 
-    console.log(
-      `TTL cleanup: deleted ${eventsDeleted} events, ${usageDeleted} usage records`,
+    // --- Clean ledger_entries ---
+    const ledgerCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
+    const allLedger = [...ctx.db.ledgerEntries.iter()];
+    allLedger.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
     );
 
-    // Schedule the next cleanup (1 hour from now)
-    const nextRun = nowMicros + MICROS_PER_HOUR;
-    ctx.db.cleanupSchedule.insert({
-      scheduledId: 0n,
-      scheduledAt: ScheduleAt.time(nextRun),
-      eventsMaxAgeHours: arg.eventsMaxAgeHours,
-      usageMaxAgeHours: arg.usageMaxAgeHours,
-      preserveCount: arg.preserveCount,
-    });
+    let ledgerDeleted = 0;
+    for (let i = 0; i < allLedger.length; i++) {
+      const row = allLedger[i]!;
+      if (BigInt(i) >= preserve && row.timestamp < ledgerCutoff) {
+        ctx.db.ledgerEntries.id.delete(row.id);
+        ledgerDeleted++;
+      }
+    }
+
+    // --- Clean iteration_records ---
+    const iterationCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
+    const allIterations = [...ctx.db.iterationRecords.iter()];
+    allIterations.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
+    );
+
+    let iterationsDeleted = 0;
+    for (let i = 0; i < allIterations.length; i++) {
+      const row = allIterations[i]!;
+      if (BigInt(i) >= preserve && row.timestamp < iterationCutoff) {
+        ctx.db.iterationRecords.id.delete(row.id);
+        iterationsDeleted++;
+      }
+    }
+
+    // --- Clean tool_calls ---
+    const toolCallsCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
+    const allToolCalls = [...ctx.db.toolCalls.iter()];
+    allToolCalls.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
+    );
+
+    let toolCallsDeleted = 0;
+    for (let i = 0; i < allToolCalls.length; i++) {
+      const row = allToolCalls[i]!;
+      if (BigInt(i) >= preserve && row.timestamp < toolCallsCutoff) {
+        ctx.db.toolCalls.id.delete(row.id);
+        toolCallsDeleted++;
+      }
+    }
+
+    // --- Clean context_snapshots ---
+    const snapshotsCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
+    const allSnapshots = [...ctx.db.contextSnapshots.iter()];
+    allSnapshots.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
+    );
+
+    let snapshotsDeleted = 0;
+    for (let i = 0; i < allSnapshots.length; i++) {
+      const row = allSnapshots[i]!;
+      if (BigInt(i) >= preserve && row.timestamp < snapshotsCutoff) {
+        ctx.db.contextSnapshots.id.delete(row.id);
+        snapshotsDeleted++;
+      }
+    }
+
+    // --- Clean decision_logs ---
+    const decisionsCutoff = nowMicros - eventsMaxAge * MICROS_PER_HOUR;
+    const allDecisions = [...ctx.db.decisionLogs.iter()];
+    allDecisions.sort((a, b) =>
+      b.timestamp > a.timestamp ? 1 : b.timestamp < a.timestamp ? -1 : 0,
+    );
+
+    let decisionsDeleted = 0;
+    for (let i = 0; i < allDecisions.length; i++) {
+      const row = allDecisions[i]!;
+      if (BigInt(i) >= preserve && row.timestamp < decisionsCutoff) {
+        ctx.db.decisionLogs.id.delete(row.id);
+        decisionsDeleted++;
+      }
+    }
+
+    console.log(
+      `TTL cleanup: deleted ${eventsDeleted} events, ${usageDeleted} usage, ${ledgerDeleted} ledger, ${iterationsDeleted} iterations, ${toolCallsDeleted} tool calls, ${snapshotsDeleted} snapshots, ${decisionsDeleted} decisions`,
+    );
   },
 );
 

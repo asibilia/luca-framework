@@ -1,74 +1,50 @@
-# Luca Memory
-
-> Long-term learning storage. Updated after verified work.
+# Project Memory
 
 ## Patterns
 
-<!-- Validated approaches that work -->
+### Validated Approaches
 
-### Use Bun for all runtime operations
+- **Test Pattern Alpha**: A validated testing pattern for APIs
+  - **Tags**: [testing, api]
+  - **Confidence**: High
+  - **Agent**: lu-executor
+  - **Milestone**: v1.5.0
+  - **Added**: 2026-01-15
 
-**Tags:** [typescript, runtime, tooling]
-**Confidence:** High
-**Agent:** lu-codebase-mapper
-
-Bun provides significantly faster performance than Node.js for this codebase. Use:
-- `bun <file>` instead of `node <file>`
-- `bun test` instead of `jest` or `vitest`
-- `bun install` instead of `npm install`
-
-### Use path aliases with tilde notation
-
-**Tags:** [typescript, imports, architecture]
-**Confidence:** High
-**Agent:** code-architect
-
-Always use `~/*` path aliases for imports from src/ directory. This provides:
-- Consistent import paths regardless of file depth
-- Easier refactoring when moving files
-- Better IDE support with tsconfig.json paths
+- **Build Pipeline Setup**: Standard build configuration
+  - **Tags**: [build, architecture]
+  - **Confidence**: Medium
+  - **Agent**: general
+  - **Milestone**: v1.4.0
+  - **Added**: 2026-01-20
 
 ## Decisions
 
-<!-- Past choices that were made -->
+### Architectural Choices
 
-### Decision: Mono-repo structure with workspaces
+### Use Bun Over Node
 
-**Tags:** [architecture, packages]
-**Confidence:** Medium
-**Agent:** lu-repo-architect
-
-Choosing a mono-repo structure allows:
-- Shared dependencies across packages
-- Consistent versioning
-- Easier cross-package development
+- **Context**: Runtime selection for performance
+- **Tags**: [stack, coding]
+- **Confidence**: High
+- **Agent**: general
+- **Milestone**: v1.6.0
+- **Added**: 2026-02-01
 
 ## Pitfalls
 
-<!-- Known issues to avoid -->
+### Known Issues
 
-### Don't use tsconfig-paths at runtime
-
-**Tags:** [typescript, bun, gotcha]
-**Confidence:** High
-**Agent:** lu-debugger
-
-tsconfig-paths is not needed with Bun - it natively resolves paths. Only use it for test context if required.
+- **Import Path Gotcha**: Relative imports break when moving files
+  - **Tags**: [coding, debugging]
+  - **Confidence**: Low
+  - **Agent**: lu-verifier
+  - **Added**: 2026-02-10
 
 ## Preferences
 
-<!-- User and project preferences -->
-
-### Prefer functional programming patterns
-
-**Tags:** [typescript, style]
-**Confidence:** Medium
-
-- Use pure functions where possible
-- Avoid mutable state
-- Prefer composition over inheritance
-
----
-
-*Luca Memory initialized*
-
+- **Dark Mode Always**: User prefers dark theme
+  - **Tags**: [preferences, ui]
+  - **Confidence**: Medium
+  - **Agent**: general
+  - **Added**: 2026-02-12

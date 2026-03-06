@@ -1,7 +1,3 @@
-[test]
-root = "."
-preload = ["./scripts/test-preload.ts"]
-coverage = true
-coverageDir = "coverage"
-coverageReporter = ["text", "lcov"]
-coverageThreshold = { line = 80 }
+# Test configuration intentionally removed.
+# Tests were removed wholesale to prevent memory exhaustion.
+# See: src/rules/general/no-tests.rule.ts

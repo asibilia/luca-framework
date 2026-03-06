@@ -31,6 +31,7 @@ export const ObserverEvents = table(
     public: true,
     indexes: [
       {
+        accessor: "observer_events_session_id",
         name: "observer_events_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -71,6 +72,7 @@ export const LedgerEntries = table(
     public: true,
     indexes: [
       {
+        accessor: "ledger_entries_session_id",
         name: "ledger_entries_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -116,6 +118,7 @@ export const IterationRecords = table(
     public: true,
     indexes: [
       {
+        accessor: "iteration_records_session_id",
         name: "iteration_records_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -229,6 +232,7 @@ export const WorkflowConfig = table(
   {
     id: t.u64().primaryKey(),
     configJson: t.string(),
+    timestamp: t.u64(),
   },
 );
 
@@ -262,6 +266,7 @@ export const ToolCalls = table(
     public: true,
     indexes: [
       {
+        accessor: "tool_calls_session_id",
         name: "tool_calls_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -287,6 +292,7 @@ export const TokenUsage = table(
     public: true,
     indexes: [
       {
+        accessor: "token_usage_session_id",
         name: "token_usage_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -325,6 +331,7 @@ export const ContextSnapshots = table(
     public: true,
     indexes: [
       {
+        accessor: "context_snapshots_session_id",
         name: "context_snapshots_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -349,6 +356,7 @@ export const DecisionLogs = table(
     public: true,
     indexes: [
       {
+        accessor: "decision_logs_session_id",
         name: "decision_logs_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -375,11 +383,13 @@ export const AuditFindings = table(
     public: true,
     indexes: [
       {
+        accessor: "audit_findings_session_id",
         name: "audit_findings_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
       },
       {
+        accessor: "audit_findings_file_path",
         name: "audit_findings_file_path",
         algorithm: "btree" as const,
         columns: ["filePath"],
@@ -402,7 +412,7 @@ export const AuditFindings = table(
     status: t.string(),
     resolutionNotes: t.string(),
     createdAt: t.u64(),
-    resolvedAt: t.u64(),
+    resolvedAt: t.u64().optional(),
   },
 );
 

@@ -219,6 +219,10 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-roadmapper": "Specialty",
   "lu-pm-planner": "Specialty",
   "lu-debugger": "Specialty",
+  // Tier Variants
+  "lu-router-fast": "Workflow",
+  "lu-verifier-fast": "Workflow",
+  "lu-executor-capable": "Workflow",
   product: "Specialty",
   ui: "Specialty",
   ux: "Specialty",
