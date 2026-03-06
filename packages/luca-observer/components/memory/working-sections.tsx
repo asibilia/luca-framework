@@ -113,7 +113,8 @@ function SectionPanel({ section }: { section: WorkingSection }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30"
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
       >
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">

@@ -67,8 +67,9 @@ export function DecisionTimeline({ decisions }: { decisions: Decision[] }) {
             {/* Header row */}
             <button
               type="button"
-              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
               onClick={() => toggleExpanded(decision.id)}
+              aria-expanded={isExpanded}
             >
               {/* Timeline dot */}
               <div

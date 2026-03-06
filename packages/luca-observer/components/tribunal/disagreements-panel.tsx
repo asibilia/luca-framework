@@ -60,6 +60,7 @@ export function DisagreementsPanel({
             </span>
             <p
               className="font-mono text-2xl font-bold"
+              aria-label={`${disagreementsDetected} disagreements detected`}
               style={{
                 color:
                   disagreementsDetected > 0
@@ -76,6 +77,7 @@ export function DisagreementsPanel({
             </span>
             <p
               className="font-mono text-2xl font-bold"
+              aria-label={`${rebuttalsConducted} rebuttals debated`}
               style={{ color: "var(--color-info)" }}
             >
               {rebuttalsConducted}
@@ -85,7 +87,10 @@ export function DisagreementsPanel({
             <span className="font-mono text-xs text-muted-foreground">
               Resolution Rate
             </span>
-            <p className="font-mono text-2xl font-bold text-foreground">
+            <p
+              className="font-mono text-2xl font-bold text-foreground"
+              aria-label={`${resolutionRate}% resolution rate`}
+            >
               {resolutionRate}%
             </p>
           </div>
@@ -94,7 +99,14 @@ export function DisagreementsPanel({
         {/* Resolution rate bar */}
         {disagreementsDetected > 0 && (
           <div className="mt-3">
-            <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              role="meter"
+              aria-valuenow={resolutionRate}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Debate resolution rate"
+              className="flex h-2 w-full overflow-hidden rounded-full bg-muted"
+            >
               <div
                 className="h-full rounded-full"
                 style={{

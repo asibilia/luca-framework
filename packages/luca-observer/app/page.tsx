@@ -24,11 +24,18 @@ export default function DashboardPage() {
       subtitle="Real-time workflow observability"
       actions={
         <span
+          role="status"
+          aria-label={
+            connected
+              ? "Connection status: live"
+              : "Connection status: disconnected"
+          }
           className={`inline-flex items-center gap-1.5 font-mono text-xs ${
             connected ? "text-success" : "text-destructive"
           }`}
         >
           <span
+            aria-hidden="true"
             className={`h-1.5 w-1.5 rounded-full ${
               connected ? "bg-success" : "bg-destructive"
             }`}

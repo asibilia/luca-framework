@@ -163,6 +163,7 @@ export default function NotesPage() {
           <button
             type="button"
             onClick={() => setShowDone((s) => !s)}
+            aria-expanded={showDone}
             className="flex items-center gap-2 font-mono text-sm font-medium text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
             <span aria-hidden="true">{showDone ? "v" : ">"}</span>

@@ -35,7 +35,8 @@ export function JsonViewer({
         <button
           type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full border-b border-border bg-muted px-2 py-1 text-left font-mono text-xs text-muted-foreground hover:text-foreground"
+          aria-expanded={!isCollapsed}
+          className="w-full border-b border-border bg-muted px-2 py-1 text-left font-mono text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
         >
           {isCollapsed ? "Expand JSON" : "Collapse JSON"} ({lines.length} lines)
         </button>
