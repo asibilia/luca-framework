@@ -15,9 +15,9 @@
 **Verification:** Quick
 **Est:** ~1 day
 
-- [ ] PLAN: Document observability domain in architecture docs (#50)
-- [ ] PLAN: Add stale session lock cleanup to build system (#51)
-- [ ] PLAN: Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
+- [x] PLAN: Document observability domain in architecture docs (#50)
+- [x] PLAN: Add stale session lock cleanup to build system (#51)
+- [x] PLAN: Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
 
 ### Phase 2: DRY & Code Health
 
@@ -26,8 +26,8 @@
 **Verification:** Quick
 **Est:** ~1 day
 
-- [ ] PLAN: Deduplicate sanitizeJsonParse — 3 copies to shared (#46)
-- [ ] PLAN: Complete node:fs to Bun API migration (#63)
+- [x] PLAN: Deduplicate sanitizeJsonParse — 3 copies to shared (#46)
+- [x] PLAN: Complete node:fs to Bun API migration (#63)
 
 ### Phase 3: SpacetimeDB Schema Migrations
 
