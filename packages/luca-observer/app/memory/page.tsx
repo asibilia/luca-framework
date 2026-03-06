@@ -1,8 +1,8 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
-import { EmptyState } from "~/components/shared/empty-state";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { BrainPanel } from "~/components/memory/brain-panel";
 import { MemoryEntries } from "~/components/memory/memory-entries";
 import { WorkingSections } from "~/components/memory/working-sections";
@@ -18,7 +18,14 @@ export default function MemoryPage() {
       subtitle="BRAIN, MEMORY, and WORKING file viewer"
     >
       {loading ? (
-        <EmptyState message="Loading memory files..." />
+        <div className="space-y-6">
+          <LoadingSkeleton variant="card" />
+          <div className="grid gap-6 lg:grid-cols-3">
+            <LoadingSkeleton variant="text" rows={6} />
+            <LoadingSkeleton variant="text" rows={6} />
+            <LoadingSkeleton variant="text" rows={6} />
+          </div>
+        </div>
       ) : (
         <div className="space-y-6">
           <ErrorBoundary name="ContextUsageBar">

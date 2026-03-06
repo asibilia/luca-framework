@@ -36,11 +36,7 @@ export default function WorkflowPage() {
             State Diagram
           </p>
           {stateLoading ? (
-            <div className="flex h-48 items-center justify-center">
-              <p className="font-mono text-xs text-muted-foreground animate-pulse">
-                Loading state...
-              </p>
-            </div>
+            <LoadingSkeleton variant="chart" />
           ) : (
             <ErrorBoundary name="StateDiagram">
               <StateDiagram currentState={currentState} />
