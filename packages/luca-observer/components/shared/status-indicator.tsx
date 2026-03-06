@@ -21,7 +21,7 @@ export function StatusIndicator() {
     COMPLEXITY_LEVELS.MODERATE;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" role="status" aria-label={`Workflow status: ${stateConfig.label}, Complexity: ${complexityConfig.label}`}>
       <span
         className="inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 font-mono text-xs"
         style={{
@@ -32,6 +32,7 @@ export function StatusIndicator() {
         <span
           className="h-1.5 w-1.5 rounded-full"
           style={{ backgroundColor: `var(--color-${stateConfig.color})` }}
+          aria-hidden="true"
         />
         {stateConfig.label}
       </span>

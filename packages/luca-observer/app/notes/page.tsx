@@ -97,7 +97,7 @@ export default function NotesPage() {
             onClick={() =>
               setPriority((p) => (p === "next" ? "whenever" : "next"))
             }
-            className={`rounded-md border px-3 py-2 font-mono text-xs transition-colors ${
+            className={`rounded-md border px-3 py-2 font-mono text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 ${
               priority === "next"
                 ? "border-warning bg-warning/10 text-warning"
                 : "border-border bg-muted text-muted-foreground"
@@ -108,7 +108,7 @@ export default function NotesPage() {
           <button
             type="submit"
             disabled={!text.trim() || submitting}
-            className="rounded-md bg-accent px-4 py-2 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
             {submitting ? "Adding..." : "Add Note"}
           </button>
@@ -169,9 +169,9 @@ export default function NotesPage() {
           <button
             type="button"
             onClick={() => setShowDone((s) => !s)}
-            className="flex items-center gap-2 font-mono text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 font-mono text-sm font-medium text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
-            <span>{showDone ? "v" : ">"}</span>
+            <span aria-hidden="true">{showDone ? "v" : ">"}</span>
             Consumed ({done.length})
           </button>
           {showDone && (

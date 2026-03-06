@@ -36,7 +36,7 @@
     "css:build": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --minify",
     "css:dev": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css",
     "css:watch": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --watch",
-    "dev": "next dev --port 3456",
+    "dev": "bun run css:watch & next dev --port 3456",
     "lint": "eslint app/ components/ hooks/ lib/ stores/",
     "lint:fix": "eslint app/ components/ hooks/ lib/ stores/ --fix",
     "generate:bindings": "spacetime generate --lang typescript --out-dir ./module_bindings --project-path ../luca-spacetime/spacetimedb",
