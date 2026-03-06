@@ -12,7 +12,7 @@ import orderBy from "lodash/orderBy";
 
 import { callReducer } from "./observer-emitter";
 import { queryTable } from "./spacetimedb-client";
-import { escapeSqlString, validateAndEscapeSqlString, validateFilterString } from "./sql-sanitize";
+import { validateFilterString } from "./sql-sanitize";
 
 import type {
   AuditFinding,
@@ -31,7 +31,23 @@ import {
 
 // validateFilterString is imported from the shared sql-sanitize utility
 
+// ─── Module-Level Constants ─────────────────────────────────────────────────
+
+/** Severity sort order derived from FINDING_SEVERITIES (critical=0, high=1, …). */
+const SEVERITY_ORDER: Record<string, number> = Object.fromEntries(
+  FINDING_SEVERITIES.map((s, i) => [s, i]),
+);
+
 // ─── Internal Factories ─────────────────────────────────────────────────────
+
+/**
+ * Create a zeroed record from a readonly string tuple (e.g. FINDING_SEVERITIES).
+ */
+function createEnumMap<T extends string>(
+  keys: readonly T[],
+): Record<T, number> {
+  return Object.fromEntries(keys.map((k) => [k, 0])) as Record<T, number>;
+}
 
 /**
  * Create a zeroed-out findings summary with all severity/status keys.
@@ -39,13 +55,11 @@ import {
 function createEmptySummary(): FindingsSummary {
   return {
     total: 0,
-    by_severity: Object.fromEntries(
-      FINDING_SEVERITIES.map((s) => [s, 0]),
+    by_severity: createEnumMap(
+      FINDING_SEVERITIES,
     ) as FindingsSummary["by_severity"],
     by_category: {},
-    by_status: Object.fromEntries(
-      FINDING_STATUSES.map((s) => [s, 0]),
-    ) as FindingsSummary["by_status"],
+    by_status: createEnumMap(FINDING_STATUSES) as FindingsSummary["by_status"],
   };
 }
 
@@ -189,11 +203,10 @@ export async function queryPendingFindings(
   filters?: FindingFilters,
 ): Promise<AuditFinding[]> {
   try {
-    const validatedSessionId = validateFilterString(sessionId, "session_id");
-    const escapedSessionId = validatedSessionId.replace(/'/g, "''");
+    const safeSessionId = validateFilterString(sessionId, "session_id");
 
     const whereClauses: string[] = [
-      `sessionId = '${escapedSessionId}'`,
+      `sessionId = '${safeSessionId}'`,
       `(status = 'pending' OR status = 'in_progress')`,
     ];
 
@@ -203,18 +216,18 @@ export async function queryPendingFindings(
         const f = validatedFilters.data;
         if (f.severity) {
           const safeSeverity = validateFilterString(f.severity, "severity");
-          whereClauses.push(`severity = '${safeSeverity.replace(/'/g, "''")}'`);
+          whereClauses.push(`severity = '${safeSeverity}'`);
         }
         if (f.category) {
           const safeCategory = validateFilterString(f.category, "category");
-          whereClauses.push(`category = '${safeCategory.replace(/'/g, "''")}'`);
+          whereClauses.push(`category = '${safeCategory}'`);
         }
         if (f.source_agent) {
           const safeAgent = validateFilterString(
             f.source_agent,
             "source_agent",
           );
-          whereClauses.push(`sourceAgent = '${safeAgent.replace(/'/g, "''")}'`);
+          whereClauses.push(`sourceAgent = '${safeAgent}'`);
         }
       }
     }
@@ -248,24 +261,19 @@ export async function queryFindingsForFile(
 ): Promise<AuditFinding[]> {
   try {
     const safeFilePath = validateFilterString(filePath, "file_path");
-    const escapedFilePath = safeFilePath.replace(/'/g, "''");
 
-    const whereClauses: string[] = [`filePath = '${escapedFilePath}'`];
+    const whereClauses: string[] = [`filePath = '${safeFilePath}'`];
 
     if (sessionId) {
       const safeSessionId = validateFilterString(sessionId, "session_id");
-      whereClauses.push(`sessionId = '${safeSessionId.replace(/'/g, "''")}'`);
+      whereClauses.push(`sessionId = '${safeSessionId}'`);
     }
 
     const sql = `SELECT * FROM audit_findings WHERE ${whereClauses.join(" AND ")}`;
     const rows = await queryTable<AuditFinding>(sql);
 
     // Sort client-side by severity (ORDER BY not supported in SpacetimeDB v2 SQL)
-    const severityOrder: Record<string, number> = Object.fromEntries(
-      FINDING_SEVERITIES.map((s, i) => [s, i]),
-    );
-
-    return orderBy(rows, [(r) => severityOrder[r.severity] ?? 5], ["asc"]);
+    return orderBy(rows, [(r) => SEVERITY_ORDER[r.severity] ?? 5], ["asc"]);
   } catch {
     // SpacetimeDB unavailable — return empty array
     return [];
@@ -294,9 +302,8 @@ export async function getFindingsSummary(
 
   try {
     const safeSessionId = validateFilterString(sessionId, "session_id");
-    const escapedSessionId = safeSessionId.replace(/'/g, "''");
 
-    const sql = `SELECT * FROM audit_findings WHERE sessionId = '${escapedSessionId}'`;
+    const sql = `SELECT * FROM audit_findings WHERE sessionId = '${safeSessionId}'`;
     const rows = await queryTable<AuditFinding>(sql);
 
     if (rows.length === 0) return emptySummary;
