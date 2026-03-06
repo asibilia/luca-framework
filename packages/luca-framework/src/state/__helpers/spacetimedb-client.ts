@@ -9,6 +9,7 @@
  *
  * @module luca-state/spacetimedb-client
  */
+import { createCircuitBreaker } from "./circuit-breaker";
 import { isLocalhostUrl } from "./observer-emitter";
 import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
@@ -17,34 +18,17 @@ import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 /** Timeout for all SpacetimeDB queries (ms). */
 const QUERY_TIMEOUT_MS = 2000;
 
-/** Cooldown period after a connection failure (ms). */
-const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000;
-
 // ─── Circuit Breaker ────────────────────────────────────────────────────────
 
-/**
- * Timestamp of the last connection failure. When set, subsequent queries
- * skip the HTTP request and return empty results until the cooldown expires.
- * Prevents hammering a non-SpacetimeDB server (e.g., Next.js) with 404s.
- */
-let _lastFailureAt = 0;
-
-/**
- * Check whether SpacetimeDB queries should be skipped due to recent failure.
- *
- * @returns true if the circuit is open (should skip)
- */
-function isCircuitOpen(): boolean {
-  if (_lastFailureAt === 0) return false;
-  return Date.now() - _lastFailureAt < CIRCUIT_BREAKER_COOLDOWN_MS;
-}
+/** Circuit breaker for SQL queries -- skips attempts during cooldown. */
+const queryBreaker = createCircuitBreaker(30_000);
 
 /**
  * Reset the circuit breaker (e.g., after a successful query).
  * Exported for testing only.
  */
 export function _resetCircuitBreaker(): void {
-  _lastFailureAt = 0;
+  queryBreaker.reset();
 }
 
 // ─── Query Functions ────────────────────────────────────────────────────────
@@ -107,7 +91,7 @@ export function _resetCircuitBreaker(): void {
 export async function queryTable<T>(sql: string): Promise<T[]> {
   // Circuit breaker: skip HTTP if SpacetimeDB was recently unreachable.
   // Prevents hammering a non-SpacetimeDB server with repeated 404s.
-  if (isCircuitOpen()) {
+  if (queryBreaker.isOpen()) {
     return [];
   }
 
@@ -131,20 +115,20 @@ export async function queryTable<T>(sql: string): Promise<T[]> {
     });
   } catch (err) {
     // Connection refused, timeout, etc. — trip the circuit breaker.
-    _lastFailureAt = Date.now();
+    queryBreaker.trip();
     throw err;
   }
 
   if (!response.ok) {
     // Non-2xx (e.g., 404 from wrong server) — trip the circuit breaker.
-    _lastFailureAt = Date.now();
+    queryBreaker.trip();
     throw new Error(
       `[spacetimedb-client] Query failed (${response.status}): ${await response.text()}`,
     );
   }
 
   // Success — reset circuit breaker
-  _lastFailureAt = 0;
+  queryBreaker.reset();
 
   const data: unknown = await response.json();
 

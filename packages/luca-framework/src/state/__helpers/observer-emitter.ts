@@ -18,27 +18,21 @@
  * ```
  */
 
+import { createCircuitBreaker } from "./circuit-breaker";
 import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
 
-/** Cooldown period after a connection failure (ms). */
-const EMITTER_COOLDOWN_MS = 30_000;
-
-/**
- * Timestamp of the last emitter failure. When set, subsequent calls are
- * silently dropped until the cooldown expires. Prevents hammering a
- * non-SpacetimeDB server with repeated requests.
- */
-let _emitterLastFailureAt = 0;
+/** Circuit breaker for reducer calls -- skips attempts during cooldown. */
+const emitterBreaker = createCircuitBreaker(30_000);
 
 /**
  * Reset the emitter circuit breaker.
  * Exported for testing only.
  */
 export function _resetEmitterCircuitBreaker(): void {
-  _emitterLastFailureAt = 0;
+  emitterBreaker.reset();
 }
 
 /**
@@ -162,10 +156,7 @@ export function callReducer(
   args: Record<string, unknown>,
 ): void {
   // Circuit breaker: skip if SpacetimeDB was recently unreachable.
-  if (
-    _emitterLastFailureAt > 0 &&
-    Date.now() - _emitterLastFailureAt < EMITTER_COOLDOWN_MS
-  ) {
+  if (emitterBreaker.isOpen()) {
     return;
   }
 
@@ -190,11 +181,9 @@ export function callReducer(
   fetch(reducerUrl, opts)
     .then((res) => {
       if (!res.ok) {
-        // Non-2xx (e.g., 404 from wrong server) — trip circuit breaker
-        _emitterLastFailureAt = Date.now();
+        emitterBreaker.trip();
       } else {
-        // Success — reset circuit breaker
-        _emitterLastFailureAt = 0;
+        emitterBreaker.reset();
       }
     })
     .catch(async (err) => {
@@ -212,14 +201,13 @@ export function callReducer(
       })
         .then((res) => {
           if (!res.ok) {
-            _emitterLastFailureAt = Date.now();
+            emitterBreaker.trip();
           } else {
-            _emitterLastFailureAt = 0;
+            emitterBreaker.reset();
           }
         })
         .catch((retryErr) => {
-          // Trip circuit breaker on retry failure
-          _emitterLastFailureAt = Date.now();
+          emitterBreaker.trip();
           // Always log retry failures — this represents actual data loss.
           console.error(
             `[observer-emitter] Reducer ${reducerName} retry failed (data loss):`,
