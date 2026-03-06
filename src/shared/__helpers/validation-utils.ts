@@ -64,12 +64,11 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * ```
  */
 /**
- * NOTE: This function is intentionally duplicated across isolated domains.
- * The packages are isolated by design and cannot cross-import.
- * If you modify this function, update all copies:
+ * NOTE: This function exists in 2 copies across isolated package boundaries.
+ * packages/luca-framework/ and src/ cannot cross-import by design.
+ * If you modify this function, update the other copy:
  * - packages/luca-framework/src/utils/sanitize.ts
- * - packages/luca-framework/src/state/sanitize.ts
- * - src/shared/validation-utils.ts (this file)
+ * - src/shared/__helpers/validation-utils.ts (this file)
  */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);

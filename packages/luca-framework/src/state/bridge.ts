@@ -57,7 +57,7 @@ import {
 } from "./persistence";
 import { workflowContextSchema, workflowEventSchema } from "./types";
 import type { TransitionRecord } from "./types";
-import { sanitizeJsonParse } from "./sanitize";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents, workflowMachine } from "./machine";
 import { generateSnapshot } from "./snapshot";

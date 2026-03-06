@@ -14,7 +14,7 @@ import type { Actor, Snapshot } from "xstate";
 import { workflowMachine } from "./machine";
 import type { WorkflowMachineInput } from "./machine";
 import type { Result } from "./types";
-import { sanitizeJsonParse } from "./sanitize";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import { queryOne } from "./__helpers/spacetimedb-client";
 import { callReducer } from "./__helpers/observer-emitter";
 import { initializeContext } from "./types";

@@ -11,7 +11,7 @@
  */
 import { z } from "zod";
 import { mkdir } from "node:fs/promises";
-import { sanitizeJsonParse } from "./sanitize";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import { queryOne } from "./__helpers/spacetimedb-client";
 import { callReducer } from "./__helpers/observer-emitter";
 
