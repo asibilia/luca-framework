@@ -100,3 +100,20 @@ export type {
   PluginRegistryEntry,
   PluginRegistry,
 } from "./__helpers/marketplace";
+
+// Skill dependency graph
+export {
+  SkillDependencySchema,
+  SkillDependencyMapSchema,
+} from "./__schemas/skill-dependencies";
+
+export type {
+  SkillDependency,
+  SkillDependencyMap,
+} from "./__schemas/skill-dependencies";
+
+export {
+  buildDependencyOrder,
+  detectConflicts,
+  groupParallelBatches,
+} from "./__helpers/dependency-graph";

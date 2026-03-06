@@ -110,3 +110,20 @@ export type {
 // ─── Parsing Utilities ──────────────────────────────────────────────────────
 
 export { safeParseOrThrow } from "./__helpers/safe-parse-or-throw";
+
+// ─── Consensus Resolution ───────────────────────────────────────────────────
+
+export {
+  CONSENSUS_MODES,
+  consensusModeSchema,
+  ConsensusConfigSchema,
+} from "./__schemas/consensus.schemas";
+
+export type {
+  ConsensusMode,
+  ConsensusConfig,
+} from "./__schemas/consensus.schemas";
+
+export { resolveConsensus } from "./__helpers/consensus-resolver";
+
+export type { ConsensusResult } from "./__helpers/consensus-resolver";
