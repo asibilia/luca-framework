@@ -16,7 +16,16 @@ export function JsonViewer({
 
   if (data === undefined || data === null) return null;
 
-  const json = JSON.stringify(data, null, 2);
+  let json: string;
+  try {
+    json = JSON.stringify(data, null, 2);
+  } catch {
+    return (
+      <div className="rounded border border-destructive/50 bg-destructive/10 p-2 font-mono text-xs text-destructive">
+        Unable to display JSON (circular reference or non-serializable value)
+      </div>
+    );
+  }
   const lines = json.split("\n");
   const isLong = lines.length > 3;
 
