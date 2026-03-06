@@ -133,14 +133,14 @@ read_runtime() {
 RUNTIME=$(read_runtime)
 
 if [ "$RUNTIME" = "bun" ]; then
-  TSC_CMD="bunx --bun tsc --noEmit"
+  TSC_CMD=(bunx --bun tsc --noEmit)
 else
-  TSC_CMD="npx tsc --noEmit"
+  TSC_CMD=(npx tsc --noEmit)
 fi
 
 # Run type-checker (project-wide, since types are interconnected)
 set +e
-TSC_OUTPUT=$(cd "$PROJECT_DIR" && $TSC_CMD 2>&1)
+TSC_OUTPUT=$(cd "$PROJECT_DIR" && "${TSC_CMD[@]}" 2>&1)
 TSC_EXIT=$?
 set -e
 
@@ -156,7 +156,7 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
 
   # Output as JSON systemMessage for async delivery
   # Using bun -e to safely JSON-encode the error output
-  HOOK_FILE_PATH="$FILE_PATH" printf '%s' "$TRUNCATED" | bun -e "
+  printf '%s' "$TRUNCATED" | HOOK_FILE_PATH="$FILE_PATH" bun -e "
     const errors = await Bun.stdin.text();
     const filePath = process.env.HOOK_FILE_PATH;
     const msg = {

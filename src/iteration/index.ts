@@ -131,6 +131,18 @@ export {
 
 export type { TokenBudgetAssessment } from "./__helpers/budget";
 
+// Stall detection
+export {
+  detectStall,
+  areFingerprintsIdentical,
+} from "./__helpers/stall-detector";
+
+export type {
+  StallDetectionResult,
+  StallIndicators,
+  StallDetectionOptions,
+} from "./__helpers/stall-detector";
+
 // Metrics schemas
 export {
   iterationMetricsSchema,

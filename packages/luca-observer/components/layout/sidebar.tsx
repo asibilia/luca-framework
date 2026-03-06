@@ -39,7 +39,14 @@ export function Sidebar() {
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 p-2">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="sr-only focus:not-sr-only focus:rounded focus:bg-muted focus:p-2 focus:font-mono focus:text-sm focus:text-muted-foreground"
+        aria-label="Toggle sidebar"
+      >
+        Skip to navigation
+      </button>
+      <nav className="flex flex-1 flex-col gap-0.5 p-2" role="navigation" aria-label="Main navigation">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
@@ -50,7 +57,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 ${
                 isActive
                   ? "bg-accent/10 font-medium text-accent"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"

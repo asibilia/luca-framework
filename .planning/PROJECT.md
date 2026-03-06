@@ -8,19 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v2.8.0 — Shipped)
+## Current State (v2.9.0 — Shipped)
 
-**Last Shipped:** v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval (2026-03-05)
+**Last Shipped:** v2.9.0 — Audit Gap Closure & Test Reliability (2026-03-06)
 
-P0 audit triage (7 findings verified resolved), dual-write hardening (JSON backup + LUCA_DEBUG logging), SpacetimeDB audit findings persistence (15-column table, 2 btree indexes, 3 reducers, 6 client helpers, 21 tests), skill eval framework (SkillEvalSchema with prompt/expected/criteria, 9 evals across 3 skills, CLI runner script, 16 tests). 3 phases, 5 commits, 27 files changed, 3514 tests.
+14 phases, 52 commits, 572 files changed. SpacetimeDB reducer hardening (server-side enum validation, index-based lookups), test suite isolation fix (29-test full-suite failure resolved), observer dashboard polish (LoadingSkeleton, functional ErrorBoundary, empty states, accessibility, todo tracking), SpacetimeDB data integrity (TTL cleanup, sequence race fix, unique constraints), agent system improvements (XState guards, phase actor timeouts, health checks, stall detection, skill dependency graph, tribunal consensus), learning & ecosystem (procedure replay, self-tuning, cognitive profiles, interop scanner, semantic embeddings, hook portability, plugin marketplace, interactive tour), model routing (replaced complexity step-skipping with per-agent model tiers), 2 audit gap closure phases (double SQL escaping fix, circuit breaker extraction, observer convention alignment).
+
+## Previous State (v2.8.0)
+
+v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval (2026-03-05). P0 audit triage, dual-write hardening, SpacetimeDB audit findings persistence, skill eval framework. 3 phases, 5 commits, 27 files changed, 3514 tests.
 
 ## Previous State (v2.7.0)
 
 v2.7.0 — Observability & Verification Infrastructure (2026-03-05). Full observability stack: luca-observer web dashboard, SpacetimeDB real-time infrastructure (16 tables, 19 reducers), security hardening, DRY consolidation, hook portability. 21 phases, 54 plans, 205 commits, 3477 tests.
-
-## Previous State (v2.6.2)
-
-v2.6.2 — Convention & DRY Cleanup (2026-03-03). Barrel import fixes, convention alignment, DRY extraction. 3150 tests, 85 files changed.
 
 **Capabilities (shipped):**
 
@@ -119,4 +119,4 @@ v2.6.2 — Convention & DRY Cleanup (2026-03-03). Barrel import fixes, conventio
 
 ---
 
-_Last updated: 2026-03-05 — v2.7.0 milestone completed_
+_Last updated: 2026-03-06 — v2.9.0 milestone archived_

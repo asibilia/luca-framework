@@ -4,7 +4,6 @@ description: Stage and commit changes using the project's conventional commit CL
 ---
 
 <main>
-<main>
 # Git Commit
 
 Create commits using the project's custom CLI tool.
@@ -57,5 +56,4 @@ This prompts for commit details interactively.
 `[TICKET-ID]--[description]` (e.g., `[TICKET-ID]--my-cool-feature`)
 
 > **Note:** Replace `[TICKET-ID]` with your project's configured ticket pattern (e.g., `PROJ-123`, `PT-456`, or your custom `ticketPattern` from `.planning/config.json`). Default pattern: `[A-Z]+-\d+`
-</main>
 </main>

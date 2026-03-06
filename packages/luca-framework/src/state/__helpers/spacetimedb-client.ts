@@ -9,6 +9,7 @@
  *
  * @module luca-state/spacetimedb-client
  */
+import { createCircuitBreaker } from "./circuit-breaker";
 import { isLocalhostUrl } from "./observer-emitter";
 import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
@@ -16,6 +17,19 @@ import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 /** Timeout for all SpacetimeDB queries (ms). */
 const QUERY_TIMEOUT_MS = 2000;
+
+// ─── Circuit Breaker ────────────────────────────────────────────────────────
+
+/** Circuit breaker for SQL queries -- skips attempts during cooldown. */
+const queryBreaker = createCircuitBreaker(30_000);
+
+/**
+ * Reset the circuit breaker (e.g., after a successful query).
+ * Exported for testing only.
+ */
+export function _resetCircuitBreaker(): void {
+  queryBreaker.reset();
+}
 
 // ─── Query Functions ────────────────────────────────────────────────────────
 
@@ -75,6 +89,12 @@ const QUERY_TIMEOUT_MS = 2000;
  * ```
  */
 export async function queryTable<T>(sql: string): Promise<T[]> {
+  // Circuit breaker: skip HTTP if SpacetimeDB was recently unreachable.
+  // Prevents hammering a non-SpacetimeDB server with repeated 404s.
+  if (queryBreaker.isOpen()) {
+    return [];
+  }
+
   const url = resolveStdbUrl();
 
   if (!isLocalhostUrl(url)) {
@@ -85,18 +105,30 @@ export async function queryTable<T>(sql: string): Promise<T[]> {
 
   const endpoint = `${url.replace(/\/+$/, "")}/v1/database/${DATABASE_NAME}/sql`;
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: sql,
-    signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: sql,
+      signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),
+    });
+  } catch (err) {
+    // Connection refused, timeout, etc. — trip the circuit breaker.
+    queryBreaker.trip();
+    throw err;
+  }
 
   if (!response.ok) {
+    // Non-2xx (e.g., 404 from wrong server) — trip the circuit breaker.
+    queryBreaker.trip();
     throw new Error(
       `[spacetimedb-client] Query failed (${response.status}): ${await response.text()}`,
     );
   }
+
+  // Success — reset circuit breaker
+  queryBreaker.reset();
 
   const data: unknown = await response.json();
 

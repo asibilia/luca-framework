@@ -39,6 +39,20 @@ export {
 } from "./__helpers/platform-adapters";
 export type { PlatformHookConfig } from "./__helpers/platform-adapters";
 
+// Portable hook abstraction
+export {
+  SUPPORTED_PLATFORMS,
+  supportedPlatformSchema,
+  PortableHookConfigSchema,
+  createPortableHook,
+  detectPlatform,
+} from "./__helpers/portable-hook";
+export type {
+  SupportedPlatform,
+  PortableHookConfig,
+  PortableHookResult,
+} from "./__helpers/portable-hook";
+
 // Config generators — canonical (preferred)
 export {
   generateClaudeHooksConfigFromCanonical,

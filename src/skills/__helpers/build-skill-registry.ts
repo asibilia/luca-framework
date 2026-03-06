@@ -52,6 +52,7 @@ import { ruleLuWorkflowSkill } from "../general/rule-lu-workflow.skill";
 import { noteSkill } from "../general/note.skill";
 import { autopilotSkill } from "../general/autopilot.skill";
 import { updateSkill } from "../general/update.skill";
+import { postInitTourSkill } from "../general/post-init-tour.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -111,5 +112,6 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   note: () => noteSkill,
   autopilot: () => autopilotSkill,
   update: () => updateSkill,
+  "post-init-tour": () => postInitTourSkill,
   lu: () => luSkill,
 };

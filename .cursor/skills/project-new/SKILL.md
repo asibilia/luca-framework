@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca New Project
 
 Initialize a new project through unified flow: questioning → research (optional) → requirements → roadmap.
@@ -626,5 +625,4 @@ Present completion with next steps:
 
 - `/phase-plan 1` — Skip discussion, plan directly
 - `/codebase-map` — Map existing codebase first (brownfield)
-</main>
 </main>

@@ -433,9 +433,20 @@ export function handleSessionPersist(cwd: string, reason?: string): void {
  */
 export function handleSessionStart(cwd: string): string | void {
   const result = runSessionInit(cwd);
+  const messages: string[] = [];
+
+  if (result.warnings.length > 0) {
+    messages.push(...result.warnings);
+  }
 
   if (result.created.length > 0) {
-    return `[Luca] Initialized .planning/ directory. Created: ${result.created.join(", ")}`;
+    messages.push(
+      `[Luca] Initialized .planning/ directory. Created: ${result.created.join(", ")}`,
+    );
+  }
+
+  if (messages.length > 0) {
+    return messages.join("\n");
   }
 }
 

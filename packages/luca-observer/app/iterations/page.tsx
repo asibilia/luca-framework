@@ -2,6 +2,8 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { ConvergenceChart } from "~/components/iteration/convergence-chart";
 import { BudgetGauge } from "~/components/iteration/budget-gauge";
 import { ErrorClassificationBreakdown } from "~/components/iteration/error-classification-breakdown";
@@ -31,7 +33,13 @@ export default function IterationsPage() {
       subtitle="Convergence tracking and error classification"
     >
       {loading ? (
-        <EmptyState message="Loading iteration data..." />
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <LoadingSkeleton variant="chart" />
+            <LoadingSkeleton variant="card" />
+          </div>
+          <LoadingSkeleton variant="table" rows={8} columns={4} />
+        </div>
       ) : iterations.length === 0 ? (
         <EmptyState
           title="No Iterations Yet"
@@ -40,25 +48,37 @@ export default function IterationsPage() {
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <ConvergenceChart iterations={iterations} />
-            <BudgetGauge
-              currentIteration={currentIteration}
-              maxIterations={maxIterations}
-              softStopPercent={80}
-              status={
-                lastIteration?.stale_count !== undefined &&
-                lastIteration.stale_count > 1
-                  ? "exceeded"
-                  : "under_budget"
-              }
-            />
+            <ErrorBoundary name="ConvergenceChart">
+              <ConvergenceChart iterations={iterations} />
+            </ErrorBoundary>
+            <ErrorBoundary name="BudgetGauge">
+              <BudgetGauge
+                currentIteration={currentIteration}
+                maxIterations={maxIterations}
+                softStopPercent={80}
+                status={
+                  lastIteration?.stale_count !== undefined &&
+                  lastIteration.stale_count > 1
+                    ? "exceeded"
+                    : "under_budget"
+                }
+              />
+            </ErrorBoundary>
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
-            <TokenUsageChart />
-            <ContextPressureTimeline />
+            <ErrorBoundary name="TokenUsageChart">
+              <TokenUsageChart />
+            </ErrorBoundary>
+            <ErrorBoundary name="ContextPressureTimeline">
+              <ContextPressureTimeline />
+            </ErrorBoundary>
           </div>
-          <ErrorClassificationBreakdown iterations={iterations} />
-          <IterationTimeline iterations={iterations} />
+          <ErrorBoundary name="ErrorClassificationBreakdown">
+            <ErrorClassificationBreakdown iterations={iterations} />
+          </ErrorBoundary>
+          <ErrorBoundary name="IterationTimeline">
+            <IterationTimeline iterations={iterations} />
+          </ErrorBoundary>
         </div>
       )}
     </PageContainer>

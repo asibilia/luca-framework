@@ -81,10 +81,10 @@ export type LedgerEntries = __Infer<typeof LedgerEntries>;
 
 export const MemoryFiles = __t.object("MemoryFiles", {
   id: __t.u64(),
-  brainJson: __t.string(),
-  memoryJson: __t.string(),
-  workingJson: __t.string(),
-  proceduresJson: __t.string(),
+  brainMd: __t.string(),
+  memoryMd: __t.string(),
+  workingMd: __t.string(),
+  proceduresMd: __t.string(),
   timestamp: __t.u64(),
 });
 export type MemoryFiles = __Infer<typeof MemoryFiles>;
@@ -193,4 +193,3 @@ export const WorkflowState = __t.object("WorkflowState", {
   contextJson: __t.string(),
 });
 export type WorkflowState = __Infer<typeof WorkflowState>;
-

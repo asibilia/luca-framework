@@ -576,6 +576,73 @@ export function autoDetectBrainMd(cwd: string): string {
 }
 
 /**
+ * Check if a process with the given PID is still running.
+ *
+ * Uses process.kill(pid, 0) which sends no signal but errors
+ * if the process does not exist.
+ *
+ * @param pid - Process ID to check
+ * @returns true if the process is running, false otherwise
+ */
+function isProcessRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clean up stale session lock if the owning process is no longer running.
+ *
+ * Reads the lock file, checks the PID, and removes the lock if the
+ * process has exited. Also removes locks older than 12 hours regardless
+ * of PID status (safety net for zombie detection edge cases).
+ *
+ * @param cwd - Project root directory
+ * @returns Warning message if a stale lock was cleaned, empty string otherwise
+ */
+export function cleanupStaleLock(cwd: string): string {
+  const lockPath = join(cwd, ".claude", ".session-lock");
+  if (!existsSync(lockPath)) return "";
+
+  try {
+    const raw = readFileSync(lockPath, "utf-8");
+    const lockData = JSON.parse(raw);
+    const pid = lockData.pid as number | undefined;
+    const createdAt = lockData.created_at
+      ? new Date(lockData.created_at)
+      : null;
+
+    // Check age — auto-remove locks older than 12 hours
+    if (createdAt) {
+      const hoursOld = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+      if (hoursOld > 12) {
+        unlinkSync(lockPath);
+        return `[Luca] Removed stale session lock (${Math.round(hoursOld)}h old)`;
+      }
+    }
+
+    // Check PID — auto-remove if owning process is no longer running
+    if (pid && !isProcessRunning(pid)) {
+      unlinkSync(lockPath);
+      return `[Luca] Removed stale session lock (PID ${pid} no longer running)`;
+    }
+  } catch {
+    // Lock file is malformed or unreadable — remove it as stale
+    try {
+      unlinkSync(lockPath);
+      return "[Luca] Removed malformed session lock file";
+    } catch {
+      // Cannot remove — best effort
+    }
+  }
+
+  return "";
+}
+
+/**
  * Create the session lock file with build manifest snapshot.
  *
  * @param cwd - Project root directory
@@ -617,6 +684,12 @@ export function createSessionLock(cwd: string): void {
 export function runSessionInit(cwd: string): SessionInitResult {
   const created: string[] = [];
   const warnings: string[] = [];
+
+  // Step 0: Clean up stale session locks from crashed sessions
+  const staleLockMsg = cleanupStaleLock(cwd);
+  if (staleLockMsg) {
+    warnings.push(staleLockMsg);
+  }
 
   // Step 1: Create .planning/ and missing memory files
   const memoryFiles = ensurePlanningDir(cwd);

@@ -29,8 +29,11 @@ import { luProjectResearcherAgent } from "../general/lu-project-researcher.agent
 import { luResearchSynthesizerAgent } from "../general/lu-research-synthesizer.agent";
 import { luRoadmapperAgent } from "../general/lu-roadmapper.agent";
 import { luRouterAgent } from "../general/lu-router.agent";
+import { luRouterFastAgent } from "../general/lu-router-fast.agent";
 import { luTestWriterAgent } from "../general/lu-test-writer.agent";
 import { luVerifierAgent } from "../general/lu-verifier.agent";
+import { luVerifierFastAgent } from "../general/lu-verifier-fast.agent";
+import { luExecutorCapableAgent } from "../general/lu-executor-capable.agent";
 import { performanceAuditorAgent } from "../general/performance-auditor.agent";
 import { productAgent } from "../general/product.agent";
 import { qaPlanGeneratorAgent } from "../general/qa-plan-generator.agent";
@@ -74,8 +77,11 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-research-synthesizer": () => luResearchSynthesizerAgent,
   "lu-roadmapper": () => luRoadmapperAgent,
   "lu-router": () => luRouterAgent,
+  "lu-router-fast": () => luRouterFastAgent,
   "lu-test-writer": () => luTestWriterAgent,
   "lu-verifier": () => luVerifierAgent,
+  "lu-verifier-fast": () => luVerifierFastAgent,
+  "lu-executor-capable": () => luExecutorCapableAgent,
   "performance-auditor": () => performanceAuditorAgent,
   product: () => productAgent,
   "qa-plan-generator": () => qaPlanGeneratorAgent,

@@ -164,6 +164,11 @@ export const phaseActorMachine = setup({
 
   states: {
     idle: {
+      always: {
+        guard: ({ context }) => context.total_waves > 0,
+        target: "wave_executing",
+        actions: ["recordStart", "advanceWave"],
+      },
       on: {
         PLAN_WAVE: {
           target: "wave_executing",

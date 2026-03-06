@@ -4,7 +4,6 @@ description: Choose between issue-driven development and Luca spec-driven workfl
 ---
 
 <main>
-<main>
 # Luca Choose Workflow
 
 Help users select the right development workflow for their task.
@@ -122,5 +121,4 @@ This skill helps you decide between workflows. After choosing:
 **Common follow-ups:**
 - `/help` — Review all available commands
 - `/progress` — Check existing project status
-</main>
 </main>

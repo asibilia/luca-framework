@@ -26,7 +26,7 @@ export function LoadingSkeleton({
   columns?: number;
 }) {
   return (
-    <div aria-label="Loading" role="status">
+    <div aria-label="Loading" role="status" aria-busy={true}>
       {variant === "card" && <CardSkeleton />}
       {variant === "table" && (
         <TableSkeleton rows={rows ?? 5} columns={columns ?? 4} />
@@ -47,7 +47,7 @@ function CardSkeleton() {
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-lg border border-border bg-card p-4 space-y-3"
+          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
         >
           <div className="h-3 w-20 animate-pulse rounded bg-muted" />
           <div className="h-6 w-32 animate-pulse rounded bg-muted" />
@@ -100,7 +100,7 @@ function TableSkeleton({ rows, columns }: { rows: number; columns: number }) {
  */
 function ChartSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <div className="h-3 w-24 animate-pulse rounded bg-muted" />
       <div className="flex h-48 items-end gap-2 pt-4">
         {[30, 50, 40, 65, 55, 75, 60, 80].map((height, i) => (
@@ -122,7 +122,7 @@ function ChartSkeleton() {
  */
 function TextSkeleton({ rows }: { rows: number }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <div className="h-4 w-32 animate-pulse rounded bg-muted" />
       {Array.from({ length: rows }).map((_, i) => (
         <div

@@ -231,10 +231,10 @@ function syncMemoryViaReducer(
 
   callReducerFn("update_memory_files", {
     timestamp: Date.now(),
-    brainJson: serializeBrain(brain.data),
-    memoryJson: serializeMemoryEntries(memory.data),
-    workingJson: serializeWorkingMemory(working.data),
-    proceduresJson: serializeProcedures(procedures.data),
+    brainMd: serializeBrain(brain.data),
+    memoryMd: serializeMemoryEntries(memory.data),
+    workingMd: serializeWorkingMemory(working.data),
+    proceduresMd: serializeProcedures(procedures.data),
   });
 }
 
@@ -243,7 +243,7 @@ function syncMemoryViaReducer(
 /**
  * Read MEMORY.md entries.
  *
- * SpacetimeDB-primary: queries memory_files table for memoryJson.
+ * SpacetimeDB-primary: queries memory_files table for memoryMd.
  * Falls back to JSON file, then MEMORY.md parsing.
  *
  * @param args - CLI arguments (--tags, --category, --milestone, --limit optional)
@@ -260,13 +260,13 @@ export async function handleReadMemory(args: string[]): Promise<void> {
   try {
     const client = await getSpacetimeDBClient();
     if (client) {
-      const row = await client.queryOne<{ memoryJson: string }>(
-        "SELECT memoryJson FROM memory_files WHERE id = 1",
+      const row = await client.queryOne<{ memoryMd: string }>(
+        "SELECT memoryMd FROM memory_files WHERE id = 1",
       );
-      if (row && row.memoryJson) {
+      if (row && row.memoryMd) {
         const parsed = z
           .array(memoryEntrySchema)
-          .safeParse(JSON.parse(row.memoryJson));
+          .safeParse(JSON.parse(row.memoryMd));
         if (parsed.success) memoryData = parsed.data;
       }
     }
@@ -415,7 +415,7 @@ export async function handleReadMemory(args: string[]): Promise<void> {
 /**
  * Read WORKING.md into structured JSON.
  *
- * SpacetimeDB-primary: queries memory_files table for workingJson.
+ * SpacetimeDB-primary: queries memory_files table for workingMd.
  * Falls back to JSON file, then WORKING.md parsing.
  */
 export async function handleReadWorking(): Promise<void> {
@@ -424,12 +424,12 @@ export async function handleReadWorking(): Promise<void> {
     try {
       const client = await getSpacetimeDBClient();
       if (client) {
-        const row = await client.queryOne<{ workingJson: string }>(
-          "SELECT workingJson FROM memory_files WHERE id = 1",
+        const row = await client.queryOne<{ workingMd: string }>(
+          "SELECT workingMd FROM memory_files WHERE id = 1",
         );
-        if (row && row.workingJson) {
+        if (row && row.workingMd) {
           const parsed = workingMemorySchema.safeParse(
-            JSON.parse(row.workingJson),
+            JSON.parse(row.workingMd),
           );
           if (parsed.success) {
             console.log(JSON.stringify(parsed.data));
@@ -876,7 +876,7 @@ export async function handleUpdateProcedureStats(
 /**
  * Read project brain.
  *
- * SpacetimeDB-primary: queries memory_files table for brainJson.
+ * SpacetimeDB-primary: queries memory_files table for brainMd.
  * Falls back to brain.json, then BRAIN.md parsing.
  */
 export async function handleReadBrain(): Promise<void> {
@@ -884,11 +884,11 @@ export async function handleReadBrain(): Promise<void> {
   try {
     const client = await getSpacetimeDBClient();
     if (client) {
-      const row = await client.queryOne<{ brainJson: string }>(
-        "SELECT brainJson FROM memory_files WHERE id = 1",
+      const row = await client.queryOne<{ brainMd: string }>(
+        "SELECT brainMd FROM memory_files WHERE id = 1",
       );
-      if (row && row.brainJson) {
-        const parsed = brainSchema.safeParse(JSON.parse(row.brainJson));
+      if (row && row.brainMd) {
+        const parsed = brainSchema.safeParse(JSON.parse(row.brainMd));
         if (parsed.success) {
           console.log(JSON.stringify(parsed.data));
           return;

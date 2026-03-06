@@ -2,6 +2,8 @@
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { CumulativeCostCurve } from "~/components/cost/cumulative-cost-curve";
 import { CostBreakdown } from "~/components/cost/cost-breakdown";
 import { TokenUsageTrends } from "~/components/cost/token-usage-trends";
@@ -27,9 +29,22 @@ export default function CostPage() {
       subtitle="Token usage, cost tracking, and session comparison"
     >
       {loading ? (
-        <EmptyState message="Loading cost data..." />
+        <div className="flex flex-col gap-6">
+          <LoadingSkeleton variant="card" />
+          <LoadingSkeleton variant="chart" />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <LoadingSkeleton variant="chart" />
+            <LoadingSkeleton variant="chart" />
+          </div>
+          <LoadingSkeleton variant="table" rows={8} columns={5} />
+        </div>
+      ) : totalCost === 0 && (!Array.isArray(cost) || cost.length === 0) ? (
+        <EmptyState
+          title="No Cost Data"
+          message="Cost tracking data will appear here when sessions are executed and token usage is recorded. Metrics include total cost, input/output tokens, and cache usage."
+        />
       ) : (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="font-mono text-xs text-muted-foreground">
@@ -65,18 +80,26 @@ export default function CostPage() {
             </div>
           </div>
 
-          <CumulativeCostCurve
-            costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
-          />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <TokenUsageTrends tokenUsage={tokenUsage} />
-            <CostBreakdown
+          <ErrorBoundary name="CumulativeCostCurve">
+            <CumulativeCostCurve
               costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
             />
+          </ErrorBoundary>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ErrorBoundary name="TokenUsageTrends">
+              <TokenUsageTrends tokenUsage={tokenUsage} />
+            </ErrorBoundary>
+            <ErrorBoundary name="CostBreakdown">
+              <CostBreakdown
+                costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
+              />
+            </ErrorBoundary>
           </div>
-          <SessionCostTable
-            costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
-          />
+          <ErrorBoundary name="SessionCostTable">
+            <SessionCostTable
+              costs={Array.isArray(cost) ? cost : cost ? [cost] : []}
+            />
+          </ErrorBoundary>
         </div>
       )}
     </PageContainer>

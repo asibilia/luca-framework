@@ -710,10 +710,14 @@ bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COM
 
 ### 4d. Discussion (Complexity-Gated)
 
-Read the complexity matrix from config.json for the classified level.
+Check the current workflow state to see if the state machine routed to discussion or skipped it based on complexity.
 
-- If discussion == "skip" for this complexity level: skip to 4e
-- If discussion == "optional" or "run" or "required":
+```bash
+STATE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | bun -e "const s=await Bun.stdin.text();try{console.log(JSON.parse(s).state??'')}catch{}")
+```
+
+- If STATE == "planning": skip to 4e
+- If STATE == "discussing":
 
 ```
 Skill(skill: "phase-discuss", args: "{phase_number}")

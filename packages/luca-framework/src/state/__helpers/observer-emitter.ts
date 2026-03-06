@@ -18,10 +18,22 @@
  * ```
  */
 
+import { createCircuitBreaker } from "./circuit-breaker";
 import { DATABASE_NAME, resolveStdbUrl } from "./stdb-config";
 
 /** Hosts allowed for observer URL — prevents SSRF by restricting to loopback. */
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
+
+/** Circuit breaker for reducer calls -- skips attempts during cooldown. */
+const emitterBreaker = createCircuitBreaker(30_000);
+
+/**
+ * Reset the emitter circuit breaker.
+ * Exported for testing only.
+ */
+export function _resetEmitterCircuitBreaker(): void {
+  emitterBreaker.reset();
+}
 
 /**
  * Normalize a hostname to catch numeric IP bypass attempts.
@@ -49,7 +61,7 @@ function normalizeHostname(hostname: string): string {
 /**
  * Validate that a URL points to a localhost address.
  *
- * Used as an SSRF guard to ensure LUCA_OBSERVER_URL cannot be
+ * Used as an SSRF guard to ensure LUCA_SPACETIMEDB_URL cannot be
  * pointed at arbitrary remote hosts. Normalizes hostnames to
  * prevent bypasses via zero-padded octets (e.g., 127.000.000.001).
  *
@@ -143,6 +155,11 @@ export function callReducer(
   reducerName: string,
   args: Record<string, unknown>,
 ): void {
+  // Circuit breaker: skip if SpacetimeDB was recently unreachable.
+  if (emitterBreaker.isOpen()) {
+    return;
+  }
+
   const url = resolveStdbUrl();
 
   if (!isLocalhostUrl(url)) {
@@ -161,27 +178,43 @@ export function callReducer(
     signal: AbortSignal.timeout(2000),
   };
 
-  fetch(reducerUrl, opts).catch(async (err) => {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        `[observer-emitter] Reducer ${reducerName} failed, retrying:`,
-        (err as Error).message,
-      );
-    }
-    // Single retry after 1s for transient failures
-    await new Promise((r) => setTimeout(r, 1000));
-    return fetch(reducerUrl, {
-      ...opts,
-      signal: AbortSignal.timeout(2000),
-    }).catch((retryErr) => {
-      // Always log retry failures — this represents actual data loss.
-      // First-attempt failures are LUCA_DEBUG-only because a retry follows.
-      console.error(
-        `[observer-emitter] Reducer ${reducerName} retry failed (data loss):`,
-        (retryErr as Error).message,
-      );
+  fetch(reducerUrl, opts)
+    .then((res) => {
+      if (!res.ok) {
+        emitterBreaker.trip();
+      } else {
+        emitterBreaker.reset();
+      }
+    })
+    .catch(async (err) => {
+      if (process.env.LUCA_DEBUG) {
+        console.error(
+          `[observer-emitter] Reducer ${reducerName} failed, retrying:`,
+          (err as Error).message,
+        );
+      }
+      // Single retry after 1s for transient failures
+      await new Promise((r) => setTimeout(r, 1000));
+      return fetch(reducerUrl, {
+        ...opts,
+        signal: AbortSignal.timeout(2000),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            emitterBreaker.trip();
+          } else {
+            emitterBreaker.reset();
+          }
+        })
+        .catch((retryErr) => {
+          emitterBreaker.trip();
+          // Always log retry failures — this represents actual data loss.
+          console.error(
+            `[observer-emitter] Reducer ${reducerName} retry failed (data loss):`,
+            (retryErr as Error).message,
+          );
+        });
     });
-  });
 }
 
 /**

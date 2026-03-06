@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import get from "lodash/get";
+import { complexityMatrixSchema } from "../complexity/__schemas/complexity-matrix.schemas";
 
 // ─── Result Type ────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ export const workflowContextSchema = z.object({
   // Configuration (loaded from config.json at init)
   gates: z.record(z.string(), z.boolean()).default({}),
   workflow_config: z.record(z.string(), z.unknown()).default({}),
-  complexity_matrix: z.record(z.string(), z.unknown()).default({}),
+  complexity_matrix: complexityMatrixSchema.default({}),
   autopilot_config: z.record(z.string(), z.unknown()).default({}),
 
   // Execution tracking

@@ -1,8 +1,15 @@
 import { schema, table, t } from "spacetimedb/server";
+import { CleanupSchedule } from "./cleanup-schedule";
 
 // ─── Core Tables ───────────────────────────────────────────────
 
-/** Singleton (id=1). XState workflow state snapshot. */
+/**
+ * Singleton table (id=1). XState workflow state snapshot.
+ *
+ * Enforced by reducer `update_workflow_state` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const WorkflowState = table(
   { name: "workflow_state", public: true },
   {
@@ -24,6 +31,7 @@ export const ObserverEvents = table(
     public: true,
     indexes: [
       {
+        accessor: "observer_events_session_id",
         name: "observer_events_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -64,6 +72,7 @@ export const LedgerEntries = table(
     public: true,
     indexes: [
       {
+        accessor: "ledger_entries_session_id",
         name: "ledger_entries_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -83,7 +92,13 @@ export const LedgerEntries = table(
   },
 );
 
-/** Singleton (id=1). Latest harness run results. */
+/**
+ * Singleton table (id=1). Latest harness run results.
+ *
+ * Enforced by reducer `update_harness_result` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const HarnessResults = table(
   { name: "harness_results", public: true },
   {
@@ -103,6 +118,7 @@ export const IterationRecords = table(
     public: true,
     indexes: [
       {
+        accessor: "iteration_records_session_id",
         name: "iteration_records_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -123,7 +139,13 @@ export const IterationRecords = table(
   },
 );
 
-/** Singleton (id=1). Full session plan JSON. */
+/**
+ * Singleton table (id=1). Full session plan JSON.
+ *
+ * Enforced by reducer `update_session_plan` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const SessionPlans = table(
   { name: "session_plans", public: true },
   {
@@ -133,7 +155,13 @@ export const SessionPlans = table(
   },
 );
 
-/** Singleton (id=1). Full tribunal result JSON. */
+/**
+ * Singleton table (id=1). Full tribunal result JSON.
+ *
+ * Enforced by reducer `update_tribunal_result` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const TribunalResults = table(
   { name: "tribunal_results", public: true },
   {
@@ -143,20 +171,32 @@ export const TribunalResults = table(
   },
 );
 
-/** Singleton (id=1). BRAIN/MEMORY/WORKING/PROCEDURES file contents. */
+/**
+ * Singleton table (id=1). BRAIN/MEMORY/WORKING/PROCEDURES file contents.
+ *
+ * Enforced by reducer `update_memory_files` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const MemoryFiles = table(
   { name: "memory_files", public: true },
   {
     id: t.u64().primaryKey(),
-    brainJson: t.string(),
-    memoryJson: t.string(),
-    workingJson: t.string(),
-    proceduresJson: t.string(),
+    brainMd: t.string(),
+    memoryMd: t.string(),
+    workingMd: t.string(),
+    proceduresMd: t.string(),
     timestamp: t.u64(),
   },
 );
 
-/** Singleton (id=1). Aggregated metrics snapshot. */
+/**
+ * Singleton table (id=1). Aggregated metrics snapshot.
+ *
+ * Enforced by reducer `update_metrics` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const Metrics = table(
   { name: "metrics", public: true },
   {
@@ -180,12 +220,19 @@ export const Notes = table(
   },
 );
 
-/** Singleton (id=1). Full workflow config JSON. */
+/**
+ * Singleton table (id=1). Full workflow config JSON.
+ *
+ * Enforced by reducer `update_workflow_config` which always uses
+ * `id.find(1n)` + update/insert with `id: 1n`. The primary key
+ * guarantees uniqueness — no second row with id=1 can exist.
+ */
 export const WorkflowConfig = table(
   { name: "workflow_config", public: true },
   {
     id: t.u64().primaryKey(),
     configJson: t.string(),
+    timestamp: t.u64(),
   },
 );
 
@@ -219,6 +266,7 @@ export const ToolCalls = table(
     public: true,
     indexes: [
       {
+        accessor: "tool_calls_session_id",
         name: "tool_calls_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -244,6 +292,7 @@ export const TokenUsage = table(
     public: true,
     indexes: [
       {
+        accessor: "token_usage_session_id",
         name: "token_usage_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -282,6 +331,7 @@ export const ContextSnapshots = table(
     public: true,
     indexes: [
       {
+        accessor: "context_snapshots_session_id",
         name: "context_snapshots_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -306,6 +356,7 @@ export const DecisionLogs = table(
     public: true,
     indexes: [
       {
+        accessor: "decision_logs_session_id",
         name: "decision_logs_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
@@ -332,11 +383,13 @@ export const AuditFindings = table(
     public: true,
     indexes: [
       {
+        accessor: "audit_findings_session_id",
         name: "audit_findings_session_id",
         algorithm: "btree" as const,
         columns: ["sessionId"],
       },
       {
+        accessor: "audit_findings_file_path",
         name: "audit_findings_file_path",
         algorithm: "btree" as const,
         columns: ["filePath"],
@@ -359,7 +412,7 @@ export const AuditFindings = table(
     status: t.string(),
     resolutionNotes: t.string(),
     createdAt: t.u64(),
-    resolvedAt: t.u64(),
+    resolvedAt: t.u64().optional(),
   },
 );
 
@@ -385,6 +438,7 @@ const spacetimedb = schema({
   contextSnapshots: ContextSnapshots,
   decisionLogs: DecisionLogs,
   auditFindings: AuditFindings,
+  cleanupSchedule: CleanupSchedule,
 });
 
 export default spacetimedb;

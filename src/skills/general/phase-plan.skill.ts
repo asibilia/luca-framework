@@ -482,15 +482,16 @@ Verify these plans will achieve the phase goal when executed.
 
 ### 12. Revision Loop (Complexity-Scaled Iterations)
 
-Max iterations from complexity matrix (default 3 if no complexity set):
+Check the current complexity level's gating matrix for \`planVerificationIterations\`:
 
-| Complexity | Max Revisions |
-|------------|--------------|
-| MODERATE | 1 |
-| COMPLEX | 2 |
-| CRITICAL | 3 |
+\`\`\`bash
+bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null
+# Then parse planVerificationIterations from the complexity matrix for this level
+\`\`\`
 
-If issues found and iteration_count < max_revisions:
+*(If using the pi extension tool \`luca_gate_check\`, it returns the full matrix for the current level).*
+
+If issues found and iteration_count < planVerificationIterations:
 
 - Spawn lu-planner with revision context
 - Re-verify with checker

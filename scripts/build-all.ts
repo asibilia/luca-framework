@@ -33,25 +33,29 @@ async function main() {
   const lockFile = Bun.file(lockPath);
 
   if (await lockFile.exists()) {
-    let staleNote = "";
+    let hoursOld = 0;
     try {
       const lockData = JSON.parse(await lockFile.text());
       const createdAt = new Date(lockData.created_at);
-      const hoursOld = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
-      if (hoursOld > 12) {
-        staleNote = ` (lock is ${Math.round(hoursOld)}h old — possibly stale)`;
-      }
+      hoursOld = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
     } catch {
-      // Lock file is malformed — still block
+      // Lock file is malformed — treat as stale
+      hoursOld = Infinity;
     }
 
-    if (forceFlag) {
+    // Auto-clean stale locks (>4h old) instead of blocking forever
+    if (hoursOld > 4) {
       console.warn(
-        `\n⚠ Session lock detected${staleNote} — proceeding anyway (--force)\n`,
+        `\n⚠ Removing stale session lock (${hoursOld === Infinity ? "malformed" : `${Math.round(hoursOld)}h old`})\n`,
+      );
+      await Bun.file(lockPath).unlink();
+    } else if (forceFlag) {
+      console.warn(
+        `\n⚠ Session lock detected (${Math.round(hoursOld)}h old) — proceeding anyway (--force)\n`,
       );
     } else {
       console.error(
-        `\n✖ Build blocked: an active session is in progress${staleNote}`,
+        `\n✖ Build blocked: an active session is in progress (${Math.round(hoursOld)}h old)`,
       );
       console.error(
         "  Run with --force to override, or end the session first.\n",

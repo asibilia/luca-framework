@@ -12,9 +12,9 @@ import {
 
 export default __t.row({
   id: __t.u64().primaryKey(),
-  brainJson: __t.string().name("brain_json"),
-  memoryJson: __t.string().name("memory_json"),
-  workingJson: __t.string().name("working_json"),
-  proceduresJson: __t.string().name("procedures_json"),
+  brainMd: __t.string().name("brain_md"),
+  memoryMd: __t.string().name("memory_md"),
+  workingMd: __t.string().name("working_md"),
+  proceduresMd: __t.string().name("procedures_md"),
   timestamp: __t.u64(),
 });

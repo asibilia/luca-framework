@@ -55,3 +55,33 @@ export {
   DEBATE_QUALIFYING_COMPLEXITIES,
   isDebateComplexity,
 } from "./__helpers/complexity-gate";
+
+// Self-tuning
+export {
+  assessComplexityAccuracy,
+  tuneComplexityModel,
+  ComplexityPredictionRecordSchema,
+  ComplexityAccuracyResultSchema,
+  ComplexityTuningResultSchema,
+} from "./__helpers/self-tuning";
+
+export type {
+  ComplexityPredictionRecord,
+  ComplexityAccuracyResult,
+  ComplexityTuningResult,
+} from "./__helpers/self-tuning";
+
+// Model routing
+export {
+  ModelRoutingRowSchema,
+  ModelRoutingTableSchema,
+  MODEL_ROUTING_TABLE,
+  DEFAULT_COMPLEXITY_TIERS,
+  resolveModelForAgent,
+  getRoutingRow,
+} from "./__helpers/model-routing";
+
+export type {
+  ModelRoutingRow,
+  ModelRoutingTable,
+} from "./__helpers/model-routing";

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".qwen/hooks/post-edit-format.sh",
+        "timeout": 10
+      },
+      {
+        "command": ".qwen/hooks/post-edit-typecheck.sh",
+        "timeout": 30
+      },
+      {
+        "command": ".qwen/hooks/context-check-throttled.sh",
+        "timeout": 10
+      },
+      {
+        "command": ".qwen/hooks/snapshot-sync.sh",
+        "timeout": 10
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".qwen/hooks/pre-commit-gate.sh",
+        "timeout": 120,
+        "matcher": "git commit|git merge|bun run commit|bunx commit|bunx --bun commit"
+      },
+      {
+        "command": ".qwen/hooks/pre-commit-drift-check.sh",
+        "timeout": 60,
+        "matcher": "git commit|git merge|bun run commit|bunx commit|bunx --bun commit"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".qwen/hooks/context-monitor.sh",
+        "timeout": 5
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": ".qwen/hooks/session-persist.sh",
+        "timeout": 10
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": ".qwen/hooks/session-start.sh",
+        "timeout": 15
+      }
+    ]
+  }
+}

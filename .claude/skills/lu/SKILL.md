@@ -113,21 +113,22 @@ Skill(skill: "project-new", args: "<project description>")
 Skill(skill: "milestone-new", args: "<milestone description>")
 ```
 
-**TRIVIAL / SIMPLE tasks:**
+**Task routing (via state machine or gate checks):**
+
+For phase work, query the state machine or use `luca_gate_check` to determine which steps should run based on the classified complexity:
+
+1. Check `research` gate (if required/optional): `Skill(skill: "phase-research")`
+2. Check `discussion` gate (if required/optional/run): `Skill(skill: "phase-discuss")`
+3. Always plan (if no plans exist): `Skill(skill: "phase-plan")`
+4. Always execute: `Skill(skill: "phase-execute")`
+
+Alternatively, hand off to the `autopilot` skill which handles these state machine checks natively.
+
+**Ad-hoc / Quick task:**
+If task is truly TRIVIAL or SIMPLE AND does not require roadmap planning:
 ```
 Skill(skill: "quick", args: "<task-description>")
 ```
-
-**MODERATE tasks (single phase):**
-1. `Skill(skill: "phase-discuss", args: "<phase-number>")`
-2. `Skill(skill: "phase-plan", args: "<phase-number>")`
-3. `Skill(skill: "phase-execute", args: "<phase-number>")`
-
-**COMPLEX / CRITICAL tasks (full pipeline):**
-1. `Skill(skill: "phase-research", args: "<phase-number>")` — if domain is unfamiliar
-2. `Skill(skill: "phase-discuss", args: "<phase-number>")`
-3. `Skill(skill: "phase-plan", args: "<phase-number>")`
-4. `Skill(skill: "phase-execute", args: "<phase-number>")`
 
 **PR review work:**
 ```

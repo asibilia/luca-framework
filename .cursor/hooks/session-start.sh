@@ -438,7 +438,7 @@ HOOK_PROJECT_DIR_LOCK="$PROJECT_DIR" bun -e "
 # Step 8b: Check for pending developer notes from previous sessions
 NOTES_MSG=""
 if [ -d "$PLANNING_DIR/notes" ]; then
-  PENDING_NOTES=$(ls "$PLANNING_DIR/notes"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  PENDING_NOTES=$(find "$PLANNING_DIR/notes" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
   if [ "$PENDING_NOTES" -gt 0 ]; then
     NOTES_MSG=" $PENDING_NOTES developer note(s) pending."
   fi

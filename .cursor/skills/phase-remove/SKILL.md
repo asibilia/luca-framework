@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Remove Phase
 
 Remove an unstarted future phase from the roadmap and renumber all subsequent phases to maintain a clean, linear sequence.
@@ -119,5 +118,4 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
 - `/phase-plan {next}` — Plan the next phase
 - `/phase-execute {current}` — Continue current execution
-</main>
 </main>

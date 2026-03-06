@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Audit Milestone
 
 Audit milestone completion against original intent with cross-phase code review.
@@ -545,5 +544,4 @@ Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} mo
 **Also available:**
 - `/milestone-gaps` — Create phases to close gaps
 - `/progress` — Review audit results
-</main>
 </main>

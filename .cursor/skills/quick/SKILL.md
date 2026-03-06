@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Quick
 
 Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
@@ -324,5 +323,4 @@ Ready for next task: /quick
 
 - `/quick` — Run another quick task
 - `/help` — See all available commands
-</main>
 </main>

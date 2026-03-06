@@ -5,20 +5,22 @@
  * graceful JSON file fallback. Write functions call SpacetimeDB reducers.
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands:
- *   read-complexity  — Read current complexity level (graceful fallback)
- *   read-oversight   — Read current oversight level (graceful fallback)
- *   read-phase       — Read current phase info (graceful fallback)
- *   read-status      — Read comprehensive workflow status (graceful fallback)
- *   read-field       — Read an arbitrary context field (errors on missing state)
- *   read-ledger      — Read session ledger entries with optional filters
- *   set-field        — Set an allowlisted context field + persist + regenerate STATE.md
- *   transition       — Send event + persist + update STATE.md atomically
- *   snapshot         — Generate/update STATE.md from current state
- *   ensure-init      — Initialize state if not already initialized
- *   gate-check       — Check if a named gate is enabled
- *   suspend          — Create checkpoint and suspend current phase
- *   resume-phase     — Load checkpoint and resume a suspended phase
+ * Subcommands (15):
+ *   read-complexity        — Read current complexity level (graceful fallback)
+ *   read-oversight         — Read current oversight level (graceful fallback)
+ *   read-phase             — Read current phase info (graceful fallback)
+ *   read-status            — Read comprehensive workflow status (graceful fallback)
+ *   read-field             — Read an arbitrary context field (errors on missing state)
+ *   read-ledger            — Read session ledger entries with optional filters
+ *   set-field              — Set an allowlisted context field + persist + regenerate STATE.md
+ *   transition             — Send event + persist + update STATE.md atomically
+ *   snapshot               — Generate/update STATE.md from current state
+ *   ensure-init            — Initialize state if not already initialized
+ *   gate-check             — Check if a named gate is enabled
+ *   suspend                — Create checkpoint and suspend current phase
+ *   resume-phase           — Load checkpoint and resume a suspended phase
+ *   emit-event             — Emit a fire-and-forget observer event to SpacetimeDB
+ *   emit-context-snapshot  — Emit a context-window snapshot to SpacetimeDB
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -37,6 +39,8 @@
  *   luca-state gate-check --gate=confirm_plan
  *   luca-state suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
  *   luca-state resume-phase --phase=42
+ *   luca-state emit-event --type=session.start [--session=abc] [--agent=name] [--data=json]
+ *   luca-state emit-context-snapshot --session=abc [--percent=50] [--messages=100] [--tokens=5000]
  *
  * @module luca-state/bridge
  */
@@ -73,6 +77,68 @@ import { readWithFallback } from "./__helpers/read-with-fallback";
 
 /** Default path for the STATE.md file */
 const STATE_MD_PATH = ".planning/STATE.md";
+
+// ─── Dual-Write Divergence Detection ────────────────────────────────────────
+
+/**
+ * Verify that the local JSON file matches the intended state after a dual-write.
+ *
+ * Reads the persisted JSON file and compares key fields (state, complexity,
+ * phase) against the intended values. Logs a warning if divergence is found.
+ * Best-effort only -- never throws.
+ *
+ * @param intended - The intended field values to verify against
+ */
+async function checkDualWriteDivergence(intended: {
+  state: string;
+  complexity: string;
+  phase: string | number | null;
+}): Promise<void> {
+  try {
+    const file = Bun.file(STATE_FILE_PATH);
+    if (!(await file.exists())) return;
+
+    const written = sanitizeJsonParse(await file.text()) as {
+      value?: unknown;
+      context?: Record<string, unknown>;
+    };
+    const ctx = written.context ?? {};
+    const divergences: string[] = [];
+
+    if (
+      written.value !== undefined &&
+      String(written.value) !== intended.state
+    ) {
+      divergences.push(
+        `state: json="${String(written.value)}" vs intended="${intended.state}"`,
+      );
+    }
+    if (
+      ctx.complexity !== undefined &&
+      String(ctx.complexity) !== intended.complexity
+    ) {
+      divergences.push(
+        `complexity: json="${ctx.complexity}" vs intended="${intended.complexity}"`,
+      );
+    }
+    if (
+      ctx.current_phase !== undefined &&
+      String(ctx.current_phase ?? "") !== String(intended.phase ?? "")
+    ) {
+      divergences.push(
+        `phase: json="${ctx.current_phase}" vs intended="${intended.phase}"`,
+      );
+    }
+
+    if (divergences.length > 0) {
+      console.warn(
+        `[dual-write] Divergence detected: ${divergences.join(", ")}`,
+      );
+    }
+  } catch {
+    // Divergence check is best-effort
+  }
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -501,6 +567,13 @@ async function handleSetField(args: string[]): Promise<void> {
   // Persist updated context to local JSON file (dual-write)
   const updatedJson = { ...snapshotJson!, context: updatedContext };
   await Bun.write(STATE_FILE_PATH, JSON.stringify(updatedJson, null, 2));
+
+  // Verify dual-write consistency
+  await checkDualWriteDivergence({
+    state: String(snapshotJson!.value),
+    complexity: (updatedContext.complexity as string) ?? "TRIVIAL",
+    phase: (updatedContext.current_phase as string | number | null) ?? null,
+  });
 
   // Optional: update STATE.md gated by env var
   if (process.env.LUCA_EXPORT_MD === "true") {

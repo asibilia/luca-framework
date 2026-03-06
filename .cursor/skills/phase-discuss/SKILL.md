@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Discuss Phase
 
 Extract implementation decisions that downstream agents need — researcher and planner will use CONTEXT.md to know what to investigate and what choices are locked.
@@ -179,5 +178,4 @@ Default:
 
 - `/phase-research {phase}` — Deep research for niche/complex domains
 - `/progress` — Check overall project status
-</main>
 </main>

@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Set Profile
 
 Quick switch model profile for Luca agents.
@@ -70,5 +69,4 @@ Profile updated to `{profile}`. Takes effect on next agent invocation.
 **Common follow-ups:**
 - `/progress` — Continue your work
 - `/config-settings` — Adjust other settings
-</main>
 </main>

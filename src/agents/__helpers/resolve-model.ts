@@ -10,6 +10,7 @@
  * 1. Agent's complexity_overrides[level] (most specific)
  * 2. Agent's model_routing.default_model (agent preference)
  * 3. Agent's model_tier mapped to ModelId (tier default)
+ * 3.5. Routing table lookup via resolveModelForAgent (centralized table)
  * 4. Agent's purpose mapped via ROLE_MODEL_DEFAULTS (role default)
  * 5. Complexity gate's default_model (system-level default)
  * 6. "sonnet" (universal fallback)
@@ -28,9 +29,11 @@ import {
   ROLE_MODEL_DEFAULTS,
   ZONE_MODEL_ADJUSTMENTS,
   type ComplexityGate,
+  type ComplexityLevel,
   type ModelId,
   type RolePurpose,
 } from "~/complexity/__schemas/complexity.schemas";
+import { resolveModelForAgent } from "~/complexity/__helpers/model-routing";
 import type { QualityZone } from "~/planner/__schemas/planner.schemas";
 
 /**
@@ -49,6 +52,7 @@ export interface ModelRoutingDecision {
     | "complexity_override"
     | "agent_default"
     | "model_tier"
+    | "routing_table"
     | "role_default"
     | "gate_default"
     | "universal_fallback"
@@ -66,6 +70,7 @@ export interface ModelRoutingDecision {
  * 1. Agent's complexity_overrides[level] (most specific)
  * 2. Agent's model_routing.default_model (agent preference)
  * 3. Agent's model_tier mapped to ModelId (tier default)
+ * 3.5. Routing table lookup via resolveModelForAgent (centralized table)
  * 4. Agent's purpose mapped via ROLE_MODEL_DEFAULTS (role default)
  * 5. Complexity gate's default_model (system-level default)
  * 6. "sonnet" (universal fallback)
@@ -73,6 +78,7 @@ export interface ModelRoutingDecision {
  * @param agentFrontmatter - The agent's frontmatter configuration
  * @param complexityLevel - Current task complexity level (e.g., "MODERATE")
  * @param complexityGate - The complexity gate for the current level
+ * @param agentName - Optional agent name for routing table lookup (step 3.5)
  * @returns The resolved model identifier
  *
  * @example
@@ -81,15 +87,17 @@ export interface ModelRoutingDecision {
  * resolveModel(
  *   { model_routing: { default_model: "sonnet", complexity_overrides: { CRITICAL: "opus" } } },
  *   "CRITICAL",
- *   { default_model: "sonnet" }
+ *   { default_model: "sonnet" },
+ *   "lu-executor"
  * ) // Returns "opus"
  *
- * // Agent with purpose "researcher" but no routing: role default wins
+ * // Agent in routing table with no frontmatter overrides: table wins
  * resolveModel(
- *   { purpose: "researcher" },
- *   "MODERATE",
- *   { default_model: "sonnet" }
- * ) // Returns "opus"
+ *   {},
+ *   "CRITICAL",
+ *   { default_model: "sonnet" },
+ *   "lu-executor"
+ * ) // Returns "opus" (from routing table: capable -> opus)
  * ```
  */
 export function resolveModel(
@@ -99,6 +107,7 @@ export function resolveModel(
   >,
   complexityLevel: string,
   complexityGate: Pick<ComplexityGate, "default_model">,
+  agentName?: string,
 ): ModelId {
   // 1. Agent complexity override (most specific)
   const overrides = agentFrontmatter.model_routing?.complexity_overrides;
@@ -114,6 +123,15 @@ export function resolveModel(
   // 3. Agent model tier -> mapped to ModelId
   if (agentFrontmatter.model_tier) {
     return MODEL_TIER_TO_MODEL[agentFrontmatter.model_tier];
+  }
+
+  // 3.5. Routing table lookup (centralized model routing table)
+  if (agentName) {
+    const routingTier = resolveModelForAgent(
+      agentName,
+      complexityLevel as ComplexityLevel,
+    );
+    return MODEL_TIER_TO_MODEL[routingTier];
   }
 
   // 4. Agent purpose -> role-based default
@@ -146,6 +164,7 @@ export function resolveModel(
  * @param complexityLevel - Current task complexity level
  * @param complexityGate - The complexity gate for the current level
  * @param zone - Current quality zone from context monitor
+ * @param agentName - Optional agent name for routing table lookup
  * @returns The resolved model identifier (possibly zone-adjusted)
  *
  * @example
@@ -175,11 +194,13 @@ export function resolveModelWithZone(
   complexityLevel: string,
   complexityGate: Pick<ComplexityGate, "default_model">,
   zone: QualityZone,
+  agentName?: string,
 ): ModelId {
   const baseModel = resolveModel(
     agentFrontmatter,
     complexityLevel,
     complexityGate,
+    agentName,
   );
 
   const adjustment = ZONE_MODEL_ADJUSTMENTS[zone];
@@ -201,6 +222,7 @@ export function resolveModelWithZone(
  * @param complexityLevel - Current task complexity level
  * @param complexityGate - The complexity gate for the current level
  * @param zone - Optional quality zone for zone-aware adjustment
+ * @param agentName - Optional agent name for routing table lookup
  * @returns A ModelRoutingDecision with model, reason, and source
  *
  * @example
@@ -225,6 +247,7 @@ export function resolveModelWithDecision(
   complexityLevel: string,
   complexityGate: Pick<ComplexityGate, "default_model">,
   zone?: QualityZone,
+  agentName?: string,
 ): ModelRoutingDecision {
   // Determine base decision through priority chain
   const overrides = agentFrontmatter.model_routing?.complexity_overrides;
@@ -244,6 +267,15 @@ export function resolveModelWithDecision(
     model = MODEL_TIER_TO_MODEL[agentFrontmatter.model_tier];
     reason = `Model tier "${agentFrontmatter.model_tier}" maps to ${model}`;
     source = "model_tier";
+  } else if (agentName) {
+    // 3.5. Routing table lookup
+    const routingTier = resolveModelForAgent(
+      agentName,
+      complexityLevel as ComplexityLevel,
+    );
+    model = MODEL_TIER_TO_MODEL[routingTier];
+    reason = `Routing table for "${agentName}" at ${complexityLevel}: tier "${routingTier}" maps to ${model}`;
+    source = "routing_table";
   } else if (agentFrontmatter.purpose) {
     const roleModel =
       ROLE_MODEL_DEFAULTS[agentFrontmatter.purpose as RolePurpose];

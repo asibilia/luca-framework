@@ -79,6 +79,14 @@ export type {
   RootCauseTribunalResult,
 } from "./__schemas/root-cause-tribunal.schemas";
 
+// Health check
+export {
+  checkAgentHealth,
+  checkAllAgentsHealth,
+} from "./__helpers/health-check";
+
+export type { HealthCheckResult } from "./__helpers/health-check";
+
 // Root cause tribunal helpers
 export {
   detectProposedFix,
@@ -88,3 +96,15 @@ export {
   buildArbiterPrompt,
   resolveRootCauseTribunal,
 } from "./__helpers/root-cause-tribunal";
+
+// Interop scanner
+export {
+  InteropFindingSchema,
+  InteropReportSchema,
+  scanAgentInterop,
+} from "./__helpers/interop-scanner";
+
+export type {
+  InteropFinding,
+  InteropReport,
+} from "./__helpers/interop-scanner";

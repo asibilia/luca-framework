@@ -47,7 +47,7 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * If you modify this function, update all copies:
  * - packages/luca-framework/src/utils/sanitize.ts (this file)
  * - packages/luca-framework/src/state/sanitize.ts
- * - src/shared/validation-utils.ts
+ * - src/shared/__helpers/validation-utils.ts
  */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);

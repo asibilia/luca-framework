@@ -69,6 +69,9 @@ export type WorkflowMachineInput = Partial<WorkflowContext> & {
 
 // ─── Machine Definition ──────────────────────────────────────────────────────
 
+/** Default idle timeout in milliseconds (5 minutes) */
+const DEFAULT_IDLE_TIMEOUT_MS = 300_000;
+
 export const workflowMachine = setup({
   types: {
     context: {} as WorkflowContext,
@@ -79,6 +82,15 @@ export const workflowMachine = setup({
     phaseActor: phaseActorMachine,
   },
   guards: workflowGuards,
+  delays: {
+    /** Dynamic idle timeout — reads from config or uses 5-minute default */
+    idleTimeout: ({ context }) => {
+      const configMs = get(context, "workflow_config.idle_timeout_ms");
+      return typeof configMs === "number" && configMs > 0
+        ? configMs
+        : DEFAULT_IDLE_TIMEOUT_MS;
+    },
+  },
   actions: {
     /** Record the timestamp of the current transition */
     recordTransition: assign({
@@ -267,6 +279,12 @@ export const workflowMachine = setup({
 
   states: {
     idle: {
+      after: {
+        idleTimeout: {
+          target: "failed",
+          actions: ["recordTransition"],
+        },
+      },
       on: {
         START: {
           target: "preflight",
@@ -434,6 +452,12 @@ export const workflowMachine = setup({
     },
 
     paused: {
+      after: {
+        idleTimeout: {
+          target: "failed",
+          actions: ["recordTransition"],
+        },
+      },
       on: {
         RESUME: {
           target: "executing",
@@ -447,6 +471,12 @@ export const workflowMachine = setup({
     },
 
     suspended: {
+      after: {
+        idleTimeout: {
+          target: "failed",
+          actions: ["recordTransition"],
+        },
+      },
       on: {
         RESUME_PHASE: {
           target: "executing",

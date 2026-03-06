@@ -7,6 +7,7 @@ import { useTable, useReducer } from "spacetimedb/react";
 
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { tables, reducers } from "~/module_bindings";
 
 /**
@@ -96,7 +97,7 @@ export default function NotesPage() {
             onClick={() =>
               setPriority((p) => (p === "next" ? "whenever" : "next"))
             }
-            className={`rounded-md border px-3 py-2 font-mono text-xs transition-colors ${
+            className={`rounded-md border px-3 py-2 font-mono text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 ${
               priority === "next"
                 ? "border-warning bg-warning/10 text-warning"
                 : "border-border bg-muted text-muted-foreground"
@@ -107,7 +108,7 @@ export default function NotesPage() {
           <button
             type="submit"
             disabled={!text.trim() || submitting}
-            className="rounded-md bg-accent px-4 py-2 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
             {submitting ? "Adding..." : "Add Note"}
           </button>
@@ -116,49 +117,51 @@ export default function NotesPage() {
       </form>
 
       {/* Pending notes */}
-      <div className="flex flex-col gap-3">
-        <h2 className="font-mono text-sm font-medium text-foreground">
-          Pending ({pending.length})
-        </h2>
-        {isLoading ? (
-          <EmptyState message="Loading notes..." />
-        ) : pending.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <p className="font-mono text-sm text-muted-foreground">
-              No pending notes. Use the form above or{" "}
-              <code className="rounded bg-muted px-1 py-0.5">/note</code> to add
-              one.
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {pending.map((note) => (
-              <div
-                key={note.filename}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
-              >
-                <span
-                  className={`mt-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium ${
-                    note.priority === "next"
-                      ? "bg-warning/10 text-warning"
-                      : "bg-muted text-muted-foreground"
-                  }`}
+      <ErrorBoundary name="PendingNotesList">
+        <div className="flex flex-col gap-3">
+          <h2 className="font-mono text-sm font-medium text-foreground">
+            Pending ({pending.length})
+          </h2>
+          {isLoading ? (
+            <EmptyState message="Loading notes..." />
+          ) : pending.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <p className="font-mono text-sm text-muted-foreground">
+                No pending notes. Use the form above or{" "}
+                <code className="rounded bg-muted px-1 py-0.5">/note</code> to add
+                one.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {pending.map((note) => (
+                <div
+                  key={note.filename}
+                  className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
                 >
-                  {note.priority}
-                </span>
-                <div className="flex-1">
-                  <p className="font-mono text-sm text-foreground">
-                    {note.body}
-                  </p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {formatAge(note.createdAt)}
-                  </p>
+                  <span
+                    className={`mt-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium ${
+                      note.priority === "next"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {note.priority}
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-mono text-sm text-foreground">
+                      {note.body}
+                    </p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      {formatAge(note.createdAt)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </ErrorBoundary>
 
       {/* Done notes (collapsible) */}
       {done.length > 0 && (
@@ -166,9 +169,9 @@ export default function NotesPage() {
           <button
             type="button"
             onClick={() => setShowDone((s) => !s)}
-            className="flex items-center gap-2 font-mono text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 font-mono text-sm font-medium text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
-            <span>{showDone ? "v" : ">"}</span>
+            <span aria-hidden="true">{showDone ? "v" : ">"}</span>
             Consumed ({done.length})
           </button>
           {showDone && (

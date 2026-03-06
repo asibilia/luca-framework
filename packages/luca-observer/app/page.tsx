@@ -4,6 +4,7 @@ import { PageContainer } from "~/components/layout/page-container";
 import { OverviewCards } from "~/components/dashboard/overview-cards";
 import { RecentEvents } from "~/components/dashboard/recent-events";
 import { RecentTransitions } from "~/components/dashboard/recent-transitions";
+import { TodoTracker } from "~/components/dashboard/todo-tracker";
 import { useEventStream } from "~/hooks/use-event-stream";
 import { useLedger } from "~/hooks/use-ledger";
 
@@ -37,6 +38,7 @@ export default function DashboardPage() {
       }
     >
       <OverviewCards events={events} />
+      <TodoTracker />
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentEvents events={events} onClear={clear} />
         <RecentTransitions entries={ledgerEntries} />
