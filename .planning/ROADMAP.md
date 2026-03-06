@@ -64,9 +64,9 @@
 
 **Goal:** Fix data integrity issues in SpacetimeDB
 
-- [ ] Implement TTL cleanup for high-volume SpacetimeDB tables (#42)
-- [ ] Fix sequence number race condition in ledger (#43)
-- [ ] Add unique constraints to singleton SpacetimeDB tables (#48)
+- [x] Implement TTL cleanup for high-volume SpacetimeDB tables (#42)
+- [x] Fix sequence number race condition in ledger (#43)
+- [x] Add unique constraints to singleton SpacetimeDB tables (#48)
 
 ### Phase 128: Bridge & Build DX (NEW)
 
