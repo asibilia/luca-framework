@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { join } from "node:path";
+import { join } from "pathe";
 
 import type {
   FileTreeEntry,

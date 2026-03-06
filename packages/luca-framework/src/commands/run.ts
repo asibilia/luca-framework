@@ -1,3 +1,4 @@
+// existsSync retained: Bun.file() does not support directory existence checks
 import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
 import { resolve, dirname } from "pathe";

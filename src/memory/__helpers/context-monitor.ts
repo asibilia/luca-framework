@@ -13,7 +13,7 @@ import {
   serializeWorkingMemory,
   addSection,
 } from "./working-memory.ts";
-import { join } from "node:path";
+import { join } from "pathe";
 
 /** Default context file paths relative to project root. */
 const DEFAULT_CONTEXT_FILES = {

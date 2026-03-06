@@ -10,8 +10,8 @@
  * @module memory/suspend-checkpoint
  */
 import { z } from "zod";
-import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { join } from "pathe";
+import { mkdir } from "node:fs/promises";
 import type { Result } from "~/shared/__schemas/shared.schemas";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export async function createSuspendCheckpoint(
     }
 
     const dirPath = join(process.cwd(), CHECKPOINTS_DIR);
-    mkdirSync(dirPath, { recursive: true });
+    await mkdir(dirPath, { recursive: true });
 
     const filePath = checkpointPath(parsed.data.phase_id);
     await Bun.write(filePath, JSON.stringify(parsed.data, null, 2));
@@ -177,8 +177,8 @@ export async function clearSuspendCheckpoint(
     const file = Bun.file(filePath);
 
     if (await file.exists()) {
-      const { unlinkSync } = await import("node:fs");
-      unlinkSync(filePath);
+      const { unlink } = await import("node:fs/promises");
+      await unlink(filePath);
     }
 
     return { success: true, data: undefined };

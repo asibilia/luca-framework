@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
 import { readPackageJSON } from "pkg-types";
 import { join } from "pathe";
 import type { ProjectContext } from "../types";
@@ -37,17 +37,17 @@ export async function detectProjectContext(
     }
 
     // Check for TypeScript
+    // Bun.file().exists() for file check; existsSync kept for dirs below
     context.hasTypeScript = !!(
-      deps["typescript"] || existsSync(join(cwd, "tsconfig.json"))
+      deps["typescript"] ||
+      (await Bun.file(join(cwd, "tsconfig.json")).exists())
     );
   } catch {
     // No package.json - that's fine
   }
 
-  // Check for git
+  // Directory existence checks — existsSync required (Bun.file doesn't support dirs)
   context.hasGit = existsSync(join(cwd, ".git"));
-
-  // Check for existing Luca installation
   context.hasLuca = existsSync(join(cwd, ".cursor", "luca"));
 
   // Detect installed harness platforms

@@ -1,5 +1,4 @@
 import { createHash } from "crypto";
-import { readFileSync } from "node:fs";
 import { join, relative } from "pathe";
 import { sanitizeJsonParse } from "./sanitize";
 import type {
@@ -19,24 +18,22 @@ import type {
  */
 declare const __LUCA_VERSION__: string | undefined;
 
-export const LUCA_VERSION: string =
-  typeof __LUCA_VERSION__ !== "undefined"
-    ? __LUCA_VERSION__
-    : (() => {
-        try {
-          // Dev-mode fallback: read version from package.json
-          const pkgPath = join(
-            import.meta.dir ?? ".",
-            "..",
-            "..",
-            "package.json",
-          );
-          const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-          return pkg.version ?? "0.0.0-dev";
-        } catch {
-          return "0.0.0-dev";
-        }
-      })();
+/**
+ * Resolve the package version. At build time, __LUCA_VERSION__ is injected.
+ * In dev mode, reads package.json via Bun.file (async, cached via top-level await).
+ */
+async function resolveVersion(): Promise<string> {
+  if (typeof __LUCA_VERSION__ !== "undefined") return __LUCA_VERSION__;
+  try {
+    const pkgPath = join(import.meta.dir ?? ".", "..", "..", "package.json");
+    const pkg = JSON.parse(await Bun.file(pkgPath).text());
+    return pkg.version ?? "0.0.0-dev";
+  } catch {
+    return "0.0.0-dev";
+  }
+}
+
+export const LUCA_VERSION: string = await resolveVersion();
 
 /**
  * Calculate SHA-256 hash of file contents.

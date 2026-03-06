@@ -23,7 +23,7 @@ import type {
   MiddlewareContext,
   CheckResult,
 } from "~/harness/__schemas/harness.schemas";
-import { join } from "node:path";
+import { join } from "pathe";
 
 const HARNESS_RUNS_DIR = ".planning/harness-runs";
 
