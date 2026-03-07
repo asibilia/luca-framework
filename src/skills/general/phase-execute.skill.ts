@@ -97,15 +97,17 @@ After verification (pass or fail):
 
 First, read the required context:
 
+Use MuninnDB to recall session context and past learnings:
+
+\`\`\`
+# Recall current session findings
+mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
+
+# Recall relevant patterns and past decisions
+mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and past decisions for this phase")
+\`\`\`
+
 \`\`\`bash
-# Primary: Read working memory from memory bridge (structured JSON)
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "No working memory")
-# Primary: Read memory summary from memory bridge (compact index)
-MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
-# Fallback: Read MEMORY.md directly
-MEMORY_CONTENT=$(cat .planning/MEMORY.md 2>/dev/null || echo "No memory file")
 VERIFICATION_RESULT="[from verifier return value]"
 \`\`\`
 
@@ -171,11 +173,10 @@ The model tier for lu-learner is resolved via \`resolveModelForAgent("lu-learner
 
 Throughout execution, log to WORKING.md:
 
-\`\`\`bash
-# Primary: Log execution progress via memory bridge
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
-# Fallback: Append directly to WORKING.md
-echo "- $(date -u +%H:%M) [Plan X complete - finding Y]" >> .planning/WORKING.md
+Log execution progress to MuninnDB:
+
+\`\`\`
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [Plan X complete - finding Y]")
 \`\`\`
 
 Track:
@@ -278,11 +279,15 @@ Before executing plans, check for replayable procedures that match the phase obj
 \`\`\`bash
 # Read phase objective from ROADMAP.md or plan files
 PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .planning/ROADMAP.md | tail -1 | sed 's/^[[:space:]]*//')
-
-# Find replayable procedures matching the phase objective
-REPLAY_JSON=$(bun run src/memory/__helpers/bridge.ts find-replayable --task="$PHASE_OBJECTIVE" --threshold=0.7 2>/dev/null || echo '{"replayable":[],"count":0}')
-REPLAY_COUNT=$(echo "$REPLAY_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.count)" 2>/dev/null || echo "0")
 \`\`\`
+
+Recall replayable procedures from MuninnDB:
+
+\`\`\`
+REPLAY_RESULT = mcp__muninn__muninn_recall(vault: "default", context: "replayable procedures for $PHASE_OBJECTIVE")
+\`\`\`
+
+Parse the recall result to determine if relevant procedures exist (REPLAY_COUNT).
 
 **If replayable procedures found (REPLAY_COUNT > 0):**
 
@@ -344,10 +349,12 @@ PLAN_03_CONTENT=$(cat "{plan_03_path}")
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
-# Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
+\`\`\`
+
+Recall session context from MuninnDB:
+
+\`\`\`
+mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
 \`\`\`
 
 Then spawn all executors for the wave in PARALLEL (same message, multiple Task calls):
@@ -899,18 +906,15 @@ Pass results to Step 7 (verifier context):
 
 After harness verification completes, record feedback for each pre-plan that was followed. This closes the learning loop: procedure replays feed back into procedure scoring.
 
-\`\`\`bash
-# For each pre-plan that was injected during execution:
+For each pre-plan that was injected during execution, record the outcome in MuninnDB:
+
+\`\`\`
+# For each procedure that was replayed:
 # HARNESS_PASSED is true if harness_status === "passed", false otherwise
 # EXECUTION_DURATION_MS is computed from phase start time
 
-for PROC_ID in $INJECTED_PROCEDURE_IDS; do
-  bun run src/memory/__helpers/bridge.ts record-replay-outcome \\
-    --procedure-id="$PROC_ID" \\
-    --success=$HARNESS_PASSED \\
-    --duration-ms=$EXECUTION_DURATION_MS \\
-    2>/dev/null || true
-done
+for each PROC_ID in INJECTED_PROCEDURE_IDS:
+  mcp__muninn__muninn_evolve(vault: "default", id: "procedure:$PROC_ID", content: "replay outcome: success=$HARNESS_PASSED, duration_ms=$EXECUTION_DURATION_MS")
 \`\`\`
 
 This ensures that:
@@ -931,12 +935,14 @@ ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
-# Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \\;)
 PLAN_CONTENTS=$(find $PHASE_DIR -name "*-PLAN.md" -exec cat {} \\;)
+\`\`\`
+
+Recall session context from MuninnDB:
+
+\`\`\`
+mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings for phase verification")
 \`\`\`
 
 Then spawn the verifier:
