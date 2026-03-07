@@ -36,9 +36,7 @@ bun install
 All Luca projects have a `.planning/` directory at the root. This is where your project's "brain" lives.
 
 - `config.json`: Project configuration and settings.
-- `BRAIN.md`: Project identity, stack, architecture patterns, and conventions.
-- `MEMORY.md`: Long-term learning — patterns, decisions, pitfalls, and preferences.
-- `WORKING.md`: Session memory for active task context.
+- Memory is stored in **MuninnDB** (via MCP tools): brain tree for project identity, engrams for long-term learnings (patterns, decisions, pitfalls), and session engrams for active task context.
 - `phases/`: Contains your development plans and summaries.
 
 ### 2. Plans (`PLAN.md`)

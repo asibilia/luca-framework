@@ -9,7 +9,7 @@
 
 Luca is an **agentic development platform** designed to be installed into any application via npm and used with Claude Code. It provides:
 
-- **Context management** — structured memory tiers (BRAIN/MEMORY/WORKING/PROCEDURES) that prevent context rot and improve accuracy
+- **Context management** — MuninnDB-backed memory (brain tree, engrams, session context) that prevents context rot and improves accuracy
 - **Workflow orchestration** — spec-driven development with complexity gating, verification harnesses, and cognitive pre-flight
 - **Cost optimization** — token budgets, compression, and context-tier resolution to minimize API spend
 - **Real-time observability** — a live dashboard (luca-observer) backed by SpacetimeDB so users always know what their agent team is doing
@@ -51,8 +51,8 @@ luca-framework/                         # Monorepo root
 │   ├── agents/                         # T2 Entity — agent definitions
 │   ├── skills/                         # T2 Entity — skill definitions
 │   ├── rules/                          # T2 Entity — rule definitions
-│   ├── memory/                         # T1 Core — memory system
-│   │   └── __helpers/bridge.ts         # Memory bridge (SpacetimeDB reads/writes)
+│   ├── memory/                         # T1 Core — memory system (MuninnDB-backed)
+│   │   └── __helpers/bridge.ts         # MuninnDB MCP integration helpers
 │   ├── context/                        # T1 Core — context tier resolution
 │   ├── planner/                        # T1 Core — cost model, scheduler, WSJF scoring
 │   ├── iteration/                      # T1 Core — budget, convergence, checkpoint
@@ -68,9 +68,7 @@ luca-framework/                         # Monorepo root
 │   ├── state.json                      # Typed state machine snapshot
 │   ├── config.json                     # Workflow configuration
 │   ├── ROADMAP.md                      # Phase roadmap
-│   ├── BRAIN.md                        # Project identity
-│   ├── MEMORY.md                       # Long-term learnings
-│   └── WORKING.md                      # Session working memory
+│   └── (Memory stored in MuninnDB: brain tree, engrams, session context)
 │
 └── .claude/                            # Generated output (never edit directly)
     ├── agents/                         # Compiled agent definitions
@@ -137,45 +135,47 @@ All reads query SpacetimeDB first, fall back to local JSON. All writes use dual-
 
 ---
 
-## 4. Memory System
+## 4. Memory System (MuninnDB)
 
-### Four Tiers
+### Memory Tiers
 
-| Tier          | File                      | Purpose                                  | Persistence |
-| ------------- | ------------------------- | ---------------------------------------- | ----------- |
-| BRAIN.md      | `.planning/BRAIN.md`      | Project identity, stack, conventions     | Permanent   |
-| MEMORY.md     | `.planning/MEMORY.md`     | Long-term learnings, patterns, decisions | Permanent   |
-| WORKING.md    | `.planning/WORKING.md`    | Session context, hypotheses, findings    | Per-session |
-| PROCEDURES.md | `.planning/PROCEDURES.md` | Operational procedures, runbooks         | Permanent   |
+Luca's memory is stored in **MuninnDB** via MCP tools, organized into engrams within the `"default"` vault:
 
-### Memory Bridge
+| Tier       | MuninnDB Location                                                | Purpose                                  | Persistence |
+| ---------- | ---------------------------------------------------------------- | ---------------------------------------- | ----------- |
+| Brain      | Brain tree (`brain:project-identity`)                            | Project identity, stack, conventions     | Permanent   |
+| Long-term  | Engrams (`pattern:*`, `decision:*`, `pitfall:*`, `preference:*`) | Long-term learnings, patterns, decisions | Permanent   |
+| Session    | Session engrams (`session:*`)                                    | Session context, hypotheses, findings    | Per-session |
+| Procedures | Engrams (`procedure:*`)                                          | Operational procedures, runbooks         | Permanent   |
 
-**File**: `src/memory/__helpers/bridge.ts`
+### MuninnDB MCP Tools
 
-The memory bridge manages read/write for all four tiers with SpacetimeDB integration:
+Memory operations use MuninnDB MCP tools:
 
-| Operation       | SpacetimeDB Path                                             | Local Fallback                        |
-| --------------- | ------------------------------------------------------------ | ------------------------------------- |
-| Read BRAIN      | SQL: `SELECT brain_json FROM memory_files WHERE id = 1`      | `Bun.file('.planning/BRAIN.md')`      |
-| Read MEMORY     | SQL: `SELECT memory_json FROM memory_files WHERE id = 1`     | `Bun.file('.planning/MEMORY.md')`     |
-| Read WORKING    | SQL: `SELECT working_json FROM memory_files WHERE id = 1`    | `Bun.file('.planning/WORKING.md')`    |
-| Read PROCEDURES | SQL: `SELECT procedures_json FROM memory_files WHERE id = 1` | `Bun.file('.planning/PROCEDURES.md')` |
-| Write any tier  | Reducer: `update_memory_files` + local file write            | Local file only                       |
+| Operation     | MuninnDB MCP Tool                                                  |
+| ------------- | ------------------------------------------------------------------ |
+| Store memory  | `mcp__muninn__muninn_remember(vault: "default", concept, content)` |
+| Recall memory | `mcp__muninn__muninn_recall(vault: "default", context)`            |
+| Read specific | `mcp__muninn__muninn_read(vault: "default", id)`                   |
+| Link memories | `mcp__muninn__muninn_link(vault: "default", source_id, target_id)` |
+| Batch store   | `mcp__muninn__muninn_remember_batch(vault: "default", memories[])` |
+| Brain tree    | `mcp__muninn__muninn_remember_tree(vault: "default", tree)`        |
+| Recall tree   | `mcp__muninn__muninn_recall_tree(vault: "default", root_id)`       |
 
 ### Cognitive Pre-Flight
 
-Before major operations, Luca loads:
+Before major operations, Luca loads from MuninnDB:
 
-1. BRAIN.md → project conventions
-2. Selective recall from MEMORY.md → relevant patterns, decisions, pitfalls
-3. Initialize WORKING.md → session context
+1. Recall brain tree from MuninnDB → project conventions
+2. Semantic recall from MuninnDB → relevant patterns, decisions, pitfalls
+3. Initialize MuninnDB session → session context
 4. Generate intuition flags → RISK, CAUTION, OPPORTUNITY, UNKNOWN
 
 ### Context Pruning and Auto-Compaction
 
 Context pruning and auto-compaction live within the memory domain (`src/memory/`) because they are fundamentally memory management operations:
 
-- **Context pruning** (`src/memory/__helpers/context-pruning.ts`): Removes stale content from WORKING.md sections based on configurable retention policies. Activates at the "degrading" quality zone. Pure functions -- caller handles I/O.
+- **Context pruning** (`src/memory/__helpers/context-pruning.ts`): Removes stale content from session memory based on configurable retention policies. Activates at the "degrading" quality zone. Pure functions -- caller handles I/O.
 - **Auto-compaction** (`src/memory/__helpers/auto-compaction.ts`): Scores sections by age/relevance/size and compacts the lowest-value sections into summaries. Also triggers at the "degrading" zone. Pure functions -- caller handles I/O.
 
 Both modules share schemas defined in `src/memory/__schemas/memory.schemas.ts` (retention policies, pruning events/results, section scores, compaction config/results) and depend on the memory domain's token estimator. This placement is architecturally correct: context pruning manages working memory size and token budgets, which is squarely within the memory domain's responsibility.
@@ -323,7 +323,7 @@ Args are flat JSON — **not** wrapped in `{"args": {...}}`.
 │                     WRITE PATH (Fire-and-Forget)                │
 │                                                                 │
 │  luca-framework (bridge.ts, persistence.ts, ledger.ts)          │
-│  src/memory/__helpers/bridge.ts                                 │
+│  MuninnDB MCP tools (memory reads/writes)                       │
 │  .claude/hooks/ (shell scripts via curl)                        │
 │       │                                                         │
 │       ▼                                                         │
@@ -340,15 +340,15 @@ Args are flat JSON — **not** wrapped in `{"args": {...}}`.
 │                     READ PATH (SQL + Fallback)                  │
 │                                                                 │
 │  luca-framework (bridge.ts, persistence.ts, ledger.ts)          │
-│  src/memory/__helpers/bridge.ts                                 │
+│  MuninnDB MCP tools (memory reads/writes)                       │
 │       │                                                         │
 │       ▼                                                         │
 │  spacetimedb-client.ts → HTTP POST /v1/database/{db}/sql        │
 │       │                                                         │
 │       ├─── SUCCESS → parse positional rows → return typed data  │
 │       │                                                         │
-│       └─── FAILURE → fallback to local JSON/MD files            │
-│            (state.json, BRAIN.md, MEMORY.md, etc.)              │
+│       └─── FAILURE → fallback to local JSON files               │
+│            (state.json, etc.)                                    │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -401,7 +401,7 @@ Args are flat JSON — **not** wrapped in `{"args": {...}}`.
 | `/events`     | Live event feed with filtering                                      | observer_events                   |
 | `/iterations` | Per-iteration convergence tracking with charts                      | iteration_records                 |
 | `/harness`    | Verification harness results                                        | harness_results                   |
-| `/memory`     | BRAIN/MEMORY/WORKING/PROCEDURES viewer                              | memory_files                      |
+| `/memory`     | MuninnDB memory viewer (brain, engrams, session)                    | memory_files                      |
 | `/cost`       | Session cost breakdown, token usage trends                          | cost_tracking, token_usage        |
 | `/decisions`  | Decision audit trail with rationale                                 | decision_logs                     |
 | `/plan`       | WSJF-scored plan items                                              | session_plans                     |
@@ -457,16 +457,16 @@ The root layout wraps all pages in `<SpacetimeDBProvider>` with a memoized `DbCo
 
 **Source**: `src/hooks/scripts/` → compiled to `.claude/hooks/` via `bun run build:all`
 
-| Hook                     | Trigger                 | Purpose                                                    |
-| ------------------------ | ----------------------- | ---------------------------------------------------------- |
-| `session-start.sh`       | Session start           | Initialize state, load BRAIN.md, start SpacetimeDB session |
-| `post-edit-format.sh`    | After file edit         | Auto-format edited files                                   |
-| `post-edit-typecheck.sh` | After file edit (async) | Type-check changed file                                    |
-| `pre-commit-gate.sh`     | Before git commit       | Run tests + typecheck, block on failure                    |
-| `context-monitor.sh`     | On stop                 | Monitor context usage, warn on degradation                 |
-| `session-persist.sh`     | Session end             | Persist state, extract learnings                           |
-| `observer-event.sh`      | Various                 | Emit events to SpacetimeDB via curl                        |
-| `memory-sync.sh`         | After memory write      | Sync memory files to SpacetimeDB                           |
+| Hook                     | Trigger                 | Purpose                                                                      |
+| ------------------------ | ----------------------- | ---------------------------------------------------------------------------- |
+| `session-start.sh`       | Session start           | Initialize state, recall brain tree from MuninnDB, start SpacetimeDB session |
+| `post-edit-format.sh`    | After file edit         | Auto-format edited files                                                     |
+| `post-edit-typecheck.sh` | After file edit (async) | Type-check changed file                                                      |
+| `pre-commit-gate.sh`     | Before git commit       | Run tests + typecheck, block on failure                                      |
+| `context-monitor.sh`     | On stop                 | Monitor context usage, warn on degradation                                   |
+| `session-persist.sh`     | Session end             | Persist state, extract learnings                                             |
+| `observer-event.sh`      | Various                 | Emit events to SpacetimeDB via curl                                          |
+| `memory-sync.sh`         | After memory write      | Sync memory files to SpacetimeDB                                             |
 
 ### Hook → SpacetimeDB Integration
 
@@ -492,9 +492,9 @@ The unified `/lu` command routes through a 10-step pipeline:
 
 ### Step 2: Cognitive Pre-Flight
 
-- Load BRAIN.md (project identity)
-- Selective recall from MEMORY.md
-- Initialize WORKING.md
+- Recall brain tree from MuninnDB (project identity)
+- Semantic recall from MuninnDB (relevant patterns, decisions, pitfalls)
+- Initialize MuninnDB session (session context)
 - Generate intuition flags (RISK, CAUTION, OPPORTUNITY, UNKNOWN)
 - Complexity gating: lite pre-flight for TRIVIAL/SIMPLE, full for MODERATE+
 
@@ -539,8 +539,8 @@ The unified `/lu` command routes through a 10-step pipeline:
 
 ### Step 9: Learning Capture
 
-- Extract patterns, decisions, pitfalls from WORKING.md
-- Update MEMORY.md with validated learnings
+- Extract patterns, decisions, pitfalls from MuninnDB session context
+- Store validated learnings as MuninnDB engrams
 - Complexity-gated: Skip (TRIVIAL), Brief (SIMPLE), Standard (MODERATE), Full (COMPLEX/CRITICAL)
 
 ### Step 10: Commit
@@ -637,7 +637,7 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 ### Fallback Test
 
 1. **SpacetimeDB down**: `spacetimedb-client.ts` catches error
-2. **Fallback**: Reads from local `state.json` / `BRAIN.md` / etc.
+2. **Fallback**: Reads from local `state.json`; memory falls back to MuninnDB (independent of SpacetimeDB)
 3. **No interruption**: Framework continues operating without observability
 
 ### Hook Integration Test
