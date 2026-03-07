@@ -959,23 +959,12 @@ async function handleSuspend(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // Read WORKING.md snapshot for checkpoint
-  let workingMemorySnapshot = "";
-  try {
-    const workingFile = Bun.file(".planning/WORKING.md");
-    if (await workingFile.exists()) {
-      workingMemorySnapshot = await workingFile.text();
-    }
-  } catch {
-    // WORKING.md not available — proceed without snapshot
-  }
-
   // Write checkpoint file via suspend-checkpoint module
+  // Session memory persists independently via MuninnDB — no file snapshot needed.
   const checkpointPath = await createSuspendCheckpoint({
     phase_id: phaseId,
     wave_index: waveIndex,
     completed_task_ids: completedTaskIds,
-    working_memory_snapshot: workingMemorySnapshot,
     suspended_at: new Date().toISOString(),
     reason,
     session_id: sessionId,
@@ -1125,8 +1114,6 @@ async function handleResumePhase(args: string[]): Promise<void> {
         suspended_at: checkpoint.suspended_at,
         reason: checkpoint.reason,
         session_id: checkpoint.session_id,
-        has_working_memory:
-          (checkpoint.working_memory_snapshot ?? "").length > 0,
       },
       previous_state: String(prevState),
       current_state: String(nextSnapshot.value),
