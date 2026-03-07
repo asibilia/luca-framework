@@ -98,8 +98,8 @@
 **Verification:** Full
 **Est:** ~3-4 days
 
-- [ ] PLAN: Cross-session procedure replay engine (#12)
-- [ ] PLAN: Portable cognitive profiles — cross-project memory (#14)
+- [x] PLAN: Cross-session procedure replay engine (#12)
+- [x] PLAN: Portable cognitive profiles — cross-project memory (#14)
 
 ---
 
