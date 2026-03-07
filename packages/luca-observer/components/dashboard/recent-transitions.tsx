@@ -44,7 +44,10 @@ export function RecentTransitions({ entries }: { entries: LedgerEntry[] }) {
       <div className="rounded-lg border border-border">
         <div className="max-h-[32rem] overflow-y-auto">
           {sorted.map((entry) => (
-            <TransitionRow key={entry.sequence_number} entry={entry} />
+            <TransitionRow
+              key={`${entry.sequence_number}-${entry.event_type}--${entry.timestamp}`}
+              entry={entry}
+            />
           ))}
         </div>
       </div>
