@@ -28,11 +28,14 @@ Export portable learnings from this project to the global memory profile for cro
 
 ## Process
 
-1. **Read BRAIN.md and MEMORY.md:**
+1. **Read project identity and memory from MuninnDB:**
 
-   \`\`\`bash
-   BRAIN_JSON=$(bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null || echo '{}')
-   MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[]}')
+   \`\`\`
+   # Recall project brain (identity, conventions)
+   mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+
+   # Recall all project memory entries
+   mcp__muninn__muninn_recall(vault: "default", context: "all project patterns, decisions, pitfalls, and preferences")
    \`\`\`
 
 2. **Parse arguments:**
@@ -40,10 +43,14 @@ Export portable learnings from this project to the global memory profile for cro
    - Check for \`--min-confidence=\` value
    - Build export options accordingly
 
-3. **Call exportToGlobalMemory:**
-   - Uses the export options from arguments
-   - Creates ~/.luca/ directory if needed
-   - Merges with existing global memory (deduplicates by ID and title)
+3. **Export to MuninnDB global graph:**
+
+   \`\`\`
+   mcp__muninn__muninn_export_graph(vault: "default")
+   \`\`\`
+
+   - Exports the full memory graph for cross-project transfer
+   - Deduplicates by entity and concept
 
 4. **Report results:**
 

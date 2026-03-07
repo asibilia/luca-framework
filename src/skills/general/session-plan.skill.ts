@@ -25,13 +25,13 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 
 ### Step 0: Cognitive Pre-Flight
 
-1. **Load context:**
-   - Read \`.planning/BRAIN.md\` for project identity
-   - Read working memory via bridge: \`bun run src/memory/__helpers/bridge.ts read-working\` (fallback: cat .planning/WORKING.md)
-   - Selective recall from memory via bridge: \`bun run src/memory/__helpers/bridge.ts read-memory --tags=planning,estimates,workflow --limit=10\` (fallback: cat .planning/MEMORY.md)
+1. **Load context from MuninnDB:**
+   - Recall project identity: \`mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")\`
+   - Recall session context: \`mcp__muninn__muninn_recall(vault: "default", context: "current session context")\`
+   - Recall planning patterns: \`mcp__muninn__muninn_recall(vault: "default", context: "planning patterns, estimates, and workflow decisions")\`
 
-2. **Initialize WORKING.md:**
-   - Set session info: workflow=session-plan, started timestamp
+2. **Initialize session in MuninnDB:**
+   - Store session info: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=session-plan, started=[timestamp]")\`
    - Note any recalled calibration data for effort estimates
 
 ### Step 1: Parse Pending Todos
@@ -55,7 +55,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
    - Package TodoMetadata[] as structured input
    - Include \`.planning/ROADMAP.md\` for priority context
    - Include dependency graph
-   - Include any MEMORY.md calibration entries for effort estimates (via bridge: \`bun run src/memory/__helpers/bridge.ts read-memory --tags=estimates,calibration --limit=5\`)
+   - Include any calibration entries for effort estimates (via MuninnDB: \`mcp__muninn__muninn_recall(vault: "default", context: "effort estimates and calibration data")\`)
 
 2. **Spawn lu-pm-planner sub-agent:**
    - Agent infers WSJF inputs (BV, TC, RR) for each todo from context
