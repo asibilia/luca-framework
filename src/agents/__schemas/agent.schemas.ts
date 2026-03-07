@@ -30,7 +30,7 @@ export const CognitionConfigSchema = z.object({
   default_tier: CognitionTierSchema.default("T0"),
   /** Maximum tier this agent can be promoted to by complexity gating */
   promotable_to: CognitionTierSchema.default("T0"),
-  /** Domain tags for selective MEMORY.md recall filtering */
+  /** Domain tags for selective MuninnDB recall context. Used by lu-cognition to scope semantic recall queries. */
   memory_tags: z.array(z.string()).default([]),
 });
 
