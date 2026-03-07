@@ -6,7 +6,14 @@ import { copyTemplates, getTemplatesDir } from "./template";
 import { createManifest, writeManifest } from "./manifest";
 import { sanitizeJsonParse } from "./sanitize";
 import { logger } from "./logger";
-import type { LucaConfig, LucaManifest, HarnessId } from "../types";
+import { getSkillsForPreset } from "./skill-manifest";
+import type {
+  LucaConfig,
+  LucaManifest,
+  HarnessId,
+  PresetId,
+  InstallationStats,
+} from "../types";
 
 // Track created files for cleanup on error
 const createdPaths: string[] = [];
@@ -120,7 +127,8 @@ export async function generateFiles(options: {
   config: LucaConfig;
   cwd?: string;
 }): Promise<
-  { success: true; data: LucaManifest } | { success: false; error: string }
+  | { success: true; data: LucaManifest; stats: InstallationStats }
+  | { success: false; error: string }
 > {
   // Reset tracked paths from any previous invocation
   createdPaths.length = 0;
@@ -128,6 +136,15 @@ export async function generateFiles(options: {
   const { config, cwd = process.cwd() } = options;
   const templatesDir = getTemplatesDir();
   const harnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
+
+  // Track installation stats by category
+  const stats: InstallationStats = {
+    agent_count: 0,
+    skill_count: 0,
+    rule_count: 0,
+    hook_count: 0,
+    harnesses_installed: [...harnesses],
+  };
 
   const spinner = p.spinner();
 
@@ -302,6 +319,7 @@ export async function generateFiles(options: {
             trackCreated(claudeSettingsPath);
           }
 
+          stats.hook_count += hooksCopied;
           spinner.stop(`Installed ${hooksCopied} hook scripts + settings.json`);
         } else {
           spinner.stop("Hook scripts directory not found, skipping hooks");
@@ -356,6 +374,7 @@ export async function generateFiles(options: {
             trackCreated(cursorHooksJsonDest);
           }
 
+          stats.hook_count += cursorHooksCopied;
           spinner.stop(
             `Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`,
           );
@@ -370,6 +389,15 @@ export async function generateFiles(options: {
     }
 
     // Step 4.7: Copy per-harness templates (agents, rules, skills, settings)
+    // Filter skills based on preset — agents, rules, hooks are always copied
+    const preset: PresetId = config.preset ?? "standard";
+    const allowedSkills = new Set(getSkillsForPreset(preset));
+
+    // Track unique agents/skills/rules across harnesses to avoid double-counting
+    const seenAgents = new Set<string>();
+    const seenSkills = new Set<string>();
+    const seenRules = new Set<string>();
+
     for (const harnessId of harnesses) {
       const harnessTemplatesDir = join(templatesDir, "harness", harnessId);
       if (existsSync(harnessTemplatesDir)) {
@@ -381,16 +409,53 @@ export async function generateFiles(options: {
             sourceDir: harnessTemplatesDir,
             destDir: harnessDestDir,
             config,
+            filter: (relPath) => {
+              // Only filter files under skills/ directory
+              if (!relPath.startsWith("skills/")) return true;
+              // Extract skill directory name (skills/{name}/...)
+              const skillName = relPath.split("/")[1];
+              // Allow index.json (skill catalog) and files in allowed skill dirs
+              if (!skillName || skillName.includes(".")) return true;
+              return allowedSkills.has(skillName);
+            },
           });
 
-        for (const file of [...harnessProcessed, ...harnessCopied]) {
+        const allHarnessFiles = [...harnessProcessed, ...harnessCopied];
+
+        for (const file of allHarnessFiles) {
           trackCreated(join(harnessDestDir, file));
+
+          // Categorize by path prefix for stats (deduplicate across harnesses)
+          const baseName = file.split("/").pop() ?? file;
+          if (file.startsWith("agents/")) {
+            if (!seenAgents.has(baseName)) {
+              seenAgents.add(baseName);
+              stats.agent_count++;
+            }
+          } else if (file.startsWith("skills/")) {
+            // Skills are directories; count by top-level skill dir name
+            const skillName = file.split("/")[1];
+            if (skillName && !seenSkills.has(skillName)) {
+              seenSkills.add(skillName);
+              stats.skill_count++;
+            }
+          } else if (file.startsWith("rules/")) {
+            if (!seenRules.has(baseName)) {
+              seenRules.add(baseName);
+              stats.rule_count++;
+            }
+          }
         }
 
-        spinner.stop(
-          `Installed ${harnessProcessed.length + harnessCopied.length} ${harnessId} files`,
-        );
+        spinner.stop(`Installed ${allHarnessFiles.length} ${harnessId} files`);
       }
+    }
+
+    // Log skill filtering summary (once, after all harnesses)
+    if (seenSkills.size > 0) {
+      logger.info(
+        `Skills: ${seenSkills.size} installed (${preset} preset, ${allowedSkills.size} allowed)`,
+      );
     }
 
     // Step 5: Create manifest
@@ -410,7 +475,7 @@ export async function generateFiles(options: {
     // Clear tracking (success - don't cleanup)
     createdPaths.length = 0;
 
-    return { success: true, data: manifest };
+    return { success: true, data: manifest, stats };
   } catch (error) {
     spinner.stop("Error during file generation");
 

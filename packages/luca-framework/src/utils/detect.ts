@@ -24,6 +24,7 @@ export async function detectProjectContext(
     const pkg = await readPackageJSON(cwd);
     context.hasPackageJson = true;
     context.projectName = pkg.name || null;
+    context.projectDescription = pkg.description || null;
 
     // Detect stack from dependencies
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
@@ -57,9 +58,23 @@ export async function detectProjectContext(
   if (existsSync(join(cwd, ".pi"))) harnesses.push("pi");
   context.detectedHarnesses = harnesses;
 
-  // Suggest first command based on detected harness
-  // All harnesses use the same /lu entry point
-  context.suggestedFirstCommand = "/lu";
+  // Detect existing source code directories
+  context.hasExistingSource =
+    existsSync(join(cwd, "src")) ||
+    existsSync(join(cwd, "app")) ||
+    existsSync(join(cwd, "lib"));
+
+  // Suggest first command based on project state
+  const hasPlanning = existsSync(join(cwd, ".planning"));
+  const hasReadme = await Bun.file(join(cwd, "README.md")).exists();
+
+  if (hasReadme && !hasPlanning) {
+    context.suggestedFirstCommand = '/lu "help me understand this codebase"';
+  } else if (context.hasExistingSource) {
+    context.suggestedFirstCommand = '/lu "review the architecture"';
+  } else {
+    context.suggestedFirstCommand = "/lu";
+  }
 
   return context;
 }
