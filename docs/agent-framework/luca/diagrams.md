@@ -20,9 +20,9 @@ flowchart TB
         PREFLIGHT["Pre-Flight Analysis"]
         ROUTING["Intelligent Router"]
 
-        BRAIN_FILE["BRAIN.md"]
-        MEMORY_FILE["MEMORY.md<br/>(long-term)"]
-        WORKING_FILE["WORKING.md<br/>(session)"]
+        BRAIN_FILE["MuninnDB brain tree"]
+        MEMORY_FILE["MuninnDB engrams<br/>(long-term)"]
+        WORKING_FILE["MuninnDB session context<br/>(session)"]
     end
 
     subgraph Planning["📋 Planning Layer"]
@@ -90,8 +90,8 @@ flowchart LR
         B2["Memory Recall"]
         B3["Intuition Checks"]
         B4["Intelligent Routing"]
-        B5["BRAIN.md"]
-        B6["MEMORY.md"]
+        B5["MuninnDB brain tree"]
+        B6["MuninnDB engrams"]
     end
 
     subgraph Planning["📋 Planning Features"]
@@ -157,9 +157,9 @@ flowchart TB
     REQ["From Step 0<br/>(Git context set)"]
 
     subgraph Load["1. Load Context"]
-        BRAIN["Load BRAIN.md<br/>Project identity"]
+        BRAIN["Load MuninnDB brain tree<br/>Project identity"]
         STATE["Load STATE.md<br/>Session + Git context"]
-        MEM["Load MEMORY.md<br/>Past learnings"]
+        MEM["Load MuninnDB engrams<br/>Past learnings"]
     end
 
     subgraph Analyze["2. Cognitive Analysis"]
@@ -200,7 +200,7 @@ flowchart LR
     end
 
     subgraph Store["Memory Storage"]
-        MEMORY["MEMORY.md<br/>━━━━━━━━━<br/>## Patterns<br/>## Decisions<br/>## Pitfalls<br/>## Preferences"]
+        MEMORY["MuninnDB engrams<br/>━━━━━━━━━<br/>## Patterns<br/>## Decisions<br/>## Pitfalls<br/>## Preferences"]
     end
 
     subgraph Future["Future Use"]
@@ -376,14 +376,14 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph WorkingMem["WORKING.md (Short-Term)"]
+    subgraph WorkingMem["MuninnDB session context (Short-Term)"]
         W1["Current task context"]
         W2["Immediate findings"]
         W3["Hypotheses"]
         W4["In-progress notes"]
     end
 
-    subgraph LongTermMem["MEMORY.md (Long-Term)"]
+    subgraph LongTermMem["MuninnDB engrams (Long-Term)"]
         L1["Validated patterns"]
         L2["Confirmed decisions"]
         L3["Proven pitfalls"]
@@ -415,8 +415,8 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant W as WORKING.md
-    participant M as MEMORY.md
+    participant W as MuninnDB session context
+    participant M as MuninnDB engrams
 
     Note over W,M: Session Start
 
@@ -445,12 +445,12 @@ sequenceDiagram
 flowchart TB
     subgraph Planning[".planning/ Directory"]
         subgraph Identity["Project Identity"]
-            BRAIN["BRAIN.md<br/>━━━━━━━━━<br/>Identity<br/>Stack<br/>Conventions"]
+            BRAIN["MuninnDB brain tree<br/>━━━━━━━━━<br/>Identity<br/>Stack<br/>Conventions"]
             PROJECT["PROJECT.md<br/>━━━━━━━━━<br/>Vision<br/>Scope<br/>Constraints"]
         end
 
         subgraph Learning["Learning Storage"]
-            MEMORY["MEMORY.md<br/>━━━━━━━━━<br/>Patterns<br/>Decisions<br/>Pitfalls"]
+            MEMORY["MuninnDB engrams<br/>━━━━━━━━━<br/>Patterns<br/>Decisions<br/>Pitfalls"]
         end
 
         subgraph Session["Session State"]
@@ -554,9 +554,9 @@ flowchart TB
     end
 
     subgraph Step1["Step 1: Cognitive"]
-        BRAIN["Load BRAIN.md"]
-        MEM["Recall MEMORY.md"]
-        WORK["Init WORKING.md"]
+        BRAIN["Load MuninnDB brain tree"]
+        MEM["Recall MuninnDB engrams"]
+        WORK["Init MuninnDB session context"]
     end
 
     subgraph Step2["Step 2: Route"]

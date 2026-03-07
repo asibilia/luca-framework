@@ -76,24 +76,24 @@ flowchart TB
 
 Not a separate agent - handled by the `/lu` unified entry skill:
 
-| Step            | Purpose                | Inputs                  | Outputs                     |
-| --------------- | ---------------------- | ----------------------- | --------------------------- |
-| Jira Detection  | Parse input for ticket | Task, [TICKET-ID], Jira URL | Jira ticket ID              |
-| Issue Creation  | Create GitHub issue    | Jira details, MCP tools | GitHub issue #number        |
-| Branch Creation | Create feature branch  | Ticket, ENG base branch | [TICKET-ID]--description branch |
-| State Update    | Track git context      | All above               | Updated STATE.md            |
+| Step            | Purpose                | Inputs                      | Outputs                         |
+| --------------- | ---------------------- | --------------------------- | ------------------------------- |
+| Jira Detection  | Parse input for ticket | Task, [TICKET-ID], Jira URL | Jira ticket ID                  |
+| Issue Creation  | Create GitHub issue    | Jira details, MCP tools     | GitHub issue #number            |
+| Branch Creation | Create feature branch  | Ticket, ENG base branch     | [TICKET-ID]--description branch |
+| State Update    | Track git context      | All above                   | Updated STATE.md                |
 
 ### Tier 1: Cognitive Agents
 
-| Agent             | Purpose                       | Inputs                       | Outputs                                  |
-| ----------------- | ----------------------------- | ---------------------------- | ---------------------------------------- |
-| `lu-cognition` | Pre-flight analysis           | Request, BRAIN.md, MEMORY.md | Cognitive report, routing recommendation |
-| `lu-router`    | Route to appropriate workflow | Cognitive report             | Command to execute                       |
+| Agent          | Purpose                       | Inputs                                         | Outputs                                  |
+| -------------- | ----------------------------- | ---------------------------------------------- | ---------------------------------------- |
+| `lu-cognition` | Pre-flight analysis           | Request, MuninnDB brain tree, MuninnDB engrams | Cognitive report, routing recommendation |
+| `lu-router`    | Route to appropriate workflow | Cognitive report                               | Command to execute                       |
 
 ### Tier 2: Planning Agents (From legacy framework)
 
-| Agent                        | Purpose                 | Inputs                         | Outputs           |
-| ---------------------------- | ----------------------- | ------------------------------ | ----------------- |
+| Agent                     | Purpose                 | Inputs                         | Outputs           |
+| ------------------------- | ----------------------- | ------------------------------ | ----------------- |
 | `lu-roadmapper`           | Create phase structure  | PROJECT.md, REQUIREMENTS.md    | ROADMAP.md        |
 | `lu-planner`              | Create execution plans  | Phase goals, cognitive context | PLAN-\*.md        |
 | `lu-project-researcher`   | Research ecosystem      | Project domain                 | Research findings |
@@ -103,16 +103,16 @@ Not a separate agent - handled by the `/lu` unified entry skill:
 
 ### Tier 3: Execution Agents (From legacy framework)
 
-| Agent                   | Purpose          | Inputs                             | Outputs               |
-| ----------------------- | ---------------- | ---------------------------------- | --------------------- |
+| Agent                | Purpose          | Inputs                             | Outputs               |
+| -------------------- | ---------------- | ---------------------------------- | --------------------- |
 | `lu-executor`        | Execute tasks    | PLAN-\*.md, cognitive context      | Code changes, commits |
 | `lu-debugger`        | Investigate bugs | Bug description, cognitive context | Fix or diagnosis      |
 | `lu-codebase-mapper` | Analyze code     | Codebase                           | Analysis documents    |
 
 ### Tier 4: Verification Agents (From legacy framework)
 
-| Agent                       | Purpose               | Inputs                   | Outputs            |
-| --------------------------- | --------------------- | ------------------------ | ------------------ |
+| Agent                    | Purpose               | Inputs                   | Outputs            |
+| ------------------------ | --------------------- | ------------------------ | ------------------ |
 | `lu-verifier`            | Verify goals achieved | Success criteria         | VERIFICATION.md    |
 | `lu-integration-checker` | Check E2E flows       | Phase integration points | Integration report |
 
@@ -126,9 +126,9 @@ Not a separate agent - handled by the `/lu` unified entry skill:
 
 ### Tier 6: Learning Agents
 
-| Agent           | Purpose           | Inputs                             | Outputs           |
-| --------------- | ----------------- | ---------------------------------- | ----------------- |
-| `lu-learner` | Extract learnings | VERIFICATION.md, execution history | MEMORY.md updates |
+| Agent        | Purpose           | Inputs                             | Outputs                  |
+| ------------ | ----------------- | ---------------------------------- | ------------------------ |
+| `lu-learner` | Extract learnings | VERIFICATION.md, execution history | MuninnDB engrams updates |
 
 ### Tier 7: Commit & PR (Step 5)
 
@@ -160,7 +160,7 @@ flowchart TB
         STATE["Update STATE.md"]
     end
 
-    LOAD["Load Context<br/>BRAIN.md<br/>STATE.md<br/>MEMORY.md"]
+    LOAD["Load Context<br/>MuninnDB brain tree<br/>STATE.md<br/>MuninnDB engrams"]
 
     ANALYZE["Cognitive Analysis<br/>Memory recall<br/>Intuition check<br/>Complexity assessment"]
 
@@ -195,11 +195,11 @@ flowchart TB
 
 ### Git Context Input Types
 
-| Input      | Example                                          | Behavior                           |
-| ---------- | ------------------------------------------------ | ---------------------------------- |
-| Jira URL   | `https://mypercent.atlassian.net/browse/[TICKET-ID]` | Extracts [TICKET-ID], fetches details  |
-| Ticket ID  | `[TICKET-ID]`                                        | Fetches details from Jira          |
-| Plain task | `"fix the button"`                               | Prompts for Jira ticket or [PLACEHOLDER] |
+| Input      | Example                                              | Behavior                                 |
+| ---------- | ---------------------------------------------------- | ---------------------------------------- |
+| Jira URL   | `https://mypercent.atlassian.net/browse/[TICKET-ID]` | Extracts [TICKET-ID], fetches details    |
+| Ticket ID  | `[TICKET-ID]`                                        | Fetches details from Jira                |
+| Plain task | `"fix the button"`                                   | Prompts for Jira ticket or [PLACEHOLDER] |
 
 ### [PLACEHOLDER] Placeholder
 
@@ -214,8 +214,8 @@ For work without a Jira ticket:
 
 ### Specific Commands
 
-| Command                     | Purpose                   | When to Use        |
-| --------------------------- | ------------------------- | ------------------ |
+| Command                  | Purpose                   | When to Use        |
+| ------------------------ | ------------------------- | ------------------ |
 | `/lu-new-project`        | Initialize new project    | Starting fresh     |
 | `/lu-new-milestone`      | Add milestone to existing | New major feature  |
 | `/lu-plan-phase`         | Create phase plans        | Ready to plan      |
@@ -232,19 +232,19 @@ For work without a Jira ticket:
 
 ```
 .planning/
-├── BRAIN.md              # Project identity (persistent)
+├── MuninnDB brain tree              # Project identity (persistent)
 │   ├── Identity
 │   ├── Stack
 │   ├── Conventions
 │   └── Personality
 │
-├── MEMORY.md             # Long-term memory (persistent, curated)
+├── MuninnDB engrams             # Long-term memory (persistent, curated)
 │   ├── Patterns (validated)
 │   ├── Decisions (confirmed)
 │   ├── Pitfalls (proven)
 │   └── Preferences (established)
 │
-├── WORKING.md            # Working memory (session-only)
+├── MuninnDB session context            # Working memory (session-only)
 │   ├── Current context
 │   ├── Immediate findings
 │   ├── Hypotheses
@@ -321,9 +321,9 @@ sequenceDiagram
     participant M as Long-Term Memory
 
     U->>C: /lu request
-    C->>C: Load BRAIN.md
+    C->>C: Load MuninnDB brain tree
     C->>M: Selective recall (relevant only)
-    C->>W: Initialize WORKING.md
+    C->>W: Initialize MuninnDB session context
     C->>C: Analyze & Route
     alt Complex Task
         C->>P: Plan phase
@@ -341,8 +341,8 @@ sequenceDiagram
     E->>V: Verify goals
     V->>L: Capture learnings
     L->>W: Extract validated learnings
-    L->>M: Update MEMORY.md (curated)
-    L->>W: Clear WORKING.md
+    L->>M: Update MuninnDB engrams (curated)
+    L->>W: Clear MuninnDB session context
     L->>U: Complete + learnings stored
 ```
 
@@ -365,7 +365,7 @@ sequenceDiagram
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  1. MEMORY RECALL                                           │
-│     ├─ Query MEMORY.md for similar tasks                    │
+│     ├─ Query MuninnDB engrams for similar tasks                    │
 │     ├─ Find relevant patterns                               │
 │     ├─ Recall previous decisions                            │
 │     └─ Note known pitfalls                                  │
@@ -378,7 +378,7 @@ sequenceDiagram
 │                                                             │
 │  3. FEEL AWARENESS                                          │
 │     ├─ Load user preferences                                │
-│     ├─ Check project conventions (BRAIN.md)                 │
+│     ├─ Check project conventions (MuninnDB brain tree)                 │
 │     ├─ Consider team patterns                               │
 │     └─ Note communication style                             │
 │                                                             │
@@ -433,7 +433,7 @@ sequenceDiagram
 │     └─ What feedback was given?                             │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
-│  OUTPUT: MEMORY.md Update                                   │
+│  OUTPUT: MuninnDB engrams Update                                   │
 │  ├─ New patterns section                                    │
 │  ├─ Decision log entry                                      │
 │  ├─ Pitfall warning                                         │
@@ -445,8 +445,8 @@ sequenceDiagram
 
 ### Base Profiles
 
-| Agent            | quality | balanced | budget |
-| ---------------- | ------- | -------- | ------ |
+| Agent         | quality | balanced | budget |
+| ------------- | ------- | -------- | ------ |
 | lu-cognition  | opus    | sonnet   | haiku  |
 | lu-planner    | opus    | opus     | sonnet |
 | lu-roadmapper | opus    | sonnet   | sonnet |
@@ -486,8 +486,8 @@ IF memory_recall.similar_success:
 
 ### Hooks
 
-| Hook                        | Trigger               | Action                    |
-| --------------------------- | --------------------- | ------------------------- |
+| Hook                     | Trigger               | Action                    |
+| ------------------------ | --------------------- | ------------------------- |
 | `lu-planning-commit.sh`  | After plan creation   | Commit planning artifacts |
 | `lu-execution-commit.sh` | After task completion | Atomic task commit        |
-| `lu-learning-update.sh`  | After verification    | Update MEMORY.md          |
+| `lu-learning-update.sh`  | After verification    | Update MuninnDB engrams   |

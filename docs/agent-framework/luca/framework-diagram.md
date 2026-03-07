@@ -21,9 +21,9 @@ flowchart TB
         ROUTER["Intelligent Router<br/>(lu-router)"]
 
         subgraph Memory["Memory System"]
-            BRAIN["BRAIN.md<br/>Project Identity"]
-            LONG_MEM["MEMORY.md<br/>Long-Term Learning"]
-            WORK_MEM["WORKING.md<br/>Session Memory"]
+            BRAIN["MuninnDB brain tree<br/>Project Identity"]
+            LONG_MEM["MuninnDB engrams<br/>Long-Term Learning"]
+            WORK_MEM["MuninnDB session context<br/>Session Memory"]
         end
     end
 
@@ -290,27 +290,27 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph SessionStart["Session Start"]
-        LOAD_BRAIN["Load BRAIN.md<br/>(Project identity, stack,<br/>conventions, personality)"]
-        RECALL["Selective Recall<br/>from MEMORY.md<br/>(Relevant patterns only)"]
-        INIT_WORK["Initialize WORKING.md<br/>(Fresh session context)"]
+        LOAD_BRAIN["Load MuninnDB brain tree<br/>(Project identity, stack,<br/>conventions, personality)"]
+        RECALL["Selective Recall<br/>from MuninnDB engrams<br/>(Relevant patterns only)"]
+        INIT_WORK["Initialize MuninnDB session context<br/>(Fresh session context)"]
     end
 
     subgraph During["During Workflow"]
-        LOG_FINDINGS["Log findings<br/>to WORKING.md"]
+        LOG_FINDINGS["Log findings<br/>to MuninnDB session context"]
         LOG_HYPOTHESES["Track hypotheses<br/>(debugging)"]
         LOG_PROGRESS["Note in-progress<br/>decisions"]
     end
 
     subgraph SessionEnd["Session End"]
-        EXTRACT["Extract validated<br/>learnings from WORKING.md"]
+        EXTRACT["Extract validated<br/>learnings from MuninnDB session context"]
         CURATE["Curate: only proven<br/>patterns, decisions, pitfalls"]
-        UPDATE_MEM["Write to MEMORY.md<br/>(append, never overwrite)"]
-        CLEAR_WORK["Clear WORKING.md"]
+        UPDATE_MEM["Write to MuninnDB engrams<br/>(append, never overwrite)"]
+        CLEAR_WORK["Clear MuninnDB session context"]
     end
 
     subgraph Persistent["Persistent Across Sessions"]
-        BRAIN_FILE["BRAIN.md<br/>Identity | Stack | Conventions"]
-        MEMORY_FILE["MEMORY.md<br/>Patterns | Decisions<br/>Pitfalls | Preferences"]
+        BRAIN_FILE["MuninnDB brain tree<br/>Identity | Stack | Conventions"]
+        MEMORY_FILE["MuninnDB engrams<br/>Patterns | Decisions<br/>Pitfalls | Preferences"]
     end
 
     LOAD_BRAIN --> RECALL --> INIT_WORK
@@ -409,8 +409,8 @@ flowchart TB
 flowchart LR
     subgraph Tiers["Context Tiers"]
         T0["T0: Minimal<br/>Agent name + role only"]
-        T1["T1: Warm Start<br/>+ BRAIN.md<br/>+ Selective MEMORY recall"]
-        T2["T2: Full<br/>+ WORKING.md<br/>+ Project docs<br/>+ Phase plans"]
+        T1["T1: Warm Start<br/>+ MuninnDB brain tree<br/>+ Selective MEMORY recall"]
+        T2["T2: Full<br/>+ MuninnDB session context<br/>+ Project docs<br/>+ Phase plans"]
         T3["T3: Extended<br/>+ Codebase analysis<br/>+ Deep research"]
     end
 
@@ -483,7 +483,7 @@ sequenceDiagram
     participant V as lu-verifier
     participant RV as Review Agents
     participant L as lu-learner
-    participant MEM as MEMORY.md
+    participant MEM as MuninnDB engrams
 
     U->>LU: /lu TICKET-123
 
@@ -500,10 +500,10 @@ sequenceDiagram
     rect rgb(235, 245, 255)
         Note over COG,R: Step 1: Cognitive Pre-Flight
         LU->>COG: Load context
-        COG->>COG: Read BRAIN.md
+        COG->>COG: Read MuninnDB brain tree
         COG->>MEM: Selective recall
         MEM-->>COG: Relevant patterns
-        COG->>COG: Init WORKING.md
+        COG->>COG: Init MuninnDB session context
         COG->>COG: Intuition check
         COG-->>R: Cognitive report
         R-->>LU: MODERATE complexity
@@ -539,7 +539,7 @@ sequenceDiagram
         Note over L,MEM: Step 5: Learn + Ship
         LU->>L: Capture learnings
         L->>MEM: Curated patterns + decisions
-        L->>L: Clear WORKING.md
+        L->>L: Clear MuninnDB session context
         LU->>GH: Commit changes
         LU->>U: Ready for PR?
         U->>LU: Yes
@@ -558,17 +558,17 @@ sequenceDiagram
 flowchart TB
     subgraph Planning[".planning/"]
         subgraph Identity["Project Identity (Persistent)"]
-            BRAIN["BRAIN.md<br/>Stack, conventions,<br/>personality"]
+            BRAIN["MuninnDB brain tree<br/>Stack, conventions,<br/>personality"]
             PROJECT["PROJECT.md<br/>Vision, scope,<br/>constraints"]
         end
 
         subgraph Memory["Memory (Persistent)"]
-            MEM["MEMORY.md<br/>Patterns, decisions,<br/>pitfalls, preferences"]
+            MEM["MuninnDB engrams<br/>Patterns, decisions,<br/>pitfalls, preferences"]
         end
 
         subgraph Session["Session State"]
             STATE["STATE.md<br/>Current focus, git context,<br/>cognitive state, blockers"]
-            WORKING["WORKING.md<br/>Current task, findings,<br/>hypotheses, notes"]
+            WORKING["MuninnDB session context<br/>Current task, findings,<br/>hypotheses, notes"]
             CONFIG["config.json<br/>Harness, iteration,<br/>complexity, planner"]
         end
 
