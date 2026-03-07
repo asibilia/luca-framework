@@ -262,6 +262,10 @@ function buildPiStdinJsonFromEvent(piEvent: string): string {
  * provided commandPrefix. Optionally wraps the result in a
  * `{ hooks: ... }` envelope for plugin hooks.json files.
  *
+ * @deprecated Use `generateClaudeHooksConfigFromCanonical()` with a canonical
+ *   registry, or `generateConfigForPlatform("claude-code", registry, options)`
+ *   from `src/hooks/adapters/` instead.
+ *
  * @param registry - The hook registry mapping hook names to definitions
  * @param options.commandPrefix - Path prefix for hook script commands
  *   e.g., '"$CLAUDE_PROJECT_DIR"/.claude/hooks' or '${CLAUDE_PLUGIN_ROOT}/scripts'
@@ -449,6 +453,10 @@ function buildPiStdinJson(def: HookDefinition): string {
  * - Flat array per event (no matcher-grouping)
  * - Relative command paths (.cursor/hooks/<script>)
  * - No async or status_message fields
+ *
+ * @deprecated Use `generateCursorHooksConfigFromCanonical()` with a canonical
+ *   registry, or `generateConfigForPlatform("cursor", registry)` from
+ *   `src/hooks/adapters/` instead.
  */
 export function generateCursorHooksConfig(
   registry: Record<string, HookDefinition>,

@@ -66,3 +66,17 @@ export {
   generateCursorHooksConfig,
   generatePiExtension,
 } from "./__helpers/config-generators";
+
+// Adapter registry — formal adapter-registry architecture
+export {
+  ADAPTER_PLATFORMS,
+  adapterPlatformSchema,
+  claudeAdapter,
+  cursorAdapter,
+  piAdapter,
+  hookAdapterRegistry,
+  resolveAdapter,
+  getRegisteredPlatforms,
+  generateConfigForPlatform,
+} from "./adapters";
+export type { AdapterPlatform, HookPlatformAdapter } from "./adapters";

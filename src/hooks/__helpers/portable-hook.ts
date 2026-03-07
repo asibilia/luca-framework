@@ -11,13 +11,9 @@
 
 import { z } from "zod";
 import { CanonicalHookSchema } from "../__schemas/hook.schemas";
-import type { CanonicalHook, CanonicalEvent } from "../__schemas/hook.schemas";
+import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { PlatformHookConfig } from "./platform-adapters";
-import {
-  adaptForClaude,
-  adaptForCursor,
-  adaptForPi,
-} from "./platform-adapters";
+import { resolveAdapter } from "../adapters/adapter-registry";
 
 // ---- Supported platforms ----
 
@@ -113,20 +109,11 @@ export function detectPlatform(): SupportedPlatform | undefined {
 
 // ---- Core factory ----
 
-const PLATFORM_ADAPTERS: Record<
-  SupportedPlatform,
-  (hook: CanonicalHook) => PlatformHookConfig
-> = {
-  "claude-code": adaptForClaude,
-  cursor: adaptForCursor,
-  pi: adaptForPi,
-};
-
 /**
  * Create a portable hook from a unified config.
  *
  * Validates the config, builds the canonical hook definition, and generates
- * platform-specific configs for each requested platform.
+ * platform-specific configs for each requested platform using the adapter registry.
  *
  * @param config - Portable hook configuration
  * @returns PortableHookResult with canonical + platform-specific configs
@@ -166,7 +153,7 @@ export function createPortableHook(
 
   const platforms: Partial<Record<SupportedPlatform, PlatformHookConfig>> = {};
   for (const platform of validated.platforms) {
-    platforms[platform] = PLATFORM_ADAPTERS[platform](canonical);
+    platforms[platform] = resolveAdapter(platform).adapt(canonical);
   }
 
   return {
