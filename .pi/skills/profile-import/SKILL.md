@@ -11,7 +11,7 @@ Import learnings from the global memory profile (~/.luca/global-memory.json) int
 
 # Profile Import
 
-Import learnings from the global memory profile into this project's MEMORY.md.
+Import learnings from the global memory profile into this project's MuninnDB.
 
 **Arguments:** `[--from=project-name] [--dry-run]`
 
@@ -23,13 +23,13 @@ Import learnings from the global memory profile into this project's MEMORY.md.
 
 ## Process
 
-1. **Load global memory profile:**
+1. **Load global memory profile from MuninnDB:**
 
-   ```bash
-   GLOBAL_PROFILE=$(bun run src/memory/__helpers/bridge.ts read-global-memory 2>/dev/null || echo 'null')
+   ```
+   GLOBAL_PROFILE = mcp__muninn__muninn_recall(vault: "default", context: "global memory patterns from other projects")
    ```
 
-   If null: report "No global memory profile found at ~/.luca/global-memory.json" and exit.
+   If empty: report "No global memory profile found in MuninnDB" and exit.
 
 2. **Parse arguments:**
    - Check for `--from=` to filter by source project
@@ -39,10 +39,10 @@ Import learnings from the global memory profile into this project's MEMORY.md.
    - Only include entries where source_project matches the specified project name
    - Case-insensitive comparison
 
-4. **Load local MEMORY.md:**
+4. **Load local project memory from MuninnDB:**
 
-   ```bash
-   LOCAL_MEMORY=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[]}')
+   ```
+   LOCAL_MEMORY = mcp__muninn__muninn_recall(vault: "default", context: "all project memory entries for deduplication")
    ```
 
 5. **Merge entries:**
@@ -65,7 +65,13 @@ Import learnings from the global memory profile into this project's MEMORY.md.
    Run without --dry-run to apply changes.
    ```
 
-7. **Otherwise, write merged entries to MEMORY.md:**
+7. **Otherwise, write merged entries to MuninnDB using batch import:**
+
+   ```
+   mcp__muninn__muninn_remember_batch(vault: "default", memories: [{concept, content, type, summary, entities}...])
+   ```
+
+   Report results:
 
    ```
    Imported {N} entries from global memory
@@ -81,7 +87,7 @@ Import learnings from the global memory profile into this project's MEMORY.md.
 
 ## Anti-Patterns
 
-- Do NOT import without loading local MEMORY.md first (needed for deduplication)
+- Do NOT import without loading local project memory from MuninnDB first (needed for deduplication)
 - Do NOT replace local entries with global entries (local always takes precedence)
 - Do NOT import without deduplication (would accumulate duplicates over time)
 - Do NOT modify global memory during import (global memory is read-only during import)

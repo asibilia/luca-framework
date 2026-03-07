@@ -112,7 +112,7 @@ Unless the session already has cognitive context loaded:
 ```
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/__helpers/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/__helpers/bridge.ts clear-working)."
+  prompt: "Run cognitive pre-flight for autopilot session. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*')."
 )
 ```
 
@@ -777,7 +777,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to `[x]`
-3. Log to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"`
+3. Log to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "{timestamp} [PHASE-COMPLETE] Phase {NN} passed")`
 4. Display:
 
 ```
@@ -896,7 +896,7 @@ For each phase (in parallel, using Task tool):
     **Phase:** {NN} - {goal}
     **Phase directory:** .planning/phases/{phase_dir}/
     **Project state:** {STATE.md content}
-    **Working memory:** {WORKING.md content}
+    **Working memory:** {session context from MuninnDB}
     **CLAUDE.md conventions:** Read CLAUDE.md for project conventions.
 
     **Instructions:**
@@ -1031,7 +1031,7 @@ After all executors in this level complete (or are marked failed/timed out):
    ```bash
    bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
    ```
-6. Log to WORKING.md via bridge
+6. Log to MuninnDB session memory via muninn_remember
 
 ### 4-swarm-j. Level Progress Display
 
@@ -1298,11 +1298,11 @@ bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 ```
 
-3. Log final status to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="Autopilot session complete"`
+3. Log final status to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "Autopilot session complete")`
 4. Commit session metadata:
 
 ```bash
-git add .planning/STATE.md .planning/WORKING.md .planning/state.json
+git add .planning/STATE.md .planning/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 ```
 </summary>

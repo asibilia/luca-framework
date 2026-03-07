@@ -1,6 +1,6 @@
 ---
 name: project-new
-description: Initialize a new Luca project with deep context gathering and BRAIN.md creation.
+description: Initialize a new Luca project with deep context gathering and MuninnDB memory seeding.
 disable-model-invocation: true
 ---
 
@@ -56,9 +56,7 @@ roadmapper_model = (omit)
 
 - `.planning/PROJECT.md` — project context
 - `.planning/config.json` — workflow preferences
-- `.planning/BRAIN.md` — project identity and conventions (NEW)
-- `.planning/MEMORY.md` — long-term learning storage (NEW)
-- `.planning/WORKING.md` — session working memory (NEW)
+- **MuninnDB** — project identity, long-term learnings, and session memory (seeded via `/seed-memory`)
 - `.planning/research/` — domain research (optional)
 - `.planning/REQUIREMENTS.md` — scoped requirements
 - `.planning/ROADMAP.md` — phase structure
@@ -70,18 +68,17 @@ roadmapper_model = (omit)
 
 ## Cognitive Initialization
 
-As part of project setup, initialize the cognitive memory system:
+As part of project setup, seed the MuninnDB memory system:
 
-### BRAIN.md Creation
+### Seed Project Memory
 
-After gathering project context through questioning, create BRAIN.md:
+After gathering project context through questioning, run the `/seed-memory` skill to populate MuninnDB with project identity:
 
-```bash
-# Use template
-cp .cursor/luca/templates/BRAIN.md .planning/BRAIN.md
+```
+Skill(skill: "seed-memory", args: "--from-context")
 ```
 
-Then populate from questioning answers:
+This seeds MuninnDB with:
 
 - **Identity**: Project name, domain, purpose, vision
 - **Stack**: Languages, frameworks, databases, key dependencies
@@ -89,29 +86,12 @@ Then populate from questioning answers:
 - **Conventions**: Code style, file naming, commit format, testing approach
 - **Personality**: Communication style, development preferences, verbosity
 
-### MEMORY.md Initialization
-
-Create empty long-term memory:
-
-```bash
-cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
-```
-
-This will accumulate:
+MuninnDB will then accumulate over time:
 
 - Patterns discovered during development
 - Decisions made with rationale
 - Pitfalls encountered and how to avoid them
-
-### WORKING.md Initialization
-
-Create session working memory:
-
-```bash
-cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
-```
-
-Initialize with session info for this setup workflow.
+- Session context for continuity across context resets
 
 ## Execution Context
 

@@ -35,7 +35,7 @@ Your job: Goal-backward verification. Start from what the phase SHOULD deliver, 
 - **Verification patterns**: Past verification approaches and their effectiveness
 - **Testing insights**: Known test coverage gaps and regression patterns
 
-This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
 </cognition_integration>
 
 <context_isolation>
@@ -45,15 +45,15 @@ You operate in **warm isolation** to separate verification from execution bias.
 
 **You receive:**
 - Plan contents and plan summaries
-- BRAIN.md summary (project conventions)
+- MuninnDB brain tree summary (project conventions)
 - STATE.md (project state)
-- Selective MEMORY.md entries (at T2+, filtered by your memory_tags)
+- Selective MuninnDB engrams (at T2+, filtered by your memory_tags)
 
 **You do NOT receive:**
-- WORKING.md (executor session notes)
-- Full MEMORY.md (at T1, only selective entries at T2)
+- MuninnDB session context (executor session notes)
+- Full MuninnDB engrams (at T1, only selective entries at T2)
 
-**Why:** You verify whether the PLAN GOALS were achieved, not whether the executor's APPROACH was good. Receiving WORKING.md would bias you toward confirming the executor's narrative rather than independently verifying outcomes.
+**Why:** You verify whether the PLAN GOALS were achieved, not whether the executor's APPROACH was good. Receiving session context would bias you toward confirming the executor's narrative rather than independently verifying outcomes.
 </context_isolation>
 
 <always_verify>
@@ -94,11 +94,11 @@ After verification passes (or gaps documented), trigger learning capture:
    - Include verification insights
 
 2. **lu-learner extracts learnings**
-   - Validated patterns go to MEMORY.md
+   - Validated patterns go to MuninnDB
    - Issues become documented pitfalls
    - Decisions are recorded with rationale
 
-3. **WORKING.md is cleared**
+3. **MuninnDB session context is cleared**
    - Session memory is reset
    - Ready for next workflow
 

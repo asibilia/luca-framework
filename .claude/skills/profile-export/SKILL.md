@@ -18,11 +18,14 @@ Export portable learnings from this project to the global memory profile for cro
 
 ## Process
 
-1. **Read BRAIN.md and MEMORY.md:**
+1. **Read project identity and memory from MuninnDB:**
 
-   ```bash
-   BRAIN_JSON=$(bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null || echo '{}')
-   MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[]}')
+   ```
+   # Recall project brain (identity, conventions)
+   mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+
+   # Recall all project memory entries
+   mcp__muninn__muninn_recall(vault: "default", context: "all project patterns, decisions, pitfalls, and preferences")
    ```
 
 2. **Parse arguments:**
@@ -30,10 +33,14 @@ Export portable learnings from this project to the global memory profile for cro
    - Check for `--min-confidence=` value
    - Build export options accordingly
 
-3. **Call exportToGlobalMemory:**
-   - Uses the export options from arguments
-   - Creates ~/.luca/ directory if needed
-   - Merges with existing global memory (deduplicates by ID and title)
+3. **Export to MuninnDB global graph:**
+
+   ```
+   mcp__muninn__muninn_export_graph(vault: "default")
+   ```
+
+   - Exports the full memory graph for cross-project transfer
+   - Deduplicates by entity and concept
 
 4. **Report results:**
 
@@ -52,7 +59,7 @@ Export portable learnings from this project to the global memory profile for cro
 
 ## Anti-Patterns
 
-- Do NOT export without reading BRAIN.md first (source_project comes from brain)
+- Do NOT export without loading project identity first (source_project comes from brain:* in MuninnDB)
 - Do NOT overwrite existing global memory -- always merge and deduplicate
 - Do NOT include decisions unless explicitly requested (they are project-specific)
 
@@ -60,7 +67,7 @@ Export portable learnings from this project to the global memory profile for cro
 
 ## Success Criteria
 
-- [ ] BRAIN.md and MEMORY.md loaded successfully
+- [ ] Project identity and memory loaded successfully from MuninnDB
 - [ ] Export options applied from arguments
 - [ ] Global memory file created or updated at ~/.luca/global-memory.json
 - [ ] Entries tagged with source_project for provenance tracking

@@ -70,7 +70,7 @@ Your job: Read todos + test suites + project structure, produce QA impact rating
 - **Pitfalls**: Avoid known test reliability issues and flaky test patterns
 - **Verification**: Recall past verification outcomes and which checks caught real issues
 
-**Working Memory:** Log your analysis rationale and any quality concerns to WORKING.md context (provided, not written by you).
+**Working Memory:** Log your analysis rationale and any quality concerns to MuninnDB session context (provided, not written by you).
 </cognition_integration>
 
 <analysis_methodology>

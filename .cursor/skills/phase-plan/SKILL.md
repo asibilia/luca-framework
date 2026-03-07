@@ -42,62 +42,42 @@ Before planning begins, run cognitive pre-flight:
 
 **Unless `--skip-memory` is passed:**
 
-1. **Load BRAIN.md** for project conventions:
+1. **Load project identity** from MuninnDB:
 
-   ```bash
-   bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null || cat .planning/BRAIN.md 2>/dev/null
+   ```
+   mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
    ```
 
    Extract: architecture patterns, code conventions, development preferences
 
-2. **Selective recall from MEMORY.md** based on phase keywords:
+2. **Selective recall of learnings** from MuninnDB based on phase keywords:
 
-   ```bash
-   # Extract phase description and search MEMORY.md
-   PHASE_DESC=$(grep -A5 "Phase ${PHASE}:" .planning/ROADMAP.md)
+   ```
+   mcp__muninn__muninn_recall(vault: "default", context: "patterns, decisions, and pitfalls relevant to phase {PHASE}")
    ```
 
    Look for: relevant patterns, past decisions, known pitfalls
 
-2.5. **Recall relevant procedures from PROCEDURES.md**:
+2.5. **Recall relevant procedures** from MuninnDB:
 
-   \`\`\`bash
-   # Primary: Scored procedure recall via memory bridge (filters active, scores by relevance)
-   PROCEDURES_JSON=$(bun run src/memory/__helpers/bridge.ts read-procedures --query="{phase_description}" --tags={phase_tags} --limit=5 2>/dev/null || echo '{"entries":[]}')
-   # Fallback: Read PROCEDURES.md directly
-   PROCEDURES_CONTENT=$(cat .planning/PROCEDURES.md 2>/dev/null || echo "")
-   \`\`\`
-
-   The bridge automatically filters active procedures and scores by relevance:
-   - Tag overlap with phase keywords (40% weight)
-   - Trigger similarity to phase description (40% weight)
-   - Historical success rate (20% weight)
+   ```
+   mcp__muninn__muninn_recall(vault: "default", context: "reusable procedures and workflows for {phase_description}")
+   ```
 
    Procedures are step-sequence templates from past successful executions.
    The planner should consider them as starting points for task breakdown.
 
-3. **Initialize WORKING.md** for this planning session:
+3. **Initialize session** in MuninnDB for this planning session:
 
-   ```markdown
-   # Working Memory
+   ```
+   mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
+   ```
 
-   ## Session Info
-
-   - **Started**: [timestamp]
-   - **Workflow**: /phase-plan
-   - **Phase**: [phase number]
-
-   ## Memory Recall
-
-   - **Patterns**: [relevant patterns from MEMORY.md]
+   Store recalled context:
+   - **Patterns**: [relevant patterns from MuninnDB]
    - **Decisions**: [relevant decisions]
    - **Pitfalls**: [flagged pitfalls]
-   - **Procedures**: [relevant procedures from PROCEDURES.md]
-
-   ## Planning Notes
-
-   <!-- Log planning decisions as they're made -->
-   ```
+   - **Procedures**: [relevant procedures from MuninnDB]
 
 4. **Generate intuition flags**:
    - RISK: If past planning failed in similar areas
@@ -318,10 +298,9 @@ ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
 VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
-# Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
+# Recall session context from MuninnDB:
+# mcp__muninn__muninn_recall(vault: "default", context: "current session context for planning")
+WORKING_CONTENT="[recalled from MuninnDB session context]"
 ```
 
 Then spawn the planner:

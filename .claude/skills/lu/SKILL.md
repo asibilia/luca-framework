@@ -77,7 +77,7 @@ If already on a feature branch or `--skip-branch` is set, skip this step.
 Unless `--skip-memory` is set, spawn the lu-cognition agent:
 
 ```
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/__helpers/bridge.ts read-memory --tags=<relevant-tags> --limit=10), initialize WORKING.md via bridge (bun run src/memory/__helpers/bridge.ts clear-working).")
+Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*').")
 ```
 
 ### Step 3: Complexity Classification
@@ -170,7 +170,7 @@ Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-de
 Always spawn lu-learner (model tier resolved from routing table per complexity):
 
 ```
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Read working memory via bridge (bun run src/memory/__helpers/bridge.ts read-working). Capture patterns, decisions, and pitfalls to MEMORY.md. Clear working memory via bridge after extraction (bun run src/memory/__helpers/bridge.ts clear-working).")
+Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: 'default', context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: 'default', concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*') after extraction.")
 ```
 
 The lu-learner model tier is resolved via `resolveModelForAgent("lu-learner", complexity)`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.

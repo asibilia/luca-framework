@@ -372,7 +372,6 @@ Internal logic modules consumed by entities and other core modules.
 
 | Domain | Purpose |
 |--------|---------|
-| memory | Working memory, compression, recall, bridge |
 | planner | Cost model, scheduler, scoring, todo parsing |
 | iteration | Budget, checkpoint, classifier, convergence |
 | context | Context tier resolution, assembler, envelope |
@@ -416,7 +415,7 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1, never
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, memory, observability | Import T0 only |
+| T1 Core | context, planner, harness, iteration, observability | Import T0 only |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
 | T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
 
@@ -809,7 +808,7 @@ description: "Module boundary: import direction rules and entity isolation"
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, memory, observability  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
@@ -825,8 +824,8 @@ import { COMPLEXITY_ORDER } from "~/complexity";
 // ✅ T2 (agents) importing T1 (context)
 import type { ContextConfig } from "~/context";
 
-// ❌ T0 (shared) importing T1 (memory) — upward dependency
-import { compress } from "~/memory";
+// ❌ T0 (shared) importing T1 (harness) — upward dependency
+import { runHarness } from "~/harness";
 
 // ❌ T1 (harness) importing T2 (agents) — upward dependency
 import { agentRegistry } from "~/agents";
@@ -1145,7 +1144,7 @@ Luca is a framework for agentic development, combining spec-driven development w
 | ------------------- | ---------------------------------------------------- |
 | Entry Point         | Unified `/lu` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
-| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Memory              | MuninnDB (semantic graph memory)                     |
 | Verification        | Always runs (all complexity levels)                  |
 | Learning            | Pattern/decision/pitfall capture                     |
 | Pre-Flight          | Cognitive context loading                            |
@@ -1187,11 +1186,11 @@ Plan → Execute → **Verify** → **Learn** → Repeat
 
 ## two-tier_memory_system
 
-## Two-Tier Memory System (NEW)
+## MuninnDB Memory System
 
-### BRAIN.md — Project Identity
+### Brain Tree — Project Identity
 
-Captures project personality, loaded at session start:
+Stored as a MuninnDB tree (`brain:project-identity`), recalled at session start:
 
 - Project identity (name, domain, purpose)
 - Stack (languages, frameworks, databases)
@@ -1199,18 +1198,18 @@ Captures project personality, loaded at session start:
 - Code conventions
 - Development preferences
 
-### MEMORY.md — Long-Term Learning
+### Engrams — Long-Term Learning
 
-Persistent across sessions, selectively recalled:
+Persistent across sessions in MuninnDB, semantically recalled:
 
-- **Patterns**: Validated approaches that work
-- **Decisions**: Past choices with rationale
-- **Pitfalls**: Known issues to avoid
-- **Preferences**: User/project preferences
+- **Patterns** (`pattern:*`): Validated approaches that work
+- **Decisions** (`decision:*`): Past choices with rationale
+- **Pitfalls** (`pitfall:*`): Known issues to avoid
+- **Preferences** (`preference:*`): User/project preferences
 
-### WORKING.md — Session Memory
+### Session Context — Active Memory
 
-Active during workflow, cleared after learning extraction:
+MuninnDB session engrams (`session:*`), scoped to current workflow:
 
 - Current task context
 - Immediate findings
@@ -1219,13 +1218,13 @@ Active during workflow, cleared after learning extraction:
 
 ## cognitive_pre_flight
 
-## Cognitive Pre-Flight (NEW)
+## Cognitive Pre-Flight
 
 Before major operations, Luca runs cognitive pre-flight:
 
-1. **Load BRAIN.md** — Project conventions
-2. **Selective recall from MEMORY.md** — Relevant patterns, decisions, pitfalls
-3. **Initialize WORKING.md** — Session context
+1. **Recall brain tree from MuninnDB** — Project conventions
+2. **Semantic recall from MuninnDB** — Relevant patterns, decisions, pitfalls
+3. **Initialize MuninnDB session context** — Session engrams
 4. **Generate intuition flags** — RISK, CAUTION, OPPORTUNITY, UNKNOWN
 
 ---

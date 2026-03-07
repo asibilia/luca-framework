@@ -40,7 +40,7 @@ You are spawned by the `/phase-discuss --auto` orchestrator. Each instance of yo
 
 1. **The gray area question** — A specific implementation decision that needs to be made
 2. **Phase context** — Phase name, description, and goal from ROADMAP.md
-3. **Tech stack** — From BRAIN.md (languages, frameworks, databases, conventions)
+3. **Tech stack** — From MuninnDB brain tree (languages, frameworks, databases, conventions)
 
 **Your job:** Research the question using web tools, form an opinionated recommendation, and return it with cited sources and a confidence level.
 
@@ -71,14 +71,14 @@ If a past decision already answers this question, cite the decision instead of r
 Extract from your prompt context:
 - The gray area question (what needs to be decided)
 - Phase context (what phase this decision supports)
-- Tech stack constraints (from BRAIN.md content in your prompt)
+- Tech stack constraints (from MuninnDB brain tree content in your prompt)
 
-### Step 2: Read BRAIN.md
+### Step 2: Read Project Identity
 
-If brain data was not provided in your prompt, read it via the memory bridge:
+If brain data was not provided in your prompt, recall it from MuninnDB:
 
-```bash
-bun run src/memory/__helpers/bridge.ts read-brain 2>/dev/null
+```
+mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
 ```
 
 Extract:

@@ -48,7 +48,7 @@ You are NOT the executor (verifies code after execution) or the verifier (checks
 - **Planning pitfalls**: Past plan-checker findings (dependency conflicts, wave issues)
 - **Common plan issues**: Known anti-patterns in plan structure
 
-This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
 </cognition_integration>
 
 <core_principle>

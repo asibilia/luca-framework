@@ -15,7 +15,7 @@ alwaysApply: true
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, memory, observability  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
@@ -31,8 +31,8 @@ import { COMPLEXITY_ORDER } from "~/complexity";
 // ✅ T2 (agents) importing T1 (context)
 import type { ContextConfig } from "~/context";
 
-// ❌ T0 (shared) importing T1 (memory) — upward dependency
-import { compress } from "~/memory";
+// ❌ T0 (shared) importing T1 (harness) — upward dependency
+import { runHarness } from "~/harness";
 
 // ❌ T1 (harness) importing T2 (agents) — upward dependency
 import { agentRegistry } from "~/agents";
