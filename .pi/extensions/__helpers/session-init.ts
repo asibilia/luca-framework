@@ -2,9 +2,12 @@
  * Session initialization logic for Pi extensions.
  *
  * Extracted from session-start.sh (~475 lines of shell). Creates the
- * .planning/ directory with BRAIN.md, MEMORY.md, WORKING.md, STATE.md,
- * ROADMAP.md, config.json, and session lock. Subsequent sessions only
- * create missing files (validate & repair mode).
+ * .planning/ directory with STATE.md, ROADMAP.md, config.json, and
+ * session lock. Subsequent sessions only create missing files
+ * (validate & repair mode).
+ *
+ * NOTE: Memory files (BRAIN.md, MEMORY.md, WORKING.md) are no longer
+ * created here. Long-term memory is handled by MuninnDB MCP.
  *
  * All APIs are node:fs — Pi runs on Node.js, not Bun.
  *
@@ -32,7 +35,7 @@ export interface SessionInitResult {
 }
 
 /**
- * Ensure .planning/ directory exists and create missing memory files.
+ * Ensure .planning/ directory exists and create missing planning files.
  *
  * @param cwd - Project root directory
  * @returns List of created file names
@@ -40,76 +43,23 @@ export interface SessionInitResult {
 export function ensurePlanningDir(cwd: string): string[] {
   const planningDir = join(cwd, ".planning");
   mkdirSync(planningDir, { recursive: true });
-  return createMemoryFiles(planningDir);
+  return createPlanningFiles(planningDir);
 }
 
 /**
- * Create missing memory files (MEMORY.md, WORKING.md, STATE.md, ROADMAP.md).
+ * Create missing planning files (STATE.md, ROADMAP.md).
  *
  * Only creates files that don't already exist.
+ * NOTE: Memory files (MEMORY.md, WORKING.md, BRAIN.md) are no longer
+ * created here. Long-term memory is handled by MuninnDB MCP.
  *
  * @param planningDir - Path to .planning/ directory
  * @returns List of created file names
  */
-export function createMemoryFiles(planningDir: string): string[] {
+export function createPlanningFiles(planningDir: string): string[] {
   const created: string[] = [];
 
   const files: Array<{ name: string; content: string }> = [
-    {
-      name: "MEMORY.md",
-      content: `# Luca Memory
-
-> Long-term learning storage. Updated after verified work.
-
-## Patterns
-
-<!-- Validated approaches that work -->
-
-## Decisions
-
-<!-- Past choices with rationale -->
-
-## Pitfalls
-
-<!-- Known issues to avoid -->
-
-## Preferences
-
-<!-- User and project preferences -->
-
----
-
-*Luca Memory initialized*
-`,
-    },
-    {
-      name: "WORKING.md",
-      content: `# Luca Working Memory
-
-> Active session memory. Cleared after learning extraction.
-
-## Current Context
-
-- **Task:** None
-- **Started:** N/A
-
-## Findings
-
-<!-- Immediate discoveries -->
-
-## Hypotheses
-
-<!-- For debugging -->
-
-## Candidate Learnings
-
-<!-- To be verified before committing to MEMORY.md -->
-
----
-
-*Luca Working Memory initialized*
-`,
-    },
     {
       name: "STATE.md",
       content: `# Project State
@@ -274,8 +224,6 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
     runtime,
     cognitive: {
       enabled: true,
-      memory_recall: true,
-      working_memory: true,
       intuition_check: true,
       routing: "auto",
     },
@@ -429,122 +377,6 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
 }
 
 /**
- * Auto-detect project info and create BRAIN.md if missing.
- *
- * Reads package.json to detect language, framework, test runner,
- * build tool, and styling approach.
- *
- * @param cwd - Project root directory
- * @returns "BRAIN.md" if created, empty string otherwise
- */
-export function autoDetectBrainMd(cwd: string): string {
-  const brainPath = join(cwd, ".planning", "BRAIN.md");
-  if (existsSync(brainPath)) return "";
-
-  let name = "Project";
-  let description = "[What this project does -- customize this]";
-  let language = "[Primary language]";
-  let framework = "[Framework]";
-  let testing = "[Test framework]";
-  let buildTool = "[Build tool]";
-  let styling = "[Styling approach]";
-
-  try {
-    const pkgPath = join(cwd, "package.json");
-    if (existsSync(pkgPath)) {
-      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-      if (pkg.name) name = pkg.name;
-      if (pkg.description) description = pkg.description;
-
-      const deps: Record<string, string> = {
-        ...pkg.dependencies,
-        ...pkg.devDependencies,
-      };
-
-      // Language detection
-      const hasTsConfig = existsSync(join(cwd, "tsconfig.json"));
-      language = deps.typescript || hasTsConfig ? "TypeScript" : "JavaScript";
-
-      // Framework detection
-      if (deps.next) framework = "Next.js";
-      else if (deps.react) framework = "React";
-      else if (deps.vue) framework = "Vue";
-      else if (deps["@angular/core"]) framework = "Angular";
-      else if (deps.svelte) framework = "Svelte";
-      else if (deps.hono) framework = "Hono";
-      else if (deps.express) framework = "Express";
-      else if (deps.fastify) framework = "Fastify";
-      else framework = "Node.js";
-
-      // Test framework detection
-      if (deps.vitest) testing = "Vitest";
-      else if (deps.jest) testing = "Jest";
-      else if (deps["@testing-library/react"] || deps["@testing-library/vue"])
-        testing = "Testing Library";
-      else testing = "bun:test";
-
-      // Build tool detection
-      if (deps.vite) buildTool = "Vite";
-      else if (deps.webpack) buildTool = "Webpack";
-      else if (deps.esbuild) buildTool = "esbuild";
-      else if (deps.turbo || deps.turbopack) buildTool = "Turbopack";
-      else {
-        const hasBunfig = existsSync(join(cwd, "bunfig.toml"));
-        buildTool = hasBunfig ? "Bun" : "[Build tool]";
-      }
-
-      // Styling detection
-      if (deps.tailwindcss) styling = "Tailwind CSS";
-      else if (deps["styled-components"]) styling = "styled-components";
-      else if (deps["@emotion/react"] || deps["@emotion/styled"])
-        styling = "Emotion";
-      else if (deps.sass || deps["node-sass"]) styling = "Sass/SCSS";
-    }
-  } catch {
-    // No package.json or parse error — use defaults
-  }
-
-  const content = `# Luca Brain
-
-> Project identity and conventions. Loaded at session start.
-
-## Project Identity
-
-- **Name:** ${name}
-- **Domain:** ${description}
-- **Purpose:** [Why it exists -- customize this]
-
-## Stack
-
-- **Language:** ${language}
-- **Framework:** ${framework}
-- **Build:** ${buildTool}
-- **Testing:** ${testing}
-- **Styling:** ${styling}
-
-## Architecture Patterns
-
-[Describe key architectural decisions -- customize this]
-
-## Code Conventions
-
-[Add your code style preferences -- customize this]
-
-## Development Preferences
-
-- **Command Prefix:** /lu
-- **Workflow:** Luca spec-driven development
-
----
-
-*Luca Brain initialized (auto-detected from project files)*
-`;
-
-  writeFileSync(brainPath, content, "utf-8");
-  return "BRAIN.md";
-}
-
-/**
  * Check if a process with the given PID is still running.
  *
  * Uses process.kill(pid, 0) which sends no signal but errors
@@ -660,9 +492,9 @@ export function runSessionInit(cwd: string): SessionInitResult {
     warnings.push(staleLockMsg);
   }
 
-  // Step 1: Create .planning/ and missing memory files
-  const memoryFiles = ensurePlanningDir(cwd);
-  created.push(...memoryFiles);
+  // Step 1: Create .planning/ and missing planning files (STATE.md, ROADMAP.md)
+  const planningFiles = ensurePlanningDir(cwd);
+  created.push(...planningFiles);
 
   // Step 2: Initialize state machine
   const stateResult = initStateMachine(cwd);
@@ -673,11 +505,7 @@ export function runSessionInit(cwd: string): SessionInitResult {
   const configResult = detectAndWriteConfig(cwd, runtime);
   if (configResult) created.push(configResult);
 
-  // Step 4: Auto-detect and create BRAIN.md
-  const brainResult = autoDetectBrainMd(cwd);
-  if (brainResult) created.push(brainResult);
-
-  // Step 5: Create session lock
+  // Step 4: Create session lock
   createSessionLock(cwd);
 
   return { created, warnings };
