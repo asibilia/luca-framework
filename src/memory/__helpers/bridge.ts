@@ -55,10 +55,15 @@ import {
 } from "./working-memory.ts";
 import { parseProcedureFile, serializeProcedures } from "./procedure-parser.ts";
 import { recallProcedures } from "./procedure-recall.ts";
-import { updateExecutionStats } from "./procedure-lifecycle.ts";
+import {
+  updateExecutionStats,
+  recordReplayOutcome,
+} from "./procedure-lifecycle.ts";
+import { selectReplayableProcedures } from "./procedure-replay.ts";
 import { createContextMonitor } from "./context-monitor.ts";
 import { analyzeMemoryEntries } from "./compression.ts";
 import { scoreMilestoneRecall } from "./milestone-recall.ts";
+import { loadGlobalMemory } from "./cognitive-profile.ts";
 import {
   readJsonFile,
   writeJsonFile,
@@ -198,7 +203,12 @@ Subcommands:
   add-memory-entry       Add a new memory entry
                          Options: --data='{"title":"...","category":"pattern",...}' (required)
   snapshot-memory        Regenerate all MD views from JSON sources
-  ensure-init            Create JSON files if missing (with MD view generation)`);
+  ensure-init            Create JSON files if missing (with MD view generation)
+  read-global-memory     Read global memory profile (~/.luca/global-memory.json)
+  find-replayable        Find replayable procedures for a task
+                         Options: --task="description" (required) --threshold=0.7 (optional)
+  record-replay-outcome  Record outcome of a replayed procedure
+                         Options: --procedure-id=id (required) --success=true|false (required) --duration-ms=N (optional)`);
 }
 
 /**
@@ -923,6 +933,39 @@ export async function handleReadBrain(): Promise<void> {
 }
 
 /**
+ * Read the global memory profile from ~/.luca/global-memory.json.
+ *
+ * Returns a JSON summary with entry count, source projects, and domain tags.
+ * Returns null gracefully if the file is missing or invalid.
+ */
+export async function handleReadGlobalMemory(): Promise<void> {
+  const profile = await loadGlobalMemory();
+
+  if (!profile) {
+    console.log(JSON.stringify(null));
+    return;
+  }
+
+  // Collect unique source projects from entries
+  const sourceProjects = new Set<string>();
+  for (const entry of profile.entries) {
+    if (entry.source_project) {
+      sourceProjects.add(entry.source_project);
+    }
+  }
+
+  console.log(
+    JSON.stringify({
+      entry_count: profile.entries.length,
+      source_projects: Array.from(sourceProjects).sort(),
+      domain_tags: profile.domain_tags,
+      exported_at: profile.exported_at,
+      source_project: profile.source_project,
+    }),
+  );
+}
+
+/**
  * Add a new memory entry.
  *
  * Validates the entry against memoryEntrySchema, appends to memory.json,
@@ -1207,6 +1250,131 @@ export async function handleEnsureInit(): Promise<void> {
   console.log(JSON.stringify({ initialized: true, files: results }));
 }
 
+// ─── Replay Commands ─────────────────────────────────────────────────────────
+
+/**
+ * Find replayable procedures for a given task description.
+ *
+ * Returns procedures that meet the replay threshold with their
+ * pre-plans ready for lu-executor consumption.
+ *
+ * @param args - CLI arguments (--task=description required, --threshold=0.7 optional)
+ */
+export async function handleFindReplayable(args: string[]): Promise<void> {
+  const taskArg = getArg(args, "task");
+  const thresholdArg = getArg(args, "threshold");
+
+  if (!taskArg) {
+    console.error("Missing --task argument");
+    process.exit(2);
+  }
+
+  const threshold = thresholdArg ? parseFloat(thresholdArg) : 0.7;
+
+  // Load procedures (JSON-primary, MD fallback)
+  const jsonResult = await readJsonFile(
+    PROCEDURES_JSON_PATH,
+    z.array(procedureEntrySchema),
+  );
+  const result = jsonResult.success
+    ? jsonResult
+    : await parseProcedureFile(PROCEDURES_PATH);
+
+  if (!result.success) {
+    // No procedures available -- return empty array
+    console.log(JSON.stringify({ replayable: [], count: 0 }));
+    return;
+  }
+
+  const replayable = selectReplayableProcedures(result.data, taskArg, {
+    min_composite_score: threshold,
+  });
+
+  console.log(
+    JSON.stringify({
+      replayable: replayable.map((r) => ({
+        procedure_id: r.entry.id,
+        title: r.entry.title,
+        confidence_score: r.pre_plan.confidence_score,
+        success_rate: r.entry.success_rate,
+        execution_count: r.entry.execution_count,
+        pre_plan: r.pre_plan,
+      })),
+      count: replayable.length,
+    }),
+  );
+}
+
+/**
+ * Record the outcome of a replayed procedure.
+ *
+ * Updates procedure execution stats and persists the changes.
+ * If the replay failure triggers auto-retirement, the procedure
+ * is retired.
+ *
+ * @param args - CLI arguments (--procedure-id required, --success required, --duration-ms required)
+ */
+export async function handleRecordReplayOutcome(args: string[]): Promise<void> {
+  const procId = getArg(args, "procedure-id");
+  const successArg = getArg(args, "success");
+  const durationArg = getArg(args, "duration-ms");
+
+  if (!procId) {
+    console.error("Missing --procedure-id argument");
+    process.exit(2);
+  }
+  if (!successArg) {
+    console.error("Missing --success argument");
+    process.exit(2);
+  }
+
+  const success = successArg === "true";
+  const durationMs = durationArg ? parseInt(durationArg, 10) : 0;
+
+  // Load procedures (JSON-primary, MD fallback)
+  const jsonResult = await readJsonFile(
+    PROCEDURES_JSON_PATH,
+    z.array(procedureEntrySchema),
+  );
+  const result = jsonResult.success
+    ? jsonResult
+    : await parseProcedureFile(PROCEDURES_PATH);
+
+  if (!result.success) {
+    console.error("Failed to load procedures");
+    process.exit(2);
+  }
+
+  const entryIndex = result.data.findIndex((e) => e.id === procId);
+  if (entryIndex < 0) {
+    console.error(`Procedure not found: ${procId}`);
+    process.exit(2);
+  }
+
+  // Record the replay outcome
+  const original = result.data[entryIndex]!;
+  const updated = recordReplayOutcome(original, success, durationMs);
+
+  // Replace in array and persist
+  const allEntries = [...result.data];
+  allEntries[entryIndex] = updated;
+
+  const markdown = serializeProcedures(allEntries);
+  await Bun.write(PROCEDURES_PATH, markdown);
+
+  console.log(
+    JSON.stringify({
+      id: updated.id,
+      execution_count: updated.execution_count,
+      success_count: updated.success_count,
+      success_rate: updated.success_rate,
+      status: updated.status,
+      retirement_reason: updated.retirement_reason ?? null,
+      last_executed_at: updated.last_executed_at,
+    }),
+  );
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 if (import.meta.main) {
@@ -1250,6 +1418,15 @@ if (import.meta.main) {
         break;
       case "ensure-init":
         await handleEnsureInit();
+        break;
+      case "read-global-memory":
+        await handleReadGlobalMemory();
+        break;
+      case "find-replayable":
+        await handleFindReplayable(args);
+        break;
+      case "record-replay-outcome":
+        await handleRecordReplayOutcome(args);
         break;
       default:
         printUsage();

@@ -88,6 +88,11 @@ export const memoryEntrySchema = z.object({
   recall_count: z.number().int().nonnegative().default(0),
   /** Estimated token count for this entry */
   token_estimate: z.number().int().nonnegative().default(0),
+  /** Source project name for cross-project provenance tracking.
+   *  Undefined means the entry was created in the current project.
+   *  When imported from another project, set to the source project's name.
+   */
+  source_project: z.string().optional(),
 });
 
 /** A single MEMORY.md entry with category, confidence, and recall metadata. */
@@ -673,3 +678,90 @@ export const compactionResultSchema = z.object({
 
 /** Auto-compaction result. */
 export type CompactionResult = z.infer<typeof compactionResultSchema>;
+
+// ─── Replay Threshold Schema ────────────────────────────────────────────────
+
+/**
+ * Configurable threshold for procedure auto-replay.
+ *
+ * Determines when a procedure is confident enough to auto-replay as a
+ * pre-plan during phase execution. The composite score combines
+ * success_rate, relevance_score, and execution_count signals.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const replayThresholdSchema = z.object({
+  /** Minimum composite score (success_rate + relevance) to qualify for replay (0-1) */
+  min_composite_score: z.number().min(0).max(1).default(0.7),
+  /** Minimum success rate for replay eligibility (0-1) */
+  min_success_rate: z.number().min(0).max(1).default(0.5),
+  /** Minimum number of executions before auto-replay is allowed */
+  min_executions: z.number().int().nonnegative().default(3),
+});
+
+/** Configurable replay threshold. */
+export type ReplayThreshold = z.infer<typeof replayThresholdSchema>;
+
+// ─── Pre-Plan Schema ────────────────────────────────────────────────────────
+
+/**
+ * A procedure converted to plan format for lu-executor consumption.
+ *
+ * Represents a high-confidence procedure translated into structured
+ * steps that the executor can follow as a suggested approach.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const prePlanSchema = z.object({
+  /** ID of the source procedure */
+  source_procedure_id: z.string(),
+  /** Human-readable title for the pre-plan */
+  title: z.string(),
+  /** Ordered action items for the executor */
+  steps: z.array(
+    z.object({
+      /** Step number (1-indexed) */
+      order: z.number().int().positive(),
+      /** Action description */
+      action: z.string(),
+      /** Expected output or verification criterion */
+      expected_output: z.string().optional(),
+      /** Suggested tool or agent */
+      tool: z.string().optional(),
+    }),
+  ),
+  /** Composite confidence score that qualified this procedure for replay */
+  confidence_score: z.number().min(0).max(1),
+  /** Whether this pre-plan was auto-generated from a procedure */
+  auto_generated: z.boolean().default(true),
+});
+
+/** A procedure converted to plan format. */
+export type PrePlan = z.infer<typeof prePlanSchema>;
+
+// ─── Replay Result Schema ───────────────────────────────────────────────────
+
+/**
+ * Captures the outcome of a replayed procedure.
+ *
+ * Records whether the pre-plan was applied, whether the harness
+ * passed, execution duration, and whether feedback was recorded
+ * back to the procedure's stats.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const replayResultSchema = z.object({
+  /** ID of the procedure that was replayed */
+  procedure_id: z.string(),
+  /** Whether the pre-plan was applied during execution */
+  pre_plan_applied: z.boolean(),
+  /** Whether the harness verification passed after replay */
+  harness_passed: z.boolean(),
+  /** Execution duration in milliseconds */
+  execution_duration_ms: z.number().int().nonnegative(),
+  /** Whether feedback was recorded back to procedure stats */
+  feedback_recorded: z.boolean().default(false),
+});
+
+/** Outcome of a replayed procedure. */
+export type ReplayResult = z.infer<typeof replayResultSchema>;

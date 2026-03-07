@@ -16,7 +16,7 @@ Execute all plans in a phase using wave-based parallel execution, then verify wi
 
 Orchestrator stays lean: discover plans, analyze dependencies, group into waves, spawn subagents, collect results. Each subagent loads the full execute-plan context and handles its own plan.
 
-**Arguments:** `<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory]`
+**Arguments:** `<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory] [--skip-replay]`
 
 ## Sub-agent Delegation Requirements
 
@@ -263,6 +263,40 @@ Commits will not reference issues and PR creation will require manual setup.
 **If "Abort" selected:**
 
 1. Exit with message to run `/milestone-new` or manually create issue
+
+### 0.6. Procedure Replay Check
+
+**Skip if:** `--skip-replay` flag passed.
+
+Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for lu-executor.
+
+```bash
+# Read phase objective from ROADMAP.md or plan files
+PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .planning/ROADMAP.md | tail -1 | sed 's/^[[:space:]]*//')
+
+# Find replayable procedures matching the phase objective
+REPLAY_JSON=$(bun run src/memory/__helpers/bridge.ts find-replayable --task="$PHASE_OBJECTIVE" --threshold=0.7 2>/dev/null || echo '{"replayable":[],"count":0}')
+REPLAY_COUNT=$(echo "$REPLAY_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.count)" 2>/dev/null || echo "0")
+```
+
+**If replayable procedures found (REPLAY_COUNT > 0):**
+
+Store `REPLAY_JSON` for injection into lu-executor context. When spawning lu-executor for each plan, include the pre-plans as additional context:
+
+```
+<procedure_replay_context>
+The following pre-plans are suggested approaches from past successful executions.
+They are ADVISORY, not mandatory. Use them as guidance if they match the current task.
+
+{pre_plans from REPLAY_JSON}
+</procedure_replay_context>
+```
+
+Track which pre-plans were injected for feedback recording in Step 6.7.
+
+**If no replayable procedures found:**
+
+Continue normally. No pre-plan context is injected.
 
 ### 1. Validate Phase Exists
 
@@ -853,6 +887,31 @@ Pass results to Step 7 (verifier context):
 - `remaining_errors`: classified errors still active
 - `loop_a_outcome`: the outcome string
 - `loop_a_iterations`: count
+
+### 6.7. Record Procedure Replay Feedback
+
+**Skip if:** `--skip-replay` flag passed OR no pre-plans were injected in Step 0.6.
+
+After harness verification completes, record feedback for each pre-plan that was followed. This closes the learning loop: procedure replays feed back into procedure scoring.
+
+```bash
+# For each pre-plan that was injected during execution:
+# HARNESS_PASSED is true if harness_status === "passed", false otherwise
+# EXECUTION_DURATION_MS is computed from phase start time
+
+for PROC_ID in $INJECTED_PROCEDURE_IDS; do
+  bun run src/memory/__helpers/bridge.ts record-replay-outcome \
+    --procedure-id="$PROC_ID" \
+    --success=$HARNESS_PASSED \
+    --duration-ms=$EXECUTION_DURATION_MS \
+    2>/dev/null || true
+done
+```
+
+This ensures that:
+- Successful replays boost procedure confidence (success_count incremented)
+- Failed replays degrade procedure confidence (only execution_count incremented)
+- Consistently failing procedures are auto-retired (success_rate < 0.4 after 5+ executions)
 
 ### 7. Verify Phase Goal
 

@@ -157,3 +157,87 @@ export function updateExecutionStats(
     last_executed_at: new Date().toISOString(),
   };
 }
+
+// ─── Record Replay Outcome ──────────────────────────────────────────────────
+
+/**
+ * Record the outcome of a procedure replay and update procedure stats.
+ *
+ * Calls updateExecutionStats for stat tracking, then checks if the
+ * procedure should be auto-retired after a failed replay. Returns
+ * the updated (and possibly retired) ProcedureEntry.
+ *
+ * Does NOT mutate the input entry.
+ *
+ * @param entry - Procedure entry to update
+ * @param harnessPassed - Whether the harness verification passed
+ * @param _durationMs - Execution duration in milliseconds (reserved for future telemetry)
+ * @returns Updated ProcedureEntry with new stats, possibly retired
+ *
+ * @example
+ * ```typescript
+ * const updated = recordReplayOutcome(entry, true, 5000);
+ * // updated.execution_count === entry.execution_count + 1
+ * // updated.success_count === entry.success_count + 1
+ * ```
+ */
+export function recordReplayOutcome(
+  entry: ProcedureEntry,
+  harnessPassed: boolean,
+  _durationMs: number,
+): ProcedureEntry {
+  // Update execution stats
+  let updated = updateExecutionStats(entry, harnessPassed);
+
+  // If harness failed, check if auto-retirement is warranted
+  if (!harnessPassed) {
+    const retirement = shouldAutoRetireAfterReplay(updated);
+    if (retirement.should_retire) {
+      updated = applyRetirement(updated, retirement.reason);
+    }
+  }
+
+  return updated;
+}
+
+// ─── Should Auto-Retire After Replay ────────────────────────────────────────
+
+/**
+ * Check if a procedure should be auto-retired after a replay failure.
+ *
+ * Uses stricter thresholds for auto-replayed procedures:
+ * - success_rate < 0.4 after 5+ executions triggers retirement
+ *
+ * @param entry - Procedure entry to evaluate
+ * @returns Assessment with should_retire flag and reason
+ *
+ * @example
+ * ```typescript
+ * const assessment = shouldAutoRetireAfterReplay(entry);
+ * if (assessment.should_retire) {
+ *   const retired = applyRetirement(entry, assessment.reason);
+ * }
+ * ```
+ */
+export function shouldAutoRetireAfterReplay(entry: ProcedureEntry): {
+  should_retire: boolean;
+  reason: string;
+} {
+  const REPLAY_MIN_EXECUTIONS = 5;
+  const REPLAY_MIN_SUCCESS_RATE = 0.4;
+
+  if (
+    entry.execution_count >= REPLAY_MIN_EXECUTIONS &&
+    entry.success_rate < REPLAY_MIN_SUCCESS_RATE
+  ) {
+    return {
+      should_retire: true,
+      reason: `Auto-retired after replay: low success rate (${entry.success_rate.toFixed(2)} after ${entry.execution_count} executions, replay threshold: ${REPLAY_MIN_SUCCESS_RATE.toFixed(2)})`,
+    };
+  }
+
+  return {
+    should_retire: false,
+    reason: "Procedure is healthy after replay",
+  };
+}

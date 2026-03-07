@@ -108,6 +108,20 @@ export {
 
 export type { ProcedureStep, ProcedureEntry } from "./__schemas/memory.schemas";
 
+// ─── Replay Schemas ─────────────────────────────────────────────────────────
+
+export {
+  replayThresholdSchema,
+  prePlanSchema,
+  replayResultSchema,
+} from "./__schemas/memory.schemas";
+
+export type {
+  ReplayThreshold,
+  PrePlan,
+  ReplayResult,
+} from "./__schemas/memory.schemas";
+
 // ─── Procedure Parsing ──────────────────────────────────────────────────────
 
 export {
@@ -127,6 +141,8 @@ export {
   findReplayableProcedures,
   adaptProcedureToContext,
   replayProcedure,
+  convertToPrePlan,
+  selectReplayableProcedures,
   ProcedureReplayContextSchema,
   ProcedureReplayResultSchema,
 } from "./__helpers/procedure-replay.ts";
@@ -142,6 +158,8 @@ export {
   evaluateRetirement,
   applyRetirement,
   updateExecutionStats,
+  recordReplayOutcome,
+  shouldAutoRetireAfterReplay,
 } from "./__helpers/procedure-lifecycle.ts";
 
 // ─── Milestone Recall ──────────────────────────────────────────────────────
@@ -222,6 +240,9 @@ export {
   handleAppendWorking,
   handleClearWorking,
   handleUpdateProcedureStats,
+  handleReadGlobalMemory,
+  handleFindReplayable,
+  handleRecordReplayOutcome,
 } from "./__helpers/bridge.ts";
 
 // ─── Cognitive Profile ────────────────────────────────────────────────────
@@ -229,13 +250,20 @@ export {
 export {
   CognitiveProfileSchema,
   ImportResultSchema,
+  ExportOptionsSchema,
+  MergeResultSchema,
   exportCognitiveProfile,
   importCognitiveProfile,
+  exportToGlobalMemory,
+  loadGlobalMemory,
+  mergeGlobalEntries,
 } from "./__helpers/cognitive-profile.ts";
 
 export type {
   CognitiveProfile,
   ImportResult,
+  ExportOptions,
+  MergeResult,
 } from "./__helpers/cognitive-profile.ts";
 
 // ─── Meta-Cognition ──────────────────────────────────────────────────────

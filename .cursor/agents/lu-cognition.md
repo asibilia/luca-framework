@@ -362,6 +362,32 @@ For each keyword, scan the **filtered candidate set**:
 - **Preferences section**: Applicable preferences?
   </step>
 
+<step name="load_global_memory">
+Load cross-project learnings from the global memory profile:
+
+```bash
+GLOBAL_PROFILE=$(bun run src/memory/__helpers/bridge.ts read-global-memory 2>/dev/null || echo 'null')
+```
+
+**If global profile exists (not null):**
+
+- Parse the JSON summary: entry_count, source_projects, domain_tags
+- Log how many global entries are available: "Loaded {N} global entries from {projects}"
+- Entries with `source_project` set are tagged as "[from: project-name]" in recall output
+- Global entries supplement (do not replace) local memory recall
+- Deduplication: if a global entry title matches a local entry, the local entry takes precedence
+
+**If global profile is null:**
+
+- Log: "No global memory profile found (~/.luca/global-memory.json)"
+- Continue without global entries (this is the default for new installations)
+
+**Tier Gate:**
+
+- Only load global memory for T1+ agents (T0 agents skip all memory)
+- Global entries count toward the tier-scaled entry limits
+</step>
+
 <step name="initialize_working">
 Create or reset WORKING.md for this session:
 

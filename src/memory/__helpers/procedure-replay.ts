@@ -4,7 +4,10 @@ import orderBy from "lodash/orderBy";
 import type {
   ProcedureEntry,
   ProcedureStep,
+  PrePlan,
+  ReplayThreshold,
 } from "../__schemas/memory.schemas";
+import { replayThresholdSchema } from "../__schemas/memory.schemas";
 import {
   computeTagOverlap,
   computeTriggerSimilarity,
@@ -252,4 +255,164 @@ export function replayProcedure(
     was_adapted: wasAdapted,
     relevance_score: relevanceScore,
   };
+}
+
+// ─── Convert to Pre-Plan ────────────────────────────────────────────────────
+
+/**
+ * Convert a replayed procedure into a pre-plan consumable by lu-executor.
+ *
+ * Checks if the procedure's composite score (combining success_rate and
+ * relevance_score) meets the threshold. If it does, converts adapted_steps
+ * into pre-plan format. Returns null if below threshold.
+ *
+ * Does NOT mutate the input procedure or replay result.
+ *
+ * @param procedure - Procedure entry to convert
+ * @param replayResult - Result of replaying the procedure (contains adapted steps)
+ * @param threshold - Optional replay threshold overrides
+ * @returns PrePlan if composite score meets threshold, null otherwise
+ *
+ * @example
+ * ```typescript
+ * const prePlan = convertToPrePlan(procedure, replayResult);
+ * if (prePlan) {
+ *   // Inject into lu-executor context
+ * }
+ * ```
+ */
+export function convertToPrePlan(
+  procedure: ProcedureEntry,
+  replayResult: ProcedureReplayResult,
+  threshold?: Partial<ReplayThreshold>,
+): PrePlan | null {
+  const parseResult = replayThresholdSchema.safeParse(threshold ?? {});
+  const validThreshold = parseResult.success
+    ? parseResult.data
+    : replayThresholdSchema.parse({});
+
+  // Compute composite score: average of success_rate and relevance_score
+  const compositeScore =
+    Math.round(
+      ((procedure.success_rate + replayResult.relevance_score) / 2) * 100,
+    ) / 100;
+
+  // Gate: composite score must meet threshold
+  if (compositeScore < validThreshold.min_composite_score) {
+    return null;
+  }
+
+  // Gate: success rate must meet minimum
+  if (procedure.success_rate < validThreshold.min_success_rate) {
+    return null;
+  }
+
+  // Gate: must have enough executions
+  if (procedure.execution_count < validThreshold.min_executions) {
+    return null;
+  }
+
+  // Convert adapted steps into pre-plan format
+  const steps = replayResult.adapted_steps.map((step) => ({
+    order: step.order,
+    action: step.action,
+    expected_output: step.expected_output,
+    tool: step.tool,
+  }));
+
+  return {
+    source_procedure_id: procedure.id,
+    title: procedure.title,
+    steps,
+    confidence_score: compositeScore,
+    auto_generated: true,
+  };
+}
+
+// ─── Select Replayable Procedures ───────────────────────────────────────────
+
+/**
+ * Find procedures eligible for auto-replay as pre-plans.
+ *
+ * Combines findReplayableProcedures with threshold gating. Returns only
+ * procedures where the composite score >= threshold AND success_rate >= 0.5
+ * AND execution_count >= 3 (must have proven track record).
+ *
+ * @param procedures - All available procedure entries
+ * @param taskDescription - Description of the current task
+ * @param threshold - Optional replay threshold overrides
+ * @param limit - Maximum number of procedures to return (default: 5)
+ * @returns Replayable procedures with their replay results and pre-plans
+ *
+ * @example
+ * ```typescript
+ * const replayable = selectReplayableProcedures(
+ *   allProcedures,
+ *   "Add REST API endpoint for user profiles",
+ * );
+ * ```
+ */
+export function selectReplayableProcedures(
+  procedures: ProcedureEntry[],
+  taskDescription: string,
+  threshold?: Partial<ReplayThreshold>,
+  limit: number = 5,
+): Array<{
+  entry: ProcedureEntry;
+  replay_result: ProcedureReplayResult;
+  pre_plan: PrePlan;
+}> {
+  const parseResult = replayThresholdSchema.safeParse(threshold ?? {});
+  const validThreshold = parseResult.success
+    ? parseResult.data
+    : replayThresholdSchema.parse({});
+
+  // Start with basic replayable procedures (relevance-scored)
+  const candidates = findReplayableProcedures(
+    taskDescription,
+    procedures,
+    limit * 2, // fetch extra to account for threshold filtering
+  );
+
+  const results: Array<{
+    entry: ProcedureEntry;
+    replay_result: ProcedureReplayResult;
+    pre_plan: PrePlan;
+  }> = [];
+
+  for (const candidate of candidates) {
+    const { entry } = candidate;
+
+    // Gate: minimum execution count
+    if (entry.execution_count < validThreshold.min_executions) {
+      continue;
+    }
+
+    // Gate: minimum success rate
+    if (entry.success_rate < validThreshold.min_success_rate) {
+      continue;
+    }
+
+    // Replay the procedure to get adapted steps
+    const replayContext = ProcedureReplayContextSchema.parse({
+      task_description: taskDescription,
+    });
+    const replayResult = replayProcedure(entry, replayContext);
+
+    // Attempt to convert to pre-plan (applies composite score threshold)
+    const prePlan = convertToPrePlan(entry, replayResult, validThreshold);
+    if (prePlan) {
+      results.push({
+        entry,
+        replay_result: replayResult,
+        pre_plan: prePlan,
+      });
+    }
+
+    if (results.length >= limit) {
+      break;
+    }
+  }
+
+  return results;
 }
