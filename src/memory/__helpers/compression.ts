@@ -214,14 +214,27 @@ function assignStrategy(
  * collapsed whitespace). Entries with identical normalized titles
  * are considered duplicates.
  *
+ * Cross-project deduplication: When entries share a normalized title,
+ * local entries (no source_project) are ordered first so they become
+ * the "original" that imported entries are deduplicated against.
+ * This prevents global imports from accumulating duplicate entries.
+ *
  * @param entries - Array of memory entries to check
- * @returns Map of normalized title to array of entry IDs
+ * @returns Map of normalized title to array of entry IDs (local entries first)
  */
 function detectDuplicates(entries: MemoryEntry[]): Record<string, string[]> {
   const grouped = groupBy(entries, (e) => normalizeTitle(e.title));
   const result: Record<string, string[]> = {};
   for (const [key, group] of Object.entries(grouped)) {
-    result[key] = group.map((e) => e.id);
+    // Sort local entries (no source_project) before imported entries.
+    // This ensures local entries are treated as the "original" when
+    // deduplicating, so imported entries get marked as duplicates.
+    const sorted = [...group].sort((a, b) => {
+      const aIsLocal = !a.source_project ? 0 : 1;
+      const bIsLocal = !b.source_project ? 0 : 1;
+      return aIsLocal - bIsLocal;
+    });
+    result[key] = sorted.map((e) => e.id);
   }
   return result;
 }

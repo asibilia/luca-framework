@@ -5,12 +5,20 @@
  * format that can be imported into another project. Handles merging
  * with existing data to avoid duplicates.
  *
+ * Includes global memory support for cross-project learning:
+ * - exportToGlobalMemory: writes portable entries to ~/.luca/global-memory.json
+ * - loadGlobalMemory: reads the global memory profile
+ * - mergeGlobalEntries: deduplicates global entries against local entries
+ *
  * @module memory/cognitive-profile
  */
 import { z } from "zod";
 import filter from "lodash/filter";
 import find from "lodash/find";
 import isEmpty from "lodash/isEmpty";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { mkdir } from "node:fs/promises";
 
 import { brainSchema } from "../__schemas/memory.schemas";
 import { memoryEntrySchema } from "../__schemas/memory.schemas";
@@ -63,16 +71,73 @@ export const ImportResultSchema = z.object({
 
 export type ImportResult = z.infer<typeof ImportResultSchema>;
 
+/**
+ * Options for controlling which memory entries are exported.
+ *
+ * Portable categories (patterns, preferences) are always included.
+ * Decisions are project-specific by default but can be opted in.
+ * Pitfalls are generally portable and included by default.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const ExportOptionsSchema = z.object({
+  /** Categories that are always portable across projects */
+  portable_categories: z
+    .array(z.enum(["pattern", "preference"]))
+    .default(["pattern", "preference"]),
+  /** Whether to include decisions (project-specific by default) */
+  include_decisions: z.boolean().default(false),
+  /** Whether to include pitfalls (generally portable) */
+  include_pitfalls: z.boolean().default(true),
+  /** Minimum confidence level for exported entries */
+  min_confidence: z.enum(["low", "medium", "high"]).default("medium"),
+});
+
+/** Export options type. */
+export type ExportOptions = z.infer<typeof ExportOptionsSchema>;
+
+/**
+ * Result of a global memory merge operation.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const MergeResultSchema = z.object({
+  /** Number of new entries added from global memory */
+  entries_added: z.number().int().nonnegative(),
+  /** Number of entries skipped as duplicates */
+  entries_skipped: z.number().int().nonnegative(),
+  /** Source projects that contributed entries */
+  source_projects: z.array(z.string()),
+  /** Human-readable summary */
+  summary: z.string(),
+});
+
+export type MergeResult = z.infer<typeof MergeResultSchema>;
+
+/** Path to the global memory profile. */
+const GLOBAL_MEMORY_DIR = join(homedir(), ".luca");
+const GLOBAL_MEMORY_PATH = join(GLOBAL_MEMORY_DIR, "global-memory.json");
+
+/** Confidence levels ordered for comparison. */
+const CONFIDENCE_ORDER: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
+
 // ─── Export ──────────────────────────────────────────────────────────────────
 
 /**
  * Export a portable cognitive profile from brain content and memory entries.
  *
- * Filters entries to include only high-confidence patterns and decisions,
- * which are the most transferable across projects.
+ * Filters entries based on configurable export options. By default:
+ * - Includes patterns, preferences, and pitfalls with medium+ confidence
+ * - Excludes decisions (project-specific by default)
+ * - Sets source_project on all exported entries for provenance tracking
  *
  * @param brain - Parsed brain data
  * @param memoryEntries - All memory entries from MEMORY.md
+ * @param options - Optional export configuration (uses defaults if omitted)
  * @returns A portable CognitiveProfile
  *
  * @example
@@ -80,23 +145,47 @@ export type ImportResult = z.infer<typeof ImportResultSchema>;
  * const profile = exportCognitiveProfile(brain, entries);
  * await Bun.write("profile.json", JSON.stringify(profile, null, 2));
  * ```
+ *
+ * @example
+ * ```typescript
+ * // Include decisions explicitly
+ * const profile = exportCognitiveProfile(brain, entries, { include_decisions: true });
+ * ```
  */
 export function exportCognitiveProfile(
   brain: Brain,
   memoryEntries: MemoryEntry[],
+  options?: Partial<ExportOptions>,
 ): CognitiveProfile {
-  // Include high-confidence patterns and decisions (most transferable)
+  const opts = ExportOptionsSchema.parse(options ?? {});
+  const minConfidenceLevel = CONFIDENCE_ORDER[opts.min_confidence] ?? 1;
+
+  // Build the set of categories to include
+  const allowedCategories = new Set<string>(opts.portable_categories);
+  if (opts.include_pitfalls) {
+    allowedCategories.add("pitfall");
+  }
+  if (opts.include_decisions) {
+    allowedCategories.add("decision");
+  }
+
+  // Filter entries by category and confidence
   const transferable = filter(
     memoryEntries,
     (entry) =>
-      entry.confidence === "high" ||
-      (entry.confidence === "medium" &&
-        (entry.category === "pattern" || entry.category === "decision")),
+      allowedCategories.has(entry.category) &&
+      (CONFIDENCE_ORDER[entry.confidence] ?? 0) >= minConfidenceLevel,
   );
+
+  // Set source_project on all exported entries for provenance
+  const taggedEntries: MemoryEntry[] = transferable.map((entry) => ({
+    ...entry,
+    source_project: brain.project_name,
+  }));
 
   // Collect unique domain tags from included entries
   const tagSet = new Set<string>();
-  for (const entry of transferable) {
+  for (const entry of taggedEntries) {
     for (const tag of entry.tags) {
       tagSet.add(tag);
     }
@@ -107,8 +196,111 @@ export function exportCognitiveProfile(
     exported_at: new Date().toISOString(),
     source_project: brain.project_name,
     brain,
-    entries: transferable,
+    entries: taggedEntries,
     domain_tags: Array.from(tagSet).sort(),
+  };
+}
+
+/**
+ * Export portable learnings to the global memory file (~/.luca/global-memory.json).
+ *
+ * Creates the ~/.luca/ directory if it does not exist. If the global memory
+ * file already exists, merges new entries (deduplicates by ID and title).
+ * If it does not exist, creates it with the exported profile.
+ *
+ * @param brain - Parsed brain data
+ * @param memoryEntries - All memory entries from MEMORY.md
+ * @param options - Optional export configuration
+ * @returns Summary of what was exported
+ *
+ * @example
+ * ```typescript
+ * const summary = await exportToGlobalMemory(brain, entries);
+ * console.log(summary.summary);
+ * ```
+ */
+export async function exportToGlobalMemory(
+  brain: Brain,
+  memoryEntries: MemoryEntry[],
+  options?: Partial<ExportOptions>,
+): Promise<{
+  entries_exported: number;
+  entries_skipped: number;
+  summary: string;
+}> {
+  const profile = exportCognitiveProfile(brain, memoryEntries, options);
+
+  // Ensure ~/.luca/ directory exists
+  await mkdir(GLOBAL_MEMORY_DIR, { recursive: true });
+
+  // Check if global memory file exists
+  const globalFile = Bun.file(GLOBAL_MEMORY_PATH);
+  const exists = await globalFile.exists();
+
+  if (!exists) {
+    // Create new global memory file
+    await Bun.write(GLOBAL_MEMORY_PATH, JSON.stringify(profile, null, 2));
+    return {
+      entries_exported: profile.entries.length,
+      entries_skipped: 0,
+      summary: `Created global memory with ${profile.entries.length} entries from ${brain.project_name}.`,
+    };
+  }
+
+  // Merge with existing global memory
+  const existingRaw = await globalFile.json();
+  const existingResult = CognitiveProfileSchema.safeParse(existingRaw);
+
+  if (!existingResult.success) {
+    // Existing file is invalid -- overwrite with new profile
+    await Bun.write(GLOBAL_MEMORY_PATH, JSON.stringify(profile, null, 2));
+    return {
+      entries_exported: profile.entries.length,
+      entries_skipped: 0,
+      summary: `Replaced invalid global memory with ${profile.entries.length} entries from ${brain.project_name}.`,
+    };
+  }
+
+  const existing = existingResult.data;
+
+  // Deduplicate by ID and normalized title
+  const existingIds = new Set(existing.entries.map((e) => e.id));
+  const existingTitles = new Set(
+    existing.entries.map((e) => e.title.toLowerCase().trim()),
+  );
+
+  const newEntries: MemoryEntry[] = [];
+  let skipped = 0;
+
+  for (const entry of profile.entries) {
+    if (existingIds.has(entry.id)) {
+      skipped++;
+      continue;
+    }
+    if (existingTitles.has(entry.title.toLowerCase().trim())) {
+      skipped++;
+      continue;
+    }
+    newEntries.push(entry);
+  }
+
+  // Merge entries and domain tags
+  const mergedEntries = [...existing.entries, ...newEntries];
+  const mergedTags = new Set([...existing.domain_tags, ...profile.domain_tags]);
+
+  const merged: CognitiveProfile = {
+    ...existing,
+    exported_at: new Date().toISOString(),
+    entries: mergedEntries,
+    domain_tags: Array.from(mergedTags).sort(),
+  };
+
+  await Bun.write(GLOBAL_MEMORY_PATH, JSON.stringify(merged, null, 2));
+
+  return {
+    entries_exported: newEntries.length,
+    entries_skipped: skipped,
+    summary: `Exported ${newEntries.length} entries from ${brain.project_name} to global memory (${skipped} skipped as duplicates). Total: ${mergedEntries.length} entries.`,
   };
 }
 
@@ -200,4 +392,123 @@ export function importCognitiveProfile(
   };
 
   return { brain: updatedBrain, entries: mergedEntries, result };
+}
+
+// ─── Global Memory ──────────────────────────────────────────────────────────
+
+/**
+ * Load the global memory profile from ~/.luca/global-memory.json.
+ *
+ * Returns null if the file does not exist or cannot be parsed.
+ * This is a safe, non-throwing function suitable for use during pre-flight.
+ *
+ * @returns Parsed CognitiveProfile or null
+ *
+ * @example
+ * ```typescript
+ * const globalProfile = await loadGlobalMemory();
+ * if (globalProfile) {
+ *   console.log(`Loaded ${globalProfile.entries.length} global entries`);
+ * }
+ * ```
+ */
+export async function loadGlobalMemory(): Promise<CognitiveProfile | null> {
+  try {
+    const file = Bun.file(GLOBAL_MEMORY_PATH);
+    if (!(await file.exists())) {
+      return null;
+    }
+
+    const raw = await file.json();
+    const result = CognitiveProfileSchema.safeParse(raw);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalize a title for deduplication comparison.
+ *
+ * Converts to lowercase, removes punctuation, and collapses whitespace.
+ *
+ * @param title - Raw title string
+ * @returns Normalized title string
+ */
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Merge global memory entries with local memory entries.
+ *
+ * Deduplicates by ID and normalized title (case-insensitive).
+ * Local entries always take precedence over global ones.
+ * Imported entries are tagged with their source_project.
+ *
+ * @param globalEntries - Entries from the global memory profile
+ * @param localEntries - Current project's local memory entries
+ * @returns Merged entries array and an import summary
+ *
+ * @example
+ * ```typescript
+ * const globalProfile = await loadGlobalMemory();
+ * if (globalProfile) {
+ *   const { entries, result } = mergeGlobalEntries(globalProfile.entries, localEntries);
+ *   console.log(result.summary);
+ * }
+ * ```
+ */
+export function mergeGlobalEntries(
+  globalEntries: MemoryEntry[],
+  localEntries: MemoryEntry[],
+): { entries: MemoryEntry[]; result: MergeResult } {
+  // Build lookup sets from local entries (local takes precedence)
+  const localIds = new Set(localEntries.map((e) => e.id));
+  const localTitles = new Set(localEntries.map((e) => normalizeTitle(e.title)));
+
+  const added: MemoryEntry[] = [];
+  let skipped = 0;
+  const sourceProjects = new Set<string>();
+
+  for (const entry of globalEntries) {
+    // Track source projects
+    if (entry.source_project) {
+      sourceProjects.add(entry.source_project);
+    }
+
+    // Skip if local already has this entry by ID
+    if (localIds.has(entry.id)) {
+      skipped++;
+      continue;
+    }
+
+    // Skip if local already has this entry by normalized title
+    if (localTitles.has(normalizeTitle(entry.title))) {
+      skipped++;
+      continue;
+    }
+
+    // Tag with source_project if not already set
+    added.push({
+      ...entry,
+      source_project: entry.source_project ?? "unknown",
+    });
+  }
+
+  const mergedEntries = [...localEntries, ...added];
+  const projectsList = Array.from(sourceProjects).sort();
+
+  const result: MergeResult = {
+    entries_added: added.length,
+    entries_skipped: skipped,
+    source_projects: projectsList,
+    summary: `Merged ${added.length} global entries (${skipped} skipped as duplicates). Sources: ${projectsList.length > 0 ? projectsList.join(", ") : "none"}.`,
+  };
+
+  return { entries: mergedEntries, result };
 }
