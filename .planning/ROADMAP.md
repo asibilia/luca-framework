@@ -87,9 +87,9 @@
 **Verification:** Standard
 **Est:** ~3-4 days
 
-- [ ] PLAN: Hook portability abstraction layer (#09)
-- [ ] PLAN: Post-init interactive tour (#20)
-- [ ] PLAN: Selective skill scaffolding — core vs extended (#23)
+- [x] PLAN: Hook portability abstraction layer (#09)
+- [x] PLAN: Post-init interactive tour (#20)
+- [x] PLAN: Selective skill scaffolding — core vs extended (#23)
 
 ### Phase 8: Learning Pipeline Foundation
 
