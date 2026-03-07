@@ -193,8 +193,10 @@ export async function copyTemplates(options: {
   sourceDir: string;
   destDir: string;
   config: LucaConfig;
+  /** Optional filter predicate. Return false to skip a file (relPath is relative to sourceDir). */
+  filter?: (relPath: string) => boolean;
 }): Promise<{ copied: string[]; processed: string[] }> {
-  const { sourceDir, destDir, config } = options;
+  const { sourceDir, destDir, config, filter } = options;
   const context = {
     ...createBrandingContext(config.branding),
     config,
@@ -205,6 +207,10 @@ export async function copyTemplates(options: {
   const processed: string[] = [];
 
   for (const relPath of files) {
+    // Skip files rejected by optional filter
+    if (filter && !filter(relPath)) {
+      continue;
+    }
     const sourcePath = join(sourceDir, relPath);
     const processedRelPath = processFilename(relPath, context);
     const destPath = join(destDir, processedRelPath);
