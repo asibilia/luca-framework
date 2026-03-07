@@ -7,7 +7,7 @@
  *
  * States:
  * - idle: Waiting for a START event
- * - preflight: Cognitive pre-flight (BRAIN.md, MEMORY.md recall)
+ * - preflight: Cognitive pre-flight (MuninnDB recall)
  * - routing: Complexity classification via lu-router
  * - discussing: Phase discussion (optional, gated by complexity)
  * - planning: Plan creation and verification
