@@ -1,5 +1,6 @@
 ---
 name: qa-plan-generator
+description: Generates detailed QA testing plans for pull requests based on code changes and affected portals.
 cognition:
   default_tier: T0
   promotable_to: T0

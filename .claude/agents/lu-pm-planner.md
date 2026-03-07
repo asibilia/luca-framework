@@ -1,5 +1,6 @@
 ---
 name: lu-pm-planner
+description: "Usage-aware sprint planner that reads the todo backlog, scores items by WSJF, and produces optimized session/weekly plans. READ-ONLY: produces plans but cannot execute changes."
 cognition:
   default_tier: T2
   promotable_to: T2

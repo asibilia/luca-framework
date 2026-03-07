@@ -1,5 +1,6 @@
 ---
 name: lu-cognition
+description: Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
 cognition:
   default_tier: T3
   promotable_to: T3

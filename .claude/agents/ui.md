@@ -1,5 +1,6 @@
 ---
 name: ui
+description: Reviews visual design, component styling, and design system consistency for UI implementations. Use when reviewing component styling.
 cognition:
   default_tier: T0
   promotable_to: T0

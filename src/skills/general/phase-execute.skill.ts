@@ -1556,7 +1556,7 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Signal Verification and Update State
 
-Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — if learningCapture is enabled, the machine transitions to \`learning\` state and expects LEARN_COMPLETE before committing.
+Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — the machine transitions to \`learning\` state and expects LEARN_COMPLETE before committing.
 
 \`\`\`bash
 bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true

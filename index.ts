@@ -105,7 +105,6 @@ export type {
   ComplexityTier,
   ComplexityClassification,
   VerificationMode,
-  StepActivation,
   ComplexityGate,
   ComplexityMatrix,
   ComplexityConfig,

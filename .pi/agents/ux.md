@@ -5,6 +5,7 @@ tools:
   - Read
   - Grep
   - Glob
+model: opus
 model_tier: capable
 background_spawnable: false
 purpose: general

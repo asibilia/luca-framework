@@ -1,5 +1,6 @@
 ---
 name: lu-executor
+description: Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
 cognition:
   default_tier: T2
   promotable_to: T3

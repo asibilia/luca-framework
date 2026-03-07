@@ -1,5 +1,6 @@
 ---
 name: lu-debugger
+description: Investigates bugs using scientific method, manages debug sessions, handles checkpoints. Spawned by /debug orchestrator.
 cognition:
   default_tier: T3
   promotable_to: T3

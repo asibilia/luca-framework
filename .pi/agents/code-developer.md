@@ -7,6 +7,7 @@ tools:
   - Grep
   - Glob
   - Bash
+model: opus
 model_tier: capable
 background_spawnable: false
 purpose: executor

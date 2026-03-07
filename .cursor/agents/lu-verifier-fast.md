@@ -19,6 +19,8 @@ context:
   isolation: warm
 model_routing:
   default_model: haiku
+  complexity_overrides:
+    CRITICAL: sonnet
 model_tier: fast
 background_spawnable: true
 purpose: verifier

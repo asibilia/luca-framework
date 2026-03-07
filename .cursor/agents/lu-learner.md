@@ -18,6 +18,10 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: none
+model_routing:
+  default_model: haiku
+  complexity_overrides:
+    CRITICAL: sonnet
 model_tier: fast
 background_spawnable: true
 purpose: synthesizer

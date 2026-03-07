@@ -6,6 +6,7 @@ tools:
   - Glob
   - Grep
   - Bash
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: planner

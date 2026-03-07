@@ -1,5 +1,6 @@
 ---
 name: lu-router-fast
+description: Fast-tier variant of lu-router for TRIVIAL/SIMPLE task classification. Optimized for quick routing decisions.
 cognition:
   default_tier: T0
   promotable_to: T1

@@ -6,6 +6,7 @@ tools:
   - Bash
   - Grep
   - Glob
+model: opus
 model_tier: capable
 background_spawnable: true
 purpose: verifier

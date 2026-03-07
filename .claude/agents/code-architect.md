@@ -1,5 +1,6 @@
 ---
 name: code-architect
+description: Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
 cognition:
   default_tier: T0
   promotable_to: T1

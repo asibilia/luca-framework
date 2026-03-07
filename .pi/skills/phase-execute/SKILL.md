@@ -146,20 +146,21 @@ Extract learnings from this phase execution and update MEMORY.md.
 
 **Do NOT proceed until the Task returns.**
 
-**Complexity-gated learning depth:**
+**Learning capture always runs.** The lu-learner model tier is resolved from the routing table based on complexity:
 
-| Complexity | Learning Capture                                |
-| ---------- | ----------------------------------------------- |
-| TRIVIAL    | Skip (do not spawn lu-learner)                  |
-| SIMPLE     | Brief (spawn with minimal context)              |
-| MODERATE   | Standard (current behavior)                     |
-| COMPLEX    | Full (include all working memory)               |
-| CRITICAL   | Full + debrief (include retrospective analysis) |
+| Complexity | Learning Depth                                  | Model Tier (from routing table) |
+| ---------- | ----------------------------------------------- | ------------------------------- |
+| TRIVIAL    | Standard (spawn with minimal context)           | fast                            |
+| SIMPLE     | Standard (spawn with minimal context)           | fast                            |
+| MODERATE   | Standard (current behavior)                     | fast                            |
+| COMPLEX    | Full (include all working memory)               | fast                            |
+| CRITICAL   | Full + debrief (include retrospective analysis) | balanced                        |
 
-For TRIVIAL: Skip the lu-learner spawn entirely.
-For SIMPLE: Include only execution summary, not full working memory.
+For TRIVIAL/SIMPLE: Include only execution summary, not full working memory.
 For MODERATE and above: Use the current lu-learner spawn as-is.
 For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
+
+The model tier for lu-learner is resolved via `resolveModelForAgent("lu-learner", complexity)` from the centralized routing table in `src/complexity/__helpers/model-routing.ts`.
 
 ### WORKING.md During Execution
 
@@ -1221,9 +1222,9 @@ If outcome is anything else: Display remaining gaps and offer `/phase-plan {X} -
 
 ### 8. Code Quality Review
 
-**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config OR complexity is TRIVIAL or SIMPLE.
+**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config.
 
-**Complexity gate:** Code review runs at MODERATE and above. TRIVIAL/SIMPLE skip code review entirely.
+**Always runs** (model tier resolved from routing table per complexity). Each reviewer agent resolves its model tier via `resolveModelForAgent(agentName, complexity)`.
 
 Get changed files for this phase:
 
@@ -1247,17 +1248,17 @@ Display:
 
 **Determine which reviewers to spawn:**
 
-**Spawn based on complexity level** (read from STATE.md `Task Complexity:` field):
+**Always spawn ALL reviewers.** Each reviewer resolves its model tier from the routing table based on complexity:
 
-| Agent            | MODERATE      | COMPLEX       | CRITICAL |
-| ---------------- | ------------- | ------------- | -------- |
-| dx-advocate      | Run           | Run           | Run      |
-| code-simplifier  | Run           | Run           | Run      |
-| code-architect   | Skip          | Run           | Run      |
-| tailwind-auditor | If UI files   | If UI files   | Run      |
-| security-auditor | If auth files | If auth files | Always   |
+| Agent            | TRIVIAL | SIMPLE  | MODERATE | COMPLEX | CRITICAL |
+| ---------------- | ------- | ------- | -------- | ------- | -------- |
+| dx-advocate      | fast    | balanced | capable  | capable | capable  |
+| code-simplifier  | fast    | balanced | capable  | capable | capable  |
+| code-architect   | fast    | balanced | capable  | capable | capable  |
+| performance-auditor | fast | balanced | capable  | capable | capable  |
+| security-auditor | fast    | balanced | capable  | capable | capable  |
 
-If complexity not set, default to spawning all reviewers (backward-compatible).
+At lower complexity, reviewers run with lighter models (fast tier), making them low-cost but still active. The `--skip-review` flag and `workflow.code_review: false` config override still allow skipping entirely.
 
 Conditionally spawn `security-auditor` if files match patterns:
 
@@ -1550,7 +1551,7 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Signal Verification and Update State
 
-Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — if learningCapture is enabled, the machine transitions to `learning` state and expects LEARN_COMPLETE before committing.
+Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — the machine transitions to `learning` state and expects LEARN_COMPLETE before committing.
 
 ```bash
 bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
@@ -1588,17 +1589,17 @@ bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_CO
 
 ### 12. User Acceptance Testing (UAT)
 
-**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config OR complexity is TRIVIAL or SIMPLE.
+**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config.
 
-**Complexity gate:** UAT runs at MODERATE (optional) and above. For COMPLEX/CRITICAL, UAT is required.
+**Always runs** (verification depth scales with complexity via `verificationMode`). The `--skip-uat` flag and `workflow.uat_required: false` config override still allow skipping entirely.
 
-| Complexity | UAT                               |
-| ---------- | --------------------------------- |
-| TRIVIAL    | Skip                              |
-| SIMPLE     | Skip                              |
-| MODERATE   | Optional (runs unless --skip-uat) |
-| COMPLEX    | Required                          |
-| CRITICAL   | Required + thorough               |
+| Complexity | UAT                               | Verification Mode |
+| ---------- | --------------------------------- | ----------------- |
+| TRIVIAL    | Run (quick)                       | quick             |
+| SIMPLE     | Run (quick)                       | quick             |
+| MODERATE   | Run (standard)                    | standard          |
+| COMPLEX    | Run (full)                        | full              |
+| CRITICAL   | Run (full + thorough)             | full+human        |
 
 **Auto-transition into UAT mode:**
 

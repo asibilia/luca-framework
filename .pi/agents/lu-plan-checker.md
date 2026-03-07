@@ -6,6 +6,7 @@ tools:
   - Bash
   - Glob
   - Grep
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: verifier

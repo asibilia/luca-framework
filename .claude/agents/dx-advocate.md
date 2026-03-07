@@ -1,5 +1,6 @@
 ---
 name: dx-advocate
+description: Enforces code standard compliance, improves documentation, and enhances developer experience. Use proactively after writing features.
 cognition:
   default_tier: T0
   promotable_to: T0

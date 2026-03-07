@@ -18,6 +18,10 @@ context:
   isolation: none
 model_routing:
   default_model: haiku
+  complexity_overrides:
+    MODERATE: sonnet
+    COMPLEX: sonnet
+    CRITICAL: sonnet
 model_tier: balanced
 background_spawnable: false
 purpose: general

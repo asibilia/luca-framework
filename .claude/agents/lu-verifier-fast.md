@@ -1,5 +1,6 @@
 ---
 name: lu-verifier-fast
+description: Fast-tier variant of lu-verifier for TRIVIAL/SIMPLE verification. Checks existence and basic functionality only.
 cognition:
   default_tier: T0
   promotable_to: T1

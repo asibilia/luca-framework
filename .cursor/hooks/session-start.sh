@@ -255,11 +255,11 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
       complexity: {
         defaultLevel: 'auto',
         matrix: {
-          TRIVIAL: { cognitivePreflight: 'lite', research: 'skip', discussion: 'skip', planVerificationIterations: 0, harnessFixIterations: 1, verificationMode: 'quick', codeReviewAgents: [], uat: 'skip', learningCapture: 'skip' },
-          SIMPLE: { cognitivePreflight: 'lite', research: 'skip', discussion: 'skip', planVerificationIterations: 0, harnessFixIterations: 2, verificationMode: 'quick', codeReviewAgents: [], uat: 'skip', learningCapture: 'brief' },
-          MODERATE: { cognitivePreflight: 'full', research: 'optional', discussion: 'optional', planVerificationIterations: 1, harnessFixIterations: 2, verificationMode: 'standard', codeReviewAgents: ['dx-advocate', 'code-simplifier'], uat: 'optional', learningCapture: 'standard' },
-          COMPLEX: { cognitivePreflight: 'full', research: 'required', discussion: 'run', planVerificationIterations: 2, harnessFixIterations: 2, verificationMode: 'full', codeReviewAgents: ['dx-advocate', 'code-simplifier', 'code-architect', 'tailwind-auditor'], uat: 'required', learningCapture: 'full' },
-          CRITICAL: { cognitivePreflight: 'full', research: 'required', discussion: 'required', planVerificationIterations: 3, harnessFixIterations: 3, verificationMode: 'full+human', codeReviewAgents: ['dx-advocate', 'code-simplifier', 'code-architect', 'tailwind-auditor', 'security-auditor'], uat: 'required+thorough', learningCapture: 'full+debrief' }
+          TRIVIAL: { cognitivePreflight: 'lite', planVerificationIterations: 0, harnessFixIterations: 1, verifyFixIterations: 0, verificationMode: 'quick' },
+          SIMPLE: { cognitivePreflight: 'lite', planVerificationIterations: 0, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'quick' },
+          MODERATE: { cognitivePreflight: 'full', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'standard' },
+          COMPLEX: { cognitivePreflight: 'full', planVerificationIterations: 2, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'full' },
+          CRITICAL: { cognitivePreflight: 'full', planVerificationIterations: 3, harnessFixIterations: 3, verifyFixIterations: 2, verificationMode: 'full+human' }
         }
       },
       dogfood: {

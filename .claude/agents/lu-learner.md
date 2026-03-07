@@ -1,5 +1,6 @@
 ---
 name: lu-learner
+description: Extracts validated learnings from WORKING.md after verification and writes curated insights to MEMORY.md. Closes the learning loop.
 cognition:
   default_tier: T2
   promotable_to: T3

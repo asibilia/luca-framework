@@ -9,6 +9,7 @@ tools:
   - Grep
   - Glob
   - WebSearch
+model: opus
 model_tier: capable
 background_spawnable: false
 purpose: verifier

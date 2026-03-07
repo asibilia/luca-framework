@@ -1,5 +1,6 @@
 ---
 name: lu-verifier
+description: Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.
 cognition:
   default_tier: T1
   promotable_to: T2

@@ -43,7 +43,7 @@ Read these reference files before executing:
 
 ## Process
 
-### Complexity Gate
+### Complexity-Aware Discussion
 
 Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
 
@@ -51,25 +51,17 @@ Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 ```
 
-| Complexity | Discussion |
-|------------|-----------|
-| TRIVIAL | Skip entirely — proceed to /phase-plan |
-| SIMPLE | Skip entirely — proceed to /phase-plan |
-| MODERATE | Optional — run with standard depth (4 questions per area) |
-| COMPLEX | Recommended — run with extended depth (4+ questions per area) |
-| CRITICAL | Required — run with thorough depth (6+ questions per area) |
+**Always runs.** Discussion depth and model tier scale with complexity:
 
-If complexity is TRIVIAL or SIMPLE:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► DISCUSSION SKIPPED (TRIVIAL/SIMPLE)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Complexity | Discussion Depth | Model Tier (lu-discuss-researcher) |
+|------------|-----------------|-------------------------------------|
+| TRIVIAL | Light (2 questions per area) | fast |
+| SIMPLE | Light (2 questions per area) | balanced |
+| MODERATE | Standard (4 questions per area) | balanced |
+| COMPLEX | Extended (4+ questions per area) | capable |
+| CRITICAL | Thorough (6+ questions per area) | capable |
 
-Task complexity is {TRIVIAL|SIMPLE}. Discussion is not needed.
-
-▶ Next Up
-/phase-plan {phase}
-```
+The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-discuss-researcher", complexity)` from the centralized routing table.
 
 1. **Validate phase number** (error if missing or not in roadmap)
 2. **Check if CONTEXT.md exists** (offer update/view/skip if yes)

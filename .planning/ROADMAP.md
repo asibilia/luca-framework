@@ -75,7 +75,7 @@
 **Verification:** Full + Human
 **Est:** ~4-5 days
 
-- [ ] PLAN: Replace complexity gating with per-agent model routing (replace-complexity-gating)
+- [x] PLAN: Replace complexity gating with per-agent model routing (replace-complexity-gating)
 
 > Architectural note: T0 Foundation change affecting all complexity consumers.
 > Must complete before #13 (self-tuning, deferred to v3.1.0).

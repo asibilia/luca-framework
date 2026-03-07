@@ -1,5 +1,6 @@
 ---
 name: lu-executor-capable
+description: Capable-tier variant of lu-executor for COMPLEX/CRITICAL execution. Uses opus model for deep cross-cutting implementation.
 cognition:
   default_tier: T2
   promotable_to: T3

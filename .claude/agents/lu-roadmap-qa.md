@@ -1,5 +1,6 @@
 ---
 name: lu-roadmap-qa
+description: "Testing gap analysis and QA impact assessment for roadmap revision. Evaluates tech debt severity, CI/CD impact, affected test suites, and verification requirements for pending todos. READ-ONLY: produces analysis but cannot execute changes."
 cognition:
   default_tier: T1
   promotable_to: T1

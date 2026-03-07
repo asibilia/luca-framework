@@ -8,6 +8,7 @@ tools:
   - Grep
   - Glob
   - Task
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: reviewer

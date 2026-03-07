@@ -26,9 +26,7 @@
     "always_verify": true,
     "capture_learnings": true,
     "opinionated_guidelines": true,
-    "tech_stack_profiles": [
-      "typescript"
-    ]
+    "tech_stack_profiles": ["typescript"]
   },
   "planning": {
     "commit_docs": true,
@@ -102,77 +100,38 @@
     "matrix": {
       "TRIVIAL": {
         "cognitivePreflight": "lite",
-        "research": "skip",
-        "discussion": "skip",
         "planVerificationIterations": 0,
         "harnessFixIterations": 1,
         "verifyFixIterations": 0,
-        "verificationMode": "quick",
-        "codeReviewAgents": [],
-        "uat": "skip",
-        "learningCapture": "skip"
+        "verificationMode": "quick"
       },
       "SIMPLE": {
         "cognitivePreflight": "lite",
-        "research": "skip",
-        "discussion": "skip",
         "planVerificationIterations": 0,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "quick",
-        "codeReviewAgents": [],
-        "uat": "skip",
-        "learningCapture": "brief"
+        "verificationMode": "quick"
       },
       "MODERATE": {
         "cognitivePreflight": "full",
-        "research": "optional",
-        "discussion": "optional",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "standard",
-        "codeReviewAgents": [
-          "dx-advocate",
-          "code-simplifier"
-        ],
-        "uat": "optional",
-        "learningCapture": "standard"
+        "verificationMode": "standard"
       },
       "COMPLEX": {
         "cognitivePreflight": "full",
-        "research": "required",
-        "discussion": "run",
         "planVerificationIterations": 2,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "full",
-        "codeReviewAgents": [
-          "dx-advocate",
-          "code-simplifier",
-          "code-architect",
-          "tailwind-auditor"
-        ],
-        "uat": "required",
-        "learningCapture": "full"
+        "verificationMode": "full"
       },
       "CRITICAL": {
         "cognitivePreflight": "full",
-        "research": "required",
-        "discussion": "required",
         "planVerificationIterations": 3,
         "harnessFixIterations": 3,
         "verifyFixIterations": 2,
-        "verificationMode": "full+human",
-        "codeReviewAgents": [
-          "dx-advocate",
-          "code-simplifier",
-          "code-architect",
-          "tailwind-auditor",
-          "security-auditor"
-        ],
-        "uat": "required+thorough",
-        "learningCapture": "full+debrief"
+        "verificationMode": "full+human"
       }
     }
   },
@@ -210,11 +169,7 @@
   "dogfood": {
     "enabled": true,
     "source": "src/",
-    "outputs": [
-      ".claude/",
-      ".cursor/",
-      ".pi/"
-    ],
+    "outputs": [".claude/", ".cursor/", ".pi/"],
     "build_command": "bun run build:all",
     "lock_file": ".claude/.session-lock",
     "manifest_file": ".claude/.build-manifest.json"

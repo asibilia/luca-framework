@@ -1,5 +1,6 @@
 ---
 name: performance-auditor
+description: Identifies performance bottlenecks, reviews bundle impact, and suggests optimizations. Use proactively after implementing features.
 cognition:
   default_tier: T0
   promotable_to: T1

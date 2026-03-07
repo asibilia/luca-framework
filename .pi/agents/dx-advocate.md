@@ -6,6 +6,7 @@ tools:
   - Write
   - Grep
   - Glob
+model: opus
 model_tier: capable
 background_spawnable: false
 purpose: reviewer

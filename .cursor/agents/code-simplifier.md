@@ -14,6 +14,11 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: cold
+model_routing:
+  default_model: opus
+  complexity_overrides:
+    TRIVIAL: haiku
+    SIMPLE: sonnet
 model_tier: capable
 background_spawnable: false
 purpose: reviewer

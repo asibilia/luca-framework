@@ -24,6 +24,8 @@ context:
 model_routing:
   default_model: sonnet
   complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
     CRITICAL: opus
 model_tier: balanced
 background_spawnable: false

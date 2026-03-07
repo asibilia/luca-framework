@@ -1,5 +1,6 @@
 ---
 name: security-auditor
+description: Reviews code for security vulnerabilities and validates security best practices. Use proactively after writing auth, API, or data handling code.
 cognition:
   default_tier: T0
   promotable_to: T1

@@ -1,5 +1,6 @@
 ---
 name: code-simplifier
+description: Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.
 cognition:
   default_tier: T0
   promotable_to: T0

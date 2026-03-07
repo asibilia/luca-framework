@@ -1,5 +1,6 @@
 ---
 name: lu-roadmap-synthesizer
+description: "Merges specialist analyses (architect, prioritizer, QA) into a unified roadmap revision proposal. Cross-references findings, resolves conflicts, and produces a cohesive ResultEnvelope matching the format the autopilot orchestrator expects. READ-ONLY: produces analysis but cannot execute changes."
 cognition:
   default_tier: T1
   promotable_to: T1

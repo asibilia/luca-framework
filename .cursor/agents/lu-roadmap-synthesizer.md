@@ -18,6 +18,12 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: warm
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
+    CRITICAL: opus
 model_tier: balanced
 background_spawnable: true
 purpose: synthesizer

@@ -15,6 +15,11 @@ context:
   default_tier: T0
   promotable_to: T1
   isolation: none
+model_routing:
+  default_model: opus
+  complexity_overrides:
+    TRIVIAL: haiku
+    SIMPLE: sonnet
 model_tier: capable
 background_spawnable: false
 purpose: executor

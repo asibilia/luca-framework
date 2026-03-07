@@ -6,6 +6,7 @@ tools:
   - Write
   - Glob
   - Grep
+model: haiku
 model_tier: fast
 background_spawnable: true
 purpose: synthesizer
