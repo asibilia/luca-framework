@@ -1,8 +1,8 @@
 /**
  * Shared CLI argument parsing utilities.
  *
- * Extracted from state-machine/bridge.ts, state-machine/cli.ts, and
- * memory/bridge.ts to eliminate duplication across bridge/CLI modules.
+ * Extracted from state-machine/bridge.ts and state-machine/cli.ts
+ * to eliminate duplication across bridge/CLI modules.
  *
  * @module shared/cli-utils
  */
