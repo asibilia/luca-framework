@@ -49,7 +49,6 @@ import path from "path";
 export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-hooks.ts",
   "luca-state.ts",
-  "luca-memory.ts",
   "luca-harness.ts",
   "luca-complexity.ts",
   "luca-roles.ts",
