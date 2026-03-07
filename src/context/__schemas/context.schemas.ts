@@ -3,9 +3,9 @@
  *
  * Context tiers (T0-T3) parallel cognition tiers and control how much
  * contextual information is assembled for each sub-agent invocation.
- * Higher tiers include more documents (BRAIN, MEMORY, STATE, WORKING)
- * at the cost of token budget. Isolation modes restrict document sets
- * for security-sensitive or cold-start agents.
+ * Higher tiers include more documents (brain identity, recalled engrams,
+ * STATE, session context) at the cost of token budget. Isolation modes
+ * restrict document sets for security-sensitive or cold-start agents.
  *
  * All types are derived from Zod schemas via `z.infer`. No standalone
  * interface definitions. This module is standalone at type level --
@@ -105,17 +105,17 @@ export type BudgetAllocation = z.infer<typeof budgetAllocationSchema>;
 export const contextDocumentSetSchema = z.object({
   /** The plan content (PLAN.md or current phase plan) */
   plan_content: z.string().optional(),
-  /** Condensed BRAIN.md summary */
+  /** Condensed brain identity from MuninnDB */
   brain_summary: z.string().optional(),
   /** STATE.md content */
   state_content: z.string().optional(),
-  /** Selectively recalled MEMORY.md entries */
+  /** Selectively recalled engrams from MuninnDB */
   memory_entries: z.string().optional(),
-  /** WORKING.md session memory */
+  /** Session context from MuninnDB */
   working_content: z.string().optional(),
-  /** Full BRAIN.md content (replaces brain_summary at T3) */
+  /** Full brain identity tree from MuninnDB (replaces brain_summary at T3) */
   brain_full: z.string().optional(),
-  /** Full MEMORY.md content (replaces memory_entries at T3) */
+  /** Full recalled engrams from MuninnDB (replaces memory_entries at T3) */
   memory_full: z.string().optional(),
   /** Summaries of other agents in the workflow */
   agent_summaries: z.string().optional(),
