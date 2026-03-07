@@ -27,15 +27,15 @@ Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. The co
 
 ### Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Bun |
-| Language | TypeScript (strict mode) |
-| Database | File-based (.planning/ artifacts, JSON config) |
-| Validation | Zod |
-| Collections | Lodash |
-| Testing | Bun Test |
-| Build | unbuild |
+| Layer       | Technology                                     |
+| ----------- | ---------------------------------------------- |
+| Runtime     | Bun                                            |
+| Language    | TypeScript (strict mode)                       |
+| Database    | File-based (.planning/ artifacts, JSON config) |
+| Validation  | Zod                                            |
+| Collections | Lodash                                         |
+| Testing     | Bun Test                                       |
+| Build       | unbuild                                        |
 
 ### Key Commands
 
@@ -76,9 +76,9 @@ src/skills/general/luPlanPhase.skill.ts
 Planning artifacts use uppercase naming:
 
 ```
-.planning/BRAIN.md
-.planning/MEMORY.md
-.planning/WORKING.md
+MuninnDB brain tree (brain:project-identity)
+MuninnDB engrams (pattern:*, decision:*, pitfall:*, preference:*)
+MuninnDB session context (session:*)
 ```
 
 ### Agent/Skill/Rule Naming
@@ -99,9 +99,9 @@ All object keys in types, interfaces, and data structures use `snake_case`.
 
 ```typescript
 const agentConfig = {
-    agent_name: 'lu-debugger',
-    description: 'Debugging agent',
-    tool_list: ['Read', 'Write', 'Grep'],
+  agent_name: "lu-debugger",
+  description: "Debugging agent",
+  tool_list: ["Read", "Write", "Grep"],
 };
 ```
 
@@ -109,8 +109,8 @@ const agentConfig = {
 
 ```typescript
 const agentConfig = {
-    agentName: 'lu-debugger',   // camelCase - wrong
-    toolList: ['Read', 'Write'], // camelCase - wrong
+  agentName: "lu-debugger", // camelCase - wrong
+  toolList: ["Read", "Write"], // camelCase - wrong
 };
 ```
 
@@ -128,8 +128,8 @@ function compileAgent() { }       // camelCase function
 Constants use `SCREAMING_SNAKE_CASE`.
 
 ```typescript
-const MAX_CONTEXT_USAGE = 0.5
-const DEFAULT_AGENT_COLOR = 'blue'
+const MAX_CONTEXT_USAGE = 0.5;
+const DEFAULT_AGENT_COLOR = "blue";
 ```
 
 ### Directory Structure
@@ -157,7 +157,7 @@ packages/           # Publishable packages
   luca-framework/   # Main distributable package
   create-luca/      # Project scaffolding CLI
 docs/               # Documentation
-.planning/          # Runtime artifacts (BRAIN, MEMORY, WORKING)
+.planning/          # Runtime artifacts (memory stored in MuninnDB)
 ```
 
 ---
@@ -172,32 +172,36 @@ Functions accept a single object argument that is destructured, rather than mult
 
 ```typescript
 function compileAgent({
-    config,
-    output_format,
-    dry_run = false,
+  config,
+  output_format,
+  dry_run = false,
 }: {
-    config: AgentConfig;
-    output_format: 'cursor' | 'claude';
-    dry_run?: boolean;
+  config: AgentConfig;
+  output_format: "cursor" | "claude";
+  dry_run?: boolean;
 }) {
-    // function logic
+  // function logic
 }
 
 compileAgent({
-    config: myAgent,
-    output_format: 'cursor',
+  config: myAgent,
+  output_format: "cursor",
 });
 ```
 
 **DON'T:**
 
 ```typescript
-function compileAgent(config: AgentConfig, outputFormat: string, dryRun: boolean = false) {
-    // ...
+function compileAgent(
+  config: AgentConfig,
+  outputFormat: string,
+  dryRun: boolean = false,
+) {
+  // ...
 }
 
 // Unclear what 'cursor' and 'false' represent
-compileAgent(myAgent, 'cursor', false);
+compileAgent(myAgent, "cursor", false);
 ```
 
 ### Functional Patterns (No Classes)
@@ -208,11 +212,11 @@ Prefer functional patterns over classes. Use factory functions and plain objects
 
 ```typescript
 function createAgent(config: AgentConfig) {
-    return {
-        ...config,
-        toCursorFormat: () => formatForCursor(config),
-        toClaudeFormat: () => formatForClaude(config),
-    };
+  return {
+    ...config,
+    toCursorFormat: () => formatForCursor(config),
+    toClaudeFormat: () => formatForClaude(config),
+  };
 }
 ```
 
@@ -220,8 +224,10 @@ function createAgent(config: AgentConfig) {
 
 ```typescript
 class Agent {
-    constructor(private config: AgentConfig) {}
-    toCursorFormat() { /* ... */ }
+  constructor(private config: AgentConfig) {}
+  toCursorFormat() {
+    /* ... */
+  }
 }
 ```
 
@@ -238,19 +244,19 @@ Use Zod schemas as the single source of truth for both runtime validation and Ty
 **DO:**
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const AgentFrontmatterSchema = z.object({
-    name: z.string(),
-    description: z.string(),
-    tools: z.array(z.string()),
-    color: z.string().optional(),
+  name: z.string(),
+  description: z.string(),
+  tools: z.array(z.string()),
+  color: z.string().optional(),
 });
 
 type AgentFrontmatter = z.infer<typeof AgentFrontmatterSchema>;
 
 function parseConfig(data: unknown): AgentFrontmatter {
-    return AgentFrontmatterSchema.parse(data);
+  return AgentFrontmatterSchema.parse(data);
 }
 ```
 
@@ -259,9 +265,9 @@ function parseConfig(data: unknown): AgentFrontmatter {
 ```typescript
 // Separate interface + schema can drift apart
 interface AgentFrontmatter {
-    name: string;
-    description: string;
-    // Forgot tools - now out of sync with schema
+  name: string;
+  description: string;
+  // Forgot tools - now out of sync with schema
 }
 ```
 
@@ -284,22 +290,17 @@ Use Lodash functions with named imports for array and object operations.
 **DO:**
 
 ```typescript
-import { map, filter, groupBy, sortBy } from 'lodash';
+import { map, filter, groupBy, sortBy } from "lodash";
 
-const agentNames = map(
-    filter(agents, { is_active: true }),
-    'name'
-);
+const agentNames = map(filter(agents, { is_active: true }), "name");
 
-const agentsByCategory = groupBy(agents, 'category');
+const agentsByCategory = groupBy(agents, "category");
 ```
 
 **DON'T:**
 
 ```typescript
-const agentNames = agents
-    .filter(a => a.is_active)
-    .map(a => a.name);
+const agentNames = agents.filter((a) => a.is_active).map((a) => a.name);
 ```
 
 ---
@@ -311,19 +312,19 @@ const agentNames = agents
 Use Bun's built-in test framework with `describe`, `test`, and `expect`.
 
 ```typescript
-import { describe, test, expect } from 'bun:test';
-import { compileAgent } from '../cursor.compiler';
+import { describe, test, expect } from "bun:test";
+import { compileAgent } from "../cursor.compiler";
 
-describe('compileAgent', () => {
-    test('should generate valid cursor format', () => {
-        const result = compileAgent({
-            config: testAgentConfig,
-            output_format: 'cursor',
-        });
-
-        expect(result).toContain('---');
-        expect(result).toContain('name: test-agent');
+describe("compileAgent", () => {
+  test("should generate valid cursor format", () => {
+    const result = compileAgent({
+      config: testAgentConfig,
+      output_format: "cursor",
     });
+
+    expect(result).toContain("---");
+    expect(result).toContain("name: test-agent");
+  });
 });
 ```
 
@@ -331,11 +332,11 @@ describe('compileAgent', () => {
 
 Luca uses a verification-based approach with three levels:
 
-| Level | Description |
-|-------|-------------|
-| EXISTS | File/artifact exists |
-| SUBSTANTIVE | Content is meaningful and correct |
-| WIRED | Integrations are connected and functional |
+| Level       | Description                               |
+| ----------- | ----------------------------------------- |
+| EXISTS      | File/artifact exists                      |
+| SUBSTANTIVE | Content is meaningful and correct         |
+| WIRED       | Integrations are connected and functional |
 
 ---
 
@@ -349,25 +350,25 @@ type(scope): description
 
 ### Types
 
-| Type | Use For |
-|------|---------|
-| `feat` | New features |
-| `fix` | Bug fixes |
-| `docs` | Documentation changes |
-| `refactor` | Code restructuring |
-| `test` | Test additions or changes |
-| `chore` | Maintenance tasks |
+| Type       | Use For                   |
+| ---------- | ------------------------- |
+| `feat`     | New features              |
+| `fix`      | Bug fixes                 |
+| `docs`     | Documentation changes     |
+| `refactor` | Code restructuring        |
+| `test`     | Test additions or changes |
+| `chore`    | Maintenance tasks         |
 
 ### Scopes
 
-| Scope | Use For |
-|-------|---------|
-| `cli` | CLI package changes |
-| `agents` | Agent definitions |
-| `skills` | Skill definitions |
-| `rules` | Rule definitions |
+| Scope       | Use For                 |
+| ----------- | ----------------------- |
+| `cli`       | CLI package changes     |
+| `agents`    | Agent definitions       |
+| `skills`    | Skill definitions       |
+| `rules`     | Rule definitions        |
 | `workflows` | Workflow system changes |
-| `config` | Configuration changes |
+| `config`    | Configuration changes   |
 
 ---
 
@@ -389,4 +390,4 @@ When writing new code, verify:
 
 ---
 
-*This document is the authoritative source for Luca Framework coding standards. All contributions must conform to these patterns.*
+_This document is the authoritative source for Luca Framework coding standards. All contributions must conform to these patterns._

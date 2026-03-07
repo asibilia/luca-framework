@@ -5,7 +5,7 @@ Two-tier memory system: project identity, long-term learning, and session memory
 ```mermaid
 flowchart TD
     subgraph Identity["Project Identity (Permanent)"]
-        B["BRAIN.md"]
+        B["MuninnDB brain tree"]
         B1["Stack & frameworks"]
         B2["Architecture patterns"]
         B3["Code conventions"]
@@ -17,7 +17,7 @@ flowchart TD
     end
 
     subgraph LongTerm["Long-Term Memory (Persistent)"]
-        M["MEMORY.md"]
+        M["MuninnDB engrams"]
         M1["Patterns (validated approaches)"]
         M2["Decisions (past choices + rationale)"]
         M3["Pitfalls (known issues to avoid)"]
@@ -29,7 +29,7 @@ flowchart TD
     end
 
     subgraph Session["Session Memory (Ephemeral)"]
-        W["WORKING.md"]
+        W["MuninnDB session context"]
         W1["Current task context"]
         W2["Findings & observations"]
         W3["Candidate learnings"]
@@ -41,9 +41,9 @@ flowchart TD
     end
 
     subgraph PreFlight["Cognitive Pre-Flight"]
-        PF1["1. Load BRAIN.md"]
-        PF2["2. Selective recall from MEMORY.md"]
-        PF3["3. Initialize WORKING.md"]
+        PF1["1. Load MuninnDB brain tree"]
+        PF2["2. Selective recall from MuninnDB engrams"]
+        PF3["3. Initialize MuninnDB session context"]
         PF4["4. Generate intuition flags"]
         PF1 --> PF2 --> PF3 --> PF4
     end
@@ -64,7 +64,7 @@ flowchart TD
         L1["lu-verifier passes"]
         L2["lu-learner spawned"]
         L3["Extract validated learnings"]
-        L4["Graduate to MEMORY.md"]
+        L4["Graduate to MuninnDB engrams"]
         L1 --> L2 --> L3 --> L4
     end
 
@@ -80,15 +80,15 @@ flowchart TD
 
 ## Memory Tiers
 
-| Tier      | File       | Scope                   | Lifetime   | Updated By               |
-| --------- | ---------- | ----------------------- | ---------- | ------------------------ |
-| Identity  | BRAIN.md   | Project conventions     | Permanent  | /project-new, user edits |
-| Long-Term | MEMORY.md  | Cross-session learnings | Persistent | lu-learner (validated)   |
-| Session   | WORKING.md | Current session context | Ephemeral  | lu-executor, lu-verifier |
+| Tier      | File                     | Scope                   | Lifetime   | Updated By               |
+| --------- | ------------------------ | ----------------------- | ---------- | ------------------------ |
+| Identity  | MuninnDB brain tree      | Project conventions     | Permanent  | /project-new, user edits |
+| Long-Term | MuninnDB engrams         | Cross-session learnings | Persistent | lu-learner (validated)   |
+| Session   | MuninnDB session context | Current session context | Ephemeral  | lu-executor, lu-verifier |
 
 ## Data Flow
 
-1. **Session Start**: lu-cognition runs pre-flight — loads BRAIN.md, recalls relevant MEMORY.md entries, initializes WORKING.md
-2. **During Execution**: lu-executor logs findings, observations, and candidate learnings to WORKING.md
-3. **After Verification**: lu-learner extracts validated insights from WORKING.md → graduates to MEMORY.md
-4. **At Milestone**: MEMORY.md snapshot archived, WORKING.md cleared for next milestone
+1. **Session Start**: lu-cognition runs pre-flight — loads MuninnDB brain tree, recalls relevant MuninnDB engrams entries, initializes MuninnDB session context
+2. **During Execution**: lu-executor logs findings, observations, and candidate learnings to MuninnDB session context
+3. **After Verification**: lu-learner extracts validated insights from MuninnDB session context → graduates to MuninnDB engrams
+4. **At Milestone**: MuninnDB engrams snapshot archived, MuninnDB session context cleared for next milestone

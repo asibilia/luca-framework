@@ -17,7 +17,7 @@ Reviewed all 47 skill `description` fields in `src/skills/general/` and `src/ski
 | Skill    | Description                                                                | Concern                                                                                                            |
 | -------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `quick`  | "Execute a quick task without full workflow overhead."                     | Very generic -- any small request could match. May compete with direct user prompts that don't need skill routing. |
-| `note`   | "Capture a note to WORKING.md for session memory."                         | "note" is a common word; could trigger when users mention taking notes in unrelated contexts.                      |
+| `note`   | "Capture a note to MuninnDB session context for session memory."           | "note" is a common word; could trigger when users mention taking notes in unrelated contexts.                      |
 | `choose` | "Let the user choose what to do next by presenting context-aware options." | Could match any ambiguous user input where intent is unclear.                                                      |
 
 ### Potentially Too Narrow
