@@ -53,14 +53,14 @@ Your job: Execute the plan completely, commit each task, create SUMMARY.md, upda
 - **Pitfalls**: Avoid known issues (e.g., \\\`|| true\\\` swallowing exit codes, Bun.spawn timeout quirks)
 - **Decisions**: Respect past architectural choices and conventions
 
-**Session Tracking:** During execution, append findings to WORKING.md:
+**Session Tracking:** During execution, append findings to MuninnDB session context:
 
 - Code observations and unexpected behaviors
 - Dependencies discovered during implementation
 - Candidate patterns (approaches that worked well)
 - Candidate pitfalls (issues encountered)
 
-**Format for WORKING.md entries:**
+**Format for MuninnDB session entries:**
 \\\`\\\`\\\`
 - HH:MM [FINDING] Description of what was observed
 - HH:MM [CANDIDATE-PATTERN] Description of approach that worked
@@ -73,7 +73,7 @@ Your job: Execute the plan completely, commit each task, create SUMMARY.md, upda
       title: "working_memory",
       content: `## Working Memory Integration
 
-During execution, maintain WORKING.md as a session log:
+During execution, maintain MuninnDB session context as a session log:
 
 1. **Log findings as you discover them**
 
@@ -89,23 +89,23 @@ During execution, maintain WORKING.md as a session log:
 
 3. **Note candidate learnings**
 
-   - Patterns that worked well (candidate for MEMORY.md)
+   - Patterns that worked well (candidate for MuninnDB engrams)
    - Issues encountered (candidate pitfalls)
    - Implementation choices made (candidate decisions)
 
 4. **After execution completes**
    - Invoke lu-verifier for verification
    - After verification passes, invoke lu-learner
-   - lu-learner extracts validated learnings to MEMORY.md
+   - lu-learner extracts validated learnings to MuninnDB
 
-**WORKING.md usage during execution:**
+**Session context usage during execution:**
 
-\`\`\`bash
-# Append finding to working memory via bridge (dual-writes JSON + MD)
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Finding description]"
+\`\`\`
+# Append finding to MuninnDB session context
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [Finding description]")
 \`\`\`
 
-All execution insights flow to WORKING.md, then validated insights graduate to MEMORY.md.`,
+All execution insights flow to MuninnDB session context, then validated insights graduate to permanent MuninnDB engrams.`,
       order: 2,
     },
     {
@@ -411,8 +411,8 @@ Skip TDD-1 through TDD-4. Execute the task normally using standard execution flo
 
 Log:
 
-\`\`\`bash
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [TDD-SKIP] Task '{task_name}' is non-testable: {reason}. Using standard execution."
+\`\`\`
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-SKIP] Task '{task_name}' is non-testable: {reason}. Using standard execution.")
 \`\`\`
 
 The verifier will use goal-backward (T3) as the primary signal for this task instead of test results (T1).
@@ -465,10 +465,10 @@ bun test {test_file_path} 2>&1
 TDD_RED_EXIT=$?
 \`\`\`
 
-**If tests FAIL (exit code != 0):** RED phase confirmed. Log to WORKING.md:
+**If tests FAIL (exit code != 0):** RED phase confirmed. Log to MuninnDB:
 
-\`\`\`bash
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [TDD-RED] Tests fail as expected ({test_count} tests, {failure_count} failures)"
+\`\`\`
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-RED] Tests fail as expected ({test_count} tests, {failure_count} failures)")
 \`\`\`
 
 Proceed to implementation.
@@ -480,8 +480,8 @@ Proceed to implementation.
 
 Log the violation and proceed with caution:
 
-\`\`\`bash
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [TDD-RED-VIOLATION] Tests passed before implementation - investigating"
+\`\`\`
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-RED-VIOLATION] Tests passed before implementation - investigating")
 \`\`\`
 
 Continue to implementation but flag this in the SUMMARY.
@@ -501,8 +501,8 @@ TDD_GREEN_EXIT=$?
 
 **If tests PASS (exit code == 0):** GREEN phase confirmed. Log:
 
-\`\`\`bash
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [TDD-GREEN] All {test_count} tests pass after implementation"
+\`\`\`
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-GREEN] All {test_count} tests pass after implementation")
 \`\`\`
 
 Proceed to commit the task (implementation + test file together).
@@ -543,8 +543,8 @@ When tests fail after implementation (GREEN phase not achieved), retry the imple
 
 7. If retries exhausted and tests still fail: Log failure and proceed with a warning:
 
-   \`\`\`bash
-   bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [TDD-FAIL] Tests still failing after {max_retries} retries. Proceeding with partial implementation."
+   \`\`\`
+   mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-FAIL] Tests still failing after {max_retries} retries. Proceeding with partial implementation.")
    \`\`\`
 
    Commit the implementation as-is. The failing tests will be caught by the verification harness (Step 6.5) and the verifier (Step 7).
