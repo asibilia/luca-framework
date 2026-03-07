@@ -28,7 +28,6 @@ const DOMAIN_TIER: Record<string, number> = {
   planner: 1,
   harness: 1,
   iteration: 1,
-  memory: 1,
   agents: 2,
   skills: 2,
   rules: 2,
