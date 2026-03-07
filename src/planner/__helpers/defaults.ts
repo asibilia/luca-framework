@@ -86,7 +86,7 @@ export const DEFAULT_WEEKLY_ALLOCATION = {
 /**
  * Cold-start token cost estimates as context percentage per complexity level.
  *
- * These are initial guesses, calibrated over time via MEMORY.md entries.
+ * These are initial guesses, calibrated over time via MuninnDB engrams.
  * Per 18-CONTEXT.md Decision 8.
  */
 export const COLD_START_COSTS: Record<ComplexityLevel, number> = {
