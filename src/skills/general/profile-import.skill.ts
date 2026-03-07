@@ -16,7 +16,7 @@ const profileImportConfig: SkillConfig = {
       title: "main",
       content: `# Profile Import
 
-Import learnings from the global memory profile into this project's MEMORY.md.
+Import learnings from the global memory profile into this project's MuninnDB.
 
 **Arguments:** \`[--from=project-name] [--dry-run]\`
 
@@ -92,7 +92,7 @@ Import learnings from the global memory profile into this project's MEMORY.md.
 
 ## Anti-Patterns
 
-- Do NOT import without loading local MEMORY.md first (needed for deduplication)
+- Do NOT import without loading local project memory from MuninnDB first (needed for deduplication)
 - Do NOT replace local entries with global entries (local always takes precedence)
 - Do NOT import without deduplication (would accumulate duplicates over time)
 - Do NOT modify global memory during import (global memory is read-only during import)

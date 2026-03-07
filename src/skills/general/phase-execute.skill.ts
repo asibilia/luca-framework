@@ -53,16 +53,16 @@ Each sub-agent receives only the context documents appropriate for its role and 
 | Tier | Documents Loaded |
 |------|-----------------|
 | T0 | Plan content only |
-| T1 | + BRAIN.md summary |
-| T2 | + STATE.md + selective MEMORY.md + WORKING.md |
-| T3 | + full BRAIN.md + full MEMORY.md + agent summaries |
+| T1 | + project identity summary (from MuninnDB brain:*) |
+| T2 | + STATE.md + selective learnings + session context (from MuninnDB) |
+| T3 | + full project identity + full learnings + agent summaries (from MuninnDB) |
 
 **Isolation Modes:**
 | Mode | Restriction | Used By |
 |------|------------|---------|
 | none | Full context per tier | lu-executor, lu-planner, lu-learner |
-| cold | Only git diff + BRAIN.md | dx-advocate, code-simplifier, code-architect |
-| warm | Plans + summaries, NO WORKING.md | lu-verifier |
+| cold | Only git diff + project identity | dx-advocate, code-simplifier, code-architect |
+| warm | Plans + summaries, NO session context | lu-verifier |
 
 **Complexity promotes context:** At MODERATE+, sub-agents may receive one tier higher than their default.
 
@@ -138,12 +138,12 @@ Task(
 
 <output_requirements>
 - Extract ONLY validated learnings (verified by outcome)
-- Write curated insights to MEMORY.md
-- Clear WORKING.md after extraction
+- Write curated insights to MuninnDB via muninn_remember
+- Clear session context via muninn_forget after extraction
 - Return summary of learnings captured
 </output_requirements>
 
-Extract learnings from this phase execution and update MEMORY.md.
+Extract learnings from this phase execution and store in MuninnDB.
 """,
   subagent_type="lu-learner",
   model="{learner_model}",
@@ -169,9 +169,9 @@ For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: w
 
 The model tier for lu-learner is resolved via \`resolveModelForAgent("lu-learner", complexity)\` from the centralized routing table in \`src/complexity/__helpers/model-routing.ts\`.
 
-### WORKING.md During Execution
+### Session Logging During Execution
 
-Throughout execution, log to WORKING.md:
+Throughout execution, log findings to MuninnDB:
 
 Log execution progress to MuninnDB:
 
@@ -386,7 +386,7 @@ Task(
 - Execute each task in the plan sequentially
 - Commit atomically after each task (git add . && bun run commit)
 - Create SUMMARY.md when complete
-- Log findings to WORKING.md
+- Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
 - If TDD Mode is ENABLED: follow TDD execution flow (generate tests -> confirm RED -> implement -> confirm GREEN) for each task
 - If a task has \`testable: false\`: skip TDD for that task, execute normally
@@ -424,7 +424,7 @@ Task(
 - Execute each task in the plan sequentially
 - Commit atomically after each task (git add . && bun run commit)
 - Create SUMMARY.md when complete
-- Log findings to WORKING.md
+- Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
 - If TDD Mode is ENABLED: follow TDD execution flow (generate tests -> confirm RED -> implement -> confirm GREEN) for each task
 - If a task has \`testable: false\`: skip TDD for that task, execute normally
@@ -968,7 +968,7 @@ Task(
 **Project State:**
 {state_content}
 
-<!-- WARM ISOLATION: Verifier does NOT receive WORKING.md to prevent bias from executor's session notes -->
+<!-- WARM ISOLATION: Verifier does NOT receive session context to prevent bias from executor's session notes -->
 <!-- The working_content variable below should be empty or omitted when using context-aware spawning -->
 **Working Memory:**
 {working_content}
@@ -1341,8 +1341,8 @@ echo "$CHANGED_FILES" | grep -E '(auth|api|convex|mutation|query|middleware|prox
 **Context isolation:** Code reviewers operate in COLD isolation. They receive:
 
 - Git diff of changed files (not full file contents)
-- BRAIN.md summary (project conventions only)
-- NO STATE.md, NO WORKING.md, NO MEMORY.md
+- Project identity summary (conventions only, from MuninnDB brain:*)
+- NO STATE.md, NO session context, NO long-term learnings
 
 This prevents reviewer bias from executor session context.
 

@@ -19,7 +19,7 @@ Persist Luca workflow run data as atomic memories in MuninnDB. Each piece of dat
 
 ## Why This Matters
 
-BRAIN.md, MEMORY.md, and WORKING.md are flat files with no relational structure and limited recall. MuninnDB gives us semantic search, entity graphs, contradiction detection, and temporal decay — the foundation for Luca to genuinely learn from its own execution history. Every workflow run produces valuable signal; this skill captures it before it's lost.
+MuninnDB is Luca's canonical memory system, providing semantic search, entity graphs, contradiction detection, and temporal decay — the foundation for Luca to genuinely learn from its own execution history. Every workflow run produces valuable signal; this skill captures it before it's lost.
 
 ## Vault
 
@@ -33,7 +33,7 @@ Called as the final step of \`/phase-execute\` and \`/session-pause\`. Captures 
 
 ### Manual (\`/workflow-save\`)
 
-Invoked directly by the user. Takes a full snapshot of current state — everything automatic mode captures, plus current scorecard, metrics, and any in-progress context from WORKING.md.
+Invoked directly by the user. Takes a full snapshot of current state — everything automatic mode captures, plus current scorecard, metrics, and any in-progress session context from MuninnDB.
 
 ---
 
@@ -134,8 +134,8 @@ cat .planning/STATE.md
 
 ### Session context
 
-- \`.planning/WORKING.md\` — current session findings
-- \`.planning/MEMORY.md\` — existing long-term learnings
+- MuninnDB session memories — current session findings (via \`muninn_recall\`)
+- MuninnDB long-term memories — existing learnings (via \`muninn_recall\`)
 - \`.continue-here.md\` — session continuation context (if pausing)
 
 ### Git history
@@ -155,7 +155,7 @@ git branch --show-current
 Determine what needs saving based on trigger mode:
 
 - **Automatic post-phase**: Focus on the just-completed phase — its execution result, harness output, commits made during the phase, convergence data, agent invocations.
-- **Automatic post-session**: Focus on session summary — total phases completed, duration, all commits this session, session-end context from WORKING.md.
+- **Automatic post-session**: Focus on session summary — total phases completed, duration, all commits this session, session-end context from MuninnDB session memories.
 - **Manual snapshot**: Capture everything — full state, all recent execution data, scorecard, metrics, in-progress context.
 
 ### Step 2: Read data sources
@@ -282,7 +282,7 @@ Use \`mode="deep"\` on recall for thorough graph traversal when you need connect
 
 - **No checkpoints exist**: Skip convergence memories. This is normal for TRIVIAL/SIMPLE tasks.
 - **No harness result**: Skip verification memories. Harness may not have run yet.
-- **Empty WORKING.md**: Skip learning memories. Session may not have produced learnings yet.
+- **Empty session context**: Skip learning memories. Session may not have produced learnings yet.
 - **Multiple sessions same day**: Each session gets its own session_start/session_end pair. The session_id disambiguates.
 - **Partial phase completion**: Still save what completed. Mark phase_execution status as \`partial\` and note what remains.
 - **MuninnDB unavailable**: Log a warning and continue. Workflow should never block on memory persistence.

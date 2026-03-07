@@ -914,7 +914,7 @@ For each phase (in parallel, using Task tool):
     **Phase:** {NN} - {goal}
     **Phase directory:** .planning/phases/{phase_dir}/
     **Project state:** {STATE.md content}
-    **Working memory:** {WORKING.md content}
+    **Working memory:** {session context from MuninnDB}
     **CLAUDE.md conventions:** Read CLAUDE.md for project conventions.
 
     **Instructions:**
@@ -1049,7 +1049,7 @@ After all executors in this level complete (or are marked failed/timed out):
    \`\`\`bash
    bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
    \`\`\`
-6. Log to WORKING.md via bridge
+6. Log to MuninnDB session memory via muninn_remember
 
 ### 4-swarm-j. Level Progress Display
 
@@ -1325,7 +1325,7 @@ bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
 4. Commit session metadata:
 
 \`\`\`bash
-git add .planning/STATE.md .planning/WORKING.md .planning/state.json
+git add .planning/STATE.md .planning/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 \`\`\``,
       order: 11,

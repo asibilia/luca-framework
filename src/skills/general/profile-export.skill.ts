@@ -69,7 +69,7 @@ Export portable learnings from this project to the global memory profile for cro
 
 ## Anti-Patterns
 
-- Do NOT export without reading BRAIN.md first (source_project comes from brain)
+- Do NOT export without loading project identity first (source_project comes from brain:* in MuninnDB)
 - Do NOT overwrite existing global memory -- always merge and deduplicate
 - Do NOT include decisions unless explicitly requested (they are project-specific)
 
@@ -77,7 +77,7 @@ Export portable learnings from this project to the global memory profile for cro
 
 ## Success Criteria
 
-- [ ] BRAIN.md and MEMORY.md loaded successfully
+- [ ] Project identity and memory loaded successfully from MuninnDB
 - [ ] Export options applied from arguments
 - [ ] Global memory file created or updated at ~/.luca/global-memory.json
 - [ ] Entries tagged with source_project for provenance tracking

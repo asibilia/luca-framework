@@ -34,7 +34,7 @@ Extract implementation decisions that downstream agents need — researcher and 
 
 1. Analyze the phase to identify gray areas (same as interactive)
 2. Auto-select ALL gray areas (no user prompt)
-3. Read BRAIN.md for project tech stack
+3. Load project tech stack from MuninnDB
 4. Spawn \`lu-discuss-researcher\` agent per gray area question (web research)
 5. Present research summary with citations before writing
 6. Offer user override: accept all / override some / switch to interactive
@@ -89,10 +89,10 @@ The lu-discuss-researcher model tier is resolved via \`resolveModelForAgent("lu-
 
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
-6a. **Read BRAIN.md** — Extract project tech stack (languages, frameworks, conventions)
+6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via \`muninn_recall_tree(vault: "default", id: "brain:project-identity")\`
 7a. **Spawn lu-discuss-researcher per question** — For each gray area:
     - Formulate a focused question from the gray area topic
-    - Spawn \`lu-discuss-researcher\` via Task() with: question, phase context, tech stack from BRAIN.md
+    - Spawn \`lu-discuss-researcher\` via Task() with: question, phase context, tech stack from MuninnDB
     - Collect the \`<research_result>\` response with recommendation, confidence, and sources
     - If \`researchable: false\`: flag for user input (even in auto mode)
 8a. **Present research summary** — Show consolidated results:
