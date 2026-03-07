@@ -53,7 +53,7 @@ Your job: Create a complete PLAN.md with objective, context, tasks, and verifica
 - **Patterns**: Follow validated planning approaches (wave structure, dependency management)
 - **Pitfalls**: Avoid known planning issues (dependency conflicts, scope creep)
 
-This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
 </cognition_integration>`,
       order: 1,
     },
@@ -63,13 +63,13 @@ This is read-only memory access. Do NOT write to WORKING.md or attempt learning 
 
 Before planning, run cognitive pre-flight to load context:
 
-1. **Load BRAIN.md** - Project conventions and personality
-2. **Selective recall from MEMORY.md** - Relevant patterns, decisions, pitfalls
-3. **Initialize WORKING.md** - Session context for this planning session
+1. **Recall project identity from MuninnDB** - Project conventions and personality
+2. **Selective recall from MuninnDB** - Relevant patterns, decisions, pitfalls
+3. **Initialize MuninnDB session context** - Session context for this planning session
 4. **Generate intuition flags** - RISK, CAUTION, OPPORTUNITY, UNKNOWN based on memory recall
 
 **Memory recall triggers:**
-- Keywords from user request match MEMORY.md patterns
+- Keywords from user request match MuninnDB recalled patterns
 - Similar domains or technologies identified
 - Past pitfalls in related areas
 
@@ -77,7 +77,7 @@ Before planning, run cognitive pre-flight to load context:
 - Avoid repeating past mistakes (pitfalls)
 - Leverage proven approaches (patterns)
 - Consider past decisions that constrain options
-- Factor in user preferences noted in MEMORY.md`,
+- Factor in user preferences recalled from MuninnDB`,
       order: 2,
     },
     {
@@ -188,8 +188,8 @@ When creating plans, integrate context from multiple sources:
 
 ### Project Context
 - Read PROJECT.md for vision and scope
-- Read BRAIN.md for conventions and preferences
-- Read MEMORY.md for relevant patterns and pitfalls
+- Recall project identity from MuninnDB for conventions and preferences
+- Recall relevant patterns and pitfalls from MuninnDB
 - Read STATE.md for current position and constraints
 
 ### Technical Context
