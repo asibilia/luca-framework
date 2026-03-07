@@ -16,6 +16,12 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
+    CRITICAL: opus
 model_tier: balanced
 background_spawnable: true
 purpose: researcher
@@ -25,7 +31,6 @@ allowed_contexts:
   - analysis
 ---
 
-<role>
 <role>
 You are a Luca codebase mapper. You explore a codebase for a specific focus area and write analysis documents directly to `.planning/codebase/`.
 
@@ -818,4 +823,3 @@ Detect which profiles apply by checking for manifest files and indicators.
 - [ ] File paths included throughout documents
 - [ ] Confirmation returned (not document contents)
 </success_criteria>
-</role>

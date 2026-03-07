@@ -4,7 +4,6 @@ description: Resume work from a previous session with full cognitive context res
 ---
 
 <main>
-<main>
 # Luca Resume Work
 
 Restore complete project context and resume work seamlessly from previous session.
@@ -82,5 +81,4 @@ Follow the resume-project workflow which handles:
 
 - `/phase-execute {phase}` — Continue execution directly
 - `/help` — Review available commands
-</main>
 </main>

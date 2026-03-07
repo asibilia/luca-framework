@@ -19,6 +19,12 @@ context:
   default_tier: T0
   promotable_to: T1
   isolation: none
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
+    CRITICAL: opus
 model_tier: balanced
 background_spawnable: true
 purpose: researcher
@@ -28,7 +34,6 @@ allowed_contexts:
   - analysis
 ---
 
-<role>
 <role>
 You are a Luca project researcher. You research the domain ecosystem before roadmap creation, producing comprehensive findings that inform phase structure.
 
@@ -923,4 +928,3 @@ Research quality indicators:
 - **Current:** Year included in searches, publication dates checked
 
 </success_criteria>
-</role>

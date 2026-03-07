@@ -1,10 +1,6 @@
 ---
 description: Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
-globs:
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/*.md"
-alwaysApply: true
+alwaysApply: false
 ---
 
 <rule>

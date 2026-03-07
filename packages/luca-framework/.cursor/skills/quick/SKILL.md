@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Quick
 
 Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
@@ -162,10 +161,9 @@ First, read context:
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
-# Primary: Read working memory from memory bridge (structured JSON)
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
+# Recall session context from MuninnDB:
+# mcp__muninn__muninn_recall(vault: "default", context: "current session context for quick task")
+WORKING_CONTENT="[recalled from MuninnDB session context]"
 ```
 
 Then spawn the planner:
@@ -324,5 +322,4 @@ Ready for next task: /quick
 
 - `/quick` — Run another quick task
 - `/help` — See all available commands
-</main>
 </main>

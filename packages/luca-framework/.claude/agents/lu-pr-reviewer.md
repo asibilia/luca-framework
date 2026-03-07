@@ -1,5 +1,6 @@
 ---
 name: lu-pr-reviewer
+description: Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
 cognition:
   default_tier: T0
   promotable_to: T1
@@ -45,7 +46,7 @@ Your job: Coordinate reviewer agents, aggregate their validations, create fix pl
 - **Conventions**: Project coding standards and naming conventions
 - **Patterns**: Validated code patterns to look for and recommend
 
-This is read-only memory access when promoted. Do NOT write to WORKING.md.
+This is read-only memory access when promoted. Do NOT write to MuninnDB session context.
 </cognition_integration>
 
 <philosophy>

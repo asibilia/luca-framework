@@ -1,3 +1,11 @@
+---
+description: Enforce Zod schema-first parsing patterns over manual destructuring and default values
+globs:
+  - src/**/*.schemas.ts
+  - src/**/*.ts
+alwaysApply: false
+---
+
 # Enforce Zod schema-first parsing patterns over manual destructuring and default values
 
 ## rule

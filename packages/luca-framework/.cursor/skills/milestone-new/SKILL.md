@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca New Milestone
 
 Start a new milestone through unified flow: questioning → research (optional) → requirements → roadmap.
@@ -133,5 +132,4 @@ How should this milestone be tracked on GitHub?
 
 - `/phase-plan {N}` — Skip discussion, plan directly
 - `/progress` — Check milestone setup
-</main>
 </main>

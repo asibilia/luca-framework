@@ -1,3 +1,12 @@
+---
+description: apply when interacting with PostHog/analytics tasks
+globs:
+  - "**/analytics/**"
+  - "**/posthog/**"
+  - "**/tracking/**"
+alwaysApply: false
+---
+
 # apply when interacting with PostHog/analytics tasks
 
 ## rule

@@ -4,7 +4,6 @@ description: Show available Luca commands, usage guide, and workflow overview.
 ---
 
 <main>
-<main>
 # Luca Help
 
 Display the complete Luca command reference.
@@ -204,9 +203,7 @@ Join the Luca Discord community
 ├── ROADMAP.md            # Current phase breakdown
 ├── state.json            # State machine (typed, primary source of truth)
 ├── STATE.md              # Human-readable state snapshot (auto-generated from state.json)
-├── BRAIN.md              # Project identity & conventions
-├── MEMORY.md             # Long-term learnings
-├── WORKING.md            # Session working memory
+├── (MuninnDB)            # Project identity, learnings, session memory
 ├── config.json           # Workflow mode & gates
 ├── todos/                # Captured ideas and tasks
 ├── debug/                # Active debug sessions
@@ -301,5 +298,4 @@ This is a reference command. Common follow-ups:
 - `/progress` — Check project status
 - `/project-new` — Start a new project
 - `/lu [TICKET-ID]` — Work on a ticket
-</main>
 </main>

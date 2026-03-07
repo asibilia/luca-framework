@@ -1,3 +1,10 @@
+---
+description: Mandatory documentation requirements for all new functionality and modifications
+globs:
+  - "**/*.{ts,tsx,js,jsx}"
+alwaysApply: true
+---
+
 # Mandatory documentation requirements for all new functionality and modifications
 
 ## rule

@@ -1,3 +1,8 @@
+---
+description: Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
+alwaysApply: false
+---
+
 # Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
 
 ## rule

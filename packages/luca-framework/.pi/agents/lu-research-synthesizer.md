@@ -5,6 +5,7 @@ tools:
   - Read
   - Write
   - Bash
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: synthesizer

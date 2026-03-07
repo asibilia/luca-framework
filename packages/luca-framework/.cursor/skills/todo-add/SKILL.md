@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Add Todo
 
 Capture idea or task as todo from current conversation.
@@ -88,5 +87,4 @@ source: conversation
 **Also available:**
 - `/todo-check` — Review all pending todos
 - `/progress` — Check project status
-</main>
 </main>

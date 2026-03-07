@@ -10,6 +10,7 @@ tools:
   - WebSearch
   - WebFetch
   - mcp__context7__*
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: researcher
@@ -52,7 +53,7 @@ Your job: Answer "What do I need to know to PLAN this phase well?" Produce a sin
 - **Stack decisions**: Past technology choices and their rationale
 - **Architecture patterns**: Established system design approaches
 
-This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
 </cognition_integration>
 
 <upstream_input>

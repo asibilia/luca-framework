@@ -1,6 +1,6 @@
 {
-  "model": "claude-sonnet-4-6",
-  "provider": "anthropic",
+  "model": "gemini-3.1-pro-preview",
+  "provider": "google",
   "compaction": {
     "enabled": true,
     "threshold": 0.7
@@ -8,7 +8,6 @@
   "extensions": [
     ".pi/extensions/luca-hooks.ts",
     ".pi/extensions/luca-state.ts",
-    ".pi/extensions/luca-memory.ts",
     ".pi/extensions/luca-harness.ts",
     ".pi/extensions/luca-complexity.ts",
     ".pi/extensions/luca-roles.ts",
@@ -21,7 +20,8 @@
     ".pi/extensions/luca-subagents.ts",
     ".pi/extensions/luca-commands.ts",
     ".pi/extensions/luca-widgets.ts",
-    ".pi/extensions/luca-work-tracking.ts"
+    ".pi/extensions/luca-work-tracking.ts",
+    ".pi/extensions/luca-search.ts"
   ],
   "shell": "/bin/zsh"
 }

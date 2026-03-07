@@ -1,3 +1,11 @@
+---
+description: Prohibit class usage in favor of functional programming patterns
+globs:
+  - packages-ui/**/*.ts
+  - packages-ui/**/*.tsx
+alwaysApply: true
+---
+
 # Prohibit class usage in favor of functional programming patterns
 
 ## rule

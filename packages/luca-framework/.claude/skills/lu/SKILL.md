@@ -77,7 +77,7 @@ If already on a feature branch or `--skip-branch` is set, skip this step.
 Unless `--skip-memory` is set, spawn the lu-cognition agent:
 
 ```
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/__helpers/bridge.ts read-memory --tags=<relevant-tags> --limit=10), initialize WORKING.md via bridge (bun run src/memory/__helpers/bridge.ts clear-working).")
+Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*').")
 ```
 
 ### Step 3: Complexity Classification
@@ -113,21 +113,22 @@ Skill(skill: "project-new", args: "<project description>")
 Skill(skill: "milestone-new", args: "<milestone description>")
 ```
 
-**TRIVIAL / SIMPLE tasks:**
+**Task routing (via state machine or gate checks):**
+
+For phase work, query the state machine or use `luca_gate_check` to determine which steps should run based on the classified complexity:
+
+1. Check `research` gate (if required/optional): `Skill(skill: "phase-research")`
+2. Check `discussion` gate (if required/optional/run): `Skill(skill: "phase-discuss")`
+3. Always plan (if no plans exist): `Skill(skill: "phase-plan")`
+4. Always execute: `Skill(skill: "phase-execute")`
+
+Alternatively, hand off to the `autopilot` skill which handles these state machine checks natively.
+
+**Ad-hoc / Quick task:**
+If task is truly TRIVIAL or SIMPLE AND does not require roadmap planning:
 ```
 Skill(skill: "quick", args: "<task-description>")
 ```
-
-**MODERATE tasks (single phase):**
-1. `Skill(skill: "phase-discuss", args: "<phase-number>")`
-2. `Skill(skill: "phase-plan", args: "<phase-number>")`
-3. `Skill(skill: "phase-execute", args: "<phase-number>")`
-
-**COMPLEX / CRITICAL tasks (full pipeline):**
-1. `Skill(skill: "phase-research", args: "<phase-number>")` — if domain is unfamiliar
-2. `Skill(skill: "phase-discuss", args: "<phase-number>")`
-3. `Skill(skill: "phase-plan", args: "<phase-number>")`
-4. `Skill(skill: "phase-execute", args: "<phase-number>")`
 
 **PR review work:**
 ```
@@ -164,15 +165,15 @@ After the handler skill completes, spawn lu-verifier:
 Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
 ```
 
-### Step 6: Learning Capture (complexity-gated)
+### Step 6: Learning Capture (always runs)
 
-For MODERATE+ complexity, spawn lu-learner:
+Always spawn lu-learner (model tier resolved from routing table per complexity):
 
 ```
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Read working memory via bridge (bun run src/memory/__helpers/bridge.ts read-working). Capture patterns, decisions, and pitfalls to MEMORY.md. Clear working memory via bridge after extraction (bun run src/memory/__helpers/bridge.ts clear-working).")
+Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: 'default', context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: 'default', concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*') after extraction.")
 ```
 
-For TRIVIAL/SIMPLE: Skip learning capture.
+The lu-learner model tier is resolved via `resolveModelForAgent("lu-learner", complexity)`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.
 
 ### Step 7: Commit (if on feature branch)
 

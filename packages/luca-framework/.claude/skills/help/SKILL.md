@@ -204,9 +204,7 @@ Join the Luca Discord community
 ├── ROADMAP.md            # Current phase breakdown
 ├── state.json            # State machine (typed, primary source of truth)
 ├── STATE.md              # Human-readable state snapshot (auto-generated from state.json)
-├── BRAIN.md              # Project identity & conventions
-├── MEMORY.md             # Long-term learnings
-├── WORKING.md            # Session working memory
+├── (MuninnDB)            # Project identity, learnings, session memory
 ├── config.json           # Workflow mode & gates
 ├── todos/                # Captured ideas and tasks
 ├── debug/                # Active debug sessions

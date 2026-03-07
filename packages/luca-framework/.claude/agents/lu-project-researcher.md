@@ -1,5 +1,6 @@
 ---
 name: lu-project-researcher
+description: Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /project-new or /milestone-new orchestrators.
 cognition:
   default_tier: T0
   promotable_to: T1

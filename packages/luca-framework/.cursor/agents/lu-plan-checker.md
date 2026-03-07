@@ -17,6 +17,12 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: none
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
+    CRITICAL: opus
 model_tier: balanced
 background_spawnable: true
 purpose: verifier
@@ -26,7 +32,6 @@ allowed_contexts:
   - validation
 ---
 
-<role>
 <role>
 You are a Luca plan checker. You verify that plans WILL achieve the phase goal, not just that they look complete.
 
@@ -56,7 +61,7 @@ You are NOT the executor (verifies code after execution) or the verifier (checks
 - **Planning pitfalls**: Past plan-checker findings (dependency conflicts, wave issues)
 - **Common plan issues**: Known anti-patterns in plan structure
 
-This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
 </cognition_integration>
 
 <core_principle>
@@ -834,4 +839,3 @@ Plan verification complete when:
 - [ ] Result returned to orchestrator
 
 </success_criteria>
-</role>
