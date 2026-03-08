@@ -62,284 +62,153 @@ export const DEFAULT_COMPLEXITY_TIERS: ModelRoutingRow = {
   CRITICAL: "capable",
 };
 
+// ---------------------------------------------------------------------------
+// Named routing presets — shared patterns across agent categories.
+//
+// Each preset captures a distinct complexity-to-tier ramp. Agents in the
+// MODEL_ROUTING_TABLE reference a preset instead of spelling out all five
+// levels, keeping the table DRY and scannable.
+// ---------------------------------------------------------------------------
+
+/** Always fast — classifiers whose work is lightweight at every complexity. */
+const ALWAYS_FAST: ModelRoutingRow = {
+  TRIVIAL: "fast",
+  SIMPLE: "fast",
+  MODERATE: "fast",
+  COMPLEX: "fast",
+  CRITICAL: "fast",
+};
+
+/** Fast everywhere, promoted to balanced only at CRITICAL. */
+const FAST_PROMOTED: ModelRoutingRow = {
+  TRIVIAL: "fast",
+  SIMPLE: "fast",
+  MODERATE: "fast",
+  COMPLEX: "fast",
+  CRITICAL: "balanced",
+};
+
+/** Router pattern — balanced from MODERATE upward. */
+const ROUTER: ModelRoutingRow = {
+  TRIVIAL: "fast",
+  SIMPLE: "fast",
+  MODERATE: "balanced",
+  COMPLEX: "balanced",
+  CRITICAL: "balanced",
+};
+
+/** Orchestrator pattern — balanced at SIMPLE/MODERATE, capable at COMPLEX+. */
+const ORCHESTRATOR: ModelRoutingRow = {
+  TRIVIAL: "fast",
+  SIMPLE: "balanced",
+  MODERATE: "balanced",
+  COMPLEX: "capable",
+  CRITICAL: "capable",
+};
+
+/** Deep analysis — capable from MODERATE upward. */
+const DEEP_ANALYSIS: ModelRoutingRow = {
+  TRIVIAL: "fast",
+  SIMPLE: "balanced",
+  MODERATE: "capable",
+  COMPLEX: "capable",
+  CRITICAL: "capable",
+};
+
+/** Debugger — starts at balanced (TRIVIAL/SIMPLE), capable from MODERATE+. */
+const DEBUGGER_PRESET: ModelRoutingRow = {
+  TRIVIAL: "balanced",
+  SIMPLE: "balanced",
+  MODERATE: "capable",
+  COMPLEX: "capable",
+  CRITICAL: "capable",
+};
+
+/** Always capable — high-fidelity execution regardless of complexity. */
+const ALWAYS_CAPABLE: ModelRoutingRow = {
+  TRIVIAL: "capable",
+  SIMPLE: "capable",
+  MODERATE: "capable",
+  COMPLEX: "capable",
+  CRITICAL: "capable",
+};
+
+/**
+ * Exported preset registry for observability and tooling.
+ *
+ * Maps a human-readable preset name to its routing row so dashboards and
+ * debug output can display which preset an agent uses.
+ */
+export const ROUTING_PRESETS: Record<string, ModelRoutingRow> = {
+  ALWAYS_FAST,
+  FAST_PROMOTED,
+  ROUTER,
+  ORCHESTRATOR,
+  DEEP_ANALYSIS,
+  DEBUGGER_PRESET,
+  ALWAYS_CAPABLE,
+};
+
 /**
  * The system model routing table.
  *
  * Per-agent overrides for complexity -> model tier mapping. Agents not
  * listed here fall through to DEFAULT_COMPLEXITY_TIERS.
  *
- * Rationale for overrides:
- * - Classifiers/routers (lu-cognition, lu-learner): Always fast,
- *   even at high complexity -- their work is lightweight.
- * - Executors/planners: Balanced by default, promoted to capable at
- *   COMPLEX+ to handle cross-cutting changes.
- * - Deep-analysis agents (verifiers, debuggers, auditors): Capable
- *   at MODERATE+, balanced at SIMPLE, fast at TRIVIAL.
+ * Each entry references a named preset (see ROUTING_PRESETS above).
+ * This is a pure DRY consolidation — every agent resolves to the exact
+ * same tiers as before the refactor.
  */
 export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
-  // --- Fast-tier agents (classifiers, memory) ---
-  "lu-cognition": {
-    TRIVIAL: "fast",
-    SIMPLE: "fast",
-    MODERATE: "fast",
-    COMPLEX: "fast",
-    CRITICAL: "fast",
-  },
-  "lu-learner": {
-    TRIVIAL: "fast",
-    SIMPLE: "fast",
-    MODERATE: "fast",
-    COMPLEX: "fast",
-    CRITICAL: "balanced",
-  },
+  // --- Classifier (always fast) ---
+  "lu-cognition": ALWAYS_FAST,
 
-  // --- Balanced-tier agents (executors, planners, routers) ---
-  "lu-router": {
-    TRIVIAL: "fast",
-    SIMPLE: "fast",
-    MODERATE: "balanced",
-    COMPLEX: "balanced",
-    CRITICAL: "balanced",
-  },
-  "lu-executor": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-planner": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-pm-planner": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
+  // --- Fast-promoted (fast everywhere, balanced at CRITICAL) ---
+  "lu-learner": FAST_PROMOTED,
+  "lu-router-fast": FAST_PROMOTED,
+  "lu-verifier-fast": FAST_PROMOTED,
 
-  // --- Capable-tier agents (verifiers, debuggers, auditors) ---
-  "lu-verifier": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-debugger": {
-    TRIVIAL: "balanced",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-integration-checker": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "code-architect": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "dx-advocate": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "code-simplifier": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "security-auditor": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "performance-auditor": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "code-developer": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  ui: {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  ux: {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
+  // --- Router (balanced from MODERATE+) ---
+  "lu-router": ROUTER,
 
-  // --- Fast-tier agents (classifiers, lightweight) ---
-  "lu-router-fast": {
-    TRIVIAL: "fast",
-    SIMPLE: "fast",
-    MODERATE: "fast",
-    COMPLEX: "fast",
-    CRITICAL: "balanced",
-  },
-  "lu-verifier-fast": {
-    TRIVIAL: "fast",
-    SIMPLE: "fast",
-    MODERATE: "fast",
-    COMPLEX: "fast",
-    CRITICAL: "balanced",
-  },
+  // --- Orchestrators (balanced → capable ramp) ---
+  "lu-executor": ORCHESTRATOR,
+  "lu-planner": ORCHESTRATOR,
+  "lu-pm-planner": ORCHESTRATOR,
+  "lu-plan-checker": ORCHESTRATOR,
+  "lu-test-writer": ORCHESTRATOR,
+  "lu-pr-reviewer": ORCHESTRATOR,
+  "lu-discuss-researcher": ORCHESTRATOR,
+  "lu-research-synthesizer": ORCHESTRATOR,
+  "lu-codebase-mapper": ORCHESTRATOR,
+  "lu-phase-researcher": ORCHESTRATOR,
+  "lu-project-researcher": ORCHESTRATOR,
+  "lu-repo-architect": ORCHESTRATOR,
+  "lu-roadmapper": ORCHESTRATOR,
+  "lu-roadmap-architect": ORCHESTRATOR,
+  "lu-roadmap-prioritizer": ORCHESTRATOR,
+  "lu-roadmap-qa": ORCHESTRATOR,
+  "lu-roadmap-synthesizer": ORCHESTRATOR,
+  product: ORCHESTRATOR,
+  "qa-plan-generator": ORCHESTRATOR,
 
-  // --- Capable-tier variant (always capable) ---
-  "lu-executor-capable": {
-    TRIVIAL: "capable",
-    SIMPLE: "capable",
-    MODERATE: "capable",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
+  // --- Deep analysis (capable from MODERATE+) ---
+  "lu-verifier": DEEP_ANALYSIS,
+  "lu-integration-checker": DEEP_ANALYSIS,
+  "code-architect": DEEP_ANALYSIS,
+  "dx-advocate": DEEP_ANALYSIS,
+  "code-simplifier": DEEP_ANALYSIS,
+  "security-auditor": DEEP_ANALYSIS,
+  "performance-auditor": DEEP_ANALYSIS,
+  "code-developer": DEEP_ANALYSIS,
+  ui: DEEP_ANALYSIS,
+  ux: DEEP_ANALYSIS,
 
-  // --- Standard orchestrators (fast → balanced → capable ramp) ---
-  "lu-plan-checker": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-test-writer": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-pr-reviewer": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-discuss-researcher": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-research-synthesizer": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-codebase-mapper": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-phase-researcher": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-project-researcher": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-repo-architect": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-roadmapper": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-roadmap-architect": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-roadmap-prioritizer": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-roadmap-qa": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "lu-roadmap-synthesizer": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  product: {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
-  "qa-plan-generator": {
-    TRIVIAL: "fast",
-    SIMPLE: "balanced",
-    MODERATE: "balanced",
-    COMPLEX: "capable",
-    CRITICAL: "capable",
-  },
+  // --- Debugger (balanced at TRIVIAL, capable from MODERATE+) ---
+  "lu-debugger": DEBUGGER_PRESET,
+
+  // --- Always capable (high-fidelity) ---
+  "lu-executor-capable": ALWAYS_CAPABLE,
 };
 
 /**
