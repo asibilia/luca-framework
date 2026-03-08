@@ -101,6 +101,62 @@
 - [x] PLAN: Cross-session procedure replay engine (#12)
 - [x] PLAN: Portable cognitive profiles — cross-project memory (#14)
 
+### Phase 9: MuninnDB Memory Migration
+
+**Goal:** Replace file-based memory system (BRAIN.md/MEMORY.md/WORKING.md) with MuninnDB via MCP for structured, queryable, persistent memory
+**Depends on:** Phase 8 (learning pipeline must be stable before migrating its storage backend)
+**Verification:** Full + Human
+**Est:** ~4-5 days
+
+- [ ] PLAN: Migrate memory system to MuninnDB via MCP
+
+> Architectural note: T1 Core change (memory domain). Affects lu-cognition pre-flight,
+> lu-learner capture, procedure replay, and cognitive profiles. MuninnDB provides
+> entity-based storage, semantic recall, timeline queries, and graph traversal —
+> replacing flat markdown files with structured knowledge management.
+
+### Phase 10: Critical Fixes & Data Integrity
+
+**Goal:** Fix HIGH-severity bugs, reconcile data integrity issues, clean up stale references from audit
+**Depends on:** Phase 9 (all source changes landed)
+**Verification:** Quick
+**Est:** ~3-4 hours
+
+- [x] PLAN: Fix observer React bug (H1: missing CSS token), barrel import (M14), rule registration (M1), cognitive-preflight refs (Gap 1)
+- [x] PLAN: Reconcile DEFAULT_COMPLEXITY_MATRIX divergence between src/ and packages/ (H6)
+- [x] PLAN: Clean stale references (tailwind-auditor phantom M2, lu-learner PROCEDURES.md M3, legacy model profile table L16)
+- [x] PLAN: MuninnDB observer infrastructure — dependency, server proxy routes, hook rewrite (supersedes H2/H3)
+- [x] PLAN: MuninnDB observer component rewrites — engram cards, session feed, brain panel, vault stats
+
+> Audit refs: H1, H6, M1, M2, M3, M4, M14, L8, L16, Gap 1-5
+> Note: H2/H3 (Rules of Hooks violations) superseded by MuninnDB observer migration — components fully rewritten.
+
+### Phase 11: Hook Script Consolidation & Security
+
+**Goal:** Extract shared shell functions, fix injection patterns, consolidate model routing table
+**Depends on:** Phase 10 (stale references cleaned first)
+**Verification:** Standard
+**Est:** ~4-5 hours
+
+- [ ] PLAN: Extract MODEL_ROUTING_TABLE to named presets (H4: 260 → ~120 lines)
+- [ ] PLAN: Create hook \_lib/ shared library (H5: run_bridge, M15: read_runtime, M16: session_id)
+- [ ] PLAN: Fix shell variable interpolation in hook scripts — use process.env pattern (M6-M9)
+- [ ] PLAN: Fix boundary checker multi-line import scanner (M13) and add observability domain (L9)
+
+> Audit refs: H4, H5, M5, M6-M9, M13, M15, M16, L9, Gap 6
+
+### Phase 12: Observer Polish & DX Cleanup
+
+**Goal:** Observer accessibility, dashboard completeness, DX conventions alignment
+**Depends on:** Nothing (parallel-safe with Phase 11)
+**Verification:** Quick
+**Est:** ~2-3 hours
+
+- [ ] PLAN: Dashboard ErrorBoundary + loading state (M19-M20) and accessibility pass (M21-M22, M24-M25)
+- [ ] PLAN: Extract context_isolation shared block (M17), todos route Bun API (M23), DX cleanup (M10-M12)
+
+> Audit refs: M10-M12, M17, M19-M25
+
 ---
 
 ## Deferred (v3.1.0+)
