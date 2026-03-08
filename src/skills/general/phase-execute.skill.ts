@@ -35,7 +35,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - \`dx-advocate\` - Code quality review
 - \`code-simplifier\` - DRY and complexity review
 - \`code-architect\` - Architecture review
-- \`tailwind-auditor\` - Tailwind/styling review
+- \`ui\` - UI/styling review
 - \`security-auditor\` - Security review (conditional)
 - \`lu-planner\` - Plans fixes for issues (if needed)
 - \`lu-plan-checker\` - Validates fix plans (if needed)
@@ -203,7 +203,7 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 | dx-advocate      | opus    | sonnet   | haiku  |
 | code-simplifier  | opus    | sonnet   | haiku  |
 | code-architect   | opus    | sonnet   | haiku  |
-| tailwind-auditor | opus    | sonnet   | haiku  |
+| ui               | opus    | sonnet   | haiku  |
 | security-auditor | opus    | sonnet   | haiku  |
 | lu-planner       | opus    | opus     | sonnet |
 | lu-plan-checker  | sonnet  | sonnet   | haiku  |
@@ -445,9 +445,10 @@ Execute this plan. Return SUMMARY when complete.
 **Before each wave**, check context usage to decide if suspension is needed:
 
 \`\`\`bash
-# Check context usage zone from context monitor
-CONTEXT_JSON=$(bun run src/memory/context-monitor.ts --project-dir=. 2>/dev/null || echo '{"zone":"peak"}')
-ZONE=$(echo "$CONTEXT_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.zone)" 2>/dev/null || echo "peak")
+# Check context usage zone (context monitoring handled by hooks/MuninnDB)
+# The context-check-throttled hook monitors usage automatically.
+# For manual checks, read the zone from STATE.md or bridge:
+ZONE=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=context_zone 2>/dev/null | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.value || 'peak')" 2>/dev/null || echo "peak")
 \`\`\`
 
 **If zone is "stop"** (context exhaustion imminent):
@@ -1466,7 +1467,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
-    source_agent: tailwind-auditor
+    source_agent: ui
 \`\`\`
 
 If no issues found, return: \`issues: []\`
@@ -1824,7 +1825,7 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 - [ ] Each plan has SUMMARY.md
 - [ ] Phase goal verified (must_haves checked against codebase)
 - [ ] VERIFICATION.md created in phase directory
-- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, tailwind-auditor, security-auditor)
+- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, ui, security-auditor)
 - [ ] CRITICAL code issues block until fixed
 - [ ] HIGH/MEDIUM code issues presented with options
 - [ ] UAT.md created with tests from SUMMARY.md
