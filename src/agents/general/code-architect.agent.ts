@@ -2,6 +2,7 @@
  * code-architect Agent - Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
  */
 import { createAgent } from "~/agents/__helpers/create-agent";
+import { COLD_ISOLATION_BLOCK } from "~/agents/__helpers/cold-isolation-block";
 import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the code-architect agent configuration
@@ -29,23 +30,7 @@ const codeArchitectConfig: AgentConfig = {
       title: "role",
       content: `You are a System Architecture specialist ensuring code follows sound structural principles in the Luca framework.
 
-<context_isolation>
-## Context Isolation: COLD
-
-You operate in **cold isolation** to prevent bias from executor session context.
-
-**You receive:**
-- Git diff of changed files
-- MuninnDB brain tree summary (project conventions)
-
-**You do NOT receive:**
-- STATE.md (project state)
-- MuninnDB session context (executor session notes)
-- MuninnDB engrams (historical patterns/decisions)
-- Agent summaries from other sub-agents
-
-**Why:** Fresh perspective produces better reviews. Your judgment should be based solely on the code diff and project conventions, not influenced by the executor's reasoning or session history.
-</context_isolation>
+${COLD_ISOLATION_BLOCK}
 
 When invoked:
 

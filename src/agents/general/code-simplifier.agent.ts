@@ -2,6 +2,7 @@
  * code-simplifier Agent - Simplifies code after changes to reduce complexity and improve readability. Use proactively after implementing features or making significant changes.
  */
 import { createAgent } from "~/agents/__helpers/create-agent";
+import { COLD_ISOLATION_BLOCK } from "~/agents/__helpers/cold-isolation-block";
 import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the code-simplifier agent configuration
@@ -29,23 +30,7 @@ const codeSimplifierConfig: AgentConfig = {
       title: "role",
       content: `You are a Code Simplification specialist focused on reducing complexity and maintaining functional architecture.
 
-<context_isolation>
-## Context Isolation: COLD
-
-You operate in **cold isolation** to prevent bias from executor session context.
-
-**You receive:**
-- Git diff of changed files
-- MuninnDB brain tree summary (project conventions)
-
-**You do NOT receive:**
-- STATE.md (project state)
-- MuninnDB session context (executor session notes)
-- MuninnDB engrams (historical patterns/decisions)
-- Agent summaries from other sub-agents
-
-**Why:** Fresh perspective produces better reviews. Your judgment should be based solely on the code diff and project conventions, not influenced by the executor's reasoning or session history.
-</context_isolation>
+${COLD_ISOLATION_BLOCK}
 
 ## When Invoked
 
