@@ -30,7 +30,11 @@ function coherenceColor(score: number): string {
 export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
   if (!stats) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div
+        role="status"
+        aria-label="MuninnDB statistics unavailable"
+        className="rounded-lg border border-border bg-card p-4"
+      >
         <div className="flex items-center justify-between">
           <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             MuninnDB Stats
@@ -65,7 +69,11 @@ export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
   const storageMb = (stats.storage_bytes / (1024 * 1024)).toFixed(2);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div
+      role="status"
+      aria-label="MuninnDB statistics"
+      className="rounded-lg border border-border bg-card p-4"
+    >
       <div className="flex items-center justify-between">
         <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           MuninnDB Stats
@@ -81,6 +89,7 @@ export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1.5">
           <div
+            aria-hidden="true"
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: "var(--color-info)" }}
           />
@@ -94,6 +103,7 @@ export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
 
         <div className="flex items-center gap-1.5">
           <div
+            aria-hidden="true"
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: "var(--color-success)" }}
           />
@@ -107,6 +117,7 @@ export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
 
         <div className="flex items-center gap-1.5">
           <div
+            aria-hidden="true"
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: "var(--color-warning)" }}
           />
@@ -120,6 +131,7 @@ export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
 
         <div className="flex items-center gap-1.5">
           <div
+            aria-hidden="true"
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: "var(--color-accent)" }}
           />

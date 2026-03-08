@@ -158,7 +158,11 @@ export function MemoryEntries({ engrams }: { engrams: Engram[] }) {
   }
 
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card">
+    <div
+      role="region"
+      aria-label="Memory engrams"
+      className="flex flex-col rounded-lg border border-border bg-card"
+    >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
@@ -277,6 +281,7 @@ function EngramCard({
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="w-full px-4 py-2.5 text-left hover:bg-muted/20"
       >
         <div className="flex items-start justify-between gap-2">

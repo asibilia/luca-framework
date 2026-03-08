@@ -25,7 +25,11 @@ export function BrainPanel({ items }: { items: ActivationItem[] }) {
   }
 
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card">
+    <div
+      role="region"
+      aria-label="Brain tree engrams"
+      className="flex flex-col rounded-lg border border-border bg-card"
+    >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">

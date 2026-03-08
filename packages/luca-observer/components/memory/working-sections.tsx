@@ -106,7 +106,11 @@ export function WorkingSections({ entries }: { entries: SessionEntry[] }) {
   }
 
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card">
+    <div
+      role="region"
+      aria-label="Session activity"
+      className="flex flex-col rounded-lg border border-border bg-card"
+    >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
@@ -182,6 +186,7 @@ function SessionEntryRow({ entry }: { entry: SessionEntry }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-muted/20"
       >
         <span
