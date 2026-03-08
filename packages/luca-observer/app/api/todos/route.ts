@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 interface TodoResponse {
@@ -41,7 +41,7 @@ async function readTodosFromDir(
     const todos: TodoResponse[] = [];
     for (const file of mdFiles) {
       try {
-        const content = await readFile(join(dirPath, file), "utf-8");
+        const content = await Bun.file(join(dirPath, file)).text();
         const fm = parseFrontmatter(content);
         todos.push({
           filename: file,
