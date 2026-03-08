@@ -138,10 +138,10 @@
 **Verification:** Standard
 **Est:** ~4-5 hours
 
-- [ ] PLAN: Extract MODEL_ROUTING_TABLE to named presets (H4: 260 → ~120 lines)
-- [ ] PLAN: Create hook \_lib/ shared library (H5: run_bridge, M15: read_runtime, M16: session_id)
-- [ ] PLAN: Fix shell variable interpolation in hook scripts — use process.env pattern (M6-M9)
-- [ ] PLAN: Fix boundary checker multi-line import scanner (M13) and add observability domain (L9)
+- [x] PLAN: Extract MODEL_ROUTING_TABLE to named presets (H4: 260 → ~120 lines)
+- [x] PLAN: Create hook \_lib/ shared library (H5: run_bridge, M15: read_runtime, M16: session_id)
+- [x] PLAN: Fix shell variable interpolation in hook scripts — use process.env pattern (M6-M9)
+- [x] PLAN: Fix boundary checker multi-line import scanner (M13) and add observability domain (L9)
 
 > Audit refs: H4, H5, M5, M6-M9, M13, M15, M16, L9, Gap 6
 
