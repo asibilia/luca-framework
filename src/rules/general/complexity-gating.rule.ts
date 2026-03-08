@@ -66,7 +66,7 @@ Complexity determines which model tier each agent receives. The **canonical sour
 
 Model tiers map to concrete models: **fast** (haiku/lightweight), **balanced** (sonnet/standard), **capable** (opus/deep analysis). Resolve at runtime via \\\`resolveModelForAgent(agentName, complexity)\\\`. The exported \\\`ROUTING_PRESETS\\\` record provides programmatic access to all presets.
 
-**Note:** Per-agent frontmatter overrides (\\\`model_routing.complexity_overrides\\\`) are being removed in a subsequent plan (Plan 07).
+**Single source of truth:** The \\\`MODEL_ROUTING_TABLE\\\` is the only authoritative source for agent model selection. Agent frontmatter \\\`model_routing\\\` and \\\`model_tier\\\` fields are deprecated and no longer consulted by \\\`resolveModel()\\\`.
 
 ## Iteration Count Scaling
 
