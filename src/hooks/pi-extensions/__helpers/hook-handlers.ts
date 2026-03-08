@@ -24,6 +24,21 @@ import { shouldRunThrottled } from "./throttle";
 import { runSessionInit } from "./session-init";
 import type { PiExtensionContext } from "../__types/pi-context";
 
+/**
+ * Escape a string for safe interpolation into a shell command.
+ *
+ * Wraps the value in single quotes and escapes any embedded single
+ * quotes using the standard sh idiom: ' -> '\''
+ * This prevents shell injection when file paths or other untrusted
+ * strings are embedded in command strings passed to runShellCommand().
+ *
+ * @param value - The string to escape
+ * @returns A shell-safe single-quoted string
+ */
+function shellEscape(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
 /** Extensions that prettier can format. */
 const FORMATTABLE_EXTENSIONS = new Set([
   ".ts",
@@ -83,7 +98,7 @@ export function handlePostEditFormat(filePath: string, cwd: string): void {
   if (!FORMATTABLE_EXTENSIONS.has(ext)) return;
 
   const rt = detectRuntime(cwd);
-  const cmd = `${getFormatterCmd(rt)} --write "${filePath}"`;
+  const cmd = `${getFormatterCmd(rt)} --write ${shellEscape(filePath)}`;
 
   try {
     runShellCommand(cmd, { cwd, timeout: 10 });
@@ -196,7 +211,7 @@ export function handlePreCommitDriftCheck(
   const driftScript = join(cwd, "scripts", "check-drift.ts");
   if (!existsSync(driftScript)) return;
 
-  const result = runShellCommand(`bun run "${driftScript}"`, {
+  const result = runShellCommand(`bun run ${shellEscape(driftScript)}`, {
     cwd,
     timeout: 60,
   });
@@ -388,7 +403,7 @@ function syncStateSnapshot(cwd: string): void {
   }
 
   if (!bridgeCmd && existsSync(bridgePath)) {
-    bridgeCmd = `bun run "${bridgePath}"`;
+    bridgeCmd = `bun run ${shellEscape(bridgePath)}`;
   }
 
   if (bridgeCmd) {
