@@ -67,6 +67,7 @@ import {
   loadSuspendCheckpoint,
   clearSuspendCheckpoint,
 } from "./suspend-checkpoint";
+import type { SuspendCheckpoint } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
 import { callReducer, emitObserverEvent } from "./__helpers/observer-emitter";
@@ -306,7 +307,7 @@ async function handleReadPhase(): Promise<void> {
     sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
     fromRow: (row: { contextJson: string }) => {
       if (!row.contextJson) return null;
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
       return {
         current_phase: ctx.current_phase ?? null,
         current_milestone: ctx.current_milestone ?? null,
@@ -371,12 +372,12 @@ async function handleReadStatus(): Promise<void> {
       contextJson: string;
     }) => {
       if (!row.contextJson) return null;
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
       return {
         initialized: true,
         state: row.workflowState ?? "idle",
-        complexity: row.complexity ?? ctx.complexity ?? "TRIVIAL",
-        oversight: row.oversight ?? ctx.oversight ?? "milestone",
+        complexity: row.complexity ?? (ctx.complexity as string) ?? "TRIVIAL",
+        oversight: row.oversight ?? (ctx.oversight as string) ?? "milestone",
         current_phase: ctx.current_phase ?? null,
         current_milestone: ctx.current_milestone ?? null,
         current_plan_ids: ctx.current_plan_ids ?? [],
@@ -442,7 +443,7 @@ async function handleReadField(args: string[]): Promise<void> {
     sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
     fromRow: (row: { contextJson: string }) => {
       if (!row.contextJson) return null;
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
       const value = get(ctx, fieldPath);
       // Return null when value is missing so readWithFallback
       // falls through to the JSON file where the data may exist.
@@ -517,7 +518,7 @@ async function handleSetField(args: string[]): Promise<void> {
   // Parse value: try JSON first, fall back to raw string
   let value: unknown;
   try {
-    value = JSON.parse(rawValue);
+    value = sanitizeJsonParse(rawValue);
   } catch {
     value = rawValue;
   }
@@ -534,7 +535,7 @@ async function handleSetField(args: string[]): Promise<void> {
       "SELECT * FROM workflow_state WHERE id = 1",
     );
     if (row && row.contextJson) {
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson);
       snapshotJson = {
         context: ctx,
         value: row.workflowState ?? "idle",
@@ -675,7 +676,7 @@ async function handleTransition(args: string[]): Promise<void> {
   const dataRaw = getArg(args, "data");
   if (dataRaw) {
     try {
-      const parsed = JSON.parse(dataRaw);
+      const parsed = sanitizeJsonParse(dataRaw) as Record<string, unknown>;
       eventObj = { ...parsed, type: eventType };
     } catch {
       console.error("Invalid JSON in --data argument");
@@ -1036,7 +1037,7 @@ async function handleResumePhase(args: string[]): Promise<void> {
       `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
     );
     if (row && row.checkpointJson) {
-      checkpoint = JSON.parse(row.checkpointJson);
+      checkpoint = sanitizeJsonParse(row.checkpointJson) as SuspendCheckpoint;
     }
   } catch (err) {
     if (process.env.LUCA_DEBUG) {
@@ -1216,7 +1217,7 @@ function handleEmitEvent(args: string[]): void {
   const dataArg = getArg(args, "data");
   if (dataArg) {
     try {
-      extraData = JSON.parse(dataArg);
+      extraData = sanitizeJsonParse(dataArg) as Record<string, unknown>;
     } catch {
       // Not valid JSON — ignore
     }
