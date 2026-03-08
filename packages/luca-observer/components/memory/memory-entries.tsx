@@ -136,11 +136,13 @@ function groupByCategory(engrams: Engram[]): CategoryGroup[] {
   for (const cat of displayOrder) {
     const items = buckets.get(cat);
     if (items && items.length > 0) {
-      const display = CATEGORY_DISPLAY[cat] ?? CATEGORY_DISPLAY.uncategorized;
+      const display = CATEGORY_DISPLAY[cat];
+      const label = display?.label ?? cat;
+      const color = display?.color ?? "muted-foreground";
       groups.push({
         category: cat,
-        label: display.label,
-        color: display.color,
+        label,
+        color,
         engrams: items,
       });
     }

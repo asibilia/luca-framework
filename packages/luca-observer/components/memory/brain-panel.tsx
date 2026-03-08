@@ -1,101 +1,118 @@
 "use client";
 
+import { useState } from "react";
+
 import { EmptyState } from "~/components/shared/empty-state";
 
+import type { ActivationItem } from "~/hooks/use-memory";
+
 /**
- * Panel rendering BRAIN.md content with section-aware formatting.
+ * Panel rendering MuninnDB brain tree engrams as structured key-value cards.
  *
- * Displays the project identity file with styled section headers,
- * key-value pair formatting, and mono-font rendering.
+ * Displays brain activation items with concept, content, and relevance
+ * score badges. Preserves mono-font styling with collapsible content.
  *
- * @param content - Raw BRAIN.md markdown content
+ * @param items - Array of ActivationItem objects from MuninnDB semantic recall
  */
-export function BrainPanel({ content }: { content: string }) {
-  if (!content.trim()) {
+export function BrainPanel({ items }: { items: ActivationItem[] }) {
+  if (items.length === 0) {
     return (
       <EmptyState
-        title="No BRAIN.md"
-        message="Create a BRAIN.md file to define project identity."
+        title="No Brain Engrams"
+        message="No brain engrams found. Use MuninnDB to store project identity."
       />
     );
   }
 
-  const lines = content.split("\n");
-
   return (
     <div className="flex flex-col rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          BRAIN.md
-        </p>
-        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-          Project Identity
-        </p>
-      </div>
-      <div className="max-h-[28rem] overflow-y-auto px-4 py-3">
-        <div className="space-y-1">
-          {lines.map((line, i) => (
-            <BrainLine key={i} line={line} />
-          ))}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Brain Tree
+          </p>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+            Project Identity
+          </p>
         </div>
+        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
+          {items.length} {items.length === 1 ? "engram" : "engrams"}
+        </span>
+      </div>
+      <div className="max-h-[28rem] overflow-y-auto">
+        {items.map((item) => (
+          <BrainEngram key={item.id} item={item} />
+        ))}
       </div>
     </div>
   );
 }
 
 /**
- * Render a single line from BRAIN.md with formatting.
+ * Single brain engram card with relevance score badge.
  *
- * - `# heading` and `## heading` lines render as bold labels
- * - `Key: Value` lines render with dimmed key and bright value
- * - All other lines render as plain mono text
+ * Shows concept name, relevance score, and content. Content is
+ * collapsible to keep the panel compact when many engrams exist.
  */
-function BrainLine({ line }: { line: string }) {
-  // Top-level heading
-  if (line.startsWith("# ")) {
-    return (
-      <p className="mt-2 font-mono text-sm font-bold text-foreground">
-        {line.replace(/^#+\s*/, "")}
-      </p>
-    );
-  }
+function BrainEngram({ item }: { item: ActivationItem }) {
+  const [expanded, setExpanded] = useState(true);
+  const relevancePercent = Math.round(item.score * 100);
 
-  // Section heading
-  if (line.startsWith("## ")) {
-    return (
-      <p className="mt-3 border-b border-border pb-1 font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {line.replace(/^#+\s*/, "")}
-      </p>
-    );
-  }
-
-  // Sub-section heading
-  if (line.startsWith("### ")) {
-    return (
-      <p className="mt-2 font-mono text-xs font-semibold text-foreground">
-        {line.replace(/^#+\s*/, "")}
-      </p>
-    );
-  }
-
-  // Key-value pair (e.g., "Project: Luca")
-  const kvMatch = line.match(/^[-*]?\s*\*?\*?([^:*]+)\*?\*?:\s*(.+)/);
-  const kvKey = kvMatch?.[1];
-  const kvValue = kvMatch?.[2];
-  if (kvKey && kvValue) {
-    return (
-      <div className="flex gap-2 font-mono text-xs">
-        <span className="shrink-0 text-muted-foreground">{kvKey.trim()}:</span>
-        <span className="text-foreground">{kvValue.trim()}</span>
-      </div>
-    );
-  }
-
-  // Empty line
-  if (!line.trim()) {
-    return <div className="h-1" />;
-  }
-
-  // Plain text
-  return <p className="font-mono text-xs text-muted-foreground">{line}</p>;
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            {expanded ? "\u25BC" : "\u25B6"}
+          </span>
+          <span className="font-mono text-xs font-semibold text-foreground">
+            {item.concept}
+          </span>
+        </div>
+        <span
+          className="rounded-full px-1.5 py-0.5 font-mono text-xs font-medium"
+          style={{
+            color: "var(--color-info)",
+            backgroundColor:
+              "color-mix(in oklab, var(--color-info) 15%, transparent)",
+          }}
+        >
+          {relevancePercent}%
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-4 py-2.5">
+          <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
+            {item.content}
+          </pre>
+          {item.tags && item.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {item.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-sm px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
+                  style={{
+                    backgroundColor:
+                      "color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)",
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {item.why && (
+            <p className="mt-1.5 font-mono text-xs italic text-muted-foreground/60">
+              {item.why}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

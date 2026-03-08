@@ -1,164 +1,145 @@
 "use client";
 
-import { useMemo } from "react";
-
-import { formatChars } from "~/lib/format";
+import type { StatsResponse } from "~/hooks/use-memory";
 
 /**
- * Segment definition for the context usage bar.
- */
-interface Segment {
-  label: string;
-  chars: number;
-  color: string;
-  percentage: number;
-}
-
-/**
- * Estimated max context window in characters.
+ * Resolve coherence score color based on value.
  *
- * Claude models support ~200k tokens. Using chars/4 heuristic,
- * that is ~800k characters. We use a conservative estimate of
- * 200k characters for the context budget (memory files are only
- * one part of the total context).
+ * Higher coherence is better:
+ * - 0.8+: success (healthy)
+ * - 0.5-0.8: info (moderate)
+ * - 0.3-0.5: warning (low)
+ * - <0.3: destructive (poor)
  */
-const ESTIMATED_CONTEXT_BUDGET = 200_000;
-
-/**
- * Resolve the zone color based on total usage percentage.
- *
- * - Under 30%: green (healthy)
- * - 30-50%: info/blue (good)
- * - 50-70%: warning/yellow (degrading)
- * - 70%+: destructive/red (critical)
- */
-function zoneColor(percentage: number): string {
-  if (percentage < 30) return "success";
-  if (percentage < 50) return "info";
-  if (percentage < 70) return "warning";
+function coherenceColor(score: number): string {
+  if (score >= 0.8) return "success";
+  if (score >= 0.5) return "info";
+  if (score >= 0.3) return "warning";
   return "destructive";
 }
 
 /**
- * Visual bar showing estimated context usage across all memory files.
+ * Stats bar showing MuninnDB vault statistics.
  *
- * Displays a horizontal bar segmented by file: BRAIN (blue),
- * MEMORY (green), WORKING (orange). Each segment is proportional
- * to its content size. Shows total size in characters and estimated
- * tokens (chars/4 heuristic). Color-coded by usage zone.
+ * Displays total engram count, coherence score as a colored badge,
+ * vault count, and storage info. Shows a graceful "unavailable" state
+ * when stats are null (MuninnDB not reachable).
  *
- * @param brain - Raw BRAIN.md content
- * @param memory - Raw MEMORY.md content
- * @param working - Raw WORKING.md content
+ * @param stats - MuninnDB StatsResponse or null if unavailable
  */
-export function ContextUsageBar({
-  brain,
-  memory,
-  working,
-}: {
-  brain: string;
-  memory: string;
-  working: string;
-}) {
-  const segments = useMemo((): Segment[] => {
-    const brainChars = brain.length;
-    const memoryChars = memory.length;
-    const workingChars = working.length;
-    const total = brainChars + memoryChars + workingChars;
+export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
+  if (!stats) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            MuninnDB Stats
+          </p>
+          <span
+            className="rounded-sm px-1.5 py-0.5 font-mono text-xs font-medium"
+            style={{
+              color: "var(--color-muted-foreground)",
+              backgroundColor:
+                "color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)",
+            }}
+          >
+            Unavailable
+          </span>
+        </div>
+        <p className="mt-2 font-mono text-xs text-muted-foreground">
+          MuninnDB statistics are not available. Check connection settings.
+        </p>
+      </div>
+    );
+  }
 
-    if (total === 0) {
-      return [
-        { label: "BRAIN", chars: 0, color: "info", percentage: 0 },
-        { label: "MEMORY", chars: 0, color: "success", percentage: 0 },
-        { label: "WORKING", chars: 0, color: "warning", percentage: 0 },
-      ];
-    }
+  // Extract coherence score from the first vault (if available)
+  const coherenceEntries = stats.coherence
+    ? Object.entries(stats.coherence)
+    : [];
+  const firstEntry = coherenceEntries[0] ?? null;
+  const primaryCoherence = firstEntry ? firstEntry[1] : null;
+  const coherenceScore = primaryCoherence?.score ?? null;
+  const vaultName = firstEntry ? firstEntry[0] : "default";
 
-    return [
-      {
-        label: "BRAIN",
-        chars: brainChars,
-        color: "info",
-        percentage: (brainChars / ESTIMATED_CONTEXT_BUDGET) * 100,
-      },
-      {
-        label: "MEMORY",
-        chars: memoryChars,
-        color: "success",
-        percentage: (memoryChars / ESTIMATED_CONTEXT_BUDGET) * 100,
-      },
-      {
-        label: "WORKING",
-        chars: workingChars,
-        color: "warning",
-        percentage: (workingChars / ESTIMATED_CONTEXT_BUDGET) * 100,
-      },
-    ];
-  }, [brain, memory, working]);
-
-  const totalChars = segments.reduce((sum, s) => sum + s.chars, 0);
-  const totalPercentage = (totalChars / ESTIMATED_CONTEXT_BUDGET) * 100;
-  const estimatedTokens = Math.round(totalChars / 4);
-  const zone = zoneColor(totalPercentage);
+  const storageMb = (stats.storage_bytes / (1024 * 1024)).toFixed(2);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Context Usage
+          MuninnDB Stats
         </p>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-muted-foreground">
-            {formatChars(totalChars)} chars
+            Vault: {vaultName}
           </span>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-1.5">
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: "var(--color-info)" }}
+          />
           <span className="font-mono text-xs text-muted-foreground">
-            ~{estimatedTokens.toLocaleString()} tokens
+            Engrams
           </span>
+          <span className="font-mono text-xs font-medium text-foreground">
+            {stats.engram_count.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: "var(--color-success)" }}
+          />
+          <span className="font-mono text-xs text-muted-foreground">
+            Vaults
+          </span>
+          <span className="font-mono text-xs font-medium text-foreground">
+            {stats.vault_count}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: "var(--color-warning)" }}
+          />
+          <span className="font-mono text-xs text-muted-foreground">
+            Storage
+          </span>
+          <span className="font-mono text-xs font-medium text-foreground">
+            {storageMb} MB
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: "var(--color-accent)" }}
+          />
+          <span className="font-mono text-xs text-muted-foreground">Index</span>
+          <span className="font-mono text-xs font-medium text-foreground">
+            {stats.index_size.toLocaleString()}
+          </span>
+        </div>
+
+        {coherenceScore !== null && (
           <span
             className="rounded-sm px-1.5 py-0.5 font-mono text-xs font-medium"
             style={{
-              color: `var(--color-${zone})`,
-              backgroundColor: `color-mix(in oklab, var(--color-${zone}) 15%, transparent)`,
+              color: `var(--color-${coherenceColor(coherenceScore)})`,
+              backgroundColor: `color-mix(in oklab, var(--color-${coherenceColor(coherenceScore)}) 15%, transparent)`,
             }}
           >
-            {totalPercentage.toFixed(1)}%
+            Coherence: {(coherenceScore * 100).toFixed(0)}%
           </span>
-        </div>
-      </div>
-
-      {/* Bar */}
-      <div className="mt-3 h-3 overflow-hidden rounded-full bg-muted/50">
-        <div className="flex h-full">
-          {segments.map((seg) => (
-            <div
-              key={seg.label}
-              className="h-full transition-all duration-300"
-              style={{
-                width: `${Math.max(seg.percentage, seg.chars > 0 ? 0.5 : 0)}%`,
-                backgroundColor: `var(--color-${seg.color})`,
-                opacity: seg.chars > 0 ? 0.8 : 0,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="mt-3 flex flex-wrap gap-4">
-        {segments.map((seg) => (
-          <div key={seg.label} className="flex items-center gap-1.5">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: `var(--color-${seg.color})` }}
-            />
-            <span className="font-mono text-xs text-muted-foreground">
-              {seg.label}
-            </span>
-            <span className="font-mono text-xs text-foreground">
-              {formatChars(seg.chars)}
-            </span>
-          </div>
-        ))}
+        )}
       </div>
     </div>
   );

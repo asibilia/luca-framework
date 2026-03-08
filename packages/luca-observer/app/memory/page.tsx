@@ -1,7 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
-
 import { PageContainer } from "~/components/layout/page-container";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
@@ -11,106 +9,117 @@ import { WorkingSections } from "~/components/memory/working-sections";
 import { ContextUsageBar } from "~/components/memory/context-usage-bar";
 import { useMemory } from "~/hooks/use-memory";
 
-import type { ActivationItem, Engram, SessionEntry } from "~/hooks/use-memory";
+/**
+ * Format a relative "time ago" string from a Date.
+ */
+function timeAgo(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return "just now";
+
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 /**
- * Temporary bridge: convert MuninnDB engram data to markdown strings
- * for the existing components (BrainPanel, MemoryEntries, WorkingSections).
+ * MuninnDB Memory Dashboard page.
  *
- * PLAN-05 rewrites all components to consume MuninnMemoryData directly,
- * at which point these helpers are removed.
+ * Single-column stacked layout: Stats bar -> Brain panel -> Engrams panel -> Session panel.
+ * Uses the useMemory hook for structured MuninnDB data with manual refresh and
+ * "Last updated" timestamp. Gracefully degrades when MuninnDB is unavailable.
  */
-function brainToMarkdown(items: ActivationItem[]): string {
-  if (items.length === 0) return "";
-  return items
-    .map((a) => `## ${a.concept}\n\n${a.content}`)
-    .join("\n\n---\n\n");
-}
-
-function engramsToMarkdown(items: Engram[]): string {
-  if (items.length === 0) return "";
-  const grouped = new Map<string, Engram[]>();
-  for (const e of items) {
-    const category =
-      e.memory_type ?? e.concept.split(":")[0] ?? "uncategorized";
-    const list = grouped.get(category) ?? [];
-    list.push(e);
-    grouped.set(category, list);
-  }
-  const sections: string[] = [];
-  for (const [cat, entries] of grouped) {
-    const heading = `## ${cat.charAt(0).toUpperCase()}${cat.slice(1)}`;
-    const bullets = entries.map((e) => `- **${e.concept}**: ${e.content}`);
-    sections.push(`${heading}\n\n${bullets.join("\n")}`);
-  }
-  return sections.join("\n\n");
-}
-
-function sessionToMarkdown(entries: SessionEntry[]): string {
-  if (entries.length === 0) return "";
-  return (
-    "## Session Activity\n\n" +
-    entries.map((e) => `- **${e.concept}**: ${e.content}`).join("\n")
-  );
-}
-
 export default function MemoryPage() {
-  const { brain, engrams, session, loading, configured, lastUpdated, refresh } =
-    useMemory();
+  const {
+    brain,
+    engrams,
+    session,
+    stats,
+    loading,
+    configured,
+    lastUpdated,
+    refresh,
+  } = useMemory();
 
-  // Bridge MuninnDB data to markdown strings for existing components
-  const brainMd = useMemo(() => brainToMarkdown(brain), [brain]);
-  const memoryMd = useMemo(() => engramsToMarkdown(engrams), [engrams]);
-  const workingMd = useMemo(() => sessionToMarkdown(session), [session]);
+  const lastUpdatedText = lastUpdated
+    ? `Last updated: ${timeAgo(lastUpdated)}`
+    : null;
 
   return (
     <PageContainer
       title="Memory"
-      subtitle={
-        configured
-          ? `MuninnDB engrams${lastUpdated ? ` \u00b7 Updated ${lastUpdated.toLocaleTimeString()}` : ""}`
-          : "MuninnDB not configured"
-      }
+      subtitle="MuninnDB Memory Dashboard"
       actions={
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={loading}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-        >
-          {loading ? "Refreshing..." : "Refresh"}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Connection status */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{
+                backgroundColor: configured
+                  ? "var(--color-success)"
+                  : "var(--color-muted-foreground)",
+              }}
+            />
+            <span className="font-mono text-xs text-muted-foreground">
+              {configured ? "Connected" : "Disconnected"}
+            </span>
+          </div>
+
+          {/* Last updated timestamp */}
+          {lastUpdatedText && (
+            <span className="font-mono text-xs text-muted-foreground/60">
+              {lastUpdatedText}
+            </span>
+          )}
+
+          {/* Refresh button */}
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={loading}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
       }
     >
       {loading ? (
         <div className="space-y-6">
           <LoadingSkeleton variant="card" />
-          <div className="grid gap-6 lg:grid-cols-3">
-            <LoadingSkeleton variant="text" rows={6} />
-            <LoadingSkeleton variant="text" rows={6} />
-            <LoadingSkeleton variant="text" rows={6} />
-          </div>
+          <LoadingSkeleton variant="card" />
+          <LoadingSkeleton variant="text" rows={6} />
+          <LoadingSkeleton variant="text" rows={6} />
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Stats bar at top */}
           <ErrorBoundary name="ContextUsageBar">
-            <ContextUsageBar
-              brain={brainMd}
-              memory={memoryMd}
-              working={workingMd}
-            />
+            <ContextUsageBar stats={stats} />
           </ErrorBoundary>
-          <div className="grid gap-6 lg:grid-cols-3">
-            <ErrorBoundary name="BrainPanel">
-              <BrainPanel content={brainMd} />
-            </ErrorBoundary>
-            <ErrorBoundary name="MemoryEntries">
-              <MemoryEntries content={memoryMd} />
-            </ErrorBoundary>
-            <ErrorBoundary name="WorkingSections">
-              <WorkingSections content={workingMd} />
-            </ErrorBoundary>
-          </div>
+
+          {/* Brain panel */}
+          <ErrorBoundary name="BrainPanel">
+            <BrainPanel items={brain} />
+          </ErrorBoundary>
+
+          {/* Engrams panel */}
+          <ErrorBoundary name="MemoryEntries">
+            <MemoryEntries engrams={engrams} />
+          </ErrorBoundary>
+
+          {/* Session panel */}
+          <ErrorBoundary name="WorkingSections">
+            <WorkingSections entries={session} />
+          </ErrorBoundary>
         </div>
       )}
     </PageContainer>
