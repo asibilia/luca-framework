@@ -188,42 +188,9 @@ Track:
 
 ## Process
 
-### 0. Resolve Model Profile
+### 0. Resolve Model Routing
 
-\`\`\`bash
-MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-**Model lookup table:**
-
-| Agent            | quality | balanced | budget |
-| ---------------- | ------- | -------- | ------ |
-| lu-executor      | opus    | sonnet   | sonnet |
-| lu-verifier      | sonnet  | sonnet   | haiku  |
-| dx-advocate      | opus    | sonnet   | haiku  |
-| code-simplifier  | opus    | sonnet   | haiku  |
-| code-architect   | opus    | sonnet   | haiku  |
-| ui               | opus    | sonnet   | haiku  |
-| security-auditor | opus    | sonnet   | haiku  |
-| lu-planner       | opus    | opus     | sonnet |
-| lu-plan-checker  | sonnet  | sonnet   | haiku  |
-| lu-test-writer   | sonnet  | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# Lightweight agents → use "fast"
-learner_model = "fast"
-
-# Reasoning-intensive agents → omit (inherit from parent)
-executor_model = (omit)
-verifier_model = (omit)
-planner_model = (omit)
-checker_model = (omit)
-reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
-\`\`\`
+Model routing is handled by \`resolveModelForAgent(agentName, complexity)\` from \`src/complexity/__helpers/model-routing.ts\`. See the complexity-gating rule for the routing table summary. No manual profile selection is needed.
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
