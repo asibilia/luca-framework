@@ -690,6 +690,24 @@ async function generateHookOutputs(
     }
   }
 
+  // Copy _lib/ shared library to all output directories
+  const libDir = path.join(hookScriptsDir, "_lib");
+  const libDirFile = Bun.file(path.join(libDir, "common.sh"));
+  if (await libDirFile.exists()) {
+    const libFiles = ["common.sh"];
+    for (const fileName of libFiles) {
+      const srcPath = path.join(libDir, fileName);
+      const srcFile = Bun.file(srcPath);
+      if (await srcFile.exists()) {
+        const content = await srcFile.text();
+        generated.set(`.claude/hooks/_lib/${fileName}`, content);
+        generated.set(`.cursor/hooks/_lib/${fileName}`, content);
+        generated.set(`.pi/hook-scripts/_lib/${fileName}`, content);
+        generated.set(`dist/plugin/scripts/_lib/${fileName}`, content);
+      }
+    }
+  }
+
   // Claude settings.json hooks fragment
   const hooksConfig = generateClaudeHooksConfig(resolved, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
