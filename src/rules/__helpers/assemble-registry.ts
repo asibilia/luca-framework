@@ -25,6 +25,7 @@ import { hookSkillBoundaryRule } from "../general/hook-skill-boundary.rule";
 import { luWorkflowRule } from "../general/lu-workflow.rule";
 import { moduleBoundaryRule } from "../general/module-boundary.rule";
 import { mandatoryDocumentationRule } from "../general/mandatory-documentation.rule";
+import { noTestsRule } from "../general/no-tests.rule";
 import { posthogIntegrationRule } from "../general/posthog-integration.rule";
 import { selfImproveRule } from "../general/self-improve.rule";
 import { stateMachineBridgeRule } from "../general/state-machine-bridge.rule";
@@ -45,6 +46,7 @@ const generalRules: Record<string, () => BaseRule> = {
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
   "module-boundary": () => moduleBoundaryRule,
+  "no-tests": () => noTestsRule,
   "posthog-integration": () => posthogIntegrationRule,
   "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,
