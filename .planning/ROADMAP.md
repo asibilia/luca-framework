@@ -153,7 +153,7 @@
 **Est:** ~2-3 hours
 
 - [ ] PLAN: Dashboard ErrorBoundary + loading state (M19-M20) and accessibility pass (M21-M22, M24-M25)
-- [ ] PLAN: Extract context_isolation shared block (M17), todos route Bun API (M23), DX cleanup (M10-M12)
+- [ ] PLAN: Extract context_isolation shared block (M17), todos route Bun API (M23), DX cleanup (M10, M12)
 
 > Audit refs: M10-M12, M17, M19-M25
 
