@@ -21,9 +21,6 @@ context:
   default_tier: T2
   promotable_to: T3
   isolation: none
-model_routing:
-  default_model: opus
-model_tier: capable
 background_spawnable: false
 purpose: executor
 allowed_contexts:

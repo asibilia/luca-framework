@@ -8,8 +8,6 @@ tools:
   - Bash
   - Grep
   - Glob
-model: sonnet
-model_tier: balanced
 background_spawnable: false
 purpose: executor
 allowed_contexts:

@@ -6,8 +6,6 @@ tools:
   - Glob
   - Grep
   - Bash
-model: sonnet
-model_tier: balanced
 background_spawnable: false
 purpose: reviewer
 allowed_contexts:

@@ -44,22 +44,23 @@ ALL workflow steps run at every complexity level. Complexity no longer gates ste
 
 ## Model Routing Table
 
-Complexity determines which model tier each agent category receives. The **canonical source of truth** is \`MODEL_ROUTING_TABLE\` in \`src/complexity/__helpers/model-routing.ts\`. This summary shows the category-level defaults; per-agent divergences are noted with footnotes:
+Complexity determines which model tier each agent receives. The **canonical source of truth** is \`MODEL_ROUTING_TABLE\` in \`src/complexity/__helpers/model-routing.ts\`, which uses **7 named presets** to keep the table DRY.
 
-| Agent Category | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|----------------|---------|--------|----------|---------|----------|
-| Classifiers (lu-cognition, lu-learner) | haiku | haiku | haiku | haiku | sonnet [1] |
-| Routers (lu-router, lu-router-fast) | haiku | haiku | sonnet [2] | sonnet [2] | sonnet |
-| Orchestrators (lu-executor, lu-planner) | haiku | sonnet | sonnet | opus | opus |
-| Deep analysis (lu-verifier, lu-debugger) | haiku [3] | sonnet | opus | opus | opus |
-| Reviewers (dx-advocate, code-simplifier) | haiku | sonnet | opus | opus | opus |
+### Named Routing Presets
 
-**Footnotes:**
-- [1] lu-cognition stays haiku at CRITICAL (never promoted)
-- [2] lu-router-fast stays haiku at MODERATE and COMPLEX (only promoted at CRITICAL)
-- [3] lu-debugger uses sonnet at TRIVIAL (promoted above category default)
+| Preset | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL | Agents |
+|--------|---------|--------|----------|---------|----------|--------|
+| ALWAYS_FAST | fast | fast | fast | fast | fast | lu-cognition |
+| FAST_PROMOTED | fast | fast | fast | fast | balanced | lu-learner, lu-router-fast, lu-verifier-fast |
+| ROUTER | fast | fast | balanced | balanced | balanced | lu-router |
+| ORCHESTRATOR | fast | balanced | balanced | capable | capable | lu-executor, lu-planner, + 17 others |
+| DEEP_ANALYSIS | fast | balanced | capable | capable | capable | lu-verifier, code-architect, dx-advocate, + 7 others |
+| DEBUGGER_PRESET | balanced | balanced | capable | capable | capable | lu-debugger |
+| ALWAYS_CAPABLE | capable | capable | capable | capable | capable | lu-executor-capable |
 
-Model tiers map to concrete models: **haiku** (fast/lightweight), **sonnet** (balanced/standard), **opus** (capable/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`. When in doubt, consult the canonical \`MODEL_ROUTING_TABLE\` directly.
+Model tiers map to concrete models: **fast** (haiku/lightweight), **balanced** (sonnet/standard), **capable** (opus/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`. The exported \`ROUTING_PRESETS\` record provides programmatic access to all presets.
+
+**Single source of truth:** The \`MODEL_ROUTING_TABLE\` is the only authoritative source for agent model selection. Agent frontmatter \`model_routing\` and \`model_tier\` fields are deprecated and no longer consulted by \`resolveModel()\`.
 
 ## Iteration Count Scaling
 

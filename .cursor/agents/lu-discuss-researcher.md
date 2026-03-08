@@ -18,13 +18,6 @@ context:
   default_tier: T1
   promotable_to: T1
   isolation: none
-model_routing:
-  default_model: sonnet
-  complexity_overrides:
-    TRIVIAL: haiku
-    COMPLEX: opus
-    CRITICAL: opus
-model_tier: balanced
 background_spawnable: true
 purpose: researcher
 allowed_contexts:

@@ -8,8 +8,6 @@ tools:
   - Bash
   - Grep
   - Glob
-model: opus
-model_tier: capable
 background_spawnable: false
 purpose: executor
 allowed_contexts:

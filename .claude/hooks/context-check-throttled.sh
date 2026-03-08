@@ -37,14 +37,9 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Cascading bridge lookup: installed bin → monorepo source → skip
-run_bridge() {
-  if command -v luca-bridge &>/dev/null; then
-    luca-bridge "$@"
-  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
-    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
-  fi
-}
+# Source shared hook library
+HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
 # --- Throttle check ---
 PROJECT_HASH=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
@@ -126,15 +121,7 @@ if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
 fi
 
 # Emit context snapshot via bridge (fire-and-forget)
-SESSION_ID=""
-if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
-  SESSION_ID=$(bun -e "
-    try {
-      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
-      process.stdout.write(s.context?.session_id || '');
-    } catch { process.stdout.write(''); }
-  " 2>/dev/null || echo "")
-fi
+SESSION_ID=$(read_session_id)
 if [ -n "$SESSION_ID" ] && [ "$USAGE_PERCENT" -gt 0 ]; then
   # Estimate tokens from file size (~4 chars per token)
   EST_TOKENS=$(( ${FILE_SIZE:-0} / 4 ))

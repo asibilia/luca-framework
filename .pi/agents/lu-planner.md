@@ -7,8 +7,6 @@ tools:
   - Edit
   - Grep
   - Glob
-model: sonnet
-model_tier: balanced
 background_spawnable: false
 purpose: planner
 allowed_contexts:

@@ -18,12 +18,6 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: warm
-model_routing:
-  default_model: sonnet
-  complexity_overrides:
-    TRIVIAL: haiku
-    SIMPLE: haiku
-model_tier: capable
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

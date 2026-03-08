@@ -21,13 +21,6 @@ context:
   default_tier: T2
   promotable_to: T3
   isolation: none
-model_routing:
-  default_model: sonnet
-  complexity_overrides:
-    TRIVIAL: haiku
-    COMPLEX: opus
-    CRITICAL: opus
-model_tier: balanced
 background_spawnable: false
 purpose: executor
 allowed_contexts:

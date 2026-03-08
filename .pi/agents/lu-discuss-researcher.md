@@ -7,8 +7,6 @@ tools:
   - Glob
   - WebSearch
   - WebFetch
-model: sonnet
-model_tier: balanced
 background_spawnable: true
 purpose: researcher
 allowed_contexts:
