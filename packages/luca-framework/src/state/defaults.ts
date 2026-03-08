@@ -48,7 +48,19 @@ export interface ComplexityGate {
 /** The complete complexity matrix type */
 export type ComplexityMatrix = Record<ComplexityLevel, ComplexityGate>;
 
-/** The default gating matrix */
+/**
+ * The default gating matrix for luca-state.
+ *
+ * CANONICAL SOURCE OF TRUTH: src/complexity/__helpers/defaults.ts
+ *
+ * This is a standalone copy for the luca-state package (which cannot import
+ * from src/ due to package isolation). When updating iteration counts or
+ * verification modes, ensure values stay aligned with the canonical matrix
+ * in src/complexity/__helpers/defaults.ts and the documentation in
+ * .claude/rules/complexity-gating.md.
+ *
+ * Last verified alignment: 2026-03-08 (Phase 13, PLAN-01 Task 2)
+ */
 export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
   TRIVIAL: {
     cognitivePreflight: "lite",
