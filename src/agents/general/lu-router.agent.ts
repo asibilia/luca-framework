@@ -21,18 +21,9 @@ const luRouterConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "haiku",
-      complexity_overrides: {
-        MODERATE: "sonnet",
-        COMPLEX: "sonnet",
-        CRITICAL: "sonnet",
-      },
-    },
     background_spawnable: false,
     purpose: "general",
     allowed_contexts: ["any"],
-    model_tier: "balanced",
   },
   sections: [
     {

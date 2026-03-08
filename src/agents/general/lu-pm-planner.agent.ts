@@ -23,18 +23,9 @@ const luPmPlannerConfig: AgentConfig = {
       promotable_to: "T2",
       isolation: "warm",
     },
-    model_routing: {
-      default_model: "sonnet",
-      complexity_overrides: {
-        TRIVIAL: "haiku",
-        COMPLEX: "opus",
-        CRITICAL: "opus",
-      },
-    },
     background_spawnable: false,
     purpose: "planner",
     allowed_contexts: ["planning", "roadmap", "estimation"],
-    model_tier: "balanced",
   },
   sections: [
     {

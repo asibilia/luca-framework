@@ -21,14 +21,9 @@ const luDebuggerConfig: AgentConfig = {
       promotable_to: "T3",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "opus",
-      complexity_overrides: { TRIVIAL: "sonnet", SIMPLE: "sonnet" },
-    },
     background_spawnable: false,
     purpose: "verifier",
     allowed_contexts: ["verification", "testing", "debugging"],
-    model_tier: "capable",
   },
   sections: [
     {

@@ -21,14 +21,9 @@ const luIntegrationCheckerConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "opus",
-      complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "sonnet" },
-    },
     background_spawnable: true,
     purpose: "verifier",
     allowed_contexts: ["verification", "testing", "validation"],
-    model_tier: "capable",
   },
   sections: [
     {

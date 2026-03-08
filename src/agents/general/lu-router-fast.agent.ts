@@ -25,14 +25,9 @@ const luRouterFastConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "haiku",
-      complexity_overrides: { CRITICAL: "sonnet" },
-    },
     background_spawnable: false,
     purpose: "general",
     allowed_contexts: ["any"],
-    model_tier: "fast",
   },
   sections: [
     {

@@ -20,18 +20,9 @@ const qaPlanGeneratorConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "sonnet",
-      complexity_overrides: {
-        TRIVIAL: "haiku",
-        COMPLEX: "opus",
-        CRITICAL: "opus",
-      },
-    },
     background_spawnable: true,
     purpose: "planner",
     allowed_contexts: ["planning", "testing", "validation"],
-    model_tier: "balanced",
   },
   sections: [
     {

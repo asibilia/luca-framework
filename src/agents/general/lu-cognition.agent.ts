@@ -21,13 +21,9 @@ const luCognitionConfig: AgentConfig = {
       promotable_to: "T3",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "haiku",
-    },
     background_spawnable: false,
     purpose: "general",
     allowed_contexts: ["any"],
-    model_tier: "fast",
   },
   sections: [
     {

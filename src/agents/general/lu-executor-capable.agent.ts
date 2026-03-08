@@ -25,13 +25,9 @@ const luExecutorCapableConfig: AgentConfig = {
       promotable_to: "T3",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "opus",
-    },
     background_spawnable: false,
     purpose: "executor",
     allowed_contexts: ["execution", "implementation", "coding"],
-    model_tier: "capable",
   },
   sections: [
     {

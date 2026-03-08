@@ -52,9 +52,20 @@ export const AgentFrontmatterSchema = z.object({
   cognition: CognitionConfigSchema.optional(),
   /** Optional per-agent context configuration. When absent, agent defaults to T0. */
   context: contextConfigSchema.optional(),
-  /** Optional per-agent model routing configuration. When absent, uses complexity gate default. */
+  /**
+   * @deprecated Per-agent model routing configuration is deprecated.
+   * The MODEL_ROUTING_TABLE in src/complexity/__helpers/model-routing.ts
+   * is the single source of truth for complexity-to-model mapping.
+   * This field is retained for backward compatibility with external plugins
+   * but is no longer consulted by resolveModel().
+   */
   model_routing: ModelRoutingConfigSchema.optional(),
-  /** High-level model tier categorization. Maps to a default ModelId via MODEL_TIER_TO_MODEL. */
+  /**
+   * @deprecated High-level model tier categorization is deprecated.
+   * The MODEL_ROUTING_TABLE is the single source of truth.
+   * This field is retained for backward compatibility with external plugins
+   * but is no longer consulted by resolveModel().
+   */
   model_tier: ModelTierSchema.optional(),
   /** Whether this agent can be spawned as a background subagent. */
   background_spawnable: z.boolean().optional(),

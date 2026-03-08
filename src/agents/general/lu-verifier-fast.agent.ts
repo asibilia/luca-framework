@@ -24,14 +24,9 @@ const luVerifierFastConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "warm",
     },
-    model_routing: {
-      default_model: "haiku",
-      complexity_overrides: { CRITICAL: "sonnet" },
-    },
     background_spawnable: true,
     purpose: "verifier",
     allowed_contexts: ["verification", "testing", "validation"],
-    model_tier: "fast",
   },
   sections: [
     {

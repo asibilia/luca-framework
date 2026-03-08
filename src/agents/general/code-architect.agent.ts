@@ -20,14 +20,9 @@ const codeArchitectConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "cold",
     },
-    model_routing: {
-      default_model: "opus",
-      complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "sonnet" },
-    },
     background_spawnable: false,
     purpose: "reviewer",
     allowed_contexts: ["review", "audit", "assessment"],
-    model_tier: "capable",
   },
   sections: [
     {

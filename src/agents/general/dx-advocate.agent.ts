@@ -20,14 +20,9 @@ const dxAdvocateConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "cold",
     },
-    model_routing: {
-      default_model: "opus",
-      complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "sonnet" },
-    },
     background_spawnable: false,
     purpose: "reviewer",
     allowed_contexts: ["review", "audit", "assessment"],
-    model_tier: "capable",
   },
   sections: [
     {

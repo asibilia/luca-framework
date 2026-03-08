@@ -20,14 +20,9 @@ const uxConfig: AgentConfig = {
       promotable_to: "T0",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "opus",
-      complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "sonnet" },
-    },
     background_spawnable: false,
     purpose: "general",
     allowed_contexts: ["any"],
-    model_tier: "capable",
   },
   sections: [
     {

@@ -21,18 +21,9 @@ const luPrReviewerConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "none",
     },
-    model_routing: {
-      default_model: "sonnet",
-      complexity_overrides: {
-        TRIVIAL: "haiku",
-        COMPLEX: "opus",
-        CRITICAL: "opus",
-      },
-    },
     background_spawnable: true,
     purpose: "reviewer",
     allowed_contexts: ["review", "audit", "assessment"],
-    model_tier: "balanced",
   },
   sections: [
     {

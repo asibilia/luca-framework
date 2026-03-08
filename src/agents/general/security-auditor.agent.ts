@@ -20,14 +20,9 @@ const securityAuditorConfig: AgentConfig = {
       promotable_to: "T1",
       isolation: "cold",
     },
-    model_routing: {
-      default_model: "opus",
-      complexity_overrides: { TRIVIAL: "haiku", SIMPLE: "sonnet" },
-    },
     background_spawnable: true,
     purpose: "auditor",
     allowed_contexts: ["audit", "security", "review"],
-    model_tier: "capable",
   },
   sections: [
     {
