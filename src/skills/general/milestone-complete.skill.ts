@@ -159,7 +159,32 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
 
    - Ask about pushing tag
 
-8. **Offer next steps:**
+8. **Create GitHub milestone:**
+
+   Create a GitHub milestone to match the local milestone archive. This provides visibility in GitHub's milestone tracker and links PRs to their milestone.
+
+   \`\`\`bash
+   # Create the milestone (closed, since it's already complete)
+   gh api repos/{owner}/{repo}/milestones -X POST \\
+     -f title="v{version} — {milestone title}" \\
+     -f state="closed" \\
+     -f due_on="{completion date ISO 8601}" \\
+     -f description="{summary: phases, plans, commits, files changed, key deliverables}"
+
+   # Attach the milestone PR (if one exists on the current branch)
+   PR_NUMBER=$(gh pr list --head "$(git branch --show-current)" --json number --jq '.[0].number')
+   if [ -n "$PR_NUMBER" ]; then
+     MILESTONE_NUMBER=$(gh api repos/{owner}/{repo}/milestones --jq '.[] | select(.title | startswith("v{version}")) | .number')
+     gh api repos/{owner}/{repo}/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER
+   fi
+   \`\`\`
+
+   - The milestone description should include: phase count, plan count, commit count, files changed, and 4-6 key deliverables
+   - Set \`state: "closed"\` since the milestone is already complete
+   - Set \`due_on\` to the completion date (last commit date)
+   - Attach the branch PR to the milestone if one exists
+
+9. **Offer next steps:**
    - \`/milestone-new\` — start next milestone
 
 ## Success Criteria
@@ -171,6 +196,7 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
 - [ ] PROJECT.md updated with current state
 - [ ] Git tag v{version} created
 - [ ] Commit successful
+- [ ] GitHub milestone created (closed) and PR attached
 
 ## Next Steps
 
