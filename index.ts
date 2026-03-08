@@ -68,8 +68,8 @@ export { ruleRegistry } from "./src/rules/index";
 export {
   hookRegistry,
   NO_MATCHER_SENTINEL,
-  generateCursorHooksConfig,
-  generateClaudeHooksConfig,
+  generateClaudeHooksConfigFromCanonical,
+  generateCursorHooksConfigFromCanonical,
 } from "./src/hooks/index";
 export type { HookDefinition } from "./src/hooks/index";
 

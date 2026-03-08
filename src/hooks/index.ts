@@ -28,15 +28,7 @@ export {
 } from "./__helpers/hook-registry";
 
 // Platform adapters
-export {
-  CLAUDE_EVENT_MAP,
-  CURSOR_EVENT_MAP,
-  PI_EVENT_MAP,
-  adaptForClaude,
-  adaptForCursor,
-  adaptForPi,
-  canonicalToLegacy,
-} from "./__helpers/platform-adapters";
+export { canonicalToLegacy } from "./__helpers/platform-adapters";
 export type { PlatformHookConfig } from "./__helpers/platform-adapters";
 
 // Portable hook abstraction
@@ -53,18 +45,11 @@ export type {
   PortableHookResult,
 } from "./__helpers/portable-hook";
 
-// Config generators — canonical (preferred)
+// Config generators — canonical
 export {
   generateClaudeHooksConfigFromCanonical,
   generateCursorHooksConfigFromCanonical,
   generatePiExtensionFromCanonical,
-} from "./__helpers/config-generators";
-
-// Config generators — legacy (backward compatible)
-export {
-  generateClaudeHooksConfig,
-  generateCursorHooksConfig,
-  generatePiExtension,
 } from "./__helpers/config-generators";
 
 // Adapter registry — formal adapter-registry architecture
