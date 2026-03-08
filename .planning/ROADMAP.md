@@ -181,9 +181,9 @@
 **Est:** ~2-3 hours
 **Gap closure:** true
 
-- [ ] PLAN: lodash orderBy migration + MuninnDB shared types + cold isolation prompt extraction (M1, M5, M8, M12)
-- [ ] PLAN: Zod validation on MuninnDB proxy routes + route handler boilerplate extraction (M4, M9, M11)
-- [ ] PLAN: Observer UI fixes — focus rings + retry button contrast (M13, M14)
+- [x] PLAN: lodash orderBy migration + MuninnDB shared types + cold isolation prompt extraction (M1, M5, M8, M12)
+- [x] PLAN: Zod validation on MuninnDB proxy routes + route handler boilerplate extraction (M4, M9, M11)
+- [x] PLAN: Observer UI fixes — focus rings + retry button contrast (M13, M14)
 
 > Audit refs: M1, M4, M5, M8, M9, M11, M12, M13, M14
 
