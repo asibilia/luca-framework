@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 import { EmptyState } from "~/components/shared/empty-state";
 
 import type { ActivationItem } from "~/hooks/use-memory";
@@ -71,9 +73,11 @@ function BrainEngram({ item }: { item: ActivationItem }) {
         className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
       >
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            {expanded ? "\u25BC" : "\u25B6"}
-          </span>
+          {expanded ? (
+            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+          )}
           <span className="font-mono text-xs font-semibold text-foreground">
             {item.concept}
           </span>

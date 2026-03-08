@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { useSpacetimeDB } from "spacetimedb/react";
 
 import { sidebarOpenAtom } from "~/stores/sidebar";
@@ -42,7 +43,11 @@ export function Header() {
           aria-label="Toggle sidebar"
           aria-expanded={isOpen}
         >
-          <span className="font-mono text-sm">{isOpen ? "<<" : ">>"}</span>
+          {isOpen ? (
+            <PanelLeftClose className="h-4 w-4" />
+          ) : (
+            <PanelLeftOpen className="h-4 w-4" />
+          )}
         </button>
         <StatusIndicator />
       </div>
@@ -55,7 +60,11 @@ export function Header() {
           aria-pressed={theme === "dark"}
           title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         >
-          {theme === "dark" ? "Light" : "Dark"}
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
         </button>
         <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
           {connectionLabel}

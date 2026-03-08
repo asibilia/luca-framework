@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 /**
  * Decision entry shape from the use-decision-trail hook.
  */
@@ -101,9 +103,11 @@ export function DecisionTimeline({ decisions }: { decisions: Decision[] }) {
               )}
 
               {/* Expand indicator */}
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                {isExpanded ? "−" : "+"}
-              </span>
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
             </button>
 
             {/* Expanded detail */}

@@ -6,10 +6,38 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useAtom } from "jotai";
+import {
+  LayoutDashboard,
+  GitBranch,
+  RefreshCw,
+  Shield,
+  ListTodo,
+  Brain,
+  Scale,
+  Bot,
+  DollarSign,
+  GitPullRequest,
+  StickyNote,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { sidebarOpenAtom } from "~/stores/sidebar";
 import { NAV_ITEMS } from "~/lib/constants";
 import { useMediaQuery } from "~/hooks/use-media-query";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  GitBranch,
+  RefreshCw,
+  Shield,
+  ListTodo,
+  Brain,
+  Scale,
+  Bot,
+  DollarSign,
+  GitPullRequest,
+  StickyNote,
+};
 
 /**
  * Sidebar navigation component.
@@ -46,7 +74,11 @@ export function Sidebar() {
       >
         Skip to navigation
       </button>
-      <nav className="flex flex-1 flex-col gap-0.5 p-2" role="navigation" aria-label="Main navigation">
+      <nav
+        className="flex flex-1 flex-col gap-0.5 p-2"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
@@ -63,7 +95,16 @@ export function Sidebar() {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <span className="font-mono text-xs opacity-60">{item.icon}</span>
+              {(() => {
+                const Icon = ICON_MAP[item.icon];
+                return Icon ? (
+                  <Icon className="h-4 w-4 shrink-0 opacity-60" />
+                ) : (
+                  <span className="font-mono text-xs opacity-60">
+                    {item.icon}
+                  </span>
+                );
+              })()}
               <span>{item.label}</span>
             </Link>
           );

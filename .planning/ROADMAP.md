@@ -157,6 +157,36 @@
 
 > Audit refs: M10-M12, M17, M19-M25
 
+### Phase 13: Data Integrity & Dead Code Cleanup
+
+**Goal:** Close all 3 integration gaps, fix all 6 HIGH findings, remove dead code
+**Depends on:** Phase 12 (all source phases complete)
+**Verification:** Quick
+**Est:** ~2-3 hours
+**Gap closure:** true
+
+- [x] PLAN: Fix stale template reference + align harnessFixIterations divergence (Gap 2, Gap 3, H1)
+- [x] PLAN: Add sanitizeJsonParse to bridge/persistence paths (H2, H3 — 8 raw JSON.parse calls)
+- [x] PLAN: Remove deprecated platform-adapters.ts + legacy config generators (H5, H6 — ~420 lines dead code)
+- [x] PLAN: DRY validation-utils.ts and fix T0→T2 boundary inversion (H4)
+
+> Audit refs: Gap 2, Gap 3, H1-H6
+> Note: Gap 1 (build:all sync) is a manual user step, not a code phase.
+
+### Phase 14: Convention & Polish Sweep
+
+**Goal:** Address high-priority MEDIUM findings — DRY, Zod validation, convention compliance
+**Depends on:** Phase 13 (integrity fixes first)
+**Verification:** Quick
+**Est:** ~2-3 hours
+**Gap closure:** true
+
+- [ ] PLAN: lodash orderBy migration + MuninnDB shared types + cold isolation prompt extraction (M1, M5, M8, M12)
+- [ ] PLAN: Zod validation on MuninnDB proxy routes + route handler boilerplate extraction (M4, M9, M11)
+- [ ] PLAN: Observer UI fixes — focus rings + retry button contrast (M13, M14)
+
+> Audit refs: M1, M4, M5, M8, M9, M11, M12, M13, M14
+
 ---
 
 ## Deferred (v3.1.0+)
