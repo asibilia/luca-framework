@@ -221,7 +221,7 @@ export async function createFreshActor(
         "SELECT * FROM workflow_config WHERE id = 1",
       );
       if (row && row.configJson) {
-        config = JSON.parse(row.configJson);
+        config = sanitizeJsonParse(row.configJson) as Record<string, unknown>;
       }
     } catch (err) {
       if (process.env.LUCA_DEBUG) {
