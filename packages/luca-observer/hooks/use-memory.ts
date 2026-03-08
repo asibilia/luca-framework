@@ -2,50 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// -- Client-side types (mirror MuninnDB shapes, no SDK import) -------------
+import type {
+  MuninnActivation,
+  MuninnEngram,
+  MuninnSessionEntry,
+  MuninnStatsResponse,
+} from "~/lib/muninn-types";
 
-/** Mirrors MuninnDB ActivationItem for client-side use. */
-export interface ActivationItem {
-  id: string;
-  concept: string;
-  content: string;
-  score: number;
-  confidence?: number;
-  tags?: string[];
-  memory_type?: string;
-  source_type?: string;
-  why?: string;
-}
+// -- Client-side type aliases (re-export shared types) ---------------------
 
-/** Mirrors MuninnDB Engram for client-side use. */
-export interface Engram {
-  id: string;
-  concept: string;
-  content: string;
-  tags: string[];
-  confidence: number;
-  memory_type?: string;
-  state?: string;
-  created_at: number;
-  updated_at?: number;
-}
+/** Alias for MuninnActivation, used by client components. */
+export type ActivationItem = MuninnActivation;
 
-/** Mirrors MuninnDB SessionEntry for client-side use. */
-export interface SessionEntry {
-  id: string;
-  concept: string;
-  content: string;
-  created_at: number;
-}
+/** Alias for MuninnEngram, used by client components. */
+export type Engram = MuninnEngram;
 
-/** Mirrors MuninnDB StatsResponse for client-side use. */
-export interface StatsResponse {
-  engram_count: number;
-  vault_count: number;
-  storage_bytes: number;
-  index_size: number;
-  coherence?: Record<string, { score: number; total_engrams: number }>;
-}
+/** Alias for MuninnSessionEntry, used by client components. */
+export type SessionEntry = MuninnSessionEntry;
+
+/** Alias for MuninnStatsResponse, used by client components. */
+export type StatsResponse = MuninnStatsResponse;
 
 /** Data returned by the useMemory hook. */
 export interface MuninnMemoryData {

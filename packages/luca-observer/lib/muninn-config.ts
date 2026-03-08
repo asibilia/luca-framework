@@ -12,58 +12,25 @@
  * - GET  /api/health                             — connectivity check
  */
 
+import type {
+  MuninnActivation,
+  MuninnEngram,
+  MuninnSessionEntry,
+  MuninnStatsResponse,
+} from "./muninn-types";
+
+export type {
+  MuninnActivation,
+  MuninnEngram,
+  MuninnSessionEntry,
+  MuninnStatsResponse,
+};
+
 const MUNINN_BASE_URL = process.env.MUNINN_DB_URL ?? "http://127.0.0.1:8476";
 const MUNINN_API_KEY = process.env.MUNINN_DB_API_KEY ?? "";
 const MUNINN_TIMEOUT = 10_000;
 
-// -- Response types (server-side, match MuninnDB REST API shapes) ----------
-
-export interface MuninnEngram {
-  id: string;
-  concept: string;
-  content: string;
-  confidence: number;
-  tags: string[];
-  vault: string;
-  created_at: number;
-  embed_dim?: number;
-}
-
-export interface MuninnActivation {
-  id: string;
-  concept: string;
-  content: string;
-  score: number;
-  confidence: number;
-  score_components?: Record<string, number>;
-  dormant?: boolean;
-  source_type?: string;
-}
-
-export interface MuninnSessionEntry {
-  id: string;
-  concept: string;
-  content: string;
-  created_at: number;
-}
-
-export interface MuninnStatsResponse {
-  engram_count: number;
-  vault_count: number;
-  index_size: number;
-  storage_bytes: number;
-  coherence?: Record<
-    string,
-    {
-      score: number;
-      orphan_ratio: number;
-      contradiction_density: number;
-      duplication_pressure: number;
-      temporal_variance: number;
-      total_engrams: number;
-    }
-  >;
-}
+// -- Response types unique to server-side ----------------------------------
 
 export interface MuninnHealthResponse {
   status: string;
