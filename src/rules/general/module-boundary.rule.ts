@@ -88,13 +88,10 @@ import { runHarness } from "~/harness";
 
 ## Rule 5 — Documented Exceptions
 
-The following cross-tier imports are known and accepted:
-
-| Source | Target | Reason |
-|--------|--------|--------|
-| \`shared/__helpers/validation-utils.ts\` | agents/skills/rules \`__schemas/\` | Config validation helpers reference entity schemas (T0 -> T2) |
+There are currently no known cross-tier import exceptions.
 
 **Removed exceptions (resolved):**
+- \`shared/__helpers/validation-utils.ts\` -> agents/skills/rules \`__schemas/\` was a T0->T2 violation where shared imported entity schemas for config validation. Resolved in Phase 13 by replacing entity-specific validators with a generic \`safeValidate<T>(schema, config)\` that accepts any Zod schema, eliminating all T2 imports from shared.
 - \`harness/parsers/parser-registry.ts\` -> \`~/harness/__schemas/harness.schemas\` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
 
 New exceptions must be documented here and in this rule file before being committed.
