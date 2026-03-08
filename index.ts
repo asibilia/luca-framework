@@ -114,10 +114,5 @@ export type {
 export {
   sanitizeJsonParse,
   safeSanitizeJsonParse,
-  validateAgentConfig,
-  validateSkillConfig,
-  validateRuleConfig,
-  safeValidateAgentConfig,
-  safeValidateSkillConfig,
-  safeValidateRuleConfig,
+  safeValidate,
 } from "./src/shared/__helpers/validation-utils";
