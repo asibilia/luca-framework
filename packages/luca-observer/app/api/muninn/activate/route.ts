@@ -1,47 +1,40 @@
 import { NextResponse } from "next/server";
 
-import { getMuninnClient } from "~/lib/muninn-config";
+import { muninnProxyHandler } from "~/lib/muninn-route-helper";
+import {
+  ActivateRequestSchema,
+  ActivateResponseSchema,
+} from "~/lib/muninn-schemas";
 
 /**
  * POST /api/muninn/activate
  *
  * Proxies MuninnDB semantic recall (activate). Accepts JSON body:
- * - context: string[] (required) — search terms for semantic recall
+ * - context: string[] (required) -- search terms for semantic recall
  * - vault: string (default: "default")
  * - limit: number (default: 20)
  */
 export async function POST(request: Request) {
-  const client = getMuninnClient();
-
-  let body: { context?: string[]; vault?: string; limit?: number };
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const context = body.context;
-  if (
-    !Array.isArray(context) ||
-    context.length === 0 ||
-    !context.every((c) => typeof c === "string")
-  ) {
+  const parsed = ActivateRequestSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "context must be a non-empty string array" },
+      { error: parsed.error.issues.map((i) => i.message).join("; ") },
       { status: 400 },
     );
   }
 
-  const vault = body.vault ?? "default";
-  const limit = Math.min(Math.max(body.limit ?? 20, 1), 100);
+  const { vault, context, limit } = parsed.data;
 
-  try {
-    const data = await client.activate(vault, context, limit);
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to activate MuninnDB recall" },
-      { status: 502 },
-    );
-  }
+  return muninnProxyHandler(
+    (client) => client.activate(vault, context, limit),
+    "Failed to activate MuninnDB recall",
+    ActivateResponseSchema,
+  );
 }

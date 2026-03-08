@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
-
-import { getMuninnClient } from "~/lib/muninn-config";
+import {
+  muninnProxyHandler,
+  parseQueryParams,
+} from "~/lib/muninn-route-helper";
+import {
+  EngramsQuerySchema,
+  EngramsResponseSchema,
+} from "~/lib/muninn-schemas";
 
 /**
  * GET /api/muninn/engrams
@@ -11,22 +16,15 @@ import { getMuninnClient } from "~/lib/muninn-config";
  * - offset (default: 0)
  */
 export async function GET(request: Request) {
-  const client = getMuninnClient();
   const { searchParams } = new URL(request.url);
-  const vault = searchParams.get("vault") ?? "default";
-  const limit = Math.min(
-    Math.max(Number(searchParams.get("limit") ?? "100"), 1),
-    1000,
-  );
-  const offset = Math.max(Number(searchParams.get("offset") ?? "0"), 0);
+  const result = parseQueryParams(searchParams, EngramsQuerySchema);
+  if (!result.success) return result.response;
 
-  try {
-    const data = await client.listEngrams(vault, limit, offset);
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch engrams from MuninnDB" },
-      { status: 502 },
-    );
-  }
+  const { vault, limit, offset } = result.data;
+
+  return muninnProxyHandler(
+    (client) => client.listEngrams(vault, limit, offset),
+    "Failed to fetch engrams from MuninnDB",
+    EngramsResponseSchema,
+  );
 }

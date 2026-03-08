@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
-
-import { getMuninnClient } from "~/lib/muninn-config";
+import {
+  muninnProxyHandler,
+  parseQueryParams,
+} from "~/lib/muninn-route-helper";
+import { StatsQuerySchema, StatsResponseSchema } from "~/lib/muninn-schemas";
 
 /**
  * GET /api/muninn/stats
@@ -9,17 +11,15 @@ import { getMuninnClient } from "~/lib/muninn-config";
  * - vault (default: "default")
  */
 export async function GET(request: Request) {
-  const client = getMuninnClient();
   const { searchParams } = new URL(request.url);
-  const vault = searchParams.get("vault") ?? "default";
+  const result = parseQueryParams(searchParams, StatsQuerySchema);
+  if (!result.success) return result.response;
 
-  try {
-    const data = await client.stats(vault);
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch MuninnDB vault statistics" },
-      { status: 502 },
-    );
-  }
+  const { vault } = result.data;
+
+  return muninnProxyHandler(
+    (client) => client.stats(vault),
+    "Failed to fetch MuninnDB vault statistics",
+    StatsResponseSchema,
+  );
 }

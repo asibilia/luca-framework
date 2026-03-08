@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
-
-import { getMuninnClient } from "~/lib/muninn-config";
+import {
+  muninnProxyHandler,
+  parseQueryParams,
+} from "~/lib/muninn-route-helper";
+import {
+  SessionQuerySchema,
+  SessionResponseSchema,
+} from "~/lib/muninn-schemas";
 
 /**
  * GET /api/muninn/session
@@ -10,21 +15,15 @@ import { getMuninnClient } from "~/lib/muninn-config";
  * - limit (default: 50)
  */
 export async function GET(request: Request) {
-  const client = getMuninnClient();
   const { searchParams } = new URL(request.url);
-  const vault = searchParams.get("vault") ?? "default";
-  const limit = Math.min(
-    Math.max(Number(searchParams.get("limit") ?? "50"), 1),
-    500,
-  );
+  const result = parseQueryParams(searchParams, SessionQuerySchema);
+  if (!result.success) return result.response;
 
-  try {
-    const data = await client.session(vault, limit);
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch MuninnDB session data" },
-      { status: 502 },
-    );
-  }
+  const { vault, limit } = result.data;
+
+  return muninnProxyHandler(
+    (client) => client.session(vault, limit),
+    "Failed to fetch MuninnDB session data",
+    SessionResponseSchema,
+  );
 }

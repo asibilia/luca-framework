@@ -31,10 +31,10 @@ import type { MuninnClient } from "~/lib/muninn-config";
  * }
  * ```
  */
-export async function muninnProxyHandler<T>(
-  handler: (client: MuninnClient) => Promise<T>,
+export async function muninnProxyHandler(
+  handler: (client: MuninnClient) => Promise<unknown>,
   errorMessage: string,
-  responseSchema?: z.ZodSchema<T>,
+  responseSchema?: z.ZodType,
 ): Promise<NextResponse> {
   const client = getMuninnClient();
   try {
@@ -68,10 +68,12 @@ export async function muninnProxyHandler<T>(
  * const { vault, limit, offset } = result.data;
  * ```
  */
-export function parseQueryParams<T>(
+export function parseQueryParams<T extends z.ZodType>(
   searchParams: URLSearchParams,
-  schema: z.ZodSchema<T>,
-): { success: true; data: T } | { success: false; response: NextResponse } {
+  schema: T,
+):
+  | { success: true; data: z.output<T> }
+  | { success: false; response: NextResponse } {
   const raw = Object.fromEntries(searchParams.entries());
   const result = schema.safeParse(raw);
   if (!result.success) {
