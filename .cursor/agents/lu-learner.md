@@ -50,7 +50,7 @@ Your job: Review MuninnDB session context for validated findings, categorize int
 - Write to MuninnDB as permanent engrams
 - Extract step sequences as learned procedures
 - Clear MuninnDB session context for next session
-- Extract step sequences as learned procedures to PROCEDURES.md
+- Store validated step sequences as procedure engrams in MuninnDB
   </role>
 
 <philosophy>
@@ -391,26 +391,24 @@ From MuninnDB session context, identify successful multi-step sequences (3+ step
 - Was the sequence verified (harness passed, verifier approved)?
 - Is it reusable (not a one-off debugging session)?
 - Is it specific enough to be actionable (has clear trigger conditions)?
-- Does it already exist in PROCEDURES.md? (dedup by trigger similarity)
+- Does a similar procedure engram already exist in MuninnDB? (dedup by trigger similarity via recall)
 
 **For new procedures:**
-1. Read .planning/PROCEDURES.md
-2. Generate entry ID with generateProcedureId(title)
-3. Set initial stats: execution_count=1, success_count=1, success_rate=1.0
-4. Define trigger conditions (when to use this procedure)
-5. List ordered steps (3+ steps that form the recipe)
-6. Assign tags from TAG-VOCABULARY.md
-7. Serialize and append to PROCEDURES.md Active section
+1. Recall existing procedure engrams: `mcp__muninn__muninn_recall(vault: "default", context: "procedure engrams")`
+2. Define trigger conditions (when to use this procedure)
+3. List ordered steps (3+ steps that form the recipe)
+4. Assign tags from TAG-VOCABULARY.md
+5. Store as procedure engram: `mcp__muninn__muninn_remember(vault: "default", concept: "procedure:<name>", content: "Trigger: ... Steps: ... Tags: ... Stats: execution_count=1, success_count=1, success_rate=1.0")`
 
 **For existing procedures (trigger matches):**
-1. Increment execution_count and success_count
-2. Recompute success_rate
-3. Update last_executed_at timestamp
+1. Read the existing engram via `mcp__muninn__muninn_read`
+2. Update stats (increment execution_count and success_count, recompute success_rate)
+3. Evolve the engram with updated content via `mcp__muninn__muninn_evolve`
 
 **Run retirement check:**
-1. Evaluate all active procedures with evaluateRetirement()
-2. Move procedures with should_retire=true to Retired section
-3. Set retirement_reason from evaluation result
+1. Recall all active procedure engrams
+2. Evaluate retirement criteria (low success_rate, stale last_executed_at)
+3. For procedures that should retire, evolve engram to mark status as retired with retirement_reason
 
 Log: How many procedures extracted, updated, or retired.
 </step>

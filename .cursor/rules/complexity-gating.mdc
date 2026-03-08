@@ -44,17 +44,22 @@ ALL workflow steps run at every complexity level. Complexity no longer gates ste
 
 ## Model Routing Table
 
-Complexity determines which model tier each agent category receives. The canonical routing table lives in \`src/complexity/__helpers/model-routing.ts\` (\`MODEL_ROUTING_TABLE\`). This summary shows the category-level defaults:
+Complexity determines which model tier each agent category receives. The **canonical source of truth** is \`MODEL_ROUTING_TABLE\` in \`src/complexity/__helpers/model-routing.ts\`. This summary shows the category-level defaults; per-agent divergences are noted with footnotes:
 
 | Agent Category | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
 |----------------|---------|--------|----------|---------|----------|
-| Classifiers (lu-cognition, lu-learner) | haiku | haiku | haiku | haiku | sonnet |
-| Routers (lu-router, lu-router-fast) | haiku | haiku | sonnet | sonnet | sonnet |
+| Classifiers (lu-cognition, lu-learner) | haiku | haiku | haiku | haiku | sonnet [1] |
+| Routers (lu-router, lu-router-fast) | haiku | haiku | sonnet [2] | sonnet [2] | sonnet |
 | Orchestrators (lu-executor, lu-planner) | haiku | sonnet | sonnet | opus | opus |
-| Deep analysis (lu-verifier, lu-debugger) | haiku | sonnet | opus | opus | opus |
+| Deep analysis (lu-verifier, lu-debugger) | haiku [3] | sonnet | opus | opus | opus |
 | Reviewers (dx-advocate, code-simplifier) | haiku | sonnet | opus | opus | opus |
 
-Model tiers map to concrete models: **haiku** (fast/lightweight), **sonnet** (balanced/standard), **opus** (capable/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`.
+**Footnotes:**
+- [1] lu-cognition stays haiku at CRITICAL (never promoted)
+- [2] lu-router-fast stays haiku at MODERATE and COMPLEX (only promoted at CRITICAL)
+- [3] lu-debugger uses sonnet at TRIVIAL (promoted above category default)
+
+Model tiers map to concrete models: **haiku** (fast/lightweight), **sonnet** (balanced/standard), **opus** (capable/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`. When in doubt, consult the canonical \`MODEL_ROUTING_TABLE\` directly.
 
 ## Iteration Count Scaling
 

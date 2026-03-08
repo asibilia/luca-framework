@@ -92,7 +92,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     research: "required",
     discussion: "run",
     planVerificationIterations: 2,
-    harnessFixIterations: 3,
+    harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "full",
     codeReviewAgents: [

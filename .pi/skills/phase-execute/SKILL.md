@@ -30,7 +30,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - `dx-advocate` - Code quality review
 - `code-simplifier` - DRY and complexity review
 - `code-architect` - Architecture review
-- `tailwind-auditor` - Tailwind/styling review
+- `ui` - UI/styling review
 - `security-auditor` - Security review (conditional)
 - `lu-planner` - Plans fixes for issues (if needed)
 - `lu-plan-checker` - Validates fix plans (if needed)
@@ -183,42 +183,9 @@ Track:
 
 ## Process
 
-### 0. Resolve Model Profile
+### 0. Resolve Model Routing
 
-```bash
-MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-```
-
-**Model lookup table:**
-
-| Agent            | quality | balanced | budget |
-| ---------------- | ------- | -------- | ------ |
-| lu-executor      | opus    | sonnet   | sonnet |
-| lu-verifier      | sonnet  | sonnet   | haiku  |
-| dx-advocate      | opus    | sonnet   | haiku  |
-| code-simplifier  | opus    | sonnet   | haiku  |
-| code-architect   | opus    | sonnet   | haiku  |
-| tailwind-auditor | opus    | sonnet   | haiku  |
-| security-auditor | opus    | sonnet   | haiku  |
-| lu-planner       | opus    | opus     | sonnet |
-| lu-plan-checker  | sonnet  | sonnet   | haiku  |
-| lu-test-writer   | sonnet  | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-```
-# Lightweight agents → use "fast"
-learner_model = "fast"
-
-# Reasoning-intensive agents → omit (inherit from parent)
-executor_model = (omit)
-verifier_model = (omit)
-planner_model = (omit)
-checker_model = (omit)
-reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
-```
+Model routing is handled by `resolveModelForAgent(agentName, complexity)` from `src/complexity/__helpers/model-routing.ts`. See the complexity-gating rule for the routing table summary. No manual profile selection is needed.
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
@@ -440,9 +407,10 @@ Execute this plan. Return SUMMARY when complete.
 **Before each wave**, check context usage to decide if suspension is needed:
 
 ```bash
-# Check context usage zone from context monitor
-CONTEXT_JSON=$(bun run src/memory/context-monitor.ts --project-dir=. 2>/dev/null || echo '{"zone":"peak"}')
-ZONE=$(echo "$CONTEXT_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.zone)" 2>/dev/null || echo "peak")
+# Check context usage zone (context monitoring handled by hooks/MuninnDB)
+# The context-check-throttled hook monitors usage automatically.
+# For manual checks, read the zone from STATE.md or bridge:
+ZONE=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=context_zone 2>/dev/null | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.value || 'peak')" 2>/dev/null || echo "peak")
 ```
 
 **If zone is "stop"** (context exhaustion imminent):
@@ -1461,7 +1429,7 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
-    source_agent: tailwind-auditor
+    source_agent: ui
 ```
 
 If no issues found, return: `issues: []`
@@ -1819,7 +1787,7 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 - [ ] Each plan has SUMMARY.md
 - [ ] Phase goal verified (must_haves checked against codebase)
 - [ ] VERIFICATION.md created in phase directory
-- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, tailwind-auditor, security-auditor)
+- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, ui, security-auditor)
 - [ ] CRITICAL code issues block until fixed
 - [ ] HIGH/MEDIUM code issues presented with options
 - [ ] UAT.md created with tests from SUMMARY.md
