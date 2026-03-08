@@ -13,14 +13,18 @@ export async function GET(request: Request) {
   const client = getMuninnClient();
   const { searchParams } = new URL(request.url);
   const vault = searchParams.get("vault") ?? "default";
-  const limit = Number(searchParams.get("limit") ?? "50");
+  const limit = Math.min(
+    Math.max(Number(searchParams.get("limit") ?? "50"), 1),
+    500,
+  );
 
   try {
     const data = await client.session(vault, limit);
     return NextResponse.json(data);
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "MuninnDB request failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to fetch MuninnDB session data" },
+      { status: 502 },
+    );
   }
 }

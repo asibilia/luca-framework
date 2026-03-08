@@ -14,15 +14,19 @@ export async function GET(request: Request) {
   const client = getMuninnClient();
   const { searchParams } = new URL(request.url);
   const vault = searchParams.get("vault") ?? "default";
-  const limit = Number(searchParams.get("limit") ?? "100");
-  const offset = Number(searchParams.get("offset") ?? "0");
+  const limit = Math.min(
+    Math.max(Number(searchParams.get("limit") ?? "100"), 1),
+    1000,
+  );
+  const offset = Math.max(Number(searchParams.get("offset") ?? "0"), 0);
 
   try {
     const data = await client.listEngrams(vault, limit, offset);
     return NextResponse.json(data);
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "MuninnDB request failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to fetch engrams from MuninnDB" },
+      { status: 502 },
+    );
   }
 }

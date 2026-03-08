@@ -8,26 +8,7 @@ import { MemoryEntries } from "~/components/memory/memory-entries";
 import { WorkingSections } from "~/components/memory/working-sections";
 import { ContextUsageBar } from "~/components/memory/context-usage-bar";
 import { useMemory } from "~/hooks/use-memory";
-
-/**
- * Format a relative "time ago" string from a Date.
- */
-function timeAgo(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  if (diffMs < 0) return "just now";
-
-  const seconds = Math.floor(diffMs / 1000);
-  if (seconds < 60) return "just now";
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { relativeTime } from "~/lib/format";
 
 /**
  * MuninnDB Memory Dashboard page.
@@ -49,7 +30,7 @@ export default function MemoryPage() {
   } = useMemory();
 
   const lastUpdatedText = lastUpdated
-    ? `Last updated: ${timeAgo(lastUpdated)}`
+    ? `Last updated: ${relativeTime(lastUpdated)}`
     : null;
 
   return (

@@ -16,9 +16,10 @@ export async function GET(request: Request) {
   try {
     const data = await client.stats(vault);
     return NextResponse.json(data);
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "MuninnDB request failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to fetch MuninnDB vault statistics" },
+      { status: 502 },
+    );
   }
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import orderBy from "lodash/orderBy";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import { relativeTime } from "~/lib/format";
 
 import type { SessionEntry } from "~/hooks/use-memory";
 
@@ -34,29 +36,6 @@ function classifyDate(epochOrMs: number): DateGroupLabel {
   if (entryDate >= todayStart) return "Today";
   if (entryDate >= yesterdayStart) return "Yesterday";
   return "Earlier";
-}
-
-/**
- * Format a relative timestamp from a Unix epoch.
- */
-function relativeTime(epochOrMs: number): string {
-  const ms = epochOrMs < 1e12 ? epochOrMs * 1000 : epochOrMs;
-  const now = Date.now();
-  const diffMs = now - ms;
-
-  if (diffMs < 0) return "just now";
-
-  const seconds = Math.floor(diffMs / 1000);
-  if (seconds < 60) return "just now";
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 /**
@@ -92,8 +71,8 @@ function groupByDate(entries: SessionEntry[]): DateGroup[] {
   }
 
   // Sort entries within each group by created_at descending
-  for (const [, list] of buckets) {
-    list.sort((a, b) => b.created_at - a.created_at);
+  for (const [label, list] of buckets) {
+    buckets.set(label, orderBy(list, "created_at", "desc"));
   }
 
   // Only return non-empty groups

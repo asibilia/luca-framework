@@ -21,7 +21,11 @@ export async function POST(request: Request) {
   }
 
   const context = body.context;
-  if (!Array.isArray(context) || context.length === 0) {
+  if (
+    !Array.isArray(context) ||
+    context.length === 0 ||
+    !context.every((c) => typeof c === "string")
+  ) {
     return NextResponse.json(
       { error: "context must be a non-empty string array" },
       { status: 400 },
@@ -29,14 +33,15 @@ export async function POST(request: Request) {
   }
 
   const vault = body.vault ?? "default";
-  const limit = body.limit ?? 20;
+  const limit = Math.min(Math.max(body.limit ?? 20, 1), 100);
 
   try {
     const data = await client.activate(vault, context, limit);
     return NextResponse.json(data);
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "MuninnDB request failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to activate MuninnDB recall" },
+      { status: 502 },
+    );
   }
 }

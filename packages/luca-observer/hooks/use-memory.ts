@@ -74,7 +74,7 @@ export interface MuninnMemoryData {
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (res.status === 503) {
-    throw new NotConfiguredError("MuninnDB not configured");
+    throw createNotConfiguredError("MuninnDB not configured");
   }
   if (!res.ok) {
     throw new Error(`Fetch ${url} failed: ${res.status}`);
@@ -82,11 +82,10 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-class NotConfiguredError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NotConfiguredError";
-  }
+function createNotConfiguredError(message: string): Error {
+  const e = new Error(message);
+  e.name = "NotConfiguredError";
+  return e;
 }
 
 // -- Hook -------------------------------------------------------------------
@@ -140,7 +139,9 @@ export function useMemory(): MuninnMemoryData {
       // Check if any endpoint returned 503 (not configured)
       const notConfigured = [brainRes, engramsRes, sessionRes, statsRes].some(
         (r) =>
-          r.status === "rejected" && r.reason instanceof NotConfiguredError,
+          r.status === "rejected" &&
+          r.reason instanceof Error &&
+          r.reason.name === "NotConfiguredError",
       );
       if (notConfigured) {
         setConfigured(false);
