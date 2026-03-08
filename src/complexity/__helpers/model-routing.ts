@@ -2,9 +2,9 @@
  * Model routing table for complexity-aware agent model selection.
  *
  * Provides a centralized mapping from (agent role, complexity level)
- * to model tier. This table serves as the system-level default for
- * model routing decisions. Per-agent overrides in agent frontmatter
- * (model_routing.complexity_overrides) take precedence.
+ * to model tier. This table is the **single source of truth** for
+ * model routing decisions. Agent frontmatter model_routing fields
+ * are deprecated and no longer consulted by resolveModel().
  *
  * Tier: T0 Foundation -- imports nothing from src/ except sibling schemas.
  */
@@ -214,14 +214,12 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
 /**
  * Resolve the model tier for an agent at a given complexity level.
  *
+ * This is the **primary** model routing function. The MODEL_ROUTING_TABLE
+ * is the single source of truth for agent model selection.
+ *
  * Lookup order:
  * 1. Agent-specific entry in MODEL_ROUTING_TABLE
  * 2. DEFAULT_COMPLEXITY_TIERS fallback
- *
- * This function does NOT apply per-agent frontmatter overrides
- * (model_routing.complexity_overrides). Those are handled by
- * resolveModel() in agents/__helpers/resolve-model.ts, which
- * sits at a higher priority level.
  *
  * @param agentName - The agent's name (e.g., "lu-executor")
  * @param complexity - Current task complexity level
