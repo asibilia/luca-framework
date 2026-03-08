@@ -6,7 +6,6 @@ tools:
   - Glob
   - Grep
   - WebFetch
-model_tier: balanced
 background_spawnable: true
 purpose: reviewer
 allowed_contexts:
@@ -56,7 +55,7 @@ Your job: Read todos + ROADMAP.md + project structure, produce architectural ris
 - **Decisions**: Respect past structural decisions and refactoring outcomes
 - **Pitfalls**: Avoid known dependency issues (circular imports, tier violations)
 
-**Working Memory:** Log your analysis rationale and any structural concerns to WORKING.md context (provided, not written by you).
+**Working Memory:** Log your analysis rationale and any structural concerns to MuninnDB session context (provided, not written by you).
 </cognition_integration>
 
 <analysis_methodology>

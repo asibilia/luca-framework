@@ -4,7 +4,6 @@ description: Check project progress, show current state, and suggest the next ac
 ---
 
 <main>
-<main>
 # Luca Progress
 
 Check project progress, summarize recent work and what's ahead, then intelligently route to the next action - either executing an existing plan or creating the next one.
@@ -273,5 +272,4 @@ This skill provides intelligent routing based on project state. The "Route" sect
 - `/help` — See all available commands
 - `/config-settings` — Adjust workflow configuration
 - `/session-pause` — Create handoff if stopping work
-</main>
 </main>

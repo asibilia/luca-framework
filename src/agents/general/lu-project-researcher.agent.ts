@@ -33,7 +33,6 @@ const luProjectResearcherConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "researcher",
     allowed_contexts: ["research", "discovery", "analysis"],
-    model_tier: "balanced",
   },
   sections: [
     {

@@ -11,7 +11,7 @@
  * - createCostEstimate: Build a validated TokenCostEstimate from inputs
  * - calibrateCost: Rolling-average update of an existing estimate
  * - buildCostTable: Full table of estimates for all 5 complexity levels
- * - formatCostTableForMemory: Render the table as markdown for MEMORY.md
+ * - formatCostTableForMemory: Render the table as markdown for MuninnDB engram storage
  *
  * @module planner/cost-model
  */
@@ -167,7 +167,7 @@ export function buildCostTable(
 }
 
 /**
- * Format a cost table as a markdown table suitable for MEMORY.md storage.
+ * Format a cost table as a markdown table suitable for MuninnDB engram storage.
  *
  * Produces a human-readable markdown table with columns for complexity,
  * estimated %, actual %, samples, and source. Actual percentage shows

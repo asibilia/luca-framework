@@ -3,9 +3,12 @@
  * Defines the standard gating matrix used when no custom config exists.
  *
  * Design principle: 5 levels, 3 behavioral tiers.
- * - Group A (lightweight): TRIVIAL, SIMPLE — skip most optional steps
+ * - Group A (lightweight): TRIVIAL, SIMPLE — lightweight model routing
  * - Group B (standard): MODERATE — standard workflow
  * - Group C (thorough): COMPLEX, CRITICAL — full workflow with scaling
+ *
+ * Per-agent model routing is handled by MODEL_ROUTING_TABLE in model-routing.ts.
+ * This matrix controls iteration counts, verification depth, and tier promotions.
  */
 import type {
   ComplexityConfig,
@@ -87,107 +90,52 @@ export const COMPLEXITY_CLASSIFICATIONS: Record<
 /**
  * The default gating matrix.
  *
- * DEPRECATION NOTICE — Step Activation Fields
- * =============================================
- * The following fields in each gate entry are deprecated and retained
- * solely for backward compatibility with existing skill/rule consumers:
- *
- *   - `research`        — replaced by MODEL_ROUTING_TABLE entry for lu-phase-researcher
- *   - `discussion`      — replaced by MODEL_ROUTING_TABLE entry for lu-discuss-researcher
- *   - `codeReviewAgents` — replaced by MODEL_ROUTING_TABLE entries for each reviewer agent
- *   - `uat`             — replaced by `verificationMode` + MODEL_ROUTING_TABLE for lu-verifier
- *   - `learningCapture` — replaced by MODEL_ROUTING_TABLE entry for lu-learner
- *
- * The forward-looking replacement is the centralized model routing table
- * in `src/complexity/__helpers/model-routing.ts` (MODEL_ROUTING_TABLE),
- * which maps (agent name, complexity level) -> model tier. Use
- * `resolveModelForAgent(agentName, complexity)` to determine the
- * appropriate tier for any agent at any complexity level.
- *
- * These matrix values are retained so that skill consumers
- * (phase-plan.skill.ts, phase-execute.skill.ts) and rule consumers
- * (complexity-gating.rule.ts) continue to work without modification.
- * They will be removed once all consumers are migrated to use the
- * routing table directly.
+ * Controls iteration counts, verification depth, and tier promotions.
+ * Per-agent model routing is handled separately by MODEL_ROUTING_TABLE
+ * in `src/complexity/__helpers/model-routing.ts`.
  */
 export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
   TRIVIAL: {
     cognitivePreflight: "lite",
-    research: "skip",
-    discussion: "skip",
-    planVerificationIterations: 0,
+    planVerificationIterations: 1,
     harnessFixIterations: 1,
-    verifyFixIterations: 0,
+    verifyFixIterations: 1,
     verificationMode: "quick",
-    codeReviewAgents: [],
-    uat: "skip",
-    learningCapture: "skip",
     default_model: "haiku",
   },
   SIMPLE: {
     cognitivePreflight: "lite",
-    research: "skip",
-    discussion: "skip",
-    planVerificationIterations: 0,
+    planVerificationIterations: 1,
     harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "quick",
-    codeReviewAgents: [],
-    uat: "skip",
-    learningCapture: "brief",
     default_model: "haiku",
   },
   MODERATE: {
     cognitivePreflight: "full",
-    research: "optional",
-    discussion: "optional",
     planVerificationIterations: 1,
     harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "standard",
-    codeReviewAgents: ["dx-advocate", "code-simplifier"],
-    uat: "optional",
-    learningCapture: "standard",
     contextPromotions: { T0: "T1", T1: "T2" },
     default_model: "sonnet",
   },
   COMPLEX: {
     cognitivePreflight: "full",
-    research: "required",
-    discussion: "run",
     planVerificationIterations: 2,
     harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "full",
-    codeReviewAgents: [
-      "dx-advocate",
-      "code-simplifier",
-      "code-architect",
-      "tailwind-auditor",
-    ],
-    uat: "required",
-    learningCapture: "full",
     cognitionPromotions: { T1: "T2", T2: "T3" },
     contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     default_model: "sonnet",
   },
   CRITICAL: {
     cognitivePreflight: "full",
-    research: "required",
-    discussion: "required",
     planVerificationIterations: 3,
     harnessFixIterations: 3,
     verifyFixIterations: 2,
     verificationMode: "full+human",
-    codeReviewAgents: [
-      "dx-advocate",
-      "code-simplifier",
-      "code-architect",
-      "tailwind-auditor",
-      "security-auditor",
-    ],
-    uat: "required+thorough",
-    learningCapture: "full+debrief",
     cognitionPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     default_model: "opus",

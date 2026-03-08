@@ -22,7 +22,7 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 **Sub-skills invoked (via Skill tool):**
 
-- `phase-discuss` — Context gathering for MODERATE+ phases
+- `phase-discuss` — Context gathering for all phases (depth scales with complexity)
 - `phase-plan` — Auto-generate PLAN.md files for phases
 - `phase-execute` — Full execution pipeline (waves, harness, verification, code review)
 - `milestone-complete` — Archive and complete milestones
@@ -118,7 +118,7 @@ Unless the session already has cognitive context loaded:
 ```
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/__helpers/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/__helpers/bridge.ts clear-working)."
+  prompt: "Run cognitive pre-flight for autopilot session. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*')."
 )
 ```
 
@@ -708,19 +708,18 @@ Write complexity via bridge (transitions state machine from routing to planning/
 bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
 ```
 
-### 4d. Discussion (Complexity-Gated)
+### 4d. Discussion (Always Runs)
 
-Check the current workflow state to see if the state machine routed to discussion or skipped it based on complexity.
-
-```bash
-STATE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | bun -e "const s=await Bun.stdin.text();try{console.log(JSON.parse(s).state??'')}catch{}")
-```
-
-- If STATE == "planning": skip to 4e
-- If STATE == "discussing":
+Discussion always runs. The discussion depth and model tier scale with complexity via the routing table.
 
 ```
 Skill(skill: "phase-discuss", args: "{phase_number}")
+```
+
+Transition state machine after discussion:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 ```
 
 ### 4e. Planning
@@ -784,7 +783,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to `[x]`
-3. Log to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"`
+3. Log to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "{timestamp} [PHASE-COMPLETE] Phase {NN} passed")`
 4. Display:
 
 ```
@@ -816,10 +815,11 @@ Skill(skill: "phase-execute", args: "{phase_number} --gaps-only --skip-uat")
 
 ### 4h. Learning Capture
 
-After each phase (per complexity gating):
-- TRIVIAL: skip
-- SIMPLE: brief
-- MODERATE+: standard/full
+Learning capture always runs (model tier scales with complexity via routing table):
+- TRIVIAL/SIMPLE: standard (fast model tier)
+- MODERATE: standard (fast model tier)
+- COMPLEX: full (fast model tier)
+- CRITICAL: full + debrief (balanced model tier)
 
 Learning is already handled by phase-execute internally. No additional action needed here.
 
@@ -902,7 +902,7 @@ For each phase (in parallel, using Task tool):
     **Phase:** {NN} - {goal}
     **Phase directory:** .planning/phases/{phase_dir}/
     **Project state:** {STATE.md content}
-    **Working memory:** {WORKING.md content}
+    **Working memory:** {session context from MuninnDB}
     **CLAUDE.md conventions:** Read CLAUDE.md for project conventions.
 
     **Instructions:**
@@ -1037,7 +1037,7 @@ After all executors in this level complete (or are marked failed/timed out):
    ```bash
    bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
    ```
-6. Log to WORKING.md via bridge
+6. Log to MuninnDB session memory via muninn_remember
 
 ### 4-swarm-j. Level Progress Display
 
@@ -1304,10 +1304,10 @@ bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 ```
 
-3. Log final status to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="Autopilot session complete"`
+3. Log final status to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "Autopilot session complete")`
 4. Commit session metadata:
 
 ```bash
-git add .planning/STATE.md .planning/WORKING.md .planning/state.json
+git add .planning/STATE.md .planning/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 ```

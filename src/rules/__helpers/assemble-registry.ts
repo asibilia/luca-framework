@@ -10,8 +10,7 @@
  * - workflow.tech_stack_profiles: array of profile names (default: ["typescript"])
  */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join } from "pathe";
 
 import { sanitizeJsonParse } from "~/shared/__helpers/validation-utils";
 
@@ -26,6 +25,7 @@ import { hookSkillBoundaryRule } from "../general/hook-skill-boundary.rule";
 import { luWorkflowRule } from "../general/lu-workflow.rule";
 import { moduleBoundaryRule } from "../general/module-boundary.rule";
 import { mandatoryDocumentationRule } from "../general/mandatory-documentation.rule";
+import { noTestsRule } from "../general/no-tests.rule";
 import { posthogIntegrationRule } from "../general/posthog-integration.rule";
 import { selfImproveRule } from "../general/self-improve.rule";
 import { stateMachineBridgeRule } from "../general/state-machine-bridge.rule";
@@ -46,6 +46,7 @@ const generalRules: Record<string, () => BaseRule> = {
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
   "module-boundary": () => moduleBoundaryRule,
+  "no-tests": () => noTestsRule,
   "posthog-integration": () => posthogIntegrationRule,
   "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,
@@ -59,16 +60,16 @@ const generalRules: Record<string, () => BaseRule> = {
 /**
  * Read profile config from .planning/config.json at import time.
  *
- * Uses synchronous file read at import time.
+ * Uses Bun.file() with top-level await for async file read.
  * If the config file is missing or malformed, defaults apply via Zod schema.
  */
-function loadProfileConfig(): {
+async function loadProfileConfig(): Promise<{
   opinionated_guidelines: boolean;
   tech_stack_profiles: string[];
-} {
+}> {
   try {
     const configPath = join(process.cwd(), ".planning", "config.json");
-    const raw = readFileSync(configPath, "utf-8");
+    const raw = await Bun.file(configPath).text();
     const config = sanitizeJsonParse(raw) as Record<string, any>;
     const workflow = config?.workflow ?? {};
     return ProfileConfigSchema.parse(workflow);
@@ -84,8 +85,8 @@ function loadProfileConfig(): {
  * If opinionated_guidelines is false, no profile rules are loaded.
  * Otherwise, each profile in tech_stack_profiles contributes its rules.
  */
-function loadProfileRules(): Record<string, () => BaseRule> {
-  const config = loadProfileConfig();
+async function loadProfileRules(): Promise<Record<string, () => BaseRule>> {
+  const config = await loadProfileConfig();
 
   if (!config.opinionated_guidelines) {
     return {};
@@ -116,5 +117,5 @@ function loadProfileRules(): Record<string, () => BaseRule> {
  */
 export const ruleRegistry: Record<string, () => BaseRule> = {
   ...generalRules,
-  ...loadProfileRules(),
+  ...(await loadProfileRules()),
 };

@@ -8,8 +8,10 @@
  * results to .cursor/, .claude/, and dist/plugin/.
  *
  * Usage:
- *   bun run build:all          # via package.json script
- *   bun ./scripts/build-all.ts # direct invocation
+ *   bun run build:all                       # via package.json script
+ *   bun ./scripts/build-all.ts              # direct invocation
+ *   bun run build:all --force               # override session lock and build
+ *   bun run build:all --cleanup-stale-locks # remove lock file without building
  *
  * Output paths:
  *   .cursor/agents/*.md
@@ -29,8 +31,27 @@ async function main() {
   // 0. Session lock guard — refuse to build during active sessions
   // =========================================================================
   const forceFlag = process.argv.includes("--force");
+  const cleanupFlag = process.argv.includes("--cleanup-stale-locks");
   const lockPath = path.join(process.cwd(), ".claude", ".session-lock");
   const lockFile = Bun.file(lockPath);
+
+  // Handle --cleanup-stale-locks: remove the lock file and exit without building
+  if (cleanupFlag) {
+    if (await lockFile.exists()) {
+      await lockFile.unlink();
+      console.log("Session lock removed successfully.");
+    } else {
+      console.log("No stale lock found.");
+    }
+    process.exit(0);
+  }
+
+  // Sub-agents running inside an active session inherit LUCA_SESSION_ACTIVE=1.
+  // They should always be allowed to build (they ARE the session). Blocking them
+  // causes freezes when the orchestrator waits on a sub-agent that exited with
+  // error due to the lock the parent session created.
+  // See docs/decisions/session-lock-bypass.md for full rationale.
+  const sessionActive = process.env.LUCA_SESSION_ACTIVE === "1";
 
   if (await lockFile.exists()) {
     let hoursOld = 0;
@@ -49,17 +70,28 @@ async function main() {
         `\n⚠ Removing stale session lock (${hoursOld === Infinity ? "malformed" : `${Math.round(hoursOld)}h old`})\n`,
       );
       await Bun.file(lockPath).unlink();
+    } else if (sessionActive) {
+      // Sub-agent inside the active session — safe to proceed without warning
     } else if (forceFlag) {
       console.warn(
         `\n⚠ Session lock detected (${Math.round(hoursOld)}h old) — proceeding anyway (--force)\n`,
       );
     } else {
       console.error(
-        `\n✖ Build blocked: an active session is in progress (${Math.round(hoursOld)}h old)`,
+        `\nBuild blocked: an active session is in progress (${Math.round(hoursOld)}h old).`,
       );
+      console.error("");
+      console.error("Recovery options:");
+      console.error("  1. Wait for the session to end naturally");
       console.error(
-        "  Run with --force to override, or end the session first.\n",
+        "  2. Run with --force to override the lock and build anyway",
       );
+      console.error(`  3. Manually delete the lock: rm ${lockPath}`);
+      console.error(
+        "  4. Run with --cleanup-stale-locks to remove the lock without building",
+      );
+      console.error("");
+      console.error("Locks older than 4 hours are automatically removed.\n");
       process.exit(1);
     }
   }

@@ -68,7 +68,7 @@ function IterationCard({ iteration }: { iteration: IterationRecordSnapshot }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-left md:gap-3 md:px-4 md:py-3"
+        className="flex w-full flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 md:gap-3 md:px-4 md:py-3"
       >
         <div className="flex items-center gap-3">
           {/* Iteration number */}

@@ -18,15 +18,14 @@
  * - generateAllOutputs(): Unified compilation pipeline
  *
  * Re-exports from src/hooks/index:
- * - generateClaudeHooksConfig(): Claude hooks config builder
- * - generateCursorHooksConfig(): Cursor hooks config builder
+ * - generateClaudeHooksConfigFromCanonical(): Claude hooks config builder
+ * - generateCursorHooksConfigFromCanonical(): Cursor hooks config builder
  */
 import {
   hookRegistry,
-  resolveHookRegistry,
-  generateCursorHooksConfig,
-  generateClaudeHooksConfig,
-  generatePiExtension,
+  resolveCanonicalRegistry,
+  generateClaudeHooksConfigFromCanonical,
+  generateCursorHooksConfigFromCanonical,
 } from "../src/hooks/index";
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry, ProfileConfigSchema } from "../src/rules/index";
@@ -49,7 +48,6 @@ import path from "path";
 export const PI_EXTENSION_FILES: readonly string[] = [
   "luca-hooks.ts",
   "luca-state.ts",
-  "luca-memory.ts",
   "luca-harness.ts",
   "luca-complexity.ts",
   "luca-roles.ts",
@@ -466,13 +464,12 @@ MIT
 
 // Re-export registries for consumers that need them (e.g., orphan detection tests)
 export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
-export { resolveHookRegistry } from "../src/hooks/index";
+export { resolveCanonicalRegistry } from "../src/hooks/index";
 
 // Re-export hook config generators for consumers
 export {
-  generateCursorHooksConfig,
-  generateClaudeHooksConfig,
-  generatePiExtension,
+  generateClaudeHooksConfigFromCanonical,
+  generateCursorHooksConfigFromCanonical,
 };
 
 // Re-export profile infrastructure for build consumers
@@ -678,10 +675,10 @@ async function generateHookOutputs(
   generated: Map<string, string>,
 ): Promise<void> {
   const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
-  const resolved = resolveHookRegistry();
+  const canonical = resolveCanonicalRegistry();
 
   // Copy hook scripts to .claude/ and .cursor/ (Pi uses native extension)
-  for (const [_hookName, hookDef] of Object.entries(resolved)) {
+  for (const [_hookName, hookDef] of Object.entries(canonical)) {
     const srcPath = path.join(hookScriptsDir, hookDef.script);
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
@@ -691,8 +688,26 @@ async function generateHookOutputs(
     }
   }
 
+  // Copy _lib/ shared library to all output directories
+  const libDir = path.join(hookScriptsDir, "_lib");
+  const libDirFile = Bun.file(path.join(libDir, "common.sh"));
+  if (await libDirFile.exists()) {
+    const libFiles = ["common.sh"];
+    for (const fileName of libFiles) {
+      const srcPath = path.join(libDir, fileName);
+      const srcFile = Bun.file(srcPath);
+      if (await srcFile.exists()) {
+        const content = await srcFile.text();
+        generated.set(`.claude/hooks/_lib/${fileName}`, content);
+        generated.set(`.cursor/hooks/_lib/${fileName}`, content);
+        generated.set(`.pi/hook-scripts/_lib/${fileName}`, content);
+        generated.set(`dist/plugin/scripts/_lib/${fileName}`, content);
+      }
+    }
+  }
+
   // Claude settings.json hooks fragment
-  const hooksConfig = generateClaudeHooksConfig(resolved, {
+  const hooksConfig = generateClaudeHooksConfigFromCanonical(canonical, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
   });
   generated.set(
@@ -701,7 +716,7 @@ async function generateHookOutputs(
   );
 
   // Cursor hooks.json
-  const cursorHooksConfig = generateCursorHooksConfig(resolved);
+  const cursorHooksConfig = generateCursorHooksConfigFromCanonical(canonical);
   generated.set(
     ".cursor/hooks.json",
     JSON.stringify(cursorHooksConfig, null, 2) + "\n",
@@ -727,14 +742,14 @@ async function generatePluginOutputs(
   }
 
   // Plugin hooks (excluding dev-only hooks)
-  const resolved = resolveHookRegistry();
-  const pluginHookRegistry = Object.fromEntries(
-    Object.entries(resolved).filter(
+  const canonical = resolveCanonicalRegistry();
+  const pluginCanonicalRegistry = Object.fromEntries(
+    Object.entries(canonical).filter(
       ([name]) => !PLUGIN_EXCLUDED_HOOKS.has(name),
     ),
   );
 
-  for (const [_name, def] of Object.entries(pluginHookRegistry)) {
+  for (const [_name, def] of Object.entries(pluginCanonicalRegistry)) {
     const srcPath = path.join(hookScriptsDir, def.script);
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
@@ -743,10 +758,13 @@ async function generatePluginOutputs(
   }
 
   // Plugin hooks.json
-  const pluginHooksConfig = generateClaudeHooksConfig(pluginHookRegistry, {
-    commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
-    wrapInHooksKey: true,
-  });
+  const pluginHooksConfig = generateClaudeHooksConfigFromCanonical(
+    pluginCanonicalRegistry,
+    {
+      commandPrefix: "${CLAUDE_PLUGIN_ROOT}/scripts",
+      wrapInHooksKey: true,
+    },
+  );
   generated.set(
     "dist/plugin/hooks/hooks.json",
     JSON.stringify(pluginHooksConfig, null, 2) + "\n",
@@ -780,7 +798,7 @@ async function generatePluginOutputs(
   // README (all names now come directly from registries)
   const pluginAgentNames = Object.keys(agentRegistry);
   const pluginSkillNames = Object.keys(skillRegistry);
-  const pluginHookCount = Object.keys(pluginHookRegistry).length;
+  const pluginHookCount = Object.keys(pluginCanonicalRegistry).length;
 
   const readmeContent = generateReadme(
     pluginSkillNames,

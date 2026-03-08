@@ -68,8 +68,8 @@ export { ruleRegistry } from "./src/rules/index";
 export {
   hookRegistry,
   NO_MATCHER_SENTINEL,
-  generateCursorHooksConfig,
-  generateClaudeHooksConfig,
+  generateClaudeHooksConfigFromCanonical,
+  generateCursorHooksConfigFromCanonical,
 } from "./src/hooks/index";
 export type { HookDefinition } from "./src/hooks/index";
 
@@ -105,7 +105,6 @@ export type {
   ComplexityTier,
   ComplexityClassification,
   VerificationMode,
-  StepActivation,
   ComplexityGate,
   ComplexityMatrix,
   ComplexityConfig,
@@ -115,10 +114,5 @@ export type {
 export {
   sanitizeJsonParse,
   safeSanitizeJsonParse,
-  validateAgentConfig,
-  validateSkillConfig,
-  validateRuleConfig,
-  safeValidateAgentConfig,
-  safeValidateSkillConfig,
-  safeValidateRuleConfig,
+  safeValidate,
 } from "./src/shared/__helpers/validation-utils";

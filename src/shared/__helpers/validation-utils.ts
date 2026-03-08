@@ -2,13 +2,7 @@
  * Utility functions for validating configurations with Zod schemas
  * and secure JSON parsing with prototype pollution protection.
  */
-import { AgentConfigSchema } from "~/agents/__schemas/agent.schemas";
-import { SkillConfigSchema } from "~/skills/__schemas/skill.schemas";
-import { RuleConfigSchema } from "~/rules/__schemas/rule.schemas";
-
-import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
-import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
-import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
+import type { z } from "zod";
 import type { Result } from "../__schemas/shared.schemas";
 
 // ---------------------------------------------------------------------------
@@ -64,12 +58,11 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * ```
  */
 /**
- * NOTE: This function is intentionally duplicated across isolated domains.
- * The packages are isolated by design and cannot cross-import.
- * If you modify this function, update all copies:
+ * NOTE: This function exists in 2 copies across isolated package boundaries.
+ * packages/luca-framework/ and src/ cannot cross-import by design.
+ * If you modify this function, update the other copy:
  * - packages/luca-framework/src/utils/sanitize.ts
- * - packages/luca-framework/src/state/sanitize.ts
- * - src/shared/validation-utils.ts (this file)
+ * - src/shared/__helpers/validation-utils.ts (this file)
  */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);
@@ -107,50 +100,31 @@ export function safeSanitizeJsonParse(json: string): Result<unknown> {
   }
 }
 
-export function validateAgentConfig(config: AgentConfig): AgentConfig {
-  return AgentConfigSchema.parse(config);
-}
-
-export function validateSkillConfig(config: SkillConfig): SkillConfig {
-  return SkillConfigSchema.parse(config);
-}
-
-export function validateRuleConfig(config: RuleConfig): RuleConfig {
-  return RuleConfigSchema.parse(config);
-}
-
-// Helper function to validate with error handling
-export function safeValidateAgentConfig(
-  config: AgentConfig,
-): Result<AgentConfig> {
+/**
+ * Validate a config object against a Zod schema with error handling.
+ *
+ * Generic replacement for the former entity-specific safeValidateAgentConfig,
+ * safeValidateSkillConfig, and safeValidateRuleConfig functions.
+ *
+ * @param schema - The Zod schema to validate against
+ * @param config - The config object to validate
+ * @returns Result with validated data or error message
+ *
+ * @example
+ * ```typescript
+ * import { AgentConfigSchema } from "~/agents/__schemas/agent.schemas";
+ * const result = safeValidate(AgentConfigSchema, rawConfig);
+ * if (result.success) {
+ *   console.log(result.data); // typed as AgentConfig
+ * }
+ * ```
+ */
+export function safeValidate<T>(
+  schema: z.ZodSchema<T>,
+  config: unknown,
+): Result<T> {
   try {
-    const data = AgentConfigSchema.parse(config);
-    return { success: true, data };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Validation failed",
-    };
-  }
-}
-
-export function safeValidateSkillConfig(
-  config: SkillConfig,
-): Result<SkillConfig> {
-  try {
-    const data = SkillConfigSchema.parse(config);
-    return { success: true, data };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Validation failed",
-    };
-  }
-}
-
-export function safeValidateRuleConfig(config: RuleConfig): Result<RuleConfig> {
-  try {
-    const data = RuleConfigSchema.parse(config);
+    const data = schema.parse(config);
     return { success: true, data };
   } catch (error) {
     return {

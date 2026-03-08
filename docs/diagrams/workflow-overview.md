@@ -31,7 +31,7 @@ flowchart TD
     Q --> G
     R --> P
 
-    P --> S["MEMORY.md updated"]
+    P --> S["MuninnDB engrams updated"]
     S --> T{More phases?}
 
     T -->|yes| D
@@ -49,13 +49,13 @@ flowchart TD
 
 ## Key Artifacts
 
-| Step               | Input              | Output                                |
-| ------------------ | ------------------ | ------------------------------------- |
-| project-new        | User description   | PROJECT.md, BRAIN.md, ROADMAP.md      |
-| milestone-new      | Backlog todos      | ROADMAP.md, STATE.md, REQUIREMENTS.md |
-| phase-discuss      | Phase goal         | CONTEXT.md                            |
-| phase-plan         | Context + Research | PLAN.md files                         |
-| phase-execute      | PLAN.md files      | Code + SUMMARY.md                     |
-| verify             | Code + Plans       | VERIFICATION.md                       |
-| learn              | WORKING.md         | MEMORY.md                             |
-| milestone-complete | All phases         | Archive + git tag                     |
+| Step               | Input                    | Output                                      |
+| ------------------ | ------------------------ | ------------------------------------------- |
+| project-new        | User description         | PROJECT.md, MuninnDB brain tree, ROADMAP.md |
+| milestone-new      | Backlog todos            | ROADMAP.md, STATE.md, REQUIREMENTS.md       |
+| phase-discuss      | Phase goal               | CONTEXT.md                                  |
+| phase-plan         | Context + Research       | PLAN.md files                               |
+| phase-execute      | PLAN.md files            | Code + SUMMARY.md                           |
+| verify             | Code + Plans             | VERIFICATION.md                             |
+| learn              | MuninnDB session context | MuninnDB engrams                            |
+| milestone-complete | All phases               | Archive + git tag                           |

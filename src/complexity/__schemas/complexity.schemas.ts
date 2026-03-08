@@ -1,9 +1,9 @@
 /**
  * Type definitions for the Luca complexity gating system.
  *
- * Complexity levels control which workflow steps activate, how many
- * agents are spawned, iteration limits, and verification depth.
- * Five levels exist but behavior groups into three tiers:
+ * Complexity levels control per-agent model routing (via MODEL_ROUTING_TABLE),
+ * iteration limits, and verification depth. Five levels exist but behavior
+ * groups into three tiers:
  * - Group A (lightweight): TRIVIAL, SIMPLE
  * - Group B (standard): MODERATE
  * - Group C (thorough): COMPLEX, CRITICAL
@@ -105,47 +105,17 @@ export const VerificationModeSchema = z.enum([
 ]);
 export type VerificationMode = z.infer<typeof VerificationModeSchema>;
 
-/** Step activation status */
-export const StepActivationSchema = z.enum([
-  "skip",
-  "optional",
-  "run",
-  "required",
-  "required+thorough",
-]);
-export type StepActivation = z.infer<typeof StepActivationSchema>;
-
 /**
  * Per-level workflow gating configuration.
  *
- * @deprecated Step activation fields (research, discussion, uat, codeReviewAgents,
- * learningCapture) are superseded by per-agent model routing via `model_tier` and
- * `model_routing`. Steps now always run; agents route to appropriate models based
- * on complexity level. These fields are retained for backward compatibility and
- * estimation purposes only.
+ * All workflow steps now run at every complexity level. Complexity controls
+ * model tier (via MODEL_ROUTING_TABLE) and iteration counts (below).
+ * Use `resolveModelForAgent(agentName, complexity)` to determine the
+ * appropriate model for any agent at any complexity level.
  */
 export const ComplexityGateSchema = z.object({
   /** Cognitive pre-flight depth */
   cognitivePreflight: z.enum(["lite", "full"]),
-  /**
-   * @deprecated Superseded by per-agent model routing. Retained for backward compatibility.
-   * @migration Instead of checking `gate.research === 'skip'`, use
-   * `resolveModelForAgent('lu-phase-researcher', complexity)` to determine
-   * if the researcher runs at a lightweight tier. The routing table in
-   * `src/complexity/__helpers/model-routing.ts` (MODEL_ROUTING_TABLE) maps
-   * each agent to the appropriate model tier per complexity level.
-   * Removal planned after all skill/rule consumers are migrated.
-   */
-  research: StepActivationSchema,
-  /**
-   * @deprecated Superseded by per-agent model routing. Retained for backward compatibility.
-   * @migration Instead of checking `gate.discussion === 'skip'`, use
-   * `resolveModelForAgent('lu-discuss-researcher', complexity)` to route
-   * the discussion agent to the appropriate tier. At TRIVIAL/SIMPLE the
-   * routing table assigns "fast" tier, effectively replacing "skip".
-   * Removal planned after all skill/rule consumers are migrated.
-   */
-  discussion: StepActivationSchema,
   /** Plan verification iterations (lu-plan-checker loop count) */
   planVerificationIterations: z.number().int().nonnegative(),
   /** Harness fix iterations (Loop A: mechanical failure fix loop max) */
@@ -154,41 +124,6 @@ export const ComplexityGateSchema = z.object({
   verifyFixIterations: z.number().int().nonnegative(),
   /** Verification mode for lu-verifier */
   verificationMode: VerificationModeSchema,
-  /**
-   * @deprecated Superseded by per-agent model routing. Retained for backward compatibility.
-   * @migration Instead of reading `gate.codeReviewAgents` to determine which
-   * reviewers to spawn, use `resolveModelForAgent(reviewerName, complexity)`
-   * for each reviewer agent. The routing table determines whether a reviewer
-   * runs at "fast" (lightweight) or "capable" (thorough) tier. All reviewers
-   * always run; their depth is controlled by model tier, not by inclusion
-   * in this list. Removal planned after all skill/rule consumers are migrated.
-   */
-  codeReviewAgents: z.array(z.string()),
-  /**
-   * @deprecated Superseded by per-agent model routing. Retained for backward compatibility.
-   * @migration UAT activation is no longer gated by this field. The
-   * verification depth is determined by `resolveModelForAgent('lu-verifier', complexity)`
-   * and the `verificationMode` field (which is NOT deprecated). Use
-   * `verificationMode` for verification depth and the routing table for
-   * model selection. Removal planned after all skill/rule consumers are migrated.
-   */
-  uat: StepActivationSchema,
-  /**
-   * @deprecated Superseded by per-agent model routing. Retained for backward compatibility.
-   * @migration Instead of checking `gate.learningCapture === 'skip'`, use
-   * `resolveModelForAgent('lu-learner', complexity)` to determine the
-   * learning agent's tier. At TRIVIAL the routing table assigns "fast",
-   * effectively replacing "skip" with lightweight capture. The depth of
-   * learning capture is controlled by the learner's model tier.
-   * Removal planned after all skill/rule consumers are migrated.
-   */
-  learningCapture: z.enum([
-    "skip",
-    "brief",
-    "standard",
-    "full",
-    "full+debrief",
-  ]),
   /** Optional cognition tier promotions at this complexity level.
    *  Maps a default tier to a promoted tier (e.g., T1 -> T2 at COMPLEX). */
   cognitionPromotions: z

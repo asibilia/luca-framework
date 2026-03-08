@@ -36,6 +36,18 @@ export const ObserverEvents = table(
         algorithm: "btree" as const,
         columns: ["sessionId"],
       },
+      {
+        accessor: "observer_events_event_type",
+        name: "observer_events_event_type",
+        algorithm: "btree" as const,
+        columns: ["eventType"],
+      },
+      {
+        accessor: "observer_events_timestamp",
+        name: "observer_events_timestamp",
+        algorithm: "btree" as const,
+        columns: ["timestamp"],
+      },
     ],
   },
   {

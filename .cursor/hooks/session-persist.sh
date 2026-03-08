@@ -19,9 +19,13 @@
 # ──────────────────────────────────────────────────────────────────────
 #
 # When a session ends, this hook:
-# 1. Checks if .planning/WORKING.md exists
-# 2. If it has content, appends a session-end timestamp
+# 1. Removes the session lock file
+# 2. Emits a session.end event to SpacetimeDB
 # 3. Best-effort only — SessionEnd hooks cannot block termination
+#
+# NOTE: Session memory persistence is now handled by MuninnDB MCP
+# (muninn_session tracks session lifecycle natively). WORKING.md
+# operations have been removed.
 #
 # Uses `bun -e` for JSON parsing instead of jq (project convention).
 
@@ -30,14 +34,9 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Cascading bridge lookup: installed bin → monorepo source → skip
-run_bridge() {
-  if command -v luca-bridge &>/dev/null; then
-    luca-bridge "$@"
-  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
-    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
-  fi
-}
+# Source shared hook library
+HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
 # Read stdin JSON (may be empty for some platforms)
 INPUT=$(cat || true)
@@ -60,7 +59,7 @@ END_REASON=$(printf '%s' "$INPUT" | bun -e "
 
 # ─── SEC-02: Sanitize END_REASON ───────────────────────────────────────
 # Allow only alphanumeric, spaces, hyphens, underscores, and periods.
-# Prevents markdown injection into WORKING.md.
+# Prevents injection into event payloads.
 END_REASON=$(printf '%s' "$END_REASON" | tr -cd '[:alnum:] _.-')
 # Truncate to 100 characters to prevent absurdly long reason strings.
 END_REASON="${END_REASON:0:100}"
@@ -70,55 +69,9 @@ END_REASON="${END_REASON:0:100}"
 rm -f "$PROJECT_DIR/.claude/.session-lock"
 
 # Emit session.end event to SpacetimeDB (fire-and-forget via bridge)
-# Read session_id from state.json if available
-SESSION_ID=""
-if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
-  SESSION_ID=$(bun -e "
-    try {
-      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
-      process.stdout.write(s.context?.session_id || '');
-    } catch { process.stdout.write(''); }
-  " 2>/dev/null || echo "")
-fi
+SESSION_ID=$(read_session_id)
 if [ -n "$SESSION_ID" ]; then
   run_bridge emit-event --type=session.end --session="$SESSION_ID" --data="{\"reason\":\"$END_REASON\"}" &>/dev/null &
 fi
-
-WORKING_MD="$PROJECT_DIR/.planning/WORKING.md"
-
-# Exit if WORKING.md doesn't exist
-if [ ! -f "$WORKING_MD" ]; then
-  exit 0
-fi
-
-# Exit if WORKING.md is empty
-if [ ! -s "$WORKING_MD" ]; then
-  exit 0
-fi
-
-# Get current timestamp
-TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-
-# Append session-end footer
-# Check if file already has a session-end marker to avoid duplicates
-if grep -q "^---$" "$WORKING_MD" && grep -q "Session ended:" "$WORKING_MD"; then
-  # Already has a session-end marker — update it using Bun APIs
-  HOOK_WMD="$WORKING_MD" HOOK_TS="$TIMESTAMP" HOOK_REASON="$END_REASON" bun -e "
-    const path = process.env.HOOK_WMD;
-    const ts = process.env.HOOK_TS;
-    const reason = process.env.HOOK_REASON;
-    let content = await Bun.file(path).text();
-    content = content.replace(
-      /\*Session ended:.*\*/,
-      '*Session ended: ' + ts + ' (reason: ' + reason + ')*'
-    );
-    await Bun.write(path, content);
-  "
-else
-  # No session-end marker — append one
-  printf '\n\n---\n*Session ended: %s (reason: %s)*\n' "$TIMESTAMP" "$END_REASON" >> "$WORKING_MD"
-fi
-
-# Legacy /api/events endpoint removed — SpacetimeDB reducer call above handles emission
 
 exit 0

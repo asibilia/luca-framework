@@ -93,7 +93,7 @@ sequenceDiagram
     rect rgb(230, 240, 255)
         Note over C: Cognitive Pre-Flight
         S->>C: Load context
-        C->>C: Read BRAIN.md, MEMORY.md
+        C->>C: Read MuninnDB brain tree, MuninnDB engrams
         C->>C: Classify complexity
         C-->>S: MODERATE - 3 files, clear scope
     end
@@ -101,14 +101,14 @@ sequenceDiagram
     S->>E: Execute with quick plan
     E->>E: Create inline plan
     E->>E: Execute tasks
-    E->>E: Log to WORKING.md
+    E->>E: Log to MuninnDB session context
     E-->>S: Execution complete
 
     Note over S: Verification ALWAYS runs
     S->>S: Verify (EXISTS, SUBSTANTIVE, WIRED)
 
     S->>L: Capture learnings
-    L-->>S: MEMORY.md updated
+    L-->>S: MuninnDB engrams updated
 
     rect rgb(230, 255, 230)
         Note over S,G: Step 5: Commit & PR
@@ -202,8 +202,8 @@ sequenceDiagram
 
     U->>S: Answers questions
     S->>C: Create initial context
-    C->>C: Generate BRAIN.md
-    C->>C: Initialize MEMORY.md
+    C->>C: Generate MuninnDB brain tree
+    C->>C: Initialize MuninnDB engrams
     S->>P: Spawn researchers
     P->>P: Research ecosystem
     P->>P: Synthesize findings
@@ -215,8 +215,8 @@ sequenceDiagram
 
 ```
 .planning/
-├── BRAIN.md          # Project identity, stack, conventions
-├── MEMORY.md         # Empty, ready for learnings
+├── MuninnDB brain tree          # Project identity, stack, conventions
+├── MuninnDB engrams         # Empty, ready for learnings
 ├── STATE.md          # Initial session state
 ├── config.json       # Default workflow preferences
 ├── PROJECT.md        # Vision & scope
@@ -244,8 +244,8 @@ sequenceDiagram
     rect rgb(230, 240, 255)
         Note over C: Cognitive Pre-Flight
         S->>C: Load context
-        C->>C: Read BRAIN.md
-        C->>C: Query MEMORY.md
+        C->>C: Read MuninnDB brain tree
+        C->>C: Query MuninnDB engrams
         C->>C: Check STATE.md
         C-->>S: Cognitive report
     end
@@ -329,7 +329,7 @@ sequenceDiagram
     L->>L: Extract patterns
     L->>L: Note decisions
     L->>L: Record pitfalls
-    L-->>S: Updated MEMORY.md
+    L-->>S: Updated MuninnDB engrams
     S->>U: Phase complete!
 ```
 
@@ -405,8 +405,8 @@ sequenceDiagram
     rect rgb(230, 240, 255)
         Note over C: Cognitive Pre-Flight
         R->>C: Analyze request
-        C->>C: Load BRAIN.md (conventions)
-        C->>C: Query MEMORY.md (similar tasks?)
+        C->>C: Load MuninnDB brain tree (conventions)
+        C->>C: Query MuninnDB engrams (similar tasks?)
         C->>C: Assess complexity
         C-->>R: TRIVIAL - single file, clear scope
     end
@@ -422,7 +422,7 @@ sequenceDiagram
 
     R->>L: Capture learning
     L->>L: "Loading spinners go in..."
-    L-->>R: MEMORY.md updated
+    L-->>R: MuninnDB engrams updated
 
     rect rgb(230, 255, 230)
         Note over R,G: Step 5: Commit & PR Offer
@@ -494,7 +494,7 @@ sequenceDiagram
     rect rgb(230, 240, 255)
         Note over C: Cognitive Pre-Flight
         S->>C: Load context
-        C->>C: Check MEMORY.md
+        C->>C: Check MuninnDB engrams
         C-->>S: "Similar issue in auth module 2 weeks ago"
         C->>C: Intuition check
         C-->>S: "⚠️ Token refresh is complex"
@@ -522,7 +522,7 @@ sequenceDiagram
 
     S->>L: Capture debugging learnings
     L->>L: "Token refresh pitfall: ..."
-    L-->>S: MEMORY.md updated
+    L-->>S: MuninnDB engrams updated
 
     S->>U: ✅ Fixed! Root cause was [X]<br/>Added to memory for future reference
 ```
@@ -551,9 +551,9 @@ sequenceDiagram
 
     rect rgb(230, 240, 255)
         Note over C: Context Loading
-        C->>C: Read BRAIN.md (project identity)
+        C->>C: Read MuninnDB brain tree (project identity)
         C->>C: Read STATE.md (where we left off)
-        C->>C: Read MEMORY.md (learnings so far)
+        C->>C: Read MuninnDB engrams (learnings so far)
         C->>C: Read ROADMAP.md (overall progress)
         C->>C: Check PLAN-*.md (current tasks)
     end
@@ -572,11 +572,11 @@ sequenceDiagram
 ```mermaid
 flowchart TB
     subgraph Workflow["During Workflow"]
-        WORKING["WORKING.md<br/>━━━━━━━━━━━<br/>• Current task context<br/>• Immediate findings<br/>• Hypotheses<br/>• In-progress notes"]
+        WORKING["MuninnDB session context<br/>━━━━━━━━━━━<br/>• Current task context<br/>• Immediate findings<br/>• Hypotheses<br/>• In-progress notes"]
     end
 
     subgraph Persistent["Across Sessions"]
-        MEMORY["MEMORY.md<br/>━━━━━━━━━━━<br/>• Validated patterns<br/>• Confirmed decisions<br/>• Proven pitfalls<br/>• User preferences"]
+        MEMORY["MuninnDB engrams<br/>━━━━━━━━━━━<br/>• Validated patterns<br/>• Confirmed decisions<br/>• Proven pitfalls<br/>• User preferences"]
     end
 
     subgraph Flow["Memory Flow"]
@@ -586,7 +586,7 @@ flowchart TB
     end
 ```
 
-### Working Memory (`WORKING.md`)
+### Working Memory (`MuninnDB session context`)
 
 **Purpose**: Active context during a workflow run. Always loaded, never pollutes long-term memory.
 
@@ -619,7 +619,7 @@ flowchart TB
 
 **Lifecycle**: Created at workflow start → Used throughout → Cleared on completion
 
-### Long-Term Memory (`MEMORY.md`)
+### Long-Term Memory (`MuninnDB engrams`)
 
 **Purpose**: Persistent learnings that compound over time. Selectively recalled when relevant.
 
@@ -683,20 +683,20 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph Session1["Session 1: Auth Feature"]
-        S1_WORKING["WORKING.md<br/>• Task context<br/>• Finding: race condition"]
+        S1_WORKING["MuninnDB session context<br/>• Task context<br/>• Finding: race condition"]
         S1_VERIFY["Verification passes"]
         S1_EXTRACT["Extract learnings"]
-        S1_CLEAR["Clear WORKING.md"]
+        S1_CLEAR["Clear MuninnDB session context"]
     end
 
     subgraph Between["Between Sessions"]
-        MEMORY["MEMORY.md<br/>+ New pitfall: race condition"]
+        MEMORY["MuninnDB engrams<br/>+ New pitfall: race condition"]
     end
 
     subgraph Session2["Session 2: New API"]
         S2_START["Start new workflow"]
         S2_RECALL["Selective recall:<br/>'auth' patterns relevant"]
-        S2_WORKING["WORKING.md<br/>• New task context<br/>• Recalled: watch for race conditions"]
+        S2_WORKING["MuninnDB session context<br/>• New task context<br/>• Recalled: watch for race conditions"]
     end
 
     S1_WORKING --> S1_VERIFY --> S1_EXTRACT
@@ -709,12 +709,12 @@ flowchart TB
 
 ### Why Two-Tier Memory?
 
-| Problem                                          | Solution                                         |
-| ------------------------------------------------ | ------------------------------------------------ |
-| Context gets polluted with task-specific details | WORKING.md keeps transient info separate         |
-| Valuable learnings get lost                      | MEMORY.md persists validated insights            |
-| Irrelevant memories loaded unnecessarily         | Selective recall based on current task           |
-| Hard to know what's validated vs in-progress     | Clear separation: WORKING = now, MEMORY = proven |
+| Problem                                          | Solution                                               |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| Context gets polluted with task-specific details | MuninnDB session context keeps transient info separate |
+| Valuable learnings get lost                      | MuninnDB engrams persists validated insights           |
+| Irrelevant memories loaded unnecessarily         | Selective recall based on current task                 |
+| Hard to know what's validated vs in-progress     | Clear separation: WORKING = now, MEMORY = proven       |
 
 ---
 
@@ -729,9 +729,9 @@ flowchart TB
 │     └─ /lu or /lu-* command                          │
 │                                                             │
 │  2. COGNITIVE PRE-FLIGHT                                    │
-│     ├─ Load BRAIN.md (who are we?)                          │
-│     ├─ Selective recall from MEMORY.md (relevant only)      │
-│     ├─ Initialize WORKING.md (session context)              │
+│     ├─ Load MuninnDB brain tree (who are we?)                          │
+│     ├─ Selective recall from MuninnDB engrams (relevant only)      │
+│     ├─ Initialize MuninnDB session context (session context)              │
 │     ├─ Check STATE.md (where are we?)                       │
 │     ├─ Run intuition checks (any risks?)                    │
 │     └─ Classify complexity (trivial/moderate/complex)       │
@@ -747,14 +747,14 @@ flowchart TB
 │     ├─ Goal-backward analysis                               │
 │     ├─ Derive artifacts from goals                          │
 │     ├─ Create task breakdown                                │
-│     ├─ Update WORKING.md with context                       │
+│     ├─ Update MuninnDB session context with context                       │
 │     └─ Validate plans                                       │
 │                                                             │
 │  5. EXECUTION                                               │
 │     ├─ For each task:                                       │
 │     │   ├─ Handle checkpoints                               │
 │     │   ├─ Execute actions                                  │
-│     │   ├─ Log findings to WORKING.md                       │
+│     │   ├─ Log findings to MuninnDB session context                       │
 │     │   ├─ Handle deviations                                │
 │     │   └─ Atomic commit                                    │
 │     └─ Generate SUMMARY.md                                  │
@@ -766,12 +766,12 @@ flowchart TB
 │     └─ Generate VERIFICATION.md                             │
 │                                                             │
 │  7. LEARNING CAPTURE                                        │
-│     ├─ Review WORKING.md for validated insights             │
+│     ├─ Review MuninnDB session context for validated insights             │
 │     ├─ Extract patterns that worked                         │
 │     ├─ Note decisions made                                  │
 │     ├─ Record pitfalls to avoid                             │
-│     ├─ Write CURATED learnings to MEMORY.md                 │
-│     └─ Clear WORKING.md                                     │
+│     ├─ Write CURATED learnings to MuninnDB engrams                 │
+│     └─ Clear MuninnDB session context                                     │
 │                                                             │
 │  8. READY FOR NEXT REQUEST                                  │
 │     ├─ Long-term memory preserved                           │
@@ -784,16 +784,16 @@ flowchart TB
 
 ## Key Differentiators
 
-| Aspect               | Without Luca         | With Luca                          |
-| -------------------- | ------------------------------ | -------------------------------------------- |
-| **Git Workflow**     | Manual branching, commits, PRs | **Automated Jira → Issue → Branch → PR**     |
-| **Jira Integration** | Copy-paste ticket details      | **Single command with ticket ID**            |
-| **Context**          | Lost between sessions          | BRAIN.md + MEMORY.md persist                 |
-| **Working Memory**   | Pollutes everything            | WORKING.md keeps session separate            |
-| **Long-Term Memory** | Non-existent                   | MEMORY.md with curated learnings             |
-| **Memory Recall**    | All or nothing                 | Selective recall based on relevance          |
-| **Routing**          | User picks command             | Auto-routes by complexity                    |
-| **Planning**         | Always full overhead           | Trivial tasks skip planning                  |
-| **Verification**     | Sometimes skipped              | **ALWAYS runs** at all complexity levels     |
-| **Quality**          | Degrades in long sessions      | Context rot prevention                       |
-| **PR Creation**      | Manual after coding            | **Offered automatically after verification** |
+| Aspect               | Without Luca                   | With Luca                                       |
+| -------------------- | ------------------------------ | ----------------------------------------------- |
+| **Git Workflow**     | Manual branching, commits, PRs | **Automated Jira → Issue → Branch → PR**        |
+| **Jira Integration** | Copy-paste ticket details      | **Single command with ticket ID**               |
+| **Context**          | Lost between sessions          | MuninnDB brain tree + MuninnDB engrams persist  |
+| **Working Memory**   | Pollutes everything            | MuninnDB session context keeps session separate |
+| **Long-Term Memory** | Non-existent                   | MuninnDB engrams with curated learnings         |
+| **Memory Recall**    | All or nothing                 | Selective recall based on relevance             |
+| **Routing**          | User picks command             | Auto-routes by complexity                       |
+| **Planning**         | Always full overhead           | Trivial tasks skip planning                     |
+| **Verification**     | Sometimes skipped              | **ALWAYS runs** at all complexity levels        |
+| **Quality**          | Degrades in long sessions      | Context rot prevention                          |
+| **PR Creation**      | Manual after coding            | **Offered automatically after verification**    |

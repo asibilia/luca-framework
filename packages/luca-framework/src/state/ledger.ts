@@ -8,11 +8,12 @@
  *
  * @module luca-state/ledger
  */
+import orderBy from "lodash/orderBy";
 import { z } from "zod";
 // node:fs/promises retained: Bun.write() does not support append mode.
 // appendFile is the correct API for the append-only ledger pattern.
 import { appendFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname } from "pathe";
 
 import { transitionRecordSchema } from "./types";
 import type { TransitionRecord } from "./types";
@@ -388,10 +389,8 @@ export async function readLedger(
     const rows = await queryTable<LedgerEntry>(sql);
     if (rows.length > 0) {
       // Sort client-side (ORDER BY not supported in SpacetimeDB v2 SQL)
-      rows.sort(
-        (a, b) => Number(a.sequence_number) - Number(b.sequence_number),
-      );
-      let result = rows;
+      const sorted = orderBy(rows, [(r) => Number(r.sequence_number)], ["asc"]);
+      let result = sorted;
       // Apply tail filter (last N entries)
       if (validatedFilters.tail !== undefined && validatedFilters.tail > 0) {
         result = result.slice(-validatedFilters.tail);

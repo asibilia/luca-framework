@@ -23,7 +23,6 @@ const luRepoArchitectConfig: AgentConfig = {
     background_spawnable: false,
     purpose: "reviewer",
     allowed_contexts: ["review", "audit", "assessment"],
-    model_tier: "balanced",
   },
   sections: [
     {

@@ -4,7 +4,6 @@
 > Source: src/rules/ → compiled via `bun run build:all`
 
 ---
-
 description: Atlassian MCP integration patterns - read-only Jira policy and GitHub workflow
 ---
 
@@ -181,11 +180,10 @@ When reviewing code that interacts with Jira:
 ---
 
 ---
-
-description: "Complexity gating: which workflow steps activate at which complexity level"
+description: "Complexity gating: model routing and iteration scaling per complexity level"
 ---
 
-# Complexity gating: which workflow steps activate at which complexity level
+# Complexity gating: model routing and iteration scaling per complexity level
 
 ## rule
 
@@ -203,52 +201,63 @@ Luca classifies task complexity into five levels, grouped into three behavioral 
 | COMPLEX | Thorough | 5-10 | Cross-cutting | High |
 | CRITICAL | Thorough | 10+ / architectural | System-wide | Very High |
 
-## Always-On Steps (Cannot Be Gated)
+## Always-On Steps
 
-These steps run regardless of complexity:
+ALL workflow steps run at every complexity level. Complexity no longer gates step activation -- it controls **model tier** (via the routing table below) and **iteration counts**. Steps are never skipped based on complexity alone.
 
 1. Model profile resolution
-2. Phase/environment validation
-3. Plan discovery and wave grouping
-4. Core execution (lu-executor)
-5. Result aggregation
-6. Verification harness (scope scales, always runs)
-7. lu-verifier (mode scales, always invoked)
-8. State/roadmap/requirements updates
-9. Commit
+2. Cognitive pre-flight
+3. Phase/environment validation
+4. Research
+5. Discussion
+6. Plan discovery and wave grouping
+7. Core execution (lu-executor)
+8. Code review (all reviewers)
+9. UAT
+10. Result aggregation
+11. Verification harness
+12. lu-verifier
+13. Learning capture
+14. State/roadmap/requirements updates
+15. Commit
 
-## Complexity Matrix
+## Model Routing Table
 
-| Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|------|---------|--------|----------|---------|----------|
+Complexity determines which model tier each agent category receives. The canonical routing table lives in \`src/complexity/__helpers/model-routing.ts\` (\`MODEL_ROUTING_TABLE\`). This summary shows the category-level defaults:
+
+| Agent Category | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|----------------|---------|--------|----------|---------|----------|
+| Classifiers (lu-cognition, lu-learner) | haiku | haiku | haiku | haiku | sonnet |
+| Routers (lu-router, lu-router-fast) | haiku | haiku | sonnet | sonnet | sonnet |
+| Orchestrators (lu-executor, lu-planner) | haiku | sonnet | sonnet | opus | opus |
+| Deep analysis (lu-verifier, lu-debugger) | haiku | sonnet | opus | opus | opus |
+| Reviewers (dx-advocate, code-simplifier) | haiku | sonnet | opus | opus | opus |
+
+Model tiers map to concrete models: **haiku** (fast/lightweight), **sonnet** (balanced/standard), **opus** (capable/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`.
+
+## Iteration Count Scaling
+
+These parameters still scale with complexity:
+
+| Parameter | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|-----------|---------|--------|----------|---------|----------|
 | Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
-| Harness fix iterations | 1 | 2 | 3 | 3 | 5 |
-| Verify fix iterations | 0 | 1 | 1 | 2 | 3 |
+| Plan verification iterations | 1 | 1 | 1 | 2 | 3 |
+| Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
+| Verify fix iterations | 1 | 1 | 1 | 1 | 2 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| Code review: dx-advocate | Skip | Skip | Run | Run | Run |
-| Code review: code-simplifier | Skip | Skip | Run | Run | Run |
-| Code review: code-architect | Skip | Skip | Skip | Run | Run |
-| Code review: tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| Code review: security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
 
 ## How to Apply
 
-**Before spawning optional sub-agents**, check the current task complexity:
+**Before spawning sub-agents**, resolve their model tier from the routing table:
 
 1. Read complexity from STATE.md \`Task Complexity:\` field
 2. If not set, read from lu-router's classification output
-3. Look up the step in the matrix above
-4. If the step says "Skip" for the current level, skip it
-5. If the step says "Optional", skip unless the user or config explicitly enables it
-6. If the step says "Run" or "Required", always execute
+3. Call \`resolveModelForAgent(agentName, complexity)\` to get the model tier
+4. All steps run at every complexity level -- only the model tier varies
+5. Flag-based overrides (\`--skip-review\`, \`--skip-uat\`, \`--skip-research\`) still allow explicit skipping
 
 **Complexity is set by:**
-
 - lu-router (automatic inference)
 - \`--complexity=<level>\` flag (manual override)
 - Persisted in STATE.md for session continuity
@@ -266,16 +275,14 @@ Config booleans and per-invocation flags take precedence over complexity gating.
 ---
 
 ---
-
-description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness
+description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
 ---
 
-# Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness
+# Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
 
 ## rule
 
 - **Required Rule Structure:**
-
   ```markdown
   ---
   description: Clear, one-line description of what the rule enforces
@@ -295,7 +302,6 @@ description: Guidelines for creating and maintaining Cursor rules to ensure cons
 
 - **Code Examples:**
   - Use language-specific code blocks
-
   ```typescript
   // ✅ DO: Show good examples
   const goodExample = true;
@@ -327,7 +333,6 @@ description: Guidelines for creating and maintaining Cursor rules to ensure cons
 ---
 
 ---
-
 description: "Domain architecture: archetypes, dependency tiers, and structural invariants"
 ---
 
@@ -367,10 +372,10 @@ Internal logic modules consumed by entities and other core modules.
 
 | Domain | Purpose |
 |--------|---------|
-| memory | Working memory, compression, recall, bridge |
 | planner | Cost model, scheduler, scoring, todo parsing |
 | iteration | Budget, checkpoint, classifier, convergence |
 | context | Context tier resolution, assembler, envelope |
+| observability | Agent scorecard engine, telemetry metrics |
 | shared | Cross-cutting utilities (format, validation, CLI) |
 
 **Structure:**
@@ -410,7 +415,7 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1, never
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, memory | Import T0 only |
+| T1 Core | context, planner, harness, iteration, observability | Import T0 only |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
 | T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
 
@@ -447,7 +452,6 @@ The only `.ts` file allowed at the domain root is `index.ts`. All other code liv
 ---
 
 ---
-
 description: Enforce kebab-case file naming conventions
 ---
 
@@ -457,7 +461,6 @@ description: Enforce kebab-case file naming conventions
 
 - **File Names**: ALWAYS use kebab-case (lowercase with dashes) for all file names
   - ✅ **Correct Examples:**
-
     ```
     user-profile.tsx
     auth-utils.ts
@@ -466,9 +469,7 @@ description: Enforce kebab-case file naming conventions
     task-archive.ts
     package-utils.ts
     ```
-
   - ❌ **Avoid These:**
-
     ```
     userProfile.tsx      (camelCase)
     AuthUtils.ts        (PascalCase)
@@ -480,16 +481,13 @@ description: Enforce kebab-case file naming conventions
 
 - **Directory Names**: Use kebab-case for all directory names
   - ✅ **Correct Examples:**
-
     ```
     components/auth-wizard/
     utils/file-helpers/
     tests/unit/
     packages-dev/task-archive/
     ```
-
   - ❌ **Avoid These:**
-
     ```
     components/AuthWizard/     (PascalCase)
     utils/fileHelpers/        (camelCase)
@@ -526,7 +524,6 @@ description: Enforce kebab-case file naming conventions
 ---
 
 ---
-
 description: "Harness/Hook verification boundary: when full harness runs vs lightweight hooks"
 ---
 
@@ -575,7 +572,6 @@ The harness is thorough (runs all 4 check types), produces structured output, an
 ---
 
 ---
-
 description: "Hook/Skill boundary: when to use deterministic hooks vs interactive skills"
 ---
 
@@ -637,7 +633,6 @@ description: "Hook/Skill boundary: when to use deterministic hooks vs interactiv
 ---
 
 ---
-
 description: Mandatory documentation requirements for all new functionality and modifications
 ---
 
@@ -800,7 +795,6 @@ Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conv
 ---
 
 ---
-
 description: "Module boundary: import direction rules and entity isolation"
 ---
 
@@ -814,7 +808,7 @@ description: "Module boundary: import direction rules and entity isolation"
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, memory  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
@@ -830,8 +824,8 @@ import { COMPLEXITY_ORDER } from "~/complexity";
 // ✅ T2 (agents) importing T1 (context)
 import type { ContextConfig } from "~/context";
 
-// ❌ T0 (shared) importing T1 (memory) — upward dependency
-import { compress } from "~/memory";
+// ❌ T0 (shared) importing T1 (harness) — upward dependency
+import { runHarness } from "~/harness";
 
 // ❌ T1 (harness) importing T2 (agents) — upward dependency
 import { agentRegistry } from "~/agents";
@@ -887,8 +881,10 @@ The following cross-tier imports are known and accepted:
 
 | Source | Target | Reason |
 |--------|--------|--------|
-| `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas |
-| `harness/parsers/index.ts` | `~/harness/__schemas/harness.schemas` | Parser registry needs OutputParser type from own schemas |
+| `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas (T0 -> T2) |
+
+**Removed exceptions (resolved):**
+- `harness/parsers/parser-registry.ts` -> `~/harness/__schemas/harness.schemas` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
 
 New exceptions must be documented here and in this rule file before being committed.
 
@@ -905,7 +901,6 @@ Every domain's `index.ts` is a pure barrel — it contains ONLY re-export statem
 ---
 
 ---
-
 description: apply when interacting with PostHog/analytics tasks
 ---
 
@@ -936,11 +931,10 @@ Before creating any new event or property names, consult with the developer for 
 ---
 
 ---
-
-description: Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices
+description: Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
 ---
 
-# Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices
+# Guidelines for continuously improving Cursor rules based on emerging code patterns and best practices.
 
 ## rule
 
@@ -972,7 +966,6 @@ description: Guidelines for continuously improving Cursor rules based on emergin
     - Implementation details have changed
 
 - **Example Pattern Recognition:**
-
   ```typescript
   // If you see repeated patterns like:
   const data = await prisma.user.findMany({
@@ -1015,7 +1008,6 @@ Follow [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc) for proper rule fo
 ---
 
 ---
-
 description: "State machine bridge CLI reference: how to read/write state via the typed bridge layer"
 ---
 
@@ -1031,22 +1023,40 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 
 ## Bridge CLI Commands
 
-### Read Commands
+### Read Commands (6)
 
 | Command | Description | Output |
 |---------|-------------|--------|
-| \`bun run packages/luca-framework/src/state/bridge.ts read-status\` | Read full state | JSON with phase, plan, status, complexity |
-| \`bun run packages/luca-framework/src/state/bridge.ts read-complexity\` | Read complexity level | JSON with complexity field |
-| \`bun run packages/luca-framework/src/state/bridge.ts ensure-init\` | Initialize state if not present | Creates state machine + STATE.md |
+| \`read-status\` | Read comprehensive workflow status | JSON with state, phase, complexity, oversight |
+| \`read-complexity\` | Read current complexity level | JSON with complexity field |
+| \`read-oversight\` | Read current oversight level | JSON with oversight field |
+| \`read-phase\` | Read current phase info | JSON with phase, milestone, plan IDs |
+| \`read-field --field=path\` | Read an arbitrary context field | JSON with field path and value |
+| \`read-ledger [--tail=N] [--session=id]\` | Read session ledger entries | JSON array of ledger entries |
 
-### Transition Commands
+### Write Commands (2)
 
 | Command | Description |
 |---------|-------------|
-| \`bun run packages/luca-framework/src/state/bridge.ts transition set-complexity --complexity=MODERATE\` | Set task complexity |
-| \`bun run packages/luca-framework/src/state/bridge.ts transition complete-phase\` | Mark current phase complete |
-| \`bun run packages/luca-framework/src/state/bridge.ts transition start-phase --phase=N\` | Start a new phase |
-| \`bun run packages/luca-framework/src/state/bridge.ts transition start-plan --plan=N\` | Start a new plan |
+| \`set-field --field=name --value=json\` | Set an allowlisted context field and persist |
+| \`transition --event=TYPE [--data=json]\` | Send a workflow event and persist state |
+
+### Lifecycle Commands (5)
+
+| Command | Description |
+|---------|-------------|
+| \`ensure-init [--force]\` | Initialize state if not present |
+| \`snapshot\` | Generate STATE.md from current state |
+| \`gate-check --gate=name\` | Check if a named gate is enabled |
+| \`suspend --phase=N [--reason=str]\` | Create checkpoint and suspend phase |
+| \`resume-phase --phase=N\` | Load checkpoint and resume phase |
+
+### Observability Commands (2)
+
+| Command | Description |
+|---------|-------------|
+| \`emit-event --type=eventType [--session=id]\` | Emit observer event to SpacetimeDB |
+| \`emit-context-snapshot --session=id [--percent=N]\` | Emit context-window snapshot |
 
 ## Usage Patterns
 
@@ -1055,26 +1065,18 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 Always use the bridge as primary, with STATE.md fallback:
 
 \`\`\`bash
-
 # Primary: Read state from state machine (typed, validated)
-
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-
 # Fallback: Read STATE.md directly (backward compatibility)
-
 STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
 
 ### Reading Complexity
 
 \`\`\`bash
-
 # Primary: Read complexity from bridge
-
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
-
 # Fallback: grep STATE.md directly
-
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 fi
@@ -1083,25 +1085,17 @@ fi
 ### Writing State (Transitions)
 
 \`\`\`bash
-
 # Primary: Transition via bridge (updates state machine + STATE.md)
-
 bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
-
 # STATE.md is also updated directly for backward compatibility
-
 \`\`\`
 
 ### Initializing State
 
 \`\`\`bash
-
 # Primary: Initialize via bridge
-
 bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
-
 # Fallback: Create STATE.md directly
-
 cat > .planning/STATE.md << 'EOF'
 ...
 EOF
@@ -1133,7 +1127,6 @@ This ensures the workflow never breaks due to bridge issues.
 ---
 
 ---
-
 description: Luca workflow system for spec-driven development with cognitive memory
 ---
 
@@ -1151,7 +1144,7 @@ Luca is a framework for agentic development, combining spec-driven development w
 | ------------------- | ---------------------------------------------------- |
 | Entry Point         | Unified `/lu` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
-| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Memory              | MuninnDB (semantic graph memory)                     |
 | Verification        | Always runs (all complexity levels)                  |
 | Learning            | Pattern/decision/pitfall capture                     |
 | Pre-Flight          | Cognitive context loading                            |
@@ -1193,11 +1186,11 @@ Plan → Execute → **Verify** → **Learn** → Repeat
 
 ## two-tier_memory_system
 
-## Two-Tier Memory System (NEW)
+## MuninnDB Memory System
 
-### BRAIN.md — Project Identity
+### Brain Tree — Project Identity
 
-Captures project personality, loaded at session start:
+Stored as a MuninnDB tree (`brain:project-identity`), recalled at session start:
 
 - Project identity (name, domain, purpose)
 - Stack (languages, frameworks, databases)
@@ -1205,18 +1198,18 @@ Captures project personality, loaded at session start:
 - Code conventions
 - Development preferences
 
-### MEMORY.md — Long-Term Learning
+### Engrams — Long-Term Learning
 
-Persistent across sessions, selectively recalled:
+Persistent across sessions in MuninnDB, semantically recalled:
 
-- **Patterns**: Validated approaches that work
-- **Decisions**: Past choices with rationale
-- **Pitfalls**: Known issues to avoid
-- **Preferences**: User/project preferences
+- **Patterns** (`pattern:*`): Validated approaches that work
+- **Decisions** (`decision:*`): Past choices with rationale
+- **Pitfalls** (`pitfall:*`): Known issues to avoid
+- **Preferences** (`preference:*`): User/project preferences
 
-### WORKING.md — Session Memory
+### Session Context — Active Memory
 
-Active during workflow, cleared after learning extraction:
+MuninnDB session engrams (`session:*`), scoped to current workflow:
 
 - Current task context
 - Immediate findings
@@ -1225,19 +1218,18 @@ Active during workflow, cleared after learning extraction:
 
 ## cognitive_pre_flight
 
-## Cognitive Pre-Flight (NEW)
+## Cognitive Pre-Flight
 
 Before major operations, Luca runs cognitive pre-flight:
 
-1. **Load BRAIN.md** — Project conventions
-2. **Selective recall from MEMORY.md** — Relevant patterns, decisions, pitfalls
-3. **Initialize WORKING.md** — Session context
+1. **Recall brain tree from MuninnDB** — Project conventions
+2. **Semantic recall from MuninnDB** — Relevant patterns, decisions, pitfalls
+3. **Initialize MuninnDB session context** — Session engrams
 4. **Generate intuition flags** — RISK, CAUTION, OPPORTUNITY, UNKNOWN
 
 ---
 
 ---
-
 description: API payloads must use snake_case for consistency with backend conventions
 ---
 
@@ -1588,7 +1580,6 @@ Internal-only schemas can use camelCase, but snake_case is preferred for consist
 ---
 
 ---
-
 description: Use Bun package manager and runtime over npm or yarn where applicable
 ---
 
@@ -1757,6 +1748,19 @@ When exceptions are necessary, document why:
 npm run legacy-script
 ```
 
+## **Bun APIs**
+
+Prefer Bun built-in APIs over third-party equivalents:
+
+- \`Bun.serve()\` supports WebSockets, HTTPS, and routes. Don't use \`express\`.
+- \`bun:sqlite\` for SQLite. Don't use \`better-sqlite3\`.
+- \`Bun.redis\` for Redis. Don't use \`ioredis\`.
+- \`Bun.sql\` for Postgres. Don't use \`pg\` or \`postgres.js\`.
+- \`WebSocket\` is built-in. Don't use \`ws\`.
+- Prefer \`Bun.file\` over \`node:fs\`'s readFile/writeFile.
+- \`Bun.$\\\`ls\\\`\` instead of execa.
+- Bun automatically loads .env, so don't use dotenv.
+
 ## **Migration Guidelines**
 
 When updating existing scripts or documentation:
@@ -1769,7 +1773,6 @@ When updating existing scripts or documentation:
 ---
 
 ---
-
 description: Functional API Reuse & Architecture Rule
 ---
 
@@ -2027,7 +2030,6 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
 ---
 
 ---
-
 description: Standards for import statements and module organization
 ---
 
@@ -2233,11 +2235,10 @@ Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conv
 ---
 
 ---
-
-description: Generic rule description
+description: Use lodash functions over built-in JavaScript equivalents for consistency and safety
 ---
 
-# Generic rule description
+# Use lodash functions over built-in JavaScript equivalents for consistency and safety
 
 ## rule
 
@@ -2434,7 +2435,6 @@ Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional program
 ---
 
 ---
-
 description: Prohibit class usage in favor of functional programming patterns
 ---
 
@@ -2617,7 +2617,6 @@ This rule is enforced through:
 ---
 
 ---
-
 description: Enforce Zod schema-first parsing patterns over manual destructuring and default values
 ---
 
@@ -3074,120 +3073,3 @@ const { prop = 'value' } = rawProps
 ```
 
 Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization and [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.
-
----
-
----
-
-description: Use Bun instead of Node.js, npm, pnpm, or vite
----
-
-# Use Bun instead of Node.js, npm, pnpm, or vite
-
-## rule
-
-Default to using Bun instead of Node.js.
-
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
-
-## APIs
-
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
-
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-
-// import .css files directly and it works
-import './index.css';
-
-import { createRoot } from "react-dom/client";
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.

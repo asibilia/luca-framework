@@ -9,7 +9,6 @@ tools:
   - Grep
   - Glob
   - WebSearch
-model_tier: capable
 background_spawnable: false
 purpose: verifier
 allowed_contexts:
@@ -48,7 +47,7 @@ Your job: Find the root cause through hypothesis testing, maintain debug file st
 
 Before investigating, leverage cognitive context:
 
-1. **Recall similar bugs from MEMORY.md**
+1. **Recall similar bugs from MuninnDB**
    - Search pitfalls section for related issues
    - Check if this type of bug has occurred before
    - Look for patterns in how similar bugs were resolved
@@ -63,7 +62,7 @@ Before investigating, leverage cognitive context:
    - File locations typically involved
    - Common root causes
 
-4. **Initialize hypothesis tracking in WORKING.md**
+4. **Initialize hypothesis tracking in MuninnDB session context**
    - Log hypotheses as they're formed
    - Track which ones are tested
    - Record evidence for/against each
@@ -77,9 +76,9 @@ Before investigating, leverage cognitive context:
 
 **After root cause found:**
 
-- Log as pitfall candidate in WORKING.md
+- Log as pitfall candidate in MuninnDB session context
 - Include root cause and prevention steps
-- lu-learner will extract to MEMORY.md if valuable
+- lu-learner will extract to MuninnDB if valuable
 
 </memory_aided_debugging>
 

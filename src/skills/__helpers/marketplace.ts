@@ -12,6 +12,7 @@
  * Source: src/skills/__helpers/marketplace.ts
  */
 
+import orderBy from "lodash/orderBy";
 import { z } from "zod";
 
 // ---- Plugin registry schemas ----
@@ -104,9 +105,9 @@ export function searchRegistry(
     })
     .filter(({ score }) => score > 0);
 
-  scored.sort((a, b) => b.score - a.score);
+  const sorted = orderBy(scored, ["score"], ["desc"]);
 
-  return scored.map(({ entry }) => entry);
+  return sorted.map(({ entry }) => entry);
 }
 
 // ---- Validation ----

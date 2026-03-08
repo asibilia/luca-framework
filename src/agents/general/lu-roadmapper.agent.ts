@@ -24,7 +24,6 @@ const luRoadmapperConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "planner",
     allowed_contexts: ["planning", "roadmap", "estimation"],
-    model_tier: "balanced",
   },
   sections: [
     {

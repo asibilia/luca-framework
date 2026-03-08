@@ -71,3 +71,42 @@ export function formatSize(chars: number): string {
   if (chars < 1000) return `${chars} chars`;
   return `${(chars / 1000).toFixed(1)}k chars`;
 }
+
+/**
+ * Format a relative timestamp (e.g. "2h ago") from a Unix epoch or Date.
+ *
+ * Accepts epoch seconds, epoch milliseconds, or a Date object.
+ * Returns a human-readable relative time string.
+ *
+ * @param input - Unix epoch (seconds or ms) or Date object
+ * @returns Relative time string or "" if input is falsy
+ */
+export function relativeTime(input: number | Date | undefined | null): string {
+  if (!input) return "";
+
+  let ms: number;
+  if (input instanceof Date) {
+    ms = input.getTime();
+  } else {
+    // Normalize: if value looks like seconds (< 1e12), convert to ms
+    ms = input < 1e12 ? input * 1000 : input;
+  }
+
+  const diffMs = Date.now() - ms;
+  if (diffMs < 0) return "just now";
+
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}

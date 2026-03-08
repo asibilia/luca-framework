@@ -11,7 +11,7 @@ Execute all plans in a phase using wave-based parallel execution, then verify wi
 
 Orchestrator stays lean: discover plans, analyze dependencies, group into waves, spawn subagents, collect results. Each subagent loads the full execute-plan context and handles its own plan.
 
-**Arguments:** `<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory]`
+**Arguments:** `<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory] [--skip-replay]`
 
 ## Sub-agent Delegation Requirements
 
@@ -43,16 +43,16 @@ Each sub-agent receives only the context documents appropriate for its role and 
 | Tier | Documents Loaded |
 |------|-----------------|
 | T0 | Plan content only |
-| T1 | + BRAIN.md summary |
-| T2 | + STATE.md + selective MEMORY.md + WORKING.md |
-| T3 | + full BRAIN.md + full MEMORY.md + agent summaries |
+| T1 | + project identity summary (from MuninnDB brain:*) |
+| T2 | + STATE.md + selective learnings + session context (from MuninnDB) |
+| T3 | + full project identity + full learnings + agent summaries (from MuninnDB) |
 
 **Isolation Modes:**
 | Mode | Restriction | Used By |
 |------|------------|---------|
 | none | Full context per tier | lu-executor, lu-planner, lu-learner |
-| cold | Only git diff + BRAIN.md | dx-advocate, code-simplifier, code-architect |
-| warm | Plans + summaries, NO WORKING.md | lu-verifier |
+| cold | Only git diff + project identity | dx-advocate, code-simplifier, code-architect |
+| warm | Plans + summaries, NO session context | lu-verifier |
 
 **Complexity promotes context:** At MODERATE+, sub-agents may receive one tier higher than their default.
 
@@ -87,15 +87,17 @@ After verification (pass or fail):
 
 First, read the required context:
 
+Use MuninnDB to recall session context and past learnings:
+
+```
+# Recall current session findings
+mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
+
+# Recall relevant patterns and past decisions
+mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and past decisions for this phase")
+```
+
 ```bash
-# Primary: Read working memory from memory bridge (structured JSON)
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "No working memory")
-# Primary: Read memory summary from memory bridge (compact index)
-MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory 2>/dev/null || echo '{"entries":[],"entries_count":0}')
-# Fallback: Read MEMORY.md directly
-MEMORY_CONTENT=$(cat .planning/MEMORY.md 2>/dev/null || echo "No memory file")
 VERIFICATION_RESULT="[from verifier return value]"
 ```
 
@@ -126,12 +128,12 @@ Task(
 
 <output_requirements>
 - Extract ONLY validated learnings (verified by outcome)
-- Write curated insights to MEMORY.md
-- Clear WORKING.md after extraction
+- Write curated insights to MuninnDB via muninn_remember
+- Clear session context via muninn_forget after extraction
 - Return summary of learnings captured
 </output_requirements>
 
-Extract learnings from this phase execution and update MEMORY.md.
+Extract learnings from this phase execution and store in MuninnDB.
 """,
   subagent_type="lu-learner",
   model="{learner_model}",
@@ -141,30 +143,30 @@ Extract learnings from this phase execution and update MEMORY.md.
 
 **Do NOT proceed until the Task returns.**
 
-**Complexity-gated learning depth:**
+**Learning capture always runs.** The lu-learner model tier is resolved from the routing table based on complexity:
 
-| Complexity | Learning Capture                                |
-| ---------- | ----------------------------------------------- |
-| TRIVIAL    | Skip (do not spawn lu-learner)                  |
-| SIMPLE     | Brief (spawn with minimal context)              |
-| MODERATE   | Standard (current behavior)                     |
-| COMPLEX    | Full (include all working memory)               |
-| CRITICAL   | Full + debrief (include retrospective analysis) |
+| Complexity | Learning Depth                                  | Model Tier (from routing table) |
+| ---------- | ----------------------------------------------- | ------------------------------- |
+| TRIVIAL    | Standard (spawn with minimal context)           | fast                            |
+| SIMPLE     | Standard (spawn with minimal context)           | fast                            |
+| MODERATE   | Standard (current behavior)                     | fast                            |
+| COMPLEX    | Full (include all working memory)               | fast                            |
+| CRITICAL   | Full + debrief (include retrospective analysis) | balanced                        |
 
-For TRIVIAL: Skip the lu-learner spawn entirely.
-For SIMPLE: Include only execution summary, not full working memory.
+For TRIVIAL/SIMPLE: Include only execution summary, not full working memory.
 For MODERATE and above: Use the current lu-learner spawn as-is.
 For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
 
-### WORKING.md During Execution
+The model tier for lu-learner is resolved via `resolveModelForAgent("lu-learner", complexity)` from the centralized routing table in `src/complexity/__helpers/model-routing.ts`.
 
-Throughout execution, log to WORKING.md:
+### Session Logging During Execution
 
-```bash
-# Primary: Log execution progress via memory bridge
-bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="$(date -u +%H:%M) [Plan X complete - finding Y]" 2>/dev/null || true
-# Fallback: Append directly to WORKING.md
-echo "- $(date -u +%H:%M) [Plan X complete - finding Y]" >> .planning/WORKING.md
+Throughout execution, log findings to MuninnDB:
+
+Log execution progress to MuninnDB:
+
+```
+mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [Plan X complete - finding Y]")
 ```
 
 Track:
@@ -258,6 +260,44 @@ Commits will not reference issues and PR creation will require manual setup.
 
 1. Exit with message to run `/milestone-new` or manually create issue
 
+### 0.6. Procedure Replay Check
+
+**Skip if:** `--skip-replay` flag passed.
+
+Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for lu-executor.
+
+```bash
+# Read phase objective from ROADMAP.md or plan files
+PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .planning/ROADMAP.md | tail -1 | sed 's/^[[:space:]]*//')
+```
+
+Recall replayable procedures from MuninnDB:
+
+```
+REPLAY_RESULT = mcp__muninn__muninn_recall(vault: "default", context: "replayable procedures for $PHASE_OBJECTIVE")
+```
+
+Parse the recall result to determine if relevant procedures exist (REPLAY_COUNT).
+
+**If replayable procedures found (REPLAY_COUNT > 0):**
+
+Store `REPLAY_JSON` for injection into lu-executor context. When spawning lu-executor for each plan, include the pre-plans as additional context:
+
+```
+<procedure_replay_context>
+The following pre-plans are suggested approaches from past successful executions.
+They are ADVISORY, not mandatory. Use them as guidance if they match the current task.
+
+{pre_plans from REPLAY_JSON}
+</procedure_replay_context>
+```
+
+Track which pre-plans were injected for feedback recording in Step 6.7.
+
+**If no replayable procedures found:**
+
+Continue normally. No pre-plan context is injected.
+
 ### 1. Validate Phase Exists
 
 - Find phase directory matching argument
@@ -299,10 +339,12 @@ PLAN_03_CONTENT=$(cat "{plan_03_path}")
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
-# Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
+```
+
+Recall session context from MuninnDB:
+
+```
+mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
 ```
 
 Then spawn all executors for the wave in PARALLEL (same message, multiple Task calls):
@@ -334,7 +376,7 @@ Task(
 - Execute each task in the plan sequentially
 - Commit atomically after each task (git add . && bun run commit)
 - Create SUMMARY.md when complete
-- Log findings to WORKING.md
+- Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
 - If TDD Mode is ENABLED: follow TDD execution flow (generate tests -> confirm RED -> implement -> confirm GREEN) for each task
 - If a task has `testable: false`: skip TDD for that task, execute normally
@@ -372,7 +414,7 @@ Task(
 - Execute each task in the plan sequentially
 - Commit atomically after each task (git add . && bun run commit)
 - Create SUMMARY.md when complete
-- Log findings to WORKING.md
+- Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
 - If TDD Mode is ENABLED: follow TDD execution flow (generate tests -> confirm RED -> implement -> confirm GREEN) for each task
 - If a task has `testable: false`: skip TDD for that task, execute normally
@@ -490,6 +532,32 @@ If a sub-agent returns plain text instead of JSON, wrap it as:
 
 This ensures all sub-agent outputs can be uniformly aggregated.
 
+### 5.2 Prune Sub-Agent Output (Context Preservation)
+
+**CRITICAL: After parsing each sub-agent result, immediately discard the raw output and retain ONLY the parsed envelope fields.**
+
+Sub-agents can return very large outputs (50-100k+ tokens each). If you keep the full raw output in your working context while planning the next steps (harness, verification, code review, learning capture), you will exhaust the context window and freeze.
+
+**Rules:**
+
+1. Parse the result envelope per Step 5.1
+2. Store ONLY these fields per agent: `status`, `summary` (max 500 chars), `artifacts` (paths only), `issues` (severity + message, max 10)
+3. **Discard** the full raw output text — do NOT reference it again
+4. Build a compact phase summary table for downstream steps:
+
+```
+| Plan | Status | Summary | Issues |
+|------|--------|---------|--------|
+| 01-01 | success | Brief summary | 0 |
+| 01-02 | success | Brief summary | 1 |
+```
+
+5. Pass ONLY this compact summary to downstream agents (verifier, reviewers, learner)
+
+**Why:** Parallel sub-agents returning ~200k+ combined tokens cause the orchestrator context to spike into the degradation zone (70%+), leading to freezes or extremely slow responses. This pruning step keeps the orchestrator lean for the remaining 6+ steps it must complete.
+
+> **Future work:** A structured context-budget system will replace this manual pruning. See `docs/decisions/orchestrator-context-pruning.md` for the decision record and migration plan.
+
 ### 6. Commit Orchestrator Corrections
 
 ```bash
@@ -581,6 +649,12 @@ PROMOTION_THRESHOLD=$(echo "$CONFIG" | bun -e "
   console.log(c.iteration?.promotion_threshold ?? 3);
 ")
 
+# Extract stall debate setting (default: true)
+STALL_DEBATE_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.iteration?.stall_debate_enabled ?? true);
+")
+
 # Override mode if --mode flag was passed
 MODE="${MODE_FLAG:-$DEFAULT_MODE}"
 ```
@@ -668,7 +742,23 @@ SHOULD_HALT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs')
 STALE_COUNT=$(echo "$CONVERGENCE" | bun -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).consecutive_stale)")
 ```
 
-If `SHOULD_HALT` is true: display convergence failure, exit loop with outcome "convergence_failure".
+**Stall Debate (when enabled):**
+
+If `SHOULD_HALT` is true AND `STALL_DEBATE_ENABLED` is true:
+
+1. Extract the debate result from CONVERGENCE JSON: `DEBATE_STRATEGY`, `DEBATE_CONFIDENCE`, `DEBATE_REASONING`
+2. If `DEBATE_STRATEGY` is NOT "halt": override `SHOULD_HALT=false`
+3. Display debate outcome:
+```
+◆ Stall Debate: {DEBATE_STRATEGY} (confidence: {DEBATE_CONFIDENCE})
+  Reasoning: {DEBATE_REASONING}
+```
+4. Act on strategy:
+   - `retry_with_context_promotion`: Promote executor context tier for next iteration
+   - `retry_with_error_focus`: Include top error patterns in next executor prompt
+   - `retry_with_rollback`: Rollback to previous checkpoint before next iteration
+
+If `SHOULD_HALT` is true (after debate, if applicable): display convergence failure, exit loop with outcome "convergence_failure".
 
 Display convergence status:
 
@@ -800,6 +890,28 @@ Pass results to Step 7 (verifier context):
 - `loop_a_outcome`: the outcome string
 - `loop_a_iterations`: count
 
+### 6.7. Record Procedure Replay Feedback
+
+**Skip if:** `--skip-replay` flag passed OR no pre-plans were injected in Step 0.6.
+
+After harness verification completes, record feedback for each pre-plan that was followed. This closes the learning loop: procedure replays feed back into procedure scoring.
+
+For each pre-plan that was injected during execution, record the outcome in MuninnDB:
+
+```
+# For each procedure that was replayed:
+# HARNESS_PASSED is true if harness_status === "passed", false otherwise
+# EXECUTION_DURATION_MS is computed from phase start time
+
+for each PROC_ID in INJECTED_PROCEDURE_IDS:
+  mcp__muninn__muninn_evolve(vault: "default", id: "procedure:$PROC_ID", content: "replay outcome: success=$HARNESS_PASSED, duration_ms=$EXECUTION_DURATION_MS")
+```
+
+This ensures that:
+- Successful replays boost procedure confidence (success_count incremented)
+- Failed replays degrade procedure confidence (only execution_count incremented)
+- Consistently failing procedures are auto-retired (success_rate < 0.4 after 5+ executions)
+
 ### 7. Verify Phase Goal
 
 **MANDATORY**: You MUST spawn a lu-verifier sub-agent. Do NOT attempt to verify yourself.
@@ -813,12 +925,14 @@ ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
-# Primary: Read working memory from memory bridge
-WORKING_JSON=$(bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || echo '{"sections":[],"total_tokens":0,"status":"cleared"}')
-# Fallback: Read WORKING.md directly
-WORKING_CONTENT=$(cat .planning/WORKING.md 2>/dev/null || echo "")
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
 PLAN_CONTENTS=$(find $PHASE_DIR -name "*-PLAN.md" -exec cat {} \;)
+```
+
+Recall session context from MuninnDB:
+
+```
+mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings for phase verification")
 ```
 
 Then spawn the verifier:
@@ -844,7 +958,7 @@ Task(
 **Project State:**
 {state_content}
 
-<!-- WARM ISOLATION: Verifier does NOT receive WORKING.md to prevent bias from executor's session notes -->
+<!-- WARM ISOLATION: Verifier does NOT receive session context to prevent bias from executor's session notes -->
 <!-- The working_content variable below should be empty or omitted when using context-aware spawning -->
 **Working Memory:**
 {working_content}
@@ -889,8 +1003,122 @@ Route by returned status:
 - `passed` → continue to Step 8 (Code Quality Review)
 - `human_needed` → present items, get approval, then continue to Step 8
 - `gaps_found` → proceed to Step 7.5 (Loop B: Verify Fix Loop)
+- `human_needed` with T1/T3 conflict → proceed to Step 7.25 (Verification Tribunal)
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered `/phase-plan {X} --gaps`.
+
+### 7.25. Verification Tribunal (Conditional)
+
+**Skip if:** `workflow.verification_tribunal_enabled: false` in config (default: true), OR complexity is below COMPLEX, OR no T1/T3 conflict detected.
+
+**When to trigger:** The verifier returned `human_needed` AND the verification report shows a T1/T3 signal conflict (T1 STRONG PASS with T3 PARTIAL or FAIL, or T1 PARTIAL with T3 PARTIAL).
+
+**Gate check:**
+
+```bash
+VT_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.verification_tribunal_enabled ?? true);
+")
+```
+
+**When enabled at COMPLEX+ complexity with T1/T3 conflict:**
+
+1. **Extract conflict signal**: Parse the verifier's T1 and T3 signal statuses and evidence from VERIFICATION.md
+2. **Build diagnostic prompts**: Generate three prompts using the conflict signal — one for each diagnostic agent
+3. **Spawn three diagnostic agents in PARALLEL**:
+
+```python
+# Spawn lu-test-writer diagnostic
+Task(
+  prompt="""
+<diagnostic_context>
+{test_writer_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Analyze the T1/T3 conflict from your perspective as test coverage expert.
+</diagnostic_context>
+""",
+  subagent_type="lu-test-writer",
+  model="{diagnostic_model}",
+  description="Test Writer Diagnostic"
+)
+
+# Spawn lu-verifier diagnostic (IN PARALLEL)
+Task(
+  prompt="""
+<diagnostic_context>
+{verifier_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Re-examine your T3 analysis for potential over-specification.
+</diagnostic_context>
+""",
+  subagent_type="lu-verifier",
+  model="{diagnostic_model}",
+  description="Verifier Diagnostic"
+)
+
+# Spawn lu-integration-checker diagnostic (IN PARALLEL)
+Task(
+  prompt="""
+<diagnostic_context>
+{integration_diagnostic_prompt}
+
+**Phase:** {phase_number}
+**VERIFICATION.md:** {verification_content}
+
+Analyze cross-component wiring for integration gaps.
+</diagnostic_context>
+""",
+  subagent_type="lu-integration-checker",
+  model="{diagnostic_model}",
+  description="Integration Diagnostic"
+)
+```
+
+**Do NOT proceed until ALL three diagnostic Tasks return.**
+
+4. **Parse diagnostic responses**: Extract CATEGORY, CONFIDENCE, EVIDENCE, and ACTION from each agent's response
+5. **Resolve tribunal**: Majority vote determines consensus category. If three-way split, use highest confidence as tiebreaker
+6. **Route by consensus category**:
+
+| Category | Action |
+|----------|--------|
+| `tests_incomplete` | Flag for test augmentation — existing tests don't cover the goal specification |
+| `goal_over_specified` | Adjust verification — T3 must-haves exceed plan scope |
+| `wiring_issue` | Flag for integration fix — components exist but aren't connected |
+
+**Display tribunal results:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > VERIFICATION TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value                          |
+| --------------------- | ------------------------------ |
+| Conflict type         | {conflict_type}                |
+| T1 status             | {t1_status}                    |
+| T3 status             | {t3_status}                    |
+| Consensus category    | {consensus_category}           |
+| Consensus confidence  | {consensus_confidence}         |
+| Dissenting agent      | {dissent_agent or "None"}      |
+| Token cost            | ~{estimated_token_cost}        |
+```
+
+7. **Append tribunal result to VERIFICATION.md**:
+
+Add a new section `### Verification Tribunal` to the existing VERIFICATION.md with the tribunal results, perspectives, and recommended remediation.
+
+8. **Continue based on category**:
+   - If `tests_incomplete`: Present to user with recommendation to augment tests, then continue to Step 8
+   - If `goal_over_specified`: Note that verification may be overly strict, adjust status to `passed` if user approves, then continue to Step 8
+   - If `wiring_issue`: Proceed to Step 7.5 (Loop B) with integration fix focus
 
 ### 7.5. Loop B: Verify Fix Loop
 
@@ -1054,9 +1282,9 @@ If outcome is anything else: Display remaining gaps and offer `/phase-plan {X} -
 
 ### 8. Code Quality Review
 
-**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config OR complexity is TRIVIAL or SIMPLE.
+**Skip if:** `--skip-review` flag passed OR `workflow.code_review: false` in config.
 
-**Complexity gate:** Code review runs at MODERATE and above. TRIVIAL/SIMPLE skip code review entirely.
+**Always runs** (model tier resolved from routing table per complexity). Each reviewer agent resolves its model tier via `resolveModelForAgent(agentName, complexity)`.
 
 Get changed files for this phase:
 
@@ -1080,17 +1308,17 @@ Display:
 
 **Determine which reviewers to spawn:**
 
-**Spawn based on complexity level** (read from STATE.md `Task Complexity:` field):
+**Always spawn ALL reviewers.** Each reviewer resolves its model tier from the routing table based on complexity:
 
-| Agent            | MODERATE      | COMPLEX       | CRITICAL |
-| ---------------- | ------------- | ------------- | -------- |
-| dx-advocate      | Run           | Run           | Run      |
-| code-simplifier  | Run           | Run           | Run      |
-| code-architect   | Skip          | Run           | Run      |
-| tailwind-auditor | If UI files   | If UI files   | Run      |
-| security-auditor | If auth files | If auth files | Always   |
+| Agent            | TRIVIAL | SIMPLE  | MODERATE | COMPLEX | CRITICAL |
+| ---------------- | ------- | ------- | -------- | ------- | -------- |
+| dx-advocate      | fast    | balanced | capable  | capable | capable  |
+| code-simplifier  | fast    | balanced | capable  | capable | capable  |
+| code-architect   | fast    | balanced | capable  | capable | capable  |
+| performance-auditor | fast | balanced | capable  | capable | capable  |
+| security-auditor | fast    | balanced | capable  | capable | capable  |
 
-If complexity not set, default to spawning all reviewers (backward-compatible).
+At lower complexity, reviewers run with lighter models (fast tier), making them low-cost but still active. The `--skip-review` flag and `workflow.code_review: false` config override still allow skipping entirely.
 
 Conditionally spawn `security-auditor` if files match patterns:
 
@@ -1103,8 +1331,8 @@ echo "$CHANGED_FILES" | grep -E '(auth|api|convex|mutation|query|middleware|prox
 **Context isolation:** Code reviewers operate in COLD isolation. They receive:
 
 - Git diff of changed files (not full file contents)
-- BRAIN.md summary (project conventions only)
-- NO STATE.md, NO WORKING.md, NO MEMORY.md
+- Project identity summary (conventions only, from MuninnDB brain:*)
+- NO STATE.md, NO session context, NO long-term learnings
 
 This prevents reviewer bias from executor session context.
 
@@ -1276,6 +1504,50 @@ description="Security review"
 
 **Merge findings:** Combine all issues, deduplicate by file:line.
 
+### 8.5. Design Tribunal (Conditional)
+
+**Skip if:** Complexity is below COMPLEX, OR `workflow.tribunal_enabled: false` in config (default: true), OR no disagreements detected.
+
+**Gate check:**
+
+```bash
+TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.tribunal_enabled ?? true);
+")
+```
+
+**When enabled at COMPLEX+ complexity:**
+
+1. **Normalize findings**: Parse all reviewer outputs into structured ReviewFinding format
+2. **Detect disagreements**: Group findings by file:line and identify severity mismatches, scope overlaps, and contradictions
+3. **Gate check**: If no disagreements involve CRITICAL or HIGH findings, skip tribunal
+4. **Build rebuttal prompts**: For each disagreement, generate challenger/defender prompt pairs
+5. **Spawn rebuttal agents**: Send prompts to challenger and defender agents in PARALLEL
+6. **Resolve rebuttals**: Aggregate rebuttal outcomes into unified recommendations with confidence scores
+7. **Build tribunal result**: Compile final result with metrics
+
+**Display tribunal results:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > DESIGN TRIBUNAL RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric                | Value |
+| --------------------- | ----- |
+| Total findings        | {N}   |
+| Disagreements found   | {N}   |
+| Rebuttals conducted   | {N}   |
+| Findings withdrawn    | {N}   |
+| Findings modified     | {N}   |
+| Debate token cost     | ~{N}  |
+```
+
+**Record tribunal metrics** using `buildReviewMetrics` from 91-A (set `debate_enabled: true`, `disagreements_detected: N`).
+
+**Replace merged findings** with the tribunal's unified recommendations for Step 8.1.
+
 ### 8.1. Handle Code Review Results
 
 **Route based on findings:**
@@ -1337,12 +1609,12 @@ Wait for user response, then proceed accordingly.
 
 **If clean (or LOW only):** Continue to step 9.
 
-### 9. Update Roadmap and State
+### 9. Signal Verification and Update State
 
-Update ROADMAP.md and state via bridge (falls back to STATE.md):
+Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — the machine transitions to `learning` state and expects LEARN_COMPLETE before committing.
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
 ```
 
 Also update STATE.md directly for backward compatibility.
@@ -1369,19 +1641,25 @@ git add .
 bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
 ````
 
+Signal commit complete via bridge (after the actual commit succeeds):
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+```
+
 ### 12. User Acceptance Testing (UAT)
 
-**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config OR complexity is TRIVIAL or SIMPLE.
+**Skip if:** `--skip-uat` flag passed OR `workflow.uat_required: false` in config.
 
-**Complexity gate:** UAT runs at MODERATE (optional) and above. For COMPLEX/CRITICAL, UAT is required.
+**Always runs** (verification depth scales with complexity via `verificationMode`). The `--skip-uat` flag and `workflow.uat_required: false` config override still allow skipping entirely.
 
-| Complexity | UAT                               |
-| ---------- | --------------------------------- |
-| TRIVIAL    | Skip                              |
-| SIMPLE     | Skip                              |
-| MODERATE   | Optional (runs unless --skip-uat) |
-| COMPLEX    | Required                          |
-| CRITICAL   | Required + thorough               |
+| Complexity | UAT                               | Verification Mode |
+| ---------- | --------------------------------- | ----------------- |
+| TRIVIAL    | Run (quick)                       | quick             |
+| SIMPLE     | Run (quick)                       | quick             |
+| MODERATE   | Run (standard)                    | standard          |
+| COMPLEX    | Run (full)                        | full              |
+| CRITICAL   | Run (full + thorough)             | full+human        |
 
 **Auto-transition into UAT mode:**
 
@@ -1462,6 +1740,10 @@ All code reviews passed ✓
 ```
 
 - Spawn parallel debug agents to diagnose root causes
+- **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
+  - Gate: `root_cause_tribunal_enabled` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
+  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
 - Spawn lu-planner in --gaps mode to create fix plans
 - Spawn lu-plan-checker to verify fix plans
 - Present ready status:

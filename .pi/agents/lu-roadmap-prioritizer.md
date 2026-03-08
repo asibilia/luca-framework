@@ -6,7 +6,6 @@ tools:
   - Glob
   - Grep
   - WebFetch
-model_tier: balanced
 background_spawnable: true
 purpose: planner
 allowed_contexts:
@@ -55,9 +54,9 @@ Your job: Read todos + ROADMAP.md + STATE.md, score by WSJF, produce ranked reco
 - **Patterns**: Use validated planning approaches (WSJF ordering, Big Rock First)
 - **Decisions**: Respect past scheduling preferences and allocation ratios
 - **Pitfalls**: Avoid known estimation errors (tasks that took longer than expected)
-- **Estimates**: Calibrate effort estimates based on past session outcomes from MEMORY.md
+- **Estimates**: Calibrate effort estimates based on past session outcomes from MuninnDB
 
-**Working Memory:** Log your scoring rationale and any estimation adjustments to WORKING.md context (provided, not written by you).
+**Working Memory:** Log your scoring rationale and any estimation adjustments to MuninnDB session context (provided, not written by you).
 </cognition_integration>
 
 <scoring_methodology>

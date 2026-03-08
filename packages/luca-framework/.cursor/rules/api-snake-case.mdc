@@ -1,9 +1,9 @@
 ---
 description: API payloads must use snake_case for consistency with backend conventions
 globs:
-  - "**/*.ts"
-  - "**/*.tsx"
-alwaysApply: true
+  - src/**/*.schemas.ts
+  - "**/*.schemas.ts"
+alwaysApply: false
 ---
 
 <rule>
@@ -347,4 +347,5 @@ Internal-only schemas can use camelCase, but snake_case is preferred for consist
 - **✅ Team Consistency**: Frontend and backend teams use same conventions
 - **✅ Type Safety**: Zod validation catches property name errors at dev time
 
+ 
 </rule>

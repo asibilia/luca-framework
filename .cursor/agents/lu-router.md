@@ -16,9 +16,6 @@ context:
   default_tier: T0
   promotable_to: T1
   isolation: none
-model_routing:
-  default_model: haiku
-model_tier: balanced
 background_spawnable: false
 purpose: general
 allowed_contexts:
@@ -422,7 +419,7 @@ Include \`recommended_model\` in your output based on:
 
 3. **Learn**: lu-learner captures (brief)
    - Note if approach worked
-   - Update WORKING.md
+   - Update MuninnDB session context
 ```
 
 ## MODERATE Path
@@ -437,7 +434,7 @@ Include \`recommended_model\` in your output based on:
 
 2. **Execute**: lu-executor
    - Execute planned tasks
-   - Log to WORKING.md
+   - Log to MuninnDB session context
 
 3. **Verify**: lu-verifier (standard)
    - Functionality verification
@@ -482,7 +479,7 @@ Include \`recommended_model\` in your output based on:
 6. **Learn**: lu-learner captures (full)
    - Full learning extraction
    - Pattern documentation
-   - Comprehensive MEMORY.md update
+   - Comprehensive MuninnDB engram update
 ```
 
 ## CRITICAL Path
@@ -514,7 +511,7 @@ Include \`recommended_model\` in your output based on:
 6. **Learn**: lu-learner captures (full + debrief)
    - Full learning extraction with debrief
    - Pattern documentation
-   - Comprehensive MEMORY.md update
+   - Comprehensive MuninnDB engram update
 ```
 
 </routing_paths>

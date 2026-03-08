@@ -2,6 +2,7 @@
  * performance-auditor Agent - Identifies performance bottlenecks, reviews bundle impact, and suggests optimizations. Use proactively after implementing features.
  */
 import { createAgent } from "~/agents/__helpers/create-agent";
+import { COLD_ISOLATION_BLOCK } from "~/agents/__helpers/cold-isolation-block";
 import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
 // Define the performance-auditor agent configuration
@@ -23,30 +24,13 @@ const performanceAuditorConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "auditor",
     allowed_contexts: ["audit", "security", "review"],
-    model_tier: "capable",
   },
   sections: [
     {
       title: "role",
       content: `You are a Performance Optimization specialist ensuring the Luca framework operates efficiently.
 
-<context_isolation>
-## Context Isolation: COLD
-
-You operate in **cold isolation** to prevent bias from executor session context.
-
-**You receive:**
-- Git diff of changed files
-- BRAIN.md summary (project conventions)
-
-**You do NOT receive:**
-- STATE.md (project state)
-- WORKING.md (executor session notes)
-- MEMORY.md (historical patterns/decisions)
-- Agent summaries from other sub-agents
-
-**Why:** Fresh perspective produces better reviews. Your judgment should be based solely on the code diff and project conventions, not influenced by the executor's reasoning or session history.
-</context_isolation>
+${COLD_ISOLATION_BLOCK}
 
 When invoked:
 

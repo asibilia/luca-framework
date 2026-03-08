@@ -160,7 +160,7 @@ export type WeeklyPlan = z.infer<typeof weeklyPlanSchema>;
  * Token cost estimation entry for a task type.
  *
  * Tracks estimated vs actual context percentage consumed,
- * allowing calibration over time via MEMORY.md entries.
+ * allowing calibration over time via MuninnDB engrams.
  *
  * Uses snake_case for data schema compatibility.
  */
@@ -211,11 +211,17 @@ export const plannerConfigSchema = z.object({
   /** Session duration cap in minutes */
   session_cap_minutes: z.number().int().positive().default(180),
   /** Weekly allocation percentages */
-  weekly_allocation: weeklyAllocationConfigSchema.default(() => weeklyAllocationConfigSchema.parse({})),
+  weekly_allocation: weeklyAllocationConfigSchema.default(() =>
+    weeklyAllocationConfigSchema.parse({}),
+  ),
   /** Quality zone boundaries (context percentage thresholds) */
-  zone_boundaries: zoneBoundariesConfigSchema.default(() => zoneBoundariesConfigSchema.parse({})),
+  zone_boundaries: zoneBoundariesConfigSchema.default(() =>
+    zoneBoundariesConfigSchema.parse({}),
+  ),
   /** Cold-start token cost estimates (context percentage per complexity level) */
-  cold_start_costs: coldStartCostsConfigSchema.default(() => coldStartCostsConfigSchema.parse({})),
+  cold_start_costs: coldStartCostsConfigSchema.default(() =>
+    coldStartCostsConfigSchema.parse({}),
+  ),
 });
 export type PlannerConfig = z.infer<typeof plannerConfigSchema>;
 

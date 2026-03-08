@@ -36,14 +36,9 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Cascading bridge lookup: installed bin → monorepo source → skip
-run_bridge() {
-  if command -v luca-bridge &>/dev/null; then
-    luca-bridge "$@"
-  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
-    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
-  fi
-}
+# Source shared hook library
+HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
 # Read stdin JSON (may be empty for some platforms)
 INPUT=$(cat || true)
@@ -122,48 +117,6 @@ if [ -f "$STATE_JSON" ]; then
   git add .planning/STATE.md 2>/dev/null || true
 fi
 
-# Detect runtime: reads .planning/config.json, falls back to command detection
-read_runtime() {
-  local config="${CLAUDE_PROJECT_DIR:-.}/.planning/config.json"
-
-  # Try reading from config.json
-  if [ -f "$config" ]; then
-    local rt=""
-    set +e
-    if command -v bun &>/dev/null; then
-      rt=$(HOOK_CFG="$config" bun -e "
-        try {
-          const cfg = JSON.parse(await Bun.file(process.env.HOOK_CFG).text());
-          process.stdout.write(cfg.runtime || '');
-        } catch { /* empty */ }
-      " 2>/dev/null)
-    elif command -v node &>/dev/null; then
-      rt=$(HOOK_CFG="$config" node -e "
-        try {
-          const fs = require('fs');
-          const cfg = JSON.parse(fs.readFileSync(process.env.HOOK_CFG, 'utf-8'));
-          process.stdout.write(cfg.runtime || '');
-        } catch { /* empty */ }
-      " 2>/dev/null)
-    fi
-    set -e
-
-    if [ -n "$rt" ]; then
-      echo "$rt"
-      return
-    fi
-  fi
-
-  # Fallback: detect from PATH
-  if command -v bun &>/dev/null; then
-    echo "bun"
-  elif command -v node &>/dev/null; then
-    echo "node"
-  else
-    echo "bun"
-  fi
-}
-
 RUNTIME=$(read_runtime)
 
 ERRORS=""
@@ -222,15 +175,7 @@ ${ERRORS}"
   "
 
   # Emit commit.blocked via bridge (fire-and-forget)
-  BLOCK_SESSION_ID=""
-  if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
-    BLOCK_SESSION_ID=$(bun -e "
-      try {
-        const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
-        process.stdout.write(s.context?.session_id || '');
-      } catch { process.stdout.write(''); }
-    " 2>/dev/null || echo "")
-  fi
+  BLOCK_SESSION_ID=$(read_session_id)
   if [ -n "$BLOCK_SESSION_ID" ]; then
     run_bridge emit-event --type=commit.blocked --session="$BLOCK_SESSION_ID" --tool=git --data="{\"test_exit\":$TEST_EXIT,\"tsc_exit\":$TSC_EXIT}" &>/dev/null &
   fi
@@ -240,15 +185,7 @@ ${ERRORS}"
 fi
 
 # All checks passed — emit commit event via bridge (fire-and-forget)
-SESSION_ID=""
-if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
-  SESSION_ID=$(bun -e "
-    try {
-      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
-      process.stdout.write(s.context?.session_id || '');
-    } catch { process.stdout.write(''); }
-  " 2>/dev/null || echo "")
-fi
+SESSION_ID=$(read_session_id)
 if [ -n "$SESSION_ID" ]; then
   run_bridge emit-event --type=commit.passed --session="$SESSION_ID" --tool=git &>/dev/null &
 fi

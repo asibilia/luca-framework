@@ -16,8 +16,9 @@ import type { BaseAgent, AgentConfig } from "~/agents/__schemas/agent.schemas";
 /**
  * Build Pi-specific frontmatter for an agent.
  *
- * Includes name, description, tools (if defined), and model
- * (from model_routing.default_model if present).
+ * Includes name, description, tools (if defined), and purpose.
+ * Model routing is handled by the MODEL_ROUTING_TABLE at runtime,
+ * not by agent frontmatter.
  */
 function buildPiAgentFrontmatter(
   frontmatter: AgentConfig["frontmatter"],
@@ -31,6 +32,9 @@ function buildPiAgentFrontmatter(
     piFm.tools = frontmatter.tools;
   }
 
+  // model_routing and model_tier are deprecated in agent frontmatter.
+  // The MODEL_ROUTING_TABLE is the single source of truth for model selection.
+  // These fields are still read for backward compatibility with external plugins.
   if (frontmatter.model_routing?.default_model) {
     piFm.model = frontmatter.model_routing.default_model;
   }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import orderBy from "lodash/orderBy";
+import { ArrowRight } from "lucide-react";
 
 import { WORKFLOW_STATES } from "~/lib/constants";
 import { formatTime } from "~/lib/format";
@@ -76,7 +77,7 @@ export function TransitionLog({ entries }: { entries: LedgerEntry[] }) {
                   <span style={{ color: stateColor(entry.previous_state) }}>
                     {entry.previous_state}
                   </span>
-                  <span className="mx-1 text-muted-foreground">{"\u2192"}</span>
+                  <ArrowRight className="mx-1 inline h-3 w-3 text-muted-foreground" />
                   <span style={{ color: stateColor(entry.current_state) }}>
                     {entry.current_state}
                   </span>

@@ -16,7 +16,6 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
-model_tier: balanced
 background_spawnable: true
 purpose: researcher
 allowed_contexts:

@@ -53,14 +53,13 @@ export function validateFormat(format: SupportedFormat): void {
  * @param agent - The agent whose frontmatter config to process
  * @returns YAML frontmatter string or null if no cognition/context config
  */
-function buildAgentFrontmatter(agent: BaseAgent): string | null {
+function buildAgentFrontmatter(agent: BaseAgent): string {
   const cognition = agent.config.frontmatter.cognition;
   const context = agent.config.frontmatter.context;
 
-  if (!cognition && !context) return null;
-
   const frontmatterData: Record<string, unknown> = {
     name: agent.name,
+    description: agent.description,
   };
 
   if (cognition) {
@@ -100,10 +99,7 @@ function buildAgentFrontmatter(agent: BaseAgent): string | null {
 export function compileAgentClaude(agent: BaseAgent): string {
   const markdown = agent.toClaudeFormat();
   const frontmatter = buildAgentFrontmatter(agent);
-  if (frontmatter) {
-    return `${frontmatter}\n\n${markdown}`;
-  }
-  return markdown;
+  return `${frontmatter}\n\n${markdown}`;
 }
 
 /**

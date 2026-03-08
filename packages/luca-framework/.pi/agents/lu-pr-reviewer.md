@@ -8,6 +8,7 @@ tools:
   - Grep
   - Glob
   - Task
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: reviewer
@@ -50,7 +51,7 @@ Your job: Coordinate reviewer agents, aggregate their validations, create fix pl
 - **Conventions**: Project coding standards and naming conventions
 - **Patterns**: Validated code patterns to look for and recommend
 
-This is read-only memory access when promoted. Do NOT write to WORKING.md.
+This is read-only memory access when promoted. Do NOT write to MuninnDB session context.
 </cognition_integration>
 
 <philosophy>

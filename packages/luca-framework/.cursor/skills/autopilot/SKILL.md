@@ -5,12 +5,11 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Autopilot
 
 Autonomous orchestrator that drives the full Luca workflow: backlog scan, WSJF prioritization, roadmap revision, phase planning, execution, and milestone completion — with configurable human oversight levels.
 
-**Arguments:** `[--oversight=flagged|milestone|phase|full-auto] [--skip-backlog] [--max-phases=N] [--dry-run]`
+**Arguments:** `[--oversight=flagged|milestone|phase|full-auto] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run]`
 
 ## Sub-agent/Sub-skill Delegation Requirements
 
@@ -18,7 +17,7 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 **Sub-skills invoked (via Skill tool):**
 
-- `phase-discuss` — Context gathering for MODERATE+ phases
+- `phase-discuss` — Context gathering for all phases (depth scales with complexity)
 - `phase-plan` — Auto-generate PLAN.md files for phases
 - `phase-execute` — Full execution pipeline (waves, harness, verification, code review)
 - `milestone-complete` — Archive and complete milestones
@@ -29,10 +28,18 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 - `lu-cognition` — Cognitive pre-flight at session start
 - `lu-router` — Classify complexity for each phase
-- `lu-pm-planner` — WSJF scoring and backlog prioritization (extended mode for roadmap revision)
+- `lu-pm-planner` — WSJF scoring and backlog prioritization (fallback for `--no-swarm` roadmap revision)
+- `lu-roadmap-architect` — Architectural impact analysis for roadmap revision (swarm specialist)
+- `lu-roadmap-prioritizer` — WSJF scoring and milestone scoping for roadmap revision (swarm specialist)
+- `lu-roadmap-qa` — Testing gap analysis and QA impact for roadmap revision (swarm specialist)
+- `lu-roadmap-synthesizer` — Merges specialist analyses into unified roadmap proposal (swarm synthesizer)
 
-**CRITICAL:** You are an orchestrator. Do NOT execute plans, verify code, or review code yourself. Invoke the appropriate sub-skills and sub-agents as described below.
-</main>
+**CRITICAL — WORKFLOW COMPLIANCE IS MANDATORY:**
+
+1. You are an **orchestrator**. Do NOT execute plans, verify code, or review code yourself. Invoke the appropriate sub-skills and sub-agents as described below.
+2. **Every step in this skill spec is a binding instruction, not a suggestion.** You MUST NOT skip, simplify, or substitute workflow steps — even if you believe an alternative approach would produce equivalent results. The workflow exists because specific tool usage (TeamCreate, SendMessage, Skill, Task) was intentionally designed and validated.
+3. **If a step says to use TeamCreate, you MUST use TeamCreate.** If a step says to use Skill, you MUST use Skill. Do not replace TeamCreate with parallel Task calls. Do not replace sub-agent delegation with self-performed analysis. Do not rationalize deviations with "functionally equivalent" reasoning.
+4. **The only valid way to skip a step is when the spec explicitly provides a skip condition** (e.g., complexity gating, `--no-swarm` flag, oversight level). If no skip condition is documented, the step is mandatory.
 </main>
 
 <configuration>
@@ -80,6 +87,14 @@ BACKLOG_SCAN=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
   console.log(c.autopilot?.backlog_scan ?? true);
 ")
+SWARM_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.autopilot?.swarm_enabled ?? true);
+")
+MAX_PARALLEL=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.autopilot?.max_parallel_phases ?? 3);
+")
 ```
 
 ### 0b. Apply CLI Flag Overrides
@@ -87,6 +102,7 @@ BACKLOG_SCAN=$(echo "$CONFIG" | bun -e "
 - If `--oversight=<level>` passed: override OVERSIGHT
 - If `--max-phases=N` passed: override MAX_PHASES
 - If `--skip-backlog` passed: set BACKLOG_SCAN=false
+- If `--no-swarm` passed: set SWARM_ENABLED=false (force serial execution)
 - If `--dry-run` passed: set DRY_RUN=true (display plan, don't execute)
 
 ### 0c. Cognitive Pre-Flight
@@ -96,11 +112,17 @@ Unless the session already has cognitive context loaded:
 ```
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load BRAIN.md, recall relevant MEMORY.md entries via memory bridge (bun run src/memory/__helpers/bridge.ts read-memory --tags=planning,workflow,patterns --limit=10), initialize WORKING.md via bridge (bun run src/memory/__helpers/bridge.ts clear-working)."
+  prompt: "Run cognitive pre-flight for autopilot session. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*')."
 )
 ```
 
-### 0d. Display Session Start
+### 0d. Display Session Start & Initialize State Machine
+
+Transition state machine from idle to preflight:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=START 2>/dev/null || true
+```
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -112,6 +134,13 @@ Max phases:    {MAX_PHASES}
 Auto-plan:     {AUTO_PLAN}
 Backlog scan:  {BACKLOG_SCAN}
 Cross-milestone: {CROSS_MILESTONE}
+Swarm:         {SWARM_ENABLED} (max {MAX_PARALLEL} parallel)
+```
+
+After cognitive pre-flight completes, transition to routing:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
 ```
 </configuration>
 
@@ -167,7 +196,7 @@ If UNPLANNED_COUNT == 0: Skip to Step 3.
 
 **Only runs when unplanned todos exist (Step 1c found UNPLANNED_COUNT > 0).**
 
-### 2a. Spawn lu-pm-planner in Extended Mode
+### 2a. Analyze Pending Todos
 
 Read all todo contents for the prompt:
 
@@ -178,7 +207,16 @@ for f in .planning/todos/pending/*.md; do
 done
 ```
 
-Spawn the prioritizer:
+**Branch based on SWARM_ENABLED:**
+
+> **MANDATORY ROUTING — DO NOT SKIP OR SUBSTITUTE:**
+> The path below is determined by the SWARM_ENABLED flag. If SWARM_ENABLED == true (the default), you MUST follow Path B and use TeamCreate to create a formal agent team. You MUST NOT substitute parallel Task calls for TeamCreate — they are not equivalent. The team infrastructure (TeamCreate, SendMessage, shared task lists) exists for coordination, auditability, and architectural consistency. Path A is ONLY valid when `--no-swarm` is explicitly passed or `swarm_enabled: false` is set in config.json.
+
+---
+
+#### Path A: Single-Agent (--no-swarm fallback)
+
+**If SWARM_ENABLED == false:** Use the original single lu-pm-planner agent path.
 
 ```
 Task(
@@ -217,16 +255,218 @@ Task(
 )
 ```
 
+Skip to Step 2b with the lu-pm-planner's ResultEnvelope.
+
+---
+
+#### Path B: Team-Based Swarm (default)
+
+**If SWARM_ENABLED == true (default):** Use a 3-specialist + 1-synthesizer swarm for richer analysis.
+
+##### 2a-swarm-i. Create Roadmap Revision Team
+
+```
+TeamCreate(
+  team_name: "roadmap-revision-{timestamp}",
+  description: "Specialist swarm for roadmap revision analysis"
+)
+```
+
+Create 3 tasks for the specialist agents:
+
+```
+TaskCreate(
+  subject: "Architectural impact analysis",
+  description: "Analyze pending todos for architectural risk, dependency ordering, and domain boundary impact",
+  activeForm: "Analyzing architecture impact"
+)
+
+TaskCreate(
+  subject: "WSJF scoring and prioritization",
+  description: "Score pending todos by WSJF and recommend phase absorption, new phases, or milestones",
+  activeForm: "Scoring todos by WSJF"
+)
+
+TaskCreate(
+  subject: "QA and testing gap analysis",
+  description: "Assess QA impact, testing gaps, tech debt severity, and verification requirements",
+  activeForm: "Analyzing QA impact"
+)
+```
+
+##### 2a-swarm-ii. Spawn 3 Specialists in Parallel
+
+```
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "architect",
+  subagent_type: "lu-roadmap-architect",
+  prompt: """
+  You are a roadmap architect specialist (lu-roadmap-architect role).
+
+  **All Pending Todos:**
+  {TODO_CONTENTS}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Current STATE.md:**
+  {STATE_CONTENT}
+
+  **Instructions:**
+  1. Read all pending todos and the current roadmap
+  2. Explore the src/ directory structure to understand domain layout and dependency tiers (T0-T3)
+  3. For each todo, assess: domain boundary impact, dependency tier implications, cross-cutting concerns, circular dependency risk
+  4. Rate each todo: LOW / MEDIUM / HIGH architectural risk
+  5. Recommend phase placement and ordering constraints
+  6. Send your complete ResultEnvelope to the lead via SendMessage
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with status, summary, artifacts (per-todo risk + placement), issues (warnings)
+  """
+)
+
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "prioritizer",
+  subagent_type: "lu-roadmap-prioritizer",
+  prompt: """
+  You are a roadmap prioritizer specialist (lu-roadmap-prioritizer role).
+
+  **All Pending Todos:**
+  {TODO_CONTENTS}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Current STATE.md:**
+  {STATE_CONTENT}
+
+  **Instructions:**
+  1. Read all pending todos and the current roadmap
+  2. Score each todo using WSJF: (Business Value + Time Criticality + Risk Reduction) / Effort
+  3. Effort mapping: TRIVIAL=1, SIMPLE=2, MODERATE=3, COMPLEX=5, CRITICAL=8
+  4. For each todo, recommend: absorb (into which phase), new-phase (with goal), or new-milestone
+  5. Rank all todos by WSJF descending
+  6. Send your complete ResultEnvelope to the lead via SendMessage
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with status, summary, artifacts (per-todo WSJF + action), issues (warnings)
+  """
+)
+
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "qa-analyst",
+  subagent_type: "lu-roadmap-qa",
+  prompt: """
+  You are a roadmap QA specialist (lu-roadmap-qa role).
+
+  **All Pending Todos:**
+  {TODO_CONTENTS}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Current STATE.md:**
+  {STATE_CONTENT}
+
+  **Instructions:**
+  1. Read all pending todos and the current roadmap
+  2. Survey test infrastructure: Glob for __tests__/**/*.test.ts, read bunfig.toml
+  3. For each todo, assess: affected test suites, testing gaps, tech debt severity, CI/CD impact, verification requirements
+  4. Rate each todo: LOW / MEDIUM / HIGH QA impact
+  5. Recommend verification mode per todo: Quick / Standard / Full / Full+Human
+  6. Send your complete ResultEnvelope to the lead via SendMessage
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with status, summary, artifacts (per-todo QA impact + verification), issues (warnings)
+  """
+)
+```
+
+##### 2a-swarm-iii. Collect Specialist Results
+
+Wait for all 3 specialists to send their ResultEnvelopes (10-minute timeout per specialist).
+
+**Graceful degradation:**
+- If 1 specialist times out or errors: proceed with 2 specialist outputs, note the gap
+- If 2 specialists time out: proceed with 1 output, set confidence to LOW
+- If all 3 fail: fall back to Path A (single lu-pm-planner)
+
+##### 2a-swarm-iv. Spawn Synthesizer
+
+After collecting specialist outputs, spawn the synthesizer with all results:
+
+```
+Task(
+  team_name: "roadmap-revision-{timestamp}",
+  name: "synthesizer",
+  subagent_type: "lu-roadmap-synthesizer",
+  prompt: """
+  You are a roadmap synthesizer (lu-roadmap-synthesizer role).
+
+  **Architect Analysis:**
+  {ARCHITECT_RESULT}
+
+  **Prioritizer Analysis:**
+  {PRIORITIZER_RESULT}
+
+  **QA Analysis:**
+  {QA_RESULT}
+
+  **Current ROADMAP.md:**
+  {ROADMAP_CONTENT}
+
+  **Instructions:**
+  1. Cross-reference all 3 specialist analyses per todo
+  2. Resolve conflicts (priority vs architecture, priority vs QA)
+  3. Build unified phase ordering: architectural prerequisites first, then high-WSJF items
+  4. Group related todos into phases based on domain affinity, effort similarity, shared test requirements
+  5. Assign verification modes per phase based on QA analysis
+  6. Flag milestone-worthy items
+  7. Produce a unified ResultEnvelope matching the format Step 2b expects
+
+  **Conflict resolution rules:**
+  - Architecture safety > WSJF priority (isolate HIGH-risk items even if prioritizer says absorb)
+  - QA prerequisites > priority ordering (test infrastructure before consumers)
+  - When architect + QA both flag HIGH: strongly recommend isolation + Full verification
+
+  **READ-ONLY:** Do NOT create, modify, or delete files. Output analysis only.
+  **Output:** ResultEnvelope JSON with:
+  - status: "success"
+  - summary: Human-readable revision proposal with change table
+  - artifacts: Each proposed change (new phases, reordered phases, todos absorbed)
+  - issues: All specialist warnings + synthesis-level concerns
+  """
+)
+```
+
+##### 2a-swarm-v. Cleanup and Continue
+
+1. Shutdown all teammates:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "architect")
+   SendMessage(type: "shutdown_request", recipient: "prioritizer")
+   SendMessage(type: "shutdown_request", recipient: "qa-analyst")
+   SendMessage(type: "shutdown_request", recipient: "synthesizer")
+   TeamDelete()
+   ```
+
+2. Feed the synthesizer's ResultEnvelope into Step 2b (unchanged).
+
+---
+
 ### 2b. Present Proposed Changes
 
-Display the lu-pm-planner's proposal:
+Display the proposal ResultEnvelope:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Luca AUTOPILOT ► ROADMAP REVISION PROPOSAL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{summary from lu-pm-planner}
+{summary from proposal ResultEnvelope}
 
 | Change | Detail |
 |--------|--------|
@@ -341,43 +581,75 @@ Sort phases respecting dependencies:
 - Phases whose dependencies are all complete come next
 - Phases with incomplete dependencies are deferred until their dependencies complete
 
-### 3d. Apply Max Phases Limit
+### 3d. Group Independent Phases (Swarm Detection)
 
-If MAX_PHASES is set and execution_order length exceeds it:
-- Truncate to MAX_PHASES
+If SWARM_ENABLED == true:
+
+Group phases into "levels" based on the dependency DAG:
+- **Level 0**: phases with no dependencies (or all deps already complete)
+- **Level 1**: phases whose only dependencies are Level 0 phases
+- **Level N**: phases whose dependencies are all in levels 0..N-1
+
+For each level with 2+ phases:
+- Mark as **PARALLEL** — will use agent team
+- Cap group size at MAX_PARALLEL (excess phases overflow to a new group at the same level)
+
+For each level with 1 phase:
+- Mark as **SERIAL** — will execute normally via existing Steps 4a-4i
+
+If SWARM_ENABLED == false:
+- Every level contains exactly 1 phase — all execution is serial
+
+### 3e. Apply Max Phases Limit
+
+If MAX_PHASES is set and total phase count across all levels exceeds it:
+- Truncate levels to fit within MAX_PHASES
 - Note deferred phases in log
 
-### 3e. Display Execution Plan
+### 3f. Display Execution Plan
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Luca AUTOPILOT ► EXECUTION PLAN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-| Order | Phase | Goal | Depends On | Status |
-|-------|-------|------|------------|--------|
-| 1 | {NN} | {goal} | None | Ready |
-| 2 | {NN} | {goal} | Phase {X} | Ready |
-| ... |
+| Level | Phases | Mode | Depends On |
+|-------|--------|------|------------|
+| 0 | Phase 87, 88, 89 | PARALLEL (team) | None |
+| 1 | Phase 90 | SERIAL | Level 0 |
+| 2 | Phase 91, 92 | PARALLEL (team) | Level 1 |
 
-Total: {N} phases to execute
+Total: {N} phases across {L} levels
+Parallel levels: {P} (will use agent teams)
 ```
 
 If `--dry-run`: Display this plan and EXIT. Do not proceed to execution.
 </execution_order>
 
 <phase_loop>
-## Step 4: Phase Execution Loop
+## Step 4: Level-Based Execution Loop
 
 **Initialize tracking state:**
 
 ```
 COMPLETED_PHASES=[]
 PARKED_PHASES=[]
-PHASE_INDEX=0
+LEVEL_INDEX=0
 ```
 
-**For each phase in execution_order:**
+**For each level in execution_levels (from Step 3d):**
+
+Check the level's mode:
+- If **SERIAL** (1 phase): execute via Steps 4a-4i (existing serial path)
+- If **PARALLEL** (2+ phases, SWARM_ENABLED): execute via Steps 4-swarm-a through 4-swarm-h
+
+> **MANDATORY:** When the level mode is PARALLEL, you MUST use TeamCreate to create an agent team and spawn teammates via Task with `team_name`. Do NOT substitute with individual Task calls or attempt to execute parallel phases yourself. The team infrastructure ensures proper coordination, worktree isolation, and merge sequencing.
+
+---
+
+### Serial Execution Path (Steps 4a-4i)
+
+Used for single-phase levels OR when SWARM_ENABLED == false.
 
 ### 4a. Dependency Check
 
@@ -424,21 +696,24 @@ Task(
 )
 ```
 
-Write complexity via bridge (falls back to STATE.md):
+Write complexity via bridge (transitions state machine from routing to planning/discussing):
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition set-complexity --complexity="{COMPLEXITY}" 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
 ```
 
-### 4d. Discussion (Complexity-Gated)
+### 4d. Discussion (Always Runs)
 
-Read the complexity matrix from config.json for the classified level.
-
-- If discussion == "skip" for this complexity level: skip to 4e
-- If discussion == "optional" or "run" or "required":
+Discussion always runs. The discussion depth and model tier scale with complexity via the routing table.
 
 ```
 Skill(skill: "phase-discuss", args: "{phase_number}")
+```
+
+Transition state machine after discussion:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 ```
 
 ### 4e. Planning
@@ -461,6 +736,12 @@ If PLAN_COUNT == 0 and AUTO_PLAN == false:
 - Continue to next phase
 
 If PLAN_COUNT > 0: skip planning (plans already exist).
+
+Transition state machine to executing:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=PLAN_COMPLETE 2>/dev/null || true
+```
 
 ### 4f. Execution
 
@@ -496,7 +777,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to `[x]`
-3. Log to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="{timestamp} [PHASE-COMPLETE] Phase {NN} passed"`
+3. Log to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "{timestamp} [PHASE-COMPLETE] Phase {NN} passed")`
 4. Display:
 
 ```
@@ -528,10 +809,11 @@ Skill(skill: "phase-execute", args: "{phase_number} --gaps-only --skip-uat")
 
 ### 4h. Learning Capture
 
-After each phase (per complexity gating):
-- TRIVIAL: skip
-- SIMPLE: brief
-- MODERATE+: standard/full
+Learning capture always runs (model tier scales with complexity via routing table):
+- TRIVIAL/SIMPLE: standard (fast model tier)
+- MODERATE: standard (fast model tier)
+- COMPLEX: full (fast model tier)
+- CRITICAL: full + debrief (balanced model tier)
 
 Learning is already handled by phase-execute internally. No additional action needed here.
 
@@ -549,7 +831,227 @@ Parked:    {PARKED_PHASES count}
 Remaining: {remaining count}
 ```
 
-Increment PHASE_INDEX and continue loop.
+---
+
+### Parallel Execution Path (Swarm Mode)
+
+Used for levels with 2+ independent phases when SWARM_ENABLED == true.
+
+### 4-swarm-a. Oversight Gate (Parallel Level)
+
+- If OVERSIGHT == "phase":
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca AUTOPILOT ► PARALLEL LEVEL {N}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phases: {phase list with goals}
+Mode: PARALLEL (agent team, max {MAX_PARALLEL} concurrent)
+
+Options:
+  1. Continue — Plan and execute all phases in parallel
+  2. Serial — Demote to serial execution for this level
+  3. Skip — Park all phases in this level
+  4. Stop — End autopilot session
+```
+
+- If OVERSIGHT == "milestone", "flagged", or "full-auto": auto-continue.
+
+### Phase A: Parallel Planning with Lead Review Gate
+
+### 4-swarm-b. Create Planning Team
+
+```
+TeamCreate(
+  team_name: "autopilot-plan-L{N}-{timestamp}",
+  description: "Parallel planning for {count} independent phases"
+)
+```
+
+Create a task for each phase to plan:
+
+```
+For each phase in this level:
+  TaskCreate(
+    subject: "Plan Phase {NN}: {goal}",
+    description: "Generate PLAN.md for phase {NN}",
+    activeForm: "Planning Phase {NN}"
+  )
+```
+
+### 4-swarm-c. Spawn Planning Teammates (in parallel)
+
+Each planner explores the codebase and generates a PLAN.md. They do NOT write code.
+
+```
+For each phase (in parallel, using Task tool):
+  Task(
+    team_name: "autopilot-plan-L{N}-{timestamp}",
+    name: "planner-{NN}",
+    subagent_type: "general-purpose",
+    prompt: """
+    You are a Luca phase planner. Create a PLAN.md for this phase.
+
+    **Phase:** {NN} - {goal}
+    **Phase directory:** .planning/phases/{phase_dir}/
+    **Project state:** {STATE.md content}
+    **Working memory:** {session context from MuninnDB}
+    **CLAUDE.md conventions:** Read CLAUDE.md for project conventions.
+
+    **Instructions:**
+    1. Read the phase goal and any existing context in the phase directory
+    2. Explore the codebase to understand the scope of changes needed
+    3. Create {NN}-PLAN.md in the phase directory with:
+       - Goal-backward analysis
+       - Atomic tasks with verification criteria
+       - Wave grouping for any internal parallelism
+       - Target ~50% context budget
+    4. Mark your task completed via TaskUpdate
+    5. Send the plan summary to the lead via SendMessage
+
+    **Do NOT write implementation code.** Only produce the PLAN.md.
+    """
+  )
+```
+
+### 4-swarm-d. Lead Reviews All Plans Together
+
+After all planners complete and send their summaries, shutdown the planning team:
+
+```
+For each planner:
+  SendMessage(type: "shutdown_request", recipient: "planner-{NN}")
+# After all acknowledge:
+TeamDelete()
+```
+
+Then the lead reads all generated PLAN.md files and performs **cross-plan review**:
+
+1. **Conflicting file modifications**: Check if two plans modify the same file
+   - If conflict found: either merge the plans into a single executor or demote the conflicting phase to serial (defer to next level)
+2. **Shared utility opportunities**: Check if both plans need similar helpers
+   - If found: note in the execution instructions so the first executor creates it
+3. **API contract alignment**: Check if one plan changes a schema another depends on
+   - If found: order the plans (schema change first) or demote to serial
+
+**If all plans are clean**: approve all and proceed to Phase B.
+**If conflicts cannot be resolved**: demote conflicting phases to serial, execute clean phases in parallel.
+
+### Phase B: Parallel Execution
+
+### 4-swarm-e. Create Execution Team
+
+```
+TeamCreate(
+  team_name: "autopilot-exec-L{N}-{timestamp}",
+  description: "Parallel execution of {count} reviewed plans"
+)
+```
+
+### 4-swarm-f. Create Tasks and Spawn Execution Teammates (in parallel)
+
+```
+For each phase with an approved plan:
+  TaskCreate(
+    subject: "Execute Phase {NN}: {goal}",
+    description: "{PLAN.md content + execution instructions}",
+    activeForm: "Executing Phase {NN}"
+  )
+
+  Task(
+    team_name: "autopilot-exec-L{N}-{timestamp}",
+    name: "executor-{NN}",
+    subagent_type: "general-purpose",
+    isolation: "worktree",
+    prompt: """
+    You are an autopilot executor. Implement the approved plan for Phase {NN}.
+
+    **Your Phase:** {NN} - {goal}
+    **Approved Plan:** {PLAN.md content}
+
+    **Instructions:**
+    1. You are in an isolated git worktree — work freely
+    2. Read and follow CLAUDE.md conventions (use Bun, not Node)
+    3. Execute all plan tasks with atomic commits
+    4. Run `bun test` and `bunx --bun tsc --noEmit` before each commit
+    5. When done, mark your task completed: TaskUpdate(taskId: "{id}", status: "completed")
+    6. Send a summary to the lead: SendMessage(type: "message", recipient: "team-lead", content: "...", summary: "Phase {NN} execution complete")
+
+    **Do NOT modify:** ROADMAP.md, STATE.md, .planning/ metadata (lead handles these)
+    **Do NOT deviate from the approved plan** without messaging the lead first.
+    """
+  )
+```
+
+### 4-swarm-g. Monitor Execution
+
+- Teammate messages are auto-delivered (no polling needed)
+- On each completion: log progress, update display
+- On teammate error: log the error, mark phase as FAILED, continue monitoring others
+- Timeout: if no progress from a teammate after 30 minutes, send a follow-up message:
+  `SendMessage(type: "message", recipient: "executor-{NN}", content: "Status check — are you blocked?", summary: "Checking executor progress")`
+- If no response after another 10 minutes: mark phase as TIMED_OUT, continue with others
+
+### 4-swarm-h. Merge and Verify
+
+After all executors in this level complete (or are marked failed/timed out):
+
+1. **Merge each worktree branch** sequentially into the feature branch:
+   ```bash
+   git merge --no-ff {worktree-branch} -m "merge: Phase {NN} from parallel execution"
+   ```
+
+2. **Run post-merge harness** after each merge:
+   ```bash
+   bun test && bunx --bun tsc --noEmit
+   ```
+
+3. **If harness fails** after a merge:
+   - Identify which merge caused the failure
+   - Attempt fix (max 2 iterations)
+   - If still failing: revert that merge and park the phase
+
+4. **After all successful merges**: run full harness one final time to confirm clean state
+
+### 4-swarm-i. Cleanup Level
+
+1. Shutdown execution teammates:
+   ```
+   For each executor:
+     SendMessage(type: "shutdown_request", recipient: "executor-{NN}")
+   # After all acknowledge:
+   TeamDelete()
+   ```
+
+2. Update ROADMAP.md: mark completed phase plans as `[x]`
+3. Add completed phases to COMPLETED_PHASES
+4. Add failed/timed-out phases to PARKED_PHASES with reasons
+5. Update state via bridge:
+   ```bash
+   bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
+   ```
+6. Log to MuninnDB session memory via muninn_remember
+
+### 4-swarm-j. Level Progress Display
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca AUTOPILOT ► LEVEL {N} COMPLETE (PARALLEL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| {NN}  | Passed ✓ | merged successfully |
+| {NN}  | Passed ✓ | merged successfully |
+| {NN}  | Parked ⏸ | {reason} |
+
+Completed: {COMPLETED_PHASES count}/{total}
+Parked:    {PARKED_PHASES count}
+Remaining: {remaining levels}
+```
+
+Continue to next level.
 </phase_loop>
 
 <milestone_gate>
@@ -661,7 +1163,10 @@ Track total milestones completed in this session. If exceeds 3:
 | Decision Point | full-auto | flagged | milestone | phase |
 |----------------|-----------|---------|-----------|-------|
 | Before each phase | continue | continue | continue | PAUSE: Continue/Skip/Stop |
+| Before parallel level | continue | continue | continue | PAUSE: show parallel plan |
 | Phase failure/gaps | park, continue | PAUSE: Retry/Skip/Stop | park, continue | PAUSE: Retry/Skip/Stop |
+| Teammate failure | skip phase, continue | PAUSE | skip phase | PAUSE |
+| Merge conflict | auto-resolve or skip | PAUSE | skip phase | PAUSE |
 | CRITICAL code review | PAUSE (safety) | PAUSE | PAUSE | PAUSE |
 | Milestone boundary | auto-complete | PAUSE if parked | PAUSE: summary + confirm | PAUSE: summary + confirm |
 | Roadmap revision | auto-approve | auto-approve | PAUSE: approve changes | PAUSE: approve changes |
@@ -706,17 +1211,33 @@ When a phase cannot complete:
 | Blocked by parked phase | Dependency on a previously parked phase | N/A (cascading) |
 | No plans, auto-plan disabled | Phase has no PLAN.md and auto_plan=false | N/A |
 | CRITICAL code review | Unresolved CRITICAL issues | Always pauses |
+| Teammate timeout | Executor unresponsive for 40+ minutes | Park phase, merge others |
+| Teammate error | Executor encountered unrecoverable error | Park phase, continue others |
+| Merge conflict | Worktree branch conflicts with feature branch | Park phase, merge others |
+| Post-merge harness failure | Tests/types fail after merge (2 fix attempts) | Park all phases from this level |
+
+### Swarm-Specific Failure Modes
+
+| Failure Mode | Response |
+|-------------|----------|
+| Teammate timeout (40 min) | Mark phase TIMED_OUT, park it, merge other completed phases |
+| Teammate error | Mark phase FAILED, park it, continue monitoring other teammates |
+| Merge conflict | Log conflict, park that phase, merge remaining clean phases |
+| Post-merge harness failure | Attempt fix (2 iterations), then revert merge and park the phase |
+| All teammates fail | Fallback: re-attempt all phases serially on next `/autopilot` run |
 
 ### Recovery
 
 Parked phases can be retried by:
-1. Running `/autopilot` again — parked phases will be re-attempted
+1. Running `/autopilot` again — parked phases will be re-attempted (serially if previously failed in swarm)
 2. Running `/phase-plan {N} --gaps` manually for specific phases
 3. Running `/phase-execute {N}` manually after fixing issues
 
 ### Cascade Prevention
 
 The dependency check in Step 4a prevents attempting phases whose prerequisites are parked. This avoids wasting execution time on phases that cannot succeed.
+
+For parallel levels, cascade prevention also applies: if a phase in a parallel group is parked due to a dependency, it is excluded from the team before spawning.
 </failure_handling>
 
 <summary>
@@ -740,6 +1261,9 @@ Duration:   {session duration}
 | Phases parked | {N} |
 | Plans generated | {N} |
 | Plans executed | {N} |
+| Parallel levels | {N} |
+| Phases run in parallel | {N} |
+| Phases run serially | {N} |
 | Commits made | {N} |
 
 ## Completed Phases
@@ -764,7 +1288,7 @@ Duration:   {session duration}
 1. Update state via bridge (falls back to STATE.md):
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
 ```
 
 2. Regenerate STATE.md via bridge snapshot:
@@ -774,11 +1298,11 @@ bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 ```
 
-3. Log final status to WORKING.md via bridge: `bun run src/memory/__helpers/bridge.ts append-working --section=findings --content="Autopilot session complete"`
+3. Log final status to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "Autopilot session complete")`
 4. Commit session metadata:
 
 ```bash
-git add .planning/STATE.md .planning/WORKING.md .planning/state.json
+git add .planning/STATE.md .planning/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 ```
 </summary>

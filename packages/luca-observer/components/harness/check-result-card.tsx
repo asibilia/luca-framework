@@ -87,7 +87,7 @@ export function CheckResultCard({ check }: { check: CheckResultSnapshot }) {
           <button
             type="button"
             onClick={() => setShowOutput(!showOutput)}
-            className="font-mono text-xs text-muted-foreground hover:text-foreground"
+            className="rounded font-mono text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             {showOutput ? "Hide" : "Show"} raw output
           </button>

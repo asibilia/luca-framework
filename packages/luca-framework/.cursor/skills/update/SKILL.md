@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Update
 
 Update Luca to latest version with changelog preview.
@@ -82,5 +81,4 @@ This is a terminal action. The update is complete.
 
 - `/help` — See updated command reference
 - `/progress` — Continue your work
-</main>
 </main>

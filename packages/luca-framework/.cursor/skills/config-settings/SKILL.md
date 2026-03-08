@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Settings
 
 Configure workflow agents on/off and select model profile via interactive settings.
@@ -101,5 +100,4 @@ Settings updated. Configuration takes effect immediately.
 - `/progress` — Continue work with new settings
 - `/help` — Review commands
 - `/config-profile {profile}` — Quick profile switch
-</main>
 </main>

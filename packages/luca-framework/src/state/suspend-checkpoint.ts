@@ -11,7 +11,7 @@
  */
 import { z } from "zod";
 import { mkdir } from "node:fs/promises";
-import { sanitizeJsonParse } from "./sanitize";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import { queryOne } from "./__helpers/spacetimedb-client";
 import { callReducer } from "./__helpers/observer-emitter";
 
@@ -21,7 +21,8 @@ import { callReducer } from "./__helpers/observer-emitter";
  * Schema for a suspend checkpoint persisted to disk.
  *
  * Contains all state needed to resume a phase from the exact point
- * of suspension, including wave progress and working memory content.
+ * of suspension, including wave progress. Session memory persists
+ * independently via MuninnDB (muninn_session / muninn_where_left_off).
  */
 export const suspendCheckpointSchema = z.object({
   /** Phase number that was suspended */
@@ -30,8 +31,6 @@ export const suspendCheckpointSchema = z.object({
   wave_index: z.number().int().nonnegative(),
   /** Task IDs completed before suspension */
   completed_task_ids: z.array(z.string()).default([]),
-  /** Serialized WORKING.md content at suspension time */
-  working_memory_snapshot: z.string().default(""),
   /** ISO 8601 timestamp of suspension */
   suspended_at: z.string(),
   /** Reason for suspension (e.g., "context_exhaustion") */

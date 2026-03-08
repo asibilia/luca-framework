@@ -10,7 +10,7 @@ Luca is the AI agent framework for spec-driven development. It combines structur
 
 - **Jira-to-PR workflow** - Single command handles Jira → GitHub issue → branch → execute → PR
 - **Spec-driven development** - Goal-backward planning, atomic execution
-- **Two-tier memory** - Session memory (WORKING.md) + long-term learning (MEMORY.md)
+- **Two-tier memory** - Session memory (MuninnDB session context) + long-term learning (MuninnDB engrams)
 - **Always verify** - Verification runs at all complexity levels
 - **Intelligent routing** - Automatic complexity classification
 - **Cognitive pre-flight** - Load project context before operations
@@ -56,12 +56,12 @@ When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ti
 
 ## Documentation
 
-| Document                                                            | Description                                           |
-| ------------------------------------------------------------------- | ----------------------------------------------------- |
+| Document                                                      | Description                                           |
+| ------------------------------------------------------------- | ----------------------------------------------------- |
 | [**lu-workflow.mdc**](../../../.cursor/rules/lu-workflow.mdc) | ⭐ **Main workflow definition and command reference** |
-| [End-to-End Workflow](./end-to-end-workflow.md)                     | How it all works together                             |
-| [Diagrams](./diagrams.md)                                           | Visual architecture diagrams                          |
-| [Architecture](./architecture-plan.md)                              | System design                                         |
+| [End-to-End Workflow](./end-to-end-workflow.md)               | How it all works together                             |
+| [Diagrams](./diagrams.md)                                     | Visual architecture diagrams                          |
+| [Architecture](./architecture-plan.md)                        | System design                                         |
 
 ## Core Principles
 
@@ -75,9 +75,9 @@ When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ti
 
 ### Cognitive Memory
 
-- **BRAIN.md** - Project identity and conventions
-- **MEMORY.md** - Long-term learnings (patterns, decisions, pitfalls)
-- **WORKING.md** - Session memory (cleared after learning extraction)
+- **MuninnDB brain tree** - Project identity and conventions
+- **MuninnDB engrams** - Long-term learnings (patterns, decisions, pitfalls)
+- **MuninnDB session context** - Session memory (cleared after learning extraction)
 - Selective memory recall (only relevant learnings loaded)
 - Curated learning capture (validated insights only)
 
@@ -119,10 +119,10 @@ When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ti
     └── lu-workflow.mdc    # Core workflow definition
 
 .planning/                     # Per-project state
-├── BRAIN.md                   # Project identity (persistent)
+├── MuninnDB brain tree                   # Project identity (persistent)
 ├── STATE.md                   # Session state + git context
-├── WORKING.md                 # Working memory (session-only)
-├── MEMORY.md                  # Long-term memory (persistent)
+├── MuninnDB session context                 # Working memory (session-only)
+├── MuninnDB engrams                  # Long-term memory (persistent)
 ├── PROJECT.md                 # Vision & scope
 ├── ROADMAP.md                 # Phase structure
 ├── config.json                # Workflow preferences
@@ -149,38 +149,38 @@ STATE.md now tracks git workflow context:
 
 ## Key Commands
 
-| Command                                | Purpose                                                                       |
-| -------------------------------------- | ----------------------------------------------------------------------------- |
+| Command                                 | Purpose                                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
 | `/lu <task \| [TICKET-ID] \| Jira-URL>` | **Unified entry** - git setup, routing, execution, verification, learning, PR |
-| `/lu-new-project`                   | Initialize project with BRAIN.md, MEMORY.md                                   |
-| `/lu-map-codebase`                  | Analyze existing code (parallel agents)                                       |
-| `/lu-new-milestone`                 | Start new milestone cycle                                                     |
-| `/lu-complete-milestone`            | Archive milestone, consolidate learnings                                      |
-| `/lu-audit-milestone`               | Audit milestone completion against original intent                            |
-| `/lu-plan-milestone-gaps`           | Create phases to close gaps identified by audit                               |
-| `/lu-discuss-phase [N]`             | Gather phase context through adaptive questioning                             |
-| `/lu-research-phase [N]`            | Deep ecosystem research for niche/complex domains                             |
-| `/lu-list-phase-assumptions [N]`    | Preview AI planning assumptions before execution                              |
-| `/lu-plan-phase [N]`                | Create execution plans with cognitive pre-flight                              |
-| `/lu-execute-phase [N]`             | Execute + always verify + capture learnings                                   |
-| `/lu-verify-work [N]`               | Validate features through conversational UAT testing                          |
-| `/lu-add-phase`                     | Add new phase to end of current milestone                                     |
-| `/lu-insert-phase`                  | Insert urgent work as decimal phase                                           |
-| `/lu-remove-phase`                  | Remove future phase and renumber                                              |
-| `/lu-progress`                      | Check current state and next steps                                            |
-| `/lu-pause-work`                    | Create context handoff when pausing mid-phase                                 |
-| `/lu-resume-work`                   | Resume from previous session with context restoration                         |
-| `/lu-quick`                         | Execute quick ad-hoc tasks with Luca guarantees                     |
-| `/lu-add-todo`                      | Capture idea or task as todo from conversation                                |
-| `/lu-check-todos`                   | List pending todos and select one to work on                                  |
-| `/lu-debug`                         | Memory-aided debugging with scientific method                                 |
-| `/lu-address-pr`                    | Address PR review comments with agent swarm                                   |
-| `/lu-settings`                      | Configure workflow toggles and model profile                                  |
-| `/lu-set-profile`                   | Quick switch model profile (quality/balanced/budget)                          |
-| `/lu-help`                          | Show full command reference                                                   |
-| `/lu-choose`                        | Help decide between issue-driven vs Luca workflow                   |
-| `/lu-update`                        | Update Luca to latest version                                       |
-| `/lu-join-discord`                  | Join Luca Discord community                                         |
+| `/lu-new-project`                       | Initialize project with MuninnDB brain tree, MuninnDB engrams                 |
+| `/lu-map-codebase`                      | Analyze existing code (parallel agents)                                       |
+| `/lu-new-milestone`                     | Start new milestone cycle                                                     |
+| `/lu-complete-milestone`                | Archive milestone, consolidate learnings                                      |
+| `/lu-audit-milestone`                   | Audit milestone completion against original intent                            |
+| `/lu-plan-milestone-gaps`               | Create phases to close gaps identified by audit                               |
+| `/lu-discuss-phase [N]`                 | Gather phase context through adaptive questioning                             |
+| `/lu-research-phase [N]`                | Deep ecosystem research for niche/complex domains                             |
+| `/lu-list-phase-assumptions [N]`        | Preview AI planning assumptions before execution                              |
+| `/lu-plan-phase [N]`                    | Create execution plans with cognitive pre-flight                              |
+| `/lu-execute-phase [N]`                 | Execute + always verify + capture learnings                                   |
+| `/lu-verify-work [N]`                   | Validate features through conversational UAT testing                          |
+| `/lu-add-phase`                         | Add new phase to end of current milestone                                     |
+| `/lu-insert-phase`                      | Insert urgent work as decimal phase                                           |
+| `/lu-remove-phase`                      | Remove future phase and renumber                                              |
+| `/lu-progress`                          | Check current state and next steps                                            |
+| `/lu-pause-work`                        | Create context handoff when pausing mid-phase                                 |
+| `/lu-resume-work`                       | Resume from previous session with context restoration                         |
+| `/lu-quick`                             | Execute quick ad-hoc tasks with Luca guarantees                               |
+| `/lu-add-todo`                          | Capture idea or task as todo from conversation                                |
+| `/lu-check-todos`                       | List pending todos and select one to work on                                  |
+| `/lu-debug`                             | Memory-aided debugging with scientific method                                 |
+| `/lu-address-pr`                        | Address PR review comments with agent swarm                                   |
+| `/lu-settings`                          | Configure workflow toggles and model profile                                  |
+| `/lu-set-profile`                       | Quick switch model profile (quality/balanced/budget)                          |
+| `/lu-help`                              | Show full command reference                                                   |
+| `/lu-choose`                            | Help decide between issue-driven vs Luca workflow                             |
+| `/lu-update`                            | Update Luca to latest version                                                 |
+| `/lu-join-discord`                      | Join Luca Discord community                                                   |
 
 ### Unified Entry Point Flags
 
@@ -207,9 +207,9 @@ STATE.md now tracks git workflow context:
            ▼
 ┌──────────────────────────┐
 │  1. Cognitive Pre-Flight │
-│  • Load BRAIN.md         │
-│  • Recall from MEMORY.md │
-│  • Initialize WORKING.md │
+│  • Load MuninnDB brain tree         │
+│  • Recall from MuninnDB engrams │
+│  • Initialize MuninnDB session context │
 └──────────┬───────────────┘
            │
            ▼
@@ -223,7 +223,7 @@ STATE.md now tracks git workflow context:
            ▼
 ┌──────────────────────────┐
 │  3. Execute              │
-│  • Log to WORKING.md     │
+│  • Log to MuninnDB session context     │
 │  • Atomic commits        │
 └──────────┬───────────────┘
            │
@@ -238,7 +238,7 @@ STATE.md now tracks git workflow context:
 ┌──────────────────────────┐
 │  5. Learn & Commit       │  ◄── NEW
 │  • Extract learnings     │
-│  • Update MEMORY.md      │
+│  • Update MuninnDB engrams      │
 │  • Commit changes        │
 │  • Offer PR creation     │
 └──────────────────────────┘

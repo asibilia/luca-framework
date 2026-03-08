@@ -19,7 +19,7 @@ const moduleBoundaryConfig: RuleConfig = {
 
 \`\`\`
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, memory  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 \`\`\`
@@ -35,8 +35,8 @@ import { COMPLEXITY_ORDER } from "~/complexity";
 // ✅ T2 (agents) importing T1 (context)
 import type { ContextConfig } from "~/context";
 
-// ❌ T0 (shared) importing T1 (memory) — upward dependency
-import { compress } from "~/memory";
+// ❌ T0 (shared) importing T1 (harness) — upward dependency
+import { runHarness } from "~/harness";
 
 // ❌ T1 (harness) importing T2 (agents) — upward dependency
 import { agentRegistry } from "~/agents";
@@ -88,13 +88,10 @@ import { runHarness } from "~/harness";
 
 ## Rule 5 — Documented Exceptions
 
-The following cross-tier imports are known and accepted:
-
-| Source | Target | Reason |
-|--------|--------|--------|
-| \`shared/__helpers/validation-utils.ts\` | agents/skills/rules \`__schemas/\` | Config validation helpers reference entity schemas (T0 -> T2) |
+There are currently no known cross-tier import exceptions.
 
 **Removed exceptions (resolved):**
+- \`shared/__helpers/validation-utils.ts\` -> agents/skills/rules \`__schemas/\` was a T0->T2 violation where shared imported entity schemas for config validation. Resolved in Phase 13 by replacing entity-specific validators with a generic \`safeValidate<T>(schema, config)\` that accepts any Zod schema, eliminating all T2 imports from shared.
 - \`harness/parsers/parser-registry.ts\` -> \`~/harness/__schemas/harness.schemas\` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
 
 New exceptions must be documented here and in this rule file before being committed.

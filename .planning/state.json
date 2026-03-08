@@ -1,9 +1,9 @@
 {
   "status": "active",
-  "value": "executing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "514c5aa1-65a0-4cf0-a73c-e184a749aab0",
+    "session_id": "fc759ad3-6102-4681-9b0c-738bbed69a23",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -35,77 +35,38 @@
     "complexity_matrix": {
       "TRIVIAL": {
         "cognitivePreflight": "lite",
-        "research": "skip",
-        "discussion": "skip",
         "planVerificationIterations": 0,
         "harnessFixIterations": 1,
         "verifyFixIterations": 0,
-        "verificationMode": "quick",
-        "codeReviewAgents": [],
-        "uat": "skip",
-        "learningCapture": "skip"
+        "verificationMode": "quick"
       },
       "SIMPLE": {
         "cognitivePreflight": "lite",
-        "research": "skip",
-        "discussion": "skip",
         "planVerificationIterations": 0,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "quick",
-        "codeReviewAgents": [],
-        "uat": "skip",
-        "learningCapture": "brief"
+        "verificationMode": "quick"
       },
       "MODERATE": {
         "cognitivePreflight": "full",
-        "research": "optional",
-        "discussion": "optional",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "standard",
-        "codeReviewAgents": [
-          "dx-advocate",
-          "code-simplifier"
-        ],
-        "uat": "optional",
-        "learningCapture": "standard"
+        "verificationMode": "standard"
       },
       "COMPLEX": {
         "cognitivePreflight": "full",
-        "research": "required",
-        "discussion": "run",
         "planVerificationIterations": 2,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "full",
-        "codeReviewAgents": [
-          "dx-advocate",
-          "code-simplifier",
-          "code-architect",
-          "tailwind-auditor"
-        ],
-        "uat": "required",
-        "learningCapture": "full"
+        "verificationMode": "full"
       },
       "CRITICAL": {
         "cognitivePreflight": "full",
-        "research": "required",
-        "discussion": "required",
         "planVerificationIterations": 3,
         "harnessFixIterations": 3,
         "verifyFixIterations": 2,
-        "verificationMode": "full+human",
-        "codeReviewAgents": [
-          "dx-advocate",
-          "code-simplifier",
-          "code-architect",
-          "tailwind-auditor",
-          "security-auditor"
-        ],
-        "uat": "required+thorough",
-        "learningCapture": "full+debrief"
+        "verificationMode": "full+human"
       }
     },
     "autopilot_config": {
@@ -123,35 +84,7 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "started_at": "2026-03-06T18:01:50.158Z",
-    "last_transition_at": "2026-03-06T18:12:10.152Z"
+    "started_at": "2026-03-08T11:54:28.361Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 1,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-03-06T18:12:10.152Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }

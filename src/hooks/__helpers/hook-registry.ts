@@ -119,6 +119,11 @@ export function resolveCanonicalRegistry(): Record<string, CanonicalHook> {
  * Delegates to canonicalHookRegistry via canonicalToLegacy() for
  * backward compatibility. Consumers that depend on HookDefinition
  * format continue to work unchanged.
+ *
+ * @deprecated Use `canonicalHookRegistry` with the adapter registry
+ *   (`resolveAdapter(platform).adapt(hook)`) from `src/hooks/adapters/` instead.
+ *   The canonical registry + adapter pattern replaces the need for a
+ *   pre-flattened legacy registry.
  */
 export const hookRegistry: Record<string, () => HookDefinition> =
   Object.fromEntries(
@@ -131,6 +136,8 @@ export const hookRegistry: Record<string, () => HookDefinition> =
 /**
  * Resolve all hookRegistry thunks into a flat Record<string, HookDefinition>.
  * Convenience helper for consumers that need the resolved registry.
+ *
+ * @deprecated Use `resolveCanonicalRegistry()` with the adapter registry instead.
  */
 export function resolveHookRegistry(): Record<string, HookDefinition> {
   return Object.fromEntries(

@@ -53,6 +53,10 @@ import { noteSkill } from "../general/note.skill";
 import { autopilotSkill } from "../general/autopilot.skill";
 import { updateSkill } from "../general/update.skill";
 import { postInitTourSkill } from "../general/post-init-tour.skill";
+import { workflowSaveSkill } from "../general/workflow-save.skill";
+import { profileExportSkill } from "../general/profile-export.skill";
+import { profileImportSkill } from "../general/profile-import.skill";
+import { seedMemorySkill } from "../general/seed-memory.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -113,5 +117,9 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   autopilot: () => autopilotSkill,
   update: () => updateSkill,
   "post-init-tour": () => postInitTourSkill,
+  "workflow-save": () => workflowSaveSkill,
+  "profile-export": () => profileExportSkill,
+  "profile-import": () => profileImportSkill,
+  "seed-memory": () => seedMemorySkill,
   lu: () => luSkill,
 };

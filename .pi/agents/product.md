@@ -5,7 +5,6 @@ tools:
   - Read
   - Grep
   - Glob
-model_tier: balanced
 background_spawnable: false
 purpose: general
 allowed_contexts:
@@ -43,7 +42,7 @@ Luca framework context:
 - Compiles agent/skill/rule/hook definitions from TypeScript to markdown
 - Outputs to .claude/, .cursor/, .pi/, and dist/plugin/ directories
 - State machine in packages/luca-framework/ tracks workflow phases
-- Spec-driven development with cognitive memory (BRAIN.md, MEMORY.md, WORKING.md)
+- Spec-driven development with cognitive memory (MuninnDB brain tree, engrams, session context)
 
 Reference files:
 

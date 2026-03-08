@@ -2,148 +2,218 @@
 
 import { useState, useMemo } from "react";
 
+import orderBy from "lodash/orderBy";
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 import { EmptyState } from "~/components/shared/empty-state";
-import { formatSize } from "~/lib/format";
+import { relativeTime } from "~/lib/format";
+
+import type { SessionEntry } from "~/hooks/use-memory";
 
 /**
- * A parsed section from WORKING.md.
+ * Date group label for session entries.
  */
-interface WorkingSection {
-  heading: string;
-  content: string;
-  charCount: number;
-  hasContent: boolean;
+type DateGroupLabel = "Today" | "Yesterday" | "Earlier";
+
+/**
+ * A group of session entries sharing the same date bucket.
+ */
+interface DateGroup {
+  label: DateGroupLabel;
+  entries: SessionEntry[];
 }
 
 /**
- * Parse WORKING.md content into collapsible sections.
- *
- * Splits on ## headings. Each section tracks content, character count,
- * and whether it has meaningful content for the status badge.
+ * Classify a Unix epoch timestamp into a date bucket.
  */
-function parseSections(content: string): WorkingSection[] {
-  const lines = content.split("\n");
-  const sections: WorkingSection[] = [];
-  let currentHeading = "";
-  let currentLines: string[] = [];
+function classifyDate(epochOrMs: number): DateGroupLabel {
+  // Normalize: if value looks like seconds (< 1e12), convert to ms
+  const ms = epochOrMs < 1e12 ? epochOrMs * 1000 : epochOrMs;
+  const entryDate = new Date(ms);
+  const now = new Date();
 
-  const flush = () => {
-    if (!currentHeading) return;
-    const body = currentLines.join("\n").trim();
-    sections.push({
-      heading: currentHeading,
-      content: body,
-      charCount: body.length,
-      hasContent: body.length > 0,
-    });
-  };
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
 
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      flush();
-      currentHeading = line.replace(/^#+\s*/, "");
-      currentLines = [];
-    } else if (currentHeading) {
-      currentLines.push(line);
-    }
+  if (entryDate >= todayStart) return "Today";
+  if (entryDate >= yesterdayStart) return "Yesterday";
+  return "Earlier";
+}
+
+/**
+ * Extract a short action type label from a session entry concept.
+ *
+ * Session concepts often follow patterns like "session:finding",
+ * "session:decision", etc. This extracts a display-friendly badge label.
+ */
+function actionType(concept: string): string {
+  const colonIndex = concept.indexOf(":");
+  if (colonIndex > 0) {
+    return concept.slice(colonIndex + 1).trim();
   }
-  flush();
-
-  return sections;
+  return concept;
 }
 
 /**
- * Component rendering WORKING.md content with collapsible sections.
+ * Group session entries by date bucket (Today, Yesterday, Earlier).
  *
- * Parses markdown for section headers and renders each as a
- * collapsible panel with status badge (Active/Empty) and character count.
- * Sections with content are auto-expanded.
- *
- * @param content - Raw WORKING.md markdown content
+ * Entries are sorted newest-first within each group.
  */
-export function WorkingSections({ content }: { content: string }) {
-  if (!content.trim()) {
+function groupByDate(entries: SessionEntry[]): DateGroup[] {
+  const buckets = new Map<DateGroupLabel, SessionEntry[]>();
+  const order: DateGroupLabel[] = ["Today", "Yesterday", "Earlier"];
+
+  for (const label of order) {
+    buckets.set(label, []);
+  }
+
+  for (const entry of entries) {
+    const label = classifyDate(entry.created_at);
+    buckets.get(label)!.push(entry);
+  }
+
+  // Sort entries within each group by created_at descending
+  for (const [label, list] of buckets) {
+    buckets.set(label, orderBy(list, "created_at", "desc"));
+  }
+
+  // Only return non-empty groups
+  return order
+    .filter((label) => (buckets.get(label)?.length ?? 0) > 0)
+    .map((label) => ({
+      label,
+      entries: buckets.get(label)!,
+    }));
+}
+
+/**
+ * Component rendering MuninnDB session activity grouped by date.
+ *
+ * Groups entries into Today, Yesterday, and Earlier buckets.
+ * Each entry shows an action type badge, truncated entry ID,
+ * and relative timestamp. Preserves collapsible panel pattern.
+ *
+ * @param entries - Array of MuninnDB SessionEntry objects
+ */
+export function WorkingSections({ entries }: { entries: SessionEntry[] }) {
+  const groups = useMemo(() => groupByDate(entries), [entries]);
+
+  if (entries.length === 0) {
     return (
       <EmptyState
-        title="No WORKING.md"
-        message="Session memory will appear here during active work."
+        title="No Session Activity"
+        message="MuninnDB session entries will appear here during active work."
       />
     );
   }
 
-  const sections = useMemo(() => parseSections(content), [content]);
-
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          WORKING.md
-        </p>
-        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-          Session Memory
-        </p>
+    <div
+      role="region"
+      aria-label="Session activity"
+      className="flex flex-col rounded-lg border border-border bg-card"
+    >
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Session Activity
+          </p>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+            Recent MuninnDB Session
+          </p>
+        </div>
+        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
+          {entries.length} {entries.length === 1 ? "entry" : "entries"}
+        </span>
       </div>
       <div className="max-h-[28rem] overflow-y-auto">
-        {sections.length === 0 ? (
-          <div className="px-4 py-3">
-            <p className="font-mono text-xs text-muted-foreground">
-              No sections found.
-            </p>
-          </div>
-        ) : (
-          sections.map((section) => (
-            <SectionPanel key={section.heading} section={section} />
-          ))
-        )}
+        {groups.map((group) => (
+          <DateGroupPanel key={group.label} group={group} />
+        ))}
       </div>
     </div>
   );
 }
 
 /**
- * Collapsible panel for a single WORKING.md section.
- *
- * Auto-expanded if the section has content.
+ * Collapsible panel for a date group of session entries.
  */
-function SectionPanel({ section }: { section: WorkingSection }) {
-  const [expanded, setExpanded] = useState(section.hasContent);
+function DateGroupPanel({ group }: { group: DateGroup }) {
+  const [expanded, setExpanded] = useState(true);
 
   return (
     <div className="border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30"
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
       >
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            {expanded ? "\u25BC" : "\u25B6"}
-          </span>
+          {expanded ? (
+            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+          )}
           <span className="font-mono text-xs font-medium text-foreground">
-            {section.heading}
-          </span>
-          <span
-            className="rounded px-1.5 py-0.5 font-mono text-xs font-medium"
-            style={{
-              color: section.hasContent
-                ? "var(--color-success)"
-                : "var(--color-muted-foreground)",
-              backgroundColor: section.hasContent
-                ? "color-mix(in oklab, var(--color-success) 15%, transparent)"
-                : "color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)",
-            }}
-          >
-            {section.hasContent ? "Active" : "Empty"}
+            {group.label}
           </span>
         </div>
         <span className="font-mono text-xs text-muted-foreground">
-          {formatSize(section.charCount)}
+          {group.entries.length}
         </span>
       </button>
       {expanded && (
-        <div className="border-t border-border px-4 py-2">
+        <div className="border-t border-border">
+          {group.entries.map((entry) => (
+            <SessionEntryRow key={entry.id} entry={entry} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Single session entry row.
+ *
+ * Shows action type badge, truncated ID, content preview, and relative timestamp.
+ */
+function SessionEntryRow({ entry }: { entry: SessionEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const action = actionType(entry.concept);
+  const timestamp = relativeTime(entry.created_at);
+  const truncatedId = entry.id.slice(0, 8);
+
+  return (
+    <div className="border-b border-border/50 last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+      >
+        <span
+          className="shrink-0 rounded px-1.5 py-0.5 font-mono text-xs font-medium"
+          style={{
+            color: "var(--color-accent)",
+            backgroundColor:
+              "color-mix(in oklab, var(--color-accent) 15%, transparent)",
+          }}
+        >
+          {action}
+        </span>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
+          {truncatedId}
+        </span>
+        <span className="shrink-0 font-mono text-xs text-muted-foreground/60">
+          {timestamp}
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t border-border/30 px-4 py-2.5">
           <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-            {section.content || "No content."}
+            {entry.content}
           </pre>
         </div>
       )}

@@ -10,15 +10,8 @@
  * Source: src/hooks/pi-extensions/__helpers/hook-handlers.ts
  * Deployed to: .pi/extensions/__helpers/hook-handlers.ts
  */
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  unlinkSync,
-  statSync,
-} from "node:fs";
-import { join, extname, resolve } from "node:path";
-import { homedir } from "node:os";
+import { existsSync, unlinkSync } from "node:fs";
+import { join, extname } from "node:path";
 
 import { runShellCommand } from "./exec";
 import {
@@ -30,6 +23,21 @@ import {
 import { shouldRunThrottled } from "./throttle";
 import { runSessionInit } from "./session-init";
 import type { PiExtensionContext } from "../__types/pi-context";
+
+/**
+ * Escape a string for safe interpolation into a shell command.
+ *
+ * Wraps the value in single quotes and escapes any embedded single
+ * quotes using the standard sh idiom: ' -> '\''
+ * This prevents shell injection when file paths or other untrusted
+ * strings are embedded in command strings passed to runShellCommand().
+ *
+ * @param value - The string to escape
+ * @returns A shell-safe single-quoted string
+ */
+function shellEscape(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
 
 /** Extensions that prettier can format. */
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -90,7 +98,7 @@ export function handlePostEditFormat(filePath: string, cwd: string): void {
   if (!FORMATTABLE_EXTENSIONS.has(ext)) return;
 
   const rt = detectRuntime(cwd);
-  const cmd = `${getFormatterCmd(rt)} --write "${filePath}"`;
+  const cmd = `${getFormatterCmd(rt)} --write ${shellEscape(filePath)}`;
 
   try {
     runShellCommand(cmd, { cwd, timeout: 10 });
@@ -203,7 +211,7 @@ export function handlePreCommitDriftCheck(
   const driftScript = join(cwd, "scripts", "check-drift.ts");
   if (!existsSync(driftScript)) return;
 
-  const result = runShellCommand(`bun run "${driftScript}"`, {
+  const result = runShellCommand(`bun run ${shellEscape(driftScript)}`, {
     cwd,
     timeout: 60,
   });
@@ -255,24 +263,8 @@ export function handleContextCheckThrottled(
     }
   }
 
-  // Fallback: WORKING.md file size
-  const workingMd = join(cwd, ".planning", "WORKING.md");
-  if (!existsSync(workingMd)) return;
-
-  try {
-    const size = statSync(workingMd).size;
-    if (size >= 60_000) {
-      return `[Context Monitor: CRITICAL] Context usage is very high based on WORKING.md growth (~${size} bytes). Quality may be degrading. Consider running /compact to free context space, or start a new session.`;
-    }
-    if (size >= 40_000) {
-      return `[Context Monitor: HIGH] Context usage is high based on WORKING.md growth (~${size} bytes). Consider running /compact soon to maintain response quality.`;
-    }
-    if (size >= 20_000) {
-      return `[Context Monitor: MODERATE] Context usage is moderate based on WORKING.md growth (~${size} bytes). No action needed yet, but be mindful of context limits.`;
-    }
-  } catch {
-    // stat failed — skip
-  }
+  // NOTE: WORKING.md fallback removed. Memory is handled by MuninnDB MCP.
+  // Only Pi-native context usage (ctx.getContextUsage()) is checked.
 }
 
 // ─── Handler: snapshot-sync ─────────────────────────────────────────────────
@@ -292,8 +284,8 @@ export function handleSnapshotSync(cwd: string): void {
 /**
  * Context usage monitor on session shutdown.
  *
- * Dual check: primary is ctx.getContextUsage() (Pi-native tokens),
- * fallback is file-size heuristics. Higher severity wins.
+ * Uses ctx.getContextUsage() (Pi-native tokens) as the sole signal.
+ * NOTE: WORKING.md fallback removed. Memory is handled by MuninnDB MCP.
  *
  * @param cwd - Project root directory
  * @param ctx - Pi extension context
@@ -304,9 +296,6 @@ export function handleContextMonitor(
   ctx?: PiExtensionContext,
 ): string | void {
   // ─── Primary: Pi-native context usage ─────────────────────────────────
-  let piLevel = "NONE";
-  let piMsg = "";
-
   if (ctx?.getContextUsage) {
     const usage = ctx.getContextUsage();
     const total = usage.tokens ?? 0;
@@ -315,56 +304,16 @@ export function handleContextMonitor(
     if (limit > 0 && total > 0) {
       const ratio = total / limit;
       if (ratio >= 0.7) {
-        piLevel = "CRITICAL";
-        piMsg = `Context usage is very high (${Math.round(ratio * 100)}% of ${limit} tokens). Quality may be degrading. Consider running /compact to free context space, or start a new session.`;
-      } else if (ratio >= 0.5) {
-        piLevel = "HIGH";
-        piMsg = `Context usage is high (${Math.round(ratio * 100)}% of ${limit} tokens). Consider running /compact soon to maintain response quality.`;
-      } else if (ratio >= 0.3) {
-        piLevel = "MODERATE";
-        piMsg = `Context usage is moderate (${Math.round(ratio * 100)}% of ${limit} tokens). No action needed yet, but be mindful of context limits.`;
+        return `[Context Monitor: CRITICAL] Context usage is very high (${Math.round(ratio * 100)}% of ${limit} tokens). Quality may be degrading. Consider running /compact to free context space, or start a new session.`;
+      }
+      if (ratio >= 0.5) {
+        return `[Context Monitor: HIGH] Context usage is high (${Math.round(ratio * 100)}% of ${limit} tokens). Consider running /compact soon to maintain response quality.`;
+      }
+      if (ratio >= 0.3) {
+        return `[Context Monitor: MODERATE] Context usage is moderate (${Math.round(ratio * 100)}% of ${limit} tokens). No action needed yet, but be mindful of context limits.`;
       }
     }
   }
-
-  // ─── Fallback: WORKING.md file size ───────────────────────────────────
-  let wmdLevel = "NONE";
-  let wmdMsg = "";
-  const workingMd = join(cwd, ".planning", "WORKING.md");
-
-  if (existsSync(workingMd)) {
-    try {
-      const size = statSync(workingMd).size;
-      if (size >= 60_000) {
-        wmdLevel = "CRITICAL";
-        wmdMsg = `Context usage is very high based on WORKING.md growth (~${size} bytes). Quality may be degrading.`;
-      } else if (size >= 40_000) {
-        wmdLevel = "HIGH";
-        wmdMsg = `Context usage is high based on WORKING.md growth (~${size} bytes). Consider running /compact soon.`;
-      } else if (size >= 20_000) {
-        wmdLevel = "MODERATE";
-        wmdMsg = `Context usage is moderate based on WORKING.md growth (~${size} bytes). No action needed yet.`;
-      }
-    } catch {
-      // stat failed
-    }
-  }
-
-  // ─── Resolve: take higher severity ────────────────────────────────────
-  const rankMap: Record<string, number> = {
-    NONE: 0,
-    MODERATE: 1,
-    HIGH: 2,
-    CRITICAL: 3,
-  };
-  const piRank = rankMap[piLevel] ?? 0;
-  const wmdRank = rankMap[wmdLevel] ?? 0;
-  const finalLevel = piRank >= wmdRank ? piLevel : wmdLevel;
-  const finalMsg = piRank >= wmdRank ? piMsg : wmdMsg;
-
-  if (finalLevel === "NONE") return;
-
-  return `[Context Monitor: ${finalLevel}] ${finalMsg}`;
 }
 
 // ─── Handler: session-persist ───────────────────────────────────────────────
@@ -372,50 +321,21 @@ export function handleContextMonitor(
 /**
  * Save session state on shutdown.
  *
- * Removes session lock, appends session-end timestamp to WORKING.md.
- * Best-effort only — session shutdown hooks cannot block termination.
+ * Removes session lock. Best-effort only — session shutdown hooks
+ * cannot block termination.
  *
- * @security SEC-02: Sanitizes reason input to prevent markdown injection.
+ * NOTE: WORKING.md session-end timestamp operations have been removed.
+ * Session memory persistence is now handled by MuninnDB MCP
+ * (muninn_session tracks session lifecycle natively).
  *
  * @param cwd - Project root directory
- * @param reason - Session end reason (from Pi event)
+ * @param _reason - Session end reason (preserved for API compatibility)
  */
-export function handleSessionPersist(cwd: string, reason?: string): void {
-  // SEC-02: Sanitize reason — only alphanumeric, spaces, hyphens, underscores, periods
-  let safeReason = (reason ?? "unknown")
-    .replace(/[^a-zA-Z0-9 _.\-]/g, "")
-    .slice(0, 100);
-  if (!safeReason) safeReason = "unknown";
-
-  // Remove session lock (most important action — do first)
+export function handleSessionPersist(cwd: string, _reason?: string): void {
+  // Remove session lock (most important action)
   const lockPath = join(cwd, ".claude", ".session-lock");
   try {
     if (existsSync(lockPath)) unlinkSync(lockPath);
-  } catch {
-    // best-effort
-  }
-
-  const workingMd = join(cwd, ".planning", "WORKING.md");
-  if (!existsSync(workingMd)) return;
-
-  try {
-    const content = readFileSync(workingMd, "utf-8");
-    if (!content.trim()) return;
-
-    const timestamp = new Date().toISOString().replace(/\.\d+Z$/, "Z");
-
-    if (content.includes("Session ended:")) {
-      // Update existing marker
-      const updated = content.replace(
-        /\*Session ended:.*\*/,
-        `*Session ended: ${timestamp} (reason: ${safeReason})*`,
-      );
-      writeFileSync(workingMd, updated, "utf-8");
-    } else {
-      // Append new marker
-      const footer = `\n\n---\n*Session ended: ${timestamp} (reason: ${safeReason})*\n`;
-      writeFileSync(workingMd, content + footer, "utf-8");
-    }
   } catch {
     // best-effort
   }
@@ -483,7 +403,7 @@ function syncStateSnapshot(cwd: string): void {
   }
 
   if (!bridgeCmd && existsSync(bridgePath)) {
-    bridgeCmd = `bun run "${bridgePath}"`;
+    bridgeCmd = `bun run ${shellEscape(bridgePath)}`;
   }
 
   if (bridgeCmd) {

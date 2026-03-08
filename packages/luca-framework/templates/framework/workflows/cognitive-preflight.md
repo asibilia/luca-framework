@@ -68,12 +68,12 @@ CURRENT_MILESTONE=$(bun run "$BRIDGE_PATH" read-status 2>/dev/null \
   | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null)
 
 if [ -n "$CURRENT_MILESTONE" ] && [ -f .planning/MEMORY.md ]; then
-  # Milestone-scoped recall via memory bridge
-  # Tags come from Step 2 keyword extraction
-  RECALL_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory \
-    --milestone="${CURRENT_MILESTONE}" \
-    --tags="${TASK_TAGS}" \
-    --limit=5 2>/dev/null)
+  # Milestone-scoped recall via MuninnDB MCP
+  # Use mcp__muninn__muninn_recall with milestone + task tags as context
+  # Example MCP call (executed by the agent, not shell):
+  #   mcp__muninn__muninn_recall(vault="default", context="milestone:${CURRENT_MILESTONE} tags:${TASK_TAGS}")
+  # Fallback: grep MEMORY.md for milestone-tagged entries
+  RECALL_JSON=$(grep -A5 "milestone.*${CURRENT_MILESTONE}" .planning/MEMORY.md 2>/dev/null || echo "")
   echo "$RECALL_JSON"
 fi
 ```
@@ -96,11 +96,13 @@ When no milestone is set, or MEMORY.md has no milestone-tagged entries, fall
 back to tag-based filtering:
 
 ```bash
-# Fallback: tag-based filtering via bridge
+# Fallback: tag-based filtering via MuninnDB MCP
+# Use mcp__muninn__muninn_recall with task tags as context
+# Example MCP call (executed by the agent, not shell):
+#   mcp__muninn__muninn_recall(vault="default", context="tags:${TASK_TAGS}")
+# Fallback: grep MEMORY.md for tag-matched entries
 if [ -f .planning/MEMORY.md ]; then
-  RECALL_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory \
-    --tags="${TASK_TAGS}" \
-    --limit=5 2>/dev/null)
+  RECALL_JSON=$(grep -B1 -A5 "${TASK_TAGS}" .planning/MEMORY.md 2>/dev/null || echo "")
   echo "$RECALL_JSON"
 fi
 

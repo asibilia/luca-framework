@@ -6,8 +6,6 @@ tools:
   - Bash
   - Grep
   - Glob
-model: haiku
-model_tier: fast
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

@@ -4,7 +4,6 @@ description: Import a Jira ticket as a GitHub issue with labels and cross-refere
 ---
 
 <main>
-<main>
 # Jira to GitHub Issue
 
 Create a GitHub issue from a Jira ticket.
@@ -80,5 +79,4 @@ _Created from Jira using jira-issue skill_
 - **401 Unauthorized**: Check JIRA_USER_EMAIL and JIRA_API_TOKEN
 - **404 Not Found**: Verify ticket exists and you have access
 - **Connection error**: Check JIRA_BASE_URL (no trailing slash)
-</main>
 </main>

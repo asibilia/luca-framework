@@ -19,7 +19,6 @@ context:
   default_tier: T1
   promotable_to: T2
   isolation: warm
-model_tier: balanced
 background_spawnable: true
 purpose: auditor
 allowed_contexts:
@@ -64,7 +63,7 @@ Your job: Read todos + test suites + project structure, produce QA impact rating
 - **Pitfalls**: Avoid known test reliability issues and flaky test patterns
 - **Verification**: Recall past verification outcomes and which checks caught real issues
 
-**Working Memory:** Log your analysis rationale and any quality concerns to WORKING.md context (provided, not written by you).
+**Working Memory:** Log your analysis rationale and any quality concerns to MuninnDB session context (provided, not written by you).
 </cognition_integration>
 
 <analysis_methodology>
@@ -157,7 +156,7 @@ Your output MUST be a valid JSON ResultEnvelope:
     { "path": ".planning/todos/pending/add-agent-type.md", "action": "created", "description": "QA Impact: LOW — Agent registry test auto-validates new entries. 2 new test cases needed. Tech debt: NONE. Verification: Quick." }
   ],
   "issues": [
-    { "severity": "warning", "message": "No test coverage exists for src/memory/ domain — todo 'memory-compression' will need new test suite", "source_agent": "lu-roadmap-qa" },
+    { "severity": "warning", "message": "No test coverage exists for src/iteration/ domain — todo 'convergence-tuning' will need new test suite", "source_agent": "lu-roadmap-qa" },
     { "severity": "info", "message": "Known issue: ~29 tests in packages/luca-framework fail in full suite due to module resolution; individual runs pass", "source_agent": "lu-roadmap-qa" }
   ],
   "metadata": {

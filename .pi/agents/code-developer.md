@@ -7,7 +7,6 @@ tools:
   - Grep
   - Glob
   - Bash
-model_tier: capable
 background_spawnable: false
 purpose: executor
 allowed_contexts:

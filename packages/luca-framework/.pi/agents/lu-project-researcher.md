@@ -10,6 +10,7 @@ tools:
   - WebSearch
   - WebFetch
   - mcp__context7__*
+model: sonnet
 model_tier: balanced
 background_spawnable: true
 purpose: researcher

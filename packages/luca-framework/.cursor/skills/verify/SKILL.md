@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Verify Work
 
 Validate built features through conversational testing with persistent state.
@@ -162,7 +161,7 @@ Read these reference files before executing:
 
 9. **If UAT passes:** Run code quality review
 
-   **Complexity gate:** Code review runs at MODERATE and above. If complexity is TRIVIAL or SIMPLE, skip code review entirely and proceed to step 12.
+   **Always runs.** Each reviewer resolves its model tier from the routing table based on complexity.
 
    **Read complexity from bridge (with STATE.md fallback):**
 
@@ -170,17 +169,17 @@ Read these reference files before executing:
    COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
    ```
 
-   **Spawn reviewers based on complexity:**
+   **Always spawn ALL reviewers with model tier from routing table:**
 
-   | Agent | MODERATE | COMPLEX | CRITICAL |
-   |-------|----------|---------|----------|
-   | dx-advocate | Run | Run | Run |
-   | code-simplifier | Run | Run | Run |
-   | code-architect | Skip | Run | Run |
-   | tailwind-auditor | If UI files | If UI files | Run |
-   | security-auditor | If auth files | If auth files | Always |
+   | Agent | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+   |-------|---------|--------|----------|---------|----------|
+   | dx-advocate | fast | balanced | capable | capable | capable |
+   | code-simplifier | fast | balanced | capable | capable | capable |
+   | code-architect | fast | balanced | capable | capable | capable |
+   | performance-auditor | fast | balanced | capable | capable | capable |
+   | security-auditor | fast | balanced | capable | capable | capable |
 
-   If complexity cannot be read, default to spawning all reviewers (backward-compatible).
+   Each model tier is resolved via `resolveModelForAgent(agentName, complexity)` from the centralized routing table.
 
    **MANDATORY**: You MUST spawn reviewer agents in PARALLEL. Do NOT review code yourself.
 
@@ -379,5 +378,4 @@ Manual intervention required
 
 - `/phase-plan {N} --gaps` — Create fix plans for failures
 - `/milestone-audit` — Complete the milestone
-</main>
 </main>

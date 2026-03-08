@@ -180,10 +180,10 @@ When reviewing code that interacts with Jira:
 ---
 
 ---
-description: "Complexity gating: which workflow steps activate at which complexity level"
+description: "Complexity gating: model routing and iteration scaling per complexity level"
 ---
 
-# Complexity gating: which workflow steps activate at which complexity level
+# Complexity gating: model routing and iteration scaling per complexity level
 
 ## rule
 
@@ -201,49 +201,67 @@ Luca classifies task complexity into five levels, grouped into three behavioral 
 | COMPLEX | Thorough | 5-10 | Cross-cutting | High |
 | CRITICAL | Thorough | 10+ / architectural | System-wide | Very High |
 
-## Always-On Steps (Cannot Be Gated)
+## Always-On Steps
 
-These steps run regardless of complexity:
+ALL workflow steps run at every complexity level. Complexity no longer gates step activation -- it controls **model tier** (via the routing table below) and **iteration counts**. Steps are never skipped based on complexity alone.
 
 1. Model profile resolution
-2. Phase/environment validation
-3. Plan discovery and wave grouping
-4. Core execution (lu-executor)
-5. Result aggregation
-6. Verification harness (scope scales, always runs)
-7. lu-verifier (mode scales, always invoked)
-8. State/roadmap/requirements updates
-9. Commit
+2. Cognitive pre-flight
+3. Phase/environment validation
+4. Research
+5. Discussion
+6. Plan discovery and wave grouping
+7. Core execution (lu-executor)
+8. Code review (all reviewers)
+9. UAT
+10. Result aggregation
+11. Verification harness
+12. lu-verifier
+13. Learning capture
+14. State/roadmap/requirements updates
+15. Commit
 
-## Complexity Matrix
+## Model Routing Table
 
-| Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|------|---------|--------|----------|---------|----------|
+Complexity determines which model tier each agent receives. The **canonical source of truth** is \`MODEL_ROUTING_TABLE\` in \`src/complexity/__helpers/model-routing.ts\`, which uses **7 named presets** to keep the table DRY.
+
+### Named Routing Presets
+
+| Preset | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL | Agents |
+|--------|---------|--------|----------|---------|----------|--------|
+| ALWAYS_FAST | fast | fast | fast | fast | fast | lu-cognition |
+| FAST_PROMOTED | fast | fast | fast | fast | balanced | lu-learner, lu-router-fast, lu-verifier-fast |
+| ROUTER | fast | fast | balanced | balanced | balanced | lu-router |
+| ORCHESTRATOR | fast | balanced | balanced | capable | capable | lu-executor, lu-planner, + 17 others |
+| DEEP_ANALYSIS | fast | balanced | capable | capable | capable | lu-verifier, code-architect, dx-advocate, + 7 others |
+| DEBUGGER_PRESET | balanced | balanced | capable | capable | capable | lu-debugger |
+| ALWAYS_CAPABLE | capable | capable | capable | capable | capable | lu-executor-capable |
+
+Model tiers map to concrete models: **fast** (haiku/lightweight), **balanced** (sonnet/standard), **capable** (opus/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`. The exported \`ROUTING_PRESETS\` record provides programmatic access to all presets.
+
+**Single source of truth:** The \`MODEL_ROUTING_TABLE\` is the only authoritative source for agent model selection. Agent frontmatter \`model_routing\` and \`model_tier\` fields are deprecated and no longer consulted by \`resolveModel()\`.
+
+## Iteration Count Scaling
+
+These parameters still scale with complexity:
+
+| Parameter | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|-----------|---------|--------|----------|---------|----------|
 | Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
+| Plan verification iterations | 1 | 1 | 1 | 2 | 3 |
 | Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
-| Verify fix iterations | 0 | 1 | 1 | 1 | 2 |
+| Verify fix iterations | 1 | 1 | 1 | 1 | 2 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| Code review: dx-advocate | Skip | Skip | Run | Run | Run |
-| Code review: code-simplifier | Skip | Skip | Run | Run | Run |
-| Code review: code-architect | Skip | Skip | Skip | Run | Run |
-| Code review: tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| Code review: security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
 
 ## How to Apply
 
-**Before spawning optional sub-agents**, check the current task complexity:
+**Before spawning sub-agents**, resolve their model tier from the routing table:
 
 1. Read complexity from STATE.md \`Task Complexity:\` field
 2. If not set, read from lu-router's classification output
-3. Look up the step in the matrix above
-4. If the step says "Skip" for the current level, skip it
-5. If the step says "Optional", skip unless the user or config explicitly enables it
-6. If the step says "Run" or "Required", always execute
+3. Call \`resolveModelForAgent(agentName, complexity)\` to get the model tier
+4. All steps run at every complexity level -- only the model tier varies
+5. Flag-based overrides (\`--skip-review\`, \`--skip-uat\`, \`--skip-research\`) still allow explicit skipping
 
 **Complexity is set by:**
 - lu-router (automatic inference)
@@ -360,10 +378,10 @@ Internal logic modules consumed by entities and other core modules.
 
 | Domain | Purpose |
 |--------|---------|
-| memory | Working memory, compression, recall, bridge |
 | planner | Cost model, scheduler, scoring, todo parsing |
 | iteration | Budget, checkpoint, classifier, convergence |
 | context | Context tier resolution, assembler, envelope |
+| observability | Agent scorecard engine, telemetry metrics |
 | shared | Cross-cutting utilities (format, validation, CLI) |
 
 **Structure:**
@@ -403,7 +421,7 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1, never
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, memory | Import T0 only |
+| T1 Core | context, planner, harness, iteration, observability | Import T0 only |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
 | T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
 
@@ -796,7 +814,7 @@ description: "Module boundary: import direction rules and entity isolation"
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, memory  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
@@ -812,8 +830,8 @@ import { COMPLEXITY_ORDER } from "~/complexity";
 // ✅ T2 (agents) importing T1 (context)
 import type { ContextConfig } from "~/context";
 
-// ❌ T0 (shared) importing T1 (memory) — upward dependency
-import { compress } from "~/memory";
+// ❌ T0 (shared) importing T1 (harness) — upward dependency
+import { runHarness } from "~/harness";
 
 // ❌ T1 (harness) importing T2 (agents) — upward dependency
 import { agentRegistry } from "~/agents";
@@ -865,13 +883,10 @@ import { runHarness } from "~/harness";
 
 ## Rule 5 — Documented Exceptions
 
-The following cross-tier imports are known and accepted:
-
-| Source | Target | Reason |
-|--------|--------|--------|
-| `shared/__helpers/validation-utils.ts` | agents/skills/rules `__schemas/` | Config validation helpers reference entity schemas (T0 -> T2) |
+There are currently no known cross-tier import exceptions.
 
 **Removed exceptions (resolved):**
+- `shared/__helpers/validation-utils.ts` -> agents/skills/rules `__schemas/` was a T0->T2 violation where shared imported entity schemas for config validation. Resolved in Phase 13 by replacing entity-specific validators with a generic `safeValidate<T>(schema, config)` that accepts any Zod schema, eliminating all T2 imports from shared.
 - `harness/parsers/parser-registry.ts` -> `~/harness/__schemas/harness.schemas` was listed but is an intra-domain import (harness -> harness), not a cross-tier violation. Removed in Phase 95.
 
 New exceptions must be documented here and in this rule file before being committed.
@@ -885,6 +900,23 @@ New exceptions must be documented here and in this rule file before being commit
 ## Barrel Index Invariant
 
 Every domain's `index.ts` is a pure barrel — it contains ONLY re-export statements (`export { ... } from` and `export type { ... } from`). No logic, no schemas, no registries, no constants.
+
+---
+
+---
+description: Temporarily prohibit adding test files
+---
+
+# Temporarily prohibit adding test files
+
+## rule
+
+- **DO NOT create test files** (*.test.ts, *.spec.ts, __tests__/ directories)
+  - Tests were removed wholesale because the pre-commit gate spawning `bun test` on every commit was orphaning hundreds of processes and freezing the machine
+  - Tests will be selectively reintroduced in a single dedicated effort
+  - See: `.planning/notes/0-reintroduce-tests.md` for the plan
+  - If you need to verify code correctness, use `bunx --bun tsc --noEmit` (type-checking is still active in the pre-commit gate)
+  - This rule will be removed once the test reintroduction effort is complete
 
 ---
 
@@ -1132,7 +1164,7 @@ Luca is a framework for agentic development, combining spec-driven development w
 | ------------------- | ---------------------------------------------------- |
 | Entry Point         | Unified `/lu` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
-| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Memory              | MuninnDB (semantic graph memory)                     |
 | Verification        | Always runs (all complexity levels)                  |
 | Learning            | Pattern/decision/pitfall capture                     |
 | Pre-Flight          | Cognitive context loading                            |
@@ -1174,11 +1206,11 @@ Plan → Execute → **Verify** → **Learn** → Repeat
 
 ## two-tier_memory_system
 
-## Two-Tier Memory System (NEW)
+## MuninnDB Memory System
 
-### BRAIN.md — Project Identity
+### Brain Tree — Project Identity
 
-Captures project personality, loaded at session start:
+Stored as a MuninnDB tree (`brain:project-identity`), recalled at session start:
 
 - Project identity (name, domain, purpose)
 - Stack (languages, frameworks, databases)
@@ -1186,18 +1218,18 @@ Captures project personality, loaded at session start:
 - Code conventions
 - Development preferences
 
-### MEMORY.md — Long-Term Learning
+### Engrams — Long-Term Learning
 
-Persistent across sessions, selectively recalled:
+Persistent across sessions in MuninnDB, semantically recalled:
 
-- **Patterns**: Validated approaches that work
-- **Decisions**: Past choices with rationale
-- **Pitfalls**: Known issues to avoid
-- **Preferences**: User/project preferences
+- **Patterns** (`pattern:*`): Validated approaches that work
+- **Decisions** (`decision:*`): Past choices with rationale
+- **Pitfalls** (`pitfall:*`): Known issues to avoid
+- **Preferences** (`preference:*`): User/project preferences
 
-### WORKING.md — Session Memory
+### Session Context — Active Memory
 
-Active during workflow, cleared after learning extraction:
+MuninnDB session engrams (`session:*`), scoped to current workflow:
 
 - Current task context
 - Immediate findings
@@ -1206,13 +1238,13 @@ Active during workflow, cleared after learning extraction:
 
 ## cognitive_pre_flight
 
-## Cognitive Pre-Flight (NEW)
+## Cognitive Pre-Flight
 
 Before major operations, Luca runs cognitive pre-flight:
 
-1. **Load BRAIN.md** — Project conventions
-2. **Selective recall from MEMORY.md** — Relevant patterns, decisions, pitfalls
-3. **Initialize WORKING.md** — Session context
+1. **Recall brain tree from MuninnDB** — Project conventions
+2. **Semantic recall from MuninnDB** — Relevant patterns, decisions, pitfalls
+3. **Initialize MuninnDB session context** — Session engrams
 4. **Generate intuition flags** — RISK, CAUTION, OPPORTUNITY, UNKNOWN
 
 ---

@@ -29,7 +29,7 @@ Extract implementation decisions that downstream agents need — researcher and 
 
 1. Analyze the phase to identify gray areas (same as interactive)
 2. Auto-select ALL gray areas (no user prompt)
-3. Read BRAIN.md for project tech stack
+3. Load project tech stack from MuninnDB
 4. Spawn `lu-discuss-researcher` agent per gray area question (web research)
 5. Present research summary with citations before writing
 6. Offer user override: accept all / override some / switch to interactive
@@ -48,7 +48,7 @@ Read these reference files before executing:
 
 ## Process
 
-### Complexity Gate
+### Complexity-Aware Discussion
 
 Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
 
@@ -56,25 +56,17 @@ Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 ```
 
-| Complexity | Discussion |
-|------------|-----------|
-| TRIVIAL | Skip entirely — proceed to /phase-plan |
-| SIMPLE | Skip entirely — proceed to /phase-plan |
-| MODERATE | Optional — run with standard depth (4 questions per area) |
-| COMPLEX | Recommended — run with extended depth (4+ questions per area) |
-| CRITICAL | Required — run with thorough depth (6+ questions per area) |
+**Always runs.** Discussion depth and model tier scale with complexity:
 
-If complexity is TRIVIAL or SIMPLE:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► DISCUSSION SKIPPED (TRIVIAL/SIMPLE)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Complexity | Discussion Depth | Model Tier (lu-discuss-researcher) |
+|------------|-----------------|-------------------------------------|
+| TRIVIAL | Light (2 questions per area) | fast |
+| SIMPLE | Light (2 questions per area) | balanced |
+| MODERATE | Standard (4 questions per area) | balanced |
+| COMPLEX | Extended (4+ questions per area) | capable |
+| CRITICAL | Thorough (6+ questions per area) | capable |
 
-Task complexity is {TRIVIAL|SIMPLE}. Discussion is not needed.
-
-▶ Next Up
-/phase-plan {phase}
-```
+The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-discuss-researcher", complexity)` from the centralized routing table.
 
 1. **Validate phase number** (error if missing or not in roadmap)
 2. **Check if CONTEXT.md exists** (offer update/view/skip if yes)
@@ -92,10 +84,10 @@ Task complexity is {TRIVIAL|SIMPLE}. Discussion is not needed.
 
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
-6a. **Read BRAIN.md** — Extract project tech stack (languages, frameworks, conventions)
+6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via `muninn_recall_tree(vault: "default", id: "brain:project-identity")`
 7a. **Spawn lu-discuss-researcher per question** — For each gray area:
     - Formulate a focused question from the gray area topic
-    - Spawn `lu-discuss-researcher` via Task() with: question, phase context, tech stack from BRAIN.md
+    - Spawn `lu-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
     - Collect the `<research_result>` response with recommendation, confidence, and sources
     - If `researchable: false`: flag for user input (even in auto mode)
 8a. **Present research summary** — Show consolidated results:

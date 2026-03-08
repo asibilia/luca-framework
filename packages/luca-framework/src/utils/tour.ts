@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 
 import { logger } from "./logger";
 
-import type { LucaConfig, ProjectContext } from "../types";
+import type { LucaConfig, ProjectContext, InstallationStats } from "../types";
 
 /**
  * Tour step configuration for a single informational step.
@@ -71,24 +71,42 @@ function buildStartupInstructions(
 }
 
 /**
- * Build the 4 tour steps based on config and context.
+ * Build tour steps based on config, context, and optional installation stats.
+ *
+ * When stats are provided, Step 2 shows actual file counts.
+ * When projectDescription is available, a personalized intro step is prepended.
  *
  * @param config - LucaConfig from the init wizard
  * @param context - Detected project context
- * @returns Array of 4 TourStep objects
+ * @param stats - Optional installation stats from generateFiles
+ * @returns Array of TourStep objects (4 or 5 depending on context)
  */
 function buildTourSteps(
   config: LucaConfig,
   context: ProjectContext,
+  stats?: InstallationStats,
 ): TourStep[] {
   const harnesses = config.harnesses ?? ["claude", "cursor"];
   const harnessNames = formatHarnessNames(harnesses);
   const commandPrefix = config.branding.commandPrefix;
   const frameworkName = config.branding.frameworkName;
 
-  // Step 1: BRAIN.md Orientation
-  const step1: TourStep = {
-    title: "Step 1: Project Identity",
+  const steps: TourStep[] = [];
+
+  // Step 0 (optional): Personalized intro when projectDescription is available
+  if (context.projectDescription) {
+    steps.push({
+      title: "Welcome",
+      body:
+        `Setting up ${frameworkName} for "${context.projectDescription}".\n\n` +
+        `The next steps will walk you through what was installed\n` +
+        `and how to get started.`,
+    });
+  }
+
+  // Step: BRAIN.md Orientation
+  steps.push({
+    title: `Step ${steps.length + 1}: Project Identity`,
     body:
       `Your project identity file is at .planning/BRAIN.md\n\n` +
       `This file defines your project's personality for AI agents:\n` +
@@ -97,34 +115,43 @@ function buildTourSteps(
       `  - Architecture patterns\n` +
       `  - Code conventions\n\n` +
       `Customize it now or later -- agents will use it for context.`,
-  };
+  });
 
-  // Step 2: Generated Files Summary
-  const step2: TourStep = {
-    title: "Step 2: What Was Generated",
-    body:
-      `Installed into ${harnessNames}:\n\n` +
+  // Step: Generated Files Summary (dynamic or static)
+  const step2Body = stats
+    ? `Installed ${stats.agent_count} agents, ${stats.skill_count} skills, ` +
+      `${stats.rule_count} rules, ${stats.hook_count} hooks into ${harnessNames}\n\n` +
       `  Agents   (orchestration, code review, verification)\n` +
       `  Skills   (git, planning, testing workflows)\n` +
       `  Rules    (code conventions, architecture patterns)\n` +
       `  Hooks    (pre-commit gate, type checking, formatting)\n\n` +
-      `These are generated from src/ -- edit sources, then bun run build:all.`,
-  };
+      `These are generated from src/ -- edit sources, then bun run build:all.`
+    : `Installed into ${harnessNames}:\n\n` +
+      `  Agents   (orchestration, code review, verification)\n` +
+      `  Skills   (git, planning, testing workflows)\n` +
+      `  Rules    (code conventions, architecture patterns)\n` +
+      `  Hooks    (pre-commit gate, type checking, formatting)\n\n` +
+      `These are generated from src/ -- edit sources, then bun run build:all.`;
 
-  // Step 3: Startup Command
+  steps.push({
+    title: `Step ${steps.length + 1}: What Was Generated`,
+    body: step2Body,
+  });
+
+  // Step: Startup Command
   const startupInstructions = buildStartupInstructions(
     harnesses,
     commandPrefix,
   );
-  const step3: TourStep = {
-    title: "Step 3: Getting Started",
+  steps.push({
+    title: `Step ${steps.length + 1}: Getting Started`,
     body: `To start using ${frameworkName}:\n\n` + startupInstructions,
-  };
+  });
 
-  // Step 4: Suggested First Command
+  // Step: Suggested First Command (uses enhanced context detection)
   const suggestedCommand = context.suggestedFirstCommand ?? `/${commandPrefix}`;
-  const step4: TourStep = {
-    title: "Step 4: Your First Command",
+  steps.push({
+    title: `Step ${steps.length + 1}: Your First Command`,
     body:
       `Try this first:\n\n` +
       `  ${suggestedCommand}\n\n` +
@@ -132,38 +159,46 @@ function buildTourSteps(
       `  1. Load your BRAIN.md context\n` +
       `  2. Recall relevant patterns from MEMORY.md\n` +
       `  3. Route your request to the right agent`,
-  };
+  });
 
-  return [step1, step2, step3, step4];
+  return steps;
 }
 
 /**
  * Run the post-init interactive tour.
  *
- * Walks users through 4 informational steps after a successful
+ * Walks users through informational steps after a successful
  * `bun run luca init`. Each step uses @clack/prompts for a
  * consistent DX with the init wizard. Users can exit at any
  * step by declining the continue prompt or pressing Ctrl+C.
+ *
+ * When stats are provided, dynamic file counts are shown.
+ * When projectDescription is available, a personalized intro is added.
  *
  * This function never throws -- all errors are caught internally
  * and logged as debug messages to avoid interfering with init success.
  *
  * @param config - LucaConfig from the init wizard or args
  * @param context - Detected project context
+ * @param stats - Optional installation stats from generateFiles (for dynamic counts)
  *
  * @example
  * ```typescript
  * const config = createConfigFromArgs({});
  * const context = await detectProjectContext();
- * await runTour(config, context);
+ * const result = await generateFiles({ config });
+ * if (result.success) {
+ *   await runTour(config, context, result.stats);
+ * }
  * ```
  */
 export async function runTour(
   config: LucaConfig,
   context: ProjectContext,
+  stats?: InstallationStats,
 ): Promise<void> {
   try {
-    const steps = buildTourSteps(config, context);
+    const steps = buildTourSteps(config, context, stats);
 
     const wantsTour = await p.confirm({
       message: "Would you like a quick tour of what was set up?",

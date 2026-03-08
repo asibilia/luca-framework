@@ -23,12 +23,14 @@
 # 0 = always (session start should never block)
 # ──────────────────────────────────────────────────────────────────────
 #
-# Creates .planning/ directory with BRAIN.md, MEMORY.md, WORKING.md,
-# STATE.md, ROADMAP.md, and config.json on first session. Subsequent
-# sessions only create missing files (validate & repair mode).
+# Creates .planning/ directory with STATE.md, ROADMAP.md, and config.json
+# on first session. Subsequent sessions only create missing files
+# (validate & repair mode).
 #
-# BRAIN.md auto-detects project info from package.json and config files.
 # config.json includes runtime detection (bun vs node).
+#
+# NOTE: Memory files (BRAIN.md, MEMORY.md, WORKING.md) are no longer
+# managed here. Long-term memory is handled by MuninnDB MCP.
 #
 # Uses `bun -e` for JSON parsing and file generation (project convention).
 
@@ -37,21 +39,9 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Cascading bridge lookup: installed bin → monorepo source → skip
-run_bridge() {
-  if command -v luca-bridge &>/dev/null; then
-    luca-bridge "$@"
-  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
-    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
-  fi
-}
-
-# Memory bridge helper (JSON-first memory system)
-run_memory_bridge() {
-  if [ -f "${CLAUDE_PROJECT_DIR:-.}/src/memory/__helpers/bridge.ts" ]; then
-    bun run "${CLAUDE_PROJECT_DIR:-.}/src/memory/__helpers/bridge.ts" "$@"
-  fi
-}
+# Source shared hook library
+HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
 # Read stdin JSON (standard hook pattern — consumed but not parsed)
 INPUT=$(cat || true)
@@ -88,10 +78,7 @@ mkdir -p "$PLANNING_DIR/notes/done"
 
 CREATED=""
 
-# Step 3: Create STATE.md if missing (memory bridge handles MEMORY.md, WORKING.md, etc.)
-# NOTE: MEMORY.md, WORKING.md, BRAIN.md, and PROCEDURES.md are now managed by the
-# memory bridge (JSON-first). The bridge ensure-init command (Step 6b below) creates
-# JSON files as source of truth and generates MD views. Do NOT create these files here.
+# Step 3: Create STATE.md if missing
 if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
   cat > "$PLANNING_DIR/STATE.md" << 'STATE_EOF'
 # Project State
@@ -189,8 +176,6 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
       runtime: runtime,
       cognitive: {
         enabled: true,
-        memory_recall: true,
-        working_memory: true,
         intuition_check: true,
         routing: 'auto'
       },
@@ -255,11 +240,11 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
       complexity: {
         defaultLevel: 'auto',
         matrix: {
-          TRIVIAL: { cognitivePreflight: 'lite', research: 'skip', discussion: 'skip', planVerificationIterations: 0, harnessFixIterations: 1, verificationMode: 'quick', codeReviewAgents: [], uat: 'skip', learningCapture: 'skip' },
-          SIMPLE: { cognitivePreflight: 'lite', research: 'skip', discussion: 'skip', planVerificationIterations: 0, harnessFixIterations: 2, verificationMode: 'quick', codeReviewAgents: [], uat: 'skip', learningCapture: 'brief' },
-          MODERATE: { cognitivePreflight: 'full', research: 'optional', discussion: 'optional', planVerificationIterations: 1, harnessFixIterations: 2, verificationMode: 'standard', codeReviewAgents: ['dx-advocate', 'code-simplifier'], uat: 'optional', learningCapture: 'standard' },
-          COMPLEX: { cognitivePreflight: 'full', research: 'required', discussion: 'run', planVerificationIterations: 2, harnessFixIterations: 2, verificationMode: 'full', codeReviewAgents: ['dx-advocate', 'code-simplifier', 'code-architect', 'tailwind-auditor'], uat: 'required', learningCapture: 'full' },
-          CRITICAL: { cognitivePreflight: 'full', research: 'required', discussion: 'required', planVerificationIterations: 3, harnessFixIterations: 3, verificationMode: 'full+human', codeReviewAgents: ['dx-advocate', 'code-simplifier', 'code-architect', 'tailwind-auditor', 'security-auditor'], uat: 'required+thorough', learningCapture: 'full+debrief' }
+          TRIVIAL: { cognitivePreflight: 'lite', planVerificationIterations: 0, harnessFixIterations: 1, verifyFixIterations: 0, verificationMode: 'quick' },
+          SIMPLE: { cognitivePreflight: 'lite', planVerificationIterations: 0, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'quick' },
+          MODERATE: { cognitivePreflight: 'full', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'standard' },
+          COMPLEX: { cognitivePreflight: 'full', planVerificationIterations: 2, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'full' },
+          CRITICAL: { cognitivePreflight: 'full', planVerificationIterations: 3, harnessFixIterations: 3, verifyFixIterations: 2, verificationMode: 'full+human' }
         }
       },
       dogfood: {
@@ -286,127 +271,14 @@ else
   "
 fi
 
-# Step 6: Create BRAIN.md if missing (with auto-detection)
-# Only auto-detect if NEITHER brain.json NOR BRAIN.md exist
-if [ ! -f "$PLANNING_DIR/brain.json" ] && [ ! -f "$PLANNING_DIR/BRAIN.md" ]; then
-  HOOK_PLANNING_DIR="$PLANNING_DIR" HOOK_PROJECT_DIR="$PROJECT_DIR" bun -e "
-    const path = require('path');
-    const planningDir = process.env.HOOK_PLANNING_DIR;
-    const projectDir = process.env.HOOK_PROJECT_DIR;
-
-    // Defaults
-    let name = 'Project';
-    let description = '[What this project does -- customize this]';
-    let language = '[Primary language]';
-    let framework = '[Framework]';
-    let testing = '[Test framework]';
-    let buildTool = '[Build tool]';
-    let styling = '[Styling approach]';
-
-    try {
-      const pkgFile = Bun.file(path.join(projectDir, 'package.json'));
-      if (await pkgFile.exists()) {
-        const pkg = JSON.parse(await pkgFile.text());
-        if (pkg.name) name = pkg.name;
-        if (pkg.description) description = pkg.description;
-
-        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-
-        // Language detection
-        const hasTsConfig = await Bun.file(path.join(projectDir, 'tsconfig.json')).exists();
-        if (deps.typescript || hasTsConfig) language = 'TypeScript';
-        else language = 'JavaScript';
-
-        // Framework detection
-        if (deps.next) framework = 'Next.js';
-        else if (deps.react) framework = 'React';
-        else if (deps.vue) framework = 'Vue';
-        else if (deps['@angular/core']) framework = 'Angular';
-        else if (deps.svelte) framework = 'Svelte';
-        else if (deps.hono) framework = 'Hono';
-        else if (deps.express) framework = 'Express';
-        else if (deps.fastify) framework = 'Fastify';
-        else framework = 'Node.js';
-
-        // Test framework detection
-        if (deps.vitest) testing = 'Vitest';
-        else if (deps.jest) testing = 'Jest';
-        else if (deps['@testing-library/react'] || deps['@testing-library/vue']) testing = 'Testing Library';
-        else if (deps['bun-types']) testing = 'bun:test';
-        else testing = 'bun:test';
-
-        // Build tool detection
-        if (deps.vite) buildTool = 'Vite';
-        else if (deps.webpack) buildTool = 'Webpack';
-        else if (deps.esbuild) buildTool = 'esbuild';
-        else if (deps.turbo || deps.turbopack) buildTool = 'Turbopack';
-        else {
-          const hasBunfig = await Bun.file(path.join(projectDir, 'bunfig.toml')).exists();
-          buildTool = hasBunfig ? 'Bun' : '[Build tool]';
-        }
-
-        // Styling detection
-        if (deps.tailwindcss) styling = 'Tailwind CSS';
-        else if (deps['styled-components']) styling = 'styled-components';
-        else if (deps['@emotion/react'] || deps['@emotion/styled']) styling = 'Emotion';
-        else if (deps.sass || deps['node-sass']) styling = 'Sass/SCSS';
-        else styling = '[Styling approach]';
-      }
-    } catch {
-      // No package.json or parse error -- use defaults
-    }
-
-    const content = '# Luca Brain\n' +
-      '\n' +
-      '> Project identity and conventions. Loaded at session start.\n' +
-      '\n' +
-      '## Project Identity\n' +
-      '\n' +
-      '- **Name:** ' + name + '\n' +
-      '- **Domain:** ' + description + '\n' +
-      '- **Purpose:** [Why it exists -- customize this]\n' +
-      '\n' +
-      '## Stack\n' +
-      '\n' +
-      '- **Language:** ' + language + '\n' +
-      '- **Framework:** ' + framework + '\n' +
-      '- **Build:** ' + buildTool + '\n' +
-      '- **Testing:** ' + testing + '\n' +
-      '- **Styling:** ' + styling + '\n' +
-      '\n' +
-      '## Architecture Patterns\n' +
-      '\n' +
-      '[Describe key architectural decisions -- customize this]\n' +
-      '\n' +
-      '## Code Conventions\n' +
-      '\n' +
-      '[Add your code style preferences -- customize this]\n' +
-      '\n' +
-      '## Development Preferences\n' +
-      '\n' +
-      '- **Command Prefix:** /lu\n' +
-      '- **Workflow:** Luca spec-driven development\n' +
-      '\n' +
-      '---\n' +
-      '\n' +
-      '*Luca Brain initialized (auto-detected from project files)*\n';
-
-    await Bun.write(path.join(planningDir, 'BRAIN.md'), content);
-  "
-  CREATED="${CREATED}BRAIN.md "
-fi
-
-# Step 6b: Initialize JSON-first memory files via bridge
-# Creates brain.json, memory.json, working.json, procedures.json if missing.
-# If BRAIN.md was just auto-detected above, this migrates it to brain.json.
-# If MD files exist but JSON don't, this migrates them.
-# If neither exist, creates empty JSON + MD files.
-run_memory_bridge ensure-init 2>/dev/null || true
-
-# Step 7: Write environment variables for the session (if supported)
+# Step 6: Write environment variables for the session (if supported)
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export LUCA_RUNTIME=$RUNTIME" >> "$CLAUDE_ENV_FILE"
   echo "export LUCA_PLANNING_DIR=$PLANNING_DIR" >> "$CLAUDE_ENV_FILE"
+  # Signal to sub-processes (including sub-agents running build:all) that a
+  # session is active. build-all.ts checks this to auto-bypass the session lock
+  # instead of blocking or requiring --force. See docs/decisions/session-lock-bypass.md.
+  echo "export LUCA_SESSION_ACTIVE=1" >> "$CLAUDE_ENV_FILE"
 fi
 
 # Step 8: Create session lock file (with build manifest snapshot)

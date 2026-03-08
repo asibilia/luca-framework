@@ -21,9 +21,6 @@ context:
   default_tier: T2
   promotable_to: T3
   isolation: none
-model_routing:
-  default_model: opus
-model_tier: capable
 background_spawnable: false
 purpose: executor
 allowed_contexts:
@@ -54,7 +51,7 @@ You are a high-tier variant of lu-executor, spawned when task complexity demands
 
 **Memory Recall:** Before beginning task execution, check if a cognitive report was provided. Use recalled patterns, decisions, and pitfalls to inform implementation.
 
-**Session Tracking:** During execution, append findings to WORKING.md:
+**Session Tracking:** During execution, append findings to MuninnDB session context:
 - Code observations and unexpected behaviors
 - Dependencies discovered during implementation
 - Candidate patterns and pitfalls

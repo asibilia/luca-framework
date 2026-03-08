@@ -1,8 +1,42 @@
 "use client";
 
+import { cva } from "class-variance-authority";
+import clsx from "clsx";
+
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { EmptyState } from "~/components/shared/empty-state";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { type Todo, useTodos } from "~/hooks/use-todos";
+
+/**
+ * CVA variants for TodoSection container styling.
+ *
+ * Defines border, background, and text color for pending vs done states
+ * using complete literal Tailwind class strings (no template interpolation).
+ */
+const sectionVariants = cva("rounded-lg border p-4", {
+  variants: {
+    state: {
+      pending: "border-warning bg-warning/10",
+      done: "border-success bg-success/10",
+    },
+  },
+  defaultVariants: {
+    state: "pending",
+  },
+});
+
+const sectionTitleVariants = cva("mb-3 font-mono text-sm font-medium", {
+  variants: {
+    state: {
+      pending: "text-warning",
+      done: "text-success",
+    },
+  },
+  defaultVariants: {
+    state: "pending",
+  },
+});
 
 /**
  * Todo tracker component displaying pending and done work items.
@@ -11,12 +45,25 @@ import { type Todo, useTodos } from "~/hooks/use-todos";
  * with clear visual differentiation between states.
  */
 export function TodoTracker() {
-  const { todos, loading } = useTodos();
+  const { todos, loading, error, refetch } = useTodos();
 
   if (loading) {
+    return <LoadingSkeleton variant="card" />;
+  }
+
+  if (error) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <p className="font-mono text-xs text-muted-foreground">Loading todos...</p>
+      <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+        <p className="font-mono text-sm text-destructive">
+          Failed to load todos: {error}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-2 rounded bg-destructive px-3 py-1 font-mono text-xs text-destructive-foreground hover:bg-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -56,28 +103,28 @@ function TodoSection({
   todos: Todo[];
   variant: "pending" | "done";
 }) {
-  const bgColor = variant === "pending" ? "bg-warning/10" : "bg-success/10";
-  const textColor = variant === "pending" ? "text-warning" : "text-success";
-  const borderColor = variant === "pending" ? "border-warning" : "border-success";
-
   return (
-    <div className={`rounded-lg border ${borderColor} ${bgColor} p-4`}>
-      <h3 className={`mb-3 font-mono text-sm font-medium ${textColor}`}>
+    <div className={sectionVariants({ state: variant })}>
+      <h3 className={sectionTitleVariants({ state: variant })}>
         {title} ({todos.length})
       </h3>
       <div className="flex flex-col gap-2">
         {todos.map((todo) => (
           <div
             key={todo.filename}
-            className={`rounded-md border border-border bg-card p-3 ${
-              variant === "done" ? "opacity-70" : ""
-            }`}
+            className={clsx(
+              "rounded-md border border-border bg-card p-3",
+              variant === "done" && "opacity-70",
+            )}
           >
             <div className="flex items-start justify-between gap-2">
               <h4
-                className={`font-mono text-sm font-medium ${
-                  variant === "done" ? "line-through text-muted-foreground" : "text-foreground"
-                }`}
+                className={clsx(
+                  "font-mono text-sm font-medium",
+                  variant === "done"
+                    ? "text-muted-foreground line-through"
+                    : "text-foreground",
+                )}
               >
                 {todo.title}
               </h4>
@@ -95,7 +142,7 @@ function TodoSection({
             </div>
             <div className="mt-2 font-mono text-xs text-muted-foreground">
               <span>Created: {todo.created}</span>
-              <span className="mx-2">•</span>
+              <span className="mx-2">&bull;</span>
               <span>Source: {todo.source}</span>
             </div>
           </div>

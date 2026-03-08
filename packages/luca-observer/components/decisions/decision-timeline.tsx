@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 /**
  * Decision entry shape from the use-decision-trail hook.
  */
@@ -67,8 +69,9 @@ export function DecisionTimeline({ decisions }: { decisions: Decision[] }) {
             {/* Header row */}
             <button
               type="button"
-              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
               onClick={() => toggleExpanded(decision.id)}
+              aria-expanded={isExpanded}
             >
               {/* Timeline dot */}
               <div
@@ -100,9 +103,11 @@ export function DecisionTimeline({ decisions }: { decisions: Decision[] }) {
               )}
 
               {/* Expand indicator */}
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                {isExpanded ? "−" : "+"}
-              </span>
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
             </button>
 
             {/* Expanded detail */}

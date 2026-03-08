@@ -5,7 +5,6 @@ disable-model-invocation: true
 ---
 
 <main>
-<main>
 # Luca Complete Milestone
 
 Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
@@ -32,28 +31,29 @@ At milestone completion, consolidate all learnings:
 
 Before archiving, ensure all session learnings are captured:
 
-1. **Check WORKING.md** for unextracted learnings:
+1. **Check for unextracted session learnings** in MuninnDB:
 
-   ```bash
-   # Primary: Read working memory from memory bridge
-   bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || cat .planning/WORKING.md 2>/dev/null
+   ```
+   mcp__muninn__muninn_recall(vault: "default", context: "current session context and unextracted findings")
    ```
 
 2. **Invoke lu-learner** if candidate learnings exist
 
-3. **Review MEMORY.md** for milestone-specific insights:
-   - Patterns that were validated multiple times → bump to High confidence
-   - Decisions that held throughout milestone → mark as Established
-   - Pitfalls that were successfully avoided → note as Validated
+3. **Review milestone-specific insights** in MuninnDB:
+   - Patterns that were validated multiple times -> bump to High confidence via `mcp__muninn__muninn_evolve`
+   - Decisions that held throughout milestone -> mark as Established
+   - Pitfalls that were successfully avoided -> note as Validated
 
 ### Step 1: Archive Milestone Memory
 
-Create milestone-specific memory snapshot:
+Create milestone-specific memory snapshot in MuninnDB:
 
-```bash
-# Archive current MEMORY.md state
-cp .planning/MEMORY.md .planning/milestones/v{version}-MEMORY-SNAPSHOT.md
 ```
+# Export milestone memory graph for archival
+mcp__muninn__muninn_export_graph(vault: "default")
+```
+
+Store the export as `.planning/milestones/v{version}-MEMORY-SNAPSHOT.json`.
 
 Include in archive:
 
@@ -63,16 +63,13 @@ Include in archive:
 
 ### Step 2: Clean Session State
 
-After archiving:
+After archiving, clear session context:
 
-```bash
-# Primary: Clear WORKING.md via memory bridge
-bun run src/memory/__helpers/bridge.ts clear-working 2>/dev/null || true
-# Fallback: Reset from template
-cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
+```
+mcp__muninn__muninn_forget(vault: "default", id: "session:*")
 ```
 
-MEMORY.md persists across milestones - it's the long-term project memory.
+Long-term learnings persist in MuninnDB across milestones.
 
 ## State Machine Integration
 
@@ -179,5 +176,4 @@ The bridge `snapshot` command automatically preserves the "Previous Milestones" 
 
 - `/progress` — Review completed work
 - `/help` — See all available commands
-</main>
 </main>

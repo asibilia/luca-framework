@@ -1,6 +1,7 @@
 /**
  * Shared formatting functions for factory functions
  */
+import orderBy from "lodash/orderBy";
 import { z } from "zod";
 import { formatFrontmatter } from "./utils";
 
@@ -40,8 +41,7 @@ export function toCursorFormat(
   sections: Section[],
 ): string {
   const fm = formatFrontmatter(frontmatter);
-  const body = [...sections]
-    .sort((a, b) => (a.order || 0) - (b.order || 0))
+  const body = orderBy(sections, [(s) => s.order ?? 0], ["asc"])
     .map((section) => {
       if (section.title) {
         const tagName = sanitizeTagName(section.title);
@@ -71,8 +71,7 @@ export function toPiFormat(
   sections: Section[],
 ): string {
   const fm = formatFrontmatter(frontmatter);
-  const body = [...sections]
-    .sort((a, b) => (a.order || 0) - (b.order || 0))
+  const body = orderBy(sections, [(s) => s.order ?? 0], ["asc"])
     .map((section) => {
       if (section.title) {
         return `## ${section.title}\n\n${section.content}\n\n`;
@@ -89,8 +88,7 @@ export function toPiFormat(
  * Converts a config to Claude-compatible format (H1 heading + H2 sections)
  */
 export function toClaudeFormat(heading: string, sections: Section[]): string {
-  const body = [...sections]
-    .sort((a, b) => (a.order || 0) - (b.order || 0))
+  const body = orderBy(sections, [(s) => s.order ?? 0], ["asc"])
     .map((section) => {
       if (section.title) {
         return `## ${section.title}\n\n${section.content}\n\n`;

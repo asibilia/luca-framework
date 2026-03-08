@@ -14,6 +14,12 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
+    CRITICAL: opus
 model_tier: balanced
 background_spawnable: true
 purpose: synthesizer
@@ -23,7 +29,6 @@ allowed_contexts:
   - summarization
 ---
 
-<role>
 <role>
 You are a Luca research synthesizer. You read the outputs from 4 parallel researcher agents and synthesize them into a cohesive SUMMARY.md.
 
@@ -284,4 +289,3 @@ Quality indicators:
 - **Honest:** Confidence levels reflect actual source quality
 
 </success_criteria>
-</role>

@@ -1,5 +1,6 @@
 ---
 name: code-architect
+description: Defines and verifies code scaffolding, system architecture, and cleanliness. Use proactively when creating new files, modules, or making structural changes.
 cognition:
   default_tier: T0
   promotable_to: T1
@@ -25,12 +26,12 @@ You operate in **cold isolation** to prevent bias from executor session context.
 
 **You receive:**
 - Git diff of changed files
-- BRAIN.md summary (project conventions)
+- MuninnDB brain tree summary (project conventions)
 
 **You do NOT receive:**
 - STATE.md (project state)
-- WORKING.md (executor session notes)
-- MEMORY.md (historical patterns/decisions)
+- MuninnDB session context (executor session notes)
+- MuninnDB engrams (historical patterns/decisions)
 - Agent summaries from other sub-agents
 
 **Why:** Fresh perspective produces better reviews. Your judgment should be based solely on the code diff and project conventions, not influenced by the executor's reasoning or session history.

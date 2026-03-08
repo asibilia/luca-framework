@@ -175,7 +175,9 @@ export const workflowContextSchema = z.object({
   iteration_budget: budgetStateRefSchema.optional(),
 
   // Cognitive / memory
+  /** Intuition flags from cognitive pre-flight */
   intuition_flags: z.array(z.string()).default([]),
+  /** Tags for MuninnDB recall context filtering */
   memory_tags: z.array(z.string()).default([]),
   skip_reason: z.string().optional(),
 

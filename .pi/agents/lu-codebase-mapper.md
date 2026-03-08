@@ -7,7 +7,6 @@ tools:
   - Grep
   - Glob
   - Write
-model_tier: balanced
 background_spawnable: true
 purpose: researcher
 allowed_contexts:

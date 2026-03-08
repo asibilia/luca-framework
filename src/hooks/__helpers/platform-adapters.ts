@@ -1,12 +1,12 @@
 /**
  * Platform adapters for the Luca hook system.
  *
- * Transforms canonical (platform-independent) hook definitions into
- * platform-specific configs for Claude Code, Cursor, and Pi.
+ * Provides core adapt functions that transform canonical hook definitions
+ * into platform-specific configurations. Used internally by config-generators
+ * and canonicalToLegacy.
  *
- * Each adapter is a pure function: CanonicalHook -> platform-specific fields.
- * The canonicalToLegacy() function converts back to the legacy HookDefinition
- * format used by the existing config generators.
+ * For the formal adapter-registry architecture with runtime resolution,
+ * see `src/hooks/adapters/`.
  *
  * Source: src/hooks/__helpers/platform-adapters.ts
  */
@@ -16,41 +16,6 @@ import type {
   CanonicalEvent,
   HookDefinition,
 } from "../__schemas/hook.schemas";
-
-// ─── Event maps ─────────────────────────────────────────────────────────────
-
-/**
- * Maps canonical event names to Claude Code PascalCase event names.
- */
-export const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "PostToolUse",
-  pre_tool_use: "PreToolUse",
-  stop: "Stop",
-  session_end: "SessionEnd",
-  session_start: "SessionStart",
-};
-
-/**
- * Maps canonical event names to Cursor camelCase event names.
- */
-export const CURSOR_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "afterFileEdit",
-  pre_tool_use: "beforeShellExecution",
-  stop: "stop",
-  session_end: "sessionEnd",
-  session_start: "sessionStart",
-};
-
-/**
- * Maps canonical event names to Pi snake_case event names.
- */
-export const PI_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "tool_execution_end",
-  pre_tool_use: "tool_call",
-  stop: "session_shutdown",
-  session_end: "session_shutdown",
-  session_start: "session_start",
-};
 
 // ─── Platform hook config type ──────────────────────────────────────────────
 
@@ -74,6 +39,35 @@ export interface PlatformHookConfig {
   /** Status message */
   statusMessage?: string;
 }
+
+// ─── Internal event maps ─────────────────────────────────────────────────────
+
+/** Maps canonical event names to Claude Code PascalCase event names. */
+const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
+  post_tool_use: "PostToolUse",
+  pre_tool_use: "PreToolUse",
+  stop: "Stop",
+  session_end: "SessionEnd",
+  session_start: "SessionStart",
+};
+
+/** Maps canonical event names to Cursor camelCase event names. */
+const CURSOR_EVENT_MAP: Record<CanonicalEvent, string> = {
+  post_tool_use: "afterFileEdit",
+  pre_tool_use: "beforeShellExecution",
+  stop: "stop",
+  session_end: "sessionEnd",
+  session_start: "sessionStart",
+};
+
+/** Maps canonical event names to Pi snake_case event names. */
+const PI_EVENT_MAP: Record<CanonicalEvent, string> = {
+  post_tool_use: "tool_execution_end",
+  pre_tool_use: "tool_call",
+  stop: "session_shutdown",
+  session_end: "session_shutdown",
+  session_start: "session_start",
+};
 
 // ─── Adapter functions ──────────────────────────────────────────────────────
 
@@ -146,8 +140,9 @@ export function adaptForPi(hook: CanonicalHook): PlatformHookConfig {
 /**
  * Convert a canonical hook definition to the legacy HookDefinition format.
  *
- * This bridges the canonical format to the existing config generators,
- * ensuring backward compatibility during the migration period.
+ * This bridges the canonical format to the legacy hook registry,
+ * ensuring backward compatibility for consumers that still depend
+ * on HookDefinition objects.
  *
  * @param hook - Canonical hook definition
  * @returns Legacy HookDefinition with all platform-specific fields populated

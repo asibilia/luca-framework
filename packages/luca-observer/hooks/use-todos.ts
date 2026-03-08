@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Todo item parsed from markdown frontmatter.
@@ -17,48 +17,42 @@ export interface Todo {
 }
 
 /**
- * Hook for reading and parsing todo files.
+ * Hook for reading and parsing todo files via the /api/todos endpoint.
  *
- * In production, this would call an API endpoint that reads
- * from `.planning/todos/pending/` and `.planning/todos/done/`.
- * For now, returns mock data with the correct structure.
+ * Fetches from the API route that reads `.planning/todos/pending/`
+ * and `.planning/todos/done/` directories on the server.
+ *
+ * @returns todos, loading, error, and a refetch function.
  */
 export function useTodos() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Placeholder for future API call:
-    // fetch('/api/todos').then(res => res.json()).then(data => setTodos(data));
-
-    // Mock data demonstrating the structure
-    const mockTodos: Todo[] = [
-      {
-        filename: "hook-portability-abstraction.md",
-        title: "Hook Portability Abstraction Layer",
-        area: "framework/hooks",
-        created: "2026-03-01",
-        source: "expert-panel-research",
-        tier: 2,
-        complexity: "COMPLEX",
-        state: "pending",
-      },
-      {
-        filename: "cross-session-procedure-replay.md",
-        title: "Cross-Session Procedure Replay Engine",
-        area: "framework/memory",
-        created: "2026-03-01",
-        source: "expert-panel-research",
-        tier: 3,
-        complexity: "COMPLEX",
-        state: "pending",
-      },
-    ];
-
-    setTodos(mockTodos);
-    setLoading(false);
+  const fetchTodos = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/todos");
+      if (!res.ok) {
+        throw new Error(
+          `Failed to fetch todos: ${res.status} ${res.statusText}`,
+        );
+      }
+      const data: Todo[] = await res.json();
+      setTodos(data);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unknown error fetching todos";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { todos, loading, error };
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]);
+
+  return { todos, loading, error, refetch: fetchTodos };
 }

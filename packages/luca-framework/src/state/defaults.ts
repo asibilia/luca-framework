@@ -48,15 +48,27 @@ export interface ComplexityGate {
 /** The complete complexity matrix type */
 export type ComplexityMatrix = Record<ComplexityLevel, ComplexityGate>;
 
-/** The default gating matrix */
+/**
+ * The default gating matrix for luca-state.
+ *
+ * CANONICAL SOURCE OF TRUTH: src/complexity/__helpers/defaults.ts
+ *
+ * This is a standalone copy for the luca-state package (which cannot import
+ * from src/ due to package isolation). When updating iteration counts or
+ * verification modes, ensure values stay aligned with the canonical matrix
+ * in src/complexity/__helpers/defaults.ts and the documentation in
+ * .claude/rules/complexity-gating.md.
+ *
+ * Last verified alignment: 2026-03-08 (Phase 13, PLAN-01 Task 2)
+ */
 export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
   TRIVIAL: {
     cognitivePreflight: "lite",
     research: "skip",
     discussion: "skip",
-    planVerificationIterations: 0,
+    planVerificationIterations: 1,
     harnessFixIterations: 1,
-    verifyFixIterations: 0,
+    verifyFixIterations: 1,
     verificationMode: "quick",
     codeReviewAgents: [],
     uat: "skip",
@@ -66,7 +78,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     cognitivePreflight: "lite",
     research: "skip",
     discussion: "skip",
-    planVerificationIterations: 0,
+    planVerificationIterations: 1,
     harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "quick",
@@ -79,7 +91,7 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     research: "optional",
     discussion: "optional",
     planVerificationIterations: 1,
-    harnessFixIterations: 3,
+    harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "standard",
     codeReviewAgents: ["dx-advocate", "code-simplifier"],
@@ -92,14 +104,14 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     research: "required",
     discussion: "run",
     planVerificationIterations: 2,
-    harnessFixIterations: 3,
-    verifyFixIterations: 2,
+    harnessFixIterations: 2,
+    verifyFixIterations: 1,
     verificationMode: "full",
     codeReviewAgents: [
       "dx-advocate",
       "code-simplifier",
       "code-architect",
-      "tailwind-auditor",
+      "ui",
     ],
     uat: "required",
     learningCapture: "full",
@@ -111,14 +123,14 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     research: "required",
     discussion: "required",
     planVerificationIterations: 3,
-    harnessFixIterations: 5,
-    verifyFixIterations: 3,
+    harnessFixIterations: 3,
+    verifyFixIterations: 2,
     verificationMode: "full+human",
     codeReviewAgents: [
       "dx-advocate",
       "code-simplifier",
       "code-architect",
-      "tailwind-auditor",
+      "ui",
       "security-auditor",
     ],
     uat: "required+thorough",

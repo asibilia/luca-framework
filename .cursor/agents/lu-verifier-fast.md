@@ -17,9 +17,6 @@ context:
   default_tier: T0
   promotable_to: T1
   isolation: warm
-model_routing:
-  default_model: haiku
-model_tier: fast
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

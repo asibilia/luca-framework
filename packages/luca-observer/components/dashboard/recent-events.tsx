@@ -27,7 +27,7 @@ export function RecentEvents({
           <button
             type="button"
             onClick={onClear}
-            className="rounded border border-border px-2 py-1 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="rounded border border-border px-2 py-1 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             Clear
           </button>

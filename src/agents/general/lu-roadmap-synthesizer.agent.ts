@@ -27,7 +27,6 @@ const luRoadmapSynthesizerConfig: AgentConfig = {
     background_spawnable: true,
     purpose: "synthesizer",
     allowed_contexts: ["planning", "roadmap", "synthesis"],
-    model_tier: "balanced",
   },
   sections: [
     {
@@ -67,7 +66,7 @@ Your job: Cross-reference all specialist findings, resolve conflicts, produce un
 - **Decisions**: Respect past roadmap structure decisions and phase grouping preferences
 - **Planning**: Recall successful phase ordering patterns from previous milestones
 
-**Working Memory:** Log your synthesis rationale and conflict resolutions to WORKING.md context (provided, not written by you).
+**Working Memory:** Log your synthesis rationale and conflict resolutions to MuninnDB session context (provided, not written by you).
 </cognition_integration>
 
 <synthesis_methodology>

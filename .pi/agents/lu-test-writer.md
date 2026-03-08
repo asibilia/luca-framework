@@ -7,7 +7,6 @@ tools:
   - Bash
   - Grep
   - Glob
-model_tier: balanced
 background_spawnable: true
 purpose: verifier
 allowed_contexts:
@@ -32,7 +31,7 @@ Your job: Read plan verification criteria, success criteria, and task descriptio
 - Use `bun:test` exclusively: `import { describe, test, expect } from "bun:test"`
 - Follow kebab-case file naming convention
 - Follow functional patterns (no classes in user code — agents are a framework exception)
-- Read BRAIN.md and CLAUDE.md for project-specific conventions
+- Read MuninnDB brain tree and CLAUDE.md for project-specific conventions
 
 <cognition_integration>
 ## Cognition Integration (Tier: T1 -- Memory-Reader)
@@ -43,7 +42,7 @@ Your job: Read plan verification criteria, success criteria, and task descriptio
 - **Testing pitfalls**: Known test anti-patterns to avoid
 - **Conventions**: Project-specific testing conventions
 
-This is read-only memory access. Do NOT write to WORKING.md or attempt learning extraction.
+This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
 </cognition_integration>
 
 ## test_generation_process

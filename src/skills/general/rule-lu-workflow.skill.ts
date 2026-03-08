@@ -1,5 +1,5 @@
 /**
- * rule-lu-workflow Skill - Luca cognitive memory system: BRAIN.md, MEMORY.md, WORKING.md workflow and quality curve.
+ * rule-lu-workflow Skill - Luca cognitive memory system: MuninnDB-backed workflow and quality curve.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
@@ -8,7 +8,7 @@ import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 const ruleLuWorkflowConfig: SkillConfig = {
   frontmatter: {
     name: "rule-lu-workflow",
-    description: `Luca cognitive memory system: BRAIN.md, MEMORY.md, WORKING.md workflow and quality curve.`,
+    description: `Luca cognitive memory system: MuninnDB-backed workflow and quality curve.`,
     "disable-model-invocation": true,
   },
   sections: [
@@ -22,7 +22,7 @@ const ruleLuWorkflowConfig: SkillConfig = {
 | ------------------- | ---------------------------------------------------- |
 | Entry Point         | Unified \`/lu\` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
-| Memory              | BRAIN.md + MEMORY.md + WORKING.md                    |
+| Memory              | MuninnDB (project identity, learnings, session)      |
 | Verification        | Always runs (all complexity levels)                  |
 | Learning            | Pattern/decision/pitfall capture                     |
 | Pre-Flight          | Cognitive context loading                            |
@@ -65,11 +65,13 @@ Plan → Execute → **Verify** → **Learn** → Repeat`,
     },
     {
       title: "two-tier-memory-system",
-      content: `## Two-Tier Memory System (NEW)
+      content: `## MuninnDB Memory System
 
-### BRAIN.md — Project Identity
+All memory is stored in MuninnDB with semantic search, entity graphs, and temporal decay.
 
-Captures project personality, loaded at session start:
+### Project Identity (brain:*)
+
+Captures project personality, loaded at session start via \`muninn_recall_tree\`:
 
 - Project identity (name, domain, purpose)
 - Stack (languages, frameworks, databases)
@@ -77,18 +79,18 @@ Captures project personality, loaded at session start:
 - Code conventions
 - Development preferences
 
-### MEMORY.md — Long-Term Learning
+### Long-Term Learning (patterns, decisions, pitfalls)
 
-Persistent across sessions, selectively recalled:
+Persistent across sessions, selectively recalled via \`muninn_recall\`:
 
 - **Patterns**: Validated approaches that work
 - **Decisions**: Past choices with rationale
 - **Pitfalls**: Known issues to avoid
 - **Preferences**: User/project preferences
 
-### WORKING.md — Session Memory
+### Session Memory (session:*)
 
-Active during workflow, cleared after learning extraction:
+Active during workflow, cleared after learning extraction via \`muninn_forget\`:
 
 - Current task context
 - Immediate findings
@@ -98,13 +100,13 @@ Active during workflow, cleared after learning extraction:
     },
     {
       title: "cognitive-pre-flight",
-      content: `## Cognitive Pre-Flight (NEW)
+      content: `## Cognitive Pre-Flight
 
-Before major operations, Luca runs cognitive pre-flight:
+Before major operations, Luca runs cognitive pre-flight via MuninnDB:
 
-1. **Load BRAIN.md** — Project conventions
-2. **Selective recall from MEMORY.md** — Relevant patterns, decisions, pitfalls
-3. **Initialize WORKING.md** — Session context
+1. **Load project identity** — \`muninn_recall_tree(id: "brain:project-identity")\`
+2. **Selective recall** — \`muninn_recall(context: "relevant patterns, decisions, pitfalls")\`
+3. **Initialize session** — \`muninn_remember(concept: "session:info", ...)\`
 4. **Generate intuition flags** — RISK, CAUTION, OPPORTUNITY, UNKNOWN`,
       order: 3,
     },

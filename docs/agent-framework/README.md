@@ -9,7 +9,7 @@ This directory contains documentation for the AI agent framework.
 - **Ticket-to-PR workflow**: Single command handles ticket → GitHub issue → branch → execute → PR
 - Spec-driven architecture and verification
 - Cognitive analysis and learning
-- **Two-tier memory**: WORKING.md (session) + MEMORY.md (long-term)
+- **Two-tier memory**: MuninnDB session context (session) + MuninnDB engrams (long-term)
 - **Always verify**: Verification runs at all complexity levels
 - **Unified entry point**: `/lu`
 
@@ -61,10 +61,10 @@ Luca uses `.planning/` for state:
 
 ```
 .planning/
-├── BRAIN.md      # Project identity (persistent)
+├── MuninnDB brain tree      # Project identity (persistent)
 ├── STATE.md      # Session state + git context (ticket, issue, branch)
-├── MEMORY.md     # Long-term learnings (persistent)
-├── WORKING.md    # Session memory (cleared after learning capture)
+├── MuninnDB engrams     # Long-term learnings (persistent)
+├── MuninnDB session context    # Session memory (cleared after learning capture)
 ├── PROJECT.md    # Vision & scope
 ├── ROADMAP.md    # Phase structure
 ├── config.json   # Workflow preferences
@@ -87,23 +87,23 @@ Luca uses `.planning/` for state:
 
 ## Key Commands
 
-| Command                                | Purpose                                             |
-| -------------------------------------- | --------------------------------------------------- |
+| Command                                 | Purpose                                             |
+| --------------------------------------- | --------------------------------------------------- |
 | `/lu <task \| [TICKET-ID] \| Jira-URL>` | Unified entry: git setup → routing → execution → PR |
-| `/lu-new-project`                   | Initialize project                                  |
-| `/lu-map-codebase`                  | Analyze existing code                               |
-| `/lu-new-milestone`                 | Start new milestone cycle                           |
-| `/lu-complete-milestone`            | Archive milestone, consolidate learnings            |
-| `/lu-audit-milestone`               | Audit milestone against original intent             |
-| `/lu-research-phase [N]`            | Deep ecosystem research for phases                  |
-| `/lu-plan-phase [N]`                | Create phase plans                                  |
-| `/lu-execute-phase [N]`             | Execute + verify + learn                            |
-| `/lu-progress`                      | Check current state                                 |
-| `/lu-debug`                         | Memory-aided debugging                              |
-| `/lu-resume-work`                   | Resume from previous session                        |
-| `/lu-address-pr`                    | Address PR comments with agent swarm                |
-| `/lu-settings`                      | Configure workflow toggles                          |
-| `/lu-help`                          | Full command reference                              |
+| `/lu-new-project`                       | Initialize project                                  |
+| `/lu-map-codebase`                      | Analyze existing code                               |
+| `/lu-new-milestone`                     | Start new milestone cycle                           |
+| `/lu-complete-milestone`                | Archive milestone, consolidate learnings            |
+| `/lu-audit-milestone`                   | Audit milestone against original intent             |
+| `/lu-research-phase [N]`                | Deep ecosystem research for phases                  |
+| `/lu-plan-phase [N]`                    | Create phase plans                                  |
+| `/lu-execute-phase [N]`                 | Execute + verify + learn                            |
+| `/lu-progress`                          | Check current state                                 |
+| `/lu-debug`                             | Memory-aided debugging                              |
+| `/lu-resume-work`                       | Resume from previous session                        |
+| `/lu-address-pr`                        | Address PR comments with agent swarm                |
+| `/lu-settings`                          | Configure workflow toggles                          |
+| `/lu-help`                              | Full command reference                              |
 
 ### Unified Entry Flags
 

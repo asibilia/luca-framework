@@ -28,7 +28,7 @@ const DOMAIN_TIER: Record<string, number> = {
   planner: 1,
   harness: 1,
   iteration: 1,
-  memory: 1,
+  observability: 1,
   agents: 2,
   skills: 2,
   rules: 2,
@@ -72,12 +72,15 @@ function isException(sourceDomain: string, targetDomain: string): boolean {
 
 /**
  * Extract ~/... import paths from actual top-level import/export statements.
- * Stops scanning when we hit the first non-import declaration (const, function,
- * etc.) to avoid matching example imports inside template literal strings.
+ * Handles multi-line imports (where `import {` and `} from "~/..."` span
+ * multiple lines). Stops scanning when we hit the first non-import declaration
+ * (const, function, etc.) to avoid matching example imports inside template
+ * literal strings.
  */
 function extractTildeImports(content: string): string[] {
   const imports: string[] = [];
   const lines = content.split("\n");
+  let insideMultiLineImport = false;
 
   for (const line of lines) {
     const trimmed = line.trimStart();
@@ -92,6 +95,21 @@ function extractTildeImports(content: string): string[] {
     )
       continue;
 
+    // If we are inside a multi-line import, keep scanning until we find the
+    // closing `}` (with or without `from`).
+    if (insideMultiLineImport) {
+      if (trimmed.includes("}")) {
+        // End of multi-line import — check for `from "~/..."` on this line
+        const match = /from\s+["']~\/([^"']+)["']/.exec(line);
+        if (match) {
+          imports.push(match[1]!);
+        }
+        insideMultiLineImport = false;
+      }
+      // Whether or not we found `}`, continue scanning (don't break)
+      continue;
+    }
+
     // Stop at the first non-import declaration
     if (
       !trimmed.startsWith("import") &&
@@ -100,6 +118,17 @@ function extractTildeImports(content: string): string[] {
     )
       break;
 
+    // Check if this is the start of a multi-line import: has `{` but no `}`
+    if (
+      (trimmed.startsWith("import") || trimmed.startsWith("export")) &&
+      trimmed.includes("{") &&
+      !trimmed.includes("}")
+    ) {
+      insideMultiLineImport = true;
+      continue;
+    }
+
+    // Single-line import/export — check for `~/` path
     const match = /from\s+["']~\/([^"']+)["']/.exec(line);
     if (match) {
       imports.push(match[1]!);

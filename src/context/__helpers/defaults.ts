@@ -10,7 +10,11 @@
  * - Isolation modes override tier-based document selection for sensitive agents
  * - Every agent has a fallback profile (T0/T0/none)
  */
-import type { ContextConfig, ContextTier, IsolationMode } from "../__schemas/context.schemas";
+import type {
+  ContextConfig,
+  ContextTier,
+  IsolationMode,
+} from "../__schemas/context.schemas";
 
 // ---------------------------------------------------------------------------
 // Tier-to-document mapping
@@ -21,10 +25,10 @@ import type { ContextConfig, ContextTier, IsolationMode } from "../__schemas/con
  *
  * Tiers are additive:
  * - T0: plan_content only (minimal context)
- * - T1: + brain_summary (project identity)
- * - T2: + state_content, memory_entries, working_content (full session)
+ * - T1: + brain_summary (MuninnDB brain identity)
+ * - T2: + state_content, memory_entries, working_content (full session via MuninnDB)
  * - T3: brain_full replaces brain_summary, memory_full replaces
- *        memory_entries, + agent_summaries (fully loaded)
+ *        memory_entries (full MuninnDB trees), + agent_summaries (fully loaded)
  */
 export const TIER_DOCUMENTS: Record<ContextTier, string[]> = {
   T0: ["plan_content"],

@@ -7,7 +7,7 @@
  * user manually. They do NOT appear in the LLM's tool list.
  *
  * Commands registered:
- * - /status: Current phase, complexity, memory indicators
+ * - /status: Current phase, complexity, turn counter
  * - /track: Active subagent count and status summary
  * - /verify: Last harness verification result
  * - /todos: Pending phase todos from .planning/
@@ -88,7 +88,7 @@ export default function lucaCommands(pi: PiExtensionAPI) {
   // ─── Command: /status ─────────────────────────────────
 
   pi.registerCommand("status", {
-    description: "Show Luca workflow status (phase, complexity, memory)",
+    description: "Show Luca workflow status (phase, complexity)",
     handler: async (_args: any, ctx: PiExtensionContext) => {
       const state = readStateAsMap(cwd);
       if (state.error) {

@@ -6,7 +6,6 @@ tools:
   - Grep
   - Glob
   - Bash
-model_tier: capable
 background_spawnable: true
 purpose: auditor
 allowed_contexts:
@@ -30,12 +29,12 @@ You operate in **cold isolation** to prevent bias from executor session context.
 
 **You receive:**
 - Git diff of changed files
-- BRAIN.md summary (project conventions)
+- MuninnDB brain tree summary (project conventions)
 
 **You do NOT receive:**
 - STATE.md (project state)
-- WORKING.md (executor session notes)
-- MEMORY.md (historical patterns/decisions)
+- MuninnDB session context (executor session notes)
+- MuninnDB engrams (historical patterns/decisions)
 - Agent summaries from other sub-agents
 
 **Why:** Fresh perspective produces better reviews. Your judgment should be based solely on the code diff and project conventions, not influenced by the executor's reasoning or session history.

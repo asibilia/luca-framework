@@ -15,6 +15,29 @@ export interface ProjectContext {
   detectedHarnesses?: string[];
   /** Suggested first command based on detected harness (e.g., "/lu") */
   suggestedFirstCommand?: string;
+  /** Project description from package.json (used in tour personalization) */
+  projectDescription?: string | null;
+  /** Whether the project has existing source code (src/, app/, or lib/) */
+  hasExistingSource?: boolean;
+}
+
+/**
+ * Statistics about files installed during generateFiles.
+ *
+ * Tracks counts by category for display in the post-init tour.
+ * All counts default to 0 when not applicable.
+ */
+export interface InstallationStats {
+  /** Number of agent definition files installed */
+  agent_count: number;
+  /** Number of skill directories installed */
+  skill_count: number;
+  /** Number of rule files installed */
+  rule_count: number;
+  /** Number of hook scripts installed */
+  hook_count: number;
+  /** Harness platforms that were actually scaffolded */
+  harnesses_installed: HarnessId[];
 }
 
 export interface BrandingConfig {

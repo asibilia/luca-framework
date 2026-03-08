@@ -177,7 +177,7 @@ Files created:
     if (!args.quick && !args["no-tour"] && !args.config) {
       try {
         const { runTour } = await import("../utils/tour");
-        await runTour(config, context);
+        await runTour(config, context, result.stats);
       } catch {
         // Tour errors are non-fatal
       }

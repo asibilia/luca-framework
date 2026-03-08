@@ -10,7 +10,6 @@ tools:
   - WebSearch
   - WebFetch
   - mcp__context7__*
-model_tier: balanced
 background_spawnable: true
 purpose: researcher
 allowed_contexts:

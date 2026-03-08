@@ -37,14 +37,9 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
-# Cascading bridge lookup: installed bin → monorepo source → skip
-run_bridge() {
-  if command -v luca-bridge &>/dev/null; then
-    luca-bridge "$@"
-  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
-    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
-  fi
-}
+# Source shared hook library
+HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
 # --- Throttle check ---
 PROJECT_HASH=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
@@ -87,45 +82,50 @@ if [ -d "$NOTES_DIR" ]; then
 fi
 
 # --- Run context monitor ---
+# Estimate context usage from transcript file size.
+# The old src/memory/context-monitor.ts module has been removed; context
+# monitoring now uses direct transcript-size heuristics (same approach as
+# context-monitor.sh but lightweight for the throttled PostToolUse path).
 
-# Run the TypeScript context monitor and capture output
-# Suppress stderr to avoid noise from missing files
-RESULT=$(bun run src/memory/context-monitor.ts --project-dir="$PROJECT_DIR" 2>/dev/null) || exit 0
+ZONE="peak"
+USAGE_PERCENT=0
 
-# Extract zone from JSON output
-ZONE=$(printf '%s' "$RESULT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  process.stdout.write(data.zone || 'unknown');
-" 2>/dev/null) || exit 0
+# Find transcript path from Claude session dir
+TRANSCRIPT_PATH=""
+if [ -n "${CLAUDE_SESSION_DIR:-}" ] && [ -d "$CLAUDE_SESSION_DIR" ]; then
+  TRANSCRIPT_PATH=$(find "$CLAUDE_SESSION_DIR" -name "transcript" -type f 2>/dev/null | head -1)
+fi
+
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
+  # Thresholds aligned with context-monitor.sh
+  WARN_THRESHOLD="${CONTEXT_WARN:-100000}"
+  ALERT_THRESHOLD="${CONTEXT_ALERT:-200000}"
+  CRITICAL_THRESHOLD="${CONTEXT_CRITICAL:-300000}"
+  # Estimate usage percent (300KB ~ 70% context)
+  USAGE_PERCENT=$((FILE_SIZE * 70 / CRITICAL_THRESHOLD))
+  if [ "$USAGE_PERCENT" -gt 100 ]; then USAGE_PERCENT=100; fi
+
+  if [ "$FILE_SIZE" -ge "$CRITICAL_THRESHOLD" ]; then
+    ZONE="stop"
+  elif [ "$FILE_SIZE" -ge "$ALERT_THRESHOLD" ]; then
+    ZONE="degrading"
+  elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
+    ZONE="good"
+  fi
+fi
 
 # Only output warning for degrading or stop zones
 if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
-  USAGE=$(printf '%s' "$RESULT" | bun -e "
-    const data = JSON.parse(await Bun.stdin.text());
-    process.stdout.write(String(Math.round(data.usage_percent)));
-  " 2>/dev/null) || USAGE="unknown"
-
-  printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE" "$ZONE"
+  printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE_PERCENT" "$ZONE"
 fi
 
 # Emit context snapshot via bridge (fire-and-forget)
-SESSION_ID=""
-if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
-  SESSION_ID=$(bun -e "
-    try {
-      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
-      process.stdout.write(s.context?.session_id || '');
-    } catch { process.stdout.write(''); }
-  " 2>/dev/null || echo "")
-fi
-if [ -n "$SESSION_ID" ] && [ -n "${RESULT:-}" ]; then
-  CONTEXT_PERCENT=$(printf '%s' "$RESULT" | bun -e "
-    try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(Math.round(d.usage_percent || 0))); } catch { process.stdout.write('0'); }
-  " 2>/dev/null || echo "0")
-  EST_TOKENS=$(printf '%s' "$RESULT" | bun -e "
-    try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(String(d.total_tokens || 0)); } catch { process.stdout.write('0'); }
-  " 2>/dev/null || echo "0")
-  run_bridge emit-context-snapshot --session="$SESSION_ID" --percent="$CONTEXT_PERCENT" --tokens="$EST_TOKENS" &>/dev/null &
+SESSION_ID=$(read_session_id)
+if [ -n "$SESSION_ID" ] && [ "$USAGE_PERCENT" -gt 0 ]; then
+  # Estimate tokens from file size (~4 chars per token)
+  EST_TOKENS=$(( ${FILE_SIZE:-0} / 4 ))
+  run_bridge emit-context-snapshot --session="$SESSION_ID" --percent="$USAGE_PERCENT" --tokens="$EST_TOKENS" &>/dev/null &
 fi
 
 exit 0

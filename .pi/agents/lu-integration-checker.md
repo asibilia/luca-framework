@@ -6,7 +6,6 @@ tools:
   - Bash
   - Grep
   - Glob
-model_tier: capable
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

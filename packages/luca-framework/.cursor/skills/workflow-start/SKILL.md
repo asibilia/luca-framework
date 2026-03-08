@@ -4,7 +4,6 @@ description: Start work on a Jira ticket. Redirects to /lu for the full developm
 ---
 
 <main>
-<main>
 # Workflow Start
 
 **REDIRECT:** This workflow is now integrated into `/lu`.
@@ -70,5 +69,4 @@ Jira ticket -> GitHub issue -> Feature branch -> Plan -> Work -> PR
 ```
 
 This is now fully handled by `/lu` when given a Jira ticket input.
-</main>
 </main>

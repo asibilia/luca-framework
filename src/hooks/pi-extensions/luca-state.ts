@@ -5,12 +5,12 @@
  * Reads/writes .planning/STATE.md and .planning/state.json for workflow
  * state management (phase tracking, complexity, oversight, transitions).
  *
+ * NOTE: Memory indicators (BRAIN.md, MEMORY.md, WORKING.md) have been
+ * removed from the footer. Long-term memory is handled by MuninnDB MCP.
+ *
  * Source: src/hooks/pi-extensions/luca-state.ts
  * Deployed to: .pi/extensions/luca-state.ts
  */
-import { existsSync } from "fs";
-import { join } from "path";
-
 import {
   createJsonResponse,
   createJsonResponseWithDetails,
@@ -33,14 +33,13 @@ import type { PiExtensionAPI, PiExtensionContext } from "./__types/pi-context";
  * Pi extension: Workflow state management and status display.
  *
  * Registers tools for reading/writing .planning/STATE.md fields and
- * displays a consolidated status bar (phase, complexity, memory
- * indicators) in Pi's footer during sessions.
+ * displays a consolidated status bar (phase, complexity) in Pi's
+ * footer during sessions.
  *
  * @param pi - Pi ExtensionAPI instance
  */
 export default function lucaState(pi: PiExtensionAPI) {
   const cwd = process.cwd();
-  const planningDir = join(cwd, ".planning");
 
   /**
    * Read workflow state as a flat key-value map.
@@ -229,11 +228,6 @@ export default function lucaState(pi: PiExtensionAPI) {
     const complexity = (state["task_complexity"] ?? "MODERATE").toUpperCase();
     const tier = COMPLEXITY_TIERS[complexity] ?? "standard";
 
-    // Check memory file existence
-    const brainExists = existsSync(join(planningDir, "BRAIN.md"));
-    const memoryExists = existsSync(join(planningDir, "MEMORY.md"));
-    const workingExists = existsSync(join(planningDir, "WORKING.md"));
-
     const fmt = createStatusFormatter(ctx);
 
     // Phase + milestone segment — show "No active phase" when missing
@@ -255,16 +249,10 @@ export default function lucaState(pi: PiExtensionAPI) {
       ? complexityColor(complexity)
       : `${complexity} (${tier})`;
 
-    // Memory indicators — green if loaded, dim if missing
-    const b = brainExists ? fmt.success("B") : fmt.dim("B");
-    const m = memoryExists ? fmt.success("M") : fmt.dim("M");
-    const w = workingExists ? fmt.success("W") : fmt.dim("W");
-    const memorySegment = `${b} ${m} ${w}`;
-
     // Turn counter segment
     const turnSegment = turnCount > 0 ? fmt.dim(`turn ${turnCount}`) : "";
 
-    const segments = [phaseSegment, complexitySegment, memorySegment];
+    const segments = [phaseSegment, complexitySegment];
     if (turnSegment) segments.push(turnSegment);
     return segments.join(SEP);
   }

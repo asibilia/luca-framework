@@ -15,7 +15,6 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
-model_tier: capable
 background_spawnable: true
 purpose: verifier
 allowed_contexts:

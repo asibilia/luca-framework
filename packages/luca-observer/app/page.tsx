@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
+import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { OverviewCards } from "~/components/dashboard/overview-cards";
 import { RecentEvents } from "~/components/dashboard/recent-events";
 import { RecentTransitions } from "~/components/dashboard/recent-transitions";
@@ -24,11 +25,18 @@ export default function DashboardPage() {
       subtitle="Real-time workflow observability"
       actions={
         <span
+          role="status"
+          aria-label={
+            connected
+              ? "Connection status: live"
+              : "Connection status: disconnected"
+          }
           className={`inline-flex items-center gap-1.5 font-mono text-xs ${
             connected ? "text-success" : "text-destructive"
           }`}
         >
           <span
+            aria-hidden="true"
             className={`h-1.5 w-1.5 rounded-full ${
               connected ? "bg-success" : "bg-destructive"
             }`}
@@ -37,11 +45,19 @@ export default function DashboardPage() {
         </span>
       }
     >
-      <OverviewCards events={events} />
-      <TodoTracker />
+      <ErrorBoundary name="OverviewCards">
+        <OverviewCards events={events} />
+      </ErrorBoundary>
+      <ErrorBoundary name="TodoTracker">
+        <TodoTracker />
+      </ErrorBoundary>
       <div className="grid gap-6 lg:grid-cols-2">
-        <RecentEvents events={events} onClear={clear} />
-        <RecentTransitions entries={ledgerEntries} />
+        <ErrorBoundary name="RecentEvents">
+          <RecentEvents events={events} onClear={clear} />
+        </ErrorBoundary>
+        <ErrorBoundary name="RecentTransitions">
+          <RecentTransitions entries={ledgerEntries} />
+        </ErrorBoundary>
       </div>
     </PageContainer>
   );

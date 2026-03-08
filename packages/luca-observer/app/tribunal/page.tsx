@@ -3,6 +3,7 @@
 import { PageContainer } from "~/components/layout/page-container";
 import { EmptyState } from "~/components/shared/empty-state";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
+import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { TribunalSummaryBanner } from "~/components/tribunal/tribunal-summary-banner";
 import { FindingsTable } from "~/components/tribunal/findings-table";
 import { DisagreementsPanel } from "~/components/tribunal/disagreements-panel";
@@ -25,7 +26,14 @@ export default function TribunalPage() {
       subtitle="Debate results, findings, and rebuttals"
     >
       {loading ? (
-        <EmptyState message="Loading tribunal data..." />
+        <div className="space-y-6">
+          <LoadingSkeleton variant="card" />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <LoadingSkeleton variant="card" />
+            <LoadingSkeleton variant="card" />
+          </div>
+          <LoadingSkeleton variant="table" rows={4} columns={3} />
+        </div>
       ) : !hasResult ? (
         <EmptyState
           title="No Tribunal Run"

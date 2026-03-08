@@ -1,0 +1,27 @@
+{
+  "milestone": "v3.0.0",
+  "exported": "2026-03-08",
+  "vault": "default",
+  "stats": {
+    "node_count": 25,
+    "edge_count": 61,
+    "format": "json-ld"
+  },
+  "learnings_stored": [
+    "01KK7Q0WRJX2AX83X8BFVAMBNB — v3.0.0 milestone completed",
+    "01KK7Q0WRJJZZ0995M4PMZ90YZ — pattern: gap closure phases work well",
+    "01KK7Q0WRJG4C8MMTCG1EW45PP — pattern: safeValidate generic over entity-specific",
+    "01KK7Q0WRJ8HBATS6ZRRMVX5G9 — pitfall: build:all crashes Claude Code",
+    "01KK7Q0WRJ60EQB2E3KQFQCC7X — pattern: muninnProxyHandler for Next.js routes"
+  ],
+  "key_entities": [
+    "luca-framework",
+    "v3.0.0",
+    "MuninnDB",
+    "SpacetimeDB",
+    "luca-observer",
+    "Claude Code",
+    "Bun",
+    "TypeScript"
+  ]
+}

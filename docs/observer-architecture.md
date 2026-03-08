@@ -39,7 +39,7 @@ Luca Observer (packages/luca-observer/)
 Additional write sources:
 
 - **Shell hooks** (`src/hooks/scripts/`): Emit events via `curl` to SpacetimeDB reducer endpoints
-- **Memory bridge** (`src/memory/__helpers/bridge.ts`): Syncs BRAIN/MEMORY/WORKING/PROCEDURES to SpacetimeDB
+- **MuninnDB MCP tools**: Memory is stored in MuninnDB; the observer reads memory snapshots from SpacetimeDB's `memory_files` table
 
 ## Page Hierarchy
 

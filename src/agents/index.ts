@@ -10,6 +10,9 @@ export { agentRegistry } from "./__helpers/build-agent-registry";
 // Factory function
 export { createAgent } from "./__helpers/create-agent";
 
+// Shared isolation blocks
+export { COLD_ISOLATION_BLOCK } from "./__helpers/cold-isolation-block";
+
 // Model resolution
 export {
   resolveModel,

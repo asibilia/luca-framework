@@ -57,7 +57,7 @@ import {
 } from "./persistence";
 import { workflowContextSchema, workflowEventSchema } from "./types";
 import type { TransitionRecord } from "./types";
-import { sanitizeJsonParse } from "./sanitize";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents, workflowMachine } from "./machine";
 import { generateSnapshot } from "./snapshot";
@@ -67,6 +67,7 @@ import {
   loadSuspendCheckpoint,
   clearSuspendCheckpoint,
 } from "./suspend-checkpoint";
+import type { SuspendCheckpoint } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
 import { callReducer, emitObserverEvent } from "./__helpers/observer-emitter";
@@ -177,39 +178,73 @@ async function updateStateMd(
 }
 
 /**
- * Print usage information to stderr.
+ * All valid subcommand names for the bridge CLI.
  */
-function printUsage(): void {
-  console.error(`Usage: luca-state <subcommand> [options]
+const VALID_SUBCOMMANDS = [
+  "read-status",
+  "read-complexity",
+  "read-oversight",
+  "read-phase",
+  "read-field",
+  "read-ledger",
+  "set-field",
+  "transition",
+  "ensure-init",
+  "snapshot",
+  "gate-check",
+  "suspend",
+  "resume-phase",
+  "emit-event",
+  "emit-context-snapshot",
+] as const;
 
-Subcommands:
-  read-complexity   Read current complexity level (TRIVIAL if not initialized)
-  read-oversight    Read current oversight level (milestone if not initialized)
-  read-phase        Read current phase info (null defaults if not initialized)
-  read-status       Read comprehensive workflow status (defaults if not initialized)
-  read-field        Read an arbitrary context field (errors on missing state)
-                    Options: --field=path (required, lodash get path)
-  read-ledger       Read session ledger entries with optional filters
-                    Options: --session=id, --event=type, --since=iso, --limit=N, --tail=N
-  emit-event        Emit a fire-and-forget observer event to SpacetimeDB
-                    Options: --type=eventType (required), --session=id, --agent=name,
-                             --tool=name, --file=path, --duration=ms, --data=json
-  emit-context-snapshot  Emit a context-window snapshot to SpacetimeDB
-                    Options: --session=id (required), --percent=N, --messages=N,
-                             --tokens=N, --phase=name
-  set-field         Set an allowlisted context field, persist, and regenerate STATE.md
-                    Options: --field=name (required), --value=json-or-string (required)
-  transition        Send event, persist state, and update STATE.md
-                    Options: --event=TYPE (required), --data=json (optional)
-  snapshot          Generate STATE.md from current machine state
-  ensure-init       Initialize state if not already initialized
-                    Options: --force (overwrite existing state)
-  gate-check        Check if a named gate is enabled
-                    Options: --gate=name (required)
-  suspend           Create checkpoint and suspend current phase
-                    Options: --phase=N (required), --reason=string, --wave=N, --tasks=id1,id2
-  resume-phase      Load checkpoint and resume a suspended phase
-                    Options: --phase=N (required), --keep-checkpoint`);
+/**
+ * Formatted help text for the bridge CLI.
+ *
+ * Organized by command category (read, write, lifecycle, observability)
+ * with option descriptions for each subcommand.
+ */
+const HELP_TEXT = `luca-state — CLI bridge for the Luca workflow state machine
+
+Usage: luca-state <subcommand> [options]
+
+Read commands:
+  read-status            Read comprehensive workflow status
+  read-complexity        Read current complexity level
+  read-oversight         Read current oversight level
+  read-phase             Read current phase info
+  read-field             Read an arbitrary context field (--field=path)
+  read-ledger            Read session ledger entries (--tail=N, --session=id)
+
+Write commands:
+  set-field              Set a context field (--field=name --value=json)
+  transition             Send workflow event (--event=TYPE [--data=json])
+
+Lifecycle commands:
+  ensure-init            Initialize state if not present ([--force])
+  snapshot               Generate STATE.md from current state
+  gate-check             Check if a gate is enabled (--gate=name)
+  suspend                Suspend a phase (--phase=N [--reason=str])
+  resume-phase           Resume a suspended phase (--phase=N)
+
+Observability commands:
+  emit-event             Emit observer event (--type=eventType [--session=id])
+  emit-context-snapshot  Emit context snapshot (--session=id [--percent=N])
+
+Options:
+  --help, -h             Show this help message`;
+
+/**
+ * Print help text to stdout (for --help) or stderr (for errors).
+ *
+ * @param stream - Output stream: "stdout" for --help, "stderr" for errors
+ */
+function printUsage(stream: "stdout" | "stderr" = "stderr"): void {
+  if (stream === "stdout") {
+    console.log(HELP_TEXT);
+  } else {
+    console.error(HELP_TEXT);
+  }
 }
 
 // ─── Read Commands (Graceful Fallback) ──────────────────────────────────────
@@ -272,7 +307,7 @@ async function handleReadPhase(): Promise<void> {
     sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
     fromRow: (row: { contextJson: string }) => {
       if (!row.contextJson) return null;
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
       return {
         current_phase: ctx.current_phase ?? null,
         current_milestone: ctx.current_milestone ?? null,
@@ -337,12 +372,12 @@ async function handleReadStatus(): Promise<void> {
       contextJson: string;
     }) => {
       if (!row.contextJson) return null;
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
       return {
         initialized: true,
         state: row.workflowState ?? "idle",
-        complexity: row.complexity ?? ctx.complexity ?? "TRIVIAL",
-        oversight: row.oversight ?? ctx.oversight ?? "milestone",
+        complexity: row.complexity ?? (ctx.complexity as string) ?? "TRIVIAL",
+        oversight: row.oversight ?? (ctx.oversight as string) ?? "milestone",
         current_phase: ctx.current_phase ?? null,
         current_milestone: ctx.current_milestone ?? null,
         current_plan_ids: ctx.current_plan_ids ?? [],
@@ -408,7 +443,7 @@ async function handleReadField(args: string[]): Promise<void> {
     sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
     fromRow: (row: { contextJson: string }) => {
       if (!row.contextJson) return null;
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
       const value = get(ctx, fieldPath);
       // Return null when value is missing so readWithFallback
       // falls through to the JSON file where the data may exist.
@@ -483,7 +518,7 @@ async function handleSetField(args: string[]): Promise<void> {
   // Parse value: try JSON first, fall back to raw string
   let value: unknown;
   try {
-    value = JSON.parse(rawValue);
+    value = sanitizeJsonParse(rawValue);
   } catch {
     value = rawValue;
   }
@@ -500,7 +535,7 @@ async function handleSetField(args: string[]): Promise<void> {
       "SELECT * FROM workflow_state WHERE id = 1",
     );
     if (row && row.contextJson) {
-      const ctx = JSON.parse(row.contextJson);
+      const ctx = sanitizeJsonParse(row.contextJson);
       snapshotJson = {
         context: ctx,
         value: row.workflowState ?? "idle",
@@ -641,7 +676,7 @@ async function handleTransition(args: string[]): Promise<void> {
   const dataRaw = getArg(args, "data");
   if (dataRaw) {
     try {
-      const parsed = JSON.parse(dataRaw);
+      const parsed = sanitizeJsonParse(dataRaw) as Record<string, unknown>;
       eventObj = { ...parsed, type: eventType };
     } catch {
       console.error("Invalid JSON in --data argument");
@@ -925,23 +960,12 @@ async function handleSuspend(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  // Read WORKING.md snapshot for checkpoint
-  let workingMemorySnapshot = "";
-  try {
-    const workingFile = Bun.file(".planning/WORKING.md");
-    if (await workingFile.exists()) {
-      workingMemorySnapshot = await workingFile.text();
-    }
-  } catch {
-    // WORKING.md not available — proceed without snapshot
-  }
-
   // Write checkpoint file via suspend-checkpoint module
+  // Session memory persists independently via MuninnDB — no file snapshot needed.
   const checkpointPath = await createSuspendCheckpoint({
     phase_id: phaseId,
     wave_index: waveIndex,
     completed_task_ids: completedTaskIds,
-    working_memory_snapshot: workingMemorySnapshot,
     suspended_at: new Date().toISOString(),
     reason,
     session_id: sessionId,
@@ -1013,7 +1037,7 @@ async function handleResumePhase(args: string[]): Promise<void> {
       `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
     );
     if (row && row.checkpointJson) {
-      checkpoint = JSON.parse(row.checkpointJson);
+      checkpoint = sanitizeJsonParse(row.checkpointJson) as SuspendCheckpoint;
     }
   } catch (err) {
     if (process.env.LUCA_DEBUG) {
@@ -1091,8 +1115,6 @@ async function handleResumePhase(args: string[]): Promise<void> {
         suspended_at: checkpoint.suspended_at,
         reason: checkpoint.reason,
         session_id: checkpoint.session_id,
-        has_working_memory:
-          (checkpoint.working_memory_snapshot ?? "").length > 0,
       },
       previous_state: String(prevState),
       current_state: String(nextSnapshot.value),
@@ -1195,7 +1217,7 @@ function handleEmitEvent(args: string[]): void {
   const dataArg = getArg(args, "data");
   if (dataArg) {
     try {
-      extraData = JSON.parse(dataArg);
+      extraData = sanitizeJsonParse(dataArg) as Record<string, unknown>;
     } catch {
       // Not valid JSON — ignore
     }
@@ -1264,6 +1286,18 @@ export async function runBridgeCli(): Promise<void> {
   const subcommand = Bun.argv[2];
   const args = Bun.argv.slice(3);
 
+  // Handle --help / -h anywhere, or no subcommand at all
+  if (
+    !subcommand ||
+    subcommand === "--help" ||
+    subcommand === "-h" ||
+    args.includes("--help") ||
+    args.includes("-h")
+  ) {
+    printUsage("stdout");
+    process.exit(0);
+  }
+
   switch (subcommand) {
     case "read-complexity":
       await handleReadComplexity();
@@ -1311,7 +1345,9 @@ export async function runBridgeCli(): Promise<void> {
       handleEmitContextSnapshot(args);
       break;
     default:
-      printUsage();
+      console.error(
+        `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
+      );
       process.exit(2);
   }
 }
@@ -1343,4 +1379,5 @@ export {
   handleEmitEvent,
   handleEmitContextSnapshot,
   SETTABLE_FIELDS,
+  VALID_SUBCOMMANDS,
 };

@@ -4,7 +4,6 @@ description: Run repo structure audit to detect naming violations, orphaned file
 ---
 
 <main>
-<main>
 # Repo Audit
 
 Run a repo structure health check to detect naming violations, orphaned files, import boundary violations, and convention drift.
@@ -86,5 +85,4 @@ If `--fix` is passed and issues are auto-fixable (naming, empty dirs):
 - This skill is invoked as `/repo-audit` or automatically at phase boundaries
 - The lu-repo-architect agent performs the actual analysis
 - Existing scripts (check-domain-boundaries, check-drift) handle the mechanical checks
-</main>
 </main>

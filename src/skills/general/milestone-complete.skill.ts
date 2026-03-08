@@ -41,28 +41,29 @@ At milestone completion, consolidate all learnings:
 
 Before archiving, ensure all session learnings are captured:
 
-1. **Check WORKING.md** for unextracted learnings:
+1. **Check for unextracted session learnings** in MuninnDB:
 
-   \`\`\`bash
-   # Primary: Read working memory from memory bridge
-   bun run src/memory/__helpers/bridge.ts read-working 2>/dev/null || cat .planning/WORKING.md 2>/dev/null
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "current session context and unextracted findings")
    \`\`\`
 
 2. **Invoke lu-learner** if candidate learnings exist
 
-3. **Review MEMORY.md** for milestone-specific insights:
-   - Patterns that were validated multiple times → bump to High confidence
-   - Decisions that held throughout milestone → mark as Established
-   - Pitfalls that were successfully avoided → note as Validated
+3. **Review milestone-specific insights** in MuninnDB:
+   - Patterns that were validated multiple times -> bump to High confidence via \`mcp__muninn__muninn_evolve\`
+   - Decisions that held throughout milestone -> mark as Established
+   - Pitfalls that were successfully avoided -> note as Validated
 
 ### Step 1: Archive Milestone Memory
 
-Create milestone-specific memory snapshot:
+Create milestone-specific memory snapshot in MuninnDB:
 
-\`\`\`bash
-# Archive current MEMORY.md state
-cp .planning/MEMORY.md .planning/milestones/v{version}-MEMORY-SNAPSHOT.md
 \`\`\`
+# Export milestone memory graph for archival
+mcp__muninn__muninn_export_graph(vault: "default")
+\`\`\`
+
+Store the export as \`.planning/milestones/v{version}-MEMORY-SNAPSHOT.json\`.
 
 Include in archive:
 
@@ -72,16 +73,13 @@ Include in archive:
 
 ### Step 2: Clean Session State
 
-After archiving:
+After archiving, clear session context:
 
-\`\`\`bash
-# Primary: Clear WORKING.md via memory bridge
-bun run src/memory/__helpers/bridge.ts clear-working 2>/dev/null || true
-# Fallback: Reset from template
-cp .cursor/luca/templates/WORKING.md .planning/WORKING.md
+\`\`\`
+mcp__muninn__muninn_forget(vault: "default", id: "session:*")
 \`\`\`
 
-MEMORY.md persists across milestones - it's the long-term project memory.
+Long-term learnings persist in MuninnDB across milestones.
 
 ## State Machine Integration
 
@@ -161,7 +159,32 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
 
    - Ask about pushing tag
 
-8. **Offer next steps:**
+8. **Create GitHub milestone:**
+
+   Create a GitHub milestone to match the local milestone archive. This provides visibility in GitHub's milestone tracker and links PRs to their milestone.
+
+   \`\`\`bash
+   # Create the milestone (closed, since it's already complete)
+   gh api repos/{owner}/{repo}/milestones -X POST \\
+     -f title="v{version} — {milestone title}" \\
+     -f state="closed" \\
+     -f due_on="{completion date ISO 8601}" \\
+     -f description="{summary: phases, plans, commits, files changed, key deliverables}"
+
+   # Attach the milestone PR (if one exists on the current branch)
+   PR_NUMBER=$(gh pr list --head "$(git branch --show-current)" --json number --jq '.[0].number')
+   if [ -n "$PR_NUMBER" ]; then
+     MILESTONE_NUMBER=$(gh api repos/{owner}/{repo}/milestones --jq '.[] | select(.title | startswith("v{version}")) | .number')
+     gh api repos/{owner}/{repo}/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER
+   fi
+   \`\`\`
+
+   - The milestone description should include: phase count, plan count, commit count, files changed, and 4-6 key deliverables
+   - Set \`state: "closed"\` since the milestone is already complete
+   - Set \`due_on\` to the completion date (last commit date)
+   - Attach the branch PR to the milestone if one exists
+
+9. **Offer next steps:**
    - \`/milestone-new\` — start next milestone
 
 ## Success Criteria
@@ -173,6 +196,7 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
 - [ ] PROJECT.md updated with current state
 - [ ] Git tag v{version} created
 - [ ] Commit successful
+- [ ] GitHub milestone created (closed) and PR attached
 
 ## Next Steps
 

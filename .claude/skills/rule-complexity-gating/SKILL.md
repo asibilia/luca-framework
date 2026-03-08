@@ -1,6 +1,6 @@
 # rule-complexity-gating
 
-Five complexity levels (TRIVIAL to CRITICAL) with gating matrix for workflow steps and agent activation.
+Five complexity levels (TRIVIAL to CRITICAL) with model routing matrix for per-agent model selection.
 
 ## main
 
@@ -16,50 +16,62 @@ Luca classifies task complexity into five levels, grouped into three behavioral 
 | COMPLEX | Thorough | 5-10 | Cross-cutting | High |
 | CRITICAL | Thorough | 10+ / architectural | System-wide | Very High |
 
-## Always-On Steps (Cannot Be Gated)
+## Always-On Steps
 
-These steps run regardless of complexity:
+ALL workflow steps run at every complexity level. Complexity no longer gates step activation -- it controls **model tier** (via the routing table below) and **iteration counts**. Steps are never skipped based on complexity alone.
 
 1. Model profile resolution
-2. Phase/environment validation
-3. Plan discovery and wave grouping
-4. Core execution (lu-executor)
-5. Result aggregation
-6. Verification harness (scope scales, always runs)
-7. lu-verifier (mode scales, always invoked)
-8. State/roadmap/requirements updates
-9. Commit
+2. Cognitive pre-flight
+3. Phase/environment validation
+4. Research
+5. Discussion
+6. Plan discovery and wave grouping
+7. Core execution (lu-executor)
+8. Code review (all reviewers)
+9. UAT
+10. Result aggregation
+11. Verification harness
+12. lu-verifier
+13. Learning capture
+14. State/roadmap/requirements updates
+15. Commit
 
-## Complexity Matrix
+## Model Routing Table
 
-| Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|------|---------|--------|----------|---------|----------|
+Complexity determines which model tier each agent category receives. The canonical routing table lives in \`src/complexity/__helpers/model-routing.ts\` (\`MODEL_ROUTING_TABLE\`). This summary shows the category-level defaults:
+
+| Agent Category | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|----------------|---------|--------|----------|---------|----------|
+| Classifiers (lu-cognition, lu-learner) | haiku | haiku | haiku | haiku | sonnet |
+| Routers (lu-router, lu-router-fast) | haiku | haiku | sonnet | sonnet | sonnet |
+| Orchestrators (lu-executor, lu-planner) | haiku | sonnet | sonnet | opus | opus |
+| Deep analysis (lu-verifier, lu-debugger) | haiku | sonnet | opus | opus | opus |
+| Reviewers (dx-advocate, code-simplifier) | haiku | sonnet | opus | opus | opus |
+
+Model tiers map to concrete models: **haiku** (fast/lightweight), **sonnet** (balanced/standard), **opus** (capable/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`.
+
+## Iteration Count Scaling
+
+These parameters still scale with complexity:
+
+| Parameter | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|-----------|---------|--------|----------|---------|----------|
 | Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
-| Harness fix iterations | 1 | 2 | 3 | 3 | 5 |
-| Verify fix iterations | 0 | 1 | 1 | 2 | 3 |
+| Plan verification iterations | 1 | 1 | 1 | 2 | 3 |
+| Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
+| Verify fix iterations | 1 | 1 | 1 | 1 | 2 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| Code review: dx-advocate | Skip | Skip | Run | Run | Run |
-| Code review: code-simplifier | Skip | Skip | Run | Run | Run |
-| Code review: code-architect | Skip | Skip | Skip | Run | Run |
-| Code review: tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| Code review: security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
 
 ## How to Apply
 
-**Before spawning optional sub-agents**, check the current task complexity:
+**Before spawning sub-agents**, resolve their model tier from the routing table:
 
 1. Read complexity from bridge: \`bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null\`
 2. Fallback: Read from STATE.md \`Task Complexity:\` field
 3. If not set, read from lu-router's classification output
-3. Look up the step in the matrix above
-4. If the step says "Skip" for the current level, skip it
-5. If the step says "Optional", skip unless the user or config explicitly enables it
-6. If the step says "Run" or "Required", always execute
+4. Call \`resolveModelForAgent(agentName, complexity)\` to get the model tier
+5. All steps run at every complexity level -- only the model tier varies
+6. Flag-based overrides (\`--skip-review\`, \`--skip-uat\`, \`--skip-research\`) still allow explicit skipping
 
 **Complexity is set by:**
 - lu-router (automatic inference)

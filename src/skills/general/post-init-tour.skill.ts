@@ -12,14 +12,9 @@ import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
  */
 export const tourSteps = [
   {
-    title: "BRAIN.md -- Project Identity",
+    title: "MuninnDB -- Project Memory",
     content:
-      "BRAIN.md captures your project's personality: stack, architecture patterns, code conventions, and development preferences. It is loaded at the start of every session so the AI always knows your project's context.",
-  },
-  {
-    title: "MEMORY.md -- Long-Term Learning",
-    content:
-      "MEMORY.md stores persistent learnings across sessions: validated patterns, past decisions with rationale, known pitfalls, and preferences. The AI selectively recalls relevant entries before major operations.",
+      "MuninnDB is Luca's memory system. It stores your project's identity (stack, architecture, conventions), long-term learnings (patterns, decisions, pitfalls), and session context. All memory is semantically searchable with entity graphs and temporal decay. Run /seed-memory to populate it from existing project knowledge.",
   },
   {
     title: "Skills -- Interactive Workflows",

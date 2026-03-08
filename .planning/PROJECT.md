@@ -8,19 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v2.9.0 — Shipped)
+## Current State (v3.0.0 — Shipped)
 
-**Last Shipped:** v2.9.0 — Audit Gap Closure & Test Reliability (2026-03-06)
+**Last Shipped:** v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08)
 
-14 phases, 52 commits, 572 files changed. SpacetimeDB reducer hardening (server-side enum validation, index-based lookups), test suite isolation fix (29-test full-suite failure resolved), observer dashboard polish (LoadingSkeleton, functional ErrorBoundary, empty states, accessibility, todo tracking), SpacetimeDB data integrity (TTL cleanup, sequence race fix, unique constraints), agent system improvements (XState guards, phase actor timeouts, health checks, stall detection, skill dependency graph, tribunal consensus), learning & ecosystem (procedure replay, self-tuning, cognitive profiles, interop scanner, semantic embeddings, hook portability, plugin marketplace, interactive tour), model routing (replaced complexity step-skipping with per-agent model tiers), 2 audit gap closure phases (double SQL escaping fix, circuit breaker extraction, observer convention alignment).
+14 phases (12 core + 2 gap closure), 42 plans, 151 commits, 810 files changed (+46,514/-20,641). MuninnDB memory migration (replaced file-based BRAIN/MEMORY/WORKING with structured graph memory via MCP), per-agent model routing redesign (7 named presets across 3 tiers replacing step-skipping), observer MuninnDB integration (proxy routes, Zod validation, shared types, component rewrites), hook infrastructure consolidation (shared shell library, injection fixes, named routing presets), data integrity hardening (sanitizeJsonParse on all paths, T0-T2 boundary fix, dead code removal), convention compliance sweep (lodash orderBy, focus-visible accessibility, retry button contrast).
+
+## Previous State (v2.9.0)
+
+v2.9.0 — Audit Gap Closure & Test Reliability (2026-03-06). 14 phases, 52 commits, 572 files changed. SpacetimeDB reducer hardening, test suite isolation fix, observer dashboard polish, agent system improvements, learning & ecosystem, model routing, 2 audit gap closure phases.
 
 ## Previous State (v2.8.0)
 
-v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval (2026-03-05). P0 audit triage, dual-write hardening, SpacetimeDB audit findings persistence, skill eval framework. 3 phases, 5 commits, 27 files changed, 3514 tests.
-
-## Previous State (v2.7.0)
-
-v2.7.0 — Observability & Verification Infrastructure (2026-03-05). Full observability stack: luca-observer web dashboard, SpacetimeDB real-time infrastructure (16 tables, 19 reducers), security hardening, DRY consolidation, hook portability. 21 phases, 54 plans, 205 commits, 3477 tests.
+v2.8.0 — Critical Remediation, Audit Persistence & Skill Eval (2026-03-05). P0 audit triage, dual-write hardening, SpacetimeDB audit findings persistence, skill eval framework. 3 phases, 5 commits, 27 files changed.
 
 **Capabilities (shipped):**
 
@@ -119,4 +119,4 @@ v2.7.0 — Observability & Verification Infrastructure (2026-03-05). Full observ
 
 ---
 
-_Last updated: 2026-03-06 — v2.9.0 milestone archived_
+_Last updated: 2026-03-08 — v3.0.0 milestone archived_

@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 # context-check-throttled.sh -- PostToolUse throttled context monitor
 #
-# Hook event: PostToolUse (async)
+# Canonical event: post_tool_use (no tool_filter)
+# Platform events: Claude=PostToolUse, Cursor=afterFileEdit, Pi=tool_execution_end
 # Type: Command hook (asynchronous, does not block tool use)
 # Timeout: 10 seconds
+#
+# ─── STDIN CONTRACT ───────────────────────────────────────────────────
+# Claude Code: { "tool_input": { ... } }  (varies by tool)
+# Cursor:      { ... }                     (varies by tool)
+# Pi:          { "tool_input": { ... } }   (varies by tool)
+#
+# This hook does not parse stdin — it uses throttle-based context monitoring.
+# Stdin is not consumed (no cat call). Platform closes the pipe automatically.
+# ─── STDOUT CONTRACT ─────────────────────────────────────────────────
+# On urgent notes:
+#   { "systemMessage": "[Developer Notes] Urgent notes to incorporate: ..." }
+# On degrading/stop context:
+#   { "systemMessage": "Context usage at X% (zone: degrading/stop). ..." }
+# On healthy context: no output
+# ─── EXIT CODES ──────────────────────────────────────────────────────
+# 0 = always (async hook, non-blocking)
+# ──────────────────────────────────────────────────────────────────────
 #
 # Runs the TypeScript context monitor module on a throttled basis.
 # Skips execution if the last check was less than 60 seconds ago
@@ -19,8 +37,18 @@ set -euo pipefail
 # Ensure node_modules/.bin is in PATH for installed-package context
 export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 
+# Cascading bridge lookup: installed bin → monorepo source → skip
+run_bridge() {
+  if command -v luca-bridge &>/dev/null; then
+    luca-bridge "$@"
+  elif [ -f "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" ]; then
+    bun run "${CLAUDE_PROJECT_DIR:-.}/packages/luca-framework/src/state/bridge.ts" "$@"
+  fi
+}
+
 # --- Throttle check ---
-THROTTLE_FILE="/tmp/.luca-context-check-ts"
+PROJECT_HASH=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
+THROTTLE_FILE="/tmp/.luca-context-check-${PROJECT_HASH}-ts"
 THROTTLE_SECONDS=60
 
 if [ -f "$THROTTLE_FILE" ]; then
@@ -35,27 +63,82 @@ fi
 # Update timestamp
 date +%s > "$THROTTLE_FILE"
 
-# --- Run context monitor ---
+# --- Check for urgent developer notes ---
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+NOTES_DIR="$PROJECT_DIR/.planning/notes"
+if [ -d "$NOTES_DIR" ]; then
+  URGENT_NOTES=()
+  while IFS= read -r f; do URGENT_NOTES+=("$f"); done < <(find "$NOTES_DIR" -maxdepth 1 -name '0-*.md' 2>/dev/null | head -5)
+  if [ "${#URGENT_NOTES[@]}" -gt 0 ]; then
+    NOTE_CONTENT=""
+    for note_file in "${URGENT_NOTES[@]}"; do
+      # Extract body (skip frontmatter between --- delimiters)
+      BODY=$(awk '/^---$/ {f=!f; next} !f' "$note_file" | tr '\n' ' ' | xargs)
+      NOTE_CONTENT="${NOTE_CONTENT}\n- ${BODY}"
+      # Move to done/
+      mkdir -p "$NOTES_DIR/done"
+      mv "$note_file" "$NOTES_DIR/done/" 2>/dev/null || true
+    done
+    # Emit note.consumed via bridge (fire-and-forget)
+    run_bridge emit-event --type=note.consumed &>/dev/null &
+    printf '{"systemMessage": "[Developer Notes] Urgent notes to incorporate:%b"}' "$NOTE_CONTENT"
+    exit 0
+  fi
+fi
 
-# Run the TypeScript context monitor and capture output
-# Suppress stderr to avoid noise from missing files
-RESULT=$(bun run src/memory/context-monitor.ts --project-dir="$PROJECT_DIR" 2>/dev/null) || exit 0
+# --- Run context monitor ---
+# Estimate context usage from transcript file size.
+# The old src/memory/context-monitor.ts module has been removed; context
+# monitoring now uses direct transcript-size heuristics (same approach as
+# context-monitor.sh but lightweight for the throttled PostToolUse path).
 
-# Extract zone from JSON output
-ZONE=$(printf '%s' "$RESULT" | bun -e "
-  const data = JSON.parse(await Bun.stdin.text());
-  process.stdout.write(data.zone || 'unknown');
-" 2>/dev/null) || exit 0
+ZONE="peak"
+USAGE_PERCENT=0
+
+# Find transcript path from Claude session dir
+TRANSCRIPT_PATH=""
+if [ -n "${CLAUDE_SESSION_DIR:-}" ] && [ -d "$CLAUDE_SESSION_DIR" ]; then
+  TRANSCRIPT_PATH=$(find "$CLAUDE_SESSION_DIR" -name "transcript" -type f 2>/dev/null | head -1)
+fi
+
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
+  # Thresholds aligned with context-monitor.sh
+  WARN_THRESHOLD="${CONTEXT_WARN:-100000}"
+  ALERT_THRESHOLD="${CONTEXT_ALERT:-200000}"
+  CRITICAL_THRESHOLD="${CONTEXT_CRITICAL:-300000}"
+  # Estimate usage percent (300KB ~ 70% context)
+  USAGE_PERCENT=$((FILE_SIZE * 70 / CRITICAL_THRESHOLD))
+  if [ "$USAGE_PERCENT" -gt 100 ]; then USAGE_PERCENT=100; fi
+
+  if [ "$FILE_SIZE" -ge "$CRITICAL_THRESHOLD" ]; then
+    ZONE="stop"
+  elif [ "$FILE_SIZE" -ge "$ALERT_THRESHOLD" ]; then
+    ZONE="degrading"
+  elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
+    ZONE="good"
+  fi
+fi
 
 # Only output warning for degrading or stop zones
 if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
-  USAGE=$(printf '%s' "$RESULT" | bun -e "
-    const data = JSON.parse(await Bun.stdin.text());
-    process.stdout.write(String(Math.round(data.usage_percent)));
-  " 2>/dev/null) || USAGE="unknown"
+  printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE_PERCENT" "$ZONE"
+fi
 
-  printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE" "$ZONE"
+# Emit context snapshot via bridge (fire-and-forget)
+SESSION_ID=""
+if [ -f "$PROJECT_DIR/.planning/state.json" ]; then
+  SESSION_ID=$(bun -e "
+    try {
+      const s = JSON.parse(await Bun.file('$PROJECT_DIR/.planning/state.json').text());
+      process.stdout.write(s.context?.session_id || '');
+    } catch { process.stdout.write(''); }
+  " 2>/dev/null || echo "")
+fi
+if [ -n "$SESSION_ID" ] && [ "$USAGE_PERCENT" -gt 0 ]; then
+  # Estimate tokens from file size (~4 chars per token)
+  EST_TOKENS=$(( ${FILE_SIZE:-0} / 4 ))
+  run_bridge emit-context-snapshot --session="$SESSION_ID" --percent="$USAGE_PERCENT" --tokens="$EST_TOKENS" &>/dev/null &
 fi
 
 exit 0

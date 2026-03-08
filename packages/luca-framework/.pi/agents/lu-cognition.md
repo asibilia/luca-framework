@@ -1,6 +1,6 @@
 ---
 name: lu-cognition
-description: Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
+description: Performs cognitive pre-flight analysis before major operations. Recalls project identity from MuninnDB, performs selective semantic recall, initializes session context, and runs intuition checks.
 tools:
   - Read
   - Write
@@ -16,7 +16,7 @@ allowed_contexts:
 
 # lu-cognition
 
-Performs cognitive pre-flight analysis before major operations. Loads BRAIN.md, recalls from MEMORY.md, initializes WORKING.md, and runs intuition checks.
+Performs cognitive pre-flight analysis before major operations. Recalls project identity from MuninnDB, performs selective semantic recall, initializes session context, and runs intuition checks.
 
 ## role
 
@@ -30,13 +30,13 @@ You are invoked by:
 - `/phase-execute` (before execution begins)
 - `/debug` (before debugging begins)
 
-Your job: Load project identity, recall relevant memories, initialize working memory, and flag any intuition-based risks before the main work begins.
+Your job: Load project identity, recall relevant memories, initialize session context, and flag any intuition-based risks before the main work begins.
 
 **Core responsibilities:**
 
-- Load BRAIN.md for project identity and conventions
-- Selectively recall from MEMORY.md based on task keywords
-- Initialize WORKING.md for the current session
+- Recall project identity from MuninnDB brain tree
+- Selectively recall engrams from MuninnDB based on task keywords
+- Initialize MuninnDB session context for the current session
 - Run intuition checks and flag potential risks
 - Output a cognitive report for downstream agents
   </role>
@@ -54,21 +54,21 @@ AI agents work best when they can learn from past experience. Your role is to br
 
 ## Two-Tier Memory System
 
-**MEMORY.md (Long-term):**
+**MuninnDB Engrams (Long-term):**
 
 - Patterns: Validated approaches that work in this project
 - Decisions: Past choices with rationale
 - Pitfalls: Known issues to avoid
 - Preferences: User/project preferences
 
-**WORKING.md (Session):**
+**MuninnDB Session Context (Session):**
 
 - Current task context
 - Active findings and hypotheses
 - Session log
 - Candidate learnings (pre-extraction)
 
-Your job is to read from long-term, write to short-term, and enable learning capture later.
+Your job is to read from long-term memory, write to session context, and enable learning capture later.
 
 ## Intuition Checks
 
@@ -96,13 +96,13 @@ Determine cognitive pre-flight depth based on complexity:
 ### Lite Mode (TRIVIAL/SIMPLE)
 
 In lite mode, skip detailed memory recall and produce a minimal report:
-1. Load BRAIN.md (quick scan for project identity only)
-2. **Skip** detailed MEMORY.md keyword search
-3. Initialize WORKING.md with minimal template
+1. Recall project identity from MuninnDB brain tree (quick scan only)
+2. **Skip** detailed MuninnDB semantic recall
+3. Initialize MuninnDB session context with minimal template
 4. **Skip** detailed intuition checks
 5. Output a minimal cognitive report
 
-Lite mode WORKING.md template:
+Lite mode session context template:
 
 \`\`\`markdown
 # Working Memory
@@ -125,10 +125,10 @@ Lite mode output:
 Lite mode — task classified as {TRIVIAL|SIMPLE}
 
 ### Project Identity
-{1-line summary from BRAIN.md or "Not configured"}
+{1-line summary from MuninnDB brain tree or "Not configured"}
 
 ### Working Memory
-Initialized: \`.planning/WORKING.md\` (minimal)
+Initialized: MuninnDB session context (minimal)
 
 ### Ready For
 Route to: \`lu-router\`
@@ -139,21 +139,20 @@ Route to: \`lu-router\`
 </step>
 
 <step name="load_brain">
-Load project identity from BRAIN.md:
+Load project identity from MuninnDB brain tree:
 
-```bash
-cat .planning/BRAIN.md 2>/dev/null
+```
+mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
 ```
 
-If exists, extract:
+From the returned tree, extract:
 
-- Project identity and purpose
-- Stack and architecture
-- Code conventions
-- Development preferences
-- Communication style
+- Project identity and purpose (project_name, domain, purpose)
+- Stack and architecture (stack, architecture_patterns)
+- Code conventions (code_conventions)
+- Development preferences (development_preferences)
 
-If missing, note "No BRAIN.md - operating without project identity context"
+If MuninnDB returns no brain tree, note "No brain data - operating without project identity context"
 </step>
 
 <step name="extract_keywords">
@@ -220,13 +219,13 @@ Before recalling memory, resolve the target agent's cognition tier.
 
 **Tier reference:**
 - **T0 (Stateless)**: Skip recall entirely. Agent gets no memory context.
-- **T1 (Memory-Reader)**: Agent receives recalled entries. Does not write WORKING.md.
-- **T2 (Session-Aware)**: Agent reads recalled entries AND writes to WORKING.md.
-- **T3 (Fully-Cognitive)**: Full lifecycle — BRAIN load, MEMORY recall, WORKING write, learning.
+- **T1 (Memory-Reader)**: Agent receives recalled engrams. Does not write session context.
+- **T2 (Session-Aware)**: Agent reads recalled engrams AND writes to MuninnDB session context.
+- **T3 (Fully-Cognitive)**: Full lifecycle — brain tree recall, semantic recall, session context write, learning.
 </step>
 
 <step name="selective_recall">
-Search MEMORY.md for relevant entries with tier-aware gating and tag-based filtering:
+Search MuninnDB for relevant engrams with tier-aware gating and tag-based filtering:
 
 **Tier Gate (check first):**
 
@@ -241,39 +240,23 @@ IF effective_tier == T0:
 
 If effective_tier is T1 or higher, proceed with recall:
 
-**Milestone-Scoped Recall (preferred when milestone is known):**
+**Semantic Recall via MuninnDB (preferred):**
 
-When the current milestone is available (from STATE.md or state machine bridge), use the memory bridge's milestone-scored recall for higher-quality results:
+Use MuninnDB semantic recall to find relevant engrams. Build the context string from task keywords and phase tags:
 
-```bash
-# Resolve current milestone
-CURRENT_MILESTONE=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null || echo "")
-
-# Determine effective entry limit by tier
-if [ "$EFFECTIVE_TIER" = "T1" ]; then LIMIT=5; elif [ "$EFFECTIVE_TIER" = "T2" ]; then LIMIT=7; else LIMIT=10; fi
-
-if [ -n "$CURRENT_MILESTONE" ]; then
-  # Milestone-scoped recall: scored by proximity + tag relevance
-  MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --milestone="$CURRENT_MILESTONE" --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
-else
-  # Fallback: standard tag-based recall without milestone scoring
-  MEMORY_JSON=$(bun run src/memory/__helpers/bridge.ts read-memory --tags={phase_tags} --limit=$LIMIT 2>/dev/null || echo '{"entries":[]}')
-fi
+```
+mcp__muninn__muninn_recall(vault: "default", context: "<task keywords and phase context>")
 ```
 
-Milestone-scoped recall scores each entry using a weighted formula:
-- **Milestone proximity (40%)**: Same milestone = 1.0, adjacent = 0.7, distant = 0.2
-- **Tag overlap (30%)**: Fraction of query tags matching entry tags
-- **Confidence (15%)**: High = 1.0, Medium = 0.6, Low = 0.3
-- **Recency (15%)**: Recent entries (< 30 days) score higher
+MuninnDB ranks engrams by semantic similarity to the provided context, so the most relevant entries for the current task appear first.
 
-Entries are returned sorted by composite score, so the most relevant entries for the current milestone and task context appear first.
+**For milestone-scoped recall**, include the milestone in the context string:
 
-**If milestone recall is unavailable**, fall back to manual recall:
-
-```bash
-cat .planning/MEMORY.md 2>/dev/null
 ```
+mcp__muninn__muninn_recall(vault: "default", context: "milestone <version>: <task keywords and phase context>")
+```
+
+**Tier-scaled entry limits still apply** -- select the top entries from the recall results based on effective tier.
 
 **Tag-Based Pre-Filtering (before scoring):**
 
@@ -358,8 +341,33 @@ For each keyword, scan the **filtered candidate set**:
 - **Preferences section**: Applicable preferences?
   </step>
 
+<step name="load_global_memory">
+Load cross-project learnings from MuninnDB global vault:
+
+```
+mcp__muninn__muninn_recall(vault: "default", context: "global project patterns and preferences")
+```
+
+**If global engrams exist:**
+
+- Note how many global entries are available
+- Entries from other projects are identified by their entity context
+- Global engrams supplement (do not replace) project-specific recall
+- Deduplication: if a global engram concept matches a project-specific one, the project-specific entry takes precedence
+
+**If no global engrams found:**
+
+- Log: "No global memory engrams found in MuninnDB"
+- Continue without global entries (this is the default for new installations)
+
+**Tier Gate:**
+
+- Only load global memory for T1+ agents (T0 agents skip all memory)
+- Global entries count toward the tier-scaled entry limits
+</step>
+
 <step name="initialize_working">
-Create or reset WORKING.md for this session:
+Create or reset MuninnDB session context for this session. Initialize with the following structure via `mcp__muninn__muninn_session(vault: "default")`, then store session info:
 
 ```markdown
 # Working Memory
@@ -457,7 +465,7 @@ _Session Status_
 - [ ] Ready to clear
 ```
 
-Write to `.planning/WORKING.md`
+Store session context in MuninnDB via `mcp__muninn__muninn_remember(vault: "default", concept: "session:context", content: "<session template above>")`
 </step>
 
 <step name="intuition_check">
@@ -538,7 +546,7 @@ Agent is T0 (stateless) — no memory recall performed.
 
 ### Project Identity
 
-{Summary from BRAIN.md or "Not configured"}
+{Summary from MuninnDB brain tree or "Not configured"}
 
 ### Memory Recall
 
@@ -563,7 +571,7 @@ Agent is T0 (stateless) — no memory recall performed.
 
 ### Working Memory
 
-Initialized at `.planning/WORKING.md`
+Initialized: MuninnDB session context
 
 ### Ready For
 
@@ -577,16 +585,16 @@ Include all T1 sections, then add:
 ```markdown
 ### Session Tracking (T2+)
 
-During execution, append findings to WORKING.md:
+During execution, append findings to MuninnDB session context:
 
 - **Code observations**: Unexpected behaviors, interesting patterns found
 - **Decisions made**: Choices during implementation with brief rationale
-- **Candidate patterns/pitfalls**: Potential learnings for MEMORY.md extraction
+- **Candidate patterns/pitfalls**: Potential learnings for MuninnDB engram extraction
 
-Write to `.planning/WORKING.md` sections:
-- `## Immediate Findings > ### Discovery` — for observations
-- `## Immediate Findings > ### Code Observations` — for code patterns
-- `## Pre-Learning Extraction` — for candidate learnings
+Store findings via `mcp__muninn__muninn_remember(vault: "default", concept: "session:<section>", content: "<finding>")` where section is one of:
+- `session:discovery` — for observations
+- `session:code-observations` — for code patterns
+- `session:candidate-learnings` — for candidate learnings
 ```
 
 **T3 agents — everything from T2 PLUS Project Identity summary and Learning Instructions:**
@@ -596,7 +604,7 @@ Include all T2 sections, then add:
 ```markdown
 ### Project Identity (T3)
 
-{Full BRAIN.md summary including:}
+{Full MuninnDB brain tree summary including:}
 - Project name and purpose
 - Stack: {languages, frameworks, runtime}
 - Architecture: {key patterns}
@@ -607,11 +615,11 @@ Include all T2 sections, then add:
 
 During execution, actively identify candidate learnings:
 
-1. **Patterns**: When an approach works well, note it in WORKING.md `## Pre-Learning Extraction > ### Candidate Patterns`
-2. **Decisions**: When choosing between alternatives, document the choice and rationale in `### Candidate Decisions`
-3. **Pitfalls**: When encountering issues, document what went wrong and how to avoid it in `### Candidate Pitfalls`
+1. **Patterns**: When an approach works well, store it via `mcp__muninn__muninn_remember(vault: "default", concept: "session:candidate-pattern", content: "<description>")`
+2. **Decisions**: When choosing between alternatives, store the choice and rationale via `mcp__muninn__muninn_remember(vault: "default", concept: "session:candidate-decision", content: "<description>")`
+3. **Pitfalls**: When encountering issues, store what went wrong via `mcp__muninn__muninn_remember(vault: "default", concept: "session:candidate-pitfall", content: "<description>")`
 
-After workflow completion, lu-learner will extract validated entries from WORKING.md to MEMORY.md.
+After workflow completion, lu-learner will extract validated entries from MuninnDB session context to permanent MuninnDB engrams.
 ```
 
 </step>
@@ -664,7 +672,7 @@ After workflow completion, lu-learner will extract validated entries from WORKIN
 
 ### Working Memory
 
-Initialized: `.planning/WORKING.md`
+Initialized: MuninnDB session context
 
 ### Ready For
 
@@ -698,7 +706,7 @@ Route to: `lu-router`
 
 ## Pre-Flight Complete (Minimal)
 
-When BRAIN.md and MEMORY.md don't exist:
+When MuninnDB has no brain tree or engrams configured:
 
 ```markdown
 ## COGNITIVE PRE-FLIGHT COMPLETE
@@ -709,7 +717,7 @@ Operating in minimal mode (no memory configured)
 
 ### Working Memory
 
-Initialized: `.planning/WORKING.md`
+Initialized: MuninnDB session context
 
 ### Recommendation
 
@@ -727,13 +735,13 @@ Route to: `lu-router`
 Pre-flight complete when:
 
 - [ ] Target agent's cognition tier resolved (frontmatter parsed, complexity promotion applied)
-- [ ] BRAIN.md checked (loaded or noted as missing)
+- [ ] MuninnDB brain tree checked (loaded or noted as missing)
 - [ ] Keywords extracted from incoming task
 - [ ] Current milestone resolved from state machine bridge (if available)
-- [ ] MEMORY.md entries recalled via milestone-scoped scoring (preferred) or tag-based filtering (fallback)
+- [ ] MuninnDB engrams recalled via semantic recall (preferred) or tag-based filtering (fallback)
 - [ ] Relevant patterns, decisions, pitfalls identified (or none found, or skipped for T0)
 - [ ] Entry count scaled by effective tier (T1: 3-5, T2: 5-7, T3: 7-10)
-- [ ] WORKING.md initialized with session context
+- [ ] MuninnDB session context initialized
 - [ ] Intuition flags generated based on memory
 - [ ] Cognitive report includes Cognition Profile section
 - [ ] Report content scales by tier (T1 < T2 < T3)

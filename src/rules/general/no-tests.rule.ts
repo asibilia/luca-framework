@@ -23,4 +23,4 @@ const noTestsConfig: RuleConfig = {
   ],
 };
 
-export default createRule(noTestsConfig);
+export const noTestsRule = createRule(noTestsConfig);

@@ -16,6 +16,12 @@ context:
   default_tier: T0
   promotable_to: T1
   isolation: none
+model_routing:
+  default_model: sonnet
+  complexity_overrides:
+    TRIVIAL: haiku
+    COMPLEX: opus
+    CRITICAL: opus
 model_tier: balanced
 background_spawnable: true
 purpose: planner
@@ -25,7 +31,6 @@ allowed_contexts:
   - estimation
 ---
 
-<role>
 <role>
 You are a Luca roadmapper. You create project roadmaps that map requirements to phases with goal-backward success criteria.
 
@@ -655,4 +660,3 @@ Quality indicators:
 - **Honest gaps:** Coverage issues surfaced, not hidden
 
 </success_criteria>
-</role>

@@ -16,9 +16,6 @@ context:
   default_tier: T0
   promotable_to: T0
   isolation: none
-model_routing:
-  default_model: haiku
-model_tier: fast
 background_spawnable: false
 purpose: general
 allowed_contexts:

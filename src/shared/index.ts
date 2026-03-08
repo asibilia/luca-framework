@@ -43,12 +43,7 @@ export { sanitizeForTemplate } from "./__helpers/sanitize-template";
 export {
   sanitizeJsonParse,
   safeSanitizeJsonParse,
-  validateAgentConfig,
-  validateSkillConfig,
-  validateRuleConfig,
-  safeValidateAgentConfig,
-  safeValidateSkillConfig,
-  safeValidateRuleConfig,
+  safeValidate,
 } from "./__helpers/validation-utils";
 
 // ─── Tribunal Schemas ──────────────────────────────────────────────────────────

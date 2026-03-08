@@ -1,5 +1,5 @@
 /**
- * Complexity gating: which workflow steps activate at which complexity level
+ * Complexity gating: model routing and iteration scaling per complexity level
  */
 import { createRule } from "~/rules/__helpers/create-rule";
 import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
@@ -7,7 +7,7 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 const complexityGatingConfig: RuleConfig = {
   frontmatter: {
     description:
-      "Complexity gating: which workflow steps activate at which complexity level",
+      "Complexity gating: model routing and iteration scaling per complexity level",
     globs: ["*.ts", "*.md", ".planning/config.json"],
     alwaysApply: true,
   },
@@ -28,49 +28,67 @@ Luca classifies task complexity into five levels, grouped into three behavioral 
 | COMPLEX | Thorough | 5-10 | Cross-cutting | High |
 | CRITICAL | Thorough | 10+ / architectural | System-wide | Very High |
 
-## Always-On Steps (Cannot Be Gated)
+## Always-On Steps
 
-These steps run regardless of complexity:
+ALL workflow steps run at every complexity level. Complexity no longer gates step activation -- it controls **model tier** (via the routing table below) and **iteration counts**. Steps are never skipped based on complexity alone.
 
 1. Model profile resolution
-2. Phase/environment validation
-3. Plan discovery and wave grouping
-4. Core execution (lu-executor)
-5. Result aggregation
-6. Verification harness (scope scales, always runs)
-7. lu-verifier (mode scales, always invoked)
-8. State/roadmap/requirements updates
-9. Commit
+2. Cognitive pre-flight
+3. Phase/environment validation
+4. Research
+5. Discussion
+6. Plan discovery and wave grouping
+7. Core execution (lu-executor)
+8. Code review (all reviewers)
+9. UAT
+10. Result aggregation
+11. Verification harness
+12. lu-verifier
+13. Learning capture
+14. State/roadmap/requirements updates
+15. Commit
 
-## Complexity Matrix
+## Model Routing Table
 
-| Step | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|------|---------|--------|----------|---------|----------|
+Complexity determines which model tier each agent receives. The **canonical source of truth** is \\\`MODEL_ROUTING_TABLE\\\` in \\\`src/complexity/__helpers/model-routing.ts\\\`, which uses **7 named presets** to keep the table DRY.
+
+### Named Routing Presets
+
+| Preset | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL | Agents |
+|--------|---------|--------|----------|---------|----------|--------|
+| ALWAYS_FAST | fast | fast | fast | fast | fast | lu-cognition |
+| FAST_PROMOTED | fast | fast | fast | fast | balanced | lu-learner, lu-router-fast, lu-verifier-fast |
+| ROUTER | fast | fast | balanced | balanced | balanced | lu-router |
+| ORCHESTRATOR | fast | balanced | balanced | capable | capable | lu-executor, lu-planner, + 17 others |
+| DEEP_ANALYSIS | fast | balanced | capable | capable | capable | lu-verifier, code-architect, dx-advocate, + 7 others |
+| DEBUGGER_PRESET | balanced | balanced | capable | capable | capable | lu-debugger |
+| ALWAYS_CAPABLE | capable | capable | capable | capable | capable | lu-executor-capable |
+
+Model tiers map to concrete models: **fast** (haiku/lightweight), **balanced** (sonnet/standard), **capable** (opus/deep analysis). Resolve at runtime via \\\`resolveModelForAgent(agentName, complexity)\\\`. The exported \\\`ROUTING_PRESETS\\\` record provides programmatic access to all presets.
+
+**Single source of truth:** The \\\`MODEL_ROUTING_TABLE\\\` is the only authoritative source for agent model selection. Agent frontmatter \\\`model_routing\\\` and \\\`model_tier\\\` fields are deprecated and no longer consulted by \\\`resolveModel()\\\`.
+
+## Iteration Count Scaling
+
+These parameters still scale with complexity:
+
+| Parameter | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|-----------|---------|--------|----------|---------|----------|
 | Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Research | Skip | Skip | Optional | Required | Required |
-| Discussion | Skip | Skip | Optional | Run | Required |
-| Plan verification | 0 iter | 0 iter | 1 iter | 2 iter | 3 iter |
+| Plan verification iterations | 1 | 1 | 1 | 2 | 3 |
 | Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
-| Verify fix iterations | 0 | 1 | 1 | 1 | 2 |
+| Verify fix iterations | 1 | 1 | 1 | 1 | 2 |
 | Verification mode | Quick | Quick | Standard | Full | Full+Human |
-| Code review: dx-advocate | Skip | Skip | Run | Run | Run |
-| Code review: code-simplifier | Skip | Skip | Run | Run | Run |
-| Code review: code-architect | Skip | Skip | Skip | Run | Run |
-| Code review: tailwind-auditor | Skip | Skip | If UI | If UI | Run |
-| Code review: security-auditor | Skip | Skip | If auth | If auth | Always |
-| UAT | Skip | Skip | Optional | Required | Required+Thorough |
-| Learning capture | Skip | Brief | Standard | Full | Full+Debrief |
 
 ## How to Apply
 
-**Before spawning optional sub-agents**, check the current task complexity:
+**Before spawning sub-agents**, resolve their model tier from the routing table:
 
 1. Read complexity from STATE.md \\\`Task Complexity:\\\` field
 2. If not set, read from lu-router's classification output
-3. Look up the step in the matrix above
-4. If the step says "Skip" for the current level, skip it
-5. If the step says "Optional", skip unless the user or config explicitly enables it
-6. If the step says "Run" or "Required", always execute
+3. Call \\\`resolveModelForAgent(agentName, complexity)\\\` to get the model tier
+4. All steps run at every complexity level -- only the model tier varies
+5. Flag-based overrides (\\\`--skip-review\\\`, \\\`--skip-uat\\\`, \\\`--skip-research\\\`) still allow explicit skipping
 
 **Complexity is set by:**
 - lu-router (automatic inference)

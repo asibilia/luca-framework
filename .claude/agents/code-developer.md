@@ -1,5 +1,6 @@
 ---
 name: code-developer
+description: Implementation partner that writes production-quality code following established patterns. Use after architect approves design.
 cognition:
   default_tier: T0
   promotable_to: T1
