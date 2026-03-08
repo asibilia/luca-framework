@@ -1,17 +1,12 @@
 /**
  * Platform adapters for the Luca hook system.
  *
- * @deprecated This module is superseded by the adapter-registry architecture
- *   in `src/hooks/adapters/`. Individual platform adapters are now in:
- *   - `adapters/claude.adapter.ts`
- *   - `adapters/cursor.adapter.ts`
- *   - `adapters/pi.adapter.ts`
+ * Provides core adapt functions that transform canonical hook definitions
+ * into platform-specific configurations. Used internally by config-generators
+ * and canonicalToLegacy.
  *
- *   Use `resolveAdapter(platform).adapt(hook)` from `src/hooks/adapters/`
- *   instead of calling adaptForClaude/adaptForCursor/adaptForPi directly.
- *
- *   This file is retained for backward compatibility. Existing consumers
- *   continue to work unchanged.
+ * For the formal adapter-registry architecture with runtime resolution,
+ * see `src/hooks/adapters/`.
  *
  * Source: src/hooks/__helpers/platform-adapters.ts
  */
@@ -21,47 +16,6 @@ import type {
   CanonicalEvent,
   HookDefinition,
 } from "../__schemas/hook.schemas";
-
-// ─── Event maps ─────────────────────────────────────────────────────────────
-
-/**
- * Maps canonical event names to Claude Code PascalCase event names.
- *
- * @deprecated Use `claudeAdapter.event_map` from `src/hooks/adapters/claude.adapter.ts` instead.
- */
-export const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "PostToolUse",
-  pre_tool_use: "PreToolUse",
-  stop: "Stop",
-  session_end: "SessionEnd",
-  session_start: "SessionStart",
-};
-
-/**
- * Maps canonical event names to Cursor camelCase event names.
- *
- * @deprecated Use `cursorAdapter.event_map` from `src/hooks/adapters/cursor.adapter.ts` instead.
- */
-export const CURSOR_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "afterFileEdit",
-  pre_tool_use: "beforeShellExecution",
-  stop: "stop",
-  session_end: "sessionEnd",
-  session_start: "sessionStart",
-};
-
-/**
- * Maps canonical event names to Pi snake_case event names.
- *
- * @deprecated Use `piAdapter.event_map` from `src/hooks/adapters/pi.adapter.ts` instead.
- */
-export const PI_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "tool_execution_end",
-  pre_tool_use: "tool_call",
-  stop: "session_shutdown",
-  session_end: "session_shutdown",
-  session_start: "session_start",
-};
 
 // ─── Platform hook config type ──────────────────────────────────────────────
 
@@ -86,6 +40,35 @@ export interface PlatformHookConfig {
   statusMessage?: string;
 }
 
+// ─── Internal event maps ─────────────────────────────────────────────────────
+
+/** Maps canonical event names to Claude Code PascalCase event names. */
+const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
+  post_tool_use: "PostToolUse",
+  pre_tool_use: "PreToolUse",
+  stop: "Stop",
+  session_end: "SessionEnd",
+  session_start: "SessionStart",
+};
+
+/** Maps canonical event names to Cursor camelCase event names. */
+const CURSOR_EVENT_MAP: Record<CanonicalEvent, string> = {
+  post_tool_use: "afterFileEdit",
+  pre_tool_use: "beforeShellExecution",
+  stop: "stop",
+  session_end: "sessionEnd",
+  session_start: "sessionStart",
+};
+
+/** Maps canonical event names to Pi snake_case event names. */
+const PI_EVENT_MAP: Record<CanonicalEvent, string> = {
+  post_tool_use: "tool_execution_end",
+  pre_tool_use: "tool_call",
+  stop: "session_shutdown",
+  session_end: "session_shutdown",
+  session_start: "session_start",
+};
+
 // ─── Adapter functions ──────────────────────────────────────────────────────
 
 /**
@@ -93,9 +76,6 @@ export interface PlatformHookConfig {
  *
  * Claude Code uses PascalCase events and regex matchers.
  * Supports async hooks and status messages.
- *
- * @deprecated Use `resolveAdapter("claude-code").adapt(hook)` or
- *   `claudeAdapter.adapt(hook)` from `src/hooks/adapters/` instead.
  *
  * @param hook - Canonical hook definition
  * @returns Platform-specific config for Claude Code
@@ -117,9 +97,6 @@ export function adaptForClaude(hook: CanonicalHook): PlatformHookConfig {
  * Cursor uses camelCase events and command substring matchers.
  * Does not support async or statusMessage fields.
  *
- * @deprecated Use `resolveAdapter("cursor").adapt(hook)` or
- *   `cursorAdapter.adapt(hook)` from `src/hooks/adapters/` instead.
- *
  * @param hook - Canonical hook definition
  * @returns Platform-specific config for Cursor
  */
@@ -139,9 +116,6 @@ export function adaptForCursor(hook: CanonicalHook): PlatformHookConfig {
  *
  * Pi uses snake_case events and tool name arrays for matchers.
  * Tool_filter is split on "|" and lowercased to produce the tool name array.
- *
- * @deprecated Use `resolveAdapter("pi").adapt(hook)` or
- *   `piAdapter.adapt(hook)` from `src/hooks/adapters/` instead.
  *
  * @param hook - Canonical hook definition
  * @returns Platform-specific config for Pi
@@ -166,8 +140,9 @@ export function adaptForPi(hook: CanonicalHook): PlatformHookConfig {
 /**
  * Convert a canonical hook definition to the legacy HookDefinition format.
  *
- * This bridges the canonical format to the existing config generators,
- * ensuring backward compatibility during the migration period.
+ * This bridges the canonical format to the legacy hook registry,
+ * ensuring backward compatibility for consumers that still depend
+ * on HookDefinition objects.
  *
  * @param hook - Canonical hook definition
  * @returns Legacy HookDefinition with all platform-specific fields populated
