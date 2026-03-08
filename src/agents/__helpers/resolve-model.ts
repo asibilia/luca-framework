@@ -33,7 +33,7 @@ import {
   type ModelId,
   type RolePurpose,
 } from "~/complexity/__schemas/complexity.schemas";
-import { resolveModelForAgent } from "~/complexity/__helpers/model-routing";
+import { resolveModelForAgent } from "~/complexity";
 import type { QualityZone } from "~/planner/__schemas/planner.schemas";
 
 /**
