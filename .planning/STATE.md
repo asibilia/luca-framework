@@ -27,6 +27,15 @@
 
 - `ROUTE_COMPLETE`
 
+## Previous Milestones
+
+- v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09)
+- v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08)
+
+---
+
+_State updated: 2026-03-09 — post-milestone reset_
+
 ## Session Continuity
 
 - **Session Started:** 2026-03-09
@@ -34,4 +43,4 @@
 
 ---
 
-_State generated from machine snapshot at 2026-03-09T01:23:25.635Z_
+_State generated from machine snapshot at 2026-03-09T01:48:58.438Z_

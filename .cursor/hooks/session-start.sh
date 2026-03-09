@@ -162,14 +162,16 @@ fi
 SESSION_END_MARKER="$PLANNING_DIR/.session-end-marker.json"
 STALE_SESSION_MSG=""
 if [ -f "$SESSION_END_MARKER" ]; then
-  STALE_SESSION_MSG=$(HOOK_MARKER="$SESSION_END_MARKER" bun -e "
-    try {
-      const marker = JSON.parse(await Bun.file(process.env.HOOK_MARKER).text());
-      if (marker.cleanup_pending) {
-        process.stdout.write('Stale session detected (ended: ' + (marker.ended_at || 'unknown') + '). MuninnDB cleanup will run during cognitive pre-flight.');
-      }
-    } catch { /* no marker or parse error */ }
-  " 2>/dev/null || echo "")
+  if command -v bun &>/dev/null; then
+    STALE_SESSION_MSG=$(HOOK_MARKER="$SESSION_END_MARKER" bun -e "
+      try {
+        const marker = JSON.parse(await Bun.file(process.env.HOOK_MARKER).text());
+        if (marker.cleanup_pending) {
+          process.stdout.write('Stale session detected (ended: ' + (marker.ended_at || 'unknown') + '). MuninnDB cleanup will run during cognitive pre-flight.');
+        }
+      } catch { /* no marker or parse error */ }
+    " 2>/dev/null || echo "")
+  fi
   # Remove marker after reading (cleanup will be handled by lu-cognition)
   rm -f "$SESSION_END_MARKER"
 fi
@@ -347,20 +349,23 @@ fi
 
 # Step 9: Output summary if anything was created
 if [ -n "$CREATED" ]; then
-  HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
+  HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" HOOK_STALE_MSG="$STALE_SESSION_MSG" bun -e "
     const created = process.env.HOOK_CREATED.trim();
     const notesSuffix = process.env.HOOK_NOTES_MSG || '';
+    const staleSuffix = process.env.HOOK_STALE_MSG ? ' ' + process.env.HOOK_STALE_MSG : '';
     const files = created.split(' ').filter(Boolean);
-    const msg = '[Luca] Initialized .planning/ directory. Created: ' + files.join(', ') + notesSuffix;
+    const msg = '[Luca] Initialized .planning/ directory. Created: ' + files.join(', ') + notesSuffix + staleSuffix;
     const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
     const output = isClaude
       ? { systemMessage: msg }
       : { followup_message: msg };
     process.stdout.write(JSON.stringify(output));
   "
-elif [ -n "$NOTES_MSG" ]; then
-  HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
-    const msg = '[Luca]' + process.env.HOOK_NOTES_MSG;
+elif [ -n "$NOTES_MSG" ] || [ -n "$STALE_SESSION_MSG" ]; then
+  HOOK_NOTES_MSG="$NOTES_MSG" HOOK_STALE_MSG="$STALE_SESSION_MSG" bun -e "
+    const notesSuffix = process.env.HOOK_NOTES_MSG || '';
+    const staleSuffix = process.env.HOOK_STALE_MSG ? ' ' + process.env.HOOK_STALE_MSG : '';
+    const msg = '[Luca]' + notesSuffix + staleSuffix;
     const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
     const output = isClaude
       ? { systemMessage: msg }
