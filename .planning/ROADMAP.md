@@ -87,8 +87,8 @@
 
 **Goal:** Formally close old observer items superseded by the MuninnDB rebuild.
 
-- [ ] Verify observer design requirements applied to new views
-- [ ] Move superseded todo files to done
+- [x] Verify observer design requirements applied to new views
+- [x] Move superseded todo files to done
 
 ---
 
