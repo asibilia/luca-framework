@@ -349,20 +349,23 @@ fi
 
 # Step 9: Output summary if anything was created
 if [ -n "$CREATED" ]; then
-  HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
+  HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" HOOK_STALE_MSG="$STALE_SESSION_MSG" bun -e "
     const created = process.env.HOOK_CREATED.trim();
     const notesSuffix = process.env.HOOK_NOTES_MSG || '';
+    const staleSuffix = process.env.HOOK_STALE_MSG ? ' ' + process.env.HOOK_STALE_MSG : '';
     const files = created.split(' ').filter(Boolean);
-    const msg = '[Luca] Initialized .planning/ directory. Created: ' + files.join(', ') + notesSuffix;
+    const msg = '[Luca] Initialized .planning/ directory. Created: ' + files.join(', ') + notesSuffix + staleSuffix;
     const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
     const output = isClaude
       ? { systemMessage: msg }
       : { followup_message: msg };
     process.stdout.write(JSON.stringify(output));
   "
-elif [ -n "$NOTES_MSG" ]; then
-  HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
-    const msg = '[Luca]' + process.env.HOOK_NOTES_MSG;
+elif [ -n "$NOTES_MSG" ] || [ -n "$STALE_SESSION_MSG" ]; then
+  HOOK_NOTES_MSG="$NOTES_MSG" HOOK_STALE_MSG="$STALE_SESSION_MSG" bun -e "
+    const notesSuffix = process.env.HOOK_NOTES_MSG || '';
+    const staleSuffix = process.env.HOOK_STALE_MSG ? ' ' + process.env.HOOK_STALE_MSG : '';
+    const msg = '[Luca]' + notesSuffix + staleSuffix;
     const isClaude = !!process.env.CLAUDE_PROJECT_DIR;
     const output = isClaude
       ? { systemMessage: msg }
