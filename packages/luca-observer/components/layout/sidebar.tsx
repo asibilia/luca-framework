@@ -20,6 +20,7 @@ import {
   GitPullRequest,
   StickyNote,
   BookOpen,
+  Database,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -41,6 +42,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   GitPullRequest,
   StickyNote,
   BookOpen,
+  Database,
 };
 
 /**
