@@ -63,8 +63,8 @@
 **Complexity:** MODERATE
 **Depends on:** Phase 03
 
-- [ ] Decision Trail page with filtering and search
-- [ ] Inherit design system from Phase 04
+- [x] Decision Trail page with filtering and search
+- [x] Inherit design system from Phase 04
 
 ### Phase 06 — Learning Evolution View (#82)
 
