@@ -395,6 +395,20 @@ mcp__muninn__muninn_recall(vault: "default", context: "global project patterns a
 - Global entries count toward the tier-scaled entry limits
 </step>
 
+<step name="cleanup_stale_sessions">
+Before initializing a new session, clean up stale session engrams from previous workflows:
+
+1. **Check for stale session context** via \`mcp__muninn__muninn_recall(vault: "default", context: "session:*")\`
+2. **If stale session engrams exist** (from a previous session that wasn't properly cleaned up):
+   a. Write a summary engram before cleanup: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:summary-orphaned", content: "Orphaned session context found and cleaned. [count] stale engrams removed.")\`
+   b. Forget all stale session engrams: \`mcp__muninn__muninn_forget(vault: "default", id: "session:context")\`
+   c. Forget session info: \`mcp__muninn__muninn_forget(vault: "default", id: "session:info")\`
+   d. Forget session findings: \`mcp__muninn__muninn_forget(vault: "default", id: "session:findings")\`
+3. **If no stale session engrams found**: Continue (clean state)
+
+This prevents unbounded vault pollution from abandoned, halted, or crashed sessions.
+</step>
+
 <step name="initialize_working">
 Create or reset MuninnDB session context for this session. Initialize with the following structure via \`mcp__muninn__muninn_session(vault: "default")\`, then store session info:
 
