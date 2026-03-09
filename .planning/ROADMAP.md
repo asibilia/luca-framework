@@ -2,25 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v3.3.0 — Cognitive Maturity & Observer Depth
-
----
-
-## v3.3.0 — Cognitive Maturity & Observer Depth
-
-**Theme:** Self-tuning agents, learning loops, advanced observer views.
-**Estimated effort:** 55-75 hours across 8+ phases
-**Strategic objectives:** O1 (better outcomes), O3 (observability depth), O4 (ecosystem groundwork)
-
-| Phase | Items              | Title                                               | Effort                    |
-| ----- | ------------------ | --------------------------------------------------- | ------------------------- |
-| 1     | #95 (Phases A+B+C) | Close learning loop: Apply-Measure-Refine ✓         | DONE                      |
-| 2     | #13                | Adaptive complexity self-tuning ✓                   | DONE                      |
-| 3     | #94                | Deferred/lazy recall ✓                              | DONE                      |
-| 4     | #83                | Knowledge Graph Explorer ✓                          | DONE                      |
-| 5     | #84, #85           | Semantic Search + Contradiction views ✓             | DONE                      |
-| 6     | #86                | Entity Deep Dive view ✓                             | DONE                      |
-| 7+    | #18, #55, #54, #16 | Semantic embeddings, tribunal, skill graph, interop | Deferred within milestone |
+**Current Milestone:** Planning next
 
 ## v4.0.0 — Plugin Ecosystem
 
@@ -79,6 +61,18 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 | #82  | Learning Evolution view with CSS charting patterns                  |
 | #87  | Vault Health Dashboard with stats and metrics                       |
 
+## Closed (v3.3.0 Completed)
+
+| Todo | Reason                                                                    |
+| ---- | ------------------------------------------------------------------------- |
+| #95  | Close learning loop: Apply-Measure-Refine (calibration engrams)           |
+| #13  | Adaptive complexity self-tuning (reassessment at 4 checkpoints)           |
+| #94  | Deferred/lazy recall (session-scoped cache, eager_recall flag)            |
+| #83  | Knowledge Graph Explorer (force-directed graph, cluster supernodes, zoom) |
+| #84  | Semantic Search (on-demand search, advanced options, explain breakdown)   |
+| #85  | Contradiction view (side-by-side cards, forget, cross-view navigation)    |
+| #86  | Entity Deep Dive (4-tab interface, 6 components, dynamic routing)         |
+
 ## Closed (v3.1.0 Completed)
 
 | Todo | Reason                                                               |
@@ -133,7 +127,8 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 - **v3.0.0** — Data Integrity, Agentic Reliability & Model Routing Redesign: 14 phases, 42 plans, 151 commits, 810 files changed ([View Archive](milestones/v3.0.0-ROADMAP.md))
 - **v3.1.0** — Memory Intelligence & Platform Cleanup: 7 phases, 10 commits, 151 files changed ([View Archive](milestones/v3.1.0-ROADMAP.md))
 - **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
+- **v3.3.0** — Cognitive Maturity & Observer Depth: 6 phases, 12 plans, 78 commits, 94 files changed ([View Archive](milestones/v3.3.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-09 (v3.2.0 completed, v3.3.0 is next)_
+_Roadmap updated: 2026-03-09 (v3.3.0 completed)_
