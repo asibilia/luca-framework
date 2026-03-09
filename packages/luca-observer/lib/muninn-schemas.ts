@@ -101,6 +101,28 @@ export const StatsResponseSchema = z
   })
   .passthrough();
 
+/**
+ * POST /api/muninn/forget -- request body.
+ *
+ * Validates the JSON body for engram deletion.
+ * Uses snake_case for all properties per API conventions.
+ */
+export const ForgetRequestSchema = z.object({
+  vault: z.string().min(1).max(100).default("default"),
+  id: z.string().min(1, "id is required"),
+});
+
+export type ForgetRequest = z.infer<typeof ForgetRequestSchema>;
+
+/**
+ * MuninnDB forget response shape.
+ */
+export const ForgetResponseSchema = z
+  .object({
+    forgotten: z.boolean(),
+  })
+  .passthrough();
+
 // -- New query parameter schemas for GET routes --------------------------------
 
 /**
