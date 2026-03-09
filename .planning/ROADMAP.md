@@ -43,9 +43,9 @@
 **Complexity:** MODERATE
 **Depends on:** Phase 01
 
-- [ ] Enhance existing `/api/muninn/` routes with type/tag/entity filtering
-- [ ] Add new routes: entity, entity-timeline, entity-clusters, graph, traverse, contradictions, explain
-- [ ] On-demand queries + manual refresh pattern
+- [x] Enhance existing `/api/muninn/` routes with type/tag/entity filtering
+- [x] Add new routes: entity, entity-timeline, entity-clusters, graph, traverse, contradictions, explain
+- [x] On-demand queries + manual refresh pattern
 
 ### Phase 04 — Session Explorer View (#80)
 
