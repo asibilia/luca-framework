@@ -32,6 +32,20 @@ export const CognitionConfigSchema = z.object({
   promotable_to: CognitionTierSchema.default("T0"),
   /** Domain tags for selective MuninnDB recall context. Used by lu-cognition to scope semantic recall queries. */
   memory_tags: z.array(z.string()).default([]),
+  /**
+   * Whether this agent needs memory loaded eagerly at session start (true)
+   * or deferred to first skill-level request via requestMemoryContext() (false).
+   *
+   * When absent or false (the default convention), lu-cognition skips detailed
+   * semantic recall at session start, and memory is loaded on-demand the first
+   * time a skill calls requestMemoryContext(). This saves 6-8K tokens on
+   * sessions that don't reach COMPLEX execution.
+   *
+   * Uses `.optional()` so existing agent definitions that omit this field
+   * remain valid without modification. Consumers treat `undefined` as `false`
+   * via nullish coalescing (`config.eager_recall ?? false`).
+   */
+  eager_recall: z.boolean().optional(),
 });
 
 /** Per-agent model routing configuration */
