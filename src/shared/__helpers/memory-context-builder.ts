@@ -16,7 +16,7 @@ import { z } from "zod";
 /**
  * Configuration schema for buildMemoryContextBlock.
  *
- * Uses snake_case internally since this is not an API payload.
+ * Uses camelCase since this is an internal schema, not an API payload.
  */
 export const MemoryContextConfigSchema = z.object({
   agentName: z.string().min(1),

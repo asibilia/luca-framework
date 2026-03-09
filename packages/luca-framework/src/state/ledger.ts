@@ -7,7 +7,6 @@
  *
  * @module luca-state/ledger
  */
-import orderBy from "lodash/orderBy";
 import { z } from "zod";
 // node:fs/promises retained: Bun.write() does not support append mode.
 // appendFile is the correct API for the append-only ledger pattern.
