@@ -232,6 +232,18 @@ Before recalling memory, resolve the target agent's cognition tier.
 - **T3 (Fully-Cognitive)**: Full lifecycle — brain tree recall, semantic recall, session context write, learning.
 </step>
 
+<step name="agent_health_check">
+Validate the target agent's availability and configuration before proceeding:
+
+1. **Verify agent definition exists**: Check that the target agent has a compiled .md file in \`.claude/agents/\`. If missing, flag as RISK.
+
+2. **Check cognition tier appropriateness**: If the agent is in the recommended-memory list (lu-debugger, lu-test-writer, lu-roadmap-*, code-architect, code-developer, dx-advocate, security-auditor, performance-auditor) but is currently T0, log a warning: "Agent {name} would benefit from T1+ cognition tier."
+
+3. **Check memory tags**: If the agent's effective_tier is T1+ but it has no \`memory_tags\` configured, log a warning: "Agent {name} is {tier} but has no memory_tags — recall will be unscoped."
+
+4. **Report findings**: Include any health check warnings in the cognitive report's Cognition Profile section. These are informational — they do not block execution.
+</step>
+
 <step name="selective_recall">
 Search MuninnDB for relevant engrams with tier-aware gating and tag-based filtering:
 

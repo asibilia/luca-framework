@@ -86,6 +86,7 @@ export type {
 export {
   checkAgentHealth,
   checkAllAgentsHealth,
+  checkNamedAgentHealth,
 } from "./__helpers/health-check";
 
 export type { HealthCheckResult } from "./__helpers/health-check";
