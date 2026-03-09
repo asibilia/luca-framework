@@ -2,109 +2,11 @@
 
 ## Overview
 
-**Current Milestone:** v3.1.0 — Memory Intelligence & Platform Cleanup
+**Current Milestone:** Planning next
 
 ---
 
-## v3.1.0 — Memory Intelligence & Platform Cleanup
-
-**Theme:** Make memory behaviorally effective. Remove dead platform. Improve DX.
-**Strategic objectives:** O1 (better code outcomes), O2 (lower token costs)
-**Source:** Backlog audit (2026-03-08) — see `.planning/backlog-audit/AUDIT-REPORT.md`
-
-### Phase 01 — Recall Scoring Optimization (#89 + #91)
-
-**Goal:** Reduce token overhead by gating recall depth on complexity and aggressively scoping to current milestone.
-
-- [x] Update lu-cognition recall logic to cap MODERATE tasks at 3 entries
-- [x] Strengthen milestone-scoped recall to deprioritize entries from old milestones (v1.x, v2.x)
-
-**Complexity:** SIMPLE
-**Todos:** #89, #91
-**Depends on:** None
-
-### Phase 02 — Session Memory Cleanup (#93)
-
-**Goal:** Prevent unbounded vault pollution by automatically cleaning session engrams on session end.
-
-- [x] Add session cleanup step to session-end workflow
-- [x] Forget session:\* engrams when lu-learner completes or session is abandoned
-
-**Complexity:** SIMPLE
-**Todos:** #93
-**Depends on:** None
-
-### Phase 03 — SpacetimeDB Removal (#75 + #76 + #88)
-
-**Goal:** Remove all SpacetimeDB code, packages, and documentation references.
-
-- [x] Delete SpacetimeDB client, emitter, and config from framework (`src/state/__helpers/`)
-- [x] Remove emit-event and emit-context-snapshot from bridge.ts
-- [x] Delete `packages/luca-spacetime/` package entirely
-- [x] Remove SpacetimeDB-specific scripts from workspace config
-- [x] Update docs and planning artifacts to remove SpacetimeDB references
-- [x] Update `.claude/rules/state-machine-bridge.md` to remove emit commands
-- [x] Clean hook script templates (session-start, session-persist, pre-commit-gate, etc.)
-- [x] Clean harness runner SpacetimeDB emission block
-
-**Complexity:** MODERATE
-**Todos:** #75, #76, #88
-**Depends on:** None
-
-### Phase 04 — Sub-Agent Memory Pipeline (#90 + #92)
-
-**Goal:** Build digest mechanism and inject memory context into sub-agent prompts.
-
-- [x] Create `src/shared/__helpers/memory-context-builder.ts` (T0 — shared)
-- [x] Implement `buildMemoryContextBlock()` that creates a compact session digest
-- [x] Implement session context digest caching to avoid redundant MuninnDB queries
-- [x] Inject memory context block into Task() prompts for lu-executor, lu-verifier, lu-learner
-
-**Complexity:** MODERATE
-**Todos:** #90, #92
-**Depends on:** Phase 01 (recall scoring must be optimized before injection)
-
-### Phase 05 — Stall Detection & Retry Limits (#53)
-
-**Goal:** Add stall detection and retry limits to the verification loop to prevent infinite token burn.
-
-- [x] Add max iteration counter to harness fix loop
-- [x] Detect convergence stalls (same errors repeating)
-- [x] Add graceful exit with diagnostic summary on stall
-
-**Complexity:** MODERATE
-**Todos:** #53
-**Depends on:** None
-
-### Phase 06 — Agent Health Check (#52)
-
-**Goal:** Validate agent availability and dependencies at cognitive pre-flight.
-
-- [x] Create `src/agents/__helpers/health-check.ts`
-- [x] Implement `checkAgentHealth(agentName)` — verify definition, tools, model access
-- [x] Integrate health check into lu-cognition pre-flight
-
-**Complexity:** MODERATE
-**Todos:** #52
-**Depends on:** None
-
-### Phase 07 — DX Cleanup Sprint (#46, #50, #45, #51, #63)
-
-**Goal:** Batch small housekeeping items: dedup, docs, lock cleanup, Bun migration.
-
-- [x] Deduplicate sanitizeJsonParse — already at minimum (2 copies across isolated boundaries) (#46)
-- [x] Document observability domain in architecture docs (#50)
-- [x] Fix bridge CLI documentation (13 subcommands) (#45)
-- [x] Add automatic stale session lock cleanup (#51)
-- [x] Complete node:fs to Bun API migration (#63)
-
-**Complexity:** SIMPLE (per item)
-**Todos:** #46, #50, #45, #51, #63
-**Depends on:** Phase 03 (bridge docs update depends on SpacetimeDB emit removal)
-
----
-
-## Deferred (v3.2.0+)
+## Backlog (v3.2.0+)
 
 | Todo   | Title                             | Target           | Reason                                                              |
 | ------ | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
@@ -187,7 +89,8 @@
 - **v2.8.0** — Critical Remediation, Audit Persistence & Skill Eval: 3 phases, 5 commits, 27 files changed, 3514 tests ([View Archive](milestones/v2.8.0-ROADMAP.md))
 - **v2.9.0** — Audit Gap Closure & Test Reliability: 14 phases, 52 commits, 572 files changed ([View Archive](milestones/v2.9.0-ROADMAP.md))
 - **v3.0.0** — Data Integrity, Agentic Reliability & Model Routing Redesign: 14 phases, 42 plans, 151 commits, 810 files changed ([View Archive](milestones/v3.0.0-ROADMAP.md))
+- **v3.1.0** — Memory Intelligence & Platform Cleanup: 7 phases, 10 commits, 151 files changed ([View Archive](milestones/v3.1.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-08 (v3.1.0 milestone created from backlog audit)_
+_Roadmap updated: 2026-03-09 (v3.1.0 milestone archived)_

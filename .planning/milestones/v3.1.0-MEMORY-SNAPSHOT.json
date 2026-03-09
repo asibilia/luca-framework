@@ -1,0 +1,45 @@
+{
+  "milestone": "v3.1.0",
+  "title": "Memory Intelligence & Platform Cleanup",
+  "completed": "2026-03-09",
+  "patterns_validated": [
+    {
+      "concept": "full-auto autopilot for small milestones",
+      "detail": "7-phase milestone completed entirely via /autopilot full-auto with no human oversight gates. All phases passed first attempt.",
+      "confidence": "high"
+    },
+    {
+      "concept": "parallel phase execution",
+      "detail": "Phases 04 and 07 executed in parallel via separate code-developer agents, both completed successfully without conflicts.",
+      "confidence": "high"
+    },
+    {
+      "concept": "guard bun usage in shell hooks",
+      "detail": "Hook scripts that use bun -e must guard with command -v bun before runtime detection step. Copilot caught this in PR review.",
+      "confidence": "high"
+    }
+  ],
+  "decisions": [
+    {
+      "concept": "keep luca-observer, defer SpacetimeDB stripping",
+      "detail": "luca-observer Next.js dashboard kept intact. SpacetimeDB stripping deferred to v3.2 (#78) because it requires a full rewrite, not just a strip.",
+      "outcome": "correct — avoided scope creep"
+    },
+    {
+      "concept": "sanitizeJsonParse at minimum copies",
+      "detail": "Investigation confirmed 2 copies across isolated package boundaries (src/ and packages/luca-framework/) cannot be reduced further without violating module boundary architecture.",
+      "outcome": "validated — architectural constraint"
+    }
+  ],
+  "pitfalls_avoided": [
+    {
+      "concept": "build:all crashes Claude Code",
+      "detail": "Consistently deferred build:all to user manual execution. No crashes this milestone."
+    }
+  ],
+  "graph_export": {
+    "node_count": 27,
+    "edge_count": 73,
+    "format": "json-ld"
+  }
+}
