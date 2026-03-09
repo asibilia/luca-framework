@@ -20,7 +20,7 @@
 #
 # When a session ends, this hook:
 # 1. Removes the session lock file
-# 2. Emits a session.end event to SpacetimeDB
+# 2. Writes a session-end marker file
 # 3. Best-effort only — SessionEnd hooks cannot block termination
 #
 # NOTE: Session memory persistence is now handled by MuninnDB MCP
@@ -88,8 +88,6 @@ if [ -n "$SESSION_ID" ]; then
     );
   " 2>/dev/null || true
 
-  # Emit session.end event via bridge (fire-and-forget)
-  run_bridge emit-event --type=session.end --session="$SESSION_ID" --data="{\"reason\":\"$END_REASON\"}" &>/dev/null &
 fi
 
 exit 0

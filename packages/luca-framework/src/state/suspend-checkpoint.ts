@@ -1,9 +1,8 @@
 /**
  * Checkpoint persistence for phase suspension and resumption.
  *
- * SpacetimeDB-primary: writes call the `save_checkpoint` reducer,
- * reads query SpacetimeDB first with file fallback. Clears call
- * the `delete_checkpoint` reducer.
+ * Reads and writes checkpoints to local JSON files in
+ * `.planning/checkpoints/`.
  *
  * Uses snake_case for all schema field names per API conventions.
  *
@@ -12,8 +11,6 @@
 import { z } from "zod";
 import { mkdir } from "node:fs/promises";
 import { sanitizeJsonParse } from "../utils/sanitize";
-import { queryOne } from "./__helpers/spacetimedb-client";
-import { callReducer } from "./__helpers/observer-emitter";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -52,8 +49,7 @@ const CHECKPOINTS_DIR = ".planning/checkpoints";
 /**
  * Create a suspend checkpoint for a phase.
  *
- * SpacetimeDB-primary: calls the `save_checkpoint` reducer.
- * Also writes to `.planning/checkpoints/suspend-{phase}.json` as backup.
+ * Writes to `.planning/checkpoints/suspend-{phase}.json`.
  *
  * @param checkpoint - The checkpoint data to persist
  * @returns The checkpoint file path on success
@@ -63,14 +59,6 @@ export async function createSuspendCheckpoint(
 ): Promise<string> {
   const parsed = suspendCheckpointSchema.parse(checkpoint);
 
-  // Primary: write to SpacetimeDB via reducer
-  callReducer("save_checkpoint", {
-    phaseId: parsed.phase_id,
-    checkpointJson: JSON.stringify(parsed),
-    timestamp: Date.now(),
-  });
-
-  // Backup: write to local file
   await mkdir(CHECKPOINTS_DIR, { recursive: true });
   const filePath = `${CHECKPOINTS_DIR}/suspend-${parsed.phase_id}.json`;
   await Bun.write(filePath, JSON.stringify(parsed, null, 2));
@@ -82,30 +70,15 @@ export async function createSuspendCheckpoint(
 /**
  * Load a suspend checkpoint for a phase.
  *
- * SpacetimeDB-primary: queries `suspend_checkpoints` table.
- * Falls back to reading the checkpoint file from disk.
+ * Reads the checkpoint file from disk.
  *
  * @param phaseId - The phase number to load checkpoint for
  * @returns The validated checkpoint data
- * @throws If the checkpoint is not found in either source
+ * @throws If the checkpoint is not found
  */
 export async function loadSuspendCheckpoint(
   phaseId: number,
 ): Promise<SuspendCheckpoint> {
-  // Primary: try SpacetimeDB
-  try {
-    // phaseId is parseInt-validated and Number.isFinite-checked — safe for interpolation.
-    const row = await queryOne<{ checkpointJson: string }>(
-      `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
-    );
-    if (row && row.checkpointJson) {
-      return suspendCheckpointSchema.parse(JSON.parse(row.checkpointJson));
-    }
-  } catch {
-    // SpacetimeDB unavailable — fall through
-  }
-
-  // Fallback: read from file
   const filePath = `${CHECKPOINTS_DIR}/suspend-${phaseId}.json`;
   const file = Bun.file(filePath);
 
@@ -123,19 +96,11 @@ export async function loadSuspendCheckpoint(
 /**
  * Clear (delete) a suspend checkpoint for a phase.
  *
- * SpacetimeDB-primary: calls the `delete_checkpoint` reducer.
- * Also removes the local file if it exists.
+ * Removes the local checkpoint file if it exists.
  *
  * @param phaseId - The phase number to clear checkpoint for
  */
 export async function clearSuspendCheckpoint(phaseId: number): Promise<void> {
-  // Primary: delete from SpacetimeDB via reducer
-  callReducer("delete_checkpoint", {
-    phaseId,
-    timestamp: Date.now(),
-  });
-
-  // Also clean up local file
   const filePath = `${CHECKPOINTS_DIR}/suspend-${phaseId}.json`;
   const file = Bun.file(filePath);
 

@@ -16,8 +16,8 @@
 
 **Goal:** Reduce token overhead by gating recall depth on complexity and aggressively scoping to current milestone.
 
-- [ ] Update lu-cognition recall logic to cap MODERATE tasks at 3 entries
-- [ ] Strengthen milestone-scoped recall to deprioritize entries from old milestones (v1.x, v2.x)
+- [x] Update lu-cognition recall logic to cap MODERATE tasks at 3 entries
+- [x] Strengthen milestone-scoped recall to deprioritize entries from old milestones (v1.x, v2.x)
 
 **Complexity:** SIMPLE
 **Todos:** #89, #91
@@ -27,8 +27,8 @@
 
 **Goal:** Prevent unbounded vault pollution by automatically cleaning session engrams on session end.
 
-- [ ] Add session cleanup step to session-end workflow
-- [ ] Forget session:\* engrams when lu-learner completes or session is abandoned
+- [x] Add session cleanup step to session-end workflow
+- [x] Forget session:\* engrams when lu-learner completes or session is abandoned
 
 **Complexity:** SIMPLE
 **Todos:** #93
@@ -38,12 +38,14 @@
 
 **Goal:** Remove all SpacetimeDB code, packages, and documentation references.
 
-- [ ] Delete SpacetimeDB client, emitter, and config from framework (`src/state/__helpers/`)
-- [ ] Remove emit-event and emit-context-snapshot from bridge.ts
-- [ ] Delete `packages/luca-spacetime/` package entirely
-- [ ] Remove SpacetimeDB from workspace config and bun.lock
-- [ ] Update docs and planning artifacts to remove SpacetimeDB references
-- [ ] Update `.claude/rules/state-machine-bridge.md` to remove emit commands
+- [x] Delete SpacetimeDB client, emitter, and config from framework (`src/state/__helpers/`)
+- [x] Remove emit-event and emit-context-snapshot from bridge.ts
+- [x] Delete `packages/luca-spacetime/` package entirely
+- [x] Remove SpacetimeDB-specific scripts from workspace config
+- [x] Update docs and planning artifacts to remove SpacetimeDB references
+- [x] Update `.claude/rules/state-machine-bridge.md` to remove emit commands
+- [x] Clean hook script templates (session-start, session-persist, pre-commit-gate, etc.)
+- [x] Clean harness runner SpacetimeDB emission block
 
 **Complexity:** MODERATE
 **Todos:** #75, #76, #88
@@ -66,9 +68,9 @@
 
 **Goal:** Add stall detection and retry limits to the verification loop to prevent infinite token burn.
 
-- [ ] Add max iteration counter to harness fix loop
-- [ ] Detect convergence stalls (same errors repeating)
-- [ ] Add graceful exit with diagnostic summary on stall
+- [x] Add max iteration counter to harness fix loop
+- [x] Detect convergence stalls (same errors repeating)
+- [x] Add graceful exit with diagnostic summary on stall
 
 **Complexity:** MODERATE
 **Todos:** #53
@@ -78,9 +80,9 @@
 
 **Goal:** Validate agent availability and dependencies at cognitive pre-flight.
 
-- [ ] Create `src/agents/__helpers/health-check.ts`
-- [ ] Implement `checkAgentHealth(agentName)` — verify definition, tools, model access
-- [ ] Integrate health check into lu-cognition pre-flight
+- [x] Create `src/agents/__helpers/health-check.ts`
+- [x] Implement `checkAgentHealth(agentName)` — verify definition, tools, model access
+- [x] Integrate health check into lu-cognition pre-flight
 
 **Complexity:** MODERATE
 **Todos:** #52

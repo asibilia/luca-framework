@@ -334,16 +334,7 @@ if [ -d "$PLANNING_DIR/notes" ]; then
   fi
 fi
 
-# Step 9: Emit session.start event to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
-SESSION_ID=$(run_bridge read-field --field=session_id 2>/dev/null | bun -e "
-  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(d.value || ''); } catch { process.stdout.write(''); }
-" 2>/dev/null || echo "")
-if [ -n "$SESSION_ID" ]; then
-  run_bridge emit-event --type=session.start --session="$SESSION_ID" &>/dev/null &
-fi
-
-# Step 10: Output summary if anything was created
+# Step 9: Output summary if anything was created
 if [ -n "$CREATED" ]; then
   HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
     const created = process.env.HOOK_CREATED.trim();

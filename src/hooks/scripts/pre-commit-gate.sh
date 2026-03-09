@@ -174,20 +174,8 @@ ${ERRORS}"
     process.stdout.write(JSON.stringify(output));
   "
 
-  # Emit commit.blocked via bridge (fire-and-forget)
-  BLOCK_SESSION_ID=$(read_session_id)
-  if [ -n "$BLOCK_SESSION_ID" ]; then
-    run_bridge emit-event --type=commit.blocked --session="$BLOCK_SESSION_ID" --tool=git --data="{\"test_exit\":$TEST_EXIT,\"tsc_exit\":$TSC_EXIT}" &>/dev/null &
-  fi
-
   # Exit 2 = block
   exit 2
-fi
-
-# All checks passed — emit commit event via bridge (fire-and-forget)
-SESSION_ID=$(read_session_id)
-if [ -n "$SESSION_ID" ]; then
-  run_bridge emit-event --type=commit.passed --session="$SESSION_ID" --tool=git &>/dev/null &
 fi
 
 # Allow the commit

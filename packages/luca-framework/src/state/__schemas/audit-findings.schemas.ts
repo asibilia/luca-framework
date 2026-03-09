@@ -36,7 +36,7 @@ export const FINDING_STATUSES = [
  * Schema for a single audit finding.
  *
  * Represents a review agent's finding about a code issue,
- * persisted to SpacetimeDB for retrieval across sessions.
+ * persisted for retrieval across sessions.
  *
  * Uses snake_case for all properties per API conventions.
  */

@@ -1,5 +1,10 @@
 # Luca Observer Deployment Guide
 
+> **DEPRECATED**: SpacetimeDB integration has been removed from the core luca-framework package.
+> The framework no longer emits events to SpacetimeDB. The observer dashboard remains as a
+> standalone package but requires an alternative data source. This document is retained for
+> historical reference only.
+
 Comprehensive guide for deploying and running the luca-observer dashboard -- a real-time observability interface for the Luca workflow framework.
 
 ## Overview

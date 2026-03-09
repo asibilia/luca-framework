@@ -12,11 +12,11 @@
 
 # ─── run_bridge() ────────────────────────────────────────────────────────────
 # Cascading bridge lookup: installed bin -> monorepo source -> skip.
-# Used by hooks that need to emit events or sync state via the bridge CLI.
+# Used by hooks that need to read/write state via the bridge CLI.
 #
 # Usage:
 #   run_bridge snapshot
-#   run_bridge emit-event --type=session.start --session="$SID"
+#   run_bridge read-status
 # ──────────────────────────────────────────────────────────────────────────────
 run_bridge() {
   if command -v luca-bridge &>/dev/null; then

@@ -1,8 +1,7 @@
 /**
  * State persistence layer for the Luca workflow state machine.
  *
- * SpacetimeDB-primary: reads query SpacetimeDB first, falls back to
- * `.planning/state.json`. Writes go to SpacetimeDB reducers; optional
+ * Reads and writes workflow state to `.planning/state.json`.
  * STATE.md generation is gated by `LUCA_EXPORT_MD=true`.
  *
  * Uses snake_case for all persisted JSON properties per API conventions.
@@ -15,8 +14,6 @@ import { workflowMachine } from "./machine";
 import type { WorkflowMachineInput } from "./machine";
 import type { Result } from "./types";
 import { sanitizeJsonParse } from "../utils/sanitize";
-import { queryOne } from "./__helpers/spacetimedb-client";
-import { callReducer } from "./__helpers/observer-emitter";
 import { initializeContext } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -27,14 +24,12 @@ export const STATE_FILE_PATH = ".planning/state.json";
 // ─── Persistence Functions ──────────────────────────────────────────────────
 
 /**
- * Persist an actor's snapshot to both SpacetimeDB and local JSON.
+ * Persist an actor's snapshot to local JSON.
  *
- * Dual-write: calls the `update_workflow_state` reducer (fire-and-forget)
- * AND writes the snapshot to the local JSON file. This ensures the fallback
- * file stays current even if SpacetimeDB is unavailable.
+ * Writes the snapshot to the local JSON file at `.planning/state.json`.
  *
  * @param actor - The running XState actor to persist
- * @param filePath - Path to the local JSON backup file
+ * @param filePath - Path to the local JSON file
  * @returns Result with the file path on success, or error message on failure
  *
  * @example
@@ -52,79 +47,8 @@ export async function persistActor(
 ): Promise<Result<string>> {
   try {
     const snapshot = actor.getPersistedSnapshot();
-    const snap = actor.getSnapshot();
 
-    // Primary: write to SpacetimeDB via reducer (fire-and-forget with retry)
-    callReducer("update_workflow_state", {
-      workflowState: String(snap.value),
-      currentPhase: snap.context.current_phase ?? "",
-      complexity: snap.context.complexity ?? "TRIVIAL",
-      oversight: snap.context.oversight ?? "milestone",
-      sessionId: snap.context.session_id ?? "",
-      ticketId: snap.context.ticket_id ?? "",
-      contextJson: JSON.stringify(snap.context),
-    });
-
-    // Backup: write snapshot to local JSON file
-    try {
-      await Bun.write(filePath, JSON.stringify(snapshot, null, 2));
-    } catch (jsonErr) {
-      if (process.env.LUCA_DEBUG) {
-        console.error(
-          "[persistence] Failed to write local JSON backup:",
-          (jsonErr as Error).message,
-        );
-      }
-    }
-
-    // Dual-write divergence detection: verify the local JSON matches intent
-    try {
-      const file = Bun.file(filePath);
-      if (await file.exists()) {
-        const written = sanitizeJsonParse(await file.text()) as {
-          value?: unknown;
-          context?: Record<string, unknown>;
-        };
-        const writtenCtx = written.context ?? {};
-
-        const divergences: string[] = [];
-
-        if (
-          String(written.value ?? "") !== String(snap.value) &&
-          written.value !== undefined
-        ) {
-          divergences.push(
-            `state: json="${String(written.value)}" vs intended="${String(snap.value)}"`,
-          );
-        }
-        if (
-          writtenCtx.complexity !== undefined &&
-          String(writtenCtx.complexity) !==
-            String(snap.context.complexity ?? "")
-        ) {
-          divergences.push(
-            `complexity: json="${writtenCtx.complexity}" vs intended="${snap.context.complexity}"`,
-          );
-        }
-        if (
-          writtenCtx.current_phase !== undefined &&
-          String(writtenCtx.current_phase ?? "") !==
-            String(snap.context.current_phase ?? "")
-        ) {
-          divergences.push(
-            `phase: json="${writtenCtx.current_phase}" vs intended="${snap.context.current_phase}"`,
-          );
-        }
-
-        if (divergences.length > 0) {
-          console.warn(
-            `[dual-write] Divergence detected after persist: ${divergences.join(", ")}`,
-          );
-        }
-      }
-    } catch {
-      // Divergence check is best-effort — never block on failure
-    }
+    await Bun.write(filePath, JSON.stringify(snapshot, null, 2));
 
     return { success: true, data: filePath };
   } catch (err) {
@@ -136,12 +60,12 @@ export async function persistActor(
 }
 
 /**
- * Load a previously persisted actor.
+ * Load a previously persisted actor from local JSON.
  *
- * SpacetimeDB-primary: queries workflow_state for the context JSON,
- * then reconstructs the actor. Falls back to reading .planning/state.json.
+ * Reads the state snapshot from `.planning/state.json` and reconstructs
+ * the XState actor.
  *
- * @param filePath - Path to the state file (fallback)
+ * @param filePath - Path to the state file
  * @returns Result with the restored actor on success, or error message on failure
  *
  * @example
@@ -215,32 +139,13 @@ export async function createFreshActor(
   try {
     let config: Record<string, unknown> = {};
 
-    // Primary: try SpacetimeDB for config
-    try {
-      const row = await queryOne<{ configJson: string }>(
-        "SELECT * FROM workflow_config WHERE id = 1",
-      );
-      if (row && row.configJson) {
-        config = sanitizeJsonParse(row.configJson) as Record<string, unknown>;
-      }
-    } catch (err) {
-      if (process.env.LUCA_DEBUG) {
-        console.error(
-          "[persistence] SpacetimeDB unavailable for config, falling back to file:",
-          (err as Error).message,
-        );
-      }
-    }
-
-    // Fallback: read config from disk if SpacetimeDB didn't provide it
-    if (Object.keys(config).length === 0) {
-      const configFile = Bun.file(configPath);
-      if (await configFile.exists()) {
-        try {
-          config = await configFile.json();
-        } catch {
-          // Invalid config JSON -- proceed with defaults
-        }
+    // Read config from disk
+    const configFile = Bun.file(configPath);
+    if (await configFile.exists()) {
+      try {
+        config = await configFile.json();
+      } catch {
+        // Invalid config JSON -- proceed with defaults
       }
     }
 
@@ -296,10 +201,9 @@ export async function clearPersistedState(
 /**
  * Check whether persisted state exists.
  *
- * SpacetimeDB-primary: queries for a row count. Falls back to
- * checking if the JSON file exists and is non-empty.
+ * Checks if the JSON file exists and is non-empty.
  *
- * @param filePath - Path to the state file (fallback)
+ * @param filePath - Path to the state file
  * @returns true if state exists, false otherwise
  *
  * @example
@@ -312,17 +216,6 @@ export async function clearPersistedState(
 export async function stateExists(
   filePath: string = STATE_FILE_PATH,
 ): Promise<boolean> {
-  // Primary: try SpacetimeDB
-  try {
-    const row = await queryOne<{ cnt: number }>(
-      "SELECT COUNT(*) as cnt FROM workflow_state",
-    );
-    if (row && row.cnt > 0) return true;
-  } catch {
-    // SpacetimeDB unavailable — fall through
-  }
-
-  // Fallback: check JSON file
   try {
     const file = Bun.file(filePath);
     if (!(await file.exists())) return false;

@@ -1,18 +1,12 @@
 /**
- * Audit findings persistence helpers for SpacetimeDB.
+ * Audit findings persistence helpers.
  *
- * Provides fire-and-forget persistence and query functions for review
- * agent findings. Follows the same patterns as observer-emitter.ts:
- * - callReducer for writes (fire-and-forget)
- * - queryTable for reads (with empty-array fallback)
+ * Stubbed as no-ops pending future MuninnDB integration.
+ * Write functions log to stderr for debugging. Read functions
+ * return empty results.
  *
  * @module luca-state/audit-findings
  */
-import orderBy from "lodash/orderBy";
-
-import { callReducer } from "./observer-emitter";
-import { queryTable } from "./spacetimedb-client";
-import { validateFilterString } from "./sql-sanitize";
 
 import type {
   AuditFinding,
@@ -22,21 +16,9 @@ import type {
 } from "../__schemas/audit-findings.schemas";
 import {
   persistFindingParamsSchema,
-  findingFiltersSchema,
   FINDING_SEVERITIES,
   FINDING_STATUSES,
 } from "../__schemas/audit-findings.schemas";
-
-// ─── Validation ─────────────────────────────────────────────────────────────
-
-// validateFilterString is imported from the shared sql-sanitize utility
-
-// ─── Module-Level Constants ─────────────────────────────────────────────────
-
-/** Severity sort order derived from FINDING_SEVERITIES (critical=0, high=1, …). */
-const SEVERITY_ORDER: Record<string, number> = Object.fromEntries(
-  FINDING_SEVERITIES.map((s, i) => [s, i]),
-);
 
 // ─── Internal Factories ─────────────────────────────────────────────────────
 
@@ -63,55 +45,15 @@ function createEmptySummary(): FindingsSummary {
   };
 }
 
-/**
- * Update the status of an audit finding.
- * Shared implementation for markFindingResolved and markFindingDismissed.
- */
-function updateFindingStatus(
-  findingId: number,
-  status: string,
-  resolutionNotes: string,
-): void {
-  if (!Number.isFinite(findingId) || findingId < 0) {
-    console.error("[audit-findings] Invalid findingId:", findingId);
-    return;
-  }
-
-  callReducer("update_finding_status", {
-    findingId,
-    status,
-    resolutionNotes,
-    resolvedAt: Date.now(),
-  });
-}
-
 // ─── Write Helpers ──────────────────────────────────────────────────────────
 
 /**
- * Persist a review agent finding to SpacetimeDB.
+ * Persist a review agent finding.
  *
- * Fire-and-forget: calls the append_audit_finding reducer.
- * Validates params with Zod before sending.
+ * Currently a no-op (logs to stderr in debug mode). Will be replaced
+ * by MuninnDB emission in a future phase.
  *
  * @param params - The finding data to persist
- *
- * @example
- * ```typescript
- * persistFinding({
- *   session_id: "session-abc-123",
- *   phase: "Phase 120",
- *   source_agent: "code-simplifier",
- *   severity: "medium",
- *   category: "complexity",
- *   file_path: "src/state/bridge.ts",
- *   line_start: 42,
- *   line_end: 58,
- *   finding: "Function exceeds 50 lines",
- *   suggested_fix: "Extract helper function",
- *   context_snippet: "function longFunction() { ... }",
- *   created_at: Date.now(),
- * });
- * ```
  */
 export function persistFinding(params: PersistFindingParams): void {
   const parseResult = persistFindingParamsSchema.safeParse(params);
@@ -123,59 +65,45 @@ export function persistFinding(params: PersistFindingParams): void {
     return;
   }
 
-  const data = parseResult.data;
-
-  callReducer("append_audit_finding", {
-    sessionId: data.session_id,
-    phase: data.phase,
-    sourceAgent: data.source_agent,
-    severity: data.severity,
-    category: data.category,
-    filePath: data.file_path,
-    lineStart: data.line_start,
-    lineEnd: data.line_end,
-    finding: data.finding,
-    suggestedFix: data.suggested_fix,
-    contextSnippet: data.context_snippet,
-    createdAt: data.created_at || Date.now(),
-  });
+  if (process.env.LUCA_DEBUG) {
+    console.error(
+      "[audit-findings] Finding recorded (no persistence backend):",
+      parseResult.data.finding,
+    );
+  }
 }
 
 /**
  * Mark an audit finding as resolved.
  *
- * Fire-and-forget: calls the update_finding_status reducer.
+ * Currently a no-op until MuninnDB emission layer is implemented.
  *
  * @param findingId - The finding ID to update
  * @param resolutionNotes - Optional notes about the resolution
- *
- * @example
- * ```typescript
- * markFindingResolved(42, "Fixed in commit abc123");
- * ```
  */
 export function markFindingResolved(
   findingId: number,
   resolutionNotes?: string,
 ): void {
-  updateFindingStatus(findingId, "resolved", resolutionNotes ?? "");
+  if (process.env.LUCA_DEBUG) {
+    console.error(
+      `[audit-findings] Finding ${findingId} marked resolved: ${resolutionNotes ?? ""}`,
+    );
+  }
 }
 
 /**
  * Mark an audit finding as dismissed.
  *
- * Fire-and-forget: calls the update_finding_status reducer.
+ * Currently a no-op until MuninnDB emission layer is implemented.
  *
  * @param findingId - The finding ID to dismiss
  * @param reason - Reason for dismissal
- *
- * @example
- * ```typescript
- * markFindingDismissed(42, "False positive - intentional pattern");
- * ```
  */
 export function markFindingDismissed(findingId: number, reason: string): void {
-  updateFindingStatus(findingId, "dismissed", reason);
+  if (process.env.LUCA_DEBUG) {
+    console.error(`[audit-findings] Finding ${findingId} dismissed: ${reason}`);
+  }
 }
 
 // ─── Query Helpers ──────────────────────────────────────────────────────────
@@ -183,152 +111,45 @@ export function markFindingDismissed(findingId: number, reason: string): void {
 /**
  * Query pending audit findings for a session.
  *
- * Queries SpacetimeDB for findings with status='pending' or 'in_progress'.
- * Falls back to empty array if SpacetimeDB is unavailable.
+ * Returns empty array (no persistence backend available).
  *
  * @param sessionId - The session ID to query
  * @param filters - Optional additional filters
- * @returns Array of matching audit findings
- *
- * @example
- * ```typescript
- * const pending = await queryPendingFindings("session-abc-123");
- * const criticalOnly = await queryPendingFindings("session-abc-123", {
- *   severity: "critical",
- * });
- * ```
+ * @returns Empty array
  */
 export async function queryPendingFindings(
   sessionId: string,
   filters?: FindingFilters,
 ): Promise<AuditFinding[]> {
-  try {
-    const safeSessionId = validateFilterString(sessionId, "session_id");
-
-    const whereClauses: string[] = [
-      `sessionId = '${safeSessionId}'`,
-      `(status = 'pending' OR status = 'in_progress')`,
-    ];
-
-    if (filters) {
-      const validatedFilters = findingFiltersSchema.safeParse(filters);
-      if (validatedFilters.success) {
-        const f = validatedFilters.data;
-        if (f.severity) {
-          const safeSeverity = validateFilterString(f.severity, "severity");
-          whereClauses.push(`severity = '${safeSeverity}'`);
-        }
-        if (f.category) {
-          const safeCategory = validateFilterString(f.category, "category");
-          whereClauses.push(`category = '${safeCategory}'`);
-        }
-        if (f.source_agent) {
-          const safeAgent = validateFilterString(
-            f.source_agent,
-            "source_agent",
-          );
-          whereClauses.push(`sourceAgent = '${safeAgent}'`);
-        }
-      }
-    }
-
-    const sql = `SELECT * FROM audit_findings WHERE ${whereClauses.join(" AND ")}`;
-    return await queryTable<AuditFinding>(sql);
-  } catch {
-    // SpacetimeDB unavailable — return empty array
-    return [];
-  }
+  return [];
 }
 
 /**
  * Query audit findings for a specific file.
  *
- * Returns findings ordered by severity (critical first).
- * Falls back to empty array if SpacetimeDB is unavailable.
+ * Returns empty array (no persistence backend available).
  *
  * @param filePath - The file path to query
  * @param sessionId - Optional session ID filter
- * @returns Array of matching audit findings, ordered by severity
- *
- * @example
- * ```typescript
- * const findings = await queryFindingsForFile("src/state/bridge.ts");
- * ```
+ * @returns Empty array
  */
 export async function queryFindingsForFile(
   filePath: string,
   sessionId?: string,
 ): Promise<AuditFinding[]> {
-  try {
-    const safeFilePath = validateFilterString(filePath, "file_path");
-
-    const whereClauses: string[] = [`filePath = '${safeFilePath}'`];
-
-    if (sessionId) {
-      const safeSessionId = validateFilterString(sessionId, "session_id");
-      whereClauses.push(`sessionId = '${safeSessionId}'`);
-    }
-
-    const sql = `SELECT * FROM audit_findings WHERE ${whereClauses.join(" AND ")}`;
-    const rows = await queryTable<AuditFinding>(sql);
-
-    // Sort client-side by severity (ORDER BY not supported in SpacetimeDB v2 SQL)
-    return orderBy(rows, [(r) => SEVERITY_ORDER[r.severity] ?? 5], ["asc"]);
-  } catch {
-    // SpacetimeDB unavailable — return empty array
-    return [];
-  }
+  return [];
 }
 
 /**
  * Get an aggregated summary of audit findings for a session.
  *
- * Computes counts by severity, category, and status.
- * Falls back to zeroed summary if SpacetimeDB is unavailable.
+ * Returns zeroed summary (no persistence backend available).
  *
  * @param sessionId - The session ID to summarize
- * @returns Aggregated findings summary
- *
- * @example
- * ```typescript
- * const summary = await getFindingsSummary("session-abc-123");
- * console.log(`Total: ${summary.total}, Critical: ${summary.by_severity.critical}`);
- * ```
+ * @returns Zeroed findings summary
  */
 export async function getFindingsSummary(
   sessionId: string,
 ): Promise<FindingsSummary> {
-  const emptySummary = createEmptySummary();
-
-  try {
-    const safeSessionId = validateFilterString(sessionId, "session_id");
-
-    const sql = `SELECT * FROM audit_findings WHERE sessionId = '${safeSessionId}'`;
-    const rows = await queryTable<AuditFinding>(sql);
-
-    if (rows.length === 0) return emptySummary;
-
-    const summary = createEmptySummary();
-    summary.total = rows.length;
-
-    for (const row of rows) {
-      const severity = row.severity as keyof FindingsSummary["by_severity"];
-      if (severity in summary.by_severity) {
-        summary.by_severity[severity]++;
-      }
-
-      const status = row.status as keyof FindingsSummary["by_status"];
-      if (status in summary.by_status) {
-        summary.by_status[status]++;
-      }
-
-      const category = String(row.category || "uncategorized");
-      summary.by_category[category] = (summary.by_category[category] ?? 0) + 1;
-    }
-
-    return summary;
-  } catch {
-    // SpacetimeDB unavailable — return empty summary
-    return emptySummary;
-  }
+  return createEmptySummary();
 }

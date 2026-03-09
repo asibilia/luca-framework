@@ -54,13 +54,6 @@ Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the 
 | \\\`suspend --phase=N [--reason=str]\\\` | Create checkpoint and suspend phase |
 | \\\`resume-phase --phase=N\\\` | Load checkpoint and resume phase |
 
-### Observability Commands (2)
-
-| Command | Description |
-|---------|-------------|
-| \\\`emit-event --type=eventType [--session=id]\\\` | Emit observer event to SpacetimeDB |
-| \\\`emit-context-snapshot --session=id [--percent=N]\\\` | Emit context-window snapshot |
-
 ## Usage Patterns
 
 ### Reading State (Skills/Agents)
