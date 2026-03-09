@@ -324,6 +324,21 @@ Recall session context from MuninnDB:
 mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
 \`\`\`
 
+**Build memory context for sub-agents:** Use \`buildMemoryContextBlock()\` from \`src/shared/__helpers/memory-context-builder.ts\` to format the recalled MuninnDB context (patterns, decisions, pitfalls, session findings) into a compact \`<memory_context>\` block. Pass the result as \`{working_content}\` in each Task() prompt below. This ensures sub-agents receive accumulated session knowledge without the orchestrator manually formatting it each time.
+
+\`\`\`typescript
+import { buildMemoryContextBlock } from "~/shared";
+
+const workingContent = buildMemoryContextBlock({
+  agentName: "lu-executor",
+  sessionFindings: [/* findings from MuninnDB session recall */],
+  recalledPatterns: [/* patterns from MuninnDB recall */],
+  recalledPitfalls: [/* pitfalls from MuninnDB recall */],
+  recalledDecisions: [/* decisions from MuninnDB recall */],
+  maxTokens: 500,
+});
+\`\`\`
+
 Then spawn all executors for the wave in PARALLEL (same message, multiple Task calls):
 
 \`\`\`python
@@ -936,8 +951,8 @@ Task(
 **Project State:**
 {state_content}
 
-<!-- WARM ISOLATION: Verifier does NOT receive session context to prevent bias from executor's session notes -->
-<!-- The working_content variable below should be empty or omitted when using context-aware spawning -->
+<!-- WARM ISOLATION: Verifier does NOT receive session findings to prevent bias -->
+<!-- Use buildMemoryContextBlock() with ONLY recalledPitfalls and recalledPatterns (no sessionFindings, no recalledDecisions) to respect warm isolation -->
 **Working Memory:**
 {working_content}
 

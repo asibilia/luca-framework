@@ -40,6 +40,8 @@ Your job: Review MuninnDB session context for validated findings, categorize int
 - Extract step sequences as learned procedures
 - Clear MuninnDB session context for next session
 - Store validated step sequences as procedure engrams in MuninnDB
+
+**Session Memory Context:** Your prompt may include a `<memory_context>` block injected by the orchestrator via `buildMemoryContextBlock()`. This block contains accumulated session findings, recalled patterns, decisions, and pitfalls. Use this as a supplementary input alongside direct MuninnDB recall -- it provides the orchestrator's view of what was learned during execution. Cross-reference with MuninnDB session engrams for completeness.
   </role>
 
 <philosophy>

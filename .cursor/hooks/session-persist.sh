@@ -20,7 +20,7 @@
 #
 # When a session ends, this hook:
 # 1. Removes the session lock file
-# 2. Emits a session.end event to SpacetimeDB
+# 2. Writes a session-end marker file
 # 3. Best-effort only — SessionEnd hooks cannot block termination
 #
 # NOTE: Session memory persistence is now handled by MuninnDB MCP
@@ -68,10 +68,26 @@ END_REASON="${END_REASON:0:100}"
 # Remove session lock (before any other cleanup — most important action)
 rm -f "$PROJECT_DIR/.claude/.session-lock"
 
-# Emit session.end event to SpacetimeDB (fire-and-forget via bridge)
+# Write session-end marker for lu-cognition stale session cleanup
+# MuninnDB cleanup happens at next session start (MCP tools unavailable in hooks)
 SESSION_ID=$(read_session_id)
 if [ -n "$SESSION_ID" ]; then
-  run_bridge emit-event --type=session.end --session="$SESSION_ID" --data="{\"reason\":\"$END_REASON\"}" &>/dev/null &
+  HOOK_SESSION_ID="$SESSION_ID" HOOK_END_REASON="$END_REASON" HOOK_PROJECT_DIR="$PROJECT_DIR" bun -e "
+    const sessionId = process.env.HOOK_SESSION_ID;
+    const reason = process.env.HOOK_END_REASON;
+    const projectDir = process.env.HOOK_PROJECT_DIR;
+    const marker = {
+      session_id: sessionId,
+      ended_at: new Date().toISOString(),
+      reason: reason,
+      cleanup_pending: true
+    };
+    await Bun.write(
+      projectDir + '/.planning/.session-end-marker.json',
+      JSON.stringify(marker, null, 2) + '\n'
+    );
+  " 2>/dev/null || true
+
 fi
 
 exit 0

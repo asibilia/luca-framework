@@ -1,8 +1,7 @@
 /**
  * Append-only session ledger for the Luca workflow state machine.
  *
- * SpacetimeDB-primary: reads query SpacetimeDB first, falls back to
- * JSONL file. Writes call the SpacetimeDB reducer.
+ * Reads and writes ledger entries to a local JSONL file.
  *
  * Uses snake_case for all schema fields per API conventions.
  *
@@ -17,9 +16,6 @@ import { dirname } from "pathe";
 
 import { transitionRecordSchema } from "./types";
 import type { TransitionRecord } from "./types";
-import { queryTable, queryOne } from "./__helpers/spacetimedb-client";
-import { callReducer } from "./__helpers/observer-emitter";
-import { escapeSqlString } from "./__helpers/sql-sanitize";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -68,12 +64,7 @@ let _nextSeq: number | null = null;
 /**
  * Get the next sequence number for the ledger.
  *
- * SpacetimeDB-primary: queries COUNT(*) to derive the next sequence
- * number (append-only ledger with contiguous 0-based sequence numbers).
- * Falls back to reading the last line of the JSONL file.
- *
- * Note: SpacetimeDB v2 SQL only supports COUNT(*) as an aggregate —
- * MAX/MIN/SUM/AVG are not supported.
+ * Reads the last line of the JSONL file to determine the next sequence number.
  *
  * @param ledgerPath - Path to the ledger file
  * @returns The next available sequence number
@@ -87,29 +78,6 @@ async function getNextSequenceNumber(
     return seq;
   }
 
-  // Primary: try SpacetimeDB
-  // COUNT(*) is the only aggregate supported in SpacetimeDB v2 SQL.
-  // For an append-only ledger with contiguous 0-based sequence numbers:
-  //   count = 0 → next_seq = 0 (first entry)
-  //   count = N → next_seq = N (since max_seq = N - 1)
-  try {
-    const row = await queryOne<{ n: number | bigint }>(
-      "SELECT COUNT(*) as n FROM ledger_entries",
-    );
-    if (row && row.n != null) {
-      const count = Number(row.n);
-      if (count === 0) {
-        _nextSeq = 1;
-        return 0;
-      }
-      _nextSeq = count + 1;
-      return count;
-    }
-  } catch {
-    // SpacetimeDB unavailable — fall through
-  }
-
-  // Fallback: read from JSONL file
   const file = Bun.file(ledgerPath);
   if (!(await file.exists())) {
     _nextSeq = 1;
@@ -153,8 +121,7 @@ export function _resetSequenceCounter(): void {
 /**
  * Append a transition record to the session ledger.
  *
- * SpacetimeDB-primary: calls the `append_ledger_entry` reducer.
- * Also appends to the local JSONL file as fallback/backup.
+ * Appends to the local JSONL file at `.planning/session-ledger.jsonl`.
  *
  * @param record - The transition record to append
  * @param ledgerPath - Path to the ledger file (defaults to LEDGER_PATH)
@@ -190,19 +157,6 @@ export async function appendLedgerEntry(
     parent_id: parentId,
   });
 
-  // Primary: write to SpacetimeDB via reducer
-  // sequenceNumber is computed server-side to prevent race conditions
-  callReducer("append_ledger_entry", {
-    sessionId: entry.session_id ?? "",
-    phase: "",
-    plan: "",
-    action: entry.event_type,
-    result: entry.current_state,
-    timestamp: Date.now(),
-    detailsJson: JSON.stringify(entry),
-  });
-
-  // Backup: append to local JSONL file
   await mkdir(dirname(ledgerPath), { recursive: true });
   await appendFile(ledgerPath, JSON.stringify(entry) + "\n", "utf-8");
 
@@ -326,8 +280,7 @@ export function validateLedgerFilters(filters: LedgerFilters): LedgerFilters {
 /**
  * Read and filter ledger entries from the session ledger.
  *
- * SpacetimeDB-primary: queries SpacetimeDB with SQL WHERE clauses.
- * Falls back to reading the JSONL file.
+ * Reads from the local JSONL file and applies filters.
  *
  * @param filters - Optional filters to apply
  * @param ledgerPath - Path to the ledger file (defaults to LEDGER_PATH)
@@ -349,63 +302,8 @@ export async function readLedger(
   filters: LedgerFilters = {},
   ledgerPath: string = LEDGER_PATH,
 ): Promise<LedgerEntry[]> {
-  // Validate filter values before building SQL to prevent injection
   const validatedFilters = validateLedgerFilters(filters);
 
-  // Primary: try SpacetimeDB
-  try {
-    const whereClauses: string[] = [];
-    if (validatedFilters.session_id) {
-      // Defense-in-depth: primary validation is validateLedgerFilters() above.
-      // escapeSqlString is a belt-and-suspenders measure; validated values
-      // already match /^[a-zA-Z0-9_-]+$/ and cannot contain single quotes.
-      whereClauses.push(
-        `session_id = '${escapeSqlString(validatedFilters.session_id)}'`,
-      );
-    }
-    if (validatedFilters.event_type) {
-      // Defense-in-depth: primary validation is validateLedgerFilters() above.
-      // event_type is allowlist-validated; escapeSqlString is belt-and-suspenders.
-      // SpacetimeDB column is `action`, not `event_type`.
-      whereClauses.push(
-        `action = '${escapeSqlString(validatedFilters.event_type)}'`,
-      );
-    }
-    if (validatedFilters.since) {
-      // Defense-in-depth: primary validation is validateLedgerFilters() above.
-      // since is ISO8601 regex-validated; convert to U64 ms for SpacetimeDB.
-      const sinceMs = new Date(validatedFilters.since).getTime();
-      whereClauses.push(`timestamp >= ${sinceMs}`);
-    }
-
-    // SpacetimeDB v2 SQL does not support ORDER BY or aggregate functions
-    // beyond COUNT(*). LIMIT is supported but meaningless without ordering
-    // for our use case. Fetch all matching rows, sort and limit client-side.
-    let sql = "SELECT * FROM ledger_entries";
-    if (whereClauses.length > 0) {
-      sql += ` WHERE ${whereClauses.join(" AND ")}`;
-    }
-
-    const rows = await queryTable<LedgerEntry>(sql);
-    if (rows.length > 0) {
-      // Sort client-side (ORDER BY not supported in SpacetimeDB v2 SQL)
-      const sorted = orderBy(rows, [(r) => Number(r.sequence_number)], ["asc"]);
-      let result = sorted;
-      // Apply tail filter (last N entries)
-      if (validatedFilters.tail !== undefined && validatedFilters.tail > 0) {
-        result = result.slice(-validatedFilters.tail);
-      }
-      // Apply limit filter (first N entries of result)
-      if (validatedFilters.limit) {
-        result = result.slice(0, validatedFilters.limit);
-      }
-      return result;
-    }
-  } catch {
-    // SpacetimeDB unavailable — fall through
-  }
-
-  // Fallback: read from JSONL file
   const file = Bun.file(ledgerPath);
   if (!(await file.exists())) {
     return [];

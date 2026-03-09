@@ -41,6 +41,9 @@ src/
 │   ├── __schemas/   # Harness Zod schemas and types
 │   ├── __helpers/   # Runner implementation
 │   └── parsers/     # Output parsers (bun-test, tsc, eslint, generic)
+├── observability/   # [T1 Core] Agent scorecard engine
+│   ├── __schemas/   # Scorecard Zod schemas and types
+│   └── __helpers/   # Scorecard CRUD, query, report, persistence
 ├── shared/          # [T0 Foundation] Cross-domain utilities
 │   ├── __schemas/   # Shared Zod schemas (Result<T> type)
 │   └── __helpers/   # cli-utils, format, validation, deep-freeze

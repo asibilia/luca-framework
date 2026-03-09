@@ -27,3 +27,10 @@ Replace SpacetimeDB reducers with MuninnDB remember() calls. The framework needs
 - MuninnDB MCP tools: `muninn_remember`, `muninn_remember_batch`, `muninn_link`
 - Existing MuninnDB API routes in observer: `/api/muninn/*`
 - Brainstorm doc: `.claude/plans/polished-mapping-fern.md`
+- **Audit update (2026-03-08):** The Muninn memory audit found critical gaps in session lifecycle that this emission layer should address:
+  - **Gap: session-start.sh has ZERO MuninnDB operations** — emission layer should emit `session:start` engram with workflow type, timestamp
+  - **Gap: session-persist.sh has ZERO MuninnDB operations** — emission layer should emit `session:end` summary before cleanup
+  - **Gap: context-monitor.sh doesn't track MuninnDB session size** — emission layer should expose session:\* engram count for monitoring
+  - **Gap: session:\* engrams never cleaned up on abandoned sessions** — emission layer should include TTL/cleanup hooks (#93)
+  - **Audit synergy:** Emission layer is a prerequisite for #95 (Close Learning Loop) MEASURE phase — need structured event emission to track which recalled patterns were applied
+  - **Audit synergy:** Session digest (#90) could be implemented as an emission layer feature — auto-publish digest engram after each execution wave

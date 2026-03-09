@@ -70,15 +70,7 @@ When no flag is provided, the message becomes a new phase in the current milesto
 
    - Add entry under "Roadmap Evolution" in STATE.md
 
-9. **Emit observer event (via SpacetimeDB reducer):**
-
-   \`\`\`bash
-   bun run packages/luca-framework/src/state/bridge.ts emit-event phase.added \
-     --session-id="${SESSION_ID:-}" \
-     --payload='{"phase":"<N>","description":"<message>","directory":"<path>"}' 2>/dev/null || true
-   \`\`\`
-
-10. **Confirm:**
+9. **Confirm:**
 
     ```
     Phase {N} added to current milestone:
@@ -129,15 +121,7 @@ Queue a note picked up within 60 seconds by the context-check hook.
      The note message text.
      ```
 
-4. **Emit observer event (via SpacetimeDB reducer):**
-
-   \`\`\`bash
-   bun run packages/luca-framework/src/state/bridge.ts emit-event note.added \
-     --session-id="${SESSION_ID:-}" \
-     --payload='{"priority":"next","file":"<filename>"}' 2>/dev/null || true
-   \`\`\`
-
-5. **Confirm:**
+4. **Confirm:**
 
    ```
    Note queued: {message preview}

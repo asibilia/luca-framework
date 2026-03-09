@@ -1,5 +1,10 @@
 # Luca Observer Architecture Overview
 
+> **DEPRECATED**: SpacetimeDB integration has been removed from the core luca-framework package.
+> The `observer-emitter.ts`, `spacetimedb-client.ts`, and related helpers have been deleted.
+> The observer dashboard (`packages/luca-observer/`) remains as a standalone package but is no longer
+> actively fed by the framework. This document is retained for historical reference only.
+
 Technical architecture document for the luca-observer dashboard, covering data flow, real-time subscriptions, hooks, component hierarchy, and the relationship to the luca-framework.
 
 ## System Overview

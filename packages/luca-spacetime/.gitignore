@@ -1,5 +1,0 @@
-# SpacetimeDB CLI generates bindings here by default.
-# Canonical location is packages/luca-observer/module_bindings/.
-# Regenerate with: bun run generate:bindings (from repo root or packages/luca-observer/)
-luca-observer/module_bindings/
-spacetimedb/luca-observer/

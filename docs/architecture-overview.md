@@ -1,7 +1,7 @@
 # Luca Framework — Comprehensive Architecture Overview
 
 > **Purpose**: End-to-end reference for agents verifying, testing, and improving the Luca platform.
-> Covers every package, data flow, integration point, and the SpacetimeDB real-time observability layer.
+> Covers every package, data flow, and integration point.
 
 ---
 
@@ -12,7 +12,7 @@ Luca is an **agentic development platform** designed to be installed into any ap
 - **Context management** — MuninnDB-backed memory (brain tree, engrams, session context) that prevents context rot and improves accuracy
 - **Workflow orchestration** — spec-driven development with complexity gating, verification harnesses, and cognitive pre-flight
 - **Cost optimization** — token budgets, compression, and context-tier resolution to minimize API spend
-- **Real-time observability** — a live dashboard (luca-observer) backed by SpacetimeDB so users always know what their agent team is doing
+- **Real-time observability** — a live dashboard (luca-observer) so users always know what their agent team is doing
 
 ---
 
@@ -24,10 +24,9 @@ luca-framework/                         # Monorepo root
 │   ├── luca-framework/                 # Core framework (state machine, bridges, ledger)
 │   │   └── src/state/                  # XState v5 state machine + bridge CLI
 │   │       ├── __helpers/
-│   │       │   ├── spacetimedb-client.ts   # HTTP SQL query client for SpacetimeDB reads
-│   │       │   └── observer-emitter.ts     # Fire-and-forget reducer calls for SpacetimeDB writes
-│   │       ├── persistence.ts              # State load/save (SpacetimeDB-primary, JSON fallback)
-│   │       ├── bridge.ts                   # CLI bridge with 15 subcommands
+│   │       │   └── audit-findings.ts       # Audit findings persistence
+│   │       ├── persistence.ts              # State load/save (JSON file)
+│   │       ├── bridge.ts                   # CLI bridge with 13 subcommands
 │   │       ├── ledger.ts                   # Append-only event ledger
 │   │       ├── suspend-checkpoint.ts       # Phase suspend/resume checkpoints
 │   │       └── machine.ts                  # XState v5 state machine definition
@@ -36,16 +35,7 @@ luca-framework/                         # Monorepo root
 │   │   ├── app/                        # App Router pages (11 routes)
 │   │   ├── hooks/                      # React hooks (16 hooks using useTable())
 │   │   ├── components/                 # UI components (Tremor + Tailwind)
-│   │   ├── lib/spacetimedb-config.ts   # Connection config
-│   │   └── module_bindings/            # Auto-generated SpacetimeDB TypeScript client
-│   │
-│   └── luca-spacetime/                 # SpacetimeDB module + config
-│       ├── spacetimedb/
-│       │   └── src/
-│       │       ├── schema.ts           # 18 tables with indexes
-│       │       └── index.ts            # 21 reducers + lifecycle hooks
-│       ├── spacetime.json              # Server config (maincloud)
-│       └── spacetime.local.json        # Local dev config
+│   │   └── lib/                        # Shared utilities
 │
 ├── src/                                # Domain source (13 domains across 4 tiers)
 │   ├── agents/                         # T2 Entity — agent definitions
@@ -113,25 +103,24 @@ phase:idle → phase:pre-flight → phase:executing → phase:verifying
 
 **File**: `packages/luca-framework/src/state/persistence.ts`
 
-| Function               | Read Source                                                  | Write Target                                                            |
-| ---------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `loadPersistedActor()` | SpacetimeDB `workflow_state` table → fallback `state.json`   | —                                                                       |
-| `persistActor()`       | —                                                            | SpacetimeDB `update_workflow_state` reducer + `state.json` + `STATE.md` |
-| `createFreshActor()`   | SpacetimeDB `workflow_config` table → fallback `config.json` | —                                                                       |
-| `stateExists()`        | SpacetimeDB query → fallback file check                      | —                                                                       |
+| Function               | Read Source   | Write Target              |
+| ---------------------- | ------------- | ------------------------- |
+| `loadPersistedActor()` | `state.json`  | —                         |
+| `persistActor()`       | —             | `state.json` + `STATE.md` |
+| `createFreshActor()`   | `config.json` | —                         |
+| `stateExists()`        | File check    | —                         |
 
 ### Bridge CLI
 
 **File**: `packages/luca-framework/src/state/bridge.ts`
 
-The bridge provides a shell-friendly interface with **15 subcommands**:
+The bridge provides a shell-friendly interface with **13 subcommands**:
 
 **Read commands**: `read-status`, `read-complexity`, `read-oversight`, `read-phase`, `read-field`, `read-ledger`
 **Write commands**: `set-field`, `transition` (event dispatch with `--event=TYPE`)
 **Lifecycle**: `ensure-init`, `snapshot`, `gate-check`, `suspend`, `resume-phase`
-**Observability**: `emit-event`, `emit-context-snapshot`
 
-All reads query SpacetimeDB first, fall back to local JSON. All writes use dual-write (SpacetimeDB reducer + local JSON).
+All reads and writes use the local JSON file (`.planning/state.json`). STATE.md generation is gated by `LUCA_EXPORT_MD=true`.
 
 ---
 
@@ -196,287 +185,44 @@ A T1 Core domain that tracks per-agent effectiveness metrics:
 - **Scorecard queries**: Filtering and sorting for model routing decisions (e.g., prefer agents with higher success rates)
 - **Scorecard reports**: Formatted output for dashboard display and audit
 
-This domain is consumed by the routing layer to make data-driven agent selection decisions. It reads/writes a local scorecard JSON file and is independent of the SpacetimeDB event flow.
+This domain is consumed by the routing layer to make data-driven agent selection decisions. It reads/writes a local scorecard JSON file.
 
-### 5.2 `packages/luca-spacetime/` -- SpacetimeDB Server Module
-
-**Files**: `packages/luca-spacetime/spacetimedb/src/schema.ts` (18 tables), `packages/luca-spacetime/spacetimedb/src/index.ts` (21 reducers), `packages/luca-spacetime/spacetimedb/src/cleanup-schedule.ts`
-
-The persistent state layer. Defines the database schema and reducers that store all workflow telemetry, state, and memory. Acts as the shared backend between the framework (write path via HTTP reducer calls) and the observer dashboard (read path via WebSocket subscriptions).
-
-### 5.3 `packages/luca-observer/` -- Real-Time Dashboard (Next.js 15)
+### 5.2 `packages/luca-observer/` -- Real-Time Dashboard (Next.js 15)
 
 **Files**: 11 App Router pages, 16 React hooks, Tremor + Tailwind UI
 
-A Next.js 15 dashboard that subscribes to SpacetimeDB tables via WebSocket. Renders real-time workflow state, event feeds, iteration convergence, harness results, memory contents, cost tracking, and decision audit trails. No client-side state management -- all data comes from SpacetimeDB subscriptions via `useTable()` hooks.
+A Next.js 15 dashboard for real-time workflow observability. The observer package is maintained separately from the core framework.
 
-### 5.4 Event Flow
+### 5.3 Relationship to Core Domains
 
-```
-src/ domain code (agents, skills, hooks)
-    |
-    v  (fire-and-forget HTTP POST to reducers)
-packages/luca-spacetime/ (SpacetimeDB tables)
-    |
-    v  (WebSocket subscription push)
-packages/luca-observer/ (React dashboard via useTable() hooks)
-```
-
-The `src/observability/` scorecard engine operates independently from this event flow -- it reads/writes a local scorecard JSON file and is queried by the routing layer at decision time.
-
-### 5.5 Relationship to Core Domains
-
-| Component                  | Tier             | Depends On     | Consumed By                                    |
-| -------------------------- | ---------------- | -------------- | ---------------------------------------------- |
-| `src/observability/`       | T1 Core          | T0 (shared)    | Routing layer, report generation               |
-| `packages/luca-spacetime/` | External package | --             | luca-framework (writes), luca-observer (reads) |
-| `packages/luca-observer/`  | External package | luca-spacetime | End user (browser)                             |
+| Component                 | Tier             | Depends On  | Consumed By                      |
+| ------------------------- | ---------------- | ----------- | -------------------------------- |
+| `src/observability/`      | T1 Core          | T0 (shared) | Routing layer, report generation |
+| `packages/luca-observer/` | External package | --          | End user (browser)               |
 
 ---
 
-## 6. SpacetimeDB Integration (Detail)
+## 7. Observer Dashboard
 
-### Module Definition
-
-**Schema**: `packages/luca-spacetime/spacetimedb/src/schema.ts`
-**Reducers**: `packages/luca-spacetime/spacetimedb/src/index.ts`
-
-### 18 Tables
-
-| Table                 | Purpose                                | Key Fields                                                      |
-| --------------------- | -------------------------------------- | --------------------------------------------------------------- |
-| `sessions`            | Active workflow sessions               | sessionId, ticketId, branch, startedAt                          |
-| `workflow_state`      | Current workflow state (singleton-ish) | workflowState, currentPhase, complexity, oversight, contextJson |
-| `workflow_config`     | Workflow configuration                 | configJson                                                      |
-| `observer_events`     | Raw event feed                         | eventType, source, payload, timestamp                           |
-| `iteration_records`   | Per-iteration convergence data         | phaseId, iteration, qualityScore, tokensUsed                    |
-| `metrics`             | Aggregated session metrics             | metricsJson                                                     |
-| `harness_results`     | Verification harness output            | phaseId, passed, resultJson                                     |
-| `tribunal_results`    | Debate/tribunal findings               | phaseId, resultJson                                             |
-| `decision_logs`       | Decision audit trail                   | decisionType, description, rationale, outcome                   |
-| `token_usage`         | Per-call token tracking                | model, inputTokens, outputTokens, cost                          |
-| `tool_calls`          | Tool invocation log                    | toolName, args, result, durationMs                              |
-| `cost_tracking`       | Session cost aggregation               | sessionId, totalCost, totalTokens                               |
-| `memory_files`        | Memory tier contents                   | brainMd, memoryMd, workingMd, proceduresMd                      |
-| `session_plans`       | WSJF-scored plan items                 | planJson                                                        |
-| `context_snapshots`   | Context window snapshots               | snapshotJson                                                    |
-| `ledger_entries`      | Append-only state transition log       | sessionId, sequenceNumber, entryType, entryJson                 |
-| `suspend_checkpoints` | Phase suspend/resume data              | phaseId, checkpointJson                                         |
-| `notes`               | Structured notes                       | title, content, status                                          |
-
-### 21 Reducers
-
-**Session lifecycle**: `ingest_event`
-**State management**: `update_workflow_state`, `update_workflow_config`
-**Iteration tracking**: `append_iteration_record`, `update_metrics`
-**Verification**: `update_harness_result`, `update_tribunal_result`
-**Cost/tokens**: `update_cost`, `log_token_usage`, `log_tool_call`
-**Memory**: `update_memory_files`, `snapshot_context`
-**Planning**: `update_session_plan`
-**Ledger**: `append_ledger_entry`
-**Checkpoints**: `save_checkpoint`, `delete_checkpoint`
-**Decisions**: `log_decision`
-**Notes**: `create_note`, `complete_note`
-**Export**: `export_to_json`, `export_to_md`
-
-### HTTP API Format (SpacetimeDB v2.0)
-
-#### SQL Queries (Reads)
-
-```
-POST /v1/database/{db_name}/sql
-Content-Type: text/plain
-Body: SELECT * FROM workflow_state WHERE id = 1
-```
-
-Response format (positional arrays with schema metadata):
-
-```json
-[
-  {
-    "schema": {
-      "elements": [
-        { "name": { "some": "id" } },
-        { "name": { "some": "workflowState" } },
-        { "name": { "some": "currentPhase" } }
-      ]
-    },
-    "rows": [[1, "executing", "phase-107"]]
-  }
-]
-```
-
-#### Reducer Calls (Writes)
-
-```
-POST /v1/database/{db_name}/call/{reducer_name}
-Content-Type: application/json
-Body: { "eventType": "phase_started", "source": "bridge", ... }
-```
-
-Args are flat JSON — **not** wrapped in `{"args": {...}}`.
-
-### Data Flow Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     WRITE PATH (Fire-and-Forget)                │
-│                                                                 │
-│  luca-framework (bridge.ts, persistence.ts, ledger.ts)          │
-│  MuninnDB MCP tools (memory reads/writes)                       │
-│  .claude/hooks/ (shell scripts via curl)                        │
-│       │                                                         │
-│       ▼                                                         │
-│  observer-emitter.ts → HTTP POST /v1/database/{db}/call/{reducer}│
-│       │                                                         │
-│       ▼                                                         │
-│  SpacetimeDB (18 tables)                                        │
-│       │                                                         │
-│       ▼  (WebSocket subscription push)                          │
-│  luca-observer (module_bindings → useTable() hooks → React UI)  │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                     READ PATH (SQL + Fallback)                  │
-│                                                                 │
-│  luca-framework (bridge.ts, persistence.ts, ledger.ts)          │
-│  MuninnDB MCP tools (memory reads/writes)                       │
-│       │                                                         │
-│       ▼                                                         │
-│  spacetimedb-client.ts → HTTP POST /v1/database/{db}/sql        │
-│       │                                                         │
-│       ├─── SUCCESS → parse positional rows → return typed data  │
-│       │                                                         │
-│       └─── FAILURE → fallback to local JSON files               │
-│            (state.json, etc.)                                    │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                     OBSERVER READ PATH (Real-Time)              │
-│                                                                 │
-│  luca-observer (browser)                                        │
-│       │                                                         │
-│       ▼                                                         │
-│  SpacetimeDBProvider (WebSocket to ws://host/v1/database/{db})  │
-│       │                                                         │
-│       ▼                                                         │
-│  useTable(tables.workflowState) → [rows, isLoading]             │
-│       │                                                         │
-│       ▼                                                         │
-│  React components render real-time data                         │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Configuration
-
-| Variable                         | Default                 | Purpose                |
-| -------------------------------- | ----------------------- | ---------------------- |
-| `LUCA_SPACETIMEDB_URL`           | `http://localhost:3000` | SpacetimeDB server URL |
-| `LUCA_SPACETIMEDB_DB`            | `luca-observer`         | Database/module name   |
-| `NEXT_PUBLIC_SPACETIMEDB_URI`    | `ws://localhost:3000`   | Observer WebSocket URI |
-| `NEXT_PUBLIC_SPACETIMEDB_MODULE` | `luca-observer`         | Observer module name   |
-
-### Security
-
-- All SpacetimeDB URLs validated via `isLocalhostUrl()` to prevent SSRF
-- Write operations are fire-and-forget (SpacetimeDB is optional, framework never blocks on it)
-- No authentication tokens required for local SpacetimeDB
-
----
-
-## 7. Observer Dashboard (Detail)
-
-### Technology Stack
-
-- **Framework**: Next.js 15 (App Router)
-- **UI**: Tremor components + Tailwind CSS
-- **Real-time**: SpacetimeDB WebSocket subscriptions via `useTable()` hooks
-- **State**: No client state management — all data comes from SpacetimeDB subscriptions
-
-### 11 Route Pages
-
-| Route         | Purpose                                                             | Primary Tables                    |
-| ------------- | ------------------------------------------------------------------- | --------------------------------- |
-| `/`           | Dashboard overview — workflow state, phase, complexity, key metrics | workflow_state, metrics, sessions |
-| `/events`     | Live event feed with filtering                                      | observer_events                   |
-| `/iterations` | Per-iteration convergence tracking with charts                      | iteration_records                 |
-| `/harness`    | Verification harness results                                        | harness_results                   |
-| `/memory`     | MuninnDB memory viewer (brain, engrams, session)                    | memory_files                      |
-| `/cost`       | Session cost breakdown, token usage trends                          | cost_tracking, token_usage        |
-| `/decisions`  | Decision audit trail with rationale                                 | decision_logs                     |
-| `/plan`       | WSJF-scored plan items                                              | session_plans                     |
-| `/context`    | Context window snapshots                                            | context_snapshots                 |
-| `/tribunal`   | Debate findings and rebuttals                                       | tribunal_results                  |
-| `/notes`      | Structured notes                                                    | notes                             |
-
-### 16 React Hooks
-
-All hooks follow the pattern:
-
-```typescript
-const [rows, isLoading] = useTable(tables.tableName);
-```
-
-| Hook                      | Table                 | Returns                          |
-| ------------------------- | --------------------- | -------------------------------- |
-| `useWorkflowState()`      | `workflow_state`      | Current state, phase, complexity |
-| `useObserverEvents()`     | `observer_events`     | Filtered, sorted event list      |
-| `useIterationRecords()`   | `iteration_records`   | Per-iteration data for charts    |
-| `useMetrics()`            | `metrics`             | Aggregated session metrics       |
-| `useHarnessResults()`     | `harness_results`     | Verification pass/fail data      |
-| `useTribunalResults()`    | `tribunal_results`    | Debate findings                  |
-| `useMemoryFiles()`        | `memory_files`        | Memory tier contents             |
-| `useCostTracking()`       | `cost_tracking`       | Session cost data                |
-| `useTokenUsage()`         | `token_usage`         | Per-call token breakdown         |
-| `useToolCalls()`          | `tool_calls`          | Tool invocation log              |
-| `useDecisionLogs()`       | `decision_logs`       | Decision audit trail             |
-| `useSessionPlans()`       | `session_plans`       | Plan items                       |
-| `useContextSnapshots()`   | `context_snapshots`   | Context window data              |
-| `useLedgerEntries()`      | `ledger_entries`      | State transition log             |
-| `useSuspendCheckpoints()` | `suspend_checkpoints` | Checkpoint data                  |
-| `useNotes()`              | `notes`               | Notes list                       |
-
-### Connection Setup
-
-**File**: `packages/luca-observer/lib/spacetimedb-config.ts`
-
-```typescript
-export const SPACETIMEDB_URI =
-  process.env.NEXT_PUBLIC_SPACETIMEDB_URI ?? "ws://localhost:3000";
-export const MODULE_NAME =
-  process.env.NEXT_PUBLIC_SPACETIMEDB_MODULE ?? "luca-observer";
-```
-
-The root layout wraps all pages in `<SpacetimeDBProvider>` with a memoized `DbConnection.builder()`.
+> **Note**: The luca-observer package is maintained separately. SpacetimeDB integration has been removed from the core framework. See `docs/observer-architecture.md` for observer-specific details.
 
 ---
 
 ## 8. Hook System
 
-### 8 Shell Hooks
+### Shell Hooks
 
 **Source**: `src/hooks/scripts/` → compiled to `.claude/hooks/` via `bun run build:all`
 
-| Hook                     | Trigger                 | Purpose                                                                      |
-| ------------------------ | ----------------------- | ---------------------------------------------------------------------------- |
-| `session-start.sh`       | Session start           | Initialize state, recall brain tree from MuninnDB, start SpacetimeDB session |
-| `post-edit-format.sh`    | After file edit         | Auto-format edited files                                                     |
-| `post-edit-typecheck.sh` | After file edit (async) | Type-check changed file                                                      |
-| `pre-commit-gate.sh`     | Before git commit       | Run tests + typecheck, block on failure                                      |
-| `context-monitor.sh`     | On stop                 | Monitor context usage, warn on degradation                                   |
-| `session-persist.sh`     | Session end             | Persist state, extract learnings                                             |
-| `observer-event.sh`      | Various                 | Emit events to SpacetimeDB via curl                                          |
-| `memory-sync.sh`         | After memory write      | Sync memory files to SpacetimeDB                                             |
-
-### Hook → SpacetimeDB Integration
-
-Hooks emit events via direct `curl` calls to the SpacetimeDB reducer API:
-
-```bash
-curl -s -X POST "http://localhost:3000/v1/database/luca-observer/call/ingest_event" \
-  -H "Content-Type: application/json" \
-  -d '{"eventType":"phase_started","source":"hook","payload":"{...}","timestamp":"..."}'
-```
+| Hook                         | Trigger                 | Purpose                                            |
+| ---------------------------- | ----------------------- | -------------------------------------------------- |
+| `session-start.sh`           | Session start           | Initialize state, recall brain tree from MuninnDB  |
+| `post-edit-format.sh`        | After file edit         | Auto-format edited files                           |
+| `post-edit-typecheck.sh`     | After file edit (async) | Type-check changed file                            |
+| `pre-commit-gate.sh`         | Before git commit       | Run tests + typecheck, block on failure            |
+| `context-monitor.sh`         | On stop                 | Monitor context usage, warn on degradation         |
+| `context-check-throttled.sh` | After tool use          | Throttled context check + developer notes delivery |
+| `session-persist.sh`         | Session end             | Persist state, write session-end marker            |
 
 ---
 
@@ -593,11 +339,11 @@ The unified `/lu` command routes through a 10-step pipeline:
 
 The ledger is an append-only log of state transitions, providing a complete audit trail.
 
-| Operation     | SpacetimeDB Path                                                                  | Local Fallback                   |
-| ------------- | --------------------------------------------------------------------------------- | -------------------------------- |
-| Append entry  | Reducer: `append_ledger_entry`                                                    | Append to `session-ledger.jsonl` |
-| Read ledger   | SQL: `SELECT * FROM ledger_entries WHERE session_id = ? ORDER BY sequence_number` | Read `session-ledger.jsonl`      |
-| Next sequence | SQL: `SELECT MAX(sequence_number) FROM ledger_entries WHERE session_id = ?`       | Parse last line of JSONL         |
+| Operation     | Storage                          |
+| ------------- | -------------------------------- |
+| Append entry  | Append to `session-ledger.jsonl` |
+| Read ledger   | Read `session-ledger.jsonl`      |
+| Next sequence | Parse last line of JSONL         |
 
 Entry types: `phase_started`, `phase_completed`, `transition`, `error`, `checkpoint`, `metric`, `decision`
 
@@ -609,11 +355,11 @@ Entry types: `phase_started`, `phase_completed`, `transition`, `error`, `checkpo
 
 Allows pausing work mid-phase and resuming later with full context.
 
-| Operation         | SpacetimeDB Path                                                          | Local Fallback                           |
-| ----------------- | ------------------------------------------------------------------------- | ---------------------------------------- |
-| Save checkpoint   | Reducer: `save_checkpoint`                                                | Write `checkpoints/suspend-{phase}.json` |
-| Load checkpoint   | SQL: `SELECT checkpoint_json FROM suspend_checkpoints WHERE phase_id = ?` | Read `checkpoints/suspend-{phase}.json`  |
-| Delete checkpoint | Reducer: `delete_checkpoint`                                              | Delete file                              |
+| Operation         | Storage                                  |
+| ----------------- | ---------------------------------------- |
+| Save checkpoint   | Write `checkpoints/suspend-{phase}.json` |
+| Load checkpoint   | Read `checkpoints/suspend-{phase}.json`  |
+| Delete checkpoint | Delete file                              |
 
 Checkpoint data includes: phase state, working memory snapshot, iteration progress, pending tasks.
 
@@ -621,30 +367,17 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 
 ## 13. Key Integration Points for Verification
 
-### End-to-End Data Flow Test
+### State Persistence Test
 
-1. **Write**: Framework calls `callReducer("ingest_event", {...})` via `observer-emitter.ts`
-2. **Store**: SpacetimeDB persists event in `observer_events` table
-3. **Push**: WebSocket subscription notifies connected clients
-4. **Render**: Observer dashboard `useObserverEvents()` hook receives update, React re-renders
-
-### Read Path Test
-
-1. **Query**: Framework calls `queryTable("SELECT * FROM workflow_state WHERE id = 1")` via `spacetimedb-client.ts`
-2. **Parse**: Response converted from positional arrays to named objects
-3. **Use**: Bridge CLI returns parsed data to calling skill/agent
-
-### Fallback Test
-
-1. **SpacetimeDB down**: `spacetimedb-client.ts` catches error
-2. **Fallback**: Reads from local `state.json`; memory falls back to MuninnDB (independent of SpacetimeDB)
-3. **No interruption**: Framework continues operating without observability
+1. **Write**: Framework persists actor snapshot to `.planning/state.json`
+2. **Read**: Bridge CLI loads persisted actor and returns typed data
+3. **Ledger**: State transitions appended to `.planning/session-ledger.jsonl`
 
 ### Hook Integration Test
 
 1. **Hook fires**: Shell script runs on trigger event
-2. **Curl**: Posts to SpacetimeDB reducer endpoint
-3. **Silent failure**: If SpacetimeDB is down, hook swallows error and continues
+2. **Bridge call**: Reads/writes state via bridge CLI subcommands
+3. **Resilient**: All bridge calls use `2>/dev/null || true` for graceful degradation
 
 ---
 
@@ -657,22 +390,18 @@ Checkpoint data includes: phase state, working memory snapshot, iteration progre
 
 ### Short-Term
 
-- **Authentication**: Add SpacetimeDB identity-based auth for multi-user scenarios
 - **Error boundaries**: Add React error boundaries around each dashboard section
-- **Connection resilience**: Auto-reconnect logic for WebSocket drops
-- **Data retention**: Add TTL or cleanup reducers for high-volume tables (observer_events, token_usage)
+- **Observability redesign**: Build lightweight emission layer using MuninnDB session memory
 
 ### Medium-Term
 
 - **NPM packaging**: Extract core framework as installable npm package
-- **Multi-project support**: Single SpacetimeDB instance serving multiple projects
 - **Historical data**: Time-series queries and trend visualization
 - **Agent coordination**: Real-time agent status tracking in observer dashboard
 - **Export/import**: Bulk data export for analysis, import for replay
 
 ### Long-Term
 
-- **Distributed agents**: Multi-machine agent coordination via SpacetimeDB
 - **Custom dashboards**: User-configurable dashboard layouts
 - **Plugin system**: Third-party integrations for CI/CD, issue trackers, etc.
 - **Cost analytics**: Cross-session cost trends, budget forecasting
@@ -687,14 +416,6 @@ bun install                                    # Install all dependencies
 bun run build:all                              # Build agents/skills/rules/hooks/plugin
 bun test                                       # Run all tests
 bunx --bun tsc --noEmit                        # Type-check
-
-# SpacetimeDB
-spacetime start                                # Start local SpacetimeDB server
-spacetime publish luca-observer --module-path packages/luca-spacetime/spacetimedb  # Publish module
-spacetime generate --lang typescript \
-  --out-dir packages/luca-observer/module_bindings \
-  --module-path packages/luca-spacetime/spacetimedb  # Regenerate client bindings
-spacetime logs luca-observer                   # View server logs
 
 # Observer
 cd packages/luca-observer && bun run dev       # Start observer dashboard (localhost:3456)

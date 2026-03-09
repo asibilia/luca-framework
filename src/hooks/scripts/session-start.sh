@@ -156,6 +156,26 @@ else
   fi
 fi
 
+# Step 3f: Check for stale session-end marker (signals MuninnDB cleanup needed)
+# The actual MuninnDB cleanup happens in lu-cognition's cleanup_stale_sessions step
+# (MCP tools are unavailable in hooks). This marker signals that cleanup is pending.
+SESSION_END_MARKER="$PLANNING_DIR/.session-end-marker.json"
+STALE_SESSION_MSG=""
+if [ -f "$SESSION_END_MARKER" ]; then
+  if command -v bun &>/dev/null; then
+    STALE_SESSION_MSG=$(HOOK_MARKER="$SESSION_END_MARKER" bun -e "
+      try {
+        const marker = JSON.parse(await Bun.file(process.env.HOOK_MARKER).text());
+        if (marker.cleanup_pending) {
+          process.stdout.write('Stale session detected (ended: ' + (marker.ended_at || 'unknown') + '). MuninnDB cleanup will run during cognitive pre-flight.');
+        }
+      } catch { /* no marker or parse error */ }
+    " 2>/dev/null || echo "")
+  fi
+  # Remove marker after reading (cleanup will be handled by lu-cognition)
+  rm -f "$SESSION_END_MARKER"
+fi
+
 # Step 4: Detect runtime
 if command -v bun &>/dev/null; then
   RUNTIME="bun"
@@ -281,6 +301,17 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export LUCA_SESSION_ACTIVE=1" >> "$CLAUDE_ENV_FILE"
 fi
 
+# Step 7b: Check for stale session lock (older than 2 hours = crashed session)
+SESSION_LOCK="$PROJECT_DIR/.claude/.session-lock"
+if [ -f "$SESSION_LOCK" ]; then
+  LOCK_MTIME=$(stat -f "%m" "$SESSION_LOCK" 2>/dev/null || stat -c "%Y" "$SESSION_LOCK" 2>/dev/null || echo "0")
+  NOW_TS=$(date +%s)
+  LOCK_AGE=$((NOW_TS - LOCK_MTIME))
+  if [ "$LOCK_AGE" -gt 7200 ]; then
+    rm -f "$SESSION_LOCK"
+  fi
+fi
+
 # Step 8: Create session lock file (with build manifest snapshot)
 HOOK_PROJECT_DIR_LOCK="$PROJECT_DIR" bun -e "
   const path = require('path');
@@ -316,16 +347,7 @@ if [ -d "$PLANNING_DIR/notes" ]; then
   fi
 fi
 
-# Step 9: Emit session.start event to SpacetimeDB (fire-and-forget)
-STDB_URL="${LUCA_SPACETIMEDB_URL:-http://localhost:3000}"
-SESSION_ID=$(run_bridge read-field --field=session_id 2>/dev/null | bun -e "
-  try { const d = JSON.parse(await Bun.stdin.text()); process.stdout.write(d.value || ''); } catch { process.stdout.write(''); }
-" 2>/dev/null || echo "")
-if [ -n "$SESSION_ID" ]; then
-  run_bridge emit-event --type=session.start --session="$SESSION_ID" &>/dev/null &
-fi
-
-# Step 10: Output summary if anything was created
+# Step 9: Output summary if anything was created
 if [ -n "$CREATED" ]; then
   HOOK_CREATED="$CREATED" HOOK_NOTES_MSG="$NOTES_MSG" bun -e "
     const created = process.env.HOOK_CREATED.trim();

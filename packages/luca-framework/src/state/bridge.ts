@@ -1,15 +1,14 @@
 /**
  * High-level CLI bridge for the Luca workflow state machine.
  *
- * SpacetimeDB-primary: all read functions query SpacetimeDB first with
- * graceful JSON file fallback. Write functions call SpacetimeDB reducers.
+ * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (15):
- *   read-complexity        — Read current complexity level (graceful fallback)
- *   read-oversight         — Read current oversight level (graceful fallback)
- *   read-phase             — Read current phase info (graceful fallback)
- *   read-status            — Read comprehensive workflow status (graceful fallback)
+ * Subcommands (13):
+ *   read-complexity        — Read current complexity level
+ *   read-oversight         — Read current oversight level
+ *   read-phase             — Read current phase info
+ *   read-status            — Read comprehensive workflow status
  *   read-field             — Read an arbitrary context field (errors on missing state)
  *   read-ledger            — Read session ledger entries with optional filters
  *   set-field              — Set an allowlisted context field + persist + regenerate STATE.md
@@ -19,8 +18,6 @@
  *   gate-check             — Check if a named gate is enabled
  *   suspend                — Create checkpoint and suspend current phase
  *   resume-phase           — Load checkpoint and resume a suspended phase
- *   emit-event             — Emit a fire-and-forget observer event to SpacetimeDB
- *   emit-context-snapshot  — Emit a context-window snapshot to SpacetimeDB
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -39,8 +36,6 @@
  *   luca-state gate-check --gate=confirm_plan
  *   luca-state suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
  *   luca-state resume-phase --phase=42
- *   luca-state emit-event --type=session.start [--session=abc] [--agent=name] [--data=json]
- *   luca-state emit-context-snapshot --session=abc [--percent=50] [--messages=100] [--tokens=5000]
  *
  * @module luca-state/bridge
  */
@@ -70,9 +65,6 @@ import {
 import type { SuspendCheckpoint } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
-import { callReducer, emitObserverEvent } from "./__helpers/observer-emitter";
-import { queryOne } from "./__helpers/spacetimedb-client";
-import { readWithFallback } from "./__helpers/read-with-fallback";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -194,14 +186,12 @@ const VALID_SUBCOMMANDS = [
   "gate-check",
   "suspend",
   "resume-phase",
-  "emit-event",
-  "emit-context-snapshot",
 ] as const;
 
 /**
  * Formatted help text for the bridge CLI.
  *
- * Organized by command category (read, write, lifecycle, observability)
+ * Organized by command category (read, write, lifecycle)
  * with option descriptions for each subcommand.
  */
 const HELP_TEXT = `luca-state — CLI bridge for the Luca workflow state machine
@@ -227,10 +217,6 @@ Lifecycle commands:
   suspend                Suspend a phase (--phase=N [--reason=str])
   resume-phase           Resume a suspended phase (--phase=N)
 
-Observability commands:
-  emit-event             Emit observer event (--type=eventType [--session=id])
-  emit-context-snapshot  Emit context snapshot (--session=id [--percent=N])
-
 Options:
   --help, -h             Show this help message`;
 
@@ -247,22 +233,45 @@ function printUsage(stream: "stdout" | "stderr" = "stderr"): void {
   }
 }
 
-// ─── Read Commands (Graceful Fallback) ──────────────────────────────────────
+// ─── Read Helper ────────────────────────────────────────────────────────────
+
+/**
+ * Read state from the persisted JSON file.
+ *
+ * Reads the JSON state file and applies the provided `fromSnapshot` transform
+ * to extract the requested data. Returns `defaults` if state is missing or
+ * cannot be parsed.
+ *
+ * @param opts - Options for reading state
+ */
+async function readFromState<T>(opts: {
+  fromSnapshot: (ctx: Record<string, unknown>, stateValue: string) => T | null;
+  defaults: T;
+}): Promise<T> {
+  try {
+    const file = Bun.file(STATE_FILE_PATH);
+    if (!(await file.exists())) return opts.defaults;
+    const raw = sanitizeJsonParse(await file.text()) as {
+      value?: unknown;
+      context?: Record<string, unknown>;
+    };
+    if (!raw.context) return opts.defaults;
+    const result = opts.fromSnapshot(raw.context, String(raw.value ?? "idle"));
+    return result ?? opts.defaults;
+  } catch {
+    return opts.defaults;
+  }
+}
+
+// ─── Read Commands ──────────────────────────────────────────────────────────
 
 /**
  * Read the current complexity level.
  *
- * SpacetimeDB-primary with JSON file fallback.
  * Returns "TRIVIAL" as default if state is not initialized.
  */
 async function handleReadComplexity(): Promise<void> {
-  const result = await readWithFallback({
-    label: "read-complexity",
-    sql: "SELECT complexity FROM workflow_state WHERE id = 1",
-    fromRow: (row: { complexity: string }) => ({
-      complexity: row.complexity,
-      initialized: true,
-    }),
+  const result = await readFromState({
     fromSnapshot: (ctx) => ({
       complexity: ctx.complexity as string,
       initialized: true,
@@ -275,17 +284,10 @@ async function handleReadComplexity(): Promise<void> {
 /**
  * Read the current oversight level.
  *
- * SpacetimeDB-primary with JSON file fallback.
  * Returns "milestone" as default if state is not initialized.
  */
 async function handleReadOversight(): Promise<void> {
-  const result = await readWithFallback({
-    label: "read-oversight",
-    sql: "SELECT oversight FROM workflow_state WHERE id = 1",
-    fromRow: (row: { oversight: string }) => ({
-      oversight: row.oversight,
-      initialized: true,
-    }),
+  const result = await readFromState({
     fromSnapshot: (ctx) => ({
       oversight: ctx.oversight as string,
       initialized: true,
@@ -298,24 +300,10 @@ async function handleReadOversight(): Promise<void> {
 /**
  * Read current phase information.
  *
- * SpacetimeDB-primary with JSON file fallback.
  * Returns null/empty defaults if state is not initialized.
  */
 async function handleReadPhase(): Promise<void> {
-  const result = await readWithFallback({
-    label: "read-phase",
-    sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
-    fromRow: (row: { contextJson: string }) => {
-      if (!row.contextJson) return null;
-      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
-      return {
-        current_phase: ctx.current_phase ?? null,
-        current_milestone: ctx.current_milestone ?? null,
-        current_plan_ids: ctx.current_plan_ids ?? [],
-        current_wave_count: ctx.current_wave_count ?? 0,
-        initialized: true,
-      };
-    },
+  const result = await readFromState({
     fromSnapshot: (ctx) => ({
       current_phase: (ctx.current_phase as number | null) ?? null,
       current_milestone: (ctx.current_milestone as string | null) ?? null,
@@ -337,7 +325,6 @@ async function handleReadPhase(): Promise<void> {
 /**
  * Read comprehensive workflow status.
  *
- * SpacetimeDB-primary with JSON file fallback.
  * Returns key fields from the workflow context in a single JSON object.
  */
 async function handleReadStatus(): Promise<void> {
@@ -362,40 +349,7 @@ async function handleReadStatus(): Promise<void> {
     last_error: null as string | null,
   };
 
-  const result = await readWithFallback({
-    label: "read-status",
-    sql: "SELECT * FROM workflow_state WHERE id = 1",
-    fromRow: (row: {
-      workflowState: string;
-      complexity: string;
-      oversight: string;
-      contextJson: string;
-    }) => {
-      if (!row.contextJson) return null;
-      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
-      return {
-        initialized: true,
-        state: row.workflowState ?? "idle",
-        complexity: row.complexity ?? (ctx.complexity as string) ?? "TRIVIAL",
-        oversight: row.oversight ?? (ctx.oversight as string) ?? "milestone",
-        current_phase: ctx.current_phase ?? null,
-        current_milestone: ctx.current_milestone ?? null,
-        current_plan_ids: ctx.current_plan_ids ?? [],
-        current_wave_count: ctx.current_wave_count ?? 0,
-        ticket_id: ctx.ticket_id ?? null,
-        github_issue: ctx.github_issue ?? null,
-        branch: ctx.branch ?? null,
-        base_branch: ctx.base_branch ?? "main",
-        session_id: ctx.session_id ?? null,
-        started_at: ctx.started_at ?? null,
-        last_transition_at: ctx.last_transition_at ?? null,
-        verification_attempts: ctx.verification_attempts ?? 0,
-        phase_results_count: Array.isArray(ctx.phase_results)
-          ? ctx.phase_results.length
-          : 0,
-        last_error: ctx.last_error ?? null,
-      };
-    },
+  const result = await readFromState({
     fromSnapshot: (ctx, stateValue) => ({
       initialized: true,
       state: stateValue,
@@ -426,7 +380,6 @@ async function handleReadStatus(): Promise<void> {
 /**
  * Read an arbitrary context field by lodash path.
  *
- * SpacetimeDB-primary with JSON file fallback.
  * Unlike the read-* convenience commands, this errors on missing state.
  *
  * @param args - CLI arguments (--field=path required)
@@ -438,18 +391,7 @@ async function handleReadField(args: string[]): Promise<void> {
     process.exit(2);
   }
 
-  const result = await readWithFallback({
-    label: "read-field",
-    sql: "SELECT contextJson FROM workflow_state WHERE id = 1",
-    fromRow: (row: { contextJson: string }) => {
-      if (!row.contextJson) return null;
-      const ctx = sanitizeJsonParse(row.contextJson) as Record<string, unknown>;
-      const value = get(ctx, fieldPath);
-      // Return null when value is missing so readWithFallback
-      // falls through to the JSON file where the data may exist.
-      if (value === undefined) return null;
-      return { field: fieldPath, value };
-    },
+  const result = await readFromState({
     fromSnapshot: (ctx) => ({
       field: fieldPath,
       value: get(ctx, fieldPath),
@@ -489,8 +431,8 @@ const SETTABLE_FIELDS = [
 /**
  * Set an allowlisted context field, persist state, and regenerate STATE.md.
  *
- * SpacetimeDB-primary: reads context from SpacetimeDB, modifies the field,
- * calls the reducer to persist. Falls back to JSON file read-modify-write.
+ * Reads current context from the JSON state file, modifies the requested
+ * field, validates the updated context, and persists back to disk.
  *
  * @param args - CLI arguments (--field=name required, --value=json-or-string required)
  */
@@ -523,49 +465,24 @@ async function handleSetField(args: string[]): Promise<void> {
     value = rawValue;
   }
 
-  // Primary: try SpacetimeDB read-modify-write
+  // Read current state from JSON file
   let snapshotJson: Record<string, unknown> & {
     context: Record<string, unknown>;
     value?: unknown;
   };
-  let fromSpacetimeDB = false;
 
-  try {
-    const row = await queryOne<{ contextJson: string; workflowState: string }>(
-      "SELECT * FROM workflow_state WHERE id = 1",
-    );
-    if (row && row.contextJson) {
-      const ctx = sanitizeJsonParse(row.contextJson);
-      snapshotJson = {
-        context: ctx,
-        value: row.workflowState ?? "idle",
-      } as typeof snapshotJson;
-      fromSpacetimeDB = true;
-    }
-  } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for set-field read, falling back to JSON:",
-        (err as Error).message,
-      );
-    }
+  const stateFile = Bun.file(STATE_FILE_PATH);
+  if (!(await stateFile.exists())) {
+    console.error("State file not found. Run ensure-init first.");
+    process.exit(2);
   }
 
-  // Fallback: read from JSON file
-  if (!fromSpacetimeDB) {
-    const stateFile = Bun.file(STATE_FILE_PATH);
-    if (!(await stateFile.exists())) {
-      console.error("State file not found. Run ensure-init first.");
-      process.exit(2);
-    }
-
-    try {
-      const text = await stateFile.text();
-      snapshotJson = sanitizeJsonParse(text) as typeof snapshotJson;
-    } catch {
-      console.error("State file contains invalid JSON");
-      process.exit(2);
-    }
+  try {
+    const text = await stateFile.text();
+    snapshotJson = sanitizeJsonParse(text) as typeof snapshotJson;
+  } catch {
+    console.error("State file contains invalid JSON");
+    process.exit(2);
   }
 
   // Capture previous value and set new value
@@ -588,27 +505,9 @@ async function handleSetField(args: string[]): Promise<void> {
   // Update the timestamp
   updatedContext.last_transition_at = new Date().toISOString();
 
-  // Write to SpacetimeDB via reducer
-  callReducer("update_workflow_state", {
-    workflowState: String(snapshotJson!.value),
-    currentPhase: (updatedContext.current_phase as string) ?? "",
-    complexity: (updatedContext.complexity as string) ?? "TRIVIAL",
-    oversight: (updatedContext.oversight as string) ?? "milestone",
-    sessionId: (updatedContext.session_id as string) ?? "",
-    ticketId: (updatedContext.ticket_id as string) ?? "",
-    contextJson: JSON.stringify(updatedContext),
-  });
-
-  // Persist updated context to local JSON file (dual-write)
+  // Persist updated context to local JSON file
   const updatedJson = { ...snapshotJson!, context: updatedContext };
   await Bun.write(STATE_FILE_PATH, JSON.stringify(updatedJson, null, 2));
-
-  // Verify dual-write consistency
-  await checkDualWriteDivergence({
-    state: String(snapshotJson!.value),
-    complexity: (updatedContext.complexity as string) ?? "TRIVIAL",
-    phase: (updatedContext.current_phase as string | number | null) ?? null,
-  });
 
   // Optional: update STATE.md gated by env var
   if (process.env.LUCA_EXPORT_MD === "true") {
@@ -641,17 +540,6 @@ async function handleSetField(args: string[]): Promise<void> {
       state: String(snapshotJson!.value),
     }),
   );
-
-  // Emit to observer dashboard (fire-and-forget)
-  emitObserverEvent("state.field_set", {
-    session_id: (updatedContext.session_id as string) ?? undefined,
-    payload: {
-      field: fieldPath,
-      value,
-      previous_value: previousValue ?? null,
-      state: String(snapshotJson!.value),
-    },
-  });
 }
 
 // ─── Transition Command ─────────────────────────────────────────────────────
@@ -659,7 +547,7 @@ async function handleSetField(args: string[]): Promise<void> {
 /**
  * Send an event, persist state, and atomically update STATE.md.
  *
- * After the event is sent and state is persisted to SpacetimeDB,
+ * After the event is sent and state is persisted,
  * optionally generates STATE.md (gated by LUCA_EXPORT_MD).
  *
  * @param args - CLI arguments (--event=TYPE required, --data=json optional)
@@ -733,18 +621,6 @@ async function handleTransition(args: string[]): Promise<void> {
   });
 
   console.log(JSON.stringify(record, null, 2));
-
-  // Emit to observer dashboard (fire-and-forget)
-  emitObserverEvent("state.transition", {
-    session_id: nextSnapshot.context.session_id,
-    phase_id: nextSnapshot.context.current_phase ?? undefined,
-    payload: {
-      previous_state: String(prevState),
-      current_state: String(nextSnapshot.value),
-      event_type: eventType,
-      complexity: nextSnapshot.context.complexity,
-    },
-  });
 }
 
 // ─── Snapshot Command ───────────────────────────────────────────────────────
@@ -797,12 +673,6 @@ async function handleEnsureInit(args: string[]): Promise<void> {
     // State already exists -- return current info
     const loadResult = await loadPersistedActor();
     if (loadResult.success) {
-      // Re-persist to SpacetimeDB to ensure it stays in sync with
-      // the local JSON file. Without this, SpacetimeDB can stay stale
-      // if a previous persist failed (fire-and-forget) and hooks that
-      // read SpacetimeDB as primary will get empty/outdated values.
-      await persistActor(loadResult.data);
-
       const snapshot = loadResult.data.getSnapshot();
       console.log(
         JSON.stringify({
@@ -986,19 +856,6 @@ async function handleSuspend(args: string[]): Promise<void> {
       current_state: String(nextSnapshot.value),
     }),
   );
-
-  // Emit to observer dashboard (fire-and-forget)
-  emitObserverEvent("state.suspended", {
-    session_id: sessionId,
-    phase_id: phaseId,
-    payload: {
-      reason,
-      wave_index: waveIndex,
-      completed_task_ids: completedTaskIds,
-      previous_state: String(prevState),
-      current_state: String(nextSnapshot.value),
-    },
-  });
 }
 
 // ─── Resume Phase Command ────────────────────────────────────────────────────
@@ -1006,8 +863,7 @@ async function handleSuspend(args: string[]): Promise<void> {
 /**
  * Load a suspend checkpoint and resume the phase in the state machine.
  *
- * SpacetimeDB-primary: tries loading checkpoint from SpacetimeDB,
- * falls back to file-based checkpoint module.
+ * Loads checkpoint from the file-based checkpoint module.
  *
  * @param args - CLI arguments:
  *   --phase=N (required) Phase number to resume
@@ -1028,37 +884,14 @@ async function handleResumePhase(args: string[]): Promise<void> {
 
   const keepCheckpoint = hasFlag(args, "keep-checkpoint");
 
-  // Load checkpoint: try SpacetimeDB first, fall back to file
   let checkpoint;
   try {
-    // phaseId is parsed via parseInt(phaseStr, 10) and validated as a finite
-    // non-negative integer above — safe to interpolate directly into SQL.
-    const row = await queryOne<{ checkpointJson: string }>(
-      `SELECT checkpointJson FROM suspend_checkpoints WHERE phaseId = ${phaseId}`,
-    );
-    if (row && row.checkpointJson) {
-      checkpoint = sanitizeJsonParse(row.checkpointJson) as SuspendCheckpoint;
-    }
+    checkpoint = await loadSuspendCheckpoint(phaseId);
   } catch (err) {
-    if (process.env.LUCA_DEBUG) {
-      console.error(
-        "[bridge] SpacetimeDB unavailable for resume-phase checkpoint, falling back to file:",
-        (err as Error).message,
-      );
-    }
-  }
-
-  if (!checkpoint) {
-    try {
-      checkpoint = await loadSuspendCheckpoint(phaseId);
-    } catch (err) {
-      console.error(
-        err instanceof Error
-          ? err.message
-          : `Failed to load checkpoint: ${err}`,
-      );
-      process.exit(2);
-    }
+    console.error(
+      err instanceof Error ? err.message : `Failed to load checkpoint: ${err}`,
+    );
+    process.exit(2);
   }
 
   // Load actor and send RESUME_PHASE event
@@ -1121,19 +954,6 @@ async function handleResumePhase(args: string[]): Promise<void> {
       checkpoint_cleared: !keepCheckpoint,
     }),
   );
-
-  // Emit to observer dashboard (fire-and-forget)
-  emitObserverEvent("state.resumed", {
-    session_id: checkpoint.session_id,
-    phase_id: phaseId,
-    payload: {
-      wave_index: checkpoint.wave_index,
-      completed_task_ids: checkpoint.completed_task_ids,
-      previous_state: String(prevState),
-      current_state: String(nextSnapshot.value),
-      checkpoint_cleared: !keepCheckpoint,
-    },
-  });
 }
 
 // ─── Read Ledger Command ────────────────────────────────────────────────────
@@ -1181,96 +1001,6 @@ async function handleReadLedger(args: string[]): Promise<void> {
   }
   const entries = await readLedger(filters);
   console.log(JSON.stringify(entries, null, 2));
-}
-
-// ─── Emit Event Command ──────────────────────────────────────────────────────
-
-/**
- * Emit a fire-and-forget observer event to SpacetimeDB via `emitObserverEvent`.
- *
- * Thin CLI wrapper so hooks can call the bridge instead of using raw curl
- * with duplicated URL/format logic.
- *
- * @param args - CLI arguments:
- *   --type=string   (required) Event type (e.g., "session.start")
- *   --session=string (optional) Session ID
- *   --agent=string   (optional) Agent name
- *   --tool=string    (optional) Tool name
- *   --file=string    (optional) File path
- *   --duration=N     (optional) Duration in ms
- *   --data=json      (optional) Additional event data JSON
- */
-function handleEmitEvent(args: string[]): void {
-  const eventType = getArg(args, "type");
-  if (!eventType) {
-    console.error("Missing --type argument");
-    process.exit(2);
-  }
-
-  const sessionId = getArg(args, "session") ?? "";
-  const agentName = getArg(args, "agent") ?? "";
-  const toolName = getArg(args, "tool") ?? "";
-  const filePath = getArg(args, "file") ?? "";
-  const durationMs = parseInt(getArg(args, "duration") ?? "0", 10) || 0;
-
-  let extraData: Record<string, unknown> = {};
-  const dataArg = getArg(args, "data");
-  if (dataArg) {
-    try {
-      extraData = sanitizeJsonParse(dataArg) as Record<string, unknown>;
-    } catch {
-      // Not valid JSON — ignore
-    }
-  }
-
-  emitObserverEvent(eventType, {
-    sessionId,
-    agentName,
-    toolName,
-    filePath,
-    durationMs,
-    ...extraData,
-  });
-
-  console.log(JSON.stringify({ emitted: true, eventType, sessionId }));
-}
-
-// ─── Emit Context Snapshot Command ──────────────────────────────────────────
-
-/**
- * Emit a context-window snapshot to SpacetimeDB via `snapshotContext`.
- *
- * @param args - CLI arguments:
- *   --session=string  (required) Session ID
- *   --percent=N       (optional) Context usage percentage
- *   --messages=N      (optional) Message count
- *   --tokens=N        (optional) Estimated tokens
- *   --phase=string    (optional) Current phase
- */
-function handleEmitContextSnapshot(args: string[]): void {
-  const sessionId = getArg(args, "session");
-  if (!sessionId) {
-    console.error("Missing --session argument");
-    process.exit(2);
-  }
-
-  const contextPercent = parseInt(getArg(args, "percent") ?? "0", 10) || 0;
-  const messageCount = parseInt(getArg(args, "messages") ?? "0", 10) || 0;
-  const estimatedTokens = parseInt(getArg(args, "tokens") ?? "0", 10) || 0;
-  const phase = getArg(args, "phase") ?? "";
-
-  callReducer("snapshot_context", {
-    sessionId,
-    contextPercent,
-    messageCount,
-    estimatedTokens,
-    phase,
-    timestamp: Date.now(),
-  });
-
-  console.log(
-    JSON.stringify({ emitted: true, type: "context_snapshot", sessionId }),
-  );
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────────────
@@ -1338,12 +1068,6 @@ export async function runBridgeCli(): Promise<void> {
     case "read-ledger":
       await handleReadLedger(args);
       break;
-    case "emit-event":
-      handleEmitEvent(args);
-      break;
-    case "emit-context-snapshot":
-      handleEmitContextSnapshot(args);
-      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1376,8 +1100,6 @@ export {
   handleGateCheck,
   handleSuspend,
   handleResumePhase,
-  handleEmitEvent,
-  handleEmitContextSnapshot,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

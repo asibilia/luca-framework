@@ -122,3 +122,25 @@ export type {
 export { resolveConsensus } from "./__helpers/consensus-resolver";
 
 export type { ConsensusResult } from "./__helpers/consensus-resolver";
+
+// ─── Memory Context ─────────────────────────────────────────────────────────
+
+export {
+  MemoryContextConfigSchema,
+  buildMemoryContextBlock,
+  clearMemoryContextCache,
+} from "./__helpers/memory-context-builder";
+
+export type { MemoryContextConfig } from "./__helpers/memory-context-builder";
+
+// ─── Session Digest ─────────────────────────────────────────────────────────
+
+export {
+  SessionDigestConfigSchema,
+  createSessionDigest,
+} from "./__helpers/session-digest";
+
+export type {
+  SessionDigestConfig,
+  SessionDigestResult,
+} from "./__helpers/session-digest";

@@ -226,6 +226,18 @@ Before recalling memory, resolve the target agent's cognition tier.
 - **T3 (Fully-Cognitive)**: Full lifecycle — brain tree recall, semantic recall, session context write, learning.
 </step>
 
+<step name="agent_health_check">
+Validate the target agent's availability and configuration before proceeding:
+
+1. **Verify agent definition exists**: Check that the target agent has a compiled .md file in `.claude/agents/`. If missing, flag as RISK.
+
+2. **Check cognition tier appropriateness**: If the agent is in the recommended-memory list (lu-debugger, lu-test-writer, lu-roadmap-*, code-architect, code-developer, dx-advocate, security-auditor, performance-auditor) but is currently T0, log a warning: "Agent {name} would benefit from T1+ cognition tier."
+
+3. **Check memory tags**: If the agent's effective_tier is T1+ but it has no `memory_tags` configured, log a warning: "Agent {name} is {tier} but has no memory_tags — recall will be unscoped."
+
+4. **Report findings**: Include any health check warnings in the cognitive report's Cognition Profile section. These are informational — they do not block execution.
+</step>
+
 <step name="selective_recall">
 Search MuninnDB for relevant engrams with tier-aware gating and tag-based filtering:
 
@@ -314,6 +326,18 @@ elif entry.confidence == "Medium":
 # Recency boost (optional)
 if entry.added within 30 days:
     score += 0.5
+
+# Milestone proximity scoring
+current_milestone = resolve from STATE.md "Current Milestone" field
+if entry has milestone tag:
+    if entry.milestone == current_milestone:
+        score *= 1.5  # Current milestone boost
+    elif entry.milestone == previous_milestone (N-1):
+        score *= 1.0  # Previous milestone, neutral
+    else:
+        score *= 0.25  # Old milestone (N-2+), aggressive decay
+else:
+    score *= 0.5  # No milestone tag (legacy entry), deprioritize
 ```
 
 **Backward Compatibility for Agent field:**
@@ -322,7 +346,16 @@ if entry.added within 30 days:
 - Entries WITHOUT `Relevant to:` field → empty relevance list
 - Legacy entries still recalled via keyword matching + general agent score
 
-**Tier-Scaled Entry Limits (NEW — replaces fixed 5-7 limit):**
+**Complexity-Gated Recall Depth:**
+
+```
+1. Read recallDepth from complexity matrix for current complexity level
+2. IF recallDepth == 0: skip recall entirely (lite mode handles TRIVIAL/SIMPLE)
+3. IF recallDepth is a number (e.g., 3): cap entries at recallDepth regardless of tier
+4. IF recallDepth is null: use tier-scaled defaults below
+```
+
+**Tier-Scaled Entry Limits (fallback when recallDepth is null):**
 
 ```
 Sort scored entries descending, then select top entries by effective_tier:
@@ -366,6 +399,20 @@ mcp__muninn__muninn_recall(vault: "default", context: "global project patterns a
 
 - Only load global memory for T1+ agents (T0 agents skip all memory)
 - Global entries count toward the tier-scaled entry limits
+</step>
+
+<step name="cleanup_stale_sessions">
+Before initializing a new session, clean up stale session engrams from previous workflows:
+
+1. **Check for stale session context** via `mcp__muninn__muninn_recall(vault: "default", context: "session:*")`
+2. **If stale session engrams exist** (from a previous session that wasn't properly cleaned up):
+   a. Write a summary engram before cleanup: `mcp__muninn__muninn_remember(vault: "default", concept: "session:summary-orphaned", content: "Orphaned session context found and cleaned. [count] stale engrams removed.")`
+   b. Forget all stale session engrams: `mcp__muninn__muninn_forget(vault: "default", id: "session:context")`
+   c. Forget session info: `mcp__muninn__muninn_forget(vault: "default", id: "session:info")`
+   d. Forget session findings: `mcp__muninn__muninn_forget(vault: "default", id: "session:findings")`
+3. **If no stale session engrams found**: Continue (clean state)
+
+This prevents unbounded vault pollution from abandoned, halted, or crashed sessions.
 </step>
 
 <step name="initialize_working">
@@ -742,7 +789,8 @@ Pre-flight complete when:
 - [ ] Current milestone resolved from state machine bridge (if available)
 - [ ] MuninnDB engrams recalled via semantic recall (preferred) or tag-based filtering (fallback)
 - [ ] Relevant patterns, decisions, pitfalls identified (or none found, or skipped for T0)
-- [ ] Entry count scaled by effective tier (T1: 3-5, T2: 5-7, T3: 7-10)
+- [ ] Entry count gated by complexity (MODERATE: max 3) then scaled by tier (T1: 3-5, T2: 5-7, T3: 7-10)
+- [ ] Milestone proximity scoring applied (current: 1.5x, N-1: 1.0x, N-2+: 0.25x, legacy: 0.5x)
 - [ ] MuninnDB session context initialized
 - [ ] Intuition flags generated based on memory
 - [ ] Cognitive report includes Cognition Profile section

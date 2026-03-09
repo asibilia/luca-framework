@@ -105,35 +105,40 @@
         "planVerificationIterations": 0,
         "harnessFixIterations": 1,
         "verifyFixIterations": 0,
-        "verificationMode": "quick"
+        "verificationMode": "quick",
+        "recallDepth": 0
       },
       "SIMPLE": {
         "cognitivePreflight": "lite",
         "planVerificationIterations": 0,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "quick"
+        "verificationMode": "quick",
+        "recallDepth": 0
       },
       "MODERATE": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "standard"
+        "verificationMode": "standard",
+        "recallDepth": 3
       },
       "COMPLEX": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 2,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "full"
+        "verificationMode": "full",
+        "recallDepth": null
       },
       "CRITICAL": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 3,
         "harnessFixIterations": 3,
         "verifyFixIterations": 2,
-        "verificationMode": "full+human"
+        "verificationMode": "full+human",
+        "recallDepth": null
       }
     }
   },

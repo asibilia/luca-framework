@@ -150,19 +150,6 @@ export {
 } from "./ledger";
 export type { LedgerEntry, LedgerFilters } from "./ledger";
 
-// ─── Observer Emitter (SpacetimeDB) ────────────────────────────────────────
-
-export {
-  emitObserverEvent,
-  callReducer,
-  isLocalhostUrl,
-  logToolCall,
-  logTokenUsage,
-  updateCost,
-  snapshotContext,
-  logDecision,
-} from "./__helpers/observer-emitter";
-
 // ─── Audit Findings ────────────────────────────────────────────────────────
 
 export {
