@@ -18,7 +18,7 @@
 | 2     | #13                | Adaptive complexity self-tuning ✓                   | DONE                      |
 | 3     | #94                | Deferred/lazy recall ✓                              | DONE                      |
 | 4     | #83                | Knowledge Graph Explorer ✓                          | DONE                      |
-| 5     | #84, #85           | Semantic Search + Contradiction views               | MODERATE x2 (6-8h)        |
+| 5     | #84, #85           | Semantic Search + Contradiction views ✓             | DONE                      |
 | 6     | #86                | Entity Deep Dive view                               | MODERATE (4-6h)           |
 | 7+    | #18, #55, #54, #16 | Semantic embeddings, tribunal, skill graph, interop | Deferred within milestone |
 
