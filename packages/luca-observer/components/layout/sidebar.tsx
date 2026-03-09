@@ -19,6 +19,7 @@ import {
   DollarSign,
   GitPullRequest,
   StickyNote,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   DollarSign,
   GitPullRequest,
   StickyNote,
+  BookOpen,
 };
 
 /**
