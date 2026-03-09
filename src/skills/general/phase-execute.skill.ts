@@ -507,6 +507,49 @@ If a checkpoint exists:
 3. Resume execution from the first incomplete wave
 4. Clear the checkpoint after successful phase completion
 
+### 4.6. Complexity Reassessment (Wave Boundary)
+
+**After each wave completes**, check whether complexity should be promoted based on file-touch signal. At wave boundaries, only files_touched is reliably available (harness has not yet run), so iteration_budget_ratio and error_count are set to 0.
+
+**Skip if:** \`ALREADY_PROMOTED\` is true (max one promotion per phase — CONTEXT.md Decision 1).
+
+Collect the cumulative files touched since phase start:
+
+\`\`\`bash
+# Count files touched since phase start (cumulative, not per-wave)
+FILES_TOUCHED=$(git diff --stat "$PHASE_START_COMMIT" HEAD -- | tail -1 | grep -oE '[0-9]+ file' | grep -oE '[0-9]+' || echo "0")
+\`\`\`
+
+Check whether promotion is warranted:
+
+\`\`\`bash
+# Wave boundary: only files_touched signal available
+# iteration_budget_ratio=0, stall_detected=false, error_count=0 (harness hasn't run yet)
+\`\`\`
+
+Apply the reassessment logic from \`src/complexity/__helpers/reassessment.ts\`:
+
+- Call \`shouldPromoteComplexity()\` with signals: \`{ files_touched: $FILES_TOUCHED, iteration_budget_ratio: 0, stall_detected: false, error_count: 0, current_level: $COMPLEXITY }\` and \`alreadyPromoted: $ALREADY_PROMOTED\`.
+- If \`should_promote\` is true:
+  1. Update state via bridge: \`bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value='"$NEW_LEVEL"'\`
+  2. Update local variable: \`COMPLEXITY="$NEW_LEVEL"\`
+  3. Set \`ALREADY_PROMOTED=true\`
+  4. Log to MuninnDB session: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [COMPLEXITY-PROMOTED] $REASON")\`
+  5. Display promotion banner
+
+**Important:** Re-read complexity from the bridge before spawning the next wave's executors (research pitfall #4). The executor model tier will be resolved using the updated complexity level.
+
+Display when promotion occurs:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► COMPLEXITY PROMOTED: {OLD} -> {NEW}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trigger: {reason}
+Subsequent waves will use upgraded model tiers and iteration budgets.
+\`\`\`
+
 ### 5. Aggregate Results
 
 - Collect summaries from all plans
