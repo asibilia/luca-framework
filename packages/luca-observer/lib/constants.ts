@@ -65,6 +65,7 @@ export const COMPLEXITY_LEVELS = {
  */
 export const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
+  { href: "/sessions", label: "Sessions", icon: "Activity" },
   { href: "/workflow", label: "Workflow", icon: "GitBranch" },
   { href: "/iterations", label: "Iterations", icon: "RefreshCw" },
   { href: "/harness", label: "Harness", icon: "Shield" },

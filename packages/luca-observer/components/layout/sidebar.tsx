@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { useAtom } from "jotai";
 import {
+  Activity,
   LayoutDashboard,
   GitBranch,
   RefreshCw,
@@ -26,6 +27,7 @@ import { NAV_ITEMS } from "~/lib/constants";
 import { useMediaQuery } from "~/hooks/use-media-query";
 
 const ICON_MAP: Record<string, LucideIcon> = {
+  Activity,
   LayoutDashboard,
   GitBranch,
   RefreshCw,
