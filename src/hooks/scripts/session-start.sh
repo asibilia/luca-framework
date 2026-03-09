@@ -162,14 +162,16 @@ fi
 SESSION_END_MARKER="$PLANNING_DIR/.session-end-marker.json"
 STALE_SESSION_MSG=""
 if [ -f "$SESSION_END_MARKER" ]; then
-  STALE_SESSION_MSG=$(HOOK_MARKER="$SESSION_END_MARKER" bun -e "
-    try {
-      const marker = JSON.parse(await Bun.file(process.env.HOOK_MARKER).text());
-      if (marker.cleanup_pending) {
-        process.stdout.write('Stale session detected (ended: ' + (marker.ended_at || 'unknown') + '). MuninnDB cleanup will run during cognitive pre-flight.');
-      }
-    } catch { /* no marker or parse error */ }
-  " 2>/dev/null || echo "")
+  if command -v bun &>/dev/null; then
+    STALE_SESSION_MSG=$(HOOK_MARKER="$SESSION_END_MARKER" bun -e "
+      try {
+        const marker = JSON.parse(await Bun.file(process.env.HOOK_MARKER).text());
+        if (marker.cleanup_pending) {
+          process.stdout.write('Stale session detected (ended: ' + (marker.ended_at || 'unknown') + '). MuninnDB cleanup will run during cognitive pre-flight.');
+        }
+      } catch { /* no marker or parse error */ }
+    " 2>/dev/null || echo "")
+  fi
   # Remove marker after reading (cleanup will be handled by lu-cognition)
   rm -f "$SESSION_END_MARKER"
 fi
