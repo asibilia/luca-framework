@@ -230,6 +230,56 @@ export const ZONE_MODEL_ADJUSTMENTS: Record<ZoneLabel, ModelId | null> = {
   stop: "haiku",
 };
 
+// ─── Reassessment Schemas ─────────────────────────────────────────────────
+
+/**
+ * Signals collected at a wave or harness boundary for complexity reassessment.
+ *
+ * These signals are compared against REASSESSMENT_THRESHOLDS to determine
+ * whether the current complexity level should be promoted mid-execution.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const ReassessmentSignalsSchema = z.object({
+  /** Cumulative files touched since phase start */
+  files_touched: z.number().int().nonnegative(),
+  /** Consumed / max iteration budget ratio (0.0-1.0) */
+  iteration_budget_ratio: z.number().min(0).max(1),
+  /** Convergence failure flagged by stall detector */
+  stall_detected: z.boolean(),
+  /** Total errors from most recent harness run */
+  error_count: z.number().int().nonnegative(),
+  /** Current complexity level */
+  current_level: z.enum(COMPLEXITY_LEVELS),
+});
+
+/** Signals collected at a wave or harness boundary for reassessment. */
+export type ReassessmentSignals = z.infer<typeof ReassessmentSignalsSchema>;
+
+/**
+ * Result of a complexity reassessment check.
+ *
+ * Describes whether promotion was triggered, which signals exceeded
+ * thresholds, the target level, and a human-readable explanation.
+ *
+ * Uses snake_case for all field names per API conventions.
+ */
+export const ReassessmentResultSchema = z.object({
+  /** Whether the complexity level should be promoted */
+  should_promote: z.boolean(),
+  /** Signal names that triggered promotion */
+  triggered_by: z.array(z.string()),
+  /** New complexity level (same as current if no promotion) */
+  promoted_to: z.enum(COMPLEXITY_LEVELS),
+  /** Human-readable explanation of the reassessment decision */
+  reason: z.string(),
+});
+
+/** Result of a complexity reassessment check. */
+export type ReassessmentResult = z.infer<typeof ReassessmentResultSchema>;
+
+// ─── Utilities ────────────────────────────────────────────────────────────
+
 /** Utility: check if a level meets or exceeds a threshold */
 export function meetsThreshold(
   level: ComplexityLevel,
