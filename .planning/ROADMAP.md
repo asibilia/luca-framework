@@ -2,35 +2,130 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v3.1.0 — Memory Intelligence & Platform Cleanup
 
 ---
 
-## Deferred (v3.1.0+)
+## v3.1.0 — Memory Intelligence & Platform Cleanup
 
-| Todo | Title                                 | Reason                                                        |
-| ---- | ------------------------------------- | ------------------------------------------------------------- |
-| #37  | Test suite fragility                  | Testing reintroduction is a dedicated future effort           |
-| #56  | JSON blob normalization               | BREAKING schema change — defer until #65 field rename settles |
-| #13  | Adaptive complexity self-tuning       | Depends on Phase 6 (model routing) completing and stabilizing |
-| #15  | Reflective meta-cognition             | Depends on #12 (procedure replay) from Phase 8                |
-| #16  | Cross-agent interop scanner           | New domain creation — needs #50 first, defer to v3.1.0        |
-| #18  | Semantic memory embeddings            | Depends on learning pipeline (Phase 8) stabilizing            |
-| #66  | Observer Lucide icons sidebar         | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
-| #67  | Observer color system depth           | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
-| #68  | Observer typography overhaul          | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
-| #69  | Observer dashboard layout redesign    | Major redesign — new milestone territory                      |
-| #70  | Observer charting library             | New dependency — beyond Phase 4 scope, dedicated UI milestone |
-| #71  | Observer animations/motion            | UI polish — beyond Phase 4 scope, dedicated UI milestone      |
-| #72  | Observer state diagram redesign       | Feature enhancement — beyond Phase 4 scope                    |
-| #73  | Observer time range/session picker    | Feature enhancement — beyond Phase 4 scope                    |
-| #74  | Observer command palette/keyboard nav | Feature enhancement — beyond Phase 4 scope                    |
+**Theme:** Make memory behaviorally effective. Remove dead platform. Improve DX.
+**Strategic objectives:** O1 (better code outcomes), O2 (lower token costs)
+**Source:** Backlog audit (2026-03-08) — see `.planning/backlog-audit/AUDIT-REPORT.md`
+
+### Phase 01 — Recall Scoring Optimization (#89 + #91)
+
+**Goal:** Reduce token overhead by gating recall depth on complexity and aggressively scoping to current milestone.
+
+- [ ] Update lu-cognition recall logic to cap MODERATE tasks at 3 entries
+- [ ] Strengthen milestone-scoped recall to deprioritize entries from old milestones (v1.x, v2.x)
+
+**Complexity:** SIMPLE
+**Todos:** #89, #91
+**Depends on:** None
+
+### Phase 02 — Session Memory Cleanup (#93)
+
+**Goal:** Prevent unbounded vault pollution by automatically cleaning session engrams on session end.
+
+- [ ] Add session cleanup step to session-end workflow
+- [ ] Forget session:\* engrams when lu-learner completes or session is abandoned
+
+**Complexity:** SIMPLE
+**Todos:** #93
+**Depends on:** None
+
+### Phase 03 — SpacetimeDB Removal (#75 + #76 + #88)
+
+**Goal:** Remove all SpacetimeDB code, packages, and documentation references.
+
+- [ ] Delete SpacetimeDB client, emitter, and config from framework (`src/state/__helpers/`)
+- [ ] Remove emit-event and emit-context-snapshot from bridge.ts
+- [ ] Delete `packages/luca-spacetime/` package entirely
+- [ ] Remove SpacetimeDB from workspace config and bun.lock
+- [ ] Update docs and planning artifacts to remove SpacetimeDB references
+- [ ] Update `.claude/rules/state-machine-bridge.md` to remove emit commands
+
+**Complexity:** MODERATE
+**Todos:** #75, #76, #88
+**Depends on:** None
+
+### Phase 04 — Sub-Agent Memory Pipeline (#90 + #92)
+
+**Goal:** Build digest mechanism and inject memory context into sub-agent prompts.
+
+- [ ] Create `src/shared/__helpers/memory-context-builder.ts` (T0 — shared)
+- [ ] Implement `buildMemoryContextBlock()` that creates a compact session digest
+- [ ] Implement session context digest caching to avoid redundant MuninnDB queries
+- [ ] Inject memory context block into Task() prompts for lu-executor, lu-verifier, lu-learner
+
+**Complexity:** MODERATE
+**Todos:** #90, #92
+**Depends on:** Phase 01 (recall scoring must be optimized before injection)
+
+### Phase 05 — Stall Detection & Retry Limits (#53)
+
+**Goal:** Add stall detection and retry limits to the verification loop to prevent infinite token burn.
+
+- [ ] Add max iteration counter to harness fix loop
+- [ ] Detect convergence stalls (same errors repeating)
+- [ ] Add graceful exit with diagnostic summary on stall
+
+**Complexity:** MODERATE
+**Todos:** #53
+**Depends on:** None
+
+### Phase 06 — Agent Health Check (#52)
+
+**Goal:** Validate agent availability and dependencies at cognitive pre-flight.
+
+- [ ] Create `src/agents/__helpers/health-check.ts`
+- [ ] Implement `checkAgentHealth(agentName)` — verify definition, tools, model access
+- [ ] Integrate health check into lu-cognition pre-flight
+
+**Complexity:** MODERATE
+**Todos:** #52
+**Depends on:** None
+
+### Phase 07 — DX Cleanup Sprint (#46, #50, #45, #51, #63)
+
+**Goal:** Batch small housekeeping items: dedup, docs, lock cleanup, Bun migration.
+
+- [ ] Deduplicate sanitizeJsonParse from 3 copies to 1 (#46)
+- [ ] Document observability domain in architecture docs (#50)
+- [ ] Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
+- [ ] Add automatic stale session lock cleanup (#51)
+- [ ] Complete node:fs to Bun API migration (#63)
+
+**Complexity:** SIMPLE (per item)
+**Todos:** #46, #50, #45, #51, #63
+**Depends on:** Phase 03 (bridge docs update depends on SpacetimeDB emit removal)
+
+---
+
+## Deferred (v3.2.0+)
+
+| Todo   | Title                             | Target           | Reason                                                              |
+| ------ | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37    | Test suite fragility              | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| #77    | Build MuninnDB emission layer     | v3.2             | Observer data pipeline — scoped with observer rebuild               |
+| #78    | Strip SpacetimeDB from observer   | v3.2             | Observer cleanup — after framework removal                          |
+| #79    | Observer MuninnDB API layer       | v3.2             | Observer foundation                                                 |
+| #80-87 | Observer MuninnDB views           | v3.2             | 8 views for MuninnDB-native observer                                |
+| #95    | Close learning loop               | v3.3             | Depends on #92 (sub-agent memory) stabilizing                       |
+| #13    | Adaptive complexity self-tuning   | v3.3             | Depends on recall depth (#89) being proven                          |
+| #94    | Deferred/lazy recall              | v3.3             | Token optimization — after core memory pipeline stable              |
+| #83-86 | Power observer views              | v3.3             | Knowledge graph, semantic search, contradiction, entity deep dive   |
+| #96    | Observer todo tracking (MuninnDB) | v3.3+            | Re-scoped from #64, low priority                                    |
+| #18    | Semantic memory embeddings        | v3.3+            | Check MuninnDB native support first                                 |
+| #55    | Tribunal consensus model          | v3.3+            | Enhancement, not a gap                                              |
+| #54    | Skill dependency graph            | v3.3+            | Theoretical improvement                                             |
+| #16    | Cross-agent interop scanner       | v3.3+            | New domain creation                                                 |
 
 ## New Milestone Candidates
 
-| Todo | Target | Reason                                                                                 |
-| ---- | ------ | -------------------------------------------------------------------------------------- |
-| #17  | v4.0.0 | Plugin Marketplace — CRITICAL effort, needs registry infra, T3->T2 tier violation risk |
+| Todo | Target | Reason                                                                                              |
+| ---- | ------ | --------------------------------------------------------------------------------------------------- |
+| #17  | v4.0.0 | Plugin Marketplace — CRITICAL effort, network effects moat, deferred until intelligence moat exists |
 
 ## Closed (By Design)
 
@@ -40,6 +135,23 @@
 | #60  | Harness-aware update command works. Verification gap, not functionality gap.            |
 | #61  | Duplicate of #37. Tests intentionally removed per MEMORY.md.                            |
 | #62  | Dual-write atomicity — current JSON backup is pragmatic. Over-engineering for dev tool. |
+
+## Closed (Backlog Audit 2026-03-08)
+
+| Todo   | Reason                                                        |
+| ------ | ------------------------------------------------------------- |
+| #15    | Absorbed into #95 (learning loop Phase A)                     |
+| #40    | Superseded — observer pages deleted by #78                    |
+| #41    | Absorbed into #78/#80 (error boundaries built into new views) |
+| #42    | Obsolete — SpacetimeDB tables being deleted                   |
+| #43    | Obsolete — SpacetimeDB ledger race, moot after removal        |
+| #47    | Deferred — apply to new MuninnDB views post-rebuild           |
+| #48    | Obsolete — SpacetimeDB schema being deleted                   |
+| #49    | Superseded — new views include empty states natively          |
+| #56    | Obsolete — SpacetimeDB schema being deleted                   |
+| #64    | Re-scoped as #96 (MuninnDB-native)                            |
+| #65    | Obsolete — SpacetimeDB package being deleted                  |
+| #66-74 | Absorbed into observer design requirements doc                |
 
 ---
 
@@ -76,4 +188,4 @@
 
 ---
 
-_Roadmap updated: 2026-03-08 (v3.0.0 milestone archived)_
+_Roadmap updated: 2026-03-08 (v3.1.0 milestone created from backlog audit)_

@@ -25,3 +25,8 @@ The agent registry exports 33 agents but there's no mechanism to verify agent av
 - Workflow can silently degrade if agents are missing
 - Also suggested: skill dependency graph (separate todo)
 - Consider adding to session-start hook
+- **Audit update (2026-03-08):** The Muninn memory audit found 8+ agents operating as T0 (stateless) that could benefit from memory integration. Health check should also verify:
+  - Agent's `cognition.default_tier` is appropriate for its role (audit found lu-debugger, lu-test-writer, roadmap agents are T0 but should be T1)
+  - Agent's `memory_tags` are properly configured
+  - Agent's cognition tier is compatible with its spawning skill's expectations
+  - Agents that SHOULD use memory but don't: lu-debugger (debugging/pitfalls), lu-test-writer (testing/patterns), lu-roadmap-\* swarm agents (architecture/decisions), code review agents (conventions/patterns)

@@ -26,7 +26,7 @@ Reflective layer between planner and plan-checker:
 
 - New: `src/planner/__helpers/plan-reflection.ts` — meta-cognitive analysis
 - Add planConfidenceSchema to `src/planner/__schemas/planner.schemas.ts`
-- Add plan-structure matching to `src/memory/__helpers/procedure-recall.ts`
+- Procedure recall via MuninnDB: `mcp__muninn__muninn_recall(context: "procedure:* matching plan domain")`
 - Expose historical harness stats in `src/iteration/__helpers/checkpoint.ts`
 - Export reflection utilities from `src/planner/index.ts`
 
@@ -34,3 +34,7 @@ Reflective layer between planner and plan-checker:
 
 - Depends on #7 (Scorecard) and #12 (Procedure Replay) for data
 - Source agent: Intelligence Expert
+- **Audit update (2026-03-08):** The Muninn memory audit directly validates the urgency of this todo. The audit's #1 critical finding is that the learning loop is OPEN at the APPLY step — recalled patterns/procedures don't feed into planning. This todo IS the planning-side fix for that gap.
+- **Audit dependency:** This is a SUBSET of #95 (Close the Learning Loop). Implementing #95 Phase A (pattern application in lu-planner) would deliver most of this todo's value. Consider merging into #95 or implementing as Phase A.1 of #95.
+- **Audit finding:** lu-planner currently receives NO MuninnDB session context when spawned (#92). Reflective meta-cognition requires the planner to have access to recalled patterns — #92 (inject memory into sub-agents) is a prerequisite.
+- **Path update:** `src/memory/__helpers/procedure-recall.ts` no longer exists. Procedure recall is via MuninnDB: `mcp__muninn__muninn_recall(context: "procedures for {domain}")`
