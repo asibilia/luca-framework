@@ -21,36 +21,36 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 
 ### Read Commands (6)
 
-| Command                                   | Description                        | Output                                        |
-| ----------------------------------------- | ---------------------------------- | --------------------------------------------- |
-| \`read-status\`                           | Read comprehensive workflow status | JSON with state, phase, complexity, oversight |
-| \`read-complexity\`                       | Read current complexity level      | JSON with complexity field                    |
-| \`read-oversight\`                        | Read current oversight level       | JSON with oversight field                     |
-| \`read-phase\`                            | Read current phase info            | JSON with phase, milestone, plan IDs          |
-| \`read-field --field=path\`               | Read an arbitrary context field    | JSON with field path and value                |
-| \`read-ledger [--tail=N] [--session=id]\` | Read session ledger entries        | JSON array of ledger entries                  |
+| Command | Description | Output |
+|---------|-------------|--------|
+| \`read-status\` | Read comprehensive workflow status | JSON with state, phase, complexity, oversight |
+| \`read-complexity\` | Read current complexity level | JSON with complexity field |
+| \`read-oversight\` | Read current oversight level | JSON with oversight field |
+| \`read-phase\` | Read current phase info | JSON with phase, milestone, plan IDs |
+| \`read-field --field=path\` | Read an arbitrary context field | JSON with field path and value |
+| \`read-ledger [--tail=N] [--session=id]\` | Read session ledger entries | JSON array of ledger entries |
 
 ### Write Commands (2)
 
-| Command                                   | Description                                  |
-| ----------------------------------------- | -------------------------------------------- |
-| \`set-field --field=name --value=json\`   | Set an allowlisted context field and persist |
-| \`transition --event=TYPE [--data=json]\` | Send a workflow event and persist state      |
+| Command | Description |
+|---------|-------------|
+| \`set-field --field=name --value=json\` | Set an allowlisted context field and persist |
+| \`transition --event=TYPE [--data=json]\` | Send a workflow event and persist state |
 
 ### Lifecycle Commands (5)
 
-| Command                              | Description                          |
-| ------------------------------------ | ------------------------------------ |
-| \`ensure-init [--force]\`            | Initialize state if not present      |
-| \`snapshot\`                         | Generate STATE.md from current state |
-| \`gate-check --gate=name\`           | Check if a named gate is enabled     |
-| \`suspend --phase=N [--reason=str]\` | Create checkpoint and suspend phase  |
-| \`resume-phase --phase=N\`           | Load checkpoint and resume phase     |
+| Command | Description |
+|---------|-------------|
+| \`ensure-init [--force]\` | Initialize state if not present |
+| \`snapshot\` | Generate STATE.md from current state |
+| \`gate-check --gate=name\` | Check if a named gate is enabled |
+| \`suspend --phase=N [--reason=str]\` | Create checkpoint and suspend phase |
+| \`resume-phase --phase=N\` | Load checkpoint and resume phase |
 
 ### Observability Commands (1)
 
-| Command                                                   | Description            | Output                   |
-| --------------------------------------------------------- | ---------------------- | ------------------------ |
+| Command | Description | Output |
+|---------|-------------|--------|
 | \`emit-event --type=<type> [--session=id] [--data=json]\` | Emit event to MuninnDB | JSON with emitted status |
 
 **Total: 14 subcommands** (6 read + 2 write + 5 lifecycle + 1 observability).
@@ -62,53 +62,37 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 Always use the bridge as primary, with STATE.md fallback:
 
 \`\`\`bash
-
 # Primary: Read state from state machine (typed, validated)
-
 STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-
 # Fallback: Read STATE.md directly (backward compatibility)
-
 STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
 
 ### Reading Complexity
 
 \`\`\`bash
-
 # Primary: Read complexity from bridge
-
 COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
-
 # Fallback: grep STATE.md directly
-
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
-COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+  COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 fi
 \`\`\`
 
 ### Writing State (Transitions)
 
 \`\`\`bash
-
 # Primary: Transition via bridge (updates state machine + STATE.md)
-
 bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
-
 # STATE.md is also updated directly for backward compatibility
-
 \`\`\`
 
 ### Initializing State
 
 \`\`\`bash
-
 # Primary: Initialize via bridge
-
 bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
-
 # Fallback: Create STATE.md directly
-
 cat > .planning/STATE.md << 'EOF'
 ...
 EOF
