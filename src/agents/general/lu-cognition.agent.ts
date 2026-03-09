@@ -15,6 +15,7 @@ const luCognitionConfig: AgentConfig = {
       default_tier: "T3",
       promotable_to: "T3",
       memory_tags: ["*"],
+      eager_recall: true,
     },
     context: {
       default_tier: "T3",
@@ -247,7 +248,26 @@ Validate the target agent's availability and configuration before proceeding:
 <step name="selective_recall">
 Search MuninnDB for relevant engrams with tier-aware gating and tag-based filtering:
 
-**Tier Gate (check first):**
+**Deferred Recall Gate (check first, before tier gate):**
+
+\`\`\`
+IF agent.cognition.eager_recall is NOT true (undefined or false — the default for most agents):
+    SKIP selective recall entirely
+    SKIP load_global_memory step (next step)
+    Log: "Agent {name} uses deferred recall — memory loaded on first skill request via requestMemoryContext()"
+    Note in cognitive report: "Recall: DEFERRED (will be loaded by orchestrator skill on demand)"
+    PROCEED directly to cleanup_stale_sessions, then initialize_working
+    RETURN from this step
+
+IF agent.cognition.eager_recall == true:
+    Continue with existing recall flow below (tier gate + full recall, unchanged)
+\`\`\`
+
+**NOTE:** The \`eager_recall\` field is \`z.boolean().optional()\` in CognitionConfigSchema.
+Most agents will have \`undefined\` (not \`false\`). Check using \`!eager_recall\` or
+\`eager_recall !== true\`, NOT \`eager_recall === false\`.
+
+**Tier Gate (only reached when eager_recall is true):**
 
 \`\`\`
 IF effective_tier == T0:
@@ -383,6 +403,8 @@ For each keyword, scan the **filtered candidate set**:
   </step>
 
 <step name="load_global_memory">
+**Deferred Recall Gate:** If \`agent.cognition.eager_recall\` is NOT true, SKIP this step entirely (global memory is loaded on demand via \`requestMemoryContext()\` at the skill level).
+
 Load cross-project learnings from MuninnDB global vault:
 
 \`\`\`
@@ -550,7 +572,44 @@ Based on recalled memories, generate intuition flags:
 <step name="generate_report">
 Output cognitive report for downstream agents. The report format adapts to the agent's effective tier.
 
-**Cognition Profile section (always included for T1+):**
+**Deferred Recall Report (when eager_recall is NOT true):**
+
+When the deferred recall gate was triggered in \`selective_recall\`, output this report variant:
+
+\`\`\`markdown
+## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+- **Agent**: {agent name}
+- **Default Tier**: {T0-T3}
+- **Effective Tier**: {T0-T3} (after complexity promotion)
+- **Complexity Level**: {TRIVIAL-CRITICAL}
+- **Memory Tags**: {list of agent's memory_tags}
+- **Recall**: DEFERRED (loaded on first skill request via requestMemoryContext())
+
+### Project Identity
+
+{Summary from MuninnDB brain tree or "Not configured"}
+
+### Memory Recall
+
+Recall: DEFERRED — selective recall and global memory skipped at session start.
+Memory will be loaded on-demand the first time a skill calls requestMemoryContext().
+This saves 6-8K tokens on sessions that don't reach COMPLEX execution.
+
+### Working Memory
+
+Initialized: MuninnDB session context
+
+### Ready For
+
+{Downstream agent}
+\`\`\`
+
+Then skip directly to the RETURN. The sections below apply only when eager_recall is true.
+
+**Cognition Profile section (always included for T1+, eager_recall=true path):**
 
 \`\`\`markdown
 ## COGNITIVE PRE-FLIGHT COMPLETE
