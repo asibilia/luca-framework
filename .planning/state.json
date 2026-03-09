@@ -4,8 +4,8 @@
   "historyValue": {},
   "context": {
     "session_id": "fc759ad3-6102-4681-9b0c-738bbed69a23",
-    "github_issue": 59,
-    "branch": "59--v3.2-observer-rebirth",
+    "github_issue": 61,
+    "branch": "61--v3.3-cognitive-maturity",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -87,7 +87,7 @@
     "intuition_flags": [],
     "memory_tags": [],
     "started_at": "2026-03-09T00:13:24.488Z",
-    "last_transition_at": "2026-03-09T02:43:07.071Z"
+    "last_transition_at": "2026-03-09T19:14:28.043Z"
   },
   "children": {
     "phase": {

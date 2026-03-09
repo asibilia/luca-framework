@@ -14,7 +14,7 @@
 
 | Phase | Items              | Title                                               | Effort                    |
 | ----- | ------------------ | --------------------------------------------------- | ------------------------- |
-| 1     | #95 (Phases A+B+C) | Close learning loop: Apply-Measure-Refine           | COMPLEX (12-20h)          |
+| 1     | #95 (Phases A+B+C) | Close learning loop: Apply-Measure-Refine ✓         | DONE                      |
 | 2     | #13                | Adaptive complexity self-tuning                     | COMPLEX (8-12h)           |
 | 3     | #94                | Deferred/lazy recall                                | MODERATE (6-8h)           |
 | 4     | #83                | Knowledge Graph Explorer                            | COMPLEX (6-8h)            |
