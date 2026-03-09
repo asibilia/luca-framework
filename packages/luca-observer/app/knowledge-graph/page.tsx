@@ -173,6 +173,39 @@ export default function KnowledgeGraphPage() {
     return undefined;
   }, [selectedNode]);
 
+  // -- Keyboard accessibility: Escape to close sidebar -----------------------
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedNode) {
+        selectNode(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedNode, selectNode]);
+
+  // -- Tooltip mouse tracking -------------------------------------------------
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setMousePos(null);
+  }, []);
+
+  // -- Check if time range filtered all nodes out ----------------------------
+  const isTimeFiltered = timeRange !== null;
+  const allFilteredOut =
+    !loading && graphData.nodes.length === 0 && totalNodes > 0;
+
   // -- Render -----------------------------------------------------------------
 
   const lastUpdatedText = lastUpdated
@@ -218,14 +251,35 @@ export default function KnowledgeGraphPage() {
         </div>
       ) : !configured ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            MuninnDB is not configured. Start MuninnDB to see the knowledge
-            graph.
+          <p className="mb-2 text-sm font-medium text-foreground">
+            MuninnDB Not Connected
           </p>
+          <p className="text-sm text-muted-foreground">
+            The Knowledge Graph requires MuninnDB to be running. Ensure the
+            MuninnDB server is started and the{" "}
+            <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+              MUNINN_URL
+            </code>{" "}
+            environment variable is set.
+          </p>
+          <button
+            type="button"
+            onClick={refresh}
+            className="mt-4 rounded-md border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+          >
+            Retry Connection
+          </button>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-8 text-center">
           <p className="text-sm text-destructive">{error}</p>
+          <button
+            type="button"
+            onClick={refresh}
+            className="mt-4 rounded-md border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+          >
+            Retry
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -243,14 +297,41 @@ export default function KnowledgeGraphPage() {
           {/* Graph area + sidebar */}
           <ErrorBoundary name="KnowledgeGraphCanvas">
             {graphData.nodes.length === 0 ? (
-              <EmptyState
-                title="No Entities"
-                message="No entities found in MuninnDB. Start using MuninnDB to see your knowledge graph."
-              />
+              allFilteredOut && isTimeFiltered ? (
+                <div className="flex h-[calc(100vh-16rem)] items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No entities in this time range.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTimeRange(null)}
+                      className="mt-3 rounded-md border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                    >
+                      Reset Time Filter
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  title="No Entities"
+                  message="No entities found in MuninnDB. Start using MuninnDB to see your knowledge graph."
+                />
+              )
             ) : (
               <div className="flex h-[calc(100vh-12rem)]">
                 {/* Graph canvas area */}
-                <div ref={containerRef} className="relative flex-1">
+                <div
+                  ref={containerRef}
+                  className="relative flex-1 overflow-hidden rounded-lg border border-border/30"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
+                    backgroundSize: "24px 24px",
+                  }}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                >
                   <GraphCanvas
                     ref={canvasRef}
                     graphData={graphData}
@@ -280,6 +361,30 @@ export default function KnowledgeGraphPage() {
                     onToggleExpandAll={handleToggleExpandAll}
                     allExpanded={allExpanded}
                   />
+
+                  {/* Tooltip on hover */}
+                  {hoveredNode && mousePos && (
+                    <div
+                      className="pointer-events-none absolute z-20 rounded-md border border-border/50 bg-card/90 px-3 py-2 font-mono text-xs shadow-lg backdrop-blur-sm"
+                      style={{
+                        left: mousePos.x + 12,
+                        top: mousePos.y - 10,
+                        maxWidth: 260,
+                      }}
+                    >
+                      <p className="font-semibold text-foreground">
+                        {hoveredNode.name}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {hoveredNode.type}
+                        {hoveredNode.is_cluster
+                          ? ` (${hoveredNode.child_count} entities)`
+                          : hoveredNode.engram_count > 0
+                            ? ` -- ${hoveredNode.engram_count} engram${hoveredNode.engram_count !== 1 ? "s" : ""}`
+                            : ""}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Overlay: time range slider (bottom) */}
                   {timeExtent && timeExtent[1] - timeExtent[0] > 3600 && (

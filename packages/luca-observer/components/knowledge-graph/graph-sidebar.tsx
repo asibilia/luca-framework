@@ -51,7 +51,7 @@ export function GraphSidebar({
   }, [onExpandCluster, node.type]);
 
   return (
-    <div className="flex h-full w-80 flex-col border-l border-border bg-card animate-in slide-in-from-right duration-200">
+    <div className="flex h-full w-80 flex-col border-l border-border bg-card animate-in slide-in-from-right duration-300 fill-mode-forwards">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
