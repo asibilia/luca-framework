@@ -1,12 +1,20 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
 
 import type { ForceGraphMethods, NodeObject } from "react-force-graph-2d";
 
 import type { EntityType, GraphData, GraphNode } from "~/lib/graph-types";
 import { TYPE_COLORS } from "~/lib/graph-types";
+import type { ClusterAction } from "~/hooks/use-knowledge-graph";
 
 // ForceGraph2D uses generic NodeObject internally. Our GraphNode extends
 // those fields, so we cast at the boundary. This type alias keeps things tidy.
@@ -48,6 +56,8 @@ export interface GraphCanvasProps {
   selectedNodeId?: string | null;
   /** ID of the currently hovered node (for visual highlight). */
   hoveredNodeId?: string | null;
+  /** Last cluster transition action for cooldown management. */
+  clusterAction?: ClusterAction;
 }
 
 export interface GraphCanvasHandle {
@@ -85,10 +95,26 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       onNodeHover,
       selectedNodeId,
       hoveredNodeId,
+      clusterAction,
     },
     ref,
   ) {
     const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
+
+    // Reheat simulation on cluster transitions for smooth repositioning
+    useEffect(() => {
+      if (clusterAction && fgRef.current) {
+        fgRef.current.d3ReheatSimulation();
+      }
+    }, [clusterAction]);
+
+    // Compute cooldown ticks based on cluster action
+    const cooldownTicks =
+      clusterAction === "expand"
+        ? 50
+        : clusterAction === "collapse"
+          ? 30
+          : COOLDOWN_TICKS;
 
     // -- Double-click detection -----------------------------------------------
     // ForceGraph2D has no built-in double-click prop. We use a click timer
@@ -329,7 +355,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         enableNodeDrag={true}
         enableZoomInteraction={true}
         autoPauseRedraw={true}
-        cooldownTicks={COOLDOWN_TICKS}
+        cooldownTicks={cooldownTicks}
         backgroundColor="transparent"
         linkColor={linkColor}
         linkWidth={linkWidth}

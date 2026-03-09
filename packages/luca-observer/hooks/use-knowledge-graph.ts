@@ -65,11 +65,21 @@ interface GraphDataApiResponse {
  *
  * Time filtering excludes nodes outside the given range before clustering.
  */
+/**
+ * Map of node ID -> last known {x, y} position from ForceGraph2D.
+ *
+ * ForceGraph2D mutates node objects in-place with x/y during simulation.
+ * This map captures those positions so we can reuse them during cluster
+ * transitions (expand/collapse) to prevent the "scatter" effect.
+ */
+type NodePositionMap = Map<string, { x: number; y: number }>;
+
 function buildClusteredGraph(
   rawNodes: GraphNode[],
   rawLinks: GraphLink[],
   expandedTypes: ClusterState,
   timeRange: [number, number] | null,
+  nodePositions?: NodePositionMap,
 ): GraphData {
   // Step 1: Time filter
   let filteredNodes = rawNodes;
@@ -165,6 +175,56 @@ function buildClusteredGraph(
     }
   }
 
+  // Step 6: Assign positions from the position map for smooth transitions
+  if (nodePositions && nodePositions.size > 0) {
+    for (const node of finalNodes) {
+      if (node.is_cluster) {
+        // Cluster supernode: position at centroid of its children's last known positions
+        const childNodes = collapsedByType.get(node.type) ?? [];
+        let sumX = 0;
+        let sumY = 0;
+        let count = 0;
+        for (const child of childNodes) {
+          const pos = nodePositions.get(child.id);
+          if (pos) {
+            sumX += pos.x;
+            sumY += pos.y;
+            count++;
+          }
+        }
+        if (count > 0) {
+          node.x = sumX / count;
+          node.y = sumY / count;
+        } else {
+          // Fallback: use previously known cluster position
+          const clusterPos = nodePositions.get(node.id);
+          if (clusterPos) {
+            node.x = clusterPos.x;
+            node.y = clusterPos.y;
+          }
+        }
+      } else {
+        // Individual node: use last known position or cluster supernode position
+        const pos = nodePositions.get(node.id);
+        if (pos) {
+          node.x = pos.x;
+          node.y = pos.y;
+        } else {
+          // Newly visible (was collapsed): position near the cluster supernode
+          const clusterId = `__cluster:${node.type}`;
+          const clusterPos = nodePositions.get(clusterId);
+          if (clusterPos) {
+            // Spread in a circle around the cluster position
+            const angle = Math.random() * 2 * Math.PI;
+            const radius = 20 + Math.random() * 30;
+            node.x = clusterPos.x + Math.cos(angle) * radius;
+            node.y = clusterPos.y + Math.sin(angle) * radius;
+          }
+        }
+      }
+    }
+  }
+
   return {
     nodes: finalNodes,
     links: Array.from(linkMap.values()),
@@ -228,6 +288,9 @@ function computeTimeHistogram(
 
 // -- Exported types ----------------------------------------------------------
 
+/** Cluster transition action for GraphCanvas cooldown management. */
+export type ClusterAction = "expand" | "collapse" | null;
+
 /** Return type of the useKnowledgeGraph hook. */
 export interface KnowledgeGraphData {
   /** Processed graph data (clustered, time-filtered) ready for ForceGraph2D. */
@@ -256,6 +319,8 @@ export interface KnowledgeGraphData {
   totalNodes: number;
   /** Total raw link count. */
   totalLinks: number;
+  /** Last cluster transition action (expand/collapse) for canvas cooldown. */
+  lastClusterAction: ClusterAction;
   /** Toggle a cluster type between expanded/collapsed. */
   toggleCluster: (type: string) => void;
   /** Set selected node (or null to deselect). */
@@ -306,6 +371,17 @@ export function useKnowledgeGraph(): KnowledgeGraphData {
 
   // Prevent double-fetch in React strict mode
   const fetchingRef = useRef(false);
+
+  // Track last known node positions for smooth cluster transitions.
+  // Updated from graphData nodes before each cluster toggle.
+  const nodePositionsRef = useRef<NodePositionMap>(new Map());
+
+  // Ref to the latest graphData for reading in callbacks without stale closure
+  const graphDataRef = useRef<GraphData>({ nodes: [], links: [] });
+
+  // Track last cluster action for canvas cooldown management
+  const [lastClusterAction, setLastClusterAction] =
+    useState<ClusterAction>(null);
 
   const fetchAll = useCallback(async () => {
     if (fetchingRef.current) return;
@@ -383,7 +459,21 @@ export function useKnowledgeGraph(): KnowledgeGraphData {
   // -- Interaction handlers --------------------------------------------------
 
   const toggleCluster = useCallback((type: string) => {
+    // Capture current positions from graphData nodes before transition.
+    // ForceGraph2D mutates node objects with x/y, so we read from the ref.
+    for (const node of graphDataRef.current.nodes) {
+      if (node.x !== undefined && node.y !== undefined) {
+        nodePositionsRef.current.set(node.id, { x: node.x, y: node.y });
+      }
+    }
+
     setExpandedTypes((prev) => {
+      const isExpanding = !prev.has(type);
+      setLastClusterAction(isExpanding ? "expand" : "collapse");
+
+      // Clear the action after a short delay so canvas resets cooldown
+      setTimeout(() => setLastClusterAction(null), 600);
+
       const next = new Set(prev);
       if (next.has(type)) {
         next.delete(type);
@@ -412,9 +502,19 @@ export function useKnowledgeGraph(): KnowledgeGraphData {
   // -- Derived data (memoized) -----------------------------------------------
 
   const graphData = useMemo(
-    () => buildClusteredGraph(rawNodes, rawLinks, expandedTypes, timeRange),
+    () =>
+      buildClusteredGraph(
+        rawNodes,
+        rawLinks,
+        expandedTypes,
+        timeRange,
+        nodePositionsRef.current,
+      ),
     [rawNodes, rawLinks, expandedTypes, timeRange],
   );
+
+  // Keep the ref in sync for use in callbacks (avoids stale closure)
+  graphDataRef.current = graphData;
 
   const timeExtent = useMemo(() => computeTimeExtent(rawNodes), [rawNodes]);
 
@@ -437,6 +537,7 @@ export function useKnowledgeGraph(): KnowledgeGraphData {
     configured,
     totalNodes,
     totalLinks,
+    lastClusterAction,
     toggleCluster,
     selectNode,
     hoverNode,
