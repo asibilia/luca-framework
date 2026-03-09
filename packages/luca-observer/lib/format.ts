@@ -110,3 +110,29 @@ export function relativeTime(input: number | Date | undefined | null): string {
   const months = Math.floor(days / 30);
   return `${months}mo ago`;
 }
+
+/**
+ * Format a byte count to a human-readable string (e.g. "1.2 MB").
+ *
+ * Uses SI-style binary units: B, KB, MB, GB, TB.
+ * Displays up to one decimal place; whole numbers omit the decimal.
+ *
+ * @param bytes - Number of bytes
+ * @returns Human-readable size string
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  if (bytes < 0) return "0 B";
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const k = 1024;
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    units.length - 1,
+  );
+  const value = bytes / Math.pow(k, i);
+
+  // Use toFixed(1) but strip trailing ".0" for clean display
+  const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
+  return `${formatted} ${units[i]}`;
+}

@@ -1,34 +1,67 @@
 "use client";
 
 import { PageContainer } from "~/components/layout/page-container";
-import { EmptyState } from "~/components/shared/empty-state";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
-import { DecisionTimeline } from "~/components/decisions/decision-timeline";
+import { DecisionList } from "~/components/decisions/decision-list";
 import { useDecisionTrail } from "~/hooks/use-decision-trail";
+import { relativeTime } from "~/lib/format";
 
 /**
- * Decision trail page.
+ * Decision Trail page.
  *
- * Shows a chronological timeline of decisions made during sessions,
- * with decision type badges and expandable reasoning cards.
+ * Displays MuninnDB decision engrams as a filterable, expandable list.
+ * Follows the Session Explorer page pattern: PageContainer with actions
+ * bar (last updated + refresh), loading skeletons, and ErrorBoundary.
  */
 export default function DecisionsPage() {
-  const { decisions, loading } = useDecisionTrail();
+  const { decisions, loading, lastUpdated, refresh, fetchDecisionDetail } =
+    useDecisionTrail();
+
+  const lastUpdatedText = lastUpdated
+    ? `Last updated: ${relativeTime(lastUpdated)}`
+    : null;
 
   return (
     <PageContainer
       title="Decisions"
-      subtitle="Decision audit trail with reasoning and alternatives"
+      subtitle="Decision Trail"
+      actions={
+        <div className="flex items-center gap-3">
+          {/* Last updated timestamp */}
+          {lastUpdatedText && (
+            <span className="font-mono text-xs text-muted-foreground/60">
+              {lastUpdatedText}
+            </span>
+          )}
+
+          {/* Refresh button */}
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={loading}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+      }
     >
       {loading ? (
-        <LoadingSkeleton variant="table" rows={8} columns={3} />
-      ) : decisions.length === 0 ? (
-        <EmptyState message="No decisions recorded yet." />
+        <div className="space-y-6">
+          <LoadingSkeleton variant="card" />
+          <LoadingSkeleton variant="card" />
+          <LoadingSkeleton variant="text" rows={6} />
+        </div>
       ) : (
-        <ErrorBoundary name="DecisionTimeline">
-          <DecisionTimeline decisions={decisions} />
-        </ErrorBoundary>
+        <div className="space-y-6">
+          <ErrorBoundary name="DecisionList">
+            <DecisionList
+              decisions={decisions}
+              onFetchDetail={fetchDecisionDetail}
+            />
+          </ErrorBoundary>
+        </div>
       )}
     </PageContainer>
   );

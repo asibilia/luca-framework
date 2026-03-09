@@ -2,34 +2,44 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v3.3.0 — Cognitive Maturity & Observer Depth
 
 ---
 
-## Backlog (v3.2.0+)
+## v3.3.0 — Cognitive Maturity & Observer Depth
 
-| Todo   | Title                             | Target           | Reason                                                              |
-| ------ | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37    | Test suite fragility              | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
-| #77    | Build MuninnDB emission layer     | v3.2             | Observer data pipeline — scoped with observer rebuild               |
-| #78    | Strip SpacetimeDB from observer   | v3.2             | Observer cleanup — after framework removal                          |
-| #79    | Observer MuninnDB API layer       | v3.2             | Observer foundation                                                 |
-| #80-87 | Observer MuninnDB views           | v3.2             | 8 views for MuninnDB-native observer                                |
-| #95    | Close learning loop               | v3.3             | Depends on #92 (sub-agent memory) stabilizing                       |
-| #13    | Adaptive complexity self-tuning   | v3.3             | Depends on recall depth (#89) being proven                          |
-| #94    | Deferred/lazy recall              | v3.3             | Token optimization — after core memory pipeline stable              |
-| #83-86 | Power observer views              | v3.3             | Knowledge graph, semantic search, contradiction, entity deep dive   |
-| #96    | Observer todo tracking (MuninnDB) | v3.3+            | Re-scoped from #64, low priority                                    |
-| #18    | Semantic memory embeddings        | v3.3+            | Check MuninnDB native support first                                 |
-| #55    | Tribunal consensus model          | v3.3+            | Enhancement, not a gap                                              |
-| #54    | Skill dependency graph            | v3.3+            | Theoretical improvement                                             |
-| #16    | Cross-agent interop scanner       | v3.3+            | New domain creation                                                 |
+**Theme:** Self-tuning agents, learning loops, advanced observer views.
+**Estimated effort:** 55-75 hours across 8+ phases
+**Strategic objectives:** O1 (better outcomes), O3 (observability depth), O4 (ecosystem groundwork)
 
-## New Milestone Candidates
+| Phase | Items              | Title                                               | Effort                    |
+| ----- | ------------------ | --------------------------------------------------- | ------------------------- |
+| 1     | #95 (Phases A+B+C) | Close learning loop: Apply-Measure-Refine           | COMPLEX (12-20h)          |
+| 2     | #13                | Adaptive complexity self-tuning                     | COMPLEX (8-12h)           |
+| 3     | #94                | Deferred/lazy recall                                | MODERATE (6-8h)           |
+| 4     | #83                | Knowledge Graph Explorer                            | COMPLEX (6-8h)            |
+| 5     | #84, #85           | Semantic Search + Contradiction views               | MODERATE x2 (6-8h)        |
+| 6     | #86                | Entity Deep Dive view                               | MODERATE (4-6h)           |
+| 7+    | #18, #55, #54, #16 | Semantic embeddings, tribunal, skill graph, interop | Deferred within milestone |
 
-| Todo | Target | Reason                                                                                              |
-| ---- | ------ | --------------------------------------------------------------------------------------------------- |
-| #17  | v4.0.0 | Plugin Marketplace — CRITICAL effort, network effects moat, deferred until intelligence moat exists |
+## v4.0.0 — Plugin Ecosystem
+
+| Items | Title                                      | Effort            |
+| ----- | ------------------------------------------ | ----------------- |
+| #17   | Plugin Marketplace with Community Registry | CRITICAL (40-60h) |
+
+Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem makes sense.
+
+---
+
+## Backlog (Unassigned)
+
+| Todo | Title                             | Target           | Reason                                                              |
+| ---- | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37  | Test suite fragility              | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| #96  | Observer todo tracking (MuninnDB) | v3.3+            | Re-scoped from #64, low priority                                    |
+
+---
 
 ## Closed (By Design)
 
@@ -56,6 +66,38 @@
 | #64    | Re-scoped as #96 (MuninnDB-native)                            |
 | #65    | Obsolete — SpacetimeDB package being deleted                  |
 | #66-74 | Absorbed into observer design requirements doc                |
+
+## Closed (v3.2.0 Completed)
+
+| Todo | Reason                                                              |
+| ---- | ------------------------------------------------------------------- |
+| #77  | MuninnDB emission layer built (fire-and-forget + circuit breaker)   |
+| #78  | SpacetimeDB stripped from observer (30+ bindings, 17 hooks deleted) |
+| #79  | MuninnDB API layer with 7+ routes and filtering                     |
+| #80  | Session Explorer view with design system established                |
+| #81  | Decision Trail view with filtering and search                       |
+| #82  | Learning Evolution view with CSS charting patterns                  |
+| #87  | Vault Health Dashboard with stats and metrics                       |
+
+## Closed (v3.1.0 Completed)
+
+| Todo | Reason                                                               |
+| ---- | -------------------------------------------------------------------- |
+| #45  | Bridge CLI docs fixed (13 subcommands)                               |
+| #46  | sanitizeJsonParse deduplicated (2 copies across isolated boundaries) |
+| #50  | Observability domain documented in architecture docs                 |
+| #51  | Stale session lock auto-cleanup added                                |
+| #52  | Agent health check system implemented                                |
+| #53  | Stall detection & retry limits added                                 |
+| #63  | node:fs to Bun migration completed                                   |
+| #75  | SpacetimeDB removed from framework                                   |
+| #76  | luca-spacetime package deleted                                       |
+| #88  | SpacetimeDB docs/planning cleaned up                                 |
+| #89  | Complexity-gated recall depth implemented                            |
+| #90  | Session context digest reuse implemented                             |
+| #91  | Milestone-scoped recall scoring implemented                          |
+| #92  | Memory injection into sub-agent prompts                              |
+| #93  | Automatic session memory cleanup                                     |
 
 ---
 
@@ -90,7 +132,8 @@
 - **v2.9.0** — Audit Gap Closure & Test Reliability: 14 phases, 52 commits, 572 files changed ([View Archive](milestones/v2.9.0-ROADMAP.md))
 - **v3.0.0** — Data Integrity, Agentic Reliability & Model Routing Redesign: 14 phases, 42 plans, 151 commits, 810 files changed ([View Archive](milestones/v3.0.0-ROADMAP.md))
 - **v3.1.0** — Memory Intelligence & Platform Cleanup: 7 phases, 10 commits, 151 files changed ([View Archive](milestones/v3.1.0-ROADMAP.md))
+- **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-09 (v3.1.0 milestone archived)_
+_Roadmap updated: 2026-03-09 (v3.2.0 completed, v3.3.0 is next)_

@@ -1,74 +1,16 @@
-"use client";
-
 import { PageContainer } from "~/components/layout/page-container";
-import { EmptyState } from "~/components/shared/empty-state";
-import { ErrorBoundary } from "~/components/shared/error-boundary";
-import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
-import { TribunalSummaryBanner } from "~/components/tribunal/tribunal-summary-banner";
-import { FindingsTable } from "~/components/tribunal/findings-table";
-import { DisagreementsPanel } from "~/components/tribunal/disagreements-panel";
-import { RebuttalTimeline } from "~/components/tribunal/rebuttal-timeline";
-import { useTribunal } from "~/hooks/use-tribunal";
 
-/**
- * Tribunal debate results page.
- *
- * Shows tribunal session data including summary metrics, findings
- * overview, disagreements between reviewers, and rebuttal outcomes.
- * Handles loading state and empty state when no tribunal has run.
- */
-export default function TribunalPage() {
-  const { result, hasResult, loading } = useTribunal();
-
+export default function PlaceholderPage() {
   return (
     <PageContainer
       title="Tribunal"
-      subtitle="Debate results, findings, and rebuttals"
+      subtitle="Coming soon — rebuilding with MuninnDB"
     >
-      {loading ? (
-        <div className="space-y-6">
-          <LoadingSkeleton variant="card" />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <LoadingSkeleton variant="card" />
-            <LoadingSkeleton variant="card" />
-          </div>
-          <LoadingSkeleton variant="table" rows={4} columns={3} />
-        </div>
-      ) : !hasResult ? (
-        <EmptyState
-          title="No Tribunal Run"
-          message="Tribunal data will appear here when a code review with debate is triggered at MODERATE+ complexity."
-        />
-      ) : (
-        <div className="space-y-6">
-          <ErrorBoundary name="TribunalSummaryBanner">
-            <TribunalSummaryBanner result={result} />
-          </ErrorBoundary>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ErrorBoundary name="DisagreementsPanel">
-              <DisagreementsPanel
-                disagreementsDetected={result?.disagreements_detected ?? 0}
-                rebuttalsConducted={result?.rebuttals_conducted ?? 0}
-              />
-            </ErrorBoundary>
-            <ErrorBoundary name="RebuttalTimeline">
-              <RebuttalTimeline
-                rebuttalsConducted={result?.rebuttals_conducted ?? 0}
-                findingsWithdrawn={result?.findings_withdrawn ?? 0}
-                findingsModified={result?.findings_modified ?? 0}
-                debateTokenCost={result?.debate_token_cost ?? 0}
-              />
-            </ErrorBoundary>
-          </div>
-          <ErrorBoundary name="FindingsTable">
-            <FindingsTable
-              totalFindings={result?.total_findings ?? 0}
-              findingsWithdrawn={result?.findings_withdrawn ?? 0}
-              findingsModified={result?.findings_modified ?? 0}
-            />
-          </ErrorBoundary>
-        </div>
-      )}
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="font-mono text-sm text-muted-foreground">
+          This page is being rebuilt with MuninnDB data sources.
+        </p>
+      </div>
     </PageContainer>
   );
 }

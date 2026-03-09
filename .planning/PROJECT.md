@@ -8,19 +8,19 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v3.1.0 — Shipped)
+## Current State (v3.2.0 — Shipped)
 
-**Last Shipped:** v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09)
+**Last Shipped:** v3.2.0 — Observer Rebirth (2026-03-09)
 
-7 phases, 10 commits, 151 files changed (+4,272/-8,031). Complexity-gated recall depth (cap MODERATE at 3 entries, milestone decay scoring), automatic session memory cleanup (forget session:\* on session end), SpacetimeDB fully removed (deleted packages/luca-spacetime, stripped observer-emitter/client/config from framework state, cleaned all hook scripts, bridge 15→13 subcommands), sub-agent memory pipeline (buildMemoryContextBlock + createSessionDigest T0 helpers), stall detection & retry limits in harness fix loop, agent health check at cognitive pre-flight, DX cleanup (bridge docs, stale lock cleanup, node:fs→Bun migration).
+8 phases, 20 plans, 48 commits, 193 files changed (+11,790/-6,929). Replaced SpacetimeDB with MuninnDB across the entire observer stack. MuninnDB emission layer with fire-and-forget circuit breaker, 7+ new API routes with filtering, 4 new MuninnDB-native views (Session Explorer, Decision Trail, Learning Evolution, Vault Health Dashboard), CSS-based charting patterns, design system established (cards, color tokens, typography, error boundaries, empty states), SpacetimeDB fully stripped from observer (30+ bindings, 17 hooks deleted).
+
+## Previous State (v3.1.0)
+
+v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 commits, 151 files changed. Complexity-gated recall depth, automatic session memory cleanup, SpacetimeDB removed from framework, sub-agent memory pipeline, stall detection & retry limits, agent health check, DX cleanup.
 
 ## Previous State (v3.0.0)
 
 v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08). 14 phases, 42 plans, 151 commits, 810 files changed. MuninnDB memory migration, per-agent model routing redesign, observer MuninnDB integration, hook infrastructure consolidation, data integrity hardening, convention compliance sweep.
-
-## Previous State (v2.9.0)
-
-v2.9.0 — Audit Gap Closure & Test Reliability (2026-03-06). 14 phases, 52 commits, 572 files changed. SpacetimeDB reducer hardening, test suite isolation fix, observer dashboard polish, agent system improvements, model routing, 2 audit gap closure phases.
 
 **Capabilities (shipped):**
 
@@ -119,4 +119,4 @@ v2.9.0 — Audit Gap Closure & Test Reliability (2026-03-06). 14 phases, 52 comm
 
 ---
 
-_Last updated: 2026-03-09 — v3.1.0 milestone archived_
+_Last updated: 2026-03-09 — v3.2.0 milestone archived_

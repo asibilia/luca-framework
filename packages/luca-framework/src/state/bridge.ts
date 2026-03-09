@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (13):
+ * Subcommands (14):
  *   read-complexity        — Read current complexity level
  *   read-oversight         — Read current oversight level
  *   read-phase             — Read current phase info
@@ -18,6 +18,7 @@
  *   gate-check             — Check if a named gate is enabled
  *   suspend                — Create checkpoint and suspend current phase
  *   resume-phase           — Load checkpoint and resume a suspended phase
+ *   emit-event             — Emit event to MuninnDB (fire-and-forget observability)
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -36,6 +37,8 @@
  *   luca-state gate-check --gate=confirm_plan
  *   luca-state suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
  *   luca-state resume-phase --phase=42
+ *   luca-state emit-event --type=session:start --session=abc-123
+ *   luca-state emit-event --type=agent:spawn --session=abc-123 --data='{"agent_name":"lu-executor"}'
  *
  * @module luca-state/bridge
  */
@@ -65,6 +68,18 @@ import {
 import type { SuspendCheckpoint } from "./suspend-checkpoint";
 import { readLedger, appendLedgerEntry } from "./ledger";
 import type { LedgerFilters } from "./ledger";
+import {
+  emitStateTransition,
+  emitPhaseStart,
+  emitPhaseComplete,
+  emitSessionStart,
+  emitSessionEnd,
+  emitDecision,
+  emitAgentSpawn,
+  emitAgentComplete,
+  emitFinding,
+  getEmitter,
+} from "../emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -186,6 +201,7 @@ const VALID_SUBCOMMANDS = [
   "gate-check",
   "suspend",
   "resume-phase",
+  "emit-event",
 ] as const;
 
 /**
@@ -216,6 +232,9 @@ Lifecycle commands:
   gate-check             Check if a gate is enabled (--gate=name)
   suspend                Suspend a phase (--phase=N [--reason=str])
   resume-phase           Resume a suspended phase (--phase=N)
+
+Observability commands:
+  emit-event             Emit event to MuninnDB (--type=eventType [--session=id] [--data=json])
 
 Options:
   --help, -h             Show this help message`;
@@ -532,6 +551,19 @@ async function handleSetField(args: string[]): Promise<void> {
     console.error("[bridge] Failed to append ledger entry for field_set:", err);
   });
 
+  // Emit field change to MuninnDB (fire-and-forget)
+  void emitStateTransition({
+    previous_state: String(snapshotJson!.value),
+    current_state: String(snapshotJson!.value), // State unchanged on field set
+    event_type: "field_set",
+    session_id: (updatedContext.session_id as string) ?? "",
+    metadata: {
+      milestone: (updatedContext.current_milestone as string) ?? undefined,
+      phase: (updatedContext.current_phase as number) ?? undefined,
+      complexity: (updatedContext.complexity as string) ?? undefined,
+    },
+  });
+
   console.log(
     JSON.stringify({
       field: fieldPath,
@@ -618,6 +650,20 @@ async function handleTransition(args: string[]): Promise<void> {
   // Append to session ledger (fire-and-forget, non-blocking)
   appendLedgerEntry(record).catch((err) => {
     console.error("[bridge] Failed to append ledger entry:", err);
+  });
+
+  // Emit state transition to MuninnDB (fire-and-forget, non-blocking)
+  void emitStateTransition({
+    previous_state: String(prevState),
+    current_state: String(nextSnapshot.value),
+    event_type: eventType,
+    session_id: nextSnapshot.context.session_id,
+    metadata: {
+      milestone: nextSnapshot.context.current_milestone ?? undefined,
+      phase: nextSnapshot.context.current_phase ?? undefined,
+      complexity: nextSnapshot.context.complexity,
+      branch: nextSnapshot.context.branch ?? undefined,
+    },
   });
 
   console.log(JSON.stringify(record, null, 2));
@@ -844,6 +890,18 @@ async function handleSuspend(args: string[]): Promise<void> {
   // Optionally update STATE.md (gated by env var)
   await updateStateMd(actor);
 
+  // Emit phase suspend to MuninnDB (fire-and-forget)
+  void emitPhaseComplete({
+    phase_id: phaseId,
+    status: "suspended",
+    session_id: sessionId,
+    metadata: {
+      milestone: nextSnapshot.context.current_milestone ?? undefined,
+      phase: phaseId,
+      complexity: nextSnapshot.context.complexity,
+    },
+  });
+
   console.log(
     JSON.stringify({
       suspended: true,
@@ -929,6 +987,17 @@ async function handleResumePhase(args: string[]): Promise<void> {
   // Optionally update STATE.md (gated by env var)
   await updateStateMd(actor);
 
+  // Emit phase resume to MuninnDB (fire-and-forget)
+  void emitPhaseStart({
+    phase_id: phaseId,
+    session_id: nextSnapshot.context.session_id,
+    metadata: {
+      milestone: nextSnapshot.context.current_milestone ?? undefined,
+      phase: phaseId,
+      complexity: nextSnapshot.context.complexity,
+    },
+  });
+
   // Clear checkpoint only after verified transition
   if (!keepCheckpoint) {
     try {
@@ -1003,6 +1072,175 @@ async function handleReadLedger(args: string[]): Promise<void> {
   console.log(JSON.stringify(entries, null, 2));
 }
 
+// ─── Emit Event Command ──────────────────────────────────────────────────────
+
+/**
+ * Emit an event to MuninnDB via the emitter module.
+ *
+ * Provides a CLI interface for hook scripts and external tools to emit
+ * lifecycle events without importing TypeScript modules directly.
+ * Uses the bridge's `run_bridge emit-event` pattern from common.sh.
+ *
+ * Emission failures are never fatal -- always exits 0.
+ *
+ * @param args - CLI arguments:
+ *   --type=string    (required) Event type (e.g., "session:start", "phase:complete")
+ *   --session=string (optional) Session ID (falls back to state file)
+ *   --data=json      (optional) Additional event data as JSON
+ *   --milestone=str  (optional) Current milestone version
+ *   --phase=N        (optional) Current phase number
+ *   --complexity=str (optional) Complexity level
+ *   --branch=str     (optional) Git branch name
+ *
+ * @example
+ * ```bash
+ * luca-state emit-event --type=session:start --session=abc-123
+ * luca-state emit-event --type=agent:spawn --session=abc-123 --data='{"agent_name":"lu-executor"}'
+ * ```
+ */
+async function handleEmitEvent(args: string[]): Promise<void> {
+  try {
+    const eventType = getArg(args, "type");
+    if (!eventType) {
+      console.error("Missing --type argument");
+      console.log(JSON.stringify({ emitted: false, error: "missing --type" }));
+      return;
+    }
+
+    // Resolve session ID: explicit arg > state file > empty string
+    let sessionId = getArg(args, "session") || "";
+    if (!sessionId) {
+      const sessionResult = await readFromState({
+        fromSnapshot: (ctx) => (ctx.session_id as string) ?? "",
+        defaults: "",
+      });
+      sessionId = sessionResult;
+    }
+
+    // Parse optional --data JSON
+    let eventData: Record<string, unknown> = {};
+    const dataRaw = getArg(args, "data");
+    if (dataRaw) {
+      try {
+        eventData = sanitizeJsonParse(dataRaw) as Record<string, unknown>;
+      } catch {
+        console.error("Invalid JSON in --data argument, ignoring");
+      }
+    }
+
+    // Build metadata from optional args
+    const milestoneArg = getArg(args, "milestone") || undefined;
+    const phaseArg = getArg(args, "phase");
+    const phaseNum = phaseArg ? parseInt(phaseArg, 10) : undefined;
+    const complexityArg = getArg(args, "complexity") || undefined;
+    const branchArg = getArg(args, "branch") || undefined;
+
+    const metadata = {
+      milestone: milestoneArg,
+      phase: Number.isFinite(phaseNum) ? phaseNum : undefined,
+      complexity: complexityArg,
+      branch: branchArg,
+    };
+
+    // Dispatch to the appropriate emit function based on event type
+    switch (eventType) {
+      case "session:start":
+        void emitSessionStart({
+          session_id: sessionId,
+          branch: branchArg,
+          complexity: complexityArg,
+          milestone: milestoneArg,
+        });
+        break;
+
+      case "session:end": {
+        const durationMs = eventData.duration_ms as number | undefined;
+        const engramCount = eventData.engram_count as number | undefined;
+        void emitSessionEnd({
+          session_id: sessionId,
+          duration_ms: durationMs,
+          engram_count: engramCount,
+        });
+        // Flush pending engrams on session end
+        void getEmitter().flush();
+        break;
+      }
+
+      case "phase:start":
+        void emitPhaseStart({
+          phase_id: (eventData.phase_id as number) ?? phaseNum ?? 0,
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+
+      case "phase:complete":
+        void emitPhaseComplete({
+          phase_id: (eventData.phase_id as number) ?? phaseNum ?? 0,
+          status: (eventData.status as string) ?? "completed",
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+
+      case "decision:made":
+        void emitDecision({
+          decision: (eventData.decision as string) ?? "",
+          rationale: (eventData.rationale as string) ?? "",
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+
+      case "agent:spawn":
+        void emitAgentSpawn({
+          agent_name: (eventData.agent_name as string) ?? "",
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+
+      case "agent:complete":
+        void emitAgentComplete({
+          agent_name: (eventData.agent_name as string) ?? "",
+          status: (eventData.status as string) ?? "completed",
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+
+      case "finding:captured":
+        void emitFinding({
+          finding_type: (eventData.finding_type as string) ?? "",
+          content: (eventData.content as string) ?? "",
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+
+      default:
+        // Generic/unknown event types use emitStateTransition as catch-all
+        void emitStateTransition({
+          previous_state: (eventData.previous_state as string) ?? "unknown",
+          current_state: (eventData.current_state as string) ?? "unknown",
+          event_type: eventType,
+          session_id: sessionId,
+          metadata,
+        });
+        break;
+    }
+
+    console.log(JSON.stringify({ emitted: true, type: eventType }));
+  } catch (err) {
+    // Emission failures are never fatal
+    console.error(
+      "[bridge] emit-event failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+    console.log(JSON.stringify({ emitted: false, error: "internal_error" }));
+  }
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1068,6 +1306,9 @@ export async function runBridgeCli(): Promise<void> {
     case "read-ledger":
       await handleReadLedger(args);
       break;
+    case "emit-event":
+      await handleEmitEvent(args);
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1100,6 +1341,7 @@ export {
   handleGateCheck,
   handleSuspend,
   handleResumePhase,
+  handleEmitEvent,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

@@ -75,3 +75,87 @@ export interface MuninnStatsResponse {
     }
   >;
 }
+
+// -- Phase 03 additions -------------------------------------------------------
+
+/** Entity aggregate from MuninnDB. */
+export interface MuninnEntity {
+  name: string;
+  type: string;
+  confidence: number;
+  state: string;
+  mention_count: number;
+  first_seen: string | null;
+  updated_at: string | null;
+  engrams: Array<{ id: string; concept: string; created_at: string }>;
+  /** Raw relationship data from MuninnDB links endpoint (shape varies). */
+  relationships: unknown[];
+  co_occurring: Array<{ entity_name: string; count: number }>;
+}
+
+/** Entity timeline entry. */
+export interface MuninnTimelineEntry {
+  engram_id: string;
+  concept: string;
+  created_at: string;
+  summary: string;
+}
+
+/** Entity timeline response. */
+export interface MuninnEntityTimeline {
+  entity: string;
+  first_seen: string | null;
+  mention_count: number;
+  timeline: MuninnTimelineEntry[];
+  count: number;
+}
+
+/** Find-by-entity result engram. */
+export interface MuninnEntityEngram {
+  id: string;
+  concept: string;
+  summary: string;
+  state: string;
+}
+
+/** Contradiction pair from MuninnDB. */
+export interface MuninnContradiction {
+  id_a: string;
+  id_b: string;
+  concept_a: string;
+  concept_b: string;
+  reason: string;
+}
+
+/** Graph traversal node. */
+export interface MuninnTraverseNode {
+  id: string;
+  concept: string;
+  depth: number;
+}
+
+/** Explain score breakdown. */
+export interface MuninnExplainResult {
+  engram_id: string;
+  concept: string;
+  final_score: number;
+  components: {
+    full_text_relevance: number;
+    semantic_similarity: number;
+    decay_factor: number;
+    hebbian_boost: number;
+    access_frequency: number;
+    confidence: number;
+  };
+  fts_matches: unknown;
+  assoc_path: unknown;
+  would_return: boolean;
+  threshold: number;
+}
+
+/** Entity cluster co-occurrence pair. */
+export interface MuninnEntityCluster {
+  entity_a: string;
+  entity_b: string;
+  count: number;
+}
