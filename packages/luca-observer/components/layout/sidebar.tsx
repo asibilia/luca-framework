@@ -24,6 +24,7 @@ import {
   Network,
   Search,
   AlertTriangle,
+  Fingerprint,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -49,6 +50,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Network,
   Search,
   AlertTriangle,
+  Fingerprint,
 };
 
 /**
