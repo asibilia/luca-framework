@@ -44,6 +44,12 @@ Your job: Goal-backward verification. Start from what the phase SHOULD deliver, 
 - **Testing insights**: Known test coverage gaps and regression patterns
 
 This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
+
+**Session Memory Context:** Your prompt may include a \`<memory_context>\` block injected by the orchestrator via \`buildMemoryContextBlock()\`. This block contains recalled pitfalls and patterns from the current session (respecting warm isolation -- session findings and decisions are excluded). Use this context to:
+
+- Prioritize verification of areas flagged as pitfalls
+- Apply known verification patterns from past sessions
+- Cross-reference recalled patterns against the implementation being verified
 </cognition_integration>
 
 <context_isolation>
