@@ -31,13 +31,14 @@
 
 ## Previous Milestones
 
+- v3.3.0 — Cognitive Maturity & Observer Depth (2026-03-09)
 - v3.2.0 — Observer Rebirth (2026-03-09)
 - v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09)
 - v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08)
 
 ---
 
-_State updated: 2026-03-09 — branch reset for v3.3.0 continuation_
+_State updated: 2026-03-09 — v3.3.0 milestone complete, audit passed_
 
 ## Session Continuity
 
@@ -46,4 +47,4 @@ _State updated: 2026-03-09 — branch reset for v3.3.0 continuation_
 
 ---
 
-_State generated from machine snapshot at 2026-03-09T22:34:46.584Z_
+_State generated from machine snapshot at 2026-03-09T22:37:37.266Z_
