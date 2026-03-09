@@ -13,6 +13,7 @@ import {
 import { GraphSidebar } from "~/components/knowledge-graph/graph-sidebar";
 import { ClusterLegend } from "~/components/knowledge-graph/cluster-legend";
 import { GraphControls } from "~/components/knowledge-graph/graph-controls";
+import { TimeRangeSlider } from "~/components/knowledge-graph/time-range-slider";
 import { useKnowledgeGraph, type GraphNode } from "~/hooks/use-knowledge-graph";
 import { KNOWN_ENTITY_TYPES } from "~/lib/graph-types";
 import { relativeTime } from "~/lib/format";
@@ -44,11 +45,16 @@ export default function KnowledgeGraphPage() {
     selectedNode,
     hoveredNode,
     expandedTypes,
+    timeExtent,
+    timeHistogram,
+    timeRange,
+    lastClusterAction,
     refresh,
     resetView,
     toggleCluster,
     selectNode,
     hoverNode,
+    setTimeRange,
   } = useKnowledgeGraph();
 
   // -- Canvas ref for imperative zoom controls --------------------------------
@@ -255,6 +261,7 @@ export default function KnowledgeGraphPage() {
                     onNodeHover={handleNodeHover}
                     selectedNodeId={selectedNode?.id ?? null}
                     hoveredNodeId={hoveredNode?.id ?? null}
+                    clusterAction={lastClusterAction}
                   />
 
                   {/* Overlay: legend (bottom-left) */}
@@ -273,6 +280,17 @@ export default function KnowledgeGraphPage() {
                     onToggleExpandAll={handleToggleExpandAll}
                     allExpanded={allExpanded}
                   />
+
+                  {/* Overlay: time range slider (bottom) */}
+                  {timeExtent && timeExtent[1] - timeExtent[0] > 3600 && (
+                    <TimeRangeSlider
+                      timeExtent={timeExtent}
+                      timeRange={timeRange}
+                      histogram={timeHistogram}
+                      onRangeChange={setTimeRange}
+                      onReset={() => setTimeRange(null)}
+                    />
+                  )}
                 </div>
 
                 {/* Sidebar (conditional) */}
