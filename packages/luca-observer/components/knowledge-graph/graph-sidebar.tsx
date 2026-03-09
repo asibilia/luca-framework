@@ -3,11 +3,9 @@
 import { useCallback } from "react";
 import { X } from "lucide-react";
 
-import type { GraphNode } from "~/lib/graph-types";
+import type { EntityType, GraphNode } from "~/lib/graph-types";
 import { TYPE_COLORS } from "~/lib/graph-types";
 import { relativeTime } from "~/lib/format";
-
-import type { EntityType } from "~/lib/graph-types";
 
 // -- Constants ---------------------------------------------------------------
 
@@ -51,7 +49,7 @@ export function GraphSidebar({
   }, [onExpandCluster, node.type]);
 
   return (
-    <div className="flex h-full w-80 flex-col border-l border-border bg-card animate-in slide-in-from-right duration-300 fill-mode-forwards">
+    <div className="flex h-full w-80 flex-col border-l border-border bg-card transition-transform duration-300 ease-out">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">

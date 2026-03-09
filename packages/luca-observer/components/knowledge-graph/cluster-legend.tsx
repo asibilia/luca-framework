@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import orderBy from "lodash/orderBy";
 
 import type { EntityType } from "~/lib/graph-types";
 import { TYPE_COLORS, TYPE_DISPLAY } from "~/lib/graph-types";
@@ -31,9 +32,11 @@ export function ClusterLegend({
   onToggleType,
 }: ClusterLegendProps) {
   // Sort types by count (descending) for consistent display
-  const entries = Object.entries(typeCounts)
-    .filter(([, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1]);
+  const entries = orderBy(
+    Object.entries(typeCounts).filter(([, count]) => count > 0),
+    ([, count]) => count,
+    "desc",
+  );
 
   if (entries.length === 0) return null;
 
