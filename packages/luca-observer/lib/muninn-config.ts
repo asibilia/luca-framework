@@ -5,16 +5,30 @@
  * Client components should fetch from /api/muninn/* proxy routes instead.
  *
  * MuninnDB REST API endpoints used:
- * - GET  /api/engrams?vault=V&limit=N&offset=N  — paginated engram listing
- * - POST /api/activate { vault, context[], limit } — semantic recall
- * - GET  /api/stats?vault=V                      — vault statistics
- * - GET  /api/session?vault=V&limit=N            — session activity
- * - GET  /api/health                             — connectivity check
+ * - GET  /api/engrams?vault=V&limit=N&offset=N&tags=T  — paginated engram listing
+ * - POST /api/activate { vault, context[], limit }      — semantic recall
+ * - GET  /api/stats?vault=V                             — vault statistics
+ * - GET  /api/session?vault=V&limit=N                   — session activity
+ * - GET  /api/health                                    — connectivity check
+ * - GET  /api/contradictions?vault=V                    — contradiction pairs
+ * - POST /api/traverse { vault, start_id, ... }         — graph traversal
+ * - POST /api/explain { vault, engram_id, query }       — scoring explanation
+ *
+ * Composed (built from engrams + links primitives):
+ * - findByEntity    — engrams by entity tag
+ * - entity          — entity aggregate (engrams + links)
+ * - entityTimeline  — chronological entity engrams
+ * - entityClusters  — tag co-occurrence pairs
+ * - exportGraph     — JSON-LD graph export
  */
 
 import type {
   MuninnActivation,
   MuninnEngram,
+  MuninnEntity,
+  MuninnEntityCluster,
+  MuninnEntityTimeline,
+  MuninnExplainResult,
   MuninnSessionEntry,
   MuninnStatsResponse,
 } from "./muninn-types";
@@ -22,6 +36,10 @@ import type {
 export type {
   MuninnActivation,
   MuninnEngram,
+  MuninnEntity,
+  MuninnEntityCluster,
+  MuninnEntityTimeline,
+  MuninnExplainResult,
   MuninnSessionEntry,
   MuninnStatsResponse,
 };
@@ -52,6 +70,7 @@ export interface MuninnClient {
     vault: string,
     limit?: number,
     offset?: number,
+    tags?: string,
   ): Promise<{ engrams: MuninnEngram[]; total: number }>;
 
   activate(
@@ -68,6 +87,54 @@ export interface MuninnClient {
   ): Promise<{ entries: MuninnSessionEntry[]; total: number }>;
 
   health(): Promise<MuninnHealthResponse>;
+
+  contradictions(vault: string): Promise<{ contradictions: unknown[] }>;
+
+  traverse(
+    vault: string,
+    startId: string,
+    maxHops?: number,
+    maxNodes?: number,
+    followEntities?: boolean,
+    relTypes?: string[],
+  ): Promise<{ nodes: unknown[]; edges: unknown[]; total_reachable: number }>;
+
+  explain(
+    vault: string,
+    engramId: string,
+    query: string[],
+  ): Promise<MuninnExplainResult>;
+
+  findByEntity(
+    vault: string,
+    entityName: string,
+    limit?: number,
+  ): Promise<{ entity: string; engrams: unknown[]; count: number }>;
+
+  entity(vault: string, name: string, limit?: number): Promise<MuninnEntity>;
+
+  entityTimeline(
+    vault: string,
+    entityName: string,
+    limit?: number,
+  ): Promise<MuninnEntityTimeline>;
+
+  entityClusters(
+    vault: string,
+    topN?: number,
+    minCount?: number,
+  ): Promise<{ clusters: MuninnEntityCluster[]; count: number }>;
+
+  exportGraph(
+    vault: string,
+    format?: string,
+    includeEngrams?: boolean,
+  ): Promise<{
+    data: string;
+    node_count: number;
+    edge_count: number;
+    format: string;
+  }>;
 }
 
 async function muninnFetch(
@@ -97,10 +164,10 @@ async function muninnFetch(
 
 function createMuninnClient(): MuninnClient {
   return {
-    async listEngrams(vault, limit = 100, offset = 0) {
-      const res = await muninnFetch(
-        `/api/engrams?vault=${encodeURIComponent(vault)}&limit=${limit}&offset=${offset}`,
-      );
+    async listEngrams(vault, limit = 100, offset = 0, tags?) {
+      let url = `/api/engrams?vault=${encodeURIComponent(vault)}&limit=${limit}&offset=${offset}`;
+      if (tags) url += `&tags=${encodeURIComponent(tags)}`;
+      const res = await muninnFetch(url);
       if (!res.ok) throw new Error(`MuninnDB engrams: ${res.status}`);
       return res.json();
     },
@@ -134,6 +201,251 @@ function createMuninnClient(): MuninnClient {
       const res = await muninnFetch("/api/health");
       if (!res.ok) throw new Error(`MuninnDB health: ${res.status}`);
       return res.json();
+    },
+
+    // -- Direct REST proxy methods (3) -----------------------------------------
+
+    async contradictions(vault) {
+      const res = await muninnFetch(
+        `/api/contradictions?vault=${encodeURIComponent(vault)}`,
+      );
+      if (!res.ok) throw new Error(`MuninnDB contradictions: ${res.status}`);
+      return res.json();
+    },
+
+    async traverse(
+      vault,
+      startId,
+      maxHops = 2,
+      maxNodes = 50,
+      followEntities = true,
+      relTypes?,
+    ) {
+      const res = await muninnFetch("/api/traverse", {
+        method: "POST",
+        body: JSON.stringify({
+          vault,
+          start_id: startId,
+          max_hops: maxHops,
+          max_nodes: maxNodes,
+          follow_entities: followEntities,
+          rel_types: relTypes,
+        }),
+      });
+      if (!res.ok) throw new Error(`MuninnDB traverse: ${res.status}`);
+      return res.json();
+    },
+
+    async explain(vault, engramId, query) {
+      const res = await muninnFetch("/api/explain", {
+        method: "POST",
+        body: JSON.stringify({
+          vault,
+          engram_id: engramId,
+          query,
+        }),
+      });
+      if (!res.ok) throw new Error(`MuninnDB explain: ${res.status}`);
+      return res.json();
+    },
+
+    // -- Composed methods (5) --------------------------------------------------
+
+    async findByEntity(vault, entityName, limit = 50) {
+      const res = await muninnFetch(
+        `/api/engrams?vault=${encodeURIComponent(vault)}&tags=${encodeURIComponent(entityName)}&limit=${limit}`,
+      );
+      if (!res.ok) throw new Error(`MuninnDB findByEntity: ${res.status}`);
+      const data = (await res.json()) as {
+        engrams?: Record<string, unknown>[];
+      };
+      return {
+        entity: entityName,
+        engrams: (data.engrams ?? []).map((e) => ({
+          id: e.id as string,
+          concept: e.concept as string,
+          summary: (e.content as string) ?? "",
+          state: (e.state as string) ?? "active",
+        })),
+        count: data.engrams?.length ?? 0,
+      };
+    },
+
+    async entity(vault, name, limit = 20) {
+      const engramsRes = await muninnFetch(
+        `/api/engrams?vault=${encodeURIComponent(vault)}&tags=${encodeURIComponent(name)}&limit=${limit}`,
+      );
+      if (!engramsRes.ok)
+        throw new Error(`MuninnDB entity engrams: ${engramsRes.status}`);
+      const engramsData = (await engramsRes.json()) as {
+        engrams?: Record<string, unknown>[];
+      };
+      const engrams = engramsData.engrams ?? [];
+
+      let relationships: unknown[] = [];
+      if (engrams.length > 0) {
+        try {
+          const linksRes = await muninnFetch(
+            `/api/engrams/${engrams[0]!.id}/links`,
+          );
+          if (linksRes.ok) {
+            const linksData = (await linksRes.json()) as Record<
+              string,
+              unknown
+            >;
+            relationships =
+              (linksData.associations as unknown[]) ??
+              (linksData.links as unknown[]) ??
+              [];
+          }
+        } catch {
+          /* links fetch is best-effort */
+        }
+      }
+
+      return {
+        name,
+        type: "unknown",
+        confidence: 1,
+        state: "active",
+        mention_count: engrams.length,
+        first_seen:
+          engrams.length > 0
+            ? (engrams[engrams.length - 1]!.created_at as string)
+            : null,
+        updated_at:
+          engrams.length > 0 ? (engrams[0]!.created_at as string) : null,
+        engrams: engrams.map((e) => ({
+          id: e.id as string,
+          concept: e.concept as string,
+          created_at: e.created_at as string,
+        })),
+        relationships,
+        co_occurring: [],
+      };
+    },
+
+    async entityTimeline(vault, entityName, limit = 50) {
+      const engramsRes = await muninnFetch(
+        `/api/engrams?vault=${encodeURIComponent(vault)}&tags=${encodeURIComponent(entityName)}&limit=${limit}`,
+      );
+      if (!engramsRes.ok)
+        throw new Error(`MuninnDB entityTimeline: ${engramsRes.status}`);
+      const data = (await engramsRes.json()) as {
+        engrams?: Record<string, unknown>[];
+      };
+      const engrams = data.engrams ?? [];
+
+      const sorted = [...engrams].sort(
+        (a, b) =>
+          new Date(a.created_at as string).getTime() -
+          new Date(b.created_at as string).getTime(),
+      );
+
+      return {
+        entity: entityName,
+        first_seen:
+          sorted.length > 0 ? (sorted[0]!.created_at as string) : null,
+        mention_count: sorted.length,
+        timeline: sorted.map((e) => ({
+          engram_id: e.id as string,
+          concept: e.concept as string,
+          created_at: e.created_at as string,
+          summary: (e.content as string) ?? "",
+        })),
+        count: sorted.length,
+      };
+    },
+
+    async entityClusters(vault, topN = 20, minCount = 2) {
+      const res = await muninnFetch(
+        `/api/engrams?vault=${encodeURIComponent(vault)}&limit=1000`,
+      );
+      if (!res.ok) throw new Error(`MuninnDB entityClusters: ${res.status}`);
+      const data = (await res.json()) as {
+        engrams?: Array<{ tags?: string[] }>;
+      };
+      const engrams = data.engrams ?? [];
+
+      const pairCounts = new Map<string, number>();
+      for (const engram of engrams) {
+        const tags: string[] = engram.tags ?? [];
+        for (let i = 0; i < tags.length; i++) {
+          for (let j = i + 1; j < tags.length; j++) {
+            const pair = [tags[i]!, tags[j]!].sort().join("|||");
+            pairCounts.set(pair, (pairCounts.get(pair) ?? 0) + 1);
+          }
+        }
+      }
+
+      const clusters = Array.from(pairCounts.entries())
+        .filter(([, count]) => count >= minCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([pair, count]) => {
+          const [entity_a, entity_b] = pair.split("|||");
+          return {
+            entity_a: entity_a!,
+            entity_b: entity_b!,
+            count,
+          };
+        });
+
+      return { clusters, count: clusters.length };
+    },
+
+    async exportGraph(vault, format = "json-ld", includeEngrams = false) {
+      const res = await muninnFetch(
+        `/api/engrams?vault=${encodeURIComponent(vault)}&limit=1000`,
+      );
+      if (!res.ok) throw new Error(`MuninnDB exportGraph: ${res.status}`);
+      const data = (await res.json()) as {
+        engrams?: Array<{
+          id: string;
+          concept: string;
+          created_at: string;
+          tags?: string[];
+        }>;
+      };
+      const engrams = data.engrams ?? [];
+
+      const entitySet = new Set<string>();
+      for (const engram of engrams) {
+        for (const tag of engram.tags ?? []) {
+          entitySet.add(tag);
+        }
+      }
+
+      const graph: Record<string, unknown>[] = Array.from(entitySet).map(
+        (name) => ({
+          "@id": `entity:${name}`,
+          "@type": "Entity",
+          name,
+        }),
+      );
+
+      if (includeEngrams) {
+        for (const engram of engrams) {
+          graph.push({
+            "@id": `engram:${engram.id}`,
+            "@type": "Engram",
+            concept: engram.concept,
+            created_at: engram.created_at,
+          });
+        }
+      }
+
+      const jsonLd = JSON.stringify({
+        "@context": { "@vocab": "https://muninndb.com/schema/" },
+        "@graph": graph,
+      });
+
+      return {
+        data: jsonLd,
+        node_count: entitySet.size + (includeEngrams ? engrams.length : 0),
+        edge_count: 0,
+        format,
+      };
     },
   };
 }
