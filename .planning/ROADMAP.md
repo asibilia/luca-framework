@@ -72,8 +72,8 @@
 **Complexity:** MODERATE
 **Depends on:** Phase 03
 
-- [ ] Learning Evolution page with charts
-- [ ] Establish charting library and patterns for reuse
+- [x] Learning Evolution page with charts
+- [x] Establish charting library and patterns for reuse
 
 ### Phase 07 — Vault Health Dashboard (#87)
 
