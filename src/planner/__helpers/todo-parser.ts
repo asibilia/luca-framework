@@ -208,30 +208,26 @@ export function parseSingleTodo(
 export async function parseTodos(
   pendingDir: string = ".planning/todos/pending",
 ): Promise<TodoMetadata[]> {
-  const { readdir } = await import("node:fs/promises");
-
-  let entries: string[];
-  try {
-    entries = await readdir(pendingDir);
-  } catch {
-    return [];
-  }
-
-  const mdFiles = entries.filter((entry) => entry.endsWith(".md"));
   const todos: TodoMetadata[] = [];
 
-  for (const fileName of mdFiles) {
-    const filePath = `${pendingDir}/${fileName}`;
-    try {
-      const content = await Bun.file(filePath).text();
-      const parsed = parseSingleTodo(filePath, content);
-      if (parsed !== null) {
-        todos.push(parsed);
+  try {
+    const glob = new Bun.Glob("*.md");
+    for await (const fileName of glob.scan({ cwd: pendingDir })) {
+      const filePath = `${pendingDir}/${fileName}`;
+      try {
+        const content = await Bun.file(filePath).text();
+        const parsed = parseSingleTodo(filePath, content);
+        if (parsed !== null) {
+          todos.push(parsed);
+        }
+      } catch {
+        // Skip files that can't be read
+        continue;
       }
-    } catch {
-      // Skip files that can't be read
-      continue;
     }
+  } catch {
+    // Directory may not exist
+    return [];
   }
 
   return todos;

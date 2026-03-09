@@ -299,6 +299,17 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export LUCA_SESSION_ACTIVE=1" >> "$CLAUDE_ENV_FILE"
 fi
 
+# Step 7b: Check for stale session lock (older than 2 hours = crashed session)
+SESSION_LOCK="$PROJECT_DIR/.claude/.session-lock"
+if [ -f "$SESSION_LOCK" ]; then
+  LOCK_MTIME=$(stat -f "%m" "$SESSION_LOCK" 2>/dev/null || stat -c "%Y" "$SESSION_LOCK" 2>/dev/null || echo "0")
+  NOW_TS=$(date +%s)
+  LOCK_AGE=$((NOW_TS - LOCK_MTIME))
+  if [ "$LOCK_AGE" -gt 7200 ]; then
+    rm -f "$SESSION_LOCK"
+  fi
+fi
+
 # Step 8: Create session lock file (with build manifest snapshot)
 HOOK_PROJECT_DIR_LOCK="$PROJECT_DIR" bun -e "
   const path = require('path');

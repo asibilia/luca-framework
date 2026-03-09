@@ -54,6 +54,8 @@ Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the 
 | \\\`suspend --phase=N [--reason=str]\\\` | Create checkpoint and suspend phase |
 | \\\`resume-phase --phase=N\\\` | Load checkpoint and resume phase |
 
+**Total: 13 subcommands** (6 read + 2 write + 5 lifecycle).
+
 ## Usage Patterns
 
 ### Reading State (Skills/Agents)

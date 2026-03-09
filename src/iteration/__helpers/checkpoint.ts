@@ -250,16 +250,13 @@ export async function prunePhaseCheckpoints(
     }
 
     // Delete metadata JSON files matching iter-<phase>-*
-    const { readdir, unlink } = await import("node:fs/promises");
     try {
-      const files = await readdir(checkpointDir);
       const prefix = `iter-${phase}-`;
-
-      for (const file of files) {
-        if (file.startsWith(prefix) && file.endsWith(".json")) {
-          await unlink(`${checkpointDir}/${file}`);
-          filesDeleted++;
-        }
+      const glob = new Bun.Glob(`${prefix}*.json`);
+      const { unlink } = await import("node:fs/promises");
+      for await (const file of glob.scan({ cwd: checkpointDir })) {
+        await unlink(`${checkpointDir}/${file}`);
+        filesDeleted++;
       }
     } catch {
       // Directory may not exist -- that's fine
