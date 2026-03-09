@@ -116,6 +116,44 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
           ? 30
           : COOLDOWN_TICKS;
 
+    // -- Connection highlighting (hover) ----------------------------------------
+    // Pre-compute a neighbors map for O(1) lookup during rendering.
+    // ForceGraph2D links can have source/target as string IDs or as node objects
+    // (once the simulation runs). We handle both forms.
+
+    const nodeNeighbors = useMemo(() => {
+      const neighbors = new Map<string, Set<string>>();
+      for (const link of graphData.links) {
+        const srcId =
+          typeof link.source === "string"
+            ? link.source
+            : (link.source as unknown as { id: string }).id;
+        const tgtId =
+          typeof link.target === "string"
+            ? link.target
+            : (link.target as unknown as { id: string }).id;
+
+        if (!neighbors.has(srcId)) neighbors.set(srcId, new Set());
+        if (!neighbors.has(tgtId)) neighbors.set(tgtId, new Set());
+        neighbors.get(srcId)!.add(tgtId);
+        neighbors.get(tgtId)!.add(srcId);
+      }
+      return neighbors;
+    }, [graphData.links]);
+
+    // Set of node IDs that should remain bright when a hover is active
+    const highlightedNodeIds = useMemo(() => {
+      if (!hoveredNodeId) return null;
+      const set = new Set<string>([hoveredNodeId]);
+      const neighborSet = nodeNeighbors.get(hoveredNodeId);
+      if (neighborSet) {
+        for (const id of neighborSet) {
+          set.add(id);
+        }
+      }
+      return set;
+    }, [hoveredNodeId, nodeNeighbors]);
+
     // -- Double-click detection -----------------------------------------------
     // ForceGraph2D has no built-in double-click prop. We use a click timer
     // pattern: if second click within DOUBLE_CLICK_MS on same node, fire
@@ -195,6 +233,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         const color = TYPE_COLORS[node.type as EntityType] ?? TYPE_COLORS.other;
         const isSelected = node.id === selectedNodeId;
         const isHovered = node.id === hoveredNodeId;
+
+        // Connection highlighting: dim nodes not connected to hovered node
+        const isDimmed =
+          highlightedNodeIds !== null && !highlightedNodeIds.has(node.id);
+        if (isDimmed) {
+          ctx.globalAlpha = 0.15;
+        }
 
         // -- Recency glow (last 24h) -----------------------------------------
         const now = Date.now() / 1000;
@@ -312,8 +357,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         if (isRecent) {
           ctx.restore();
         }
+
+        // Restore alpha if dimmed
+        if (isDimmed) {
+          ctx.globalAlpha = 1;
+        }
       },
-      [selectedNodeId, hoveredNodeId],
+      [selectedNodeId, hoveredNodeId, highlightedNodeIds],
     );
 
     // -- Pointer area paint (hit detection) -----------------------------------
@@ -335,7 +385,25 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
 
     // -- Link styling callbacks -----------------------------------------------
 
-    const linkColor = useCallback(() => "rgba(255,255,255,0.15)", []);
+    const linkColor = useCallback(
+      (link: Record<string, unknown>) => {
+        if (!hoveredNodeId) return "rgba(255,255,255,0.15)";
+
+        // ForceGraph2D may have source/target as objects with id after simulation
+        const srcId =
+          typeof link.source === "string"
+            ? link.source
+            : ((link.source as { id?: string })?.id ?? "");
+        const tgtId =
+          typeof link.target === "string"
+            ? link.target
+            : ((link.target as { id?: string })?.id ?? "");
+
+        const isConnected = srcId === hoveredNodeId || tgtId === hoveredNodeId;
+        return isConnected ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.04)";
+      },
+      [hoveredNodeId],
+    );
 
     const linkWidth = useCallback(
       (link: Record<string, unknown>) =>
