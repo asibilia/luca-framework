@@ -55,10 +55,10 @@
 
 **Goal:** Build digest mechanism and inject memory context into sub-agent prompts.
 
-- [ ] Create `src/shared/__helpers/memory-context-builder.ts` (T0 — shared)
-- [ ] Implement `buildMemoryContextBlock()` that creates a compact session digest
-- [ ] Implement session context digest caching to avoid redundant MuninnDB queries
-- [ ] Inject memory context block into Task() prompts for lu-executor, lu-verifier, lu-learner
+- [x] Create `src/shared/__helpers/memory-context-builder.ts` (T0 — shared)
+- [x] Implement `buildMemoryContextBlock()` that creates a compact session digest
+- [x] Implement session context digest caching to avoid redundant MuninnDB queries
+- [x] Inject memory context block into Task() prompts for lu-executor, lu-verifier, lu-learner
 
 **Complexity:** MODERATE
 **Todos:** #90, #92
@@ -92,11 +92,11 @@
 
 **Goal:** Batch small housekeeping items: dedup, docs, lock cleanup, Bun migration.
 
-- [ ] Deduplicate sanitizeJsonParse from 3 copies to 1 (#46)
-- [ ] Document observability domain in architecture docs (#50)
-- [ ] Fix bridge CLI documentation (14 vs 15 subcommands) (#45)
-- [ ] Add automatic stale session lock cleanup (#51)
-- [ ] Complete node:fs to Bun API migration (#63)
+- [x] Deduplicate sanitizeJsonParse — already at minimum (2 copies across isolated boundaries) (#46)
+- [x] Document observability domain in architecture docs (#50)
+- [x] Fix bridge CLI documentation (13 subcommands) (#45)
+- [x] Add automatic stale session lock cleanup (#51)
+- [x] Complete node:fs to Bun API migration (#63)
 
 **Complexity:** SIMPLE (per item)
 **Todos:** #46, #50, #45, #51, #63
