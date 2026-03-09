@@ -10,6 +10,7 @@
  * - JSON sanitization and config validation
  * - Template sanitization for prompt injection prevention
  * - Tribunal schemas, detection, and rebuttal infrastructure
+ * - Memory context building and deferred recall cache
  */
 
 // ─── Types and Schemas ─────────────────────────────────────────────────────────
@@ -129,9 +130,25 @@ export {
   MemoryContextConfigSchema,
   buildMemoryContextBlock,
   clearMemoryContextCache,
+  requestMemoryContext,
 } from "./__helpers/memory-context-builder";
 
-export type { MemoryContextConfig } from "./__helpers/memory-context-builder";
+export type {
+  MemoryContextConfig,
+  RequestMemoryContextConfig,
+} from "./__helpers/memory-context-builder";
+
+// ─── Recall Cache ──────────────────────────────────────────────────────────
+
+export {
+  RecallCacheEntrySchema,
+  getCachedRecall,
+  setCachedRecall,
+  hasRecallCache,
+  clearRecallCache,
+} from "./__helpers/recall-cache";
+
+export type { RecallCacheEntry } from "./__helpers/recall-cache";
 
 // ─── Session Digest ─────────────────────────────────────────────────────────
 
