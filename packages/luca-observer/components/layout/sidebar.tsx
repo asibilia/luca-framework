@@ -22,6 +22,8 @@ import {
   BookOpen,
   Database,
   Network,
+  Search,
+  AlertTriangle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -45,6 +47,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   BookOpen,
   Database,
   Network,
+  Search,
+  AlertTriangle,
 };
 
 /**

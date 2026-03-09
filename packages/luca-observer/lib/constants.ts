@@ -79,6 +79,8 @@ export const NAV_ITEMS = [
   { href: "/learning", label: "Learning", icon: "BookOpen" },
   { href: "/vault", label: "Vault", icon: "Database" },
   { href: "/knowledge-graph", label: "Knowledge Graph", icon: "Network" },
+  { href: "/semantic-search", label: "Semantic Search", icon: "Search" },
+  { href: "/contradictions", label: "Contradictions", icon: "AlertTriangle" },
 ] as const;
 
 /**
