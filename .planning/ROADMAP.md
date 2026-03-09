@@ -2,93 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v3.2.0 — Observer Rebirth
-
----
-
-## v3.2.0 — Observer Rebirth
-
-**Theme:** Replace SpacetimeDB with MuninnDB across the observer stack. Ship first 4 views.
-**Estimated effort:** 50-65 hours across 8 phases
-**Strategic objectives:** O3 (robust observability)
-**Prerequisite:** v3.1.0 (SpacetimeDB removed from framework) ✓
-**Source:** Backlog audit (2026-03-08) — see `.planning/backlog-audit/AUDIT-REPORT.md`
-
-### Phase 01 — MuninnDB Emission Layer (#77)
-
-**Goal:** Create the data pipeline that feeds the observer. Replace SpacetimeDB reducer calls with MuninnDB remember() calls.
-**Complexity:** COMPLEX
-**Depends on:** None (v3.1.0 already removed SpacetimeDB from framework)
-
-- [x] Create new emitter module using MuninnDB HTTP API/MCP tools
-- [x] Emit structured engrams for session events, decisions, agent activity, state transitions
-- [x] Fire-and-forget pattern with circuit breaker for resilience
-- [x] Target ~50-100 engrams per session
-
-### Phase 02 — Strip SpacetimeDB from Observer (#78)
-
-**Goal:** Remove all SpacetimeDB infrastructure from the observer app.
-**Complexity:** MODERATE
-**Depends on:** None
-
-- [x] Remove `spacetimedb` dependency from observer package.json
-- [x] Delete `module_bindings/` directory (30+ auto-generated files)
-- [x] Remove SpacetimeDB provider from app/providers.tsx
-- [x] Delete all 17 SpacetimeDB hooks in `hooks/use-*.ts`
-- [x] Delete all existing page components that depend on SpacetimeDB data
-
-### Phase 03 — Observer MuninnDB API Layer (#79)
-
-**Goal:** Expand API routes to cover all view data needs.
-**Complexity:** MODERATE
-**Depends on:** Phase 01
-
-- [x] Enhance existing `/api/muninn/` routes with type/tag/entity filtering
-- [x] Add new routes: entity, entity-timeline, entity-clusters, graph, traverse, contradictions, explain
-- [x] On-demand queries + manual refresh pattern
-
-### Phase 04 — Session Explorer View (#80)
-
-**Goal:** Build the first MuninnDB-native view. Establishes the design system for subsequent views.
-**Complexity:** MODERATE
-**Depends on:** Phase 03
-
-- [x] Session Explorer page with MuninnDB data
-- [x] Establish design system (layout, sidebar, color system, typography)
-- [x] Include error boundaries and empty states from day one
-
-### Phase 05 — Decision Trail View (#81)
-
-**Goal:** Chronological decision visualization.
-**Complexity:** MODERATE
-**Depends on:** Phase 03
-
-- [x] Decision Trail page with filtering and search
-- [x] Inherit design system from Phase 04
-
-### Phase 06 — Learning Evolution View (#82)
-
-**Goal:** Track learning patterns over time. Establishes charting patterns.
-**Complexity:** MODERATE
-**Depends on:** Phase 03
-
-- [x] Learning Evolution page with charts
-- [x] Establish charting library and patterns for reuse
-
-### Phase 07 — Vault Health Dashboard (#87)
-
-**Goal:** Operational health view for MuninnDB vault.
-**Complexity:** MODERATE
-**Depends on:** Phase 03
-
-- [x] Vault Health Dashboard with stats, engram counts, entity metrics
-
-### Phase 08 — Close Superseded Observer Items
-
-**Goal:** Formally close old observer items superseded by the MuninnDB rebuild.
-
-- [x] Verify observer design requirements applied to new views
-- [x] Move superseded todo files to done
+**Current Milestone:** v3.3.0 — Cognitive Maturity & Observer Depth
 
 ---
 
@@ -153,6 +67,18 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 | #65    | Obsolete — SpacetimeDB package being deleted                  |
 | #66-74 | Absorbed into observer design requirements doc                |
 
+## Closed (v3.2.0 Completed)
+
+| Todo | Reason                                                              |
+| ---- | ------------------------------------------------------------------- |
+| #77  | MuninnDB emission layer built (fire-and-forget + circuit breaker)   |
+| #78  | SpacetimeDB stripped from observer (30+ bindings, 17 hooks deleted) |
+| #79  | MuninnDB API layer with 7+ routes and filtering                     |
+| #80  | Session Explorer view with design system established                |
+| #81  | Decision Trail view with filtering and search                       |
+| #82  | Learning Evolution view with CSS charting patterns                  |
+| #87  | Vault Health Dashboard with stats and metrics                       |
+
 ## Closed (v3.1.0 Completed)
 
 | Todo | Reason                                                               |
@@ -206,7 +132,8 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 - **v2.9.0** — Audit Gap Closure & Test Reliability: 14 phases, 52 commits, 572 files changed ([View Archive](milestones/v2.9.0-ROADMAP.md))
 - **v3.0.0** — Data Integrity, Agentic Reliability & Model Routing Redesign: 14 phases, 42 plans, 151 commits, 810 files changed ([View Archive](milestones/v3.0.0-ROADMAP.md))
 - **v3.1.0** — Memory Intelligence & Platform Cleanup: 7 phases, 10 commits, 151 files changed ([View Archive](milestones/v3.1.0-ROADMAP.md))
+- **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-09 (v3.2.0 milestone created from backlog audit)_
+_Roadmap updated: 2026-03-09 (v3.2.0 completed, v3.3.0 is next)_
