@@ -21,6 +21,7 @@ import {
   StickyNote,
   BookOpen,
   Database,
+  Network,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -43,6 +44,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   StickyNote,
   BookOpen,
   Database,
+  Network,
 };
 
 /**

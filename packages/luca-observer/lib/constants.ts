@@ -78,6 +78,7 @@ export const NAV_ITEMS = [
   { href: "/notes", label: "Notes", icon: "StickyNote" },
   { href: "/learning", label: "Learning", icon: "BookOpen" },
   { href: "/vault", label: "Vault", icon: "Database" },
+  { href: "/knowledge-graph", label: "Knowledge Graph", icon: "Network" },
 ] as const;
 
 /**
