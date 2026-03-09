@@ -651,6 +651,42 @@ Display:
 Overall: {PASSED/FAILED}
 \`\`\`
 
+### 6.5.1. Complexity Reassessment (Harness Boundary)
+
+**After harness completes (Step 6.5), before entering harness fix loop (Step 6.6).**
+
+**Skip if:** \`ALREADY_PROMOTED\` is true.
+
+At this checkpoint, all 4 reassessment signals are available. This is the primary reassessment point.
+
+Collect all signals:
+
+\`\`\`bash
+# Signal 1: Cumulative files touched
+FILES_TOUCHED=$(git diff --stat "$PHASE_START_COMMIT" HEAD -- | tail -1 | grep -oE '[0-9]+ file' | grep -oE '[0-9]+' || echo "0")
+
+# Signal 2: Error count from harness results
+ERROR_COUNT=$(echo "$HARNESS_OUTPUT" | bun -e "console.log(JSON.parse(await Bun.stdin.text()).totalErrors || 0)" 2>/dev/null || echo "0")
+
+# Signal 3: Iteration budget ratio (0 if harness fix loop hasn't run yet)
+BUDGET_RATIO="0"
+
+# Signal 4: Stall detected (false if no convergence check yet)
+STALL="false"
+\`\`\`
+
+Apply the reassessment logic from \`src/complexity/__helpers/reassessment.ts\`:
+
+- Call \`shouldPromoteComplexity()\` with all 4 signals and \`alreadyPromoted: $ALREADY_PROMOTED\`.
+- If \`should_promote\` is true:
+  1. Update state via bridge
+  2. Update \`COMPLEXITY\` variable
+  3. Set \`ALREADY_PROMOTED=true\`
+  4. Log to MuninnDB session
+  5. Display promotion banner (same format as Step 4.6)
+
+**Critical (research pitfall #3):** After promotion, the harness fix loop (Step 6.6) must re-read iteration budgets from the complexity matrix using the NEW level. The loop initialization in Step 6.6.1 already reads complexity from the bridge, so promotion here will propagate automatically.
+
 ### 6.6. Loop A: Harness Fix Loop
 
 **When harness checks fail (Step 6.5), run the unified iteration loop for mechanical failures.**
