@@ -20,10 +20,10 @@
 **Complexity:** COMPLEX
 **Depends on:** None (v3.1.0 already removed SpacetimeDB from framework)
 
-- [ ] Create new emitter module using MuninnDB HTTP API/MCP tools
-- [ ] Emit structured engrams for session events, decisions, agent activity, state transitions
-- [ ] Fire-and-forget pattern with circuit breaker for resilience
-- [ ] Target ~50-100 engrams per session
+- [x] Create new emitter module using MuninnDB HTTP API/MCP tools
+- [x] Emit structured engrams for session events, decisions, agent activity, state transitions
+- [x] Fire-and-forget pattern with circuit breaker for resilience
+- [x] Target ~50-100 engrams per session
 
 ### Phase 02 — Strip SpacetimeDB from Observer (#78)
 
