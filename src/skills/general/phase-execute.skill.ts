@@ -1091,6 +1091,47 @@ Route by returned status:
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered \`/phase-plan {X} --gaps\`.
 
+### 7.2. Store Calibration Engram
+
+**After verification and memory feedback**, store a calibration engram comparing the initial complexity prediction to the actual observed level. This feeds back into future classification accuracy (CONTEXT.md Decision 4).
+
+Build the calibration data using \`buildCalibrationEngram()\` from \`src/complexity/__helpers/reassessment.ts\`:
+
+Parameters:
+- \`phase\`: {phase_number}
+- \`milestone\`: Read from STATE.md or ROADMAP.md (e.g., "v3.3.0")
+- \`predicted\`: \`$INITIAL_COMPLEXITY\` (captured in Step 0.1)
+- \`actual\`: \`$COMPLEXITY\` (may differ from predicted if promotion occurred)
+- \`promoted_mid_execution\`: \`$ALREADY_PROMOTED\`
+- \`promotion_trigger\`: The reason string from Step 4.6 or 6.5.1 (or empty string if no promotion)
+- \`files_touched\`: Final cumulative files touched
+- \`harness_iterations\`: Number of harness fix loop iterations consumed (from Loop A results)
+
+Store in MuninnDB:
+
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "decision:complexity-calibration-{milestone}-phase-{phase}",
+  content: "{calibration_json}"
+)
+\`\`\`
+
+The concept uses milestone-scoped naming (\`decision:complexity-calibration-v3.3.0-phase-2\`) to ensure uniqueness across milestones (research pitfall #5). This engram will be semantically recalled during future cognitive pre-flights when complexity/calibration keywords match.
+
+Display:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► CALIBRATION RECORDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Predicted: {INITIAL_COMPLEXITY}
+Actual: {COMPLEXITY}
+Promoted: {yes/no}
+Engram: decision:complexity-calibration-{milestone}-phase-{phase}
+\`\`\`
+
 ### 7.25. Verification Tribunal (Conditional)
 
 **Skip if:** \`workflow.verification_tribunal_enabled: false\` in config (default: true), OR complexity is below COMPLEX, OR no T1/T3 conflict detected.
