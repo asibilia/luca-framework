@@ -16,6 +16,8 @@ export type {
   ModelId,
   ModelTier,
   RolePurpose,
+  ReassessmentSignals,
+  ReassessmentResult,
 } from "./__schemas/complexity.schemas";
 
 // Schemas
@@ -27,6 +29,8 @@ export {
   ComplexityConfigSchema,
   ModelIdSchema,
   ModelTierSchema,
+  ReassessmentSignalsSchema,
+  ReassessmentResultSchema,
 } from "./__schemas/complexity.schemas";
 
 // Constants
@@ -46,6 +50,7 @@ export {
   COMPLEXITY_CLASSIFICATIONS,
   DEFAULT_COMPLEXITY_MATRIX,
   DEFAULT_COMPLEXITY_CONFIG,
+  REASSESSMENT_THRESHOLDS,
 } from "./__helpers/defaults";
 
 // Complexity gating
@@ -68,6 +73,14 @@ export type {
   ComplexityAccuracyResult,
   ComplexityTuningResult,
 } from "./__helpers/self-tuning";
+
+// Reassessment
+export {
+  shouldPromoteComplexity,
+  buildCalibrationEngram,
+} from "./__helpers/reassessment";
+
+export type { CalibrationEngramParams } from "./__helpers/reassessment";
 
 // Model routing
 export {
