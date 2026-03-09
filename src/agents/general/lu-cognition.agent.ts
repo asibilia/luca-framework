@@ -320,6 +320,18 @@ elif entry.confidence == "Medium":
 # Recency boost (optional)
 if entry.added within 30 days:
     score += 0.5
+
+# Milestone proximity scoring
+current_milestone = resolve from STATE.md "Current Milestone" field
+if entry has milestone tag:
+    if entry.milestone == current_milestone:
+        score *= 1.5  # Current milestone boost
+    elif entry.milestone == previous_milestone (N-1):
+        score *= 1.0  # Previous milestone, neutral
+    else:
+        score *= 0.25  # Old milestone (N-2+), aggressive decay
+else:
+    score *= 0.5  # No milestone tag (legacy entry), deprioritize
 \`\`\`
 
 **Backward Compatibility for Agent field:**
@@ -328,7 +340,16 @@ if entry.added within 30 days:
 - Entries WITHOUT \`Relevant to:\` field → empty relevance list
 - Legacy entries still recalled via keyword matching + general agent score
 
-**Tier-Scaled Entry Limits (NEW — replaces fixed 5-7 limit):**
+**Complexity-Gated Recall Depth:**
+
+\`\`\`
+1. Read recallDepth from complexity matrix for current complexity level
+2. IF recallDepth == 0: skip recall entirely (lite mode handles TRIVIAL/SIMPLE)
+3. IF recallDepth is a number (e.g., 3): cap entries at recallDepth regardless of tier
+4. IF recallDepth is null: use tier-scaled defaults below
+\`\`\`
+
+**Tier-Scaled Entry Limits (fallback when recallDepth is null):**
 
 \`\`\`
 Sort scored entries descending, then select top entries by effective_tier:
@@ -748,7 +769,8 @@ Pre-flight complete when:
 - [ ] Current milestone resolved from state machine bridge (if available)
 - [ ] MuninnDB engrams recalled via semantic recall (preferred) or tag-based filtering (fallback)
 - [ ] Relevant patterns, decisions, pitfalls identified (or none found, or skipped for T0)
-- [ ] Entry count scaled by effective tier (T1: 3-5, T2: 5-7, T3: 7-10)
+- [ ] Entry count gated by complexity (MODERATE: max 3) then scaled by tier (T1: 3-5, T2: 5-7, T3: 7-10)
+- [ ] Milestone proximity scoring applied (current: 1.5x, N-1: 1.0x, N-2+: 0.25x, legacy: 0.5x)
 - [ ] MuninnDB session context initialized
 - [ ] Intuition flags generated based on memory
 - [ ] Cognitive report includes Cognition Profile section
