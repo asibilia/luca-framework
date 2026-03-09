@@ -9,7 +9,7 @@
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "COMPLEX",
+    "complexity": "MODERATE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -87,7 +87,7 @@
     "intuition_flags": [],
     "memory_tags": [],
     "started_at": "2026-03-09T00:13:24.488Z",
-    "last_transition_at": "2026-03-09T19:14:28.043Z"
+    "last_transition_at": "2026-03-09T19:35:44.633Z"
   },
   "children": {
     "phase": {
