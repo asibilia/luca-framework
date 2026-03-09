@@ -192,6 +192,18 @@ Track:
 
 Model routing is handled by \`resolveModelForAgent(agentName, complexity)\` from \`src/complexity/__helpers/model-routing.ts\`. See the complexity-gating rule for the routing table summary. No manual profile selection is needed.
 
+### 0.1. Capture Phase Start Commit
+
+Store the current commit hash as the baseline for file-touch tracking during reassessment.
+
+\`\`\`bash
+PHASE_START_COMMIT=$(git rev-parse HEAD)
+ALREADY_PROMOTED=false
+INITIAL_COMPLEXITY="$COMPLEXITY"
+\`\`\`
+
+These variables are used by Step 4.6 (wave boundary reassessment) and Step 6.5.1 (harness boundary reassessment).
+
 ### 0.5. Verify GitHub Tracking (Gate)
 
 **Before executing any plans, verify issue/branch tracking is configured.**
