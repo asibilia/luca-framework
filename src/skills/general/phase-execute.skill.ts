@@ -97,14 +97,38 @@ After verification (pass or fail):
 
 First, read the required context:
 
-Use MuninnDB to recall session context and past learnings:
+**Use deferred recall cache (no redundant MCP calls):** If recall was already performed in Step 4 (via \`setCachedRecall()\`), reuse the cached results. Otherwise, perform the recall now and cache it.
 
-\`\`\`
-# Recall current session findings
-mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
+\`\`\`typescript
+import { hasRecallCache, setCachedRecall } from "~/shared";
+import { requestMemoryContext } from "~/shared";
 
-# Recall relevant patterns and past decisions
-mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and past decisions for this phase")
+// Reuse cached recall from Step 4 if available (avoids redundant MCP call)
+if (!hasRecallCache(SESSION_ID)) {
+  // Recall was not done in Step 4 (e.g., --skip-memory was used earlier)
+  // Perform recall now for learning context
+  const recallResult = mcp__muninn__muninn_recall(
+    vault: "default",
+    context: "session context, patterns, and decisions for phase {PHASE}"
+  );
+
+  setCachedRecall(SESSION_ID, {
+    sessionId: SESSION_ID,
+    patterns: [/* from recall */],
+    decisions: [/* from recall */],
+    pitfalls: [/* from recall */],
+    findings: [/* from recall */],
+    recalledAt: new Date().toISOString(),
+  });
+}
+
+// Format cached recall for lu-learner
+const workingContent = requestMemoryContext({
+  agentName: "lu-learner",
+  sessionId: SESSION_ID,
+  memoryTags: ["*"],
+  maxTokens: 500,
+});
 \`\`\`
 
 \`\`\`bash
@@ -330,26 +354,43 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 STATE_CONTENT=$(cat .planning/STATE.md)
 \`\`\`
 
-Recall session context from MuninnDB:
+**Load memory context (deferred recall pattern):**
 
-\`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
-\`\`\`
-
-**Build memory context for sub-agents:** Use \`buildMemoryContextBlock()\` from \`src/shared/__helpers/memory-context-builder.ts\` to format the recalled MuninnDB context (patterns, decisions, pitfalls, session findings) into a compact \`<memory_context>\` block. Pass the result as \`{working_content}\` in each Task() prompt below. This ensures sub-agents receive accumulated session knowledge without the orchestrator manually formatting it each time.
+Check if memory has already been recalled this session using the session-scoped recall cache. If not, perform the MuninnDB recall and cache the result. Then format via \`requestMemoryContext()\`.
 
 \`\`\`typescript
-import { buildMemoryContextBlock } from "~/shared";
+import { getCachedRecall, setCachedRecall, hasRecallCache } from "~/shared";
+import { requestMemoryContext } from "~/shared";
 
-const workingContent = buildMemoryContextBlock({
+// Step 1: Check cache (keyed by SESSION_ID from STATE.md)
+if (!hasRecallCache(SESSION_ID)) {
+  // Step 2: First request this session — perform MuninnDB recall
+  const recallResult = mcp__muninn__muninn_recall(
+    vault: "default",
+    context: "patterns, decisions, and pitfalls for phase {PHASE}"
+  );
+
+  // Step 3: Parse and cache the recall result
+  setCachedRecall(SESSION_ID, {
+    sessionId: SESSION_ID,
+    patterns: [/* extracted patterns from recall */],
+    decisions: [/* extracted decisions from recall */],
+    pitfalls: [/* extracted pitfalls from recall */],
+    findings: [/* session findings */],
+    recalledAt: new Date().toISOString(),
+  });
+}
+
+// Step 4: Format for sub-agents (cache-first, preferred approach)
+const workingContent = requestMemoryContext({
   agentName: "lu-executor",
-  sessionFindings: [/* findings from MuninnDB session recall */],
-  recalledPatterns: [/* patterns from MuninnDB recall */],
-  recalledPitfalls: [/* pitfalls from MuninnDB recall */],
-  recalledDecisions: [/* decisions from MuninnDB recall */],
+  sessionId: SESSION_ID,
+  memoryTags: ["*"],
   maxTokens: 500,
 });
 \`\`\`
+
+**Note:** \`requestMemoryContext()\` reads the cache populated above and formats it via \`buildMemoryContextBlock()\` internally. You can still use \`buildMemoryContextBlock()\` directly if you need custom formatting, but \`requestMemoryContext()\` is the preferred approach for the deferred pattern.
 
 Then spawn all executors for the wave in PARALLEL (same message, multiple Task calls):
 
