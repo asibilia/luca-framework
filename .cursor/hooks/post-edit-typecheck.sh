@@ -119,14 +119,4 @@ if [ $TSC_EXIT -ne 0 ] && [ -n "$TSC_OUTPUT" ]; then
   "
 fi
 
-# Emit typecheck result via bridge (fire-and-forget)
-EVENT_TYPE="typecheck.pass"
-if [ $TSC_EXIT -ne 0 ]; then
-  EVENT_TYPE="typecheck.fail"
-fi
-SESSION_ID=$(read_session_id)
-if [ -n "$SESSION_ID" ]; then
-  run_bridge emit-event --type="$EVENT_TYPE" --session="$SESSION_ID" --tool=tsc --file="$FILE_PATH" &>/dev/null &
-fi
-
 exit 0

@@ -74,8 +74,6 @@ if [ -d "$NOTES_DIR" ]; then
       mkdir -p "$NOTES_DIR/done"
       mv "$note_file" "$NOTES_DIR/done/" 2>/dev/null || true
     done
-    # Emit note.consumed via bridge (fire-and-forget)
-    run_bridge emit-event --type=note.consumed &>/dev/null &
     printf '{"systemMessage": "[Developer Notes] Urgent notes to incorporate:%b"}' "$NOTE_CONTENT"
     exit 0
   fi
@@ -118,14 +116,6 @@ fi
 # Only output warning for degrading or stop zones
 if [ "$ZONE" = "degrading" ] || [ "$ZONE" = "stop" ]; then
   printf '{"systemMessage": "Context usage at %s%% (zone: %s). Consider compressing memory or starting a new session."}' "$USAGE_PERCENT" "$ZONE"
-fi
-
-# Emit context snapshot via bridge (fire-and-forget)
-SESSION_ID=$(read_session_id)
-if [ -n "$SESSION_ID" ] && [ "$USAGE_PERCENT" -gt 0 ]; then
-  # Estimate tokens from file size (~4 chars per token)
-  EST_TOKENS=$(( ${FILE_SIZE:-0} / 4 ))
-  run_bridge emit-context-snapshot --session="$SESSION_ID" --percent="$USAGE_PERCENT" --tokens="$EST_TOKENS" &>/dev/null &
 fi
 
 exit 0

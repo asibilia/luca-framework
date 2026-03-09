@@ -308,6 +308,21 @@ VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo ""
 WORKING_CONTENT="[recalled from MuninnDB session context]"
 ```
 
+**Build memory context for sub-agents:** Use `buildMemoryContextBlock()` from `src/shared/__helpers/memory-context-builder.ts` to format recalled MuninnDB context into a compact `<memory_context>` block. Pass the result as `{working_content}` in the Task() prompt below.
+
+```typescript
+import { buildMemoryContextBlock } from "~/shared";
+
+const workingContent = buildMemoryContextBlock({
+  agentName: "lu-planner",
+  sessionFindings: [/* findings from MuninnDB session recall */],
+  recalledPatterns: [/* patterns from MuninnDB recall */],
+  recalledPitfalls: [/* pitfalls from MuninnDB recall */],
+  recalledDecisions: [/* decisions from MuninnDB recall */],
+  maxTokens: 500,
+});
+```
+
 Then spawn the planner:
 
 ```python
