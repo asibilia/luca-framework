@@ -31,11 +31,11 @@
 **Complexity:** MODERATE
 **Depends on:** None
 
-- [ ] Remove `spacetimedb` dependency from observer package.json
-- [ ] Delete `module_bindings/` directory (30+ auto-generated files)
-- [ ] Remove SpacetimeDB provider from app/providers.tsx
-- [ ] Delete all 17 SpacetimeDB hooks in `hooks/use-*.ts`
-- [ ] Delete all existing page components that depend on SpacetimeDB data
+- [x] Remove `spacetimedb` dependency from observer package.json
+- [x] Delete `module_bindings/` directory (30+ auto-generated files)
+- [x] Remove SpacetimeDB provider from app/providers.tsx
+- [x] Delete all 17 SpacetimeDB hooks in `hooks/use-*.ts`
+- [x] Delete all existing page components that depend on SpacetimeDB data
 
 ### Phase 03 — Observer MuninnDB API Layer (#79)
 
