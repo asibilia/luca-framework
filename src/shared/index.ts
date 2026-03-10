@@ -37,7 +37,11 @@ export { formatFrontmatter } from "./__helpers/utils";
 
 // ─── Template Sanitization ───────────────────────────────────────────────────
 
-export { sanitizeForTemplate } from "./__helpers/sanitize-template";
+export {
+  sanitizeForTemplate,
+  escapeXmlAttr,
+  escapeRegExp,
+} from "./__helpers/sanitize-template";
 
 // ─── Validation ─────────────────────────────────────────────────────────────────
 
