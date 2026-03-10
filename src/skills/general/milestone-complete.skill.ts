@@ -412,6 +412,12 @@ Proceed to Step 9.
 - [ ] Git tag v{version} created
 - [ ] Commit successful
 - [ ] GitHub milestone created (closed) and PR attached
+- [ ] Process retrospective dashboard shown with metric trends
+- [ ] Developer question asked (or skipped per graduation criteria)
+- [ ] Retro response rate tracked in MuninnDB
+- [ ] Divergent mode advisory shown (if streak >= 8)
+- [ ] Convergent streak counter updated in MuninnDB
+- [ ] Divergent opt-in rate tracked in MuninnDB
 
 ## Next Steps
 
@@ -420,6 +426,7 @@ Proceed to Step 9.
 | Ready for next milestone | Start new milestone | \`/milestone-new\` |
 | Want to review completion | Check progress | \`/progress\` |
 | Need to create PR | Create pull request | Run \`gh pr create\` |
+| Opted into divergent mode | Take a break | No command — start new session when ready |
 
 **Primary:** \`/milestone-new\` — Start the next milestone cycle
 
