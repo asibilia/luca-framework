@@ -424,6 +424,60 @@ Confidence levels:
 - **Low**: First occurrence (1 validation)
 - **Medium**: Multiple occurrences (2-3 validations)
 - **High**: Established pattern (4+ validations)
+
+### Feedback-Based Confidence Evolution
+
+After the standard confidence assignment above, check MuninnDB for feedback history on the engrams you just wrote or evolved. This augments the session-local heuristic — it does NOT replace it. For brand-new engrams with no feedback history, the session-local "2-3 validations" heuristic still applies.
+
+For each engram written during this learning extraction:
+
+1. **Recall feedback history** for similar engrams (same concept pattern):
+
+\\\`\\\`\\\`
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "metric:memory-recall-precision metric:memory-hit-rate for engrams similar to {engram_concept}",
+  mode: "recent",
+  limit: 5
+)
+\\\`\\\`\\\`
+
+2. **Adjust confidence based on feedback data:**
+
+Only evolve confidence for engrams that have **3+ feedback data points** (avoid premature adjustment on sparse data).
+
+If feedback data exists for this or similar engrams:
+- **3+ positive feedbacks** (useful: true) across phases → **Promote** to "High" confidence via muninn_evolve
+- **Mixed feedback** (some useful, some not) → **Keep** at current confidence level
+- **3+ negative feedbacks** (useful: false) across phases → **Demote** to "Low" confidence via muninn_evolve
+
+Use muninn_evolve to update the engram content with the new confidence level:
+
+\\\`\\\`\\\`
+mcp__muninn__muninn_evolve(
+  vault: "default",
+  id: engram_id,
+  new_content: "{original content with Confidence: {new_level}}",
+  reason: "Confidence {promoted|demoted} based on {positive_count}/{total_count} positive feedback across {phase_count} phases"
+)
+\\\`\\\`\\\`
+
+3. **Log confidence changes:**
+
+For each confidence change, log to session context:
+
+\\\`\\\`\\\`
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "session:findings",
+  content: "Confidence evolution: {engram_concept} {old_level} -> {new_level} (based on {feedback_summary})"
+)
+\\\`\\\`\\\`
+
+**Important constraints:**
+- Only evolve confidence for engrams that have 3+ feedback data points (avoid premature adjustment)
+- **Never override an explicit human-set confidence** — engrams with "Confidence: High [human-set]" or similar human annotations in content are protected from automatic evolution
+- This augments the session-local heuristic, it does not replace it. For brand-new engrams with no feedback history, the session-local "2-3 validations" heuristic still applies
   </step>
 
 <step name="write_memory">
