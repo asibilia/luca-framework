@@ -39,6 +39,19 @@ export type MemoryContextConfig = z.infer<typeof MemoryContextConfigSchema>;
  */
 const formatCache = new Map<string, string>();
 
+const MAX_FORMAT_ENTRIES = 200;
+
+/**
+ * Evict the oldest entry from a Map if it has reached the maximum size.
+ * Maps iterate in insertion order, so the first key is the oldest.
+ */
+function evictOldestIfNeeded<K, V>(map: Map<K, V>, max: number): void {
+  if (map.size >= max) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) map.delete(firstKey);
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -208,6 +221,7 @@ export function buildMemoryContextBlock(
   const contentBudget = config.maxTokens - wrapperOverhead;
 
   if (contentBudget <= 0) {
+    evictOldestIfNeeded(formatCache, MAX_FORMAT_ENTRIES);
     formatCache.set(key, "");
     return "";
   }
@@ -215,6 +229,7 @@ export function buildMemoryContextBlock(
   const fitted = truncateToFit(sections, contentBudget);
 
   if (fitted.length === 0) {
+    evictOldestIfNeeded(formatCache, MAX_FORMAT_ENTRIES);
     formatCache.set(key, "");
     return "";
   }
@@ -222,6 +237,7 @@ export function buildMemoryContextBlock(
   const body = fitted.join("\n\n");
   const block = `<memory_context agent="${escapeXmlAttr(config.agentName)}">\n${body}\n</memory_context>`;
 
+  evictOldestIfNeeded(formatCache, MAX_FORMAT_ENTRIES);
   formatCache.set(key, block);
   return block;
 }
