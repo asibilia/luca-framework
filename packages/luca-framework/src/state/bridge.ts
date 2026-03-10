@@ -369,6 +369,7 @@ async function handleReadStatus(): Promise<void> {
     appetite_level: "Medium" as string,
     appetite_token_ceiling: 100000,
     appetite_context_percent: 50,
+    appetite_used_tokens: 0,
   };
 
   const result = await readFromState({
@@ -396,6 +397,7 @@ async function handleReadStatus(): Promise<void> {
       appetite_level: (ctx.appetite_level as string) ?? "Medium",
       appetite_token_ceiling: (ctx.appetite_token_ceiling as number) ?? 100000,
       appetite_context_percent: (ctx.appetite_context_percent as number) ?? 50,
+      appetite_used_tokens: (ctx.appetite_used_tokens as number) ?? 0,
     }),
     defaults: statusDefaults,
   });

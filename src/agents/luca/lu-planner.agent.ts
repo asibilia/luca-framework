@@ -280,9 +280,9 @@ If appetite is declared (appetite_level is set and appetite_token_ceiling > 0):
 
 4. **Prioritize ruthlessly** — Under tight appetite budgets, cut nice-to-haves first. The plan should deliver the core objective within budget, even if polish tasks are deferred.
 
-### When Appetite Is Not Set
+### When Appetite Is At Default
 
-If no appetite is declared (empty string or missing), plan normally without budget constraints. The phase-discuss skill handles appetite declaration — the planner only consumes the declared value.`,
+Appetite is always present in the workflow context (defaults to "Medium" with a 100,000 token ceiling). If the appetite has not been explicitly declared by the developer during phase-discuss (i.e., it still holds the schema default), plan normally — treat the default as a reasonable baseline rather than a hard constraint. The phase-discuss skill handles explicit appetite declaration; the planner only consumes the declared value.`,
       order: 8,
     },
   ],

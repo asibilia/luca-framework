@@ -251,12 +251,14 @@ export const workflowMachine = setup({
 
     /** Record cooldown reason when entering cooldown state */
     recordCooldownReason: assign({
-      cooldown_reason: ({ event }) => {
+      cooldown_reason: ({ context, event }) => {
         if (
           event.type === "COMMIT_COMPLETE" ||
           event.type === "COOLDOWN_COMPLETE"
         )
-          return "Session complete — entering cooldown";
+          return (
+            context.cooldown_reason || "Session complete — entering cooldown"
+          );
         return undefined;
       },
     }),
