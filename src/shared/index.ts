@@ -112,15 +112,26 @@ export { safeParseOrThrow } from "./__helpers/safe-parse-or-throw";
 export {
   CONSENSUS_MODES,
   consensusModeSchema,
+  ConsensusTypeSchema,
+  FALLBACK_STRATEGIES,
+  ConsensusFallbackStrategySchema,
   ConsensusConfigSchema,
+  ConsensusResultSchema,
 } from "./__schemas/consensus.schemas";
 
 export type {
   ConsensusMode,
+  ConsensusType,
+  ConsensusFallbackStrategy,
+  FallbackStrategy,
   ConsensusConfig,
+  ConsensusResult as FlatConsensusResult,
 } from "./__schemas/consensus.schemas";
 
-export { resolveConsensus } from "./__helpers/consensus-resolver";
+export {
+  resolveConsensus,
+  toFlatConsensusResult,
+} from "./__helpers/consensus-resolver";
 
 export type { ConsensusResult } from "./__helpers/consensus-resolver";
 

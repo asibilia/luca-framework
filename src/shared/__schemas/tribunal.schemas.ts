@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ConsensusResultSchema } from "./consensus.schemas";
+
 /**
  * A single finding from a code reviewer agent.
  *
@@ -149,6 +151,8 @@ export const tribunalResultSchema = z.object({
   unified_recommendations: z.array(unifiedRecommendationSchema),
   /** Estimated token cost for debate rounds */
   debate_token_cost: z.number().int().nonnegative().default(0),
+  /** Consensus resolution result (present when formal consensus was computed) */
+  consensus: ConsensusResultSchema.optional(),
   /** ISO 8601 timestamp */
   timestamp: z.string(),
 });
