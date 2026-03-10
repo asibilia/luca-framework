@@ -171,6 +171,7 @@ Default:
 - [ ] CONTEXT.md captures decisions, not vague vision
 - [ ] Appetite level declared and persisted via bridge
 - [ ] Pre-mortem risk analysis completed (MODERATE+) or skipped (TRIVIAL/SIMPLE)
+- [ ] Self-tuning auto-skip checked signal rate aggregate before pre-mortem (MODERATE+)
 
 ## Appetite Declaration
 
@@ -251,6 +252,36 @@ Skip pre-mortem (no prompt, no spawn) if ANY of these are true:
 - \`PREMORTEM_GATE\` is "false"
 
 When skipping, emit DISCUSS_COMPLETE as normal and proceed to next steps.
+
+### Self-Tuning Auto-Skip
+
+If the config gate passes (premortem IS enabled), check whether signal rate data suggests pre-mortem is not providing value:
+
+1. Recall \\\`metric:signal-rate-aggregate\\\` from MuninnDB:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_recall(vault: "default", context: "metric:signal-rate-aggregate")
+   \\\`\\\`\\\`
+
+2. Parse the recalled engram. If the aggregate exists AND meets BOTH conditions:
+   - \\\`sample_count >= 20\\\` (sufficient data from 20+ MODERATE+ runs)
+   - \\\`rate < 0.10\\\` (less than 10% of pre-mortem risks resulted in useful mitigations)
+
+   Then AUTO-SKIP pre-mortem:
+   - Do NOT spawn lu-premortem
+   - Store auto-skip decision as MuninnDB engram:
+     \\\`\\\`\\\`
+     mcp__muninn__muninn_remember(
+       vault: "default",
+       concept: "process:auto-skip",
+       content: "Pre-mortem auto-skipped: signal rate {rate} over {sample_count} runs. Threshold: <10% over 20+ runs."
+     )
+     \\\`\\\`\\\`
+   - Log: "Pre-mortem auto-skipped (signal rate {rate} below threshold over {sample_count} runs)"
+   - Proceed to next steps (emit DISCUSS_COMPLETE as normal)
+
+3. If the aggregate does NOT exist or conditions are NOT met: proceed with pre-mortem as normal.
+
+**Important:** The config gate (\\\`gates.premortem\\\`) takes precedence. If config says disabled, pre-mortem never runs regardless of signal rate. Self-tuning only applies when config says enabled but data suggests low value.
 
 ### Execution (MODERATE+ AND gate enabled)
 
