@@ -54,6 +54,67 @@ Before archiving, ensure all session learnings are captured:
    - Decisions that held throughout milestone -> mark as Established
    - Pitfalls that were successfully avoided -> note as Validated
 
+### Step 0.5: Stale Memory Detection and Pruning
+
+Before archiving, analyze memory health and prune stale engrams.
+
+**1. Recall all memory metrics for this milestone:**
+
+\`\`\`
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "metric:memory-recall-precision metric:memory-hit-rate {milestone_version}",
+  mode: "deep",
+  limit: 50
+)
+\`\`\`
+
+**2. Identify stale engrams:**
+
+Recall all pattern/decision/pitfall engrams and cross-reference with feedback data:
+
+\`\`\`
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "pattern: decision: pitfall: for {milestone_version}",
+  mode: "deep",
+  limit: 100
+)
+\`\`\`
+
+An engram is "stale" if:
+- It was recalled 3+ times across the milestone (appeared in recalledEngrams) but received feedback with useful=false more than useful=true
+- OR it was never recalled at all during the entire milestone (zero appearances)
+
+**3. Prune stale engrams:**
+
+For each stale engram, decide:
+- **Forget** (if never recalled and older than 2 milestones): \`mcp__muninn__muninn_forget(vault: "default", id: engram_id)\`
+- **Evolve** (if recalled but low usefulness): \`mcp__muninn__muninn_evolve(vault: "default", id: engram_id, new_content: "...", reason: "Low usefulness across milestone {version}: {useful_count}/{total_feedback} positive feedback")\`
+- **Consolidate** (if multiple similar low-utility engrams): \`mcp__muninn__muninn_consolidate(vault: "default", ids: [id1, id2, ...], merged_content: "...")\`
+
+**4. Report pruning results:**
+
+Log pruning summary:
+"Memory pruning: {forgotten} engrams forgotten, {evolved} engrams evolved, {consolidated} engrams consolidated from {total_stale} stale candidates."
+
+Store pruning report as a milestone metric:
+
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:memory-pruning-{milestone_version}",
+  content: JSON.stringify({
+    forgotten: {count},
+    evolved: {count},
+    consolidated: {count},
+    total_stale: {count},
+    total_engrams_analyzed: {count},
+    pruned_at: new Date().toISOString()
+  })
+)
+\`\`\`
+
 ### Step 1: Archive Milestone Memory
 
 Create milestone-specific memory snapshot in MuninnDB:
@@ -70,6 +131,7 @@ Include in archive:
 - All patterns validated during this milestone
 - Key decisions and their outcomes
 - Pitfalls discovered and avoided
+- Memory effectiveness summary (precision, hit rate, token cost across milestone)
 
 ### Step 2: Clean Session State
 
