@@ -133,6 +133,46 @@ CONTEXT: [✓ if CONTEXT.md exists | - if not]
 - [decision 1 from STATE.md]
 - [decision 2]
 
+## Memory Health
+
+Recall recent memory effectiveness metrics from MuninnDB:
+
+\\\`\\\`\\\`
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "metric:memory-recall-precision metric:memory-hit-rate current milestone",
+  mode: "recent",
+  limit: 10
+)
+\\\`\\\`\\\`
+
+**If no memory metrics are found:** Skip this section entirely. Do not display empty sections or placeholder text.
+
+**If metrics are found**, compute averages across all recalled phase metrics for the current milestone, then display:
+
+\\\`\\\`\\\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Memory Health
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Recall Precision : {recall_precision}% ({applied}/{recalled} engrams applied)
+  Hit Rate         : {hit_rate}% (phases where memory was useful)
+  Token Cost       : {memory_tokens_injected} tokens across {phase_count} phases
+  Stale Engrams    : {stale_count} engrams with no positive feedback in 5+ phases
+
+  Status: {healthy|degraded|no_data}
+  {If degraded: "Consider running /milestone-complete to prune stale memories"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\\\`\\\`\\\`
+
+**Health status logic:**
+- \\\`healthy\\\`: precision >= 0.5 AND stale_count <= 3
+- \\\`degraded\\\`: precision < 0.5 OR stale_count > 3
+- \\\`no_data\\\`: no memory metrics found for current milestone
+
+The precision and hit rate values are extracted from the most recent \\\`metric:memory-recall-precision-*\\\` and \\\`metric:memory-hit-rate-*\\\` engrams. Average across all phases in the current milestone.
+
 ## Blockers/Concerns
 - [any blockers or concerns from STATE.md]
 
