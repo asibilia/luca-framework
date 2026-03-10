@@ -1,25 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { z } from "zod";
+
+/**
+ * Zod schema for a single todo item from the API response.
+ *
+ * Single source of truth for the Todo type shape. Validates
+ * API responses at runtime via safeParse instead of unsafe casting.
+ */
+const TodoSchema = z.object({
+  filename: z.string(),
+  title: z.string(),
+  area: z.string(),
+  created: z.string(),
+  source: z.string(),
+  tier: z.number(),
+  complexity: z.string(),
+  priority: z.string(),
+  milestone: z.string(),
+  state: z.enum(["pending", "done", "completed"]),
+});
 
 /**
  * Todo item parsed from markdown frontmatter.
  *
  * Matches the shape returned by GET /api/todos.
  * Uses snake_case-compatible field names since this is an API response type.
+ * Inferred from TodoSchema as single source of truth.
  */
-export interface Todo {
-  filename: string;
-  title: string;
-  area: string;
-  created: string;
-  source: string;
-  tier: number;
-  complexity: string;
-  priority: string;
-  milestone: string;
-  state: "pending" | "done" | "completed";
-}
+export type Todo = z.infer<typeof TodoSchema>;
 
 /**
  * Optional filter parameters for the /api/todos endpoint.
@@ -63,8 +73,18 @@ export function useTodos(filters?: TodoFilters) {
           `Failed to fetch todos: ${res.status} ${res.statusText}`,
         );
       }
-      const data: Todo[] = await res.json();
-      setTodos(data);
+      const rawData: unknown = await res.json();
+      const parseResult = z.array(TodoSchema).safeParse(rawData);
+      if (!parseResult.success) {
+        setError("Unexpected response format from /api/todos");
+        console.error(
+          "[useTodos] Invalid response shape:",
+          parseResult.error.message,
+        );
+        setTodos([]);
+        return;
+      }
+      setTodos(parseResult.data);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unknown error fetching todos";
