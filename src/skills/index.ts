@@ -55,6 +55,30 @@ export {
   formatSplitVerdictForPR,
 } from "./__helpers/pr-verdict-debate";
 
+// Multi-lens review schemas
+export {
+  ReviewLensSchema,
+  MultiLensGateSchema,
+  MultiLensGateResultSchema,
+  RiskMultiplierConfigSchema,
+} from "./__schemas/multi-lens-review.schemas";
+
+export type {
+  ReviewLens,
+  MultiLensGateConfig,
+  MultiLensGateResult,
+  RiskMultiplierConfig,
+} from "./__schemas/multi-lens-review.schemas";
+
+// Multi-lens review helpers
+export {
+  ARCHITECTURE_LENS,
+  DATA_LENS,
+  checkMultiLensGate,
+  computeRiskMultiplier,
+  getAdditionalLenses,
+} from "./__helpers/multi-lens-gate";
+
 // Milestone debate schemas
 export {
   milestoneDebateConfigSchema,

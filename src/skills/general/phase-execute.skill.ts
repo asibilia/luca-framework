@@ -1655,9 +1655,67 @@ Display:
 ◆ Reviewing {FILE_COUNT} changed files...
 \`\`\`
 
+#### 8.0.1. Multi-Lens Gate Check
+
+Before spawning reviewers, evaluate the multi-lens review gate to determine whether additional focused lenses (Architecture + Data) should be activated.
+
+**Step A: Compute risk multiplier**
+
+Check if changed files touch high-risk domains. The risk multiplier weights the effective complexity for reviewer model selection:
+
+| Domain Pattern       | Weight |
+|---------------------|--------|
+| state/              | 1.8    |
+| shared/__schemas/   | 1.6    |
+| context/            | 1.5    |
+| harness/            | 1.5    |
+| hooks/              | 1.4    |
+| complexity/         | 1.4    |
+| compilers/          | 1.3    |
+| iteration/          | 1.3    |
+
+Match each changed file against these patterns. Use the highest matching weight (capped at 2.0). If no high-risk files match, use base weight 1.0.
+
+Display risk multiplier if > 1.0:
+
+\`\`\`
+◆ Risk multiplier: {RISK_MULTIPLIER}x (high-risk domains: {MATCHED_DOMAINS})
+\`\`\`
+
+**Step B: Query pre-mortem signal rate**
+
+Query MuninnDB for the pre-mortem signal rate metric:
+
+\`\`\`
+Recall from MuninnDB vault "default" with context "metric:signal-rate-aggregate"
+\`\`\`
+
+Extract the signal rate and sample count from the recalled engram. If no metric engram exists, use signal_rate=0, sample_count=0.
+
+**Step C: Evaluate gate condition**
+
+The gate activates additional lenses when ALL conditions are met:
+1. Gate is enabled (default: true)
+2. Sample count >= 20 (minimum pre-mortem runs)
+3. Signal rate > 10% (pre-mortem signals detected in >10% of runs)
+
+Display gate result:
+
+\`\`\`
+◆ Multi-lens gate: {GATE_MET ? "ACTIVE" : "INACTIVE"} ({REASON})
+\`\`\`
+
+**Step D: Collect pre-mortem mitigations**
+
+If the phase discussion (Step 4) produced pre-mortem mitigations, collect them as additional review criteria to pass to ALL reviewers (both standard and lens reviewers):
+
+\`\`\`bash
+PRE_MORTEM_MITIGATIONS=$(cat {phase_dir}/DISCUSSION.md 2>/dev/null | grep -A 100 "Pre-Mortem" | head -50 || echo "None available")
+\`\`\`
+
 **Determine which reviewers to spawn:**
 
-**Always spawn ALL reviewers.** Each reviewer resolves its model tier from the routing table based on complexity:
+**Always spawn ALL standard reviewers.** If the multi-lens gate is ACTIVE, also spawn Architecture and Data lens reviewers in the SAME parallel batch. Each reviewer resolves its model tier from the routing table based on complexity:
 
 | Agent            | TRIVIAL | SIMPLE  | MODERATE | COMPLEX | CRITICAL |
 | ---------------- | ------- | ------- | -------- | ------- | -------- |
@@ -1847,11 +1905,94 @@ model="{reviewer_model}",
 description="Security review"
 )
 
+# ─── Multi-Lens Reviewers (ONLY if gate is ACTIVE from Step 8.0.1) ───
+
+# Architecture Lens - structural integrity, dependency direction, tier compliance
+# (Spawn this only if MULTI_LENS_GATE_MET=true from Step 8.0.1.C)
+
+Task(
+prompt="""
+Review the following changed files for **architecture and structural integrity** issues.
+
+**Changed files:**
+{CHANGED_FILES}
+
+**Project standards:**
+{CLAUDE_CONTENT}
+
+**Your focus areas:**
+1. **Dependency direction**: Imports must flow downward through tiers (T0 Foundation -> T1 Core -> T2 Entity -> T3 Build). Flag any upward or cross-tier violations.
+2. **Module boundaries**: Entity domains (agents, skills, rules) must NEVER cross-import. Flag any agents importing from skills, rules importing from agents, etc.
+3. **Barrel purity**: Every domain's index.ts must contain ONLY re-export statements. No logic, no schemas, no registries, no constants.
+4. **Structural invariants**: No flat .ts files in domain root except index.ts. All code must live in __schemas/, __helpers/, entity dirs, or named subdirs.
+5. **Tier compliance**: shared and complexity are T0 (imported by many). context/planner/harness/iteration/observability are T1. agents/skills/rules are T2 (parallel). compilers/hooks are T3 (terminal).
+6. **Pre-mortem mitigations**: {PRE_MORTEM_MITIGATIONS}
+
+**Return format:**
+
+\`\`\`yaml
+issues:
+  - severity: CRITICAL|HIGH|MEDIUM|LOW
+    file: path/to/file.ts
+    line: 42
+    issue: Brief description
+    suggestion: How to fix
+    source_agent: architecture-lens
+\`\`\`
+
+If no issues found, return: \`issues: []\`
+""",
+subagent_type="code-architect",
+model="{deep_analysis_model}",
+description="Architecture lens review"
+)
+
+# Data Lens - data flow, schema consistency, Zod patterns
+# (Spawn this only if MULTI_LENS_GATE_MET=true from Step 8.0.1.C)
+
+Task(
+prompt="""
+Review the following changed files for **data flow and schema consistency** issues.
+
+**Changed files:**
+{CHANGED_FILES}
+
+**Project standards:**
+{CLAUDE_CONTENT}
+
+**Your focus areas:**
+1. **Schema-first parsing**: ALL component/function inputs must have Zod schema definitions. Defaults must be defined in schemas, NEVER in destructuring.
+2. **API snake_case**: All API request/response payloads must use snake_case properties. Internal TypeScript uses camelCase.
+3. **Zod patterns**: Prefer safeParse() over parse() to prevent runtime crashes. Always handle parse failures gracefully.
+4. **Type inference**: Types must be inferred from schemas using z.infer<typeof Schema>, not manually defined.
+5. **Data transformations**: Verify data flows correctly through transformations. Check for missing fields, wrong types, or lost data.
+6. **State consistency**: State machine bridge writes to BOTH typed state and STATE.md. Verify dual-write guarantee is maintained.
+7. **Pre-mortem mitigations**: {PRE_MORTEM_MITIGATIONS}
+
+**Return format:**
+
+\`\`\`yaml
+issues:
+  - severity: CRITICAL|HIGH|MEDIUM|LOW
+    file: path/to/file.ts
+    line: 42
+    issue: Brief description
+    suggestion: How to fix
+    source_agent: data-lens
+\`\`\`
+
+If no issues found, return: \`issues: []\`
+""",
+subagent_type="dx-advocate",
+model="{deep_analysis_model}",
+description="Data lens review"
+)
+
 \`\`\`
 
 **Do NOT proceed until ALL reviewer Tasks return.**
 
-**Merge findings:** Combine all issues, deduplicate by file:line.
+**Merge findings:** Combine all issues from standard reviewers AND lens reviewers (if spawned), deduplicate by file:line.
 
 ### 8.5. Design Tribunal (Conditional)
 
@@ -1966,7 +2107,7 @@ cat > {phase_dir}/REVIEW.md << 'REVIEW_EOF'
 
 **Timestamp:** {timestamp_utc}
 **Files reviewed:** {file_count}
-**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor
+**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor{MULTI_LENS_GATE_MET ? ", architecture-lens, data-lens" : ""}
 
 ## Severity Summary
 
