@@ -49,7 +49,8 @@
     "execute_next_plan": true,
     "issues_review": true,
     "confirm_transition": true,
-    "premortem": true
+    "premortem": true,
+    "process_data": true
   },
   "safety": {
     "always_confirm_destructive": true,
