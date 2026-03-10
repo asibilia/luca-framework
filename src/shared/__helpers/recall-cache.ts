@@ -13,7 +13,40 @@
 
 import { z } from "zod";
 
-// ─── Schema ──────────────────────────────────────────────────────────────────
+// ─── Recalled Engram Schema ──────────────────────────────────────────────────
+
+/**
+ * A single recalled engram with its MuninnDB metadata.
+ *
+ * Tracks the engram ID alongside its content, enabling feedback loops
+ * (via `muninn_feedback`) that connect verification outcomes back to
+ * specific recalled engrams. Uses camelCase since this is an internal
+ * schema, not an API payload.
+ *
+ * @example
+ * ```typescript
+ * const engram: RecalledEngram = {
+ *   engramId: "01JEXAMPLE123",
+ *   content: "Use Bun APIs over node:fs for file operations",
+ *   concept: "pattern:bun-file-api",
+ *   confidence: "high",
+ * };
+ * ```
+ */
+export const RecalledEngramSchema = z.object({
+  /** MuninnDB engram ID (ULID format) */
+  engramId: z.string().min(1),
+  /** The engram content text */
+  content: z.string(),
+  /** The engram concept label (e.g. "pattern:bun-file-api") */
+  concept: z.string().optional(),
+  /** Extracted confidence level from the engram */
+  confidence: z.enum(["low", "medium", "high"]).optional(),
+});
+
+export type RecalledEngram = z.infer<typeof RecalledEngramSchema>;
+
+// ─── Recall Cache Entry Schema ──────────────────────────────────────────────
 
 /**
  * Schema for a cached recall result from MuninnDB.
@@ -21,6 +54,11 @@ import { z } from "zod";
  * Contains the unfiltered recall output that gets filtered per-agent
  * by `requestMemoryContext()`. Uses camelCase since this is an internal
  * schema, not an API payload.
+ *
+ * The `recalledEngrams` field provides structured engram tracking with IDs,
+ * enabling the feedback loop. The existing string arrays (`patterns`,
+ * `decisions`, `pitfalls`, `findings`) remain for `buildMemoryContextBlock()`
+ * consumption. Both representations coexist for backward compatibility.
  *
  * @example
  * ```typescript
@@ -31,6 +69,14 @@ import { z } from "zod";
  *   pitfalls: ["build:all crashes Claude Code"],
  *   findings: ["Pattern: always run tsc before commit"],
  *   recalledAt: "2026-03-09T19:55:00Z",
+ *   recalledEngrams: [
+ *     {
+ *       engramId: "01JEXAMPLE123",
+ *       content: "Use Bun APIs over node:fs",
+ *       concept: "pattern:bun-file-api",
+ *       confidence: "high",
+ *     },
+ *   ],
  * };
  * ```
  */
@@ -47,6 +93,8 @@ export const RecallCacheEntrySchema = z.object({
   findings: z.array(z.string()).default([]),
   /** ISO 8601 timestamp when the recall was performed */
   recalledAt: z.string(),
+  /** Structured engram tracking with IDs for feedback loop (backward compatible default) */
+  recalledEngrams: z.array(RecalledEngramSchema).default([]),
 });
 
 export type RecallCacheEntry = z.infer<typeof RecallCacheEntrySchema>;
