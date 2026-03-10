@@ -205,6 +205,10 @@ export const workflowMachine = setup({
       intuition_flags: () => [] as string[],
       skip_reason: () => undefined,
       last_error: () => undefined,
+      pre_mortem_result: () => undefined,
+      process_data: () => undefined,
+      cooldown_reason: () => undefined,
+      appetite_used_tokens: () => 0,
     }),
 
     /** Record halt reason for paused state */
@@ -241,6 +245,49 @@ export const workflowMachine = setup({
       last_error: ({ event }) => {
         if (event.type === "VERIFY_FAILED")
           return `Verification gaps: ${event.gaps.join(", ")}`;
+        return undefined;
+      },
+    }),
+
+    /** Record cooldown reason when entering cooldown state */
+    recordCooldownReason: assign({
+      cooldown_reason: ({ event }) => {
+        if (
+          event.type === "COMMIT_COMPLETE" ||
+          event.type === "COOLDOWN_COMPLETE"
+        )
+          return "Session complete — entering cooldown";
+        return undefined;
+      },
+    }),
+
+    /** Record pre-mortem result from PREMORTEM_COMPLETE event */
+    recordPremortemResult: assign({
+      pre_mortem_result: ({ event }) => {
+        if (event.type === "PREMORTEM_COMPLETE") {
+          return {
+            risks: event.risks ?? [],
+            mitigations: event.mitigations ?? [],
+            confidence: event.confidence ?? 0,
+            timestamp: new Date().toISOString(),
+          };
+        }
+        return undefined;
+      },
+    }),
+
+    /** Record process data from PROCESS_DATA_COMPLETE event */
+    recordProcessData: assign({
+      process_data: ({ event }) => {
+        if (event.type === "PROCESS_DATA_COMPLETE") {
+          return {
+            tokens_used: event.tokens_used ?? 0,
+            context_percent_used: event.context_percent_used ?? 0,
+            agent_invocations: event.agent_invocations ?? 0,
+            wall_clock_ms: event.wall_clock_ms ?? 0,
+            timestamp: new Date().toISOString(),
+          };
+        }
         return undefined;
       },
     }),
@@ -327,6 +374,10 @@ export const workflowMachine = setup({
         DISCUSS_COMPLETE: {
           target: "planning",
           actions: "recordTransition",
+        },
+        PREMORTEM_COMPLETE: {
+          target: "planning",
+          actions: ["recordPremortemResult", "recordTransition"],
         },
         SKIP: {
           target: "planning",
@@ -424,6 +475,10 @@ export const workflowMachine = setup({
           target: "committing",
           actions: "recordTransition",
         },
+        PROCESS_DATA_COMPLETE: {
+          target: "committing",
+          actions: ["recordProcessData", "recordTransition"],
+        },
         SKIP: {
           target: "committing",
           actions: ["recordSkip", "recordTransition"],
@@ -448,7 +503,39 @@ export const workflowMachine = setup({
     },
 
     complete: {
-      type: "final",
+      on: {
+        SKIP_COOLDOWN: {
+          target: "idle",
+          actions: ["resetContext", "recordTransition"],
+        },
+        COOLDOWN_COMPLETE: {
+          target: "cooldown",
+          actions: ["recordCooldownReason", "recordTransition"],
+        },
+        RESET: {
+          target: "idle",
+          actions: ["resetContext", "recordTransition"],
+        },
+      },
+    },
+
+    cooldown: {
+      after: {
+        idleTimeout: {
+          target: "idle",
+          actions: ["resetContext", "recordTransition"],
+        },
+      },
+      on: {
+        COOLDOWN_COMPLETE: {
+          target: "idle",
+          actions: ["resetContext", "recordTransition"],
+        },
+        RESET: {
+          target: "idle",
+          actions: ["resetContext", "recordTransition"],
+        },
+      },
     },
 
     paused: {
