@@ -40,6 +40,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - \`lu-planner\` - Plans fixes for issues (if needed)
 - \`lu-plan-checker\` - Validates fix plans (if needed)
 - \`lu-test-writer\` - Generates test files from plan verification criteria (spawned by lu-executor during TDD cycle)
+- \`lu-process-data\` - Computes process metrics after learning capture (conditional on \`process_data\` gate)
 
 **DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate agents.
 
@@ -192,6 +193,98 @@ For MODERATE and above: Use the current lu-learner spawn as-is.
 For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
 
 The model tier for lu-learner is resolved via \`resolveModelForAgent("lu-learner", complexity)\` from the centralized routing table in \`src/complexity/__helpers/model-routing.ts\`.
+
+### Process Data Collection (after Learning Capture)
+
+After lu-learner returns, check the \`process_data\` gate in \`.planning/config.json\`:
+
+\`\`\`bash
+PROCESS_DATA_GATE=$(cat .planning/config.json 2>/dev/null | grep -o '"process_data"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\\|false' || echo "false")
+\`\`\`
+
+**If \`process_data\` gate is enabled (\`true\`):**
+
+Collect metrics data from the orchestrator context and spawn \`lu-process-data\`:
+
+\`\`\`python
+Task(
+  prompt="""
+<process_data_context>
+
+**Phase:** {phase_number}
+**Milestone:** {milestone_id}
+**Complexity:** {complexity_level}
+
+**Appetite Data:**
+- Ceiling (tokens): {appetite_ceiling}
+- Actual tokens consumed: {actual_tokens}
+
+**Harness Data:**
+- Fix iterations used: {harness_fix_iterations}
+- Max fix iterations allowed: {max_harness_iterations}
+
+**Pre-Mortem Data:**
+- Pre-mortem ran: {true|false}
+- Total risks identified: {total_risks}
+- Risk categories: {risk_categories_list}
+- Verification gaps found: {verification_gaps_list}
+
+**Timing Data:**
+- Phase start timestamp: {phase_start_timestamp}
+- Final commit timestamp: {commit_timestamp}
+
+**Verification Data:**
+- Total harness runs: {total_harness_runs}
+- Runs with failures: {runs_with_failures}
+
+</process_data_context>
+
+Compute all applicable process metrics and return structured JSON.
+""",
+  subagent_type="lu-process-data",
+  model="{process_data_model}",
+  description="Compute process metrics for phase {phase_number}"
+)
+\`\`\`
+
+**Do NOT proceed until the Task returns.**
+
+After lu-process-data returns its JSON output, store each non-null metric as a MuninnDB engram:
+
+\`\`\`python
+# Parse the JSON output from lu-process-data
+metrics_json = parse_json(process_data_result)
+
+# Store each non-null metric
+for metric_name, value in metrics_json["metrics"].items():
+    if value is not None:
+        storage_key = metrics_json["storage_keys"][metric_name]
+        mcp__muninn__muninn_remember(
+            vault="default",
+            concept=storage_key,
+            content=json.dumps({
+                "value": value,
+                "phase": metrics_json["phase"],
+                "milestone": metrics_json["milestone"],
+                "complexity": metrics_json["complexity"],
+                "computed_at": metrics_json["computed_at"]
+            })
+        )
+\`\`\`
+
+Then emit the PROCESS_DATA_COMPLETE transition:
+
+\`\`\`bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
+\`\`\`
+
+The model tier for lu-process-data is resolved via \`resolveModelForAgent("lu-process-data", complexity)\` from the centralized routing table.
+
+**If \`process_data\` gate is disabled (\`false\`):** Skip process data collection and emit LEARN_COMPLETE as before:
+
+\`\`\`bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=LEARN_COMPLETE 2>/dev/null || true
+\`\`\`
 
 ### Session Logging During Execution
 
