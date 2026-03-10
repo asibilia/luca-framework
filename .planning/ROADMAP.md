@@ -20,26 +20,7 @@
 
 ### ~~Phase 140: Semantic Memory Embeddings (#18) — COMPLEX~~ DONE
 
-### Phase 140.1: Memory Effectiveness Measurement (#111) — COMPLEX (INSERTED)
-
-**Goal:** Instrument muninn_feedback at verification boundary, track applied vs ignored engrams, compute recall precision/hit rate/ROI metrics, and surface memory health in progress reports.
-
-- [ ] PLAN.md
-
-### Phase 141: Cross-Agent Interop Scanner (#16) — COMPLEX
-
-**Goal:** Create new `src/interop/` T1 domain for discovering agents across IDE directories, normalizing to InteropAgentSummary, and wiring into context assembler.
-
-- [ ] PLAN.md
-
----
-
-### Execution Levels
-
-| Level | Phases | Mode   | Depends On |
-| ----- | ------ | ------ | ---------- |
-| 0     | 140.1  | SERIAL | None       |
-| 1     | 141    | SERIAL | None       |
+### ~~Phase 141: Cross-Agent Interop Scanner (#16) — COMPLEX~~ DONE
 
 ---
 
@@ -55,11 +36,23 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 
 ## Backlog (Unassigned)
 
-| Todo | Title                | Target           | Reason                                                              |
-| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| Todo | Title                            | Target           | Reason                                                              |
+| ---- | -------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37  | Test suite fragility             | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| #111 | Memory effectiveness measurement | v4.2.0+          | Follow-up from #18 semantic embeddings — track recall precision     |
 
 ---
+
+## Closed (v4.1.0 Completed)
+
+| Todo | Reason                                                                                |
+| ---- | ------------------------------------------------------------------------------------- |
+| #54  | Skill dependency graph integration (default map + validateSkillOrder helper)          |
+| #55  | Tribunal consensus model (4 consensus types, 7 fallback strategies, ConsensusResult)  |
+| #107 | Multi-lens review gate (Architecture + Data lenses, conditional on signal rate >10%)  |
+| #96  | Observer MuninnDB todo tracking (tabbed Pending/Done/Velocity view with API endpoint) |
+| #18  | Semantic memory embeddings (6-signal composite scoring, semantic recall mode)         |
+| #16  | Cross-agent interop scanner (new src/interop/ T1 domain, 5 IDE dirs, normalizer)      |
 
 ## Closed (By Design)
 
