@@ -23,7 +23,7 @@ Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-t
 **Depends on:** Phase 1
 **Verification:** Full
 
-- [ ] #106 State machine context extensions — appetite enum, token budget fields, cooldown state, bridge updates
+- [x] #106 State machine context extensions — appetite enum, token budget fields, cooldown state, bridge updates
 
 ### Phase 3 — Appetite & Pre-Mortem
 
