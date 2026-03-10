@@ -13,6 +13,12 @@
 - **Session ID:** fc759ad3-6102-4681-9b0c-738bbed69a23
 - **GitHub Issue:** #63
 
+## Appetite
+
+- **Level:** Medium
+- **Token Ceiling:** 100000
+- **Context Budget:** 50%
+
 ## Progress
 
 ```
@@ -48,4 +54,4 @@ _State updated: 2026-03-09 — v3.3.0 milestone complete, ready for next_
 
 ---
 
-_State generated from machine snapshot at 2026-03-10T15:24:34.293Z_
+_State generated from machine snapshot at 2026-03-10T17:36:32.392Z_
