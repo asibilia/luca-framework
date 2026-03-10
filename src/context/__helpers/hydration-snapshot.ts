@@ -21,6 +21,7 @@ import {
   preFlightSnapshotSchema,
 } from "~/context/__schemas/context.schemas";
 import type { ComplexityLevel } from "~/complexity/__schemas/complexity.schemas";
+import { scanForAgents, formatScanSummary } from "~/interop";
 
 // ---------------------------------------------------------------------------
 // File tree snapshot
@@ -390,11 +391,23 @@ export async function generatePreFlightSnapshot(
     config.include_imports ? extractImportGraph(cwd) : Promise.resolve([]),
   ]);
 
+  // Interop: discover agents across IDE tool directories
+  let agentSummaries: string | undefined;
+  try {
+    const scanResult = await scanForAgents(cwd);
+    if (scanResult.agents.length > 0) {
+      agentSummaries = formatScanSummary(scanResult);
+    }
+  } catch {
+    // Interop scan is optional -- silently skip on failure
+  }
+
   const result = preFlightSnapshotSchema.safeParse({
     file_tree: fileTree,
     test_files: testFiles,
     git_history: gitHistory,
     import_graph: importGraph,
+    agent_summaries: agentSummaries,
     created_at: new Date().toISOString(),
   });
 
