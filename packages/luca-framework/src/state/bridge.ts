@@ -454,6 +454,7 @@ const SETTABLE_FIELDS = [
   "appetite_level",
   "appetite_token_ceiling",
   "appetite_context_percent",
+  "appetite_used_tokens",
 ] as const;
 
 /**
