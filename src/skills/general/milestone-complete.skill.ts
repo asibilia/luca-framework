@@ -279,6 +279,126 @@ Anything to change about how we work? (optional — press Enter to skip)
    - Set \`due_on\` to the completion date (last commit date)
    - Attach the branch PR to the milestone if one exists
 
+8.5. **Divergent mode advisory:**
+
+### Milestone Counter
+
+Recall the convergent streak counter from MuninnDB:
+\`\`\`
+mcp__muninn__muninn_recall(vault: "default", context: "metric:convergent-streak")
+\`\`\`
+
+If no counter exists, create it with count = 1:
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:convergent-streak",
+  content: "consecutive_milestones: 1, last_milestone: v{version}, last_updated: {timestamp}"
+)
+\`\`\`
+
+If counter exists, increment it:
+\`\`\`
+mcp__muninn__muninn_evolve(
+  vault: "default",
+  id: "metric:convergent-streak",
+  content: "consecutive_milestones: {N+1}, last_milestone: v{version}, last_updated: {timestamp}"
+)
+\`\`\`
+
+### Graduation Check
+
+Before showing the nudge, check if divergent mode has graduated out:
+\`\`\`
+mcp__muninn__muninn_recall(vault: "default", context: "metric:divergent-optin-rate")
+\`\`\`
+
+If \`sample_count >= 20\` AND \`rate < 0.10\`: SKIP the nudge entirely. Developer consistently opts out. Update convergent streak and proceed to Step 9.
+
+### Nudge (streak >= 8 AND not graduated out)
+
+If \`consecutive_milestones >= 8\` AND graduation check passes:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > DIVERGENT MODE ADVISORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You've completed {N} consecutive milestones in convergent
+(spec-driven) mode. Consider taking a divergent break:
+
+  - Architecture sketching and exploration
+  - Research reading and technology evaluation
+  - Product exploration and shaping future work
+  - Anything cognitively distinct from spec-driven development
+
+Recommended duration: 1 calendar day (COMPLEX), 2 days (CRITICAL)
+No acceptance criteria. No deliverables required.
+
+[Y] Enter divergent mode  [N] Continue convergent work
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+**If developer opts IN (Y):**
+- Reset convergent streak to 0:
+  \`\`\`
+  mcp__muninn__muninn_evolve(
+    vault: "default",
+    id: "metric:convergent-streak",
+    content: "consecutive_milestones: 0, last_milestone: v{version}, divergent_mode_entered: {timestamp}"
+  )
+  \`\`\`
+- Update divergent opt-in rate (opted_in: true):
+  \`\`\`
+  mcp__muninn__muninn_evolve(
+    vault: "default",
+    id: "metric:divergent-optin-rate",
+    content: "sample_count: {N+1}, optins: {M+1}, rate: {updated_rate}"
+  )
+  \`\`\`
+  If the metric does not exist yet, create it with \`muninn_remember\`.
+- Set cooldown reason via bridge:
+  \`\`\`bash
+  bun run packages/luca-framework/src/state/bridge.ts set-field \\
+    --field=cooldown_reason \\
+    --value='"Divergent mode: {N} consecutive milestones completed"' \\
+    2>/dev/null || true
+  \`\`\`
+- Emit COOLDOWN_COMPLETE via bridge to transition complete -> cooldown:
+  \`\`\`bash
+  bun run packages/luca-framework/src/state/bridge.ts transition \\
+    --event=COOLDOWN_COMPLETE 2>/dev/null || true
+  \`\`\`
+- Display: "Entering divergent mode. When ready to return, start a new session."
+
+**If developer opts OUT (N):**
+- Update divergent opt-in rate (opted_in: false):
+  \`\`\`
+  mcp__muninn__muninn_evolve(
+    vault: "default",
+    id: "metric:divergent-optin-rate",
+    content: "sample_count: {N+1}, optins: {M}, rate: {updated_rate}"
+  )
+  \`\`\`
+  If the metric does not exist yet, create it with \`muninn_remember\`.
+- Emit SKIP_COOLDOWN via bridge to transition complete -> idle:
+  \`\`\`bash
+  bun run packages/luca-framework/src/state/bridge.ts transition \\
+    --event=SKIP_COOLDOWN 2>/dev/null || true
+  \`\`\`
+- Proceed to Step 9.
+
+### No Nudge (streak < 8)
+
+If \`consecutive_milestones < 8\`: do not show the nudge. Silently emit SKIP_COOLDOWN:
+
+\`\`\`bash
+bun run packages/luca-framework/src/state/bridge.ts transition \\
+  --event=SKIP_COOLDOWN 2>/dev/null || true
+\`\`\`
+
+Proceed to Step 9.
+
 9. **Offer next steps:**
    - \`/milestone-new\` — start next milestone
 
