@@ -142,6 +142,7 @@ export {
   buildMemoryContextBlock,
   clearMemoryContextCache,
   requestMemoryContext,
+  estimateTokens,
 } from "./__helpers/memory-context-builder";
 
 export type {
@@ -152,6 +153,7 @@ export type {
 // ─── Recall Cache ──────────────────────────────────────────────────────────
 
 export {
+  RecalledEngramSchema,
   RecallCacheEntrySchema,
   getCachedRecall,
   setCachedRecall,
@@ -159,7 +161,31 @@ export {
   clearRecallCache,
 } from "./__helpers/recall-cache";
 
-export type { RecallCacheEntry } from "./__helpers/recall-cache";
+export type {
+  RecalledEngram,
+  RecallCacheEntry,
+} from "./__helpers/recall-cache";
+
+// ─── Memory Metrics Schemas ────────────────────────────────────────────────
+
+export {
+  MemoryFeedbackEntrySchema,
+  MemoryPhaseMetricsSchema,
+  MemoryHealthSummarySchema,
+} from "./__schemas/memory-metrics.schemas";
+
+export type {
+  MemoryFeedbackEntry,
+  MemoryPhaseMetrics,
+  MemoryHealthSummary,
+} from "./__schemas/memory-metrics.schemas";
+
+// ─── Memory Feedback ───────────────────────────────────────────────────────
+
+export {
+  determineFeedback,
+  computeMemoryPhaseMetrics,
+} from "./__helpers/memory-feedback";
 
 // ─── Session Digest ─────────────────────────────────────────────────────────
 

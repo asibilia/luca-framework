@@ -42,8 +42,19 @@ const formatCache = new Map<string, string>();
 
 /**
  * Rough token estimate: ~4 characters per token (conservative).
+ *
+ * Exported for use by memory metrics computation (e.g., computing
+ * `memory_tokens_injected` for phase metrics).
+ *
+ * @param text - The text to estimate token count for
+ * @returns Estimated number of tokens (ceiling of text.length / 4)
+ *
+ * @example
+ * ```typescript
+ * const tokens = estimateTokens("Hello, world!"); // 4
+ * ```
  */
-function estimateTokens(text: string): number {
+export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
