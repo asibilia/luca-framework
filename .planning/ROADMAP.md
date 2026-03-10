@@ -24,6 +24,24 @@
 
 ### ~~Phase 140.1: Memory Effectiveness Measurement (#111) — COMPLEX (INSERTED)~~ DONE
 
+### ~~Phase 142: Security & Input Validation Hardening — MODERATE (GAP CLOSURE)~~ DONE
+
+### Phase 143: DRY, Convention & Schema Alignment — MODERATE (GAP CLOSURE)
+
+**Goal:** Close schema drift (6→7 signal weights), DRY violations in consensus-resolver (duplicate builders + 3x expert lookup), .parse()→.safeParse() sweep across 4 files, stale EXCEPTIONS cleanup, node:fs→Bun migration in 2 files, sort()→orderBy, dual recall representation cleanup.
+
+**Audit refs:** Integration Gap #2, HIGH #4-6, MEDIUM #1-4 #7-8, LOW #1
+
+- [ ] PLAN.md
+
+### Phase 144: Observer UI & Schema Placement Polish — SIMPLE (GAP CLOSURE)
+
+**Goal:** Replace hard-coded emerald-500 with semantic tokens, adopt shadcn Progress/Card/Button components, add ARIA attributes, migrate TodoResponse to Zod schema with schema-first defaults, move schemas from **helpers/ to **schemas/ (4 files), resolve interop-scanner naming collision.
+
+**Audit refs:** HIGH #7-8, MEDIUM #5-6 #12-14, LOW #2-7 #10
+
+- [ ] PLAN.md
+
 ---
 
 ## v5.0.0 — Plugin Ecosystem
