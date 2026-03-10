@@ -35,6 +35,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - `lu-planner` - Plans fixes for issues (if needed)
 - `lu-plan-checker` - Validates fix plans (if needed)
 - `lu-test-writer` - Generates test files from plan verification criteria (spawned by lu-executor during TDD cycle)
+- `lu-process-data` - Computes process metrics after learning capture (conditional on `process_data` gate)
 
 **DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate agents.
 
@@ -92,14 +93,38 @@ After verification (pass or fail):
 
 First, read the required context:
 
-Use MuninnDB to recall session context and past learnings:
+**Use deferred recall cache (no redundant MCP calls):** If recall was already performed in Step 4 (via `setCachedRecall()`), reuse the cached results. Otherwise, perform the recall now and cache it.
 
-```
-# Recall current session findings
-mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
+```typescript
+import { hasRecallCache, setCachedRecall } from "~/shared";
+import { requestMemoryContext } from "~/shared";
 
-# Recall relevant patterns and past decisions
-mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and past decisions for this phase")
+// Reuse cached recall from Step 4 if available (avoids redundant MCP call)
+if (!hasRecallCache(SESSION_ID)) {
+  // Recall was not done in Step 4 (e.g., --skip-memory was used earlier)
+  // Perform recall now for learning context
+  const recallResult = mcp__muninn__muninn_recall(
+    vault: "default",
+    context: "session context, patterns, and decisions for phase {PHASE}"
+  );
+
+  setCachedRecall(SESSION_ID, {
+    sessionId: SESSION_ID,
+    patterns: [/* from recall */],
+    decisions: [/* from recall */],
+    pitfalls: [/* from recall */],
+    findings: [/* from recall */],
+    recalledAt: new Date().toISOString(),
+  });
+}
+
+// Format cached recall for lu-learner
+const workingContent = requestMemoryContext({
+  agentName: "lu-learner",
+  sessionId: SESSION_ID,
+  memoryTags: ["*"],
+  maxTokens: 500,
+});
 ```
 
 ```bash
@@ -164,6 +189,98 @@ For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: w
 
 The model tier for lu-learner is resolved via `resolveModelForAgent("lu-learner", complexity)` from the centralized routing table in `src/complexity/__helpers/model-routing.ts`.
 
+### Process Data Collection (after Learning Capture)
+
+After lu-learner returns, check the `process_data` gate in `.planning/config.json`:
+
+```bash
+PROCESS_DATA_GATE=$(cat .planning/config.json 2>/dev/null | grep -o '"process_data"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
+```
+
+**If `process_data` gate is enabled (`true`):**
+
+Collect metrics data from the orchestrator context and spawn `lu-process-data`:
+
+```python
+Task(
+  prompt="""
+<process_data_context>
+
+**Phase:** {phase_number}
+**Milestone:** {milestone_id}
+**Complexity:** {complexity_level}
+
+**Appetite Data:**
+- Ceiling (tokens): {appetite_ceiling}
+- Actual tokens consumed: {actual_tokens}
+
+**Harness Data:**
+- Fix iterations used: {harness_fix_iterations}
+- Max fix iterations allowed: {max_harness_iterations}
+
+**Pre-Mortem Data:**
+- Pre-mortem ran: {true|false}
+- Total risks identified: {total_risks}
+- Risk categories: {risk_categories_list}
+- Verification gaps found: {verification_gaps_list}
+
+**Timing Data:**
+- Phase start timestamp: {phase_start_timestamp}
+- Final commit timestamp: {commit_timestamp}
+
+**Verification Data:**
+- Total harness runs: {total_harness_runs}
+- Runs with failures: {runs_with_failures}
+
+</process_data_context>
+
+Compute all applicable process metrics and return structured JSON.
+""",
+  subagent_type="lu-process-data",
+  model="{process_data_model}",
+  description="Compute process metrics for phase {phase_number}"
+)
+```
+
+**Do NOT proceed until the Task returns.**
+
+After lu-process-data returns its JSON output, store each non-null metric as a MuninnDB engram:
+
+```python
+# Parse the JSON output from lu-process-data
+metrics_json = parse_json(process_data_result)
+
+# Store each non-null metric
+for metric_name, value in metrics_json["metrics"].items():
+    if value is not None:
+        storage_key = metrics_json["storage_keys"][metric_name]
+        mcp__muninn__muninn_remember(
+            vault="default",
+            concept=storage_key,
+            content=json.dumps({
+                "value": value,
+                "phase": metrics_json["phase"],
+                "milestone": metrics_json["milestone"],
+                "complexity": metrics_json["complexity"],
+                "computed_at": metrics_json["computed_at"]
+            })
+        )
+```
+
+Then emit the PROCESS_DATA_COMPLETE transition:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
+```
+
+The model tier for lu-process-data is resolved via `resolveModelForAgent("lu-process-data", complexity)` from the centralized routing table.
+
+**If `process_data` gate is disabled (`false`):** Skip process data collection and emit LEARN_COMPLETE as before:
+
+```bash
+bun run packages/luca-framework/src/state/bridge.ts transition --event=LEARN_COMPLETE 2>/dev/null || true
+```
+
 ### Session Logging During Execution
 
 Throughout execution, log findings to MuninnDB:
@@ -186,6 +303,18 @@ Track:
 ### 0. Resolve Model Routing
 
 Model routing is handled by `resolveModelForAgent(agentName, complexity)` from `src/complexity/__helpers/model-routing.ts`. See the complexity-gating rule for the routing table summary. No manual profile selection is needed.
+
+### 0.1. Capture Phase Start Commit
+
+Store the current commit hash as the baseline for file-touch tracking during reassessment.
+
+```bash
+PHASE_START_COMMIT=$(git rev-parse HEAD)
+ALREADY_PROMOTED=false
+INITIAL_COMPLEXITY="$COMPLEXITY"
+```
+
+These variables are used by Step 4.6 (wave boundary reassessment) and Step 6.5.1 (harness boundary reassessment).
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
@@ -297,9 +426,99 @@ For each wave in order:
 - Spawn `lu-executor` for each plan in wave (parallel Task calls)
 - Wait for completion
 - Verify SUMMARYs created
+- **Append wave completion to journal** (persists across context compaction):
+
+```bash
+echo '{"wave":{wave_number},"plans":["{plan_01_name}","{plan_02_name}"],"status":"complete","summaries_found":{summaries_count},"ts":"'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"}' >> {phase_dir}/.wave-progress.jsonl
+```
+
+This journal persists across context compaction. On resume, read it to skip already-completed waves.
+
 - Proceed to next wave
 
+#### 4.1. Appetite Budget Guard (per-wave boundary)
+
+Before each wave, check whether the appetite budget has been exhausted:
+
+```bash
+# Read appetite state from bridge
+APPETITE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{}')
+APPETITE_LEVEL=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_level || '')" 2>/dev/null || echo "")
+APPETITE_CEILING=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_token_ceiling || 0)" 2>/dev/null || echo "0")
+APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_used_tokens || 0)" 2>/dev/null || echo "0")
+```
+
+**Guard logic (only fires when appetite is declared and ceiling > 0):**
+
+1. Calculate `percent_used = (appetite_used_tokens / appetite_token_ceiling) * 100`
+2. **At 80%** — Log a warning banner and continue:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Luca ► APPETITE WARNING — 80% of {appetite_level} budget consumed
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Used: {appetite_used_tokens} / {appetite_token_ceiling} tokens ({percent_used}%)
+   Remaining budget will be consumed in the next wave(s).
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+3. **At 100%** — PAUSE execution and present options to the developer:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Luca ► APPETITE EXHAUSTED — {appetite_level} budget fully consumed
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Used: {appetite_used_tokens} / {appetite_token_ceiling} tokens (100%+)
+
+   Options:
+   1. EXTEND — Increase appetite to next level (adds more budget)
+   2. SCOPE-CUT — Reduce remaining scope to fit current budget
+   3. HALT — Stop execution, preserve progress
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+   Wait for developer response before continuing.
+
+4. After each wave completes, update appetite_used_tokens via bridge:
+   ```bash
+   # Update used tokens after wave completion (estimated from wave results)
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
+   ```
+
 **MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
+
+**Pre-wave context budget check** — run this before reading plan contents for each wave:
+
+If the transcript feels large (many agent results already consumed in this session) or the context zone reads as "degrading" or higher, trigger the graceful handoff sequence:
+
+1. Append the current wave state to the JSONL journal using the format above (wave number, plan names, status `"handoff"`, summaries found so far, UTC timestamp).
+2. Write `.continue-here.md` to the phase directory:
+
+```
+# Continue Here
+
+**Phase:** {phase_number}
+**Last completed wave:** {last_completed_wave}
+**Completed plans:** {comma_separated_completed_plan_ids}
+**Remaining waves:** {comma_separated_remaining_wave_numbers}
+
+## Resume Instructions
+
+Run: `/phase-execute {phase_number}`
+
+The phase-execute skill will read .wave-progress.jsonl to skip already-completed waves and resume from the next incomplete wave.
+```
+
+3. Print this banner to the user:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Luca ► CONTEXT BUDGET HIGH — GRACEFUL HANDOFF
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Context budget is in the HIGH/CRITICAL zone before wave {N}.
+Progress saved to .wave-progress.jsonl and .continue-here.md.
+Start a fresh session and run /phase-execute {phase_number} to resume.
+```
+
+4. Stop.
+
+> **Note:** This is a lighter check than Step 4.5 (which handles the "stop" zone with bridge suspend/resume). This check fires earlier — at "degrading" or higher — to convert a potential compaction crash into a clean handoff before any new work begins. Step 4.5 and its bridge suspend/resume path remain unchanged.
 
 First, read plan contents (required because @ syntax doesn't work across Task boundaries):
 
@@ -313,26 +532,43 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 STATE_CONTENT=$(cat .planning/STATE.md)
 ```
 
-Recall session context from MuninnDB:
+**Load memory context (deferred recall pattern):**
 
-```
-mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings")
-```
-
-**Build memory context for sub-agents:** Use `buildMemoryContextBlock()` from `src/shared/__helpers/memory-context-builder.ts` to format the recalled MuninnDB context (patterns, decisions, pitfalls, session findings) into a compact `<memory_context>` block. Pass the result as `{working_content}` in each Task() prompt below. This ensures sub-agents receive accumulated session knowledge without the orchestrator manually formatting it each time.
+Check if memory has already been recalled this session using the session-scoped recall cache. If not, perform the MuninnDB recall and cache the result. Then format via `requestMemoryContext()`.
 
 ```typescript
-import { buildMemoryContextBlock } from "~/shared";
+import { getCachedRecall, setCachedRecall, hasRecallCache } from "~/shared";
+import { requestMemoryContext } from "~/shared";
 
-const workingContent = buildMemoryContextBlock({
+// Step 1: Check cache (keyed by SESSION_ID from STATE.md)
+if (!hasRecallCache(SESSION_ID)) {
+  // Step 2: First request this session — perform MuninnDB recall
+  const recallResult = mcp__muninn__muninn_recall(
+    vault: "default",
+    context: "patterns, decisions, and pitfalls for phase {PHASE}"
+  );
+
+  // Step 3: Parse and cache the recall result
+  setCachedRecall(SESSION_ID, {
+    sessionId: SESSION_ID,
+    patterns: [/* extracted patterns from recall */],
+    decisions: [/* extracted decisions from recall */],
+    pitfalls: [/* extracted pitfalls from recall */],
+    findings: [/* session findings */],
+    recalledAt: new Date().toISOString(),
+  });
+}
+
+// Step 4: Format for sub-agents (cache-first, preferred approach)
+const workingContent = requestMemoryContext({
   agentName: "lu-executor",
-  sessionFindings: [/* findings from MuninnDB session recall */],
-  recalledPatterns: [/* patterns from MuninnDB recall */],
-  recalledPitfalls: [/* pitfalls from MuninnDB recall */],
-  recalledDecisions: [/* decisions from MuninnDB recall */],
+  sessionId: SESSION_ID,
+  memoryTags: ["*"],
   maxTokens: 500,
 });
 ```
+
+**Note:** `requestMemoryContext()` reads the cache populated above and formats it via `buildMemoryContextBlock()` internally. You can still use `buildMemoryContextBlock()` directly if you need custom formatting, but `requestMemoryContext()` is the preferred approach for the deferred pattern.
 
 Then spawn all executors for the wave in PARALLEL (same message, multiple Task calls):
 
@@ -490,6 +726,49 @@ If a checkpoint exists:
 3. Resume execution from the first incomplete wave
 4. Clear the checkpoint after successful phase completion
 
+### 4.6. Complexity Reassessment (Wave Boundary)
+
+**After each wave completes**, check whether complexity should be promoted based on file-touch signal. At wave boundaries, only files_touched is reliably available (harness has not yet run), so iteration_budget_ratio and error_count are set to 0.
+
+**Skip if:** `ALREADY_PROMOTED` is true (max one promotion per phase — CONTEXT.md Decision 1).
+
+Collect the cumulative files touched since phase start:
+
+```bash
+# Count files touched since phase start (cumulative, not per-wave)
+FILES_TOUCHED=$(git diff --stat "$PHASE_START_COMMIT" HEAD -- | tail -1 | grep -oE '[0-9]+ file' | grep -oE '[0-9]+' || echo "0")
+```
+
+Check whether promotion is warranted:
+
+```bash
+# Wave boundary: only files_touched signal available
+# iteration_budget_ratio=0, stall_detected=false, error_count=0 (harness hasn't run yet)
+```
+
+Apply the reassessment logic from `src/complexity/__helpers/reassessment.ts`:
+
+- Call `shouldPromoteComplexity()` with signals: `{ files_touched: $FILES_TOUCHED, iteration_budget_ratio: 0, stall_detected: false, error_count: 0, current_level: $COMPLEXITY }` and `alreadyPromoted: $ALREADY_PROMOTED`.
+- If `should_promote` is true:
+  1. Update state via bridge: `bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value='"$NEW_LEVEL"'`
+  2. Update local variable: `COMPLEXITY="$NEW_LEVEL"`
+  3. Set `ALREADY_PROMOTED=true`
+  4. Log to MuninnDB session: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [COMPLEXITY-PROMOTED] $REASON")`
+  5. Display promotion banner
+
+**Important:** Re-read complexity from the bridge before spawning the next wave's executors (research pitfall #4). The executor model tier will be resolved using the updated complexity level.
+
+Display when promotion occurs:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► COMPLEXITY PROMOTED: {OLD} -> {NEW}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trigger: {reason}
+Subsequent waves will use upgraded model tiers and iteration budgets.
+```
+
 ### 5. Aggregate Results
 
 - Collect summaries from all plans
@@ -590,6 +869,42 @@ Display:
 
 Overall: {PASSED/FAILED}
 ```
+
+### 6.5.1. Complexity Reassessment (Harness Boundary)
+
+**After harness completes (Step 6.5), before entering harness fix loop (Step 6.6).**
+
+**Skip if:** `ALREADY_PROMOTED` is true.
+
+At this checkpoint, all 4 reassessment signals are available. This is the primary reassessment point.
+
+Collect all signals:
+
+```bash
+# Signal 1: Cumulative files touched
+FILES_TOUCHED=$(git diff --stat "$PHASE_START_COMMIT" HEAD -- | tail -1 | grep -oE '[0-9]+ file' | grep -oE '[0-9]+' || echo "0")
+
+# Signal 2: Error count from harness results
+ERROR_COUNT=$(echo "$HARNESS_OUTPUT" | bun -e "console.log(JSON.parse(await Bun.stdin.text()).totalErrors || 0)" 2>/dev/null || echo "0")
+
+# Signal 3: Iteration budget ratio (0 if harness fix loop hasn't run yet)
+BUDGET_RATIO="0"
+
+# Signal 4: Stall detected (false if no convergence check yet)
+STALL="false"
+```
+
+Apply the reassessment logic from `src/complexity/__helpers/reassessment.ts`:
+
+- Call `shouldPromoteComplexity()` with all 4 signals and `alreadyPromoted: $ALREADY_PROMOTED`.
+- If `should_promote` is true:
+  1. Update state via bridge
+  2. Update `COMPLEXITY` variable
+  3. Set `ALREADY_PROMOTED=true`
+  4. Log to MuninnDB session
+  5. Display promotion banner (same format as Step 4.6)
+
+**Critical (research pitfall #3):** After promotion, the harness fix loop (Step 6.6) must re-read iteration budgets from the complexity matrix using the NEW level. The loop initialization in Step 6.6.1 already reads complexity from the bridge, so promotion here will propagate automatically.
 
 ### 6.6. Loop A: Harness Fix Loop
 
@@ -994,6 +1309,47 @@ Route by returned status:
 - `human_needed` with T1/T3 conflict → proceed to Step 7.25 (Verification Tribunal)
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered `/phase-plan {X} --gaps`.
+
+### 7.2. Store Calibration Engram
+
+**After verification and memory feedback**, store a calibration engram comparing the initial complexity prediction to the actual observed level. This feeds back into future classification accuracy (CONTEXT.md Decision 4).
+
+Build the calibration data using `buildCalibrationEngram()` from `src/complexity/__helpers/reassessment.ts`:
+
+Parameters:
+- `phase`: {phase_number}
+- `milestone`: Read from STATE.md or ROADMAP.md (e.g., "v3.3.0")
+- `predicted`: `$INITIAL_COMPLEXITY` (captured in Step 0.1)
+- `actual`: `$COMPLEXITY` (may differ from predicted if promotion occurred)
+- `promoted_mid_execution`: `$ALREADY_PROMOTED`
+- `promotion_trigger`: The reason string from Step 4.6 or 6.5.1 (or empty string if no promotion)
+- `files_touched`: Final cumulative files touched
+- `harness_iterations`: Number of harness fix loop iterations consumed (from Loop A results)
+
+Store in MuninnDB:
+
+```
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "decision:complexity-calibration-{milestone}-phase-{phase}",
+  content: "{calibration_json}"
+)
+```
+
+The concept uses milestone-scoped naming (`decision:complexity-calibration-v3.3.0-phase-2`) to ensure uniqueness across milestones (research pitfall #5). This engram will be semantically recalled during future cognitive pre-flights when complexity/calibration keywords match.
+
+Display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► CALIBRATION RECORDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Predicted: {INITIAL_COMPLEXITY}
+Actual: {COMPLEXITY}
+Promoted: {yes/no}
+Engram: decision:complexity-calibration-{milestone}-phase-{phase}
+```
 
 ### 7.25. Verification Tribunal (Conditional)
 
@@ -1596,6 +1952,33 @@ Luca ► CODE REVIEW WARNINGS ⚠
 Wait for user response, then proceed accordingly.
 
 **If clean (or LOW only):** Continue to step 9.
+
+**Write REVIEW.md** — persist reviewer findings before the Step 9 state transition fires. This ordering is critical: a compaction event between Steps 8 and 9 must not lose review data.
+
+```bash
+cat > {phase_dir}/REVIEW.md << 'REVIEW_EOF'
+# Code Review — Phase {phase_number}
+
+**Timestamp:** {timestamp_utc}
+**Files reviewed:** {file_count}
+**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor
+
+## Severity Summary
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | {critical_count} |
+| HIGH     | {high_count} |
+| MEDIUM   | {medium_count} |
+| LOW      | {low_count} |
+
+## Findings
+
+{merged_deduplicated_findings_in_markdown}
+REVIEW_EOF
+```
+
+This file persists reviewer findings across context compaction. It is referenced by session-resume when recovering a mid-review session.
 
 ### 9. Signal Verification and Update State
 

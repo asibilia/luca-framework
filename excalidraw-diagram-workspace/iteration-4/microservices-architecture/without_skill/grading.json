@@ -1,0 +1,47 @@
+{
+  "eval_name": "microservices-architecture",
+  "file_path": "excalidraw-diagram-workspace/iteration-4/microservices-architecture/without_skill/outputs/microservices-architecture.excalidraw",
+  "expectations": [
+    {
+      "text": "valid_json",
+      "passed": true,
+      "evidence": "File parsed as valid JSON"
+    },
+    {
+      "text": "valid_excalidraw_structure",
+      "passed": true,
+      "evidence": "type=excalidraw, version=2, elements=array(24)"
+    },
+    {
+      "text": "unique_ids",
+      "passed": true,
+      "evidence": "All 24 IDs are unique"
+    },
+    {
+      "text": "bidirectional_bindings",
+      "passed": true,
+      "evidence": "All 24 bindings are bidirectional"
+    },
+    {
+      "text": "has_arrows",
+      "passed": true,
+      "evidence": "Found 8 arrow elements"
+    },
+    {
+      "text": "no_overlapping_shapes",
+      "passed": true,
+      "evidence": "No shape overlaps among 8 shapes"
+    },
+    {
+      "text": "all_services_present",
+      "passed": true,
+      "evidence": "All 7 services found in text"
+    },
+    {
+      "text": "uses_color",
+      "passed": true,
+      "evidence": "Found 6 distinct background colors: #e3fafc, #d0bfff, #b2f2bb, #a5d8ff, #ffc9c9, #ffec99"
+    }
+  ],
+  "overall_pass": true
+}

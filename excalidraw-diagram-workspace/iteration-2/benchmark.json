@@ -1,0 +1,105 @@
+{
+  "skill_name": "excalidraw-diagram",
+  "iteration": 2,
+  "timestamp": "2026-03-10T03:30:00Z",
+  "configurations": [
+    {
+      "name": "with_skill",
+      "results": [
+        {
+          "eval_name": "login-flowchart",
+          "pass_rate": 1.0,
+          "passed": 8,
+          "total": 8,
+          "tokens": 56668,
+          "duration_seconds": 89.9
+        },
+        {
+          "eval_name": "microservices-architecture",
+          "pass_rate": 1.0,
+          "passed": 8,
+          "total": 8,
+          "tokens": 56439,
+          "duration_seconds": 83.7
+        },
+        {
+          "eval_name": "blog-er-diagram",
+          "pass_rate": 1.0,
+          "passed": 9,
+          "total": 9,
+          "tokens": 59259,
+          "duration_seconds": 106.3
+        },
+        {
+          "eval_name": "luca-state-machine",
+          "pass_rate": 1.0,
+          "passed": 10,
+          "total": 10,
+          "tokens": 77596,
+          "duration_seconds": 252.7
+        }
+      ],
+      "aggregate": {
+        "mean_pass_rate": 1.0,
+        "mean_tokens": 62491,
+        "mean_duration_seconds": 133.2
+      }
+    },
+    {
+      "name": "without_skill",
+      "results": [
+        {
+          "eval_name": "login-flowchart",
+          "pass_rate": 1.0,
+          "passed": 8,
+          "total": 8,
+          "tokens": 46959,
+          "duration_seconds": 83.3
+        },
+        {
+          "eval_name": "microservices-architecture",
+          "pass_rate": 1.0,
+          "passed": 8,
+          "total": 8,
+          "tokens": 47059,
+          "duration_seconds": 81.5
+        },
+        {
+          "eval_name": "blog-er-diagram",
+          "pass_rate": 0.89,
+          "passed": 8,
+          "total": 9,
+          "tokens": 51228,
+          "duration_seconds": 116.6
+        },
+        {
+          "eval_name": "luca-state-machine",
+          "pass_rate": 0.8,
+          "passed": 8,
+          "total": 10,
+          "tokens": 67217,
+          "duration_seconds": 495.4
+        }
+      ],
+      "aggregate": {
+        "mean_pass_rate": 0.92,
+        "mean_tokens": 53116,
+        "mean_duration_seconds": 194.2
+      }
+    }
+  ],
+  "delta": {
+    "pass_rate": "+8% (100% vs 92%)",
+    "tokens": "+18% (skill reads reference docs)",
+    "duration": "-31% faster overall (133s vs 194s avg, biggest gain on state machine: 253s vs 495s)",
+    "analysis": "Iteration 2 maintains 100% pass rate while improving layout quality via grid planning and arrow routing guidance. The skill is notably faster on complex diagrams (state machine 49% faster) because the structured planning approach avoids trial-and-error. Baseline still fails on domain-specific features (crowfoot notation, bidirectional bindings, framing)."
+  },
+  "iteration_comparison": {
+    "vs_iteration_1": {
+      "pass_rate_change": "0% (still 100%)",
+      "token_change": "-2% (62.5k vs 63.6k avg)",
+      "duration_change": "-16% faster (133s vs 159s avg)",
+      "qualitative_changes": "Improved arrow routing (offset fixedPoints, multi-segment paths), tighter grid-based layouts, triangle arrowheads, shorter labels"
+    }
+  }
+}

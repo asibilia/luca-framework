@@ -1,0 +1,47 @@
+{
+  "eval_name": "login-flowchart",
+  "file_path": "excalidraw-diagram-workspace/iteration-3/login-flowchart/with_skill/outputs/login-flowchart.excalidraw",
+  "expectations": [
+    {
+      "text": "valid_json",
+      "passed": true,
+      "evidence": "File parsed as valid JSON"
+    },
+    {
+      "text": "valid_excalidraw_structure",
+      "passed": true,
+      "evidence": "type=excalidraw, version=2, elements=array(21)"
+    },
+    {
+      "text": "unique_ids",
+      "passed": true,
+      "evidence": "All 21 IDs are unique"
+    },
+    {
+      "text": "bidirectional_bindings",
+      "passed": true,
+      "evidence": "All 21 bindings are bidirectional"
+    },
+    {
+      "text": "has_arrows",
+      "passed": true,
+      "evidence": "Found 6 arrow elements"
+    },
+    {
+      "text": "no_overlapping_shapes",
+      "passed": true,
+      "evidence": "No shape overlaps among 6 shapes"
+    },
+    {
+      "text": "has_decision_diamond",
+      "passed": true,
+      "evidence": "Found 1 diamond elements"
+    },
+    {
+      "text": "minimum_element_count",
+      "passed": true,
+      "evidence": "Found 15 non-arrow elements (need >= 5)"
+    }
+  ],
+  "overall_pass": true
+}

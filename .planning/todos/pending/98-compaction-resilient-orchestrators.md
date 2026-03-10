@@ -3,6 +3,7 @@ title: Make orchestrators compaction-resilient with agent result journaling
 area: workflow
 created: 2026-03-09T21:30:00Z
 source: conversation
+priority: P0
 ---
 
 ## Context

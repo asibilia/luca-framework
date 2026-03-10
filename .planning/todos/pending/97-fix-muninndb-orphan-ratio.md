@@ -3,6 +3,7 @@ title: Fix MuninnDB orphan ratio — add memory linking to lu-learner and workfl
 area: memory
 created: 2026-03-09T12:00:00Z
 source: conversation
+priority: P0
 ---
 
 ## Context

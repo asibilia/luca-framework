@@ -86,6 +86,10 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
+    "appetite_used_tokens": 0,
     "started_at": "2026-03-09T00:13:24.488Z",
     "last_transition_at": "2026-03-10T02:47:36.352Z"
   },

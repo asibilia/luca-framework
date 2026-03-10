@@ -3,7 +3,7 @@ title: "P3: Enhance tribunal debate with consensus model"
 area: agentic
 created: 2026-03-04
 source: repo-review audit (agentic-reviewer)
-priority: P3
+priority: P2
 ---
 
 ## Context

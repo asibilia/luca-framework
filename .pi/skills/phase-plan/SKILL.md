@@ -55,10 +55,28 @@ Before planning begins, run cognitive pre-flight:
 
    Extract: architecture patterns, code conventions, development preferences
 
-2. **Selective recall of learnings** from MuninnDB based on phase keywords:
+2. **Selective recall of learnings (deferred cache pattern):**
 
-   ```
-   mcp__muninn__muninn_recall(vault: "default", context: "patterns, decisions, and pitfalls relevant to phase {PHASE}")
+   Check the session-scoped recall cache first. If not yet recalled this session, perform the MuninnDB recall and cache it:
+
+   ```typescript
+   import { hasRecallCache, setCachedRecall } from "~/shared";
+
+   if (!hasRecallCache(SESSION_ID)) {
+     const recallResult = mcp__muninn__muninn_recall(
+       vault: "default",
+       context: "patterns, decisions, and pitfalls relevant to phase {PHASE}"
+     );
+
+     setCachedRecall(SESSION_ID, {
+       sessionId: SESSION_ID,
+       patterns: [/* extracted patterns from recall */],
+       decisions: [/* extracted decisions from recall */],
+       pitfalls: [/* extracted pitfalls from recall */],
+       findings: [],
+       recalledAt: new Date().toISOString(),
+     });
+   }
    ```
 
    Look for: relevant patterns, past decisions, known pitfalls
@@ -303,25 +321,22 @@ ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
 VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
-# Recall session context from MuninnDB:
-# mcp__muninn__muninn_recall(vault: "default", context: "current session context for planning")
-WORKING_CONTENT="[recalled from MuninnDB session context]"
 ```
 
-**Build memory context for sub-agents:** Use `buildMemoryContextBlock()` from `src/shared/__helpers/memory-context-builder.ts` to format recalled MuninnDB context into a compact `<memory_context>` block. Pass the result as `{working_content}` in the Task() prompt below.
+**Build memory context for sub-agents (deferred pattern):** Use `requestMemoryContext()` from `src/shared/__helpers/memory-context-builder.ts` which reads the recall cache populated in Step 0 substep 2 and formats it into a compact `<memory_context>` block. Pass the result as `{working_content}` in the Task() prompt below.
 
 ```typescript
-import { buildMemoryContextBlock } from "~/shared";
+import { requestMemoryContext } from "~/shared";
 
-const workingContent = buildMemoryContextBlock({
+const workingContent = requestMemoryContext({
   agentName: "lu-planner",
-  sessionFindings: [/* findings from MuninnDB session recall */],
-  recalledPatterns: [/* patterns from MuninnDB recall */],
-  recalledPitfalls: [/* pitfalls from MuninnDB recall */],
-  recalledDecisions: [/* decisions from MuninnDB recall */],
+  sessionId: SESSION_ID,
+  memoryTags: ["planning", "architecture"],
   maxTokens: 500,
 });
 ```
+
+**Note:** `requestMemoryContext()` reads the cache populated by `setCachedRecall()` in Step 0 and formats it via `buildMemoryContextBlock()` internally. You can still use `buildMemoryContextBlock()` directly if you need custom formatting.
 
 Then spawn the planner:
 

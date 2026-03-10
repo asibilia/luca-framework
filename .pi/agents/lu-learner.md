@@ -436,6 +436,46 @@ Repeat for each new pattern, decision, or pitfall. MuninnDB:
 
 </step>
 
+<step name="link_memories">
+Link each newly written engram to related existing memories in MuninnDB. Zero links per new memory is an explicit failure condition — do not skip this step.
+
+**For each engram written in `write_memory`:**
+
+1. **Recover the engram ID.** Capture the ID returned by each `muninn_remember` call. If the ID was not captured (e.g., call returned before recording), use `muninn_recall` on the concept name to retrieve the engram ID:
+
+   ```
+   mcp__muninn__muninn_recall(vault: "default", context: "<concept name>")
+   ```
+
+2. **Find related memories.** Recall the top 2-3 semantically related existing memories using the concept domain as context:
+
+   ```
+   mcp__muninn__muninn_recall(vault: "default", context: "<concept domain, e.g., 'coding patterns bun runtime'>")
+   ```
+
+3. **Link to related memories.** For each related result returned, call `muninn_link` using the `relates_to` relation:
+
+   ```
+   mcp__muninn__muninn_link(vault: "default", source_id: "<new engram ID>", target_id: "<related engram ID>", relation: "relates_to")
+   ```
+
+4. **Link to producing phase or session.** If the originating phase memory ID or session memory ID is known (from session context or workflow context), call `muninn_link` using the `learned_from` relation:
+
+   ```
+   mcp__muninn__muninn_link(vault: "default", source_id: "<new engram ID>", target_id: "<phase or session memory ID>", relation: "learned_from")
+   ```
+
+5. **Assert minimum link count.** Every new engram MUST have at least 1 link. If after steps 3 and 4 a memory still has zero links, create a fallback `is_part_of` link to the current session memory:
+
+   ```
+   mcp__muninn__muninn_link(vault: "default", source_id: "<new engram ID>", target_id: "<session memory ID>", relation: "is_part_of")
+   ```
+
+   An engram with zero links after this step is a failure. Do not proceed to `clear_working` until all new engrams have at least 1 link.
+
+Log: "Linked N new memories, M total links created."
+</step>
+
 <step name="clear_working">
 Reset session context for next session via MuninnDB:
 

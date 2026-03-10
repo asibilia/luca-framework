@@ -6,6 +6,8 @@ source: expert-panel-research
 tier: 4
 complexity: CRITICAL
 moat: Strong
+priority: P3
+milestone: v5.0.0
 ---
 
 ## Context
