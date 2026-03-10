@@ -134,7 +134,7 @@ export function useEntityDeepDive(entityName: string): EntityDeepDiveData {
           setTimeline(timelineRes.value.timeline ?? []);
         } else if (!isNotConfigured(timelineRes)) {
           // Timeline failure is non-fatal if entity succeeded
-          if (!error) {
+          if (entityRes.status !== "fulfilled") {
             const reason = timelineRes.reason;
             setError(
               reason instanceof Error

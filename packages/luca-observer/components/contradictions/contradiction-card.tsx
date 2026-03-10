@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 
 import type { ContradictionPair } from "~/hooks/use-contradictions";
@@ -43,12 +44,12 @@ export function ContradictionCard({
             >
               {forgettingId === contradiction.id_a ? "Forgetting..." : "Forget"}
             </button>
-            <a
+            <Link
               href={`/memory?entity=${encodeURIComponent(contradiction.concept_a)}`}
               className="text-xs text-muted-foreground hover:text-foreground hover:underline"
             >
               View in Memory
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -74,12 +75,12 @@ export function ContradictionCard({
             >
               {forgettingId === contradiction.id_b ? "Forgetting..." : "Forget"}
             </button>
-            <a
+            <Link
               href={`/memory?entity=${encodeURIComponent(contradiction.concept_b)}`}
               className="text-xs text-muted-foreground hover:text-foreground hover:underline"
             >
               View in Memory
-            </a>
+            </Link>
           </div>
         </div>
       </div>

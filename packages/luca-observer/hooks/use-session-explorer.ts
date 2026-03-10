@@ -195,7 +195,9 @@ export function useSessionExplorer(): SessionExplorerData {
 
     try {
       const [sessionRes] = await Promise.allSettled([
-        fetchJson<{ engrams: MuninnEngram[] }>("/api/muninn/engrams?limit=200"),
+        fetchJson<{ engrams: MuninnEngram[] }>(
+          "/api/muninn/engrams?limit=200&type=session",
+        ),
       ]);
 
       // Check for 503 (MuninnDB not configured) -- degrade gracefully

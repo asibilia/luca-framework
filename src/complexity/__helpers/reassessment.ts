@@ -146,6 +146,8 @@ export interface CalibrationEngramParams {
   files_touched: number;
   /** Total harness iterations consumed */
   harness_iterations: number;
+  /** Optional timestamp override (defaults to current time) */
+  timestamp?: string;
 }
 
 /**
@@ -189,7 +191,7 @@ export function buildCalibrationEngram(params: CalibrationEngramParams): {
     promotion_trigger: params.promotion_trigger,
     files_touched: params.files_touched,
     harness_iterations: params.harness_iterations,
-    timestamp: new Date().toISOString(),
+    timestamp: params.timestamp ?? new Date().toISOString(),
   });
 
   return { concept, content };
