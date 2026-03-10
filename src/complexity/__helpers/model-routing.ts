@@ -165,6 +165,7 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
 
   // --- Fast-promoted (fast everywhere, balanced at CRITICAL) ---
   "lu-learner": FAST_PROMOTED,
+  "lu-process-data": FAST_PROMOTED,
   "lu-router-fast": FAST_PROMOTED,
   "lu-verifier-fast": FAST_PROMOTED,
 
