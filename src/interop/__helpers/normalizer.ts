@@ -273,12 +273,22 @@ export function normalizeAgent(
     console.error(
       `[interop/normalizer] Failed to parse agent summary for ${filePath}: ${parseResult.error.message}`,
     );
-    // Return a minimal valid summary
-    return interopAgentSummarySchema.parse({
+    // Attempt minimal fallback with safeParse (non-throwing)
+    const fallbackResult = interopAgentSummarySchema.safeParse({
       name: name || "unknown",
       source_tool: sourceTool,
       file_path: filePath,
     });
+    if (fallbackResult.success) return fallbackResult.data;
+    // Hard minimum -- matches schema shape at definition time
+    return {
+      name: "unknown",
+      source_tool: sourceTool,
+      file_path: filePath,
+      capabilities: [],
+      description: "",
+      model_preference: undefined,
+    };
   }
 
   return parseResult.data;
