@@ -338,9 +338,54 @@ For each wave in order:
 - Spawn \`lu-executor\` for each plan in wave (parallel Task calls)
 - Wait for completion
 - Verify SUMMARYs created
+- **Append wave completion to journal** (persists across context compaction):
+
+\`\`\`bash
+echo '{"wave":{wave_number},"plans":["{plan_01_name}","{plan_02_name}"],"status":"complete","summaries_found":{summaries_count},"ts":"'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"}' >> {phase_dir}/.wave-progress.jsonl
+\`\`\`
+
+This journal persists across context compaction. On resume, read it to skip already-completed waves.
+
 - Proceed to next wave
 
 **MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
+
+**Pre-wave context budget check** — run this before reading plan contents for each wave:
+
+If the transcript feels large (many agent results already consumed in this session) or the context zone reads as "degrading" or higher, trigger the graceful handoff sequence:
+
+1. Append the current wave state to the JSONL journal using the format above (wave number, plan names, status \`"handoff"\`, summaries found so far, UTC timestamp).
+2. Write \`.continue-here.md\` to the phase directory:
+
+\`\`\`
+# Continue Here
+
+**Phase:** {phase_number}
+**Last completed wave:** {last_completed_wave}
+**Completed plans:** {comma_separated_completed_plan_ids}
+**Remaining waves:** {comma_separated_remaining_wave_numbers}
+
+## Resume Instructions
+
+Run: \`/phase-execute {phase_number}\`
+
+The phase-execute skill will read .wave-progress.jsonl to skip already-completed waves and resume from the next incomplete wave.
+\`\`\`
+
+3. Print this banner to the user:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Luca ► CONTEXT BUDGET HIGH — GRACEFUL HANDOFF
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Context budget is in the HIGH/CRITICAL zone before wave {N}.
+Progress saved to .wave-progress.jsonl and .continue-here.md.
+Start a fresh session and run /phase-execute {phase_number} to resume.
+\`\`\`
+
+4. Stop.
+
+> **Note:** This is a lighter check than Step 4.5 (which handles the "stop" zone with bridge suspend/resume). This check fires earlier — at "degrading" or higher — to convert a potential compaction crash into a clean handoff before any new work begins. Step 4.5 and its bridge suspend/resume path remain unchanged.
 
 First, read plan contents (required because @ syntax doesn't work across Task boundaries):
 
@@ -1774,6 +1819,33 @@ Luca ► CODE REVIEW WARNINGS ⚠
 Wait for user response, then proceed accordingly.
 
 **If clean (or LOW only):** Continue to step 9.
+
+**Write REVIEW.md** — persist reviewer findings before the Step 9 state transition fires. This ordering is critical: a compaction event between Steps 8 and 9 must not lose review data.
+
+\`\`\`bash
+cat > {phase_dir}/REVIEW.md << 'REVIEW_EOF'
+# Code Review — Phase {phase_number}
+
+**Timestamp:** {timestamp_utc}
+**Files reviewed:** {file_count}
+**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor
+
+## Severity Summary
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | {critical_count} |
+| HIGH     | {high_count} |
+| MEDIUM   | {medium_count} |
+| LOW      | {low_count} |
+
+## Findings
+
+{merged_deduplicated_findings_in_markdown}
+REVIEW_EOF
+\`\`\`
+
+This file persists reviewer findings across context compaction. It is referenced by session-resume when recovering a mid-review session.
 
 ### 9. Signal Verification and Update State
 
