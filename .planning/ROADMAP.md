@@ -14,8 +14,8 @@ Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-t
 **Depends on:** None
 **Verification:** Quick
 
-- [ ] #97 Fix MuninnDB orphan ratio — add memory linking to lu-learner and workflow-save
-- [ ] #98 Compaction-resilient orchestrators — wave progress journaling and context budget checks
+- [x] #97 Fix MuninnDB orphan ratio — add memory linking to lu-learner and workflow-save
+- [x] #98 Compaction-resilient orchestrators — wave progress journaling and context budget checks
 
 ### Phase 2 — State Machine Foundation
 
