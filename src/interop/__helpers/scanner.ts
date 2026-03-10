@@ -14,6 +14,8 @@
  *
  * @module
  */
+import { resolve } from "node:path";
+
 import { join } from "pathe";
 
 import type {
@@ -156,6 +158,18 @@ export async function scanForAgents(
 ): Promise<InteropScanResult> {
   const startTime = performance.now();
 
+  // Canonicalize and validate projectRoot to prevent path traversal
+  const canonicalRoot = resolve(projectRoot);
+  if (!canonicalRoot.startsWith("/")) {
+    // Non-absolute path after resolve -- reject
+    return interopScanResultSchema.parse({
+      agents: [],
+      scan_paths: [],
+      scan_duration_ms: 0,
+      tool_counts: {},
+    });
+  }
+
   // Parse config with schema defaults
   const parsedConfig = interopScanConfigSchema.safeParse(config ?? {});
   const resolvedConfig = parsedConfig.success
@@ -167,26 +181,39 @@ export async function scanForAgents(
   const toolCounts: Record<string, number> = {};
 
   for (const scanDir of resolvedConfig.scan_dirs) {
-    const absoluteDir = join(projectRoot, scanDir);
+    const absoluteDir = join(canonicalRoot, scanDir);
+
+    // Containment check: ensure resolved dir is within the canonical root
+    const resolvedDir = resolve(absoluteDir);
+    if (
+      resolvedDir !== canonicalRoot &&
+      !resolvedDir.startsWith(canonicalRoot + "/")
+    )
+      continue;
 
     // Check if directory exists
-    const exists = await directoryExists(absoluteDir);
+    const exists = await directoryExists(resolvedDir);
     if (!exists) continue;
 
-    scanPaths.push(absoluteDir);
+    scanPaths.push(resolvedDir);
 
     // Discover agent files
     const files = await discoverAgentFiles(
-      absoluteDir,
-      projectRoot,
+      resolvedDir,
+      canonicalRoot,
       resolvedConfig.include_patterns,
     );
 
     // Read and normalize each file
     for (const relativePath of files) {
       try {
-        const absolutePath = join(projectRoot, relativePath);
-        const bunFile = Bun.file(absolutePath);
+        const absolutePath = join(canonicalRoot, relativePath);
+
+        // Containment check: ensure resolved path is within the canonical root
+        const resolvedPath = resolve(absolutePath);
+        if (!resolvedPath.startsWith(canonicalRoot + "/")) continue;
+
+        const bunFile = Bun.file(resolvedPath);
 
         if (!(await bunFile.exists())) continue;
 
