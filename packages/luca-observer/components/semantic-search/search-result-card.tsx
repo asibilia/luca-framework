@@ -69,7 +69,7 @@ export function SearchResultCard({
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1.5 rounded-full bg-muted">
           <div
-            className="h-1.5 rounded-full bg-accent transition-all"
+            className="h-1.5 rounded-full bg-primary transition-all"
             style={{ width: `${scorePercent}%` }}
           />
         </div>
@@ -84,7 +84,7 @@ export function SearchResultCard({
           {result.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent"
+              className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
             >
               {tag}
             </span>
@@ -98,21 +98,21 @@ export function SearchResultCard({
           type="button"
           onClick={handleExplainClick}
           disabled={explainLoading && !result.explain}
-          className="font-mono text-xs text-accent hover:underline disabled:opacity-50"
+          className="font-mono text-xs text-primary hover:underline disabled:opacity-50"
         >
           {explainLoading && !result.explain ? "Loading..." : "Explain"}
         </button>
 
         <a
           href={`/knowledge-graph?entity=${encodeURIComponent(result.concept)}`}
-          className="font-mono text-xs text-accent hover:underline"
+          className="font-mono text-xs text-primary hover:underline"
         >
           Traverse
         </a>
 
         <a
           href={`/memory?entity=${encodeURIComponent(result.concept)}`}
-          className="font-mono text-xs text-accent hover:underline"
+          className="font-mono text-xs text-primary hover:underline"
         >
           View
         </a>

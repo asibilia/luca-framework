@@ -34,7 +34,7 @@ export function EntityTabBar({
             onClick={() => onTabChange(tab.id)}
             className={`px-4 py-2 text-sm rounded-t-md transition-colors ${
               isActive
-                ? "bg-accent/10 text-accent font-medium border-b-2 border-accent"
+                ? "bg-primary/10 text-primary font-medium border-b-2 border-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >

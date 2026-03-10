@@ -18,7 +18,7 @@ const WORKFLOW_COLORS: Record<string, string> = {
   execute: "success",
   debug: "warning",
   plan: "info",
-  verify: "accent",
+  verify: "chart-2",
   learn: "event-memory",
   unknown: "muted-foreground",
 };
@@ -78,7 +78,7 @@ export function SessionCard({
         type="button"
         onClick={handleToggle}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       >
         <div className="flex items-center gap-2">
           {expanded ? (

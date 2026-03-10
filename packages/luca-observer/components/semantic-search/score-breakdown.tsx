@@ -68,7 +68,7 @@ export function ScoreBreakdown({ explain }: ScoreBreakdownProps) {
               </span>
               <div className="flex-1 h-2 rounded-full bg-muted">
                 <div
-                  className="h-2 rounded-full bg-accent transition-all"
+                  className="h-2 rounded-full bg-primary transition-all"
                   style={{ width: `${widthPercent}%` }}
                 />
               </div>

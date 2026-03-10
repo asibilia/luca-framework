@@ -20,7 +20,7 @@ const STAT_CARDS: Array<{
   {
     key: "engram_count",
     label: "Engrams",
-    colorVar: "var(--color-accent)",
+    colorVar: "var(--color-chart-2)",
     format: (v) => v.toLocaleString(),
   },
   {

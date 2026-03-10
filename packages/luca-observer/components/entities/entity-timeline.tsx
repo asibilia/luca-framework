@@ -26,7 +26,7 @@ export function EntityTimeline({
       {timeline.map((entry) => (
         <div
           key={entry.engram_id}
-          className="border-l-2 border-accent/30 pl-4 py-2"
+          className="border-l-2 border-primary/30 pl-4 py-2"
         >
           <p className="font-mono text-xs text-muted-foreground">
             {formatDateTime(entry.created_at)}

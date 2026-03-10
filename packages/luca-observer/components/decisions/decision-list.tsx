@@ -81,7 +81,7 @@ export function DecisionList({
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter decisions by name or content..."
           aria-label="Filter decisions"
-          className="w-full rounded border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+          className="w-full rounded border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         />
       </div>
 

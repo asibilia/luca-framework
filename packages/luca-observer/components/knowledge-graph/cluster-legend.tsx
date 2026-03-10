@@ -41,8 +41,8 @@ export function ClusterLegend({
   if (entries.length === 0) return null;
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-border/50 bg-card/80 px-3 py-2 backdrop-blur-sm">
-      <div className="flex flex-col gap-1.5">
+    <div className="absolute left-4 top-4 z-10 rounded-lg border border-border/50 bg-card/80 px-3 py-1.5 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {entries.map(([type, count]) => (
           <LegendEntry
             key={type}

@@ -86,7 +86,7 @@ function DefaultFallback({ error, resetErrorBoundary }: FallbackProps) {
           )}
           <button
             onClick={resetErrorBoundary}
-            className="mt-3 rounded-md bg-accent px-3 py-1.5 font-mono text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+            className="mt-3 rounded-md bg-primary px-3 py-1.5 font-mono text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             Try again
           </button>

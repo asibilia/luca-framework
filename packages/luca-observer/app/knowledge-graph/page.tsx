@@ -80,7 +80,7 @@ export default function KnowledgeGraphPage() {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [loading]);
 
   // -- Type counts for legend (computed from raw graphData.nodes) -------------
   const typeCounts = useMemo(() => {
@@ -217,9 +217,9 @@ export default function KnowledgeGraphPage() {
       title="Knowledge Graph"
       subtitle="MuninnDB Entity Explorer"
       actions={
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {lastUpdatedText && (
-            <span className="font-mono text-xs text-muted-foreground/60">
+            <span className="mr-1 font-mono text-xs text-muted-foreground/60">
               {lastUpdatedText}
             </span>
           )}
@@ -228,7 +228,7 @@ export default function KnowledgeGraphPage() {
             type="button"
             onClick={resetView}
             disabled={loading}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
             Reset
           </button>
@@ -237,7 +237,7 @@ export default function KnowledgeGraphPage() {
             type="button"
             onClick={refresh}
             disabled={loading}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>

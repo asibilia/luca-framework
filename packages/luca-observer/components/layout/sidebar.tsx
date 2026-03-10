@@ -75,7 +75,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <div className="h-6 w-6 rounded bg-accent" />
+        <div className="h-6 w-6 rounded bg-primary" />
         <span className="font-mono text-sm font-bold tracking-tight">
           luca-observer
         </span>
@@ -103,9 +103,9 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 ${
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
                 isActive
-                  ? "bg-accent/10 font-medium text-accent"
+                  ? "bg-primary/10 font-medium text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >

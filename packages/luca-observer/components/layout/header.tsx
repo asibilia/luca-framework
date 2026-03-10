@@ -24,7 +24,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+          className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           aria-label="Toggle sidebar"
           aria-expanded={isOpen}
         >
@@ -39,7 +39,7 @@ export function Header() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="rounded p-1 font-mono text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+          className="rounded p-1 font-mono text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           aria-pressed={theme === "dark"}
           title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}

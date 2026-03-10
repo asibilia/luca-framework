@@ -53,13 +53,13 @@ export function SearchBar({ onSearch, loading }: SearchBarProps) {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Search your knowledge..."
-          className="flex-1 rounded-md border border-border bg-card px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+          className="flex-1 rounded-md border border-input bg-card px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
         />
         <button
           type="button"
           onClick={handleSearch}
           disabled={isSearchDisabled}
-          className="rounded-md bg-accent px-4 py-2 font-mono text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+          className="rounded-md bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
         >
           {loading ? "Searching..." : "Search"}
         </button>
@@ -128,7 +128,7 @@ export function SearchBar({ onSearch, loading }: SearchBarProps) {
               step="0.05"
               value={threshold}
               onChange={(e) => setThreshold(parseFloat(e.target.value))}
-              className="h-1.5 w-24 accent-accent"
+              className="h-1.5 w-24 accent-primary"
             />
             <span className="font-mono text-xs text-foreground w-8">
               {threshold.toFixed(2)}

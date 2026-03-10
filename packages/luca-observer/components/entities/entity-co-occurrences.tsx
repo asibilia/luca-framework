@@ -47,7 +47,7 @@ export function EntityCoOccurrences({
                 />
                 <Link
                   href={`/entities/${encodeURIComponent(coOcc.entity_name)}`}
-                  className="font-mono text-sm text-accent hover:underline truncate"
+                  className="font-mono text-sm text-primary hover:underline truncate"
                 >
                   {coOcc.entity_name}
                 </Link>
