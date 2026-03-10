@@ -2,66 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v4.0.0 — Process Intelligence & Self-Tuning Workflow
-
-## v4.0.0 — Process Intelligence & Self-Tuning Workflow
-
-Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-tuning governance, and outcome tracking. Adds 2 new agents (lu-premortem, lu-process-data), 1 new skill (/outcome), and extends the state machine with appetite tracking and cooldown state.
-
-### Phase 1 — Pre-v4 Hotfixes
-
-**Goal:** Fix active defects in MuninnDB memory linking and compaction resilience before adding v4 infrastructure.
-**Depends on:** None
-**Verification:** Quick
-
-- [x] #97 Fix MuninnDB orphan ratio — add memory linking to lu-learner and workflow-save
-- [x] #98 Compaction-resilient orchestrators — wave progress journaling and context budget checks
-
-### Phase 2 — State Machine Foundation
-
-**Goal:** Extend WorkflowContext with appetite fields, guards, cooldown state, and bridge CLI updates. All downstream v4 components depend on this.
-**Depends on:** Phase 1
-**Verification:** Full
-
-- [x] #106 State machine context extensions — appetite enum, token budget fields, cooldown state, bridge updates
-
-### Phase 3 — Appetite & Pre-Mortem
-
-**Goal:** Implement the core v4 value proposition: appetite-constrained planning and pre-mortem risk analysis.
-**Depends on:** Phase 2
-**Verification:** Full
-
-- [x] #99 Appetite declaration system — appetite levels, token budgets, guard at wave boundaries
-- [x] #100 Pre-mortem agent (lu-premortem) — domain-specific failure scenarios, risk brief, developer checkpoint
-
-### Phase 4 — Process Intelligence
-
-**Goal:** Close the measurement loop with process data collection and outcome tracking.
-**Depends on:** Phase 3
-**Verification:** Standard
-
-- [x] #101 Process data agent (lu-process-data) — appetite accuracy, rework ratio, signal rate metrics
-- [x] #102 Outcome tracking — contextual trigger in lu-cognition + /outcome skill
-
-### Phase 5 — Governance & UX
-
-**Goal:** Add self-tuning kill switches, milestone retrospective, and divergent mode advisory.
-**Depends on:** Phase 4
-**Verification:** Standard
-
-- [x] #103 Self-tuning governance — graduation criteria, auto-skip logic, gate checks
-- [x] #104 Process retrospective — dashboard + developer question at milestone boundaries
-- [x] #105 Divergent mode advisory — nudge after 8+ consecutive milestones
-
-### Phase 6 — Audit Gap Closure
-
-**Goal:** Fix critical integration bug (PREMORTEM_COMPLETE bridge command) and mechanical code quality issues found during milestone audit.
-**Depends on:** Phase 5
-**Verification:** Quick
-
-- [x] #108 PREMORTEM_COMPLETE bridge fix — change `emit-event` to `transition` in phase-discuss.skill.ts
-- [x] #109 Metric key alignment — rename outcome-completion-rate to outcome-completion in lu-process-data
-- [x] #110 Mechanical cleanup — duplicate imports, memory tag vocabulary, section ordering, bracket notation
+**Current Milestone:** Planning next
 
 ---
 
@@ -144,6 +85,24 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 | #85  | Contradiction view (side-by-side cards, forget, cross-view navigation)    |
 | #86  | Entity Deep Dive (4-tab interface, 6 components, dynamic routing)         |
 
+## Closed (v4.0.0 Completed)
+
+| Todo | Reason                                                                                  |
+| ---- | --------------------------------------------------------------------------------------- |
+| #97  | Fix MuninnDB orphan ratio (memory linking in lu-learner and workflow-save)              |
+| #98  | Compaction-resilient orchestrators (wave progress journaling + context budget checks)   |
+| #106 | State machine context extensions (appetite, cooldown, bridge updates)                   |
+| #99  | Appetite declaration system (levels, budgets, wave-boundary guard, planner awareness)   |
+| #100 | Pre-mortem agent lu-premortem (failure scenarios, risk brief, developer checkpoint)     |
+| #101 | Process data agent lu-process-data (5 per-phase + 4 aggregate metrics)                  |
+| #102 | Outcome tracking (/outcome skill + lu-cognition outcome_check)                          |
+| #103 | Self-tuning governance (graduation criteria, auto-skip, gate checks)                    |
+| #104 | Process retrospective (dashboard + developer question at milestone boundaries)          |
+| #105 | Divergent mode advisory (nudge after 8+ consecutive milestones)                         |
+| #108 | PREMORTEM_COMPLETE bridge fix (emit-event to transition)                                |
+| #109 | Metric key alignment (outcome-completion-rate to outcome-completion)                    |
+| #110 | Mechanical cleanup (duplicate imports, memory tags, section ordering, bracket notation) |
+
 ## Closed (v3.1.0 Completed)
 
 | Todo | Reason                                                               |
@@ -199,7 +158,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v3.1.0** — Memory Intelligence & Platform Cleanup: 7 phases, 10 commits, 151 files changed ([View Archive](milestones/v3.1.0-ROADMAP.md))
 - **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
 - **v3.3.0** — Cognitive Maturity & Observer Depth: 6 phases, 12 plans, 78 commits, 94 files changed ([View Archive](milestones/v3.3.0-ROADMAP.md))
+- **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-10 (v4.0.0 roadmap revision — 5 phases, 10 todos, 7 deferred)_
+_Roadmap updated: 2026-03-10 (v4.0.0 milestone archived)_
