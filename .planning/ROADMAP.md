@@ -49,9 +49,9 @@ Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-t
 **Depends on:** Phase 4
 **Verification:** Standard
 
-- [ ] #103 Self-tuning governance — graduation criteria, auto-skip logic, gate checks
-- [ ] #104 Process retrospective — dashboard + developer question at milestone boundaries
-- [ ] #105 Divergent mode advisory — nudge after 8+ consecutive milestones
+- [x] #103 Self-tuning governance — graduation criteria, auto-skip logic, gate checks
+- [x] #104 Process retrospective — dashboard + developer question at milestone boundaries
+- [x] #105 Divergent mode advisory — nudge after 8+ consecutive milestones
 
 ---
 
