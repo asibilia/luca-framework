@@ -44,6 +44,7 @@ import { uxAgent } from "../general/ux.agent";
 // Import Luca-specific agents
 import { luExecutorAgent } from "../luca/lu-executor.agent";
 import { luPlannerAgent } from "../luca/lu-planner.agent";
+import { luPremortemAgent } from "../luca/lu-premortem.agent";
 
 import type { BaseAgent } from "../__schemas/agent.schemas";
 
@@ -90,4 +91,5 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   ux: () => uxAgent,
   "lu-executor": () => luExecutorAgent,
   "lu-planner": () => luPlannerAgent,
+  "lu-premortem": () => luPremortemAgent,
 };
