@@ -159,6 +159,101 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
 
    - Ask about pushing tag
 
+7.5. **Process retrospective:**
+
+### Dashboard (always shown)
+
+Recall process metrics from MuninnDB for the current milestone:
+
+1. Appetite accuracy trend:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "metric:appetite-accuracy {milestone_version}")
+   \`\`\`
+
+2. Rework ratio trend:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "metric:rework-ratio {milestone_version}")
+   \`\`\`
+
+3. Pre-mortem signal rate trend:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "metric:signal-rate {milestone_version}")
+   \`\`\`
+
+4. Agent performance scores:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "agent:scorecard {milestone_version}")
+   \`\`\`
+
+Display results as an ASCII table:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > PROCESS RETROSPECTIVE — v{version}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Metric             | Phases | Trend   | Current |
+| ------------------ | ------ | ------- | ------- |
+| Appetite Accuracy  | {N}    | {trend} | {val}   |
+| Rework Ratio       | {N}    | {trend} | {val}   |
+| Pre-Mortem Signal  | {N}    | {trend} | {val}   |
+| Agent Scores (avg) | {N}    | {trend} | {val}   |
+
+Trend: improving / stable / declining (compare first half vs second half of phases)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+If no metric data is found in MuninnDB (first milestone with process data), display:
+\`\`\`
+No process metrics found for v{version}. Dashboard will populate after future milestones with process data collection enabled.
+\`\`\`
+
+### Developer Question (gated)
+
+Before asking the question, check graduation criteria:
+\`\`\`
+mcp__muninn__muninn_recall(vault: "default", context: "metric:retro-response-rate")
+\`\`\`
+
+Parse the recalled engram:
+- If \`sample_count >= 10\` AND \`response_rate < 0.30\`: SKIP the question (developer rarely engages). Show dashboard only. Update \`metric:retro-response-rate\` with \`responded: false\`.
+- Otherwise: proceed with the question.
+
+Ask the developer:
+\`\`\`
+Anything to change about how we work? (optional — press Enter to skip)
+\`\`\`
+
+**If developer responds with content:**
+- Store as MuninnDB engram:
+  \`\`\`
+  mcp__muninn__muninn_remember(
+    vault: "default",
+    concept: "process:workflow-change",
+    content: "Milestone: v{version}\\nFeedback: {developer_response}\\nRecorded: {timestamp}"
+  )
+  \`\`\`
+- Update retro response rate:
+  \`\`\`
+  mcp__muninn__muninn_evolve(
+    vault: "default",
+    id: "metric:retro-response-rate",
+    content: "sample_count: {N+1}, responses: {M+1}, response_rate: {updated_rate}"
+  )
+  \`\`\`
+  If the metric engram does not exist yet, create it with \`muninn_remember\` instead of \`muninn_evolve\`.
+
+**If developer skips (presses Enter or says "no"):**
+- Update retro response rate (responded: false):
+  \`\`\`
+  mcp__muninn__muninn_evolve(
+    vault: "default",
+    id: "metric:retro-response-rate",
+    content: "sample_count: {N+1}, responses: {M}, response_rate: {updated_rate}"
+  )
+  \`\`\`
+  If the metric engram does not exist yet, create it with \`muninn_remember\`.
+
 8. **Create GitHub milestone:**
 
    Create a GitHub milestone to match the local milestone archive. This provides visibility in GitHub's milestone tracker and links PRs to their milestone.
