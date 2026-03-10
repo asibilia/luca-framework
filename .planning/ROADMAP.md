@@ -53,6 +53,16 @@ Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-t
 - [x] #104 Process retrospective — dashboard + developer question at milestone boundaries
 - [x] #105 Divergent mode advisory — nudge after 8+ consecutive milestones
 
+### Phase 6 — Audit Gap Closure
+
+**Goal:** Fix critical integration bug (PREMORTEM_COMPLETE bridge command) and mechanical code quality issues found during milestone audit.
+**Depends on:** Phase 5
+**Verification:** Quick
+
+- [x] #108 PREMORTEM_COMPLETE bridge fix — change `emit-event` to `transition` in phase-discuss.skill.ts
+- [x] #109 Metric key alignment — rename outcome-completion-rate to outcome-completion in lu-process-data
+- [x] #110 Mechanical cleanup — duplicate imports, memory tag vocabulary, section ordering, bracket notation
+
 ---
 
 ## Deferred (Conditional / Post-v4)
