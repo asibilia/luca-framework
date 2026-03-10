@@ -348,6 +348,51 @@ This journal persists across context compaction. On resume, read it to skip alre
 
 - Proceed to next wave
 
+#### 4.1. Appetite Budget Guard (per-wave boundary)
+
+Before each wave, check whether the appetite budget has been exhausted:
+
+\`\`\`bash
+# Read appetite state from bridge
+APPETITE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{}')
+APPETITE_LEVEL=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_level || '')" 2>/dev/null || echo "")
+APPETITE_CEILING=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_token_ceiling || 0)" 2>/dev/null || echo "0")
+APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_used_tokens || 0)" 2>/dev/null || echo "0")
+\`\`\`
+
+**Guard logic (only fires when appetite is declared and ceiling > 0):**
+
+1. Calculate \`percent_used = (appetite_used_tokens / appetite_token_ceiling) * 100\`
+2. **At 80%** — Log a warning banner and continue:
+   \`\`\`
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Luca ► APPETITE WARNING — 80% of {appetite_level} budget consumed
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Used: {appetite_used_tokens} / {appetite_token_ceiling} tokens ({percent_used}%)
+   Remaining budget will be consumed in the next wave(s).
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   \`\`\`
+3. **At 100%** — PAUSE execution and present options to the developer:
+   \`\`\`
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Luca ► APPETITE EXHAUSTED — {appetite_level} budget fully consumed
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Used: {appetite_used_tokens} / {appetite_token_ceiling} tokens (100%+)
+
+   Options:
+   1. EXTEND — Increase appetite to next level (adds more budget)
+   2. SCOPE-CUT — Reduce remaining scope to fit current budget
+   3. HALT — Stop execution, preserve progress
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   \`\`\`
+   Wait for developer response before continuing.
+
+4. After each wave completes, update appetite_used_tokens via bridge:
+   \`\`\`bash
+   # Update used tokens after wave completion (estimated from wave results)
+   bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
+   \`\`\`
+
 **MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
 
 **Pre-wave context budget check** — run this before reading plan contents for each wave:
