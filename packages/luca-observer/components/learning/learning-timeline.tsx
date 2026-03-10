@@ -1,6 +1,14 @@
 "use client";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "~/components/ui/card";
 
 import type { TimelinePeriod } from "~/hooks/use-learning-evolution";
 
@@ -44,36 +52,36 @@ const CATEGORY_ORDER = [
 export function LearningTimeline({ timeline }: { timeline: TimelinePeriod[] }) {
   if (timeline.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-4 py-3">
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Learning Timeline
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+          </CardTitle>
+          <CardDescription className="font-mono text-xs">
             Engrams over time
-          </p>
-        </div>
-        <div className="p-4">
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <EmptyState message="No timeline data available." />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   const maxTotal = Math.max(...timeline.map((p) => p.total), 1);
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Learning Timeline
-        </p>
-        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+        </CardTitle>
+        <CardDescription className="font-mono text-xs">
           Engrams over time
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
-      <div className="px-4 pb-2 pt-4">
+      <CardContent>
         {/* Chart area */}
         <div className="flex h-48 items-end gap-1">
           {timeline.map((period, idx) => {
@@ -124,10 +132,10 @@ export function LearningTimeline({ timeline }: { timeline: TimelinePeriod[] }) {
             </div>
           ))}
         </div>
-      </div>
+      </CardContent>
 
       {/* Legend */}
-      <div className="border-t border-border px-4 py-2">
+      <CardFooter>
         <div className="flex flex-wrap gap-3">
           {CATEGORY_ORDER.filter((cat) =>
             timeline.some((p) => (p.counts[cat] ?? 0) > 0),
@@ -143,7 +151,7 @@ export function LearningTimeline({ timeline }: { timeline: TimelinePeriod[] }) {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

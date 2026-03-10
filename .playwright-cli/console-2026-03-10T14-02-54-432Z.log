@@ -1,0 +1,232 @@
+[  349728ms] [ERROR] ./components/vault/coherence-metrics.tsx
+Error:   x Expected '</', got 'jsx text (
+  |     )'
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/vault/coherence-metrics.tsx:128:1]
+ 125 |                 </div>
+ 126 |               </div>
+ 127 |             ))}
+ 128 | ,->       </div>
+ 129 | `->     </div>
+ 130 |       );
+ 131 |     }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/vault/coherence-metrics.tsx
+./app/vault/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  356877ms] [ERROR] ./components/vault/engram-type-breakdown.tsx
+Error:   x Expected '</', got 'jsx text (
+  |     )'
+    ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/vault/engram-type-breakdown.tsx:75:1]
+ 72 |                 </div>
+ 73 |               );
+ 74 |             })}
+ 75 | ,->       </div>
+ 76 | `->     </div>
+ 77 |       );
+ 78 |     }
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/vault/engram-type-breakdown.tsx
+./app/vault/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  453252ms] [ERROR] ./components/memory/memory-entries.tsx
+Error:   x Expected corresponding JSX closing tag for <Card>
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/memory/memory-entries.tsx:213:1]
+ 210 |           </>
+ 211 |         )}
+ 212 |       </div>
+ 213 |     </div>
+     :       ^^^
+ 214 |   );
+ 215 | }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/memory/memory-entries.tsx
+./app/memory/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  454662ms] [ERROR] ./components/memory/memory-entries.tsx
+Error:   x Expected corresponding JSX closing tag for <Card>
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/memory/memory-entries.tsx:213:1]
+ 210 |           </>
+ 211 |         )}
+ 212 |       </div>
+ 213 |     </div>
+     :       ^^^
+ 214 |   );
+ 215 | }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/memory/memory-entries.tsx
+./app/memory/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  458731ms] [ERROR] ./components/memory/working-sections.tsx
+Error:   x Expected corresponding JSX closing tag for <Card>
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/memory/working-sections.tsx:142:1]
+ 139 |           <DateGroupPanel key={group.label} group={group} />
+ 140 |         ))}
+ 141 |       </div>
+ 142 |     </div>
+     :       ^^^
+ 143 |   );
+ 144 | }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/memory/working-sections.tsx
+./app/memory/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  459425ms] [ERROR] ./components/memory/working-sections.tsx
+Error:   x Expected corresponding JSX closing tag for <Card>
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/memory/working-sections.tsx:142:1]
+ 139 |           <DateGroupPanel key={group.label} group={group} />
+ 140 |         ))}
+ 141 |       </div>
+ 142 |     </div>
+     :       ^^^
+ 143 |   );
+ 144 | }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/memory/working-sections.tsx
+./app/memory/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  513073ms] [ERROR] ./components/learning/learning-timeline.tsx
+Error:   x Expected '</', got 'jsx text (
+  |
+  |       )'
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/learning/learning-timeline.tsx:135:1]
+ 132 |                 </div>
+ 133 |               ))}
+ 134 |             </div>
+ 135 | ,->       </div>
+ 136 | |   
+ 137 | `->       {/* Legend */}
+ 138 |           <div className="border-t border-border px-4 py-2">
+ 139 |             <div className="flex flex-wrap gap-3">
+ 140 |               {CATEGORY_ORDER.filter((cat) =>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/learning/learning-timeline.tsx
+./app/learning/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  513219ms] [ERROR] ./components/learning/learning-timeline.tsx
+Error:   x Expected '</', got 'jsx text (
+  |
+  |       )'
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/learning/learning-timeline.tsx:135:1]
+ 132 |                 </div>
+ 133 |               ))}
+ 134 |             </div>
+ 135 | ,->       </div>
+ 136 | |   
+ 137 | `->       {/* Legend */}
+ 138 |           <div className="border-t border-border px-4 py-2">
+ 139 |             <div className="flex flex-wrap gap-3">
+ 140 |               {CATEGORY_ORDER.filter((cat) =>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/learning/learning-timeline.tsx
+./app/learning/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  516722ms] [ERROR] ./components/learning/learning-timeline.tsx
+Error:   x Expected '</', got 'jsx text (
+  |
+  |       )'
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/learning/learning-timeline.tsx:135:1]
+ 132 |                 </div>
+ 133 |               ))}
+ 134 |             </div>
+ 135 | ,->       </div>
+ 136 | |   
+ 137 | `->       {/* Legend */}
+ 138 |           <div className="border-t border-border px-4 py-2">
+ 139 |             <div className="flex flex-wrap gap-3">
+ 140 |               {CATEGORY_ORDER.filter((cat) =>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/learning/learning-timeline.tsx
+./app/learning/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  516882ms] [ERROR] ./components/learning/learning-timeline.tsx
+Error:   x Expected '</', got 'jsx text (
+  |     )'
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/learning/learning-timeline.tsx:154:1]
+ 151 |                 </div>
+ 152 |               ))}
+ 153 |             </div>
+ 154 | ,->       </div>
+ 155 | `->     </div>
+ 156 |       );
+ 157 |     }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/learning/learning-timeline.tsx
+./app/learning/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  524605ms] [ERROR] ./components/learning/learning-timeline.tsx
+Error:   x Expected '</', got 'jsx text (
+  |     )'
+     ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/learning/learning-timeline.tsx:154:1]
+ 151 |                 </div>
+ 152 |               ))}
+ 153 |             </div>
+ 154 | ,->       </div>
+ 155 | `->     </div>
+ 156 |       );
+ 157 |     }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/learning/learning-timeline.tsx
+./app/learning/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[  551341ms] [ERROR] ./components/sessions/session-list.tsx
+Error:   x Expected corresponding JSX closing tag for <Card>
+    ,-[/Users/alecsibilia/Github/luca-framework/packages/luca-observer/components/sessions/session-list.tsx:71:1]
+ 68 |           </ErrorBoundary>
+ 69 |         ))}
+ 70 |       </div>
+ 71 |     </div>
+    :       ^^^
+ 72 |   );
+ 73 | }
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/sessions/session-list.tsx
+./app/sessions/page.tsx @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56

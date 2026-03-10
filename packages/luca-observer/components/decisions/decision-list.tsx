@@ -4,6 +4,15 @@ import { useState } from "react";
 
 import { EmptyState } from "~/components/shared/empty-state";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
+import { Input } from "~/components/ui/input";
 import { DecisionCard } from "~/components/decisions/decision-card";
 
 import type { DecisionInfo } from "~/hooks/use-decision-trail";
@@ -53,35 +62,31 @@ export function DecisionList({
   const count = decisions.length;
 
   return (
-    <div
-      role="region"
-      aria-label="Decision trail"
-      className="flex flex-col rounded-lg border border-border bg-card"
-    >
+    <Card role="region" aria-label="Decision trail" className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Decisions
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            Decision Audit Trail
-          </p>
-        </div>
-        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
-          {count} {count === 1 ? "decision" : "decisions"}
-        </span>
-      </div>
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Decisions
+        </CardTitle>
+        <CardDescription className="font-mono text-xs">
+          Decision Audit Trail
+        </CardDescription>
+        <CardAction>
+          <Badge variant="outline" className="font-mono text-xs">
+            {count} {count === 1 ? "decision" : "decisions"}
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
       {/* Filter input */}
       <div className="border-b border-border px-4 py-2">
-        <input
+        <Input
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter decisions by name or content..."
           aria-label="Filter decisions"
-          className="w-full rounded border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="font-mono text-xs"
         />
       </div>
 
@@ -102,6 +107,6 @@ export function DecisionList({
           ))
         )}
       </div>
-    </div>
+    </Card>
   );
 }

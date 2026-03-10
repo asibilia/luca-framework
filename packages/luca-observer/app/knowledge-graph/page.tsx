@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 
 import { EmptyState } from "~/components/shared/empty-state";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { PageContainer } from "~/components/layout/page-container";
+import { Button } from "~/components/ui/button";
 import {
   GraphCanvas,
   type GraphCanvasHandle,
@@ -224,23 +226,25 @@ export default function KnowledgeGraphPage() {
             </span>
           )}
 
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={resetView}
             disabled={loading}
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
+            <RotateCcw />
             Reset
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
             disabled={loading}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
           >
+            <RefreshCw className={loading ? "animate-spin" : undefined} />
             {loading ? "Refreshing..." : "Refresh"}
-          </button>
+          </Button>
         </div>
       }
     >
@@ -262,24 +266,28 @@ export default function KnowledgeGraphPage() {
             </code>{" "}
             environment variable is set.
           </p>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
-            className="mt-4 rounded-md border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            className="mt-4"
           >
+            <RefreshCw />
             Retry Connection
-          </button>
+          </Button>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-8 text-center">
           <p className="text-sm text-destructive">{error}</p>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
-            className="mt-4 rounded-md border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            className="mt-4"
           >
+            <RefreshCw />
             Retry
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -303,13 +311,15 @@ export default function KnowledgeGraphPage() {
                     <p className="text-sm text-muted-foreground">
                       No entities in this time range.
                     </p>
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setTimeRange(null)}
-                      className="mt-3 rounded-md border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                      className="mt-3"
                     >
+                      <RotateCcw />
                       Reset Time Filter
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (

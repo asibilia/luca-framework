@@ -2,6 +2,14 @@
 
 import { EmptyState } from "~/components/shared/empty-state";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import { SessionCard } from "~/components/sessions/session-card";
 
 import type { SessionInfo } from "~/hooks/use-session-explorer";
@@ -36,24 +44,20 @@ export function SessionList({
   const count = sessions.length;
 
   return (
-    <div
-      role="region"
-      aria-label="Session explorer"
-      className="flex flex-col rounded-lg border border-border bg-card"
-    >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Sessions
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            Workflow Session History
-          </p>
-        </div>
-        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
-          {count} {count === 1 ? "session" : "sessions"}
-        </span>
-      </div>
+    <Card role="region" aria-label="Session explorer" className="flex flex-col">
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Sessions
+        </CardTitle>
+        <CardDescription className="font-mono text-xs">
+          Workflow Session History
+        </CardDescription>
+        <CardAction>
+          <Badge variant="outline" className="font-mono text-xs">
+            {count} {count === 1 ? "session" : "sessions"}
+          </Badge>
+        </CardAction>
+      </CardHeader>
       <div className="max-h-[36rem] overflow-y-auto">
         {sessions.map((session) => (
           <ErrorBoundary
@@ -64,6 +68,6 @@ export function SessionList({
           </ErrorBoundary>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

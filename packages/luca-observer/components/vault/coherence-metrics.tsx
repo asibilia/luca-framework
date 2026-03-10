@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 
 import type { CoherenceEntry } from "~/hooks/use-vault-health";
 
@@ -71,28 +72,28 @@ export function CoherenceMetrics({
 }) {
   if (coherence.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-4 py-3">
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Coherence Metrics
-          </p>
-        </div>
-        <div className="p-4">
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <EmptyState message="No coherence data available. Run vault coherence analysis to populate." />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Coherence Metrics
-        </p>
-      </div>
+        </CardTitle>
+      </CardHeader>
 
-      <div className="flex flex-col gap-4 p-4">
+      <CardContent className="flex flex-col gap-4">
         {coherence.map((entry) => (
           <div key={entry.vault}>
             {/* Vault label (only show if multiple vaults) */}
@@ -124,7 +125,7 @@ export function CoherenceMetrics({
             </div>
           </div>
         ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,8 +1,11 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
+
 import { PageContainer } from "~/components/layout/page-container";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
+import { Button } from "~/components/ui/button";
 import { LearningStats } from "~/components/learning/learning-stats";
 import { LearningTimeline } from "~/components/learning/learning-timeline";
 import { CategoryBreakdown } from "~/components/learning/category-breakdown";
@@ -15,9 +18,7 @@ import { relativeTime } from "~/lib/format";
  *
  * Visualizes how knowledge accumulates over time in MuninnDB.
  * Shows summary statistics, a timeline bar chart, category breakdown,
- * and recent learnings list. Follows the Session Explorer page pattern:
- * PageContainer with actions bar (last updated + refresh), loading
- * skeletons, and ErrorBoundary wrappers.
+ * and recent learnings list.
  */
 export default function LearningPage() {
   const {
@@ -45,15 +46,15 @@ export default function LearningPage() {
               {lastUpdatedText}
             </span>
           )}
-
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
             disabled={loading}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
+            <RefreshCw className={loading ? "animate-spin" : undefined} />
+            {loading ? "Loading..." : "Refresh"}
+          </Button>
         </div>
       }
     >

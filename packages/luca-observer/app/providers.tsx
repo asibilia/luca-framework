@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { Provider as JotaiProvider, useAtomValue } from "jotai";
 
+import { TooltipProvider } from "~/components/ui/tooltip";
 import { themeAtom } from "~/stores/theme";
 
 /**
@@ -38,8 +39,10 @@ function ThemeSync() {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <JotaiProvider>
-      <ThemeSync />
-      {children}
+      <TooltipProvider>
+        <ThemeSync />
+        {children}
+      </TooltipProvider>
     </JotaiProvider>
   );
 }
