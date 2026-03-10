@@ -366,6 +366,9 @@ async function handleReadStatus(): Promise<void> {
     verification_attempts: 0,
     phase_results_count: 0,
     last_error: null as string | null,
+    appetite_level: "Medium" as string,
+    appetite_token_ceiling: 100000,
+    appetite_context_percent: 50,
   };
 
   const result = await readFromState({
@@ -390,6 +393,9 @@ async function handleReadStatus(): Promise<void> {
         ? (ctx.phase_results as unknown[]).length
         : 0,
       last_error: (ctx.last_error as string | null) ?? null,
+      appetite_level: (ctx.appetite_level as string) ?? "Medium",
+      appetite_token_ceiling: (ctx.appetite_token_ceiling as number) ?? 100000,
+      appetite_context_percent: (ctx.appetite_context_percent as number) ?? 50,
     }),
     defaults: statusDefaults,
   });
@@ -445,6 +451,9 @@ const SETTABLE_FIELDS = [
   "complexity",
   "memory_tags",
   "intuition_flags",
+  "appetite_level",
+  "appetite_token_ceiling",
+  "appetite_context_percent",
 ] as const;
 
 /**
