@@ -82,3 +82,36 @@ export function escapeXmlAttr(str: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
+
+// --- RegExp Escaping ---
+
+/**
+ * Escape all RegExp metacharacters in a string so it can be safely used
+ * inside `new RegExp()` as a literal pattern.
+ *
+ * Backslash-escapes the characters `.*+?^${}()|[]\` to prevent them from
+ * being interpreted as regex operators. Uses the standard MDN-recommended
+ * pattern for RegExp escaping.
+ *
+ * This is the T0 (shared) copy. A T3 copy exists in
+ * `src/hooks/pi-extensions/__helpers/sanitize.ts` but cannot be imported
+ * from T0/T2 per module boundary rules.
+ *
+ * @param str - The raw string to escape
+ * @returns The string with all RegExp metacharacters backslash-escaped
+ *
+ * @example
+ * ```typescript
+ * escapeRegExp("foo.bar+baz")
+ * // "foo\\.bar\\+baz"
+ *
+ * escapeRegExp("price: $100 (USD)")
+ * // "price: \\$100 \\(USD\\)"
+ *
+ * escapeRegExp("safe text")
+ * // "safe text"
+ * ```
+ */
+export function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
