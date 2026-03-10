@@ -144,8 +144,8 @@ export async function GET(request: Request) {
   const { status, milestone, limit } = result.data;
 
   // Priority: LUCA_PROJECT_DIR > WORKSPACE_ROOT > auto-detect from cwd
-  const explicitRoot =
-    process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
+  const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
+  const explicitRoot = rawRoot ? resolve(rawRoot) : null;
   const workspaceRoot =
     explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
   const todosBase = join(workspaceRoot, ".planning", "todos");
