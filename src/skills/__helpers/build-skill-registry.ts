@@ -57,6 +57,7 @@ import { workflowSaveSkill } from "../general/workflow-save.skill";
 import { profileExportSkill } from "../general/profile-export.skill";
 import { profileImportSkill } from "../general/profile-import.skill";
 import { seedMemorySkill } from "../general/seed-memory.skill";
+import { outcomeSkill } from "../general/outcome.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -121,5 +122,6 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "profile-export": () => profileExportSkill,
   "profile-import": () => profileImportSkill,
   "seed-memory": () => seedMemorySkill,
+  outcome: () => outcomeSkill,
   lu: () => luSkill,
 };
