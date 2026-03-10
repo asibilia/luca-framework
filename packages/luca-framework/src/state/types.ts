@@ -47,6 +47,7 @@ export const WORKFLOW_STATES = [
   "learning",
   "committing",
   "complete",
+  "cooldown",
   "paused",
   "suspended",
   "failed",
@@ -192,6 +193,38 @@ export const workflowContextSchema = z.object({
     })
     .optional(),
 
+  // Appetite (v4)
+  appetite_level: z
+    .enum(["Micro", "Small", "Medium", "Large", "XL"])
+    .default("Medium"),
+  appetite_token_ceiling: z.number().nonnegative().default(100000),
+  appetite_context_percent: z.number().min(0).max(100).default(50),
+  appetite_used_tokens: z.number().nonnegative().default(0),
+
+  // Pre-mortem result (v4 — populated by pre-mortem agent)
+  pre_mortem_result: z
+    .object({
+      risks: z.array(z.string()).default([]),
+      mitigations: z.array(z.string()).default([]),
+      confidence: z.number().min(0).max(1).default(0),
+      timestamp: z.string().default(""),
+    })
+    .optional(),
+
+  // Process data (v4 — populated by process data agent)
+  process_data: z
+    .object({
+      tokens_used: z.number().nonnegative().default(0),
+      context_percent_used: z.number().min(0).max(100).default(0),
+      agent_invocations: z.number().nonnegative().default(0),
+      wall_clock_ms: z.number().nonnegative().default(0),
+      timestamp: z.string().default(""),
+    })
+    .optional(),
+
+  // Cooldown (v4)
+  cooldown_reason: z.string().optional(),
+
   // Timestamps
   started_at: z.string().optional(),
   last_transition_at: z.string().optional(),
@@ -279,6 +312,25 @@ export const workflowEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("ABORT"), reason: z.string().default("") }),
   z.object({ type: z.literal("RESET") }),
+  z.object({
+    type: z.literal("COOLDOWN_COMPLETE"),
+  }),
+  z.object({
+    type: z.literal("SKIP_COOLDOWN"),
+  }),
+  z.object({
+    type: z.literal("PREMORTEM_COMPLETE"),
+    risks: z.array(z.string()).default([]),
+    mitigations: z.array(z.string()).default([]),
+    confidence: z.number().min(0).max(1).default(0),
+  }),
+  z.object({
+    type: z.literal("PROCESS_DATA_COMPLETE"),
+    tokens_used: z.number().nonnegative().default(0),
+    context_percent_used: z.number().min(0).max(100).default(0),
+    agent_invocations: z.number().nonnegative().default(0),
+    wall_clock_ms: z.number().nonnegative().default(0),
+  }),
 ]);
 
 /**
