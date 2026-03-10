@@ -117,3 +117,14 @@ export {
   detectConflicts,
   groupParallelBatches,
 } from "./__helpers/dependency-graph";
+
+// Default dependency map
+export { createDefaultDependencyMap } from "./__helpers/default-dependency-map";
+
+// Skill order validation
+export {
+  validateSkillOrder,
+  SkillOrderValidationResultSchema,
+} from "./__helpers/validate-skill-order";
+
+export type { SkillOrderValidationResult } from "./__helpers/validate-skill-order";
