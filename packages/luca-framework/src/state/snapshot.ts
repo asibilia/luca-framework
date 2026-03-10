@@ -9,8 +9,7 @@
  *
  * @module luca-state/snapshot
  */
-import type { WorkflowContext, PhaseResult } from "./types";
-import type { WorkflowState } from "./types";
+import type { WorkflowContext, PhaseResult, WorkflowState } from "./types";
 import { escapeRegex } from "./utils/cli-utils";
 
 // ─── Preservable Sections ────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ const luPremortemConfig: AgentConfig = {
     cognition: {
       default_tier: "T1",
       promotable_to: "T2",
-      memory_tags: ["failures", "risks", "pitfalls", "decisions"],
+      memory_tags: ["pitfalls", "planning", "decisions"],
     },
     background_spawnable: false,
     purpose: "auditor",

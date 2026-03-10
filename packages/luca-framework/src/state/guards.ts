@@ -11,8 +11,7 @@
  */
 import { meetsThreshold } from "./utils/complexity-utils";
 import type { ComplexityLevel, StepActivation } from "./utils/complexity-utils";
-import { shouldStartIteration } from "./utils/budget-utils";
-import { budgetStateSchema } from "./utils/budget-utils";
+import { shouldStartIteration, budgetStateSchema } from "./utils/budget-utils";
 import get from "lodash/get";
 
 import type { WorkflowContext, WorkflowEvent } from "./types";
@@ -282,7 +281,7 @@ export const workflowGuards = {
    * if the gate is absent or false.
    */
   shouldRunPremortem: ({ context }: { context: WorkflowContext }) => {
-    return context.gates["premortem"] === true;
+    return context.gates.premortem === true;
   },
 
   /**
@@ -293,7 +292,7 @@ export const workflowGuards = {
    * false if the gate is absent or false.
    */
   shouldRunProcessData: ({ context }: { context: WorkflowContext }) => {
-    return context.gates["process_data"] === true;
+    return context.gates.process_data === true;
   },
 };
 

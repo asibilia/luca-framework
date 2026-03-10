@@ -320,7 +320,7 @@ Actions:
 
 **Approve [A]:**
 - Write the full Tier 2 PREMORTEM.md to \`.planning/phases/{phase-dir}/PREMORTEM.md\`
-- Emit PREMORTEM_COMPLETE event via bridge: \`bun run packages/luca-framework/src/state/bridge.ts emit-event --type=PREMORTEM_COMPLETE 2>/dev/null || true\`
+- Advance state machine via bridge: \`bun run packages/luca-framework/src/state/bridge.ts transition --event=PREMORTEM_COMPLETE 2>/dev/null || true\`
 - Proceed to next steps
 
 **Reject [R]:**

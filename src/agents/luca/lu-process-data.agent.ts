@@ -187,14 +187,14 @@ Running average of divergent mode opt-ins at milestone boundaries.
 Running average of outcome tracking completion.
 
 - **Input:** The outcome completion value for this phase (provided in prompt context by orchestrator).
-- **Prior:** Recalled from \\\`metric:outcome-completion-rate\\\` in prompt context.
+- **Prior:** Recalled from \\\`metric:outcome-completion\\\` in prompt context.
 - **Skip condition:** If the per-phase outcome completion value is null, do NOT update the aggregate.
-- **Storage key:** \\\`metric:outcome-completion-rate\\\`
+- **Storage key:** \\\`metric:outcome-completion\\\`
 
 Each aggregate metric stores: \\\`{ rate: number, sample_count: number, last_updated: ISO8601 }\\\`.
 
 Only compute an aggregate if the corresponding per-phase metric is non-null. If the per-phase metric is null, pass through the prior aggregate unchanged (or null if no prior).`,
-      order: 5,
+      order: 4,
     },
     {
       title: "output_format",
@@ -235,7 +235,7 @@ Return a single JSON object with all computed metrics. The orchestrator parses t
     "signal_rate_aggregate": "metric:signal-rate-aggregate",
     "retro_response_rate": "metric:retro-response-rate",
     "divergent_optin_rate": "metric:divergent-optin-rate",
-    "outcome_completion_rate": "metric:outcome-completion-rate"
+    "outcome_completion_rate": "metric:outcome-completion"
   }
 }
 \`\`\`
@@ -246,7 +246,7 @@ Return a single JSON object with all computed metrics. The orchestrator parses t
 - The \`storage_keys\` object maps metric names to their MuninnDB concept keys. The orchestrator uses these to call \`muninn_remember\`.
 - The \`notes\` array should contain 0-3 observations about notable metric values (e.g., trends, anomalies, calibration suggestions).
 - Output ONLY the JSON object — no preamble, no explanation, no markdown fences.`,
-      order: 4,
+      order: 5,
     },
   ],
 };
