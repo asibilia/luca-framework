@@ -133,7 +133,7 @@ export function ContextUsageBar({ stats }: { stats: StatsResponse | null }) {
           <div
             aria-hidden="true"
             className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: "var(--color-accent)" }}
+            style={{ backgroundColor: "var(--color-chart-2)" }}
           />
           <span className="font-mono text-xs text-muted-foreground">Index</span>
           <span className="font-mono text-xs font-medium text-foreground">

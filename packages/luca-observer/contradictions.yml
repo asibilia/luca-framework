@@ -1,0 +1,67 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e141]:
+    - generic [ref=e144]: luca-observer
+    - button "Toggle sidebar" [ref=e145]: Skip to navigation
+    - navigation "Main navigation" [ref=e146]:
+      - link "Dashboard" [ref=e147] [cursor=pointer]:
+        - /url: /
+        - img [ref=e148]
+        - generic [ref=e153]: Dashboard
+      - link "Sessions" [ref=e154] [cursor=pointer]:
+        - /url: /sessions
+        - img [ref=e155]
+        - generic [ref=e157]: Sessions
+      - link "Memory" [ref=e158] [cursor=pointer]:
+        - /url: /memory
+        - img [ref=e159]
+        - generic [ref=e167]: Memory
+      - link "Learning" [ref=e168] [cursor=pointer]:
+        - /url: /learning
+        - img [ref=e169]
+        - generic [ref=e171]: Learning
+      - link "Vault" [ref=e172] [cursor=pointer]:
+        - /url: /vault
+        - img [ref=e173]
+        - generic [ref=e177]: Vault
+      - link "Knowledge Graph" [ref=e178] [cursor=pointer]:
+        - /url: /knowledge-graph
+        - img [ref=e179]
+        - generic [ref=e184]: Knowledge Graph
+      - link "Semantic Search" [ref=e185] [cursor=pointer]:
+        - /url: /semantic-search
+        - img [ref=e186]
+        - generic [ref=e189]: Semantic Search
+      - link "Decisions" [ref=e190] [cursor=pointer]:
+        - /url: /decisions
+        - img [ref=e191]
+        - generic [ref=e195]: Decisions
+      - link "Contradictions" [ref=e196] [cursor=pointer]:
+        - /url: /contradictions
+        - img [ref=e197]
+        - generic [ref=e199]: Contradictions
+      - link "Entities" [ref=e200] [cursor=pointer]:
+        - /url: /entities
+        - img [ref=e201]
+        - generic [ref=e210]: Entities
+    - paragraph [ref=e212]: v0.1.0
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - button "Toggle sidebar" [expanded] [ref=e77]:
+        - img [ref=e213]
+      - button "Switch to light mode" [pressed] [ref=e82]:
+        - img [ref=e83]
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - heading "Contradictions" [level=1] [ref=e93]
+            - paragraph [ref=e94]: Knowledge Conflicts
+          - generic [ref=e96]:
+            - generic [ref=e216]: "Last updated: just now"
+            - button "Refresh" [ref=e217]
+        - generic [ref=e218]:
+          - paragraph [ref=e219]: No Contradictions
+          - paragraph [ref=e220]: No contradictions found -- your knowledge base is consistent.
+  - button "Open Next.js Dev Tools" [ref=e226] [cursor=pointer]:
+    - img [ref=e227]
+  - alert [ref=e230]

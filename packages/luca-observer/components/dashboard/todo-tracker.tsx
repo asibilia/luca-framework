@@ -60,7 +60,7 @@ export function TodoTracker() {
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-2 rounded bg-destructive px-3 py-1 font-mono text-xs text-destructive-foreground hover:bg-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          className="mt-2 rounded bg-destructive px-3 py-1 font-mono text-xs text-destructive-foreground hover:bg-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           Retry
         </button>

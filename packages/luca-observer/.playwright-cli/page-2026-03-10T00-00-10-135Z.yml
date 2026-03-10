@@ -1,0 +1,128 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - link "shadcn/ui" [ref=e142] [cursor=pointer]:
+          - /url: /
+          - img
+          - generic [ref=e7]: shadcn/ui
+        - navigation [ref=e8]:
+          - link "Docs" [ref=e143] [cursor=pointer]:
+            - /url: /docs/installation
+          - link "Components" [ref=e144] [cursor=pointer]:
+            - /url: /docs/components
+          - link "Blocks" [ref=e145] [cursor=pointer]:
+            - /url: /blocks
+          - link "Charts" [ref=e146] [cursor=pointer]:
+            - /url: /charts/area
+          - link "Directory" [ref=e147] [cursor=pointer]:
+            - /url: /docs/directory
+          - link "Create" [ref=e148] [cursor=pointer]:
+            - /url: /create
+        - generic [ref=e15]:
+          - button "Search documentation..." [ref=e149]:
+            - generic [ref=e18]: Search documentation...
+          - link "109k" [ref=e150] [cursor=pointer]:
+            - /url: https://github.com/shadcn-ui/ui
+            - img
+            - generic [ref=e20]: 109k
+          - button "Toggle theme" [ref=e151]:
+            - img
+            - generic [ref=e22]: Toggle theme
+          - generic [ref=e23]:
+            - link "Open in" [ref=e152] [cursor=pointer]:
+              - /url: https://v0.dev/chat/api/open?url=https://ui.shadcn.com/init/v0?preset=abkeJc&base=radix&title=New radix-nova project
+              - generic [ref=e25]: Open in
+              - img
+            - button "Create Project" [ref=e153]
+    - main [ref=e27]:
+      - iframe [ref=e31]:
+        
+      - generic [ref=e32]:
+        - button "Menu" [ref=e154]:
+          - generic [ref=e35]: Menu
+          - img [ref=e36]
+        - generic [ref=e38]:
+          - button "Base Radix UI Radix UI" [ref=e155]:
+            - generic [ref=e41]:
+              - generic [ref=e42]: Base
+              - generic [ref=e43]: Radix UI
+            - generic:
+              - img "Radix UI"
+          - generic [ref=e44]:
+            - button "Style Nova" [ref=e156]:
+              - generic [ref=e46]:
+                - generic [ref=e47]: Style
+                - generic [ref=e48]: Nova
+              - generic:
+                - img
+            - button "Lock" [ref=e157] [cursor=pointer]:
+              - img [ref=e50]
+          - generic [ref=e53]:
+            - button "Base Color Zinc" [ref=e158]:
+              - generic [ref=e55]:
+                - generic [ref=e56]: Base Color
+                - generic [ref=e57]: Zinc
+            - button "Lock" [ref=e159] [cursor=pointer]:
+              - img [ref=e59]
+          - generic [ref=e62]:
+            - button "Theme Blue" [ref=e160]:
+              - generic [ref=e64]:
+                - generic [ref=e65]: Theme
+                - generic [ref=e66]: Blue
+            - button "Lock" [ref=e161] [cursor=pointer]:
+              - img [ref=e68]
+          - generic [ref=e71]:
+            - button "Icon Library Lucide" [ref=e162]:
+              - generic [ref=e73]:
+                - generic [ref=e74]: Icon Library
+                - generic [ref=e75]: Lucide
+              - generic:
+                - img
+            - button "Lock" [ref=e163] [cursor=pointer]:
+              - img [ref=e77]
+          - generic [ref=e80]:
+            - button "Font Inter Aa" [ref=e164]:
+              - generic [ref=e82]:
+                - generic [ref=e83]: Font
+                - generic [ref=e84]: Inter
+              - generic: Aa
+            - button "Lock" [ref=e165] [cursor=pointer]:
+              - img [ref=e86]
+          - generic [ref=e89]:
+            - button "Radius None" [ref=e166]:
+              - generic [ref=e91]:
+                - generic [ref=e92]: Radius
+                - generic [ref=e93]: None
+              - generic:
+                - img
+            - button "Lock" [ref=e167] [cursor=pointer]:
+              - img [ref=e95]
+          - generic [ref=e98]:
+            - button "Menu Color Default" [ref=e168]:
+              - generic [ref=e100]:
+                - generic [ref=e101]: Menu Color
+                - generic [ref=e102]: Default
+              - generic:
+                - img
+            - button "Lock" [ref=e169] [cursor=pointer]:
+              - img [ref=e104]
+          - generic [ref=e107]:
+            - button "Menu Accent Subtle" [ref=e170]:
+              - generic [ref=e109]:
+                - generic [ref=e110]: Menu Accent
+                - generic [ref=e111]: Subtle
+              - generic:
+                - img
+            - button "Lock" [ref=e171] [cursor=pointer]:
+              - img [ref=e113]
+        - generic [ref=e116]:
+          - button "--preset abkeJc" [ref=e172]:
+            - generic [ref=e118]: "--preset abkeJc"
+          - button "Shuffle" [ref=e173]:
+            - generic [ref=e120]: Shuffle
+          - generic [ref=e121]:
+            - heading "Command Palette" [level=2] [ref=e174]
+            - paragraph [ref=e123]: Search for a command to run...
+  - region "Notifications alt+T"
+  - alert [ref=e124]

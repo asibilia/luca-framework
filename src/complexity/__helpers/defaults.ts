@@ -147,3 +147,47 @@ export const DEFAULT_COMPLEXITY_CONFIG: ComplexityConfig = {
   defaultLevel: "auto",
   matrix: DEFAULT_COMPLEXITY_MATRIX,
 };
+
+/**
+ * Reassessment thresholds for mid-execution complexity promotion.
+ *
+ * Maps each non-CRITICAL complexity level to the signal thresholds that
+ * trigger promotion to the next level. Promotion uses OR logic — any
+ * single signal exceeding its threshold triggers promotion.
+ *
+ * CRITICAL is excluded because there is no higher level to promote to.
+ *
+ * Threshold rationale (from CONTEXT.md Decision 3):
+ * - files_touched_upper_bound: classification's upper bound for that level
+ * - iteration_budget_ratio: 50% budget consumed = under-resourced signal
+ * - error_count_threshold: ~2x expected error range for that level
+ */
+export const REASSESSMENT_THRESHOLDS: Record<
+  Exclude<ComplexityLevel, "CRITICAL">,
+  {
+    files_touched_upper_bound: number;
+    iteration_budget_ratio: number;
+    error_count_threshold: number;
+  }
+> = {
+  TRIVIAL: {
+    files_touched_upper_bound: 1,
+    iteration_budget_ratio: 0.5,
+    error_count_threshold: 4,
+  },
+  SIMPLE: {
+    files_touched_upper_bound: 3,
+    iteration_budget_ratio: 0.5,
+    error_count_threshold: 8,
+  },
+  MODERATE: {
+    files_touched_upper_bound: 5,
+    iteration_budget_ratio: 0.5,
+    error_count_threshold: 14,
+  },
+  COMPLEX: {
+    files_touched_upper_bound: 10,
+    iteration_budget_ratio: 0.5,
+    error_count_threshold: 24,
+  },
+};

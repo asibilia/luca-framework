@@ -14,7 +14,7 @@ const SEGMENT_COLORS: Record<string, string> = {
   pattern: "var(--color-success)",
   decision: "var(--color-info)",
   pitfall: "var(--color-warning)",
-  preference: "var(--color-accent)",
+  preference: "var(--color-chart-2)",
   uncategorized: "var(--color-muted-foreground)",
 };
 

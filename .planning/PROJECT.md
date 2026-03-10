@@ -8,11 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v3.2.0 — Shipped)
+## Current State (v3.3.0 — Shipped)
 
-**Last Shipped:** v3.2.0 — Observer Rebirth (2026-03-09)
+**Last Shipped:** v3.3.0 — Cognitive Maturity & Observer Depth (2026-03-09)
 
-8 phases, 20 plans, 48 commits, 193 files changed (+11,790/-6,929). Replaced SpacetimeDB with MuninnDB across the entire observer stack. MuninnDB emission layer with fire-and-forget circuit breaker, 7+ new API routes with filtering, 4 new MuninnDB-native views (Session Explorer, Decision Trail, Learning Evolution, Vault Health Dashboard), CSS-based charting patterns, design system established (cards, color tokens, typography, error boundaries, empty states), SpacetimeDB fully stripped from observer (30+ bindings, 17 hooks deleted).
+6 phases, 12 plans, 78 commits, 94 files changed (+11,930/-169). Closed the learning loop with Apply-Measure-Refine calibration engrams, adaptive complexity self-tuning with reassessment at 4 execution checkpoints, deferred/lazy recall with session-scoped cache. Observer expanded with 4 new advanced views: Knowledge Graph Explorer (force-directed graph, cluster supernodes, semantic zoom), Semantic Search (on-demand search, explain score breakdown), Contradictions (side-by-side cards, forget functionality), Entity Deep Dive (4-tab interface, dynamic routing). Observer now has 8 fully functional views.
+
+## Previous State (v3.2.0)
+
+v3.2.0 — Observer Rebirth (2026-03-09). 8 phases, 20 plans, 48 commits, 193 files changed. Replaced SpacetimeDB with MuninnDB across the entire observer stack. MuninnDB emission layer, 7+ API routes, 4 new views (Session Explorer, Decision Trail, Learning Evolution, Vault Health Dashboard), design system established.
 
 ## Previous State (v3.1.0)
 
@@ -59,6 +63,10 @@ v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03
 - **v1.6.0** — Package & Publish (2026-02-16). 4 phases, 9 plans, 18 requirements, 1755 tests (1749 pass, 6 skip). XState package extraction, framework rewire, memory suspend/resume, tech stack profiles, class-to-functional refactor.
 - **v1.7.0** — Codebase Health & Build Stability (2026-02-23). 8 phases, 13 plans, 1763 tests. TypeScript compilation cleanup, test consolidation, Bun API alignment, shared utility extraction, dead code elimination.
 - **v1.8.0** — Functional Architecture & Bridge Unification (2026-02-25). 3 phases, 8 plans, 8 requirements, 1763 tests. Agent/skill factory migration, deep freeze immutability, 100% bridge adoption, audit sweep.
+- **v1.9.0 — v2.9.0** — See ROADMAP.md history for full details.
+- **v3.0.0** — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08). 14 phases, 42 plans, 151 commits. MuninnDB migration, model routing redesign, convention compliance.
+- **v3.1.0** — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 commits. Recall depth, session cleanup, SpacetimeDB removed.
+- **v3.2.0** — Observer Rebirth (2026-03-09). 8 phases, 20 plans, 48 commits. MuninnDB observer stack, 4 views, design system.
 
 ## Requirements
 
@@ -119,4 +127,4 @@ v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03
 
 ---
 
-_Last updated: 2026-03-09 — v3.2.0 milestone archived_
+_Last updated: 2026-03-09 — v3.3.0 milestone archived_

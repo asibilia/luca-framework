@@ -1,0 +1,5 @@
+[     461ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3456/favicon.ico:0
+[   73278ms] [ERROR] The final argument passed to %s changed size between renders. The order and size of this array must remain constant.
+
+Previous: %s
+Incoming: %s useEffect [] [false] @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56

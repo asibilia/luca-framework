@@ -10,16 +10,19 @@ import { themeAtom } from "~/stores/theme";
 /**
  * Syncs the Jotai theme atom value to the document's `<html>` className.
  *
- * Runs as an effect inside the JotaiProvider tree so that the atom
- * value is available. Sets "dark" or "light" class on `<html>`.
+ * Uses shadcn convention: `.dark` class for dark mode, no class for light.
+ * The `:root` CSS variables apply for light mode by default.
  */
 function ThemeSync() {
   const theme = useAtomValue(themeAtom);
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("dark", "light");
-    root.classList.add(theme);
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
   }, [theme]);
 
   return null;

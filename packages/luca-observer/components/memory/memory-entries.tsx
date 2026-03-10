@@ -28,7 +28,7 @@ const CATEGORY_DISPLAY: Record<string, { label: string; color: string }> = {
   pattern: { label: "Patterns", color: "success" },
   decision: { label: "Decisions", color: "info" },
   pitfall: { label: "Pitfalls", color: "warning" },
-  preference: { label: "Preferences", color: "accent" },
+  preference: { label: "Preferences", color: "chart-2" },
   uncategorized: { label: "Uncategorized", color: "muted-foreground" },
 };
 
@@ -192,7 +192,7 @@ export function MemoryEntries({ engrams }: { engrams: Engram[] }) {
               <button
                 type="button"
                 onClick={() => setShowUncategorized(!showUncategorized)}
-                className="rounded font-mono text-xs text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                className="rounded font-mono text-xs text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {showUncategorized
                   ? "Hide uncategorized"
@@ -218,7 +218,7 @@ function CategorySection({ group }: { group: CategoryGroup }) {
         type="button"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       >
         <div className="flex items-center gap-2">
           {expanded ? (
@@ -286,7 +286,7 @@ function EngramCard({
         type="button"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        className="w-full px-4 py-2.5 text-left hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        className="w-full px-4 py-2.5 text-left hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">

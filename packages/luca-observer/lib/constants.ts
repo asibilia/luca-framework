@@ -66,18 +66,14 @@ export const COMPLEXITY_LEVELS = {
 export const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/sessions", label: "Sessions", icon: "Activity" },
-  { href: "/workflow", label: "Workflow", icon: "GitBranch" },
-  { href: "/iterations", label: "Iterations", icon: "RefreshCw" },
-  { href: "/harness", label: "Harness", icon: "Shield" },
-  { href: "/planning", label: "Planning", icon: "ListTodo" },
   { href: "/memory", label: "Memory", icon: "Brain" },
-  { href: "/tribunal", label: "Tribunal", icon: "Scale" },
-  { href: "/agents", label: "Agents", icon: "Bot" },
-  { href: "/cost", label: "Cost", icon: "DollarSign" },
-  { href: "/decisions", label: "Decisions", icon: "GitPullRequest" },
-  { href: "/notes", label: "Notes", icon: "StickyNote" },
   { href: "/learning", label: "Learning", icon: "BookOpen" },
   { href: "/vault", label: "Vault", icon: "Database" },
+  { href: "/knowledge-graph", label: "Knowledge Graph", icon: "Network" },
+  { href: "/semantic-search", label: "Semantic Search", icon: "Search" },
+  { href: "/decisions", label: "Decisions", icon: "GitPullRequest" },
+  { href: "/contradictions", label: "Contradictions", icon: "AlertTriangle" },
+  { href: "/entities", label: "Entities", icon: "Fingerprint" },
 ] as const;
 
 /**

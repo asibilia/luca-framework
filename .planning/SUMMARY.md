@@ -1,84 +1,90 @@
-# Plan 111-02: Tailwind & Dark Mode Polish — Summary
+# Plan 04-01: Graph Data Foundation -- Summary
 
-## Phase 111 | Wave 1 | GitHub Issue #44
+## Phase 4 | Wave 1 | GitHub Issue #61
 
-### Status: COMPLETE (9/9 tasks)
-
----
-
-### Task 1: System preference dark mode detection
-
-- **File:** `packages/luca-observer/app/layout.tsx`
-- **Change:** Removed hardcoded `className="dark"` from `<html>`. Added inline `<script>` in `<head>` that reads `localStorage` key `luca-observer-theme` and falls back to `prefers-color-scheme`. Kept `suppressHydrationWarning`.
-- **Commit:** `b778718`
-
-### Task 2: Dark mode CSS variants for event tokens
-
-- **File:** `packages/luca-observer/tailwind/base.css`
-- **Change:** Added `html.dark { ... }` block after `html.light` with all 10 `event-*` tokens, making dark mode values independently configurable.
-- **Commit:** `3afe1f5`
-
-### Task 3: Convergence chart height responsive
-
-- **File:** `packages/luca-observer/components/iteration/convergence-chart.tsx`
-- **Change:** Replaced `style={{ height: "160px" }}` with Tailwind `h-40` class.
-- **Commit:** `d590f03`
-
-### Task 4: Migrate color-mix from srgb to oklab
-
-- **Files:** 11 component files (17 instances total)
-  - `components/memory/working-sections.tsx` (2)
-  - `components/memory/context-usage-bar.tsx` (1)
-  - `components/planning/quality-zone-indicator.tsx` (2)
-  - `components/planning/wsjf-score-table.tsx` (3)
-  - `components/harness/check-result-card.tsx` (1)
-  - `components/tribunal/rebuttal-timeline.tsx` (1)
-  - `components/tribunal/findings-table.tsx` (3)
-  - `components/tribunal/disagreements-panel.tsx` (1)
-  - `components/iteration/iteration-timeline.tsx` (1)
-  - `components/iteration/budget-gauge.tsx` (1)
-  - `components/memory/memory-entries.tsx` (1)
-- **Change:** Replaced all `color-mix(in srgb,` with `color-mix(in oklab,` for perceptually uniform color mixing.
-- **Commit:** `5b97659`
-
-### Task 5: Replace text-[10px] with text-xs
-
-- **File:** `packages/luca-observer/components/memory/working-sections.tsx`
-- **Change:** Replaced arbitrary `text-[10px]` with standard `text-xs` utility.
-- **Commit:** `c115102`
-
-### Task 6: Add font-mono to transition-log session_id
-
-- **File:** `packages/luca-observer/components/workflow/transition-log.tsx`
-- **Change:** Added `font-mono text-xs` to session_id paragraph in expanded detail rows. Verified timestamp `<td>` already had `font-mono`.
-- **Commit:** `ebc470b`
-
-### Task 7: Replace inline calc() with CSS grid
-
-- **File:** `packages/luca-observer/components/planning/quality-zone-indicator.tsx`
-- **Change:** Replaced boundary label row using `calc(30% - 1ch)` and flex justify-between with CSS grid (`gridTemplateColumns: "30% 20% 20% 30%"`).
-- **Commit:** `f46d83d`
-
-### Task 8: Add type="button" to buttons
-
-- **Files:** 4 component files (5 buttons total)
-  - `components/layout/header.tsx` (2 buttons)
-  - `components/shared/json-viewer.tsx` (1 button)
-  - `components/shared/page-error.tsx` (1 button)
-  - `components/dashboard/recent-events.tsx` (1 button)
-- **Change:** Added `type="button"` to prevent implicit form submission.
-- **Verification:** `grep -rn "<button" | grep -v 'type='` returns zero matches.
-- **Commit:** `b946510`
-
-### Task 9: Add --open browser launch warning
-
-- **File:** `packages/luca-observer/bin/luca-observer.js`
-- **Change:** Added console.log warning when `--open` flag is used, printed before `spawn()` call.
-- **Commit:** `d124263`
+### Status: COMPLETE (5/5 tasks)
 
 ---
 
-### Deviations
+### Task 1: Install react-force-graph-2d
 
-- **Task 4 count:** Plan specified 16 instances; actual count was 17 (one additional instance found in `memory-entries.tsx`). All 17 were migrated.
-- **Pre-existing TypeScript errors:** 4 pre-existing TS errors in page files (`planning/page.tsx`, `tribunal/page.tsx`, `workflow/page.tsx`) related to optional vs required type properties. Unrelated to any changes in this plan.
+**Commit:** `4689a40b`
+**Status:** DONE
+
+- Installed `react-force-graph-2d@1.29.1` in `packages/luca-observer`
+- 24 transitive packages resolved
+
+### Task 2: Create graph type definitions
+
+**Commit:** `1b81ff71`
+**Status:** DONE
+
+- Created `packages/luca-observer/lib/graph-types.ts`
+- Exports: `GraphNode`, `GraphLink`, `GraphData`, `ClusterState`, `EntityType`
+- Exports: `TYPE_COLORS` (hex colors per type), `TYPE_DISPLAY` (label+color per type)
+- Exports: `KNOWN_ENTITY_TYPES` set, `resolveEntityType()` helper
+- Type list mirrors `KNOWN_TYPES` from `use-vault-health.ts` for consistency
+
+### Task 3: Create /api/muninn/graph-data route
+
+**Commit:** `d3da4811`
+**Status:** DONE
+
+- Created `packages/luca-observer/app/api/muninn/graph-data/route.ts`
+- Added `GraphDataQuerySchema` and `GraphDataResponseSchema` to `muninn-schemas.ts`
+- Route fetches engrams + entity clusters in parallel via `Promise.all`
+- Builds entity nodes from engram tags (aggregated: name, type, engram_count, first_seen, last_seen)
+- Builds links from cluster co-occurrence (source, target, weight)
+- Returns `{ nodes, links, total_nodes, total_links }`
+- Follows exact same pattern as `entity-clusters/route.ts` (muninnProxyHandler + parseQueryParams)
+
+### Task 4: Create useKnowledgeGraph hook
+
+**Commit:** `9e985398`
+**Status:** DONE
+
+- Created `packages/luca-observer/hooks/use-knowledge-graph.ts`
+- Follows canonical `use-vault-health.ts` pattern (fetchingRef, Promise.allSettled, NotConfiguredError)
+- Raw state: rawNodes, rawLinks, expandedTypes, selectedNode, hoveredNode, timeRange
+- Derived (useMemo): graphData (clustered+filtered), timeExtent, timeHistogram
+- Functions: toggleCluster, selectNode, hoverNode, setTimeRange, refresh, resetView
+- `buildClusteredGraph`: handles all-collapsed (cluster supernodes), mixed, all-expanded states
+- Time filtering: excludes nodes outside range before clustering
+- Link remapping: deduplicates links to/from cluster supernodes, removes self-loops
+
+### Task 5: Register nav item and create page shell
+
+**Commit:** `2c433445`
+**Status:** DONE
+
+- Added `{ href: "/knowledge-graph", label: "Knowledge Graph", icon: "Network" }` to NAV_ITEMS
+- Added `Network` import and ICON_MAP entry in sidebar.tsx
+- Created `packages/luca-observer/app/knowledge-graph/page.tsx`
+- Page uses PageContainer with title/subtitle, actions bar (reset + refresh + last updated)
+- Shows LoadingSkeleton during fetch, not-configured state, error state
+- Stats bar shows total entities/relationships and visible nodes/links
+- Graph canvas placeholder div ready for ForceGraph2D component (Plan 2)
+
+---
+
+## Verification
+
+- `bunx --bun tsc --noEmit` passes with zero errors
+- All 5 tasks committed atomically
+- No deviations from plan
+- No test files created (per no-tests rule)
+
+## Files Created
+
+- `packages/luca-observer/lib/graph-types.ts`
+- `packages/luca-observer/app/api/muninn/graph-data/route.ts`
+- `packages/luca-observer/hooks/use-knowledge-graph.ts`
+- `packages/luca-observer/app/knowledge-graph/page.tsx`
+
+## Files Modified
+
+- `packages/luca-observer/package.json` (added react-force-graph-2d dependency)
+- `packages/luca-observer/lib/muninn-schemas.ts` (added GraphDataQuerySchema, GraphDataResponseSchema)
+- `packages/luca-observer/lib/constants.ts` (added Knowledge Graph nav item)
+- `packages/luca-observer/components/layout/sidebar.tsx` (added Network icon)
+- `bun.lock` (updated lockfile)

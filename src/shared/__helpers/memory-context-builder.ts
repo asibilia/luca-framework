@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import { getCachedRecall } from "./recall-cache";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -218,4 +219,76 @@ export function buildMemoryContextBlock(
  */
 export function clearMemoryContextCache(): void {
   formatCache.clear();
+}
+
+// ─── Deferred Recall API ────────────────────────────────────────────────────
+
+/**
+ * Configuration for requesting memory context via the deferred recall pattern.
+ *
+ * The calling skill orchestrates the MuninnDB MCP call and stores results
+ * via `setCachedRecall()` before calling `requestMemoryContext()`. This
+ * function then reads the cache and formats the results.
+ */
+export interface RequestMemoryContextConfig {
+  /** Name of the agent that will receive the memory context block */
+  agentName: string;
+  /** Session identifier used as the cache key for recall results */
+  sessionId: string;
+  /** Agent's memory_tags for potential future per-agent filtering */
+  memoryTags: string[];
+  /** Maximum token budget for the formatted block (default: 500) */
+  maxTokens?: number;
+}
+
+/**
+ * Request memory context for a sub-agent using the deferred recall pattern.
+ *
+ * Reads cached MuninnDB recall results (stored by the orchestrating skill
+ * via `setCachedRecall()`) and formats them into a `<memory_context>` block
+ * suitable for injection into Task() prompts.
+ *
+ * This function does NOT call MuninnDB itself -- MCP calls are made by the
+ * LLM at the skill level. It only formats cached results. When no cache
+ * exists (recall hasn't been performed yet), it logs a warning and returns
+ * an empty string, consistent with `buildMemoryContextBlock()` behavior.
+ *
+ * @param config - Agent name, session ID, memory tags, and optional token budget
+ * @returns Formatted `<memory_context>` string, or empty string if no cache
+ *
+ * @example
+ * ```typescript
+ * // After the skill has called MuninnDB and stored results:
+ * // setCachedRecall(sessionId, { sessionId, patterns, decisions, pitfalls, findings, recalledAt });
+ *
+ * const memoryBlock = requestMemoryContext({
+ *   agentName: "lu-executor",
+ *   sessionId: "session-abc-123",
+ *   memoryTags: ["execution", "debugging"],
+ *   maxTokens: 500,
+ * });
+ * // Returns formatted <memory_context> block or empty string
+ * ```
+ */
+export function requestMemoryContext(
+  config: RequestMemoryContextConfig,
+): string {
+  const cached = getCachedRecall(config.sessionId);
+
+  if (!cached) {
+    console.warn(
+      `[MEMORY] No cached recall for session ${config.sessionId}. ` +
+        `Proceeding without memory context.`,
+    );
+    return "";
+  }
+
+  return buildMemoryContextBlock({
+    agentName: config.agentName,
+    sessionFindings: cached.findings,
+    recalledPatterns: cached.patterns,
+    recalledPitfalls: cached.pitfalls,
+    recalledDecisions: cached.decisions,
+    maxTokens: config.maxTokens ?? 500,
+  });
 }

@@ -101,6 +101,28 @@ export const StatsResponseSchema = z
   })
   .passthrough();
 
+/**
+ * POST /api/muninn/forget -- request body.
+ *
+ * Validates the JSON body for engram deletion.
+ * Uses snake_case for all properties per API conventions.
+ */
+export const ForgetRequestSchema = z.object({
+  vault: z.string().min(1).max(100).default("default"),
+  id: z.string().min(1, "id is required"),
+});
+
+export type ForgetRequest = z.infer<typeof ForgetRequestSchema>;
+
+/**
+ * MuninnDB forget response shape.
+ */
+export const ForgetResponseSchema = z
+  .object({
+    forgotten: z.boolean(),
+  })
+  .passthrough();
+
 // -- New query parameter schemas for GET routes --------------------------------
 
 /**
@@ -288,5 +310,35 @@ export const ExportGraphResponseSchema = z
     node_count: z.number(),
     edge_count: z.number(),
     format: z.string(),
+  })
+  .passthrough();
+
+// -- Graph data route schemas -------------------------------------------------
+
+/**
+ * GET /api/muninn/graph-data -- query parameters.
+ *
+ * Returns nodes + links for ForceGraph2D visualization.
+ * Uses z.coerce.number() because URLSearchParams values are always strings.
+ */
+export const GraphDataQuerySchema = z.object({
+  vault: z.string().min(1).max(100).default("default"),
+  limit: z.coerce.number().int().min(1).max(2000).default(500),
+});
+
+export type GraphDataQuery = z.infer<typeof GraphDataQuerySchema>;
+
+/**
+ * Graph data response shape.
+ *
+ * Returns pre-processed nodes and links ready for ForceGraph2D rendering.
+ * Uses snake_case for all properties per API conventions.
+ */
+export const GraphDataResponseSchema = z
+  .object({
+    nodes: z.array(z.any()),
+    links: z.array(z.any()),
+    total_nodes: z.number(),
+    total_links: z.number(),
   })
   .passthrough();

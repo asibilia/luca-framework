@@ -1,0 +1,69 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e148]:
+    - generic [ref=e151]: luca-observer
+    - button "Toggle sidebar" [ref=e152]: Skip to navigation
+    - navigation "Main navigation" [ref=e153]:
+      - link "Dashboard" [ref=e154] [cursor=pointer]:
+        - /url: /
+        - img [ref=e155]
+        - generic [ref=e160]: Dashboard
+      - link "Sessions" [ref=e161] [cursor=pointer]:
+        - /url: /sessions
+        - img [ref=e162]
+        - generic [ref=e164]: Sessions
+      - link "Memory" [ref=e165] [cursor=pointer]:
+        - /url: /memory
+        - img [ref=e166]
+        - generic [ref=e174]: Memory
+      - link "Learning" [ref=e175] [cursor=pointer]:
+        - /url: /learning
+        - img [ref=e176]
+        - generic [ref=e178]: Learning
+      - link "Vault" [ref=e179] [cursor=pointer]:
+        - /url: /vault
+        - img [ref=e180]
+        - generic [ref=e184]: Vault
+      - link "Knowledge Graph" [ref=e185] [cursor=pointer]:
+        - /url: /knowledge-graph
+        - img [ref=e186]
+        - generic [ref=e191]: Knowledge Graph
+      - link "Semantic Search" [ref=e192] [cursor=pointer]:
+        - /url: /semantic-search
+        - img [ref=e193]
+        - generic [ref=e196]: Semantic Search
+      - link "Decisions" [ref=e197] [cursor=pointer]:
+        - /url: /decisions
+        - img [ref=e198]
+        - generic [ref=e202]: Decisions
+      - link "Contradictions" [ref=e203] [cursor=pointer]:
+        - /url: /contradictions
+        - img [ref=e204]
+        - generic [ref=e206]: Contradictions
+      - link "Entities" [ref=e207] [cursor=pointer]:
+        - /url: /entities
+        - img [ref=e208]
+        - generic [ref=e217]: Entities
+    - paragraph [ref=e219]: v0.1.0
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - button "Toggle sidebar" [expanded] [ref=e77]:
+        - img [ref=e220]
+      - button "Switch to light mode" [pressed] [ref=e82]:
+        - img [ref=e83]
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - heading "Memory" [level=1] [ref=e93]
+            - paragraph [ref=e94]: MuninnDB Memory Dashboard
+          - generic [ref=e96]:
+            - generic [ref=e99]: Connected
+            - button "Refreshing..." [disabled] [ref=e100]
+        - generic [ref=e101]:
+          - status "Loading" [ref=e102]
+          - status "Loading" [ref=e116]
+          - status "Loading" [ref=e130]
+          - status "Loading" [ref=e139]
+  - button "Open Next.js Dev Tools" [ref=e228] [cursor=pointer]:
+    - img [ref=e229]
+  - alert [ref=e232]

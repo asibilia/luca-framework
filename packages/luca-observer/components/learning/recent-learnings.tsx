@@ -23,7 +23,7 @@ const CATEGORY_DISPLAY: Record<string, { label: string; color: string }> = {
   pattern: { label: "Pattern", color: "success" },
   decision: { label: "Decision", color: "info" },
   pitfall: { label: "Pitfall", color: "warning" },
-  preference: { label: "Preference", color: "accent" },
+  preference: { label: "Preference", color: "chart-2" },
   uncategorized: { label: "Other", color: "muted-foreground" },
 };
 
@@ -129,7 +129,7 @@ function EngramItem({ engram }: { engram: MuninnEngram }) {
         type="button"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        className="w-full px-4 py-2.5 text-left hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        className="w-full px-4 py-2.5 text-left hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">

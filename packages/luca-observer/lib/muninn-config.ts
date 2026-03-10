@@ -13,6 +13,7 @@
  * - GET  /api/contradictions?vault=V                    — contradiction pairs
  * - POST /api/traverse { vault, start_id, ... }         — graph traversal
  * - POST /api/explain { vault, engram_id, query }       — scoring explanation
+ * - POST /api/forget { vault, id }                      — engram deletion
  *
  * Composed (built from engrams + links primitives):
  * - findByEntity    — engrams by entity tag
@@ -104,6 +105,8 @@ export interface MuninnClient {
     engramId: string,
     query: string[],
   ): Promise<MuninnExplainResult>;
+
+  forget(vault: string, id: string): Promise<{ forgotten: boolean }>;
 
   findByEntity(
     vault: string,
@@ -246,6 +249,15 @@ function createMuninnClient(): MuninnClient {
         }),
       });
       if (!res.ok) throw new Error(`MuninnDB explain: ${res.status}`);
+      return res.json();
+    },
+
+    async forget(vault, id) {
+      const res = await muninnFetch("/api/forget", {
+        method: "POST",
+        body: JSON.stringify({ vault, id }),
+      });
+      if (!res.ok) throw new Error(`MuninnDB forget: ${res.status}`);
       return res.json();
     },
 

@@ -117,7 +117,7 @@ export function useDecisionTrail(): DecisionTrailData {
     try {
       const [decisionRes] = await Promise.allSettled([
         fetchJson<{ engrams: MuninnEngram[] }>(
-          "/api/muninn/engrams?type=decision&limit=200",
+          "/api/muninn/engrams?limit=200&type=decision",
         ),
       ]);
 

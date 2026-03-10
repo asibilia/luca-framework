@@ -19,7 +19,11 @@ const STAT_CARDS: Array<{
   { key: "patterns", label: "Patterns", colorVar: "var(--color-success)" },
   { key: "decisions", label: "Decisions", colorVar: "var(--color-info)" },
   { key: "pitfalls", label: "Pitfalls", colorVar: "var(--color-warning)" },
-  { key: "preferences", label: "Preferences", colorVar: "var(--color-accent)" },
+  {
+    key: "preferences",
+    label: "Preferences",
+    colorVar: "var(--color-chart-2)",
+  },
 ];
 
 /**

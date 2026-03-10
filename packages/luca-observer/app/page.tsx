@@ -19,7 +19,7 @@ export default function DashboardPage() {
         </p>
         <a
           href="/memory"
-          className="mt-2 inline-block font-mono text-sm text-accent underline hover:text-accent/80"
+          className="mt-2 inline-block font-mono text-sm text-primary underline hover:text-primary/80"
         >
           View Memory Dashboard
         </a>
