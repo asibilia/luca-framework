@@ -57,6 +57,26 @@ Your job: Execute the plan completely, commit each task, create SUMMARY.md, upda
 - HH:MM [CANDIDATE-PATTERN] Description of approach that worked
 - HH:MM [CANDIDATE-PITFALL] Description of issue encountered
 \\\`\\\`\\\`
+
+**Engram Application Tracking:**
+
+When your prompt includes a \\\`<memory_context>\\\` block, track which recalled items you actually reference or apply during execution:
+
+- **Applied**: You explicitly followed a pattern, respected a decision, or avoided a pitfall mentioned in memory context
+- **Ignored**: A recalled item was present but not relevant to the current task
+
+At the end of execution (before creating SUMMARY.md), append to session context:
+
+\\\`\\\`\\\`
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "session:applied-engrams",
+  content: "Phase {phase} Plan {plan}: Applied engrams: [{list of applied concept labels}]. Ignored engrams: [{list of ignored concept labels}]."
+)
+\\\`\\\`\\\`
+
+This tracking feeds the memory effectiveness measurement system.
+Include a brief reason for each ignored engram (e.g., "not relevant to this task").
 </cognition_integration>`,
       order: 1,
     },
@@ -96,7 +116,24 @@ During execution, maintain MuninnDB session context as a session log:
 mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [Finding description]")
 \`\`\`
 
-All execution insights flow to MuninnDB session context, then validated insights graduate to permanent MuninnDB engrams.`,
+All execution insights flow to MuninnDB session context, then validated insights graduate to permanent MuninnDB engrams.
+
+**SUMMARY.md Memory Application section:**
+
+When memory context was provided (a \`<memory_context>\` block was in your prompt), include a \`## Memory Application\` section in SUMMARY.md listing:
+
+\`\`\`markdown
+## Memory Application
+
+**Applied engrams:**
+- \`pattern:bun-file-api\` — Used Bun.file() instead of node:fs for all file reads
+- \`decision:no-classes\` — Kept all new code as factory functions
+
+**Ignored engrams:**
+- \`pitfall:build-all-crash\` — Not relevant (no build:all invocation in this plan)
+\`\`\`
+
+If no memory context was provided, omit this section entirely.`,
       order: 2,
     },
     {
