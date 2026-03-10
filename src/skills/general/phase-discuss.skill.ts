@@ -83,6 +83,7 @@ The lu-discuss-researcher model tier is resolved via \`resolveModelForAgent("lu-
 5. **Present gray areas** — Multi-select: which to discuss? (NO skip option)
 6. **Deep-dive each area** — 4 questions per area, then offer more/next
 7. **Write CONTEXT.md** — Sections match areas discussed
+7.5. **Declare appetite** — Set appetite level (see Appetite Declaration section below)
 8. **Offer next steps** (research or plan)
 
 **Auto Mode (\`--auto\`):**
@@ -117,6 +118,7 @@ The lu-discuss-researcher model tier is resolved via \`resolveModelForAgent("lu-
     - \`[researched]\` — Decision from web research with cited sources
     - \`[user-override]\` — User overrode the researched recommendation
     - \`[user-input]\` — Non-researchable item answered by user
+10.5a. **Declare appetite** — Set appetite level (see Appetite Declaration section below)
 11a. **Offer next steps** (research or plan)
 
 ## Critical: Scope Guardrail
@@ -165,6 +167,67 @@ Default:
 - [ ] Each selected area explored until satisfied
 - [ ] Scope creep redirected to deferred ideas
 - [ ] CONTEXT.md captures decisions, not vague vision
+- [ ] Appetite level declared and persisted via bridge
+
+## Appetite Declaration
+
+After writing CONTEXT.md but before offering next steps, declare the appetite level for this phase. Appetite controls the investment ceiling — "fixed appetite, variable scope."
+
+### Auto-inference (TRIVIAL / SIMPLE)
+
+If complexity is TRIVIAL or SIMPLE, auto-set the appetite without prompting:
+
+\`\`\`bash
+# TRIVIAL -> Micro, SIMPLE -> Small
+if [ "$COMPLEXITY" = "TRIVIAL" ]; then
+  APPETITE="Micro"
+  CEILING=25000
+  CONTEXT_PCT=30
+elif [ "$COMPLEXITY" = "SIMPLE" ]; then
+  APPETITE="Small"
+  CEILING=50000
+  CONTEXT_PCT=40
+fi
+
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_level --value="\\"$APPETITE\\"" 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_token_ceiling --value=$CEILING 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_context_percent --value=$CONTEXT_PCT 2>/dev/null || true
+\`\`\`
+
+Display confirmation:
+\`\`\`
+Appetite auto-set to {APPETITE} (ceiling: {CEILING} tokens, context: {CONTEXT_PCT}%)
+\`\`\`
+
+### Developer choice (MODERATE+)
+
+For MODERATE, COMPLEX, and CRITICAL complexity, prompt the developer:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Luca ► APPETITE DECLARATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+How much should Luca invest in this phase?
+
+| Level  | Token Ceiling | Context % | Best For                    |
+|--------|--------------|-----------|------------------------------|
+| Micro  | 25,000       | 30%       | Trivial fixes, typos         |
+| Small  | 50,000       | 40%       | Simple features, small bugs  |
+| Medium | 100,000      | 50%       | Standard features            |
+| Large  | 200,000      | 60%       | Cross-cutting changes        |
+| XL     | 400,000      | 70%       | Major refactors, new systems |
+
+Choose appetite level [Micro/Small/Medium/Large/XL]:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+After the developer responds, set via bridge:
+
+\`\`\`bash
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_level --value="\\"$CHOSEN_LEVEL\\"" 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_token_ceiling --value=$CHOSEN_CEILING 2>/dev/null || true
+bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_context_percent --value=$CHOSEN_CONTEXT_PCT 2>/dev/null || true
+\`\`\`
 
 ## Next Steps
 
