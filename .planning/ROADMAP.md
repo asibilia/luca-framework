@@ -2,19 +2,63 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v4.1.0 — Agentic Intelligence & Platform Maturity
 
 ---
 
-## Deferred (Conditional / Post-v4)
+## v4.1.0 — Agentic Intelligence & Platform Maturity
 
-| Todo | Title                       | Target      | Reason                                                                            |
-| ---- | --------------------------- | ----------- | --------------------------------------------------------------------------------- |
-| #107 | Multi-lens review           | Conditional | Gate: pre-mortem signal rate >10% over 20 runs. Cannot be satisfied within v4.0.0 |
-| #16  | Cross-agent interop scanner | v4.1.0+     | HIGH architectural risk (new T1 domain), WSJF 1.20                                |
-| #18  | Semantic memory embeddings  | v4.1.0+     | Check MuninnDB native similarity first; COMPLEX effort                            |
-| #54  | Skill dependency graph      | v4.1.0+     | No bugs from current ordering; optimization work                                  |
-| #55  | Tribunal consensus model    | v4.1.0+     | Current tribunal works; no urgency                                                |
+**Goal:** Complete all remaining deferred todos — skill dependency orchestration, tribunal consensus, multi-lens review, observer todo tracking, semantic memory embeddings, and cross-agent interop.
+
+### Phase 136: Skill Dependency Graph Integration (#54) — SIMPLE
+
+**Goal:** Wire existing `buildDependencyOrder`, `detectConflicts`, `groupParallelBatches` helpers into phase-execute for topological skill ordering and conflict detection.
+
+- [ ] PLAN.md
+
+### Phase 137: Tribunal Consensus Model (#55) — MODERATE
+
+**Goal:** Add formal consensus types (unanimous, majority, expert-weighted) with agreement thresholds, expert weighting, and fallback resolution to the existing tribunal schema.
+
+- [ ] PLAN.md
+
+### Phase 138: Multi-Lens Review Gate (#107) — MODERATE
+
+**Goal:** Add pre-mortem-aware review criteria, 2 additional review lenses (Architecture + Data), gate condition on signal rate, and risk multiplier for complexity.
+
+**Depends on:** Phase 137
+
+- [ ] PLAN.md
+
+### Phase 139: Observer Todo Tracking View (#96) — MODERATE
+
+**Goal:** Build MuninnDB-native todo/backlog tracking view with velocity metrics and entity linking.
+
+- [ ] PLAN.md
+
+### Phase 140: Semantic Memory Embeddings (#18) — COMPLEX
+
+**Goal:** Add embedding-aware scoring to lu-cognition recall, checking MuninnDB native support first, with graceful fallback to lexical recall.
+
+- [ ] PLAN.md
+
+### Phase 141: Cross-Agent Interop Scanner (#16) — COMPLEX
+
+**Goal:** Create new `src/interop/` T1 domain for discovering agents across IDE directories, normalizing to InteropAgentSummary, and wiring into context assembler.
+
+- [ ] PLAN.md
+
+---
+
+### Execution Levels
+
+| Level | Phases        | Mode     | Depends On |
+| ----- | ------------- | -------- | ---------- |
+| 0     | 136, 137, 139 | PARALLEL | None       |
+| 1     | 138           | SERIAL   | Phase 137  |
+| 2     | 140, 141      | PARALLEL | None       |
+
+---
 
 ## v5.0.0 — Plugin Ecosystem
 
@@ -28,10 +72,9 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 
 ## Backlog (Unassigned)
 
-| Todo | Title                             | Target           | Reason                                                              |
-| ---- | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility              | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
-| #96  | Observer todo tracking (MuninnDB) | v3.3+            | Re-scoped from #64, low priority                                    |
+| Todo | Title                | Target           | Reason                                                              |
+| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
 
