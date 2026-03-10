@@ -10,35 +10,19 @@
 
 **Goal:** Complete all remaining deferred todos — skill dependency orchestration, tribunal consensus, multi-lens review, observer todo tracking, semantic memory embeddings, and cross-agent interop.
 
-### Phase 136: Skill Dependency Graph Integration (#54) — SIMPLE
+### ~~Phase 136: Skill Dependency Graph Integration (#54) — SIMPLE~~ DONE
 
-**Goal:** Wire existing `buildDependencyOrder`, `detectConflicts`, `groupParallelBatches` helpers into phase-execute for topological skill ordering and conflict detection.
+### ~~Phase 137: Tribunal Consensus Model (#55) — MODERATE~~ DONE
 
-- [ ] PLAN.md
+### ~~Phase 138: Multi-Lens Review Gate (#107) — MODERATE~~ DONE
 
-### Phase 137: Tribunal Consensus Model (#55) — MODERATE
+### ~~Phase 139: Observer Todo Tracking View (#96) — MODERATE~~ DONE
 
-**Goal:** Add formal consensus types (unanimous, majority, expert-weighted) with agreement thresholds, expert weighting, and fallback resolution to the existing tribunal schema.
+### ~~Phase 140: Semantic Memory Embeddings (#18) — COMPLEX~~ DONE
 
-- [ ] PLAN.md
+### Phase 140.1: Memory Effectiveness Measurement (#111) — COMPLEX (INSERTED)
 
-### Phase 138: Multi-Lens Review Gate (#107) — MODERATE
-
-**Goal:** Add pre-mortem-aware review criteria, 2 additional review lenses (Architecture + Data), gate condition on signal rate, and risk multiplier for complexity.
-
-**Depends on:** Phase 137
-
-- [ ] PLAN.md
-
-### Phase 139: Observer Todo Tracking View (#96) — MODERATE
-
-**Goal:** Build MuninnDB-native todo/backlog tracking view with velocity metrics and entity linking.
-
-- [ ] PLAN.md
-
-### Phase 140: Semantic Memory Embeddings (#18) — COMPLEX
-
-**Goal:** Add embedding-aware scoring to lu-cognition recall, checking MuninnDB native support first, with graceful fallback to lexical recall.
+**Goal:** Instrument muninn_feedback at verification boundary, track applied vs ignored engrams, compute recall precision/hit rate/ROI metrics, and surface memory health in progress reports.
 
 - [ ] PLAN.md
 
@@ -52,11 +36,10 @@
 
 ### Execution Levels
 
-| Level | Phases        | Mode     | Depends On |
-| ----- | ------------- | -------- | ---------- |
-| 0     | 136, 137, 139 | PARALLEL | None       |
-| 1     | 138           | SERIAL   | Phase 137  |
-| 2     | 140, 141      | PARALLEL | None       |
+| Level | Phases | Mode   | Depends On |
+| ----- | ------ | ------ | ---------- |
+| 0     | 140.1  | SERIAL | None       |
+| 1     | 141    | SERIAL | None       |
 
 ---
 

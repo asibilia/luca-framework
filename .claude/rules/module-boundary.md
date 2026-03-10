@@ -15,7 +15,7 @@ alwaysApply: true
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability, interop  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
