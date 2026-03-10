@@ -40,8 +40,8 @@ Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-t
 **Depends on:** Phase 3
 **Verification:** Standard
 
-- [ ] #101 Process data agent (lu-process-data) — appetite accuracy, rework ratio, signal rate metrics
-- [ ] #102 Outcome tracking — contextual trigger in lu-cognition + /outcome skill
+- [x] #101 Process data agent (lu-process-data) — appetite accuracy, rework ratio, signal rate metrics
+- [x] #102 Outcome tracking — contextual trigger in lu-cognition + /outcome skill
 
 ### Phase 5 — Governance & UX
 
