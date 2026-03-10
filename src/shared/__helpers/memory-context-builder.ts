@@ -11,6 +11,7 @@
 
 import { z } from "zod";
 import { getCachedRecall } from "./recall-cache";
+import { escapeXmlAttr } from "./sanitize-template";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -219,7 +220,7 @@ export function buildMemoryContextBlock(
   }
 
   const body = fitted.join("\n\n");
-  const block = `<memory_context agent="${config.agentName}">\n${body}\n</memory_context>`;
+  const block = `<memory_context agent="${escapeXmlAttr(config.agentName)}">\n${body}\n</memory_context>`;
 
   formatCache.set(key, block);
   return block;
