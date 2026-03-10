@@ -100,7 +100,9 @@ signal_rate = mitigations_that_prevented_failures / total_risks_identified
 
 If pre-mortem did not run for this phase, omit this metric entirely and set \`signal_rate: null\`.
 
-**Storage key:** \`metric:signal-rate-{milestone}-phase-{phase}\``,
+**Storage key:** \`metric:signal-rate-{milestone}-phase-{phase}\`
+
+**Note:** After computing the per-phase signal rate, this value will also feed the aggregate computation in the aggregate_metrics section.`,
       order: 2,
     },
     {
@@ -141,6 +143,60 @@ change_failure_rate = verification_failures > 0 ? 1 : 0
       order: 3,
     },
     {
+      title: "aggregate_metrics",
+      content: `## Aggregate Metrics (running averages)
+
+After computing the per-phase metrics above, compute 4 running aggregate metrics. These track long-term process health trends across phases.
+
+Each aggregate uses a weighted running average formula:
+\\\`\\\`\\\`
+new_aggregate = (prior_aggregate * prior_count + current_value) / (prior_count + 1)
+\\\`\\\`\\\`
+
+The prior aggregate value and sample count are provided in your prompt context by the orchestrator (recalled from MuninnDB before spawning you). If no prior aggregate exists for a metric, initialize with the current value and sample_count = 1.
+
+### 1. signal_rate_aggregate
+
+Running average of signal_rate over MODERATE+ runs.
+
+- **Input:** The \\\`signal_rate\\\` computed in the metric_computation section (per-phase value).
+- **Prior:** Recalled from \\\`metric:signal-rate-aggregate\\\` in prompt context.
+- **Skip condition:** If \\\`signal_rate\\\` is null for this phase, do NOT update the aggregate. Return the prior aggregate unchanged (or null if no prior exists).
+- **Storage key:** \\\`metric:signal-rate-aggregate\\\`
+
+### 2. retro_response_rate
+
+Running average of milestone retro developer responses.
+
+- **Input:** The retro response rate for this phase (provided in prompt context by orchestrator).
+- **Prior:** Recalled from \\\`metric:retro-response-rate\\\` in prompt context.
+- **Skip condition:** If the per-phase retro response value is null, do NOT update the aggregate.
+- **Storage key:** \\\`metric:retro-response-rate\\\`
+
+### 3. divergent_optin_rate
+
+Running average of divergent mode opt-ins at milestone boundaries.
+
+- **Input:** The divergent opt-in value for this phase (provided in prompt context by orchestrator).
+- **Prior:** Recalled from \\\`metric:divergent-optin-rate\\\` in prompt context.
+- **Skip condition:** If the per-phase divergent opt-in value is null, do NOT update the aggregate.
+- **Storage key:** \\\`metric:divergent-optin-rate\\\`
+
+### 4. outcome_completion_rate
+
+Running average of outcome tracking completion.
+
+- **Input:** The outcome completion value for this phase (provided in prompt context by orchestrator).
+- **Prior:** Recalled from \\\`metric:outcome-completion-rate\\\` in prompt context.
+- **Skip condition:** If the per-phase outcome completion value is null, do NOT update the aggregate.
+- **Storage key:** \\\`metric:outcome-completion-rate\\\`
+
+Each aggregate metric stores: \\\`{ rate: number, sample_count: number, last_updated: ISO8601 }\\\`.
+
+Only compute an aggregate if the corresponding per-phase metric is non-null. If the per-phase metric is null, pass through the prior aggregate unchanged (or null if no prior).`,
+      order: 5,
+    },
+    {
       title: "output_format",
       content: `## Output Format
 
@@ -168,12 +224,24 @@ Return a single JSON object with all computed metrics. The orchestrator parses t
   },
   "notes": [
     "<any observations about metric values, e.g., 'appetite accuracy below 0.5 indicates significant estimation error'>"
-  ]
+  ],
+  "aggregate_metrics": {
+    "signal_rate_aggregate": { "rate": "<number 0-1 | null>", "sample_count": "<integer>", "last_updated": "<ISO 8601>" },
+    "retro_response_rate": { "rate": "<number 0-1 | null>", "sample_count": "<integer>", "last_updated": "<ISO 8601>" },
+    "divergent_optin_rate": { "rate": "<number 0-1 | null>", "sample_count": "<integer>", "last_updated": "<ISO 8601>" },
+    "outcome_completion_rate": { "rate": "<number 0-1 | null>", "sample_count": "<integer>", "last_updated": "<ISO 8601>" }
+  },
+  "aggregate_storage_keys": {
+    "signal_rate_aggregate": "metric:signal-rate-aggregate",
+    "retro_response_rate": "metric:retro-response-rate",
+    "divergent_optin_rate": "metric:divergent-optin-rate",
+    "outcome_completion_rate": "metric:outcome-completion-rate"
+  }
 }
 \`\`\`
 
 **Rules:**
-- Always include all 5 metric keys, even if null.
+- Always include all 5 metric keys AND all 4 aggregate metric keys, even if null.
 - Set metrics to null (not omit) when data is unavailable or the metric does not apply at this complexity level.
 - The \`storage_keys\` object maps metric names to their MuninnDB concept keys. The orchestrator uses these to call \`muninn_remember\`.
 - The \`notes\` array should contain 0-3 observations about notable metric values (e.g., trends, anomalies, calibration suggestions).
