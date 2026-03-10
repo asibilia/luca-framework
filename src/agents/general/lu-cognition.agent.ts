@@ -443,6 +443,64 @@ Before initializing a new session, clean up stale session engrams from previous 
 This prevents unbounded vault pollution from abandoned, halted, or crashed sessions.
 </step>
 
+<step name="outcome_check">
+**Full mode only** (MODERATE+ complexity). Skip in Lite mode.
+
+Before initializing working memory, check whether recently shipped features have recorded outcomes.
+
+**Graduation Gate (self-tuning):**
+
+1. Recall the outcome completion metric:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_recall(vault: "default", context: "metric:outcome-completion")
+   \\\`\\\`\\\`
+2. Parse the metric for \`interactions_count\` and \`completion_rate\`.
+3. **If interactions >= 10 AND completion_rate < 20%:** The developer is not engaging with outcome tracking. SKIP this step silently and continue to \`initialize_working\`. Log:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [OUTCOME-SKIP] Graduation gate triggered: <rate>% completion after <count> interactions. Skipping outcome check.")
+   \\\`\\\`\\\`
+
+**If gate passes (or insufficient data to evaluate):**
+
+1. Recall recent outcome engrams:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_recall(vault: "default", context: "outcome:* recently shipped features goal achievement")
+   \\\`\\\`\\\`
+2. Recall recently completed milestones and phases to identify shipped features:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_recall(vault: "default", context: "milestone completion phase summary shipped feature")
+   \\\`\\\`\\\`
+3. Cross-reference: find features that appear in milestone/phase summaries but have NO corresponding \`outcome:*\` engram.
+4. **If untracked features found**, pick the oldest one and prompt:
+
+   \\\`\\\`\\\`
+   --- Outcome Check ---
+   You shipped **[Feature X]** in [milestone/phase].
+   Did it achieve its goal?
+
+   1. Yes - it achieved what we intended
+   2. No - it did not meet expectations
+   3. Too early - not enough data yet
+
+   (Reply 1, 2, or 3)
+   ---
+   \\\`\\\`\\\`
+
+5. Based on response:
+   - **Yes**: Store \`mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] achieved its goal. Shipped in [milestone]. Developer confirmed [date].")\`
+   - **No**: Store \`mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] did NOT achieve its goal. Shipped in [milestone]. Developer confirmed [date]. Notes: [any elaboration].")\`
+   - **Too early**: Store \`mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] outcome pending — too early to assess. Shipped in [milestone]. Will re-check later.")\`
+
+6. Update the completion metric:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_evolve(vault: "default", id: "<metric-engram-id>", update: "Interaction count incremented. New completion rate: <calculated>%.")
+   \\\`\\\`\\\`
+
+7. **Only ask about ONE feature per session** to avoid prompt fatigue. Continue to \`initialize_working\`.
+
+**If no untracked features found:** Continue silently to \`initialize_working\`.
+</step>
+
 <step name="initialize_working">
 Create or reset MuninnDB session context for this session. Initialize with the following structure via \`mcp__muninn__muninn_session(vault: "default")\`, then store session info:
 
