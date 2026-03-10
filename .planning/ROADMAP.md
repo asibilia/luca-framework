@@ -31,8 +31,8 @@ Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-t
 **Depends on:** Phase 2
 **Verification:** Full
 
-- [ ] #99 Appetite declaration system — appetite levels, token budgets, guard at wave boundaries
-- [ ] #100 Pre-mortem agent (lu-premortem) — domain-specific failure scenarios, risk brief, developer checkpoint
+- [x] #99 Appetite declaration system — appetite levels, token budgets, guard at wave boundaries
+- [x] #100 Pre-mortem agent (lu-premortem) — domain-specific failure scenarios, risk brief, developer checkpoint
 
 ### Phase 4 — Process Intelligence
 
