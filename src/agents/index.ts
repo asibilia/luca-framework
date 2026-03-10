@@ -112,3 +112,31 @@ export type {
   InteropFinding,
   InteropReport,
 } from "./__helpers/interop-scanner";
+
+// Recall scoring schemas
+export {
+  RecallScoringWeightsSchema,
+  ScoreBreakdownSchema,
+  ScoredRecallResultSchema,
+} from "./__schemas/recall-scoring.schemas";
+
+export type {
+  RecallScoringWeights,
+  ScoreBreakdown,
+  ScoredRecallResult,
+} from "./__schemas/recall-scoring.schemas";
+
+// Embedding-aware recall scoring
+export {
+  DEFAULT_RECALL_WEIGHTS,
+  computeTagOverlap,
+  computeMilestoneProximity,
+  computeAgentMatch,
+  computeRecencyScore,
+  scoreRecallResults,
+} from "./__helpers/embedding-recall";
+
+export type {
+  RecallResult,
+  RecallScoringContext,
+} from "./__helpers/embedding-recall";
