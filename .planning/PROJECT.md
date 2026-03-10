@@ -8,23 +8,23 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v3.3.0 — Shipped)
+## Current State (v4.0.0 — Shipped)
 
-**Last Shipped:** v3.3.0 — Cognitive Maturity & Observer Depth (2026-03-09)
+**Last Shipped:** v4.0.0 — Process Intelligence & Self-Tuning Workflow (2026-03-10)
 
-6 phases, 12 plans, 78 commits, 94 files changed (+11,930/-169). Closed the learning loop with Apply-Measure-Refine calibration engrams, adaptive complexity self-tuning with reassessment at 4 execution checkpoints, deferred/lazy recall with session-scoped cache. Observer expanded with 4 new advanced views: Knowledge Graph Explorer (force-directed graph, cluster supernodes, semantic zoom), Semantic Search (on-demand search, explain score breakdown), Contradictions (side-by-side cards, forget functionality), Entity Deep Dive (4-tab interface, dynamic routing). Observer now has 8 fully functional views.
+6 phases, 12 plans, 48 commits, 255 files changed (+64,528/-3,396). Added fixed appetite/variable scope planning, pre-mortem risk analysis (lu-premortem agent), process metrics collection (lu-process-data agent with 5 per-phase + 4 aggregate metrics), outcome tracking (/outcome skill), self-tuning governance with graduation criteria, process retrospective dashboard, and divergent mode advisory. Extended XState state machine with appetite tracking, cooldown state, and 4 new guards.
+
+## Previous State (v3.3.0)
+
+v3.3.0 — Cognitive Maturity & Observer Depth (2026-03-09). 6 phases, 12 plans, 78 commits, 94 files changed. Learning loop closure, adaptive complexity self-tuning, deferred/lazy recall, 4 new observer views (Knowledge Graph, Semantic Search, Contradictions, Entity Deep Dive).
 
 ## Previous State (v3.2.0)
 
-v3.2.0 — Observer Rebirth (2026-03-09). 8 phases, 20 plans, 48 commits, 193 files changed. Replaced SpacetimeDB with MuninnDB across the entire observer stack. MuninnDB emission layer, 7+ API routes, 4 new views (Session Explorer, Decision Trail, Learning Evolution, Vault Health Dashboard), design system established.
+v3.2.0 — Observer Rebirth (2026-03-09). 8 phases, 20 plans, 48 commits, 193 files changed. SpacetimeDB replaced with MuninnDB across observer stack, 4 new views, design system established.
 
 ## Previous State (v3.1.0)
 
-v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 commits, 151 files changed. Complexity-gated recall depth, automatic session memory cleanup, SpacetimeDB removed from framework, sub-agent memory pipeline, stall detection & retry limits, agent health check, DX cleanup.
-
-## Previous State (v3.0.0)
-
-v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08). 14 phases, 42 plans, 151 commits, 810 files changed. MuninnDB memory migration, per-agent model routing redesign, observer MuninnDB integration, hook infrastructure consolidation, data integrity hardening, convention compliance sweep.
+v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 commits, 151 files changed. Complexity-gated recall depth, automatic session memory cleanup, SpacetimeDB removed from framework.
 
 **Capabilities (shipped):**
 
@@ -67,6 +67,7 @@ v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03
 - **v3.0.0** — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03-08). 14 phases, 42 plans, 151 commits. MuninnDB migration, model routing redesign, convention compliance.
 - **v3.1.0** — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 commits. Recall depth, session cleanup, SpacetimeDB removed.
 - **v3.2.0** — Observer Rebirth (2026-03-09). 8 phases, 20 plans, 48 commits. MuninnDB observer stack, 4 views, design system.
+- **v3.3.0** — Cognitive Maturity & Observer Depth (2026-03-09). 6 phases, 12 plans, 78 commits. Learning loop, self-tuning, 4 advanced observer views.
 
 ## Requirements
 
@@ -127,4 +128,4 @@ v3.0.0 — Data Integrity, Agentic Reliability & Model Routing Redesign (2026-03
 
 ---
 
-_Last updated: 2026-03-09 — v3.3.0 milestone archived_
+_Last updated: 2026-03-10 — v4.0.0 milestone archived_

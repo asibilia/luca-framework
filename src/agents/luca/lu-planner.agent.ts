@@ -249,6 +249,42 @@ Choose checkpoint types based on risk and verification needs:
 - The plan should flow naturally toward the objective`,
       order: 7,
     },
+    {
+      title: "appetite_awareness",
+      content: `## Appetite-Aware Planning
+
+Before creating plans, read the appetite state from the bridge to understand investment constraints:
+
+\`\`\`bash
+APPETITE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{}')
+APPETITE_LEVEL=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_level || '')" 2>/dev/null || echo "")
+APPETITE_CEILING=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_token_ceiling || 0)" 2>/dev/null || echo "0")
+APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_used_tokens || 0)" 2>/dev/null || echo "0")
+\`\`\`
+
+### Appetite Constraints on Plan Scope
+
+If appetite is declared (appetite_level is set and appetite_token_ceiling > 0):
+
+1. **Shape scope to fit budget** — The remaining budget (ceiling minus used tokens) is the hard cap for this plan's execution. Prefer fewer, higher-impact tasks over many small tasks when budget is tight.
+
+2. **Flag appetite < complexity mismatch** — If the declared appetite seems insufficient for the complexity level, add a warning in the plan frontmatter:
+   - Micro appetite + MODERATE complexity: likely too tight
+   - Small appetite + COMPLEX complexity: definitely too tight
+   - Any appetite + CRITICAL complexity where ceiling < 200000: flag for review
+
+3. **Annotate plan with budget awareness** — When appetite is active, include a budget note in the plan objective:
+   \`\`\`
+   > Appetite: {level} ({remaining_tokens} tokens remaining of {ceiling} ceiling)
+   \`\`\`
+
+4. **Prioritize ruthlessly** — Under tight appetite budgets, cut nice-to-haves first. The plan should deliver the core objective within budget, even if polish tasks are deferred.
+
+### When Appetite Is At Default
+
+Appetite is always present in the workflow context (defaults to "Medium" with a 100,000 token ceiling). If the appetite has not been explicitly declared by the developer during phase-discuss (i.e., it still holds the schema default), plan normally — treat the default as a reasonable baseline rather than a hard constraint. The phase-discuss skill handles explicit appetite declaration; the planner only consumes the declared value.`,
+      order: 8,
+    },
   ],
 };
 

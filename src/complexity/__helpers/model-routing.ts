@@ -165,6 +165,7 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
 
   // --- Fast-promoted (fast everywhere, balanced at CRITICAL) ---
   "lu-learner": FAST_PROMOTED,
+  "lu-process-data": FAST_PROMOTED,
   "lu-router-fast": FAST_PROMOTED,
   "lu-verifier-fast": FAST_PROMOTED,
 
@@ -195,6 +196,7 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   // --- Deep analysis (capable from MODERATE+) ---
   "lu-verifier": DEEP_ANALYSIS,
   "lu-integration-checker": DEEP_ANALYSIS,
+  "lu-premortem": DEEP_ANALYSIS,
   "code-architect": DEEP_ANALYSIS,
   "dx-advocate": DEEP_ANALYSIS,
   "code-simplifier": DEEP_ANALYSIS,

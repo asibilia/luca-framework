@@ -4,13 +4,25 @@
 
 **Current Milestone:** Planning next
 
-## v4.0.0 — Plugin Ecosystem
+---
+
+## Deferred (Conditional / Post-v4)
+
+| Todo | Title                       | Target      | Reason                                                                            |
+| ---- | --------------------------- | ----------- | --------------------------------------------------------------------------------- |
+| #107 | Multi-lens review           | Conditional | Gate: pre-mortem signal rate >10% over 20 runs. Cannot be satisfied within v4.0.0 |
+| #16  | Cross-agent interop scanner | v4.1.0+     | HIGH architectural risk (new T1 domain), WSJF 1.20                                |
+| #18  | Semantic memory embeddings  | v4.1.0+     | Check MuninnDB native similarity first; COMPLEX effort                            |
+| #54  | Skill dependency graph      | v4.1.0+     | No bugs from current ordering; optimization work                                  |
+| #55  | Tribunal consensus model    | v4.1.0+     | Current tribunal works; no urgency                                                |
+
+## v5.0.0 — Plugin Ecosystem
 
 | Items | Title                                      | Effort            |
 | ----- | ------------------------------------------ | ----------------- |
 | #17   | Plugin Marketplace with Community Registry | CRITICAL (40-60h) |
 
-Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem makes sense.
+Deferred by design. Intelligence moat and process maturity must exist before ecosystem makes sense.
 
 ---
 
@@ -73,6 +85,24 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 | #85  | Contradiction view (side-by-side cards, forget, cross-view navigation)    |
 | #86  | Entity Deep Dive (4-tab interface, 6 components, dynamic routing)         |
 
+## Closed (v4.0.0 Completed)
+
+| Todo | Reason                                                                                  |
+| ---- | --------------------------------------------------------------------------------------- |
+| #97  | Fix MuninnDB orphan ratio (memory linking in lu-learner and workflow-save)              |
+| #98  | Compaction-resilient orchestrators (wave progress journaling + context budget checks)   |
+| #106 | State machine context extensions (appetite, cooldown, bridge updates)                   |
+| #99  | Appetite declaration system (levels, budgets, wave-boundary guard, planner awareness)   |
+| #100 | Pre-mortem agent lu-premortem (failure scenarios, risk brief, developer checkpoint)     |
+| #101 | Process data agent lu-process-data (5 per-phase + 4 aggregate metrics)                  |
+| #102 | Outcome tracking (/outcome skill + lu-cognition outcome_check)                          |
+| #103 | Self-tuning governance (graduation criteria, auto-skip, gate checks)                    |
+| #104 | Process retrospective (dashboard + developer question at milestone boundaries)          |
+| #105 | Divergent mode advisory (nudge after 8+ consecutive milestones)                         |
+| #108 | PREMORTEM_COMPLETE bridge fix (emit-event to transition)                                |
+| #109 | Metric key alignment (outcome-completion-rate to outcome-completion)                    |
+| #110 | Mechanical cleanup (duplicate imports, memory tags, section ordering, bracket notation) |
+
 ## Closed (v3.1.0 Completed)
 
 | Todo | Reason                                                               |
@@ -128,7 +158,8 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 - **v3.1.0** — Memory Intelligence & Platform Cleanup: 7 phases, 10 commits, 151 files changed ([View Archive](milestones/v3.1.0-ROADMAP.md))
 - **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
 - **v3.3.0** — Cognitive Maturity & Observer Depth: 6 phases, 12 plans, 78 commits, 94 files changed ([View Archive](milestones/v3.3.0-ROADMAP.md))
+- **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-09 (v3.3.0 completed)_
+_Roadmap updated: 2026-03-10 (v4.0.0 milestone archived)_

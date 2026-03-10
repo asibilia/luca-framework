@@ -218,6 +218,8 @@ After storing, create links between related memories using \`muninn_link\`:
 4. Stall events to the convergence data that triggered them
 5. Session start to session end
 
+**HARD GATE: Do NOT proceed to Step 6 until every memory stored in Step 4 has at least one link.** The minimum required link count equals the number of memories stored in Step 4 — one link per memory, no exceptions. If time is constrained and semantic linking is not possible, use the minimum-viable fallback: link each memory to the current session memory via \`is_part_of\`. An unlinked memory is an orphan and defeats the purpose of the graph. Verify your link count before continuing.
+
 ### Step 6: Confirm
 
 Report to the user what was saved:

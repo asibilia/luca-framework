@@ -3,7 +3,7 @@ title: "P1: Document and fix test suite fragility (29 tests fail in full run)"
 area: dx
 created: 2026-03-04
 source: repo-review audit (dx-reviewer)
-priority: P1
+priority: P4
 ---
 
 ## Context

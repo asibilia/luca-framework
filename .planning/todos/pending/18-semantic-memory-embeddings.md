@@ -6,6 +6,7 @@ source: expert-panel-research
 tier: 4
 complexity: COMPLEX
 moat: Medium
+priority: P2
 ---
 
 ## Context

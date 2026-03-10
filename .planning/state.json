@@ -4,8 +4,8 @@
   "historyValue": {},
   "context": {
     "session_id": "fc759ad3-6102-4681-9b0c-738bbed69a23",
-    "github_issue": 61,
-    "branch": "61--v3.3-cognitive-maturity",
+    "github_issue": 63,
+    "branch": "63--v4.0-process-intelligence",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -86,8 +86,13 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
+    "appetite_used_tokens": 0,
     "started_at": "2026-03-09T00:13:24.488Z",
-    "last_transition_at": "2026-03-09T19:35:44.633Z"
+    "last_transition_at": "2026-03-10T12:53:52.406Z",
+    "current_milestone": "v4.0.0 — Complete"
   },
   "children": {
     "phase": {

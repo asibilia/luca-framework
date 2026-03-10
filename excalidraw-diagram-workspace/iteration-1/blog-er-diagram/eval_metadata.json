@@ -1,0 +1,47 @@
+{
+  "eval_id": 2,
+  "eval_name": "blog-er-diagram",
+  "prompt": "Create an ER diagram for a blog platform with Users, Posts, Comments, and Tags. Users have many Posts, Posts have many Comments, Users write Comments, and Posts have many Tags (many-to-many).",
+  "assertions": [
+    {
+      "name": "valid_json",
+      "description": "Output file parses as valid JSON",
+      "type": "programmatic"
+    },
+    {
+      "name": "valid_excalidraw_structure",
+      "description": "Has type='excalidraw', version=2, and elements array",
+      "type": "programmatic"
+    },
+    {
+      "name": "unique_ids",
+      "description": "All element IDs are unique",
+      "type": "programmatic"
+    },
+    {
+      "name": "bidirectional_bindings",
+      "description": "Every arrow binding has a matching boundElements entry on the target shape, and vice versa",
+      "type": "programmatic"
+    },
+    {
+      "name": "all_entities_present",
+      "description": "Text elements mention all 4 entities: Users, Posts, Comments, Tags",
+      "type": "programmatic"
+    },
+    {
+      "name": "has_relationship_arrows",
+      "description": "Contains arrow elements with arrowhead types set (not all null)",
+      "type": "programmatic"
+    },
+    {
+      "name": "has_crowfoot_notation",
+      "description": "At least one arrow uses crowfoot arrowhead types (crowfoot_one, crowfoot_many, crowfoot_one_or_many)",
+      "type": "programmatic"
+    },
+    {
+      "name": "no_overlapping_shapes",
+      "description": "No two non-text shape elements occupy the exact same x,y position",
+      "type": "programmatic"
+    }
+  ]
+}

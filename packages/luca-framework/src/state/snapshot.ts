@@ -9,8 +9,7 @@
  *
  * @module luca-state/snapshot
  */
-import type { WorkflowContext, PhaseResult } from "./types";
-import type { WorkflowState } from "./types";
+import type { WorkflowContext, PhaseResult, WorkflowState } from "./types";
 import { escapeRegex } from "./utils/cli-utils";
 
 // ─── Preservable Sections ────────────────────────────────────────────────────
@@ -112,6 +111,7 @@ function formatState(state: string): string {
     learning: "Learning",
     committing: "Committing",
     complete: "Complete",
+    cooldown: "Cooldown",
     suspended: "Suspended",
     paused: "Paused",
     failed: "Failed",
@@ -259,6 +259,16 @@ export function generateSnapshot(input: SnapshotInput): string {
     lines.push(`- **GitHub Issue:** #${context.github_issue}`);
   }
   lines.push("");
+
+  // ── Appetite (v4) ──
+  if (context.appetite_level) {
+    lines.push("## Appetite");
+    lines.push("");
+    lines.push(`- **Level:** ${context.appetite_level}`);
+    lines.push(`- **Token Ceiling:** ${context.appetite_token_ceiling}`);
+    lines.push(`- **Context Budget:** ${context.appetite_context_percent}%`);
+    lines.push("");
+  }
 
   // ── Progress ──
   lines.push("## Progress");

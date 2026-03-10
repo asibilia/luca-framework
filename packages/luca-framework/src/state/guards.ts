@@ -11,8 +11,7 @@
  */
 import { meetsThreshold } from "./utils/complexity-utils";
 import type { ComplexityLevel, StepActivation } from "./utils/complexity-utils";
-import { shouldStartIteration } from "./utils/budget-utils";
-import { budgetStateSchema } from "./utils/budget-utils";
+import { shouldStartIteration, budgetStateSchema } from "./utils/budget-utils";
 import get from "lodash/get";
 
 import type { WorkflowContext, WorkflowEvent } from "./types";
@@ -255,6 +254,45 @@ export const workflowGuards = {
       return false;
     const last = context.phase_results[context.phase_results.length - 1];
     return last !== undefined && last.status === "passed";
+  },
+
+  // --- Appetite / v4 guards ---
+
+  /**
+   * Check if the appetite context budget has not been exceeded.
+   *
+   * Compares `appetite_context_percent` (the budget ceiling) against
+   * `process_data.context_percent_used` (actual usage). Returns true
+   * if no process data exists yet (first wave — nothing to compare).
+   */
+  appetiteWithinBudget: ({ context }: { context: WorkflowContext }) => {
+    if (!context.process_data) return true;
+    return (
+      context.process_data.context_percent_used <=
+      context.appetite_context_percent
+    );
+  },
+
+  /**
+   * Check if the pre-mortem gate is enabled.
+   *
+   * Reads `context.gates.premortem` to determine whether the pre-mortem
+   * agent should be invoked during the `discussing` state. Returns false
+   * if the gate is absent or false.
+   */
+  shouldRunPremortem: ({ context }: { context: WorkflowContext }) => {
+    return context.gates.premortem === true;
+  },
+
+  /**
+   * Check if the process data collection gate is enabled.
+   *
+   * Reads `context.gates.process_data` to determine whether the process
+   * data agent should be invoked during the `learning` state. Returns
+   * false if the gate is absent or false.
+   */
+  shouldRunProcessData: ({ context }: { context: WorkflowContext }) => {
+    return context.gates.process_data === true;
   },
 };
 

@@ -382,7 +382,6 @@ Internal logic modules consumed by entities and other core modules.
 | iteration | Budget, checkpoint, classifier, convergence |
 | context | Context tier resolution, assembler, envelope |
 | observability | Agent scorecard engine, telemetry metrics |
-| emitter | Emission pipeline for MuninnDB engrams |
 | shared | Cross-cutting utilities (format, validation, CLI) |
 
 **Structure:**
@@ -422,7 +421,7 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1, never
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, observability, emitter | Import T0 only |
+| T1 Core | context, planner, harness, iteration, observability | Import T0 only |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
 | T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
 
@@ -815,7 +814,7 @@ description: "Module boundary: import direction rules and entity isolation"
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, observability, emitter  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
@@ -1072,13 +1071,7 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 | \`suspend --phase=N [--reason=str]\` | Create checkpoint and suspend phase |
 | \`resume-phase --phase=N\` | Load checkpoint and resume phase |
 
-### Observability Commands (1)
-
-| Command | Description | Output |
-|---------|-------------|--------|
-| \`emit-event --type=<type> [--session=id] [--data=json]\` | Emit event to MuninnDB | JSON with emitted status |
-
-**Total: 14 subcommands** (6 read + 2 write + 5 lifecycle + 1 observability).
+**Total: 13 subcommands** (6 read + 2 write + 5 lifecycle).
 
 ## Usage Patterns
 

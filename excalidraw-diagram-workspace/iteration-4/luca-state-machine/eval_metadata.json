@@ -1,0 +1,52 @@
+{
+  "eval_id": 3,
+  "eval_name": "luca-state-machine",
+  "prompt": "Create a state machine diagram for our Luca workflow engine. It has a parent workflow machine with states: idle (initial), preflight, routing, discussing, planning, executing, verifying, learning, committing, complete, paused, suspended, and failed. The happy path flows idle → preflight → routing → discussing → planning → executing → verifying → learning → committing → complete. Verification failures loop back to executing. Paused/suspended states can resume to executing or abort to idle. Failed is terminal but can reset to idle. The executing state invokes a child phase actor with states: idle, wave_executing, wave_evaluating, phase_verifying, phase_fixing, phase_done, phase_blocked.",
+  "assertions": [
+    {
+      "name": "valid_json",
+      "description": "Output file parses as valid JSON",
+      "type": "programmatic"
+    },
+    {
+      "name": "valid_excalidraw_structure",
+      "description": "Has type='excalidraw', version=2, and elements array",
+      "type": "programmatic"
+    },
+    {
+      "name": "unique_ids",
+      "description": "All element IDs are unique",
+      "type": "programmatic"
+    },
+    {
+      "name": "bidirectional_bindings",
+      "description": "Every arrow binding has a matching boundElements entry on the target shape, and vice versa",
+      "type": "programmatic"
+    },
+    {
+      "name": "all_parent_states_present",
+      "description": "Text elements mention all 13 parent states: idle, preflight, routing, discussing, planning, executing, verifying, learning, committing, complete, paused, suspended, failed",
+      "type": "programmatic"
+    },
+    {
+      "name": "child_phase_actor_states",
+      "description": "Text elements mention child phase actor states: wave_executing, wave_evaluating, phase_verifying, phase_fixing, phase_done, phase_blocked",
+      "type": "programmatic"
+    },
+    {
+      "name": "child_actor_grouped",
+      "description": "Child phase actor states are visually grouped — either via a frame element or shared groupIds",
+      "type": "qualitative"
+    },
+    {
+      "name": "has_arrows",
+      "description": "Contains arrow elements connecting the states with transitions",
+      "type": "programmatic"
+    },
+    {
+      "name": "sufficient_element_count",
+      "description": "Has at least 40 total elements (20 states × 2 for shape+text, plus arrows)",
+      "type": "programmatic"
+    }
+  ]
+}

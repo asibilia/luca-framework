@@ -47,13 +47,7 @@ Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the pr
 | \`suspend --phase=N [--reason=str]\` | Create checkpoint and suspend phase |
 | \`resume-phase --phase=N\` | Load checkpoint and resume phase |
 
-### Observability Commands (1)
-
-| Command | Description | Output |
-|---------|-------------|--------|
-| \`emit-event --type=<type> [--session=id] [--data=json]\` | Emit event to MuninnDB | JSON with emitted status |
-
-**Total: 14 subcommands** (6 read + 2 write + 5 lifecycle + 1 observability).
+**Total: 13 subcommands** (6 read + 2 write + 5 lifecycle).
 
 ## Usage Patterns
 

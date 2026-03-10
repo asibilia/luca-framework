@@ -12,6 +12,7 @@ cognition:
   promotable_to: T3
   memory_tags:
     - "*"
+  eager_recall: true
 context:
   default_tier: T3
   promotable_to: T3
@@ -241,7 +242,26 @@ Validate the target agent's availability and configuration before proceeding:
 <step name="selective_recall">
 Search MuninnDB for relevant engrams with tier-aware gating and tag-based filtering:
 
-**Tier Gate (check first):**
+**Deferred Recall Gate (check first, before tier gate):**
+
+```
+IF agent.cognition.eager_recall is NOT true (undefined or false — the default for most agents):
+    SKIP selective recall entirely
+    SKIP load_global_memory step (next step)
+    Log: "Agent {name} uses deferred recall — memory loaded on first skill request via requestMemoryContext()"
+    Note in cognitive report: "Recall: DEFERRED (will be loaded by orchestrator skill on demand)"
+    PROCEED directly to cleanup_stale_sessions, then initialize_working
+    RETURN from this step
+
+IF agent.cognition.eager_recall == true:
+    Continue with existing recall flow below (tier gate + full recall, unchanged)
+```
+
+**NOTE:** The `eager_recall` field is `z.boolean().optional()` in CognitionConfigSchema.
+Most agents will have `undefined` (not `false`). Check using `!eager_recall` or
+`eager_recall !== true`, NOT `eager_recall === false`.
+
+**Tier Gate (only reached when eager_recall is true):**
 
 ```
 IF effective_tier == T0:
@@ -377,6 +397,8 @@ For each keyword, scan the **filtered candidate set**:
   </step>
 
 <step name="load_global_memory">
+**Deferred Recall Gate:** If `agent.cognition.eager_recall` is NOT true, SKIP this step entirely (global memory is loaded on demand via `requestMemoryContext()` at the skill level).
+
 Load cross-project learnings from MuninnDB global vault:
 
 ```
@@ -413,6 +435,64 @@ Before initializing a new session, clean up stale session engrams from previous 
 3. **If no stale session engrams found**: Continue (clean state)
 
 This prevents unbounded vault pollution from abandoned, halted, or crashed sessions.
+</step>
+
+<step name="outcome_check">
+**Full mode only** (MODERATE+ complexity). Skip in Lite mode.
+
+Before initializing working memory, check whether recently shipped features have recorded outcomes.
+
+**Graduation Gate (self-tuning):**
+
+1. Recall the outcome completion metric:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "metric:outcome-completion")
+   \`\`\`
+2. Parse the metric for `interactions_count` and `completion_rate`.
+3. **If interactions >= 10 AND completion_rate < 20%:** The developer is not engaging with outcome tracking. SKIP this step silently and continue to `initialize_working`. Log:
+   \`\`\`
+   mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [OUTCOME-SKIP] Graduation gate triggered: <rate>% completion after <count> interactions. Skipping outcome check.")
+   \`\`\`
+
+**If gate passes (or insufficient data to evaluate):**
+
+1. Recall recent outcome engrams:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "outcome:* recently shipped features goal achievement")
+   \`\`\`
+2. Recall recently completed milestones and phases to identify shipped features:
+   \`\`\`
+   mcp__muninn__muninn_recall(vault: "default", context: "milestone completion phase summary shipped feature")
+   \`\`\`
+3. Cross-reference: find features that appear in milestone/phase summaries but have NO corresponding `outcome:*` engram.
+4. **If untracked features found**, pick the oldest one and prompt:
+
+   \`\`\`
+   --- Outcome Check ---
+   You shipped **[Feature X]** in [milestone/phase].
+   Did it achieve its goal?
+
+   1. Yes - it achieved what we intended
+   2. No - it did not meet expectations
+   3. Too early - not enough data yet
+
+   (Reply 1, 2, or 3)
+   ---
+   \`\`\`
+
+5. Based on response:
+   - **Yes**: Store `mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] achieved its goal. Shipped in [milestone]. Developer confirmed [date].")`
+   - **No**: Store `mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] did NOT achieve its goal. Shipped in [milestone]. Developer confirmed [date]. Notes: [any elaboration].")`
+   - **Too early**: Store `mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] outcome pending — too early to assess. Shipped in [milestone]. Will re-check later.")`
+
+6. Update the completion metric:
+   \`\`\`
+   mcp__muninn__muninn_evolve(vault: "default", id: "<metric-engram-id>", update: "Interaction count incremented. New completion rate: <calculated>%.")
+   \`\`\`
+
+7. **Only ask about ONE feature per session** to avoid prompt fatigue. Continue to `initialize_working`.
+
+**If no untracked features found:** Continue silently to `initialize_working`.
 </step>
 
 <step name="initialize_working">
@@ -544,7 +624,44 @@ Based on recalled memories, generate intuition flags:
 <step name="generate_report">
 Output cognitive report for downstream agents. The report format adapts to the agent's effective tier.
 
-**Cognition Profile section (always included for T1+):**
+**Deferred Recall Report (when eager_recall is NOT true):**
+
+When the deferred recall gate was triggered in `selective_recall`, output this report variant:
+
+```markdown
+## COGNITIVE PRE-FLIGHT COMPLETE
+
+### Cognition Profile
+
+- **Agent**: {agent name}
+- **Default Tier**: {T0-T3}
+- **Effective Tier**: {T0-T3} (after complexity promotion)
+- **Complexity Level**: {TRIVIAL-CRITICAL}
+- **Memory Tags**: {list of agent's memory_tags}
+- **Recall**: DEFERRED (loaded on first skill request via requestMemoryContext())
+
+### Project Identity
+
+{Summary from MuninnDB brain tree or "Not configured"}
+
+### Memory Recall
+
+Recall: DEFERRED — selective recall and global memory skipped at session start.
+Memory will be loaded on-demand the first time a skill calls requestMemoryContext().
+This saves 6-8K tokens on sessions that don't reach COMPLEX execution.
+
+### Working Memory
+
+Initialized: MuninnDB session context
+
+### Ready For
+
+{Downstream agent}
+```
+
+Then skip directly to the RETURN. The sections below apply only when eager_recall is true.
+
+**Cognition Profile section (always included for T1+, eager_recall=true path):**
 
 ```markdown
 ## COGNITIVE PRE-FLIGHT COMPLETE
