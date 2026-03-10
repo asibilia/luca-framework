@@ -108,6 +108,19 @@ export type RecallCacheEntry = z.infer<typeof RecallCacheEntrySchema>;
  * Not persistent -- lives only for the orchestrator session.
  * Cleared explicitly at session boundaries via `clearRecallCache()`.
  */
+const MAX_RECALL_ENTRIES = 100;
+
+/**
+ * Evict the oldest entry from a Map if it has reached the maximum size.
+ * Maps iterate in insertion order, so the first key is the oldest.
+ */
+function evictOldestIfNeeded<K, V>(map: Map<K, V>, max: number): void {
+  if (map.size >= max) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) map.delete(firstKey);
+  }
+}
+
 const recallCache = new Map<string, RecallCacheEntry>();
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -161,6 +174,7 @@ export function setCachedRecall(
   sessionId: string,
   entry: RecallCacheEntry,
 ): void {
+  evictOldestIfNeeded(recallCache, MAX_RECALL_ENTRIES);
   recallCache.set(sessionId, entry);
 }
 
