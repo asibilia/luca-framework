@@ -5,6 +5,14 @@ import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import { relativeTime } from "~/lib/format";
 
 import type { Engram } from "~/hooks/use-memory";
@@ -160,24 +168,20 @@ export function MemoryEntries({ engrams }: { engrams: Engram[] }) {
   }
 
   return (
-    <div
-      role="region"
-      aria-label="Memory engrams"
-      className="flex flex-col rounded-lg border border-border bg-card"
-    >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Engrams
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            Long-term Learning
-          </p>
-        </div>
-        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
-          {totalEntries} {totalEntries === 1 ? "engram" : "engrams"}
-        </span>
-      </div>
+    <Card role="region" aria-label="Memory engrams" className="flex flex-col">
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Engrams
+        </CardTitle>
+        <CardDescription className="font-mono text-xs">
+          Long-term Learning
+        </CardDescription>
+        <CardAction>
+          <Badge variant="outline" className="font-mono text-xs">
+            {totalEntries} {totalEntries === 1 ? "engram" : "engrams"}
+          </Badge>
+        </CardAction>
+      </CardHeader>
       <div className="max-h-[36rem] overflow-y-auto">
         {knownGroups.map((group) => (
           <CategorySection key={group.category} group={group} />
@@ -202,7 +206,7 @@ export function MemoryEntries({ engrams }: { engrams: Engram[] }) {
           </>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 

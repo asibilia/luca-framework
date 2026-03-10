@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import { Card, CardContent } from "~/components/ui/card";
 
 import type { LearningStats as LearningStatsType } from "~/hooks/use-learning-evolution";
 
@@ -48,20 +49,19 @@ export function LearningStats({ stats }: { stats: LearningStatsType }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       {STAT_CARDS.map((card) => (
-        <div
-          key={card.key}
-          className="rounded-lg border border-border bg-card p-4"
-        >
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            {card.label}
-          </p>
-          <p
-            className="mt-1 font-mono text-2xl font-bold"
-            style={card.colorVar ? { color: card.colorVar } : undefined}
-          >
-            {stats[card.key]}
-          </p>
-        </div>
+        <Card key={card.key} size="sm">
+          <CardContent>
+            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              {card.label}
+            </p>
+            <p
+              className="mt-1 font-mono text-2xl font-bold"
+              style={card.colorVar ? { color: card.colorVar } : undefined}
+            >
+              {stats[card.key]}
+            </p>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

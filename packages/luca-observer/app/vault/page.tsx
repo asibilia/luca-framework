@@ -1,6 +1,9 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
+
 import { PageContainer } from "~/components/layout/page-container";
+import { Button } from "~/components/ui/button";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { VaultOverview } from "~/components/vault/vault-overview";
@@ -39,14 +42,15 @@ export default function VaultPage() {
             </span>
           )}
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
             disabled={loading}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
+            <RefreshCw className={loading ? "animate-spin" : undefined} />
+            {loading ? "Loading..." : "Refresh"}
+          </Button>
         </div>
       }
     >

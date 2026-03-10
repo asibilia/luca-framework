@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 import { formatBytes } from "~/lib/format";
 
 import type { VaultOverviewStats } from "~/hooks/use-vault-health";
@@ -45,14 +46,14 @@ export function StorageInfo({ overview }: { overview: VaultOverviewStats }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Storage Details
-        </p>
-      </div>
+        </CardTitle>
+      </CardHeader>
 
-      <div className="flex flex-col gap-3 p-4">
+      <CardContent className="flex flex-col gap-3">
         {STORAGE_ROWS.map((row) => (
           <div key={row.label} className="flex items-center justify-between">
             <span className="font-mono text-xs text-muted-foreground">
@@ -63,7 +64,7 @@ export function StorageInfo({ overview }: { overview: VaultOverviewStats }) {
             </span>
           </div>
         ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

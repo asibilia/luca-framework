@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 
 import { Sidebar } from "~/components/layout/sidebar";
 import { Header } from "~/components/layout/header";
+import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 
 import { Providers } from "./providers";
 
@@ -34,11 +35,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="flex h-screen overflow-hidden">
         <Providers>
-          <Sidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <Header />
-            <main className="flex-1 overflow-auto">{children}</main>
-          </div>
+          <SidebarProvider
+            style={
+              {
+                "--sidebar-width": "calc(var(--spacing) * 72)",
+                "--header-height": "calc(var(--spacing) * 12)",
+              } as React.CSSProperties
+            }
+          >
+            <Sidebar variant="inset" />
+            <SidebarInset>
+              <Header />
+              <div className="flex flex-1 flex-col overflow-auto">
+                <div className="@container/main flex flex-1 flex-col gap-2">
+                  {children}
+                </div>
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
         </Providers>
       </body>
     </html>

@@ -1,0 +1,171 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - banner [ref=e4]:
+      - button "Toggle Sidebar" [ref=e6]:
+        - img
+        - generic [ref=e7]: Toggle Sidebar
+      - button "Switch to light mode" [pressed] [ref=e9]:
+        - img
+    - main [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]:
+            - heading "Dashboard" [level=1] [ref=e14]
+            - paragraph [ref=e15]: Luca workflow observability
+          - generic [ref=e17]:
+            - generic [ref=e20]: MuninnDB Connected
+            - generic [ref=e57]: Updated just now
+            - button "Refresh" [ref=e58]:
+              - img
+              - text: Refresh
+        - generic [ref=e21]:
+          - generic [ref=e59]:
+            - link "Engrams 102" [ref=e60] [cursor=pointer]:
+              - /url: /memory
+              - generic [ref=e62]:
+                - img [ref=e64]
+                - generic [ref=e72]:
+                  - paragraph [ref=e73]: Engrams
+                  - paragraph [ref=e74]: "102"
+            - link "Coherence 71.2%" [ref=e75] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e77]:
+                - img [ref=e79]
+                - generic [ref=e81]:
+                  - paragraph [ref=e82]: Coherence
+                  - paragraph [ref=e83]: 71.2%
+            - link "Learnings 20" [ref=e84] [cursor=pointer]:
+              - /url: /learning
+              - generic [ref=e86]:
+                - img [ref=e88]
+                - generic [ref=e90]:
+                  - paragraph [ref=e91]: Learnings
+                  - paragraph [ref=e92]: "20"
+            - link "Entities 36" [ref=e93] [cursor=pointer]:
+              - /url: /knowledge-graph
+              - generic [ref=e95]:
+                - img [ref=e97]
+                - generic [ref=e102]:
+                  - paragraph [ref=e103]: Entities
+                  - paragraph [ref=e104]: "36"
+            - link "Storage 100.7 MB" [ref=e105] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e107]:
+                - img [ref=e109]
+                - generic [ref=e113]:
+                  - paragraph [ref=e114]: Storage
+                  - paragraph [ref=e115]: 100.7 MB
+          - generic [ref=e116]:
+            - generic [ref=e118]:
+              - img [ref=e119]
+              - generic [ref=e121]: Patterns
+              - generic [ref=e122]: "2"
+            - generic [ref=e124]:
+              - img [ref=e125]
+              - generic [ref=e129]: Decisions
+              - generic [ref=e130]: "1"
+            - generic [ref=e132]:
+              - img [ref=e133]
+              - generic [ref=e135]: Pitfalls
+              - generic [ref=e136]: "1"
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - generic [ref=e140]: Recent Memories
+              - generic [ref=e141]:
+                - generic [ref=e142]:
+                  - generic [ref=e143]:
+                    - generic [ref=e144]: emit:state:transition
+                    - generic [ref=e146]: 1h ago
+                  - paragraph [ref=e147]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-10T13:29:32.329Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                - generic [ref=e148]:
+                  - generic [ref=e149]:
+                    - generic [ref=e150]: Consolidated memory
+                    - generic [ref=e152]: 1h ago
+                  - paragraph [ref=e153]: "v3.0.0 observer commits: (1) Commit 0fac0d7d — fix(03-01): add eventType/timestamp indexes to observer_events, Phase 3 v..."
+                - generic [ref=e154]:
+                  - generic [ref=e155]:
+                    - generic [ref=e156]: Consolidated memory
+                    - generic [ref=e158]: 1h ago
+                  - paragraph [ref=e159]: Phase 07 of v3.2.0 — Vault Health Dashboard. Created /vault page with useVaultHealth hook, VaultOverview (4-card grid),...
+                - generic [ref=e160]:
+                  - generic [ref=e161]:
+                    - generic [ref=e162]: Consolidated memory
+                    - generic [ref=e164]: 1h ago
+                  - paragraph [ref=e165]: "CRITICAL: Never run `bun run build:all` during a Claude Code session — it crashes the process. Always ask the user to st..."
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - generic [ref=e168]: metric:retro-response-rate
+                    - generic [ref=e170]: 1h ago
+                  - paragraph [ref=e171]: "sample_count: 1, responses: 1, response_rate: 1.0, last_milestone: v4.0.0, last_updated: 2026-03-10T13:00:00Z"
+            - generic [ref=e172]:
+              - paragraph [ref=e173]: No Pending Todos
+              - paragraph [ref=e174]: Todos tracked in .planning/todos/pending/ will appear here.
+          - generic [ref=e175]:
+            - heading "Quick Navigation" [level=2] [ref=e176]
+            - generic [ref=e177]:
+              - link "Memory Brain tree & engrams" [ref=e178] [cursor=pointer]:
+                - /url: /memory
+                - generic [ref=e180]:
+                  - img [ref=e181]
+                  - generic [ref=e189]:
+                    - paragraph [ref=e190]: Memory
+                    - paragraph [ref=e191]: Brain tree & engrams
+              - link "Learning Patterns & decisions" [ref=e192] [cursor=pointer]:
+                - /url: /learning
+                - generic [ref=e194]:
+                  - img [ref=e195]
+                  - generic [ref=e197]:
+                    - paragraph [ref=e198]: Learning
+                    - paragraph [ref=e199]: Patterns & decisions
+              - link "Vault Health Coherence metrics" [ref=e200] [cursor=pointer]:
+                - /url: /vault
+                - generic [ref=e202]:
+                  - img [ref=e203]
+                  - generic [ref=e207]:
+                    - paragraph [ref=e208]: Vault Health
+                    - paragraph [ref=e209]: Coherence metrics
+              - link "Knowledge Graph Entity relationships" [ref=e210] [cursor=pointer]:
+                - /url: /knowledge-graph
+                - generic [ref=e212]:
+                  - img [ref=e213]
+                  - generic [ref=e218]:
+                    - paragraph [ref=e219]: Knowledge Graph
+                    - paragraph [ref=e220]: Entity relationships
+              - link "Search Query knowledge base" [ref=e221] [cursor=pointer]:
+                - /url: /semantic-search
+                - generic [ref=e223]:
+                  - img [ref=e224]
+                  - generic [ref=e227]:
+                    - paragraph [ref=e228]: Search
+                    - paragraph [ref=e229]: Query knowledge base
+              - link "Sessions Workflow history" [ref=e230] [cursor=pointer]:
+                - /url: /sessions
+                - generic [ref=e232]:
+                  - img [ref=e233]
+                  - generic [ref=e235]:
+                    - paragraph [ref=e236]: Sessions
+                    - paragraph [ref=e237]: Workflow history
+              - link "Decisions Decision trail" [ref=e238] [cursor=pointer]:
+                - /url: /decisions
+                - generic [ref=e240]:
+                  - img [ref=e241]
+                  - generic [ref=e245]:
+                    - paragraph [ref=e246]: Decisions
+                    - paragraph [ref=e247]: Decision trail
+              - link "Contradictions Knowledge conflicts" [ref=e248] [cursor=pointer]:
+                - /url: /contradictions
+                - generic [ref=e250]:
+                  - img [ref=e251]
+                  - generic [ref=e253]:
+                    - paragraph [ref=e254]: Contradictions
+                    - paragraph [ref=e255]: Knowledge conflicts
+              - link "Entities Entity browser" [ref=e256] [cursor=pointer]:
+                - /url: /entities
+                - generic [ref=e258]:
+                  - img [ref=e259]
+                  - generic [ref=e268]:
+                    - paragraph [ref=e269]: Entities
+                    - paragraph [ref=e270]: Entity browser
+  - button "Open Next.js Dev Tools" [ref=e276] [cursor=pointer]:
+    - img [ref=e277]
+  - alert [ref=e280]

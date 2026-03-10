@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import type { ComponentProps } from "react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { useAtom } from "jotai";
 import {
   Activity,
   LayoutDashboard,
@@ -25,12 +24,23 @@ import {
   Search,
   AlertTriangle,
   Fingerprint,
+  Hexagon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { sidebarOpenAtom } from "~/stores/sidebar";
+import {
+  Sidebar as SidebarRoot,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from "~/components/ui/sidebar";
 import { NAV_ITEMS } from "~/lib/constants";
-import { useMediaQuery } from "~/hooks/use-media-query";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -54,80 +64,87 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 /**
- * Sidebar navigation component.
+ * Sidebar navigation using shadcn Sidebar primitives.
  *
- * Renders the navigation items defined in constants.
- * Highlights the active route. Collapsible via Jotai atom.
- * Auto-collapses below 768px viewport width.
+ * Uses `variant="inset"` for the rounded, padded layout matching
+ * the shadcn dashboard-01 reference.
  */
-export function Sidebar() {
+export function Sidebar(props: ComponentProps<typeof SidebarRoot>) {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-
-  // Auto-collapse sidebar on mobile, auto-expand on desktop
-  useEffect(() => {
-    setIsOpen(isDesktop);
-  }, [isDesktop, setIsOpen]);
-
-  if (!isOpen) return null;
 
   return (
-    <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-card">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <div className="h-6 w-6 rounded bg-primary" />
-        <span className="font-mono text-sm font-bold tracking-tight">
-          luca-observer
-        </span>
-      </div>
-
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="sr-only focus:not-sr-only focus:rounded focus:bg-muted focus:p-2 focus:font-mono focus:text-sm focus:text-muted-foreground"
-        aria-label="Toggle sidebar"
-      >
-        Skip to navigation
-      </button>
-      <nav
-        className="flex flex-1 flex-col gap-0.5 p-2"
-        role="navigation"
-        aria-label="Main navigation"
-      >
-        {NAV_ITEMS.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-                isActive
-                  ? "bg-primary/10 font-medium text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
+    <SidebarRoot collapsible="offcanvas" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              {(() => {
-                const Icon = ICON_MAP[item.icon];
-                return Icon ? (
-                  <Icon className="h-4 w-4 shrink-0 opacity-60" />
-                ) : (
-                  <span className="font-mono text-xs opacity-60">
-                    {item.icon}
-                  </span>
-                );
-              })()}
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+              <Link href="/">
+                <Hexagon className="!size-5" />
+                <span className="text-base font-semibold">Luca Observer</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      <div className="border-t border-border p-3">
-        <p className="font-mono text-xs text-muted-foreground">v0.1.0</p>
-      </div>
-    </aside>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV_ITEMS.map((item) => {
+                const isActive =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
+                const Icon = ICON_MAP[item.icon];
+
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href}>
+                        {Icon ? (
+                          <Icon />
+                        ) : (
+                          <span className="font-mono text-xs">{item.icon}</span>
+                        )}
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/15 font-mono text-[10px] font-bold text-primary">
+                N
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium leading-tight">
+                  MuninnDB
+                </span>
+                <span className="text-[10px] leading-tight text-muted-foreground">
+                  v0.1.0
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </SidebarRoot>
   );
 }

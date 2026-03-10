@@ -3,6 +3,14 @@
 import { useState } from "react";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardContent,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import { relativeTime } from "~/lib/format";
 
 import type { MuninnEngram } from "~/lib/muninn-types";
@@ -72,36 +80,38 @@ function displayConcept(concept: string, category: string): string {
 export function RecentLearnings({ engrams }: { engrams: MuninnEngram[] }) {
   if (engrams.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-4 py-3">
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Recent Learnings
-          </p>
-        </div>
-        <div className="p-4">
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <EmptyState message="No recent learnings available." />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+    <Card className="flex flex-col">
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Recent Learnings
-        </p>
-        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
-          {engrams.length} {engrams.length === 1 ? "engram" : "engrams"}
-        </span>
-      </div>
+        </CardTitle>
+        <CardAction>
+          <Badge variant="outline" className="font-mono text-xs">
+            {engrams.length} {engrams.length === 1 ? "engram" : "engrams"}
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
       <div className="max-h-[36rem] overflow-y-auto">
         {engrams.map((engram) => (
           <EngramItem key={engram.id} engram={engram} />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 

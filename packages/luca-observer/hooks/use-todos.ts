@@ -13,6 +13,7 @@ export interface Todo {
   source: string;
   tier: number;
   complexity: string;
+  priority: string;
   state: "pending" | "done";
 }
 

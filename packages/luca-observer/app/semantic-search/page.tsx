@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { PageContainer } from "~/components/layout/page-container";
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { EmptyState } from "~/components/shared/empty-state";
+import { Button } from "~/components/ui/button";
 import { SearchBar } from "~/components/semantic-search/search-bar";
 import { SearchResults } from "~/components/semantic-search/search-results";
 import { useSemanticSearch } from "~/hooks/use-semantic-search";
@@ -71,14 +73,15 @@ export default function SemanticSearchPage() {
             </span>
           )}
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
             disabled={loading || !lastQuery}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
+            <RefreshCw className={loading ? "animate-spin" : undefined} />
             {loading ? "Refreshing..." : "Refresh"}
-          </button>
+          </Button>
         </div>
       }
     >

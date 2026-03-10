@@ -1,5 +1,7 @@
 "use client";
 
+import { Card, CardContent } from "~/components/ui/card";
+
 import type { MuninnEntity } from "~/lib/muninn-types";
 import type { EntityType } from "~/lib/graph-types";
 import { resolveEntityType, TYPE_COLORS } from "~/lib/graph-types";
@@ -18,44 +20,46 @@ export function EntityHeader({ entity }: { entity: MuninnEntity }) {
   const typeColor = TYPE_COLORS[type as EntityType] ?? TYPE_COLORS.other;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      {/* Name + badges row */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-2xl font-bold font-mono text-foreground">
-          {entity.name}
-        </h2>
+    <Card>
+      <CardContent>
+        {/* Name + badges row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl font-bold font-mono text-foreground">
+            {entity.name}
+          </h2>
 
-        {/* Type badge */}
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-xs font-medium"
-          style={{
-            backgroundColor: typeColor + "1a",
-            color: typeColor,
-            border: `1px solid ${typeColor}33`,
-          }}
-        >
+          {/* Type badge */}
           <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: typeColor }}
-          />
-          {type}
-        </span>
-
-        {/* State badge */}
-        <StateBadge state={entity.state} />
-      </div>
-
-      {/* Metadata row */}
-      <div className="mt-3 flex flex-wrap items-center gap-4 font-mono text-xs text-muted-foreground">
-        {entity.first_seen && (
-          <span>
-            First seen: {relativeTime(new Date(entity.first_seen).getTime())}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-xs font-medium"
+            style={{
+              backgroundColor: typeColor + "1a",
+              color: typeColor,
+              border: `1px solid ${typeColor}33`,
+            }}
+          >
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: typeColor }}
+            />
+            {type}
           </span>
-        )}
-        <span>Mentions: {entity.mention_count}</span>
-        <span>Confidence: {(entity.confidence * 100).toFixed(0)}%</span>
-      </div>
-    </div>
+
+          {/* State badge */}
+          <StateBadge state={entity.state} />
+        </div>
+
+        {/* Metadata row */}
+        <div className="mt-3 flex flex-wrap items-center gap-4 font-mono text-xs text-muted-foreground">
+          {entity.first_seen && (
+            <span>
+              First seen: {relativeTime(new Date(entity.first_seen).getTime())}
+            </span>
+          )}
+          <span>Mentions: {entity.mention_count}</span>
+          <span>Confidence: {(entity.confidence * 100).toFixed(0)}%</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

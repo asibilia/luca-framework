@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 interface TodoResponse {
   filename: string;
@@ -10,6 +10,7 @@ interface TodoResponse {
   source: string;
   tier: number;
   complexity: string;
+  priority: string;
   state: "pending" | "done";
 }
 
@@ -29,6 +30,26 @@ function parseFrontmatter(content: string): Record<string, string> {
     }
   }
   return pairs;
+}
+
+/**
+ * Find the project root by walking up from a starting directory
+ * looking for a `.planning/todos` directory.
+ */
+async function findProjectRoot(startDir: string): Promise<string | null> {
+  let current = resolve(startDir);
+  const root = resolve("/");
+  while (current !== root) {
+    try {
+      const todosDir = join(current, ".planning", "todos");
+      const s = await stat(todosDir);
+      if (s.isDirectory()) return current;
+    } catch {
+      /* not found at this level, keep walking up */
+    }
+    current = resolve(current, "..");
+  }
+  return null;
 }
 
 async function readTodosFromDir(
@@ -51,6 +72,7 @@ async function readTodosFromDir(
           source: fm.source || "manual",
           tier: parseInt(fm.tier || "0", 10),
           complexity: fm.complexity || "UNKNOWN",
+          priority: fm.priority || "P3",
           state,
         });
       } catch {
@@ -64,8 +86,11 @@ async function readTodosFromDir(
 }
 
 export async function GET() {
+  // Priority: LUCA_PROJECT_DIR > WORKSPACE_ROOT > auto-detect from cwd
+  const explicitRoot =
+    process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
   const workspaceRoot =
-    process.env.WORKSPACE_ROOT || join(process.cwd(), "../..");
+    explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
   const todosBase = join(workspaceRoot, ".planning", "todos");
   const [pending, done] = await Promise.all([
     readTodosFromDir(join(todosBase, "pending"), "pending"),

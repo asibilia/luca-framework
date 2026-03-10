@@ -26,13 +26,9 @@
     "check:drift": "bun run ./scripts/check-drift.ts",
     "eval:skills": "bun scripts/eval-skills.ts",
     "commit": "bunx --bun @alecsibilia/commit",
+    "css:observer": "bun run --filter @alecsibilia/luca-observer css:build",
     "dev:observer": "bun run --filter @alecsibilia/luca-observer dev",
-    "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts",
-    "test": "bun test",
-    "test:all": "bun test",
-    "test:coverage": "bun test --coverage",
-    "test:observer": "cd packages/luca-observer && bun test",
-    "test:watch": "bun test --watch"
+    "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts"
   },
   "type": "module",
   "workspaces": [

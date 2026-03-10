@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 
+import { Card, CardContent } from "~/components/ui/card";
+
 import type { ContradictionPair } from "~/hooks/use-contradictions";
 
 /**
@@ -28,8 +30,8 @@ export function ContradictionCard({
   forgettingId: string | null;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-col md:flex-row">
+    <Card>
+      <CardContent className="flex flex-col md:flex-row">
         {/* Memory A */}
         <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">
@@ -83,7 +85,7 @@ export function ContradictionCard({
             </Link>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

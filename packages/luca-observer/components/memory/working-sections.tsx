@@ -6,6 +6,14 @@ import orderBy from "lodash/orderBy";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import { relativeTime } from "~/lib/format";
 
 import type { SessionEntry } from "~/hooks/use-memory";
@@ -108,30 +116,26 @@ export function WorkingSections({ entries }: { entries: SessionEntry[] }) {
   }
 
   return (
-    <div
-      role="region"
-      aria-label="Session activity"
-      className="flex flex-col rounded-lg border border-border bg-card"
-    >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Session Activity
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            Recent MuninnDB Session
-          </p>
-        </div>
-        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
-          {entries.length} {entries.length === 1 ? "entry" : "entries"}
-        </span>
-      </div>
+    <Card role="region" aria-label="Session activity" className="flex flex-col">
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Session Activity
+        </CardTitle>
+        <CardDescription className="font-mono text-xs">
+          Recent MuninnDB Session
+        </CardDescription>
+        <CardAction>
+          <Badge variant="outline" className="font-mono text-xs">
+            {entries.length} {entries.length === 1 ? "entry" : "entries"}
+          </Badge>
+        </CardAction>
+      </CardHeader>
       <div className="max-h-[28rem] overflow-y-auto">
         {groups.map((group) => (
           <DateGroupPanel key={group.label} group={group} />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 

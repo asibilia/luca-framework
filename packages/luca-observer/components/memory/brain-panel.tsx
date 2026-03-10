@@ -5,6 +5,15 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { EmptyState } from "~/components/shared/empty-state";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+  CardContent,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 
 import type { ActivationItem } from "~/hooks/use-memory";
 
@@ -27,30 +36,30 @@ export function BrainPanel({ items }: { items: ActivationItem[] }) {
   }
 
   return (
-    <div
+    <Card
       role="region"
       aria-label="Brain tree engrams"
-      className="flex flex-col rounded-lg border border-border bg-card"
+      className="flex flex-col"
     >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Brain Tree
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            Project Identity
-          </p>
-        </div>
-        <span className="rounded-sm border border-border px-2 py-0.5 font-mono text-xs text-muted-foreground">
-          {items.length} {items.length === 1 ? "engram" : "engrams"}
-        </span>
-      </div>
+      <CardHeader className="border-b">
+        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Brain Tree
+        </CardTitle>
+        <CardDescription className="font-mono text-xs">
+          Project Identity
+        </CardDescription>
+        <CardAction>
+          <Badge variant="outline" className="font-mono text-xs">
+            {items.length} {items.length === 1 ? "engram" : "engrams"}
+          </Badge>
+        </CardAction>
+      </CardHeader>
       <div className="max-h-[28rem] overflow-y-auto">
         {items.map((item) => (
           <BrainEngram key={item.id} item={item} />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
