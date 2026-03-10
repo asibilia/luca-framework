@@ -15,6 +15,8 @@ import orderBy from "lodash/orderBy";
 import intersection from "lodash/intersection";
 import union from "lodash/union";
 
+import { escapeRegExp } from "~/shared";
+
 import { RecallScoringWeightsSchema } from "~/agents/__schemas/recall-scoring.schemas";
 
 import type {
@@ -104,10 +106,14 @@ export function computeMilestoneProximity(
   // e.g. "v4.1.0" -> "v4."
   const majorMatch = milestoneLower.match(/^(v?\d+)\./);
   if (majorMatch) {
-    const majorPrefix = majorMatch[1];
+    const majorPrefix = majorMatch[1] ?? "";
+    if (!majorPrefix) return 0;
     // Check if content mentions any version with the same major
     // e.g. "v4.0", "v4.2.1", etc.
-    const recentPattern = new RegExp(`${majorPrefix}\\.\\d+`, "i");
+    const recentPattern = new RegExp(
+      `${escapeRegExp(majorPrefix)}\\.\\d+`,
+      "i",
+    );
     if (recentPattern.test(lower)) return 0.5;
   }
 
