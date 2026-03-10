@@ -195,6 +195,7 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   // --- Deep analysis (capable from MODERATE+) ---
   "lu-verifier": DEEP_ANALYSIS,
   "lu-integration-checker": DEEP_ANALYSIS,
+  "lu-premortem": DEEP_ANALYSIS,
   "code-architect": DEEP_ANALYSIS,
   "dx-advocate": DEEP_ANALYSIS,
   "code-simplifier": DEEP_ANALYSIS,
