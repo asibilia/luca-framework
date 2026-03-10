@@ -46,3 +46,39 @@ export function sanitizeForTemplate(str: string): string {
     .replace(/[\n\r]/g, " ")
     .replace(/[\x00-\x1f\x7f]/g, "");
 }
+
+// --- XML Attribute Escaping ---
+
+/**
+ * Escape XML-sensitive characters in a string for safe use in XML attribute values.
+ *
+ * Replaces the five XML special characters (`&`, `"`, `'`, `<`, `>`) with their
+ * corresponding XML entity references. This prevents injection via XML attribute
+ * values in prompt templates that emit structured XML/HTML-like markup.
+ *
+ * The `&` character is processed first to avoid double-escaping (e.g., `&lt;`
+ * would become `&amp;lt;` if `&` were escaped after `<`).
+ *
+ * @param str - The raw string to escape
+ * @returns The string with XML-sensitive characters replaced by entity references
+ *
+ * @example
+ * ```typescript
+ * escapeXmlAttr('value with "quotes"')
+ * // 'value with &quot;quotes&quot;'
+ *
+ * escapeXmlAttr("it's <dangerous> & tricky")
+ * // "it&#39;s &lt;dangerous&gt; &amp; tricky"
+ *
+ * escapeXmlAttr("safe text")
+ * // "safe text"
+ * ```
+ */
+export function escapeXmlAttr(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
