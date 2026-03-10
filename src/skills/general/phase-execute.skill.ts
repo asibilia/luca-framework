@@ -1322,12 +1322,122 @@ Verify the phase goal was achieved using goal-backward analysis.
 
 Route by returned status:
 
-- \`passed\` → continue to Step 8 (Code Quality Review)
-- \`human_needed\` → present items, get approval, then continue to Step 8
+- \`passed\` → continue to Step 7.1 (Memory Feedback) then Step 8 (Code Quality Review)
+- \`human_needed\` → present items, get approval, then continue to Step 7.1 then Step 8
 - \`gaps_found\` → proceed to Step 7.5 (Loop B: Verify Fix Loop)
 - \`human_needed\` with T1/T3 conflict → proceed to Step 7.25 (Verification Tribunal)
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered \`/phase-plan {X} --gaps\`.
+
+### 7.1. Memory Feedback
+
+**After verification returns**, provide feedback on recalled engrams to MuninnDB. This feeds the SGD-based scoring system that improves future recall quality.
+
+**Skip if:** No engrams were recalled (\`recalledEngrams\` is empty) or \`--skip-memory\` flag was passed.
+
+Read the recalled engrams from the session cache:
+
+\`\`\`typescript
+import { getCachedRecall } from "~/shared";
+
+const cached = getCachedRecall(SESSION_ID);
+const recalledEngrams = cached?.recalledEngrams ?? [];
+\`\`\`
+
+If \`recalledEngrams.length === 0\`: Skip this step entirely.
+
+Otherwise, determine feedback for each engram based on verification outcome:
+
+\`\`\`
+VERIFICATION_PASSED = (verifier result is "passed" or "passed_with_notes")
+
+For each engram in recalledEngrams:
+  mcp__muninn__muninn_feedback(
+    vault: "default",
+    engram_id: engram.engramId,
+    useful: VERIFICATION_PASSED
+  )
+\`\`\`
+
+Log the feedback summary:
+\`\`\`
+"Memory feedback: {count} engrams marked as useful={VERIFICATION_PASSED}"
+\`\`\`
+
+**Compute memory effectiveness metrics** after feedback:
+
+\`\`\`typescript
+import { determineFeedback, computeMemoryPhaseMetrics } from "~/shared";
+
+// Determine feedback entries using the simple heuristic
+const feedbackEntries = determineFeedback({
+  recalledEngrams: recalledEngrams,
+  verificationPassed: VERIFICATION_PASSED,
+  appliedEngramIds: [], // Populated from executor's session:applied-engrams output if available
+  phase: PHASE,
+});
+
+// Compute metrics
+const metrics = computeMemoryPhaseMetrics({
+  feedbackEntries: feedbackEntries,
+  totalRecalled: recalledEngrams.length,
+  totalApplied: feedbackEntries.filter(e => e.useful).length, // Approximation when no executor tracking available
+  memoryTokensInjected: MEMORY_TOKENS_INJECTED,
+  phase: PHASE,
+  milestone: MILESTONE,
+});
+\`\`\`
+
+Store metrics as MuninnDB engrams:
+
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:memory-recall-precision-{milestone}-phase-{phase}",
+  content: JSON.stringify({
+    value: metrics.recall_precision,
+    total_recalled: metrics.total_recalled,
+    total_applied: metrics.total_applied,
+    memory_tokens_injected: metrics.memory_tokens_injected,
+    phase: PHASE,
+    milestone: MILESTONE,
+    computed_at: new Date().toISOString()
+  })
+)
+
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:memory-hit-rate-{milestone}-phase-{phase}",
+  content: JSON.stringify({
+    value: metrics.hit_rate,
+    useful_count: feedbackEntries.filter(e => e.useful).length,
+    total_count: recalledEngrams.length,
+    phase: PHASE,
+    milestone: MILESTONE,
+    computed_at: new Date().toISOString()
+  })
+)
+\`\`\`
+
+Display:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► MEMORY FEEDBACK RECORDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Engrams recalled: {TOTAL_RECALLED}
+Feedback: all marked useful={VERIFICATION_PASSED}
+Recall precision: {RECALL_PRECISION}
+Hit rate: {HIT_RATE}
+Memory tokens injected: {MEMORY_TOKENS_INJECTED}
+
+Metrics stored:
+  metric:memory-recall-precision-{milestone}-phase-{phase}
+  metric:memory-hit-rate-{milestone}-phase-{phase}
+\`\`\`
+
+**Note:** The 3 additional metrics (stale_engram_pct, confidence_calibration, memory_roi) are initialized to 0 in this step and will be populated as data accumulates: stale_pct at milestone boundaries (Plan 3), confidence_calibration across multiple phases, and memory_roi when total phase cost tracking exists.
 
 ### 7.2. Store Calibration Engram
 
