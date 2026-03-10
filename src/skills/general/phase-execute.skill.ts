@@ -554,12 +554,20 @@ if (!hasRecallCache(SESSION_ID)) {
   );
 
   // Step 3: Parse and cache the recall result
+  // MuninnDB recall returns objects with id, concept, content, score, and confidence fields.
+  // Extract engram IDs from each result entry for the feedback loop (Step 7.1).
   setCachedRecall(SESSION_ID, {
     sessionId: SESSION_ID,
     patterns: [/* extracted patterns from recall */],
     decisions: [/* extracted decisions from recall */],
     pitfalls: [/* extracted pitfalls from recall */],
     findings: [/* session findings */],
+    recalledEngrams: [
+      // For EACH recalled entry (pattern, decision, or pitfall):
+      // { engramId: entry.id, content: entry.content, concept: entry.concept, confidence: entry.confidence }
+      // Example:
+      // { engramId: "01JEXAMPLE123", content: "Use Bun APIs over node:fs", concept: "pattern:bun-file-api", confidence: "high" }
+    ],
     recalledAt: new Date().toISOString(),
   });
 }
@@ -571,6 +579,12 @@ const workingContent = requestMemoryContext({
   memoryTags: ["*"],
   maxTokens: 500,
 });
+
+// Step 5: Track memory token cost for metrics computation (consumed in Step 7.1)
+// import { estimateTokens } from "~/shared";
+MEMORY_TOKENS_INJECTED = 0;
+// After each requestMemoryContext() or buildMemoryContextBlock() call:
+MEMORY_TOKENS_INJECTED += estimateTokens(workingContent);
 \`\`\`
 
 **Note:** \`requestMemoryContext()\` reads the cache populated above and formats it via \`buildMemoryContextBlock()\` internally. You can still use \`buildMemoryContextBlock()\` directly if you need custom formatting, but \`requestMemoryContext()\` is the preferred approach for the deferred pattern.
