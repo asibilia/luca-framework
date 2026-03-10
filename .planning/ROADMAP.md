@@ -2,15 +2,76 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v4.0.0 — Process Intelligence & Self-Tuning Workflow
 
-## v4.0.0 — Plugin Ecosystem
+## v4.0.0 — Process Intelligence & Self-Tuning Workflow
+
+Fixed appetite/variable scope, pre-mortem risk analysis, process metrics, self-tuning governance, and outcome tracking. Adds 2 new agents (lu-premortem, lu-process-data), 1 new skill (/outcome), and extends the state machine with appetite tracking and cooldown state.
+
+### Phase 1 — Pre-v4 Hotfixes
+
+**Goal:** Fix active defects in MuninnDB memory linking and compaction resilience before adding v4 infrastructure.
+**Depends on:** None
+**Verification:** Quick
+
+- [ ] #97 Fix MuninnDB orphan ratio — add memory linking to lu-learner and workflow-save
+- [ ] #98 Compaction-resilient orchestrators — wave progress journaling and context budget checks
+
+### Phase 2 — State Machine Foundation
+
+**Goal:** Extend WorkflowContext with appetite fields, guards, cooldown state, and bridge CLI updates. All downstream v4 components depend on this.
+**Depends on:** Phase 1
+**Verification:** Full
+
+- [ ] #106 State machine context extensions — appetite enum, token budget fields, cooldown state, bridge updates
+
+### Phase 3 — Appetite & Pre-Mortem
+
+**Goal:** Implement the core v4 value proposition: appetite-constrained planning and pre-mortem risk analysis.
+**Depends on:** Phase 2
+**Verification:** Full
+
+- [ ] #99 Appetite declaration system — appetite levels, token budgets, guard at wave boundaries
+- [ ] #100 Pre-mortem agent (lu-premortem) — domain-specific failure scenarios, risk brief, developer checkpoint
+
+### Phase 4 — Process Intelligence
+
+**Goal:** Close the measurement loop with process data collection and outcome tracking.
+**Depends on:** Phase 3
+**Verification:** Standard
+
+- [ ] #101 Process data agent (lu-process-data) — appetite accuracy, rework ratio, signal rate metrics
+- [ ] #102 Outcome tracking — contextual trigger in lu-cognition + /outcome skill
+
+### Phase 5 — Governance & UX
+
+**Goal:** Add self-tuning kill switches, milestone retrospective, and divergent mode advisory.
+**Depends on:** Phase 4
+**Verification:** Standard
+
+- [ ] #103 Self-tuning governance — graduation criteria, auto-skip logic, gate checks
+- [ ] #104 Process retrospective — dashboard + developer question at milestone boundaries
+- [ ] #105 Divergent mode advisory — nudge after 8+ consecutive milestones
+
+---
+
+## Deferred (Conditional / Post-v4)
+
+| Todo | Title                       | Target      | Reason                                                                            |
+| ---- | --------------------------- | ----------- | --------------------------------------------------------------------------------- |
+| #107 | Multi-lens review           | Conditional | Gate: pre-mortem signal rate >10% over 20 runs. Cannot be satisfied within v4.0.0 |
+| #16  | Cross-agent interop scanner | v4.1.0+     | HIGH architectural risk (new T1 domain), WSJF 1.20                                |
+| #18  | Semantic memory embeddings  | v4.1.0+     | Check MuninnDB native similarity first; COMPLEX effort                            |
+| #54  | Skill dependency graph      | v4.1.0+     | No bugs from current ordering; optimization work                                  |
+| #55  | Tribunal consensus model    | v4.1.0+     | Current tribunal works; no urgency                                                |
+
+## v5.0.0 — Plugin Ecosystem
 
 | Items | Title                                      | Effort            |
 | ----- | ------------------------------------------ | ----------------- |
 | #17   | Plugin Marketplace with Community Registry | CRITICAL (40-60h) |
 
-Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem makes sense.
+Deferred by design. Intelligence moat and process maturity must exist before ecosystem makes sense.
 
 ---
 
@@ -131,4 +192,4 @@ Deferred by design. Intelligence moat (#95, #13) must exist before ecosystem mak
 
 ---
 
-_Roadmap updated: 2026-03-09 (v3.3.0 completed)_
+_Roadmap updated: 2026-03-10 (v4.0.0 roadmap revision — 5 phases, 10 todos, 7 deferred)_
