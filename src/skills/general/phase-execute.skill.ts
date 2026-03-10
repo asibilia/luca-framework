@@ -275,7 +275,7 @@ for metric_name, value in metrics_json["metrics"].items():
 Then emit the PROCESS_DATA_COMPLETE transition:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 \`\`\`
 
 The model tier for lu-process-data is resolved via \`resolveModelForAgent("lu-process-data", complexity)\` from the centralized routing table.
@@ -283,7 +283,7 @@ The model tier for lu-process-data is resolved via \`resolveModelForAgent("lu-pr
 **If \`process_data\` gate is disabled (\`false\`):** Skip process data collection and emit LEARN_COMPLETE as before:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=LEARN_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
 \`\`\`
 
 ### Session Logging During Execution
@@ -447,7 +447,7 @@ Before each wave, check whether the appetite budget has been exhausted:
 
 \`\`\`bash
 # Read appetite state from bridge
-APPETITE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{}')
+APPETITE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{}')
 APPETITE_LEVEL=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_level || '')" 2>/dev/null || echo "")
 APPETITE_CEILING=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_token_ceiling || 0)" 2>/dev/null || echo "0")
 APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_used_tokens || 0)" 2>/dev/null || echo "0")
@@ -483,7 +483,7 @@ APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.std
 4. After each wave completes, update appetite_used_tokens via bridge:
    \`\`\`bash
    # Update used tokens after wave completion (estimated from wave results)
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
+   luca-bridge set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
    \`\`\`
 
 **MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
@@ -532,7 +532,7 @@ PLAN_01_CONTENT=$(cat "{plan_01_path}")
 PLAN_02_CONTENT=$(cat "{plan_02_path}")
 PLAN_03_CONTENT=$(cat "{plan_03_path}")
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 \`\`\`
@@ -680,7 +680,7 @@ Execute this plan. Return SUMMARY when complete.
 # Check context usage zone (context monitoring handled by hooks/MuninnDB)
 # The context-check-throttled hook monitors usage automatically.
 # For manual checks, read the zone from STATE.md or bridge:
-ZONE=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=context_zone 2>/dev/null | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.value || 'peak')" 2>/dev/null || echo "peak")
+ZONE=$(luca-bridge read-field --field=context_zone 2>/dev/null | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.value || 'peak')" 2>/dev/null || echo "peak")
 \`\`\`
 
 **If zone is "stop"** (context exhaustion imminent):
@@ -689,7 +689,7 @@ ZONE=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=co
 
 \`\`\`bash
 # Suspend with checkpoint via bridge
-bun run packages/luca-framework/src/state/bridge.ts suspend \\
+luca-bridge suspend \\
   --phase={phase_number} \\
   --reason=context_exhaustion \\
   --wave={current_wave_index} \\
@@ -735,7 +735,7 @@ At the start of phase execution, check for an existing suspend checkpoint:
 
 \`\`\`bash
 # Check for suspend checkpoint
-CHECKPOINT_EXISTS=$(bun run packages/luca-framework/src/state/bridge.ts resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
+CHECKPOINT_EXISTS=$(luca-bridge resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
 \`\`\`
 
 If a checkpoint exists:
@@ -769,7 +769,7 @@ Apply the reassessment logic from \`src/complexity/__helpers/reassessment.ts\`:
 
 - Call \`shouldPromoteComplexity()\` with signals: \`{ files_touched: $FILES_TOUCHED, iteration_budget_ratio: 0, stall_detected: false, error_count: 0, current_level: $COMPLEXITY }\` and \`alreadyPromoted: $ALREADY_PROMOTED\`.
 - If \`should_promote\` is true:
-  1. Update state via bridge: \`bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value='"$NEW_LEVEL"'\`
+  1. Update state via bridge: \`luca-bridge set-field --field=complexity --value='"$NEW_LEVEL"'\`
   2. Update local variable: \`COMPLEXITY="$NEW_LEVEL"\`
   3. Set \`ALREADY_PROMOTED=true\`
   4. Log to MuninnDB session: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [COMPLEXITY-PROMOTED] $REASON")\`
@@ -937,7 +937,7 @@ Read iteration configuration:
 
 \`\`\`bash
 # Primary: Read complexity from state machine bridge
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 # Fallback: grep STATE.md directly
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -1244,7 +1244,7 @@ First, read the required context:
 PHASE_DIR=".planning/phases/{phase_number}-*"
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 # Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \\;)
@@ -2255,7 +2255,7 @@ This file persists reviewer findings across context compaction. It is referenced
 Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — the machine transitions to \`learning\` state and expects LEARN_COMPLETE before committing.
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
+luca-bridge transition --event=VERIFY_PASSED 2>/dev/null || true
 \`\`\`
 
 Also update STATE.md directly for backward compatibility.
@@ -2285,7 +2285,7 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 Signal commit complete via bridge (after the actual commit succeeds):
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=COMMIT_COMPLETE 2>/dev/null || true
 \`\`\`
 
 ### 12. User Acceptance Testing (UAT)

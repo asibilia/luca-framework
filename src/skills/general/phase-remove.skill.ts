@@ -36,7 +36,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
    \\\`\\\`\\\`bash
    # Primary: Read state from bridge
-   STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+   STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
    # Fallback: Read STATE.md directly
    STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
    \\\`\\\`\\\`
@@ -88,7 +88,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
     \\\`\\\`\\\`bash
     # Primary: Regenerate STATE.md from state machine (reflects roadmap changes)
-    bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+    luca-bridge snapshot 2>/dev/null || true
     # Fallback: Manually update total phase count and progress percentage in STATE.md
     \\\`\\\`\\\`
 

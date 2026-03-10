@@ -28,6 +28,9 @@
     "commit": "bunx --bun @alecsibilia/commit",
     "css:observer": "bun run --filter @alecsibilia/luca-observer css:build",
     "dev:observer": "bun run --filter @alecsibilia/luca-observer dev",
+    "deploy": "bun run ./scripts/deploy-global.ts",
+    "deploy:copy": "bun run ./scripts/deploy-global.ts --copy",
+    "deploy:remove": "bun run ./scripts/deploy-global.ts --remove",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts"
   },
   "type": "module",

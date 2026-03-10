@@ -41,6 +41,8 @@ export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
+guard_dedup "context-check-throttled"
+
 # --- Throttle check ---
 PROJECT_HASH=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
 THROTTLE_FILE="/tmp/.luca-context-check-${PROJECT_HASH}-ts"

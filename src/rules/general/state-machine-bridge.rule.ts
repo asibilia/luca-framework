@@ -22,7 +22,7 @@ const stateMachineBridgeConfig: RuleConfig = {
 
 ## Overview
 
-Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the primary source of truth for workflow state. The bridge CLI (\`packages/luca-framework/src/state/bridge.ts\`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
+Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the primary source of truth for workflow state. The bridge CLI (\`luca-bridge\`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
 
 ## Bridge CLI Commands
 
@@ -64,7 +64,7 @@ Always use the bridge as primary, with STATE.md fallback:
 
 \\\`\\\`\\\`bash
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \\\`\\\`\\\`
@@ -73,7 +73,7 @@ STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 
 \\\`\\\`\\\`bash
 # Primary: Read complexity from bridge
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 # Fallback: grep STATE.md directly
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -84,7 +84,7 @@ fi
 
 \\\`\\\`\\\`bash
 # Primary: Transition via bridge (updates state machine + STATE.md)
-bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+luca-bridge transition complete-phase 2>/dev/null || true
 # STATE.md is also updated directly for backward compatibility
 \\\`\\\`\\\`
 
@@ -92,7 +92,7 @@ bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>
 
 \\\`\\\`\\\`bash
 # Primary: Initialize via bridge
-bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
+luca-bridge ensure-init 2>/dev/null || true
 # Fallback: Create STATE.md directly
 cat > .planning/STATE.md << 'EOF'
 ...

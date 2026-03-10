@@ -51,7 +51,7 @@ This means a milestone was completed and archived. Go to **Route F** (between mi
 
 \`\`\`bash
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`

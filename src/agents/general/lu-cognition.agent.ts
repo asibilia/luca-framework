@@ -191,7 +191,7 @@ Before recalling memory, resolve the target agent's cognition tier.
 3. **Read current complexity from bridge (falls back to STATE.md):**
    \`\`\`bash
    # Primary: Read complexity from state machine bridge
-   COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
+   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
    # Fallback: grep STATE.md directly
    if [ -z "$COMPLEXITY" ] || [ "$COMPLEXITY" = "undefined" ]; then
      COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")

@@ -87,8 +87,8 @@ If `--complexity=<level>` was passed, use that level directly. Write it via the 
 
 ```bash
 # Primary: Set complexity via bridge (updates state machine + STATE.md)
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+luca-bridge set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true
+luca-bridge snapshot 2>/dev/null || true
 # Fallback: Update STATE.md directly if bridge unavailable
 ```
 
@@ -189,7 +189,7 @@ If `--complexity=<level>` is passed:
 1. Skip lu-router classification
 2. Use the specified level directly
 3. Look up gated steps from the complexity matrix in config.json
-4. Persist via bridge: `bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true`
+4. Persist via bridge: `luca-bridge set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true`
 
 If `--force-complex` is passed (backward compatibility):
 - Equivalent to `--complexity=COMPLEX`

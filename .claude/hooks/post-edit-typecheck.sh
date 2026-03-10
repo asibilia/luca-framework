@@ -38,6 +38,8 @@ export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
+guard_dedup "post-edit-typecheck"
+
 # Read stdin JSON (may be empty for some platforms)
 INPUT=$(cat || true)
 

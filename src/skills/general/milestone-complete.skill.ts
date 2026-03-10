@@ -149,7 +149,7 @@ When updating state during milestone completion, use the bridge CLI as primary w
 
 \`\`\`bash
 # Read current state
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
@@ -158,10 +158,10 @@ After archiving the milestone, reset state for the next milestone:
 
 \`\`\`bash
 # Reset state machine for next milestone
-bun run packages/luca-framework/src/state/bridge.ts transition --event=RESET 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts ensure-init --force 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+luca-bridge transition --event=RESET 2>/dev/null || true
+luca-bridge ensure-init --force 2>/dev/null || true
+luca-bridge set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
+luca-bridge snapshot 2>/dev/null || true
 # Fallback: Update STATE.md directly if bridge unavailable
 \`\`\`
 
@@ -421,14 +421,14 @@ No acceptance criteria. No deliverables required.
   If the metric does not exist yet, create it with \`muninn_remember\`.
 - Set cooldown reason via bridge:
   \`\`\`bash
-  bun run packages/luca-framework/src/state/bridge.ts set-field \\
+  luca-bridge set-field \\
     --field=cooldown_reason \\
     --value='"Divergent mode: {N} consecutive milestones completed"' \\
     2>/dev/null || true
   \`\`\`
 - Emit COOLDOWN_COMPLETE via bridge to transition complete -> cooldown:
   \`\`\`bash
-  bun run packages/luca-framework/src/state/bridge.ts transition \\
+  luca-bridge transition \\
     --event=COOLDOWN_COMPLETE 2>/dev/null || true
   \`\`\`
 - Display: "Entering divergent mode. When ready to return, start a new session."
@@ -445,7 +445,7 @@ No acceptance criteria. No deliverables required.
   If the metric does not exist yet, create it with \`muninn_remember\`.
 - Emit SKIP_COOLDOWN via bridge to transition complete -> idle:
   \`\`\`bash
-  bun run packages/luca-framework/src/state/bridge.ts transition \\
+  luca-bridge transition \\
     --event=SKIP_COOLDOWN 2>/dev/null || true
   \`\`\`
 - Proceed to Step 9.
@@ -455,7 +455,7 @@ No acceptance criteria. No deliverables required.
 If \`consecutive_milestones < 8\`: do not show the nudge. Silently emit SKIP_COOLDOWN:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition \\
+luca-bridge transition \\
   --event=SKIP_COOLDOWN 2>/dev/null || true
 \`\`\`
 

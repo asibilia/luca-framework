@@ -64,7 +64,7 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 \`\`\`bash
 CONFIG=$(cat .planning/config.json 2>/dev/null || echo '{}')
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ROADMAP=$(cat .planning/ROADMAP.md 2>/dev/null || echo "")
@@ -135,7 +135,7 @@ Task(
 Transition state machine from idle to preflight:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=START 2>/dev/null || true
+luca-bridge transition --event=START 2>/dev/null || true
 \`\`\`
 
 \`\`\`
@@ -154,7 +154,7 @@ Swarm:         {SWARM_ENABLED} (max {MAX_PARALLEL} parallel)
 After cognitive pre-flight completes, transition to routing:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
 \`\`\``,
       order: 2,
     },
@@ -525,7 +525,7 @@ Read state from bridge (with STATE.md fallback) and check for existing GitHub is
 
 \\\`\\\`\\\`bash
 # Primary: Read state from bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Check github_issue field from JSON; fallback: grep STATE.md
 \\\`\\\`\\\`
 
@@ -553,9 +553,9 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
    \`\`\`
 7. Update state via bridge:
    \\\`\\\`\\\`bash
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+   luca-bridge set-field --field=github_issue --value={issue_number} 2>/dev/null || true
+   luca-bridge set-field --field=branch --value="{branch_name}" 2>/dev/null || true
+   luca-bridge snapshot 2>/dev/null || true
    # Fallback: Update STATE.md directly
    \\\`\\\`\\\`
 
@@ -717,7 +717,7 @@ Task(
 Write complexity via bridge (transitions state machine from routing to planning/discussing):
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
+luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
 \`\`\`
 
 ### 4d. Discussion (Always Runs)
@@ -731,7 +731,7 @@ Skill(skill: "phase-discuss", args: "{phase_number}")
 Transition state machine after discussion:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=DISCUSS_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 \`\`\`
 
 ### 4e. Planning
@@ -758,7 +758,7 @@ If PLAN_COUNT > 0: skip planning (plans already exist).
 Transition state machine to executing:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=PLAN_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 \`\`\`
 
 ### 4f. Execution
@@ -1047,7 +1047,7 @@ After all executors in this level complete (or are marked failed/timed out):
 4. Add failed/timed-out phases to PARKED_PHASES with reasons
 5. Update state via bridge:
    \`\`\`bash
-   bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
+   luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
    \`\`\`
 6. Log to MuninnDB session memory via muninn_remember
 
@@ -1311,13 +1311,13 @@ Duration:   {session duration}
 1. Update state via bridge (falls back to STATE.md):
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=COMMIT_COMPLETE 2>/dev/null || true
 \`\`\`
 
 2. Regenerate STATE.md via bridge snapshot:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+luca-bridge snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 \`\`\`
 

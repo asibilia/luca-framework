@@ -14,7 +14,7 @@
  * - COMPLEXITY_LEVELS, ModelId, ModelTier, MODEL_TIER_TO_MODEL:
  *     packages/luca-framework/src/state/utils/complexity-utils.ts
  * - SETTABLE_FIELDS:
- *     packages/luca-framework/src/state/bridge.ts
+ *     luca-bridge CLI (source: packages/luca-framework/src/state/bridge.ts)
  * - STATE_FILE_PATH:
  *     packages/luca-framework/src/state/persistence.ts
  *
