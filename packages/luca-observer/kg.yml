@@ -1,0 +1,104 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e128]:
+    - generic [ref=e131]: luca-observer
+    - button "Toggle sidebar" [ref=e132]: Skip to navigation
+    - navigation "Main navigation" [ref=e133]:
+      - link "Dashboard" [ref=e134] [cursor=pointer]:
+        - /url: /
+        - img [ref=e135]
+        - generic [ref=e140]: Dashboard
+      - link "Sessions" [ref=e141] [cursor=pointer]:
+        - /url: /sessions
+        - img [ref=e142]
+        - generic [ref=e144]: Sessions
+      - link "Memory" [ref=e145] [cursor=pointer]:
+        - /url: /memory
+        - img [ref=e146]
+        - generic [ref=e154]: Memory
+      - link "Learning" [ref=e155] [cursor=pointer]:
+        - /url: /learning
+        - img [ref=e156]
+        - generic [ref=e158]: Learning
+      - link "Vault" [ref=e159] [cursor=pointer]:
+        - /url: /vault
+        - img [ref=e160]
+        - generic [ref=e164]: Vault
+      - link "Knowledge Graph" [ref=e165] [cursor=pointer]:
+        - /url: /knowledge-graph
+        - img [ref=e166]
+        - generic [ref=e171]: Knowledge Graph
+      - link "Semantic Search" [ref=e172] [cursor=pointer]:
+        - /url: /semantic-search
+        - img [ref=e173]
+        - generic [ref=e176]: Semantic Search
+      - link "Decisions" [ref=e177] [cursor=pointer]:
+        - /url: /decisions
+        - img [ref=e178]
+        - generic [ref=e182]: Decisions
+      - link "Contradictions" [ref=e183] [cursor=pointer]:
+        - /url: /contradictions
+        - img [ref=e184]
+        - generic [ref=e186]: Contradictions
+      - link "Entities" [ref=e187] [cursor=pointer]:
+        - /url: /entities
+        - img [ref=e188]
+        - generic [ref=e197]: Entities
+    - paragraph [ref=e199]: v0.1.0
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - button "Toggle sidebar" [expanded] [ref=e77]:
+        - img [ref=e200]
+      - button "Switch to light mode" [pressed] [ref=e82]:
+        - img [ref=e83]
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - heading "Knowledge Graph" [level=1] [ref=e93]
+            - paragraph [ref=e94]: MuninnDB Entity Explorer
+          - generic [ref=e96]:
+            - generic [ref=e203]: "Last updated: just now"
+            - button "Reset" [ref=e97]
+            - button "Refresh" [ref=e204]
+        - generic [ref=e99]:
+          - generic [ref=e205]:
+            - generic [ref=e206]: 26 entities, 40 relationships
+            - generic [ref=e207]: Showing 5 nodes, 3 links
+          - generic [ref=e209]:
+            - generic [ref=e214]:
+              - button "Other 15" [ref=e215]:
+                - generic [ref=e217]: Other
+                - generic [ref=e218]: "15"
+              - button "Patterns 4" [ref=e219]:
+                - generic [ref=e221]: Patterns
+                - generic [ref=e222]: "4"
+              - button "Pitfalls 3" [ref=e223]:
+                - generic [ref=e225]: Pitfalls
+                - generic [ref=e226]: "3"
+              - button "Sessions 3" [ref=e227]:
+                - generic [ref=e229]: Sessions
+                - generic [ref=e230]: "3"
+              - button "Decisions 1" [ref=e231]:
+                - generic [ref=e233]: Decisions
+                - generic [ref=e234]: "1"
+            - generic [ref=e235]:
+              - button "Zoom In" [ref=e236]:
+                - img [ref=e237]
+              - button "Zoom Out" [ref=e240]:
+                - img [ref=e241]
+              - button "Fit to View" [ref=e245]:
+                - img [ref=e246]
+              - button "Reset Layout" [ref=e251]:
+                - img [ref=e252]
+              - button "Expand All" [ref=e256]:
+                - img [ref=e257]
+            - generic [ref=e263]:
+              - generic [ref=e285]:
+                - slider "Time range start": "1773080575"
+                - slider "Time range end": "1773100741"
+              - generic [ref=e288]:
+                - generic [ref=e289]: Mar 9
+                - generic [ref=e290]: Mar 9
+  - button "Open Next.js Dev Tools" [ref=e296] [cursor=pointer]:
+    - img [ref=e297]
+  - alert [ref=e300]

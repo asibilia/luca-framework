@@ -1,0 +1,273 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e135]:
+    - generic [ref=e138]: luca-observer
+    - button "Toggle sidebar" [ref=e139]: Skip to navigation
+    - navigation "Main navigation" [ref=e140]:
+      - link "Dashboard" [ref=e141] [cursor=pointer]:
+        - /url: /
+        - img [ref=e142]
+        - generic [ref=e147]: Dashboard
+      - link "Sessions" [ref=e148] [cursor=pointer]:
+        - /url: /sessions
+        - img [ref=e149]
+        - generic [ref=e151]: Sessions
+      - link "Memory" [ref=e152] [cursor=pointer]:
+        - /url: /memory
+        - img [ref=e153]
+        - generic [ref=e161]: Memory
+      - link "Learning" [ref=e162] [cursor=pointer]:
+        - /url: /learning
+        - img [ref=e163]
+        - generic [ref=e165]: Learning
+      - link "Vault" [ref=e166] [cursor=pointer]:
+        - /url: /vault
+        - img [ref=e167]
+        - generic [ref=e171]: Vault
+      - link "Knowledge Graph" [ref=e172] [cursor=pointer]:
+        - /url: /knowledge-graph
+        - img [ref=e173]
+        - generic [ref=e178]: Knowledge Graph
+      - link "Semantic Search" [ref=e179] [cursor=pointer]:
+        - /url: /semantic-search
+        - img [ref=e180]
+        - generic [ref=e183]: Semantic Search
+      - link "Decisions" [ref=e184] [cursor=pointer]:
+        - /url: /decisions
+        - img [ref=e185]
+        - generic [ref=e189]: Decisions
+      - link "Contradictions" [ref=e190] [cursor=pointer]:
+        - /url: /contradictions
+        - img [ref=e191]
+        - generic [ref=e193]: Contradictions
+      - link "Entities" [ref=e194] [cursor=pointer]:
+        - /url: /entities
+        - img [ref=e195]
+        - generic [ref=e204]: Entities
+    - paragraph [ref=e206]: v0.1.0
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - button "Toggle sidebar" [expanded] [ref=e77]:
+        - img [ref=e207]
+      - button "Switch to light mode" [pressed] [ref=e82]:
+        - img [ref=e83]
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - heading "Learning" [level=1] [ref=e93]
+            - paragraph [ref=e94]: Learning Evolution
+          - generic [ref=e96]:
+            - generic [ref=e210]: "Last updated: just now"
+            - button "Refresh" [ref=e211]
+        - generic [ref=e98]:
+          - generic [ref=e212]:
+            - generic [ref=e213]:
+              - paragraph [ref=e214]: Total
+              - paragraph [ref=e215]: "20"
+            - generic [ref=e216]:
+              - paragraph [ref=e217]: Patterns
+              - paragraph [ref=e218]: "2"
+            - generic [ref=e219]:
+              - paragraph [ref=e220]: Decisions
+              - paragraph [ref=e221]: "1"
+            - generic [ref=e222]:
+              - paragraph [ref=e223]: Pitfalls
+              - paragraph [ref=e224]: "1"
+            - generic [ref=e225]:
+              - paragraph [ref=e226]: Preferences
+              - paragraph [ref=e227]: "0"
+          - generic [ref=e228]:
+            - generic [ref=e229]:
+              - paragraph [ref=e230]: Learning Timeline
+              - paragraph [ref=e231]: Engrams over time
+            - generic [ref=e232]:
+              - 'generic "Mar 9: 20 engrams" [ref=e234]'
+              - generic [ref=e242]: Mar 9
+            - generic [ref=e244]:
+              - generic [ref=e247]: Pattern
+              - generic [ref=e250]: Decision
+              - generic [ref=e253]: Pitfall
+              - generic [ref=e256]: Uncategorized
+          - generic [ref=e257]:
+            - paragraph [ref=e259]: Category Breakdown
+            - generic [ref=e260]:
+              - generic [ref=e261]:
+                - generic [ref=e262]: Uncategorized
+                - generic [ref=e265]: "16"
+              - generic [ref=e266]:
+                - generic [ref=e267]: Patterns
+                - generic [ref=e270]: "2"
+              - generic [ref=e271]:
+                - generic [ref=e272]: Decisions
+                - generic [ref=e275]: "1"
+              - generic [ref=e276]:
+                - generic [ref=e277]: Pitfalls
+                - generic [ref=e280]: "1"
+          - generic [ref=e281]:
+            - generic [ref=e282]:
+              - paragraph [ref=e283]: Recent Learnings
+              - generic [ref=e284]: 20 engrams
+            - generic [ref=e285]:
+              - 'button "shadcn init - luca-observer package configuration Other The `shadcn init` command created a comprehensive theming and component system for luca-observer (Next.js 15 app). KEY ... 53m ago" [ref=e287]':
+                - generic [ref=e288]:
+                  - generic [ref=e289]:
+                    - generic [ref=e290]:
+                      - paragraph [ref=e291]: shadcn init - luca-observer package configuration
+                      - generic [ref=e292]: Other
+                    - paragraph [ref=e293]: "The `shadcn init` command created a comprehensive theming and component system for luca-observer (Next.js 15 app). KEY ..."
+                  - generic [ref=e294]: 53m ago
+              - button "v3.3.0 milestone completed Other Luca Framework v3.3.0 (Cognitive Maturity & Observer Depth) completed 2026-03-09. 6 phases, 12 plans, 80 commits, 44 TS/... 1h ago" [ref=e296]:
+                - generic [ref=e297]:
+                  - generic [ref=e298]:
+                    - generic [ref=e299]:
+                      - paragraph [ref=e300]: v3.3.0 milestone completed
+                      - generic [ref=e301]: Other
+                    - paragraph [ref=e302]: Luca Framework v3.3.0 (Cognitive Maturity & Observer Depth) completed 2026-03-09. 6 phases, 12 plans, 80 commits, 44 TS/...
+                  - generic [ref=e303]: 1h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:37:14.375Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 4h ago" [ref=e305]':
+                - generic [ref=e306]:
+                  - generic [ref=e307]:
+                    - generic [ref=e308]:
+                      - paragraph [ref=e309]: emit:state:transition
+                      - generic [ref=e310]: Other
+                    - paragraph [ref=e311]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:37:14.375Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e312]: 4h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:19:24.347Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 4h ago" [ref=e314]':
+                - generic [ref=e315]:
+                  - generic [ref=e316]:
+                    - generic [ref=e317]:
+                      - paragraph [ref=e318]: emit:state:transition
+                      - generic [ref=e319]: Other
+                    - paragraph [ref=e320]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:19:24.347Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e321]: 4h ago
+              - 'button "procedure:extend-widely-consumed-schema Other Procedure for adding new optional infrastructure to a Zod schema consumed by many files. Trigger: Need to add a new fie... 4h ago" [ref=e323]':
+                - generic [ref=e324]:
+                  - generic [ref=e325]:
+                    - generic [ref=e326]:
+                      - paragraph [ref=e327]: procedure:extend-widely-consumed-schema
+                      - generic [ref=e328]: Other
+                    - paragraph [ref=e329]: "Procedure for adding new optional infrastructure to a Zod schema consumed by many files. Trigger: Need to add a new fie..."
+                  - generic [ref=e330]: 4h ago
+              - 'button "module-scoped-map-cache Pattern For session-scoped caching in the Luca framework, use the module-scoped Map pattern: a Map instance declared at module s... 4h ago" [ref=e332]':
+                - generic [ref=e333]:
+                  - generic [ref=e334]:
+                    - generic [ref=e335]:
+                      - paragraph [ref=e336]: module-scoped-map-cache
+                      - generic [ref=e337]: Pattern
+                    - paragraph [ref=e338]: "For session-scoped caching in the Luca framework, use the module-scoped Map pattern: a Map instance declared at module s..."
+                  - generic [ref=e339]: 4h ago
+              - button "lu-cognition-prompt-template-not-executable Decision lu-cognition agent files are prompt templates (Markdown with YAML frontmatter), NOT executable TypeScript. Changes to lu... 4h ago" [ref=e341]:
+                - generic [ref=e342]:
+                  - generic [ref=e343]:
+                    - generic [ref=e344]:
+                      - paragraph [ref=e345]: lu-cognition-prompt-template-not-executable
+                      - generic [ref=e346]: Decision
+                    - paragraph [ref=e347]: lu-cognition agent files are prompt templates (Markdown with YAML frontmatter), NOT executable TypeScript. Changes to lu...
+                  - generic [ref=e348]: 4h ago
+              - button "zod-optional-vs-default-agent-schemas Pitfall When adding a new boolean field to a Zod schema used by z.infer<> across many files (e.g., CognitionConfig consumed by 3... 4h ago" [ref=e350]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]:
+                    - generic [ref=e353]:
+                      - paragraph [ref=e354]: zod-optional-vs-default-agent-schemas
+                      - generic [ref=e355]: Pitfall
+                    - paragraph [ref=e356]: When adding a new boolean field to a Zod schema used by z.infer<> across many files (e.g., CognitionConfig consumed by 3...
+                  - generic [ref=e357]: 4h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:15:26.623Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 4h ago" [ref=e359]':
+                - generic [ref=e360]:
+                  - generic [ref=e361]:
+                    - generic [ref=e362]:
+                      - paragraph [ref=e363]: emit:state:transition
+                      - generic [ref=e364]: Other
+                    - paragraph [ref=e365]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:15:26.623Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e366]: 4h ago
+              - 'button "cache-first-deferred-recall Pattern Deferred/lazy recall pattern for MuninnDB memory in skills: instead of eagerly recalling all memory at session start (ex... 4h ago" [ref=e368]':
+                - generic [ref=e369]:
+                  - generic [ref=e370]:
+                    - generic [ref=e371]:
+                      - paragraph [ref=e372]: cache-first-deferred-recall
+                      - generic [ref=e373]: Pattern
+                    - paragraph [ref=e374]: "Deferred/lazy recall pattern for MuninnDB memory in skills: instead of eagerly recalling all memory at session start (ex..."
+                  - generic [ref=e375]: 4h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:14:58.924Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 4h ago" [ref=e377]':
+                - generic [ref=e378]:
+                  - generic [ref=e379]:
+                    - generic [ref=e380]:
+                      - paragraph [ref=e381]: emit:state:transition
+                      - generic [ref=e382]: Other
+                    - paragraph [ref=e383]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:14:58.924Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e384]: 4h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:14:27.470Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 4h ago" [ref=e386]':
+                - generic [ref=e387]:
+                  - generic [ref=e388]:
+                    - generic [ref=e389]:
+                      - paragraph [ref=e390]: emit:state:transition
+                      - generic [ref=e391]: Other
+                    - paragraph [ref=e392]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T20:14:27.470Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e393]: 4h ago
+              - 'button "MuninnDB memory orphan investigation findings Other Traced complete MuninnDB memory write path across Luca framework. Found critical gap: 86% memory orphans because links a... 4h ago" [ref=e395]':
+                - generic [ref=e396]:
+                  - generic [ref=e397]:
+                    - generic [ref=e398]:
+                      - paragraph [ref=e399]: MuninnDB memory orphan investigation findings
+                      - generic [ref=e400]: Other
+                    - paragraph [ref=e401]: "Traced complete MuninnDB memory write path across Luca framework. Found critical gap: 86% memory orphans because links a..."
+                  - generic [ref=e402]: 4h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:35:44.633Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 5h ago" [ref=e404]':
+                - generic [ref=e405]:
+                  - generic [ref=e406]:
+                    - generic [ref=e407]:
+                      - paragraph [ref=e408]: emit:state:transition
+                      - generic [ref=e409]: Other
+                    - paragraph [ref=e410]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:35:44.633Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e411]: 5h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:35:33.685Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 5h ago" [ref=e413]':
+                - generic [ref=e414]:
+                  - generic [ref=e415]:
+                    - generic [ref=e416]:
+                      - paragraph [ref=e417]: emit:state:transition
+                      - generic [ref=e418]: Other
+                    - paragraph [ref=e419]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:35:33.685Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e420]: 5h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:34:34.015Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 5h ago" [ref=e422]':
+                - generic [ref=e423]:
+                  - generic [ref=e424]:
+                    - generic [ref=e425]:
+                      - paragraph [ref=e426]: emit:state:transition
+                      - generic [ref=e427]: Other
+                    - paragraph [ref=e428]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:34:34.015Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e429]: 5h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:14:28.044Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 5h ago" [ref=e431]':
+                - generic [ref=e432]:
+                  - generic [ref=e433]:
+                    - generic [ref=e434]:
+                      - paragraph [ref=e435]: emit:state:transition
+                      - generic [ref=e436]: Other
+                    - paragraph [ref=e437]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:14:28.044Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e438]: 5h ago
+              - 'button "emit:state:transition Other {\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:14:25.946Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a... 5h ago" [ref=e440]':
+                - generic [ref=e441]:
+                  - generic [ref=e442]:
+                    - generic [ref=e443]:
+                      - paragraph [ref=e444]: emit:state:transition
+                      - generic [ref=e445]: Other
+                    - paragraph [ref=e446]: "{\"event_type\":\"state:transition\",\"timestamp\":\"2026-03-09T19:14:25.946Z\",\"session_id\":\"fc759ad3-6102-4681-9b0c-738bbed69a..."
+                  - generic [ref=e447]: 5h ago
+              - button "session:info Other workflow=phase-plan, phase=02, phase_name=adaptive-complexity-self-tuning, started=2026-03-09, milestone=v3.3.0 6h ago" [ref=e449]:
+                - generic [ref=e450]:
+                  - generic [ref=e451]:
+                    - generic [ref=e452]:
+                      - paragraph [ref=e453]: session:info
+                      - generic [ref=e454]: Other
+                    - paragraph [ref=e455]: workflow=phase-plan, phase=02, phase_name=adaptive-complexity-self-tuning, started=2026-03-09, milestone=v3.3.0
+                  - generic [ref=e456]: 6h ago
+              - button "session:info Other workflow=phase-plan, phase=10, phase_name=convention-alignment-hardening, started=2026-03-09, milestone=v3.3.0, addition... 9h ago" [ref=e458]:
+                - generic [ref=e459]:
+                  - generic [ref=e460]:
+                    - generic [ref=e461]:
+                      - paragraph [ref=e462]: session:info
+                      - generic [ref=e463]: Other
+                    - paragraph [ref=e464]: workflow=phase-plan, phase=10, phase_name=convention-alignment-hardening, started=2026-03-09, milestone=v3.3.0, addition...
+                  - generic [ref=e465]: 9h ago
+  - button "Open Next.js Dev Tools" [ref=e471] [cursor=pointer]:
+    - img [ref=e472]
+  - alert [ref=e475]

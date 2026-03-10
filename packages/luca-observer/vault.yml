@@ -1,0 +1,132 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e150]:
+    - generic [ref=e153]: luca-observer
+    - button "Toggle sidebar" [ref=e154]: Skip to navigation
+    - navigation "Main navigation" [ref=e155]:
+      - link "Dashboard" [ref=e156] [cursor=pointer]:
+        - /url: /
+        - img [ref=e157]
+        - generic [ref=e162]: Dashboard
+      - link "Sessions" [ref=e163] [cursor=pointer]:
+        - /url: /sessions
+        - img [ref=e164]
+        - generic [ref=e166]: Sessions
+      - link "Memory" [ref=e167] [cursor=pointer]:
+        - /url: /memory
+        - img [ref=e168]
+        - generic [ref=e176]: Memory
+      - link "Learning" [ref=e177] [cursor=pointer]:
+        - /url: /learning
+        - img [ref=e178]
+        - generic [ref=e180]: Learning
+      - link "Vault" [ref=e181] [cursor=pointer]:
+        - /url: /vault
+        - img [ref=e182]
+        - generic [ref=e186]: Vault
+      - link "Knowledge Graph" [ref=e187] [cursor=pointer]:
+        - /url: /knowledge-graph
+        - img [ref=e188]
+        - generic [ref=e193]: Knowledge Graph
+      - link "Semantic Search" [ref=e194] [cursor=pointer]:
+        - /url: /semantic-search
+        - img [ref=e195]
+        - generic [ref=e198]: Semantic Search
+      - link "Decisions" [ref=e199] [cursor=pointer]:
+        - /url: /decisions
+        - img [ref=e200]
+        - generic [ref=e204]: Decisions
+      - link "Contradictions" [ref=e205] [cursor=pointer]:
+        - /url: /contradictions
+        - img [ref=e206]
+        - generic [ref=e208]: Contradictions
+      - link "Entities" [ref=e209] [cursor=pointer]:
+        - /url: /entities
+        - img [ref=e210]
+        - generic [ref=e219]: Entities
+    - paragraph [ref=e221]: v0.1.0
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - button "Toggle sidebar" [expanded] [ref=e77]:
+        - img [ref=e222]
+      - button "Switch to light mode" [pressed] [ref=e82]:
+        - img [ref=e83]
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - heading "Vault" [level=1] [ref=e93]
+            - paragraph [ref=e94]: MuninnDB Vault Health
+          - generic [ref=e96]:
+            - generic [ref=e225]: "Last updated: just now"
+            - button "Refresh" [ref=e226]
+        - generic [ref=e98]:
+          - generic [ref=e227]:
+            - generic [ref=e228]:
+              - paragraph [ref=e229]: Engrams
+              - paragraph [ref=e230]: "78"
+            - generic [ref=e231]:
+              - paragraph [ref=e232]: Vaults
+              - paragraph [ref=e233]: "1"
+            - generic [ref=e234]:
+              - paragraph [ref=e235]: Index Size
+              - paragraph [ref=e236]: 1,277,952
+            - generic [ref=e237]:
+              - paragraph [ref=e238]: Storage
+              - paragraph [ref=e239]: 155.1 MB
+          - generic [ref=e240]:
+            - paragraph [ref=e242]: Coherence Metrics
+            - generic [ref=e245]:
+              - generic [ref=e246]:
+                - generic [ref=e247]: Score
+                - generic [ref=e248]: 71.2%
+              - generic [ref=e249]:
+                - generic [ref=e250]: Orphan Ratio
+                - generic [ref=e251]: 87.2%
+              - generic [ref=e252]:
+                - generic [ref=e253]: Contradiction Density
+                - generic [ref=e254]: "0.000"
+              - generic [ref=e255]:
+                - generic [ref=e256]: Duplication Pressure
+                - generic [ref=e257]: "0.128"
+              - generic [ref=e258]:
+                - generic [ref=e259]: Temporal Variance
+                - generic [ref=e260]: "0.005"
+              - generic [ref=e261]:
+                - generic [ref=e262]: Engrams
+                - generic [ref=e263]: "78"
+          - generic [ref=e264]:
+            - paragraph [ref=e266]: Engram Type Breakdown
+            - generic [ref=e267]:
+              - generic [ref=e268]:
+                - generic [ref=e269]: Other
+                - generic [ref=e272]: "13"
+              - generic [ref=e273]:
+                - generic [ref=e274]: Patterns
+                - generic [ref=e277]: "2"
+              - generic [ref=e278]:
+                - generic [ref=e279]: Session
+                - generic [ref=e282]: "2"
+              - generic [ref=e283]:
+                - generic [ref=e284]: Procedures
+                - generic [ref=e287]: "1"
+              - generic [ref=e288]:
+                - generic [ref=e289]: Decisions
+                - generic [ref=e292]: "1"
+              - generic [ref=e293]:
+                - generic [ref=e294]: Pitfalls
+                - generic [ref=e297]: "1"
+          - generic [ref=e298]:
+            - paragraph [ref=e300]: Storage Details
+            - generic [ref=e301]:
+              - generic [ref=e302]:
+                - generic [ref=e303]: Total Storage
+                - generic [ref=e304]: 155.1 MB
+              - generic [ref=e305]:
+                - generic [ref=e306]: Index Entries
+                - generic [ref=e307]: 1,277,952
+              - generic [ref=e308]:
+                - generic [ref=e309]: Avg Engram Size
+                - generic [ref=e310]: 2.0 MB
+  - button "Open Next.js Dev Tools" [ref=e316] [cursor=pointer]:
+    - img [ref=e317]
+  - alert [ref=e320]

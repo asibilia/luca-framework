@@ -116,9 +116,7 @@ export function useDecisionTrail(): DecisionTrailData {
 
     try {
       const [decisionRes] = await Promise.allSettled([
-        fetchJson<{ engrams: MuninnEngram[] }>(
-          "/api/muninn/engrams?type=decision&limit=200",
-        ),
+        fetchJson<{ engrams: MuninnEngram[] }>("/api/muninn/engrams?limit=200"),
       ]);
 
       // Check for 503 (MuninnDB not configured) -- degrade gracefully

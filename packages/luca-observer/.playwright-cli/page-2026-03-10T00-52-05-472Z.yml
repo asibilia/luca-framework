@@ -1,0 +1,67 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e112]:
+    - generic [ref=e115]: luca-observer
+    - button "Toggle sidebar" [ref=e116]: Skip to navigation
+    - navigation "Main navigation" [ref=e117]:
+      - link "Dashboard" [ref=e118] [cursor=pointer]:
+        - /url: /
+        - img [ref=e119]
+        - generic [ref=e124]: Dashboard
+      - link "Sessions" [ref=e125] [cursor=pointer]:
+        - /url: /sessions
+        - img [ref=e126]
+        - generic [ref=e128]: Sessions
+      - link "Memory" [ref=e129] [cursor=pointer]:
+        - /url: /memory
+        - img [ref=e130]
+        - generic [ref=e138]: Memory
+      - link "Learning" [ref=e139] [cursor=pointer]:
+        - /url: /learning
+        - img [ref=e140]
+        - generic [ref=e142]: Learning
+      - link "Vault" [ref=e143] [cursor=pointer]:
+        - /url: /vault
+        - img [ref=e144]
+        - generic [ref=e148]: Vault
+      - link "Knowledge Graph" [ref=e149] [cursor=pointer]:
+        - /url: /knowledge-graph
+        - img [ref=e150]
+        - generic [ref=e155]: Knowledge Graph
+      - link "Semantic Search" [ref=e156] [cursor=pointer]:
+        - /url: /semantic-search
+        - img [ref=e157]
+        - generic [ref=e160]: Semantic Search
+      - link "Decisions" [ref=e161] [cursor=pointer]:
+        - /url: /decisions
+        - img [ref=e162]
+        - generic [ref=e166]: Decisions
+      - link "Contradictions" [ref=e167] [cursor=pointer]:
+        - /url: /contradictions
+        - img [ref=e168]
+        - generic [ref=e170]: Contradictions
+      - link "Entities" [ref=e171] [cursor=pointer]:
+        - /url: /entities
+        - img [ref=e172]
+        - generic [ref=e181]: Entities
+    - paragraph [ref=e183]: v0.1.0
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - button "Toggle sidebar" [expanded] [ref=e77]:
+        - img [ref=e184]
+      - button "Switch to light mode" [pressed] [ref=e82]:
+        - img [ref=e83]
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - heading "Dashboard" [level=1] [ref=e93]
+          - paragraph [ref=e94]: Luca workflow observability
+        - generic [ref=e95]:
+          - paragraph [ref=e96]: Dashboard views are being rebuilt with MuninnDB data sources.
+          - link "View Memory Dashboard" [ref=e97] [cursor=pointer]:
+            - /url: /memory
+        - generic [ref=e187]:
+          - paragraph [ref=e188]: No Todos
+          - paragraph [ref=e189]: Todos tracked in .planning/todos/pending/ and .planning/todos/done/ will appear here.
+  - button "Open Next.js Dev Tools" [ref=e195] [cursor=pointer]:
+    - img [ref=e196]
+  - alert [ref=e199]
