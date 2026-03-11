@@ -85,7 +85,7 @@ src/{domain}/
 
 ## Four Dependency Tiers
 
-Import direction flows downward only. Tier N may import from tiers 0..N (same-tier allowed), never from N+1..3.
+Import direction flows downward only. Tier N may import from tiers 0..N-1. Same-tier imports (N to N) are permitted for T0 and T1; T2 entity domains are parallel and must never cross-import (see Entity Isolation in module-boundary rule).
 
 | Tier | Domains | Role |
 |------|---------|------|
