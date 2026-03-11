@@ -1,0 +1,89 @@
+[     610ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3456/favicon.ico:0
+[    4929ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[    5212ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[    5442ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[  508624ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[ 1184184ms] ReferenceError: useAtom is not defined
+    at Sidebar (webpack-internal:///(app-pages-browser)/./components/layout/sidebar.tsx:66:31)
+    at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)
+    at renderWithHooks (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6793:22)
+    at updateFunctionComponent (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:9247:19)
+    at beginWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:10858:18)
+    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)
+    at performUnitOfWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15727:22)
+    at workLoopSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15547:41)
+    at renderRootSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15527:11)
+    at performWorkOnRoot (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15034:44)
+    at performSyncWorkOnRoot (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16831:7)
+    at flushSyncWorkAcrossRoots_impl (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16677:21)
+    at flushSyncWork$1 (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15297:12)
+    at Object.scheduleRefresh (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:114:9)
+    at eval (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-refresh/cjs/react-refresh-runtime.development.js:265:17)
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-refresh/cjs/react-refresh-runtime.development.js:254:26)
+    at applyUpdate (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/@next/react-refresh-utils/dist/internal/helpers.js:139:31)
+    at statusHandler (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/@next/react-refresh-utils/dist/internal/helpers.js:156:13)
+    at setStatus (http://localhost:3456/_next/static/chunks/webpack.js?v=1773245621125:498:55)
+    at http://localhost:3456/_next/static/chunks/webpack.js?v=1773245621125:667:21
+[ 1184165ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:113
+[ 1184621ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/:0
+[ 1185128ms] ReferenceError: useAtom is not defined
+    at Sidebar (webpack-internal:///(app-pages-browser)/./components/layout/sidebar.tsx:66:31)
+    at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)
+    at renderWithHooks (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6793:22)
+    at updateFunctionComponent (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:9247:19)
+    at beginWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:10807:35)
+    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)
+    at performUnitOfWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15727:22)
+    at workLoopSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15547:41)
+    at renderRootSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15527:11)
+    at performWorkOnRoot (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15034:44)
+    at performWorkOnRootViaSchedulerTask (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16816:7)
+    at MessagePort.performWorkUntilDeadline (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/scheduler/cjs/scheduler.development.js:45:48)
+[ 1188190ms] [WARNING] The resource http://localhost:3456/_next/static/css/app/layout.css?v=1773246805506 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3456/:0
+[ 1203252ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:113
+[ 1208601ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[ 1208871ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[ 1209111ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[ 1262983ms] ReferenceError: SidebarFooter is not defined
+    at Sidebar (webpack-internal:///(app-pages-browser)/./components/layout/sidebar.tsx:199:89)
+    at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)
+    at renderWithHooks (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6793:22)
+    at updateFunctionComponent (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:9247:19)
+    at beginWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:10858:18)
+    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)
+    at performUnitOfWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15727:22)
+    at workLoopSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15547:41)
+    at renderRootSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15527:11)
+    at performWorkOnRoot (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15034:44)
+    at performSyncWorkOnRoot (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16831:7)
+    at flushSyncWorkAcrossRoots_impl (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16677:21)
+    at flushSyncWork$1 (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15297:12)
+    at Object.scheduleRefresh (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:114:9)
+    at eval (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-refresh/cjs/react-refresh-runtime.development.js:265:17)
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-refresh/cjs/react-refresh-runtime.development.js:254:26)
+    at applyUpdate (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/@next/react-refresh-utils/dist/internal/helpers.js:139:31)
+    at statusHandler (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/@next/react-refresh-utils/dist/internal/helpers.js:156:13)
+    at setStatus (http://localhost:3456/_next/static/chunks/webpack.js?v=1773246824442:498:55)
+    at http://localhost:3456/_next/static/chunks/webpack.js?v=1773246824442:667:21
+[ 1262984ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:113
+[ 1264343ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/:0
+[ 1264864ms] ReferenceError: SidebarFooter is not defined
+    at Sidebar (webpack-internal:///(app-pages-browser)/./components/layout/sidebar.tsx:199:89)
+    at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)
+    at renderWithHooks (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6793:22)
+    at updateFunctionComponent (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:9247:19)
+    at beginWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:10807:35)
+    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)
+    at performUnitOfWork (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15727:22)
+    at workLoopSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15547:41)
+    at renderRootSync (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15527:11)
+    at performWorkOnRoot (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15034:44)
+    at performWorkOnRootViaSchedulerTask (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16816:7)
+    at MessagePort.performWorkUntilDeadline (webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/compiled/scheduler/cjs/scheduler.development.js:45:48)
+[ 1267895ms] [WARNING] The resource http://localhost:3456/_next/static/css/app/layout.css?v=1773246885085 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3456/:0
+[ 1269252ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(app-pages-browser)/../../node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:113
+[ 1270729ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[ 1271009ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
+[ 1271268ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3456/api/todos:0
