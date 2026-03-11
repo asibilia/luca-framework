@@ -90,3 +90,49 @@ export const ScoredRecallResultSchema = z.object({
 });
 
 export type ScoredRecallResult = z.infer<typeof ScoredRecallResultSchema>;
+
+// ─── Raw Recall Result ────────────────────────────────────────────────────────
+
+/**
+ * Shape of a single result from MuninnDB recall.
+ *
+ * This is the input shape before composite scoring is applied.
+ * Represents external data from MuninnDB semantic recall.
+ *
+ * Uses snake_case for `created_at` to match MuninnDB's output format.
+ */
+export const RecallResultSchema = z.object({
+  /** MuninnDB engram ID. */
+  id: z.string(),
+  /** Concept key. */
+  concept: z.string(),
+  /** Full engram content. */
+  content: z.string(),
+  /** Raw relevance score from MuninnDB semantic recall (0.0-1.0). */
+  score: z.number(),
+  /** Tags attached to the engram. */
+  tags: z.array(z.string()).optional(),
+  /** ISO-8601 creation timestamp (if available). */
+  created_at: z.string().optional(),
+});
+
+export type RecallResult = z.infer<typeof RecallResultSchema>;
+
+// ─── Recall Scoring Context ───────────────────────────────────────────────────
+
+/**
+ * Scoring context derived from the current task/workflow state.
+ *
+ * Provides the contextual signals needed for composite recall scoring:
+ * task tags, current milestone, and target agent name.
+ */
+export const RecallScoringContextSchema = z.object({
+  /** Tags derived from the current task (keywords, phase tags, etc.). */
+  tags: z.array(z.string()).default([]),
+  /** Current milestone identifier (e.g. "v4.1.0"). */
+  milestone: z.string().default(""),
+  /** Name of the target/upcoming agent. */
+  agentName: z.string().default(""),
+});
+
+export type RecallScoringContext = z.infer<typeof RecallScoringContextSchema>;

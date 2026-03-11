@@ -120,12 +120,16 @@ export {
   RecallScoringWeightsSchema,
   ScoreBreakdownSchema,
   ScoredRecallResultSchema,
+  RecallResultSchema,
+  RecallScoringContextSchema,
 } from "./__schemas/recall-scoring.schemas";
 
 export type {
   RecallScoringWeights,
   ScoreBreakdown,
   ScoredRecallResult,
+  RecallResult,
+  RecallScoringContext,
 } from "./__schemas/recall-scoring.schemas";
 
 // Embedding-aware recall scoring
@@ -136,9 +140,4 @@ export {
   computeAgentMatch,
   computeRecencyScore,
   scoreRecallResults,
-} from "./__helpers/embedding-recall";
-
-export type {
-  RecallResult,
-  RecallScoringContext,
 } from "./__helpers/embedding-recall";

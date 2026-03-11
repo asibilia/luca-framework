@@ -23,6 +23,8 @@ import type {
   RecallScoringWeights,
   ScoreBreakdown,
   ScoredRecallResult,
+  RecallResult,
+  RecallScoringContext,
 } from "~/agents/__schemas/recall-scoring.schemas";
 
 // ---------------------------------------------------------------------------
@@ -227,46 +229,8 @@ export function computeFeedbackScore(content: string): number {
 }
 
 // ---------------------------------------------------------------------------
-// Raw recall result shape (what MuninnDB returns before scoring)
-// ---------------------------------------------------------------------------
-
-/**
- * Shape of a single result from MuninnDB recall.
- *
- * This is the input shape before composite scoring is applied.
- * We keep it as an interface (not a Zod schema) because it
- * represents external data that is already validated by MuninnDB.
- */
-export interface RecallResult {
-  /** MuninnDB engram ID. */
-  id: string;
-  /** Concept key. */
-  concept: string;
-  /** Full engram content. */
-  content: string;
-  /** Raw relevance score from MuninnDB semantic recall (0.0-1.0). */
-  score: number;
-  /** Tags attached to the engram. */
-  tags?: string[];
-  /** ISO-8601 creation timestamp (if available). */
-  created_at?: string;
-}
-
-// ---------------------------------------------------------------------------
 // Composite scorer
 // ---------------------------------------------------------------------------
-
-/**
- * Scoring context derived from the current task/workflow state.
- */
-export interface RecallScoringContext {
-  /** Tags derived from the current task (keywords, phase tags, etc.). */
-  tags: string[];
-  /** Current milestone identifier (e.g. "v4.1.0"). */
-  milestone: string;
-  /** Name of the target/upcoming agent. */
-  agentName: string;
-}
 
 /**
  * Score and rank a batch of MuninnDB recall results.
