@@ -38,12 +38,12 @@ const STATUS_CONFIG = {
   done: {
     icon: CheckCircle2,
     label: "Done",
-    colorClass: "text-emerald-500",
+    colorClass: "text-success",
   },
   completed: {
     icon: CheckCircle2,
     label: "Completed",
-    colorClass: "text-emerald-500",
+    colorClass: "text-success",
   },
 } as const satisfies Record<
   string,
@@ -321,7 +321,7 @@ function VelocityPanel({
           </p>
         </div>
         <div className="rounded-md border border-border bg-card p-2.5 text-center">
-          <p className="font-mono text-lg font-bold text-emerald-500">
+          <p className="font-mono text-lg font-bold text-success">
             {finishedCount}
           </p>
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
