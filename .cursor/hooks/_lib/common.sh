@@ -98,3 +98,29 @@ read_session_id() {
     } catch { process.stdout.write(''); }
   " 2>/dev/null || echo ""
 }
+
+# ─── guard_dedup() ─────────────────────────────────────────────────────────
+# Prevent double-firing when the same hook is registered at both global
+# (~/.claude/) and project (.claude/) levels. Uses a per-project, per-hook
+# timestamp file in /tmp with a configurable TTL window.
+#
+# Usage (at top of each hook script, after sourcing common.sh):
+#   guard_dedup "session-start" 5
+#
+# If a previous invocation for the same hook+project ran within TTL seconds,
+# exits 0 immediately (skip duplicate). Otherwise records timestamp and returns.
+# ──────────────────────────────────────────────────────────────────────────────
+guard_dedup() {
+  local hook_name="$1"
+  local ttl="${2:-5}"
+  local project_hash=$(printf '%s' "${CLAUDE_PROJECT_DIR:-.}" | shasum -a 256 | cut -c1-8)
+  local guard_file="/tmp/.luca-dedup-${hook_name}-${project_hash}"
+  if [ -f "$guard_file" ]; then
+    local last_run=$(cat "$guard_file" 2>/dev/null || echo "0")
+    local now=$(date +%s)
+    if [ $((now - last_run)) -lt "$ttl" ]; then
+      exit 0
+    fi
+  fi
+  date +%s > "$guard_file"
+}

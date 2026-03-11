@@ -220,6 +220,8 @@ export const preFlightSnapshotSchema = z.object({
   git_history: z.array(gitCommitSummarySchema).default([]),
   /** Import dependency graph edges */
   import_graph: z.array(importEdgeSchema).default([]),
+  /** Optional interop scanner summary of discovered agents */
+  agent_summaries: z.string().optional(),
   /** Timestamp of snapshot creation (ISO 8601) */
   created_at: z.string(),
 });

@@ -14,8 +14,6 @@
  */
 
 import { Glob } from "bun";
-import { readFileSync } from "node:fs";
-import { relative, dirname } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Domain tier assignments
@@ -29,6 +27,7 @@ const DOMAIN_TIER: Record<string, number> = {
   harness: 1,
   iteration: 1,
   observability: 1,
+  interop: 1,
   agents: 2,
   skills: 2,
   rules: 2,
@@ -42,23 +41,8 @@ const ENTITY_DOMAINS = new Set(["agents", "skills", "rules"]);
 // Known exceptions (source domain -> target domain)
 // ---------------------------------------------------------------------------
 
-const EXCEPTIONS: Array<{ source: string; target: string; reason: string }> = [
-  {
-    source: "shared",
-    target: "agents",
-    reason: "validation-utils references agent schemas",
-  },
-  {
-    source: "shared",
-    target: "skills",
-    reason: "validation-utils references skill schemas",
-  },
-  {
-    source: "shared",
-    target: "rules",
-    reason: "validation-utils references rule schemas",
-  },
-];
+const EXCEPTIONS: Array<{ source: string; target: string; reason: string }> =
+  [];
 
 function isException(sourceDomain: string, targetDomain: string): boolean {
   return EXCEPTIONS.some(
@@ -175,7 +159,7 @@ async function main(): Promise<void> {
     if (!sourceDomain || !(sourceDomain in DOMAIN_TIER)) continue;
 
     const fullPath = `${srcDir}/${filePath}`;
-    const content = readFileSync(fullPath, "utf-8");
+    const content = await Bun.file(fullPath).text();
     const imports = extractTildeImports(content);
 
     for (const importPath of imports) {

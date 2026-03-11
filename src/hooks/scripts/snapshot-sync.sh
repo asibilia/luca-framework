@@ -33,6 +33,8 @@ export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
+guard_dedup "snapshot-sync"
+
 # Drain stdin (standard hook pattern — consumed but not parsed)
 cat > /dev/null 2>&1 || true
 

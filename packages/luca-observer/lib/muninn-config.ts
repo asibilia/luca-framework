@@ -46,8 +46,27 @@ export type {
 };
 
 const MUNINN_BASE_URL = process.env.MUNINN_DB_URL ?? "http://127.0.0.1:8476";
-const MUNINN_API_KEY = process.env.MUNINN_DB_API_KEY ?? "";
 const MUNINN_TIMEOUT = 10_000;
+
+/**
+ * Resolve the API key for a specific MuninnDB vault.
+ *
+ * Lookup order:
+ * 1. `MUNINN_DB_<VAULT_SCREAMING_SNAKE>_API_KEY` (e.g., MUNINN_DB_PERCENT_UI_API_KEY)
+ * 2. `MUNINN_DB_API_KEY` (generic fallback)
+ * 3. Empty string (no auth — local development)
+ *
+ * @param vault - Vault name (e.g., "default", "percent-ui")
+ * @returns The resolved API key string
+ */
+function resolveVaultApiKey(vault?: string): string {
+  if (vault) {
+    const envKey = `MUNINN_DB_${vault.toUpperCase().replace(/-/g, "_")}_API_KEY`;
+    const vaultKey = process.env[envKey];
+    if (vaultKey) return vaultKey;
+  }
+  return process.env.MUNINN_DB_API_KEY ?? "";
+}
 
 // -- Response types unique to server-side ----------------------------------
 
@@ -143,14 +162,16 @@ export interface MuninnClient {
 async function muninnFetch(
   path: string,
   init?: RequestInit,
+  vault?: string,
 ): Promise<Response> {
   const url = `${MUNINN_BASE_URL}${path}`;
+  const apiKey = resolveVaultApiKey(vault);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
   };
-  if (MUNINN_API_KEY) {
-    headers["Authorization"] = `Bearer ${MUNINN_API_KEY}`;
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
   }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MUNINN_TIMEOUT);
@@ -170,16 +191,20 @@ function createMuninnClient(): MuninnClient {
     async listEngrams(vault, limit = 100, offset = 0, tags?) {
       let url = `/api/engrams?vault=${encodeURIComponent(vault)}&limit=${limit}&offset=${offset}`;
       if (tags) url += `&tags=${encodeURIComponent(tags)}`;
-      const res = await muninnFetch(url);
+      const res = await muninnFetch(url, undefined, vault);
       if (!res.ok) throw new Error(`MuninnDB engrams: ${res.status}`);
       return res.json();
     },
 
     async activate(vault, context, limit = 20) {
-      const res = await muninnFetch("/api/activate", {
-        method: "POST",
-        body: JSON.stringify({ vault, context, limit }),
-      });
+      const res = await muninnFetch(
+        "/api/activate",
+        {
+          method: "POST",
+          body: JSON.stringify({ vault, context, limit }),
+        },
+        vault,
+      );
       if (!res.ok) throw new Error(`MuninnDB activate: ${res.status}`);
       return res.json();
     },
@@ -187,6 +212,8 @@ function createMuninnClient(): MuninnClient {
     async stats(vault) {
       const res = await muninnFetch(
         `/api/stats?vault=${encodeURIComponent(vault)}`,
+        undefined,
+        vault,
       );
       if (!res.ok) throw new Error(`MuninnDB stats: ${res.status}`);
       return res.json();
@@ -195,6 +222,8 @@ function createMuninnClient(): MuninnClient {
     async session(vault, limit = 50) {
       const res = await muninnFetch(
         `/api/session?vault=${encodeURIComponent(vault)}&limit=${limit}`,
+        undefined,
+        vault,
       );
       if (!res.ok) throw new Error(`MuninnDB session: ${res.status}`);
       return res.json();
@@ -211,6 +240,8 @@ function createMuninnClient(): MuninnClient {
     async contradictions(vault) {
       const res = await muninnFetch(
         `/api/contradictions?vault=${encodeURIComponent(vault)}`,
+        undefined,
+        vault,
       );
       if (!res.ok) throw new Error(`MuninnDB contradictions: ${res.status}`);
       return res.json();
@@ -224,39 +255,51 @@ function createMuninnClient(): MuninnClient {
       followEntities = true,
       relTypes?,
     ) {
-      const res = await muninnFetch("/api/traverse", {
-        method: "POST",
-        body: JSON.stringify({
-          vault,
-          start_id: startId,
-          max_hops: maxHops,
-          max_nodes: maxNodes,
-          follow_entities: followEntities,
-          rel_types: relTypes,
-        }),
-      });
+      const res = await muninnFetch(
+        "/api/traverse",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            vault,
+            start_id: startId,
+            max_hops: maxHops,
+            max_nodes: maxNodes,
+            follow_entities: followEntities,
+            rel_types: relTypes,
+          }),
+        },
+        vault,
+      );
       if (!res.ok) throw new Error(`MuninnDB traverse: ${res.status}`);
       return res.json();
     },
 
     async explain(vault, engramId, query) {
-      const res = await muninnFetch("/api/explain", {
-        method: "POST",
-        body: JSON.stringify({
-          vault,
-          engram_id: engramId,
-          query,
-        }),
-      });
+      const res = await muninnFetch(
+        "/api/explain",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            vault,
+            engram_id: engramId,
+            query,
+          }),
+        },
+        vault,
+      );
       if (!res.ok) throw new Error(`MuninnDB explain: ${res.status}`);
       return res.json();
     },
 
     async forget(vault, id) {
-      const res = await muninnFetch("/api/forget", {
-        method: "POST",
-        body: JSON.stringify({ vault, id }),
-      });
+      const res = await muninnFetch(
+        "/api/forget",
+        {
+          method: "POST",
+          body: JSON.stringify({ vault, id }),
+        },
+        vault,
+      );
       if (!res.ok) throw new Error(`MuninnDB forget: ${res.status}`);
       return res.json();
     },
@@ -266,6 +309,8 @@ function createMuninnClient(): MuninnClient {
     async findByEntity(vault, entityName, limit = 50) {
       const res = await muninnFetch(
         `/api/engrams?vault=${encodeURIComponent(vault)}&tags=${encodeURIComponent(entityName)}&limit=${limit}`,
+        undefined,
+        vault,
       );
       if (!res.ok) throw new Error(`MuninnDB findByEntity: ${res.status}`);
       const data = (await res.json()) as {
@@ -286,6 +331,8 @@ function createMuninnClient(): MuninnClient {
     async entity(vault, name, limit = 20) {
       const engramsRes = await muninnFetch(
         `/api/engrams?vault=${encodeURIComponent(vault)}&tags=${encodeURIComponent(name)}&limit=${limit}`,
+        undefined,
+        vault,
       );
       if (!engramsRes.ok)
         throw new Error(`MuninnDB entity engrams: ${engramsRes.status}`);
@@ -299,6 +346,8 @@ function createMuninnClient(): MuninnClient {
         try {
           const linksRes = await muninnFetch(
             `/api/engrams/${engrams[0]!.id}/links`,
+            undefined,
+            vault,
           );
           if (linksRes.ok) {
             const linksData = (await linksRes.json()) as Record<
@@ -340,6 +389,8 @@ function createMuninnClient(): MuninnClient {
     async entityTimeline(vault, entityName, limit = 50) {
       const engramsRes = await muninnFetch(
         `/api/engrams?vault=${encodeURIComponent(vault)}&tags=${encodeURIComponent(entityName)}&limit=${limit}`,
+        undefined,
+        vault,
       );
       if (!engramsRes.ok)
         throw new Error(`MuninnDB entityTimeline: ${engramsRes.status}`);
@@ -372,6 +423,8 @@ function createMuninnClient(): MuninnClient {
     async entityClusters(vault, topN = 20, minCount = 2) {
       const res = await muninnFetch(
         `/api/engrams?vault=${encodeURIComponent(vault)}&limit=1000`,
+        undefined,
+        vault,
       );
       if (!res.ok) throw new Error(`MuninnDB entityClusters: ${res.status}`);
       const data = (await res.json()) as {
@@ -409,6 +462,8 @@ function createMuninnClient(): MuninnClient {
     async exportGraph(vault, format = "json-ld", includeEngrams = false) {
       const res = await muninnFetch(
         `/api/engrams?vault=${encodeURIComponent(vault)}&limit=1000`,
+        undefined,
+        vault,
       );
       if (!res.ok) throw new Error(`MuninnDB exportGraph: ${res.status}`);
       const data = (await res.json()) as {
@@ -466,11 +521,12 @@ function createMuninnClient(): MuninnClient {
 let _client: MuninnClient | null = null;
 
 /**
- * Returns a singleton MuninnDB client, or null if the server cannot be reached.
+ * Returns a singleton MuninnDB client.
  *
- * The client works with or without MUNINN_DB_API_KEY:
- * - With key: sends Authorization header (production)
- * - Without key: omits header (local development where MuninnDB has no auth)
+ * API key resolution per vault (checked in order):
+ * 1. MUNINN_DB_<VAULT_SCREAMING_SNAKE>_API_KEY (e.g., MUNINN_DB_PERCENT_UI_API_KEY)
+ * 2. MUNINN_DB_API_KEY (generic fallback)
+ * 3. No auth (local development where MuninnDB has no auth)
  */
 export function getMuninnClient(): MuninnClient {
   if (!_client) {

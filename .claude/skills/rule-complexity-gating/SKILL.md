@@ -66,7 +66,7 @@ These parameters still scale with complexity:
 
 **Before spawning sub-agents**, resolve their model tier from the routing table:
 
-1. Read complexity from bridge: \`bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null\`
+1. Read complexity from bridge: \`luca-bridge read-complexity 2>/dev/null\`
 2. Fallback: Read from STATE.md \`Task Complexity:\` field
 3. If not set, read from lu-router's classification output
 4. Call \`resolveModelForAgent(agentName, complexity)\` to get the model tier

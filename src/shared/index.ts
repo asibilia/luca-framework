@@ -37,7 +37,11 @@ export { formatFrontmatter } from "./__helpers/utils";
 
 // ─── Template Sanitization ───────────────────────────────────────────────────
 
-export { sanitizeForTemplate } from "./__helpers/sanitize-template";
+export {
+  sanitizeForTemplate,
+  escapeXmlAttr,
+  escapeRegExp,
+} from "./__helpers/sanitize-template";
 
 // ─── Validation ─────────────────────────────────────────────────────────────────
 
@@ -112,15 +116,26 @@ export { safeParseOrThrow } from "./__helpers/safe-parse-or-throw";
 export {
   CONSENSUS_MODES,
   consensusModeSchema,
+  ConsensusTypeSchema,
+  FALLBACK_STRATEGIES,
+  ConsensusFallbackStrategySchema,
   ConsensusConfigSchema,
+  ConsensusResultSchema,
 } from "./__schemas/consensus.schemas";
 
 export type {
   ConsensusMode,
+  ConsensusType,
+  ConsensusFallbackStrategy,
+  FallbackStrategy,
   ConsensusConfig,
+  ConsensusResult as FlatConsensusResult,
 } from "./__schemas/consensus.schemas";
 
-export { resolveConsensus } from "./__helpers/consensus-resolver";
+export {
+  resolveConsensus,
+  toFlatConsensusResult,
+} from "./__helpers/consensus-resolver";
 
 export type { ConsensusResult } from "./__helpers/consensus-resolver";
 
@@ -131,6 +146,7 @@ export {
   buildMemoryContextBlock,
   clearMemoryContextCache,
   requestMemoryContext,
+  estimateTokens,
 } from "./__helpers/memory-context-builder";
 
 export type {
@@ -138,17 +154,47 @@ export type {
   RequestMemoryContextConfig,
 } from "./__helpers/memory-context-builder";
 
-// ─── Recall Cache ──────────────────────────────────────────────────────────
+// ─── Recall Cache Schemas ──────────────────────────────────────────────────
 
 export {
+  RecalledEngramSchema,
   RecallCacheEntrySchema,
+} from "./__schemas/recall-cache.schemas";
+
+export type {
+  RecalledEngram,
+  RecallCacheEntry,
+} from "./__schemas/recall-cache.schemas";
+
+// ─── Recall Cache Functions ───────────────────────────────────────────────
+
+export {
   getCachedRecall,
   setCachedRecall,
   hasRecallCache,
   clearRecallCache,
 } from "./__helpers/recall-cache";
 
-export type { RecallCacheEntry } from "./__helpers/recall-cache";
+// ─── Memory Metrics Schemas ────────────────────────────────────────────────
+
+export {
+  MemoryFeedbackEntrySchema,
+  MemoryPhaseMetricsSchema,
+  MemoryHealthSummarySchema,
+} from "./__schemas/memory-metrics.schemas";
+
+export type {
+  MemoryFeedbackEntry,
+  MemoryPhaseMetrics,
+  MemoryHealthSummary,
+} from "./__schemas/memory-metrics.schemas";
+
+// ─── Memory Feedback ───────────────────────────────────────────────────────
+
+export {
+  determineFeedback,
+  computeMemoryPhaseMetrics,
+} from "./__helpers/memory-feedback";
 
 // ─── Session Digest ─────────────────────────────────────────────────────────
 

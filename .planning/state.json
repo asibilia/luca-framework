@@ -4,8 +4,8 @@
   "historyValue": {},
   "context": {
     "session_id": "fc759ad3-6102-4681-9b0c-738bbed69a23",
-    "github_issue": 63,
-    "branch": "63--v4.0-process-intelligence",
+    "github_issue": 66,
+    "branch": "66--v4.1-agentic-intelligence-platform-maturity",
     "base_branch": "main",
     "current_milestone": "v4.0.0 — Complete",
     "current_plan_ids": [],
@@ -92,7 +92,7 @@
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
     "started_at": "2026-03-09T00:13:24.488Z",
-    "last_transition_at": "2026-03-10T12:53:52.406Z"
+    "last_transition_at": "2026-03-10T15:34:10.216Z"
   },
   "children": {
     "phase": {

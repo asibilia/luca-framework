@@ -1,0 +1,247 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e157]:
+      - list [ref=e159]:
+        - listitem [ref=e160]:
+          - link "Luca Observer" [ref=e161] [cursor=pointer]:
+            - /url: /
+            - img [ref=e162]
+            - generic [ref=e164]: Luca Observer
+      - generic [ref=e166]:
+        - generic [ref=e167]: Navigation
+        - list [ref=e169]:
+          - listitem [ref=e170]:
+            - link "Dashboard" [ref=e171] [cursor=pointer]:
+              - /url: /
+              - img [ref=e172]
+              - generic [ref=e177]: Dashboard
+          - listitem [ref=e178]:
+            - link "Sessions" [ref=e179] [cursor=pointer]:
+              - /url: /sessions
+              - img [ref=e180]
+              - generic [ref=e182]: Sessions
+          - listitem [ref=e183]:
+            - link "Memory" [ref=e184] [cursor=pointer]:
+              - /url: /memory
+              - img [ref=e185]
+              - generic [ref=e193]: Memory
+          - listitem [ref=e194]:
+            - link "Learning" [ref=e195] [cursor=pointer]:
+              - /url: /learning
+              - img [ref=e196]
+              - generic [ref=e198]: Learning
+          - listitem [ref=e199]:
+            - link "Vault" [ref=e200] [cursor=pointer]:
+              - /url: /vault
+              - img [ref=e201]
+              - generic [ref=e205]: Vault
+          - listitem [ref=e206]:
+            - link "Knowledge Graph" [ref=e207] [cursor=pointer]:
+              - /url: /knowledge-graph
+              - img [ref=e208]
+              - generic [ref=e213]: Knowledge Graph
+          - listitem [ref=e214]:
+            - link "Semantic Search" [ref=e215] [cursor=pointer]:
+              - /url: /semantic-search
+              - img [ref=e216]
+              - generic [ref=e219]: Semantic Search
+          - listitem [ref=e220]:
+            - link "Decisions" [ref=e221] [cursor=pointer]:
+              - /url: /decisions
+              - img [ref=e222]
+              - generic [ref=e226]: Decisions
+          - listitem [ref=e227]:
+            - link "Contradictions" [ref=e228] [cursor=pointer]:
+              - /url: /contradictions
+              - img [ref=e229]
+              - generic [ref=e231]: Contradictions
+          - listitem [ref=e232]:
+            - link "Entities" [ref=e233] [cursor=pointer]:
+              - /url: /entities
+              - img [ref=e234]
+              - generic [ref=e243]: Entities
+      - list [ref=e245]:
+        - listitem [ref=e246]:
+          - button "D default MuninnDB vault" [ref=e247]:
+            - generic [ref=e248]: D
+            - generic [ref=e249]:
+              - generic [ref=e250]: default
+              - generic [ref=e251]: MuninnDB vault
+            - img [ref=e252]
+    - main [ref=e100]:
+      - generic [ref=e102]:
+        - button "Toggle Sidebar" [ref=e103]:
+          - img
+          - generic [ref=e104]: Toggle Sidebar
+        - button "Switch to light mode" [pressed] [ref=e255]:
+          - img
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - heading "Dashboard" [level=1] [ref=e111]
+            - paragraph [ref=e112]: Luca workflow observability
+          - generic [ref=e114]:
+            - generic [ref=e117]: MuninnDB Connected
+            - generic [ref=e256]: Updated just now
+            - button "Refresh" [ref=e257]:
+              - img
+              - text: Refresh
+        - generic [ref=e119]:
+          - generic [ref=e258]:
+            - link "Engrams 136" [ref=e259] [cursor=pointer]:
+              - /url: /memory
+              - generic [ref=e261]:
+                - img [ref=e263]
+                - generic [ref=e271]:
+                  - paragraph [ref=e272]: Engrams
+                  - paragraph [ref=e273]: "136"
+            - link "Coherence 71.0%" [ref=e274] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e276]:
+                - img [ref=e278]
+                - generic [ref=e280]:
+                  - paragraph [ref=e281]: Coherence
+                  - paragraph [ref=e282]: 71.0%
+            - link "Learnings 20" [ref=e283] [cursor=pointer]:
+              - /url: /learning
+              - generic [ref=e285]:
+                - img [ref=e287]
+                - generic [ref=e289]:
+                  - paragraph [ref=e290]: Learnings
+                  - paragraph [ref=e291]: "20"
+            - link "Entities 21" [ref=e292] [cursor=pointer]:
+              - /url: /knowledge-graph
+              - generic [ref=e294]:
+                - img [ref=e296]
+                - generic [ref=e301]:
+                  - paragraph [ref=e302]: Entities
+                  - paragraph [ref=e303]: "21"
+            - link "Storage 133.5 MB" [ref=e304] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e306]:
+                - img [ref=e308]
+                - generic [ref=e312]:
+                  - paragraph [ref=e313]: Storage
+                  - paragraph [ref=e314]: 133.5 MB
+          - generic [ref=e315]:
+            - generic [ref=e317]:
+              - img [ref=e318]
+              - generic [ref=e320]: Patterns
+              - generic [ref=e321]: "8"
+            - generic [ref=e323]:
+              - img [ref=e324]
+              - generic [ref=e328]: Decisions
+              - generic [ref=e329]: "3"
+            - generic [ref=e331]:
+              - img [ref=e332]
+              - generic [ref=e334]: Pitfalls
+              - generic [ref=e335]: "4"
+          - generic [ref=e336]:
+            - generic [ref=e337]:
+              - generic [ref=e339]: Recent Memories
+              - generic [ref=e340]:
+                - generic [ref=e341]:
+                  - generic [ref=e342]:
+                    - generic [ref=e343]: Luca Observer App Architecture Overview
+                    - generic [ref=e345]: 2h ago
+                  - paragraph [ref=e346]: "Luca Observer is a Next.js 15 dashboard at `packages/luca-observer/` that provides real-time observability into Luca wor..."
+                - generic [ref=e347]:
+                  - generic [ref=e348]:
+                    - generic [ref=e349]: pitfall:executor-summary-path-mismatch
+                    - generic [ref=e350]:
+                      - generic [ref=e351]: Pitfall
+                      - generic [ref=e352]: 19h ago
+                  - paragraph [ref=e353]: "lu-executor writes SUMMARY files to .planning/phases/{phase-number}/ using the short numeric directory name (e.g., 142/)..."
+                - generic [ref=e354]:
+                  - generic [ref=e355]:
+                    - generic [ref=e356]: pitfall:naming-confusion-escape-regex-vs-regexp
+                    - generic [ref=e357]:
+                      - generic [ref=e358]: Pitfall
+                      - generic [ref=e359]: 19h ago
+                  - paragraph [ref=e360]: The shared barrel (src/shared/index.ts) exports both escapeRegex (pre-existing, from sanitize-template.ts) and escapeReg...
+                - generic [ref=e361]:
+                  - generic [ref=e362]:
+                    - generic [ref=e363]: pitfall:typescript-strict-null-regex-match-groups
+                    - generic [ref=e364]:
+                      - generic [ref=e365]: Pitfall
+                      - generic [ref=e366]: 19h ago
+                  - paragraph [ref=e367]: When applying escapeRegExp to regex match group results (e.g., majorMatch[1]), TypeScript strict null checks flag the va...
+                - generic [ref=e368]:
+                  - generic [ref=e369]:
+                    - generic [ref=e370]: decision:t1-same-tier-imports-allowed
+                    - generic [ref=e371]:
+                      - generic [ref=e372]: Decision
+                      - generic [ref=e373]: 19h ago
+                  - paragraph [ref=e374]: T1-to-T1 same-tier imports are allowed by the domain boundary enforcement script (check-domain-boundaries.ts). The scrip...
+            - generic [ref=e376]:
+              - paragraph [ref=e377]: "Failed to load todos: Failed to fetch todos: 500 Internal Server Error"
+              - button "Retry" [ref=e378]
+          - generic [ref=e379]:
+            - heading "Quick Navigation" [level=2] [ref=e380]
+            - generic [ref=e381]:
+              - link "Memory Brain tree & engrams" [ref=e382] [cursor=pointer]:
+                - /url: /memory
+                - generic [ref=e384]:
+                  - img [ref=e385]
+                  - generic [ref=e393]:
+                    - paragraph [ref=e394]: Memory
+                    - paragraph [ref=e395]: Brain tree & engrams
+              - link "Learning Patterns & decisions" [ref=e396] [cursor=pointer]:
+                - /url: /learning
+                - generic [ref=e398]:
+                  - img [ref=e399]
+                  - generic [ref=e401]:
+                    - paragraph [ref=e402]: Learning
+                    - paragraph [ref=e403]: Patterns & decisions
+              - link "Vault Health Coherence metrics" [ref=e404] [cursor=pointer]:
+                - /url: /vault
+                - generic [ref=e406]:
+                  - img [ref=e407]
+                  - generic [ref=e411]:
+                    - paragraph [ref=e412]: Vault Health
+                    - paragraph [ref=e413]: Coherence metrics
+              - link "Knowledge Graph Entity relationships" [ref=e414] [cursor=pointer]:
+                - /url: /knowledge-graph
+                - generic [ref=e416]:
+                  - img [ref=e417]
+                  - generic [ref=e422]:
+                    - paragraph [ref=e423]: Knowledge Graph
+                    - paragraph [ref=e424]: Entity relationships
+              - link "Search Query knowledge base" [ref=e425] [cursor=pointer]:
+                - /url: /semantic-search
+                - generic [ref=e427]:
+                  - img [ref=e428]
+                  - generic [ref=e431]:
+                    - paragraph [ref=e432]: Search
+                    - paragraph [ref=e433]: Query knowledge base
+              - link "Sessions Workflow history" [ref=e434] [cursor=pointer]:
+                - /url: /sessions
+                - generic [ref=e436]:
+                  - img [ref=e437]
+                  - generic [ref=e439]:
+                    - paragraph [ref=e440]: Sessions
+                    - paragraph [ref=e441]: Workflow history
+              - link "Decisions Decision trail" [ref=e442] [cursor=pointer]:
+                - /url: /decisions
+                - generic [ref=e444]:
+                  - img [ref=e445]
+                  - generic [ref=e449]:
+                    - paragraph [ref=e450]: Decisions
+                    - paragraph [ref=e451]: Decision trail
+              - link "Contradictions Knowledge conflicts" [ref=e452] [cursor=pointer]:
+                - /url: /contradictions
+                - generic [ref=e454]:
+                  - img [ref=e455]
+                  - generic [ref=e457]:
+                    - paragraph [ref=e458]: Contradictions
+                    - paragraph [ref=e459]: Knowledge conflicts
+              - link "Entities Entity browser" [ref=e460] [cursor=pointer]:
+                - /url: /entities
+                - generic [ref=e462]:
+                  - img [ref=e463]
+                  - generic [ref=e472]:
+                    - paragraph [ref=e473]: Entities
+                    - paragraph [ref=e474]: Entity browser
+  - button "Open Next.js Dev Tools" [ref=e480] [cursor=pointer]:
+    - img [ref=e481]
+  - alert [ref=e484]

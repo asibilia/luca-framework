@@ -44,6 +44,67 @@ Before archiving, ensure all session learnings are captured:
    - Decisions that held throughout milestone -> mark as Established
    - Pitfalls that were successfully avoided -> note as Validated
 
+### Step 0.5: Stale Memory Detection and Pruning
+
+Before archiving, analyze memory health and prune stale engrams.
+
+**1. Recall all memory metrics for this milestone:**
+
+```
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "metric:memory-recall-precision metric:memory-hit-rate {milestone_version}",
+  mode: "deep",
+  limit: 50
+)
+```
+
+**2. Identify stale engrams:**
+
+Recall all pattern/decision/pitfall engrams and cross-reference with feedback data:
+
+```
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "pattern: decision: pitfall: for {milestone_version}",
+  mode: "deep",
+  limit: 100
+)
+```
+
+An engram is "stale" if:
+- It was recalled 3+ times across the milestone (appeared in recalledEngrams) but received feedback with useful=false more than useful=true
+- OR it was never recalled at all during the entire milestone (zero appearances)
+
+**3. Prune stale engrams:**
+
+For each stale engram, decide:
+- **Forget** (if never recalled and older than 2 milestones): `mcp__muninn__muninn_forget(vault: "default", id: engram_id)`
+- **Evolve** (if recalled but low usefulness): `mcp__muninn__muninn_evolve(vault: "default", id: engram_id, new_content: "...", reason: "Low usefulness across milestone {version}: {useful_count}/{total_feedback} positive feedback")`
+- **Consolidate** (if multiple similar low-utility engrams): `mcp__muninn__muninn_consolidate(vault: "default", ids: [id1, id2, ...], merged_content: "...")`
+
+**4. Report pruning results:**
+
+Log pruning summary:
+"Memory pruning: {forgotten} engrams forgotten, {evolved} engrams evolved, {consolidated} engrams consolidated from {total_stale} stale candidates."
+
+Store pruning report as a milestone metric:
+
+```
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:memory-pruning-{milestone_version}",
+  content: JSON.stringify({
+    forgotten: {count},
+    evolved: {count},
+    consolidated: {count},
+    total_stale: {count},
+    total_engrams_analyzed: {count},
+    pruned_at: new Date().toISOString()
+  })
+)
+```
+
 ### Step 1: Archive Milestone Memory
 
 Create milestone-specific memory snapshot in MuninnDB:
@@ -60,6 +121,7 @@ Include in archive:
 - All patterns validated during this milestone
 - Key decisions and their outcomes
 - Pitfalls discovered and avoided
+- Memory effectiveness summary (precision, hit rate, token cost across milestone)
 
 ### Step 2: Clean Session State
 
@@ -77,7 +139,7 @@ When updating state during milestone completion, use the bridge CLI as primary w
 
 ```bash
 # Read current state
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 ```
@@ -86,10 +148,10 @@ After archiving the milestone, reset state for the next milestone:
 
 ```bash
 # Reset state machine for next milestone
-bun run packages/luca-framework/src/state/bridge.ts transition --event=RESET 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts ensure-init --force 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+luca-bridge transition --event=RESET 2>/dev/null || true
+luca-bridge ensure-init --force 2>/dev/null || true
+luca-bridge set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
+luca-bridge snapshot 2>/dev/null || true
 # Fallback: Update STATE.md directly if bridge unavailable
 ```
 
@@ -349,14 +411,14 @@ No acceptance criteria. No deliverables required.
   If the metric does not exist yet, create it with `muninn_remember`.
 - Set cooldown reason via bridge:
   ```bash
-  bun run packages/luca-framework/src/state/bridge.ts set-field \
+  luca-bridge set-field \
     --field=cooldown_reason \
     --value='"Divergent mode: {N} consecutive milestones completed"' \
     2>/dev/null || true
   ```
 - Emit COOLDOWN_COMPLETE via bridge to transition complete -> cooldown:
   ```bash
-  bun run packages/luca-framework/src/state/bridge.ts transition \
+  luca-bridge transition \
     --event=COOLDOWN_COMPLETE 2>/dev/null || true
   ```
 - Display: "Entering divergent mode. When ready to return, start a new session."
@@ -373,7 +435,7 @@ No acceptance criteria. No deliverables required.
   If the metric does not exist yet, create it with `muninn_remember`.
 - Emit SKIP_COOLDOWN via bridge to transition complete -> idle:
   ```bash
-  bun run packages/luca-framework/src/state/bridge.ts transition \
+  luca-bridge transition \
     --event=SKIP_COOLDOWN 2>/dev/null || true
   ```
 - Proceed to Step 9.
@@ -383,7 +445,7 @@ No acceptance criteria. No deliverables required.
 If `consecutive_milestones < 8`: do not show the nudge. Silently emit SKIP_COOLDOWN:
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition \
+luca-bridge transition \
   --event=SKIP_COOLDOWN 2>/dev/null || true
 ```
 

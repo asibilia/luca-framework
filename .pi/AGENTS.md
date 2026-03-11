@@ -382,6 +382,7 @@ Internal logic modules consumed by entities and other core modules.
 | iteration | Budget, checkpoint, classifier, convergence |
 | context | Context tier resolution, assembler, envelope |
 | observability | Agent scorecard engine, telemetry metrics |
+| interop | Cross-agent discovery, IDE tool directory scanning |
 | shared | Cross-cutting utilities (format, validation, CLI) |
 
 **Structure:**
@@ -421,7 +422,7 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1, never
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, observability | Import T0 only |
+| T1 Core | context, planner, harness, iteration, observability, interop | Import T0 only |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
 | T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
 
@@ -814,7 +815,7 @@ description: "Module boundary: import direction rules and entity isolation"
 
 ```
 T0 Foundation:  shared, complexity       (imported by many, imports nothing from src/)
-T1 Core:        context, planner, harness, iteration, observability  (import T0 only)
+T1 Core:        context, planner, harness, iteration, observability, interop  (import T0-T1)
 T2 Entity:      agents, skills, rules    (import T0-T1; parallel, never cross-import)
 T3 Build:       compilers, hooks         (terminal; imported by nothing in src/)
 ```
@@ -835,7 +836,12 @@ import { runHarness } from "~/harness";
 
 // ❌ T1 (harness) importing T2 (agents) — upward dependency
 import { agentRegistry } from "~/agents";
+
+// ✅ T1 (context) importing T1 (interop) — same-tier is allowed
+import { scanForAgents } from "~/interop";
 ```
+
+**Clarification: Same-tier imports (T1->T1) are permitted.** The tier map shorthand "T1 imports T0-T1" means T1 cannot import from T2 or T3. Cross-domain imports within the same tier are allowed (e.g., context importing from interop). The enforcement script (`check-domain-boundaries.ts`) validates this: `sourceTier < targetTier` is the violation condition, so same-tier imports pass.
 
 ## Rule 2 — Entity Isolation
 
@@ -1039,7 +1045,7 @@ description: "State machine bridge CLI reference: how to read/write state via th
 
 ## Overview
 
-Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the primary source of truth for workflow state. The bridge CLI (`packages/luca-framework/src/state/bridge.ts`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
+Luca uses a typed state machine (`packages/luca-framework/src/state/`) as the primary source of truth for workflow state. The bridge CLI (`luca-bridge`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
 
 ## Bridge CLI Commands
 
@@ -1081,7 +1087,7 @@ Always use the bridge as primary, with STATE.md fallback:
 
 \`\`\`bash
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
@@ -1090,7 +1096,7 @@ STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 
 \`\`\`bash
 # Primary: Read complexity from bridge
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 # Fallback: grep STATE.md directly
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -1101,7 +1107,7 @@ fi
 
 \`\`\`bash
 # Primary: Transition via bridge (updates state machine + STATE.md)
-bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>/dev/null || true
+luca-bridge transition complete-phase 2>/dev/null || true
 # STATE.md is also updated directly for backward compatibility
 \`\`\`
 
@@ -1109,7 +1115,7 @@ bun run packages/luca-framework/src/state/bridge.ts transition complete-phase 2>
 
 \`\`\`bash
 # Primary: Initialize via bridge
-bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
+luca-bridge ensure-init 2>/dev/null || true
 # Fallback: Create STATE.md directly
 cat > .planning/STATE.md << 'EOF'
 ...

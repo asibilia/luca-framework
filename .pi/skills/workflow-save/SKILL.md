@@ -117,7 +117,7 @@ Read from these locations to build memories. Use the state bridge as primary, fa
 
 ```bash
 # Primary
-bun run packages/luca-framework/src/state/bridge.ts read-status
+luca-bridge read-status
 # Fallback
 cat .planning/STATE.md
 ```

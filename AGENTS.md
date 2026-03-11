@@ -19,6 +19,23 @@
 
 These cover 90% of what agents need; see “Cursor Cloud specific instructions” below for more detail.
 
+## Intent-First Response
+
+Before responding to a request, consider what the user **actually needs**, not just what they literally asked. Then provide the best possible answer for that underlying need.
+
+**When to surface follow-up questions:** Not every response needs them. Use this checklist:
+
+| Signal                                                                                       | Action                                                                                         |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Request is ambiguous or underspecified                                                       | Ask clarifying questions **before** acting                                                     |
+| Multiple valid approaches exist with meaningful trade-offs                                   | Present the chosen approach, note alternatives, suggest questions that would refine the choice |
+| The request hints at a deeper problem (e.g., asking for a workaround when a root fix exists) | Address both the literal ask and the underlying issue; suggest follow-ups to confirm direction |
+| Request is clear and straightforward                                                         | Just answer it — no follow-up questions needed                                                 |
+
+**Format when follow-ups apply:** Append a short “Questions to go deeper” section (2-4 questions max) at the end of the response. These should help the user explore dimensions they may not have considered — architectural implications, edge cases, alternative approaches, or scope decisions.
+
+**Do not** pad every response with follow-up questions. The goal is signal, not noise.
+
 ## Development Setup
 
 **Prerequisite:** Bun (v1.0+). Node.js 20+ is useful but not required for core workflows.

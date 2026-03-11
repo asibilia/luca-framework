@@ -9,8 +9,11 @@
  * Source: src/shared/__helpers/memory-context-builder.ts
  */
 
+import orderBy from "lodash/orderBy";
 import { z } from "zod";
+
 import { getCachedRecall } from "./recall-cache";
+import { escapeXmlAttr } from "./sanitize-template";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -38,12 +41,36 @@ export type MemoryContextConfig = z.infer<typeof MemoryContextConfigSchema>;
  */
 const formatCache = new Map<string, string>();
 
+const MAX_FORMAT_ENTRIES = 200;
+
+/**
+ * Evict the oldest entry from a Map if it has reached the maximum size.
+ * Maps iterate in insertion order, so the first key is the oldest.
+ */
+function evictOldestIfNeeded<K, V>(map: Map<K, V>, max: number): void {
+  if (map.size >= max) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) map.delete(firstKey);
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
  * Rough token estimate: ~4 characters per token (conservative).
+ *
+ * Exported for use by memory metrics computation (e.g., computing
+ * `memory_tokens_injected` for phase metrics).
+ *
+ * @param text - The text to estimate token count for
+ * @returns Estimated number of tokens (ceiling of text.length / 4)
+ *
+ * @example
+ * ```typescript
+ * const tokens = estimateTokens("Hello, world!"); // 4
+ * ```
  */
-function estimateTokens(text: string): number {
+export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
@@ -85,9 +112,11 @@ function truncateToFit(
   maxTokens: number,
 ): string[] {
   // Sort by priority descending (highest priority kept first)
-  const sorted = [...sections]
-    .filter((s) => s.items.length > 0)
-    .sort((a, b) => b.priority - a.priority);
+  const sorted = orderBy(
+    [...sections].filter((s) => s.items.length > 0),
+    (s) => s.priority,
+    "desc",
+  );
 
   const result: string[] = [];
   let remaining = maxTokens;
@@ -196,6 +225,7 @@ export function buildMemoryContextBlock(
   const contentBudget = config.maxTokens - wrapperOverhead;
 
   if (contentBudget <= 0) {
+    evictOldestIfNeeded(formatCache, MAX_FORMAT_ENTRIES);
     formatCache.set(key, "");
     return "";
   }
@@ -203,13 +233,15 @@ export function buildMemoryContextBlock(
   const fitted = truncateToFit(sections, contentBudget);
 
   if (fitted.length === 0) {
+    evictOldestIfNeeded(formatCache, MAX_FORMAT_ENTRIES);
     formatCache.set(key, "");
     return "";
   }
 
   const body = fitted.join("\n\n");
-  const block = `<memory_context agent="${config.agentName}">\n${body}\n</memory_context>`;
+  const block = `<memory_context agent="${escapeXmlAttr(config.agentName)}">\n${body}\n</memory_context>`;
 
+  evictOldestIfNeeded(formatCache, MAX_FORMAT_ENTRIES);
   formatCache.set(key, block);
   return block;
 }

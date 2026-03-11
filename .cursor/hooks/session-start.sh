@@ -43,6 +43,8 @@ export PATH="${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin:$PATH"
 HOOK_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HOOK_SCRIPT_DIR}/_lib/common.sh"
 
+guard_dedup "session-start"
+
 # Read stdin JSON (standard hook pattern — consumed but not parsed)
 INPUT=$(cat || true)
 
@@ -274,6 +276,9 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
         build_command: runtime === 'bun' ? 'bun run build:all' : 'npm run build:all',
         lock_file: '.claude/.session-lock',
         manifest_file: '.claude/.build-manifest.json'
+      },
+      muninn: {
+        vault: 'default'
       }
     };
     await Bun.write(

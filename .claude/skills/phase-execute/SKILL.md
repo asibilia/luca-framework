@@ -265,7 +265,7 @@ for metric_name, value in metrics_json["metrics"].items():
 Then emit the PROCESS_DATA_COMPLETE transition:
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 ```
 
 The model tier for lu-process-data is resolved via `resolveModelForAgent("lu-process-data", complexity)` from the centralized routing table.
@@ -273,7 +273,7 @@ The model tier for lu-process-data is resolved via `resolveModelForAgent("lu-pro
 **If `process_data` gate is disabled (`false`):** Skip process data collection and emit LEARN_COMPLETE as before:
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=LEARN_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
 ```
 
 ### Session Logging During Execution
@@ -437,7 +437,7 @@ Before each wave, check whether the appetite budget has been exhausted:
 
 ```bash
 # Read appetite state from bridge
-APPETITE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{}')
+APPETITE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{}')
 APPETITE_LEVEL=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_level || '')" 2>/dev/null || echo "")
 APPETITE_CEILING=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_token_ceiling || 0)" 2>/dev/null || echo "0")
 APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.context?.appetite_used_tokens || 0)" 2>/dev/null || echo "0")
@@ -473,7 +473,7 @@ APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.std
 4. After each wave completes, update appetite_used_tokens via bridge:
    ```bash
    # Update used tokens after wave completion (estimated from wave results)
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
+   luca-bridge set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
    ```
 
 **MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
@@ -522,7 +522,7 @@ PLAN_01_CONTENT=$(cat "{plan_01_path}")
 PLAN_02_CONTENT=$(cat "{plan_02_path}")
 PLAN_03_CONTENT=$(cat "{plan_03_path}")
 # Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 ```
@@ -544,12 +544,20 @@ if (!hasRecallCache(SESSION_ID)) {
   );
 
   // Step 3: Parse and cache the recall result
+  // MuninnDB recall returns objects with id, concept, content, score, and confidence fields.
+  // Extract engram IDs from each result entry for the feedback loop (Step 7.1).
   setCachedRecall(SESSION_ID, {
     sessionId: SESSION_ID,
     patterns: [/* extracted patterns from recall */],
     decisions: [/* extracted decisions from recall */],
     pitfalls: [/* extracted pitfalls from recall */],
     findings: [/* session findings */],
+    recalledEngrams: [
+      // For EACH recalled entry (pattern, decision, or pitfall):
+      // { engramId: entry.id, content: entry.content, concept: entry.concept, confidence: entry.confidence }
+      // Example:
+      // { engramId: "01JEXAMPLE123", content: "Use Bun APIs over node:fs", concept: "pattern:bun-file-api", confidence: "high" }
+    ],
     recalledAt: new Date().toISOString(),
   });
 }
@@ -561,6 +569,12 @@ const workingContent = requestMemoryContext({
   memoryTags: ["*"],
   maxTokens: 500,
 });
+
+// Step 5: Track memory token cost for metrics computation (consumed in Step 7.1)
+// import { estimateTokens } from "~/shared";
+MEMORY_TOKENS_INJECTED = 0;
+// After each requestMemoryContext() or buildMemoryContextBlock() call:
+MEMORY_TOKENS_INJECTED += estimateTokens(workingContent);
 ```
 
 **Note:** `requestMemoryContext()` reads the cache populated above and formats it via `buildMemoryContextBlock()` internally. You can still use `buildMemoryContextBlock()` directly if you need custom formatting, but `requestMemoryContext()` is the preferred approach for the deferred pattern.
@@ -656,7 +670,7 @@ Execute this plan. Return SUMMARY when complete.
 # Check context usage zone (context monitoring handled by hooks/MuninnDB)
 # The context-check-throttled hook monitors usage automatically.
 # For manual checks, read the zone from STATE.md or bridge:
-ZONE=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=context_zone 2>/dev/null | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.value || 'peak')" 2>/dev/null || echo "peak")
+ZONE=$(luca-bridge read-field --field=context_zone 2>/dev/null | bun -e "const d=JSON.parse(await Bun.stdin.text()); console.log(d.value || 'peak')" 2>/dev/null || echo "peak")
 ```
 
 **If zone is "stop"** (context exhaustion imminent):
@@ -665,7 +679,7 @@ ZONE=$(bun run packages/luca-framework/src/state/bridge.ts read-field --field=co
 
 ```bash
 # Suspend with checkpoint via bridge
-bun run packages/luca-framework/src/state/bridge.ts suspend \
+luca-bridge suspend \
   --phase={phase_number} \
   --reason=context_exhaustion \
   --wave={current_wave_index} \
@@ -711,7 +725,7 @@ At the start of phase execution, check for an existing suspend checkpoint:
 
 ```bash
 # Check for suspend checkpoint
-CHECKPOINT_EXISTS=$(bun run packages/luca-framework/src/state/bridge.ts resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
+CHECKPOINT_EXISTS=$(luca-bridge resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
 ```
 
 If a checkpoint exists:
@@ -745,7 +759,7 @@ Apply the reassessment logic from `src/complexity/__helpers/reassessment.ts`:
 
 - Call `shouldPromoteComplexity()` with signals: `{ files_touched: $FILES_TOUCHED, iteration_budget_ratio: 0, stall_detected: false, error_count: 0, current_level: $COMPLEXITY }` and `alreadyPromoted: $ALREADY_PROMOTED`.
 - If `should_promote` is true:
-  1. Update state via bridge: `bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value='"$NEW_LEVEL"'`
+  1. Update state via bridge: `luca-bridge set-field --field=complexity --value='"$NEW_LEVEL"'`
   2. Update local variable: `COMPLEXITY="$NEW_LEVEL"`
   3. Set `ALREADY_PROMOTED=true`
   4. Log to MuninnDB session: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [COMPLEXITY-PROMOTED] $REASON")`
@@ -913,7 +927,7 @@ Read iteration configuration:
 
 ```bash
 # Primary: Read complexity from state machine bridge
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 # Fallback: grep STATE.md directly
 if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
   COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
@@ -1220,7 +1234,7 @@ First, read the required context:
 PHASE_DIR=".planning/phases/{phase_number}-*"
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 # Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md)
 SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \;)
@@ -1298,12 +1312,122 @@ Verify the phase goal was achieved using goal-backward analysis.
 
 Route by returned status:
 
-- `passed` → continue to Step 8 (Code Quality Review)
-- `human_needed` → present items, get approval, then continue to Step 8
+- `passed` → continue to Step 7.1 (Memory Feedback) then Step 8 (Code Quality Review)
+- `human_needed` → present items, get approval, then continue to Step 7.1 then Step 8
 - `gaps_found` → proceed to Step 7.5 (Loop B: Verify Fix Loop)
 - `human_needed` with T1/T3 conflict → proceed to Step 7.25 (Verification Tribunal)
 
 **Note:** When gaps are found, Loop B will attempt automated gap resolution. Only if Loop B fails to resolve all gaps will the user be offered `/phase-plan {X} --gaps`.
+
+### 7.1. Memory Feedback
+
+**After verification returns**, provide feedback on recalled engrams to MuninnDB. This feeds the SGD-based scoring system that improves future recall quality.
+
+**Skip if:** No engrams were recalled (`recalledEngrams` is empty) or `--skip-memory` flag was passed.
+
+Read the recalled engrams from the session cache:
+
+```typescript
+import { getCachedRecall } from "~/shared";
+
+const cached = getCachedRecall(SESSION_ID);
+const recalledEngrams = cached?.recalledEngrams ?? [];
+```
+
+If `recalledEngrams.length === 0`: Skip this step entirely.
+
+Otherwise, determine feedback for each engram based on verification outcome:
+
+```
+VERIFICATION_PASSED = (verifier result is "passed" or "passed_with_notes")
+
+For each engram in recalledEngrams:
+  mcp__muninn__muninn_feedback(
+    vault: "default",
+    engram_id: engram.engramId,
+    useful: VERIFICATION_PASSED
+  )
+```
+
+Log the feedback summary:
+```
+"Memory feedback: {count} engrams marked as useful={VERIFICATION_PASSED}"
+```
+
+**Compute memory effectiveness metrics** after feedback:
+
+```typescript
+import { determineFeedback, computeMemoryPhaseMetrics } from "~/shared";
+
+// Determine feedback entries using the simple heuristic
+const feedbackEntries = determineFeedback({
+  recalledEngrams: recalledEngrams,
+  verificationPassed: VERIFICATION_PASSED,
+  appliedEngramIds: [], // Populated from executor's session:applied-engrams output if available
+  phase: PHASE,
+});
+
+// Compute metrics
+const metrics = computeMemoryPhaseMetrics({
+  feedbackEntries: feedbackEntries,
+  totalRecalled: recalledEngrams.length,
+  totalApplied: feedbackEntries.filter(e => e.useful).length, // Approximation when no executor tracking available
+  memoryTokensInjected: MEMORY_TOKENS_INJECTED,
+  phase: PHASE,
+  milestone: MILESTONE,
+});
+```
+
+Store metrics as MuninnDB engrams:
+
+```
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:memory-recall-precision-{milestone}-phase-{phase}",
+  content: JSON.stringify({
+    value: metrics.recall_precision,
+    total_recalled: metrics.total_recalled,
+    total_applied: metrics.total_applied,
+    memory_tokens_injected: metrics.memory_tokens_injected,
+    phase: PHASE,
+    milestone: MILESTONE,
+    computed_at: new Date().toISOString()
+  })
+)
+
+mcp__muninn__muninn_remember(
+  vault: "default",
+  concept: "metric:memory-hit-rate-{milestone}-phase-{phase}",
+  content: JSON.stringify({
+    value: metrics.hit_rate,
+    useful_count: feedbackEntries.filter(e => e.useful).length,
+    total_count: recalledEngrams.length,
+    phase: PHASE,
+    milestone: MILESTONE,
+    computed_at: new Date().toISOString()
+  })
+)
+```
+
+Display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► MEMORY FEEDBACK RECORDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Engrams recalled: {TOTAL_RECALLED}
+Feedback: all marked useful={VERIFICATION_PASSED}
+Recall precision: {RECALL_PRECISION}
+Hit rate: {HIT_RATE}
+Memory tokens injected: {MEMORY_TOKENS_INJECTED}
+
+Metrics stored:
+  metric:memory-recall-precision-{milestone}-phase-{phase}
+  metric:memory-hit-rate-{milestone}-phase-{phase}
+```
+
+**Note:** The 3 additional metrics (stale_engram_pct, confidence_calibration, memory_roi) are initialized to 0 in this step and will be populated as data accumulates: stale_pct at milestone boundaries (Plan 3), confidence_calibration across multiple phases, and memory_roi when total phase cost tracking exists.
 
 ### 7.2. Store Calibration Engram
 
@@ -1645,9 +1769,67 @@ Display:
 ◆ Reviewing {FILE_COUNT} changed files...
 ```
 
+#### 8.0.1. Multi-Lens Gate Check
+
+Before spawning reviewers, evaluate the multi-lens review gate to determine whether additional focused lenses (Architecture + Data) should be activated.
+
+**Step A: Compute risk multiplier**
+
+Check if changed files touch high-risk domains. The risk multiplier weights the effective complexity for reviewer model selection:
+
+| Domain Pattern       | Weight |
+|---------------------|--------|
+| state/              | 1.8    |
+| shared/__schemas/   | 1.6    |
+| context/            | 1.5    |
+| harness/            | 1.5    |
+| hooks/              | 1.4    |
+| complexity/         | 1.4    |
+| compilers/          | 1.3    |
+| iteration/          | 1.3    |
+
+Match each changed file against these patterns. Use the highest matching weight (capped at 2.0). If no high-risk files match, use base weight 1.0.
+
+Display risk multiplier if > 1.0:
+
+```
+◆ Risk multiplier: {RISK_MULTIPLIER}x (high-risk domains: {MATCHED_DOMAINS})
+```
+
+**Step B: Query pre-mortem signal rate**
+
+Query MuninnDB for the pre-mortem signal rate metric:
+
+```
+Recall from MuninnDB vault "default" with context "metric:signal-rate-aggregate"
+```
+
+Extract the signal rate and sample count from the recalled engram. If no metric engram exists, use signal_rate=0, sample_count=0.
+
+**Step C: Evaluate gate condition**
+
+The gate activates additional lenses when ALL conditions are met:
+1. Gate is enabled (default: true)
+2. Sample count >= 20 (minimum pre-mortem runs)
+3. Signal rate > 10% (pre-mortem signals detected in >10% of runs)
+
+Display gate result:
+
+```
+◆ Multi-lens gate: {GATE_MET ? "ACTIVE" : "INACTIVE"} ({REASON})
+```
+
+**Step D: Collect pre-mortem mitigations**
+
+If the phase discussion (Step 4) produced pre-mortem mitigations, collect them as additional review criteria to pass to ALL reviewers (both standard and lens reviewers):
+
+```bash
+PRE_MORTEM_MITIGATIONS=$(cat {phase_dir}/DISCUSSION.md 2>/dev/null | grep -A 100 "Pre-Mortem" | head -50 || echo "None available")
+```
+
 **Determine which reviewers to spawn:**
 
-**Always spawn ALL reviewers.** Each reviewer resolves its model tier from the routing table based on complexity:
+**Always spawn ALL standard reviewers.** If the multi-lens gate is ACTIVE, also spawn Architecture and Data lens reviewers in the SAME parallel batch. Each reviewer resolves its model tier from the routing table based on complexity:
 
 | Agent            | TRIVIAL | SIMPLE  | MODERATE | COMPLEX | CRITICAL |
 | ---------------- | ------- | ------- | -------- | ------- | -------- |
@@ -1837,11 +2019,94 @@ model="{reviewer_model}",
 description="Security review"
 )
 
+# ─── Multi-Lens Reviewers (ONLY if gate is ACTIVE from Step 8.0.1) ───
+
+# Architecture Lens - structural integrity, dependency direction, tier compliance
+# (Spawn this only if MULTI_LENS_GATE_MET=true from Step 8.0.1.C)
+
+Task(
+prompt="""
+Review the following changed files for **architecture and structural integrity** issues.
+
+**Changed files:**
+{CHANGED_FILES}
+
+**Project standards:**
+{CLAUDE_CONTENT}
+
+**Your focus areas:**
+1. **Dependency direction**: Imports must flow downward through tiers (T0 Foundation -> T1 Core -> T2 Entity -> T3 Build). Flag any upward or cross-tier violations.
+2. **Module boundaries**: Entity domains (agents, skills, rules) must NEVER cross-import. Flag any agents importing from skills, rules importing from agents, etc.
+3. **Barrel purity**: Every domain's index.ts must contain ONLY re-export statements. No logic, no schemas, no registries, no constants.
+4. **Structural invariants**: No flat .ts files in domain root except index.ts. All code must live in __schemas/, __helpers/, entity dirs, or named subdirs.
+5. **Tier compliance**: shared and complexity are T0 (imported by many). context/planner/harness/iteration/observability are T1. agents/skills/rules are T2 (parallel). compilers/hooks are T3 (terminal).
+6. **Pre-mortem mitigations**: {PRE_MORTEM_MITIGATIONS}
+
+**Return format:**
+
+```yaml
+issues:
+  - severity: CRITICAL|HIGH|MEDIUM|LOW
+    file: path/to/file.ts
+    line: 42
+    issue: Brief description
+    suggestion: How to fix
+    source_agent: architecture-lens
+```
+
+If no issues found, return: `issues: []`
+""",
+subagent_type="code-architect",
+model="{deep_analysis_model}",
+description="Architecture lens review"
+)
+
+# Data Lens - data flow, schema consistency, Zod patterns
+# (Spawn this only if MULTI_LENS_GATE_MET=true from Step 8.0.1.C)
+
+Task(
+prompt="""
+Review the following changed files for **data flow and schema consistency** issues.
+
+**Changed files:**
+{CHANGED_FILES}
+
+**Project standards:**
+{CLAUDE_CONTENT}
+
+**Your focus areas:**
+1. **Schema-first parsing**: ALL component/function inputs must have Zod schema definitions. Defaults must be defined in schemas, NEVER in destructuring.
+2. **API snake_case**: All API request/response payloads must use snake_case properties. Internal TypeScript uses camelCase.
+3. **Zod patterns**: Prefer safeParse() over parse() to prevent runtime crashes. Always handle parse failures gracefully.
+4. **Type inference**: Types must be inferred from schemas using z.infer<typeof Schema>, not manually defined.
+5. **Data transformations**: Verify data flows correctly through transformations. Check for missing fields, wrong types, or lost data.
+6. **State consistency**: State machine bridge writes to BOTH typed state and STATE.md. Verify dual-write guarantee is maintained.
+7. **Pre-mortem mitigations**: {PRE_MORTEM_MITIGATIONS}
+
+**Return format:**
+
+```yaml
+issues:
+  - severity: CRITICAL|HIGH|MEDIUM|LOW
+    file: path/to/file.ts
+    line: 42
+    issue: Brief description
+    suggestion: How to fix
+    source_agent: data-lens
+```
+
+If no issues found, return: `issues: []`
+""",
+subagent_type="dx-advocate",
+model="{deep_analysis_model}",
+description="Data lens review"
+)
+
 ```
 
 **Do NOT proceed until ALL reviewer Tasks return.**
 
-**Merge findings:** Combine all issues, deduplicate by file:line.
+**Merge findings:** Combine all issues from standard reviewers AND lens reviewers (if spawned), deduplicate by file:line.
 
 ### 8.5. Design Tribunal (Conditional)
 
@@ -1956,7 +2221,7 @@ cat > {phase_dir}/REVIEW.md << 'REVIEW_EOF'
 
 **Timestamp:** {timestamp_utc}
 **Files reviewed:** {file_count}
-**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor
+**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor{MULTI_LENS_GATE_MET ? ", architecture-lens, data-lens" : ""}
 
 ## Severity Summary
 
@@ -1980,7 +2245,7 @@ This file persists reviewer findings across context compaction. It is referenced
 Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — the machine transitions to `learning` state and expects LEARN_COMPLETE before committing.
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
+luca-bridge transition --event=VERIFY_PASSED 2>/dev/null || true
 ```
 
 Also update STATE.md directly for backward compatibility.
@@ -2010,7 +2275,7 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 Signal commit complete via bridge (after the actual commit succeeds):
 
 ```bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=COMMIT_COMPLETE 2>/dev/null || true
 ```
 
 ### 12. User Acceptance Testing (UAT)

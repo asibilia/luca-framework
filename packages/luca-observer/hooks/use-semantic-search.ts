@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type { MuninnActivation, MuninnExplainResult } from "~/lib/muninn-types";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Types -------------------------------------------------------------------
 
@@ -102,6 +104,7 @@ function toSearchResult(activation: MuninnActivation): SemanticSearchResult {
  * @returns SemanticSearchData with results, search(), explainResult(), and loading state
  */
 export function useSemanticSearch(): SemanticSearchData {
+  const vault = useAtomValue(vaultAtom);
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,68 +119,71 @@ export function useSemanticSearch(): SemanticSearchData {
   // Prevent double-fetch in React strict mode
   const fetchingRef = useRef(false);
 
-  const search = useCallback((query: string, options?: SearchOptions) => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    setLoading(true);
-    setError(null);
-    setLastQuery(query);
-    lastOptionsRef.current = options;
+  const search = useCallback(
+    (query: string, options?: SearchOptions) => {
+      if (fetchingRef.current) return;
+      fetchingRef.current = true;
+      setLoading(true);
+      setError(null);
+      setLastQuery(query);
+      lastOptionsRef.current = options;
 
-    // Fire async search (not awaited -- hook is synchronous)
-    void (async () => {
-      try {
-        const [activateRes] = await Promise.allSettled([
-          fetchJson<{ activations: MuninnActivation[]; total_found: number }>(
-            "/api/muninn/activate",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                context: [query],
-                vault: "default",
-                limit: 20,
-              }),
-            },
-          ),
-        ]);
+      // Fire async search (not awaited -- hook is synchronous)
+      void (async () => {
+        try {
+          const [activateRes] = await Promise.allSettled([
+            fetchJson<{ activations: MuninnActivation[]; total_found: number }>(
+              "/api/muninn/activate",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  context: [query],
+                  vault,
+                  limit: 20,
+                }),
+              },
+            ),
+          ]);
 
-        // Check for 503 (MuninnDB not configured)
-        const notConfigured =
-          activateRes.status === "rejected" &&
-          activateRes.reason instanceof Error &&
-          activateRes.reason.name === "NotConfiguredError";
+          // Check for 503 (MuninnDB not configured)
+          const notConfigured =
+            activateRes.status === "rejected" &&
+            activateRes.reason instanceof Error &&
+            activateRes.reason.name === "NotConfiguredError";
 
-        if (notConfigured) {
-          setConfigured(false);
-          setResults([]);
-          setTotalFound(0);
-          setLastUpdated(new Date());
-        } else if (activateRes.status === "fulfilled") {
-          const activations = activateRes.value.activations ?? [];
-          setResults(activations.map(toSearchResult));
-          setTotalFound(activateRes.value.total_found ?? activations.length);
-          setLastUpdated(new Date());
-        } else {
-          const reason = activateRes.reason;
+          if (notConfigured) {
+            setConfigured(false);
+            setResults([]);
+            setTotalFound(0);
+            setLastUpdated(new Date());
+          } else if (activateRes.status === "fulfilled") {
+            const activations = activateRes.value.activations ?? [];
+            setResults(activations.map(toSearchResult));
+            setTotalFound(activateRes.value.total_found ?? activations.length);
+            setLastUpdated(new Date());
+          } else {
+            const reason = activateRes.reason;
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Failed to perform semantic search",
+            );
+          }
+        } catch (err) {
           setError(
-            reason instanceof Error
-              ? reason.message
+            err instanceof Error
+              ? err.message
               : "Failed to perform semantic search",
           );
+        } finally {
+          setLoading(false);
+          fetchingRef.current = false;
         }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to perform semantic search",
-        );
-      } finally {
-        setLoading(false);
-        fetchingRef.current = false;
-      }
-    })();
-  }, []);
+      })();
+    },
+    [vault],
+  );
 
   const explainResult = useCallback(
     async (engramId: string): Promise<void> => {
@@ -190,7 +196,7 @@ export function useSemanticSearch(): SemanticSearchData {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              vault: "default",
+              vault,
               engram_id: engramId,
               query: [lastQuery],
             }),
@@ -207,7 +213,7 @@ export function useSemanticSearch(): SemanticSearchData {
         // Silently degrade -- no error shown for explain failures
       }
     },
-    [lastQuery],
+    [vault, lastQuery],
   );
 
   const refresh = useCallback(() => {

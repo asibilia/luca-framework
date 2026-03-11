@@ -11,7 +11,7 @@
  *
  * Write operations mutate state.json directly and defer STATE.md
  * regeneration to the Bun-based bridge CLI
- * (`packages/luca-framework/src/state/bridge.ts`).
+ * (`luca-bridge` CLI, source: packages/luca-framework/src/state/bridge.ts).
  *
  * NOTE: This file uses node:fs (not Bun APIs) because Pi runs on Node.js.
  * Constants are inlined from luca-constants.ts to avoid jiti resolution

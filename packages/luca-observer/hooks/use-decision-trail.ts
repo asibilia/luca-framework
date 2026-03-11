@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type { MuninnEngram, MuninnEntityEngram } from "~/lib/muninn-types";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Types -------------------------------------------------------------------
 
@@ -100,6 +102,7 @@ function parseDecisionEngram(engram: MuninnEngram): DecisionInfo {
  * @returns DecisionTrailData with decisions, refresh(), and loading state
  */
 export function useDecisionTrail(): DecisionTrailData {
+  const vault = useAtomValue(vaultAtom);
   const [decisions, setDecisions] = useState<DecisionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,9 +118,10 @@ export function useDecisionTrail(): DecisionTrailData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [decisionRes] = await Promise.allSettled([
         fetchJson<{ engrams: MuninnEngram[] }>(
-          "/api/muninn/engrams?limit=200&type=decision",
+          `/api/muninn/engrams?vault=${v}&limit=200&type=decision`,
         ),
       ]);
 
@@ -163,7 +167,7 @@ export function useDecisionTrail(): DecisionTrailData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {
@@ -182,7 +186,7 @@ export function useDecisionTrail(): DecisionTrailData {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entity_name: decisionConcept }),
+            body: JSON.stringify({ vault, entity_name: decisionConcept }),
           },
         );
         return response.engrams ?? [];
@@ -191,7 +195,7 @@ export function useDecisionTrail(): DecisionTrailData {
         return [];
       }
     },
-    [],
+    [vault],
   );
 
   return {

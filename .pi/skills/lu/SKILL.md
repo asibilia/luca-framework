@@ -91,8 +91,8 @@ If `--complexity=<level>` was passed, use that level directly. Write it via the 
 
 ```bash
 # Primary: Set complexity via bridge (updates state machine + STATE.md)
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
+luca-bridge set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true
+luca-bridge snapshot 2>/dev/null || true
 # Fallback: Update STATE.md directly if bridge unavailable
 ```
 
@@ -129,8 +129,14 @@ For phase work, query the state machine or use `luca_gate_check` to determine wh
 
 Alternatively, hand off to the `autopilot` skill which handles these state machine checks natively.
 
-**Ad-hoc / Quick task:**
-If task is truly TRIVIAL or SIMPLE AND does not require roadmap planning:
+**Ad-hoc / Quick task (narrow scope):**
+Route to `quick` ONLY if ALL of these conditions are true:
+- Task is TRIVIAL or SIMPLE complexity
+- Task does NOT appear in `.planning/ROADMAP.md` or `.planning/todos/pending/`
+- Task does NOT require creating new files (only modifications to 1-2 existing files)
+- Task is a one-off fix, rename, or config change — NOT a feature
+
+If ANY of these conditions is false, route to the full pipeline (phase-discuss → phase-plan → phase-execute) or autopilot instead. When in doubt, use the full pipeline — quick is for genuinely trivial ad-hoc work only.
 ```
 Skill(skill: "quick", args: "<task-description>")
 ```
@@ -193,7 +199,7 @@ If `--complexity=<level>` is passed:
 1. Skip lu-router classification
 2. Use the specified level directly
 3. Look up gated steps from the complexity matrix in config.json
-4. Persist via bridge: `bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true`
+4. Persist via bridge: `luca-bridge set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true`
 
 If `--force-complex` is passed (backward compatibility):
 - Equivalent to `--complexity=COMPLEX`

@@ -11,45 +11,7 @@
  * Source: src/shared/__helpers/recall-cache.ts
  */
 
-import { z } from "zod";
-
-// ─── Schema ──────────────────────────────────────────────────────────────────
-
-/**
- * Schema for a cached recall result from MuninnDB.
- *
- * Contains the unfiltered recall output that gets filtered per-agent
- * by `requestMemoryContext()`. Uses camelCase since this is an internal
- * schema, not an API payload.
- *
- * @example
- * ```typescript
- * const entry: RecallCacheEntry = {
- *   sessionId: "session-abc-123",
- *   patterns: ["Use Bun APIs over node:fs"],
- *   decisions: ["Functional patterns only, no classes"],
- *   pitfalls: ["build:all crashes Claude Code"],
- *   findings: ["Pattern: always run tsc before commit"],
- *   recalledAt: "2026-03-09T19:55:00Z",
- * };
- * ```
- */
-export const RecallCacheEntrySchema = z.object({
-  /** Session ID this recall result belongs to */
-  sessionId: z.string().min(1),
-  /** Recalled pattern engrams from MuninnDB */
-  patterns: z.array(z.string()).default([]),
-  /** Recalled decision engrams from MuninnDB */
-  decisions: z.array(z.string()).default([]),
-  /** Recalled pitfall engrams from MuninnDB */
-  pitfalls: z.array(z.string()).default([]),
-  /** Recalled session findings from MuninnDB */
-  findings: z.array(z.string()).default([]),
-  /** ISO 8601 timestamp when the recall was performed */
-  recalledAt: z.string(),
-});
-
-export type RecallCacheEntry = z.infer<typeof RecallCacheEntrySchema>;
+import type { RecallCacheEntry } from "../__schemas/recall-cache.schemas";
 
 // ─── Cache ───────────────────────────────────────────────────────────────────
 
@@ -60,6 +22,19 @@ export type RecallCacheEntry = z.infer<typeof RecallCacheEntrySchema>;
  * Not persistent -- lives only for the orchestrator session.
  * Cleared explicitly at session boundaries via `clearRecallCache()`.
  */
+const MAX_RECALL_ENTRIES = 100;
+
+/**
+ * Evict the oldest entry from a Map if it has reached the maximum size.
+ * Maps iterate in insertion order, so the first key is the oldest.
+ */
+function evictOldestIfNeeded<K, V>(map: Map<K, V>, max: number): void {
+  if (map.size >= max) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) map.delete(firstKey);
+  }
+}
+
 const recallCache = new Map<string, RecallCacheEntry>();
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -113,6 +88,7 @@ export function setCachedRecall(
   sessionId: string,
   entry: RecallCacheEntry,
 ): void {
+  evictOldestIfNeeded(recallCache, MAX_RECALL_ENTRIES);
   recallCache.set(sessionId, entry);
 }
 

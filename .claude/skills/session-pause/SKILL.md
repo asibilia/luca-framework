@@ -19,8 +19,8 @@ Read current phase from bridge (with filesystem fallback):
 
 ```bash
 # Primary: Read phase info from bridge
-PHASE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-phase 2>/dev/null || echo '{"current_phase":null}')
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
+PHASE_JSON=$(luca-bridge read-phase 2>/dev/null || echo '{"current_phase":null}')
+STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
 # Fallback: Find current phase directory from most recently modified files
 ```
 

@@ -2,19 +2,9 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v5.0.0 — Plugin Ecosystem
 
 ---
-
-## Deferred (Conditional / Post-v4)
-
-| Todo | Title                       | Target      | Reason                                                                            |
-| ---- | --------------------------- | ----------- | --------------------------------------------------------------------------------- |
-| #107 | Multi-lens review           | Conditional | Gate: pre-mortem signal rate >10% over 20 runs. Cannot be satisfied within v4.0.0 |
-| #16  | Cross-agent interop scanner | v4.1.0+     | HIGH architectural risk (new T1 domain), WSJF 1.20                                |
-| #18  | Semantic memory embeddings  | v4.1.0+     | Check MuninnDB native similarity first; COMPLEX effort                            |
-| #54  | Skill dependency graph      | v4.1.0+     | No bugs from current ordering; optimization work                                  |
-| #55  | Tribunal consensus model    | v4.1.0+     | Current tribunal works; no urgency                                                |
 
 ## v5.0.0 — Plugin Ecosystem
 
@@ -28,10 +18,9 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 
 ## Backlog (Unassigned)
 
-| Todo | Title                             | Target           | Reason                                                              |
-| ---- | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility              | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
-| #96  | Observer todo tracking (MuninnDB) | v3.3+            | Re-scoped from #64, low priority                                    |
+| Todo | Title                | Target           | Reason                                                              |
+| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
 
@@ -159,7 +148,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
 - **v3.3.0** — Cognitive Maturity & Observer Depth: 6 phases, 12 plans, 78 commits, 94 files changed ([View Archive](milestones/v3.3.0-ROADMAP.md))
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
+- **v4.1.0** — Agentic Intelligence & Platform Maturity: 10 phases, 17 plans, 77 commits, 229 files changed ([View Archive](milestones/v4.1.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-10 (v4.0.0 milestone archived)_
+_Roadmap updated: 2026-03-11 (v4.1.0 milestone archived)_

@@ -175,7 +175,7 @@ Every mitigation must be something the planner or executor can act on:
 
 Every verification criterion must be observable:
 - "The system works correctly" -- not observable, disqualified
-- "Running `bun run packages/luca-framework/src/state/bridge.ts read-status` returns valid JSON with a `premortem` field" -- observable and testable
+- "Running `luca-bridge read-status` returns valid JSON with a `premortem` field" -- observable and testable
 
 ### Memory Integration
 

@@ -46,3 +46,72 @@ export function sanitizeForTemplate(str: string): string {
     .replace(/[\n\r]/g, " ")
     .replace(/[\x00-\x1f\x7f]/g, "");
 }
+
+// --- XML Attribute Escaping ---
+
+/**
+ * Escape XML-sensitive characters in a string for safe use in XML attribute values.
+ *
+ * Replaces the five XML special characters (`&`, `"`, `'`, `<`, `>`) with their
+ * corresponding XML entity references. This prevents injection via XML attribute
+ * values in prompt templates that emit structured XML/HTML-like markup.
+ *
+ * The `&` character is processed first to avoid double-escaping (e.g., `&lt;`
+ * would become `&amp;lt;` if `&` were escaped after `<`).
+ *
+ * @param str - The raw string to escape
+ * @returns The string with XML-sensitive characters replaced by entity references
+ *
+ * @example
+ * ```typescript
+ * escapeXmlAttr('value with "quotes"')
+ * // 'value with &quot;quotes&quot;'
+ *
+ * escapeXmlAttr("it's <dangerous> & tricky")
+ * // "it&#39;s &lt;dangerous&gt; &amp; tricky"
+ *
+ * escapeXmlAttr("safe text")
+ * // "safe text"
+ * ```
+ */
+export function escapeXmlAttr(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// --- RegExp Escaping ---
+
+/**
+ * Escape all RegExp metacharacters in a string so it can be safely used
+ * inside `new RegExp()` as a literal pattern.
+ *
+ * Backslash-escapes the characters `.*+?^${}()|[]\` to prevent them from
+ * being interpreted as regex operators. Uses the standard MDN-recommended
+ * pattern for RegExp escaping.
+ *
+ * This is the T0 (shared) copy. A T3 copy exists in
+ * `src/hooks/pi-extensions/__helpers/sanitize.ts` but cannot be imported
+ * from T0/T2 per module boundary rules.
+ *
+ * @param str - The raw string to escape
+ * @returns The string with all RegExp metacharacters backslash-escaped
+ *
+ * @example
+ * ```typescript
+ * escapeRegExp("foo.bar+baz")
+ * // "foo\\.bar\\+baz"
+ *
+ * escapeRegExp("price: $100 (USD)")
+ * // "price: \\$100 \\(USD\\)"
+ *
+ * escapeRegExp("safe text")
+ * // "safe text"
+ * ```
+ */
+export function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

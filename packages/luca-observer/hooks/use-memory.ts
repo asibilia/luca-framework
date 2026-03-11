@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type {
   MuninnActivation,
@@ -8,6 +9,7 @@ import type {
   MuninnSessionEntry,
   MuninnStatsResponse,
 } from "~/lib/muninn-types";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Client-side type aliases (re-export shared types) ---------------------
 
@@ -76,6 +78,7 @@ function createNotConfiguredError(message: string): Error {
  * @returns MuninnMemoryData with structured engram data, refresh(), and staleness tracking
  */
 export function useMemory(): MuninnMemoryData {
+  const vault = useAtomValue(vaultAtom);
   const [brain, setBrain] = useState<ActivationItem[]>([]);
   const [engrams, setEngrams] = useState<Engram[]>([]);
   const [session, setSession] = useState<SessionEntry[]>([]);
@@ -95,6 +98,7 @@ export function useMemory(): MuninnMemoryData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [brainRes, engramsRes, sessionRes, statsRes] =
         await Promise.allSettled([
           fetchJson<{ activations: ActivationItem[] }>("/api/muninn/activate", {
@@ -102,14 +106,17 @@ export function useMemory(): MuninnMemoryData {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               context: ["project identity", "brain tree"],
+              vault,
               limit: 20,
             }),
           }),
-          fetchJson<{ engrams: Engram[] }>("/api/muninn/engrams?limit=200"),
-          fetchJson<{ entries: SessionEntry[] }>(
-            "/api/muninn/session?limit=50",
+          fetchJson<{ engrams: Engram[] }>(
+            `/api/muninn/engrams?vault=${v}&limit=200`,
           ),
-          fetchJson<StatsResponse>("/api/muninn/stats"),
+          fetchJson<{ entries: SessionEntry[] }>(
+            `/api/muninn/session?vault=${v}&limit=50`,
+          ),
+          fetchJson<StatsResponse>(`/api/muninn/stats?vault=${v}`),
         ]);
 
       // Check if any endpoint returned 503 (not configured)
@@ -160,7 +167,7 @@ export function useMemory(): MuninnMemoryData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {

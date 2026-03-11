@@ -101,14 +101,43 @@ export {
   resolveRootCauseTribunal,
 } from "./__helpers/root-cause-tribunal";
 
-// Interop scanner
+// Interop scanner schemas
 export {
   InteropFindingSchema,
   InteropReportSchema,
-  scanAgentInterop,
-} from "./__helpers/interop-scanner";
+} from "./__schemas/interop-scanner.schemas";
 
 export type {
   InteropFinding,
   InteropReport,
-} from "./__helpers/interop-scanner";
+} from "./__schemas/interop-scanner.schemas";
+
+// Interop scanner helper
+export { scanAgentInterop } from "./__helpers/agent-interop-scanner";
+
+// Recall scoring schemas
+export {
+  RecallScoringWeightsSchema,
+  ScoreBreakdownSchema,
+  ScoredRecallResultSchema,
+  RecallResultSchema,
+  RecallScoringContextSchema,
+} from "./__schemas/recall-scoring.schemas";
+
+export type {
+  RecallScoringWeights,
+  ScoreBreakdown,
+  ScoredRecallResult,
+  RecallResult,
+  RecallScoringContext,
+} from "./__schemas/recall-scoring.schemas";
+
+// Embedding-aware recall scoring
+export {
+  DEFAULT_RECALL_WEIGHTS,
+  computeTagOverlap,
+  computeMilestoneProximity,
+  computeAgentMatch,
+  computeRecencyScore,
+  scoreRecallResults,
+} from "./__helpers/embedding-recall";

@@ -58,7 +58,7 @@ Read these reference files before executing:
 Read complexity from bridge (falls back to STATE.md \`Task Complexity:\` field):
 
 \`\`\`bash
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 \`\`\`
 
 **Always runs.** Discussion depth and model tier scale with complexity:
@@ -193,9 +193,9 @@ elif [ "$COMPLEXITY" = "SIMPLE" ]; then
   CONTEXT_PCT=40
 fi
 
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_level --value="\\"$APPETITE\\"" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_token_ceiling --value=$CEILING 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_context_percent --value=$CONTEXT_PCT 2>/dev/null || true
+luca-bridge set-field --field=appetite_level --value="\\"$APPETITE\\"" 2>/dev/null || true
+luca-bridge set-field --field=appetite_token_ceiling --value=$CEILING 2>/dev/null || true
+luca-bridge set-field --field=appetite_context_percent --value=$CONTEXT_PCT 2>/dev/null || true
 \`\`\`
 
 Display confirmation:
@@ -228,9 +228,9 @@ Choose appetite level [Micro/Small/Medium/Large/XL]:
 After the developer responds, set via bridge:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_level --value="\\"$CHOSEN_LEVEL\\"" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_token_ceiling --value=$CHOSEN_CEILING 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=appetite_context_percent --value=$CHOSEN_CONTEXT_PCT 2>/dev/null || true
+luca-bridge set-field --field=appetite_level --value="\\"$CHOSEN_LEVEL\\"" 2>/dev/null || true
+luca-bridge set-field --field=appetite_token_ceiling --value=$CHOSEN_CEILING 2>/dev/null || true
+luca-bridge set-field --field=appetite_context_percent --value=$CHOSEN_CONTEXT_PCT 2>/dev/null || true
 \`\`\`
 
 ## Pre-Mortem Risk Analysis
@@ -242,7 +242,7 @@ After appetite declaration, run pre-mortem risk analysis to identify failure sce
 \`\`\`bash
 # 1. Read complexity (already available from earlier in the process)
 # 2. Check premortem gate via bridge
-PREMORTEM_GATE=$(bun run packages/luca-framework/src/state/bridge.ts gate-check --gate=premortem 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+PREMORTEM_GATE=$(luca-bridge gate-check --gate=premortem 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
 \`\`\`
 
 ### Skip Conditions
@@ -320,7 +320,7 @@ Actions:
 
 **Approve [A]:**
 - Write the full Tier 2 PREMORTEM.md to \`.planning/phases/{phase-dir}/PREMORTEM.md\`
-- Advance state machine via bridge: \`bun run packages/luca-framework/src/state/bridge.ts transition --event=PREMORTEM_COMPLETE 2>/dev/null || true\`
+- Advance state machine via bridge: \`luca-bridge transition --event=PREMORTEM_COMPLETE 2>/dev/null || true\`
 - Proceed to next steps
 
 **Reject [R]:**

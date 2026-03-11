@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type { MuninnEngram, MuninnStatsResponse } from "~/lib/muninn-types";
 import type { Todo } from "~/hooks/use-todos";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Fetch helpers -----------------------------------------------------------
 
@@ -101,6 +103,7 @@ const DEFAULT_STATS: DashboardStats = {
  * @returns DashboardData with aggregated stats, recent engrams, todos
  */
 export function useDashboard(): DashboardData {
+  const vault = useAtomValue(vaultAtom);
   const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
   const [recentEngrams, setRecentEngrams] = useState<MuninnEngram[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -118,14 +121,15 @@ export function useDashboard(): DashboardData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [statsRes, engramsRes, graphRes, todosRes] =
         await Promise.allSettled([
-          fetchJson<MuninnStatsResponse>("/api/muninn/stats"),
+          fetchJson<MuninnStatsResponse>(`/api/muninn/stats?vault=${v}`),
           fetchJson<{ engrams: MuninnEngram[] }>(
-            "/api/muninn/engrams?limit=200",
+            `/api/muninn/engrams?vault=${v}&limit=200`,
           ),
           fetchJson<{ nodes: unknown[]; links: unknown[] }>(
-            "/api/muninn/graph-data",
+            `/api/muninn/graph-data?vault=${v}`,
           ),
           fetchJson<Todo[]>("/api/todos"),
         ]);
@@ -222,7 +226,7 @@ export function useDashboard(): DashboardData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   useEffect(() => {
     void fetchAll();
