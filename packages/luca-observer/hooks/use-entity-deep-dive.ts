@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import orderBy from "lodash/orderBy";
 
+import { vaultAtom } from "~/stores/vault";
 import type {
   MuninnEntity,
   MuninnEntityCluster,
@@ -69,6 +71,7 @@ function createNotConfiguredError(message: string): Error {
  * @returns EntityDeepDiveData with entity, timeline, coOccurrences, and loading state
  */
 export function useEntityDeepDive(entityName: string): EntityDeepDiveData {
+  const vault = useAtomValue(vaultAtom);
   const [entity, setEntity] = useState<MuninnEntity | null>(null);
   const [timeline, setTimeline] = useState<MuninnTimelineEntry[]>([]);
   const [coOccurrences, setCoOccurrences] = useState<CoOccurrence[]>([]);
@@ -87,14 +90,15 @@ export function useEntityDeepDive(entityName: string): EntityDeepDiveData {
 
     try {
       const encoded = encodeURIComponent(entityName);
+      const v = encodeURIComponent(vault);
 
       const [entityRes, timelineRes, clustersRes] = await Promise.allSettled([
-        fetchJson<MuninnEntity>(`/api/muninn/entity/${encoded}`),
+        fetchJson<MuninnEntity>(`/api/muninn/entity/${encoded}?vault=${v}`),
         fetchJson<MuninnEntityTimeline>(
-          `/api/muninn/entity/${encoded}/timeline`,
+          `/api/muninn/entity/${encoded}/timeline?vault=${v}`,
         ),
         fetchJson<{ clusters: MuninnEntityCluster[]; count: number }>(
-          "/api/muninn/entity-clusters",
+          `/api/muninn/entity-clusters?vault=${v}`,
         ),
       ]);
 
@@ -179,7 +183,7 @@ export function useEntityDeepDive(entityName: string): EntityDeepDiveData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [entityName]);
+  }, [entityName, vault]);
 
   // Re-fetch when entityName changes
   useEffect(() => {

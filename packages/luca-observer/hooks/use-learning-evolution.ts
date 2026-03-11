@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type { MuninnEngram } from "~/lib/muninn-types";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Category resolution (mirrors memory-entries.tsx hybrid strategy) --------
 
@@ -275,6 +277,7 @@ function buildCategoryBreakdown(
  * @returns LearningEvolutionData with aggregated data and fetch state
  */
 export function useLearningEvolution(): LearningEvolutionData {
+  const vault = useAtomValue(vaultAtom);
   const [engrams, setEngrams] = useState<MuninnEngram[]>([]);
   const [configured, setConfigured] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -291,8 +294,9 @@ export function useLearningEvolution(): LearningEvolutionData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [engramsRes] = await Promise.allSettled([
-        fetchJson<{ engrams: MuninnEngram[] }>("/api/muninn/engrams?limit=500"),
+        fetchJson<{ engrams: MuninnEngram[] }>(`/api/muninn/engrams?vault=${v}&limit=500`),
       ]);
 
       // Check for 503 (not configured)
@@ -323,7 +327,7 @@ export function useLearningEvolution(): LearningEvolutionData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {

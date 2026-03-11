@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
+import { vaultAtom } from "~/stores/vault";
 import type {
   ClusterState,
   EntityType,
@@ -351,6 +353,7 @@ export interface KnowledgeGraphData {
  * @returns KnowledgeGraphData with graph state and interaction functions
  */
 export function useKnowledgeGraph(): KnowledgeGraphData {
+  const vault = useAtomValue(vaultAtom);
   // -- Raw data state --------------------------------------------------------
   const [rawNodes, setRawNodes] = useState<GraphNode[]>([]);
   const [rawLinks, setRawLinks] = useState<GraphLink[]>([]);
@@ -390,8 +393,9 @@ export function useKnowledgeGraph(): KnowledgeGraphData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [graphRes] = await Promise.allSettled([
-        fetchJson<GraphDataApiResponse>("/api/muninn/graph-data"),
+        fetchJson<GraphDataApiResponse>(`/api/muninn/graph-data?vault=${v}`),
       ]);
 
       // Check for 503 (not configured)
@@ -445,7 +449,7 @@ export function useKnowledgeGraph(): KnowledgeGraphData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {

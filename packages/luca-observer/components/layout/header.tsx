@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
+import { VaultSelector } from "~/components/layout/vault-selector";
 import { themeAtom } from "~/stores/theme";
 
 /**
@@ -30,6 +31,7 @@ export function Header() {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-2 h-4" />
         <div className="flex-1" />
+        <VaultSelector />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

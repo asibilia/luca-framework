@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+
+import { vaultAtom } from "~/stores/vault";
 
 // -- Types -------------------------------------------------------------------
 
@@ -57,6 +60,7 @@ function createNotConfiguredError(message: string): Error {
  * @returns ContradictionsData with contradictions, refresh(), forgetEngram(), and loading state
  */
 export function useContradictions(): ContradictionsData {
+  const vault = useAtomValue(vaultAtom);
   const [contradictions, setContradictions] = useState<ContradictionPair[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,9 +77,10 @@ export function useContradictions(): ContradictionsData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [contradictionsRes] = await Promise.allSettled([
         fetchJson<{ contradictions: ContradictionPair[] }>(
-          "/api/muninn/contradictions",
+          `/api/muninn/contradictions?vault=${v}`,
         ),
       ]);
 
@@ -112,7 +117,7 @@ export function useContradictions(): ContradictionsData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {
@@ -129,7 +134,7 @@ export function useContradictions(): ContradictionsData {
         await fetchJson<{ forgotten: boolean }>("/api/muninn/forget", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vault: "default", id: engramId }),
+          body: JSON.stringify({ vault, id: engramId }),
         });
 
         // Remove any contradiction pairs that reference the forgotten engram
@@ -142,7 +147,7 @@ export function useContradictions(): ContradictionsData {
         return false;
       }
     },
-    [],
+    [vault],
   );
 
   return {

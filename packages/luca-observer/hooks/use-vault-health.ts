@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type { MuninnEngram, MuninnStatsResponse } from "~/lib/muninn-types";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Fetch helpers -----------------------------------------------------------
 
@@ -207,6 +209,7 @@ const DEFAULT_OVERVIEW: VaultOverviewStats = {
  * @returns VaultHealthData with overview stats, coherence, type breakdown
  */
 export function useVaultHealth(): VaultHealthData {
+  const vault = useAtomValue(vaultAtom);
   const [stats, setStats] = useState<MuninnStatsResponse | null>(null);
   const [engrams, setEngrams] = useState<MuninnEngram[]>([]);
   const [configured, setConfigured] = useState(true);
@@ -224,9 +227,10 @@ export function useVaultHealth(): VaultHealthData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [statsRes, engramsRes] = await Promise.allSettled([
-        fetchJson<MuninnStatsResponse>("/api/muninn/stats"),
-        fetchJson<{ engrams: MuninnEngram[] }>("/api/muninn/engrams?limit=500"),
+        fetchJson<MuninnStatsResponse>(`/api/muninn/stats?vault=${v}`),
+        fetchJson<{ engrams: MuninnEngram[] }>(`/api/muninn/engrams?vault=${v}&limit=500`),
       ]);
 
       // Check for 503 (not configured)
@@ -272,7 +276,7 @@ export function useVaultHealth(): VaultHealthData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {

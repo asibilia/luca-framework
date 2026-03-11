@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import orderBy from "lodash/orderBy";
 
 import type { EntityType, GraphNode } from "~/lib/graph-types";
+import { vaultAtom } from "~/stores/vault";
 import { TYPE_DISPLAY } from "~/lib/graph-types";
 
 // -- Fetch helpers -----------------------------------------------------------
@@ -103,6 +105,7 @@ export interface EntitiesData {
  * @returns EntitiesData with entity list, loading state, and refresh function
  */
 export function useEntities(): EntitiesData {
+  const vault = useAtomValue(vaultAtom);
   const [rawNodes, setRawNodes] = useState<GraphNode[]>([]);
   const [rawLinks, setRawLinks] = useState<
     Array<{ source: string; target: string; weight: number }>
@@ -122,8 +125,9 @@ export function useEntities(): EntitiesData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [graphRes] = await Promise.allSettled([
-        fetchJson<GraphDataApiResponse>("/api/muninn/graph-data"),
+        fetchJson<GraphDataApiResponse>(`/api/muninn/graph-data?vault=${v}`),
       ]);
 
       // Check for 503 (not configured)
@@ -168,7 +172,7 @@ export function useEntities(): EntitiesData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {

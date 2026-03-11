@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 
 import type { MuninnEngram, MuninnEntityEngram } from "~/lib/muninn-types";
+import { vaultAtom } from "~/stores/vault";
 
 // -- Types -------------------------------------------------------------------
 
@@ -179,6 +181,7 @@ function groupSessions(engrams: MuninnEngram[]): SessionInfo[] {
  * @returns SessionExplorerData with sessions, refresh(), and loading state
  */
 export function useSessionExplorer(): SessionExplorerData {
+  const vault = useAtomValue(vaultAtom);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -194,9 +197,10 @@ export function useSessionExplorer(): SessionExplorerData {
     setError(null);
 
     try {
+      const v = encodeURIComponent(vault);
       const [sessionRes] = await Promise.allSettled([
         fetchJson<{ engrams: MuninnEngram[] }>(
-          "/api/muninn/engrams?limit=200&type=session",
+          `/api/muninn/engrams?vault=${v}&limit=200&type=session`,
         ),
       ]);
 
@@ -238,7 +242,7 @@ export function useSessionExplorer(): SessionExplorerData {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [vault]);
 
   // Initial fetch on mount
   useEffect(() => {
@@ -257,7 +261,7 @@ export function useSessionExplorer(): SessionExplorerData {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entity_name: sessionConcept }),
+            body: JSON.stringify({ vault, entity_name: sessionConcept }),
           },
         );
         return response.engrams ?? [];
@@ -266,7 +270,7 @@ export function useSessionExplorer(): SessionExplorerData {
         return [];
       }
     },
-    [],
+    [vault],
   );
 
   return {
