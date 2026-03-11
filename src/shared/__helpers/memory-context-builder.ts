@@ -9,7 +9,9 @@
  * Source: src/shared/__helpers/memory-context-builder.ts
  */
 
+import orderBy from "lodash/orderBy";
 import { z } from "zod";
+
 import { getCachedRecall } from "./recall-cache";
 import { escapeXmlAttr } from "./sanitize-template";
 
@@ -110,9 +112,11 @@ function truncateToFit(
   maxTokens: number,
 ): string[] {
   // Sort by priority descending (highest priority kept first)
-  const sorted = [...sections]
-    .filter((s) => s.items.length > 0)
-    .sort((a, b) => b.priority - a.priority);
+  const sorted = orderBy(
+    [...sections].filter((s) => s.items.length > 0),
+    (s) => s.priority,
+    "desc",
+  );
 
   const result: string[] = [];
   let remaining = maxTokens;
