@@ -20,11 +20,13 @@ import type { RecalledEngram } from "../__schemas/recall-cache.schemas";
 import {
   MemoryFeedbackEntrySchema,
   MemoryPhaseMetricsSchema,
+  HistoricalPhaseDataSchema,
 } from "../__schemas/memory-metrics.schemas";
 
 import type {
   MemoryFeedbackEntry,
   MemoryPhaseMetrics,
+  HistoricalPhaseData,
 } from "../__schemas/memory-metrics.schemas";
 
 // ─── Config Schemas ─────────────────────────────────────────────────────────
@@ -65,7 +67,9 @@ type DetermineFeedbackConfig = z.infer<typeof DetermineFeedbackConfigSchema>;
  * Configuration for `computeMemoryPhaseMetrics()`.
  *
  * Internal schema, uses camelCase. Provides the inputs needed to
- * compute the five effectiveness metrics for a phase.
+ * compute the five effectiveness metrics for a phase. The optional
+ * `historicalData` field enables computation of `stale_engram_pct`
+ * and `confidence_calibration` from cross-phase MuninnDB data.
  *
  * @example
  * ```typescript
@@ -76,6 +80,10 @@ type DetermineFeedbackConfig = z.infer<typeof DetermineFeedbackConfigSchema>;
  *   memoryTokensInjected: 420,
  *   phase: 140,
  *   milestone: "v4.1.0",
+ *   historicalData: {
+ *     engram_feedback_history: [...],
+ *     confidence_actuals: [...],
+ *   },
  * };
  * ```
  */
@@ -92,6 +100,8 @@ const ComputeMetricsConfigSchema = z.object({
   phase: z.number(),
   /** Milestone identifier */
   milestone: z.string(),
+  /** Optional historical data for stale_engram_pct and confidence_calibration */
+  historicalData: HistoricalPhaseDataSchema.optional(),
 });
 
 type ComputeMetricsConfig = z.infer<typeof ComputeMetricsConfigSchema>;
