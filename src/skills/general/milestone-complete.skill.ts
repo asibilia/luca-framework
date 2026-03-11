@@ -58,33 +58,33 @@ Before archiving, ensure all session learnings are captured:
 
 Before archiving, analyze memory health and prune stale engrams.
 
-**1. Recall all memory metrics for this milestone:**
+**1. Recall engrams and metrics for the rolling window:**
+
+Recall the last 10 phase metric engrams and all pattern/decision/pitfall engrams with their feedback data:
 
 \`\`\`
 mcp__muninn__muninn_recall(
   vault: "default",
-  context: "metric:memory-recall-precision metric:memory-hit-rate {milestone_version}",
-  mode: "deep",
-  limit: 50
-)
-\`\`\`
-
-**2. Identify stale engrams:**
-
-Recall all pattern/decision/pitfall engrams and cross-reference with feedback data:
-
-\`\`\`
-mcp__muninn__muninn_recall(
-  vault: "default",
-  context: "pattern: decision: pitfall: for {milestone_version}",
+  context: "pattern: decision: pitfall: metric:memory- feedback",
   mode: "deep",
   limit: 100
 )
 \`\`\`
 
-An engram is "stale" if:
-- It was recalled 3+ times across the milestone (appeared in recalledEngrams) but received feedback with useful=false more than useful=true
-- OR it was never recalled at all during the entire milestone (zero appearances)
+**2. Identify stale engrams:**
+
+An engram is "stale" when BOTH conditions are met:
+
+1. 5+ recalls with 0 positive feedback (useful=true) across the rolling window
+2. 3+ milestones with no positive feedback
+
+Steps to compute:
+a. Recall last 10 phase metric engrams from MuninnDB
+b. For each pattern/decision/pitfall engram that appeared in recalls:
+   - Count total recalls across phases
+   - Count positive feedback instances (useful=true)
+   - Group by milestone, count milestones with 0 positive feedback
+c. Flag engrams meeting BOTH thresholds
 
 **3. Prune stale engrams:**
 
