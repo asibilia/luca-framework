@@ -65,7 +65,7 @@ This skill orchestrates a multi-agent workflow to systematically address PR feed
 4. **Plan** - Create fix plan for valid concerns
 5. **Execute** - Implement fixes with atomic commits
 6. **Verify** - Confirm fixes address the concerns
-7. **Learn** - Capture review patterns for future recall
+7. **Verify** (cont.) - Capture review patterns via lu-learner (Step 7.5)
 8. **Respond** - Post responses to PR comments
 
 ## Process
