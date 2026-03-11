@@ -7,6 +7,7 @@ import orderBy from "lodash/orderBy";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
 import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { EmptyState } from "~/components/shared/empty-state";
@@ -350,12 +351,10 @@ function VelocityPanel({
             {finishedCount}/{totalCount}
           </span>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all"
-            style={{ width: `${completionRate}%` }}
-          />
-        </div>
+        <Progress
+          value={completionRate}
+          className="h-1.5 [&_[data-slot=progress-indicator]]:bg-success"
+        />
       </div>
 
       {/* Per-milestone breakdown */}
