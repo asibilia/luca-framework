@@ -530,6 +530,9 @@ Proceed to Step 9.
 - [ ] Divergent mode advisory shown (if streak >= 8)
 - [ ] Convergent streak counter updated in MuninnDB
 - [ ] Divergent opt-in rate tracked in MuninnDB
+- [ ] Stale engrams reviewed by developer (if any found)
+- [ ] Near-duplicates consolidated via muninn_consolidate
+- [ ] Memory pruning report stored in MuninnDB
 
 ## Next Steps
 
