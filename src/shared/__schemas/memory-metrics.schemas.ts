@@ -142,3 +142,102 @@ export const MemoryHealthSummarySchema = z.object({
 });
 
 export type MemoryHealthSummary = z.infer<typeof MemoryHealthSummarySchema>;
+
+// ─── Historical Phase Data ──────────────────────────────────────────────────
+
+/**
+ * Per-engram feedback history entry for stale detection.
+ *
+ * Tracks how many times an engram has been recalled and whether it received
+ * positive feedback, across a rolling window of phases. Used by
+ * `computeMemoryPhaseMetrics()` to compute `stale_engram_pct`.
+ *
+ * @example
+ * ```typescript
+ * const entry: EngramFeedbackHistoryEntry = {
+ *   engram_id: "01JEXAMPLE123",
+ *   total_recalls: 8,
+ *   positive_recalls: 2,
+ *   milestones_with_no_positive: 1,
+ *   confidence: "high",
+ * };
+ * ```
+ */
+export const EngramFeedbackHistoryEntrySchema = z.object({
+  /** The MuninnDB engram ID */
+  engram_id: z.string().min(1),
+  /** Times recalled across the rolling window */
+  total_recalls: z.number().int().nonnegative(),
+  /** Times feedback was useful=true */
+  positive_recalls: z.number().int().nonnegative(),
+  /** Milestones where this engram had 0 positive feedback */
+  milestones_with_no_positive: z.number().int().nonnegative(),
+  /** Current engram confidence level (if known) */
+  confidence: z.enum(["low", "medium", "high"]).optional(),
+});
+
+export type EngramFeedbackHistoryEntry = z.infer<
+  typeof EngramFeedbackHistoryEntrySchema
+>;
+
+/**
+ * A single confidence-vs-actual data point for calibration computation.
+ *
+ * Records the predicted confidence level of an engram alongside whether
+ * it was actually useful. Collected across phases to measure how well
+ * confidence scores predict real-world usefulness.
+ *
+ * @example
+ * ```typescript
+ * const entry: ConfidenceActualEntry = {
+ *   confidence: "high",
+ *   actually_useful: true,
+ * };
+ * ```
+ */
+export const ConfidenceActualEntrySchema = z.object({
+  /** Predicted confidence level of the engram */
+  confidence: z.enum(["low", "medium", "high"]),
+  /** Whether the engram was actually useful in practice */
+  actually_useful: z.boolean(),
+});
+
+export type ConfidenceActualEntry = z.infer<typeof ConfidenceActualEntrySchema>;
+
+/**
+ * Container for historical phase data passed to `computeMemoryPhaseMetrics()`.
+ *
+ * Provides the cross-phase context needed to compute `stale_engram_pct` and
+ * `confidence_calibration`. Callers (phase-execute, milestone-complete) query
+ * MuninnDB for the last N phases of data and populate this structure.
+ *
+ * Both arrays default to empty, so omitting either field gracefully degrades
+ * the corresponding metric to 0 (backward compatible).
+ *
+ * @example
+ * ```typescript
+ * const historicalData: HistoricalPhaseData = {
+ *   engram_feedback_history: [
+ *     { engram_id: "01JEX1", total_recalls: 8, positive_recalls: 0,
+ *       milestones_with_no_positive: 4, confidence: "low" },
+ *     { engram_id: "01JEX2", total_recalls: 6, positive_recalls: 3,
+ *       milestones_with_no_positive: 0, confidence: "high" },
+ *   ],
+ *   confidence_actuals: [
+ *     { confidence: "high", actually_useful: true },
+ *     { confidence: "low", actually_useful: false },
+ *     // ... at least 10 entries for calibration to compute
+ *   ],
+ * };
+ * ```
+ */
+export const HistoricalPhaseDataSchema = z.object({
+  /** Per-engram feedback histories across the rolling window */
+  engram_feedback_history: z
+    .array(EngramFeedbackHistoryEntrySchema)
+    .default([]),
+  /** Confidence vs actual usefulness data points */
+  confidence_actuals: z.array(ConfidenceActualEntrySchema).default([]),
+});
+
+export type HistoricalPhaseData = z.infer<typeof HistoricalPhaseDataSchema>;
