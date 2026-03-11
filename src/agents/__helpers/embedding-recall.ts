@@ -5,9 +5,9 @@
  * semantic recall. Each result from `mcp__muninn__muninn_recall`
  * (with `mode: "semantic"`) already carries a relevance `score`.
  * This module computes additional signals -- tag overlap, milestone
- * proximity, agent name match, confidence, and recency -- then
- * blends them via configurable weights into a single
- * `composite_score` for ranking.
+ * proximity, agent name match, confidence, recency, and feedback
+ * score -- then blends all seven via configurable weights into a
+ * single `composite_score` for ranking.
  *
  * All functions are pure and side-effect-free.
  */
@@ -186,6 +186,46 @@ export function computeRecencyScore(createdAt: string, now?: Date): number {
   return Math.max(0.1, Math.exp(decayRate * daysDiff));
 }
 
+/**
+ * Compute feedback score as a proxy via engram confidence level.
+ *
+ * lu-learner promotes/demotes engram confidence based on actual
+ * `muninn_feedback` results, so confidence serves as a usable proxy
+ * for accumulated feedback data. The mapping:
+ *
+ * - "Confidence: High" in content -> 0.8
+ * - "Confidence: Medium" or no marker -> 0.5 (neutral default)
+ * - "Confidence: Low" in content -> 0.2
+ *
+ * The weight for this signal is deliberately small (0.075) to avoid
+ * circular amplification with MuninnDB's internal SGD-based scoring.
+ *
+ * @param content - Engram content text
+ * @returns Feedback score proxy (0.2, 0.5, or 0.8)
+ *
+ * @example
+ * ```typescript
+ * computeFeedbackScore("Confidence: High pattern")  // 0.8
+ * computeFeedbackScore("Confidence: Low pitfall")    // 0.2
+ * computeFeedbackScore("No confidence marker here")  // 0.5
+ * ```
+ */
+export function computeFeedbackScore(content: string): number {
+  if (!content) return 0.5;
+
+  const lower = content.toLowerCase();
+
+  if (lower.includes("confidence: high") || lower.includes("confidence:high")) {
+    return 0.8;
+  }
+  if (lower.includes("confidence: low") || lower.includes("confidence:low")) {
+    return 0.2;
+  }
+
+  // Medium, no marker, or unrecognised -> neutral default
+  return 0.5;
+}
+
 // ---------------------------------------------------------------------------
 // Raw recall result shape (what MuninnDB returns before scoring)
 // ---------------------------------------------------------------------------
@@ -272,6 +312,7 @@ export function scoreRecallResults(
       agent_match: computeAgentMatch(result.content, context.agentName),
       confidence: extractConfidenceScore(result.content),
       recency: computeRecencyScore(result.created_at ?? ""),
+      feedback_score: computeFeedbackScore(result.content),
     };
 
     const compositeScore =
@@ -280,7 +321,8 @@ export function scoreRecallResults(
       breakdown.milestone_proximity * resolvedWeights.milestone_proximity +
       breakdown.agent_match * resolvedWeights.agent_match +
       breakdown.confidence * resolvedWeights.confidence +
-      breakdown.recency * resolvedWeights.recency;
+      breakdown.recency * resolvedWeights.recency +
+      breakdown.feedback_score * resolvedWeights.feedback_score;
 
     return {
       id: result.id,
