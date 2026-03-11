@@ -106,6 +106,40 @@ const ComputeMetricsConfigSchema = z.object({
 
 type ComputeMetricsConfig = z.infer<typeof ComputeMetricsConfigSchema>;
 
+// ─── Private Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Compute the percentage of stale engrams from historical feedback data.
+ *
+ * An engram is considered stale when BOTH conditions are met:
+ * 1. `total_recalls >= 5` AND `positive_recalls === 0` (recalled often, never useful)
+ * 2. `milestones_with_no_positive >= 3` (consistently unhelpful across milestones)
+ *
+ * This conservative dual-threshold approach minimizes false positives — an engram
+ * must be both heavily recalled and consistently unhelpful to be flagged stale.
+ *
+ * @param historicalData - Historical phase data from MuninnDB, or undefined
+ * @returns Stale percentage clamped to [0, 1], or 0 if no data
+ */
+function computeStaleEngramPct(
+  historicalData: HistoricalPhaseData | undefined,
+): number {
+  if (!historicalData || historicalData.engram_feedback_history.length === 0) {
+    return 0;
+  }
+
+  const history = historicalData.engram_feedback_history;
+
+  const staleCount = history.filter(
+    (entry) =>
+      entry.total_recalls >= 5 &&
+      entry.positive_recalls === 0 &&
+      entry.milestones_with_no_positive >= 3,
+  ).length;
+
+  return Math.min(Math.max(staleCount / history.length, 0), 1);
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -203,15 +237,22 @@ export function determineFeedback(
  * Takes feedback entries and token cost data, produces the five
  * core effectiveness metrics defined in `MemoryPhaseMetricsSchema`.
  *
- * Note: `stale_engram_pct` and `confidence_calibration` are set to 0
- * for now -- they require historical cross-phase data that will be
- * populated at milestone boundaries by the metrics aggregator.
+ * When `historicalData` is provided, `stale_engram_pct` is computed from
+ * engram feedback history using a dual-threshold: engrams with 5+ recalls
+ * and 0 positive feedback across 3+ milestones are considered stale.
+ * When omitted, `stale_engram_pct` returns 0 (backward compatible).
  *
- * @param rawConfig - Feedback entries, recall/apply counts, token cost, phase info
+ * `confidence_calibration` requires `historicalData.confidence_actuals`
+ * with 10+ entries (minimum sample size guard). When insufficient data
+ * is available, returns 0 (backward compatible).
+ *
+ * @param rawConfig - Feedback entries, recall/apply counts, token cost, phase info,
+ *   and optional historicalData for stale/calibration computation
  * @returns Computed phase metrics
  *
  * @example
  * ```typescript
+ * // Basic usage (no historical data -- stale and calibration are 0)
  * const metrics = computeMemoryPhaseMetrics({
  *   feedbackEntries: feedback,
  *   totalRecalled: 8,
@@ -221,7 +262,30 @@ export function determineFeedback(
  *   milestone: "v4.1.0",
  * });
  * // metrics.recall_precision === 0.625 (5/8)
- * // metrics.hit_rate === 0.625 (5 useful / 8 total)
+ * // metrics.stale_engram_pct === 0
+ *
+ * // With historical data
+ * const metricsWithHistory = computeMemoryPhaseMetrics({
+ *   feedbackEntries: feedback,
+ *   totalRecalled: 8,
+ *   totalApplied: 5,
+ *   memoryTokensInjected: 420,
+ *   phase: 140,
+ *   milestone: "v4.1.0",
+ *   historicalData: {
+ *     engram_feedback_history: [
+ *       { engram_id: "01JEX1", total_recalls: 8, positive_recalls: 0,
+ *         milestones_with_no_positive: 4 },
+ *       { engram_id: "01JEX2", total_recalls: 6, positive_recalls: 3,
+ *         milestones_with_no_positive: 0 },
+ *     ],
+ *     confidence_actuals: [
+ *       { confidence: "high", actually_useful: true },
+ *       // ... 10+ entries needed
+ *     ],
+ *   },
+ * });
+ * // metricsWithHistory.stale_engram_pct === 0.5 (1 stale / 2 total)
  * ```
  */
 export function computeMemoryPhaseMetrics(
@@ -267,7 +331,7 @@ export function computeMemoryPhaseMetrics(
     recall_precision: Math.min(recallPrecision, 1),
     hit_rate: Math.min(hitRate, 1),
     memory_tokens_injected: config.memoryTokensInjected,
-    stale_engram_pct: 0, // Requires historical data, populated at milestone boundary
+    stale_engram_pct: computeStaleEngramPct(config.historicalData),
     confidence_calibration: 0, // Requires multi-phase data
     computed_at: new Date().toISOString(),
   });
