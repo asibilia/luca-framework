@@ -90,7 +90,7 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1, never
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, observability, interop | Import T0 only |
+| T1 Core | context, planner, harness, iteration, observability, interop | Import T0–T1 (same-tier allowed) |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
 | T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
 
