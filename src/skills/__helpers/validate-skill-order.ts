@@ -7,33 +7,14 @@
  *
  * T2-compliant: imports only from local schemas and helpers (T2).
  */
-import { z } from "zod";
-
 import type { SkillDependencyMap } from "../__schemas/skill-dependencies";
+
+import { SkillOrderValidationResultSchema } from "../__schemas/skill-order-validation.schemas";
+
+import type { SkillOrderValidationResult } from "../__schemas/skill-order-validation.schemas";
+
 import { buildDependencyOrder, detectConflicts } from "./dependency-graph";
 import { createDefaultDependencyMap } from "./default-dependency-map";
-
-/**
- * Result schema for skill order validation.
- *
- * Uses snake_case for API compatibility per project conventions.
- */
-export const SkillOrderValidationResultSchema = z.object({
-  /** Whether the proposed order is valid */
-  is_valid: z.boolean(),
-  /** The proposed order that was validated */
-  proposed_order: z.array(z.string()),
-  /** The correct topological order (may differ from proposed) */
-  valid_order: z.array(z.string()),
-  /** Dependency violations found (empty if valid) */
-  violations: z.array(z.string()).default([]),
-  /** Mutual exclusion conflicts found (empty if none) */
-  conflicts: z.array(z.string()).default([]),
-});
-
-export type SkillOrderValidationResult = z.infer<
-  typeof SkillOrderValidationResultSchema
->;
 
 /**
  * Validate whether a proposed skill execution order respects the dependency graph.

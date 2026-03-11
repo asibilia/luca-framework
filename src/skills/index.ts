@@ -145,10 +145,10 @@ export {
 // Default dependency map
 export { createDefaultDependencyMap } from "./__helpers/default-dependency-map";
 
-// Skill order validation
-export {
-  validateSkillOrder,
-  SkillOrderValidationResultSchema,
-} from "./__helpers/validate-skill-order";
+// Skill order validation schemas
+export { SkillOrderValidationResultSchema } from "./__schemas/skill-order-validation.schemas";
 
-export type { SkillOrderValidationResult } from "./__helpers/validate-skill-order";
+export type { SkillOrderValidationResult } from "./__schemas/skill-order-validation.schemas";
+
+// Skill order validation helper
+export { validateSkillOrder } from "./__helpers/validate-skill-order";
