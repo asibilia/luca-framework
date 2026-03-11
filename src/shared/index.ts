@@ -154,20 +154,25 @@ export type {
   RequestMemoryContextConfig,
 } from "./__helpers/memory-context-builder";
 
-// ─── Recall Cache ──────────────────────────────────────────────────────────
+// ─── Recall Cache Schemas ──────────────────────────────────────────────────
 
 export {
   RecalledEngramSchema,
   RecallCacheEntrySchema,
-  getCachedRecall,
-  setCachedRecall,
-  hasRecallCache,
-  clearRecallCache,
-} from "./__helpers/recall-cache";
+} from "./__schemas/recall-cache.schemas";
 
 export type {
   RecalledEngram,
   RecallCacheEntry,
+} from "./__schemas/recall-cache.schemas";
+
+// ─── Recall Cache Functions ───────────────────────────────────────────────
+
+export {
+  getCachedRecall,
+  setCachedRecall,
+  hasRecallCache,
+  clearRecallCache,
 } from "./__helpers/recall-cache";
 
 // ─── Memory Metrics Schemas ────────────────────────────────────────────────

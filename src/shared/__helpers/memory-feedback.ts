@@ -14,7 +14,7 @@
 
 import { z } from "zod";
 
-import type { RecalledEngram } from "./recall-cache";
+import type { RecalledEngram } from "../__schemas/recall-cache.schemas";
 
 import {
   MemoryFeedbackEntrySchema,
