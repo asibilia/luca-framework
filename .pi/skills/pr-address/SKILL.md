@@ -29,6 +29,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - `lu-planner` - Creates fix plans for valid concerns
 - `lu-executor` - Implements fixes
 - `lu-verifier` - Verifies fixes address concerns
+- `lu-learner` - Captures PR review patterns for future recall
 
 **DO NOT** validate concerns, plan fixes, or execute fixes yourself. Spawn the appropriate agents.
 
@@ -69,7 +70,8 @@ This skill orchestrates a multi-agent workflow to systematically address PR feed
 4. **Plan** - Create fix plan for valid concerns
 5. **Execute** - Implement fixes with atomic commits
 6. **Verify** - Confirm fixes address the concerns
-7. **Respond** - Post responses to PR comments
+7. **Learn** - Capture review patterns for future recall
+8. **Respond** - Post responses to PR comments
 
 ## Process
 
@@ -558,6 +560,64 @@ Verify all PR fixes address their original concerns.
 
 **Do NOT proceed until the Task returns.**
 
+### Step 7.5: Capture PR Review Learnings
+
+After fix verification completes (Step 7), spawn lu-learner to extract patterns from PR review comments. This step runs regardless of whether all fixes passed verification -- failed verifications are also learning opportunities.
+
+**Gate check:** Only spawn lu-learner if there were valid concerns from Step 4 (at least one comment was categorized as `fix_needed: true`). Skip this step if all comments were informational or disputed -- there are no actionable learnings to capture.
+
+If gate check passes, gather the learning context and spawn lu-learner:
+
+```bash
+# Collect addressed concerns from Step 4 and verification results from Step 7
+VALID_CONCERNS="[aggregated from reviewer agent results where fix_needed: true]"
+VERIFICATION_RESULT="[from verifier return value in Step 7]"
+```
+
+```python
+Task(
+  prompt="""
+<learning_context>
+
+**Source:** PR review comments
+**PR:** #{pr_number}
+**Verification Result:** {verification_summary}
+
+**Review Comments Addressed:**
+{for each addressed comment from Step 4 where fix_needed: true:}
+- Comment #{comment_id}: "{comment_text}"
+  - Category: {category}
+  - File: {file_path}
+  - Fix Applied: {fix_description}
+  - Fix Verified: {fix_verified}
+
+</learning_context>
+
+<extraction_targets>
+Extract ONLY pitfalls from PR review feedback:
+- **Category**: Use `pitfall:pr-review-{descriptive-name}`
+- **Confidence**: Low (first occurrence from PR review)
+- **Content**: What the reviewer caught, why it matters, how to avoid it next time
+- All comments captured at low confidence -- the confidence evolution
+  system (3+ feedback heuristic) handles quality over time
+</extraction_targets>
+
+<output_requirements>
+- Write each pitfall as a MuninnDB engram via muninn_remember
+- Use concept: "pitfall:pr-review-{descriptive-name}"
+- Link new engrams to related existing memories via muninn_link
+- Return summary of learnings captured
+</output_requirements>
+
+Extract learnings from these PR review comments.
+""",
+  subagent_type="lu-learner",
+  description="Capture PR review learnings"
+)
+```
+
+**Do NOT proceed until the Task returns.**
+
 ### Step 8: Respond to PR Comments
 
 For each addressed comment:
@@ -650,6 +710,7 @@ EOF
 | accessibility-expert | `.github/agents/` | Accessibility issues           |
 | test-engineer        | `.github/agents/` | Testing concerns               |
 | lu-pr-reviewer    | `.cursor/agents/` | Coordination, general feedback |
+| lu-learner        | `.cursor/agents/` | Capture PR review patterns     |
 
 ## Success Criteria
 
@@ -660,6 +721,7 @@ EOF
 - [ ] Fix plan created for valid concerns
 - [ ] Fixes executed with atomic commits
 - [ ] All fixes verified
+- [ ] PR review learnings captured in MuninnDB (if valid concerns existed)
 - [ ] Responses posted to all comments
 - [ ] Summary posted to PR
 - [ ] Changes pushed

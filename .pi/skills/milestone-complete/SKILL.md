@@ -53,45 +53,91 @@ Before archiving, ensure all session learnings are captured:
 
 Before archiving, analyze memory health and prune stale engrams.
 
-**1. Recall all memory metrics for this milestone:**
+**1. Recall engrams and metrics for the rolling window:**
+
+Recall the last 10 phase metric engrams and all pattern/decision/pitfall engrams with their feedback data:
 
 ```
 mcp__muninn__muninn_recall(
   vault: "default",
-  context: "metric:memory-recall-precision metric:memory-hit-rate {milestone_version}",
-  mode: "deep",
-  limit: 50
-)
-```
-
-**2. Identify stale engrams:**
-
-Recall all pattern/decision/pitfall engrams and cross-reference with feedback data:
-
-```
-mcp__muninn__muninn_recall(
-  vault: "default",
-  context: "pattern: decision: pitfall: for {milestone_version}",
+  context: "pattern: decision: pitfall: metric:memory- feedback",
   mode: "deep",
   limit: 100
 )
 ```
 
-An engram is "stale" if:
-- It was recalled 3+ times across the milestone (appeared in recalledEngrams) but received feedback with useful=false more than useful=true
-- OR it was never recalled at all during the entire milestone (zero appearances)
+**2. Identify stale engrams:**
 
-**3. Prune stale engrams:**
+An engram is "stale" when BOTH conditions are met:
 
-For each stale engram, decide:
-- **Forget** (if never recalled and older than 2 milestones): `mcp__muninn__muninn_forget(vault: "default", id: engram_id)`
-- **Evolve** (if recalled but low usefulness): `mcp__muninn__muninn_evolve(vault: "default", id: engram_id, new_content: "...", reason: "Low usefulness across milestone {version}: {useful_count}/{total_feedback} positive feedback")`
-- **Consolidate** (if multiple similar low-utility engrams): `mcp__muninn__muninn_consolidate(vault: "default", ids: [id1, id2, ...], merged_content: "...")`
+1. 5+ recalls with 0 positive feedback (useful=true) across the rolling window
+2. 3+ milestones with no positive feedback
 
-**4. Report pruning results:**
+Steps to compute:
+a. Recall last 10 phase metric engrams from MuninnDB
+b. For each pattern/decision/pitfall engram that appeared in recalls:
+   - Count total recalls across phases
+   - Count positive feedback instances (useful=true)
+   - Group by milestone, count milestones with 0 positive feedback
+c. Flag engrams meeting BOTH thresholds
 
-Log pruning summary:
-"Memory pruning: {forgotten} engrams forgotten, {evolved} engrams evolved, {consolidated} engrams consolidated from {total_stale} stale candidates."
+**3. Human review checkpoint:**
+
+If no stale engrams detected, display: "No stale engrams detected. Memory is healthy." and skip to section 5 (consolidation).
+
+If stale engrams found, display them to the developer for review:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > STALE ENGRAM REVIEW — v{version}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{count} stale engrams detected (5+ recalls, 0 positive, 3+ milestones dormant):
+
+| #   | Concept                  | Recalls | Positive | Milestones Dormant |
+| --- | ------------------------ | ------- | -------- | ------------------ |
+| 1   | pitfall:old-issue        | 7       | 0        | 4                  |
+| 2   | pattern:deprecated-flow  | 5       | 0        | 3                  |
+
+[Y] Prune all  [N] Keep all  [S] Select individually
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Handle each response:
+
+- **Y (Prune all):** Delete all listed engrams via `muninn_forget` (see section 4)
+- **N (Keep all):** Skip deletion, proceed to section 5 (consolidation)
+- **S (Select individually):** Present each engram and ask Y/N per engram, then delete approved ones via `muninn_forget`
+
+**4. Prune after approval:**
+
+For each engram approved for deletion (via Y or S response in section 3):
+
+```
+mcp__muninn__muninn_forget(vault: "default", id: "{engram_id}")
+```
+
+Note: `muninn_forget` performs a soft-delete with a 7-day recovery window. This is the strongest delete available in MuninnDB. If a mistake is made, the developer can use `muninn_restore` within 7 days to recover the engram.
+
+Stale engrams are deleted (after human approval), not evolved. Evolution is reserved for engrams that are still useful but need content updates.
+
+**5. Consolidate near-duplicates:**
+
+Run `muninn_consolidate` at every milestone boundary, regardless of whether stale engrams were found or pruned:
+
+```
+mcp__muninn__muninn_consolidate(vault: "default")
+```
+
+This step:
+- Merges near-duplicate engrams using MuninnDB's built-in semantic similarity
+- Reduces recall noise by collapsing redundant entries
+- Runs AFTER pruning to avoid consolidating engrams that were just deleted
+- Runs even if no stale engrams were found (deduplication is always valuable)
+
+Log the consolidation result in the pruning report.
+
+**6. Report pruning results:**
 
 Store pruning report as a milestone metric:
 
@@ -100,15 +146,19 @@ mcp__muninn__muninn_remember(
   vault: "default",
   concept: "metric:memory-pruning-{milestone_version}",
   content: JSON.stringify({
+    stale_detected: {count},
+    human_approved_for_deletion: {count},
     forgotten: {count},
-    evolved: {count},
-    consolidated: {count},
-    total_stale: {count},
+    consolidated: {count from muninn_consolidate result},
     total_engrams_analyzed: {count},
+    stale_threshold: "5+ recalls, 0 positive, 3+ milestones dormant",
     pruned_at: new Date().toISOString()
   })
 )
 ```
+
+Log a summary after completion:
+"Memory maintenance: {stale_detected} stale detected, {forgotten} forgotten (human-approved), {consolidated} consolidated. {total_engrams_analyzed} engrams analyzed."
 
 ### Step 1: Archive Milestone Memory
 
@@ -475,6 +525,9 @@ Proceed to Step 9.
 - [ ] Divergent mode advisory shown (if streak >= 8)
 - [ ] Convergent streak counter updated in MuninnDB
 - [ ] Divergent opt-in rate tracked in MuninnDB
+- [ ] Stale engrams reviewed by developer (if any found)
+- [ ] Near-duplicates consolidated via muninn_consolidate
+- [ ] Memory pruning report stored in MuninnDB
 
 ## Next Steps
 
