@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { CheckCircle2, Circle, Clock, BarChart3 } from "lucide-react";
+import filter from "lodash/filter";
 import groupBy from "lodash/groupBy";
 import orderBy from "lodash/orderBy";
 
@@ -64,14 +65,15 @@ const DEFAULT_STATUS_CONFIG = STATUS_CONFIG.pending;
  * @returns Object with total counts and per-milestone breakdown
  */
 function computeVelocity(todos: Todo[]) {
-  const pending = todos.filter((t) => t.state === "pending");
-  const finished = todos.filter(
+  const pending = filter(todos, (t) => t.state === "pending");
+  const finished = filter(
+    todos,
     (t) => t.state === "done" || t.state === "completed",
   );
 
   // Group finished items by milestone for velocity display
   const byMilestone = groupBy(
-    finished.filter((t) => t.milestone),
+    filter(finished, (t) => t.milestone),
     "milestone",
   );
 
@@ -109,7 +111,7 @@ export function TodoTracker() {
   const filteredTodos = useMemo(() => {
     if (activeTab === "velocity") return [];
     if (activeTab === "all") return todos;
-    return todos.filter((t) => {
+    return filter(todos, (t) => {
       if (activeTab === "done") {
         return t.state === "done" || t.state === "completed";
       }
