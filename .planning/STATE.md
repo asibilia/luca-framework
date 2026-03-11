@@ -32,6 +32,8 @@
 
 ## Previous Milestones
 
+- v4.1.0 — Agentic Intelligence & Platform Maturity (2026-03-11)
+- v4.0.0 — Process Intelligence & Self-Tuning Workflow (2026-03-10)
 - v3.3.0 — Cognitive Maturity & Observer Depth (2026-03-09)
 - v3.2.0 — Observer Rebirth (2026-03-09)
 - v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09)
@@ -48,4 +50,4 @@ _State updated: 2026-03-09 — v3.3.0 milestone complete, ready for next_
 
 ---
 
-_State generated from machine snapshot at 2026-03-11T16:12:49.888Z_
+_State generated from machine snapshot at 2026-03-11T17:40:51.845Z_

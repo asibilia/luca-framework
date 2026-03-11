@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+
 import { CheckCircle2, Circle, Clock, BarChart3 } from "lucide-react";
 import filter from "lodash/filter";
 import groupBy from "lodash/groupBy";
@@ -78,7 +79,7 @@ function computeVelocity(todos: Todo[]) {
   // Group finished items by milestone for velocity display
   const byMilestone = groupBy(
     filter(finished, (t) => t.milestone),
-    "milestone",
+    "milestone"
   );
 
   const milestoneBreakdown = take(
@@ -88,9 +89,9 @@ function computeVelocity(todos: Todo[]) {
         count: items.length,
       })),
       "count",
-      "desc",
+      "desc"
     ),
-    5,
+    5
   );
 
   return {
@@ -124,12 +125,12 @@ export function TodoTracker() {
 
   const groupedByArea = useMemo(
     () => groupBy(filteredTodos, "area"),
-    [filteredTodos],
+    [filteredTodos]
   );
 
   const sortedAreaKeys = useMemo(
     () => orderBy(Object.keys(groupedByArea), (k) => k),
-    [groupedByArea],
+    [groupedByArea]
   );
 
   if (loading) {
@@ -277,7 +278,7 @@ function TodoRow({ todo }: { todo: Todo }) {
   return (
     <Card
       size="sm"
-      className="flex-row items-center gap-2.5 py-2.5 transition-colors hover:bg-muted/50"
+      className="flex-row items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/50"
     >
       <StatusIcon
         className={`h-3.5 w-3.5 shrink-0 ${statusConfig.colorClass}`}

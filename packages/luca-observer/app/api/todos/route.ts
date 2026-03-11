@@ -1,6 +1,6 @@
-import { Glob } from "bun";
 import filter from "lodash/filter";
 import { NextResponse } from "next/server";
+import { access, readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { z } from "zod";
@@ -73,22 +73,12 @@ async function findProjectRoot(startDir: string): Promise<string | null> {
   const root = resolve("/");
   while (current !== root) {
     const todosDir = join(current, ".planning", "todos");
-    // Check if the directory exists by attempting to scan it
-    const glob = new Glob("*");
-    let dirExists = false;
     try {
-      // scanSync throws if the directory does not exist
-      for (const _ of glob.scanSync({ cwd: todosDir })) {
-        dirExists = true;
-        break;
-      }
-      // Even an empty directory means the path is valid
-      // If scanSync didn't throw, the directory exists
-      dirExists = true;
+      await access(todosDir);
+      return current;
     } catch {
       /* not found at this level, keep walking up */
     }
-    if (dirExists) return current;
     current = resolve(current, "..");
   }
   return null;
@@ -109,11 +99,12 @@ async function readTodosFromDir(
   state: "pending" | "done" | "completed",
 ): Promise<TodoResponse[]> {
   try {
-    const glob = new Glob("*.md");
+    const entries = await readdir(dirPath);
+    const mdFiles = filter(entries, (f: string) => f.endsWith(".md"));
     const todos: TodoResponse[] = [];
-    for await (const file of glob.scan({ cwd: dirPath })) {
+    for (const file of mdFiles) {
       try {
-        const content = await Bun.file(join(dirPath, file)).text();
+        const content = await readFile(join(dirPath, file), "utf-8");
         const fm = parseFrontmatter(content);
         const parseResult = TodoResponseSchema.safeParse({
           filename: file,

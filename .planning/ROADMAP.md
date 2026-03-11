@@ -2,45 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v4.1.0 — Agentic Intelligence & Platform Maturity
-
----
-
-## v4.1.0 — Agentic Intelligence & Platform Maturity
-
-**Goal:** Complete all remaining deferred todos — skill dependency orchestration, tribunal consensus, multi-lens review, observer todo tracking, semantic memory embeddings, and cross-agent interop.
-
-### ~~Phase 136: Skill Dependency Graph Integration (#54) — SIMPLE~~ DONE
-
-### ~~Phase 137: Tribunal Consensus Model (#55) — MODERATE~~ DONE
-
-### ~~Phase 138: Multi-Lens Review Gate (#107) — MODERATE~~ DONE
-
-### ~~Phase 139: Observer Todo Tracking View (#96) — MODERATE~~ DONE
-
-### ~~Phase 140: Semantic Memory Embeddings (#18) — COMPLEX~~ DONE
-
-### ~~Phase 141: Cross-Agent Interop Scanner (#16) — COMPLEX~~ DONE
-
-### ~~Phase 140.1: Memory Effectiveness Measurement (#111) — COMPLEX (INSERTED)~~ DONE
-
-### ~~Phase 142: Security & Input Validation Hardening — MODERATE (GAP CLOSURE)~~ DONE
-
-### Phase 143: DRY, Convention & Schema Alignment — MODERATE (GAP CLOSURE)
-
-**Goal:** Close schema drift (6→7 signal weights), DRY violations in consensus-resolver (duplicate builders + 3x expert lookup), .parse()→.safeParse() sweep across 4 files, stale EXCEPTIONS cleanup, node:fs→Bun migration in 2 files, sort()→orderBy, dual recall representation cleanup.
-
-**Audit refs:** Integration Gap #2, HIGH #4-6, MEDIUM #1-4 #7-8, LOW #1
-
-- [ ] PLAN.md
-
-### Phase 144: Observer UI & Schema Placement Polish — SIMPLE (GAP CLOSURE)
-
-**Goal:** Replace hard-coded emerald-500 with semantic tokens, adopt shadcn Progress/Card/Button components, add ARIA attributes, migrate TodoResponse to Zod schema with schema-first defaults, move schemas from **helpers/ to **schemas/ (4 files), resolve interop-scanner naming collision.
-
-**Audit refs:** HIGH #7-8, MEDIUM #5-6 #12-14, LOW #2-7 #10
-
-- [ ] PLAN.md
+**Current Milestone:** v5.0.0 — Plugin Ecosystem
 
 ---
 
@@ -61,18 +23,6 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 | #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
-
-## Closed (v4.1.0 Completed)
-
-| Todo | Reason                                                                                                 |
-| ---- | ------------------------------------------------------------------------------------------------------ |
-| #54  | Skill dependency graph integration (default map + validateSkillOrder helper)                           |
-| #55  | Tribunal consensus model (4 consensus types, 7 fallback strategies, ConsensusResult)                   |
-| #107 | Multi-lens review gate (Architecture + Data lenses, conditional on signal rate >10%)                   |
-| #96  | Observer MuninnDB todo tracking (tabbed Pending/Done/Velocity view with API endpoint)                  |
-| #18  | Semantic memory embeddings (6-signal composite scoring, semantic recall mode)                          |
-| #16  | Cross-agent interop scanner (new src/interop/ T1 domain, 5 IDE dirs, normalizer)                       |
-| #111 | Memory effectiveness measurement (muninn_feedback instrumentation, 7-signal scoring, health dashboard) |
 
 ## Closed (By Design)
 
@@ -198,7 +148,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v3.2.0** — Observer Rebirth: 8 phases, 20 plans, 48 commits, 193 files changed ([View Archive](milestones/v3.2.0-ROADMAP.md))
 - **v3.3.0** — Cognitive Maturity & Observer Depth: 6 phases, 12 plans, 78 commits, 94 files changed ([View Archive](milestones/v3.3.0-ROADMAP.md))
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
+- **v4.1.0** — Agentic Intelligence & Platform Maturity: 10 phases, 17 plans, 77 commits, 229 files changed ([View Archive](milestones/v4.1.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-10 (v4.0.0 milestone archived)_
+_Roadmap updated: 2026-03-11 (v4.1.0 milestone archived)_

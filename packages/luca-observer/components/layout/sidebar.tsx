@@ -31,7 +31,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -125,26 +124,6 @@ export function Sidebar(props: ComponentProps<typeof SidebarRoot>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton>
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/15 font-mono text-[10px] font-bold text-primary">
-                N
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-medium leading-tight">
-                  MuninnDB
-                </span>
-                <span className="text-[10px] leading-tight text-muted-foreground">
-                  v0.1.0
-                </span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </SidebarRoot>
   );
 }

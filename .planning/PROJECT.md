@@ -8,11 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v4.0.0 — Shipped)
+## Current State (v4.1.0 — Shipped)
 
-**Last Shipped:** v4.0.0 — Process Intelligence & Self-Tuning Workflow (2026-03-10)
+**Last Shipped:** v4.1.0 — Agentic Intelligence & Platform Maturity (2026-03-11)
 
-6 phases, 12 plans, 48 commits, 255 files changed (+64,528/-3,396). Added fixed appetite/variable scope planning, pre-mortem risk analysis (lu-premortem agent), process metrics collection (lu-process-data agent with 5 per-phase + 4 aggregate metrics), outcome tracking (/outcome skill), self-tuning governance with graduation criteria, process retrospective dashboard, and divergent mode advisory. Extended XState state machine with appetite tracking, cooldown state, and 4 new guards.
+10 phases, 17 plans, 77 commits, 229 files changed (+13,978/-1,050). Skill dependency orchestration, tribunal consensus model, multi-lens review gate, observer todo tracking, semantic memory embeddings, cross-agent interop scanner, memory effectiveness measurement, security hardening, DRY alignment, observer UI polish.
+
+## Previous State (v4.0.0)
+
+v4.0.0 — Process Intelligence & Self-Tuning Workflow (2026-03-10). 6 phases, 12 plans, 48 commits, 255 files changed (+64,528/-3,396). Fixed appetite/variable scope planning, pre-mortem risk analysis, process metrics collection, outcome tracking, self-tuning governance, process retrospective dashboard, divergent mode advisory.
 
 ## Previous State (v3.3.0)
 
@@ -68,6 +72,8 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 - **v3.1.0** — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 commits. Recall depth, session cleanup, SpacetimeDB removed.
 - **v3.2.0** — Observer Rebirth (2026-03-09). 8 phases, 20 plans, 48 commits. MuninnDB observer stack, 4 views, design system.
 - **v3.3.0** — Cognitive Maturity & Observer Depth (2026-03-09). 6 phases, 12 plans, 78 commits. Learning loop, self-tuning, 4 advanced observer views.
+- **v4.0.0** — Process Intelligence & Self-Tuning Workflow (2026-03-10). 6 phases, 12 plans, 48 commits, 255 files changed. Appetite system, pre-mortem, process metrics, outcome tracking, self-tuning governance.
+- **v4.1.0** — Agentic Intelligence & Platform Maturity (2026-03-11). 10 phases, 17 plans, 77 commits, 229 files changed. Skill dependencies, tribunal consensus, multi-lens review, observer todos, semantic embeddings, interop scanner, memory effectiveness, security hardening.
 
 ## Requirements
 
@@ -128,4 +134,4 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 
 ---
 
-_Last updated: 2026-03-10 — v4.0.0 milestone archived_
+_Last updated: 2026-03-11 — v4.1.0 milestone archived_
