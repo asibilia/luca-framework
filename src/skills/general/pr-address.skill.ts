@@ -75,7 +75,8 @@ This skill orchestrates a multi-agent workflow to systematically address PR feed
 4. **Plan** - Create fix plan for valid concerns
 5. **Execute** - Implement fixes with atomic commits
 6. **Verify** - Confirm fixes address the concerns
-7. **Respond** - Post responses to PR comments
+7. **Learn** - Capture review patterns for future recall
+8. **Respond** - Post responses to PR comments
 
 ## Process
 
@@ -714,6 +715,7 @@ EOF
 | accessibility-expert | \`.github/agents/\` | Accessibility issues           |
 | test-engineer        | \`.github/agents/\` | Testing concerns               |
 | lu-pr-reviewer    | \`.cursor/agents/\` | Coordination, general feedback |
+| lu-learner        | \`.cursor/agents/\` | Capture PR review patterns     |
 
 ## Success Criteria
 
@@ -724,6 +726,7 @@ EOF
 - [ ] Fix plan created for valid concerns
 - [ ] Fixes executed with atomic commits
 - [ ] All fixes verified
+- [ ] PR review learnings captured in MuninnDB (if valid concerns existed)
 - [ ] Responses posted to all comments
 - [ ] Summary posted to PR
 - [ ] Changes pushed
