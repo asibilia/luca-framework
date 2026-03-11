@@ -14,8 +14,6 @@
  */
 
 import { Glob } from "bun";
-import { readFileSync } from "node:fs";
-import { relative, dirname } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Domain tier assignments
@@ -161,7 +159,7 @@ async function main(): Promise<void> {
     if (!sourceDomain || !(sourceDomain in DOMAIN_TIER)) continue;
 
     const fullPath = `${srcDir}/${filePath}`;
-    const content = readFileSync(fullPath, "utf-8");
+    const content = await Bun.file(fullPath).text();
     const imports = extractTildeImports(content);
 
     for (const importPath of imports) {
