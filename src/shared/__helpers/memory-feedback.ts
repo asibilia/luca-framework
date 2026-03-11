@@ -140,6 +140,85 @@ function computeStaleEngramPct(
   return Math.min(Math.max(staleCount / history.length, 0), 1);
 }
 
+/** Minimum number of confidence_actuals entries required for calibration. */
+const MIN_CALIBRATION_SAMPLES = 10;
+
+/** Expected usefulness rate per confidence level. */
+const EXPECTED_USEFULNESS = {
+  low: 0.33,
+  medium: 0.66,
+  high: 0.9,
+} as const;
+
+/**
+ * Compute confidence calibration score from historical confidence-vs-actual data.
+ *
+ * Measures how well engram confidence levels predict actual usefulness.
+ * For each confidence level (low, medium, high), compares the expected
+ * usefulness rate against the actual rate, then returns:
+ *
+ *   `1 - average(|expected - actual| for each level with data)`
+ *
+ * Expected usefulness rates: low=0.33, medium=0.66, high=0.90.
+ *
+ * Requires a minimum of 10 entries (per research Pitfall 5 -- minimum
+ * sample size guard) to avoid noisy calibration from sparse data.
+ * Confidence levels with no entries are skipped in the average.
+ *
+ * @param historicalData - Historical phase data from MuninnDB, or undefined
+ * @returns Calibration score clamped to [0, 1], or 0 if insufficient data
+ */
+function computeConfidenceCalibration(
+  historicalData: HistoricalPhaseData | undefined,
+): number {
+  if (
+    !historicalData ||
+    historicalData.confidence_actuals.length < MIN_CALIBRATION_SAMPLES
+  ) {
+    return 0;
+  }
+
+  const actuals = historicalData.confidence_actuals;
+
+  // Group entries by confidence level
+  const byLevel: Record<string, { total: number; useful: number }> = {};
+
+  for (const entry of actuals) {
+    const level = entry.confidence;
+    if (!byLevel[level]) {
+      byLevel[level] = { total: 0, useful: 0 };
+    }
+    byLevel[level].total += 1;
+    if (entry.actually_useful) {
+      byLevel[level].useful += 1;
+    }
+  }
+
+  // Compute |expected - actual| for each level that has data
+  const deviations: number[] = [];
+
+  for (const level of ["low", "medium", "high"] as const) {
+    const data = byLevel[level];
+    if (!data || data.total === 0) {
+      continue;
+    }
+
+    const actualRate = data.useful / data.total;
+    const expectedRate = EXPECTED_USEFULNESS[level];
+    deviations.push(Math.abs(expectedRate - actualRate));
+  }
+
+  // No confidence levels had data (shouldn't happen with 10+ entries, but guard)
+  if (deviations.length === 0) {
+    return 0;
+  }
+
+  const avgDeviation =
+    deviations.reduce((sum, d) => sum + d, 0) / deviations.length;
+
+  return Math.min(Math.max(1 - avgDeviation, 0), 1);
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -332,7 +411,7 @@ export function computeMemoryPhaseMetrics(
     hit_rate: Math.min(hitRate, 1),
     memory_tokens_injected: config.memoryTokensInjected,
     stale_engram_pct: computeStaleEngramPct(config.historicalData),
-    confidence_calibration: 0, // Requires multi-phase data
+    confidence_calibration: computeConfidenceCalibration(config.historicalData),
     computed_at: new Date().toISOString(),
   });
 }
