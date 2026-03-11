@@ -86,12 +86,33 @@ b. For each pattern/decision/pitfall engram that appeared in recalls:
    - Group by milestone, count milestones with 0 positive feedback
 c. Flag engrams meeting BOTH thresholds
 
-**3. Prune stale engrams:**
+**3. Human review checkpoint:**
 
-For each stale engram, decide:
-- **Forget** (if never recalled and older than 2 milestones): \`mcp__muninn__muninn_forget(vault: "default", id: engram_id)\`
-- **Evolve** (if recalled but low usefulness): \`mcp__muninn__muninn_evolve(vault: "default", id: engram_id, new_content: "...", reason: "Low usefulness across milestone {version}: {useful_count}/{total_feedback} positive feedback")\`
-- **Consolidate** (if multiple similar low-utility engrams): \`mcp__muninn__muninn_consolidate(vault: "default", ids: [id1, id2, ...], merged_content: "...")\`
+If no stale engrams detected, display: "No stale engrams detected. Memory is healthy." and skip to section 5 (consolidation).
+
+If stale engrams found, display them to the developer for review:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > STALE ENGRAM REVIEW — v{version}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{count} stale engrams detected (5+ recalls, 0 positive, 3+ milestones dormant):
+
+| #   | Concept                  | Recalls | Positive | Milestones Dormant |
+| --- | ------------------------ | ------- | -------- | ------------------ |
+| 1   | pitfall:old-issue        | 7       | 0        | 4                  |
+| 2   | pattern:deprecated-flow  | 5       | 0        | 3                  |
+
+[Y] Prune all  [N] Keep all  [S] Select individually
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+Handle each response:
+
+- **Y (Prune all):** Delete all listed engrams via \`muninn_forget\` (see section 4)
+- **N (Keep all):** Skip deletion, proceed to section 5 (consolidation)
+- **S (Select individually):** Present each engram and ask Y/N per engram, then delete approved ones via \`muninn_forget\`
 
 **4. Report pruning results:**
 
