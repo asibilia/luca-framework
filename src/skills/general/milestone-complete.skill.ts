@@ -60,12 +60,25 @@ Before archiving, analyze memory health and prune stale engrams.
 
 **1. Recall engrams and metrics for the rolling window:**
 
-Recall the last 10 phase metric engrams and all pattern/decision/pitfall engrams with their feedback data:
+Split into two focused recalls to ensure accurate data:
+
+**1a. Recent phase metrics** (rolling window of last 10 phases):
 
 \`\`\`
 mcp__muninn__muninn_recall(
   vault: "default",
-  context: "pattern: decision: pitfall: metric:memory- feedback",
+  context: "metric:memory- feedback phase",
+  mode: "recent",
+  limit: 10
+)
+\`\`\`
+
+**1b. Pattern/decision/pitfall engrams** (for cross-referencing feedback):
+
+\`\`\`
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "pattern: decision: pitfall:",
   mode: "deep",
   limit: 100
 )
