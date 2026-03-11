@@ -45,6 +45,8 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 2. **Every step in this skill spec is a binding instruction, not a suggestion.** You MUST NOT skip, simplify, or substitute workflow steps — even if you believe an alternative approach would produce equivalent results. The workflow exists because specific tool usage (TeamCreate, SendMessage, Skill, Task) was intentionally designed and validated.
 3. **If a step says to use TeamCreate, you MUST use TeamCreate.** If a step says to use Skill, you MUST use Skill. Do not replace TeamCreate with parallel Task calls. Do not replace sub-agent delegation with self-performed analysis. Do not rationalize deviations with "functionally equivalent" reasoning.
 4. **The only valid way to skip a step is when the spec explicitly provides a skip condition** (e.g., complexity gating, `--no-swarm` flag, oversight level). If no skip condition is documented, the step is mandatory.
+5. **NEVER write code directly.** You are forbidden from using Write, Edit, or any file-modification tool. All code changes happen through `Skill(skill: "phase-execute")`, which delegates to lu-executor sub-agents. If you find yourself about to write or edit a file, STOP — you are violating the orchestrator boundary.
+6. **The phase pipeline is inviolable: classify → discuss → plan → execute.** Every phase MUST pass through Steps 4c, 4d, 4e, and 4f in order. You MUST NOT jump from complexity classification to writing code. You MUST NOT skip planning because "the task is simple." TRIVIAL and SIMPLE phases still require PLAN.md files — the complexity level only affects model tier and iteration counts, never which steps run.
 </main>
 
 ## configuration
@@ -691,7 +693,9 @@ Wait for user input. Route by choice.
 
 - If OVERSIGHT == "milestone", "flagged", or "full-auto": auto-continue.
 
-### 4c. Complexity Classification
+### 4c. Complexity Classification (MANDATORY)
+
+**STOP-CHECK: Before this step, you should have completed 4a (dependency check) and 4b (oversight gate). If you have not, go back.**
 
 Spawn lu-router to classify:
 
@@ -708,9 +712,13 @@ Write complexity via bridge (transitions state machine from routing to planning/
 luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
 ```
 
-### 4d. Discussion (Always Runs)
+**IMPORTANT: The complexity result (TRIVIAL through CRITICAL) determines model tiers and iteration counts only. It does NOT allow skipping any subsequent steps. ALL phases proceed through 4d → 4e → 4f regardless of complexity.**
 
-Discussion always runs. The discussion depth and model tier scale with complexity via the routing table.
+### 4d. Discussion (MANDATORY — No Exceptions)
+
+**You MUST call this Skill tool invocation. This step has no skip condition.**
+
+Discussion runs at every complexity level. The discussion depth and model tier scale with complexity via the routing table, but the step itself is never skipped.
 
 ```
 Skill(skill: "phase-discuss", args: "{phase_number}")
@@ -722,7 +730,9 @@ Transition state machine after discussion:
 luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 ```
 
-### 4e. Planning
+### 4e. Planning (MANDATORY — No Exceptions)
+
+**You MUST ensure PLAN.md files exist before proceeding to execution. phase-execute WILL FAIL without them.**
 
 Check if PLAN.md files already exist for this phase:
 
@@ -743,13 +753,25 @@ If PLAN_COUNT == 0 and AUTO_PLAN == false:
 
 If PLAN_COUNT > 0: skip planning (plans already exist).
 
+**STOP-CHECK: Verify PLAN.md files now exist. If they do not, do NOT proceed to 4f.**
+
+```bash
+PLAN_COUNT=$(ls .planning/phases/{phase_dir}/*-PLAN.md 2>/dev/null | grep -c '.' || echo "0")
+if [ "$PLAN_COUNT" = "0" ]; then
+  echo "ERROR: No PLAN.md files after planning step. Cannot proceed to execution."
+  # Park this phase
+fi
+```
+
 Transition state machine to executing:
 
 ```bash
 luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 ```
 
-### 4f. Execution
+### 4f. Execution (MANDATORY — Via Sub-Skill Only)
+
+**You MUST invoke phase-execute via Skill tool. Do NOT write, edit, or modify any project files yourself. You are an orchestrator, not an executor.**
 
 Build execution flags:
 
@@ -769,6 +791,8 @@ Invoke the full execution pipeline:
 ```
 Skill(skill: "phase-execute", args: "{EXEC_FLAGS}")
 ```
+
+**NEVER substitute this Skill call with direct file writes. phase-execute spawns lu-executor sub-agents that handle all code changes, verification, and code review.**
 
 ### 4g. Result Handling
 

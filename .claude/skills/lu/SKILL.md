@@ -124,8 +124,14 @@ For phase work, query the state machine or use `luca_gate_check` to determine wh
 
 Alternatively, hand off to the `autopilot` skill which handles these state machine checks natively.
 
-**Ad-hoc / Quick task:**
-If task is truly TRIVIAL or SIMPLE AND does not require roadmap planning:
+**Ad-hoc / Quick task (narrow scope):**
+Route to `quick` ONLY if ALL of these conditions are true:
+- Task is TRIVIAL or SIMPLE complexity
+- Task does NOT appear in `.planning/ROADMAP.md` or `.planning/todos/pending/`
+- Task does NOT require creating new files (only modifications to 1-2 existing files)
+- Task is a one-off fix, rename, or config change — NOT a feature
+
+If ANY of these conditions is false, route to the full pipeline (phase-discuss → phase-plan → phase-execute) or autopilot instead. When in doubt, use the full pipeline — quick is for genuinely trivial ad-hoc work only.
 ```
 Skill(skill: "quick", args: "<task-description>")
 ```
