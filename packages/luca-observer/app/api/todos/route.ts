@@ -19,22 +19,25 @@ const TodosQuerySchema = z.object({
 });
 
 /**
- * Shape of a single todo item in the API response.
+ * API Response: Single todo item shape.
  *
  * Uses snake_case for all properties per API conventions.
+ * Schema-first defaults replace manual || fallbacks in readTodosFromDir.
  */
-interface TodoResponse {
-  filename: string;
-  title: string;
-  area: string;
-  created: string;
-  source: string;
-  tier: number;
-  complexity: string;
-  priority: string;
-  milestone: string;
-  state: "pending" | "done" | "completed";
-}
+const TodoResponseSchema = z.object({
+  filename: z.string(),
+  title: z.string().default("Untitled"),
+  area: z.string().default("unknown"),
+  created: z.string().default(""),
+  source: z.string().default("manual"),
+  tier: z.coerce.number().int().default(0),
+  complexity: z.string().default("UNKNOWN"),
+  priority: z.string().default("P3"),
+  milestone: z.string().default(""),
+  state: z.enum(["pending", "done", "completed"]),
+});
+
+type TodoResponse = z.infer<typeof TodoResponseSchema>;
 
 /**
  * Parse YAML-like frontmatter from a markdown file.
@@ -111,18 +114,20 @@ async function readTodosFromDir(
       try {
         const content = await Bun.file(join(dirPath, file)).text();
         const fm = parseFrontmatter(content);
-        todos.push({
-          filename: file,
-          title: fm.title || file.replace(/\.md$/, ""),
-          area: fm.area || "unknown",
-          created: fm.created || "",
-          source: fm.source || "manual",
-          tier: parseInt(fm.tier || "0", 10),
-          complexity: fm.complexity || "UNKNOWN",
-          priority: fm.priority || "P3",
-          milestone: fm.milestone || "",
-          state,
-        });
+        todos.push(
+          TodoResponseSchema.parse({
+            filename: file,
+            title: fm.title || file.replace(/\.md$/, ""),
+            area: fm.area || undefined,
+            created: fm.created || undefined,
+            source: fm.source || undefined,
+            tier: fm.tier || undefined,
+            complexity: fm.complexity || undefined,
+            priority: fm.priority || undefined,
+            milestone: fm.milestone || undefined,
+            state,
+          }),
+        );
       } catch {
         /* Skip unreadable files */
       }
