@@ -60,6 +60,12 @@ export type RecalledEngram = z.infer<typeof RecalledEngramSchema>;
  * `decisions`, `pitfalls`, `findings`) remain for `buildMemoryContextBlock()`
  * consumption. Both representations coexist for backward compatibility.
  *
+ * NOTE: Migration path — once `buildMemoryContextBlock()` is updated to
+ * consume `recalledEngrams` directly (extracting content strings internally),
+ * the four string arrays (`patterns`, `decisions`, `pitfalls`, `findings`)
+ * should be removed to eliminate the dual representation. Track via a
+ * future DRY/convention-sweep plan.
+ *
  * @example
  * ```typescript
  * const entry: RecallCacheEntry = {
