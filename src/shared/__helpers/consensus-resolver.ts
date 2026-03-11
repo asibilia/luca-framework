@@ -79,8 +79,17 @@ export function resolveConsensus<
   perspectives: TPerspective[],
   rawConfig?: Partial<ConsensusConfig>,
 ): ConsensusResult<TCategory, TPerspective> {
-  const config = ConsensusConfigSchema.parse(
-    rawConfig ?? {},
+  const parseResult = ConsensusConfigSchema.safeParse(rawConfig ?? {});
+
+  if (!parseResult.success) {
+    console.warn(
+      "[CONSENSUS] resolveConsensus received invalid config, using defaults:",
+      parseResult.error.message,
+    );
+  }
+
+  const config = (
+    parseResult.success ? parseResult.data : ConsensusConfigSchema.parse({})
   ) as ConsensusConfig;
 
   // Count expert participants (regardless of mode)
@@ -293,7 +302,7 @@ function applyFallback<
     case "halt":
     case "escalate":
     case "escalate_to_human":
-      return buildFallbackResult(
+      return buildHighestConfidencePickResult(
         perspectives,
         config,
         expertVoteCount,
@@ -321,7 +330,7 @@ function applyFallback<
 
     case "highest_confidence":
     default:
-      return buildHighestConfidenceResult(
+      return buildHighestConfidencePickResult(
         perspectives,
         config,
         expertVoteCount,
@@ -330,7 +339,14 @@ function applyFallback<
   }
 }
 
-function buildHighestConfidenceResult<
+/**
+ * Build a fallback result by picking the highest-confidence perspective as
+ * the nominal winner. Used by halt, escalate, escalate_to_human, and
+ * highest_confidence strategies (all share identical pick-highest logic).
+ *
+ * Callers distinguish behavior via `fallback_strategy_applied` on the result.
+ */
+function buildHighestConfidencePickResult<
   TCategory extends string,
   TPerspective extends VotablePerspective<TCategory>,
 >(
@@ -339,48 +355,6 @@ function buildHighestConfidenceResult<
   expertVoteCount: number,
   strategy: ConsensusConfig["fallback_strategy"],
 ): ConsensusResult<TCategory, TPerspective> {
-  const sorted = orderBy([...perspectives], (p) => p.confidence, "desc");
-  const winner = sorted[0];
-
-  if (!winner) {
-    return buildEmptyResult(config, expertVoteCount, strategy);
-  }
-
-  const category = winner.category_assessment;
-  const voters = filter(
-    perspectives,
-    (p) => p.category_assessment === category,
-  );
-  const dissenters = filter(
-    perspectives,
-    (p) => p.category_assessment !== category,
-  );
-
-  return {
-    consensus_category: category,
-    consensus_voters: voters,
-    dissenters,
-    consensus_confidence: roundTo2(averageConfidence(voters)),
-    mode_used: config.mode,
-    fallback_applied: true,
-    votes_for: voters.length,
-    votes_against: dissenters.length,
-    expert_votes: expertVoteCount,
-    fallback_strategy_applied: strategy,
-  };
-}
-
-function buildFallbackResult<
-  TCategory extends string,
-  TPerspective extends VotablePerspective<TCategory>,
->(
-  perspectives: TPerspective[],
-  config: ConsensusConfig,
-  expertVoteCount: number,
-  strategy: ConsensusConfig["fallback_strategy"],
-): ConsensusResult<TCategory, TPerspective> {
-  // For halt/escalate, pick highest confidence as nominal winner
-  // but mark fallback_applied so callers know to halt/escalate
   const sorted = orderBy([...perspectives], (p) => p.confidence, "desc");
   const winner = sorted[0];
 
@@ -483,7 +457,7 @@ function buildDeferToExpertResult<
 
   // If no expert perspectives found, fall back to highest confidence
   if (expertPerspectives.length === 0) {
-    return buildHighestConfidenceResult(
+    return buildHighestConfidencePickResult(
       perspectives,
       config,
       expertVoteCount,
