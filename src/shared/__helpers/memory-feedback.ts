@@ -148,7 +148,17 @@ type ComputeMetricsConfig = z.infer<typeof ComputeMetricsConfigSchema>;
 export function determineFeedback(
   rawConfig: DetermineFeedbackConfig,
 ): MemoryFeedbackEntry[] {
-  const config = DetermineFeedbackConfigSchema.parse(rawConfig);
+  const parseResult = DetermineFeedbackConfigSchema.safeParse(rawConfig);
+
+  if (!parseResult.success) {
+    console.warn(
+      "[MEMORY] determineFeedback received invalid config:",
+      parseResult.error.message,
+    );
+    return [];
+  }
+
+  const config = parseResult.data;
 
   if (config.recalledEngrams.length === 0) {
     return [];
@@ -213,7 +223,29 @@ export function determineFeedback(
 export function computeMemoryPhaseMetrics(
   rawConfig: ComputeMetricsConfig,
 ): MemoryPhaseMetrics {
-  const config = ComputeMetricsConfigSchema.parse(rawConfig);
+  const parseResult = ComputeMetricsConfigSchema.safeParse(rawConfig);
+
+  if (!parseResult.success) {
+    console.warn(
+      "[MEMORY] computeMemoryPhaseMetrics received invalid config:",
+      parseResult.error.message,
+    );
+    return MemoryPhaseMetricsSchema.parse({
+      phase: 0,
+      milestone: "unknown",
+      total_recalled: 0,
+      total_applied: 0,
+      total_ignored: 0,
+      recall_precision: 0,
+      hit_rate: 0,
+      memory_tokens_injected: 0,
+      stale_engram_pct: 0,
+      confidence_calibration: 0,
+      computed_at: new Date().toISOString(),
+    });
+  }
+
+  const config = parseResult.data;
 
   const recallPrecision =
     config.totalRecalled > 0 ? config.totalApplied / config.totalRecalled : 0;
