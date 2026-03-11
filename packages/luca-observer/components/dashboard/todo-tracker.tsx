@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Clock, BarChart3 } from "lucide-react";
 import groupBy from "lodash/groupBy";
 import orderBy from "lodash/orderBy";
 
+import { Button } from "~/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
@@ -136,13 +137,14 @@ export function TodoTracker() {
           <p className="font-mono text-sm text-destructive">
             Failed to load todos: {error}
           </p>
-          <button
-            type="button"
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={() => refetch()}
-            className="mt-2 rounded bg-destructive px-3 py-1 font-mono text-xs text-destructive-foreground hover:bg-destructive/80"
+            className="mt-2 font-mono text-xs"
           >
             Retry
-          </button>
+          </Button>
         </CardContent>
       </Card>
     );
