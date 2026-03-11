@@ -67,7 +67,7 @@ Split into two focused recalls to ensure accurate data:
 \`\`\`
 mcp__muninn__muninn_recall(
   vault: "default",
-  context: "metric:memory- feedback phase",
+  context: "metric:memory-recall-precision metric:memory-hit-rate",
   mode: "recent",
   limit: 10
 )

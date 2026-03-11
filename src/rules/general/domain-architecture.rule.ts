@@ -85,7 +85,7 @@ src/{domain}/
 
 ## Four Dependency Tiers
 
-Import direction flows downward only. Tier N may import from tiers 0..N-1, never from N+1..3.
+Import direction flows downward only. Tier N may import from tiers 0..N (same-tier allowed), never from N+1..3.
 
 | Tier | Domains | Role |
 |------|---------|------|

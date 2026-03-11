@@ -25,7 +25,7 @@ Two workstreams that share MuninnDB infrastructure:
 - **Flag for human review** at milestone boundaries — show stale engrams in milestone completion summary, developer decides what to prune. No fully automatic archival.
 - **Stale threshold: BOTH conditions required** — (1) 5+ recalls with 0 positive feedback AND (2) 3+ milestones with no positive feedback. Conservative, minimizes false positives.
 - **Run `muninn_consolidate()` alongside pruning** at every milestone boundary — merge near-duplicates to reduce recall noise.
-- **Hard-delete via `muninn_forget`** after human approval — the review gate provides safety. No soft-delete; keeps vault lean.
+- **Soft-delete via `muninn_forget`** after human approval — marks engrams as forgotten with a 7-day restore window; after that window they are permanently purged to keep the vault lean.
 
 ### Metric Aggregation
 

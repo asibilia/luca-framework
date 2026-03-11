@@ -84,7 +84,7 @@ fi
 
 \\\`\\\`\\\`bash
 # Primary: Transition via bridge (updates state machine + STATE.md)
-luca-bridge transition --event=COMPLETE_PHASE 2>/dev/null || true
+luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":1,"summary":"Phase completed"}' 2>/dev/null || true
 # STATE.md is also updated directly for backward compatibility
 \\\`\\\`\\\`
 
