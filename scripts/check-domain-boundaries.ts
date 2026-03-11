@@ -43,23 +43,8 @@ const ENTITY_DOMAINS = new Set(["agents", "skills", "rules"]);
 // Known exceptions (source domain -> target domain)
 // ---------------------------------------------------------------------------
 
-const EXCEPTIONS: Array<{ source: string; target: string; reason: string }> = [
-  {
-    source: "shared",
-    target: "agents",
-    reason: "validation-utils references agent schemas",
-  },
-  {
-    source: "shared",
-    target: "skills",
-    reason: "validation-utils references skill schemas",
-  },
-  {
-    source: "shared",
-    target: "rules",
-    reason: "validation-utils references rule schemas",
-  },
-];
+const EXCEPTIONS: Array<{ source: string; target: string; reason: string }> =
+  [];
 
 function isException(sourceDomain: string, targetDomain: string): boolean {
   return EXCEPTIONS.some(
