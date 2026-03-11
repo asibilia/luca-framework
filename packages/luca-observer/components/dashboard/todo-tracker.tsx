@@ -269,7 +269,10 @@ function TodoRow({ todo }: { todo: Todo }) {
   const StatusIcon = statusConfig.icon;
 
   return (
-    <div className="flex items-center gap-2.5 rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted/50">
+    <Card
+      size="sm"
+      className="flex-row items-center gap-2.5 py-2.5 transition-colors hover:bg-muted/50"
+    >
       <StatusIcon
         className={`h-3.5 w-3.5 shrink-0 ${statusConfig.colorClass}`}
       />
@@ -290,7 +293,7 @@ function TodoRow({ todo }: { todo: Todo }) {
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -315,30 +318,30 @@ function VelocityPanel({
     <div className="flex flex-col gap-4 pt-2">
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-md border border-border bg-card p-2.5 text-center">
+        <Card size="sm" className="p-2.5 text-center">
           <p className="font-mono text-lg font-bold text-foreground">
             {pendingCount}
           </p>
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Pending
           </p>
-        </div>
-        <div className="rounded-md border border-border bg-card p-2.5 text-center">
+        </Card>
+        <Card size="sm" className="p-2.5 text-center">
           <p className="font-mono text-lg font-bold text-success">
             {finishedCount}
           </p>
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Done
           </p>
-        </div>
-        <div className="rounded-md border border-border bg-card p-2.5 text-center">
+        </Card>
+        <Card size="sm" className="p-2.5 text-center">
           <p className="font-mono text-lg font-bold text-foreground">
             {completionRate}%
           </p>
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Complete
           </p>
-        </div>
+        </Card>
       </div>
 
       {/* Completion bar */}
@@ -365,15 +368,16 @@ function VelocityPanel({
           </h4>
           <div className="flex flex-col gap-1.5">
             {milestoneBreakdown.map(({ milestone, count }) => (
-              <div
+              <Card
                 key={milestone}
-                className="flex items-center justify-between rounded-md border border-border bg-card p-2"
+                size="sm"
+                className="flex-row items-center justify-between p-2"
               >
                 <span className="font-mono text-xs text-foreground">
                   {milestone}
                 </span>
                 <Badge variant="secondary">{count} items</Badge>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
