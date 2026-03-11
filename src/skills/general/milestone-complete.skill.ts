@@ -114,10 +114,35 @@ Handle each response:
 - **N (Keep all):** Skip deletion, proceed to section 5 (consolidation)
 - **S (Select individually):** Present each engram and ask Y/N per engram, then delete approved ones via \`muninn_forget\`
 
-**4. Report pruning results:**
+**4. Prune after approval:**
 
-Log pruning summary:
-"Memory pruning: {forgotten} engrams forgotten, {evolved} engrams evolved, {consolidated} engrams consolidated from {total_stale} stale candidates."
+For each engram approved for deletion (via Y or S response in section 3):
+
+\`\`\`
+mcp__muninn__muninn_forget(vault: "default", id: "{engram_id}")
+\`\`\`
+
+Note: \`muninn_forget\` performs a soft-delete with a 7-day recovery window. This is the strongest delete available in MuninnDB. If a mistake is made, the developer can use \`muninn_restore\` within 7 days to recover the engram.
+
+Stale engrams are deleted (after human approval), not evolved. Evolution is reserved for engrams that are still useful but need content updates.
+
+**5. Consolidate near-duplicates:**
+
+Run \`muninn_consolidate\` at every milestone boundary, regardless of whether stale engrams were found or pruned:
+
+\`\`\`
+mcp__muninn__muninn_consolidate(vault: "default")
+\`\`\`
+
+This step:
+- Merges near-duplicate engrams using MuninnDB's built-in semantic similarity
+- Reduces recall noise by collapsing redundant entries
+- Runs AFTER pruning to avoid consolidating engrams that were just deleted
+- Runs even if no stale engrams were found (deduplication is always valuable)
+
+Log the consolidation result in the pruning report.
+
+**6. Report pruning results:**
 
 Store pruning report as a milestone metric:
 
@@ -126,15 +151,19 @@ mcp__muninn__muninn_remember(
   vault: "default",
   concept: "metric:memory-pruning-{milestone_version}",
   content: JSON.stringify({
+    stale_detected: {count},
+    human_approved_for_deletion: {count},
     forgotten: {count},
-    evolved: {count},
-    consolidated: {count},
-    total_stale: {count},
+    consolidated: {count from muninn_consolidate result},
     total_engrams_analyzed: {count},
+    stale_threshold: "5+ recalls, 0 positive, 3+ milestones dormant",
     pruned_at: new Date().toISOString()
   })
 )
 \`\`\`
+
+Log a summary after completion:
+"Memory maintenance: {stale_detected} stale detected, {forgotten} forgotten (human-approved), {consolidated} consolidated. {total_engrams_analyzed} engrams analyzed."
 
 ### Step 1: Archive Milestone Memory
 
