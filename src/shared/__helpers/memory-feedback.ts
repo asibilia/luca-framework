@@ -13,6 +13,8 @@
  */
 
 import { z } from "zod";
+import filter from "lodash/filter";
+import mean from "lodash/mean";
 
 import { RecalledEngramSchema } from "../__schemas/recall-cache.schemas";
 import type { RecalledEngram } from "../__schemas/recall-cache.schemas";
@@ -112,8 +114,8 @@ type ComputeMetricsConfig = z.infer<typeof ComputeMetricsConfigSchema>;
  * Compute the percentage of stale engrams from historical feedback data.
  *
  * An engram is considered stale when BOTH conditions are met:
- * 1. `total_recalls >= 5` AND `positive_recalls === 0` (recalled often, never useful)
- * 2. `milestones_with_no_positive >= 3` (consistently unhelpful across milestones)
+ * 1. `total_recalls >= MIN_STALE_RECALLS` AND `positive_recalls === 0` (recalled often, never useful)
+ * 2. `milestones_with_no_positive >= MIN_DORMANT_MILESTONES` (consistently unhelpful across milestones)
  *
  * This conservative dual-threshold approach minimizes false positives — an engram
  * must be both heavily recalled and consistently unhelpful to be flagged stale.
@@ -130,20 +132,34 @@ function computeStaleEngramPct(
 
   const history = historicalData.engram_feedback_history;
 
-  const staleCount = history.filter(
+  const staleCount = filter(
+    history,
     (entry) =>
-      entry.total_recalls >= 5 &&
+      entry.total_recalls >= MIN_STALE_RECALLS &&
       entry.positive_recalls === 0 &&
-      entry.milestones_with_no_positive >= 3,
+      entry.milestones_with_no_positive >= MIN_DORMANT_MILESTONES,
   ).length;
 
-  return Math.min(Math.max(staleCount / history.length, 0), 1);
+  return staleCount / history.length;
 }
+
+/** Minimum recalls with 0 positive feedback to be considered stale. */
+const MIN_STALE_RECALLS = 5;
+
+/** Minimum milestones with no positive feedback to be considered stale. */
+const MIN_DORMANT_MILESTONES = 3;
 
 /** Minimum number of confidence_actuals entries required for calibration. */
 const MIN_CALIBRATION_SAMPLES = 10;
 
-/** Expected usefulness rate per confidence level. */
+/**
+ * Expected usefulness rate per confidence level.
+ *
+ * These rates represent reasonable calibration targets:
+ * - low (0.33): engrams marked low confidence should be useful ~1/3 of the time
+ * - medium (0.66): engrams marked medium should be useful ~2/3 of the time
+ * - high (0.90): engrams marked high should be useful ~90% of the time
+ */
 const EXPECTED_USEFULNESS = {
   low: 0.33,
   medium: 0.66,
@@ -213,8 +229,7 @@ function computeConfidenceCalibration(
     return 0;
   }
 
-  const avgDeviation =
-    deviations.reduce((sum, d) => sum + d, 0) / deviations.length;
+  const avgDeviation = mean(deviations);
 
   return Math.min(Math.max(1 - avgDeviation, 0), 1);
 }
