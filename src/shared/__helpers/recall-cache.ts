@@ -11,20 +11,7 @@
  * Source: src/shared/__helpers/recall-cache.ts
  */
 
-import {
-  RecalledEngramSchema,
-  RecallCacheEntrySchema,
-} from "../__schemas/recall-cache.schemas";
-
-import type {
-  RecalledEngram,
-  RecallCacheEntry,
-} from "../__schemas/recall-cache.schemas";
-
-// Re-export schemas and types so existing intra-domain relative imports
-// (e.g. memory-context-builder importing getCachedRecall) still resolve.
-export { RecalledEngramSchema, RecallCacheEntrySchema };
-export type { RecalledEngram, RecallCacheEntry };
+import type { RecallCacheEntry } from "../__schemas/recall-cache.schemas";
 
 // ─── Cache ───────────────────────────────────────────────────────────────────
 

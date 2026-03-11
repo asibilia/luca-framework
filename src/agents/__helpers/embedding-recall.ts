@@ -213,18 +213,9 @@ export function computeRecencyScore(createdAt: string, now?: Date): number {
  * ```
  */
 export function computeFeedbackScore(content: string): number {
-  if (!content) return 0.5;
-
-  const lower = content.toLowerCase();
-
-  if (lower.includes("confidence: high") || lower.includes("confidence:high")) {
-    return 0.8;
-  }
-  if (lower.includes("confidence: low") || lower.includes("confidence:low")) {
-    return 0.2;
-  }
-
-  // Medium, no marker, or unrecognised -> neutral default
+  const level = parseConfidenceLevel(content);
+  if (level === "high") return 0.8;
+  if (level === "low") return 0.2;
   return 0.5;
 }
 
@@ -307,33 +298,52 @@ export function scoreRecallResults(
 // ---------------------------------------------------------------------------
 
 /**
- * Extract a confidence score from engram content text.
+ * Parse a confidence level string from engram content text.
  *
  * Scans for "Confidence: High/Medium/Low" patterns commonly found
- * in MuninnDB engrams. Returns 1.0 for High, 0.5 for Medium,
- * 0.25 for Low, and 0.5 as a neutral default when no marker is found.
+ * in MuninnDB engrams. Returns the level string or null when no marker
+ * is found. Used by both `computeFeedbackScore` and `extractConfidenceScore`
+ * to avoid duplicating the parsing logic.
  *
  * @param content - Engram content text
- * @returns Confidence score (0.25-1.0)
+ * @returns Parsed confidence level or null
  */
-function extractConfidenceScore(content: string): number {
-  if (!content) return 0.5;
+function parseConfidenceLevel(
+  content: string,
+): "high" | "medium" | "low" | null {
+  if (!content) return null;
 
   const lower = content.toLowerCase();
 
   if (lower.includes("confidence: high") || lower.includes("confidence:high")) {
-    return 1.0;
+    return "high";
   }
   if (
     lower.includes("confidence: medium") ||
     lower.includes("confidence:medium")
   ) {
-    return 0.5;
+    return "medium";
   }
   if (lower.includes("confidence: low") || lower.includes("confidence:low")) {
-    return 0.25;
+    return "low";
   }
 
-  // No confidence marker -- neutral default
+  return null;
+}
+
+/**
+ * Extract a confidence score from engram content text.
+ *
+ * Maps parsed confidence levels to numeric scores:
+ * - High -> 1.0, Medium -> 0.5, Low -> 0.25, None -> 0.5 (neutral)
+ *
+ * @param content - Engram content text
+ * @returns Confidence score (0.25-1.0)
+ */
+function extractConfidenceScore(content: string): number {
+  const level = parseConfidenceLevel(content);
+  if (level === "high") return 1.0;
+  if (level === "medium") return 0.5;
+  if (level === "low") return 0.25;
   return 0.5;
 }

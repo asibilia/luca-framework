@@ -14,6 +14,7 @@
 
 import { z } from "zod";
 
+import { RecalledEngramSchema } from "../__schemas/recall-cache.schemas";
 import type { RecalledEngram } from "../__schemas/recall-cache.schemas";
 
 import {
@@ -49,14 +50,7 @@ import type {
  */
 const DetermineFeedbackConfigSchema = z.object({
   /** Recalled engrams from the recall cache */
-  recalledEngrams: z.array(
-    z.object({
-      engramId: z.string().min(1),
-      content: z.string(),
-      concept: z.string().optional(),
-      confidence: z.enum(["low", "medium", "high"]).optional(),
-    }),
-  ),
+  recalledEngrams: z.array(RecalledEngramSchema),
   /** Whether the phase verification passed */
   verificationPassed: z.boolean(),
   /** IDs of engrams the executor reported as applied */

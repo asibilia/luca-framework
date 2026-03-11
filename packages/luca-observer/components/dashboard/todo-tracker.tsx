@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Clock, BarChart3 } from "lucide-react";
 import filter from "lodash/filter";
 import groupBy from "lodash/groupBy";
 import orderBy from "lodash/orderBy";
+import take from "lodash/take";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
@@ -56,6 +57,12 @@ const STATUS_CONFIG = {
 const DEFAULT_STATUS_CONFIG = STATUS_CONFIG.pending;
 
 /**
+ * Predicate: whether a todo is in a terminal (finished) state.
+ */
+const isFinished = (t: Todo): boolean =>
+  t.state === "done" || t.state === "completed";
+
+/**
  * Compute velocity metrics from todo lists.
  *
  * Groups completed items by milestone and counts items per milestone
@@ -66,10 +73,7 @@ const DEFAULT_STATUS_CONFIG = STATUS_CONFIG.pending;
  */
 function computeVelocity(todos: Todo[]) {
   const pending = filter(todos, (t) => t.state === "pending");
-  const finished = filter(
-    todos,
-    (t) => t.state === "done" || t.state === "completed",
-  );
+  const finished = filter(todos, isFinished);
 
   // Group finished items by milestone for velocity display
   const byMilestone = groupBy(
@@ -77,14 +81,17 @@ function computeVelocity(todos: Todo[]) {
     "milestone",
   );
 
-  const milestoneBreakdown = orderBy(
-    Object.entries(byMilestone).map(([milestone, items]) => ({
-      milestone,
-      count: items.length,
-    })),
-    "count",
-    "desc",
-  ).slice(0, 5);
+  const milestoneBreakdown = take(
+    orderBy(
+      Object.entries(byMilestone).map(([milestone, items]) => ({
+        milestone,
+        count: items.length,
+      })),
+      "count",
+      "desc",
+    ),
+    5,
+  );
 
   return {
     pendingCount: pending.length,
@@ -111,12 +118,8 @@ export function TodoTracker() {
   const filteredTodos = useMemo(() => {
     if (activeTab === "velocity") return [];
     if (activeTab === "all") return todos;
-    return filter(todos, (t) => {
-      if (activeTab === "done") {
-        return t.state === "done" || t.state === "completed";
-      }
-      return t.state === activeTab;
-    });
+    if (activeTab === "done") return filter(todos, isFinished);
+    return filter(todos, (t) => t.state === activeTab);
   }, [todos, activeTab]);
 
   const groupedByArea = useMemo(
@@ -162,8 +165,7 @@ export function TodoTracker() {
     );
   }
 
-  const pendingCount = velocity.pendingCount;
-  const finishedCount = velocity.finishedCount;
+  const { pendingCount, finishedCount } = velocity;
 
   return (
     <Card>
@@ -248,11 +250,13 @@ function TodoList({
             <h4 className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
               {area}
             </h4>
-            <div className="flex flex-col gap-1.5">
+            <ul role="list" className="flex flex-col gap-1.5">
               {items.map((todo) => (
-                <TodoRow key={todo.filename} todo={todo} />
+                <li key={todo.filename}>
+                  <TodoRow todo={todo} />
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         );
       })}
@@ -358,6 +362,7 @@ function VelocityPanel({
         </div>
         <Progress
           value={completionRate}
+          aria-label="Overall completion progress"
           className="h-1.5 [&_[data-slot=progress-indicator]]:bg-success"
         />
       </div>

@@ -1,4 +1,5 @@
 import { Glob } from "bun";
+import filter from "lodash/filter";
 import { NextResponse } from "next/server";
 import { join, resolve } from "node:path";
 
@@ -114,20 +115,21 @@ async function readTodosFromDir(
       try {
         const content = await Bun.file(join(dirPath, file)).text();
         const fm = parseFrontmatter(content);
-        todos.push(
-          TodoResponseSchema.parse({
-            filename: file,
-            title: fm.title || file.replace(/\.md$/, ""),
-            area: fm.area || undefined,
-            created: fm.created || undefined,
-            source: fm.source || undefined,
-            tier: fm.tier || undefined,
-            complexity: fm.complexity || undefined,
-            priority: fm.priority || undefined,
-            milestone: fm.milestone || undefined,
-            state,
-          }),
-        );
+        const parseResult = TodoResponseSchema.safeParse({
+          filename: file,
+          title: fm.title || file.replace(/\.md$/, ""),
+          area: fm.area,
+          created: fm.created,
+          source: fm.source,
+          tier: fm.tier,
+          complexity: fm.complexity,
+          priority: fm.priority,
+          milestone: fm.milestone,
+          state,
+        });
+        if (parseResult.success) {
+          todos.push(parseResult.data);
+        }
       } catch {
         /* Skip unreadable files */
       }
@@ -175,11 +177,11 @@ export async function GET(request: Request) {
   let allTodos = [...pending, ...done, ...completed];
 
   if (status !== "all") {
-    allTodos = allTodos.filter((t) => t.state === status);
+    allTodos = filter(allTodos, (t) => t.state === status);
   }
 
   if (milestone) {
-    allTodos = allTodos.filter((t) => t.milestone === milestone);
+    allTodos = filter(allTodos, (t) => t.milestone === milestone);
   }
 
   // Apply limit
