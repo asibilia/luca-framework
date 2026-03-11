@@ -181,12 +181,18 @@ export {
   MemoryFeedbackEntrySchema,
   MemoryPhaseMetricsSchema,
   MemoryHealthSummarySchema,
+  EngramFeedbackHistoryEntrySchema,
+  ConfidenceActualEntrySchema,
+  HistoricalPhaseDataSchema,
 } from "./__schemas/memory-metrics.schemas";
 
 export type {
   MemoryFeedbackEntry,
   MemoryPhaseMetrics,
   MemoryHealthSummary,
+  EngramFeedbackHistoryEntry,
+  ConfidenceActualEntry,
+  HistoricalPhaseData,
 } from "./__schemas/memory-metrics.schemas";
 
 // ─── Memory Feedback ───────────────────────────────────────────────────────

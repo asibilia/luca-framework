@@ -13,6 +13,8 @@
  */
 
 import { z } from "zod";
+import filter from "lodash/filter";
+import mean from "lodash/mean";
 
 import { RecalledEngramSchema } from "../__schemas/recall-cache.schemas";
 import type { RecalledEngram } from "../__schemas/recall-cache.schemas";
@@ -20,11 +22,13 @@ import type { RecalledEngram } from "../__schemas/recall-cache.schemas";
 import {
   MemoryFeedbackEntrySchema,
   MemoryPhaseMetricsSchema,
+  HistoricalPhaseDataSchema,
 } from "../__schemas/memory-metrics.schemas";
 
 import type {
   MemoryFeedbackEntry,
   MemoryPhaseMetrics,
+  HistoricalPhaseData,
 } from "../__schemas/memory-metrics.schemas";
 
 // ─── Config Schemas ─────────────────────────────────────────────────────────
@@ -65,7 +69,9 @@ type DetermineFeedbackConfig = z.infer<typeof DetermineFeedbackConfigSchema>;
  * Configuration for `computeMemoryPhaseMetrics()`.
  *
  * Internal schema, uses camelCase. Provides the inputs needed to
- * compute the five effectiveness metrics for a phase.
+ * compute the five effectiveness metrics for a phase. The optional
+ * `historicalData` field enables computation of `stale_engram_pct`
+ * and `confidence_calibration` from cross-phase MuninnDB data.
  *
  * @example
  * ```typescript
@@ -76,6 +82,10 @@ type DetermineFeedbackConfig = z.infer<typeof DetermineFeedbackConfigSchema>;
  *   memoryTokensInjected: 420,
  *   phase: 140,
  *   milestone: "v4.1.0",
+ *   historicalData: {
+ *     engram_feedback_history: [...],
+ *     confidence_actuals: [...],
+ *   },
  * };
  * ```
  */
@@ -92,9 +102,137 @@ const ComputeMetricsConfigSchema = z.object({
   phase: z.number(),
   /** Milestone identifier */
   milestone: z.string(),
+  /** Optional historical data for stale_engram_pct and confidence_calibration */
+  historicalData: HistoricalPhaseDataSchema.optional(),
 });
 
 type ComputeMetricsConfig = z.infer<typeof ComputeMetricsConfigSchema>;
+
+// ─── Private Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Compute the percentage of stale engrams from historical feedback data.
+ *
+ * An engram is considered stale when BOTH conditions are met:
+ * 1. `total_recalls >= MIN_STALE_RECALLS` AND `positive_recalls === 0` (recalled often, never useful)
+ * 2. `milestones_with_no_positive >= MIN_DORMANT_MILESTONES` (consistently unhelpful across milestones)
+ *
+ * This conservative dual-threshold approach minimizes false positives — an engram
+ * must be both heavily recalled and consistently unhelpful to be flagged stale.
+ *
+ * @param historicalData - Historical phase data from MuninnDB, or undefined
+ * @returns Stale percentage clamped to [0, 1], or 0 if no data
+ */
+function computeStaleEngramPct(
+  historicalData: HistoricalPhaseData | undefined,
+): number {
+  if (!historicalData || historicalData.engram_feedback_history.length === 0) {
+    return 0;
+  }
+
+  const history = historicalData.engram_feedback_history;
+
+  const staleCount = filter(
+    history,
+    (entry) =>
+      entry.total_recalls >= MIN_STALE_RECALLS &&
+      entry.positive_recalls === 0 &&
+      entry.milestones_with_no_positive >= MIN_DORMANT_MILESTONES,
+  ).length;
+
+  return staleCount / history.length;
+}
+
+/** Minimum recalls with 0 positive feedback to be considered stale. */
+const MIN_STALE_RECALLS = 5;
+
+/** Minimum milestones with no positive feedback to be considered stale. */
+const MIN_DORMANT_MILESTONES = 3;
+
+/** Minimum number of confidence_actuals entries required for calibration. */
+const MIN_CALIBRATION_SAMPLES = 10;
+
+/**
+ * Expected usefulness rate per confidence level.
+ *
+ * These rates represent reasonable calibration targets:
+ * - low (0.33): engrams marked low confidence should be useful ~1/3 of the time
+ * - medium (0.66): engrams marked medium should be useful ~2/3 of the time
+ * - high (0.90): engrams marked high should be useful ~90% of the time
+ */
+const EXPECTED_USEFULNESS = {
+  low: 0.33,
+  medium: 0.66,
+  high: 0.9,
+} as const;
+
+/**
+ * Compute confidence calibration score from historical confidence-vs-actual data.
+ *
+ * Measures how well engram confidence levels predict actual usefulness.
+ * For each confidence level (low, medium, high), compares the expected
+ * usefulness rate against the actual rate, then returns:
+ *
+ *   `1 - average(|expected - actual| for each level with data)`
+ *
+ * Expected usefulness rates: low=0.33, medium=0.66, high=0.90.
+ *
+ * Requires a minimum of 10 entries (per research Pitfall 5 -- minimum
+ * sample size guard) to avoid noisy calibration from sparse data.
+ * Confidence levels with no entries are skipped in the average.
+ *
+ * @param historicalData - Historical phase data from MuninnDB, or undefined
+ * @returns Calibration score clamped to [0, 1], or 0 if insufficient data
+ */
+function computeConfidenceCalibration(
+  historicalData: HistoricalPhaseData | undefined,
+): number {
+  if (
+    !historicalData ||
+    historicalData.confidence_actuals.length < MIN_CALIBRATION_SAMPLES
+  ) {
+    return 0;
+  }
+
+  const actuals = historicalData.confidence_actuals;
+
+  // Group entries by confidence level
+  const byLevel: Record<string, { total: number; useful: number }> = {};
+
+  for (const entry of actuals) {
+    const level = entry.confidence;
+    if (!byLevel[level]) {
+      byLevel[level] = { total: 0, useful: 0 };
+    }
+    byLevel[level].total += 1;
+    if (entry.actually_useful) {
+      byLevel[level].useful += 1;
+    }
+  }
+
+  // Compute |expected - actual| for each level that has data
+  const deviations: number[] = [];
+
+  for (const level of ["low", "medium", "high"] as const) {
+    const data = byLevel[level];
+    if (!data || data.total === 0) {
+      continue;
+    }
+
+    const actualRate = data.useful / data.total;
+    const expectedRate = EXPECTED_USEFULNESS[level];
+    deviations.push(Math.abs(expectedRate - actualRate));
+  }
+
+  // No confidence levels had data (shouldn't happen with 10+ entries, but guard)
+  if (deviations.length === 0) {
+    return 0;
+  }
+
+  const avgDeviation = mean(deviations);
+
+  return Math.min(Math.max(1 - avgDeviation, 0), 1);
+}
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -193,15 +331,22 @@ export function determineFeedback(
  * Takes feedback entries and token cost data, produces the five
  * core effectiveness metrics defined in `MemoryPhaseMetricsSchema`.
  *
- * Note: `stale_engram_pct` and `confidence_calibration` are set to 0
- * for now -- they require historical cross-phase data that will be
- * populated at milestone boundaries by the metrics aggregator.
+ * When `historicalData` is provided, `stale_engram_pct` is computed from
+ * engram feedback history using a dual-threshold: engrams with 5+ recalls
+ * and 0 positive feedback across 3+ milestones are considered stale.
+ * When omitted, `stale_engram_pct` returns 0 (backward compatible).
  *
- * @param rawConfig - Feedback entries, recall/apply counts, token cost, phase info
+ * `confidence_calibration` requires `historicalData.confidence_actuals`
+ * with 10+ entries (minimum sample size guard). When insufficient data
+ * is available, returns 0 (backward compatible).
+ *
+ * @param rawConfig - Feedback entries, recall/apply counts, token cost, phase info,
+ *   and optional historicalData for stale/calibration computation
  * @returns Computed phase metrics
  *
  * @example
  * ```typescript
+ * // Basic usage (no historical data -- stale and calibration are 0)
  * const metrics = computeMemoryPhaseMetrics({
  *   feedbackEntries: feedback,
  *   totalRecalled: 8,
@@ -211,7 +356,30 @@ export function determineFeedback(
  *   milestone: "v4.1.0",
  * });
  * // metrics.recall_precision === 0.625 (5/8)
- * // metrics.hit_rate === 0.625 (5 useful / 8 total)
+ * // metrics.stale_engram_pct === 0
+ *
+ * // With historical data
+ * const metricsWithHistory = computeMemoryPhaseMetrics({
+ *   feedbackEntries: feedback,
+ *   totalRecalled: 8,
+ *   totalApplied: 5,
+ *   memoryTokensInjected: 420,
+ *   phase: 140,
+ *   milestone: "v4.1.0",
+ *   historicalData: {
+ *     engram_feedback_history: [
+ *       { engram_id: "01JEX1", total_recalls: 8, positive_recalls: 0,
+ *         milestones_with_no_positive: 4 },
+ *       { engram_id: "01JEX2", total_recalls: 6, positive_recalls: 3,
+ *         milestones_with_no_positive: 0 },
+ *     ],
+ *     confidence_actuals: [
+ *       { confidence: "high", actually_useful: true },
+ *       // ... 10+ entries needed
+ *     ],
+ *   },
+ * });
+ * // metricsWithHistory.stale_engram_pct === 0.5 (1 stale / 2 total)
  * ```
  */
 export function computeMemoryPhaseMetrics(
@@ -257,8 +425,8 @@ export function computeMemoryPhaseMetrics(
     recall_precision: Math.min(recallPrecision, 1),
     hit_rate: Math.min(hitRate, 1),
     memory_tokens_injected: config.memoryTokensInjected,
-    stale_engram_pct: 0, // Requires historical data, populated at milestone boundary
-    confidence_calibration: 0, // Requires multi-phase data
+    stale_engram_pct: computeStaleEngramPct(config.historicalData),
+    confidence_calibration: computeConfidenceCalibration(config.historicalData),
     computed_at: new Date().toISOString(),
   });
 }
