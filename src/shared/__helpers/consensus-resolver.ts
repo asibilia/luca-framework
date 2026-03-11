@@ -167,6 +167,27 @@ interface VoteEntry<TPerspective> {
 }
 
 /**
+ * Type-safe check for whether a perspective comes from an expert agent.
+ *
+ * Replaces the duplicated unsafe pattern:
+ *   `"agent" in p && expertSet.has((p as Record<string, unknown>).agent as string)`
+ *
+ * @param perspective - A votable perspective that may have an `agent` field
+ * @param expertSet - Set of expert agent names
+ * @returns true if the perspective has an `agent` field present in expertSet
+ */
+function isExpertPerspective<TCategory extends string>(
+  perspective: VotablePerspective<TCategory>,
+  expertSet: Set<string>,
+): boolean {
+  return (
+    "agent" in perspective &&
+    typeof (perspective as Record<string, unknown>).agent === "string" &&
+    expertSet.has((perspective as Record<string, unknown>).agent as string)
+  );
+}
+
+/**
  * Count how many perspectives come from expert agents.
  */
 function countExpertParticipants<
@@ -177,10 +198,7 @@ function countExpertParticipants<
 
   let count = 0;
   for (const perspective of perspectives) {
-    if (
-      "agent" in perspective &&
-      expertSet.has((perspective as Record<string, unknown>).agent as string)
-    ) {
+    if (isExpertPerspective(perspective, expertSet)) {
       count++;
     }
   }
@@ -204,9 +222,7 @@ function countVotes<
     const category = perspective.category_assessment;
     const existing = votes.get(category);
     const isExpert =
-      isExpertMode &&
-      "agent" in perspective &&
-      expertSet.has((perspective as Record<string, unknown>).agent as string);
+      isExpertMode && isExpertPerspective(perspective, expertSet);
     const voteWeight = isExpert ? multiplier : 1;
 
     if (existing) {
@@ -461,11 +477,8 @@ function buildDeferToExpertResult<
   const expertSet = new Set(config.expert_agents);
 
   // Find expert perspectives
-  const expertPerspectives = filter(
-    perspectives,
-    (p) =>
-      "agent" in p &&
-      expertSet.has((p as Record<string, unknown>).agent as string),
+  const expertPerspectives = filter(perspectives, (p) =>
+    isExpertPerspective(p, expertSet),
   );
 
   // If no expert perspectives found, fall back to highest confidence
