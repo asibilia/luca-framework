@@ -47,4 +47,7 @@ __tests__/
 .tmp-test-*
 
 # next.js
-# .next
+.next
+
+#Playwright CLI
+.playwright-cli/

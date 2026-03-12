@@ -1,6 +1,3 @@
-# Build artifacts — compiled Tailwind output (generated from tailwind/base.css)
-app/globals.css
-
 .next/
-
 .env.*
+bin/
