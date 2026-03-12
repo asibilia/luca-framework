@@ -262,11 +262,11 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
       complexity: {
         defaultLevel: 'auto',
         matrix: {
-          TRIVIAL: { cognitivePreflight: 'lite', planVerificationIterations: 1, harnessFixIterations: 1, verifyFixIterations: 1, verificationMode: 'quick' },
-          SIMPLE: { cognitivePreflight: 'lite', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'quick' },
-          MODERATE: { cognitivePreflight: 'full', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'standard' },
-          COMPLEX: { cognitivePreflight: 'full', planVerificationIterations: 2, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'full' },
-          CRITICAL: { cognitivePreflight: 'full', planVerificationIterations: 3, harnessFixIterations: 3, verifyFixIterations: 2, verificationMode: 'full+human' }
+          TRIVIAL: { cognitivePreflight: 'lite', planVerificationIterations: 1, harnessFixIterations: 1, verifyFixIterations: 1, verificationMode: 'quick', recallDepth: 1 },
+          SIMPLE: { cognitivePreflight: 'lite', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'quick', recallDepth: 1 },
+          MODERATE: { cognitivePreflight: 'full', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'standard', recallDepth: 3 },
+          COMPLEX: { cognitivePreflight: 'full', planVerificationIterations: 2, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'full', recallDepth: null },
+          CRITICAL: { cognitivePreflight: 'full', planVerificationIterations: 3, harnessFixIterations: 3, verifyFixIterations: 2, verificationMode: 'full+human', recallDepth: null }
         }
       },
       dogfood: {
