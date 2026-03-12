@@ -2,7 +2,23 @@
 
 ## Overview
 
-**Current Milestone:** v5.0.0 — Plugin Ecosystem
+**Current Milestone:** v4.2.0 — Workflow Unification & Memory Architecture
+
+---
+
+## v4.2.0 — Workflow Unification & Memory Architecture
+
+Rework complexity gating (model-tier-only) and formalize multi-vault MuninnDB architecture. Prerequisites for v5.0.0.
+
+| Phase                             | Goal                                                            | Depends On | Status           |
+| --------------------------------- | --------------------------------------------------------------- | ---------- | ---------------- |
+| 01 — Complexity Step Removal      | Remove step-gating from all skills, unify lu/autopilot          | None       | [ ] PLAN pending |
+| 02 — Complexity Rule Alignment    | Update rule, config schema, complexity matrix                   | Phase 01   | [ ] PLAN pending |
+| 03 — Multi-Vault Migration        | Vault roles, brain tree split, memory migration, init-vault CLI | None       | [ ] PLAN pending |
+| 04 — Skill Dual-Vault Integration | Scoped dual-vault recall/write in all skills/agents             | Phase 03   | [ ] PLAN pending |
+
+**Absorbs:** #38 (complexity gating rework), #39 (multi-vault memory architecture)
+**Dependency graph:** Level 0 (parallel): 01, 03 | Level 1 (parallel): 02, 04
 
 ---
 
