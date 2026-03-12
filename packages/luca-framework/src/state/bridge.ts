@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (14):
+ * Subcommands (15):
  *   read-complexity        — Read current complexity level
  *   read-oversight         — Read current oversight level
  *   read-phase             — Read current phase info
@@ -19,6 +19,7 @@
  *   suspend                — Create checkpoint and suspend current phase
  *   resume-phase           — Load checkpoint and resume a suspended phase
  *   emit-event             — Emit event to MuninnDB (fire-and-forget observability)
+ *   init-vault             — Guided setup for project MuninnDB vault
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -39,6 +40,8 @@
  *   luca-state resume-phase --phase=42
  *   luca-state emit-event --type=session:start --session=abc-123
  *   luca-state emit-event --type=agent:spawn --session=abc-123 --data='{"agent_name":"lu-executor"}'
+ *   luca-state init-vault
+ *   luca-state init-vault --vault=my-project --force
  *
  * @module luca-state/bridge
  */
@@ -202,6 +205,7 @@ const VALID_SUBCOMMANDS = [
   "suspend",
   "resume-phase",
   "emit-event",
+  "init-vault",
 ] as const;
 
 /**
@@ -235,6 +239,9 @@ Lifecycle commands:
 
 Observability commands:
   emit-event             Emit event to MuninnDB (--type=eventType [--session=id] [--data=json])
+
+Vault commands:
+  init-vault             Guided setup for project MuninnDB vault ([--vault=name] [--force])
 
 Options:
   --help, -h             Show this help message`;
@@ -1253,6 +1260,130 @@ async function handleEmitEvent(args: string[]): Promise<void> {
   }
 }
 
+// ─── Init Vault Command ─────────────────────────────────────────────────────
+
+/**
+ * Guided setup wizard for configuring a project-specific MuninnDB vault.
+ *
+ * Detects the repo name from git remote (or falls back to the directory name),
+ * outputs step-by-step Web UI instructions for vault creation and API key
+ * generation, writes the vault name to `.planning/config.json`, and attempts
+ * a best-effort connectivity check.
+ *
+ * This handler does NOT interact with the XState workflow state machine.
+ * It is a standalone utility command that reads/writes config.json only.
+ *
+ * @param args - CLI arguments:
+ *   --vault=name (optional) Override detected vault name
+ *   --force (optional) Reconfigure even if vault is already set
+ *
+ * @example
+ * ```bash
+ * luca-state init-vault
+ * luca-state init-vault --vault=my-project
+ * luca-state init-vault --force
+ * ```
+ */
+async function handleInitVault(args: string[]): Promise<void> {
+  const configPath = ".planning/config.json";
+
+  // Step 1: Check if already configured
+  const configFile = Bun.file(configPath);
+  let config: Record<string, unknown> = {};
+  if (await configFile.exists()) {
+    try {
+      config = await configFile.json();
+    } catch {
+      // Invalid JSON -- start fresh
+    }
+  }
+
+  const existingVault = get(config, "muninn.vault") as string | undefined;
+  if (existingVault && !hasFlag(args, "force")) {
+    console.log(
+      JSON.stringify({
+        already_configured: true,
+        vault: existingVault,
+        message: `Vault already configured: "${existingVault}". Use --force to reconfigure.`,
+      }),
+    );
+    return;
+  }
+
+  // Step 2: Detect repo name from git remote, fallback to directory name
+  let repoName = "";
+  try {
+    const remote = await Bun.$`git remote get-url origin 2>/dev/null`.text();
+    repoName =
+      remote
+        .trim()
+        .split("/")
+        .pop()
+        ?.replace(/\.git$/, "") || "";
+  } catch {
+    /* no git remote available */
+  }
+  if (!repoName) {
+    repoName = process.cwd().split("/").pop() || "unknown";
+  }
+
+  // Allow explicit override via --vault=<name>
+  const vaultName = getArg(args, "vault") || repoName;
+
+  // Step 3: Output guided setup instructions
+  const baseUrl = process.env.MUNINN_DB_URL ?? "http://127.0.0.1:8476";
+  console.log(
+    JSON.stringify({
+      wizard: true,
+      detected_repo: repoName,
+      suggested_vault: vaultName,
+      steps: [
+        `Open MuninnDB Web UI: ${baseUrl}`,
+        `Create a new vault named "${vaultName}"`,
+        `Generate an API key for the "${vaultName}" vault`,
+        `Add MUNINN_DB_API_KEY=<key> to your .env file`,
+      ],
+      config_path: configPath,
+    }),
+  );
+
+  // Step 4: Write vault name to config (read-modify-write)
+  const muninnConfig = (config.muninn as Record<string, unknown>) || {};
+  config.muninn = { ...muninnConfig, vault: vaultName };
+  await Bun.write(configPath, JSON.stringify(config, null, 2) + "\n");
+
+  // Step 5: Verify connectivity (best-effort, non-blocking)
+  const apiKey = process.env.MUNINN_DB_API_KEY ?? "";
+  let connectivity: "verified" | "not_verified" = "not_verified";
+  try {
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+    const res = await fetch(
+      `${baseUrl}/api/engrams?limit=1&vault=${encodeURIComponent(vaultName)}`,
+      {
+        headers,
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (res.ok) {
+      connectivity = "verified";
+    }
+  } catch {
+    /* connectivity check failed -- non-fatal */
+  }
+
+  console.log(
+    JSON.stringify({
+      configured: true,
+      vault: vaultName,
+      config_written: configPath,
+      connectivity,
+    }),
+  );
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1321,6 +1452,9 @@ export async function runBridgeCli(): Promise<void> {
     case "emit-event":
       await handleEmitEvent(args);
       break;
+    case "init-vault":
+      await handleInitVault(args);
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1354,6 +1488,7 @@ export {
   handleSuspend,
   handleResumePhase,
   handleEmitEvent,
+  handleInitVault,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

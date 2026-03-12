@@ -62,10 +62,12 @@ Extract from your prompt context:
 
 ### Step 2: Read Project Identity
 
+**Vault Resolution:** Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 If brain data was not provided in your prompt, recall it from MuninnDB:
 
 ```
-mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")
 ```
 
 Extract:

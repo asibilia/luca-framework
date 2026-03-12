@@ -21,6 +21,8 @@ Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUI
 
 **Arguments:** \`<version>\` (e.g., "1.0", "1.1", "2.0")
 
+**Vault Resolution:** Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, milestone, brain:project, agent:scorecard) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, process, brain:user).
+
 **Purpose:** Create historical record of shipped version, archive milestone artifacts (roadmap + requirements), and prepare for next milestone.
 
 **Output:** Milestone archived (roadmap + requirements), PROJECT.md evolved, learnings consolidated, git tagged.
@@ -44,7 +46,7 @@ Before archiving, ensure all session learnings are captured:
 1. **Check for unextracted session learnings** in MuninnDB:
 
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "current session context and unextracted findings")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context and unextracted findings")
    \`\`\`
 
 2. **Invoke lu-learner** if candidate learnings exist
@@ -66,7 +68,7 @@ Split into two focused recalls to ensure accurate data:
 
 \`\`\`
 mcp__muninn__muninn_recall(
-  vault: "default",
+  vault: REPO_VAULT,
   context: "metric:memory-recall-precision metric:memory-hit-rate",
   mode: "recent",
   limit: 10
@@ -77,7 +79,7 @@ mcp__muninn__muninn_recall(
 
 \`\`\`
 mcp__muninn__muninn_recall(
-  vault: "default",
+  vault: REPO_VAULT,
   context: "pattern: decision: pitfall:",
   mode: "deep",
   limit: 100
@@ -132,7 +134,7 @@ Handle each response:
 For each engram approved for deletion (via Y or S response in section 3):
 
 \`\`\`
-mcp__muninn__muninn_forget(vault: "default", id: "{engram_id}")
+mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "{engram_id}")
 \`\`\`
 
 Note: \`muninn_forget\` performs a soft-delete with a 7-day recovery window. This is the strongest delete available in MuninnDB. If a mistake is made, the developer can use \`muninn_restore\` within 7 days to recover the engram.
@@ -144,7 +146,7 @@ Stale engrams are deleted (after human approval), not evolved. Evolution is rese
 Run \`muninn_consolidate\` at every milestone boundary, regardless of whether stale engrams were found or pruned:
 
 \`\`\`
-mcp__muninn__muninn_consolidate(vault: "default")
+mcp__muninn__muninn_consolidate(vault: REPO_VAULT)
 \`\`\`
 
 This step:
@@ -161,7 +163,7 @@ Store pruning report as a milestone metric:
 
 \`\`\`
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "metric:memory-pruning-{milestone_version}",
   content: JSON.stringify({
     stale_detected: {count},
@@ -184,7 +186,7 @@ Create milestone-specific memory snapshot in MuninnDB:
 
 \`\`\`
 # Export milestone memory graph for archival
-mcp__muninn__muninn_export_graph(vault: "default")
+mcp__muninn__muninn_export_graph(vault: REPO_VAULT)
 \`\`\`
 
 Store the export as \`.planning/milestones/v{version}-MEMORY-SNAPSHOT.json\`.
@@ -201,7 +203,7 @@ Include in archive:
 After archiving, clear session context:
 
 \`\`\`
-mcp__muninn__muninn_forget(vault: "default", id: "session:*")
+mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "session:*")
 \`\`\`
 
 Long-term learnings persist in MuninnDB across milestones.
@@ -292,22 +294,22 @@ Recall process metrics from MuninnDB for the current milestone:
 
 1. Appetite accuracy trend:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "metric:appetite-accuracy {milestone_version}")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:appetite-accuracy {milestone_version}")
    \`\`\`
 
 2. Rework ratio trend:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "metric:rework-ratio {milestone_version}")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:rework-ratio {milestone_version}")
    \`\`\`
 
 3. Pre-mortem signal rate trend:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "metric:signal-rate {milestone_version}")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:signal-rate {milestone_version}")
    \`\`\`
 
 4. Agent performance scores:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "agent:scorecard {milestone_version}")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "agent:scorecard {milestone_version}")
    \`\`\`
 
 Display results as an ASCII table:
@@ -337,7 +339,7 @@ No process metrics found for v{version}. Dashboard will populate after future mi
 
 Before asking the question, check graduation criteria:
 \`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "metric:retro-response-rate")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:retro-response-rate")
 \`\`\`
 
 Parse the recalled engram:
@@ -353,7 +355,7 @@ Anything to change about how we work? (optional — press Enter to skip)
 - Store as MuninnDB engram:
   \`\`\`
   mcp__muninn__muninn_remember(
-    vault: "default",
+    vault: DEFAULT_VAULT,
     concept: "process:workflow-change",
     content: "Milestone: v{version}\\nFeedback: {developer_response}\\nRecorded: {timestamp}"
   )
@@ -361,7 +363,7 @@ Anything to change about how we work? (optional — press Enter to skip)
 - Update retro response rate:
   \`\`\`
   mcp__muninn__muninn_evolve(
-    vault: "default",
+    vault: REPO_VAULT,
     id: "metric:retro-response-rate",
     content: "sample_count: {N+1}, responses: {M+1}, response_rate: {updated_rate}"
   )
@@ -372,7 +374,7 @@ Anything to change about how we work? (optional — press Enter to skip)
 - Update retro response rate (responded: false):
   \`\`\`
   mcp__muninn__muninn_evolve(
-    vault: "default",
+    vault: REPO_VAULT,
     id: "metric:retro-response-rate",
     content: "sample_count: {N+1}, responses: {M}, response_rate: {updated_rate}"
   )
@@ -410,13 +412,13 @@ Anything to change about how we work? (optional — press Enter to skip)
 
 Recall the convergent streak counter from MuninnDB:
 \`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "metric:convergent-streak")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:convergent-streak")
 \`\`\`
 
 If no counter exists, create it with count = 1:
 \`\`\`
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "metric:convergent-streak",
   content: "consecutive_milestones: 1, last_milestone: v{version}, last_updated: {timestamp}"
 )
@@ -425,7 +427,7 @@ mcp__muninn__muninn_remember(
 If counter exists, increment it:
 \`\`\`
 mcp__muninn__muninn_evolve(
-  vault: "default",
+  vault: REPO_VAULT,
   id: "metric:convergent-streak",
   content: "consecutive_milestones: {N+1}, last_milestone: v{version}, last_updated: {timestamp}"
 )
@@ -435,7 +437,7 @@ mcp__muninn__muninn_evolve(
 
 Before showing the nudge, check if divergent mode has graduated out:
 \`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "metric:divergent-optin-rate")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:divergent-optin-rate")
 \`\`\`
 
 If \`sample_count >= 20\` AND \`rate < 0.10\`: SKIP the nudge entirely. Developer consistently opts out. Update convergent streak and proceed to Step 9.
@@ -468,7 +470,7 @@ No acceptance criteria. No deliverables required.
 - Reset convergent streak to 0:
   \`\`\`
   mcp__muninn__muninn_evolve(
-    vault: "default",
+    vault: REPO_VAULT,
     id: "metric:convergent-streak",
     content: "consecutive_milestones: 0, last_milestone: v{version}, divergent_mode_entered: {timestamp}"
   )
@@ -476,7 +478,7 @@ No acceptance criteria. No deliverables required.
 - Update divergent opt-in rate (opted_in: true):
   \`\`\`
   mcp__muninn__muninn_evolve(
-    vault: "default",
+    vault: REPO_VAULT,
     id: "metric:divergent-optin-rate",
     content: "sample_count: {N+1}, optins: {M+1}, rate: {updated_rate}"
   )
@@ -500,7 +502,7 @@ No acceptance criteria. No deliverables required.
 - Update divergent opt-in rate (opted_in: false):
   \`\`\`
   mcp__muninn__muninn_evolve(
-    vault: "default",
+    vault: REPO_VAULT,
     id: "metric:divergent-optin-rate",
     content: "sample_count: {N+1}, optins: {M}, rate: {updated_rate}"
   )

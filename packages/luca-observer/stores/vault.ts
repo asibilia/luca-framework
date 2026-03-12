@@ -9,5 +9,5 @@ import { atomWithStorage } from "jotai/utils";
  */
 export const vaultAtom = atomWithStorage<string>(
   "luca-observer-vault",
-  "default",
+  "default"
 );

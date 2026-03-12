@@ -39,6 +39,20 @@ Read this reference file before executing:
 - `.cursor/luca/references/ui-brand.md`
 - `.cursor/luca/workflows/cognitive-preflight.md`
 
+## Vault Resolution
+
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\`\`\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\`\`\`
+
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## Cognitive Pre-Flight (NEW)
 
 Before planning begins, run cognitive pre-flight:
@@ -50,7 +64,7 @@ Before planning begins, run cognitive pre-flight:
 1. **Load project identity** from MuninnDB:
 
    ```
-   mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+   mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")
    ```
 
    Extract: architecture patterns, code conventions, development preferences
@@ -64,7 +78,7 @@ Before planning begins, run cognitive pre-flight:
 
    if (!hasRecallCache(SESSION_ID)) {
      const recallResult = mcp__muninn__muninn_recall(
-       vault: "default",
+       vault: REPO_VAULT,
        context: "patterns, decisions, and pitfalls relevant to phase {PHASE}"
      );
 
@@ -84,7 +98,7 @@ Before planning begins, run cognitive pre-flight:
 2.5. **Recall relevant procedures** from MuninnDB:
 
    ```
-   mcp__muninn__muninn_recall(vault: "default", context: "reusable procedures and workflows for {phase_description}")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "reusable procedures and workflows for {phase_description}")
    ```
 
    Procedures are step-sequence templates from past successful executions.
@@ -93,7 +107,7 @@ Before planning begins, run cognitive pre-flight:
 3. **Initialize session** in MuninnDB for this planning session:
 
    ```
-   mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
+   mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
    ```
 
    Store recalled context:

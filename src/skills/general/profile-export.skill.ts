@@ -26,16 +26,30 @@ Export portable learnings from this project to the global memory profile for cro
 
 ---
 
+## Vault Resolution
+
+Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\\\`\\\`\\\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=\${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\\\`\\\`\\\`
+
+Use REPO_VAULT for project-scoped operations (brain:project, session, project patterns) and DEFAULT_VAULT for cross-cutting operations (brain:user, global patterns).
+
 ## Process
 
 1. **Read project identity and memory from MuninnDB:**
 
    \`\`\`
    # Recall project brain (identity, conventions)
-   mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+   mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")
 
    # Recall all project memory entries
-   mcp__muninn__muninn_recall(vault: "default", context: "all project patterns, decisions, pitfalls, and preferences")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "all project patterns, decisions, pitfalls, and preferences")
    \`\`\`
 
 2. **Parse arguments:**
@@ -46,7 +60,7 @@ Export portable learnings from this project to the global memory profile for cro
 3. **Export to MuninnDB global graph:**
 
    \`\`\`
-   mcp__muninn__muninn_export_graph(vault: "default")
+   mcp__muninn__muninn_export_graph(vault: REPO_VAULT)
    \`\`\`
 
    - Exports the full memory graph for cross-project transfer

@@ -247,11 +247,31 @@ If no existing tag fits:
 
 <execution_flow>
 
-<step name="load_working" priority="first">
+<step name="resolve_vaults" priority="first">
+Determine the two vault names used throughout learning extraction:
+
+1. **Read repo vault from config:**
+   \`\`\`bash
+   REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+   if [ -z "$REPO_VAULT" ]; then
+     REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+   fi
+   \`\`\`
+
+2. **Set DEFAULT_VAULT:** Always `"default"` — the cross-cutting vault.
+
+3. **Write routing heuristic:**
+   - `session:*`, `metric:*` -> write to REPO_VAULT (project-scoped)
+   - `pattern:*`, `decision:*`, `pitfall:*`, `procedure:*` -> write to DEFAULT_VAULT (cross-cutting)
+   - Link operations -> same vault as the source engram
+   - Clear session (`muninn_forget` for `session:*`) -> REPO_VAULT
+</step>
+
+<step name="load_working">
 Read current session context from MuninnDB:
 
 ```
-mcp__muninn__muninn_recall(vault: "default", context: "current session findings and context")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session findings and context")
 ```
 
 Parse returned engrams for:
@@ -265,10 +285,13 @@ Parse returned engrams for:
   </step>
 
 <step name="load_memory">
-Read existing long-term memory from MuninnDB:
+Read existing long-term memory from MuninnDB (dual-vault recall for patterns/decisions):
 
 ```
-mcp__muninn__muninn_recall(vault: "default", context: "existing patterns and decisions")
+# Dual-vault recall: query both vaults, merge results by score, dedup by concept prefix
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "existing patterns and decisions")
+mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "existing patterns and decisions")
+# Concatenate results, sort by relevance score descending, dedup by concept prefix (keep highest-scored)
 ```
 
 Build index of existing engrams to avoid duplication:
@@ -385,11 +408,11 @@ From MuninnDB session context, identify successful multi-step sequences (3+ step
 - Does a similar procedure engram already exist in MuninnDB? (dedup by trigger similarity via recall)
 
 **For new procedures:**
-1. Recall existing procedure engrams: `mcp__muninn__muninn_recall(vault: "default", context: "procedure engrams")`
+1. Recall existing procedure engrams (dual-vault): `mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "procedure engrams")` then `mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "procedure engrams")` — merge results by score, dedup by concept prefix
 2. Define trigger conditions (when to use this procedure)
 3. List ordered steps (3+ steps that form the recipe)
 4. Assign tags from TAG-VOCABULARY.md
-5. Store as procedure engram: `mcp__muninn__muninn_remember(vault: "default", concept: "procedure:<name>", content: "Trigger: ... Steps: ... Tags: ... Stats: execution_count=1, success_count=1, success_rate=1.0")`
+5. Store as procedure engram: `mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: "procedure:<name>", content: "Trigger: ... Steps: ... Tags: ... Stats: execution_count=1, success_count=1, success_rate=1.0")`
 
 **For existing procedures (trigger matches):**
 1. Read the existing engram via `mcp__muninn__muninn_read`
@@ -427,7 +450,7 @@ For each engram written during this learning extraction:
 
 \`\`\`
 mcp__muninn__muninn_recall(
-  vault: "default",
+  vault: REPO_VAULT,
   context: "metric:memory-recall-precision metric:memory-hit-rate for engrams similar to {engram_concept}",
   mode: "recent",
   limit: 5
@@ -447,11 +470,12 @@ Use muninn_evolve to update the engram content with the new confidence level:
 
 \`\`\`
 mcp__muninn__muninn_evolve(
-  vault: "default",
+  vault: DEFAULT_VAULT,
   id: engram_id,
   new_content: "{original content with Confidence: {new_level}}",
   reason: "Confidence {promoted|demoted} based on {positive_count}/{total_count} positive feedback across {phase_count} phases"
 )
+# NOTE: Use the same vault as the engram being evolved. For pattern:*/pitfall:*/decision:* engrams, that is DEFAULT_VAULT. For metric:* engrams, use REPO_VAULT.
 \`\`\`
 
 3. **Log confidence changes:**
@@ -460,7 +484,7 @@ For each confidence change, log to session context:
 
 \`\`\`
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "session:findings",
   content: "Confidence evolution: {engram_concept} {old_level} -> {new_level} (based on {feedback_summary})"
 )
@@ -478,7 +502,8 @@ Add new entries to MuninnDB as permanent engrams:
 For each validated learning, store via MuninnDB:
 
 ```
-mcp__muninn__muninn_remember(vault: "default", concept: "<type>:<name>", content: "Description of what was learned. Tags: [relevant, tags]. Confidence: low. Agent: lu-learner.")
+mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: "<type>:<name>", content: "Description of what was learned. Tags: [relevant, tags]. Confidence: low. Agent: lu-learner.")
+# NOTE: pattern:*, decision:*, pitfall:* writes go to DEFAULT_VAULT (cross-cutting). Session:* and metric:* writes go to REPO_VAULT (project-scoped).
 ```
 
 Where `<type>` is one of: `pattern`, `decision`, `pitfall`.
@@ -498,31 +523,33 @@ Link each newly written engram to related existing memories in MuninnDB. Zero li
 1. **Recover the engram ID.** Capture the ID returned by each `muninn_remember` call. If the ID was not captured (e.g., call returned before recording), use `muninn_recall` on the concept name to retrieve the engram ID:
 
    ```
-   mcp__muninn__muninn_recall(vault: "default", context: "<concept name>")
+   # Use the same vault the engram was written to (DEFAULT_VAULT for pattern/decision/pitfall, REPO_VAULT for session/metric)
+   mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "<concept name>")
    ```
 
 2. **Find related memories.** Recall the top 2-3 semantically related existing memories using the concept domain as context:
 
    ```
-   mcp__muninn__muninn_recall(vault: "default", context: "<concept domain, e.g., 'coding patterns bun runtime'>")
+   # Search the same vault as the source engram
+   mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "<concept domain, e.g., 'coding patterns bun runtime'>")
    ```
 
-3. **Link to related memories.** For each related result returned, call `muninn_link` using the `relates_to` relation:
+3. **Link to related memories.** For each related result returned, call `muninn_link` using the `relates_to` relation. Use the same vault as the source engram:
 
    ```
-   mcp__muninn__muninn_link(vault: "default", source_id: "<new engram ID>", target_id: "<related engram ID>", relation: "relates_to")
+   mcp__muninn__muninn_link(vault: DEFAULT_VAULT, source_id: "<new engram ID>", target_id: "<related engram ID>", relation: "relates_to")
    ```
 
-4. **Link to producing phase or session.** If the originating phase memory ID or session memory ID is known (from session context or workflow context), call `muninn_link` using the `learned_from` relation:
+4. **Link to producing phase or session.** If the originating phase memory ID or session memory ID is known (from session context or workflow context), call `muninn_link` using the `learned_from` relation. Note: cross-vault links are not supported, so only link to memories in the same vault:
 
    ```
-   mcp__muninn__muninn_link(vault: "default", source_id: "<new engram ID>", target_id: "<phase or session memory ID>", relation: "learned_from")
+   mcp__muninn__muninn_link(vault: DEFAULT_VAULT, source_id: "<new engram ID>", target_id: "<phase or session memory ID>", relation: "learned_from")
    ```
 
-5. **Assert minimum link count.** Every new engram MUST have at least 1 link. If after steps 3 and 4 a memory still has zero links, create a fallback `is_part_of` link to the current session memory:
+5. **Assert minimum link count.** Every new engram MUST have at least 1 link. If after steps 3 and 4 a memory still has zero links, create a fallback `is_part_of` link to a related memory in the same vault:
 
    ```
-   mcp__muninn__muninn_link(vault: "default", source_id: "<new engram ID>", target_id: "<session memory ID>", relation: "is_part_of")
+   mcp__muninn__muninn_link(vault: DEFAULT_VAULT, source_id: "<new engram ID>", target_id: "<related memory ID>", relation: "is_part_of")
    ```
 
    An engram with zero links after this step is a failure. Do not proceed to `clear_working` until all new engrams have at least 1 link.
@@ -534,7 +561,7 @@ Log: "Linked N new memories, M total links created."
 Reset session context for next session via MuninnDB:
 
 ```
-mcp__muninn__muninn_forget(vault: "default", id: "session:*")
+mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "session:*")
 ```
 
 This clears all session-scoped engrams, preparing MuninnDB for the next session.

@@ -104,19 +104,19 @@
     "matrix": {
       "TRIVIAL": {
         "cognitivePreflight": "lite",
-        "planVerificationIterations": 0,
+        "planVerificationIterations": 1,
         "harnessFixIterations": 1,
-        "verifyFixIterations": 0,
+        "verifyFixIterations": 1,
         "verificationMode": "quick",
-        "recallDepth": 0
+        "recallDepth": 1
       },
       "SIMPLE": {
         "cognitivePreflight": "lite",
-        "planVerificationIterations": 0,
+        "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
         "verificationMode": "quick",
-        "recallDepth": 0
+        "recallDepth": 1
       },
       "MODERATE": {
         "cognitivePreflight": "full",
@@ -187,5 +187,8 @@
     "lock_file": ".claude/.session-lock",
     "manifest_file": ".claude/.build-manifest.json"
   },
-  "runtime": "bun"
+  "runtime": "bun",
+  "muninn": {
+    "vault": "luca-framework"
+  }
 }

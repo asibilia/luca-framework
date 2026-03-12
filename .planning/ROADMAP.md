@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v5.0.0 — Plugin Ecosystem
+**Current Milestone:** Planning next
 
 ---
 
@@ -92,6 +92,13 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 | #109 | Metric key alignment (outcome-completion-rate to outcome-completion)                    |
 | #110 | Mechanical cleanup (duplicate imports, memory tags, section ordering, bracket notation) |
 
+## Closed (v4.2.0 Completed)
+
+| Todo | Reason                                                                           |
+| ---- | -------------------------------------------------------------------------------- |
+| #38  | Complexity gating reworked: model-tier-only, all steps always run at every level |
+| #39  | Multi-vault MuninnDB: default vault cross-cutting, repo vault project-specific   |
+
 ## Closed (v3.1.0 Completed)
 
 | Todo | Reason                                                               |
@@ -149,7 +156,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v3.3.0** — Cognitive Maturity & Observer Depth: 6 phases, 12 plans, 78 commits, 94 files changed ([View Archive](milestones/v3.3.0-ROADMAP.md))
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
 - **v4.1.0** — Agentic Intelligence & Platform Maturity: 10 phases, 17 plans, 77 commits, 229 files changed ([View Archive](milestones/v4.1.0-ROADMAP.md))
+- **v4.2.0** — Workflow Unification & Memory Architecture: 5 phases, 8 plans, 15 commits, 312 files changed ([View Archive](milestones/v4.2.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-11 (v4.1.0 milestone archived)_
+_Roadmap updated: 2026-03-12 (v4.2.0 milestone archived)_

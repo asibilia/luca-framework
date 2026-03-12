@@ -48,3 +48,6 @@ __tests__/
 
 # next.js
 .next
+
+#Playwright CLI
+.playwright-cli/

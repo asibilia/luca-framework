@@ -1,5 +1,5 @@
 ---
-description: "Complexity gating: model routing and iteration scaling per complexity level"
+description: "Complexity gating: model tier routing per complexity level"
 globs:
   - "*.ts"
   - "*.md"
@@ -7,7 +7,7 @@ globs:
 alwaysApply: true
 ---
 
-# Complexity gating: model routing and iteration scaling per complexity level
+# Complexity gating: model tier routing per complexity level
 
 ## rule
 
@@ -27,7 +27,7 @@ Luca classifies task complexity into five levels, grouped into three behavioral 
 
 ## Always-On Steps
 
-ALL workflow steps run at every complexity level. Complexity no longer gates step activation -- it controls **model tier** (via the routing table below) and **iteration counts**. Steps are never skipped based on complexity alone.
+ALL workflow steps run at every complexity level. Complexity no longer gates step activation -- it controls **model tier** only (via the routing table below). Steps are never skipped based on complexity alone.
 
 1. Model profile resolution
 2. Cognitive pre-flight
@@ -65,17 +65,18 @@ Model tiers map to concrete models: **fast** (haiku/lightweight), **balanced** (
 
 **Single source of truth:** The \`MODEL_ROUTING_TABLE\` is the only authoritative source for agent model selection. Agent frontmatter \`model_routing\` and \`model_tier\` fields are deprecated and no longer consulted by \`resolveModel()\`.
 
-## Iteration Count Scaling
+## Loop Budgets (Not Step Gating)
 
-These parameters still scale with complexity:
+The following parameters cap **iteration loop depth** and **verification thoroughness**. They do NOT gate workflow steps -- all steps run at every complexity level. Configured in \`config.json\` complexity matrix.
 
-| Parameter | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|-----------|---------|--------|----------|---------|----------|
-| Cognitive pre-flight | Lite | Lite | Full | Full | Full |
-| Plan verification iterations | 1 | 1 | 1 | 2 | 3 |
-| Harness fix iterations | 1 | 2 | 2 | 2 | 3 |
-| Verify fix iterations | 1 | 1 | 1 | 1 | 2 |
-| Verification mode | Quick | Quick | Standard | Full | Full+Human |
+| Parameter | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL | Used by |
+|-----------|---------|--------|----------|---------|----------|---------|
+| Cognitive pre-flight | Lite | Lite | Full | Full | Full | lu-cognition depth |
+| Plan verification iterations | 1 | 1 | 1 | 2 | 3 | lu-plan-checker retries |
+| Harness fix iterations | 1 | 2 | 2 | 2 | 3 | Loop A (mechanical fix) |
+| Verify fix iterations | 1 | 1 | 1 | 1 | 2 | Loop B (semantic fix) |
+| Verification mode | Quick | Quick | Standard | Full | Full+Human | lu-verifier depth |
+| Recall depth | 1 | 1 | 3 | null | null | MuninnDB entry cap |
 
 ## How to Apply
 
@@ -84,7 +85,7 @@ These parameters still scale with complexity:
 1. Read complexity from STATE.md \`Task Complexity:\` field
 2. If not set, read from lu-router's classification output
 3. Call \`resolveModelForAgent(agentName, complexity)\` to get the model tier
-4. All steps run at every complexity level -- only the model tier varies
+4. All steps run at every complexity level -- only the model tier and loop budgets vary
 5. Flag-based overrides (\`--skip-review\`, \`--skip-uat\`, \`--skip-research\`) still allow explicit skipping
 
 **Complexity is set by:**

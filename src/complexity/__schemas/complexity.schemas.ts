@@ -117,13 +117,21 @@ export const ComplexityGateSchema = z.object({
   /** Cognitive pre-flight depth */
   cognitivePreflight: z.enum(["lite", "full"]),
   /** Plan verification iterations (lu-plan-checker loop count) */
-  planVerificationIterations: z.number().int().nonnegative(),
+  planVerificationIterations: z.number().int().positive(),
   /** Harness fix iterations (Loop A: mechanical failure fix loop max) */
   harnessFixIterations: z.number().int().positive(),
   /** Verify fix iterations (Loop B: semantic gap fix loop max) */
-  verifyFixIterations: z.number().int().nonnegative(),
+  verifyFixIterations: z.number().int().positive(),
   /** Verification mode for lu-verifier */
   verificationMode: VerificationModeSchema,
+  /**
+   * Recall depth cap for complexity-gated memory recall.
+   *
+   * - Positive integer (e.g., 1, 3): hard cap on the number of recall entries
+   * - null: use tier-scaled defaults (no hard cap)
+   * - Omitted (undefined): no cap applied
+   */
+  recallDepth: z.number().int().min(1).nullable().optional(),
   /** Optional cognition tier promotions at this complexity level.
    *  Maps a default tier to a promoted tier (e.g., T1 -> T2 at COMPLEX). */
   cognitionPromotions: z

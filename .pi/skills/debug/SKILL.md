@@ -20,6 +20,20 @@ Debug issues using scientific method with subagent isolation.
 
 **Why subagent:** Investigation burns context fast (reading files, forming hypotheses, testing). Fresh 200k context per investigation. Main context stays lean for user interaction.
 
+## Vault Resolution
+
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\`\`\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\`\`\`
+
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## Sub-agent Delegation Requirements
 
 This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using the Task tool.
@@ -102,10 +116,10 @@ Recall debugging context from MuninnDB:
 
 ```
 # Recall debugging patterns and past pitfalls
-mcp__muninn__muninn_recall(vault: "default", context: "debugging patterns and past pitfalls")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "debugging patterns and past pitfalls")
 
 # Recall current session debugging context
-mcp__muninn__muninn_recall(vault: "default", context: "current session debugging context")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session debugging context")
 ```
 
 Then spawn the debugger:

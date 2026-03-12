@@ -16,9 +16,17 @@ Migrate file-based project knowledge into MuninnDB as structured, queryable enti
 - To refresh MuninnDB after a reset or data loss
 - Safe to re-run -- idempotent via entity existence checks
 
-## Vault
+## Vault Resolution
 
-Always use vault `"default"` for all MuninnDB operations.
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (brain:project-*, session:*, procedure:*) and DEFAULT_VAULT for cross-cutting operations (brain:user-*, pattern:*, pitfall:*, preference:*, decision:*).
+
+Route each memory operation by concept prefix:
+- `brain:project-*` -> REPO_VAULT
+- `brain:user-*` -> DEFAULT_VAULT
+- `brain:stack`, `brain:conventions`, `brain:architecture` -> REPO_VAULT (project-scoped)
+- `pattern:*`, `pitfall:*`, `decision:*`, `preference:*` -> DEFAULT_VAULT (cross-cutting learnings)
+- `session:*` -> REPO_VAULT
+- `procedure:*` -> REPO_VAULT
 
 ## Entity Naming Conventions
 
@@ -58,11 +66,11 @@ If `.planning/BRAIN.md` exists:
 1. Read the file content
 2. Parse the major sections (look for ## headings: Project Identity, Stack, Architecture, Conventions, Preferences, etc.)
 3. **Check for existing entity** using `mcp__muninn__muninn_find_by_entity`:
-   - vault: "default"
+   - vault: REPO_VAULT
    - entity_name: "brain:project-identity"
 4. **If entity exists**: Use `mcp__muninn__muninn_evolve` to update the root engram with the latest content
 5. **If entity does not exist**: Use `mcp__muninn__muninn_remember_tree` to store as a hierarchical tree:
-   - vault: "default"
+   - vault: REPO_VAULT
    - Root concept: "brain:project-identity"
    - Root content: The full BRAIN.md content or a summary of the project identity
    - Children: One child per major section, each with:
@@ -73,7 +81,7 @@ If `.planning/BRAIN.md` exists:
 
 ```json
 {
-  "vault": "default",
+  "vault": "REPO_VAULT (resolved from .planning/config.json muninn.vault)",
   "root": {
     "concept": "brain:project-identity",
     "content": "Luca Framework -- agentic development tooling monorepo. Builds agents, skills, rules, hooks for AI-assisted development.",
@@ -115,7 +123,7 @@ If `.planning/MEMORY.md` exists:
    - **If entity exists**: Use `mcp__muninn__muninn_evolve` to update with latest content
    - **If entity does not exist**: Add to the batch for creation
 4. Store all new entries using `mcp__muninn__muninn_remember_batch`:
-   - vault: "default"
+   - vault: Route by concept prefix per Vault Resolution above (pattern:*, pitfall:*, decision:*, preference:* -> DEFAULT_VAULT)
    - Each memory includes:
      - concept: `<type>:<slug>` (e.g., "pattern:bun-runtime-requirement", "pitfall:generated-files-direct-edit")
      - content: The full entry text as natural language
@@ -141,7 +149,7 @@ If `.planning/WORKING.md` exists and is not empty:
      - entity_name: `session:<section-slug>`
    - **If entity exists**: Use `mcp__muninn__muninn_evolve` to update
    - **If entity does not exist**: Use `mcp__muninn__muninn_remember` to store:
-     - vault: "default"
+     - vault: REPO_VAULT
      - concept: `session:<section-slug>` (e.g., "session:findings", "session:progress")
      - content: The section content
      - type: "session_context"
@@ -162,7 +170,7 @@ If `.planning/procedures/` directory exists:
      - entity_name: `procedure:<procedure-slug>`
    - **If entity exists**: Use `mcp__muninn__muninn_evolve` to update the root
    - **If entity does not exist**: Use `mcp__muninn__muninn_remember_tree`:
-     - vault: "default"
+     - vault: REPO_VAULT
      - Root concept: `procedure:<procedure-slug>`
      - Root content: Procedure overview or full content
      - Children: One child per major step or section (if the procedure has clear steps)
@@ -174,9 +182,9 @@ If `.planning/procedures/` directory exists:
 After all seeding is complete:
 
 1. Use `mcp__muninn__muninn_recall` to verify key entities were stored:
-   - `muninn_recall(vault="default", context="brain project identity")`
-   - `muninn_recall(vault="default", context="patterns and pitfalls")`
-   - `muninn_recall(vault="default", context="procedures")` (if procedures were seeded)
+   - `muninn_recall(vault=REPO_VAULT, context="brain project identity")`
+   - `muninn_recall(vault=DEFAULT_VAULT, context="patterns and pitfalls")`
+   - `muninn_recall(vault=REPO_VAULT, context="procedures")` (if procedures were seeded)
 
 2. Report a summary:
 

@@ -126,6 +126,7 @@ export {
   handleGateCheck,
   handleSuspend,
   handleResumePhase,
+  handleInitVault,
   SETTABLE_FIELDS,
 } from "./bridge";
 
