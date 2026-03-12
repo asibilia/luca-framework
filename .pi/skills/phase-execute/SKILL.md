@@ -18,6 +18,8 @@ Orchestrator stays lean: discover plans, analyze dependencies, group into waves,
 
 **Arguments:** `<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory] [--skip-replay]`
 
+**Vault Resolution:** Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, brain:project, procedure, decision) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## Sub-agent Delegation Requirements
 
 This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using the Task tool.
@@ -104,7 +106,7 @@ if (!hasRecallCache(SESSION_ID)) {
   // Recall was not done in Step 4 (e.g., --skip-memory was used earlier)
   // Perform recall now for learning context
   const recallResult = mcp__muninn__muninn_recall(
-    vault: "default",
+    vault: REPO_VAULT,
     context: "session context, patterns, and decisions for phase {PHASE}"
   );
 
@@ -255,7 +257,7 @@ for metric_name, value in metrics_json["metrics"].items():
     if value is not None:
         storage_key = metrics_json["storage_keys"][metric_name]
         mcp__muninn__muninn_remember(
-            vault="default",
+            vault=REPO_VAULT,
             concept=storage_key,
             content=json.dumps({
                 "value": value,
@@ -288,7 +290,7 @@ Throughout execution, log findings to MuninnDB:
 Log execution progress to MuninnDB:
 
 ```
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [Plan X complete - finding Y]")
+mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "[timestamp] [Plan X complete - finding Y]")
 ```
 
 Track:
@@ -375,7 +377,7 @@ PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .planning/ROADMAP.md | tail -
 Recall replayable procedures from MuninnDB:
 
 ```
-REPLAY_RESULT = mcp__muninn__muninn_recall(vault: "default", context: "replayable procedures for $PHASE_OBJECTIVE")
+REPLAY_RESULT = mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "replayable procedures for $PHASE_OBJECTIVE")
 ```
 
 Parse the recall result to determine if relevant procedures exist (REPLAY_COUNT).
@@ -544,7 +546,7 @@ import { requestMemoryContext } from "~/shared";
 if (!hasRecallCache(SESSION_ID)) {
   // Step 2: First request this session — perform MuninnDB recall
   const recallResult = mcp__muninn__muninn_recall(
-    vault: "default",
+    vault: REPO_VAULT,
     context: "patterns, decisions, and pitfalls for phase {PHASE}"
   );
 
@@ -767,7 +769,7 @@ Apply the reassessment logic from `src/complexity/__helpers/reassessment.ts`:
   1. Update state via bridge: `luca-bridge set-field --field=complexity --value='"$NEW_LEVEL"'`
   2. Update local variable: `COMPLEXITY="$NEW_LEVEL"`
   3. Set `ALREADY_PROMOTED=true`
-  4. Log to MuninnDB session: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [COMPLEXITY-PROMOTED] $REASON")`
+  4. Log to MuninnDB session: `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "[timestamp] [COMPLEXITY-PROMOTED] $REASON")`
   5. Display promotion banner
 
 **Important:** Re-read complexity from the bridge before spawning the next wave's executors (research pitfall #4). The executor model tier will be resolved using the updated complexity level.
@@ -1221,7 +1223,7 @@ For each pre-plan that was injected during execution, record the outcome in Muni
 # EXECUTION_DURATION_MS is computed from phase start time
 
 for each PROC_ID in INJECTED_PROCEDURE_IDS:
-  mcp__muninn__muninn_evolve(vault: "default", id: "procedure:$PROC_ID", content: "replay outcome: success=$HARNESS_PASSED, duration_ms=$EXECUTION_DURATION_MS")
+  mcp__muninn__muninn_evolve(vault: REPO_VAULT, id: "procedure:$PROC_ID", content: "replay outcome: success=$HARNESS_PASSED, duration_ms=$EXECUTION_DURATION_MS")
 ```
 
 This ensures that:
@@ -1249,7 +1251,7 @@ PLAN_CONTENTS=$(find $PHASE_DIR -name "*-PLAN.md" -exec cat {} \;)
 Recall session context from MuninnDB:
 
 ```
-mcp__muninn__muninn_recall(vault: "default", context: "current session context and findings for phase verification")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context and findings for phase verification")
 ```
 
 Then spawn the verifier:
@@ -1348,7 +1350,7 @@ VERIFICATION_PASSED = (verifier result is "passed" or "passed_with_notes")
 
 For each engram in recalledEngrams:
   mcp__muninn__muninn_feedback(
-    vault: "default",
+    vault: REPO_VAULT,
     engram_id: engram.engramId,
     useful: VERIFICATION_PASSED
   )
@@ -1387,7 +1389,7 @@ Store metrics as MuninnDB engrams:
 
 ```
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "metric:memory-recall-precision-{milestone}-phase-{phase}",
   content: JSON.stringify({
     value: metrics.recall_precision,
@@ -1401,7 +1403,7 @@ mcp__muninn__muninn_remember(
 )
 
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "metric:memory-hit-rate-{milestone}-phase-{phase}",
   content: JSON.stringify({
     value: metrics.hit_rate,
@@ -1454,7 +1456,7 @@ Store in MuninnDB:
 
 ```
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "decision:complexity-calibration-{milestone}-phase-{phase}",
   content: "{calibration_json}"
 )

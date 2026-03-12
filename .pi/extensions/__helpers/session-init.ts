@@ -327,17 +327,19 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
       matrix: {
         TRIVIAL: {
           cognitivePreflight: "lite",
-          planVerificationIterations: 0,
+          planVerificationIterations: 1,
           harnessFixIterations: 1,
-          verifyFixIterations: 0,
+          verifyFixIterations: 1,
           verificationMode: "quick",
+          recallDepth: 1,
         },
         SIMPLE: {
           cognitivePreflight: "lite",
-          planVerificationIterations: 0,
+          planVerificationIterations: 1,
           harnessFixIterations: 2,
           verifyFixIterations: 1,
           verificationMode: "quick",
+          recallDepth: 1,
         },
         MODERATE: {
           cognitivePreflight: "full",
@@ -345,6 +347,7 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
           harnessFixIterations: 2,
           verifyFixIterations: 1,
           verificationMode: "standard",
+          recallDepth: 3,
         },
         COMPLEX: {
           cognitivePreflight: "full",
@@ -352,6 +355,7 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
           harnessFixIterations: 2,
           verifyFixIterations: 1,
           verificationMode: "full",
+          recallDepth: null,
         },
         CRITICAL: {
           cognitivePreflight: "full",
@@ -359,6 +363,7 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
           harnessFixIterations: 3,
           verifyFixIterations: 2,
           verificationMode: "full+human",
+          recallDepth: null,
         },
       },
     },

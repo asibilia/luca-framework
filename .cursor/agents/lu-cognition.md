@@ -86,7 +86,27 @@ Based on patterns and pitfalls in memory, flag potential issues:
 
 <execution_flow>
 
-<step name="check_complexity_mode" priority="first">
+<step name="resolve_vaults" priority="first">
+Determine the two vault names used throughout this pre-flight:
+
+1. **Read repo vault from config:**
+   \`\`\`bash
+   REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+   if [ -z "$REPO_VAULT" ]; then
+     REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+   fi
+   \`\`\`
+
+2. **Set DEFAULT_VAULT:** Always `"default"` — the cross-cutting vault for patterns, pitfalls, preferences, and procedures.
+
+3. **Fallback chain:** `.planning/config.json` `muninn.vault` -> `LUCA_MUNINN_VAULT` env var -> `"default"`
+
+Store both vault names for use in all subsequent MuninnDB calls:
+- `REPO_VAULT` — project-scoped memories (brain:project-identity, session:*, metric:*, outcome:*)
+- `DEFAULT_VAULT` — cross-cutting memories (brain:user-identity, pattern:*, pitfall:*, preference:*, procedure:*)
+</step>
+
+<step name="check_complexity_mode">
 Determine cognitive pre-flight depth based on complexity:
 
 **If complexity override is provided (from --complexity flag or STATE.md):**
@@ -145,7 +165,7 @@ Route to: \`lu-router\`
 Load project identity from MuninnDB brain tree:
 
 ```
-mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")
 ```
 
 From the returned tree, extract:
@@ -279,16 +299,29 @@ If effective_tier is T1 or higher, proceed with recall:
 Use MuninnDB semantic recall with explicit `mode: "semantic"` to find relevant engrams. Build the context string from task keywords and phase tags:
 
 ```
-mcp__muninn__muninn_recall(vault: "default", context: "<task keywords and phase context>", mode: "semantic")
+# Dual-vault recall: query repo vault first, then default vault, merge results
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "<task keywords and phase context>", mode: "semantic")
+mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "<task keywords and phase context>", mode: "semantic")
+# Concatenate results, sort by relevance score descending, dedup by concept prefix (keep highest-scored)
 ```
 
-MuninnDB ranks engrams by embedding-based semantic similarity to the provided context. Each returned result includes a `score` field (0.0-1.0) representing its semantic relevance.
+MuninnDB ranks engrams by embedding-based semantic similarity to the provided context. Each returned result includes a `score` field (0.0-1.0) representing its semantic relevance. When querying both vaults, concatenate results and dedup by concept prefix before scoring.
 
 **For milestone-scoped recall**, include the milestone in the context string:
 
 ```
-mcp__muninn__muninn_recall(vault: "default", context: "milestone <version>: <task keywords and phase context>", mode: "semantic")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "milestone <version>: <task keywords and phase context>", mode: "semantic")
+mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "milestone <version>: <task keywords and phase context>", mode: "semantic")
 ```
+
+**Single-vault recall types (skip dual-vault for these):**
+- `brain:project-identity` -> REPO_VAULT only
+- `brain:user-identity` -> DEFAULT_VAULT only
+- `session:*`, `metric:*` -> REPO_VAULT only
+
+**Dual-vault recall types (query both, merge by score):**
+- `pattern:*`, `pitfall:*`, `preference:*` -> Both vaults, merge results
+- `procedure:*` -> Both vaults, merge results
 
 **Composite Scoring (embedding-aware):**
 
@@ -388,9 +421,8 @@ composite_score = (
 
 ```
 1. Read recallDepth from complexity matrix for current complexity level
-2. IF recallDepth == 0: skip recall entirely (lite mode handles TRIVIAL/SIMPLE)
-3. IF recallDepth is a number (e.g., 3): cap entries at recallDepth regardless of tier
-4. IF recallDepth is null: use tier-scaled defaults below
+2. IF recallDepth is a number (e.g., 1 for TRIVIAL, 3 for MODERATE): cap entries at recallDepth regardless of tier
+3. IF recallDepth is null (COMPLEX/CRITICAL): use tier-scaled defaults below
 ```
 
 **Tier-Scaled Entry Limits (fallback when recallDepth is null):**
@@ -420,7 +452,7 @@ For each keyword, scan the **filtered candidate set**:
 Load cross-project learnings from MuninnDB global vault:
 
 ```
-mcp__muninn__muninn_recall(vault: "default", context: "global project patterns and preferences")
+mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "global project patterns and preferences")
 ```
 
 **If global engrams exist:**
@@ -444,12 +476,12 @@ mcp__muninn__muninn_recall(vault: "default", context: "global project patterns a
 <step name="cleanup_stale_sessions">
 Before initializing a new session, clean up stale session engrams from previous workflows:
 
-1. **Check for stale session context** via `mcp__muninn__muninn_recall(vault: "default", context: "session:*")`
+1. **Check for stale session context** via `mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "session:*")`
 2. **If stale session engrams exist** (from a previous session that wasn't properly cleaned up):
-   a. Write a summary engram before cleanup: `mcp__muninn__muninn_remember(vault: "default", concept: "session:summary-orphaned", content: "Orphaned session context found and cleaned. [count] stale engrams removed.")`
-   b. Forget all stale session engrams: `mcp__muninn__muninn_forget(vault: "default", id: "session:context")`
-   c. Forget session info: `mcp__muninn__muninn_forget(vault: "default", id: "session:info")`
-   d. Forget session findings: `mcp__muninn__muninn_forget(vault: "default", id: "session:findings")`
+   a. Write a summary engram before cleanup: `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:summary-orphaned", content: "Orphaned session context found and cleaned. [count] stale engrams removed.")`
+   b. Forget all stale session engrams: `mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "session:context")`
+   c. Forget session info: `mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "session:info")`
+   d. Forget session findings: `mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "session:findings")`
 3. **If no stale session engrams found**: Continue (clean state)
 
 This prevents unbounded vault pollution from abandoned, halted, or crashed sessions.
@@ -464,23 +496,23 @@ Before initializing working memory, check whether recently shipped features have
 
 1. Recall the outcome completion metric:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "metric:outcome-completion")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:outcome-completion")
    \`\`\`
 2. Parse the metric for `interactions_count` and `completion_rate`.
 3. **If interactions >= 10 AND completion_rate < 20%:** The developer is not engaging with outcome tracking. SKIP this step silently and continue to `initialize_working`. Log:
    \`\`\`
-   mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [OUTCOME-SKIP] Graduation gate triggered: <rate>% completion after <count> interactions. Skipping outcome check.")
+   mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [OUTCOME-SKIP] Graduation gate triggered: <rate>% completion after <count> interactions. Skipping outcome check.")
    \`\`\`
 
 **If gate passes (or insufficient data to evaluate):**
 
 1. Recall recent outcome engrams:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "outcome:* recently shipped features goal achievement")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "outcome:* recently shipped features goal achievement")
    \`\`\`
 2. Recall recently completed milestones and phases to identify shipped features:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "milestone completion phase summary shipped feature")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "milestone completion phase summary shipped feature")
    \`\`\`
 3. Cross-reference: find features that appear in milestone/phase summaries but have NO corresponding `outcome:*` engram.
 4. **If untracked features found**, pick the oldest one and prompt:
@@ -499,13 +531,13 @@ Before initializing working memory, check whether recently shipped features have
    \`\`\`
 
 5. Based on response:
-   - **Yes**: Store `mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] achieved its goal. Shipped in [milestone]. Developer confirmed [date].")`
-   - **No**: Store `mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] did NOT achieve its goal. Shipped in [milestone]. Developer confirmed [date]. Notes: [any elaboration].")`
-   - **Too early**: Store `mcp__muninn__muninn_remember(vault: "default", concept: "outcome:feature-goal", content: "[Feature X] outcome pending — too early to assess. Shipped in [milestone]. Will re-check later.")`
+   - **Yes**: Store `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "outcome:feature-goal", content: "[Feature X] achieved its goal. Shipped in [milestone]. Developer confirmed [date].")`
+   - **No**: Store `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "outcome:feature-goal", content: "[Feature X] did NOT achieve its goal. Shipped in [milestone]. Developer confirmed [date]. Notes: [any elaboration].")`
+   - **Too early**: Store `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "outcome:feature-goal", content: "[Feature X] outcome pending — too early to assess. Shipped in [milestone]. Will re-check later.")`
 
 6. Update the completion metric:
    \`\`\`
-   mcp__muninn__muninn_evolve(vault: "default", id: "<metric-engram-id>", update: "Interaction count incremented. New completion rate: <calculated>%.")
+   mcp__muninn__muninn_evolve(vault: REPO_VAULT, id: "<metric-engram-id>", update: "Interaction count incremented. New completion rate: <calculated>%.")
    \`\`\`
 
 7. **Only ask about ONE feature per session** to avoid prompt fatigue. Continue to `initialize_working`.
@@ -514,7 +546,7 @@ Before initializing working memory, check whether recently shipped features have
 </step>
 
 <step name="initialize_working">
-Create or reset MuninnDB session context for this session. Initialize with the following structure via `mcp__muninn__muninn_session(vault: "default")`, then store session info:
+Create or reset MuninnDB session context for this session. Initialize with the following structure via `mcp__muninn__muninn_session(vault: REPO_VAULT)`, then store session info:
 
 ```markdown
 # Working Memory
@@ -612,7 +644,7 @@ _Session Status_
 - [ ] Ready to clear
 ```
 
-Store session context in MuninnDB via `mcp__muninn__muninn_remember(vault: "default", concept: "session:context", content: "<session template above>")`
+Store session context in MuninnDB via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:context", content: "<session template above>")`
 </step>
 
 <step name="intuition_check">
@@ -775,7 +807,7 @@ During execution, append findings to MuninnDB session context:
 - **Decisions made**: Choices during implementation with brief rationale
 - **Candidate patterns/pitfalls**: Potential learnings for MuninnDB engram extraction
 
-Store findings via `mcp__muninn__muninn_remember(vault: "default", concept: "session:<section>", content: "<finding>")` where section is one of:
+Store findings via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:<section>", content: "<finding>")` where section is one of:
 - `session:discovery` — for observations
 - `session:code-observations` — for code patterns
 - `session:candidate-learnings` — for candidate learnings
@@ -799,9 +831,9 @@ Include all T2 sections, then add:
 
 During execution, actively identify candidate learnings:
 
-1. **Patterns**: When an approach works well, store it via `mcp__muninn__muninn_remember(vault: "default", concept: "session:candidate-pattern", content: "<description>")`
-2. **Decisions**: When choosing between alternatives, store the choice and rationale via `mcp__muninn__muninn_remember(vault: "default", concept: "session:candidate-decision", content: "<description>")`
-3. **Pitfalls**: When encountering issues, store what went wrong via `mcp__muninn__muninn_remember(vault: "default", concept: "session:candidate-pitfall", content: "<description>")`
+1. **Patterns**: When an approach works well, store it via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:candidate-pattern", content: "<description>")`
+2. **Decisions**: When choosing between alternatives, store the choice and rationale via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:candidate-decision", content: "<description>")`
+3. **Pitfalls**: When encountering issues, store what went wrong via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:candidate-pitfall", content: "<description>")`
 
 After workflow completion, lu-learner will extract validated entries from MuninnDB session context to permanent MuninnDB engrams.
 ```

@@ -1,4 +1,0 @@
-[    2456ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3456/favicon.ico:0
-[  401898ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:3456/api/muninn/stats?vault=percent-ui:0
-[  401900ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:3456/api/muninn/graph-data?vault=percent-ui:0
-[  401907ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:3456/api/muninn/engrams?vault=percent-ui&limit=200:0

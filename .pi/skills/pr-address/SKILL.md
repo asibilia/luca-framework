@@ -564,13 +564,13 @@ Verify all PR fixes address their original concerns.
 
 After fix verification completes (Step 7), spawn lu-learner to extract patterns from PR review comments. This step runs regardless of whether all fixes passed verification -- failed verifications are also learning opportunities.
 
-**Gate check:** Only spawn lu-learner if there were valid concerns from Step 4 (at least one comment was categorized as `fix_needed: true`). Skip this step if all comments were informational or disputed -- there are no actionable learnings to capture.
+**Gate check:** Spawn lu-learner if there were any categorized concerns from Step 4 (valid, disputed, or informational). All comments are captured at low confidence — the confidence evolution system (3+ feedback heuristic) handles quality over time. Skip this step only if there were zero comments to process.
 
 If gate check passes, gather the learning context and spawn lu-learner:
 
 ```bash
-# Collect addressed concerns from Step 4 and verification results from Step 7
-VALID_CONCERNS="[aggregated from reviewer agent results where fix_needed: true]"
+# Collect all categorized concerns from Step 4 and verification results from Step 7
+ALL_CONCERNS="[aggregated from all reviewer agent results — fix_needed, disputed, and informational]"
 VERIFICATION_RESULT="[from verifier return value in Step 7]"
 ```
 
@@ -583,13 +583,14 @@ Task(
 **PR:** #{pr_number}
 **Verification Result:** {verification_summary}
 
-**Review Comments Addressed:**
-{for each addressed comment from Step 4 where fix_needed: true:}
+**Review Comments (All Categorized):**
+{for each categorized comment from Step 4:}
 - Comment #{comment_id}: "{comment_text}"
   - Category: {category}
+  - Verdict: {fix_needed | disputed | informational}
   - File: {file_path}
-  - Fix Applied: {fix_description}
-  - Fix Verified: {fix_verified}
+  - Fix Applied: {fix_description if fix_needed, else "N/A"}
+  - Fix Verified: {fix_verified if fix_needed, else "N/A"}
 
 </learning_context>
 

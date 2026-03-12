@@ -9,6 +9,20 @@ disable-model-invocation: true
 
 Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
 
+## Vault Resolution
+
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\`\`\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\`\`\`
+
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 Quick mode is the same system with a shorter path:
 
 - Spawns lu-planner (quick mode) + lu-executor(s)
@@ -162,7 +176,7 @@ STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}'
 # Fallback: Read STATE.md directly (backward compatibility)
 STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 # Recall session context from MuninnDB:
-# mcp__muninn__muninn_recall(vault: "default", context: "current session context for quick task")
+# mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context for quick task")
 WORKING_CONTENT="[recalled from MuninnDB session context]"
 ```
 

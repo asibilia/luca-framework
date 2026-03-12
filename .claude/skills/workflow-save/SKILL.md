@@ -13,9 +13,11 @@ Persist Luca workflow run data as atomic memories in MuninnDB. Each piece of dat
 
 MuninnDB is Luca's canonical memory system, providing semantic search, entity graphs, contradiction detection, and temporal decay — the foundation for Luca to genuinely learn from its own execution history. Every workflow run produces valuable signal; this skill captures it before it's lost.
 
-## Vault
+## Vault Resolution
 
-Always use vault `"default"` for all MuninnDB operations.
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, phase execution, verification, scorecard) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, procedure).
+
+All workflow-save operations are project-scoped (session history, phase results, metrics) — use REPO_VAULT for all MuninnDB operations in this skill.
 
 ## Two Modes
 
@@ -261,11 +263,11 @@ Links:
 The skill doesn't handle recall directly — use MuninnDB's recall tools whenever you need history:
 
 ```
-muninn_recall(vault="default", context="phase 06 execution results")
-muninn_recall(vault="default", context="verification failures this milestone")
-muninn_recall(vault="default", context="what happened in last session")
-muninn_find_by_entity(vault="default", entity_name="phase-06")
-muninn_entity_timeline(vault="default", entity_name="v3.0.0")
+muninn_recall(vault=REPO_VAULT, context="phase 06 execution results")
+muninn_recall(vault=REPO_VAULT, context="verification failures this milestone")
+muninn_recall(vault=REPO_VAULT, context="what happened in last session")
+muninn_find_by_entity(vault=REPO_VAULT, entity_name="phase-06")
+muninn_entity_timeline(vault=REPO_VAULT, entity_name="v3.0.0")
 ```
 
 Use `mode="deep"` on recall for thorough graph traversal when you need connected context.

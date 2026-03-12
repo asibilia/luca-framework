@@ -16,6 +16,8 @@ Autonomous orchestrator that drives the full Luca workflow: backlog scan, WSJF p
 
 **Arguments:** `[--oversight=flagged|milestone|phase|full-auto] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run]`
 
+**Vault Resolution:** Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session:*, brain:project-*) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## Sub-agent/Sub-skill Delegation Requirements
 
 This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an autonomous loop.
@@ -120,7 +122,7 @@ Unless the session already has cognitive context loaded:
 ```
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*')."
+  prompt: "Run cognitive pre-flight for autopilot session. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*')."
 )
 ```
 
@@ -807,7 +809,7 @@ VERIFICATION=$(cat .planning/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null ||
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
 2. Update ROADMAP.md plans to `[x]`
-3. Log to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "{timestamp} [PHASE-COMPLETE] Phase {NN} passed")`
+3. Log to MuninnDB: `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "{timestamp} [PHASE-COMPLETE] Phase {NN} passed")`
 4. Display:
 
 ```
@@ -1328,7 +1330,7 @@ luca-bridge snapshot 2>/dev/null || true
 # Fallback: Update STATE.md manually with autopilot session results
 ```
 
-3. Log final status to MuninnDB: `mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "Autopilot session complete")`
+3. Log final status to MuninnDB: `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "Autopilot session complete")`
 4. Commit session metadata:
 
 ```bash

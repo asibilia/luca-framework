@@ -10,6 +10,20 @@ Check project progress, summarize recent work and what's ahead, then intelligent
 
 Provides situational awareness before continuing work.
 
+## Vault Resolution
+
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\`\`\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\`\`\`
+
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## Process
 
 ### Step 1: Verify Planning Structure Exists
@@ -129,7 +143,7 @@ Recall recent memory effectiveness metrics from MuninnDB:
 
 \`\`\`
 mcp__muninn__muninn_recall(
-  vault: "default",
+  vault: REPO_VAULT,
   context: "metric:memory-recall-precision metric:memory-hit-rate current milestone",
   mode: "recent",
   limit: 10

@@ -16,6 +16,20 @@ Extract implementation decisions that downstream agents need — researcher and 
 
 **Arguments:** `<phase> [--auto]`
 
+## Vault Resolution
+
+Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\`\`\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\`\`\`
+
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## How It Works
 
 ### Interactive Mode (default)
@@ -86,7 +100,7 @@ The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-d
 
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
-6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via `muninn_recall_tree(vault: "default", id: "brain:project-identity")`
+6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via `muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")`
 7a. **Spawn lu-discuss-researcher per question** — For each gray area:
     - Formulate a focused question from the gray area topic
     - Spawn `lu-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
@@ -254,7 +268,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
 
 1. Recall \`metric:signal-rate-aggregate\` from MuninnDB:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: "default", context: "metric:signal-rate-aggregate")
+   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:signal-rate-aggregate")
    \`\`\`
 
 2. Parse the recalled engram. If the aggregate exists AND meets BOTH conditions:
@@ -266,7 +280,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
    - Store auto-skip decision as MuninnDB engram:
      \`\`\`
      mcp__muninn__muninn_remember(
-       vault: "default",
+       vault: DEFAULT_VAULT,
        concept: "process:auto-skip",
        content: "Pre-mortem auto-skipped: signal rate {rate} over {sample_count} runs. Threshold: <10% over 20+ runs."
      )
