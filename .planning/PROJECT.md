@@ -8,11 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v4.1.0 — Shipped)
+## Current State (v4.2.0 — Shipped)
 
-**Last Shipped:** v4.1.0 — Agentic Intelligence & Platform Maturity (2026-03-11)
+**Last Shipped:** v4.2.0 — Workflow Unification & Memory Architecture (2026-03-12)
 
-10 phases, 17 plans, 77 commits, 229 files changed (+13,978/-1,050). Skill dependency orchestration, tribunal consensus model, multi-lens review gate, observer todo tracking, semantic memory embeddings, cross-agent interop scanner, memory effectiveness measurement, security hardening, DRY alignment, observer UI polish.
+5 phases, 8 plans, 15 commits, 312 files changed (+9,135/-16,048). Complexity gating reworked to model-tier-only (all workflow steps always run at every complexity level). Multi-vault MuninnDB architecture formalized (default vault for cross-cutting, repo vault for project-specific). Vault-routing rule, dual-vault recall in lu-cognition, write routing in lu-learner, 81+ hardcoded vault references replaced across 20+ agents/skills, luca-bridge init-vault CLI, brain tree split, Pi extensions muninn config.
+
+## Previous State (v4.1.0)
+
+v4.1.0 — Agentic Intelligence & Platform Maturity (2026-03-11). 10 phases, 17 plans, 77 commits, 229 files changed (+13,978/-1,050). Skill dependency orchestration, tribunal consensus model, multi-lens review gate, observer todo tracking, semantic memory embeddings, cross-agent interop scanner, memory effectiveness measurement, security hardening, DRY alignment, observer UI polish.
 
 ## Previous State (v4.0.0)
 
@@ -39,7 +43,8 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 - **Registry-driven builds**: All agents, skills, and rules compiled from source via typed registries
 - **Deterministic hooks**: Post-edit formatting/typechecking, pre-commit quality gate, context monitoring, session persistence (Claude Code + Cursor)
 - **Automated verification**: 4-parser harness (tsc, bun-test, eslint, generic) with failure-to-fix loops
-- **Complexity gating**: 5-level system (TRIVIAL-CRITICAL) with 3 behavioral tiers scaling workflow steps
+- **Complexity gating**: 5-level system (TRIVIAL-CRITICAL) with model-tier-only routing (all steps always run)
+- **Multi-vault MuninnDB**: Dual-vault architecture with config-driven vault resolution, type-based recall routing, and write routing heuristic
 - **Goal-backward verification**: Specification anchoring re-injects PLAN.md at checkpoints to prevent drift
 - **4-tier cognition system**: T0 (Stateless) through T3 (Fully-Cognitive) with selective memory recall via 14 domain tags
 - **Context-modular sub-agents**: Context isolation, writer/reviewer separation, universal result envelope
@@ -74,6 +79,7 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 - **v3.3.0** — Cognitive Maturity & Observer Depth (2026-03-09). 6 phases, 12 plans, 78 commits. Learning loop, self-tuning, 4 advanced observer views.
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow (2026-03-10). 6 phases, 12 plans, 48 commits, 255 files changed. Appetite system, pre-mortem, process metrics, outcome tracking, self-tuning governance.
 - **v4.1.0** — Agentic Intelligence & Platform Maturity (2026-03-11). 10 phases, 17 plans, 77 commits, 229 files changed. Skill dependencies, tribunal consensus, multi-lens review, observer todos, semantic embeddings, interop scanner, memory effectiveness, security hardening.
+- **v4.2.0** — Workflow Unification & Memory Architecture (2026-03-12). 5 phases, 8 plans, 15 commits, 312 files changed. Complexity gating model-tier-only, multi-vault MuninnDB, vault-routing rule, dual-vault recall/write, brain tree split.
 
 ## Requirements
 
@@ -134,4 +140,4 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 
 ---
 
-_Last updated: 2026-03-11 — v4.1.0 milestone archived_
+_Last updated: 2026-03-12 — v4.2.0 milestone archived_

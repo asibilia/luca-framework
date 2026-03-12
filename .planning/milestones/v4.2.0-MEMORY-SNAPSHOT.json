@@ -1,0 +1,41 @@
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "muninn": "https://muninndb.io/ontology#"
+  },
+  "milestone": "v4.2.0",
+  "vault": "luca-framework",
+  "exported_at": "2026-03-12T18:30:00Z",
+  "node_count": 8,
+  "edge_count": 23,
+  "entities": [
+    "MODEL_ROUTING_TABLE",
+    "MuninnDB",
+    "autopilot",
+    "brain-tree",
+    "complexity-gating",
+    "default-vault",
+    "lu-workflow",
+    "luca-framework-vault"
+  ],
+  "key_relationships": [
+    "complexity-gating controls MODEL_ROUTING_TABLE",
+    "brain-tree split_into default-vault",
+    "brain-tree split_into luca-framework-vault",
+    "default-vault belongs_to MuninnDB",
+    "luca-framework-vault belongs_to MuninnDB",
+    "lu-workflow aligns_with autopilot",
+    "MuninnDB replaces_optimization_for complexity-gating"
+  ],
+  "validated_patterns": [
+    "decision:complexity-gating-rework-v5 — All steps always-on, complexity controls model tier only",
+    "decision:multi-vault-memory-architecture — default vault cross-cutting, repo vault project-specific",
+    "decision:lu-cognition-confidence-proxy-over-direct-query — Confidence categories as proxy"
+  ],
+  "memory_health": {
+    "stale_detected": 0,
+    "consolidated": 0,
+    "total_engrams_analyzed": 33,
+    "stale_threshold": "5+ recalls, 0 positive, 3+ milestones dormant"
+  }
+}
