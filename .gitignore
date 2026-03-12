@@ -47,4 +47,4 @@ __tests__/
 .tmp-test-*
 
 # next.js
-.next
+# .next
