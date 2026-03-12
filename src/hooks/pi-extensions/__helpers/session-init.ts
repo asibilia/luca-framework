@@ -262,6 +262,9 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
       always_confirm_destructive: true,
       always_confirm_external_services: true,
     },
+    muninn: {
+      vault: "default",
+    },
     hooks: {
       enabled: true,
       formatter: isBun ? "bunx --bun prettier --write" : "npx prettier --write",
