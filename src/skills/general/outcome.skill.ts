@@ -19,6 +19,8 @@ const outcomeConfig: SkillConfig = {
 
 Record whether a shipped feature achieved its intended goal. Builds a feedback loop between what we build and whether it worked.
 
+**Vault Resolution:** Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (outcome:*, metric:*, session:*) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 ## Process
 
 ### Step 1: Identify Feature
@@ -34,7 +36,7 @@ Which shipped feature would you like to record an outcome for?
 After the developer responds, check MuninnDB for duplicate outcomes:
 
 \`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "outcome:<feature-name> goal achievement")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "outcome:<feature-name> goal achievement")
 \`\`\`
 
 **If an outcome already exists for this feature:**
@@ -62,7 +64,7 @@ If cancel (3): exit.
 Check MuninnDB for any previously stored goal for this feature:
 
 \`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "<feature-name> goal purpose objective intent")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "<feature-name> goal purpose objective intent")
 \`\`\`
 
 **If a goal is found in MuninnDB:**
@@ -131,7 +133,7 @@ Store in MuninnDB:
 
 \`\`\`
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "outcome:feature-goal",
   content: "<formatted outcome above>"
 )
@@ -141,7 +143,7 @@ If this is an update to an existing outcome (from Step 1), use evolve instead:
 
 \`\`\`
 mcp__muninn__muninn_evolve(
-  vault: "default",
+  vault: REPO_VAULT,
   id: "<existing-outcome-id>",
   update: "Updated assessment: [new assessment]. [new evidence]. Updated [timestamp]."
 )
@@ -152,14 +154,14 @@ mcp__muninn__muninn_evolve(
 Update the outcome tracking metric:
 
 \`\`\`
-mcp__muninn__muninn_recall(vault: "default", context: "metric:outcome-completion")
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:outcome-completion")
 \`\`\`
 
 **If metric exists:** Evolve it with incremented count:
 
 \`\`\`
 mcp__muninn__muninn_evolve(
-  vault: "default",
+  vault: REPO_VAULT,
   id: "<metric-id>",
   update: "Outcome recorded. Interactions: <N+1>. Completion rate: <recalculated>%."
 )
@@ -169,7 +171,7 @@ mcp__muninn__muninn_evolve(
 
 \`\`\`
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "metric:outcome-completion",
   content: "Outcome completion tracking metric. Interactions: 1. Outcomes recorded: 1. Completion rate: 100%."
 )

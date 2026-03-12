@@ -63,7 +63,21 @@ MODEL_PROFILE=\$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile
     },
     {
       title: "workflow",
-      content: `Execute these steps in order. Each step is either a Task tool call (for agents) or a Skill tool call (for sub-skills).
+      content: `## Vault Resolution
+
+Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default".
+
+\\\`\\\`\\\`bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=\${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+\\\`\\\`\\\`
+
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user). Pass the resolved vault names to sub-agents (lu-cognition, lu-learner) in their prompts.
+
+Execute these steps in order. Each step is either a Task tool call (for agents) or a Skill tool call (for sub-skills).
 
 ### Step 0: Parse Request
 
@@ -89,7 +103,7 @@ If already on a feature branch or \`--skip-branch\` is set, skip this step.
 Unless \`--skip-memory\` is set, spawn the lu-cognition agent:
 
 \`\`\`
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*').")
+Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
 \`\`\`
 
 ### Step 3: Complexity Classification
@@ -187,7 +201,7 @@ Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-de
 Always spawn lu-learner (model tier resolved from routing table per complexity):
 
 \`\`\`
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: 'default', context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: 'default', concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*') after extraction.")
+Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*') after extraction. REPO_VAULT=<resolved value from .planning/config.json muninn.vault>. DEFAULT_VAULT='default'.")
 \`\`\`
 
 The lu-learner model tier is resolved via \`resolveModelForAgent("lu-learner", complexity)\`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.

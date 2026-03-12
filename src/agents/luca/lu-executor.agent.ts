@@ -44,6 +44,8 @@ Your job: Execute the plan completely, commit each task, create SUMMARY.md, upda
 - **Pitfalls**: Avoid known issues (e.g., \\\`|| true\\\` swallowing exit codes, Bun.spawn timeout quirks)
 - **Decisions**: Respect past architectural choices and conventions
 
+**Vault Resolution:** Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 **Session Tracking:** During execution, append findings to MuninnDB session context:
 
 - Code observations and unexpected behaviors
@@ -69,7 +71,7 @@ At the end of execution (before creating SUMMARY.md), append to session context:
 
 \\\`\\\`\\\`
 mcp__muninn__muninn_remember(
-  vault: "default",
+  vault: REPO_VAULT,
   concept: "session:applied-engrams",
   content: "Phase {phase} Plan {plan}: Applied engrams: [{list of applied concept labels}]. Ignored engrams: [{list of ignored concept labels}]."
 )
@@ -113,7 +115,7 @@ During execution, maintain MuninnDB session context as a session log:
 
 \`\`\`
 # Append finding to MuninnDB session context
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [Finding description]")
+mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [Finding description]")
 \`\`\`
 
 All execution insights flow to MuninnDB session context, then validated insights graduate to permanent MuninnDB engrams.
@@ -440,7 +442,7 @@ Skip TDD-1 through TDD-4. Execute the task normally using standard execution flo
 Log:
 
 \`\`\`
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-SKIP] Task '{task_name}' is non-testable: {reason}. Using standard execution.")
+mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [TDD-SKIP] Task '{task_name}' is non-testable: {reason}. Using standard execution.")
 \`\`\`
 
 The verifier will use goal-backward (T3) as the primary signal for this task instead of test results (T1).
@@ -496,7 +498,7 @@ TDD_RED_EXIT=$?
 **If tests FAIL (exit code != 0):** RED phase confirmed. Log to MuninnDB:
 
 \`\`\`
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-RED] Tests fail as expected ({test_count} tests, {failure_count} failures)")
+mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [TDD-RED] Tests fail as expected ({test_count} tests, {failure_count} failures)")
 \`\`\`
 
 Proceed to implementation.
@@ -509,7 +511,7 @@ Proceed to implementation.
 Log the violation and proceed with caution:
 
 \`\`\`
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-RED-VIOLATION] Tests passed before implementation - investigating")
+mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [TDD-RED-VIOLATION] Tests passed before implementation - investigating")
 \`\`\`
 
 Continue to implementation but flag this in the SUMMARY.
@@ -530,7 +532,7 @@ TDD_GREEN_EXIT=$?
 **If tests PASS (exit code == 0):** GREEN phase confirmed. Log:
 
 \`\`\`
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-GREEN] All {test_count} tests pass after implementation")
+mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [TDD-GREEN] All {test_count} tests pass after implementation")
 \`\`\`
 
 Proceed to commit the task (implementation + test file together).
@@ -572,7 +574,7 @@ When tests fail after implementation (GREEN phase not achieved), retry the imple
 7. If retries exhausted and tests still fail: Log failure and proceed with a warning:
 
    \`\`\`
-   mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "<timestamp> [TDD-FAIL] Tests still failing after {max_retries} retries. Proceeding with partial implementation.")
+   mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [TDD-FAIL] Tests still failing after {max_retries} retries. Proceeding with partial implementation.")
    \`\`\`
 
    Commit the implementation as-is. The failing tests will be caught by the verification harness (Step 6.5) and the verifier (Step 7).

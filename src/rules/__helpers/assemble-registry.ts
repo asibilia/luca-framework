@@ -29,6 +29,7 @@ import { noTestsRule } from "../general/no-tests.rule";
 import { posthogIntegrationRule } from "../general/posthog-integration.rule";
 import { selfImproveRule } from "../general/self-improve.rule";
 import { stateMachineBridgeRule } from "../general/state-machine-bridge.rule";
+import { vaultRoutingRule } from "../general/vault-routing.rule";
 import { profileRegistry, ProfileConfigSchema } from "../profiles/index";
 
 import type { BaseRule } from "../__schemas/rule.schemas";
@@ -50,6 +51,7 @@ const generalRules: Record<string, () => BaseRule> = {
   "posthog-integration": () => posthogIntegrationRule,
   "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,
+  "vault-routing": () => vaultRoutingRule,
   "lu-workflow": () => luWorkflowRule,
 };
 

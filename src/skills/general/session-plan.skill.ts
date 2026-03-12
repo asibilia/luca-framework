@@ -19,6 +19,8 @@ const sessionPlanConfig: SkillConfig = {
 
 Plan the next AI coding session (or week) by analyzing pending todos, scoring them with WSJF, and scheduling an optimal session plan.
 
+**Vault Resolution:** Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session:*, brain:project-*) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+
 **Arguments:** \`[sessions]\` (optional - defaults to 1 for single session, use >1 for weekly planning)
 
 ## Process
@@ -26,12 +28,12 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 ### Step 0: Cognitive Pre-Flight
 
 1. **Load context from MuninnDB:**
-   - Recall project identity: \`mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")\`
-   - Recall session context: \`mcp__muninn__muninn_recall(vault: "default", context: "current session context")\`
-   - Recall planning patterns: \`mcp__muninn__muninn_recall(vault: "default", context: "planning patterns, estimates, and workflow decisions")\`
+   - Recall project identity: \`mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")\`
+   - Recall session context: \`mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context")\`
+   - Recall planning patterns: \`mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "planning patterns, estimates, and workflow decisions")\`
 
 2. **Initialize session in MuninnDB:**
-   - Store session info: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=session-plan, started=[timestamp]")\`
+   - Store session info: \`mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:info", content: "workflow=session-plan, started=[timestamp]")\`
    - Note any recalled calibration data for effort estimates
 
 ### Step 1: Parse Pending Todos
@@ -55,7 +57,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
    - Package TodoMetadata[] as structured input
    - Include \`.planning/ROADMAP.md\` for priority context
    - Include dependency graph
-   - Include any calibration entries for effort estimates (via MuninnDB: \`mcp__muninn__muninn_recall(vault: "default", context: "effort estimates and calibration data")\`)
+   - Include any calibration entries for effort estimates (via MuninnDB: \`mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "effort estimates and calibration data")\`)
 
 2. **Spawn lu-pm-planner sub-agent:**
    - Agent infers WSJF inputs (BV, TC, RR) for each todo from context
