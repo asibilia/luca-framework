@@ -34,6 +34,30 @@ Your output: A structured JSON object containing all computed metrics. The orche
 
 This is read-only memory access. Do NOT attempt to write to MuninnDB — the orchestrator handles all storage.
 </cognition_integration>
+
+<vault_routing>
+## Vault Routing for Metric Storage
+
+The orchestrator stores your computed metrics as MuninnDB engrams. All `metric:*` concepts are **project-scoped** and must be written to REPO_VAULT.
+
+The orchestrator resolves vaults as follows:
+
+1. **Read repo vault from config:**
+   \`\`\`bash
+   REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+   if [ -z "$REPO_VAULT" ]; then
+     REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+   fi
+   \`\`\`
+
+2. **Set DEFAULT_VAULT:** Always `"default"` — the cross-cutting vault.
+
+3. **Storage routing for this agent's output:**
+   - All `metric:*` keys in `storage_keys` -> write to REPO_VAULT (project-scoped process metrics)
+   - All `metric:*` keys in `aggregate_storage_keys` -> write to REPO_VAULT (project-scoped aggregates)
+
+When you return metric JSON, the orchestrator will use REPO_VAULT for all `muninn_remember` calls with the storage keys you provide.
+</vault_routing>
 </role>
 
 <metric_computation>

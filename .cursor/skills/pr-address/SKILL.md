@@ -30,6 +30,21 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
 
+### Vault Resolution
+
+```bash
+REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$REPO_VAULT" ]; then
+  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+fi
+DEFAULT_VAULT="default"
+```
+
+**Write routing for this skill:**
+- `pitfall:pr-review-*` engrams -> write to DEFAULT_VAULT (cross-cutting learnings)
+- `muninn_link` operations -> use DEFAULT_VAULT (linking to cross-cutting engrams)
+- `session:*` context -> write to REPO_VAULT (project-scoped session)
+
 ### Model Resolution
 
 ```bash
@@ -599,9 +614,9 @@ Extract ONLY pitfalls from PR review feedback:
 </extraction_targets>
 
 <output_requirements>
-- Write each pitfall as a MuninnDB engram via muninn_remember
+- Write each pitfall as a MuninnDB engram via muninn_remember with vault: DEFAULT_VAULT (pitfalls are cross-cutting)
 - Use concept: "pitfall:pr-review-{descriptive-name}"
-- Link new engrams to related existing memories via muninn_link
+- Link new engrams to related existing memories via muninn_link with vault: DEFAULT_VAULT
 - Return summary of learnings captured
 </output_requirements>
 
