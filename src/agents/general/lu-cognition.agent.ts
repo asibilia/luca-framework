@@ -394,9 +394,8 @@ composite_score = (
 
 \`\`\`
 1. Read recallDepth from complexity matrix for current complexity level
-2. IF recallDepth == 0: skip recall entirely (lite mode handles TRIVIAL/SIMPLE)
-3. IF recallDepth is a number (e.g., 3): cap entries at recallDepth regardless of tier
-4. IF recallDepth is null: use tier-scaled defaults below
+2. IF recallDepth is a number (e.g., 1 for TRIVIAL, 3 for MODERATE): cap entries at recallDepth regardless of tier
+3. IF recallDepth is null (COMPLEX/CRITICAL): use tier-scaled defaults below
 \`\`\`
 
 **Tier-Scaled Entry Limits (fallback when recallDepth is null):**

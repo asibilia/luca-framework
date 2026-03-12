@@ -262,8 +262,8 @@ if [ ! -f "$PLANNING_DIR/config.json" ]; then
       complexity: {
         defaultLevel: 'auto',
         matrix: {
-          TRIVIAL: { cognitivePreflight: 'lite', planVerificationIterations: 0, harnessFixIterations: 1, verifyFixIterations: 0, verificationMode: 'quick' },
-          SIMPLE: { cognitivePreflight: 'lite', planVerificationIterations: 0, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'quick' },
+          TRIVIAL: { cognitivePreflight: 'lite', planVerificationIterations: 1, harnessFixIterations: 1, verifyFixIterations: 1, verificationMode: 'quick' },
+          SIMPLE: { cognitivePreflight: 'lite', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'quick' },
           MODERATE: { cognitivePreflight: 'full', planVerificationIterations: 1, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'standard' },
           COMPLEX: { cognitivePreflight: 'full', planVerificationIterations: 2, harnessFixIterations: 2, verifyFixIterations: 1, verificationMode: 'full' },
           CRITICAL: { cognitivePreflight: 'full', planVerificationIterations: 3, harnessFixIterations: 3, verifyFixIterations: 2, verificationMode: 'full+human' }

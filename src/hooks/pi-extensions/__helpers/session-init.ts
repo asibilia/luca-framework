@@ -327,14 +327,14 @@ export function detectAndWriteConfig(cwd: string, runtime: string): string {
       matrix: {
         TRIVIAL: {
           cognitivePreflight: "lite",
-          planVerificationIterations: 0,
+          planVerificationIterations: 1,
           harnessFixIterations: 1,
-          verifyFixIterations: 0,
+          verifyFixIterations: 1,
           verificationMode: "quick",
         },
         SIMPLE: {
           cognitivePreflight: "lite",
-          planVerificationIterations: 0,
+          planVerificationIterations: 1,
           harnessFixIterations: 2,
           verifyFixIterations: 1,
           verificationMode: "quick",

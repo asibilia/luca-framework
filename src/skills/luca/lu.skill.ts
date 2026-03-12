@@ -125,16 +125,15 @@ Skill(skill: "project-new", args: "<project description>")
 Skill(skill: "milestone-new", args: "<milestone description>")
 \`\`\`
 
-**Task routing (via state machine or gate checks):**
+**Task routing (all steps mandatory):**
 
-For phase work, query the state machine or use \`luca_gate_check\` to determine which steps should run based on the classified complexity:
+For phase work, execute ALL steps in order. Every step runs at every complexity level -- the only way to skip is explicit \`--skip-*\` flags:
 
-1. Check \`research\` gate (if required/optional): \`Skill(skill: "phase-research")\`
-2. Check \`discussion\` gate (if required/optional/run): \`Skill(skill: "phase-discuss")\`
-3. Always plan (if no plans exist): \`Skill(skill: "phase-plan")\`
-4. Always execute: \`Skill(skill: "phase-execute")\`
+1. Always discuss: \`Skill(skill: "phase-discuss", args: "{phase_number}")\`
+2. Always plan (spawns research internally): \`Skill(skill: "phase-plan", args: "{phase_number}")\`
+3. Always execute: \`Skill(skill: "phase-execute", args: "{phase_number}")\`
 
-Alternatively, hand off to the \`autopilot\` skill which handles these state machine checks natively.
+Alternatively, hand off to the \`autopilot\` skill which drives the mandatory pipeline natively.
 
 **Ad-hoc / Quick task (narrow scope):**
 Route to \`quick\` ONLY if ALL of these conditions are true:
