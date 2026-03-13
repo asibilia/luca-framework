@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
@@ -249,17 +250,38 @@ export function WorkflowSidebar({
   selectedNode,
   onClose,
 }: WorkflowSidebarProps) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<Element | null>(null);
+
+  // Focus the close button when a node is selected; restore focus on close
+  useEffect(() => {
+    if (selectedNode) {
+      previousFocusRef.current = document.activeElement;
+      // Small delay to allow React to render the button before focusing
+      requestAnimationFrame(() => {
+        closeButtonRef.current?.focus();
+      });
+    } else if (previousFocusRef.current instanceof HTMLElement) {
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
+  }, [selectedNode]);
+
   if (!selectedNode) return null;
 
   const { id, data } = selectedNode;
   const nodeTypeLabel = NODE_TYPE_LABELS[data.node_type] ?? "Node";
 
   return (
-    <div className="absolute right-0 top-0 z-10 flex h-full w-72 flex-col border-l border-border/30 bg-card/95 backdrop-blur-sm">
+    <div
+      className="absolute right-0 top-0 z-10 flex h-full w-72 flex-col border-l border-border/30 bg-card/95 backdrop-blur-sm"
+      aria-label="Node details"
+      role="complementary"
+    >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/30 px-4 py-3">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[9px]">
+          <Badge variant="outline" className="text-[10px]">
             {nodeTypeLabel}
           </Badge>
           <h3 className="text-sm font-semibold text-foreground truncate">
@@ -267,6 +289,7 @@ export function WorkflowSidebar({
           </h3>
         </div>
         <button
+          ref={closeButtonRef}
           onClick={onClose}
           className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Close sidebar"
@@ -285,7 +308,7 @@ export function WorkflowSidebar({
 
       {/* Footer hint */}
       <div className="border-t border-border/30 px-4 py-2">
-        <p className="text-[9px] text-muted-foreground">
+        <p className="text-[10px] text-muted-foreground">
           Press Escape to close
         </p>
       </div>
