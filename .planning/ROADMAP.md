@@ -29,47 +29,47 @@ Visual node-graph editor (ComfyUI-style) for the Observer app to represent and i
 **Goal:** Define typed workflow graph structure, create static topology data from src/ entities, serve via API route.
 **Depends on:** Phase 146
 
-- [ ] Create `lib/workflow-types.ts` with WorkflowNode/WorkflowEdge Zod schemas
-- [ ] Create static workflow topology data (curated from agent/skill/rule definitions)
-- [ ] Create `app/api/workflow/topology/route.ts` API route to serve topology
-- [ ] Create `hooks/use-workflow-graph.ts` data fetching hook with Jotai vault integration
-- [ ] Model the autopilot pipeline spine: classify → discuss → plan → execute → verify → learn
+- [x] Create `lib/workflow-types.ts` with WorkflowNode/WorkflowEdge Zod schemas
+- [x] Create static workflow topology data (curated from agent/skill/rule definitions)
+- [x] Create `app/api/workflow/topology/route.ts` API route to serve topology
+- [x] Create `hooks/use-workflow-graph.ts` data fetching hook with Jotai vault integration
+- [x] Model the autopilot pipeline spine: classify → discuss → plan → execute → verify → learn
 
 ### Phase 148: Custom Node Types & Edge Rendering
 
 **Goal:** Create visually distinct node components for agents, skills, steps, and gates with branded styling.
 **Depends on:** Phase 147
 
-- [ ] Create `components/workflow-editor/nodes/agent-node.tsx` with model tier badge
-- [ ] Create `components/workflow-editor/nodes/skill-node.tsx` with trigger indicator
-- [ ] Create `components/workflow-editor/nodes/step-node.tsx` for workflow pipeline steps
-- [ ] Create `components/workflow-editor/nodes/gate-node.tsx` for complexity gates
-- [ ] Create edge types: invokes, spawns, gates, data-flow with distinct stroke styles
-- [ ] Color palette aligned with Observer design system (dark theme, shadcn tokens)
+- [x] Create `components/workflow-editor/nodes/agent-node.tsx` with model tier badge
+- [x] Create `components/workflow-editor/nodes/skill-node.tsx` with trigger indicator
+- [x] Create `components/workflow-editor/nodes/step-node.tsx` for workflow pipeline steps
+- [x] Create `components/workflow-editor/nodes/gate-node.tsx` for complexity gates
+- [x] Create edge types: invokes, spawns, gates, data-flow with distinct stroke styles
+- [x] Color palette aligned with Observer design system (dark theme, shadcn tokens)
 
 ### Phase 149: Layout, Interaction & Inspection
 
 **Goal:** Auto-layout the graph with dagre and add inspection capabilities.
 **Depends on:** Phase 148
 
-- [ ] Integrate dagre/elkjs auto-layout for hierarchical workflow visualization
-- [ ] Create `components/workflow-editor/workflow-sidebar.tsx` inspection panel
-- [ ] Node click → sidebar shows entity details, connections, model routing info
-- [ ] Minimap overlay (React Flow built-in), zoom controls, fit-to-view
-- [ ] Keyboard navigation (Escape to deselect, arrow keys, Ctrl+0 to fit)
+- [x] Integrate dagre/elkjs auto-layout for hierarchical workflow visualization
+- [x] Create `components/workflow-editor/workflow-sidebar.tsx` inspection panel
+- [x] Node click → sidebar shows entity details, connections, model routing info
+- [x] Minimap overlay (React Flow built-in), zoom controls, fit-to-view
+- [x] Keyboard navigation (Escape to deselect, arrow keys, Ctrl+0 to fit)
 
 ### Phase 150: Full Visualization & Polish
 
 **Goal:** Complete read-only visualization of the full Luca workflow with complexity overlay.
 **Depends on:** Phase 149
 
-- [ ] Wire full topology into React Flow canvas with auto-layout
-- [ ] Workflow spine view: autopilot → classify → discuss → plan → execute → verify → learn
-- [ ] Complexity overlay: toggle to show model tier assignments per node per complexity level
-- [ ] Statistics bar: agent count, skill count, edge count
-- [ ] Loading states, error boundaries, empty states (reuse shared components)
-- [ ] Performance optimization for 100+ node graphs (grouping, virtualization)
-- [ ] Responsive layout and dark theme polish
+- [x] Wire full topology into React Flow canvas with auto-layout
+- [x] Workflow spine view: autopilot → classify → discuss → plan → execute → verify → learn
+- [x] Complexity overlay: toggle to show model tier assignments per node per complexity level
+- [x] Statistics bar: agent count, skill count, edge count
+- [x] Loading states, error boundaries, empty states (reuse shared components)
+- [x] Performance optimization for 100+ node graphs (grouping, virtualization)
+- [x] Responsive layout and dark theme polish
 
 ---
 
