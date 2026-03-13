@@ -3,7 +3,10 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import { cn } from "~/lib/utils";
-import type { WorkflowNodeData } from "~/lib/workflow-types";
+import {
+  WorkflowNodeDataSchema,
+  type WorkflowNodeData,
+} from "~/lib/workflow-types";
 
 // -- Stage color palette (hex for SVG reliability) ----------------------------
 
@@ -69,8 +72,20 @@ const DEFAULT_COLORS = {
  * child nodes inside automatically via parentId. The header shows the
  * stage name with a colored left accent bar and a description.
  */
-export function StageGroupNode({ data }: NodeProps) {
-  const nodeData = data as WorkflowNodeData;
+export function StageGroupNode({ data, id }: NodeProps) {
+  const parseResult = WorkflowNodeDataSchema.safeParse(data);
+
+  if (!parseResult.success) {
+    return (
+      <div className="rounded-xl border border-destructive/40 bg-card/95 p-4">
+        <span className="font-mono text-[10px] text-destructive">
+          {id ?? "unknown"}: Invalid data
+        </span>
+      </div>
+    );
+  }
+
+  const nodeData = parseResult.data;
   const colors = STAGE_COLORS[nodeData.stage ?? ""] ?? DEFAULT_COLORS;
 
   return (

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Edge, Node } from "@xyflow/react";
 
-import type {
-  WorkflowEdgeData,
-  WorkflowNodeData,
-  WorkflowTopologyResponse,
+import {
+  WorkflowTopologyResponseSchema,
+  type WorkflowEdgeData,
+  type WorkflowNodeData,
 } from "~/lib/workflow-types";
 
 // -- Types --------------------------------------------------------------------
@@ -66,7 +66,16 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
         throw new Error(`Fetch topology failed: ${res.status}`);
       }
 
-      const data = (await res.json()) as WorkflowTopologyResponse;
+      const raw = await res.json();
+      const parseResult = WorkflowTopologyResponseSchema.safeParse(raw);
+
+      if (!parseResult.success) {
+        throw new Error(
+          `Invalid topology response: ${parseResult.error.issues.map((i) => i.message).join(", ")}`,
+        );
+      }
+
+      const data = parseResult.data;
 
       // Transform API nodes into React Flow nodes, including group fields
       const flowNodes: Node<WorkflowNodeData>[] = data.nodes.map((n) => ({

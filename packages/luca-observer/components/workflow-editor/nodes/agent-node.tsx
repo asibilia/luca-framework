@@ -6,7 +6,10 @@ import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
 import { resolveTierAtComplexity } from "~/lib/workflow-topology";
-import type { WorkflowNodeData } from "~/lib/workflow-types";
+import {
+  WorkflowNodeDataSchema,
+  type WorkflowNodeData,
+} from "~/lib/workflow-types";
 
 /**
  * Custom React Flow node for agent instances (lu-router, lu-executor, etc.).
@@ -14,8 +17,20 @@ import type { WorkflowNodeData } from "~/lib/workflow-types";
  * Header/body card layout with model tier accent color. Header shows agent
  * name with tier dot and badge. Body shows description and property badges.
  */
-export function AgentNode({ data }: NodeProps) {
-  const nodeData = data as WorkflowNodeData;
+export function AgentNode({ data, id }: NodeProps) {
+  const parseResult = WorkflowNodeDataSchema.safeParse(data);
+
+  if (!parseResult.success) {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-card/95 p-3 w-[250px]">
+        <span className="font-mono text-[10px] text-destructive">
+          {id ?? "unknown"}: Invalid data
+        </span>
+      </div>
+    );
+  }
+
+  const nodeData = parseResult.data;
 
   // Dynamic tier resolution: if a complexity level is selected and the agent
   // has a routing preset, resolve the tier at that complexity. Otherwise fall
