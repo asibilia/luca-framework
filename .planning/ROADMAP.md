@@ -71,6 +71,18 @@ Visual node-graph editor (ComfyUI-style) for the Observer app to represent and i
 - [x] Performance optimization for 100+ node graphs (grouping, virtualization)
 - [x] Responsive layout and dark theme polish
 
+### Phase 151: Topology Accuracy & Complexity Filter Fix
+
+**Goal:** Make the workflow editor topology accurate to the actual framework — add all missing agents, add core skill nodes, and fix the complexity filter to show model tiers instead of hiding agents.
+**Depends on:** Phase 150
+
+- [x] Add 19 missing agents to `workflow-topology.ts` with correct stage assignments and model tiers (todo #73-add-missing-agents)
+- [x] Add 9 core pipeline skill nodes (lu, phase-discuss, phase-plan, phase-execute, phase-research, verify, autopilot, debug, quick) with skill→agent edges (todo #73-add-core-skill-nodes)
+- [x] Fix complexity filter: replace agent-hiding behavior with model tier badge visualization per routing preset (todo #73-fix-complexity-filter)
+- [x] Update container sizing to accommodate additional nodes per stage (plan and verify stages will grow significantly)
+- [x] Update workflow-stats-bar counts to reflect accurate totals
+- [x] Update workflow-sidebar to show routing preset name for agents
+
 ---
 
 ## v5.0.0 — Plugin Ecosystem
