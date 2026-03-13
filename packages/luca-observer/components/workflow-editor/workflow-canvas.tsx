@@ -18,6 +18,10 @@ import {
 } from "@xyflow/react";
 
 import { useWorkflowGraph } from "~/hooks/use-workflow-graph";
+import {
+  NODE_TYPE_COLORS,
+  NODE_TYPE_COLOR_DEFAULT,
+} from "~/lib/workflow-constants";
 import { applyEdgeStyles } from "~/components/workflow-editor/edge-styles";
 import { applyGroupedColumnLayout } from "~/components/workflow-editor/auto-layout";
 import { WorkflowSidebar } from "~/components/workflow-editor/workflow-sidebar";
@@ -42,18 +46,10 @@ const nodeTypes: NodeTypes = {
 
 function minimapNodeColor(node: Node): string {
   const nodeType = (node.data as WorkflowNodeData)?.node_type;
-  switch (nodeType) {
-    case "stage-group":
-      return "#60a5fa";
-    case "agent":
-      return "#9ca3af";
-    case "gate":
-      return "#fbbf24";
-    case "skill":
-      return "#a78bfa";
-    default:
-      return "#6b7280";
-  }
+  return (
+    (nodeType ? NODE_TYPE_COLORS[nodeType]?.hex : undefined) ??
+    NODE_TYPE_COLOR_DEFAULT.hex
+  );
 }
 
 // -- Inner component (needs ReactFlowProvider) --------------------------------

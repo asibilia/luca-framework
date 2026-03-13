@@ -3,43 +3,9 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import { Badge } from "~/components/ui/badge";
+import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
 import { resolveTierAtComplexity } from "~/lib/workflow-topology";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
-
-// -- Model tier visual config -------------------------------------------------
-
-const TIER_CONFIG: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "outline";
-    borderClass: string;
-    dotColor: string;
-    headerBg: string;
-  }
-> = {
-  fast: {
-    label: "Fast (Haiku)",
-    variant: "outline",
-    borderClass: "border-gray-500/40",
-    dotColor: "bg-gray-400",
-    headerBg: "bg-gray-500/10",
-  },
-  balanced: {
-    label: "Balanced (Sonnet)",
-    variant: "secondary",
-    borderClass: "border-sky-500/40",
-    dotColor: "bg-sky-400",
-    headerBg: "bg-sky-500/10",
-  },
-  capable: {
-    label: "Capable (Opus)",
-    variant: "default",
-    borderClass: "border-amber-500/40",
-    dotColor: "bg-amber-400",
-    headerBg: "bg-amber-500/10",
-  },
-};
 
 /**
  * Custom React Flow node for agent instances (lu-router, lu-executor, etc.).
@@ -61,7 +27,7 @@ export function AgentNode({ data }: NodeProps) {
         )
       : (nodeData.model_tier ?? "fast");
 
-  const tier = TIER_CONFIG[resolvedTier] ?? TIER_CONFIG["fast"];
+  const tier = TIER_DISPLAY_CONFIG[resolvedTier] ?? TIER_DISPLAY_CONFIG["fast"];
   if (!tier) return null;
 
   return (

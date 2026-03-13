@@ -1,7 +1,10 @@
 "use client";
 
+import { X } from "lucide-react";
+
 import { Badge } from "~/components/ui/badge";
 import { Separator } from "~/components/ui/separator";
+import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
 
 // -- Types --------------------------------------------------------------------
@@ -10,33 +13,6 @@ interface WorkflowSidebarProps {
   selectedNode: { id: string; data: WorkflowNodeData } | null;
   onClose: () => void;
 }
-
-// -- Model tier display config ------------------------------------------------
-
-const TIER_LABELS: Record<
-  string,
-  {
-    label: string;
-    description: string;
-    variant: "default" | "secondary" | "outline";
-  }
-> = {
-  fast: {
-    label: "Fast (Haiku)",
-    description: "Lightweight model for quick tasks",
-    variant: "outline",
-  },
-  balanced: {
-    label: "Balanced (Sonnet)",
-    description: "Standard model for most tasks",
-    variant: "secondary",
-  },
-  capable: {
-    label: "Capable (Opus)",
-    description: "Deep analysis model for complex tasks",
-    variant: "default",
-  },
-};
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   "stage-group": "Pipeline Stage",
@@ -106,7 +82,7 @@ function StageGroupDetails({ data }: { data: WorkflowNodeData }) {
 
 function AgentDetails({ id, data }: { id: string; data: WorkflowNodeData }) {
   const tierConfig = data.model_tier
-    ? (TIER_LABELS[data.model_tier] ?? TIER_LABELS["fast"])
+    ? (TIER_DISPLAY_CONFIG[data.model_tier] ?? TIER_DISPLAY_CONFIG["fast"])
     : null;
 
   return (
@@ -280,20 +256,7 @@ export function WorkflowSidebar({
           className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Close sidebar"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
