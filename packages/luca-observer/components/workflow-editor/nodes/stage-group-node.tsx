@@ -2,6 +2,7 @@
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
+import { cn } from "~/lib/utils";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
 
 // -- Stage color palette (hex for SVG reliability) ----------------------------
@@ -74,7 +75,11 @@ export function StageGroupNode({ data }: NodeProps) {
 
   return (
     <div
-      className={`rounded-xl border ${colors.border} ${colors.bg} shadow-lg shadow-black/10 h-full w-full`}
+      className={cn(
+        "rounded-xl border shadow-lg shadow-black/10 h-full w-full",
+        colors.border,
+        colors.bg,
+      )}
     >
       <Handle
         type="target"
@@ -83,8 +88,8 @@ export function StageGroupNode({ data }: NodeProps) {
       />
       {/* Header bar */}
       <div className="flex items-center gap-3 px-4 py-3">
-        <div className={`h-5 w-1 rounded-full ${colors.accent}`} />
-        <div className={`text-sm font-bold tracking-wide ${colors.text}`}>
+        <div className={cn("h-5 w-1 rounded-full", colors.accent)} />
+        <div className={cn("text-sm font-bold tracking-wide", colors.text)}>
           {nodeData.label}
         </div>
         <div className="ml-auto text-[10px] text-muted-foreground/60">

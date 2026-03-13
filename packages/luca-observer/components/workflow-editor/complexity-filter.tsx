@@ -1,6 +1,7 @@
 "use client";
 
 import { COMPLEXITY_LEVELS } from "~/lib/constants";
+import { cn } from "~/lib/utils";
 
 // -- Types --------------------------------------------------------------------
 
@@ -39,11 +40,12 @@ export function ComplexityFilter({ value, onChange }: ComplexityFilterProps) {
           <button
             key={level}
             onClick={() => onChange(isActive ? undefined : level)}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-medium transition-all",
               isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
             title={`Show model tiers at ${meta.label} complexity (${meta.tier} tier)`}
           >
             {meta.label}

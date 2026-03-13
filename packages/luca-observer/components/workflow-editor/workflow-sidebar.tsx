@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Separator } from "~/components/ui/separator";
 import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
+import { resolveTierAtComplexity } from "~/lib/workflow-topology";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
 
 // -- Types --------------------------------------------------------------------
@@ -81,8 +82,15 @@ function StageGroupDetails({ data }: { data: WorkflowNodeData }) {
 }
 
 function AgentDetails({ id, data }: { id: string; data: WorkflowNodeData }) {
-  const tierConfig = data.model_tier
-    ? (TIER_DISPLAY_CONFIG[data.model_tier] ?? TIER_DISPLAY_CONFIG["fast"])
+  // Dynamic tier resolution: use routing preset + selected complexity when
+  // available, otherwise fall back to the default model_tier.
+  const resolvedTier =
+    data.selected_complexity && data.routing_preset
+      ? resolveTierAtComplexity(data.routing_preset, data.selected_complexity)
+      : (data.model_tier ?? null);
+
+  const tierConfig = resolvedTier
+    ? (TIER_DISPLAY_CONFIG[resolvedTier] ?? TIER_DISPLAY_CONFIG["fast"])
     : null;
 
   return (
@@ -117,7 +125,14 @@ function AgentDetails({ id, data }: { id: string; data: WorkflowNodeData }) {
         )}
         {data.routing_preset && (
           <PropertyRow label="Routing Preset">
-            <span className="text-amber-400">{data.routing_preset}</span>
+            <span
+              className={
+                tierConfig?.dotColor.replace("bg-", "text-") ??
+                "text-muted-foreground"
+              }
+            >
+              {data.routing_preset}
+            </span>
           </PropertyRow>
         )}
       </SidebarSection>

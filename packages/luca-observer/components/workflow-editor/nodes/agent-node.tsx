@@ -3,6 +3,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import { Badge } from "~/components/ui/badge";
+import { cn } from "~/lib/utils";
 import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
 import { resolveTierAtComplexity } from "~/lib/workflow-topology";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
@@ -32,7 +33,10 @@ export function AgentNode({ data }: NodeProps) {
 
   return (
     <div
-      className={`rounded-lg border ${tier.borderClass} bg-card/95 shadow-md shadow-black/10 w-[250px] overflow-hidden`}
+      className={cn(
+        "rounded-lg border bg-card/95 shadow-md shadow-black/10 w-[250px] overflow-hidden",
+        tier.borderClass,
+      )}
     >
       <Handle
         type="target"
@@ -40,9 +44,12 @@ export function AgentNode({ data }: NodeProps) {
         className="!bg-white/50 !w-2 !h-2 !border !border-white/20"
       />
       {/* Header */}
-      <div className={`flex items-center gap-2 px-3 py-2 ${tier.headerBg}`}>
+      <div className={cn("flex items-center gap-2 px-3 py-2", tier.headerBg)}>
         <span
-          className={`inline-block h-2 w-2 rounded-full ${tier.dotColor} shrink-0`}
+          className={cn(
+            "inline-block h-2 w-2 rounded-full shrink-0",
+            tier.dotColor,
+          )}
         />
         <span className="font-mono text-xs font-semibold text-foreground truncate">
           {nodeData.label}
@@ -68,7 +75,13 @@ export function AgentNode({ data }: NodeProps) {
             </span>
           )}
           {nodeData.routing_preset && (
-            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium bg-amber-500/15 text-amber-400">
+            <span
+              className={cn(
+                "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+                tier.headerBg,
+                tier.dotColor.replace("bg-", "text-"),
+              )}
+            >
               {nodeData.routing_preset}
             </span>
           )}

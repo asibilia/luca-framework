@@ -1,5 +1,6 @@
 "use client";
 
+import countBy from "lodash/countBy";
 import type { Node, Edge } from "@xyflow/react";
 
 import {
@@ -31,12 +32,11 @@ interface WorkflowStatsBarProps {
  * Rendered inside a React Flow `<Panel position="top-left">` by the canvas.
  */
 export function WorkflowStatsBar({ nodes, edges }: WorkflowStatsBarProps) {
-  const stages = nodes.filter(
-    (n) => n.data?.node_type === "stage-group",
-  ).length;
-  const agents = nodes.filter((n) => n.data?.node_type === "agent").length;
-  const skills = nodes.filter((n) => n.data?.node_type === "skill").length;
-  const gates = nodes.filter((n) => n.data?.node_type === "gate").length;
+  const counts = countBy(nodes, (n) => (n.data as WorkflowNodeData)?.node_type);
+  const stages = counts["stage-group"] ?? 0;
+  const agents = counts["agent"] ?? 0;
+  const skills = counts["skill"] ?? 0;
+  const gates = counts["gate"] ?? 0;
   const edgeCount = edges.length;
 
   return (
