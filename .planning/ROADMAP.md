@@ -83,6 +83,23 @@ Visual node-graph editor (ComfyUI-style) for the Observer app to represent and i
 - [x] Update workflow-stats-bar counts to reflect accurate totals
 - [x] Update workflow-sidebar to show routing preset name for agents
 
+### Phase 152: Workflow Editor Quality Sweep
+
+**Goal:** Address all code quality, accessibility, convention compliance, and DRY findings from the v4.3.0 milestone audit and post-audit review agents. Zero functional changes — purely quality, consistency, and maintainability improvements.
+**Depends on:** Phase 151
+
+- [x] Remove dead code: "step"/"invokes" schema values, NODE_TYPE_LABELS["step"] sidebar branch, NODE_WIDTH/HEIGHT["step"], @dagrejs/dagre dependency
+- [x] Rename `applyDagreLayout` to `applyGroupedColumnLayout` (auto-layout.ts + canvas import)
+- [x] Extract shared constants: TIER_DISPLAY_CONFIG, NODE_TYPE_COLORS into `lib/workflow-constants.ts`
+- [x] Replace inline SVG close button with Lucide `X` icon in sidebar
+- [x] Convention compliance: lodash `filter`/`countBy` in stats-bar and muninn-config, `cn()` utility in complexity-filter/agent-node/stage-group-node, type EDGE_STYLES as `Partial<Record<WorkflowEdgeType, EdgeStyleConfig>>`
+- [x] Derive routing_preset badge color from tier system instead of hardcoded amber (agent-node + sidebar)
+- [x] Schema-first validation: `safeParse` on API response in use-workflow-graph.ts, `safeParse` on node data in all 4 node components
+- [x] Accessibility: ARIA radiogroup/radio on complexity filter, focus management on sidebar open/close
+- [x] Visual consistency: standardize Handle styling across node types, add min-size fallback to stage-group node, bump `text-[9px]` to `text-[10px]`, document magic `12rem` page height
+- [x] Extract shared NodeCard wrapper component from agent/gate/skill nodes
+- [x] Documentation: document ROUTING_PRESETS/AGENTS duplication risk in topology, update stale JSDoc on page.tsx
+
 ---
 
 ## v5.0.0 — Plugin Ecosystem
