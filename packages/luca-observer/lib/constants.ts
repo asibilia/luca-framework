@@ -70,6 +70,7 @@ export const NAV_ITEMS = [
   { href: "/learning", label: "Learning", icon: "BookOpen" },
   { href: "/vault", label: "Vault", icon: "Database" },
   { href: "/knowledge-graph", label: "Knowledge Graph", icon: "Network" },
+  { href: "/workflow-editor", label: "Workflow Editor", icon: "Workflow" },
   { href: "/semantic-search", label: "Semantic Search", icon: "Search" },
   { href: "/decisions", label: "Decisions", icon: "GitPullRequest" },
   { href: "/contradictions", label: "Contradictions", icon: "AlertTriangle" },

@@ -6,6 +6,14 @@
 
 ---
 
+## Closed (v4.3.0 Completed)
+
+| Todo | Reason                                                                                                                                                                                                   |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
+
+---
+
 ## v5.0.0 — Plugin Ecosystem
 
 | Items | Title                                      | Effort            |
@@ -157,7 +165,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
 - **v4.1.0** — Agentic Intelligence & Platform Maturity: 10 phases, 17 plans, 77 commits, 229 files changed ([View Archive](milestones/v4.1.0-ROADMAP.md))
 - **v4.2.0** — Workflow Unification & Memory Architecture: 5 phases, 8 plans, 15 commits, 312 files changed ([View Archive](milestones/v4.2.0-ROADMAP.md))
+- **v4.3.0** — Observer Workflow Editor: 7 phases, 35 commits, 79 files changed ([View Archive](milestones/v4.3.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-12 (v4.2.0 milestone archived)_
+_Roadmap updated: 2026-03-13 (v4.3.0 milestone archived)_

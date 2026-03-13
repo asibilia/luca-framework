@@ -23,6 +23,9 @@
  * - exportGraph     — JSON-LD graph export
  */
 
+import filter from "lodash/filter";
+import orderBy from "lodash/orderBy";
+
 import type {
   MuninnActivation,
   MuninnEngram,
@@ -399,10 +402,10 @@ function createMuninnClient(): MuninnClient {
       };
       const engrams = data.engrams ?? [];
 
-      const sorted = [...engrams].sort(
-        (a, b) =>
-          new Date(a.created_at as string).getTime() -
-          new Date(b.created_at as string).getTime(),
+      const sorted = orderBy(
+        engrams,
+        (e) => new Date(e.created_at as string).getTime(),
+        "asc",
       );
 
       return {
@@ -443,9 +446,11 @@ function createMuninnClient(): MuninnClient {
         }
       }
 
-      const clusters = Array.from(pairCounts.entries())
-        .filter(([, count]) => count >= minCount)
-        .sort((a, b) => b[1] - a[1])
+      const filtered = filter(
+        Array.from(pairCounts.entries()),
+        ([, count]) => count >= minCount,
+      );
+      const clusters = orderBy(filtered, ([, count]) => count, "desc")
         .slice(0, topN)
         .map(([pair, count]) => {
           const [entity_a, entity_b] = pair.split("|||");
