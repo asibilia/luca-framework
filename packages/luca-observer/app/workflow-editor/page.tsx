@@ -45,7 +45,7 @@ export default function WorkflowEditorPage() {
       title="Workflow Editor"
       subtitle="Visual workflow graph editor"
     >
-      <div className="h-[calc(100vh-12rem)]">
+      <div className="h-[calc(100vh-12rem)] rounded-lg border border-border/30">
         <ErrorBoundary name="WorkflowCanvas">
           <WorkflowCanvas />
         </ErrorBoundary>

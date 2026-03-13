@@ -18,11 +18,11 @@ Visual node-graph editor (ComfyUI-style) for the Observer app to represent and i
 
 **Goal:** Install React Flow, verify React 19 compatibility, create page shell with minimal hardcoded graph.
 
-- [ ] Install `@xyflow/react` dependency and verify React 19 + Next.js 15 App Router compatibility
-- [ ] Create `app/workflow-editor/page.tsx` with PageContainer/ErrorBoundary/LoadingSkeleton pattern
-- [ ] Create `components/workflow-editor/workflow-canvas.tsx` with dynamic import (`ssr: false`)
-- [ ] Add nav item to `NAV_ITEMS` in `lib/constants.ts` and sidebar icon
-- [ ] Render 3-4 hardcoded nodes to prove React Flow integration works
+- [x] Install `@xyflow/react` dependency and verify React 19 + Next.js 15 App Router compatibility
+- [x] Create `app/workflow-editor/page.tsx` with PageContainer/ErrorBoundary/LoadingSkeleton pattern
+- [x] Create `components/workflow-editor/workflow-canvas.tsx` with dynamic import (`ssr: false`)
+- [x] Add nav item to `NAV_ITEMS` in `lib/constants.ts` and sidebar icon
+- [x] Render 3-4 hardcoded nodes to prove React Flow integration works
 
 ### Phase 147: Workflow Data Model & API
 
