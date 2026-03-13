@@ -48,11 +48,14 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
     string | undefined
   >();
 
-  const fetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchTopology = useCallback(async () => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
+    // Abort any in-flight request so the latest complexity always wins
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
 
@@ -60,7 +63,9 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
       const params = complexity
         ? `?complexity=${encodeURIComponent(complexity)}`
         : "";
-      const res = await fetch(`/api/workflow/topology${params}`);
+      const res = await fetch(`/api/workflow/topology${params}`, {
+        signal: controller.signal,
+      });
 
       if (!res.ok) {
         throw new Error(`Fetch topology failed: ${res.status}`);
@@ -100,6 +105,8 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
       setEdges(flowEdges);
       setSelectedComplexity(data.selected_complexity);
     } catch (err) {
+      // Ignore abort errors — they mean a newer request superseded this one
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(
         err instanceof Error
           ? err.message
@@ -107,12 +114,14 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
       );
     } finally {
       setLoading(false);
-      fetchingRef.current = false;
     }
   }, [complexity]);
 
   useEffect(() => {
     void fetchTopology();
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [fetchTopology]);
 
   const refresh = useCallback(() => {
