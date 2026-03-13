@@ -2,7 +2,74 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v4.3.0 — Observer Workflow Editor
+
+---
+
+## v4.3.0 — Observer Workflow Editor
+
+Visual node-graph editor (ComfyUI-style) for the Observer app to represent and inspect the lu workflow design. Read-only mode; edit mode deferred to future milestone.
+
+**WSJF:** 4.0 (BV:8 TC:4 RR:8 / Effort:COMPLEX)
+**Scope:** `packages/luca-observer/` only — no `src/` modifications
+**New dependency:** `@xyflow/react` (React Flow v12)
+
+### Phase 146: Foundation & React Flow Setup
+
+**Goal:** Install React Flow, verify React 19 compatibility, create page shell with minimal hardcoded graph.
+
+- [ ] Install `@xyflow/react` dependency and verify React 19 + Next.js 15 App Router compatibility
+- [ ] Create `app/workflow-editor/page.tsx` with PageContainer/ErrorBoundary/LoadingSkeleton pattern
+- [ ] Create `components/workflow-editor/workflow-canvas.tsx` with dynamic import (`ssr: false`)
+- [ ] Add nav item to `NAV_ITEMS` in `lib/constants.ts` and sidebar icon
+- [ ] Render 3-4 hardcoded nodes to prove React Flow integration works
+
+### Phase 147: Workflow Data Model & API
+
+**Goal:** Define typed workflow graph structure, create static topology data from src/ entities, serve via API route.
+**Depends on:** Phase 146
+
+- [ ] Create `lib/workflow-types.ts` with WorkflowNode/WorkflowEdge Zod schemas
+- [ ] Create static workflow topology data (curated from agent/skill/rule definitions)
+- [ ] Create `app/api/workflow/topology/route.ts` API route to serve topology
+- [ ] Create `hooks/use-workflow-graph.ts` data fetching hook with Jotai vault integration
+- [ ] Model the autopilot pipeline spine: classify → discuss → plan → execute → verify → learn
+
+### Phase 148: Custom Node Types & Edge Rendering
+
+**Goal:** Create visually distinct node components for agents, skills, steps, and gates with branded styling.
+**Depends on:** Phase 147
+
+- [ ] Create `components/workflow-editor/nodes/agent-node.tsx` with model tier badge
+- [ ] Create `components/workflow-editor/nodes/skill-node.tsx` with trigger indicator
+- [ ] Create `components/workflow-editor/nodes/step-node.tsx` for workflow pipeline steps
+- [ ] Create `components/workflow-editor/nodes/gate-node.tsx` for complexity gates
+- [ ] Create edge types: invokes, spawns, gates, data-flow with distinct stroke styles
+- [ ] Color palette aligned with Observer design system (dark theme, shadcn tokens)
+
+### Phase 149: Layout, Interaction & Inspection
+
+**Goal:** Auto-layout the graph with dagre and add inspection capabilities.
+**Depends on:** Phase 148
+
+- [ ] Integrate dagre/elkjs auto-layout for hierarchical workflow visualization
+- [ ] Create `components/workflow-editor/workflow-sidebar.tsx` inspection panel
+- [ ] Node click → sidebar shows entity details, connections, model routing info
+- [ ] Minimap overlay (React Flow built-in), zoom controls, fit-to-view
+- [ ] Keyboard navigation (Escape to deselect, arrow keys, Ctrl+0 to fit)
+
+### Phase 150: Full Visualization & Polish
+
+**Goal:** Complete read-only visualization of the full Luca workflow with complexity overlay.
+**Depends on:** Phase 149
+
+- [ ] Wire full topology into React Flow canvas with auto-layout
+- [ ] Workflow spine view: autopilot → classify → discuss → plan → execute → verify → learn
+- [ ] Complexity overlay: toggle to show model tier assignments per node per complexity level
+- [ ] Statistics bar: agent count, skill count, edge count
+- [ ] Loading states, error boundaries, empty states (reuse shared components)
+- [ ] Performance optimization for 100+ node graphs (grouping, virtualization)
+- [ ] Responsive layout and dark theme polish
 
 ---
 
