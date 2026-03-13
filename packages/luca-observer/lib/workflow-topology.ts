@@ -53,6 +53,12 @@ const STAGE_DESCRIPTIONS: Record<WorkflowStage, string> = {
 
 // -- Routing presets ----------------------------------------------------------
 
+// DUPLICATION NOTE: This is a read-only mirror of MODEL_ROUTING_TABLE
+// from src/complexity/__helpers/model-routing.ts.
+// Canonical source: src/complexity/__helpers/model-routing.ts
+// These cannot be imported directly (Next.js build boundary).
+// Keep in sync manually when routing presets change.
+
 /**
  * Model routing presets map complexity levels to model tiers.
  *
@@ -140,6 +146,10 @@ interface AgentDef {
   node_type: "agent" | "skill" | "gate";
   purpose: string;
 }
+
+// DUPLICATION NOTE: Agent definitions mirrored from src/agents/ and src/skills/.
+// Canonical sources: src/agents/*/*.agent.ts, src/skills/*/*.skill.ts
+// Update when agents/skills are added, removed, or change stages.
 
 const AGENTS: AgentDef[] = [
   // Classify stage
