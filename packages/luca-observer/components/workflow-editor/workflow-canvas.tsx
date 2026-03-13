@@ -7,65 +7,18 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  Position,
-  type Node,
-  type Edge,
 } from "@xyflow/react";
 
-// -- Module-level constants (defined outside component to prevent re-renders) --
-
-/**
- * Hardcoded nodes representing the four core Luca workflow agents.
- * Laid out in a diamond pattern: Router (top) → Planner (left) →
- * Executor (bottom) → Verifier (right) → back to Router.
- */
-const initialNodes: Node[] = [
-  {
-    id: "router",
-    data: { label: "Router" },
-    position: { x: 250, y: 0 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: "planner",
-    data: { label: "Planner" },
-    position: { x: 100, y: 150 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: "executor",
-    data: { label: "Executor" },
-    position: { x: 250, y: 300 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: "verifier",
-    data: { label: "Verifier" },
-    position: { x: 400, y: 150 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-];
-
-/**
- * Hardcoded edges forming the cyclic workflow graph:
- * Router → Planner → Executor → Verifier → Router.
- */
-const initialEdges: Edge[] = [
-  { id: "router-planner", source: "router", target: "planner" },
-  { id: "planner-executor", source: "planner", target: "executor" },
-  { id: "executor-verifier", source: "executor", target: "verifier" },
-  { id: "verifier-router", source: "verifier", target: "router" },
-];
+import { useWorkflowGraph } from "~/hooks/use-workflow-graph";
 
 // -- Component ----------------------------------------------------------------
 
 /**
- * WorkflowCanvas renders a React Flow v12 graph with 4 hardcoded Luca
- * workflow nodes (Router, Planner, Executor, Verifier) and cyclic edges.
+ * WorkflowCanvas renders the Luca autopilot pipeline as a React Flow v12 graph.
+ *
+ * Fetches topology data from `/api/workflow/topology` via the useWorkflowGraph
+ * hook, displaying the pipeline spine (classify → discuss → plan → execute →
+ * verify → learn) with agent/skill nodes branching off each stage.
  *
  * - Uses colorMode="dark" to match Observer's dark theme.
  * - Uses fitView to auto-zoom to fit all nodes on mount.
@@ -80,13 +33,30 @@ const initialEdges: Edge[] = [
  * ```
  */
 export function WorkflowCanvas() {
+  const { nodes, edges, loading, error } = useWorkflowGraph();
+
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="font-mono text-xs text-muted-foreground">
+          Loading workflow topology...
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="font-mono text-xs text-destructive">
+          Failed to load topology: {error}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <ReactFlow
-      nodes={initialNodes}
-      edges={initialEdges}
-      colorMode="dark"
-      fitView
-    >
+    <ReactFlow nodes={nodes} edges={edges} colorMode="dark" fitView>
       <Background variant={BackgroundVariant.Dots} />
       <Controls />
     </ReactFlow>
