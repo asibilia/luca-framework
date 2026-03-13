@@ -34,5 +34,10 @@ export async function GET(request: Request) {
   const { complexity } = result.data;
   const topology = getTopology(complexity);
 
-  return NextResponse.json(topology);
+  return NextResponse.json({
+    nodes: topology.nodes,
+    edges: topology.edges,
+    stages: topology.stages,
+    selected_complexity: topology.selectedComplexity,
+  });
 }

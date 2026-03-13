@@ -19,6 +19,7 @@ export interface WorkflowGraphData {
   loading: boolean;
   error: string | null;
   refresh: () => void;
+  selectedComplexity?: string;
 }
 
 // -- Hook ---------------------------------------------------------------------
@@ -27,7 +28,8 @@ export interface WorkflowGraphData {
  * React hook that fetches the workflow topology from the API and returns
  * React Flow-compatible nodes and edges.
  *
- * Follows the existing observer hook pattern (useState + useCallback + useEffect).
+ * Passes `parentId`, `extent`, and `style` from the API response to React
+ * Flow nodes so group containers and their children render correctly.
  *
  * @param complexity - Optional complexity level to filter visible agents
  * @returns WorkflowGraphData with nodes, edges, loading, error, and refresh
@@ -42,6 +44,9 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
   const [edges, setEdges] = useState<Edge<WorkflowEdgeData>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedComplexity, setSelectedComplexity] = useState<
+    string | undefined
+  >();
 
   const fetchingRef = useRef(false);
 
@@ -63,12 +68,15 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
 
       const data = (await res.json()) as WorkflowTopologyResponse;
 
-      // Transform API nodes into React Flow nodes
+      // Transform API nodes into React Flow nodes, including group fields
       const flowNodes: Node<WorkflowNodeData>[] = data.nodes.map((n) => ({
         id: n.id,
         position: n.position,
         data: n.data,
         type: n.type,
+        ...(n.parent_id && { parentId: n.parent_id }),
+        ...(n.extent && { extent: n.extent }),
+        ...(n.style && { style: n.style }),
       }));
 
       // Transform API edges into React Flow edges
@@ -81,6 +89,7 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
 
       setNodes(flowNodes);
       setEdges(flowEdges);
+      setSelectedComplexity(data.selected_complexity);
     } catch (err) {
       setError(
         err instanceof Error
@@ -101,5 +110,5 @@ export function useWorkflowGraph(complexity?: string): WorkflowGraphData {
     void fetchTopology();
   }, [fetchTopology]);
 
-  return { nodes, edges, loading, error, refresh };
+  return { nodes, edges, loading, error, refresh, selectedComplexity };
 }

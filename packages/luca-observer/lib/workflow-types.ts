@@ -13,6 +13,7 @@ import { z } from "zod";
 /** Node type determines visual appearance and layout grouping. */
 export const WorkflowNodeTypeSchema = z.enum([
   "step",
+  "stage-group",
   "agent",
   "skill",
   "gate",
@@ -34,6 +35,7 @@ export type ModelTier = z.infer<typeof ModelTierSchema>;
 
 /** Pipeline stage that a node belongs to. */
 export const WorkflowStageSchema = z.enum([
+  "entry",
   "classify",
   "discuss",
   "plan",
@@ -57,7 +59,7 @@ export const WorkflowNodeDataSchema = z.object({
   description: z.string().default(""),
   stage: WorkflowStageSchema.optional(),
   model_tier: ModelTierSchema.optional(),
-  complexity_min: z.string().optional(),
+  routing_preset: z.string().optional(),
   purpose: z.string().default(""),
   color: z.string().default(""),
 });
@@ -93,6 +95,9 @@ export const TopologyNodeSchema = z.object({
   }),
   data: WorkflowNodeDataSchema,
   type: z.string().default("default"),
+  parent_id: z.string().optional(),
+  extent: z.literal("parent").optional(),
+  style: z.record(z.union([z.string(), z.number()])).optional(),
 });
 export type TopologyNode = z.infer<typeof TopologyNodeSchema>;
 
@@ -118,6 +123,7 @@ export const WorkflowTopologyResponseSchema = z.object({
   nodes: z.array(TopologyNodeSchema),
   edges: z.array(TopologyEdgeSchema),
   stages: z.array(WorkflowStageSchema),
+  selected_complexity: z.string().optional(),
 });
 export type WorkflowTopologyResponse = z.infer<
   typeof WorkflowTopologyResponseSchema
