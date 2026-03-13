@@ -20,6 +20,8 @@ import { useWorkflowGraph } from "~/hooks/use-workflow-graph";
 import { applyEdgeStyles } from "~/components/workflow-editor/edge-styles";
 import { applyDagreLayout } from "~/components/workflow-editor/auto-layout";
 import { WorkflowSidebar } from "~/components/workflow-editor/workflow-sidebar";
+import { WorkflowStatsBar } from "~/components/workflow-editor/workflow-stats-bar";
+import { ComplexityFilter } from "~/components/workflow-editor/complexity-filter";
 import { AgentNode } from "~/components/workflow-editor/nodes/agent-node";
 import { GateNode } from "~/components/workflow-editor/nodes/gate-node";
 import { SkillNode } from "~/components/workflow-editor/nodes/skill-node";
@@ -38,7 +40,10 @@ const nodeTypes: NodeTypes = {
 // -- Inner component (needs ReactFlowProvider) --------------------------------
 
 function WorkflowCanvasInner() {
-  const { nodes, edges, loading, error } = useWorkflowGraph();
+  const [complexityFilter, setComplexityFilter] = useState<
+    string | undefined
+  >();
+  const { nodes, edges, loading, error } = useWorkflowGraph(complexityFilter);
   const { fitView } = useReactFlow();
   const [selectedNode, setSelectedNode] = useState<{
     id: string;
@@ -51,7 +56,6 @@ function WorkflowCanvasInner() {
       ...node,
       type: node.data.node_type,
     }));
-    // Apply dagre auto-layout for hierarchical positioning
     return applyDagreLayout(typed, edges);
   }, [nodes, edges]);
 
@@ -68,6 +72,11 @@ function WorkflowCanvasInner() {
     },
     [],
   );
+
+  // Pane click handler → close sidebar
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
 
   // Close sidebar
   const closeSidebar = useCallback(() => {
@@ -109,17 +118,35 @@ function WorkflowCanvasInner() {
     );
   }
 
+  if (nodes.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="font-mono text-xs text-muted-foreground">
+          No workflow topology data available
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-full w-full">
+      <ComplexityFilter
+        value={complexityFilter}
+        onChange={setComplexityFilter}
+      />
       <ReactFlow
         nodes={layoutNodes}
         edges={styledEdges}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         colorMode="dark"
         fitView
         minZoom={0.1}
         maxZoom={2}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable
       >
         <Background variant={BackgroundVariant.Dots} />
         <Controls />
@@ -130,6 +157,7 @@ function WorkflowCanvasInner() {
           className="!bg-card/80"
         />
       </ReactFlow>
+      <WorkflowStatsBar nodes={layoutNodes} edges={styledEdges} />
       <WorkflowSidebar selectedNode={selectedNode} onClose={closeSidebar} />
     </div>
   );
@@ -138,16 +166,18 @@ function WorkflowCanvasInner() {
 // -- Exported component -------------------------------------------------------
 
 /**
- * WorkflowCanvas renders the Luca autopilot pipeline as a React Flow v12 graph
- * with auto-layout, custom node types, inspection sidebar, and minimap.
+ * WorkflowCanvas renders the Luca autopilot pipeline as a React Flow v12 graph.
  *
- * Features:
+ * Complete read-only visualization of the Luca workflow with:
  * - **Auto-layout**: Dagre hierarchical layout (top-to-bottom)
  * - **Custom nodes**: Step, Agent, Skill, Gate with distinct styling
  * - **Edge styles**: Data-flow, invokes, spawns, gates with color/dash/animation
+ * - **Complexity filter**: Toggle to show agents at specific complexity levels
  * - **Inspection**: Click a node to open details sidebar
+ * - **Statistics bar**: Agent/skill/edge counts
  * - **Minimap**: Pannable/zoomable overview in corner
  * - **Keyboard**: Escape to deselect, Ctrl+0 to fit view
+ * - **Read-only**: Nodes not draggable or connectable
  *
  * @example
  * ```tsx
