@@ -195,7 +195,7 @@ function WorkflowCanvasInner() {
             onChange={setComplexityFilter}
           />
         </Panel>
-        <Panel position="top-right">
+        <Panel position="top-left">
           <WorkflowStatsBar nodes={layoutNodes} edges={styledEdges} />
         </Panel>
       </ReactFlow>
@@ -216,7 +216,7 @@ function WorkflowCanvasInner() {
  * - **Complexity filter**: Toggle to show agents at specific complexity levels
  * - **Draggable nodes**: Reorganize within container bounds
  * - **Inspection**: Click a node to open details sidebar
- * - **Statistics bar**: Compact legend with colored dots in top-right
+ * - **Statistics bar**: Compact legend with colored dots in top-left
  * - **Minimap**: Pannable/zoomable overview with color-coded nodes
  * - **Keyboard**: Escape to deselect, Ctrl+0 to fit view
  *
