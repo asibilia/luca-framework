@@ -9,6 +9,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  Panel,
   useReactFlow,
   ReactFlowProvider,
   type NodeTypes,
@@ -22,20 +23,38 @@ import { applyDagreLayout } from "~/components/workflow-editor/auto-layout";
 import { WorkflowSidebar } from "~/components/workflow-editor/workflow-sidebar";
 import { WorkflowStatsBar } from "~/components/workflow-editor/workflow-stats-bar";
 import { ComplexityFilter } from "~/components/workflow-editor/complexity-filter";
+import { StageGroupNode } from "~/components/workflow-editor/nodes/stage-group-node";
 import { AgentNode } from "~/components/workflow-editor/nodes/agent-node";
 import { GateNode } from "~/components/workflow-editor/nodes/gate-node";
 import { SkillNode } from "~/components/workflow-editor/nodes/skill-node";
-import { StepNode } from "~/components/workflow-editor/nodes/step-node";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
 
 // -- Custom node type registry (module-level to prevent re-renders) -----------
 
 const nodeTypes: NodeTypes = {
-  step: StepNode,
+  "stage-group": StageGroupNode,
   agent: AgentNode,
   skill: SkillNode,
   gate: GateNode,
 };
+
+// -- Minimap color helper -----------------------------------------------------
+
+function minimapNodeColor(node: Node): string {
+  const nodeType = (node.data as WorkflowNodeData)?.node_type;
+  switch (nodeType) {
+    case "stage-group":
+      return "#60a5fa";
+    case "agent":
+      return "#9ca3af";
+    case "gate":
+      return "#fbbf24";
+    case "skill":
+      return "#a78bfa";
+    default:
+      return "#6b7280";
+  }
+}
 
 // -- Inner component (needs ReactFlowProvider) --------------------------------
 
@@ -43,26 +62,33 @@ function WorkflowCanvasInner() {
   const [complexityFilter, setComplexityFilter] = useState<
     string | undefined
   >();
-  const { nodes, edges, loading, error } = useWorkflowGraph(complexityFilter);
+  const { nodes, edges, loading, error, selectedComplexity } =
+    useWorkflowGraph(complexityFilter);
   const { fitView } = useReactFlow();
   const [selectedNode, setSelectedNode] = useState<{
     id: string;
     data: WorkflowNodeData;
   } | null>(null);
 
-  // Map node_type from data into React Flow's `type` field, then auto-layout
+  // Map node_type from data into React Flow's `type` field, then auto-layout.
+  // Inject selectedComplexity into each node's data so agent nodes can
+  // resolve their dynamic tier from routing presets.
   const layoutNodes = useMemo(() => {
     const typed = nodes.map((node) => ({
       ...node,
       type: node.data.node_type,
+      data: {
+        ...node.data,
+        ...(selectedComplexity && { selected_complexity: selectedComplexity }),
+      },
     }));
     return applyDagreLayout(typed, edges);
-  }, [nodes, edges]);
+  }, [nodes, edges, selectedComplexity]);
 
   // Apply visual styling to edges based on edge_type
   const styledEdges = useMemo(() => applyEdgeStyles(edges), [edges]);
 
-  // Node click handler → open sidebar
+  // Node click handler -> open sidebar
   const onNodeClick: NodeMouseHandler = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setSelectedNode({
@@ -73,7 +99,7 @@ function WorkflowCanvasInner() {
     [],
   );
 
-  // Pane click handler → close sidebar
+  // Pane click handler -> close sidebar
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
   }, []);
@@ -130,10 +156,6 @@ function WorkflowCanvasInner() {
 
   return (
     <div className="relative h-full w-full">
-      <ComplexityFilter
-        value={complexityFilter}
-        onChange={setComplexityFilter}
-      />
       <ReactFlow
         nodes={layoutNodes}
         edges={styledEdges}
@@ -142,22 +164,46 @@ function WorkflowCanvasInner() {
         onPaneClick={onPaneClick}
         colorMode="dark"
         fitView
-        minZoom={0.1}
+        fitViewOptions={{ padding: 0.15 }}
+        minZoom={0.05}
         maxZoom={2}
-        nodesDraggable={false}
+        nodesDraggable
+        nodeDragThreshold={5}
         nodesConnectable={false}
         elementsSelectable
+        defaultEdgeOptions={{
+          type: "smoothstep",
+        }}
+        proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} />
-        <Controls />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="#374151"
+        />
+        <Controls
+          showInteractive={false}
+          className="!bg-card !border-border/30 !shadow-lg"
+        />
         <MiniMap
           nodeStrokeWidth={3}
+          nodeColor={minimapNodeColor}
           pannable
           zoomable
-          className="!bg-card/80"
+          className="!bg-card/90 !border-border/30"
+          maskColor="rgba(0, 0, 0, 0.6)"
         />
+        <Panel position="top-center">
+          <ComplexityFilter
+            value={complexityFilter}
+            onChange={setComplexityFilter}
+          />
+        </Panel>
+        <Panel position="top-right">
+          <WorkflowStatsBar nodes={layoutNodes} edges={styledEdges} />
+        </Panel>
       </ReactFlow>
-      <WorkflowStatsBar nodes={layoutNodes} edges={styledEdges} />
       <WorkflowSidebar selectedNode={selectedNode} onClose={closeSidebar} />
     </div>
   );
@@ -169,15 +215,15 @@ function WorkflowCanvasInner() {
  * WorkflowCanvas renders the Luca autopilot pipeline as a React Flow v12 graph.
  *
  * Complete read-only visualization of the Luca workflow with:
- * - **Auto-layout**: Dagre hierarchical layout (top-to-bottom)
- * - **Custom nodes**: Step, Agent, Skill, Gate with distinct styling
- * - **Edge styles**: Data-flow, invokes, spawns, gates with color/dash/animation
+ * - **Stage containers**: Pipeline stages as group nodes with children inside
+ * - **Custom nodes**: Agent, Skill, Gate with header/body card design
+ * - **Thin edges**: Data-flow, spawns, gates with muted styling
  * - **Complexity filter**: Toggle to show agents at specific complexity levels
+ * - **Draggable nodes**: Reorganize within container bounds
  * - **Inspection**: Click a node to open details sidebar
- * - **Statistics bar**: Agent/skill/edge counts
- * - **Minimap**: Pannable/zoomable overview in corner
+ * - **Statistics bar**: Compact legend with colored dots in top-right
+ * - **Minimap**: Pannable/zoomable overview with color-coded nodes
  * - **Keyboard**: Escape to deselect, Ctrl+0 to fit view
- * - **Read-only**: Nodes not draggable or connectable
  *
  * @example
  * ```tsx

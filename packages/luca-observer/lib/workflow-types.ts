@@ -60,6 +60,7 @@ export const WorkflowNodeDataSchema = z.object({
   stage: WorkflowStageSchema.optional(),
   model_tier: ModelTierSchema.optional(),
   routing_preset: z.string().optional(),
+  selected_complexity: z.string().optional(),
   purpose: z.string().default(""),
   color: z.string().default(""),
 });
