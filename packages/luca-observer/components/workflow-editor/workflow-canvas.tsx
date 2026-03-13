@@ -19,7 +19,7 @@ import {
 
 import { useWorkflowGraph } from "~/hooks/use-workflow-graph";
 import { applyEdgeStyles } from "~/components/workflow-editor/edge-styles";
-import { applyDagreLayout } from "~/components/workflow-editor/auto-layout";
+import { applyGroupedColumnLayout } from "~/components/workflow-editor/auto-layout";
 import { WorkflowSidebar } from "~/components/workflow-editor/workflow-sidebar";
 import { WorkflowStatsBar } from "~/components/workflow-editor/workflow-stats-bar";
 import { ComplexityFilter } from "~/components/workflow-editor/complexity-filter";
@@ -82,7 +82,7 @@ function WorkflowCanvasInner() {
         ...(selectedComplexity && { selected_complexity: selectedComplexity }),
       },
     }));
-    return applyDagreLayout(typed, edges);
+    return applyGroupedColumnLayout(typed, edges);
   }, [nodes, edges, selectedComplexity]);
 
   // Apply visual styling to edges based on edge_type

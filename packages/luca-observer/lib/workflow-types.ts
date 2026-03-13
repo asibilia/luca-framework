@@ -12,7 +12,6 @@ import { z } from "zod";
 
 /** Node type determines visual appearance and layout grouping. */
 export const WorkflowNodeTypeSchema = z.enum([
-  "step",
   "stage-group",
   "agent",
   "skill",
@@ -21,12 +20,7 @@ export const WorkflowNodeTypeSchema = z.enum([
 export type WorkflowNodeType = z.infer<typeof WorkflowNodeTypeSchema>;
 
 /** Edge type determines stroke style and animation. */
-export const WorkflowEdgeTypeSchema = z.enum([
-  "invokes",
-  "spawns",
-  "gates",
-  "data-flow",
-]);
+export const WorkflowEdgeTypeSchema = z.enum(["spawns", "gates", "data-flow"]);
 export type WorkflowEdgeType = z.infer<typeof WorkflowEdgeTypeSchema>;
 
 /** Model tier for agent routing (complexity-dependent). */

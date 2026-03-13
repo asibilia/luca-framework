@@ -5,7 +5,6 @@
     "luca-observer": "./bin/luca-observer.js"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^2.0.4",
     "@tremor/react": "^3",
     "@xyflow/react": "^12.10.1",
     "class-variance-authority": "^0.7.1",

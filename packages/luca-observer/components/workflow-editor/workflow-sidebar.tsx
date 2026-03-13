@@ -40,7 +40,6 @@ const TIER_LABELS: Record<
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   "stage-group": "Pipeline Stage",
-  step: "Pipeline Stage",
   agent: "Agent",
   skill: "Skill",
   gate: "Complexity Gate",
@@ -304,7 +303,6 @@ export function WorkflowSidebar({
         {data.node_type === "agent" && <AgentDetails id={id} data={data} />}
         {data.node_type === "gate" && <GateDetails id={id} data={data} />}
         {data.node_type === "skill" && <SkillDetails id={id} data={data} />}
-        {data.node_type === "step" && <StageGroupDetails data={data} />}
       </div>
 
       {/* Footer hint */}

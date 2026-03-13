@@ -1,98 +1,82 @@
 /**
- * Dagre-based auto-layout for the workflow graph.
+ * Grouped column layout for the workflow graph.
  *
- * Arranges nodes in a top-to-bottom hierarchical layout using dagre,
- * which works well for the pipeline spine + branching agent pattern.
+ * Stage-group container nodes are stacked vertically in a centered column.
+ * Child nodes (agents/skills/gates) use relative positions set by the
+ * topology data via parentId — they are NOT repositioned by this layout.
  *
- * @see https://github.com/dagrejs/dagre
+ * Group nodes must appear BEFORE their children in the output array
+ * (React Flow requirement for parentId resolution).
+ *
+ * @see workflow-topology.ts for the curated node/edge data
  */
-import dagre from "@dagrejs/dagre";
+import filter from "lodash/filter";
 import type { Edge, Node } from "@xyflow/react";
 
 import type { WorkflowNodeData } from "~/lib/workflow-types";
 
-// -- Layout config ------------------------------------------------------------
+// -- Layout constants ---------------------------------------------------------
 
-/** Default node dimensions for layout computation. */
-const NODE_WIDTH: Record<string, number> = {
-  step: 200,
-  agent: 180,
-  skill: 160,
-  gate: 100,
-  default: 170,
+/** Vertical gap between stacked stage containers. */
+const GROUP_Y_GAP = 40;
+
+/** Starting Y offset for the first stage container. */
+const GROUP_Y_START = 40;
+
+/** X position to center the column of stage containers. */
+const GROUP_X = 200;
+
+// -- Node dimensions (used by React Flow for edge routing) --------------------
+
+export const NODE_WIDTH: Record<string, number> = {
+  "stage-group": 576,
+  agent: 250,
+  skill: 240,
+  gate: 250,
+  default: 200,
 };
 
-const NODE_HEIGHT: Record<string, number> = {
-  step: 80,
-  agent: 50,
-  skill: 50,
-  gate: 60,
-  default: 50,
+export const NODE_HEIGHT: Record<string, number> = {
+  "stage-group": 300,
+  agent: 80,
+  skill: 70,
+  gate: 80,
+  default: 60,
 };
 
 // -- Public API ---------------------------------------------------------------
 
 /**
- * Applies dagre auto-layout to a set of React Flow nodes and edges.
+ * Applies a grouped column layout to workflow nodes.
  *
- * Computes hierarchical positions for all nodes using a top-to-bottom
- * directed graph layout. Returns new node objects with updated positions
- * (original nodes are not mutated).
+ * Stage-group nodes are stacked vertically. Child nodes (those with a
+ * parentId) keep their relative positions set by topology data — they
+ * are not repositioned.
  *
- * @param nodes - React Flow nodes to layout
- * @param edges - React Flow edges defining the graph structure
- * @param direction - Layout direction: "TB" (top-bottom) or "LR" (left-right)
- * @returns New array of nodes with computed positions
+ * @param nodes - React Flow nodes with `data.node_type` set
+ * @param _edges - Edges (reserved for future use)
+ * @returns New array of nodes with computed positions, groups before children
  */
-export function applyDagreLayout(
+export function applyGroupedColumnLayout(
   nodes: Node<WorkflowNodeData>[],
-  edges: Edge[],
-  direction: "TB" | "LR" = "TB",
+  _edges: Edge[],
 ): Node<WorkflowNodeData>[] {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
+  // Separate group nodes from child nodes
+  const groupNodes = filter(nodes, (n) => n.data?.node_type === "stage-group");
+  const childNodes = filter(nodes, (n) => n.data?.node_type !== "stage-group");
 
-  g.setGraph({
-    rankdir: direction,
-    nodesep: 60,
-    ranksep: 120,
-    edgesep: 30,
-    marginx: 40,
-    marginy: 40,
+  // Position groups in a vertical stack (centered X, stacked Y)
+  let currentY = GROUP_Y_START;
+  const positionedGroups = groupNodes.map((node) => {
+    const height =
+      (node.style?.height as number) ?? NODE_HEIGHT["stage-group"] ?? 300;
+    const pos = { x: GROUP_X, y: currentY };
+    currentY += height + GROUP_Y_GAP;
+    return { ...node, position: pos };
   });
 
-  // Add nodes with dimensions
-  for (const node of nodes) {
-    const nodeType = node.data?.node_type ?? "default";
-    g.setNode(node.id, {
-      width: NODE_WIDTH[nodeType] ?? NODE_WIDTH.default,
-      height: NODE_HEIGHT[nodeType] ?? NODE_HEIGHT.default,
-    });
-  }
-
-  // Add edges
-  for (const edge of edges) {
-    g.setEdge(edge.source, edge.target);
-  }
-
-  // Compute layout
-  dagre.layout(g);
-
-  // Apply computed positions (centering nodes on dagre coordinates)
-  return nodes.map((node) => {
-    const nodeType = node.data?.node_type ?? "default";
-    const dagreNode = g.node(node.id);
-    if (!dagreNode) return node;
-
-    const width = NODE_WIDTH[nodeType] ?? NODE_WIDTH.default;
-    const height = NODE_HEIGHT[nodeType] ?? NODE_HEIGHT.default;
-
-    return {
-      ...node,
-      position: {
-        x: dagreNode.x - (width ?? 170) / 2,
-        y: dagreNode.y - (height ?? 50) / 2,
-      },
-    };
-  });
+  // Children keep their relative positions (set by topology via parentId).
+  // We don't reposition them — React Flow places them relative to parent.
+  // But we DO need to ensure they come AFTER their parent in the array.
+  return [...positionedGroups, ...childNodes];
 }

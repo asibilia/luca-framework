@@ -33,8 +33,9 @@ const WorkflowCanvas = dynamic(
 /**
  * Workflow Editor page.
  *
- * Renders a React Flow v12 graph visualizing the Luca agentic workflow:
- * Router → Planner → Executor → Verifier → Router (cyclic).
+ * Renders a React Flow v12 graph visualizing the 7-stage Luca autopilot
+ * pipeline: Entry → Classify → Discuss → Plan → Execute → Verify → Learn
+ * (cyclic back to Classify).
  *
  * The canvas is loaded dynamically with ssr: false to avoid SSR crashes.
  * The container has explicit height so React Flow has non-zero dimensions.
