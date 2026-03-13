@@ -16,16 +16,22 @@ const LEVELS = Object.keys(COMPLEXITY_LEVELS) as Array<
 // -- Component ----------------------------------------------------------------
 
 /**
- * Complexity overlay filter for the workflow editor.
+ * Complexity tier visualization selector for the workflow editor.
  *
  * Renders a horizontal row of complexity level buttons. Selecting a level
- * filters the graph to show only agents active at that complexity.
- * Clicking the active level again clears the filter (show all).
+ * updates agent card accents and tier badges to show each agent's model
+ * tier at that complexity (resolved from routing presets). All agents
+ * remain visible at all complexity levels. Clicking the active level
+ * again clears the selection (returns to default MODERATE tiers).
+ *
+ * Rendered inside a React Flow `<Panel position="top-center">` by the canvas.
  */
 export function ComplexityFilter({ value, onChange }: ComplexityFilterProps) {
   return (
-    <div className="absolute left-1/2 top-2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md border border-border/30 bg-card/90 px-2 py-1 backdrop-blur-sm">
-      <span className="mr-1 text-[9px] text-muted-foreground">Complexity:</span>
+    <div className="flex items-center gap-1.5 rounded-lg border border-border/40 bg-card/95 px-3 py-2 shadow-lg shadow-black/20 backdrop-blur-sm">
+      <span className="mr-1 text-xs font-medium text-muted-foreground">
+        Complexity
+      </span>
       {LEVELS.map((level) => {
         const meta = COMPLEXITY_LEVELS[level];
         const isActive = value === level;
@@ -33,12 +39,12 @@ export function ComplexityFilter({ value, onChange }: ComplexityFilterProps) {
           <button
             key={level}
             onClick={() => onChange(isActive ? undefined : level)}
-            className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
               isActive
-                ? "bg-primary text-primary-foreground"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
-            title={`Filter to ${meta.label} complexity (${meta.tier} tier)`}
+            title={`Show model tiers at ${meta.label} complexity (${meta.tier} tier)`}
           >
             {meta.label}
           </button>
