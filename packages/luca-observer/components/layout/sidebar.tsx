@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Fingerprint,
   Hexagon,
+  Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -57,6 +58,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   BookOpen,
   Database,
   Network,
+  Workflow,
   Search,
   AlertTriangle,
   Fingerprint,
