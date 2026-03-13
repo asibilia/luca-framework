@@ -1,15 +1,13 @@
 "use client";
 
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
 import { resolveTierAtComplexity } from "~/lib/workflow-topology";
-import {
-  WorkflowNodeDataSchema,
-  type WorkflowNodeData,
-} from "~/lib/workflow-types";
+import { WorkflowNodeDataSchema } from "~/lib/workflow-types";
+import { NodeCard } from "~/components/workflow-editor/nodes/node-card";
 
 /**
  * Custom React Flow node for agent instances (lu-router, lu-executor, etc.).
@@ -47,66 +45,55 @@ export function AgentNode({ data, id }: NodeProps) {
   if (!tier) return null;
 
   return (
-    <div
-      className={cn(
-        "rounded-lg border bg-card/95 shadow-md shadow-black/10 w-[250px] overflow-hidden",
-        tier.borderClass,
-      )}
-    >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!bg-white/50 !w-2 !h-2 !border !border-white/20"
-      />
-      {/* Header */}
-      <div className={cn("flex items-center gap-2 px-3 py-2", tier.headerBg)}>
-        <span
-          className={cn(
-            "inline-block h-2 w-2 rounded-full shrink-0",
-            tier.dotColor,
+    <NodeCard
+      borderClass={tier.borderClass}
+      headerBg={tier.headerBg}
+      header={
+        <>
+          <span
+            className={cn(
+              "inline-block h-2 w-2 rounded-full shrink-0",
+              tier.dotColor,
+            )}
+          />
+          <span className="font-mono text-xs font-semibold text-foreground truncate">
+            {nodeData.label}
+          </span>
+          <Badge
+            variant={tier.variant}
+            className="text-[10px] ml-auto shrink-0 py-0 px-1.5"
+          >
+            {tier.label}
+          </Badge>
+        </>
+      }
+      body={
+        <>
+          {nodeData.description && (
+            <div className="text-[10px] leading-snug text-muted-foreground/80 line-clamp-2">
+              {nodeData.description}
+            </div>
           )}
-        />
-        <span className="font-mono text-xs font-semibold text-foreground truncate">
-          {nodeData.label}
-        </span>
-        <Badge
-          variant={tier.variant}
-          className="text-[9px] ml-auto shrink-0 py-0 px-1.5"
-        >
-          {tier.label}
-        </Badge>
-      </div>
-      {/* Body */}
-      <div className="px-3 py-2 space-y-1.5">
-        {nodeData.description && (
-          <div className="text-[10px] leading-snug text-muted-foreground/80 line-clamp-2">
-            {nodeData.description}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {nodeData.purpose && (
+              <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-muted/50 text-muted-foreground">
+                {nodeData.purpose}
+              </span>
+            )}
+            {nodeData.routing_preset && (
+              <span
+                className={cn(
+                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+                  tier.headerBg,
+                  tier.dotColor.replace("bg-", "text-"),
+                )}
+              >
+                {nodeData.routing_preset}
+              </span>
+            )}
           </div>
-        )}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {nodeData.purpose && (
-            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium bg-muted/50 text-muted-foreground">
-              {nodeData.purpose}
-            </span>
-          )}
-          {nodeData.routing_preset && (
-            <span
-              className={cn(
-                "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
-                tier.headerBg,
-                tier.dotColor.replace("bg-", "text-"),
-              )}
-            >
-              {nodeData.routing_preset}
-            </span>
-          )}
-        </div>
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!bg-white/50 !w-2 !h-2 !border !border-white/20"
-      />
-    </div>
+        </>
+      }
+    />
   );
 }
