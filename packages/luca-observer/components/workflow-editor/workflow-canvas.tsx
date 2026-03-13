@@ -99,12 +99,7 @@ function WorkflowCanvasInner() {
     [],
   );
 
-  // Pane click handler -> close sidebar
-  const onPaneClick = useCallback(() => {
-    setSelectedNode(null);
-  }, []);
-
-  // Close sidebar
+  // Close sidebar (used by pane click and sidebar close button)
   const closeSidebar = useCallback(() => {
     setSelectedNode(null);
   }, []);
@@ -161,7 +156,7 @@ function WorkflowCanvasInner() {
         edges={styledEdges}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
-        onPaneClick={onPaneClick}
+        onPaneClick={closeSidebar}
         colorMode="dark"
         fitView
         fitViewOptions={{ padding: 0.15 }}
