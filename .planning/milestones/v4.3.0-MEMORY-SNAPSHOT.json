@@ -1,0 +1,42 @@
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "muninn": "https://muninndb.io/ontology#"
+  },
+  "milestone": "v4.3.0",
+  "title": "Observer Workflow Editor",
+  "exported_at": "2026-03-13T23:00:00.000Z",
+  "vault": "luca-framework",
+  "stats": {
+    "node_count": 35,
+    "edge_count": 104
+  },
+  "key_entities": [
+    "@xyflow/react",
+    "React Flow",
+    "Next.js 15",
+    "React 19",
+    "luca-observer",
+    "WorkflowCanvas",
+    "Workflow",
+    "MuninnDB",
+    "Luca",
+    "Claude Code",
+    "Cursor IDE"
+  ],
+  "patterns_validated": [
+    "React Flow v12 group nodes with parentId/extent for container architecture",
+    "AbortController pattern for race-safe data fetching in hooks",
+    "Zod safeParse on API responses and node data for runtime validation",
+    "ARIA radiogroup pattern for filter components",
+    "NodeCard shared component extraction for DRY node rendering",
+    "Grouped column layout replacing dagre for deterministic positioning"
+  ],
+  "decisions": [
+    "Read-only workflow editor (edit mode deferred to future milestone)",
+    "@xyflow/react as React Flow v12 package (React 19 compatible)",
+    "Stage-group container nodes with 2-column child grid layout",
+    "Complexity filter shows model tier badges instead of hiding agents",
+    "Static topology data curated from src/ entities (not dynamic scanning)"
+  ]
+}

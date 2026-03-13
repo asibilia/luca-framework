@@ -2,103 +2,15 @@
 
 ## Overview
 
-**Current Milestone:** v4.3.0 — Observer Workflow Editor
+**Current Milestone:** Planning next
 
 ---
 
-## v4.3.0 — Observer Workflow Editor
+## Closed (v4.3.0 Completed)
 
-Visual node-graph editor (ComfyUI-style) for the Observer app to represent and inspect the lu workflow design. Read-only mode; edit mode deferred to future milestone.
-
-**WSJF:** 4.0 (BV:8 TC:4 RR:8 / Effort:COMPLEX)
-**Scope:** `packages/luca-observer/` only — no `src/` modifications
-**New dependency:** `@xyflow/react` (React Flow v12)
-
-### Phase 146: Foundation & React Flow Setup
-
-**Goal:** Install React Flow, verify React 19 compatibility, create page shell with minimal hardcoded graph.
-
-- [x] Install `@xyflow/react` dependency and verify React 19 + Next.js 15 App Router compatibility
-- [x] Create `app/workflow-editor/page.tsx` with PageContainer/ErrorBoundary/LoadingSkeleton pattern
-- [x] Create `components/workflow-editor/workflow-canvas.tsx` with dynamic import (`ssr: false`)
-- [x] Add nav item to `NAV_ITEMS` in `lib/constants.ts` and sidebar icon
-- [x] Render 3-4 hardcoded nodes to prove React Flow integration works
-
-### Phase 147: Workflow Data Model & API
-
-**Goal:** Define typed workflow graph structure, create static topology data from src/ entities, serve via API route.
-**Depends on:** Phase 146
-
-- [x] Create `lib/workflow-types.ts` with WorkflowNode/WorkflowEdge Zod schemas
-- [x] Create static workflow topology data (curated from agent/skill/rule definitions)
-- [x] Create `app/api/workflow/topology/route.ts` API route to serve topology
-- [x] Create `hooks/use-workflow-graph.ts` data fetching hook with Jotai vault integration
-- [x] Model the autopilot pipeline spine: classify → discuss → plan → execute → verify → learn
-
-### Phase 148: Custom Node Types & Edge Rendering
-
-**Goal:** Create visually distinct node components for agents, skills, steps, and gates with branded styling.
-**Depends on:** Phase 147
-
-- [x] Create `components/workflow-editor/nodes/agent-node.tsx` with model tier badge
-- [x] Create `components/workflow-editor/nodes/skill-node.tsx` with trigger indicator
-- [x] Create `components/workflow-editor/nodes/step-node.tsx` for workflow pipeline steps
-- [x] Create `components/workflow-editor/nodes/gate-node.tsx` for complexity gates
-- [x] Create edge types: invokes, spawns, gates, data-flow with distinct stroke styles
-- [x] Color palette aligned with Observer design system (dark theme, shadcn tokens)
-
-### Phase 149: Layout, Interaction & Inspection
-
-**Goal:** Auto-layout the graph with dagre and add inspection capabilities.
-**Depends on:** Phase 148
-
-- [x] Integrate dagre/elkjs auto-layout for hierarchical workflow visualization
-- [x] Create `components/workflow-editor/workflow-sidebar.tsx` inspection panel
-- [x] Node click → sidebar shows entity details, connections, model routing info
-- [x] Minimap overlay (React Flow built-in), zoom controls, fit-to-view
-- [x] Keyboard navigation (Escape to deselect, arrow keys, Ctrl+0 to fit)
-
-### Phase 150: Full Visualization & Polish
-
-**Goal:** Complete read-only visualization of the full Luca workflow with complexity overlay.
-**Depends on:** Phase 149
-
-- [x] Wire full topology into React Flow canvas with auto-layout
-- [x] Workflow spine view: autopilot → classify → discuss → plan → execute → verify → learn
-- [x] Complexity overlay: toggle to show model tier assignments per node per complexity level
-- [x] Statistics bar: agent count, skill count, edge count
-- [x] Loading states, error boundaries, empty states (reuse shared components)
-- [x] Performance optimization for 100+ node graphs (grouping, virtualization)
-- [x] Responsive layout and dark theme polish
-
-### Phase 151: Topology Accuracy & Complexity Filter Fix
-
-**Goal:** Make the workflow editor topology accurate to the actual framework — add all missing agents, add core skill nodes, and fix the complexity filter to show model tiers instead of hiding agents.
-**Depends on:** Phase 150
-
-- [x] Add 19 missing agents to `workflow-topology.ts` with correct stage assignments and model tiers (todo #73-add-missing-agents)
-- [x] Add 9 core pipeline skill nodes (lu, phase-discuss, phase-plan, phase-execute, phase-research, verify, autopilot, debug, quick) with skill→agent edges (todo #73-add-core-skill-nodes)
-- [x] Fix complexity filter: replace agent-hiding behavior with model tier badge visualization per routing preset (todo #73-fix-complexity-filter)
-- [x] Update container sizing to accommodate additional nodes per stage (plan and verify stages will grow significantly)
-- [x] Update workflow-stats-bar counts to reflect accurate totals
-- [x] Update workflow-sidebar to show routing preset name for agents
-
-### Phase 152: Workflow Editor Quality Sweep
-
-**Goal:** Address all code quality, accessibility, convention compliance, and DRY findings from the v4.3.0 milestone audit and post-audit review agents. Zero functional changes — purely quality, consistency, and maintainability improvements.
-**Depends on:** Phase 151
-
-- [x] Remove dead code: "step"/"invokes" schema values, NODE_TYPE_LABELS["step"] sidebar branch, NODE_WIDTH/HEIGHT["step"], @dagrejs/dagre dependency
-- [x] Rename `applyDagreLayout` to `applyGroupedColumnLayout` (auto-layout.ts + canvas import)
-- [x] Extract shared constants: TIER_DISPLAY_CONFIG, NODE_TYPE_COLORS into `lib/workflow-constants.ts`
-- [x] Replace inline SVG close button with Lucide `X` icon in sidebar
-- [x] Convention compliance: lodash `filter`/`countBy` in stats-bar and muninn-config, `cn()` utility in complexity-filter/agent-node/stage-group-node, type EDGE_STYLES as `Partial<Record<WorkflowEdgeType, EdgeStyleConfig>>`
-- [x] Derive routing_preset badge color from tier system instead of hardcoded amber (agent-node + sidebar)
-- [x] Schema-first validation: `safeParse` on API response in use-workflow-graph.ts, `safeParse` on node data in all 4 node components
-- [x] Accessibility: ARIA radiogroup/radio on complexity filter, focus management on sidebar open/close
-- [x] Visual consistency: standardize Handle styling across node types, add min-size fallback to stage-group node, bump `text-[9px]` to `text-[10px]`, document magic `12rem` page height
-- [x] Extract shared NodeCard wrapper component from agent/gate/skill nodes
-- [x] Documentation: document ROUTING_PRESETS/AGENTS duplication risk in topology, update stale JSDoc on page.tsx
+| Todo | Reason                                                                                                                                                                                                   |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
 
 ---
 
@@ -253,7 +165,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow: 6 phases, 12 plans, 48 commits, 255 files changed ([View Archive](milestones/v4.0.0-ROADMAP.md))
 - **v4.1.0** — Agentic Intelligence & Platform Maturity: 10 phases, 17 plans, 77 commits, 229 files changed ([View Archive](milestones/v4.1.0-ROADMAP.md))
 - **v4.2.0** — Workflow Unification & Memory Architecture: 5 phases, 8 plans, 15 commits, 312 files changed ([View Archive](milestones/v4.2.0-ROADMAP.md))
+- **v4.3.0** — Observer Workflow Editor: 7 phases, 35 commits, 79 files changed ([View Archive](milestones/v4.3.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-12 (v4.2.0 milestone archived)_
+_Roadmap updated: 2026-03-13 (v4.3.0 milestone archived)_

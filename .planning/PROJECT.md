@@ -8,11 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v4.2.0 — Shipped)
+## Current State (v4.3.0 — Shipped)
 
-**Last Shipped:** v4.2.0 — Workflow Unification & Memory Architecture (2026-03-12)
+**Last Shipped:** v4.3.0 — Observer Workflow Editor (2026-03-13)
 
-5 phases, 8 plans, 15 commits, 312 files changed (+9,135/-16,048). Complexity gating reworked to model-tier-only (all workflow steps always run at every complexity level). Multi-vault MuninnDB architecture formalized (default vault for cross-cutting, repo vault for project-specific). Vault-routing rule, dual-vault recall in lu-cognition, write routing in lu-learner, 81+ hardcoded vault references replaced across 20+ agents/skills, luca-bridge init-vault CLI, brain tree split, Pi extensions muninn config.
+7 phases, 35 commits, 79 files changed (+7,963/-23 LOC). Visual node-graph editor (ComfyUI-style) for the Observer app using React Flow v12 (@xyflow/react). Stage-group container architecture with 7 pipeline stages, custom node types (agent, gate, skill) with shared NodeCard component, complexity filter with model tier badges (ARIA radiogroup), grouped column layout replacing dagre for deterministic positioning, Zod safeParse validation on all API responses and node data, AbortController race-safe data fetching.
+
+## Previous State (v4.2.0)
+
+v4.2.0 — Workflow Unification & Memory Architecture (2026-03-12). 5 phases, 8 plans, 15 commits, 312 files changed (+9,135/-16,048). Complexity gating reworked to model-tier-only. Multi-vault MuninnDB architecture formalized. Vault-routing rule, dual-vault recall, write routing, brain tree split.
 
 ## Previous State (v4.1.0)
 
@@ -80,6 +84,7 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 - **v4.0.0** — Process Intelligence & Self-Tuning Workflow (2026-03-10). 6 phases, 12 plans, 48 commits, 255 files changed. Appetite system, pre-mortem, process metrics, outcome tracking, self-tuning governance.
 - **v4.1.0** — Agentic Intelligence & Platform Maturity (2026-03-11). 10 phases, 17 plans, 77 commits, 229 files changed. Skill dependencies, tribunal consensus, multi-lens review, observer todos, semantic embeddings, interop scanner, memory effectiveness, security hardening.
 - **v4.2.0** — Workflow Unification & Memory Architecture (2026-03-12). 5 phases, 8 plans, 15 commits, 312 files changed. Complexity gating model-tier-only, multi-vault MuninnDB, vault-routing rule, dual-vault recall/write, brain tree split.
+- **v4.3.0** — Observer Workflow Editor (2026-03-13). 7 phases, 35 commits, 79 files changed. React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility.
 
 ## Requirements
 
@@ -140,4 +145,4 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 
 ---
 
-_Last updated: 2026-03-12 — v4.2.0 milestone archived_
+_Last updated: 2026-03-13 — v4.3.0 milestone archived_
