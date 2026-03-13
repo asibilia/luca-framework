@@ -3,6 +3,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import { Badge } from "~/components/ui/badge";
+import { resolveTierAtComplexity } from "~/lib/workflow-topology";
 import type { WorkflowNodeData } from "~/lib/workflow-types";
 
 // -- Model tier visual config -------------------------------------------------
@@ -18,21 +19,21 @@ const TIER_CONFIG: Record<
   }
 > = {
   fast: {
-    label: "fast",
+    label: "Fast (Haiku)",
     variant: "outline",
     borderClass: "border-gray-500/40",
     dotColor: "bg-gray-400",
     headerBg: "bg-gray-500/10",
   },
   balanced: {
-    label: "balanced",
+    label: "Balanced (Sonnet)",
     variant: "secondary",
     borderClass: "border-sky-500/40",
     dotColor: "bg-sky-400",
     headerBg: "bg-sky-500/10",
   },
   capable: {
-    label: "capable",
+    label: "Capable (Opus)",
     variant: "default",
     borderClass: "border-amber-500/40",
     dotColor: "bg-amber-400",
@@ -48,8 +49,19 @@ const TIER_CONFIG: Record<
  */
 export function AgentNode({ data }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
-  const tier =
-    TIER_CONFIG[nodeData.model_tier ?? "fast"] ?? TIER_CONFIG["fast"];
+
+  // Dynamic tier resolution: if a complexity level is selected and the agent
+  // has a routing preset, resolve the tier at that complexity. Otherwise fall
+  // back to the default model_tier (MODERATE tier from topology data).
+  const resolvedTier =
+    nodeData.selected_complexity && nodeData.routing_preset
+      ? resolveTierAtComplexity(
+          nodeData.routing_preset,
+          nodeData.selected_complexity,
+        )
+      : (nodeData.model_tier ?? "fast");
+
+  const tier = TIER_CONFIG[resolvedTier] ?? TIER_CONFIG["fast"];
   if (!tier) return null;
 
   return (
