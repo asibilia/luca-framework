@@ -46,6 +46,7 @@ export default function WorkflowEditorPage() {
       title="Workflow Editor"
       subtitle="Visual workflow graph editor"
     >
+      {/* 12rem accounts for PageContainer header (~4rem) + outer padding (~4rem) + bottom breathing room (~4rem). */}
       <div className="h-[calc(100vh-12rem)] rounded-lg border border-border/30">
         <ErrorBoundary name="WorkflowCanvas">
           <WorkflowCanvas />

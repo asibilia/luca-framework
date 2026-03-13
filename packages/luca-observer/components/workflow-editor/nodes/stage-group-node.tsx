@@ -91,7 +91,7 @@ export function StageGroupNode({ data, id }: NodeProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border shadow-lg shadow-black/10 h-full w-full",
+        "rounded-xl border shadow-lg shadow-black/10 h-full w-full min-h-[120px] min-w-[300px]",
         colors.border,
         colors.bg,
       )}

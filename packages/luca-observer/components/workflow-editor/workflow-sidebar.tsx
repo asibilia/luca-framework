@@ -143,7 +143,7 @@ function AgentDetails({ id, data }: { id: string; data: WorkflowNodeData }) {
           <Separator />
           <SidebarSection title="Routing">
             <div className="space-y-1.5">
-              <Badge variant={tierConfig.variant} className="text-[9px]">
+              <Badge variant={tierConfig.variant} className="text-[10px]">
                 {tierConfig.label}
               </Badge>
               <p className="text-[10px] text-muted-foreground/70">
