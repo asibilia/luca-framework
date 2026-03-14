@@ -40,7 +40,7 @@ Generated markdown quality:
 
 - Compiled agent definitions produce valid markdown
 - Compiled skill definitions have consistent section formatting
-- Compiled rule definitions render properly in .claude/rules/ and .cursor/rules/
+- Compiled rule definitions render properly in .claude/rules/
 - Plugin output in dist/plugin/ is well-structured
 - Frontmatter sections are complete and properly formatted
 - Code blocks use correct language identifiers
@@ -48,7 +48,7 @@ Generated markdown quality:
 Review checklist:
 
 - Generated output follows consistent heading hierarchy
-- Lists and tables render correctly in target platforms (Claude Code, Cursor)
+- Lists and tables render correctly in Claude Code
 - No broken markdown syntax (unclosed code blocks, malformed links)
 - Section ordering is logical and consistent across entities
 - Content is properly escaped (backticks, special characters)
@@ -58,7 +58,6 @@ Reference files:
 
 - CLAUDE.md for project patterns
 - src/compilers/ for markdown generation logic
-- .claude/agents/ and .cursor/agents/ for compiled output examples
-- src/hooks/pi-extensions/ for Pi extension UI code
+- .claude/agents/ for compiled output examples
 
 Flag issues with severity: CRITICAL, HIGH, MEDIUM, LOW

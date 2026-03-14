@@ -205,4 +205,4 @@ type State = {
 - **Consistency**: Uniform code structure across project
 - **Tool Support**: Better IDE and linter integration
 
-Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conventions.
+Follow [file-naming.md](mdc:.claude/rules/file-naming.md) for file naming conventions.

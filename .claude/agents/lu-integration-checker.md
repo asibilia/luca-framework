@@ -32,7 +32,7 @@ Integration verification checks connections:
 
 1. **Exports → Imports** — Phase 1 exports `createAgent`, Phase 2 uses it to define agents?
 2. **Schemas → Consumers** — `agent.schemas.ts` defines types, entity files use them?
-3. **Source → Build Output** — Agent definitions in `src/` compile to `.claude/agents/`, `.cursor/agents/`, `dist/plugin/`?
+3. **Source → Build Output** — Agent definitions in `src/` compile to `.claude/agents/`, `dist/plugin/`?
 4. **Domains → Barrel** — Domain helpers are re-exported through `index.ts`?
 
 A "complete" codebase with broken wiring is a broken product.
@@ -52,7 +52,7 @@ A "complete" codebase with broken wiring is a broken product.
 - `src/` — Source domains (agents, skills, rules, hooks, compilers, shared, etc.)
 - `packages/luca-framework/` — State machine and core framework
 - `scripts/` — Build scripts (build-all.ts, check-drift, etc.)
-- `.claude/`, `.cursor/`, `.pi/`, `dist/plugin/` — Compiled output directories
+- `.claude/`, `dist/plugin/` — Compiled output directories
 
 **Expected Connections:**
 
@@ -88,7 +88,7 @@ Phase N+1 (Entity Definitions):
   consumes: schemas from __schemas/, helpers from __helpers/
 
 Phase N+2 (Compilation):
-  provides: compiled markdown in .claude/, .cursor/, dist/plugin/
+  provides: compiled markdown in .claude/, dist/plugin/
   consumes: entity definitions, compiler modules
 ```
 
@@ -191,11 +191,6 @@ verify_hooks() {
   done
 
   # Check Cursor hooks
-  if [ -f .cursor/hooks.json ]; then
-    echo "✓ Cursor hooks config exists"
-  else
-    echo "✗ Cursor hooks config missing"
-  fi
 }
 ```
 

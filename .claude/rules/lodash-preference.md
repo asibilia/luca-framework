@@ -198,4 +198,4 @@ const joined = parts.join('/')
 const includes = string.includes('substring')
 ```
 
-Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns and ensure lodash functions are consistently used throughout the codebase.
+Follow [no-classes.md](mdc:.claude/rules/no-classes.md) for functional programming patterns and ensure lodash functions are consistently used throughout the codebase.

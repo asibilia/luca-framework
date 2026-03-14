@@ -49,8 +49,8 @@ Key source areas:
 
 3. **Analyze Change Impact**
    - Agent/skill/rule definitions (content, schemas, metadata)
-   - Compiler output (generated markdown in .claude/, .cursor/, .pi/, dist/plugin/)
-   - Hook scripts (shell scripts in .claude/hooks/, .cursor/hooks/)
+   - Compiler output (generated markdown in .claude/, dist/plugin/)
+   - Hook scripts (shell scripts in .claude/hooks/)
    - Schema changes (Zod schemas, type inference)
    - Build pipeline (build-all.ts, check-drift)
    - State machine (packages/luca-framework/src/state/)

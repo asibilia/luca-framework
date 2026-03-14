@@ -27,10 +27,10 @@ This is the brownfield equivalent of new-project. The project exists, PROJECT.md
 
 Read these reference files before executing:
 
-- `.cursor/luca/references/questioning.md`
-- `.cursor/luca/references/ui-brand.md`
-- `.cursor/luca/templates/project.md`
-- `.cursor/luca/templates/requirements.md`
+- `.claude/luca/references/questioning.md`
+- `.claude/luca/references/ui-brand.md`
+- `.claude/luca/templates/project.md`
+- `.claude/luca/templates/requirements.md`
 
 ## Process
 

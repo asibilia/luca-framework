@@ -26,7 +26,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to diagnose, plan, or review code yourself. Spawn the appropriate agents.
 
-**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -69,8 +69,8 @@ reviewer_model = (omit)
 
 Read these reference files before executing:
 
-- `.cursor/luca/workflows/verify-work.md`
-- `.cursor/luca/templates/UAT.md`
+- `.claude/luca/workflows/verify-work.md`
+- `.claude/luca/templates/UAT.md`
 
 ## Process
 

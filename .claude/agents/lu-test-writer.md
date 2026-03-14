@@ -118,7 +118,7 @@ For new agents, test that:
 - Agent config validates against `AgentConfigSchema` (constructor does not throw)
 - Agent has required sections with expected titles
 - `name` matches expected value
-- `toCursorFormat()` and `toClaudeFormat()` return non-empty strings
+- `toClaudeFormat()` returns a non-empty string
 - Agent is registered in `agentRegistry` with the correct key
 
 ```typescript

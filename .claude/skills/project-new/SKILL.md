@@ -23,7 +23,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to research, synthesize, or create roadmaps yourself. Spawn the appropriate agents.
 
-**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -97,10 +97,10 @@ MuninnDB will then accumulate over time:
 
 Read these reference files before executing:
 
-- `.cursor/luca/references/questioning.md`
-- `.cursor/luca/references/ui-brand.md`
-- `.cursor/luca/templates/project.md`
-- `.cursor/luca/templates/requirements.md`
+- `.claude/luca/references/questioning.md`
+- `.claude/luca/references/ui-brand.md`
+- `.claude/luca/templates/project.md`
+- `.claude/luca/templates/requirements.md`
 
 ## Process
 
