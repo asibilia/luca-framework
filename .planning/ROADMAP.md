@@ -30,15 +30,15 @@
 
 **Depends on:** Phase 158
 
-- [ ] Wave A: Delete `.cursor/`, `.pi/`, `.qwen/` output directories
-- [ ] Wave A: Delete `src/hooks/adapters/cursor.adapter.ts`, `pi.adapter.ts`, `src/hooks/pi-extensions/`
-- [ ] Wave B: Remove `toCursorFormat()`/`toPiFormat()` from T2 entity factories (`create-agent.ts`, `create-skill.ts`, `create-rule.ts`)
-- [ ] Wave C: Remove `toCursorFormat()` from `src/shared/__helpers/format.ts` and `src/shared/index.ts` barrel
-- [ ] Wave C: Update `src/compilers/__helpers/compile.ts`, `plugin-registry.ts`, `parity.ts`
-- [ ] Wave D: Update `scripts/build-all.ts`, `scripts/check-drift.ts`
-- [ ] Wave D: Update adapter-registry, adapter.schemas, hooks barrel
-- [ ] Wave E: Content grep sweep — update all `src/rules/`, docs, CLAUDE.md, config references to `.cursor/`/`.pi/`
-- [ ] Verify with `bunx --bun tsc --noEmit` and `bun run check:drift`
+- [x] Wave A: Delete `.cursor/`, `.pi/`, `.qwen/` output directories
+- [x] Wave A: Delete `src/hooks/adapters/cursor.adapter.ts`, `pi.adapter.ts`, `src/hooks/pi-extensions/`
+- [x] Wave B: Remove `toCursorFormat()`/`toPiFormat()` from T2 entity factories (`create-agent.ts`, `create-skill.ts`, `create-rule.ts`)
+- [x] Wave C: Remove `toCursorFormat()` from `src/shared/__helpers/format.ts` and `src/shared/index.ts` barrel
+- [x] Wave C: Update `src/compilers/__helpers/compile.ts`, `plugin-registry.ts`, `parity.ts`
+- [x] Wave D: Update `scripts/build-all.ts`, `scripts/check-drift.ts`
+- [x] Wave D: Update adapter-registry, adapter.schemas, hooks barrel
+- [x] Wave E: Content grep sweep — update all `src/rules/`, docs, CLAUDE.md, config references to `.cursor/`/`.pi/`
+- [x] Verify with `bunx --bun tsc --noEmit` and `bun run check:drift`
 
 ### Phase 160: Migrate Hook Implementations to TypeScript
 
