@@ -72,12 +72,12 @@
 
 **Depends on:** Phases 160, 161
 
-- [ ] Research spike: answer 4 critical questions (can LLM invoke /clear, does PreCompact fire on /clear, systemMessage→MuninnDB reliability, CLAUDE.md re-read on compaction)
-- [ ] Component 1: Continuous session observer (hybrid hook + prompt layers)
-- [ ] Component 2: Proactive clear prompting at configurable threshold
-- [ ] Component 3: Enhanced restore after clear (rich MuninnDB working context)
-- [ ] Component 4: Dynamic compact instructions (`.planning/.compact-context.md`)
-- [ ] Component 5: Wire 5 untapped hook events (`user_prompt_submit`, `subagent_stop`, `post_tool_use_failure`, `task_completed`, `teammate_idle`)
+- [x] Research spike: answer 4 critical questions (can LLM invoke /clear, does PreCompact fire on /clear, systemMessage→MuninnDB reliability, CLAUDE.md re-read on compaction)
+- [x] Component 1: Continuous session observer (hybrid hook + prompt layers)
+- [x] Component 2: Proactive clear prompting at configurable threshold
+- [x] Component 3: Enhanced restore after clear (rich MuninnDB working context)
+- [x] Component 4: Dynamic compact instructions (`.planning/.compact-context.md`)
+- [x] Component 5: Wire 3 hook events (`user_prompt_submit`, `subagent_stop`, `post_tool_use_failure`; `task_completed` + `teammate_idle` deferred)
 
 ### Phase 163: Observer Memory Observability Upgrade
 
