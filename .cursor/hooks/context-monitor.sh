@@ -103,11 +103,51 @@ if [ -n "$TRANSCRIPT_PATH" ]; then
 fi
 # ──────────────────────────────────────────────────────────────────────
 
-# --- Primary check: Transcript file size ---
+# --- Primary check: Prefer real metrics from statusline ---
 TRANSCRIPT_LEVEL="NONE"
 TRANSCRIPT_MSG=""
+USED_STATUSLINE=false
 
-if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+# Check for fresh statusline data (within 120 seconds)
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+SL_METRICS_FILE="$PROJECT_DIR/.planning/.context-metrics.json"
+if [ -f "$SL_METRICS_FILE" ]; then
+  SL_DATA=$(HOOK_METRICS="$SL_METRICS_FILE" bun -e "
+    try {
+      const m = JSON.parse(await Bun.file(process.env.HOOK_METRICS).text());
+      if (m.source !== 'statusline') { process.exit(0); }
+      const checkedAt = new Date(m.checked_at).getTime();
+      const now = Date.now();
+      if (now - checkedAt > 120000) { process.exit(0); }
+      process.stdout.write(JSON.stringify({
+        pct: m.usage_percent,
+        input: m.total_input_tokens || 0,
+        window: m.context_window_size || 0,
+      }));
+    } catch { process.exit(0); }
+  " 2>/dev/null || echo "")
+
+  if [ -n "$SL_DATA" ]; then
+    SL_PCT=$(printf '%s' "$SL_DATA" | bun -e "const d=JSON.parse(await Bun.stdin.text()); process.stdout.write(String(d.pct||0));" 2>/dev/null || echo "0")
+    SL_INPUT=$(printf '%s' "$SL_DATA" | bun -e "const d=JSON.parse(await Bun.stdin.text()); const n=d.input||0; process.stdout.write(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'K':String(n));" 2>/dev/null || echo "?")
+    SL_WINDOW=$(printf '%s' "$SL_DATA" | bun -e "const d=JSON.parse(await Bun.stdin.text()); const n=d.window||0; process.stdout.write(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'K':String(n));" 2>/dev/null || echo "?")
+
+    if [ "$SL_PCT" -ge 70 ]; then
+      TRANSCRIPT_LEVEL="CRITICAL"
+      TRANSCRIPT_MSG="Context at ${SL_PCT}% (${SL_INPUT}/${SL_WINDOW} tokens). Quality may be degrading. Consider running /compact to free context space, or start a new session."
+    elif [ "$SL_PCT" -ge 50 ]; then
+      TRANSCRIPT_LEVEL="HIGH"
+      TRANSCRIPT_MSG="Context at ${SL_PCT}% (${SL_INPUT}/${SL_WINDOW} tokens). Consider running /compact soon to maintain response quality."
+    elif [ "$SL_PCT" -ge 30 ]; then
+      TRANSCRIPT_LEVEL="MODERATE"
+      TRANSCRIPT_MSG="Context at ${SL_PCT}% (${SL_INPUT}/${SL_WINDOW} tokens). No action needed yet, but be mindful of context limits."
+    fi
+    USED_STATUSLINE=true
+  fi
+fi
+
+# Fallback: transcript file size heuristic
+if [ "$USED_STATUSLINE" = "false" ] && [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
 
   WARN_THRESHOLD="${CONTEXT_WARN:-100000}"

@@ -47,3 +47,14 @@ test("hello world", () => {
 See "Intent-First Response" in `AGENTS.md`. In short: think about what the user actually needs, not just what they asked. Suggest follow-up questions only when the request is ambiguous, has meaningful trade-offs, or hints at a deeper problem — not on every response.
 
 For anything more detailed than this, prefer the main `README.md`, `AGENTS.md`, and the docs under `docs/` rather than expanding this file.
+
+## Compact Instructions
+
+When compacting, preserve:
+
+- Current phase, task position, and complexity level
+- Key decisions made this session with rationale
+- The current approach and next planned action
+- Any blockers or open questions
+- File paths recently modified and why
+- The MuninnDB vault name (luca-framework)

@@ -25,6 +25,19 @@ export const CANONICAL_EVENTS = [
   "stop",
   "session_end",
   "session_start",
+  "pre_compact",
+  "user_prompt_submit",
+  "subagent_stop",
+  "subagent_start",
+  "notification",
+  "post_tool_use_failure",
+  "instructions_loaded",
+  "permission_request",
+  "teammate_idle",
+  "task_completed",
+  "config_change",
+  "worktree_create",
+  "worktree_remove",
 ] as const;
 
 export const canonicalEventSchema = z.enum(CANONICAL_EVENTS);

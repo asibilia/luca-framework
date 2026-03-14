@@ -40,6 +40,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .claude/.session-lock
 .claude/.build-manifest.json
 
+# context monitoring (runtime artifacts)
+.planning/.context-metrics.json
+.planning/.context-checkpoint.json
+
 # tests (removed wholesale — see src/rules/general/no-tests.rule.ts)
 __tests__/
 *.test.ts

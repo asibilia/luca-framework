@@ -82,36 +82,137 @@ if [ -d "$NOTES_DIR" ]; then
 fi
 
 # --- Run context monitor ---
-# Estimate context usage from transcript file size.
-# The old src/memory/context-monitor.ts module has been removed; context
-# monitoring now uses direct transcript-size heuristics (same approach as
-# context-monitor.sh but lightweight for the throttled PostToolUse path).
+# Prefer real token data from statusline (written to .context-metrics.json).
+# Fall back to transcript-size heuristic if statusline data is stale or missing.
 
 ZONE="peak"
 USAGE_PERCENT=0
+FILE_SIZE=0
+METRICS_SOURCE="transcript_heuristic"
 
-# Find transcript path from Claude session dir
-TRANSCRIPT_PATH=""
-if [ -n "${CLAUDE_SESSION_DIR:-}" ] && [ -d "$CLAUDE_SESSION_DIR" ]; then
-  TRANSCRIPT_PATH=$(find "$CLAUDE_SESSION_DIR" -name "transcript" -type f 2>/dev/null | head -1)
+# Check if fresh statusline data exists (within 120 seconds)
+STATUSLINE_FRESH=false
+METRICS_FILE="$PROJECT_DIR/.planning/.context-metrics.json"
+if [ -f "$METRICS_FILE" ]; then
+  STATUSLINE_DATA=$(HOOK_METRICS="$METRICS_FILE" bun -e "
+    try {
+      const m = JSON.parse(await Bun.file(process.env.HOOK_METRICS).text());
+      if (m.source !== 'statusline') { process.exit(0); }
+      const checkedAt = new Date(m.checked_at).getTime();
+      const now = Date.now();
+      if (now - checkedAt > 120000) { process.exit(0); }
+      // Fresh statusline data — output zone and percent
+      process.stdout.write(JSON.stringify({ zone: m.zone, usage_percent: m.usage_percent }));
+    } catch { process.exit(0); }
+  " 2>/dev/null || echo "")
+
+  if [ -n "$STATUSLINE_DATA" ]; then
+    ZONE=$(printf '%s' "$STATUSLINE_DATA" | bun -e "
+      const d = JSON.parse(await Bun.stdin.text());
+      process.stdout.write(d.zone || 'peak');
+    " 2>/dev/null || echo "peak")
+    USAGE_PERCENT=$(printf '%s' "$STATUSLINE_DATA" | bun -e "
+      const d = JSON.parse(await Bun.stdin.text());
+      process.stdout.write(String(d.usage_percent || 0));
+    " 2>/dev/null || echo "0")
+    STATUSLINE_FRESH=true
+    METRICS_SOURCE="statusline"
+  fi
 fi
 
-if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
-  FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
-  # Thresholds aligned with context-monitor.sh
-  WARN_THRESHOLD="${CONTEXT_WARN:-100000}"
-  ALERT_THRESHOLD="${CONTEXT_ALERT:-200000}"
-  CRITICAL_THRESHOLD="${CONTEXT_CRITICAL:-300000}"
-  # Estimate usage percent (300KB ~ 70% context)
-  USAGE_PERCENT=$((FILE_SIZE * 70 / CRITICAL_THRESHOLD))
-  if [ "$USAGE_PERCENT" -gt 100 ]; then USAGE_PERCENT=100; fi
+# Fallback: estimate from transcript file size if no fresh statusline data
+if [ "$STATUSLINE_FRESH" = "false" ]; then
+  TRANSCRIPT_PATH=""
+  if [ -n "${CLAUDE_SESSION_DIR:-}" ] && [ -d "$CLAUDE_SESSION_DIR" ]; then
+    TRANSCRIPT_PATH=$(find "$CLAUDE_SESSION_DIR" -name "transcript" -type f 2>/dev/null | head -1)
+  fi
 
-  if [ "$FILE_SIZE" -ge "$CRITICAL_THRESHOLD" ]; then
-    ZONE="stop"
-  elif [ "$FILE_SIZE" -ge "$ALERT_THRESHOLD" ]; then
-    ZONE="degrading"
-  elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
-    ZONE="good"
+  if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+    FILE_SIZE=$(wc -c < "$TRANSCRIPT_PATH" | tr -d ' ')
+    WARN_THRESHOLD="${CONTEXT_WARN:-100000}"
+    ALERT_THRESHOLD="${CONTEXT_ALERT:-200000}"
+    CRITICAL_THRESHOLD="${CONTEXT_CRITICAL:-300000}"
+    USAGE_PERCENT=$((FILE_SIZE * 70 / CRITICAL_THRESHOLD))
+    if [ "$USAGE_PERCENT" -gt 100 ]; then USAGE_PERCENT=100; fi
+
+    if [ "$FILE_SIZE" -ge "$CRITICAL_THRESHOLD" ]; then
+      ZONE="stop"
+    elif [ "$FILE_SIZE" -ge "$ALERT_THRESHOLD" ]; then
+      ZONE="degrading"
+    elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
+      ZONE="good"
+    fi
+  fi
+fi
+
+# --- Zone severity for transition detection ---
+zone_severity() {
+  case "$1" in
+    peak)      echo 0 ;;
+    good)      echo 1 ;;
+    degrading) echo 2 ;;
+    stop)      echo 3 ;;
+    *)         echo 0 ;;
+  esac
+}
+
+# --- Read previous zone (before overwriting metrics) ---
+PREV_ZONE="peak"
+if [ -f "$METRICS_FILE" ]; then
+  PREV_ZONE=$(HOOK_METRICS="$METRICS_FILE" bun -e "
+    try {
+      const m = JSON.parse(await Bun.file(process.env.HOOK_METRICS).text());
+      process.stdout.write(m.zone || 'peak');
+    } catch { process.stdout.write('peak'); }
+  " 2>/dev/null || echo "peak")
+fi
+
+# --- Write context metrics snapshot (only if using heuristic — statusline writes its own) ---
+if [ "$STATUSLINE_FRESH" = "false" ]; then
+  HOOK_ZONE="$ZONE" \
+  HOOK_PERCENT="$USAGE_PERCENT" \
+  HOOK_FILE_SIZE="${FILE_SIZE:-0}" \
+  HOOK_PROJECT_DIR="$PROJECT_DIR" \
+  bun -e "
+    const zone = process.env.HOOK_ZONE;
+    const percent = parseInt(process.env.HOOK_PERCENT || '0', 10);
+    const fileSize = parseInt(process.env.HOOK_FILE_SIZE || '0', 10);
+    const projectDir = process.env.HOOK_PROJECT_DIR;
+    const metrics = {
+      zone,
+      usage_percent: percent,
+      transcript_bytes: fileSize,
+      checked_at: new Date().toISOString(),
+      source: 'transcript_heuristic',
+    };
+    await Bun.write(
+      projectDir + '/.planning/.context-metrics.json',
+      JSON.stringify(metrics, null, 2) + '\n'
+    );
+  " 2>/dev/null || true
+fi
+
+# --- Proactive checkpoint on zone worsening ---
+PREV_SEV=$(zone_severity "$PREV_ZONE")
+CURR_SEV=$(zone_severity "$ZONE")
+
+if [ "$CURR_SEV" -gt "$PREV_SEV" ]; then
+  # Zone worsened — consider proactive checkpoint
+  CHECKPOINT_THROTTLE_FILE="/tmp/.luca-ctx-checkpoint-${PROJECT_HASH}-ts"
+  CHECKPOINT_THROTTLE_SECONDS=300
+  SHOULD_CHECKPOINT=true
+
+  if [ -f "$CHECKPOINT_THROTTLE_FILE" ]; then
+    LAST_CP=$(cat "$CHECKPOINT_THROTTLE_FILE" 2>/dev/null || echo "0")
+    NOW_CP=$(date +%s)
+    if [ $((NOW_CP - LAST_CP)) -lt "$CHECKPOINT_THROTTLE_SECONDS" ]; then
+      SHOULD_CHECKPOINT=false
+    fi
+  fi
+
+  if [ "$SHOULD_CHECKPOINT" = "true" ]; then
+    date +%s > "$CHECKPOINT_THROTTLE_FILE"
+    run_bridge snapshot 2>/dev/null || true
   fi
 fi
 

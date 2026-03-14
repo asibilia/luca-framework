@@ -1,0 +1,27 @@
+{
+  "milestone": "v4.4.0",
+  "title": "Smart Context Management",
+  "exported_at": "2026-03-14T17:00:00Z",
+  "vault": "luca-framework",
+  "stats": {
+    "node_count": 38,
+    "edge_count": 114,
+    "format": "json-ld"
+  },
+  "memory_health": {
+    "stale_detected": 0,
+    "forgotten": 0,
+    "consolidated": 0,
+    "total_engrams_analyzed": 51,
+    "status": "healthy"
+  },
+  "key_engrams_this_milestone": [
+    "decision:memory-system-precompact-checkpoint",
+    "decision:post-clear-recall-layered",
+    "decision:checkpoint-content-design",
+    "decision:observer-memory-bar",
+    "pattern:claude-code-18-hook-events",
+    "research:context-mgmt-patterns-synthesis",
+    "Auto-Context-Management-System"
+  ]
+}

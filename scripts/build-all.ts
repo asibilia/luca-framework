@@ -269,6 +269,14 @@ async function main() {
 
     existingSettings.hooks = JSON.parse(settingsHooksFragment);
 
+    // Add statusLine configuration (camelCase key required by Claude Code)
+    existingSettings.statusLine = {
+      type: "command",
+      command: '"$CLAUDE_PROJECT_DIR"/.claude/statusline.sh',
+    };
+    // Remove stale lowercase key if present from prior builds
+    delete (existingSettings as Record<string, unknown>).statusline;
+
     await Bun.write(
       settingsPath,
       JSON.stringify(existingSettings, null, 2) + "\n",

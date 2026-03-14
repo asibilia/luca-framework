@@ -6,6 +6,12 @@
 
 ---
 
+## Closed (v4.4.0 Completed)
+
+| Todo | Reason                                                                                                                                                                                                                 |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #75  | Smart Context Management: 7 phases, 23 commits, 74 files (+6,756 LOC). Hook schema expansion (18 events), PreCompact checkpoint, context metrics, session restore, /context-restore skill, observer context window bar |
+
 ## Closed (v4.3.0 Completed)
 
 | Todo | Reason                                                                                                                                                                                                   |
@@ -166,7 +172,8 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 - **v4.1.0** — Agentic Intelligence & Platform Maturity: 10 phases, 17 plans, 77 commits, 229 files changed ([View Archive](milestones/v4.1.0-ROADMAP.md))
 - **v4.2.0** — Workflow Unification & Memory Architecture: 5 phases, 8 plans, 15 commits, 312 files changed ([View Archive](milestones/v4.2.0-ROADMAP.md))
 - **v4.3.0** — Observer Workflow Editor: 7 phases, 35 commits, 79 files changed ([View Archive](milestones/v4.3.0-ROADMAP.md))
+- **v4.4.0** — Smart Context Management: 7 phases, 23 commits, 74 files changed ([View Archive](milestones/v4.4.0-ROADMAP.md))
 
 ---
 
-_Roadmap updated: 2026-03-13 (v4.3.0 milestone archived)_
+_Roadmap updated: 2026-03-14 (v4.4.0 milestone archived)_

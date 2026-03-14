@@ -96,6 +96,20 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Initializing Luca...",
   }),
+  "pre-compact-checkpoint": () => ({
+    event: "pre_compact",
+    script: "pre-compact-checkpoint.sh",
+    timeout: 15,
+    async: true,
+    status_message: "Saving context checkpoint...",
+  }),
+  "session-compact-restore": () => ({
+    event: "session_start",
+    script: "session-compact-restore.sh",
+    timeout: 10,
+    async: false,
+    status_message: "Restoring context...",
+  }),
 };
 
 /**
