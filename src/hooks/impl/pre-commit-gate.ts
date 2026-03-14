@@ -15,15 +15,23 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 
+import { z } from "zod";
+
 import {
   guardDedup,
-  readStdinJson,
-  extractCommand,
+  parseHookInput,
   exitBlock,
   exitSuccess,
   projectDir,
 } from "./__helpers/hook-io.ts";
 import { runBridge, readRuntime } from "./__helpers/bridge.ts";
+
+// ─── Input Schema ─────────────────────────────────────────────────────────────
+
+const PreCommitInputSchema = z.object({
+  tool_input: z.object({ command: z.string().default("") }).optional(),
+  command: z.string().default(""),
+});
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-commit-gate");
@@ -44,8 +52,8 @@ const isCommitCommand = (cmd: string): boolean => {
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const main = async (): Promise<void> => {
-  const data = await readStdinJson();
-  const command = extractCommand(data);
+  const data = await parseHookInput(PreCommitInputSchema);
+  const command = data?.tool_input?.command ?? data?.command ?? "";
 
   // Fast exit: Not a commit command? Allow immediately.
   if (!command || !isCommitCommand(command)) {

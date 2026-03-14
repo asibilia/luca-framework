@@ -10,6 +10,8 @@
  * @module statusline
  */
 
+import { resolve } from "path";
+
 import { projectDir } from "./__helpers/hook-io.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -45,12 +47,29 @@ const main = async (): Promise<void> => {
     | undefined;
   const vim = input?.vim as Record<string, unknown> | undefined;
 
-  const cwd =
+  const rawCwd =
     (workspace?.current_dir as string) || (input?.cwd as string) || "";
   const modelName = (model?.display_name as string) || "";
   const usedPct = contextWindow?.used_percentage as number | undefined;
   const vimMode = (vim?.mode as string) || "";
   const sessionName = (input?.session_name as string) || "";
+
+  // --- Validate cwd against projectDir / HOME to prevent path traversal ---
+  let cwd = "";
+  if (rawCwd) {
+    try {
+      const resolvedCwd = resolve(rawCwd);
+      if (
+        resolvedCwd.startsWith(pd + "/") ||
+        resolvedCwd === pd ||
+        (home && (resolvedCwd.startsWith(home + "/") || resolvedCwd === home))
+      ) {
+        cwd = resolvedCwd;
+      }
+    } catch {
+      // resolve failed — discard
+    }
+  }
 
   // --- Write context metrics (side effect) ---
   if (contextWindow && typeof contextWindow.used_percentage === "number") {

@@ -11,12 +11,20 @@
 
 import { existsSync, readFileSync } from "fs";
 
+import { z } from "zod";
+
 import {
   guardDedup,
-  readStdinJson,
+  parseHookInput,
   exitSuccess,
   projectDir,
 } from "./__helpers/hook-io.ts";
+
+// ─── Input Schema ─────────────────────────────────────────────────────────────
+
+const PreCompactInputSchema = z.object({
+  trigger: z.string().default("unknown"),
+});
 import { runBridge } from "./__helpers/bridge.ts";
 import { resolveVault } from "./__helpers/vault.ts";
 import { writeMuninnEngram } from "./__helpers/muninn.ts";
@@ -27,8 +35,8 @@ guardDedup("pre-compact-checkpoint", 10);
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const main = async (): Promise<void> => {
-  const data = (await readStdinJson()) || {};
-  const trigger = (data.trigger as string) || "unknown";
+  const data = await parseHookInput(PreCompactInputSchema);
+  const trigger = data?.trigger ?? "unknown";
 
   const pd = projectDir();
 

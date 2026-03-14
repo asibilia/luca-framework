@@ -9,7 +9,18 @@
  * @module subagent-stop
  */
 
-import { readStdinJson, exitSuccess } from "./__helpers/hook-io.ts";
+import { z } from "zod";
+
+import { parseHookInput, exitSuccess } from "./__helpers/hook-io.ts";
+
+// ─── Input Schema ─────────────────────────────────────────────────────────────
+
+const SubagentStopInputSchema = z.object({
+  subagent_id: z.string().default("unknown"),
+  summary: z.string().default(""),
+  output: z.string().default(""),
+  tool_calls_count: z.number().optional(),
+});
 import { resolveVault } from "./__helpers/vault.ts";
 import { writeMuninnEngram } from "./__helpers/muninn.ts";
 
@@ -17,18 +28,13 @@ import { writeMuninnEngram } from "./__helpers/muninn.ts";
 
 const main = async (): Promise<void> => {
   // Drain stdin and parse the stop event payload (best-effort)
-  const data = await readStdinJson();
-
-  // If payload is empty or unparseable, exit 0 silently (no write)
-  if (!data) {
-    return exitSuccess();
-  }
+  const data = await parseHookInput(SubagentStopInputSchema);
 
   // Extract summary or output from the payload
-  const subagentId = (data.subagent_id as string) || "unknown";
-  const summary = (data.summary as string) || "";
-  const output = (data.output as string) || "";
-  const toolCallsCount = data.tool_calls_count;
+  const subagentId = data?.subagent_id ?? "unknown";
+  const summary = data?.summary ?? "";
+  const output = data?.output ?? "";
+  const toolCallsCount = data?.tool_calls_count;
 
   // Only write if there's meaningful content
   const contentSource = summary || output;

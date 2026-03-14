@@ -10,6 +10,7 @@
  */
 
 import { existsSync } from "fs";
+import { resolve } from "path";
 
 import {
   guardDedup,
@@ -29,13 +30,25 @@ const main = async (): Promise<void> => {
   const data = await readStdinJson();
   const filePath = extractFilePath(data);
 
-  // Exit early if no file path or file doesn't exist
-  if (!filePath || !existsSync(filePath)) {
+  // Exit early if no file path
+  if (!filePath) {
+    return exitSuccess();
+  }
+
+  // Path boundary check: resolved path must be within projectDir
+  const pd = projectDir();
+  const resolved = resolve(filePath);
+  if (!resolved.startsWith(pd + "/")) {
+    return exitSuccess();
+  }
+
+  // Exit early if file doesn't exist
+  if (!existsSync(resolved)) {
     return exitSuccess();
   }
 
   // Determine file extension
-  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const ext = resolved.split(".").pop()?.toLowerCase() ?? "";
 
   // Extensions that Prettier can format
   const formattableExtensions = new Set([
@@ -65,14 +78,14 @@ const main = async (): Promise<void> => {
 
   const cmd: string[] =
     runtime === "bun"
-      ? ["bunx", "--bun", "prettier", "--write", filePath]
-      : ["npx", "prettier", "--write", filePath];
+      ? ["bunx", "--bun", "prettier", "--write", resolved]
+      : ["npx", "prettier", "--write", resolved];
 
   try {
     Bun.spawnSync(cmd, {
       stdout: "pipe",
       stderr: "pipe",
-      cwd: projectDir(),
+      cwd: pd,
       env: {
         ...process.env,
         PATH: `${projectDir()}/node_modules/.bin:${process.env.PATH}`,

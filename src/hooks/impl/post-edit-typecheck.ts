@@ -10,6 +10,7 @@
  */
 
 import { existsSync } from "fs";
+import { resolve, basename } from "path";
 
 import {
   guardDedup,
@@ -30,18 +31,29 @@ const main = async (): Promise<void> => {
   const data = await readStdinJson();
   const filePath = extractFilePath(data);
 
-  // Exit early if no file path or file doesn't exist
-  if (!filePath || !existsSync(filePath)) {
+  // Exit early if no file path
+  if (!filePath) {
+    return exitSuccess();
+  }
+
+  // Path boundary check: resolved path must be within projectDir
+  const pd = projectDir();
+  const resolved = resolve(filePath);
+  if (!resolved.startsWith(pd + "/")) {
+    return exitSuccess();
+  }
+
+  // Exit early if file doesn't exist
+  if (!existsSync(resolved)) {
     return exitSuccess();
   }
 
   // Only type-check TypeScript files
-  if (!filePath.endsWith(".ts") && !filePath.endsWith(".tsx")) {
+  if (!resolved.endsWith(".ts") && !resolved.endsWith(".tsx")) {
     return exitSuccess();
   }
 
   // Check if tsconfig.json exists in project root
-  const pd = projectDir();
   if (!existsSync(`${pd}/tsconfig.json`)) {
     exitSuccess();
   }
@@ -75,7 +87,7 @@ const main = async (): Promise<void> => {
           : "";
 
       emitResult({
-        systemMessage: `TypeScript type errors found after editing ${filePath}:\n${truncated}${suffix}`,
+        systemMessage: `TypeScript type errors found after editing ${basename(resolved)}:\n${truncated}${suffix}`,
       });
     }
   }
