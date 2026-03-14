@@ -10,7 +10,7 @@
  * @module statusline
  */
 
-import { projectDir } from "./_lib/hook-io.ts";
+import { projectDir } from "./__helpers/hook-io.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 

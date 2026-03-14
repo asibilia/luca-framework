@@ -17,8 +17,8 @@ import {
   readStdinJson,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
-import { readSessionId } from "./_lib/bridge.ts";
+} from "./__helpers/hook-io.ts";
+import { readSessionId } from "./__helpers/bridge.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-persist");

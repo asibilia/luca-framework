@@ -16,7 +16,7 @@ import {
   emitResult,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
+} from "./__helpers/hook-io.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-compact-restore");

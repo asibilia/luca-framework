@@ -19,7 +19,7 @@ import {
   exitSuccess,
   projectDir,
   isClaude,
-} from "./_lib/hook-io.ts";
+} from "./__helpers/hook-io.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("context-monitor");

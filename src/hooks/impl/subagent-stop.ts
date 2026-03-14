@@ -9,9 +9,9 @@
  * @module subagent-stop
  */
 
-import { readStdinJson, exitSuccess } from "./_lib/hook-io.ts";
-import { resolveVault } from "./_lib/vault.ts";
-import { writeMuninnEngram } from "./_lib/muninn.ts";
+import { readStdinJson, exitSuccess } from "./__helpers/hook-io.ts";
+import { resolveVault } from "./__helpers/vault.ts";
+import { writeMuninnEngram } from "./__helpers/muninn.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 

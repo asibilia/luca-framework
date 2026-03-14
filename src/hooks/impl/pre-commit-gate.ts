@@ -22,8 +22,8 @@ import {
   exitBlock,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
-import { runBridge, readRuntime } from "./_lib/bridge.ts";
+} from "./__helpers/hook-io.ts";
+import { runBridge, readRuntime } from "./__helpers/bridge.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-commit-gate");

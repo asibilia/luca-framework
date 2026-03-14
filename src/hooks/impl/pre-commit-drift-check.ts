@@ -19,7 +19,7 @@ import {
   exitBlock,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
+} from "./__helpers/hook-io.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-commit-drift-check");

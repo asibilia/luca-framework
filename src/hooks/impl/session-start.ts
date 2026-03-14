@@ -28,10 +28,10 @@ import {
   exitSuccess,
   projectDir,
   isClaude,
-} from "./_lib/hook-io.ts";
-import { runBridge } from "./_lib/bridge.ts";
-import { resolveVault } from "./_lib/vault.ts";
-import { recallMuninnEngrams } from "./_lib/muninn.ts";
+} from "./__helpers/hook-io.ts";
+import { runBridge } from "./__helpers/bridge.ts";
+import { resolveVault } from "./__helpers/vault.ts";
+import { recallMuninnEngrams } from "./__helpers/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-start");

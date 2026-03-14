@@ -16,10 +16,10 @@ import {
   readStdinJson,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
-import { runBridge } from "./_lib/bridge.ts";
-import { resolveVault } from "./_lib/vault.ts";
-import { writeMuninnEngram } from "./_lib/muninn.ts";
+} from "./__helpers/hook-io.ts";
+import { runBridge } from "./__helpers/bridge.ts";
+import { resolveVault } from "./__helpers/vault.ts";
+import { writeMuninnEngram } from "./__helpers/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-compact-checkpoint", 10);

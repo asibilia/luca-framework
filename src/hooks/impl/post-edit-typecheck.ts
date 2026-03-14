@@ -18,8 +18,8 @@ import {
   emitResult,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
-import { readRuntime } from "./_lib/bridge.ts";
+} from "./__helpers/hook-io.ts";
+import { readRuntime } from "./__helpers/bridge.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("post-edit-typecheck");

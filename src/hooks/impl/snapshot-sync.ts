@@ -18,8 +18,8 @@ import {
   projectHash,
   exitSuccess,
   projectDir,
-} from "./_lib/hook-io.ts";
-import { runBridge } from "./_lib/bridge.ts";
+} from "./__helpers/hook-io.ts";
+import { runBridge } from "./__helpers/bridge.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("snapshot-sync");
