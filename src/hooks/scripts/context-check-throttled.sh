@@ -90,6 +90,9 @@ fi
 ZONE="peak"
 USAGE_PERCENT=0
 
+# Initialize FILE_SIZE before transcript block (used by metrics write below)
+FILE_SIZE=0
+
 # Find transcript path from Claude session dir
 TRANSCRIPT_PATH=""
 if [ -n "${CLAUDE_SESSION_DIR:-}" ] && [ -d "$CLAUDE_SESSION_DIR" ]; then
@@ -112,6 +115,80 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
     ZONE="degrading"
   elif [ "$FILE_SIZE" -ge "$WARN_THRESHOLD" ]; then
     ZONE="good"
+  fi
+fi
+
+# --- Zone severity for transition detection ---
+zone_severity() {
+  case "$1" in
+    peak)      echo 0 ;;
+    good)      echo 1 ;;
+    degrading) echo 2 ;;
+    stop)      echo 3 ;;
+    *)         echo 0 ;;
+  esac
+}
+
+# --- Read previous zone (before overwriting metrics) ---
+PREV_ZONE="peak"
+METRICS_FILE="$PROJECT_DIR/.planning/.context-metrics.json"
+if [ -f "$METRICS_FILE" ]; then
+  PREV_ZONE=$(HOOK_METRICS="$METRICS_FILE" bun -e "
+    try {
+      const m = JSON.parse(await Bun.file(process.env.HOOK_METRICS).text());
+      process.stdout.write(m.zone || 'peak');
+    } catch { process.stdout.write('peak'); }
+  " 2>/dev/null || echo "peak")
+fi
+
+# --- Write context metrics snapshot ---
+HOOK_ZONE="$ZONE" \
+HOOK_PERCENT="$USAGE_PERCENT" \
+HOOK_FILE_SIZE="${FILE_SIZE:-0}" \
+HOOK_PROJECT_DIR="$PROJECT_DIR" \
+bun -e "
+  const zone = process.env.HOOK_ZONE;
+  const percent = parseInt(process.env.HOOK_PERCENT || '0', 10);
+  const fileSize = parseInt(process.env.HOOK_FILE_SIZE || '0', 10);
+  const projectDir = process.env.HOOK_PROJECT_DIR;
+  const metrics = {
+    zone,
+    usage_percent: percent,
+    transcript_bytes: fileSize,
+    checked_at: new Date().toISOString(),
+    thresholds: {
+      warn_bytes: 100000,
+      alert_bytes: 200000,
+      critical_bytes: 300000,
+    },
+  };
+  await Bun.write(
+    projectDir + '/.planning/.context-metrics.json',
+    JSON.stringify(metrics, null, 2) + '\n'
+  );
+" 2>/dev/null || true
+
+# --- Proactive checkpoint on zone worsening ---
+PREV_SEV=$(zone_severity "$PREV_ZONE")
+CURR_SEV=$(zone_severity "$ZONE")
+
+if [ "$CURR_SEV" -gt "$PREV_SEV" ]; then
+  # Zone worsened — consider proactive checkpoint
+  CHECKPOINT_THROTTLE_FILE="/tmp/.luca-ctx-checkpoint-${PROJECT_HASH}-ts"
+  CHECKPOINT_THROTTLE_SECONDS=300
+  SHOULD_CHECKPOINT=true
+
+  if [ -f "$CHECKPOINT_THROTTLE_FILE" ]; then
+    LAST_CP=$(cat "$CHECKPOINT_THROTTLE_FILE" 2>/dev/null || echo "0")
+    NOW_CP=$(date +%s)
+    if [ $((NOW_CP - LAST_CP)) -lt "$CHECKPOINT_THROTTLE_SECONDS" ]; then
+      SHOULD_CHECKPOINT=false
+    fi
+  fi
+
+  if [ "$SHOULD_CHECKPOINT" = "true" ]; then
+    date +%s > "$CHECKPOINT_THROTTLE_FILE"
+    run_bridge snapshot 2>/dev/null || true
   fi
 fi
 
