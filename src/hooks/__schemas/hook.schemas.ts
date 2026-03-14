@@ -88,3 +88,52 @@ export type HookDefinition = z.infer<typeof HookDefinitionSchema>;
 
 /** Sentinel value for hooks with no matcher constraint. */
 export const NO_MATCHER_SENTINEL = "__no_matcher__" as const;
+
+// ─── Session Observation schema (T3 internal — not exported from barrel) ─────
+
+/**
+ * Context zones matching the quality degradation curve.
+ */
+export const CONTEXT_ZONES = ["peak", "good", "degrading", "stop"] as const;
+export const contextZoneSchema = z.enum(CONTEXT_ZONES);
+export type ContextZone = z.infer<typeof contextZoneSchema>;
+
+/**
+ * Observation sources — what triggered the observation write.
+ */
+export const OBSERVATION_SOURCES = [
+  "zone_transition",
+  "user_prompt_submit",
+  "subagent_stop",
+  "post_tool_use_failure",
+] as const;
+export const observationSourceSchema = z.enum(OBSERVATION_SOURCES);
+export type ObservationSource = z.infer<typeof observationSourceSchema>;
+
+/**
+ * Schema for session observation engrams written to MuninnDB by the hook layer.
+ *
+ * These structured snapshots capture session context at key lifecycle events
+ * (zone transitions, user prompts, subagent completions, tool failures).
+ * The enhanced restore in session-start.ts reads these back to prime context
+ * after /clear.
+ */
+export const SessionObservationSchema = z.object({
+  /** MuninnDB concept string (e.g., "session:observation-1710432000000") */
+  concept: z.string(),
+  /** ISO 8601 timestamp of the observation */
+  timestamp: z.string(),
+  /** Context zone at time of observation */
+  zone: contextZoneSchema,
+  /** Numeric context usage percentage (0-100) */
+  usage_percent: z.number().min(0).max(100),
+  /** Current git branch name (empty string if unavailable) */
+  git_branch: z.string().default(""),
+  /** Short summary of files changed since last observation (empty if unavailable) */
+  git_diff_summary: z.string().default(""),
+  /** Current phase/plan/status from STATE.md (empty if unavailable) */
+  phase_context: z.string().default(""),
+  /** What triggered this observation */
+  source: observationSourceSchema,
+});
+export type SessionObservation = z.infer<typeof SessionObservationSchema>;

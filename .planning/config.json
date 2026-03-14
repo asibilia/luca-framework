@@ -185,6 +185,11 @@
   "muninn": {
     "vault": "luca-framework"
   },
+  "context_management": {
+    "clear_suggestion_threshold": 42,
+    "clear_suggestion_enabled": true,
+    "observation_on_zone_transition": true
+  },
   "shadow_debt": {
     "enabled": true,
     "phase_scan_mode": "quick",

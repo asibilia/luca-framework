@@ -28,6 +28,10 @@ import {
   projectDir,
 } from "./_lib/hook-io.ts";
 import { runBridge } from "./_lib/bridge.ts";
+import { resolveVault } from "./_lib/vault.ts";
+import { writeMuninnEngram } from "./_lib/muninn.ts";
+
+import type { SessionObservation } from "../__schemas/hook.schemas.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("context-check-throttled");
@@ -269,15 +273,112 @@ const main = async (): Promise<void> => {
       );
       await runBridge(["snapshot"]);
     }
+
+    // --- Write observation to MuninnDB on zone transition ---
+    try {
+      // Read git branch (best-effort)
+      let gitBranch = "";
+      try {
+        const branchResult = Bun.spawnSync(
+          ["git", "branch", "--show-current"],
+          { stdout: "pipe", stderr: "pipe", cwd: pd },
+        );
+        if (branchResult.exitCode === 0) {
+          gitBranch = branchResult.stdout.toString().trim();
+        }
+      } catch {
+        // git not available
+      }
+
+      // Read git diff summary (best-effort, first 10 lines)
+      let gitDiffSummary = "";
+      try {
+        const diffResult = Bun.spawnSync(
+          ["git", "diff", "--name-only", "HEAD"],
+          { stdout: "pipe", stderr: "pipe", cwd: pd },
+        );
+        if (diffResult.exitCode === 0) {
+          gitDiffSummary = diffResult.stdout
+            .toString()
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .slice(0, 10)
+            .join(", ");
+        }
+      } catch {
+        // git not available
+      }
+
+      // Read phase context from STATE.md (best-effort)
+      let phaseContext = "";
+      const stateMdPath = join(pd, ".planning", "STATE.md");
+      if (existsSync(stateMdPath)) {
+        try {
+          const stateContent = readFileSync(stateMdPath, "utf-8");
+          const stateLines = stateContent.split("\n");
+          const phaseFields: string[] = [];
+          for (const line of stateLines) {
+            if (
+              line.includes("Phase:") ||
+              line.includes("Plan:") ||
+              line.includes("Status:")
+            ) {
+              const trimmed = line.replace(/^[-*\s]+/, "").trim();
+              if (trimmed) phaseFields.push(trimmed);
+            }
+          }
+          phaseContext = phaseFields.slice(0, 3).join(" | ");
+        } catch {
+          // STATE.md unreadable
+        }
+      }
+
+      // Construct observation payload
+      const observation: SessionObservation = {
+        concept: `session:observation-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        zone: zone as SessionObservation["zone"],
+        usage_percent: usagePercent,
+        git_branch: gitBranch,
+        git_diff_summary: gitDiffSummary,
+        phase_context: phaseContext,
+        source: "zone_transition",
+      };
+
+      // Resolve vault and write to MuninnDB (fire-and-forget)
+      const vault = await resolveVault();
+      writeMuninnEngram({
+        vault,
+        concept: observation.concept,
+        content: JSON.stringify(observation),
+        type: "observation",
+        tags: ["session", "observation", "zone-transition"],
+      });
+    } catch {
+      // Observation write failed — never throw from hook
+    }
   }
 
-  // Only output warning for degrading or stop zones
-  if (zone === "degrading" || zone === "stop") {
-    process.stdout.write(
-      JSON.stringify({
-        systemMessage: `Context usage at ${usagePercent}% (zone: ${zone}). Consider compressing memory or starting a new session.`,
-      }),
-    );
+  // --- Build systemMessage based on zone state ---
+  let systemMessage = "";
+
+  // Zone transition messages (prompt-layer observer)
+  if (currSev > prevSev) {
+    if (prevZone === "peak" && zone === "good") {
+      systemMessage = `[Session Observer] Context at ${usagePercent}% (peak->good). Writing zone observation to MuninnDB. Please summarize your current goal and approach via: mcp__muninn__muninn_remember(vault: "luca-framework", concept: "session:observation-work", content: "[current goal, approach, recent decisions]")`;
+    } else if (prevZone === "good" && zone === "degrading") {
+      systemMessage = `[Session Observer] Context at ${usagePercent}% (good->degrading). Observation saved. Consider /clear at your next natural stopping point.`;
+    }
+  }
+
+  // Fallback: existing zone warning for degrading/stop when no transition occurred
+  if (!systemMessage && (zone === "degrading" || zone === "stop")) {
+    systemMessage = `Context usage at ${usagePercent}% (zone: ${zone}). Consider compressing memory or starting a new session.`;
+  }
+
+  if (systemMessage) {
+    process.stdout.write(JSON.stringify({ systemMessage }));
   }
 
   return exitSuccess();
