@@ -110,6 +110,27 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Restoring context...",
   }),
+  "user-prompt-submit": () => ({
+    event: "user_prompt_submit",
+    script: "user-prompt-submit.sh",
+    timeout: 5,
+    async: true,
+    status_message: "Saving prompt observation...",
+  }),
+  "subagent-stop": () => ({
+    event: "subagent_stop",
+    script: "subagent-stop.sh",
+    timeout: 5,
+    async: true,
+    status_message: "Capturing subagent summary...",
+  }),
+  "post-tool-use-failure": () => ({
+    event: "post_tool_use_failure",
+    script: "post-tool-use-failure.sh",
+    timeout: 5,
+    async: true,
+    status_message: "Recording failure pattern...",
+  }),
 };
 
 /**
