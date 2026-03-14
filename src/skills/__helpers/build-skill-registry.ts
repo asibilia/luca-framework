@@ -58,6 +58,7 @@ import { profileExportSkill } from "../general/profile-export.skill";
 import { profileImportSkill } from "../general/profile-import.skill";
 import { seedMemorySkill } from "../general/seed-memory.skill";
 import { outcomeSkill } from "../general/outcome.skill";
+import { contextRestoreSkill } from "../general/context-restore.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -123,5 +124,6 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "profile-import": () => profileImportSkill,
   "seed-memory": () => seedMemorySkill,
   outcome: () => outcomeSkill,
+  "context-restore": () => contextRestoreSkill,
   lu: () => luSkill,
 };
