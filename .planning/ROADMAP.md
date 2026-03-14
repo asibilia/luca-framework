@@ -144,16 +144,16 @@
 
 **Depends on:** Phase 166
 
-- [ ] Move 15 TS implementations from `impl/` to `scripts/` (alongside their current .sh shims)
-- [ ] Move runtime helpers from `impl/__helpers/` to `hooks/__helpers/` (bridge.ts, vault.ts, muninn.ts, hook-io.ts)
-- [ ] Move adapter schemas to `__schemas/adapter.schemas.ts`, runtime logic to `__helpers/`
-- [ ] Create `generate-shell-wrappers.ts` build helper that auto-generates `.sh` wrappers from registry
-- [ ] Update `build-shared.ts` to use new generator instead of copying .sh files
-- [ ] Delete all manual `.sh` shims, `impl/`, and `adapters/` directories
-- [ ] Deduplicate `CLAUDE_EVENT_MAP` (exists in both platform-adapters.ts and claude.adapter.ts)
-- [ ] Update barrel (`hooks/index.ts`) and all internal imports
-- [ ] Update hook-registry.ts script fields from .sh to .ts
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Move 15 TS implementations from `impl/` to `scripts/` (alongside their current .sh shims)
+- [x] Move runtime helpers from `impl/__helpers/` to `hooks/__helpers/` (bridge.ts, vault.ts, muninn.ts, hook-io.ts)
+- [x] Move adapter schemas to `__schemas/adapter.schemas.ts`, runtime logic to `__helpers/`
+- [x] Create `generate-shell-wrappers.ts` build helper that auto-generates `.sh` wrappers from registry
+- [x] Update `build-shared.ts` to use new generator instead of copying .sh files
+- [x] Delete all manual `.sh` shims, `impl/`, and `adapters/` directories
+- [x] Deduplicate `CLAUDE_EVENT_MAP` (exists in both platform-adapters.ts and claude.adapter.ts)
+- [x] Update barrel (`hooks/index.ts`) and all internal imports
+- [x] Update hook-registry.ts script fields from .sh to .ts
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ---
 
