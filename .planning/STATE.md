@@ -32,6 +32,7 @@
 
 ## Previous Milestones
 
+- v4.4.0 — Smart Context Management (2026-03-14)
 - v4.3.0 — Observer Workflow Editor (2026-03-13)
 - v4.2.0 — Workflow Unification & Memory Architecture (2026-03-12)
 - v4.1.0 — Agentic Intelligence & Platform Maturity (2026-03-11)
@@ -43,7 +44,7 @@
 
 ---
 
-_State updated: 2026-03-13 — v4.4.0 autopilot session started (full-auto)_
+_State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next milestone_
 
 ## Session Continuity
 
@@ -52,4 +53,4 @@ _State updated: 2026-03-13 — v4.4.0 autopilot session started (full-auto)_
 
 ---
 
-_State generated from machine snapshot at 2026-03-14T16:57:38.975Z_
+_State generated from machine snapshot at 2026-03-14T16:59:39.763Z_
