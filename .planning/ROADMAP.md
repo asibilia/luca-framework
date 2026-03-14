@@ -19,7 +19,7 @@
 | 154   | Context Metrics & Checkpointing | Enhance context-check-throttled.sh to write metrics JSON + proactive checkpoints | Phase 151  | MODERATE ✓ |
 | 155   | Session Compact Restore         | Create SessionStart restore hook for post-compaction context recovery            | Phase 153  | MODERATE ✓ |
 | 156   | Context Restore Skill           | Create /context-restore skill for manual context recovery                        | Phase 153  | MODERATE ✓ |
-| 157   | Observer Context Window Bar     | Add context window usage bar to observer header with file-based metrics          | Phase 154  | MODERATE   |
+| 157   | Observer Context Window Bar     | Add context window usage bar to observer header with file-based metrics          | Phase 154  | MODERATE ✓ |
 
 ---
 
