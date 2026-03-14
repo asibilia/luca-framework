@@ -167,6 +167,7 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   "lu-learner": FAST_PROMOTED,
   "lu-process-data": FAST_PROMOTED,
   "lu-router-fast": FAST_PROMOTED,
+  "lu-shadow-scanner": FAST_PROMOTED,
   "lu-verifier-fast": FAST_PROMOTED,
 
   // --- Router (balanced from MODERATE+) ---

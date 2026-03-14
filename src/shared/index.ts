@@ -209,3 +209,17 @@ export type {
   SessionDigestConfig,
   SessionDigestResult,
 } from "./__helpers/session-digest";
+
+// ─── Shadow Scanner Schemas ────────────────────────────────────────────────────
+
+export {
+  ShadowFindingSchema,
+  ShadowScanReportSchema,
+  ShadowDebtConfigSchema,
+} from "./__schemas/shadow-scanner.schemas";
+
+export type {
+  ShadowFinding,
+  ShadowScanReport,
+  ShadowDebtConfig,
+} from "./__schemas/shadow-scanner.schemas";

@@ -184,5 +184,33 @@
   "runtime": "bun",
   "muninn": {
     "vault": "luca-framework"
+  },
+  "shadow_debt": {
+    "enabled": true,
+    "phase_scan_mode": "quick",
+    "milestone_scan_mode": "full",
+    "block_milestone_on_critical": true,
+    "allowlist": ["scripts/", ".planning/", "docs/", "packages/"],
+    "denylist_patterns": [
+      "test-*.ts",
+      "debug-*.ts",
+      "check-*.ts",
+      "fix-*.ts",
+      "temp-*",
+      "tmp-*",
+      "scratch-*"
+    ],
+    "known_good_script_dirs": [
+      "scripts/",
+      "src/hooks/scripts/",
+      ".claude/hooks/"
+    ],
+    "known_artifact_dirs": [
+      ".playwright-cli",
+      ".next",
+      ".turbo",
+      ".cache",
+      "coverage"
+    ]
   }
 }
