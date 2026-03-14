@@ -4,8 +4,8 @@
   "historyValue": {},
   "context": {
     "session_id": "fc759ad3-6102-4681-9b0c-738bbed69a23",
-    "github_issue": 71,
-    "branch": "71--v4.2-workflow-unification-memory-architecture",
+    "github_issue": 77,
+    "branch": "77--v4.5-platform-simplification-proactive-intelligence",
     "base_branch": "main",
     "current_milestone": "v4.0.0 — Complete",
     "current_plan_ids": [],
@@ -92,7 +92,7 @@
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
     "started_at": "2026-03-09T00:13:24.488Z",
-    "last_transition_at": "2026-03-12T15:40:55.071Z"
+    "last_transition_at": "2026-03-14T17:39:12.756Z"
   },
   "children": {
     "phase": {
