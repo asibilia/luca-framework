@@ -47,7 +47,7 @@ export const MODEL_TIER_TO_MODEL: Record<ModelTier, ModelId> = {
 
 /** Step activation status */
 export type StepActivation =
-  | "skip"
+  | "brief"
   | "optional"
   | "run"
   | "required"
