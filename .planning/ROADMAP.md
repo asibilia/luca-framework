@@ -46,11 +46,11 @@
 
 **Depends on:** Phase 159
 
-- [ ] Create `src/hooks/impl/_lib/` shared utilities (hook-io, bridge, vault, muninn)
-- [ ] Migrate simple hooks: `post-edit-format`, `post-edit-typecheck`, `snapshot-sync`, `statusline`
-- [ ] Migrate medium hooks: `pre-commit-gate`, `pre-commit-drift-check`, `context-monitor`, `session-persist`, `session-compact-restore`
-- [ ] Migrate complex hooks: `session-start`, `context-check-throttled`, `pre-compact-checkpoint`
-- [ ] Remove `_lib/common.sh` after all hooks migrated
+- [x] Create `src/hooks/impl/_lib/` shared utilities (hook-io, bridge, vault, muninn)
+- [x] Migrate simple hooks: `post-edit-format`, `post-edit-typecheck`, `snapshot-sync`, `statusline`
+- [x] Migrate medium hooks: `pre-commit-gate`, `pre-commit-drift-check`, `context-monitor`, `session-persist`, `session-compact-restore`
+- [x] Migrate complex hooks: `session-start`, `context-check-throttled`, `pre-compact-checkpoint`
+- [x] Remove `_lib/common.sh` after all hooks migrated
 - [ ] Manual end-to-end validation of each hook's stdin/stdout contract
 
 ### Phase 161: Shadow Tech Debt Cleanup System
@@ -59,12 +59,12 @@
 
 **Depends on:** Phase 159
 
-- [ ] Create schemas in `src/shared/__schemas/shadow-scanner.schemas.ts` + barrel exports
-- [ ] Create agent `src/agents/general/lu-shadow-scanner.agent.ts` + registry + model routing
-- [ ] Create skill `src/skills/general/shadow-cleanup.skill.ts` + registry
-- [ ] Add `shadow_debt` config section to `.planning/config.json`
-- [ ] Integrate into `phase-execute.skill.ts` (Step 10.6) and `milestone-complete.skill.ts` (Step 0.7)
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Create schemas in `src/shared/__schemas/shadow-scanner.schemas.ts` + barrel exports
+- [x] Create agent `src/agents/general/lu-shadow-scanner.agent.ts` + registry + model routing
+- [x] Create skill `src/skills/general/shadow-cleanup.skill.ts` + registry
+- [x] Add `shadow_debt` config section to `.planning/config.json`
+- [x] Integrate into `phase-execute.skill.ts` (Step 10.6) and `milestone-complete.skill.ts` (Step 0.7)
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ### Phase 162: Proactive Context Management
 
