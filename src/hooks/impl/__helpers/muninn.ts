@@ -10,6 +10,22 @@
  * @module muninn
  */
 
+// ─── URL Validation ──────────────────────────────────────────────────────────
+
+const ALLOWED_ORIGINS = ["http://127.", "http://localhost", "http://[::1]"];
+
+/**
+ * Validates that a MuninnDB URL starts with a loopback origin.
+ * Prevents redirecting requests to external hosts via a compromised env var.
+ *
+ * @param url - The URL string to validate
+ * @returns true if the URL is a loopback address, false otherwise
+ */
+const validateMuninnUrl = (url: string): boolean =>
+  ALLOWED_ORIGINS.some((origin) => url.startsWith(origin));
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 /** Shape of an engram to write to MuninnDB. */
 export interface MuninnEngram {
   vault: string;
@@ -32,6 +48,7 @@ export const writeMuninnEngram = async (
   engram: MuninnEngram,
 ): Promise<void> => {
   const baseUrl = process.env.MUNINN_DB_URL || "http://127.0.0.1:8476";
+  if (!validateMuninnUrl(baseUrl)) return;
   const apiKey = process.env.MUNINN_DB_API_KEY;
 
   const headers: Record<string, string> = {
@@ -81,6 +98,7 @@ export const recallMuninnEngrams = async (
   limit = 5,
 ): Promise<MuninnRecalledEngram[]> => {
   const baseUrl = process.env.MUNINN_DB_URL || "http://127.0.0.1:8476";
+  if (!validateMuninnUrl(baseUrl)) return [];
   const apiKey = process.env.MUNINN_DB_API_KEY;
 
   const headers: Record<string, string> = {

@@ -21,6 +21,8 @@ import {
 } from "fs";
 import { join } from "path";
 
+import { z } from "zod";
+
 import {
   guardDedup,
   drainStdin,
@@ -29,6 +31,13 @@ import {
   projectDir,
   isClaude,
 } from "./__helpers/hook-io.ts";
+
+// ─── Schemas ─────────────────────────────────────────────────────────────────
+
+const SessionEndMarkerSchema = z.object({
+  cleanup_pending: z.boolean().optional(),
+  ended_at: z.string().optional(),
+});
 import { runBridge } from "./__helpers/bridge.ts";
 import { resolveVault } from "./__helpers/vault.ts";
 import { recallMuninnEngrams } from "./__helpers/muninn.ts";
@@ -151,7 +160,9 @@ const main = async (): Promise<void> => {
   let staleSessionMsg = "";
   if (existsSync(sessionEndMarker)) {
     try {
-      const marker = JSON.parse(await Bun.file(sessionEndMarker).text());
+      const rawMarker = JSON.parse(await Bun.file(sessionEndMarker).text());
+      const markerResult = SessionEndMarkerSchema.safeParse(rawMarker);
+      const marker = markerResult.success ? markerResult.data : {};
       if (marker.cleanup_pending) {
         staleSessionMsg = `Stale session detected (ended: ${marker.ended_at || "unknown"}). MuninnDB cleanup will run during cognitive pre-flight.`;
       }
@@ -460,8 +471,8 @@ MuninnDB vault: ${vault} | Run /context-restore for deeper semantic recall.`;
     try {
       const envLines =
         [
-          `export LUCA_RUNTIME=${runtime}`,
-          `export LUCA_PLANNING_DIR=${planningDir}`,
+          `export LUCA_RUNTIME='${runtime}'`,
+          `export LUCA_PLANNING_DIR='${planningDir}'`,
           `export LUCA_SESSION_ACTIVE=1`,
         ].join("\n") + "\n";
       const { appendFileSync } = require("fs");

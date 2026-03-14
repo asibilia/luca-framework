@@ -107,8 +107,16 @@ const main = async (): Promise<void> => {
                 bodyLines.push(line);
               }
             }
-            const body = bodyLines.join(" ").trim();
-            noteContent += `\n- ${body}`;
+            // Sanitize: strip markdown headers and control characters
+            const sanitizedBody = bodyLines
+              .filter((line) => !line.trim().startsWith("#"))
+              .join(" ")
+              .trim()
+              .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+            // Truncate note body to 500 chars max
+            const truncated = sanitizedBody.slice(0, 500);
+            noteContent += `\n- ${truncated}`;
 
             // Move to done/
             mkdirSync(join(notesDir, "done"), { recursive: true });
@@ -387,7 +395,8 @@ const main = async (): Promise<void> => {
   // Zone transition messages (prompt-layer observer)
   if (currSev > prevSev) {
     if (prevZone === "peak" && zone === "good") {
-      systemMessage = `[Session Observer] Context at ${usagePercent}% (peak->good). Writing zone observation to MuninnDB. Please summarize your current goal and approach via: mcp__muninn__muninn_remember(vault: "luca-framework", concept: "session:observation-work", content: "[current goal, approach, recent decisions]")`;
+      const vault = await resolveVault();
+      systemMessage = `[Session Observer] Context at ${usagePercent}% (peak->good). Writing zone observation to MuninnDB. Please summarize your current goal and approach via: mcp__muninn__muninn_remember(vault: "${vault}", concept: "session:observation-work", content: "[current goal, approach, recent decisions]")`;
     } else if (
       zone === "degrading" &&
       clearSuggestionEnabled &&

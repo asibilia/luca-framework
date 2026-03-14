@@ -13,7 +13,7 @@ import path from "path";
  * Known safe root directories for clean operations.
  * Only directories within these roots may be cleaned by the build pipeline.
  */
-export const SAFE_CLEAN_ROOTS = [".claude", ".cursor", ".pi", "dist"] as const;
+export const SAFE_CLEAN_ROOTS = [".claude", "dist"] as const;
 
 /**
  * Validate that a directory path is within the project root and within
@@ -29,8 +29,8 @@ export const SAFE_CLEAN_ROOTS = [".claude", ".cursor", ".pi", "dist"] as const;
  * ```typescript
  * assertSafeCleanTarget('/Users/dev/project/.claude/agents'); // OK
  * assertSafeCleanTarget('/Users/dev/project/dist/plugin');    // OK
- * assertSafeCleanTarget('/etc');                               // throws
- * assertSafeCleanTarget('/Users/dev/project/src');             // throws
+ * assertSafeCleanTarget('/etc');                              // throws
+ * assertSafeCleanTarget('/Users/dev/project/src');            // throws
  * ```
  */
 export function assertSafeCleanTarget(dir: string): void {

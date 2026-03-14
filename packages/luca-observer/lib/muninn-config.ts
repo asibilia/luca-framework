@@ -361,20 +361,25 @@ function createMuninnClient(): MuninnClient {
       let relationships: unknown[] = [];
       if (engrams.length > 0) {
         try {
-          const linksRes = await muninnFetch(
-            `/api/engrams/${engrams[0]!.id}/links`,
-            undefined,
-            vault,
-          );
-          if (linksRes.ok) {
-            const linksData = (await linksRes.json()) as Record<
-              string,
-              unknown
-            >;
-            relationships =
-              (linksData.associations as unknown[]) ??
-              (linksData.links as unknown[]) ??
-              [];
+          const engramId = engrams[0]!.id as string;
+          if (!engramId || !/^[a-zA-Z0-9_-]+$/.test(engramId)) {
+            // Skip links fetch — invalid engram ID
+          } else {
+            const linksRes = await muninnFetch(
+              `/api/engrams/${engramId}/links`,
+              undefined,
+              vault,
+            );
+            if (linksRes.ok) {
+              const linksData = (await linksRes.json()) as Record<
+                string,
+                unknown
+              >;
+              relationships =
+                (linksData.associations as unknown[]) ??
+                (linksData.links as unknown[]) ??
+                [];
+            }
           }
         } catch {
           /* links fetch is best-effort */

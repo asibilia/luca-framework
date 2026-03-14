@@ -9,8 +9,7 @@
  * @module context-monitor
  */
 
-import { existsSync, statSync } from "fs";
-import { resolve } from "path";
+import { existsSync, statSync, realpathSync } from "fs";
 
 import {
   guardDedup,
@@ -41,17 +40,18 @@ const main = async (): Promise<void> => {
   let validTranscriptPath = "";
 
   // SEC-01: Validate transcript path — reject relative paths and paths outside $HOME
+  // Uses realpathSync to resolve symlinks (prevents symlink-based traversal)
   if (transcriptPath) {
     if (transcriptPath.startsWith("/")) {
       const home = process.env.HOME || "";
       if (home) {
         try {
-          const resolved = resolve(transcriptPath);
+          const resolved = realpathSync(transcriptPath);
           if (resolved.startsWith(home + "/")) {
             validTranscriptPath = resolved;
           }
         } catch {
-          // resolve failed — reject
+          // realpathSync throws if path doesn't exist or is a broken symlink — reject
         }
       }
     }
