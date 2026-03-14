@@ -16,11 +16,11 @@
 
 **Depends on:** None
 
-- [ ] Remove `"skip"` activation values from complexity matrices in `defaults.ts`
-- [ ] Simplify guard functions in `guards.ts` to not gate on complexity
-- [ ] Remove complexity check from pre-mortem gating in `phase-discuss.skill.ts`
-- [ ] Remove `"skip"` type variant from activation type definition
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Remove `"skip"` activation values from complexity matrices in `defaults.ts`
+- [x] Simplify guard functions in `guards.ts` to not gate on complexity
+- [x] Remove complexity check from pre-mortem gating in `phase-discuss.skill.ts`
+- [x] Remove `"skip"` type variant from activation type definition
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 **Note:** Exclude `src/hooks/pi-extensions/luca-complexity.ts` — Phase 159 deletes the entire `pi-extensions/` directory.
 

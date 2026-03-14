@@ -3,11 +3,7 @@
  *
  * Uses a functional pattern that aligns with the project's no-classes convention.
  */
-import {
-  toCursorFormat,
-  toClaudeFormat,
-  toPiFormat,
-} from "~/shared/__helpers/format";
+import { toClaudeFormat } from "~/shared/__helpers/format";
 import { deepFreeze } from "~/shared/__helpers/deep-freeze";
 import { RuleConfigSchema } from "~/rules/__schemas/rule.schemas";
 
@@ -37,18 +33,8 @@ export function createRule(config: RuleConfig): BaseRule {
     get description() {
       return validated.frontmatter.description;
     },
-    toCursorFormat() {
-      return toCursorFormat(validated.frontmatter, validated.sections);
-    },
     toClaudeFormat() {
       return toClaudeFormat(
-        `# ${validated.frontmatter.description}`,
-        validated.sections,
-      );
-    },
-    toPiFormat() {
-      return toPiFormat(
-        { description: validated.frontmatter.description },
         `# ${validated.frontmatter.description}`,
         validated.sections,
       );

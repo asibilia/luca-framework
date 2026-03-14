@@ -11,8 +11,6 @@
 import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { HookPlatformAdapter, AdapterPlatform } from "./adapter.schemas";
 import { claudeAdapter } from "./claude.adapter";
-import { cursorAdapter } from "./cursor.adapter";
-import { piAdapter } from "./pi.adapter";
 
 // ---- Registry ----
 
@@ -20,17 +18,11 @@ import { piAdapter } from "./pi.adapter";
  * Hook adapter registry mapping platform IDs to adapter objects.
  *
  * Each adapter conforms to the HookPlatformAdapter contract defined
- * in adapter.schemas.ts. To add a new platform:
- *
- * 1. Create a new adapter file (e.g., `windsurf.adapter.ts`)
- * 2. Add the platform to ADAPTER_PLATFORMS in adapter.schemas.ts
- * 3. Register the adapter here
+ * in adapter.schemas.ts. Claude Code is the sole supported platform.
  */
 export const hookAdapterRegistry: Record<AdapterPlatform, HookPlatformAdapter> =
   {
     "claude-code": claudeAdapter,
-    cursor: cursorAdapter,
-    pi: piAdapter,
   };
 
 // ---- Resolution helpers ----

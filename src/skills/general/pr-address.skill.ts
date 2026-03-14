@@ -38,7 +38,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** validate concerns, plan fixes, or execute fixes yourself. Spawn the appropriate agents.
 
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**Reference:** See \`.claude/luca/references/task-directive.md\` for Task() syntax patterns.
 
 ### Vault Resolution
 
@@ -730,8 +730,8 @@ EOF
 | dx-advocate          | \`.github/agents/\` | Code quality, standards        |
 | accessibility-expert | \`.github/agents/\` | Accessibility issues           |
 | test-engineer        | \`.github/agents/\` | Testing concerns               |
-| lu-pr-reviewer    | \`.cursor/agents/\` | Coordination, general feedback |
-| lu-learner        | \`.cursor/agents/\` | Capture PR review patterns     |
+| lu-pr-reviewer    | \`.claude/agents/\` | Coordination, general feedback |
+| lu-learner        | \`.claude/agents/\` | Capture PR review patterns     |
 
 ## Success Criteria
 

@@ -62,8 +62,8 @@ Auto mode is useful when running via \`/autopilot\` or when the user wants AI-re
 
 Read these reference files before executing:
 
-- \`.cursor/luca/workflows/discuss-phase.md\`
-- \`.cursor/luca/templates/context.md\`
+- \`.claude/luca/workflows/discuss-phase.md\`
+- \`.claude/luca/templates/context.md\`
 
 ## Process
 

@@ -52,10 +52,9 @@ Security checklist:
 
 Framework-specific security concerns:
 
-- **Pi extensions** (src/hooks/pi-extensions/): Commands using execSync or child_process must sanitize all interpolated values to prevent shell injection
-- **Hook scripts** (.claude/hooks/, .cursor/hooks/): Shell scripts executed automatically should not accept unvalidated external input
+- **Hook scripts** (.claude/hooks/): Shell scripts executed automatically should not accept unvalidated external input
 - **State bridge** (luca-bridge CLI): CLI arguments passed via shell must be sanitized
-- **Compiler output**: Generated markdown must not contain executable code that could be injected into Claude Code or Cursor sessions
+- **Compiler output**: Generated markdown must not contain executable code that could be injected into Claude Code sessions
 - **Schema validation**: All external input (config files, CLI args, MCP payloads) must pass through Zod schemas before processing
 
 OWASP-relevant focus areas:

@@ -2,11 +2,11 @@
  * Hook registry Zod schemas and TypeScript types for the Luca Framework.
  *
  * Defines the structure for hook definitions including event types,
- * matchers, script references, and platform-specific configuration.
+ * matchers, script references, and Claude Code configuration.
  *
  * Two schema layers:
  * - CanonicalHookSchema: Platform-independent hook definition
- * - HookDefinitionSchema: Legacy format with platform-specific fields (backward compat)
+ * - HookDefinitionSchema: Legacy format with Claude Code fields (backward compat)
  */
 
 import { z } from "zod";
@@ -16,8 +16,8 @@ import { z } from "zod";
 /**
  * Platform-independent event names.
  *
- * These are semantic lifecycle events that each platform maps to its own
- * event name (e.g., "post_tool_use" -> Claude "PostToolUse", Cursor "afterFileEdit").
+ * These are semantic lifecycle events mapped to Claude Code PascalCase
+ * event names (e.g., "post_tool_use" -> "PostToolUse").
  */
 export const CANONICAL_EVENTS = [
   "post_tool_use",
@@ -53,7 +53,7 @@ export type CanonicalEvent = z.infer<typeof canonicalEventSchema>;
 export const CanonicalHookSchema = z.object({
   /** Platform-independent lifecycle event */
   event: canonicalEventSchema,
-  /** Tool name regex filter (undefined = always fire). Maps to Claude matcher, Pi pi_matcher, etc. */
+  /** Tool name regex filter (undefined = always fire). Maps to Claude matcher. */
   tool_filter: z.string().optional(),
   /** Command substring filter for pre_tool_use hooks (e.g., commit command patterns) */
   command_filter: z.string().optional(),
@@ -61,7 +61,7 @@ export const CanonicalHookSchema = z.object({
   script: z.string(),
   /** Timeout in seconds */
   timeout: z.number().positive(),
-  /** Run asynchronously in background (supported by Claude Code, ignored by other platforms) */
+  /** Run asynchronously in background (supported by Claude Code) */
   async: z.boolean(),
   /** Status message shown while hook runs (supported by Claude Code) */
   status_message: z.string().optional(),
@@ -73,21 +73,13 @@ export type CanonicalHook = z.infer<typeof CanonicalHookSchema>;
 export const HookDefinitionSchema = z.object({
   /** Claude Code hook event name (PascalCase) */
   event: z.string(),
-  /** Cursor hook event name (camelCase) */
-  cursor_event: z.string(),
-  /** Pi extension event name (snake_case) — undefined means hook is not compiled for Pi */
-  pi_event: z.string().optional(),
   /** Regex matcher for Claude Code tool name filtering (undefined = always fire) */
   matcher: z.string().optional(),
-  /** Regex matcher for Cursor filtering (undefined = always fire) */
-  cursor_matcher: z.string().optional(),
-  /** Pi tool names that trigger this hook (undefined = always fire) */
-  pi_matcher: z.array(z.string()).optional(),
   /** Shell script filename in src/hooks/scripts/ */
   script: z.string(),
   /** Timeout in seconds */
   timeout: z.number().positive(),
-  /** Run asynchronously in background (Claude Code only, ignored by Cursor) */
+  /** Run asynchronously in background (Claude Code only) */
   async: z.boolean(),
   /** Status message shown while hook runs (Claude Code only) */
   status_message: z.string().optional(),

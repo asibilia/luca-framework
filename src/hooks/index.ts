@@ -1,7 +1,7 @@
 /**
  * Public API for the hooks module.
  *
- * Exports hook schemas, registry, config generators, and platform adapters.
+ * Exports hook schemas, registry, config generators, and Claude Code adapter.
  */
 
 // Schemas and types — canonical (platform-independent)
@@ -12,7 +12,7 @@ export {
 } from "./__schemas/hook.schemas";
 export type { CanonicalEvent, CanonicalHook } from "./__schemas/hook.schemas";
 
-// Schemas and types — legacy (platform-specific)
+// Schemas and types — legacy
 export {
   HookDefinitionSchema,
   NO_MATCHER_SENTINEL,
@@ -46,19 +46,13 @@ export type {
 } from "./__helpers/portable-hook";
 
 // Config generators — canonical
-export {
-  generateClaudeHooksConfigFromCanonical,
-  generateCursorHooksConfigFromCanonical,
-  generatePiExtensionFromCanonical,
-} from "./__helpers/config-generators";
+export { generateClaudeHooksConfigFromCanonical } from "./__helpers/config-generators";
 
 // Adapter registry — formal adapter-registry architecture
 export {
   ADAPTER_PLATFORMS,
   adapterPlatformSchema,
   claudeAdapter,
-  cursorAdapter,
-  piAdapter,
   hookAdapterRegistry,
   resolveAdapter,
   getRegisteredPlatforms,

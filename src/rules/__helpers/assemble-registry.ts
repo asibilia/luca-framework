@@ -115,7 +115,7 @@ async function loadProfileRules(): Promise<Record<string, () => BaseRule>> {
  * Complete rule registry combining general rules with active profile rules.
  *
  * This is the single source of truth consumed by the build pipeline
- * (build-shared.ts) to generate .claude/ and .cursor/ rule files.
+ * (build-shared.ts) to generate .claude/ rule files.
  */
 export const ruleRegistry: Record<string, () => BaseRule> = {
   ...generalRules,

@@ -32,7 +32,5 @@ export type BaseRule = {
   readonly config: RuleConfig;
   readonly name: string;
   readonly description: string;
-  toCursorFormat(): string;
   toClaudeFormat(): string;
-  toPiFormat(): string;
 };

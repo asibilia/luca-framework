@@ -46,7 +46,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate agents.
 
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**Reference:** See \`.claude/luca/references/task-directive.md\` for Task() syntax patterns.
 
 ## Context-Aware Sub-Agent Spawning (Phase 16+)
 
@@ -73,9 +73,9 @@ Each sub-agent receives only the context documents appropriate for its role and 
 
 Read these reference files before executing:
 
-- \`.cursor/luca/references/ui-brand.md\`
-- \`.cursor/luca/workflows/execute-phase.md\`
-- \`.cursor/luca/workflows/learning-capture.md\`
+- \`.claude/luca/references/ui-brand.md\`
+- \`.claude/luca/workflows/execute-phase.md\`
+- \`.claude/luca/workflows/learning-capture.md\`
 
 ## Always Verify & Learning Capture (NEW)
 
@@ -2323,7 +2323,7 @@ Testing deliverables from this phase...
 
 **Follow verify-work workflow inline:**
 
-Read \`.cursor/luca/workflows/verify-work.md\` for detailed UAT process.
+Read \`.claude/luca/workflows/verify-work.md\` for detailed UAT process.
 
 1. **Find SUMMARY.md files** for the phase
 2. **Extract testable deliverables** (user-observable outcomes)

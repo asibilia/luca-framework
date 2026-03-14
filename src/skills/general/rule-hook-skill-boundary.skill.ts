@@ -59,12 +59,12 @@ const ruleHookSkillBoundaryConfig: SkillConfig = {
 
 ## Platform Behavior
 
-- **Claude Code**: Hooks via .claude/settings.json. Scripts in .claude/hooks/. Supports async hooks and statusMessage.
-- **Cursor IDE**: Hooks via .cursor/hooks.json. Scripts in .cursor/hooks/. Different event names (camelCase) and JSON formats.
-- **Both**: Same shell scripts with dual-format stdin/stdout parsing. Rules and skills work on both platforms.`,
+- **Claude Code**: Hooks via .claude/settings.json. Scripts in .claude/hooks/. Supports async hooks and statusMessage.`,
       order: 1,
     },
   ],
 };
 
-export const ruleHookSkillBoundarySkill = createSkill(ruleHookSkillBoundaryConfig);
+export const ruleHookSkillBoundarySkill = createSkill(
+  ruleHookSkillBoundaryConfig,
+);

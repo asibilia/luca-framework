@@ -50,7 +50,7 @@ Luca framework context:
 
 - Developer tooling monorepo for agentic development
 - Compiles agent/skill/rule/hook definitions from TypeScript to markdown
-- Outputs to .claude/, .cursor/, .pi/, and dist/plugin/ directories
+- Outputs to .claude/ and dist/plugin/ directories
 - State machine in packages/luca-framework/ tracks workflow phases
 - Spec-driven development with cognitive memory (MuninnDB brain tree, engrams, session context)
 

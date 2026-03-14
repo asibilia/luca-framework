@@ -8,7 +8,7 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 const cursorRulesConfig: RuleConfig = {
   frontmatter: {
     description: `Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.`,
-    globs: [".cursor/rules/*.mdc"],
+    globs: [".claude/rules/*.md"],
     alwaysApply: true,
   },
   sections: [
@@ -29,7 +29,7 @@ const cursorRulesConfig: RuleConfig = {
 
 - **File References:**
   - Use \`[filename](mdc:path/to/file)\` ([filename](mdc:filename)) to reference files
-  - Example: [prisma.mdc](mdc:.cursor/rules/prisma.mdc) for rule references
+  - Example: [prisma.md](mdc:.claude/rules/prisma.md) for rule references
   - Example: [schema.prisma](mdc:prisma/schema.prisma) for code references
 
 - **Code Examples:**

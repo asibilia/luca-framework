@@ -46,7 +46,5 @@ export type BaseSkill = {
   readonly config: SkillConfig;
   readonly name: string;
   readonly description: string;
-  toCursorFormat(): string;
   toClaudeFormat(): string;
-  toPiFormat(): string;
 };

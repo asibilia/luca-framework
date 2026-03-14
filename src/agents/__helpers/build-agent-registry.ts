@@ -53,7 +53,7 @@ import type { BaseAgent } from "../__schemas/agent.schemas";
  * Registry mapping agent names to factory functions for bulk processing.
  *
  * Consumed by the build pipeline (build-shared.ts) to generate
- * .claude/ and .cursor/ agent definition files.
+ * .claude/ agent definition files.
  */
 export const agentRegistry: Record<string, () => BaseAgent> = {
   "code-architect": () => codeArchitectAgent,

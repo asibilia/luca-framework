@@ -31,9 +31,9 @@ Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUI
 
 Read these reference files before executing:
 
-- \`.cursor/luca/workflows/complete-milestone.md\`
-- \`.cursor/luca/templates/milestone-archive.md\`
-- \`.cursor/luca/workflows/learning-capture.md\`
+- \`.claude/luca/workflows/complete-milestone.md\`
+- \`.claude/luca/templates/milestone-archive.md\`
+- \`.claude/luca/workflows/learning-capture.md\`
 
 ## Learning Consolidation (NEW)
 

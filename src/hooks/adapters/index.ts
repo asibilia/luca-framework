@@ -1,7 +1,7 @@
 /**
  * Public API for the hook platform adapters module.
  *
- * Exports adapter contract schema, individual platform adapters,
+ * Exports adapter contract schema, Claude Code adapter,
  * and the adapter registry.
  */
 
@@ -16,20 +16,6 @@ export {
   adaptForClaude as claudeAdapt,
   claudeAdapter,
 } from "./claude.adapter";
-
-// Cursor adapter
-export {
-  CURSOR_EVENT_MAP as CURSOR_ADAPTER_EVENT_MAP,
-  adaptForCursor as cursorAdapt,
-  cursorAdapter,
-} from "./cursor.adapter";
-
-// Pi adapter
-export {
-  PI_EVENT_MAP as PI_ADAPTER_EVENT_MAP,
-  adaptForPi as piAdapt,
-  piAdapter,
-} from "./pi.adapter";
 
 // Adapter registry
 export {

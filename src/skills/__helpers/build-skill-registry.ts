@@ -69,7 +69,7 @@ import type { BaseSkill } from "../__schemas/skill.schemas";
  * Registry mapping skill names to factory functions for bulk processing.
  *
  * Consumed by the build pipeline (build-shared.ts) to generate
- * .claude/ and .cursor/ skill definition files.
+ * .claude/ skill definition files.
  */
 export const skillRegistry: Record<string, () => BaseSkill> = {
   "code-lint": () => codeLintSkill,

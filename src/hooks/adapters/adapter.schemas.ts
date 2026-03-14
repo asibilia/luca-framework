@@ -18,7 +18,7 @@ import type { PlatformHookConfig } from "../__helpers/platform-adapters";
  * Re-exported from portable-hook.ts for convenience. Each adapter
  * declares which platform it serves via this type.
  */
-export const ADAPTER_PLATFORMS = ["claude-code", "cursor", "pi"] as const;
+export const ADAPTER_PLATFORMS = ["claude-code"] as const;
 export const adapterPlatformSchema = z.enum(ADAPTER_PLATFORMS);
 export type AdapterPlatform = z.infer<typeof adapterPlatformSchema>;
 
@@ -30,7 +30,7 @@ export type AdapterPlatform = z.infer<typeof adapterPlatformSchema>;
  * runtime resolution of platform-specific behavior.
  */
 export interface HookPlatformAdapter {
-  /** Platform identifier (e.g., "claude-code", "cursor", "pi") */
+  /** Platform identifier (e.g., "claude-code") */
   platform: AdapterPlatform;
 
   /** Maps canonical event names to platform-specific event names */

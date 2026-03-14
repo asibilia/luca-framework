@@ -53,7 +53,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to plan or execute yourself. Spawn the appropriate agents.
 
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**Reference:** See \`.claude/luca/references/task-directive.md\` for Task() syntax patterns.
 
 ## Process
 

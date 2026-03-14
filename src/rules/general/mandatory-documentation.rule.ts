@@ -164,7 +164,7 @@ const mandatoryDocumentationConfig: RuleConfig = {
   - **Team Knowledge**: Documentation is essential for knowledge transfer
   - **Future Maintenance**: Well-documented code is easier to maintain and extend
 
-Follow [file-naming.mdc](mdc:.cursor/rules/file-naming.mdc) for file naming conventions.`,
+Follow [file-naming.md](mdc:.claude/rules/file-naming.md) for file naming conventions.`,
       order: 1,
     },
   ],
