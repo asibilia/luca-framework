@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { z } from "zod";
@@ -35,9 +35,30 @@ const ContextMetricsSchema = z.object({
  *
  * Workspace root resolution: LUCA_PROJECT_DIR > WORKSPACE_ROOT > cwd
  */
+/**
+ * Walk up from startDir looking for a directory containing `.planning/`.
+ * Returns the first match, or null if none found.
+ */
+async function findProjectRoot(startDir: string): Promise<string | null> {
+  let current = resolve(startDir);
+  const root = resolve("/");
+  while (current !== root) {
+    try {
+      await access(join(current, ".planning"));
+      return current;
+    } catch {
+      /* not found at this level, keep walking up */
+    }
+    current = resolve(current, "..");
+  }
+  return null;
+}
+
 export async function GET() {
   const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
-  const workspaceRoot = rawRoot ? resolve(rawRoot) : process.cwd();
+  const explicitRoot = rawRoot ? resolve(rawRoot) : null;
+  const workspaceRoot =
+    explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
   const metricsPath = join(workspaceRoot, ".planning", ".context-metrics.json");
 
   try {
