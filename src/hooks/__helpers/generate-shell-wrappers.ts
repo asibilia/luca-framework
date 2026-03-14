@@ -26,13 +26,19 @@ import { resolveCanonicalRegistry } from "./hook-registry";
  * @param hookName - Canonical hook name (e.g. "post-edit-format")
  * @returns Shell script string with exec bun invocation
  */
-export function generateShellWrapper(hookName: string): string {
+export function generateShellWrapper(
+  hookName: string,
+  outputPath?: string,
+): string {
   const scriptName = `${hookName}.ts`;
-  // Wrapper lives at .claude/hooks/{hookName}.sh
-  // TypeScript source lives at src/hooks/scripts/{hookName}.ts
-  // Relative path: ../../src/hooks/scripts/{hookName}.ts
+  // Most wrappers live at .claude/hooks/{hookName}.sh → ../../ to reach src/
+  // Statusline wrapper lives at .claude/statusline.sh → ../ to reach src/
+  const isRootLevel =
+    outputPath?.startsWith(".claude/") &&
+    !outputPath.startsWith(".claude/hooks/");
+  const prefix = isRootLevel ? ".." : "../..";
   return `#!/bin/sh
-exec bun "$(dirname "$0")/../../src/hooks/scripts/${scriptName}" "$@" <&0
+exec bun "$(dirname "$0")/${prefix}/src/hooks/scripts/${scriptName}" "$@" <&0
 `;
 }
 
@@ -51,13 +57,12 @@ export function generateAllShellWrappers(): Record<string, string> {
   const wrappers: Record<string, string> = {};
 
   for (const hookName of Object.keys(registry)) {
-    const content = generateShellWrapper(hookName);
-
-    if (hookName === "statusline") {
-      wrappers[".claude/statusline.sh"] = content;
-    } else {
-      wrappers[`.claude/hooks/${hookName}.sh`] = content;
-    }
+    const outputPath =
+      hookName === "statusline"
+        ? ".claude/statusline.sh"
+        : `.claude/hooks/${hookName}.sh`;
+    const content = generateShellWrapper(hookName, outputPath);
+    wrappers[outputPath] = content;
   }
 
   return wrappers;
