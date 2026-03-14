@@ -126,6 +126,18 @@
 - [x] Verify exit code semantics: exit 0 (allow) and exit 2 (block) for PreToolUse hooks
 - [x] Document validated contracts in phase SUMMARY.md
 
+### Phase 166: Fix Observer Memory Page Data Gaps
+
+**Goal:** Fix 3 issues preventing data from displaying on the observer /memory page: path resolution bugs in 2 API routes, checkpoint route reading wrong file, and missing observation/metric MuninnDB writers.
+
+**Depends on:** Phase 165
+
+- [ ] Fix path resolution in `/api/muninn/checkpoint` and `/api/muninn/zone-history` routes (apply `findProjectRoot()` pattern)
+- [ ] Fix checkpoint route to read `.context-metrics.json` for live session data instead of `.context-checkpoint.json`
+- [ ] Wire observation writes from `context-check-throttled.ts` to produce `session:observation-*` MuninnDB engrams that the observations route expects
+- [ ] Verify all 6 memory page sections display data (not empty states) during active session
+- [ ] Verify with `bunx --bun tsc --noEmit`
+
 ---
 
 ## Closed (v4.4.0 Completed)
