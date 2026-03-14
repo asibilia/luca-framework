@@ -79,7 +79,7 @@ export function ContextWindowBar() {
 
   // Build tooltip based on data source
   const hasTokenData =
-    metrics.context_window_size && metrics.total_input_tokens;
+    metrics.context_window_size != null && metrics.total_input_tokens != null;
   const tooltipDetail = hasTokenData
     ? `${formatTokens(metrics.total_input_tokens!)} / ${formatTokens(metrics.context_window_size!)} tokens`
     : metrics.transcript_bytes

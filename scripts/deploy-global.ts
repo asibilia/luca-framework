@@ -460,6 +460,30 @@ async function mergeSettings(): Promise<void> {
           },
         ],
       },
+      {
+        matcher: "compact",
+        hooks: [
+          {
+            type: "command",
+            command: `"${globalHooksDir}/session-compact-restore.sh"`,
+            timeout: 10,
+            statusMessage: "Restoring context...",
+          },
+        ],
+      },
+    ],
+    PreCompact: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: `"${globalHooksDir}/pre-compact-checkpoint.sh"`,
+            timeout: 15,
+            async: true,
+            statusMessage: "Saving context checkpoint...",
+          },
+        ],
+      },
     ],
     SessionEnd: [
       {
@@ -555,12 +579,14 @@ async function mergeSettings(): Promise<void> {
         const lucaScripts = [
           "session-start.sh",
           "session-persist.sh",
+          "session-compact-restore.sh",
           "context-monitor.sh",
           "pre-commit-gate.sh",
           "pre-commit-drift-check.sh",
           "post-edit-format.sh",
           "post-edit-typecheck.sh",
           "context-check-throttled.sh",
+          "pre-compact-checkpoint.sh",
           "snapshot-sync.sh",
         ];
         return !lucaScripts.some((s) => cmd.includes(s));
@@ -681,11 +707,13 @@ async function removeGlobalArtifacts(): Promise<void> {
     const lucaScripts = [
       "session-start.sh",
       "session-persist.sh",
+      "session-compact-restore.sh",
       "context-monitor.sh",
       "pre-commit-gate.sh",
       "post-edit-format.sh",
       "post-edit-typecheck.sh",
       "context-check-throttled.sh",
+      "pre-compact-checkpoint.sh",
       "snapshot-sync.sh",
     ];
 
@@ -736,11 +764,13 @@ async function removeGlobalArtifacts(): Promise<void> {
               const lucaScripts = [
                 "session-start.sh",
                 "session-persist.sh",
+                "session-compact-restore.sh",
                 "context-monitor.sh",
                 "pre-commit-gate.sh",
                 "post-edit-format.sh",
                 "post-edit-typecheck.sh",
                 "context-check-throttled.sh",
+                "pre-compact-checkpoint.sh",
                 "snapshot-sync.sh",
               ];
               return !lucaScripts.some((s) => cmd.includes(s));

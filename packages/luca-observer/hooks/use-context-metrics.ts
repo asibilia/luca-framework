@@ -71,7 +71,11 @@ export function useContextMetrics() {
       const res = await fetch("/api/context-metrics");
       if (!res.ok) {
         setMetrics(null);
-        setError(null); // 404 is expected when no session active
+        if (res.status === 404) {
+          setError(null); // No active session — expected
+        } else {
+          setError(`Server error (${res.status})`);
+        }
         return;
       }
       const raw: unknown = await res.json();
@@ -79,6 +83,9 @@ export function useContextMetrics() {
       if (result.success) {
         setMetrics(result.data);
         setError(null);
+      } else {
+        setMetrics(null);
+        setError("Invalid metrics response");
       }
     } catch {
       setError("Fetch failed");

@@ -73,21 +73,32 @@ export async function GET() {
     explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
   const metricsPath = join(workspaceRoot, ".planning", ".context-metrics.json");
 
+  let content: string;
   try {
-    const content = await readFile(metricsPath, "utf-8");
-    const raw: unknown = JSON.parse(content);
-    const result = ContextMetricsSchema.safeParse(raw);
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Invalid metrics format" },
-        { status: 502 },
-      );
-    }
-    return NextResponse.json(result.data);
+    content = await readFile(metricsPath, "utf-8");
   } catch {
     return NextResponse.json(
       { error: "Context metrics not available" },
       { status: 404 },
     );
   }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid metrics format" },
+      { status: 502 },
+    );
+  }
+
+  const result = ContextMetricsSchema.safeParse(raw);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: "Invalid metrics format" },
+      { status: 502 },
+    );
+  }
+  return NextResponse.json(result.data);
 }
