@@ -98,7 +98,7 @@ The lu-discuss-researcher model tier is resolved via \`resolveModelForAgent("lu-
 6. **Deep-dive each area** — 4 questions per area, then offer more/next
 7. **Write CONTEXT.md** — Sections match areas discussed
 7.5. **Declare appetite** — Set appetite level (see Appetite Declaration section below)
-7.75. **Pre-mortem risk analysis** — Run pre-mortem if MODERATE+ and gate enabled (see Pre-Mortem Risk Analysis section below)
+7.75. **Pre-mortem risk analysis** — Run pre-mortem if gate enabled (see Pre-Mortem Risk Analysis section below)
 8. **Offer next steps** (research or plan)
 
 **Auto Mode (\`--auto\`):**
@@ -134,7 +134,7 @@ The lu-discuss-researcher model tier is resolved via \`resolveModelForAgent("lu-
     - \`[user-override]\` — User overrode the researched recommendation
     - \`[user-input]\` — Non-researchable item answered by user
 10.5a. **Declare appetite** — Set appetite level (see Appetite Declaration section below)
-10.75a. **Pre-mortem risk analysis** — Run pre-mortem if MODERATE+ and gate enabled (see Pre-Mortem Risk Analysis section below)
+10.75a. **Pre-mortem risk analysis** — Run pre-mortem if gate enabled (see Pre-Mortem Risk Analysis section below)
 11a. **Offer next steps** (research or plan)
 
 ## Critical: Scope Guardrail
@@ -184,8 +184,8 @@ Default:
 - [ ] Scope creep redirected to deferred ideas
 - [ ] CONTEXT.md captures decisions, not vague vision
 - [ ] Appetite level declared and persisted via bridge
-- [ ] Pre-mortem risk analysis completed (MODERATE+) or skipped (TRIVIAL/SIMPLE)
-- [ ] Self-tuning auto-skip checked signal rate aggregate before pre-mortem (MODERATE+)
+- [ ] Pre-mortem risk analysis completed or skipped (gate disabled)
+- [ ] Self-tuning auto-skip checked signal rate aggregate before pre-mortem
 
 ## Appetite Declaration
 
@@ -261,8 +261,7 @@ PREMORTEM_GATE=$(luca-bridge gate-check --gate=premortem 2>/dev/null | bun -e "c
 
 ### Skip Conditions
 
-Skip pre-mortem (no prompt, no spawn) if ANY of these are true:
-- Complexity is TRIVIAL or SIMPLE
+Skip pre-mortem (no prompt, no spawn) if:
 - \`PREMORTEM_GATE\` is "false"
 
 When skipping, emit DISCUSS_COMPLETE as normal and proceed to next steps.
@@ -297,7 +296,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
 
 **Important:** The config gate (\\\`gates.premortem\\\`) takes precedence. If config says disabled, pre-mortem never runs regardless of signal rate. Self-tuning only applies when config says enabled but data suggests low value.
 
-### Execution (MODERATE+ AND gate enabled)
+### Execution (gate enabled)
 
 1. **Spawn lu-premortem agent** via Task() with this context:
 
