@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
 /**
- * build-all.ts — Unified build script for Cursor + Claude + Plugin output
+ * build-all.ts — Unified build script for Claude Code + Plugin output
  *
  * Calls generateAllOutputs() to compile every agent, skill, and rule
  * definition in src/ into platform-specific output, then writes the
- * results to .cursor/, .claude/, and dist/plugin/.
+ * results to .claude/ and dist/plugin/.
  *
  * Usage:
  *   bun run build:all                       # via package.json script
@@ -14,9 +14,6 @@
  *   bun run build:all --cleanup-stale-locks # remove lock file without building
  *
  * Output paths:
- *   .cursor/agents/*.md
- *   .cursor/skills/<name>/SKILL.md
- *   .cursor/rules/*.mdc
  *   .claude/agents/*.md
  *   .claude/skills/<name>/SKILL.md
  *   .claude/rules/*.md
@@ -104,23 +101,11 @@ async function main() {
   // =========================================================================
   // 2. Define and prepare output directories
   // =========================================================================
-  const cursorDir = path.join(process.cwd(), ".cursor");
-  const cursorAgentsDir = path.join(cursorDir, "agents");
-  const cursorSkillsDir = path.join(cursorDir, "skills");
-  const cursorRulesDir = path.join(cursorDir, "rules");
-  const cursorHooksDir = path.join(cursorDir, "hooks");
-
   const claudeDir = path.join(process.cwd(), ".claude");
   const claudeAgentsDir = path.join(claudeDir, "agents");
   const claudeSkillsDir = path.join(claudeDir, "skills");
   const claudeRulesDir = path.join(claudeDir, "rules");
   const claudeHooksDir = path.join(claudeDir, "hooks");
-
-  const piDir = path.join(process.cwd(), ".pi");
-  const piAgentsDir = path.join(piDir, "agents");
-  const piSkillsDir = path.join(piDir, "skills");
-  const piExtensionsDir = path.join(piDir, "extensions");
-  const piExtensionsHelpersDir = path.join(piExtensionsDir, "__helpers");
 
   const pluginDir = path.join(process.cwd(), "dist", "plugin");
   const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
@@ -132,18 +117,10 @@ async function main() {
 
   // Ensure all output directories exist
   await Promise.all([
-    ensureDir(cursorAgentsDir),
-    ensureDir(cursorSkillsDir),
-    ensureDir(cursorRulesDir),
-    ensureDir(cursorHooksDir),
     ensureDir(claudeAgentsDir),
     ensureDir(claudeSkillsDir),
     ensureDir(claudeRulesDir),
     ensureDir(claudeHooksDir),
-    ensureDir(piAgentsDir),
-    ensureDir(piSkillsDir),
-    ensureDir(piExtensionsDir),
-    ensureDir(piExtensionsHelpersDir),
     ensureDir(pluginManifestDir),
     ensureDir(pluginAgentsDir),
     ensureDir(pluginSkillsDir),
@@ -154,36 +131,20 @@ async function main() {
 
   // Clean stale files before writing
   const [
-    removedCursorAgents,
-    removedCursorSkills,
-    removedCursorRules,
-    removedCursorHooks,
     removedClaudeAgents,
     removedClaudeSkills,
     removedClaudeRules,
     removedClaudeHooks,
-    removedPiAgents,
-    removedPiSkills,
-    removedPiExtensions,
-    removedPiExtensionsHelpers,
     removedPluginAgents,
     removedPluginSkills,
     removedPluginCommands,
     removedPluginHooks,
     removedPluginScripts,
   ] = await Promise.all([
-    cleanDirectory(cursorAgentsDir, [".md"]),
-    cleanSkillsDirectory(cursorSkillsDir),
-    cleanDirectory(cursorRulesDir, [".mdc"]),
-    cleanDirectory(cursorHooksDir, [".sh"]),
     cleanDirectory(claudeAgentsDir, [".md"]),
     cleanSkillsDirectory(claudeSkillsDir),
     cleanDirectory(claudeRulesDir, [".md"]),
     cleanDirectory(claudeHooksDir, [".sh"]),
-    cleanDirectory(piAgentsDir, [".md"]),
-    cleanSkillsDirectory(piSkillsDir),
-    cleanDirectory(piExtensionsDir, [".ts"]),
-    cleanDirectory(piExtensionsHelpersDir, [".ts"]),
     cleanDirectory(pluginAgentsDir, [".md"]),
     cleanSkillsDirectory(pluginSkillsDir),
     cleanDirectory(pluginCommandsDir, [".md"]),
@@ -192,18 +153,10 @@ async function main() {
   ]);
 
   const totalRemoved =
-    removedCursorAgents.length +
-    removedCursorSkills.length +
-    removedCursorRules.length +
-    removedCursorHooks.length +
     removedClaudeAgents.length +
     removedClaudeSkills.length +
     removedClaudeRules.length +
     removedClaudeHooks.length +
-    removedPiAgents.length +
-    removedPiSkills.length +
-    removedPiExtensions.length +
-    removedPiExtensionsHelpers.length +
     removedPluginAgents.length +
     removedPluginSkills.length +
     removedPluginCommands.length +
@@ -294,35 +247,14 @@ async function main() {
   const claudeAgentCount = keys.filter((k) =>
     k.startsWith(".claude/agents/"),
   ).length;
-  const cursorAgentCount = keys.filter((k) =>
-    k.startsWith(".cursor/agents/"),
-  ).length;
-  const piAgentCount = keys.filter((k) => k.startsWith(".pi/agents/")).length;
   const claudeSkillCount = keys.filter((k) =>
     k.startsWith(".claude/skills/"),
   ).length;
-  const cursorSkillCount = keys.filter((k) =>
-    k.startsWith(".cursor/skills/"),
-  ).length;
-  const piSkillCount = keys.filter((k) => k.startsWith(".pi/skills/")).length;
   const claudeRuleCount = keys.filter((k) =>
     k.startsWith(".claude/rules/"),
   ).length;
-  const cursorRuleCount = keys.filter((k) =>
-    k.startsWith(".cursor/rules/"),
-  ).length;
   const claudeHookCount = keys.filter(
     (k) => k.startsWith(".claude/hooks/") && k.endsWith(".sh"),
-  ).length;
-  const cursorHookCount = keys.filter(
-    (k) => k.startsWith(".cursor/hooks/") && k.endsWith(".sh"),
-  ).length;
-
-  const piExtensionCount = keys.filter(
-    (k) => k.startsWith(".pi/extensions/") && k.endsWith(".ts"),
-  ).length;
-  const piMetaFiles = keys.filter(
-    (k) => k === ".pi/AGENTS.md" || k === ".pi/settings.json",
   ).length;
 
   const pluginAgentCountVal = keys.filter((k) =>
@@ -344,8 +276,8 @@ async function main() {
       k === "dist/plugin/README.md",
   ).length;
 
-  // Agent/skill/rule counts (each entity appears once per platform)
-  const agentCount = claudeAgentCount; // same as cursor and pi
+  // Agent/skill/rule counts
+  const agentCount = claudeAgentCount;
   const skillCount = claudeSkillCount;
   const ruleCount = claudeRuleCount;
 
@@ -356,17 +288,13 @@ async function main() {
     `Profiles: ${activeProfiles.length > 0 ? activeProfiles.join(", ") : "none (opinionated_guidelines disabled)"}`,
   );
   console.log(
-    `Agents: ${agentCount} (x3 formats + plugin = ${agentCount * 3 + pluginAgentCountVal} files)`,
+    `Agents: ${agentCount} (Claude + plugin = ${agentCount + pluginAgentCountVal} files)`,
   );
   console.log(
-    `Skills: ${skillCount} (x3 formats + plugin = ${skillCount * 3 + pluginSkillCountVal} files)`,
+    `Skills: ${skillCount} (Claude + plugin = ${skillCount + pluginSkillCountVal} files)`,
   );
-  console.log(
-    `Rules:  ${ruleCount} (x2 formats + Pi AGENTS.md = ${ruleCount * 2 + 1} files)`,
-  );
-  console.log(
-    `Hooks:  ${claudeHookCount} (Claude) + ${cursorHookCount} (Cursor)`,
-  );
+  console.log(`Rules:  ${ruleCount}`);
+  console.log(`Hooks:  ${claudeHookCount}`);
   console.log(
     `Plugin: ${pluginAgentCountVal} agents, ${pluginSkillCountVal} skills, ${pluginCommandCountVal} commands, ${pluginHookCountVal} hooks + ${pluginMetaFiles} meta files`,
   );
@@ -377,19 +305,6 @@ async function main() {
   console.log(`  Skills: ${claudeSkillCount}`);
   console.log(`  Rules:  ${claudeRuleCount}`);
   console.log(`  Hooks:  ${claudeHookCount}`);
-
-  console.log("\n--- .cursor/ ---");
-  console.log(`  Agents: ${cursorAgentCount}`);
-  console.log(`  Skills: ${cursorSkillCount}`);
-  console.log(`  Rules:  ${cursorRuleCount}`);
-  console.log(`  Hooks:  ${cursorHookCount}`);
-
-  console.log("\n--- .pi/ ---");
-  console.log(`  Agents:     ${piAgentCount}`);
-  console.log(`  Skills:     ${piSkillCount}`);
-  console.log(`  Extensions: ${piExtensionCount}`);
-  console.log(`  AGENTS.md:  ${piMetaFiles > 0 ? "yes" : "no"}`);
-  console.log(`  Meta:       ${piMetaFiles} files`);
 
   console.log("\n--- dist/plugin/ ---");
   console.log(`  Agents:   ${pluginAgentCountVal}`);

@@ -41,13 +41,10 @@ export {
   compileSkill,
   compileRule,
   compileAgentClaude,
-  compileAgentCursor,
   compileAgentPlugin,
   compileSkillClaude,
-  compileSkillCursor,
   compileSkillPlugin,
   compileRuleClaude,
-  compileRuleCursor,
   compileRulePlugin,
   validateFormat,
 } from "./src/compilers/__helpers/compile";
@@ -69,7 +66,6 @@ export {
   hookRegistry,
   NO_MATCHER_SENTINEL,
   generateClaudeHooksConfigFromCanonical,
-  generateCursorHooksConfigFromCanonical,
 } from "./src/hooks/index";
 export type { HookDefinition } from "./src/hooks/index";
 

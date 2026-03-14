@@ -2,7 +2,7 @@
  * Zod schemas for the cross-agent interop scanner.
  *
  * Defines types for discovering agent definitions across IDE tool
- * directories (.claude/, .cursor/, .gemini/, .codex/, .github/copilot/),
+ * directories (.claude/, .gemini/, .codex/, .github/copilot/),
  * normalizing them to a common summary format, and returning structured
  * scan results.
  *
@@ -21,7 +21,6 @@ import { z } from "zod";
  * IDE/tool platforms whose agent directories are recognized by the scanner.
  *
  * - claude: .claude/agents/
- * - cursor: .cursor/agents/
  * - gemini: .gemini/
  * - codex: .codex/
  * - copilot: .github/copilot/
@@ -29,7 +28,6 @@ import { z } from "zod";
  */
 export const SOURCE_TOOLS = [
   "claude",
-  "cursor",
   "gemini",
   "codex",
   "copilot",
@@ -115,13 +113,7 @@ export const interopScanConfigSchema = z.object({
   /** Directories to scan, relative to project root */
   scan_dirs: z
     .array(z.string())
-    .default([
-      ".claude/agents",
-      ".cursor/agents",
-      ".gemini",
-      ".codex",
-      ".github/copilot",
-    ]),
+    .default([".claude/agents", ".gemini", ".codex", ".github/copilot"]),
   /** File glob patterns to include when scanning */
   include_patterns: z.array(z.string()).default(["*.md", "*.ts"]),
   /** File glob patterns to exclude when scanning */
