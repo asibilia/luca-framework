@@ -18,8 +18,8 @@ import {
   extractFilePath,
   exitSuccess,
   projectDir,
-} from "./__helpers/hook-io.ts";
-import { readRuntime } from "./__helpers/bridge.ts";
+} from "../__helpers/hook-io.ts";
+import { readRuntime } from "../__helpers/bridge.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("post-edit-format");

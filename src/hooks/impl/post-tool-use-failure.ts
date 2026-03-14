@@ -16,9 +16,9 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { createHash } from "crypto";
 
-import { readStdinJson, exitSuccess, projectHash } from "./__helpers/hook-io.ts";
-import { resolveVault } from "./__helpers/vault.ts";
-import { writeMuninnEngram } from "./__helpers/muninn.ts";
+import { readStdinJson, exitSuccess, projectHash } from "../__helpers/hook-io.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 

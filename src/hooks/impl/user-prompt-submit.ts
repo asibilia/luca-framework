@@ -19,9 +19,9 @@ import {
   exitSuccess,
   projectDir,
   projectHash,
-} from "./__helpers/hook-io.ts";
-import { resolveVault } from "./__helpers/vault.ts";
-import { writeMuninnEngram } from "./__helpers/muninn.ts";
+} from "../__helpers/hook-io.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 

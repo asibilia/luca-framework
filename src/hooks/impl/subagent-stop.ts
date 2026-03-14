@@ -11,7 +11,7 @@
 
 import { z } from "zod";
 
-import { parseHookInput, exitSuccess } from "./__helpers/hook-io.ts";
+import { parseHookInput, exitSuccess } from "../__helpers/hook-io.ts";
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
 
@@ -21,8 +21,8 @@ const SubagentStopInputSchema = z.object({
   output: z.string().default(""),
   tool_calls_count: z.number().optional(),
 });
-import { resolveVault } from "./__helpers/vault.ts";
-import { writeMuninnEngram } from "./__helpers/muninn.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 

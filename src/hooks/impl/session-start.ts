@@ -30,7 +30,7 @@ import {
   exitSuccess,
   projectDir,
   isClaude,
-} from "./__helpers/hook-io.ts";
+} from "../__helpers/hook-io.ts";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -38,9 +38,9 @@ const SessionEndMarkerSchema = z.object({
   cleanup_pending: z.boolean().optional(),
   ended_at: z.string().optional(),
 });
-import { runBridge } from "./__helpers/bridge.ts";
-import { resolveVault } from "./__helpers/vault.ts";
-import { recallMuninnEngrams } from "./__helpers/muninn.ts";
+import { runBridge } from "../__helpers/bridge.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { recallMuninnEngrams } from "../__helpers/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-start");

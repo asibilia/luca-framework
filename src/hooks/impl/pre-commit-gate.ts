@@ -23,8 +23,8 @@ import {
   exitBlock,
   exitSuccess,
   projectDir,
-} from "./__helpers/hook-io.ts";
-import { runBridge, readRuntime } from "./__helpers/bridge.ts";
+} from "../__helpers/hook-io.ts";
+import { runBridge, readRuntime } from "../__helpers/bridge.ts";
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
 

@@ -26,10 +26,10 @@ import {
   projectHash,
   exitSuccess,
   projectDir,
-} from "./__helpers/hook-io.ts";
-import { runBridge } from "./__helpers/bridge.ts";
-import { resolveVault } from "./__helpers/vault.ts";
-import { writeMuninnEngram } from "./__helpers/muninn.ts";
+} from "../__helpers/hook-io.ts";
+import { runBridge } from "../__helpers/bridge.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 import type { SessionObservation } from "../__schemas/hook.schemas.ts";
 

@@ -12,7 +12,7 @@
 
 import { resolve } from "path";
 
-import { projectDir } from "./__helpers/hook-io.ts";
+import { projectDir } from "../__helpers/hook-io.ts";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
