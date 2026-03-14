@@ -51,7 +51,7 @@
 - [x] Migrate medium hooks: `pre-commit-gate`, `pre-commit-drift-check`, `context-monitor`, `session-persist`, `session-compact-restore`
 - [x] Migrate complex hooks: `session-start`, `context-check-throttled`, `pre-compact-checkpoint`
 - [x] Remove `_lib/common.sh` after all hooks migrated
-- [ ] Manual end-to-end validation of each hook's stdin/stdout contract
+- [x] Manual end-to-end validation of each hook's stdin/stdout contract
 
 ### Phase 161: Shadow Tech Debt Cleanup System
 
@@ -118,13 +118,13 @@
 
 **Depends on:** Phase 164
 
-- [ ] Create validation script that tests each hook's stdin→stdout contract
-- [ ] Validate 4 simple hooks: post-edit-format, post-edit-typecheck, snapshot-sync, statusline
-- [ ] Validate 5 medium hooks: pre-commit-gate, pre-commit-drift-check, context-monitor, session-persist, session-compact-restore
-- [ ] Validate 3 complex hooks: session-start, context-check-throttled, pre-compact-checkpoint
-- [ ] Validate 3 new hooks: user-prompt-submit, subagent-stop, post-tool-use-failure
-- [ ] Verify exit code semantics: exit 0 (allow) and exit 2 (block) for PreToolUse hooks
-- [ ] Document validated contracts in phase SUMMARY.md
+- [x] Create validation script that tests each hook's stdin→stdout contract
+- [x] Validate 4 simple hooks: post-edit-format, post-edit-typecheck, snapshot-sync, statusline
+- [x] Validate 5 medium hooks: pre-commit-gate, pre-commit-drift-check, context-monitor, session-persist, session-compact-restore
+- [x] Validate 3 complex hooks: session-start, context-check-throttled, pre-compact-checkpoint
+- [x] Validate 3 new hooks: user-prompt-submit, subagent-stop, post-tool-use-failure
+- [x] Verify exit code semantics: exit 0 (allow) and exit 2 (block) for PreToolUse hooks
+- [x] Document validated contracts in phase SUMMARY.md
 
 ---
 
