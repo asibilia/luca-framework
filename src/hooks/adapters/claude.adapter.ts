@@ -23,6 +23,19 @@ export const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
   stop: "Stop",
   session_end: "SessionEnd",
   session_start: "SessionStart",
+  pre_compact: "PreCompact",
+  user_prompt_submit: "UserPromptSubmit",
+  subagent_stop: "SubagentStop",
+  subagent_start: "SubagentStart",
+  notification: "Notification",
+  post_tool_use_failure: "PostToolUseFailure",
+  instructions_loaded: "InstructionsLoaded",
+  permission_request: "PermissionRequest",
+  teammate_idle: "TeammateIdle",
+  task_completed: "TaskCompleted",
+  config_change: "ConfigChange",
+  worktree_create: "WorktreeCreate",
+  worktree_remove: "WorktreeRemove",
 };
 
 // ---- Adapter function ----

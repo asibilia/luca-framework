@@ -23,6 +23,19 @@ export const PI_EVENT_MAP: Record<CanonicalEvent, string> = {
   stop: "session_shutdown",
   session_end: "session_shutdown",
   session_start: "session_start",
+  pre_compact: "pre_compact",
+  user_prompt_submit: "user_prompt_submit",
+  subagent_stop: "subagent_stop",
+  subagent_start: "subagent_start",
+  notification: "notification",
+  post_tool_use_failure: "post_tool_use_failure",
+  instructions_loaded: "instructions_loaded",
+  permission_request: "permission_request",
+  teammate_idle: "teammate_idle",
+  task_completed: "task_completed",
+  config_change: "config_change",
+  worktree_create: "worktree_create",
+  worktree_remove: "worktree_remove",
 };
 
 // ---- Adapter function ----
