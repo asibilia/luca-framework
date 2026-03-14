@@ -13,7 +13,7 @@
 
 | Phase | Name                            | Goal                                                                             | Depends On | Complexity |
 | ----- | ------------------------------- | -------------------------------------------------------------------------------- | ---------- | ---------- |
-| 151   | Update Hook Schemas             | Expand hook event enum from 5 to 18 events                                       | None       | SIMPLE     |
+| 151   | Update Hook Schemas             | Expand hook event enum from 5 to 18 events                                       | None       | SIMPLE ✓   |
 | 152   | Compact Instructions            | Add compact instructions section to CLAUDE.md                                    | None       | TRIVIAL    |
 | 153   | PreCompact Checkpoint Hook      | Create PreCompact hook that saves 5-field checkpoint to MuninnDB + filesystem    | Phase 151  | MODERATE   |
 | 154   | Context Metrics & Checkpointing | Enhance context-check-throttled.sh to write metrics JSON + proactive checkpoints | Phase 151  | MODERATE   |
