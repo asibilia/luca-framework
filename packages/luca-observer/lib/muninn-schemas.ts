@@ -342,3 +342,118 @@ export const GraphDataResponseSchema = z
     total_links: z.number(),
   })
   .passthrough();
+
+// -- Phase 163: Memory observability route schemas ----------------------------
+
+/**
+ * GET /api/muninn/health — no query parameters needed.
+ *
+ * Health is a global endpoint (vault-agnostic).
+ */
+export const HealthQuerySchema = z.object({});
+
+export type HealthQuery = z.infer<typeof HealthQuerySchema>;
+
+/**
+ * MuninnDB health response shape.
+ *
+ * Uses passthrough() to allow additional fields from the API.
+ */
+export const HealthResponseSchema = z
+  .object({
+    status: z.string(),
+    version: z.string(),
+    uptime_seconds: z.number(),
+    db_writable: z.boolean(),
+  })
+  .passthrough();
+
+/**
+ * GET /api/muninn/observations — query parameters.
+ *
+ * Recalls session:observation-* engrams.
+ * Uses z.coerce.number() because URLSearchParams values are always strings.
+ */
+export const ObservationsQuerySchema = z.object({
+  vault: z.string().min(1).max(100).default("default"),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+});
+
+export type ObservationsQuery = z.infer<typeof ObservationsQuerySchema>;
+
+/**
+ * MuninnDB observations response shape.
+ */
+export const ObservationsResponseSchema = z
+  .object({
+    observations: z.array(z.any()),
+    total: z.number(),
+  })
+  .passthrough();
+
+/**
+ * GET /api/muninn/metrics — query parameters.
+ *
+ * Recalls metric:* engrams.
+ * Uses z.coerce.number() because URLSearchParams values are always strings.
+ */
+export const MetricsQuerySchema = z.object({
+  vault: z.string().min(1).max(100).default("default"),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+});
+
+export type MetricsQuery = z.infer<typeof MetricsQuerySchema>;
+
+/**
+ * MuninnDB metrics response shape.
+ */
+export const MetricsResponseSchema = z
+  .object({
+    metrics: z.array(z.any()),
+    total: z.number(),
+  })
+  .passthrough();
+
+/**
+ * GET /api/muninn/checkpoint — no query parameters.
+ *
+ * Reads local .planning/.context-checkpoint.json file (no vault param).
+ */
+export const CheckpointQuerySchema = z.object({});
+
+export type CheckpointQuery = z.infer<typeof CheckpointQuerySchema>;
+
+/**
+ * Checkpoint response shape.
+ *
+ * All fields optional since the checkpoint file may not exist yet.
+ * Uses passthrough() to allow additional fields.
+ */
+export const CheckpointResponseSchema = z
+  .object({
+    zone: z.string().nullable().optional(),
+    usage_percent: z.number().nullable().optional(),
+    checked_at: z.string().nullable().optional(),
+    observation_count: z.number().optional(),
+    checkpoint_age_seconds: z.number().nullable().optional(),
+  })
+  .passthrough();
+
+/**
+ * GET /api/muninn/zone-history — no query parameters.
+ *
+ * Reads local .planning/.context-metrics.json history file.
+ */
+export const ZoneHistoryQuerySchema = z.object({});
+
+export type ZoneHistoryQuery = z.infer<typeof ZoneHistoryQuerySchema>;
+
+/**
+ * Zone history response shape.
+ */
+export const ZoneHistoryResponseSchema = z
+  .object({
+    entries: z.array(z.any()),
+    total: z.number(),
+  })
+  .passthrough();
