@@ -7,20 +7,32 @@ import { z } from "zod";
 /**
  * API Response: Context window metrics from .planning/.context-metrics.json.
  *
- * Represents the current context window usage zone, percentage, and byte count
- * as written by the context-monitor hook during active sessions.
+ * Represents the current context window usage zone, percentage, and token counts
+ * as written by the statusline script (real data) or context-monitor hook
+ * (transcript heuristic fallback) during active sessions.
  * Uses snake_case for API-facing fields per project convention.
  */
 const ContextMetricsSchema = z.object({
   zone: z.enum(["peak", "good", "degrading", "stop"]),
   usage_percent: z.number().min(0).max(100),
-  transcript_bytes: z.number().int().min(0),
   checked_at: z.string(),
-  thresholds: z.object({
-    warn_bytes: z.number(),
-    alert_bytes: z.number(),
-    critical_bytes: z.number(),
-  }),
+  // Real token data (from statusline — present when source is "statusline")
+  context_window_size: z.number().int().min(0).optional(),
+  total_input_tokens: z.number().int().min(0).optional(),
+  total_output_tokens: z.number().int().min(0).optional(),
+  cache_read_input_tokens: z.number().int().min(0).optional(),
+  // Heuristic data (from transcript byte estimation — present when source is "transcript_heuristic")
+  transcript_bytes: z.number().int().min(0).optional(),
+  // Source discriminator: "statusline" (real) or "transcript_heuristic" (estimated)
+  source: z.enum(["statusline", "transcript_heuristic"]).optional(),
+  // Legacy thresholds (optional — not written by statusline, only by old heuristic)
+  thresholds: z
+    .object({
+      warn_bytes: z.number(),
+      alert_bytes: z.number(),
+      critical_bytes: z.number(),
+    })
+    .optional(),
 });
 
 /**

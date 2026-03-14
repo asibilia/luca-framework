@@ -706,6 +706,14 @@ async function generateHookOutputs(
     }
   }
 
+  // Copy statusline script (NOT a hook — lives at .claude/ root, not .claude/hooks/)
+  const statuslineSrcPath = path.join(hookScriptsDir, "statusline.sh");
+  const statuslineSrcFile = Bun.file(statuslineSrcPath);
+  if (await statuslineSrcFile.exists()) {
+    const content = await statuslineSrcFile.text();
+    generated.set(".claude/statusline.sh", content);
+  }
+
   // Claude settings.json hooks fragment
   const hooksConfig = generateClaudeHooksConfigFromCanonical(canonical, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',

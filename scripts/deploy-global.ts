@@ -372,6 +372,27 @@ async function deployHooks(projectRoot: string): Promise<number> {
   return count;
 }
 
+// ─── Phase: Deploy Statusline ────────────────────────────────────────────────
+
+async function deployStatusline(projectRoot: string): Promise<void> {
+  logHeader("Deploying statusline...");
+
+  const source = join(projectRoot, ".claude/statusline.sh");
+  if (!existsSync(source)) {
+    log("No statusline to deploy (.claude/statusline.sh not found)");
+    return;
+  }
+
+  const target = join(GLOBAL_DIR, "statusline.sh");
+  deployFile(source, target, true); // always copy (like hooks)
+
+  if (!dryRun) {
+    chmodSync(target, 0o755);
+  }
+
+  log("statusline.sh deployed");
+}
+
 // ─── Phase: Deploy Rules ────────────────────────────────────────────────────
 
 async function deployRules(projectRoot: string): Promise<number> {
@@ -550,6 +571,17 @@ async function mergeSettings(): Promise<void> {
     settings.hooks[event] = [...nonLucaEntries, ...lucaEntries];
   }
 
+  // Add statusLine configuration (camelCase key required by Claude Code)
+  const globalStatusline = join(GLOBAL_DIR, "statusline.sh");
+  if (existsSync(globalStatusline)) {
+    settings.statusLine = {
+      type: "command",
+      command: `"${globalStatusline}"`,
+    };
+  }
+  // Remove stale lowercase key if present from prior deploys
+  delete settings.statusline;
+
   if (dryRun) {
     logDry(`Would write settings.json with merged hooks`);
     logDry(`Events: ${Object.keys(lucaHooks).join(", ")}`);
@@ -557,8 +589,8 @@ async function mergeSettings(): Promise<void> {
   }
 
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
-  log("settings.json updated with Luca hooks");
-  log(`Preserved existing settings: model, statusLine, plugins, etc.`);
+  log("settings.json updated with Luca hooks and statusline");
+  log(`Preserved existing settings: model, plugins, etc.`);
 }
 
 // ─── Phase: Write Manifest ──────────────────────────────────────────────────
@@ -679,6 +711,14 @@ async function removeGlobalArtifacts(): Promise<void> {
     }
   }
 
+  // Remove statusline
+  logHeader("Removing statusline...");
+  const statuslinePath = join(GLOBAL_DIR, "statusline.sh");
+  if (existsSync(statuslinePath)) {
+    unlinkSync(statuslinePath);
+    log("Removed: statusline.sh");
+  }
+
   // Clean settings.json (remove Luca hooks, keep everything else)
   logHeader("Cleaning settings.json...");
   const settingsPath = join(GLOBAL_DIR, "settings.json");
@@ -714,6 +754,10 @@ async function removeGlobalArtifacts(): Promise<void> {
         }
       }
     }
+
+    // Remove statusLine config (both key variants)
+    delete settings.statusLine;
+    delete settings.statusline;
 
     // Remove CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS env var
     if (settings.env?.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
@@ -755,6 +799,9 @@ async function main(): Promise<void> {
   const skills = await deploySkills(projectRoot);
   const hooks = await deployHooks(projectRoot);
   const rules = await deployRules(projectRoot);
+
+  // Phase 2.5: Deploy statusline
+  await deployStatusline(projectRoot);
 
   // Phase 3: Merge settings
   await mergeSettings();

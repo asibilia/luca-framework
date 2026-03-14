@@ -42,19 +42,38 @@ RESTORE_MSG=$(HOOK_CHECKPOINT_FILE="$CHECKPOINT_FILE" bun -e "
   try {
     const cp = JSON.parse(await Bun.file(process.env.HOOK_CHECKPOINT_FILE).text());
     const pos = cp.position || {};
+    const cw = cp.current_work || {};
+    const ctx = cp.context_at_compaction;
     const lines = [
-      '[Context Restored] Resuming after compaction.',
+      '[Context Restored] Resuming after ' + (cp.trigger || 'unknown') + ' compaction.',
       '',
-      'Position: Phase ' + (pos.phase || 'unknown') + ', Complexity: ' + (pos.complexity || 'MODERATE') + ', Milestone: ' + (pos.milestone || 'unknown'),
-      'Trigger: ' + (cp.trigger || 'unknown') + ' compaction',
-      '',
-      'Recent work:',
-      (cp.completed_summary || 'No recent commits recorded'),
-      '',
-      'MuninnDB vault: ' + (cp.vault || 'luca-framework'),
-      '',
-      'Run /context-restore for deeper context recovery with semantic recall.',
     ];
+    // Branch and issue (if available)
+    if (cw.branch || cw.github_issue) {
+      const branchPart = cw.branch ? 'Branch: ' + cw.branch : '';
+      const issuePart = cw.github_issue ? ' (GitHub ' + cw.github_issue + ')' : '';
+      lines.push(branchPart + issuePart);
+    }
+    if (cw.status) {
+      lines.push('Status: ' + cw.status);
+    }
+    lines.push('Position: Phase ' + (pos.phase || 'unknown') + ', Complexity: ' + (pos.complexity || 'MODERATE') + ', Milestone: ' + (pos.milestone || 'unknown'));
+    // Context usage at compaction
+    if (ctx) {
+      lines.push('Context at compaction: ' + ctx.usage_percent + '% (' + ctx.zone + ')');
+    }
+    lines.push('');
+    // Recent files
+    if (cp.recent_files && cp.recent_files.length > 0) {
+      lines.push('Recent files: ' + cp.recent_files.join(', '));
+      lines.push('');
+    }
+    lines.push('Recent commits:');
+    lines.push(cp.completed_summary || 'No recent commits recorded');
+    lines.push('');
+    lines.push('MuninnDB vault: ' + (cp.vault || 'luca-framework'));
+    lines.push('');
+    lines.push('Run /context-restore for deeper context recovery with semantic recall.');
     process.stdout.write(lines.join('\\n'));
   } catch (e) {
     process.stdout.write('[Context Restored] Checkpoint found but could not be parsed. Run /context-restore for manual recovery.');

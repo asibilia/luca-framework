@@ -48,11 +48,24 @@ function zoneLabel(zone: string): string {
 }
 
 /**
+ * Format a token count for compact display (e.g., 84K, 1.2M).
+ */
+function formatTokens(n: number): string {
+  if (n >= 1_000_000)
+    return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return Math.round(n / 1_000) + "K";
+  return String(n);
+}
+
+/**
  * Compact context window usage bar for the observer header.
  *
  * Shows a progress bar with zone-based coloring, percentage,
  * and a Brain icon. Hides when no metrics are available (no active session).
  * Polls every 10s via the useContextMetrics hook.
+ *
+ * When real token data is available (source: "statusline"), shows token counts
+ * in the tooltip. Falls back to byte count for legacy heuristic data.
  *
  * Renders as a single compact line using text-xs and h-1 progress bar,
  * designed to sit unobtrusively in the header alongside vault/theme controls.
@@ -64,11 +77,19 @@ export function ContextWindowBar() {
 
   const color = zoneColor(metrics.zone);
 
+  // Build tooltip based on data source
+  const hasTokenData =
+    metrics.context_window_size && metrics.total_input_tokens;
+  const tooltipDetail = hasTokenData
+    ? `${formatTokens(metrics.total_input_tokens!)} / ${formatTokens(metrics.context_window_size!)} tokens`
+    : metrics.transcript_bytes
+      ? `${metrics.transcript_bytes.toLocaleString()} bytes`
+      : "";
+  const tooltipSource = metrics.source === "statusline" ? "" : " (estimated)";
+  const tooltip = `Context: ${zoneLabel(metrics.zone)}${tooltipDetail ? ` · ${tooltipDetail}` : ""}${tooltipSource}`;
+
   return (
-    <div
-      className="flex items-center gap-1.5"
-      title={`Context: ${zoneLabel(metrics.zone)} · ${metrics.transcript_bytes.toLocaleString()} bytes`}
-    >
+    <div className="flex items-center gap-1.5" title={tooltip}>
       <Brain
         className="size-3.5"
         style={{ color: `var(--color-${color})` }}

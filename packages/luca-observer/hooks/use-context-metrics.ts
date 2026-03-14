@@ -12,17 +12,32 @@ const POLL_INTERVAL_MS = 10_000;
  * Single source of truth for the ContextMetrics type shape. Validates
  * API responses at runtime via safeParse instead of unsafe casting.
  * Uses snake_case for API-facing fields per project convention.
+ *
+ * Supports two data sources:
+ * - "statusline": Real token data from Claude Code's status line API
+ * - "transcript_heuristic": Estimated from transcript file size (legacy fallback)
  */
 const ContextMetricsSchema = z.object({
   zone: z.enum(["peak", "good", "degrading", "stop"]),
   usage_percent: z.number().min(0).max(100),
-  transcript_bytes: z.number().int().min(0),
   checked_at: z.string(),
-  thresholds: z.object({
-    warn_bytes: z.number(),
-    alert_bytes: z.number(),
-    critical_bytes: z.number(),
-  }),
+  // Real token data (from statusline)
+  context_window_size: z.number().int().min(0).optional(),
+  total_input_tokens: z.number().int().min(0).optional(),
+  total_output_tokens: z.number().int().min(0).optional(),
+  cache_read_input_tokens: z.number().int().min(0).optional(),
+  // Heuristic data (from transcript byte estimation)
+  transcript_bytes: z.number().int().min(0).optional(),
+  // Source discriminator
+  source: z.enum(["statusline", "transcript_heuristic"]).optional(),
+  // Legacy thresholds (optional)
+  thresholds: z
+    .object({
+      warn_bytes: z.number(),
+      alert_bytes: z.number(),
+      critical_bytes: z.number(),
+    })
+    .optional(),
 });
 
 /**

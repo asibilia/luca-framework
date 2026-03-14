@@ -47,6 +47,16 @@
       {
         "command": ".cursor/hooks/session-start.sh",
         "timeout": 15
+      },
+      {
+        "command": ".cursor/hooks/session-compact-restore.sh",
+        "timeout": 10
+      }
+    ],
+    "pre_compact": [
+      {
+        "command": ".cursor/hooks/pre-compact-checkpoint.sh",
+        "timeout": 15
       }
     ]
   }
