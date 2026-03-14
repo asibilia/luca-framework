@@ -17,8 +17,8 @@
 | 152   | Compact Instructions            | Add compact instructions section to CLAUDE.md                                    | None       | TRIVIAL ✓  |
 | 153   | PreCompact Checkpoint Hook      | Create PreCompact hook that saves 5-field checkpoint to MuninnDB + filesystem    | Phase 151  | MODERATE ✓ |
 | 154   | Context Metrics & Checkpointing | Enhance context-check-throttled.sh to write metrics JSON + proactive checkpoints | Phase 151  | MODERATE ✓ |
-| 155   | Session Compact Restore         | Create SessionStart restore hook for post-compaction context recovery            | Phase 153  | MODERATE   |
-| 156   | Context Restore Skill           | Create /context-restore skill for manual context recovery                        | Phase 153  | MODERATE   |
+| 155   | Session Compact Restore         | Create SessionStart restore hook for post-compaction context recovery            | Phase 153  | MODERATE ✓ |
+| 156   | Context Restore Skill           | Create /context-restore skill for manual context recovery                        | Phase 153  | MODERATE ✓ |
 | 157   | Observer Context Window Bar     | Add context window usage bar to observer header with file-based metrics          | Phase 154  | MODERATE   |
 
 ---
