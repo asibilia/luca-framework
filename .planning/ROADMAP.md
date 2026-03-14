@@ -93,6 +93,39 @@
 - [x] Build recall effectiveness charts and memory timeline
 - [x] Enhance compact header bar with health indicator and checkpoint age
 
+### Phase 164: Audit Gap Closure — Security Hardening & Architecture Cleanup
+
+**Goal:** Fix all findings from v4.5.0 milestone audit: 3 HIGH security (path validation), 4 MEDIUM security (env quoting, schema-first parsing, URL validation, content sanitization), 2 MEDIUM architecture (dead code, naming convention), 3 LOW (Zod parsing, engram ID, symlink), 2 tech debt (stale config, hardcoded vault).
+
+**Depends on:** Phase 163
+
+- [ ] Add project-dir boundary validation to `post-edit-format.ts`, `post-edit-typecheck.ts`, `statusline.ts` (3 HIGH)
+- [ ] Quote env file values in `session-start.ts` + parse session-end marker with Zod (MEDIUM + LOW)
+- [ ] Replace `readStdinJson()` with Zod `parseHookInput()` in hooks that read specific fields (MEDIUM)
+- [ ] Validate `MUNINN_DB_URL` is loopback before use in `muninn.ts` (MEDIUM)
+- [ ] Sanitize note content before systemMessage injection in `context-check-throttled.ts` (MEDIUM)
+- [ ] Remove dead Cursor fallback branches from `hook-io.ts` (MEDIUM arch)
+- [ ] Rename `impl/_lib/` to `impl/__helpers/` + update all imports (MEDIUM arch)
+- [ ] Validate engram ID format before URL interpolation in `muninn-config.ts` (LOW)
+- [ ] Use `realpathSync` for symlink-safe path validation in `context-monitor.ts` (LOW)
+- [ ] Remove stale `.cursor`/`.pi` from `SAFE_CLEAN_ROOTS` in `build-utils.ts` (tech debt)
+- [ ] Replace hardcoded vault name with `resolveVault()` in `context-check-throttled.ts` prompt (tech debt)
+- [ ] Verify with `bunx --bun tsc --noEmit`
+
+### Phase 165: Hook Contract Validation — End-to-End Verification
+
+**Goal:** Validate all 16 hook implementations end-to-end by feeding mock stdin JSON and verifying stdout JSON + exit codes match the Claude Code hook contract.
+
+**Depends on:** Phase 164
+
+- [ ] Create validation script that tests each hook's stdin→stdout contract
+- [ ] Validate 4 simple hooks: post-edit-format, post-edit-typecheck, snapshot-sync, statusline
+- [ ] Validate 5 medium hooks: pre-commit-gate, pre-commit-drift-check, context-monitor, session-persist, session-compact-restore
+- [ ] Validate 3 complex hooks: session-start, context-check-throttled, pre-compact-checkpoint
+- [ ] Validate 3 new hooks: user-prompt-submit, subagent-stop, post-tool-use-failure
+- [ ] Verify exit code semantics: exit 0 (allow) and exit 2 (block) for PreToolUse hooks
+- [ ] Document validated contracts in phase SUMMARY.md
+
 ---
 
 ## Closed (v4.4.0 Completed)
