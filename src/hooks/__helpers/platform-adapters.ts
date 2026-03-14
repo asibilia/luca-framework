@@ -43,7 +43,7 @@ export interface PlatformHookConfig {
 // ─── Internal event maps ─────────────────────────────────────────────────────
 
 /** Maps canonical event names to Claude Code PascalCase event names. */
-const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
+export const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
   post_tool_use: "PostToolUse",
   pre_tool_use: "PreToolUse",
   stop: "Stop",

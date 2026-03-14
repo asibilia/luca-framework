@@ -5,12 +5,15 @@
  * of platform-specific behavior. Adding a new platform requires creating one
  * adapter file and adding one entry to this registry.
  *
- * Source: src/hooks/adapters/adapter-registry.ts
+ * Source: src/hooks/__helpers/adapter-registry.ts
  */
 
 import type { CanonicalHook } from "../__schemas/hook.schemas";
-import type { HookPlatformAdapter, AdapterPlatform } from "./adapter.schemas";
-import { claudeAdapter } from "./claude.adapter";
+import type {
+  HookPlatformAdapter,
+  AdapterPlatform,
+} from "../__schemas/adapter.schemas";
+import { claudeAdapter } from "./claude-adapter";
 
 // ---- Registry ----
 

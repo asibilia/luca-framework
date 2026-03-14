@@ -12,7 +12,7 @@ import { z } from "zod";
 import { CanonicalHookSchema } from "../__schemas/hook.schemas";
 import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { PlatformHookConfig } from "./platform-adapters";
-import { resolveAdapter } from "../adapters/adapter-registry";
+import { resolveAdapter } from "./adapter-registry";
 
 // ---- Supported platforms ----
 

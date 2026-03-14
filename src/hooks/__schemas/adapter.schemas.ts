@@ -5,11 +5,11 @@
  * Adding a new platform requires implementing this contract in a single
  * adapter file, then registering it in the adapter registry.
  *
- * Source: src/hooks/adapters/adapter.schemas.ts
+ * Source: src/hooks/__schemas/adapter.schemas.ts
  */
 
 import { z } from "zod";
-import type { CanonicalEvent, CanonicalHook } from "../__schemas/hook.schemas";
+import type { CanonicalEvent, CanonicalHook } from "./hook.schemas";
 import type { PlatformHookConfig } from "../__helpers/platform-adapters";
 
 /**

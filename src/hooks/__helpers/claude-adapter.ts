@@ -4,39 +4,18 @@
  * Transforms canonical hook definitions into Claude Code-specific configs
  * using PascalCase event names, regex matchers, async support, and status messages.
  *
- * Source: src/hooks/adapters/claude.adapter.ts
+ * Source: src/hooks/__helpers/claude-adapter.ts
  */
 
-import type { CanonicalHook, CanonicalEvent } from "../__schemas/hook.schemas";
-import type { PlatformHookConfig } from "../__helpers/platform-adapters";
-import type { HookPlatformAdapter } from "./adapter.schemas";
-import { generateClaudeHooksConfigFromCanonical } from "../__helpers/config-generators";
+import type { CanonicalHook } from "../__schemas/hook.schemas";
+import type { HookPlatformAdapter } from "../__schemas/adapter.schemas";
 
-// ---- Event map ----
+import { CLAUDE_EVENT_MAP } from "./platform-adapters";
+import type { PlatformHookConfig } from "./platform-adapters";
+import { generateClaudeHooksConfigFromCanonical } from "./config-generators";
 
-/**
- * Maps canonical event names to Claude Code PascalCase event names.
- */
-export const CLAUDE_EVENT_MAP: Record<CanonicalEvent, string> = {
-  post_tool_use: "PostToolUse",
-  pre_tool_use: "PreToolUse",
-  stop: "Stop",
-  session_end: "SessionEnd",
-  session_start: "SessionStart",
-  pre_compact: "PreCompact",
-  user_prompt_submit: "UserPromptSubmit",
-  subagent_stop: "SubagentStop",
-  subagent_start: "SubagentStart",
-  notification: "Notification",
-  post_tool_use_failure: "PostToolUseFailure",
-  instructions_loaded: "InstructionsLoaded",
-  permission_request: "PermissionRequest",
-  teammate_idle: "TeammateIdle",
-  task_completed: "TaskCompleted",
-  config_change: "ConfigChange",
-  worktree_create: "WorktreeCreate",
-  worktree_remove: "WorktreeRemove",
-};
+// Re-export for consumers that imported CLAUDE_EVENT_MAP from this module
+export { CLAUDE_EVENT_MAP } from "./platform-adapters";
 
 // ---- Adapter function ----
 
