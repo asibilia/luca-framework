@@ -85,13 +85,13 @@
 
 **Depends on:** Phase 162
 
-- [ ] Design comprehensive `/memory` page layout (6 sections)
-- [ ] Add new API routes for phase metrics, memory feedback, health summary, confidence calibration
-- [ ] Add new API routes for checkpoint data and zone transitions
-- [ ] Build session status hero section with real-time context gauge
-- [ ] Build memory health dashboard with coherence subscores
-- [ ] Build recall effectiveness charts and memory timeline
-- [ ] Enhance compact header bar with health indicator and checkpoint age
+- [x] Design comprehensive `/memory` page layout (6 sections)
+- [x] Add new API routes for phase metrics, memory feedback, health summary, confidence calibration
+- [x] Add new API routes for checkpoint data and zone transitions
+- [x] Build session status hero section with real-time context gauge
+- [x] Build memory health dashboard with coherence subscores
+- [x] Build recall effectiveness charts and memory timeline
+- [x] Enhance compact header bar with health indicator and checkpoint age
 
 ---
 
