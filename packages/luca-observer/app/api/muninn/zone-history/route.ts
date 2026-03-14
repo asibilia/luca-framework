@@ -1,9 +1,28 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { access, readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 import { NextResponse } from "next/server";
 
 import { ZoneHistoryResponseSchema } from "~/lib/muninn-schemas";
+
+/**
+ * Walk up from startDir looking for a directory containing `.planning/`.
+ * Returns the first match, or null if none found.
+ */
+async function findProjectRoot(startDir: string): Promise<string | null> {
+  let current = resolve(startDir);
+  const root = resolve("/");
+  while (current !== root) {
+    try {
+      await access(join(current, ".planning"));
+      return current;
+    } catch {
+      /* not found at this level, keep walking up */
+    }
+    current = resolve(current, "..");
+  }
+  return null;
+}
 
 /**
  * GET /api/muninn/zone-history
@@ -16,16 +35,19 @@ import { ZoneHistoryResponseSchema } from "~/lib/muninn-schemas";
  * Returns the current entry as a single-element array for the timeline view.
  *
  * Returns 200 with empty entries array when file is missing.
+ *
+ * Workspace root resolution: LUCA_PROJECT_DIR > WORKSPACE_ROOT > findProjectRoot(cwd)
  */
 export async function GET() {
   const emptyResponse = { entries: [], total: 0 };
 
   try {
-    const filePath = join(
-      process.cwd(),
-      ".planning",
-      ".context-metrics.json",
-    );
+    const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
+    const explicitRoot = rawRoot ? resolve(rawRoot) : null;
+    const workspaceRoot =
+      explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
+    const filePath = join(workspaceRoot, ".planning", ".context-metrics.json");
+
     const raw = await readFile(filePath, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 

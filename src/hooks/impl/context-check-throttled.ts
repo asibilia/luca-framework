@@ -61,7 +61,10 @@ const main = async (): Promise<void> => {
   const throttleFile = `/tmp/.luca-context-check-${hash}-ts`;
   const throttleSeconds = 60;
 
-  if (existsSync(throttleFile)) {
+  // Detect first invocation: throttle file does not exist yet
+  const isFirstInvocation = !existsSync(throttleFile);
+
+  if (!isFirstInvocation) {
     try {
       const lastCheck = parseInt(
         readFileSync(throttleFile, "utf-8").trim(),
@@ -365,6 +368,93 @@ const main = async (): Promise<void> => {
       });
     } catch {
       // Observation write failed — never throw from hook
+    }
+  }
+
+  // --- Write session-start observation on first invocation ---
+  if (isFirstInvocation) {
+    try {
+      // Read git branch (best-effort)
+      let gitBranch = "";
+      try {
+        const branchResult = Bun.spawnSync(
+          ["git", "branch", "--show-current"],
+          { stdout: "pipe", stderr: "pipe", cwd: pd },
+        );
+        if (branchResult.exitCode === 0) {
+          gitBranch = branchResult.stdout.toString().trim();
+        }
+      } catch {
+        // git not available
+      }
+
+      // Read git diff summary (best-effort, first 10 lines)
+      let gitDiffSummary = "";
+      try {
+        const diffResult = Bun.spawnSync(
+          ["git", "diff", "--name-only", "HEAD"],
+          { stdout: "pipe", stderr: "pipe", cwd: pd },
+        );
+        if (diffResult.exitCode === 0) {
+          gitDiffSummary = diffResult.stdout
+            .toString()
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .slice(0, 10)
+            .join(", ");
+        }
+      } catch {
+        // git not available
+      }
+
+      // Read phase context from STATE.md (best-effort)
+      let phaseContext = "";
+      const stateMdPath = join(pd, ".planning", "STATE.md");
+      if (existsSync(stateMdPath)) {
+        try {
+          const stateContent = readFileSync(stateMdPath, "utf-8");
+          const stateLines = stateContent.split("\n");
+          const phaseFields: string[] = [];
+          for (const line of stateLines) {
+            if (
+              line.includes("Phase:") ||
+              line.includes("Plan:") ||
+              line.includes("Status:")
+            ) {
+              const trimmed = line.replace(/^[-*\s]+/, "").trim();
+              if (trimmed) phaseFields.push(trimmed);
+            }
+          }
+          phaseContext = phaseFields.slice(0, 3).join(" | ");
+        } catch {
+          // STATE.md unreadable
+        }
+      }
+
+      // Construct session-start observation payload
+      const sessionStartObservation: SessionObservation = {
+        concept: `session:observation-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        zone: zone as SessionObservation["zone"],
+        usage_percent: usagePercent,
+        git_branch: gitBranch,
+        git_diff_summary: gitDiffSummary,
+        phase_context: phaseContext,
+        source: "session_start",
+      };
+
+      // Resolve vault and write to MuninnDB (fire-and-forget)
+      const vault = await resolveVault();
+      writeMuninnEngram({
+        vault,
+        concept: sessionStartObservation.concept,
+        content: JSON.stringify(sessionStartObservation),
+        type: "observation",
+        tags: ["session", "observation", "session-start"],
+      });
+    } catch {
+      // Session-start observation write failed — never throw from hook
     }
   }
 

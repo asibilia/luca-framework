@@ -106,6 +106,7 @@ export const OBSERVATION_SOURCES = [
   "user_prompt_submit",
   "subagent_stop",
   "post_tool_use_failure",
+  "session_start",
 ] as const;
 export const observationSourceSchema = z.enum(OBSERVATION_SOURCES);
 export type ObservationSource = z.infer<typeof observationSourceSchema>;

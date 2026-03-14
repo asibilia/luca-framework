@@ -34,7 +34,7 @@ export function RecallEffectiveness({ data }: { data: ObservationsData }) {
     return (
       <EmptyState
         title="No Recall Metrics"
-        message="No recall effectiveness metrics found. Metrics are captured during memory operations."
+        message="No data yet — metrics are collected during phase execution, not manual memory operations. Run a Luca phase to populate this section."
       />
     );
   }
