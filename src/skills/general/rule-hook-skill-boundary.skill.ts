@@ -30,7 +30,7 @@ const ruleHookSkillBoundaryConfig: SkillConfig = {
 | Must it complete in < 2 seconds? | Yes | No |
 | Does it involve multi-step reasoning? | No | Yes |
 | Can Claude choose to skip it? | No (deterministic) | Yes (advisory) |
-| Does it work in Cursor IDE? | Yes (both platforms) | Yes (cross-platform) |
+| Does it work in Claude Code? | Yes | Yes |
 
 ## Current Hook/Skill Mapping
 

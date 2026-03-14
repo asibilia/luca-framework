@@ -56,12 +56,12 @@ When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ti
 
 ## Documentation
 
-| Document                                                      | Description                                           |
-| ------------------------------------------------------------- | ----------------------------------------------------- |
-| [**lu-workflow.mdc**](../../../.cursor/rules/lu-workflow.mdc) | ⭐ **Main workflow definition and command reference** |
-| [End-to-End Workflow](./end-to-end-workflow.md)               | How it all works together                             |
-| [Diagrams](./diagrams.md)                                     | Visual architecture diagrams                          |
-| [Architecture](./architecture-plan.md)                        | System design                                         |
+| Document                                                    | Description                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------- |
+| [**lu-workflow.md**](../../../.claude/rules/lu-workflow.md) | ⭐ **Main workflow definition and command reference** |
+| [End-to-End Workflow](./end-to-end-workflow.md)             | How it all works together                             |
+| [Diagrams](./diagrams.md)                                   | Visual architecture diagrams                          |
+| [Architecture](./architecture-plan.md)                      | System design                                         |
 
 ## Core Principles
 
@@ -99,7 +99,7 @@ When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ti
 ## Directory Structure
 
 ```
-.cursor/
+.claude/
 ├── agents/
 │   ├── lu-cognition.md    # Cognitive pre-flight
 │   ├── lu-router.md       # Complexity routing
@@ -116,7 +116,7 @@ When prompted, choose `[PLACEHOLDER]` placeholder for work not tied to a Jira ti
 │   ├── workflows/            # Workflow definitions
 │   └── references/           # Configuration references
 └── rules/
-    └── lu-workflow.mdc    # Core workflow definition
+    └── lu-workflow.md     # Core workflow definition
 
 .planning/                     # Per-project state
 ├── MuninnDB brain tree                   # Project identity (persistent)

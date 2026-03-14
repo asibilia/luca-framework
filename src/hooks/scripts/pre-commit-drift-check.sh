@@ -78,7 +78,7 @@ fi
 HAS_RELEVANT_FILES=0
 while IFS= read -r file; do
   case "$file" in
-    .claude/*|.cursor/*|.pi/*|.qwen/*|dist/plugin/*|src/agents/*|src/skills/*|src/rules/*|src/hooks/*|src/compilers/*)
+    .claude/*|dist/plugin/*|src/agents/*|src/skills/*|src/rules/*|src/hooks/*|src/compilers/*)
       HAS_RELEVANT_FILES=1
       break
       ;;

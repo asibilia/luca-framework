@@ -34,21 +34,6 @@ This guide covers common issues you might encounter while using Luca and how to 
 - **Issue**: Luca cannot find the plan file you specified.
 - **Solution**: Verify the path to your `PLAN.md` file. Use absolute paths or relative paths from the project root.
 
-## Pi Authentication Issues
-
-### `400 bad request: Personal Access Tokens are not supported for this endpoint`
-
-- **Issue**: When running `/autopilot` or other API-calling skills in Pi, the session fails with a 400 error about Personal Access Tokens.
-- **Root cause**: Anthropic deployed server-side enforcement (Jan–Feb 2026) blocking OAuth subscription tokens (`sk-ant-oat01-*`) from being used by third-party tools. Pi authenticates via `/login` with Claude Pro/Max, storing an OAuth token in `~/.pi/agent/auth.json`. When Pi makes API calls to Anthropic (sub-agent spawning, task delegation), the server rejects the token.
-- **Solution**:
-  1. Create a Console API key at [console.anthropic.com](https://console.anthropic.com) (pay-per-use billing, separate from Pro/Max subscription). Console keys start with `sk-ant-api03-*`.
-  2. Set the `ANTHROPIC_API_KEY` environment variable in your shell profile:
-     ```bash
-     export ANTHROPIC_API_KEY="sk-ant-api03-..."
-     ```
-  3. Restart Pi.
-- **Note**: Basic Pi features (state management, memory, local file I/O) still work with the OAuth token. Only extensions that make Anthropic API calls (query-experts, chain, teams) are affected.
-
 ## Framework Issues
 
 ### `luca update` conflicts

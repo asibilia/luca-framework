@@ -13,7 +13,7 @@ This directory contains documentation for the AI agent framework.
 - **Always verify**: Verification runs at all complexity levels
 - **Unified entry point**: `/lu`
 
-📁 [View Documentation](./luca/) | 📋 [Workflow Reference](../../.cursor/rules/lu-workflow.mdc)
+📁 [View Documentation](./luca/) | 📋 [Workflow Reference](../../.claude/rules/lu-workflow.md)
 
 ## Quick Start
 

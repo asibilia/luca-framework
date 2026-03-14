@@ -107,7 +107,7 @@ export async function cleanDirectory(
 
 /**
  * Clean all skill subdirectories from a skills output directory.
- * Skills live in subdirectories (e.g., .cursor/skills/code-lint/SKILL.md).
+ * Skills live in subdirectories (e.g., .claude/skills/code-lint/SKILL.md).
  */
 export async function cleanSkillsDirectory(dir: string): Promise<string[]> {
   assertSafeCleanTarget(dir);

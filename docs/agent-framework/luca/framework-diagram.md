@@ -159,13 +159,11 @@ flowchart TB
             direction TB
             B_BASE["base.compiler.ts"]
             B_CLAUDE["claude.compiler.ts"]
-            B_CURSOR["cursor.compiler.ts"]
         end
     end
 
     subgraph Generated["Generated Output (never edit)"]
-        G_CURSOR[".cursor/<br/>agents/ | skills/ | rules/ | hooks/"]
-        G_CLAUDE[".claude/<br/>rules/"]
+        G_CLAUDE[".claude/<br/>agents/ | skills/ | rules/ | hooks/"]
     end
 
     SRC -->|"bun run build:all"| Generated
@@ -445,13 +443,11 @@ flowchart LR
     end
 
     subgraph Compilers["compilers/"]
-        CURSOR_COMP["cursor.compiler.ts"]
         CLAUDE_COMP["claude.compiler.ts"]
     end
 
     subgraph Output["Generated (never edit)"]
-        CURSOR_OUT[".cursor/<br/>agents/ | skills/<br/>rules/ | hooks/"]
-        CLAUDE_OUT[".claude/<br/>rules/"]
+        CLAUDE_OUT[".claude/<br/>agents/ | skills/ | rules/ | hooks/"]
     end
 
     subgraph Guard["Drift Detection"]
