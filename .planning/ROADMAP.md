@@ -2,7 +2,96 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v4.5.0 — Platform Simplification & Proactive Intelligence
+
+---
+
+## v4.5.0 — Platform Simplification & Proactive Intelligence
+
+6 phases (158-163), 6 todos. Foundation hardening, platform cleanup, hook modernization, and proactive memory intelligence.
+
+### Phase 158: Remove Complexity Step Skipping
+
+**Goal:** Fix code/rule divergence — ALL workflow steps run at every complexity level. Complexity controls model tier + loop budgets only.
+
+**Depends on:** None
+
+- [ ] Remove `"skip"` activation values from complexity matrices in `defaults.ts`
+- [ ] Simplify guard functions in `guards.ts` to not gate on complexity
+- [ ] Remove complexity check from pre-mortem gating in `phase-discuss.skill.ts`
+- [ ] Remove `"skip"` type variant from activation type definition
+- [ ] Verify with `bunx --bun tsc --noEmit`
+
+**Note:** Exclude `src/hooks/pi-extensions/luca-complexity.ts` — Phase 159 deletes the entire `pi-extensions/` directory.
+
+### Phase 159: Remove Non-Claude Platform Compilation
+
+**Goal:** Remove all Cursor, Pi, and Qwen platform compilation, output directories, adapters, and references. Claude Code becomes the sole target platform.
+
+**Depends on:** Phase 158
+
+- [ ] Wave A: Delete `.cursor/`, `.pi/`, `.qwen/` output directories
+- [ ] Wave A: Delete `src/hooks/adapters/cursor.adapter.ts`, `pi.adapter.ts`, `src/hooks/pi-extensions/`
+- [ ] Wave B: Remove `toCursorFormat()`/`toPiFormat()` from T2 entity factories (`create-agent.ts`, `create-skill.ts`, `create-rule.ts`)
+- [ ] Wave C: Remove `toCursorFormat()` from `src/shared/__helpers/format.ts` and `src/shared/index.ts` barrel
+- [ ] Wave C: Update `src/compilers/__helpers/compile.ts`, `plugin-registry.ts`, `parity.ts`
+- [ ] Wave D: Update `scripts/build-all.ts`, `scripts/check-drift.ts`
+- [ ] Wave D: Update adapter-registry, adapter.schemas, hooks barrel
+- [ ] Wave E: Content grep sweep — update all `src/rules/`, docs, CLAUDE.md, config references to `.cursor/`/`.pi/`
+- [ ] Verify with `bunx --bun tsc --noEmit` and `bun run check:drift`
+
+### Phase 160: Migrate Hook Implementations to TypeScript
+
+**Goal:** Move all 12 hook script implementations from shell to TypeScript. Shell scripts become thin shims calling `bun <ts-file>`.
+
+**Depends on:** Phase 159
+
+- [ ] Create `src/hooks/impl/_lib/` shared utilities (hook-io, bridge, vault, muninn)
+- [ ] Migrate simple hooks: `post-edit-format`, `post-edit-typecheck`, `snapshot-sync`, `statusline`
+- [ ] Migrate medium hooks: `pre-commit-gate`, `pre-commit-drift-check`, `context-monitor`, `session-persist`, `session-compact-restore`
+- [ ] Migrate complex hooks: `session-start`, `context-check-throttled`, `pre-compact-checkpoint`
+- [ ] Remove `_lib/common.sh` after all hooks migrated
+- [ ] Manual end-to-end validation of each hook's stdin/stdout contract
+
+### Phase 161: Shadow Tech Debt Cleanup System
+
+**Goal:** Build automated detection of AI-session debris with new scanner agent, cleanup skill, and workflow integration.
+
+**Depends on:** Phase 159
+
+- [ ] Create schemas in `src/shared/__schemas/shadow-scanner.schemas.ts` + barrel exports
+- [ ] Create agent `src/agents/general/lu-shadow-scanner.agent.ts` + registry + model routing
+- [ ] Create skill `src/skills/general/shadow-cleanup.skill.ts` + registry
+- [ ] Add `shadow_debt` config section to `.planning/config.json`
+- [ ] Integrate into `phase-execute.skill.ts` (Step 10.6) and `milestone-complete.skill.ts` (Step 0.7)
+- [ ] Verify with `bunx --bun tsc --noEmit`
+
+### Phase 162: Proactive Context Management
+
+**Goal:** Implement Mastra-inspired observational memory: continuous session observer, proactive `/clear` prompting, enhanced restore, dynamic compact instructions, and new hook events.
+
+**Depends on:** Phases 160, 161
+
+- [ ] Research spike: answer 4 critical questions (can LLM invoke /clear, does PreCompact fire on /clear, systemMessage→MuninnDB reliability, CLAUDE.md re-read on compaction)
+- [ ] Component 1: Continuous session observer (hybrid hook + prompt layers)
+- [ ] Component 2: Proactive clear prompting at configurable threshold
+- [ ] Component 3: Enhanced restore after clear (rich MuninnDB working context)
+- [ ] Component 4: Dynamic compact instructions (`.planning/.compact-context.md`)
+- [ ] Component 5: Wire 5 untapped hook events (`user_prompt_submit`, `subagent_stop`, `post_tool_use_failure`, `task_completed`, `teammate_idle`)
+
+### Phase 163: Observer Memory Observability Upgrade
+
+**Goal:** Full `/memory` page redesign surfacing all available MuninnDB data, hook checkpoint data, and memory health metrics. Enhanced compact header bar.
+
+**Depends on:** Phase 162
+
+- [ ] Design comprehensive `/memory` page layout (6 sections)
+- [ ] Add new API routes for phase metrics, memory feedback, health summary, confidence calibration
+- [ ] Add new API routes for checkpoint data and zone transitions
+- [ ] Build session status hero section with real-time context gauge
+- [ ] Build memory health dashboard with coherence subscores
+- [ ] Build recall effectiveness charts and memory timeline
+- [ ] Enhance compact header bar with health indicator and checkpoint age
 
 ---
 
