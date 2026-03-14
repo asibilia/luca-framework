@@ -103,6 +103,13 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: true,
     status_message: "Saving context checkpoint...",
   }),
+  "session-compact-restore": () => ({
+    event: "session_start",
+    script: "session-compact-restore.sh",
+    timeout: 10,
+    async: false,
+    status_message: "Restoring context...",
+  }),
 };
 
 /**
