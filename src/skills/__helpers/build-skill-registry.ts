@@ -59,6 +59,7 @@ import { profileImportSkill } from "../general/profile-import.skill";
 import { seedMemorySkill } from "../general/seed-memory.skill";
 import { outcomeSkill } from "../general/outcome.skill";
 import { contextRestoreSkill } from "../general/context-restore.skill";
+import { shadowCleanupSkill } from "../general/shadow-cleanup.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -125,5 +126,6 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "seed-memory": () => seedMemorySkill,
   outcome: () => outcomeSkill,
   "context-restore": () => contextRestoreSkill,
+  "shadow-cleanup": () => shadowCleanupSkill,
   lu: () => luSkill,
 };

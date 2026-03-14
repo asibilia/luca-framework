@@ -2277,6 +2277,71 @@ bun run src/iteration/checkpoint.ts prune --phase={phase_number}
 
 This removes all \`iter/{phase}/*\` git tags and \`.planning/checkpoints/iter-{phase}-*.json\` metadata files, keeping the git tag namespace and checkpoint directory clean for future phases.
 
+### 10.6. Shadow Debt Advisory Scan
+
+Skip if \`shadow_debt.enabled\` is false in \`.planning/config.json\`.
+
+Always runs at every complexity level. Scan depth varies by complexity:
+
+- TRIVIAL/SIMPLE: quick (Categories 1+3)
+- MODERATE: standard (Categories 1+2+3+5)
+- COMPLEX/CRITICAL: per \`shadow_debt.phase_scan_mode\` config (default: quick)
+
+\`\`\`bash
+SHADOW_ENABLED=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.enabled ?? true)" 2>/dev/null || echo "true")
+
+# Resolve scan mode from complexity
+if [ "$COMPLEXITY" = "TRIVIAL" ] || [ "$COMPLEXITY" = "SIMPLE" ]; then
+  SCAN_MODE="quick"
+elif [ "$COMPLEXITY" = "MODERATE" ]; then
+  SCAN_MODE="standard"
+else
+  SCAN_MODE=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.phase_scan_mode ?? 'quick')" 2>/dev/null || echo "quick")
+fi
+\`\`\`
+
+If \`SHADOW_ENABLED\` is false, log "Shadow scan skipped (disabled in config)" and continue.
+
+Spawn \`lu-shadow-scanner\` with the determined mode:
+
+\`\`\`
+Task(
+  prompt: """
+<shadow_scan_context>
+**Scan mode:** {SCAN_MODE}
+**Complexity:** {COMPLEXITY}
+**Phase:** {phase_number}
+**Config:** {shadow_debt config JSON}
+</shadow_scan_context>
+
+Scan the repository for AI-session debris. Return a valid ShadowScanReport JSON block as your final output.
+""",
+  subagent_type: "lu-shadow-scanner",
+  description: "Shadow debt advisory scan (phase {phase_number}, {SCAN_MODE} mode)"
+)
+\`\`\`
+
+If findings exist, display the advisory banner:
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► SHADOW DEBT ADVISORY ({n} findings: {c} critical, {h} high)
+ Run /shadow-cleanup to review and fix.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+Advisory only — never blocks phase completion. Store metric:
+
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: REPO_VAULT,
+  concept: "metric:shadow-debt-phase-{phase_number}",
+  content: JSON.stringify({ scan_mode: SCAN_MODE, total, critical, high, medium, low, scanned_at })
+)
+\`\`\`
+
+Proceed to Step 11 regardless of findings.
+
 ### 11. Commit Phase Completion
 
 \`\`\`bash
