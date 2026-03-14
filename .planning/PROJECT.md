@@ -8,11 +8,15 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v4.3.0 — Shipped)
+## Current State (v4.4.0 — Shipped)
 
-**Last Shipped:** v4.3.0 — Observer Workflow Editor (2026-03-13)
+**Last Shipped:** v4.4.0 — Smart Context Management (2026-03-14)
 
-7 phases, 35 commits, 79 files changed (+7,963/-23 LOC). Visual node-graph editor (ComfyUI-style) for the Observer app using React Flow v12 (@xyflow/react). Stage-group container architecture with 7 pipeline stages, custom node types (agent, gate, skill) with shared NodeCard component, complexity filter with model tier badges (ARIA radiogroup), grouped column layout replacing dagre for deterministic positioning, Zod safeParse validation on all API responses and node data, AbortController race-safe data fetching.
+7 phases, 23 commits, 74 files changed (+6,756/-101 LOC). Complete context management pipeline: hook schema expansion (5→18 canonical events), PreCompact checkpoint hook (MuninnDB + filesystem), context metrics JSON with proactive checkpointing, session compact restore hook, /context-restore skill for manual deep recovery, observer context window bar with real token metrics via statusLine API.
+
+## Previous State (v4.3.0)
+
+v4.3.0 — Observer Workflow Editor (2026-03-13). 7 phases, 35 commits, 79 files changed (+7,963/-23 LOC). Visual node-graph editor (ComfyUI-style) for the Observer app using React Flow v12.
 
 ## Previous State (v4.2.0)
 
@@ -85,6 +89,7 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 - **v4.1.0** — Agentic Intelligence & Platform Maturity (2026-03-11). 10 phases, 17 plans, 77 commits, 229 files changed. Skill dependencies, tribunal consensus, multi-lens review, observer todos, semantic embeddings, interop scanner, memory effectiveness, security hardening.
 - **v4.2.0** — Workflow Unification & Memory Architecture (2026-03-12). 5 phases, 8 plans, 15 commits, 312 files changed. Complexity gating model-tier-only, multi-vault MuninnDB, vault-routing rule, dual-vault recall/write, brain tree split.
 - **v4.3.0** — Observer Workflow Editor (2026-03-13). 7 phases, 35 commits, 79 files changed. React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility.
+- **v4.4.0** — Smart Context Management (2026-03-14). 7 phases, 23 commits, 74 files changed. Hook schema expansion, PreCompact checkpoint, context metrics, session restore, /context-restore skill, observer context bar.
 
 ## Requirements
 
@@ -145,4 +150,4 @@ v3.1.0 — Memory Intelligence & Platform Cleanup (2026-03-09). 7 phases, 10 com
 
 ---
 
-_Last updated: 2026-03-13 — v4.3.0 milestone archived_
+_Last updated: 2026-03-14 — v4.4.0 milestone archived_
