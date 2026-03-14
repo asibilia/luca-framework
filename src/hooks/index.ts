@@ -48,14 +48,23 @@ export type {
 // Config generators — canonical
 export { generateClaudeHooksConfigFromCanonical } from "./__helpers/config-generators";
 
-// Adapter registry — formal adapter-registry architecture
+// Adapter schemas
 export {
   ADAPTER_PLATFORMS,
   adapterPlatformSchema,
-  claudeAdapter,
+} from "./__schemas/adapter.schemas";
+export type {
+  AdapterPlatform,
+  HookPlatformAdapter,
+} from "./__schemas/adapter.schemas";
+
+// Claude Code adapter
+export { claudeAdapter } from "./__helpers/claude-adapter";
+
+// Adapter registry
+export {
   hookAdapterRegistry,
   resolveAdapter,
   getRegisteredPlatforms,
   generateConfigForPlatform,
-} from "./adapters";
-export type { AdapterPlatform, HookPlatformAdapter } from "./adapters";
+} from "./__helpers/adapter-registry";

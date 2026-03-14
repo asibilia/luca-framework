@@ -25,6 +25,7 @@ import {
   resolveCanonicalRegistry,
   generateClaudeHooksConfigFromCanonical,
 } from "../src/hooks/index";
+import { generateAllShellWrappers } from "../src/hooks/__helpers/generate-shell-wrappers";
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry, ProfileConfigSchema } from "../src/rules/index";
 import { skillRegistry } from "../src/skills/index";
@@ -490,41 +491,12 @@ function generateRuleOutputs(generated: Map<string, string>): void {
 async function generateHookOutputs(
   generated: Map<string, string>,
 ): Promise<void> {
-  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
   const canonical = resolveCanonicalRegistry();
 
-  // Copy hook scripts to .claude/
-  for (const [_hookName, hookDef] of Object.entries(canonical)) {
-    const srcPath = path.join(hookScriptsDir, hookDef.script);
-    const srcFile = Bun.file(srcPath);
-    if (await srcFile.exists()) {
-      const content = await srcFile.text();
-      generated.set(`.claude/hooks/${hookDef.script}`, content);
-    }
-  }
-
-  // Copy _lib/ shared library to all output directories
-  const libDir = path.join(hookScriptsDir, "_lib");
-  const libDirFile = Bun.file(path.join(libDir, "common.sh"));
-  if (await libDirFile.exists()) {
-    const libFiles = ["common.sh"];
-    for (const fileName of libFiles) {
-      const srcPath = path.join(libDir, fileName);
-      const srcFile = Bun.file(srcPath);
-      if (await srcFile.exists()) {
-        const content = await srcFile.text();
-        generated.set(`.claude/hooks/_lib/${fileName}`, content);
-        generated.set(`dist/plugin/scripts/_lib/${fileName}`, content);
-      }
-    }
-  }
-
-  // Copy statusline script (NOT a hook — lives at .claude/ root, not .claude/hooks/)
-  const statuslineSrcPath = path.join(hookScriptsDir, "statusline.sh");
-  const statuslineSrcFile = Bun.file(statuslineSrcPath);
-  if (await statuslineSrcFile.exists()) {
-    const content = await statuslineSrcFile.text();
-    generated.set(".claude/statusline.sh", content);
+  // Generate shell wrappers from the canonical registry
+  const wrappers = generateAllShellWrappers();
+  for (const [outputPath, content] of Object.entries(wrappers)) {
+    generated.set(outputPath, content);
   }
 
   // Claude settings.json hooks fragment
