@@ -360,6 +360,27 @@ const main = async (): Promise<void> => {
     }
   }
 
+  // --- Read context_management config ---
+  let clearSuggestionThreshold = 42;
+  let clearSuggestionEnabled = true;
+  try {
+    const configPath = join(pd, ".planning", "config.json");
+    if (existsSync(configPath)) {
+      const config = JSON.parse(readFileSync(configPath, "utf-8"));
+      const cm = config.context_management;
+      if (cm) {
+        if (typeof cm.clear_suggestion_threshold === "number") {
+          clearSuggestionThreshold = cm.clear_suggestion_threshold;
+        }
+        if (typeof cm.clear_suggestion_enabled === "boolean") {
+          clearSuggestionEnabled = cm.clear_suggestion_enabled;
+        }
+      }
+    }
+  } catch {
+    // Config unreadable — use defaults
+  }
+
   // --- Build systemMessage based on zone state ---
   let systemMessage = "";
 
@@ -367,7 +388,46 @@ const main = async (): Promise<void> => {
   if (currSev > prevSev) {
     if (prevZone === "peak" && zone === "good") {
       systemMessage = `[Session Observer] Context at ${usagePercent}% (peak->good). Writing zone observation to MuninnDB. Please summarize your current goal and approach via: mcp__muninn__muninn_remember(vault: "luca-framework", concept: "session:observation-work", content: "[current goal, approach, recent decisions]")`;
+    } else if (
+      zone === "degrading" &&
+      clearSuggestionEnabled &&
+      usagePercent >= clearSuggestionThreshold
+    ) {
+      // Proactive clear suggestion on degrading zone transition
+      const clearSuggestThrottleFile = `/tmp/.luca-clear-suggest-${hash}-ts`;
+      const clearSuggestThrottleSeconds = 600; // 10-minute TTL
+      let shouldSuggestClear = true;
+
+      if (existsSync(clearSuggestThrottleFile)) {
+        try {
+          const lastSuggest = parseInt(
+            readFileSync(clearSuggestThrottleFile, "utf-8").trim(),
+            10,
+          );
+          const now = Math.floor(Date.now() / 1000);
+          if (now - lastSuggest < clearSuggestThrottleSeconds) {
+            shouldSuggestClear = false;
+          }
+        } catch {
+          // Can't read throttle — suggest anyway
+        }
+      }
+
+      if (shouldSuggestClear) {
+        writeFileSync(
+          clearSuggestThrottleFile,
+          String(Math.floor(Date.now() / 1000)),
+        );
+        systemMessage = `[Context Management] Context at ${usagePercent}%. Session observations are saved to MuninnDB.\nConsider running /clear at your next natural stopping point (after a commit, task completion, or phase boundary). Context will be fully restored on the next session start.`;
+      } else {
+        // Throttled — fall through to observation message
+        systemMessage = `[Session Observer] Context at ${usagePercent}% (good->degrading). Observation saved. Consider /clear at your next natural stopping point.`;
+      }
+    } else if (zone === "stop") {
+      // Escalated clear suggestion at stop zone
+      systemMessage = `[Context Management] Context at ${usagePercent}% — degraded zone. Strongly recommend /clear now. All observations saved to MuninnDB. Run /clear then start a new session for full context restore.`;
     } else if (prevZone === "good" && zone === "degrading") {
+      // Degrading transition but clear suggestion disabled or below threshold
       systemMessage = `[Session Observer] Context at ${usagePercent}% (good->degrading). Observation saved. Consider /clear at your next natural stopping point.`;
     }
   }

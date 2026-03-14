@@ -30,6 +30,8 @@ import {
   isClaude,
 } from "./_lib/hook-io.ts";
 import { runBridge } from "./_lib/bridge.ts";
+import { resolveVault } from "./_lib/vault.ts";
+import { recallMuninnEngrams } from "./_lib/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-start");
@@ -162,6 +164,116 @@ const main = async (): Promise<void> => {
     } catch {
       // best-effort
     }
+  }
+
+  // Step 3g: Enhanced restore — detect post-clear sessions via MuninnDB observations
+  let restoreMessage = "";
+  try {
+    const vault = await resolveVault();
+
+    // Query MuninnDB for recent session:observation-* engrams (within 30 min)
+    const recentObservations = await recallMuninnEngrams(
+      vault,
+      "session:observation zone transition recent work",
+      5,
+    );
+
+    // Filter to observations from the last 30 minutes
+    const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
+    const recentObs = recentObservations.filter((engram) => {
+      if (!engram.created_at) return false;
+      const created = new Date(engram.created_at).getTime();
+      return created > thirtyMinAgo;
+    });
+
+    if (recentObs.length > 0) {
+      // Parse the most recent observation for context
+      let observationZone = "";
+      let observationUsage = "";
+      let observationBranch = "";
+      let observationDiff = "";
+      let observationPhase = "";
+
+      try {
+        const latestEngram = recentObs[0];
+        const latestContent = latestEngram?.content || "";
+        const parsed = JSON.parse(latestContent);
+        observationZone = parsed.zone || "";
+        observationUsage = String(parsed.usage_percent ?? "");
+        observationBranch = parsed.git_branch || "";
+        observationDiff = parsed.git_diff_summary || "";
+        observationPhase = parsed.phase_context || "";
+      } catch {
+        // Content not JSON — use raw
+      }
+
+      // Query for session:observation-work engrams (LLM-written summaries)
+      const workObservations = await recallMuninnEngrams(
+        vault,
+        "session:observation-work current goal approach decisions",
+        3,
+      );
+      const recentWork = workObservations.filter((engram) => {
+        if (!engram.created_at) return false;
+        const created = new Date(engram.created_at).getTime();
+        return created > thirtyMinAgo;
+      });
+
+      let workSummary =
+        "(LLM observation not recorded -- see git diff for recent changes)";
+      const latestWork = recentWork[0];
+      if (recentWork.length > 0 && latestWork?.content) {
+        workSummary = latestWork.content.slice(0, 2000);
+      }
+
+      // Query for relevant patterns and pitfalls (best-effort)
+      let patternsSection = "(none recalled)";
+      if (observationPhase) {
+        try {
+          const patterns = await recallMuninnEngrams(
+            vault,
+            `pattern pitfall ${observationPhase}`,
+            3,
+          );
+          if (patterns.length > 0) {
+            const patternItems = patterns
+              .slice(0, 3)
+              .map((p) => {
+                const concept = p.concept || "unknown";
+                const content = (p.content || "").slice(0, 200);
+                return `- **${concept}**: ${content}`;
+              })
+              .join("\n");
+            patternsSection = patternItems;
+          }
+        } catch {
+          // Pattern recall failed — use default
+        }
+      }
+
+      // Assemble restore message (targeting 3-5KB)
+      restoreMessage = `[Context Restored] Fresh session — previous context cleared at ${observationUsage || "unknown"}%.
+
+## Working Context (from MuninnDB observations)
+
+- Branch: ${observationBranch || "(unknown)"}
+- Phase context: ${observationPhase || "(unknown)"}
+- Files in progress: ${observationDiff || "(none detected)"}
+- Zone at clear: ${observationZone || "(unknown)"}
+
+## Recent Session Observations
+
+${workSummary}
+
+## Recalled Patterns & Pitfalls
+
+${patternsSection}
+
+MuninnDB vault: ${vault} | Run /context-restore for deeper semantic recall.`;
+    }
+  } catch {
+    // Enhanced restore failed — fall through to normal session start
+    // This is entirely best-effort; cold-start behavior is unchanged
   }
 
   // Step 4: Detect runtime
@@ -417,7 +529,10 @@ const main = async (): Promise<void> => {
   }
 
   // Step 9: Output summary if anything was created or there are notes/stale sessions
-  if (created.trim()) {
+  // Enhanced restore message takes priority for post-clear sessions
+  if (restoreMessage) {
+    emitResult({ systemMessage: restoreMessage });
+  } else if (created.trim()) {
     const files = created.trim().split(" ").filter(Boolean);
     const msgText = `[Luca] Initialized .planning/ directory. Created: ${files.join(", ")}${notesMsg}${staleSessionMsg ? " " + staleSessionMsg : ""}`;
     if (isClaude()) {
