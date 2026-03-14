@@ -99,18 +99,18 @@
 
 **Depends on:** Phase 163
 
-- [ ] Add project-dir boundary validation to `post-edit-format.ts`, `post-edit-typecheck.ts`, `statusline.ts` (3 HIGH)
-- [ ] Quote env file values in `session-start.ts` + parse session-end marker with Zod (MEDIUM + LOW)
-- [ ] Replace `readStdinJson()` with Zod `parseHookInput()` in hooks that read specific fields (MEDIUM)
-- [ ] Validate `MUNINN_DB_URL` is loopback before use in `muninn.ts` (MEDIUM)
-- [ ] Sanitize note content before systemMessage injection in `context-check-throttled.ts` (MEDIUM)
-- [ ] Remove dead Cursor fallback branches from `hook-io.ts` (MEDIUM arch)
-- [ ] Rename `impl/_lib/` to `impl/__helpers/` + update all imports (MEDIUM arch)
-- [ ] Validate engram ID format before URL interpolation in `muninn-config.ts` (LOW)
-- [ ] Use `realpathSync` for symlink-safe path validation in `context-monitor.ts` (LOW)
-- [ ] Remove stale `.cursor`/`.pi` from `SAFE_CLEAN_ROOTS` in `build-utils.ts` (tech debt)
-- [ ] Replace hardcoded vault name with `resolveVault()` in `context-check-throttled.ts` prompt (tech debt)
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Add project-dir boundary validation to `post-edit-format.ts`, `post-edit-typecheck.ts`, `statusline.ts` (3 HIGH)
+- [x] Quote env file values in `session-start.ts` + parse session-end marker with Zod (MEDIUM + LOW)
+- [x] Replace `readStdinJson()` with Zod `parseHookInput()` in hooks that read specific fields (MEDIUM)
+- [x] Validate `MUNINN_DB_URL` is loopback before use in `muninn.ts` (MEDIUM)
+- [x] Sanitize note content before systemMessage injection in `context-check-throttled.ts` (MEDIUM)
+- [x] Remove dead Cursor fallback branches from `hook-io.ts` (MEDIUM arch)
+- [x] Rename `impl/_lib/` to `impl/__helpers/` + update all imports (MEDIUM arch)
+- [x] Validate engram ID format before URL interpolation in `muninn-config.ts` (LOW)
+- [x] Use `realpathSync` for symlink-safe path validation in `context-monitor.ts` (LOW)
+- [x] Remove stale `.cursor`/`.pi` from `SAFE_CLEAN_ROOTS` in `build-utils.ts` (tech debt)
+- [x] Replace hardcoded vault name with `resolveVault()` in `context-check-throttled.ts` prompt (tech debt)
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ### Phase 165: Hook Contract Validation — End-to-End Verification
 
