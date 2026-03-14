@@ -168,25 +168,39 @@ async function muninnFetch(
   vault?: string,
 ): Promise<Response> {
   const url = `${MUNINN_BASE_URL}${path}`;
-  const apiKey = resolveVaultApiKey(vault);
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(init?.headers as Record<string, string>),
+  const vaultKey = resolveVaultApiKey(vault);
+  const genericKey = process.env.MUNINN_DB_API_KEY ?? "";
+
+  const doFetch = async (apiKey: string): Promise<Response> => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(init?.headers as Record<string, string>),
+    };
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), MUNINN_TIMEOUT);
+    try {
+      return await fetch(url, {
+        ...init,
+        headers,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   };
-  if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
+
+  // Try vault-specific key first
+  const res = await doFetch(vaultKey);
+
+  // If vault key fails with 401 and a different generic key exists, retry with it
+  if (res.status === 401 && genericKey && genericKey !== vaultKey) {
+    return doFetch(genericKey);
   }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), MUNINN_TIMEOUT);
-  try {
-    return await fetch(url, {
-      ...init,
-      headers,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
+
+  return res;
 }
 
 function createMuninnClient(): MuninnClient {
