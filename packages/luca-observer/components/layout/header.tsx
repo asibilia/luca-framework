@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import { Sun, Moon, Database, ChevronsUpDown, Check } from "lucide-react";
 
+import { ContextWindowBar } from "~/components/layout/context-window-bar";
+
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -65,6 +67,8 @@ export function Header() {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-2 h-4" />
         <div className="flex-1" />
+        <ContextWindowBar />
+        <Separator orientation="vertical" className="mx-1 h-4" />
         {vaults.length > 1 && (
           <DropdownMenu>
             <Tooltip>
