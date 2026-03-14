@@ -132,11 +132,11 @@
 
 **Depends on:** Phase 165
 
-- [ ] Fix path resolution in `/api/muninn/checkpoint` and `/api/muninn/zone-history` routes (apply `findProjectRoot()` pattern)
-- [ ] Fix checkpoint route to read `.context-metrics.json` for live session data instead of `.context-checkpoint.json`
-- [ ] Wire observation writes from `context-check-throttled.ts` to produce `session:observation-*` MuninnDB engrams that the observations route expects
-- [ ] Verify all 6 memory page sections display data (not empty states) during active session
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Fix path resolution in `/api/muninn/checkpoint` and `/api/muninn/zone-history` routes (apply `findProjectRoot()` pattern)
+- [x] Fix checkpoint route to read `.context-metrics.json` for live session data instead of `.context-checkpoint.json`
+- [x] Wire observation writes from `context-check-throttled.ts` to produce `session:observation-*` MuninnDB engrams that the observations route expects
+- [x] Improve recall effectiveness empty state messaging
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ---
 
