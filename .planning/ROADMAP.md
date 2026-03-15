@@ -161,17 +161,17 @@
 
 **Depends on:** Phase 167
 
-- [ ] Fix emitResult: emit followupMessage as distinct key, not overwriting systemMessage (HOOK-001/SEC-05, CRITICAL)
-- [ ] Fix import ordering: move imports above const/schema declarations in session-start, pre-compact-checkpoint, subagent-stop (HOOK-002, CRITICAL)
-- [ ] Replace require("fs") with ESM imports in hook-io.ts guardDedup + session-start.ts (HOOK-005/SEC-04, HIGH)
-- [ ] Add MUNINN_DB_URL loopback validation to observer muninn-config.ts (SEC-01, HIGH)
-- [ ] Escape single-quotes in LUCA_PLANNING_DIR env export in session-start.ts (SEC-03, MEDIUM)
-- [ ] Return parsed.data instead of raw data in muninn-route-helper.ts on schema failure (SEC-02, MEDIUM)
-- [ ] Add Zod input schema to post-tool-use-failure.ts (SEC-08, LOW)
-- [ ] Apply ContextMetricsSchema.safeParse in zone-history route before field access (SEC-06, LOW)
-- [ ] Extend note sanitizer regex to include ESC (0x1B) in context-check-throttled.ts (SEC-07, LOW)
-- [ ] Fix PlatformHookConfig barrel export: re-export from __schemas/ directly in index.ts (ARCH-003, LOW)
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Fix emitResult: emit followupMessage as distinct key, not overwriting systemMessage (HOOK-001/SEC-05, CRITICAL)
+- [x] Fix import ordering: move imports above const/schema declarations in session-start, pre-compact-checkpoint, subagent-stop (HOOK-002, CRITICAL)
+- [x] Replace require("fs") with ESM imports in hook-io.ts guardDedup + session-start.ts (HOOK-005/SEC-04, HIGH)
+- [x] Add MUNINN_DB_URL loopback validation to observer muninn-config.ts (SEC-01, HIGH)
+- [x] Escape single-quotes in LUCA_PLANNING_DIR env export in session-start.ts (SEC-03, MEDIUM)
+- [x] Return parsed.data instead of raw data in muninn-route-helper.ts on schema failure (SEC-02, MEDIUM)
+- [x] Add Zod input schema to post-tool-use-failure.ts (SEC-08, LOW)
+- [x] Apply ContextMetricsSchema.safeParse in zone-history route before field access (SEC-06, LOW)
+- [x] Extend note sanitizer regex to include ESC (0x1B) in context-check-throttled.ts (SEC-07, LOW)
+- [x] Fix PlatformHookConfig barrel export: re-export from \_\_schemas/ directly in index.ts (ARCH-003, LOW)
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ### Phase 169: Hook DRY & Consistency Cleanup
 
@@ -179,15 +179,15 @@
 
 **Depends on:** Phase 168
 
-- [ ] Extract isCommitCommand() to __helpers/commit-utils.ts, import in pre-commit-gate + pre-commit-drift-check (HOOK-003, HIGH)
-- [ ] Extract collectGitContext() helper from context-check-throttled.ts (HOOK-004, HIGH)
-- [ ] Extract checkThrottle/recordThrottle helpers to hook-io.ts (HOOK-008, MEDIUM)
-- [ ] Extract buildRestoreMessage() from session-start.ts main() (HOOK-006, MEDIUM)
-- [ ] Add guardDedup to subagent-stop.ts; document throttle strategy for post-tool-use-failure + user-prompt-submit (HOOK-007, MEDIUM)
-- [ ] Remove manual stdout.write workarounds now that emitResult is fixed (HOOK-009, MEDIUM)
-- [ ] Add defaults to ShadowScanReportSchema scanned_at + categories_scanned (SCHEMA-001, MEDIUM)
-- [ ] Rename skill-dependencies.ts → skill-dependencies.schemas.ts (ARCH-002, LOW)
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Extract isCommitCommand() to \_\_helpers/commit-utils.ts, import in pre-commit-gate + pre-commit-drift-check (HOOK-003, HIGH)
+- [x] Extract collectGitContext() helper from context-check-throttled.ts (HOOK-004, HIGH)
+- [x] Extract checkThrottle/recordThrottle helpers to hook-io.ts (HOOK-008, MEDIUM)
+- [x] Extract buildRestoreMessage() from session-start.ts main() (HOOK-006, MEDIUM)
+- [x] Add guardDedup to subagent-stop.ts; document throttle strategy for post-tool-use-failure + user-prompt-submit (HOOK-007, MEDIUM)
+- [x] Remove manual stdout.write workarounds now that emitResult is fixed (HOOK-009, MEDIUM)
+- [x] Add defaults to ShadowScanReportSchema scanned_at + categories_scanned (SCHEMA-001, MEDIUM)
+- [x] Rename skill-dependencies.ts → skill-dependencies.schemas.ts (ARCH-002, LOW)
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ### Phase 170: Observer Component DRY Cleanup
 
@@ -195,12 +195,12 @@
 
 **Depends on:** Phase 168
 
-- [ ] Extract zoneColor() to lib/format.ts, import in session-status-hero + memory-timeline (OBS-001, HIGH)
-- [ ] Extract formatAge() to lib/format.ts with consistent null handling, import in session-status-hero + memory-health-indicator (OBS-002, HIGH)
-- [ ] Extract coherenceColor/scoreColor() to lib/format.ts, import in health-dashboard + context-usage-bar + recall-effectiveness (OBS-003, HIGH)
-- [ ] Export BrainEngram from brain-panel.tsx, import in enhanced-brain-tree.tsx (OBS-004, MEDIUM)
-- [ ] Refactor KnowledgeGraphMini to accept props like other 5 sections, lift fetch to page level (OBS-005, MEDIUM)
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Extract zoneColor() to lib/format.ts, import in session-status-hero + memory-timeline (OBS-001, HIGH)
+- [x] Extract formatAge() to lib/format.ts with consistent null handling, import in session-status-hero + memory-health-indicator (OBS-002, HIGH)
+- [x] Extract coherenceColor/scoreColor() to lib/format.ts, import in health-dashboard + context-usage-bar + recall-effectiveness (OBS-003, HIGH)
+- [x] Export BrainEngram from brain-panel.tsx, import in enhanced-brain-tree.tsx (OBS-004, MEDIUM)
+- [x] Refactor KnowledgeGraphMini to accept props like other 5 sections, lift fetch to page level (OBS-005, MEDIUM)
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ---
 
