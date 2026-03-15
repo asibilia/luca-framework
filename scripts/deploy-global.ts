@@ -776,6 +776,10 @@ async function removeGlobalArtifacts(): Promise<void> {
       "context-check-throttled.sh",
       "pre-compact-checkpoint.sh",
       "snapshot-sync.sh",
+      "user-prompt-submit.sh",
+      "muninn-context-recall.sh",
+      "subagent-stop.sh",
+      "post-tool-use-failure.sh",
     ];
 
     for (const script of lucaScripts) {
@@ -833,6 +837,10 @@ async function removeGlobalArtifacts(): Promise<void> {
                 "context-check-throttled.sh",
                 "pre-compact-checkpoint.sh",
                 "snapshot-sync.sh",
+                "user-prompt-submit.sh",
+                "muninn-context-recall.sh",
+                "subagent-stop.sh",
+                "post-tool-use-failure.sh",
               ];
               return !lucaScripts.some((s) => cmd.includes(s));
             });
