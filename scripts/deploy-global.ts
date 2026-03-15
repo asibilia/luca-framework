@@ -344,12 +344,27 @@ async function deployHooks(projectRoot: string): Promise<number> {
   );
 
   for (const script of scripts) {
-    deployFile(join(sourceDir, script), join(targetDir, script), true);
+    const targetPath = join(targetDir, script);
+    deployFile(join(sourceDir, script), targetPath, true);
 
     // Make executable
     if (!dryRun) {
-      chmodSync(join(targetDir, script), 0o755);
+      chmodSync(targetPath, 0o755);
     }
+
+    // Rewrite relative paths to absolute monorepo paths for global deploy.
+    // Shell wrappers use $(dirname "$0")/../../src/hooks/scripts/ which resolves
+    // correctly inside the monorepo but breaks when deployed to ~/.claude/hooks/.
+    if (!dryRun) {
+      const content = readFileSync(targetPath, "utf-8");
+      const rewritten = content
+        .replace(/\$\(dirname "\$0"\)\/\.\.\/\.\.\//g, `${projectRoot}/`)
+        .replace(/\$\(dirname "\$0"\)\/\.\.\//g, `${projectRoot}/`);
+      if (rewritten !== content) {
+        writeFileSync(targetPath, rewritten);
+      }
+    }
+
     count++;
   }
 
