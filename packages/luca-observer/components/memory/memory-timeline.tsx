@@ -14,25 +14,7 @@ import { EmptyState } from "~/components/shared/empty-state";
 
 import type { ObservationsData } from "~/hooks/use-observations";
 import type { CheckpointData, ZoneHistoryEntry } from "~/hooks/use-checkpoint";
-import { relativeTime } from "~/lib/format";
-
-/**
- * Resolve zone to a CSS custom property color name.
- */
-function zoneColor(zone: string): string {
-  switch (zone) {
-    case "peak":
-      return "success";
-    case "good":
-      return "info";
-    case "degrading":
-      return "warning";
-    case "stop":
-      return "destructive";
-    default:
-      return "muted-foreground";
-  }
-}
+import { relativeTime, zoneColor } from "~/lib/format";
 
 /**
  * Resolve observation concept prefix to a color.

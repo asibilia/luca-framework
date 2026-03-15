@@ -112,6 +112,71 @@ export function relativeTime(input: number | Date | undefined | null): string {
 }
 
 /**
+ * Resolve a context zone name to a CSS custom property color token.
+ *
+ * Maps the four quality degradation zones (peak, good, degrading, stop)
+ * to the project's CSS custom property color system.
+ *
+ * @param zone - Zone name string from CheckpointData
+ * @returns CSS color token name (without "var(--color-)" wrapper)
+ */
+export function zoneColor(zone: string): string {
+  switch (zone) {
+    case "peak":
+      return "success";
+    case "good":
+      return "info";
+    case "degrading":
+      return "warning";
+    case "stop":
+      return "destructive";
+    default:
+      return "muted-foreground";
+  }
+}
+
+/**
+ * Format a checkpoint age in seconds to a human-readable string.
+ *
+ * Returns "--" for null input (canonical null sentinel for this project).
+ *
+ * @param seconds - Age in seconds, or null if unknown
+ * @returns Human-readable age string (e.g. "5m ago", "2h ago") or "--"
+ */
+export function formatAge(seconds: number | null): string {
+  if (seconds === null) return "--";
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+/**
+ * Resolve a coherence score (0–1) to a CSS custom property color token.
+ *
+ * Higher coherence is better:
+ * - 0.8+: success (healthy)
+ * - 0.5–0.8: info (moderate)
+ * - 0.3–0.5: warning (low)
+ * - <0.3: destructive (poor)
+ *
+ * Identical thresholds are used for percentage-based metrics (hit rate,
+ * precision) since all three are 0–1 fractions.
+ *
+ * @param score - Coherence/quality score between 0 and 1
+ * @returns CSS color token name (without "var(--color-)" wrapper)
+ */
+export function coherenceColor(score: number): string {
+  if (score >= 0.8) return "success";
+  if (score >= 0.5) return "info";
+  if (score >= 0.3) return "warning";
+  return "destructive";
+}
+
+/**
  * Format a byte count to a human-readable string (e.g. "1.2 MB").
  *
  * Uses SI-style binary units: B, KB, MB, GB, TB.

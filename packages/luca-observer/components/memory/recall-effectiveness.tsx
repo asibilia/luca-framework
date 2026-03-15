@@ -2,21 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { EmptyState } from "~/components/shared/empty-state";
+import { relativeTime, coherenceColor } from "~/lib/format";
 
 import type { ObservationsData } from "~/hooks/use-observations";
-import { relativeTime } from "~/lib/format";
-
-/**
- * Resolve percentage to a CSS color name.
- *
- * Higher is better for hit rate and precision.
- */
-function percentColor(value: number): string {
-  if (value >= 0.8) return "success";
-  if (value >= 0.5) return "info";
-  if (value >= 0.3) return "warning";
-  return "destructive";
-}
 
 /**
  * Recall Effectiveness section for the memory page.
@@ -61,7 +49,7 @@ export function RecallEffectiveness({ data }: { data: ObservationsData }) {
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${Math.min(Math.round(data.hit_rate * 100), 100)}%`,
-                  backgroundColor: `var(--color-${percentColor(data.hit_rate)})`,
+                  backgroundColor: `var(--color-${coherenceColor(data.hit_rate)})`,
                 }}
               />
             </div>
@@ -116,7 +104,7 @@ function MetricDisplay({
   }
 
   const percent = Math.round(value * 100);
-  const color = percentColor(value);
+  const color = coherenceColor(value);
 
   return (
     <div className="flex items-center gap-1.5">

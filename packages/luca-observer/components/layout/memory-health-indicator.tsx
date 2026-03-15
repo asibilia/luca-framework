@@ -6,30 +6,9 @@ import { useAtomValue } from "jotai";
 import { Activity } from "lucide-react";
 
 import { vaultAtom } from "~/stores/vault";
+import { coherenceColor, formatAge } from "~/lib/format";
 
 const POLL_INTERVAL_MS = 30_000;
-
-/**
- * Resolve coherence score to a CSS color name.
- */
-function coherenceColor(score: number): string {
-  if (score >= 0.8) return "success";
-  if (score >= 0.5) return "info";
-  if (score >= 0.3) return "warning";
-  return "destructive";
-}
-
-/**
- * Format checkpoint age in seconds to a compact string.
- */
-function formatAge(seconds: number | null): string {
-  if (seconds === null) return "";
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
 
 // -- Lightweight internal types (no hook import to avoid circular deps) ------
 
@@ -70,10 +49,7 @@ export function MemoryHealthIndicator() {
       if (statsRes.status === "fulfilled" && statsRes.value.ok) {
         try {
           const stats = (await statsRes.value.json()) as {
-            coherence?: Record<
-              string,
-              { score: number }
-            >;
+            coherence?: Record<string, { score: number }>;
           };
           if (stats.coherence) {
             const entries = Object.values(stats.coherence);
@@ -101,7 +77,11 @@ export function MemoryHealthIndicator() {
       }
 
       // Only set data if we have at least one meaningful value
-      if (healthScore !== null || observationCount > 0 || checkpointAge !== null) {
+      if (
+        healthScore !== null ||
+        observationCount > 0 ||
+        checkpointAge !== null
+      ) {
         setData({ healthScore, observationCount, checkpointAge });
       }
     } catch {
@@ -126,13 +106,12 @@ export function MemoryHealthIndicator() {
       : "muted-foreground";
   const scorePercent =
     data.healthScore !== null ? Math.round(data.healthScore * 100) : null;
-  const ageText = formatAge(data.checkpointAge);
+  const ageText =
+    data.checkpointAge !== null ? formatAge(data.checkpointAge) : null;
 
   const tooltip = [
     scorePercent !== null ? `Memory health: ${scorePercent}%` : null,
-    data.observationCount > 0
-      ? `${data.observationCount} observations`
-      : null,
+    data.observationCount > 0 ? `${data.observationCount} observations` : null,
     ageText ? `checkpoint ${ageText}` : null,
   ]
     .filter(Boolean)

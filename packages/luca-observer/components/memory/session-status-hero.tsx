@@ -2,29 +2,9 @@
 
 import { Card, CardContent } from "~/components/ui/card";
 import { EmptyState } from "~/components/shared/empty-state";
+import { zoneColor, formatAge } from "~/lib/format";
 
 import type { CheckpointData } from "~/hooks/use-checkpoint";
-
-/**
- * Resolve context zone to a CSS custom property color name.
- *
- * Maps the four quality degradation zones to the project's
- * existing CSS custom property color system.
- */
-function zoneColor(zone: string): string {
-  switch (zone) {
-    case "peak":
-      return "success";
-    case "good":
-      return "info";
-    case "degrading":
-      return "warning";
-    case "stop":
-      return "destructive";
-    default:
-      return "muted-foreground";
-  }
-}
 
 /**
  * Resolve zone to a human-readable label.
@@ -42,20 +22,6 @@ function zoneLabel(zone: string): string {
     default:
       return zone;
   }
-}
-
-/**
- * Format checkpoint age in seconds to a human-readable string.
- */
-function formatAge(seconds: number | null): string {
-  if (seconds === null) return "--";
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 /**

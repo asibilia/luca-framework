@@ -2,24 +2,9 @@
 
 import { Card, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import { coherenceColor } from "~/lib/format";
 
 import type { StatsResponse } from "~/hooks/use-memory";
-
-/**
- * Resolve coherence score color based on value.
- *
- * Higher coherence is better:
- * - 0.8+: success (healthy)
- * - 0.5-0.8: info (moderate)
- * - 0.3-0.5: warning (low)
- * - <0.3: destructive (poor)
- */
-function coherenceColor(score: number): string {
-  if (score >= 0.8) return "success";
-  if (score >= 0.5) return "info";
-  if (score >= 0.3) return "warning";
-  return "destructive";
-}
 
 /**
  * Stats bar showing MuninnDB vault statistics.
