@@ -27,6 +27,7 @@ import {
   projectDir,
   checkThrottle,
   recordThrottle,
+  emitResult,
 } from "../__helpers/hook-io.ts";
 import { runBridge } from "../__helpers/bridge.ts";
 import { resolveVault } from "../__helpers/vault.ts";
@@ -126,11 +127,9 @@ const main = async (): Promise<void> => {
         }
 
         if (noteContent) {
-          process.stdout.write(
-            JSON.stringify({
-              systemMessage: `[Developer Notes] Urgent notes to incorporate:${noteContent}`,
-            }),
-          );
+          emitResult({
+            systemMessage: `[Developer Notes] Urgent notes to incorporate:${noteContent}`,
+          });
           return exitSuccess();
         }
       }
@@ -377,7 +376,7 @@ const main = async (): Promise<void> => {
   }
 
   if (systemMessage) {
-    process.stdout.write(JSON.stringify({ systemMessage }));
+    emitResult({ systemMessage });
   }
 
   return exitSuccess();
