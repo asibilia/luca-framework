@@ -30,6 +30,7 @@ import {
 import { runBridge } from "../__helpers/bridge.ts";
 import { resolveVault } from "../__helpers/vault.ts";
 import { writeMuninnEngram } from "../__helpers/muninn.ts";
+import { collectGitContext } from "../__helpers/git-context.ts";
 
 import type { SessionObservation } from "../__schemas/hook.schemas.ts";
 
@@ -289,63 +290,7 @@ const main = async (): Promise<void> => {
 
     // --- Write observation to MuninnDB on zone transition ---
     try {
-      // Read git branch (best-effort)
-      let gitBranch = "";
-      try {
-        const branchResult = Bun.spawnSync(
-          ["git", "branch", "--show-current"],
-          { stdout: "pipe", stderr: "pipe", cwd: pd },
-        );
-        if (branchResult.exitCode === 0) {
-          gitBranch = branchResult.stdout.toString().trim();
-        }
-      } catch {
-        // git not available
-      }
-
-      // Read git diff summary (best-effort, first 10 lines)
-      let gitDiffSummary = "";
-      try {
-        const diffResult = Bun.spawnSync(
-          ["git", "diff", "--name-only", "HEAD"],
-          { stdout: "pipe", stderr: "pipe", cwd: pd },
-        );
-        if (diffResult.exitCode === 0) {
-          gitDiffSummary = diffResult.stdout
-            .toString()
-            .trim()
-            .split("\n")
-            .filter(Boolean)
-            .slice(0, 10)
-            .join(", ");
-        }
-      } catch {
-        // git not available
-      }
-
-      // Read phase context from STATE.md (best-effort)
-      let phaseContext = "";
-      const stateMdPath = join(pd, ".planning", "STATE.md");
-      if (existsSync(stateMdPath)) {
-        try {
-          const stateContent = readFileSync(stateMdPath, "utf-8");
-          const stateLines = stateContent.split("\n");
-          const phaseFields: string[] = [];
-          for (const line of stateLines) {
-            if (
-              line.includes("Phase:") ||
-              line.includes("Plan:") ||
-              line.includes("Status:")
-            ) {
-              const trimmed = line.replace(/^[-*\s]+/, "").trim();
-              if (trimmed) phaseFields.push(trimmed);
-            }
-          }
-          phaseContext = phaseFields.slice(0, 3).join(" | ");
-        } catch {
-          // STATE.md unreadable
-        }
-      }
+      const { gitBranch, gitDiffSummary, phaseContext } = collectGitContext(pd);
 
       // Construct observation payload
       const observation: SessionObservation = {
@@ -376,63 +321,7 @@ const main = async (): Promise<void> => {
   // --- Write session-start observation on first invocation ---
   if (isFirstInvocation) {
     try {
-      // Read git branch (best-effort)
-      let gitBranch = "";
-      try {
-        const branchResult = Bun.spawnSync(
-          ["git", "branch", "--show-current"],
-          { stdout: "pipe", stderr: "pipe", cwd: pd },
-        );
-        if (branchResult.exitCode === 0) {
-          gitBranch = branchResult.stdout.toString().trim();
-        }
-      } catch {
-        // git not available
-      }
-
-      // Read git diff summary (best-effort, first 10 lines)
-      let gitDiffSummary = "";
-      try {
-        const diffResult = Bun.spawnSync(
-          ["git", "diff", "--name-only", "HEAD"],
-          { stdout: "pipe", stderr: "pipe", cwd: pd },
-        );
-        if (diffResult.exitCode === 0) {
-          gitDiffSummary = diffResult.stdout
-            .toString()
-            .trim()
-            .split("\n")
-            .filter(Boolean)
-            .slice(0, 10)
-            .join(", ");
-        }
-      } catch {
-        // git not available
-      }
-
-      // Read phase context from STATE.md (best-effort)
-      let phaseContext = "";
-      const stateMdPath = join(pd, ".planning", "STATE.md");
-      if (existsSync(stateMdPath)) {
-        try {
-          const stateContent = readFileSync(stateMdPath, "utf-8");
-          const stateLines = stateContent.split("\n");
-          const phaseFields: string[] = [];
-          for (const line of stateLines) {
-            if (
-              line.includes("Phase:") ||
-              line.includes("Plan:") ||
-              line.includes("Status:")
-            ) {
-              const trimmed = line.replace(/^[-*\s]+/, "").trim();
-              if (trimmed) phaseFields.push(trimmed);
-            }
-          }
-          phaseContext = phaseFields.slice(0, 3).join(" | ");
-        } catch {
-          // STATE.md unreadable
-        }
-      }
+      const { gitBranch, gitDiffSummary, phaseContext } = collectGitContext(pd);
 
       // Construct session-start observation payload
       const sessionStartObservation: SessionObservation = {

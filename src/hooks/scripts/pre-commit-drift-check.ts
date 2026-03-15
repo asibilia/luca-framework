@@ -20,22 +20,10 @@ import {
   exitSuccess,
   projectDir,
 } from "../__helpers/hook-io.ts";
+import { isCommitCommand } from "../__helpers/commit-utils.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-commit-drift-check");
-
-// ─── Commit Pattern Matching ─────────────────────────────────────────────────
-
-const isCommitCommand = (cmd: string): boolean => {
-  const patterns = [
-    "git commit",
-    "git merge",
-    "bun run commit",
-    "bunx commit",
-    "bunx --bun commit",
-  ];
-  return patterns.some((p) => cmd.includes(p));
-};
 
 // ─── Relevant Path Prefixes ─────────────────────────────────────────────────
 

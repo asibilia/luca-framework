@@ -25,6 +25,7 @@ import {
   projectDir,
 } from "../__helpers/hook-io.ts";
 import { runBridge, readRuntime } from "../__helpers/bridge.ts";
+import { isCommitCommand } from "../__helpers/commit-utils.ts";
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
 
@@ -35,19 +36,6 @@ const PreCommitInputSchema = z.object({
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-commit-gate");
-
-// ─── Commit Pattern Matching ─────────────────────────────────────────────────
-
-const isCommitCommand = (cmd: string): boolean => {
-  const patterns = [
-    "git commit",
-    "git merge",
-    "bun run commit",
-    "bunx commit",
-    "bunx --bun commit",
-  ];
-  return patterns.some((p) => cmd.includes(p));
-};
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
