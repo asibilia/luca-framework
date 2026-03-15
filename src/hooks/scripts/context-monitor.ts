@@ -141,48 +141,15 @@ const main = async (): Promise<void> => {
     return exitSuccess();
   }
 
-  // --- Context file size breakdown ---
-  let stateSize = 0;
-  let stateJsonSize = 0;
-  const stateMdPath = `${pd}/.planning/STATE.md`;
-  const stateJsonPath = `${pd}/.planning/state.json`;
-
-  try {
-    if (existsSync(stateMdPath)) stateSize = statSync(stateMdPath).size;
-  } catch {
-    /* skip */
-  }
-  try {
-    if (existsSync(stateJsonPath)) stateJsonSize = statSync(stateJsonPath).size;
-  } catch {
-    /* skip */
-  }
-
-  const totalBytes = stateSize + stateJsonSize;
-
-  // Output warning message with context breakdown
+  // Output warning message
   const text = `[Context Monitor: ${level}] ${msg}`;
   if (isClaude()) {
     emitResult({
       systemMessage: text,
-      hookSpecificOutput: {
-        context_breakdown: {
-          state_bytes: stateSize,
-          state_json_bytes: stateJsonSize,
-          total_bytes: totalBytes,
-        },
-      },
     });
   } else {
     emitResult({
       followupMessage: text,
-      hookSpecificOutput: {
-        context_breakdown: {
-          state_bytes: stateSize,
-          state_json_bytes: stateJsonSize,
-          total_bytes: totalBytes,
-        },
-      },
     });
   }
 
