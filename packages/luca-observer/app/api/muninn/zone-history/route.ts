@@ -2,8 +2,19 @@ import { access, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { ZoneHistoryResponseSchema } from "~/lib/muninn-schemas";
+
+/**
+ * Minimal schema for the context-metrics snapshot file.
+ * Validates the raw JSON before field access to prevent type confusion.
+ */
+const ContextMetricsSchema = z.object({
+  zone: z.string().optional(),
+  usage_percent: z.number().optional(),
+  checked_at: z.string().optional(),
+});
 
 /**
  * Walk up from startDir looking for a directory containing `.planning/`.
@@ -49,13 +60,23 @@ export async function GET() {
     const filePath = join(workspaceRoot, ".planning", ".context-metrics.json");
 
     const raw = await readFile(filePath, "utf-8");
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const rawParsed = JSON.parse(raw);
+
+    // Validate the raw metrics with Zod before field access
+    const metricsResult = ContextMetricsSchema.safeParse(rawParsed);
+    if (!metricsResult.success) {
+      console.error(
+        "[zone-history] Metrics validation failed:",
+        metricsResult.error.message,
+      );
+      return NextResponse.json(emptyResponse);
+    }
 
     // The file is a single snapshot object, not an array
     const entry = {
-      zone: parsed.zone as string | undefined,
-      usage_percent: parsed.usage_percent as number | undefined,
-      checked_at: parsed.checked_at as string | undefined,
+      zone: metricsResult.data.zone,
+      usage_percent: metricsResult.data.usage_percent,
+      checked_at: metricsResult.data.checked_at,
     };
 
     // Only include entry if it has meaningful data

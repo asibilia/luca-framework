@@ -110,7 +110,9 @@ const main = async (): Promise<void> => {
                 bodyLines.push(line);
               }
             }
-            // Sanitize: strip markdown headers and control characters
+            // Sanitize: strip markdown headers and control characters.
+            // Strip control characters (NUL-BS, VT, FF, SO-US including ESC/0x1B, DEL).
+            // Preserves TAB (0x09), LF (0x0A), and CR (0x0D) for formatting.
             const sanitizedBody = bodyLines
               .filter((line) => !line.trim().startsWith("#"))
               .join(" ")

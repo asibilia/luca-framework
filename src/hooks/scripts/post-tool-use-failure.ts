@@ -16,25 +16,39 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { createHash } from "crypto";
 
-import { readStdinJson, exitSuccess, projectHash } from "../__helpers/hook-io.ts";
+import { z } from "zod";
+
+import {
+  parseHookInput,
+  exitSuccess,
+  projectHash,
+} from "../__helpers/hook-io.ts";
 import { resolveVault } from "../__helpers/vault.ts";
 import { writeMuninnEngram } from "../__helpers/muninn.ts";
+
+// ─── Input Schema ─────────────────────────────────────────────────────────────
+
+const PostToolUseFailureInputSchema = z.object({
+  tool_name: z.string().default("unknown"),
+  error_message: z.string().default(""),
+  command: z.string().default(""),
+});
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const main = async (): Promise<void> => {
-  // Drain stdin and parse the failure payload (best-effort)
-  const data = await readStdinJson();
+  // Parse the failure payload with schema validation (best-effort)
+  const data = await parseHookInput(PostToolUseFailureInputSchema);
 
   // If payload is empty or unparseable, exit 0 silently
   if (!data) {
     return exitSuccess();
   }
 
-  // Extract failure details
-  const toolName = (data.tool_name as string) || "unknown";
-  const errorMessage = (data.error_message as string) || "";
-  const command = (data.command as string) || "";
+  // Extract failure details (Zod defaults ensure no undefined values)
+  const toolName = data.tool_name;
+  const errorMessage = data.error_message;
+  const command = data.command;
 
   // Skip if no meaningful error information
   if (!errorMessage && !toolName) {

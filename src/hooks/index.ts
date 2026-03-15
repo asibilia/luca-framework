@@ -29,7 +29,7 @@ export {
 
 // Platform adapters
 export { canonicalToLegacy } from "./__helpers/platform-adapters";
-export type { PlatformHookConfig } from "./__helpers/platform-adapters";
+export type { PlatformHookConfig } from "./__schemas/hook.schemas";
 
 // Portable hook abstraction
 export {

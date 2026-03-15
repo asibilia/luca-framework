@@ -470,10 +470,13 @@ MuninnDB vault: ${vault} | Run /context-restore for deeper semantic recall.`;
   const envFile = process.env.CLAUDE_ENV_FILE;
   if (envFile) {
     try {
+      // Escape single quotes for POSIX shell safety (e.g., /home/o'brien/.planning)
+      const escapedRuntime = runtime.replace(/'/g, "'\\''");
+      const escapedPlanningDir = planningDir.replace(/'/g, "'\\''");
       const envLines =
         [
-          `export LUCA_RUNTIME='${runtime}'`,
-          `export LUCA_PLANNING_DIR='${planningDir}'`,
+          `export LUCA_RUNTIME='${escapedRuntime}'`,
+          `export LUCA_PLANNING_DIR='${escapedPlanningDir}'`,
           `export LUCA_SESSION_ACTIVE=1`,
         ].join("\n") + "\n";
       appendFileSync(envFile, envLines);
