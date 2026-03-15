@@ -13,7 +13,6 @@
 import {
   existsSync,
   readFileSync,
-  writeFileSync,
   readdirSync,
   renameSync,
   mkdirSync,
@@ -26,6 +25,8 @@ import {
   projectHash,
   exitSuccess,
   projectDir,
+  checkThrottle,
+  recordThrottle,
 } from "../__helpers/hook-io.ts";
 import { runBridge } from "../__helpers/bridge.ts";
 import { resolveVault } from "../__helpers/vault.ts";
@@ -60,28 +61,16 @@ const main = async (): Promise<void> => {
   // --- Throttle check ---
   const hash = projectHash();
   const throttleFile = `/tmp/.luca-context-check-${hash}-ts`;
-  const throttleSeconds = 60;
 
   // Detect first invocation: throttle file does not exist yet
   const isFirstInvocation = !existsSync(throttleFile);
 
-  if (!isFirstInvocation) {
-    try {
-      const lastCheck = parseInt(
-        readFileSync(throttleFile, "utf-8").trim(),
-        10,
-      );
-      const now = Math.floor(Date.now() / 1000);
-      if (now - lastCheck < throttleSeconds) {
-        return exitSuccess();
-      }
-    } catch {
-      // Can't read throttle file — continue
-    }
+  if (!isFirstInvocation && checkThrottle(throttleFile, 60)) {
+    return exitSuccess();
   }
 
-  // Update timestamp
-  writeFileSync(throttleFile, String(Math.floor(Date.now() / 1000)));
+  // Record timestamp
+  recordThrottle(throttleFile);
 
   const pd = projectDir();
 
@@ -262,29 +251,9 @@ const main = async (): Promise<void> => {
 
   if (currSev > prevSev) {
     const checkpointThrottleFile = `/tmp/.luca-ctx-checkpoint-${hash}-ts`;
-    const checkpointThrottleSeconds = 300;
-    let shouldCheckpoint = true;
 
-    if (existsSync(checkpointThrottleFile)) {
-      try {
-        const lastCp = parseInt(
-          readFileSync(checkpointThrottleFile, "utf-8").trim(),
-          10,
-        );
-        const now = Math.floor(Date.now() / 1000);
-        if (now - lastCp < checkpointThrottleSeconds) {
-          shouldCheckpoint = false;
-        }
-      } catch {
-        // Can't read throttle — checkpoint anyway
-      }
-    }
-
-    if (shouldCheckpoint) {
-      writeFileSync(
-        checkpointThrottleFile,
-        String(Math.floor(Date.now() / 1000)),
-      );
+    if (!checkThrottle(checkpointThrottleFile, 300)) {
+      recordThrottle(checkpointThrottleFile);
       await runBridge(["snapshot"]);
     }
 
@@ -385,29 +354,9 @@ const main = async (): Promise<void> => {
     ) {
       // Proactive clear suggestion on degrading zone transition
       const clearSuggestThrottleFile = `/tmp/.luca-clear-suggest-${hash}-ts`;
-      const clearSuggestThrottleSeconds = 600; // 10-minute TTL
-      let shouldSuggestClear = true;
 
-      if (existsSync(clearSuggestThrottleFile)) {
-        try {
-          const lastSuggest = parseInt(
-            readFileSync(clearSuggestThrottleFile, "utf-8").trim(),
-            10,
-          );
-          const now = Math.floor(Date.now() / 1000);
-          if (now - lastSuggest < clearSuggestThrottleSeconds) {
-            shouldSuggestClear = false;
-          }
-        } catch {
-          // Can't read throttle — suggest anyway
-        }
-      }
-
-      if (shouldSuggestClear) {
-        writeFileSync(
-          clearSuggestThrottleFile,
-          String(Math.floor(Date.now() / 1000)),
-        );
+      if (!checkThrottle(clearSuggestThrottleFile, 600)) {
+        recordThrottle(clearSuggestThrottleFile);
         systemMessage = `[Context Management] Context at ${usagePercent}%. Session observations are saved to MuninnDB.\nConsider running /clear at your next natural stopping point (after a commit, task completion, or phase boundary). Context will be fully restored on the next session start.`;
       } else {
         // Throttled — fall through to observation message

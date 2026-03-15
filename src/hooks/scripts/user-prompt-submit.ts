@@ -11,7 +11,7 @@
  * @module user-prompt-submit
  */
 
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 import {
@@ -19,6 +19,8 @@ import {
   exitSuccess,
   projectDir,
   projectHash,
+  checkThrottle,
+  recordThrottle,
 } from "../__helpers/hook-io.ts";
 import { resolveVault } from "../__helpers/vault.ts";
 import { writeMuninnEngram } from "../__helpers/muninn.ts";
@@ -34,22 +36,13 @@ const main = async (): Promise<void> => {
 
   // --- Per-project throttle: only fire once per 5 minutes ---
   const throttleFile = `/tmp/.luca-prompt-submit-${hash}-ts`;
-  const throttleSeconds = 300;
 
-  if (existsSync(throttleFile)) {
-    try {
-      const lastRun = parseInt(readFileSync(throttleFile, "utf-8").trim(), 10);
-      const now = Math.floor(Date.now() / 1000);
-      if (now - lastRun < throttleSeconds) {
-        return exitSuccess();
-      }
-    } catch {
-      // Can't read throttle file — continue
-    }
+  if (checkThrottle(throttleFile, 300)) {
+    return exitSuccess();
   }
 
-  // Update throttle timestamp
-  writeFileSync(throttleFile, String(Math.floor(Date.now() / 1000)));
+  // Record throttle timestamp before doing work
+  recordThrottle(throttleFile);
 
   // --- Read context metrics (best-effort) ---
   let zone = "peak";

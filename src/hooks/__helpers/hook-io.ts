@@ -178,6 +178,52 @@ export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
   writeFileSync(guardFile, String(now));
 };
 
+// ─── Throttle Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Returns true if the throttle key is still within the TTL window.
+ *
+ * Reads a per-key timestamp file from /tmp. If the file doesn't exist or
+ * can't be read, returns false (i.e. "not throttled, proceed").
+ *
+ * @param key - Unique throttle key (e.g. `.luca-snapshot-sync-${hash}-ts`)
+ * @param ttlSeconds - Number of seconds the throttle window lasts
+ * @returns true if last recorded time was within ttlSeconds ago
+ *
+ * @example
+ * ```typescript
+ * if (checkThrottle(throttleKey, 120)) return exitSuccess();
+ * recordThrottle(throttleKey);
+ * // ... do work
+ * ```
+ */
+export const checkThrottle = (key: string, ttlSeconds: number): boolean => {
+  try {
+    const lastRun = parseInt(readFileSync(key, "utf-8").trim(), 10);
+    const now = Math.floor(Date.now() / 1000);
+    return now - lastRun < ttlSeconds;
+  } catch {
+    // File doesn't exist or can't be read — not throttled
+    return false;
+  }
+};
+
+/**
+ * Records the current time as the last-run timestamp for a throttle key.
+ *
+ * Writes the current Unix epoch (seconds) to the given file path.
+ * Silently ignores write failures (e.g. /tmp not writable).
+ *
+ * @param key - Unique throttle key (e.g. `.luca-snapshot-sync-${hash}-ts`)
+ */
+export const recordThrottle = (key: string): void => {
+  try {
+    writeFileSync(key, String(Math.floor(Date.now() / 1000)));
+  } catch {
+    // /tmp not writable — non-critical
+  }
+};
+
 // ─── Utility: Project Hash ──────────────────────────────────────────────────
 
 /**

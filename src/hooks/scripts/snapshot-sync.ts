@@ -10,7 +10,7 @@
  * @module snapshot-sync
  */
 
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync } from "fs";
 
 import {
   guardDedup,
@@ -18,6 +18,8 @@ import {
   projectHash,
   exitSuccess,
   projectDir,
+  checkThrottle,
+  recordThrottle,
 } from "../__helpers/hook-io.ts";
 import { runBridge } from "../__helpers/bridge.ts";
 
@@ -33,18 +35,9 @@ const main = async (): Promise<void> => {
   // Throttle: skip if last sync was recent
   const hash = projectHash();
   const throttleFile = `/tmp/.luca-snapshot-sync-${hash}-ts`;
-  const throttleSeconds = 120;
 
-  if (existsSync(throttleFile)) {
-    try {
-      const lastSync = parseInt(readFileSync(throttleFile, "utf-8").trim(), 10);
-      const now = Math.floor(Date.now() / 1000);
-      if (now - lastSync < throttleSeconds) {
-        exitSuccess();
-      }
-    } catch {
-      // Can't read throttle file — continue
-    }
+  if (checkThrottle(throttleFile, 120)) {
+    exitSuccess();
   }
 
   // Check if state.json exists
@@ -53,8 +46,8 @@ const main = async (): Promise<void> => {
     exitSuccess();
   }
 
-  // Update throttle timestamp
-  writeFileSync(throttleFile, String(Math.floor(Date.now() / 1000)));
+  // Record throttle timestamp before running
+  recordThrottle(throttleFile);
 
   // Regenerate STATE.md snapshot from state machine
   await runBridge(["snapshot"]);
