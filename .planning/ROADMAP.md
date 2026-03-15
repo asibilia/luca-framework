@@ -208,12 +208,12 @@
 
 **Depends on:** Phase 170
 
-- [ ] Fix `generate-shell-wrappers.ts` to use `$CLAUDE_PROJECT_DIR` instead of `$(dirname "$0")/../../` — fixes Module not found in `~/.claude/hooks/`
-- [ ] Fix `context-monitor.ts` to remove invalid `hookSpecificOutput` for Stop hooks — fixes JSON validation error
-- [ ] Add `generated-file-guard.rule.ts` — rule preventing direct edits to generated `.sh` files
-- [ ] Create `muninn-context-recall.ts` UserPromptSubmit hook — recalls relevant MuninnDB memories and injects as `additionalContext`
-- [ ] Register new hook in `hook-registry.ts` and `deploy-global.ts`
-- [ ] Verify with `bunx --bun tsc --noEmit`
+- [x] Fix `generate-shell-wrappers.ts` to use `$CLAUDE_PROJECT_DIR` instead of `$(dirname "$0")/../../` — fixes Module not found in `~/.claude/hooks/`
+- [x] Fix `context-monitor.ts` to remove invalid `hookSpecificOutput` for Stop hooks — fixes JSON validation error
+- [x] Add `generated-file-guard.rule.ts` — rule preventing direct edits to generated `.sh` files
+- [x] Create `muninn-context-recall.ts` UserPromptSubmit hook — recalls relevant MuninnDB memories and injects as `additionalContext`
+- [x] Register new hook in `hook-registry.ts` and `deploy-global.ts`
+- [x] Verify with `bunx --bun tsc --noEmit`
 
 ---
 
