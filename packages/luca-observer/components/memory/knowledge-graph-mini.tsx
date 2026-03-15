@@ -1,8 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useAtomValue } from "jotai";
-
 import {
   Card,
   CardHeader,
@@ -14,14 +11,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { EmptyState } from "~/components/shared/empty-state";
 
-import { vaultAtom } from "~/stores/vault";
-
-/** Entity cluster pair from the entity-clusters API. */
-interface ClusterPair {
-  entity_a: string;
-  entity_b: string;
-  count: number;
-}
+import type { ClusterPair } from "~/hooks/use-entity-clusters";
 
 /**
  * Knowledge Graph Mini section for the memory page.
@@ -30,46 +20,22 @@ interface ClusterPair {
  * graph library). Shows top 15 entity cluster pairs as a sorted list
  * with co-occurrence counts and relative width bars.
  *
- * Fetches its own data from /api/muninn/entity-clusters.
+ * Data is passed in as props — the parent page is responsible for
+ * fetching via useEntityClusters.
+ *
+ * @param clusters - Sorted entity cluster pairs to display
+ * @param loading - Whether the data is still loading
+ * @param error - Error message if fetch failed, null otherwise
  */
-export function KnowledgeGraphMini() {
-  const vault = useAtomValue(vaultAtom);
-  const [clusters, setClusters] = useState<ClusterPair[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchingRef = useRef(false);
-
-  const fetchClusters = useCallback(async () => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-
-    try {
-      const v = encodeURIComponent(vault);
-      const res = await fetch(
-        `/api/muninn/entity-clusters?vault=${v}&top_n=15&min_count=2`,
-      );
-      if (!res.ok) {
-        setError(`Failed to fetch clusters (${res.status})`);
-        return;
-      }
-      const data = (await res.json()) as {
-        clusters?: ClusterPair[];
-        count?: number;
-      };
-      setClusters(data.clusters ?? []);
-      setError(null);
-    } catch {
-      setError("Failed to fetch entity clusters");
-    } finally {
-      setLoading(false);
-      fetchingRef.current = false;
-    }
-  }, [vault]);
-
-  useEffect(() => {
-    void fetchClusters();
-  }, [fetchClusters]);
-
+export function KnowledgeGraphMini({
+  clusters,
+  loading,
+  error,
+}: {
+  clusters: ClusterPair[];
+  loading: boolean;
+  error: string | null;
+}) {
   if (loading) {
     return (
       <Card>

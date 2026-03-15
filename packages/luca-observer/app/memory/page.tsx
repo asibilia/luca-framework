@@ -16,6 +16,7 @@ import { useMemory } from "~/hooks/use-memory";
 import { useMemoryHealth } from "~/hooks/use-memory-health";
 import { useObservations } from "~/hooks/use-observations";
 import { useCheckpoint } from "~/hooks/use-checkpoint";
+import { useEntityClusters } from "~/hooks/use-entity-clusters";
 import { relativeTime } from "~/lib/format";
 
 /**
@@ -35,6 +36,7 @@ export default function MemoryPage() {
   const health = useMemoryHealth();
   const observations = useObservations();
   const checkpoint = useCheckpoint();
+  const entityClusters = useEntityClusters();
 
   // Aggregate loading state: show skeleton if ALL hooks are loading
   const allLoading =
@@ -176,7 +178,11 @@ export default function MemoryPage() {
 
           {/* 6. Knowledge Graph Mini (full width) */}
           <ErrorBoundary name="KnowledgeGraphMini">
-            <KnowledgeGraphMini />
+            <KnowledgeGraphMini
+              clusters={entityClusters.clusters}
+              loading={entityClusters.loading}
+              error={entityClusters.error}
+            />
           </ErrorBoundary>
         </div>
       )}
