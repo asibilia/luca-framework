@@ -1,5 +1,5 @@
 /**
- * Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+ * Guidelines for creating and maintaining rules to ensure consistency and effectiveness.
  */
 import { createRule } from "~/rules/__helpers/create-rule";
 import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
@@ -7,7 +7,7 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 // Define the cursor-rules rule configuration
 const cursorRulesConfig: RuleConfig = {
   frontmatter: {
-    description: `Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.`,
+    description: `Guidelines for creating and maintaining rules to ensure consistency and effectiveness.`,
     globs: [".claude/rules/*.md"],
     alwaysApply: true,
   },

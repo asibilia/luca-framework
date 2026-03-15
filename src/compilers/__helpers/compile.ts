@@ -108,7 +108,7 @@ export function compileSkillClaude(skill: BaseSkill): string {
 /**
  * Compile a rule definition to Claude-format markdown.
  *
- * When the rule has scoping metadata (globs or alwaysApply: false), YAML
+ * When the rule has scoping metadata (globs or explicit alwaysApply), YAML
  * frontmatter is prepended. Claude Code `.claude/rules/*.md` files support
  * YAML frontmatter with `---` delimiters for description, globs, and
  * alwaysApply fields, enabling context-aware rule loading.
@@ -121,7 +121,7 @@ export function compileRuleClaude(rule: BaseRule): string {
   const { description, globs, alwaysApply } = rule.config.frontmatter;
 
   const hasScoping =
-    (globs !== undefined && globs.length > 0) || alwaysApply === false;
+    (globs !== undefined && globs.length > 0) || alwaysApply !== undefined;
 
   if (hasScoping) {
     const frontmatterData: Record<string, unknown> = { description };
