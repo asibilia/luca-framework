@@ -10,6 +10,7 @@
  * @module statusline
  */
 
+import { realpathSync } from "fs";
 import { resolve } from "path";
 
 import { projectDir } from "../__helpers/hook-io.ts";
@@ -58,7 +59,7 @@ const main = async (): Promise<void> => {
   let cwd = "";
   if (rawCwd) {
     try {
-      const resolvedCwd = resolve(rawCwd);
+      const resolvedCwd = realpathSync(resolve(rawCwd));
       if (
         resolvedCwd.startsWith(pd + "/") ||
         resolvedCwd === pd ||
@@ -67,7 +68,7 @@ const main = async (): Promise<void> => {
         cwd = resolvedCwd;
       }
     } catch {
-      // resolve failed — discard
+      // resolve/realpathSync failed — discard
     }
   }
 

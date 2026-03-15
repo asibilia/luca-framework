@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 import type { CanonicalEvent, CanonicalHook } from "./hook.schemas";
-import type { PlatformHookConfig } from "../__helpers/platform-adapters";
+import type { PlatformHookConfig } from "./hook.schemas";
 
 /**
  * Supported platform identifiers.

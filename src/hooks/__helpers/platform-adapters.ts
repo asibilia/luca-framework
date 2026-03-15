@@ -6,7 +6,7 @@
  * and canonicalToLegacy.
  *
  * For the formal adapter-registry architecture with runtime resolution,
- * see `src/hooks/adapters/`.
+ * see `src/hooks/__helpers/adapter-registry.ts`.
  *
  * Source: src/hooks/__helpers/platform-adapters.ts
  */
@@ -15,30 +15,11 @@ import type {
   CanonicalHook,
   CanonicalEvent,
   HookDefinition,
+  PlatformHookConfig,
 } from "../__schemas/hook.schemas";
 
-// ─── Platform hook config type ──────────────────────────────────────────────
-
-/**
- * Platform-specific hook configuration produced by the adapter.
- *
- * Contains the event name, matcher, and other fields needed by
- * the config generator.
- */
-export interface PlatformHookConfig {
-  /** Platform-specific event name */
-  event: string;
-  /** Platform-specific matcher (undefined = always fire) */
-  matcher?: string | string[];
-  /** Shell script filename */
-  script: string;
-  /** Timeout in seconds */
-  timeout: number;
-  /** Async execution flag */
-  async: boolean;
-  /** Status message */
-  statusMessage?: string;
-}
+// Re-export PlatformHookConfig from __schemas/ (canonical location)
+export type { PlatformHookConfig } from "../__schemas/hook.schemas";
 
 // ─── Internal event maps ─────────────────────────────────────────────────────
 

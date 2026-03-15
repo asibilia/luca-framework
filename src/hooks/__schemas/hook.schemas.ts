@@ -138,3 +138,27 @@ export const SessionObservationSchema = z.object({
   source: observationSourceSchema,
 });
 export type SessionObservation = z.infer<typeof SessionObservationSchema>;
+
+// ─── Platform hook config type ──────────────────────────────────────────────
+
+/**
+ * Platform-specific hook configuration produced by the adapter.
+ *
+ * Contains the event name, matcher, and other fields needed by
+ * the config generator. Defined in __schemas/ so adapter.schemas.ts
+ * can import it without creating a __schemas/ → __helpers/ inversion.
+ */
+export interface PlatformHookConfig {
+  /** Platform-specific event name */
+  event: string;
+  /** Platform-specific matcher (undefined = always fire) */
+  matcher?: string | string[];
+  /** Shell script filename */
+  script: string;
+  /** Timeout in seconds */
+  timeout: number;
+  /** Async execution flag */
+  async: boolean;
+  /** Status message */
+  statusMessage?: string;
+}

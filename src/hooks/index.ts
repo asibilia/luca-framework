@@ -68,3 +68,9 @@ export {
   getRegisteredPlatforms,
   generateConfigForPlatform,
 } from "./__helpers/adapter-registry";
+
+// Shell wrapper generator (build-time utility, consumed by scripts/build-shared.ts)
+export {
+  generateShellWrapper,
+  generateAllShellWrappers,
+} from "./__helpers/generate-shell-wrappers";
