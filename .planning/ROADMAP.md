@@ -8,7 +8,7 @@
 
 ## v4.5.0 — Platform Simplification & Proactive Intelligence
 
-6 phases (158-163), 6 todos. Foundation hardening, platform cleanup, hook modernization, and proactive memory intelligence.
+14 phases (158-171), 6 todos. Foundation hardening, platform cleanup, hook modernization, and proactive memory intelligence.
 
 ### Phase 158: Remove Complexity Step Skipping
 
@@ -201,6 +201,19 @@
 - [x] Export BrainEngram from brain-panel.tsx, import in enhanced-brain-tree.tsx (OBS-004, MEDIUM)
 - [x] Refactor KnowledgeGraphMini to accept props like other 5 sections, lift fetch to page level (OBS-005, MEDIUM)
 - [x] Verify with `bunx --bun tsc --noEmit`
+
+### Phase 171: Hook Path Fix & MuninnDB Context Recall
+
+**Goal:** Fix shell wrapper path resolution (broken in global deploy), fix context-monitor JSON validation error, add generated-file protection rule, and introduce MuninnDB context recall hook that injects relevant memories into conversation context on every prompt.
+
+**Depends on:** Phase 170
+
+- [ ] Fix `generate-shell-wrappers.ts` to use `$CLAUDE_PROJECT_DIR` instead of `$(dirname "$0")/../../` — fixes Module not found in `~/.claude/hooks/`
+- [ ] Fix `context-monitor.ts` to remove invalid `hookSpecificOutput` for Stop hooks — fixes JSON validation error
+- [ ] Add `generated-file-guard.rule.ts` — rule preventing direct edits to generated `.sh` files
+- [ ] Create `muninn-context-recall.ts` UserPromptSubmit hook — recalls relevant MuninnDB memories and injects as `additionalContext`
+- [ ] Register new hook in `hook-registry.ts` and `deploy-global.ts`
+- [ ] Verify with `bunx --bun tsc --noEmit`
 
 ---
 

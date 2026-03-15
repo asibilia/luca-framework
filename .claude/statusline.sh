@@ -1,3 +1,2 @@
-#!/bin/bash
-# Thin shim — all logic in TypeScript
-exec bun "$(dirname "$0")/../../impl/statusline.ts" "$@" <&0
+#!/bin/sh
+exec bun "$(dirname "$0")/../src/hooks/scripts/statusline.ts" "$@" <&0
