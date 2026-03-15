@@ -403,6 +403,17 @@ async function deployStatusline(projectRoot: string): Promise<void> {
 
   if (!dryRun) {
     chmodSync(target, 0o755);
+
+    // Rewrite relative paths to absolute monorepo paths for global deploy.
+    // Statusline wrapper uses $(dirname "$0")/../src/hooks/scripts/ which breaks
+    // when deployed to ~/.claude/statusline.sh outside the monorepo.
+    const content = readFileSync(target, "utf-8");
+    const rewritten = content
+      .replace(/\$\(dirname "\$0"\)\/\.\.\/\.\.\//g, `${projectRoot}/`)
+      .replace(/\$\(dirname "\$0"\)\/\.\.\//g, `${projectRoot}/`);
+    if (rewritten !== content) {
+      writeFileSync(target, rewritten);
+    }
   }
 
   log("statusline.sh deployed");
