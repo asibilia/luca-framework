@@ -18,6 +18,7 @@ import {
   readdirSync,
   unlinkSync,
   statSync,
+  appendFileSync,
 } from "fs";
 import { join } from "path";
 
@@ -31,6 +32,9 @@ import {
   projectDir,
   isClaude,
 } from "../__helpers/hook-io.ts";
+import { runBridge } from "../__helpers/bridge.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { recallMuninnEngrams } from "../__helpers/muninn.ts";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -38,9 +42,6 @@ const SessionEndMarkerSchema = z.object({
   cleanup_pending: z.boolean().optional(),
   ended_at: z.string().optional(),
 });
-import { runBridge } from "../__helpers/bridge.ts";
-import { resolveVault } from "../__helpers/vault.ts";
-import { recallMuninnEngrams } from "../__helpers/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-start");
@@ -475,7 +476,6 @@ MuninnDB vault: ${vault} | Run /context-restore for deeper semantic recall.`;
           `export LUCA_PLANNING_DIR='${planningDir}'`,
           `export LUCA_SESSION_ACTIVE=1`,
         ].join("\n") + "\n";
-      const { appendFileSync } = require("fs");
       appendFileSync(envFile, envLines);
     } catch {
       // Env file write failed — non-critical
@@ -549,14 +549,14 @@ MuninnDB vault: ${vault} | Run /context-restore for deeper semantic recall.`;
     if (isClaude()) {
       emitResult({ systemMessage: msgText });
     } else {
-      process.stdout.write(JSON.stringify({ followup_message: msgText }));
+      emitResult({ followupMessage: msgText });
     }
   } else if (notesMsg || staleSessionMsg) {
     const msgText = `[Luca]${notesMsg}${staleSessionMsg ? " " + staleSessionMsg : ""}`;
     if (isClaude()) {
       emitResult({ systemMessage: msgText });
     } else {
-      process.stdout.write(JSON.stringify({ followup_message: msgText }));
+      emitResult({ followupMessage: msgText });
     }
   }
 

@@ -19,15 +19,15 @@ import {
   exitSuccess,
   projectDir,
 } from "../__helpers/hook-io.ts";
+import { runBridge } from "../__helpers/bridge.ts";
+import { resolveVault } from "../__helpers/vault.ts";
+import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
 
 const PreCompactInputSchema = z.object({
   trigger: z.string().default("unknown"),
 });
-import { runBridge } from "../__helpers/bridge.ts";
-import { resolveVault } from "../__helpers/vault.ts";
-import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("pre-compact-checkpoint", 10);

@@ -9,6 +9,7 @@
  */
 
 import { createHash } from "crypto";
+import { readFileSync, writeFileSync } from "fs";
 
 import type { ZodSchema } from "zod";
 
@@ -91,7 +92,9 @@ export interface HookResult {
 /**
  * Writes structured JSON to stdout (Claude Code only).
  *
- * Emits `{ systemMessage }` or `{ hookSpecificOutput }` shapes.
+ * Emits `{ systemMessage }`, `{ followup_message }`, or `{ hookSpecificOutput }` shapes.
+ * When both `systemMessage` and `followupMessage` are provided, both keys are emitted
+ * independently (no overwrite).
  *
  * @param result - The result payload to emit
  */
@@ -107,7 +110,7 @@ export const emitResult = (result: HookResult): void => {
   }
 
   if (result.followupMessage) {
-    output.systemMessage = result.followupMessage;
+    output.followup_message = result.followupMessage;
   }
 
   if (Object.keys(output).length > 0) {
@@ -161,7 +164,7 @@ export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
   const guardFile = `/tmp/.luca-dedup-${hookName}-${projectHash}`;
 
   try {
-    const content = require("fs").readFileSync(guardFile, "utf-8").trim();
+    const content = readFileSync(guardFile, "utf-8").trim();
     const lastRun = parseInt(content, 10);
     const now = Math.floor(Date.now() / 1000);
     if (now - lastRun < ttlSeconds) {
@@ -172,7 +175,7 @@ export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  require("fs").writeFileSync(guardFile, String(now));
+  writeFileSync(guardFile, String(now));
 };
 
 // ─── Utility: Project Hash ──────────────────────────────────────────────────

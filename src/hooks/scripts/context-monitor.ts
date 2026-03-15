@@ -162,15 +162,29 @@ const main = async (): Promise<void> => {
 
   // Output warning message with context breakdown
   const text = `[Context Monitor: ${level}] ${msg}`;
-  const output: Record<string, unknown> = isClaude()
-    ? { systemMessage: text }
-    : { followup_message: text };
-  output.context_breakdown = {
-    state_bytes: stateSize,
-    state_json_bytes: stateJsonSize,
-    total_bytes: totalBytes,
-  };
-  process.stdout.write(JSON.stringify(output));
+  if (isClaude()) {
+    emitResult({
+      systemMessage: text,
+      hookSpecificOutput: {
+        context_breakdown: {
+          state_bytes: stateSize,
+          state_json_bytes: stateJsonSize,
+          total_bytes: totalBytes,
+        },
+      },
+    });
+  } else {
+    emitResult({
+      followupMessage: text,
+      hookSpecificOutput: {
+        context_breakdown: {
+          state_bytes: stateSize,
+          state_json_bytes: stateJsonSize,
+          total_bytes: totalBytes,
+        },
+      },
+    });
+  }
 
   return exitSuccess();
 };
