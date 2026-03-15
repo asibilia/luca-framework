@@ -30,6 +30,8 @@ export function generateClaudeHooksConfigFromCanonical(
   options: {
     commandPrefix: string;
     wrapInHooksKey?: boolean;
+    /** Override the script file extension (e.g. ".sh" to reference shell wrappers instead of .ts source) */
+    scriptExtension?: string;
   },
 ): Record<string, unknown> {
   const events: Record<
@@ -61,7 +63,7 @@ export function generateClaudeHooksConfigFromCanonical(
 
     const hookEntry: Record<string, unknown> = {
       type: "command",
-      command: `${options.commandPrefix}/${adapted.script}`,
+      command: `${options.commandPrefix}/${options.scriptExtension ? adapted.script.replace(/\.\w+$/, options.scriptExtension) : adapted.script}`,
       timeout: adapted.timeout,
     };
 

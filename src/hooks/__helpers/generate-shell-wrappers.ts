@@ -57,13 +57,18 @@ export function generateAllShellWrappers(): Record<string, string> {
   const wrappers: Record<string, string> = {};
 
   for (const hookName of Object.keys(registry)) {
-    const outputPath =
-      hookName === "statusline"
-        ? ".claude/statusline.sh"
-        : `.claude/hooks/${hookName}.sh`;
+    const outputPath = `.claude/hooks/${hookName}.sh`;
     const content = generateShellWrapper(hookName, outputPath);
     wrappers[outputPath] = content;
   }
+
+  // Statusline is not a hook event — it's a Claude Code statusLine setting.
+  // But it uses the same TypeScript-in-scripts/ pattern and needs a shell wrapper.
+  const statuslineOutputPath = ".claude/statusline.sh";
+  wrappers[statuslineOutputPath] = generateShellWrapper(
+    "statusline",
+    statuslineOutputPath,
+  );
 
   return wrappers;
 }

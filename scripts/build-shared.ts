@@ -502,6 +502,7 @@ async function generateHookOutputs(
   // Claude settings.json hooks fragment
   const hooksConfig = generateClaudeHooksConfigFromCanonical(canonical, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    scriptExtension: ".sh",
   });
   generated.set(
     ".claude/settings.json__hooks",
@@ -537,6 +538,30 @@ async function generatePluginOutputs(
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
       generated.set(`dist/plugin/scripts/${def.script}`, await srcFile.text());
+    }
+  }
+
+  // Copy hook __helpers/ that plugin scripts import from (../__helpers/)
+  const hookHelpersDir = path.join(
+    process.cwd(),
+    "src",
+    "hooks",
+    "__helpers",
+  );
+  const pluginHelperFiles = [
+    "hook-io.ts",
+    "bridge.ts",
+    "vault.ts",
+    "muninn.ts",
+  ];
+  for (const helperFile of pluginHelperFiles) {
+    const helperPath = path.join(hookHelpersDir, helperFile);
+    const helperBunFile = Bun.file(helperPath);
+    if (await helperBunFile.exists()) {
+      generated.set(
+        `dist/plugin/__helpers/${helperFile}`,
+        await helperBunFile.text(),
+      );
     }
   }
 
