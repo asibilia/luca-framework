@@ -46,6 +46,7 @@ const UNIVERSAL_RULES = new Set([
   "cursor-rules.md",
   "file-naming.md",
   "functional-api-reuse.md",
+  "generated-file-guard.md",
   "import-standards.md",
   "lodash-preference.md",
   "mandatory-documentation.md",
