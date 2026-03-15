@@ -131,6 +131,13 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: true,
     status_message: "Recording failure pattern...",
   }),
+  "muninn-context-recall": () => ({
+    event: "user_prompt_submit",
+    script: "muninn-context-recall.ts",
+    timeout: 8,
+    async: false,
+    status_message: "Recalling context...",
+  }),
 };
 
 /**

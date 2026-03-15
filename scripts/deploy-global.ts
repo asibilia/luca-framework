@@ -599,6 +599,25 @@ async function mergeSettings(): Promise<void> {
         ],
       },
     ],
+    UserPromptSubmit: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: `"${globalHooksDir}/muninn-context-recall.sh"`,
+            timeout: 8,
+            statusMessage: "Recalling context...",
+          },
+          {
+            type: "command",
+            command: `"${globalHooksDir}/user-prompt-submit.sh"`,
+            timeout: 5,
+            async: true,
+            statusMessage: "Saving prompt observation...",
+          },
+        ],
+      },
+    ],
   };
 
   // Merge hooks: preserve existing non-Luca hooks, add/replace Luca hooks
@@ -627,6 +646,10 @@ async function mergeSettings(): Promise<void> {
           "context-check-throttled.sh",
           "pre-compact-checkpoint.sh",
           "snapshot-sync.sh",
+          "user-prompt-submit.sh",
+          "muninn-context-recall.sh",
+          "subagent-stop.sh",
+          "post-tool-use-failure.sh",
         ];
         return !lucaScripts.some((s) => cmd.includes(s));
       });
@@ -754,6 +777,10 @@ async function removeGlobalArtifacts(): Promise<void> {
       "context-check-throttled.sh",
       "pre-compact-checkpoint.sh",
       "snapshot-sync.sh",
+      "user-prompt-submit.sh",
+      "muninn-context-recall.sh",
+      "subagent-stop.sh",
+      "post-tool-use-failure.sh",
     ];
 
     for (const script of lucaScripts) {
@@ -811,6 +838,10 @@ async function removeGlobalArtifacts(): Promise<void> {
                 "context-check-throttled.sh",
                 "pre-compact-checkpoint.sh",
                 "snapshot-sync.sh",
+                "user-prompt-submit.sh",
+                "muninn-context-recall.sh",
+                "subagent-stop.sh",
+                "post-tool-use-failure.sh",
               ];
               return !lucaScripts.some((s) => cmd.includes(s));
             });
