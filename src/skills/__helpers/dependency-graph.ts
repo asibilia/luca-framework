@@ -4,7 +4,7 @@
  * All functions are pure with no side effects.
  * T2-compliant: imports only from T0 (shared) and local schemas.
  */
-import type { SkillDependencyMap } from "../__schemas/skill-dependencies";
+import type { SkillDependencyMap } from "../__schemas/skill-dependencies.schemas";
 
 /**
  * Build a topologically sorted execution order for requested skills.

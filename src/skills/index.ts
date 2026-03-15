@@ -129,12 +129,12 @@ export type {
 export {
   SkillDependencySchema,
   SkillDependencyMapSchema,
-} from "./__schemas/skill-dependencies";
+} from "./__schemas/skill-dependencies.schemas";
 
 export type {
   SkillDependency,
   SkillDependencyMap,
-} from "./__schemas/skill-dependencies";
+} from "./__schemas/skill-dependencies.schemas";
 
 export {
   buildDependencyOrder,

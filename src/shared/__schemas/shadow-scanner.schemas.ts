@@ -45,7 +45,7 @@ export const ShadowScanReportSchema = z.object({
   /** Scan depth used for this run */
   scan_mode: z.enum(["quick", "standard", "full"]),
   /** Category numbers that were actually scanned (1-5) */
-  categories_scanned: z.array(z.number().int().min(1).max(5)),
+  categories_scanned: z.array(z.number().int().min(1).max(5)).default([]),
   /** All findings from the scan */
   findings: z.array(ShadowFindingSchema).default([]),
   /** Severity breakdown totals */
@@ -57,7 +57,7 @@ export const ShadowScanReportSchema = z.object({
     low: z.number().int().default(0),
   }),
   /** ISO 8601 timestamp when the scan was completed */
-  scanned_at: z.string(),
+  scanned_at: z.string().default(() => new Date().toISOString()),
 });
 
 export type ShadowScanReport = z.infer<typeof ShadowScanReportSchema>;

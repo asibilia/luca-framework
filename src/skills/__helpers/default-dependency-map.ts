@@ -11,8 +11,8 @@
  *
  * T2-compliant: imports only from local schemas (T2).
  */
-import type { SkillDependencyMap } from "../__schemas/skill-dependencies";
-import { SkillDependencySchema } from "../__schemas/skill-dependencies";
+import type { SkillDependencyMap } from "../__schemas/skill-dependencies.schemas";
+import { SkillDependencySchema } from "../__schemas/skill-dependencies.schemas";
 
 /**
  * Build the default dependency map for core workflow skills.
