@@ -2,8 +2,6 @@
 
 import { useState, useMemo } from "react";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
-
 import { EmptyState } from "~/components/shared/empty-state";
 import {
   Card,
@@ -14,6 +12,7 @@ import {
   CardContent,
 } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import { BrainEngram } from "~/components/memory/brain-panel";
 
 import type { ActivationItem } from "~/hooks/use-memory";
 
@@ -143,80 +142,11 @@ export function EnhancedBrainTree({ items }: { items: ActivationItem[] }) {
             </p>
           </div>
         ) : (
-          filteredItems.map((item) => <BrainEngram key={item.id} item={item} />)
+          filteredItems.map((item) => (
+            <BrainEngram key={item.id} item={item} defaultExpanded={false} />
+          ))
         )}
       </div>
     </Card>
-  );
-}
-
-/**
- * Single brain engram card with relevance score badge.
- *
- * Copied from brain-panel.tsx BrainEngram (not exported).
- * Shows concept name, relevance score, and collapsible content.
- */
-function BrainEngram({ item }: { item: ActivationItem }) {
-  const [expanded, setExpanded] = useState(false);
-  const relevancePercent = Math.round(item.score * 100);
-
-  return (
-    <div className="border-b border-border last:border-b-0">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-      >
-        <div className="flex items-center gap-2">
-          {expanded ? (
-            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-          )}
-          <span className="font-mono text-xs font-semibold text-foreground">
-            {item.concept}
-          </span>
-        </div>
-        <span
-          className="rounded-full px-1.5 py-0.5 font-mono text-xs font-medium"
-          style={{
-            color: "var(--color-info)",
-            backgroundColor:
-              "color-mix(in oklab, var(--color-info) 15%, transparent)",
-          }}
-        >
-          {relevancePercent}%
-        </span>
-      </button>
-      {expanded && (
-        <div className="border-t border-border px-4 py-2.5">
-          <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-            {item.content}
-          </pre>
-          {item.tags && item.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {item.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-sm px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
-                  style={{
-                    backgroundColor:
-                      "color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)",
-                  }}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-          {item.why && (
-            <p className="mt-1.5 font-mono text-xs italic text-muted-foreground/60">
-              {item.why}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
