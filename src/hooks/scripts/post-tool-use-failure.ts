@@ -22,9 +22,17 @@ import {
   parseHookInput,
   exitSuccess,
   projectHash,
+  guardDedup,
 } from "../__helpers/hook-io.ts";
 import { resolveVault } from "../__helpers/vault.ts";
 import { writeMuninnEngram } from "../__helpers/muninn.ts";
+
+// ─── Dedup guard ─────────────────────────────────────────────────────────────
+// Prevents double-firing when the hook is registered at both global and project
+// level. This is complementary to the per-tool-name throttle below -- guardDedup
+// prevents the same hook invocation from running twice within 5s, while the
+// throttle prevents repeated recordings of the same error pattern within 5 min.
+guardDedup("post-tool-use-failure");
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
 

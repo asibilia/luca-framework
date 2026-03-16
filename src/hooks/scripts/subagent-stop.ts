@@ -20,11 +20,10 @@ import { resolveVault } from "../__helpers/vault.ts";
 import { writeMuninnEngram } from "../__helpers/muninn.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
-// NOTE: post-tool-use-failure and user-prompt-submit intentionally use a
-// per-project throttle (not guardDedup) because they need to fire at most once
-// per N minutes across all tool calls, not just deduplicate rapid re-fires.
-// subagent-stop uses guardDedup (5s window) to prevent double-firing when the
-// hook is registered at both global and project level.
+// All hooks use guardDedup (5s window) to prevent double-firing when the
+// hook is registered at both global and project level. Some hooks also use
+// a per-project throttle for broader rate-limiting (e.g., post-tool-use-failure
+// and user-prompt-submit use both guardDedup AND a per-pattern throttle).
 guardDedup("subagent-stop");
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
