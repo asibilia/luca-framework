@@ -123,25 +123,25 @@
 
 **Goal:** Eliminate code duplication, align with project conventions (Bun APIs, Zod schema-first, lodash), reduce complexity in large functions.
 
-- [ ] Extract resolveMuninndbPort() to muninndb-schemas.ts (DRY-1, HIGH)
-- [ ] Delegate vault-setup health check to checkMuninndbService() (DRY-2, HIGH)
-- [ ] Extract resolveMonorepoRoot() to runtime-context.ts (DRY-3, HIGH)
-- [ ] Extract shared deploy utilities: copyArtifactDir, rewriteHookPaths (DRY-4, W3, W4, MEDIUM)
-- [ ] Migrate init.ts from node:fs to Bun.file/Bun.write (DRY-5, MEDIUM)
-- [ ] Fix deploy-global.ts barrel imports — use src/hooks barrel not \_\_helpers (W2, MEDIUM)
-- [ ] Convert muninndb-service/health interfaces to Zod schemas + remove destructuring defaults (DX, MEDIUM)
-- [ ] Emit build-time hook registry JSON artifact for init.ts (COMPLEXITY-1, MEDIUM)
-- [ ] Refactor executeGlobalUpdate() into composable helpers (COMPLEXITY-2, MEDIUM)
-- [ ] Refactor runDeployStep() into composable helpers (COMPLEXITY-3, MEDIUM)
-- [ ] Schema casing alignment in muninndb-schemas.ts (W1, MEDIUM)
-- [ ] Convert doctor CheckResult to Zod schema (W5, MEDIUM)
-- [ ] Extract extractErrorMessage() utility (DRY-6, LOW)
-- [ ] Move inferSourceType() to deploy-manifest.schemas.ts (DRY-7, LOW)
-- [ ] Replace direct homedir() calls with getLucaHomePaths() (ANTI-PATTERN-1, LOW)
-- [ ] Remove unused errorMsg variable in muninndb-service.ts (DEAD-CODE-1, LOW)
-- [ ] Add lodash filter/cloneDeep in init.ts (DX, LOW)
-- [ ] Fix import grouping in init.ts and muninndb-service.ts (DX, LOW)
-- [ ] Add JSDoc to copyDirForDeploy, rewriteWrapperPathsForInit, buildProposedHooksFromDeployed (DX, LOW)
+- [x] Extract resolveMuninndbPort() to muninndb-schemas.ts (DRY-1, HIGH)
+- [x] Delegate vault-setup health check to checkMuninndbService() (DRY-2, HIGH)
+- [x] Extract resolveMonorepoRoot() to runtime-context.ts (DRY-3, HIGH)
+- [x] Extract shared deploy utilities: copyArtifactDir, rewriteHookPaths (DRY-4, W3, W4, MEDIUM)
+- [x] Migrate init.ts from node:fs to Bun.file/Bun.write (DRY-5, MEDIUM) — already done in prior phases
+- [x] Fix deploy-global.ts barrel imports — resolved as non-issue (W2, MEDIUM)
+- [x] Convert muninndb-service/health interfaces to Zod schemas + remove destructuring defaults (DX, MEDIUM) — no-op, already Zod
+- [x] Emit build-time hook registry JSON artifact for init.ts (COMPLEXITY-1, MEDIUM)
+- [x] Refactor executeGlobalUpdate() into composable helpers (COMPLEXITY-2, MEDIUM) — already refactored
+- [x] Refactor runDeployStep() into composable helpers (COMPLEXITY-3, MEDIUM) — already refactored
+- [x] Schema casing alignment in muninndb-schemas.ts (W1, MEDIUM) — confirmed camelCase correct
+- [x] Convert doctor CheckResult to Zod schema (W5, MEDIUM)
+- [x] Extract extractErrorMessage() utility (DRY-6, LOW)
+- [x] Move inferSourceType() to deploy-manifest.schemas.ts (DRY-7, LOW)
+- [x] Replace direct homedir() calls with getLucaHomePaths() (ANTI-PATTERN-1, LOW)
+- [x] Remove unused errorMsg variable in muninndb-service.ts (DEAD-CODE-1, LOW)
+- [x] Add lodash filter/cloneDeep in init.ts (DX, LOW) — no applicable calls found
+- [x] Fix import grouping in init.ts and muninndb-service.ts (DX, LOW)
+- [x] Add JSDoc to copyDirForDeploy, rewriteWrapperPathsForInit, buildProposedHooksFromDeployed (DX, LOW)
 
 **Depends on:** Phase 179
 **Covers:** Audit findings DRY-1 through DRY-7, W1-W5, COMPLEXITY-1 through COMPLEXITY-3, DX findings
