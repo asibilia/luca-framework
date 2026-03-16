@@ -2,22 +2,17 @@
  * CLI command: luca init
  *
  * Global setup orchestrator that guides users through first-time Luca installation.
- * This command handles global prerequisites (Bun runtime, ~/.luca/ directory,
- * MuninnDB binary, artifact deployment) and then suggests running `luca vault:init`
- * for per-project initialization.
+ * Runs a 5-step flow to get from zero to a fully wired Luca installation with
+ * cognitive memory:
  *
- * The per-project wizard logic (detect context, run wizard, generate files) has
- * been moved to `vault-init.ts` (the `luca vault:init` command).
+ * 1. **Prerequisites** -- Bun runtime check, ensure ~/.luca/ directory
+ * 2. **MuninnDB** -- Binary download + service start
+ * 3. **Build artifacts** -- Verify .claude/ build output exists
+ * 4. **Deploy** -- Copy agents/skills/hooks/rules to ~/.claude/
+ * 5. **Vault setup** -- Suggest `luca vault:init` for per-project MuninnDB wiring
  *
- * Orchestration steps:
- * 1. Show intro message
- * 2. Detect runtime context (global install vs. monorepo dev)
- * 3. Check prerequisites (Bun installed and meets minimum version)
- * 4. Prompt Bun installation if prerequisites not met
- * 5. Ensure ~/.luca/ directory structure exists
- * 6. Download and start MuninnDB (unless --skip-muninndb)
- * 7. Deploy artifacts to ~/.claude/ (unless --skip-deploy)
- * 8. Show success and suggest vault:init
+ * The per-project wizard logic (detect context, run wizard, generate files,
+ * vault config) lives in `vault-init.ts` (the `luca vault:init` command).
  *
  * @example
  * ```bash
@@ -567,27 +562,34 @@ export const initCommand = defineCommand({
     },
   },
   async run({ args }) {
-    // Step 1: Intro
     p.intro("luca init");
 
-    // Step 2: Detect runtime context
+    // Detect runtime context (used by deploy step)
     const ctx = detectRuntimeContext();
     const modeLabel = ctx.mode === "dev" ? "monorepo dev" : "global install";
     p.log.info(`Runtime mode: ${modeLabel}`);
 
-    // Step 3: Check prerequisites (unless skipped)
+    // Track status for post-init readout
+    let prereqsVersion: string | null = null;
+    let prereqsPlatform = "";
+    let muninndbHealthy = false;
+    let muninndbPort: number | null = null;
+    let muninndbBinaryPath: string | null = null;
+    let deployedCount = 0;
+    let vaultInitRan = false;
+
+    // ── Step 1: Prerequisites ────────────────────────────────────────────
     if (!args["skip-prerequisites"]) {
+      p.log.step("Step 1/5: Prerequisites");
       const prereqs = checkPrerequisites();
 
       if (!prereqs.ok) {
-        // Step 4: Prompt Bun install
         const shouldContinue = await promptBunInstall();
         if (!shouldContinue) {
           p.outro("Setup cancelled. Install Bun and run `luca init` again.");
           process.exit(1);
         }
 
-        // Re-check after user says they installed
         const recheck = checkPrerequisites();
         if (!recheck.ok) {
           logger.error(
@@ -597,20 +599,20 @@ export const initCommand = defineCommand({
         }
       }
 
-      p.log.success(
-        `Bun ${prereqs.bun.version ?? "detected"} (${prereqs.platform.os}/${prereqs.platform.arch})`,
-      );
+      prereqsVersion = prereqs.bun.version ?? "detected";
+      prereqsPlatform = `${prereqs.platform.os}/${prereqs.platform.arch}`;
+      p.log.success(`Bun ${prereqsVersion} (${prereqsPlatform})`);
     } else {
-      p.log.info("Skipping prerequisite checks (--skip-prerequisites)");
+      p.log.info("Step 1/5: Prerequisites (skipped)");
     }
 
-    // Step 5: Ensure ~/.luca/ directory structure
+    // Ensure ~/.luca/ directory structure
     const homePaths = await ensureLucaHome();
     p.log.success(`Luca home directory: ${homePaths.root}`);
 
-    // Step 6: MuninnDB setup (unless skipped)
-    let muninndbHealthy = false;
+    // ── Step 2: MuninnDB ─────────────────────────────────────────────────
     if (!args["skip-muninndb"]) {
+      p.log.step("Step 2/5: MuninnDB");
       const binaryStatus = await checkMuninndbBinary();
 
       if (!binaryStatus.installed) {
@@ -625,11 +627,13 @@ export const initCommand = defineCommand({
             "You can install MuninnDB later or run `luca init` again.",
           );
         } else {
+          muninndbBinaryPath = installResult.binaryPath;
           p.log.success(
             `MuninnDB binary installed: ${installResult.binaryPath}`,
           );
         }
       } else {
+        muninndbBinaryPath = binaryStatus.path;
         p.log.success(
           `MuninnDB binary found: ${binaryStatus.path}${binaryStatus.version ? ` (${binaryStatus.version})` : ""}`,
         );
@@ -643,6 +647,7 @@ export const initCommand = defineCommand({
 
         if (serviceStatus.healthy) {
           muninndbHealthy = true;
+          muninndbPort = serviceStatus.port;
           p.log.success(
             `MuninnDB running on port ${serviceStatus.port}${serviceStatus.pid ? ` (PID ${serviceStatus.pid})` : ""}`,
           );
@@ -667,12 +672,12 @@ export const initCommand = defineCommand({
         );
       }
     } else {
-      p.log.info("Skipping MuninnDB setup (--skip-muninndb)");
+      p.log.info("Step 2/5: MuninnDB (skipped)");
     }
 
-    // Step 7: Deploy artifacts to ~/.claude/ (unless skipped)
-    let deployedCount = 0;
+    // ── Step 3 & 4: Build artifacts + Deploy ─────────────────────────────
     if (!args["skip-deploy"]) {
+      p.log.step("Step 3/5: Build artifacts & deploy");
       const shouldDeploy = await p.confirm({
         message: "Deploy Luca agents, skills, hooks, and rules to ~/.claude/?",
         initialValue: true,
@@ -685,46 +690,12 @@ export const initCommand = defineCommand({
         p.log.info("You can deploy later with: bun scripts/deploy-global.ts");
       }
     } else {
-      p.log.info("Skipping artifact deployment (--skip-deploy)");
+      p.log.info("Step 3/5: Build artifacts & deploy (skipped)");
     }
 
-    // Step 8: Success message
-    const statusLines = [
-      "Global setup complete. The following directories are ready:",
-      "",
-      `  ${homePaths.root}/`,
-      `  ${homePaths.bin}/`,
-      `  ${homePaths.manifests}/`,
-      `  ${homePaths.backups}/`,
-    ];
-
-    if (!args["skip-muninndb"]) {
-      statusLines.push("");
-      statusLines.push(
-        muninndbHealthy
-          ? "  MuninnDB: running and healthy"
-          : "  MuninnDB: not running (start with `muninndb` or re-run `luca init`)",
-      );
-    }
-
-    if (deployedCount > 0) {
-      statusLines.push("");
-      statusLines.push(
-        `  Artifacts deployed: ${deployedCount} files to ~/.claude/`,
-      );
-    }
-
-    p.note(statusLines.join("\n"), "Setup Complete");
-
-    // Note about luca update for future use
-    if (deployedCount > 0) {
-      p.log.info(
-        "To update deployed artifacts after upgrading: bun scripts/deploy-global.ts",
-      );
-    }
-
-    // Step 9: Suggest vault:init (unless skipped)
+    // ── Step 5: Vault setup ──────────────────────────────────────────────
     if (!args["skip-vault"]) {
+      p.log.step("Step 4/5: Project vault setup");
       const cwd = process.cwd();
       const hasPackageJson = existsSync(join(cwd, "package.json"));
 
@@ -736,15 +707,88 @@ export const initCommand = defineCommand({
         });
 
         if (!p.isCancel(runNow) && runNow) {
+          vaultInitRan = true;
           const { vaultInitCommand } = await import("./vault-init");
           await runMain(vaultInitCommand);
+          // vault:init handles its own outro, so skip the readout below
           return;
         }
       }
 
       p.log.info("To initialize Luca in a project, run:");
       p.log.info("  luca vault:init");
+    } else {
+      p.log.info("Step 4/5: Vault setup (skipped)");
     }
+
+    // ── Post-init readout ────────────────────────────────────────────────
+    const readout: string[] = [];
+
+    // Prerequisites section
+    readout.push("Prerequisites:");
+    if (prereqsVersion) {
+      readout.push(`  Bun ${prereqsVersion} (${prereqsPlatform})`);
+    } else {
+      readout.push("  Skipped");
+    }
+
+    // MuninnDB section
+    readout.push("");
+    readout.push("MuninnDB:");
+    if (args["skip-muninndb"]) {
+      readout.push("  Skipped");
+    } else if (muninndbHealthy) {
+      readout.push(`  Running on port ${muninndbPort}`);
+      if (muninndbBinaryPath) {
+        readout.push(`  Binary: ${muninndbBinaryPath}`);
+      }
+    } else {
+      readout.push(
+        "  Not running (start with `muninndb` or re-run `luca init`)",
+      );
+    }
+
+    // Artifacts section
+    readout.push("");
+    readout.push("Artifacts:");
+    if (args["skip-deploy"]) {
+      readout.push("  Skipped");
+    } else if (deployedCount > 0) {
+      readout.push(`  ${deployedCount} files deployed to ~/.claude/`);
+    } else {
+      readout.push("  None deployed");
+    }
+
+    // Vault section
+    readout.push("");
+    readout.push("Vault:");
+    if (args["skip-vault"]) {
+      readout.push("  Skipped");
+    } else {
+      readout.push("  Not configured (run `luca vault:init` in a project)");
+    }
+
+    // Next steps
+    readout.push("");
+    readout.push("Next steps:");
+    if (deployedCount > 0) {
+      readout.push(
+        "  To update artifacts after upgrading: bun scripts/deploy-global.ts",
+      );
+    }
+    if (!vaultInitRan) {
+      readout.push("  To set up a project: cd <project> && luca vault:init");
+    }
+
+    // Directories
+    readout.push("");
+    readout.push("Directories:");
+    readout.push(`  ${homePaths.root}/`);
+    readout.push(`  ${homePaths.bin}/`);
+    readout.push(`  ${homePaths.manifests}/`);
+    readout.push(`  ${homePaths.backups}/`);
+
+    p.note(readout.join("\n"), "Setup Complete");
 
     p.outro("Luca is ready. Happy building!");
   },
