@@ -8,11 +8,30 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v4.4.0 — Shipped)
+## Current Milestone (v5.0.0 — In Progress)
 
-**Last Shipped:** v4.4.0 — Smart Context Management (2026-03-14)
+**Goal:** Ship `@alecsibilia/luca-framework` as a globally-installable NPM package with one-command setup: prerequisite checks, MuninnDB binary installation, artifact building, deployment to `~/.claude/`, and guided vault configuration.
 
-7 phases, 23 commits, 74 files changed (+6,756/-101 LOC). Complete context management pipeline: hook schema expansion (5→18 canonical events), PreCompact checkpoint hook (MuninnDB + filesystem), context metrics JSON with proactive checkpointing, session compact restore hook, /context-restore skill for manual deep recovery, observer context window bar with real token metrics via statusLine API.
+**Phases:** 172-178 (7 phases)
+**Complexity:** CRITICAL
+**Source:** Todo #17 (expert-panel-research + product discussion)
+
+### Key Features
+
+- `luca init` — Global first-time setup (Bun check, MuninnDB install, build, deploy, vault)
+- `luca doctor` — Health check for prerequisites, global artifacts, MuninnDB, current project
+- `luca vault init` — Per-repo vault setup wizard (guided Web UI flow)
+- `luca update` / `luca reinit` — Version check, rebuild, redeploy
+
+## Previous State (v4.5.0 — Shipped)
+
+**Last Shipped:** v4.5.0 — Platform Simplification & Proactive Intelligence (2026-03-15)
+
+14 phases, 93 commits, 793 files (+16,465/-157,273 LOC). Removed non-Claude platforms, migrated hooks to TypeScript, shadow debt scanner, proactive context management, observer memory redesign, security hardening, DRY cleanup.
+
+## Previous State (v4.4.0)
+
+v4.4.0 — Smart Context Management (2026-03-14). 7 phases, 23 commits, 74 files changed (+6,756/-101 LOC). Complete context management pipeline: hook schema expansion (5→18 canonical events), PreCompact checkpoint hook (MuninnDB + filesystem), context metrics JSON with proactive checkpointing, session compact restore hook, /context-restore skill for manual deep recovery, observer context window bar with real token metrics via statusLine API.
 
 ## Previous State (v4.3.0)
 

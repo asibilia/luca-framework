@@ -2,7 +2,114 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v5.0.0 — Global NPM Package
+
+---
+
+## v5.0.0 — Global NPM Package
+
+**Goal:** Ship `@alecsibilia/luca-framework` as a one-command global installer with MuninnDB bundling, CLI tooling, and guided setup.
+
+**Source:** Todo #17
+
+### Phase 172: CLI Command Surface & Prerequisites
+
+**Goal:** Restructure CLI to support global install commands and add prerequisite detection.
+
+- [ ] Add `vault init`, `reinit`, `version` subcommands to citty CLI
+- [ ] Implement Bun prerequisite detection with install prompt
+- [ ] Implement OS + architecture detection for platform-specific downloads
+- [ ] Create `~/.luca/` directory structure on first run
+- [ ] Add `--global` context detection (installed package vs monorepo dev)
+
+**Depends on:** None
+**Covers:** REQ-01, REQ-02, REQ-09
+
+### Phase 173: MuninnDB Binary Management
+
+**Goal:** Download, install, and manage MuninnDB binary per platform.
+
+- [ ] Implement platform binary download (darwin-arm64, darwin-x64, linux-x64, linux-arm64)
+- [ ] Install binary to `~/.luca/bin/muninndb` with correct permissions
+- [ ] Health check MuninnDB on port 8476 after install
+- [ ] Service start/stop management
+- [ ] PATH guidance if `~/.luca/bin/` not on PATH
+
+**Depends on:** Phase 172
+**Covers:** REQ-03
+
+### Phase 174: Build Pipeline & Path Portability
+
+**Goal:** Make build pipeline work from installed package location.
+
+- [ ] Audit all skills/agents for monorepo-specific path references
+- [ ] Replace hardcoded paths with package-relative resolution
+- [ ] Ensure `bun run build:all` equivalent works from global install
+- [ ] Make artifact counts discoverable from installed package
+
+**Depends on:** Phase 172
+**Covers:** REQ-04
+
+### Phase 175: Settings Merge & Artifact Deployment
+
+**Goal:** Implement surgical settings.json merge and artifact deployment to ~/.claude/.
+
+- [ ] Parse existing hooks by `matcher` + `event` composite key
+- [ ] Non-conflicting hook addition (auto-merge)
+- [ ] Conflict prompt for same-key different-script hooks
+- [ ] Backup existing settings to `~/.luca/backups/`
+- [ ] Copy agents, skills, hooks, rules to `~/.claude/`
+- [ ] Deploy manifest tracking in `~/.luca/manifests/deploy-manifest.json`
+
+**Depends on:** Phase 174
+**Covers:** REQ-05, REQ-09
+
+### Phase 176: Vault Setup & Init Flow Integration
+
+**Goal:** Wire all init steps together and implement per-repo vault wizard.
+
+- [ ] `luca vault init` guided wizard (detect project, suggest vault name, guide Web UI, verify key)
+- [ ] Write vault to `.planning/config.json`, API key to `.env`
+- [ ] Ensure `.env` in `.gitignore`
+- [ ] Wire 5-step init flow: prerequisites → MuninnDB → build → deploy → vault
+- [ ] Post-init readout with next steps
+
+**Depends on:** Phase 173, Phase 175
+**Covers:** REQ-06
+
+### Phase 177: Doctor Expansion, Update & Reinit
+
+**Goal:** Expand doctor for global context and implement update/reinit commands.
+
+- [ ] Doctor: check prerequisites (Bun, MuninnDB, API key)
+- [ ] Doctor: check global artifacts (~/.claude/ counts, settings.json hooks)
+- [ ] Doctor: check framework runtime (state machine, bridge CLI)
+- [ ] Doctor: check current project (config.json, vault, .env)
+- [ ] `luca update`: npm registry check, rebuild, redeploy
+- [ ] `luca reinit`: force rebuild + redeploy
+
+**Depends on:** Phase 172, Phase 175
+**Covers:** REQ-07, REQ-08
+
+### Phase 178: Config Portability & Integration
+
+**Goal:** Generic config templates and end-to-end integration verification.
+
+- [ ] Auto-detect project stack for harness config template
+- [ ] Hook double-firing dedup logic
+- [ ] End-to-end verification of full install flow
+- [ ] Documentation for global installation
+
+**Depends on:** Phase 176, Phase 177
+**Covers:** REQ-10
+
+---
+
+## Backlog (Unassigned)
+
+| Todo | Title                | Target           | Reason                                                              |
+| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
 
@@ -23,24 +130,6 @@
 | Todo | Reason                                                                                                                                                                                                   |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
-
----
-
-## v5.0.0 — Plugin Ecosystem
-
-| Items | Title                                      | Effort            |
-| ----- | ------------------------------------------ | ----------------- |
-| #17   | Plugin Marketplace with Community Registry | CRITICAL (40-60h) |
-
-Deferred by design. Intelligence moat and process maturity must exist before ecosystem makes sense.
-
----
-
-## Backlog (Unassigned)
-
-| Todo | Title                | Target           | Reason                                                              |
-| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
 
@@ -183,4 +272,4 @@ Deferred by design. Intelligence moat and process maturity must exist before eco
 
 ---
 
-_Roadmap updated: 2026-03-14 (v4.4.0 milestone archived)_
+_Roadmap created: 2026-03-16 — v5.0.0 milestone started_
