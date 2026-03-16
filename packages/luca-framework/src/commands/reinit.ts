@@ -26,7 +26,6 @@ import * as p from "@clack/prompts";
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "pathe";
-import { homedir } from "node:os";
 
 import { readDeployManifest } from "../utils/deploy-manifest-writer";
 import { getLucaHomePaths } from "../utils/luca-home";
@@ -55,8 +54,7 @@ import { logger } from "../utils/logger";
 async function removeDeployedArtifacts(
   manifestArtifacts: Record<string, unknown>,
 ): Promise<number> {
-  const home = homedir();
-  const globalDir = join(home, ".claude");
+  const { claudeGlobal: globalDir } = getLucaHomePaths();
   let removedCount = 0;
 
   for (const relativePath of Object.keys(manifestArtifacts)) {

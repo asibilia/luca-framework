@@ -10,7 +10,6 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "pathe";
-import { homedir } from "node:os";
 
 import { readDeployManifest } from "../../deploy-manifest-writer";
 import { getLucaHomePaths } from "../../luca-home";
@@ -56,8 +55,7 @@ export const globalArtifactsCheck: DoctorCheck = {
   scope: "global",
 
   async run(): Promise<CheckResult> {
-    const home = homedir();
-    const claudeDir = join(home, ".claude");
+    const { claudeGlobal: claudeDir } = getLucaHomePaths();
 
     // Check ~/.claude/ exists
     if (!existsSync(claudeDir)) {

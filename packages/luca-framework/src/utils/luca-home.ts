@@ -7,11 +7,13 @@ import { homedir } from "node:os";
 /**
  * Zod schema for the Luca home directory paths.
  *
- * Defines the standard directory structure under `~/.luca/`:
+ * Defines the standard directory structure under `~/.luca/` plus the
+ * user-level Claude Code configuration directory at `~/.claude/`:
  * - `root`: The top-level `~/.luca/` directory
  * - `bin`: Executable scripts and CLI symlinks
  * - `manifests`: Stored manifest snapshots for installed projects
  * - `backups`: Backup copies of configuration before updates
+ * - `claudeGlobal`: The user-level `~/.claude/` directory (global deploy target)
  */
 export const LucaHomePathsSchema = z.object({
   /** Absolute path to the root ~/.luca/ directory. */
@@ -22,6 +24,8 @@ export const LucaHomePathsSchema = z.object({
   manifests: z.string(),
   /** Absolute path to the ~/.luca/backups/ directory for pre-update backups. */
   backups: z.string(),
+  /** Absolute path to the ~/.claude/ directory (global Claude Code config). */
+  claudeGlobal: z.string(),
 });
 
 /** Luca home directory paths inferred from the Zod schema. */
@@ -39,10 +43,11 @@ export type LucaHomePaths = z.infer<typeof LucaHomePathsSchema>;
  * @example
  * ```typescript
  * const paths = getLucaHomePaths();
- * console.log(paths.root);      // /Users/you/.luca
- * console.log(paths.bin);       // /Users/you/.luca/bin
- * console.log(paths.manifests); // /Users/you/.luca/manifests
- * console.log(paths.backups);   // /Users/you/.luca/backups
+ * console.log(paths.root);         // /Users/you/.luca
+ * console.log(paths.bin);          // /Users/you/.luca/bin
+ * console.log(paths.manifests);    // /Users/you/.luca/manifests
+ * console.log(paths.backups);      // /Users/you/.luca/backups
+ * console.log(paths.claudeGlobal); // /Users/you/.claude
  * ```
  */
 export function getLucaHomePaths(): LucaHomePaths {
@@ -54,6 +59,7 @@ export function getLucaHomePaths(): LucaHomePaths {
     bin: join(root, "bin"),
     manifests: join(root, "manifests"),
     backups: join(root, "backups"),
+    claudeGlobal: join(home, ".claude"),
   };
 
   return LucaHomePathsSchema.parse(paths);

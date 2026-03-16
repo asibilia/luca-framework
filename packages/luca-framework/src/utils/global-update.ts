@@ -24,7 +24,6 @@ import {
 } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join, dirname, relative } from "pathe";
-import { homedir } from "node:os";
 
 import {
   readDeployManifest,
@@ -142,8 +141,7 @@ async function computeGlobalDiff(
   oldManifest: DeployManifest | null,
   sourceClaudeDir: string,
 ): Promise<GlobalUpdateDiff> {
-  const home = homedir();
-  const globalDir = join(home, ".claude");
+  const { claudeGlobal: globalDir } = getLucaHomePaths();
   const diffs: ArtifactDiff[] = [];
 
   // Collect source files (what should be deployed)
@@ -315,8 +313,7 @@ export async function executeGlobalUpdate(options: {
   }
 
   // Apply changes
-  const home = homedir();
-  const globalDir = join(home, ".claude");
+  const { claudeGlobal: globalDir } = getLucaHomePaths();
   const ctx = detectRuntimeContext();
 
   spinner.start("Deploying artifacts...");

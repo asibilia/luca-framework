@@ -43,8 +43,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative } from "pathe";
-import { homedir } from "node:os";
-
 import { logger } from "../utils/logger";
 import { sanitizeJsonParse } from "../utils/sanitize";
 import {
@@ -91,9 +89,8 @@ import type { RuntimeContext } from "../utils/runtime-context";
  * @returns Total number of files deployed
  */
 async function runDeployStep(ctx: RuntimeContext): Promise<number> {
-  const home = homedir();
-  const globalDir = join(home, ".claude");
   const homePaths = getLucaHomePaths();
+  const globalDir = homePaths.claudeGlobal;
 
   // Resolve source directory based on runtime context
   // In dev mode, the source is the monorepo .claude/ directory
