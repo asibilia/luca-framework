@@ -1,5 +1,7 @@
 import { defineCommand } from "citty";
 import * as p from "@clack/prompts";
+import { join } from "pathe";
+
 import { logger } from "../utils/logger";
 import { detectProjectContext } from "../utils/detect";
 import {
@@ -8,6 +10,13 @@ import {
   loadConfigFromFile,
 } from "../utils/wizard";
 import { generateFiles, setupCleanupHandler } from "../utils/files";
+import {
+  runVaultWizard,
+  writeVaultConfig,
+  writeApiKeyToEnv,
+  ensureEnvInGitignore,
+  verifyVaultConnection,
+} from "../utils/vault-setup";
 
 import type { LucaConfig } from "../types";
 
@@ -85,6 +94,11 @@ export const vaultInitCommand = defineCommand({
       description:
         "Configuration preset (starter, standard, full). Default: standard",
       alias: "p",
+    },
+    "skip-vault": {
+      type: "boolean",
+      description: "Skip MuninnDB vault setup",
+      default: false,
     },
     "no-tour": {
       type: "boolean",
@@ -181,6 +195,58 @@ export const vaultInitCommand = defineCommand({
       process.exit(1);
     }
 
+    // Vault setup step (after file generation, before success output)
+    let vaultConfigured = false;
+    let vaultName: string | null = null;
+    const cwd = process.cwd();
+
+    if (args["skip-vault"]) {
+      p.log.info("Skipping MuninnDB vault setup (--skip-vault)");
+    } else if (
+      args.quick ||
+      args.config ||
+      args.name ||
+      args.prefix ||
+      args.stack ||
+      args.tracker
+    ) {
+      // Non-interactive modes: skip vault wizard, suggest running later
+      p.log.info(
+        "MuninnDB vault setup skipped in non-interactive mode. Run `luca vault:init` interactively to set it up.",
+      );
+    } else {
+      // Interactive mode: run vault wizard
+      const vaultResult = await runVaultWizard(context, cwd);
+
+      if (vaultResult) {
+        const configPath = join(cwd, ".planning", "config.json");
+        const envPath = join(cwd, ".env");
+
+        await writeVaultConfig(vaultResult.vaultName, configPath);
+        p.log.success(`Vault name written to .planning/config.json`);
+
+        await writeApiKeyToEnv(vaultResult.apiKey, envPath);
+        p.log.success(`API key written to .env`);
+
+        await ensureEnvInGitignore(cwd);
+        p.log.success(`.env protected in .gitignore`);
+
+        const reachable = await verifyVaultConnection(vaultResult.vaultName);
+        if (reachable) {
+          p.log.success(
+            `MuninnDB reachable -- vault "${vaultResult.vaultName}" is ready`,
+          );
+        } else {
+          p.log.warn(
+            `MuninnDB not reachable. Vault "${vaultResult.vaultName}" will activate when MuninnDB starts.`,
+          );
+        }
+
+        vaultConfigured = true;
+        vaultName = vaultResult.vaultName;
+      }
+    }
+
     // Success output
     p.outro(`Luca initialized in this project!`);
 
@@ -193,18 +259,24 @@ export const vaultInitCommand = defineCommand({
       })
       .join(", ");
 
+    const vaultStatus = vaultConfigured
+      ? `- .planning/config.json (vault: ${vaultName})\n- .env (MUNINN_API_KEY configured)`
+      : "- MuninnDB vault: not configured (run interactively to set up)";
+
     logger.box(`
 Next steps:
 
 1. Review .planning/BRAIN.md and customize for your project
 2. Run /${config.branding.commandPrefix} to get started
 3. Use /${config.branding.commandPrefix}-help for command reference
+${!vaultConfigured ? "4. Run `luca vault:init` interactively to set up MuninnDB vault" : ""}
 
 Files created:
 - .planning/config.json (workflow configuration)
 - .planning/BRAIN.md (project identity)
 - .planning/manifest.json (installation tracking)
 - ${harnessNames} (harness-specific files)
+${vaultStatus}
     `);
 
     // Offer interactive tour (unless --quick, --no-tour, or --config)
