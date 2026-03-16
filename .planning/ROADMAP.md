@@ -16,11 +16,11 @@
 
 **Goal:** Restructure CLI to support global install commands and add prerequisite detection.
 
-- [ ] Add `vault init`, `reinit`, `version` subcommands to citty CLI
-- [ ] Implement Bun prerequisite detection with install prompt
-- [ ] Implement OS + architecture detection for platform-specific downloads
-- [ ] Create `~/.luca/` directory structure on first run
-- [ ] Add `--global` context detection (installed package vs monorepo dev)
+- [x] Add `vault init`, `reinit`, `version` subcommands to citty CLI
+- [x] Implement Bun prerequisite detection with install prompt
+- [x] Implement OS + architecture detection for platform-specific downloads
+- [x] Create `~/.luca/` directory structure on first run
+- [x] Add `--global` context detection (installed package vs monorepo dev)
 
 **Depends on:** None
 **Covers:** REQ-01, REQ-02, REQ-09

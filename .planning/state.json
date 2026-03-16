@@ -1,13 +1,13 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "executing",
   "historyValue": {},
   "context": {
     "session_id": "2591a1b1-54be-4fb0-9500-85ef432f7a65",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "MODERATE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -91,11 +91,36 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "started_at": "2026-03-16T12:57:57.610Z",
+    "started_at": "2026-03-16T12:59:40.581Z",
     "current_milestone": "v5.0.0",
-    "last_transition_at": "2026-03-16T12:58:45.735Z",
+    "last_transition_at": "2026-03-16T13:13:27.893Z",
     "github_issue": 79,
     "branch": "79--v5-global-npm-package"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "idle",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 0,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {}
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }
