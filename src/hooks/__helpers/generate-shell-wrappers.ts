@@ -20,11 +20,19 @@ import { resolveCanonicalRegistry } from "./hook-registry";
  * Generates shell wrapper content for a single hook.
  *
  * The wrapper invokes `bun` on the TypeScript implementation, passing
- * through all arguments and stdin. The path is relative to the wrapper's
- * location in `.claude/hooks/` (two directories up to reach `src/hooks/scripts/`).
+ * through all arguments and stdin. It supports two resolution strategies:
+ *
+ * 1. **Global install** (`$LUCA_PACKAGE_ROOT` set): Uses the absolute path
+ *    from the env var. This is set by `deploy-global.ts` or session-start.
+ * 2. **Monorepo dev** (fallback): Uses a relative path from the wrapper's
+ *    location in `.claude/hooks/` (two directories up to reach `src/`).
+ *
+ * This makes `deploy-global.ts`'s `rewriteWrapperPaths()` unnecessary for
+ * new installs, though it remains as a transition mechanism.
  *
  * @param hookName - Canonical hook name (e.g. "post-edit-format")
- * @returns Shell script string with exec bun invocation
+ * @param outputPath - Relative output path (e.g. ".claude/hooks/post-edit-format.sh")
+ * @returns Shell script string with context-aware exec bun invocation
  */
 export function generateShellWrapper(
   hookName: string,
@@ -36,9 +44,18 @@ export function generateShellWrapper(
   const isRootLevel =
     outputPath?.startsWith(".claude/") &&
     !outputPath.startsWith(".claude/hooks/");
-  const prefix = isRootLevel ? ".." : "../..";
+  const relativePrefix = isRootLevel ? ".." : "../..";
+
+  // The wrapper checks LUCA_PACKAGE_ROOT first (global install),
+  // then falls back to the relative path (monorepo dev).
   return `#!/bin/sh
-exec bun "$(dirname "$0")/${prefix}/src/hooks/scripts/${scriptName}" "$@" <&0
+# Resolve the hook script path: absolute (global) or relative (monorepo)
+if [ -n "$LUCA_PACKAGE_ROOT" ]; then
+  SCRIPT="$LUCA_PACKAGE_ROOT/src/hooks/scripts/${scriptName}"
+else
+  SCRIPT="$(dirname "$0")/${relativePrefix}/src/hooks/scripts/${scriptName}"
+fi
+exec bun "$SCRIPT" "$@" <&0
 `;
 }
 
