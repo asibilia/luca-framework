@@ -3,6 +3,19 @@ import { join } from "pathe";
 
 import type { CheckResult, DoctorCheck } from "../types";
 
+/**
+ * Doctor check: verify Cursor IDE is installed on the system.
+ *
+ * Checks platform-specific installation paths (macOS, Windows, Linux)
+ * to determine if Cursor IDE is available. Returns a warning (not failure)
+ * if not found, since Cursor is recommended but not strictly required.
+ *
+ * @example
+ * ```typescript
+ * const result = await cursorIdeCheck.run();
+ * // { name: 'Cursor IDE', status: 'pass', message: 'Cursor IDE detected', ... }
+ * ```
+ */
 export const cursorIdeCheck: DoctorCheck = {
   name: "Cursor IDE",
 
