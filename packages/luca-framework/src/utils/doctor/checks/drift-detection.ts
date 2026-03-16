@@ -1,5 +1,6 @@
-import type { CheckResult, DoctorCheck } from "../types";
 import { readManifest, hashFile } from "../../manifest";
+
+import type { CheckResult, DoctorCheck } from "../types";
 
 /**
  * Doctor check: detect drift between manifest hashes and current file contents.
