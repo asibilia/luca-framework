@@ -1,3 +1,8 @@
+---
+description: Prevent direct edits to generated shell wrapper files
+alwaysApply: true
+---
+
 # Prevent direct edits to generated shell wrapper files
 
 ## rule

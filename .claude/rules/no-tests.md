@@ -1,3 +1,8 @@
+---
+description: Temporarily prohibit adding test files
+alwaysApply: true
+---
+
 # Temporarily prohibit adding test files
 
 ## rule

@@ -1,11 +1,11 @@
 ---
-description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+description: Guidelines for creating and maintaining rules to ensure consistency and effectiveness.
 globs:
   - .claude/rules/*.md
 alwaysApply: true
 ---
 
-# Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+# Guidelines for creating and maintaining rules to ensure consistency and effectiveness.
 
 ## rule
 
