@@ -68,11 +68,11 @@
 
 **Goal:** Wire all init steps together and implement per-repo vault wizard.
 
-- [ ] `luca vault init` guided wizard (detect project, suggest vault name, guide Web UI, verify key)
-- [ ] Write vault to `.planning/config.json`, API key to `.env`
-- [ ] Ensure `.env` in `.gitignore`
-- [ ] Wire 5-step init flow: prerequisites → MuninnDB → build → deploy → vault
-- [ ] Post-init readout with next steps
+- [x] `luca vault init` guided wizard (detect project, suggest vault name, guide Web UI, verify key)
+- [x] Write vault to `.planning/config.json`, API key to `.env`
+- [x] Ensure `.env` in `.gitignore`
+- [x] Wire 5-step init flow: prerequisites → MuninnDB → build → deploy → vault
+- [x] Post-init readout with next steps
 
 **Depends on:** Phase 173, Phase 175
 **Covers:** REQ-06
@@ -81,12 +81,12 @@
 
 **Goal:** Expand doctor for global context and implement update/reinit commands.
 
-- [ ] Doctor: check prerequisites (Bun, MuninnDB, API key)
-- [ ] Doctor: check global artifacts (~/.claude/ counts, settings.json hooks)
-- [ ] Doctor: check framework runtime (state machine, bridge CLI)
-- [ ] Doctor: check current project (config.json, vault, .env)
-- [ ] `luca update`: npm registry check, rebuild, redeploy
-- [ ] `luca reinit`: force rebuild + redeploy
+- [x] Doctor: check prerequisites (Bun, MuninnDB, API key)
+- [x] Doctor: check global artifacts (~/.claude/ counts, settings.json hooks)
+- [x] Doctor: check framework runtime (state machine, bridge CLI)
+- [x] Doctor: check current project (config.json, vault, .env)
+- [x] `luca update`: npm registry check, rebuild, redeploy
+- [x] `luca reinit`: force rebuild + redeploy
 
 **Depends on:** Phase 172, Phase 175
 **Covers:** REQ-07, REQ-08
