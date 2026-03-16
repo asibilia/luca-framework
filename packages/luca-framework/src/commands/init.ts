@@ -1,191 +1,145 @@
+/**
+ * CLI command: luca init
+ *
+ * Global setup orchestrator that guides users through first-time Luca installation.
+ * This command handles global prerequisites (Bun runtime, ~/.luca/ directory) and
+ * then suggests running `luca vault:init` for per-project initialization.
+ *
+ * The per-project wizard logic (detect context, run wizard, generate files) has
+ * been moved to `vault-init.ts` (the `luca vault:init` command).
+ *
+ * Orchestration steps:
+ * 1. Show intro message
+ * 2. Detect runtime context (global install vs. monorepo dev)
+ * 3. Check prerequisites (Bun installed and meets minimum version)
+ * 4. Prompt Bun installation if prerequisites not met
+ * 5. Ensure ~/.luca/ directory structure exists
+ * 6. Show success and suggest vault:init
+ *
+ * @example
+ * ```bash
+ * # Full interactive setup
+ * luca init
+ *
+ * # Skip prerequisite checks
+ * luca init --skip-prerequisites
+ *
+ * # Skip the vault:init suggestion
+ * luca init --skip-vault
+ * ```
+ */
 import { defineCommand, runMain } from "citty";
 import * as p from "@clack/prompts";
+import { existsSync } from "node:fs";
+import { join } from "pathe";
+
 import { logger } from "../utils/logger";
-import { detectProjectContext } from "../utils/detect";
-import {
-  runWizard,
-  createConfigFromArgs,
-  loadConfigFromFile,
-} from "../utils/wizard";
-import { generateFiles, setupCleanupHandler } from "../utils/files";
-import type { LucaConfig } from "../types";
+import { detectRuntimeContext } from "../utils/runtime-context";
+import { checkPrerequisites, promptBunInstall } from "../utils/prerequisites";
+import { ensureLucaHome } from "../utils/luca-home";
 
 export const initCommand = defineCommand({
   meta: {
     name: "init",
-    description: "Initialize a new Luca project",
+    description: "Set up Luca globally and initialize your first project",
   },
   args: {
-    quick: {
+    "skip-prerequisites": {
       type: "boolean",
-      description: "Skip interactive prompts, use defaults",
+      description: "Skip prerequisite checks",
       default: false,
-      alias: "q",
     },
-    config: {
-      type: "string",
-      description: "Path to config file for non-interactive mode",
-      alias: "c",
-    },
-    name: {
-      type: "string",
-      description: "Framework name (default: Luca)",
-    },
-    prefix: {
-      type: "string",
-      description: "Command prefix (default: lu)",
-    },
-    stack: {
-      type: "string",
-      description: "Stack template (react-ts, custom)",
-    },
-    tracker: {
-      type: "string",
-      description: "Work tracker (jira, github, none)",
-    },
-    harness: {
-      type: "string",
-      description:
-        "Harness platforms, comma-separated (claude, cursor, pi). Default: claude,cursor",
-    },
-    preset: {
-      type: "string",
-      description:
-        "Configuration preset (starter, standard, full). Default: standard",
-      alias: "p",
-    },
-    "no-tour": {
+    "skip-vault": {
       type: "boolean",
-      description: "Skip the post-init interactive tour",
+      description: "Skip per-project initialization",
       default: false,
     },
   },
   async run({ args }) {
-    // Setup cleanup handler for SIGINT
-    setupCleanupHandler();
+    // Step 1: Intro
+    p.intro("luca init");
 
-    // Detect project context
-    const context = await detectProjectContext();
+    // Step 2: Detect runtime context
+    const ctx = detectRuntimeContext();
+    const modeLabel = ctx.mode === "dev" ? "monorepo dev" : "global install";
+    p.log.info(`Runtime mode: ${modeLabel}`);
 
-    // Check for existing installation
-    if (context.hasLuca) {
-      logger.error("Luca is already installed in this project.");
-      logger.info("");
-      logger.info("To update to the latest version:");
-      logger.info("  bunx luca update");
-      logger.info("");
-      logger.info(
-        "To reinitialize from scratch (this will overwrite existing config):",
-      );
-      logger.info("  rm -rf .planning/ .cursor/luca/ && bunx luca init");
-      process.exit(1);
-    }
+    // Step 3: Check prerequisites (unless skipped)
+    if (!args["skip-prerequisites"]) {
+      const prereqs = checkPrerequisites();
 
-    let config: LucaConfig;
+      if (!prereqs.ok) {
+        // Step 4: Prompt Bun install
+        const shouldContinue = await promptBunInstall();
+        if (!shouldContinue) {
+          p.outro("Setup cancelled. Install Bun and run `luca init` again.");
+          process.exit(1);
+        }
 
-    // Determine mode and get config
-    if (args.config) {
-      // Config file mode
-      logger.info(`Reading config from ${args.config}`);
-      try {
-        config = await loadConfigFromFile(args.config);
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        logger.error(`Failed to read config file "${args.config}": ${reason}`);
-        logger.info("");
-        logger.info("Ensure the config file:");
-        logger.info("  - Exists at the specified path");
-        logger.info("  - Contains valid JSON");
-        logger.info("  - Matches the expected schema (see docs for format)");
-        logger.info("");
-        logger.info("Example: bunx luca init --config ./luca-config.json");
-        process.exit(1);
+        // Re-check after user says they installed
+        const recheck = checkPrerequisites();
+        if (!recheck.ok) {
+          logger.error(
+            "Bun still not detected. Please install Bun and try again.",
+          );
+          process.exit(1);
+        }
       }
-    } else if (
-      args.quick ||
-      args.name ||
-      args.prefix ||
-      args.stack ||
-      args.tracker ||
-      args.harness ||
-      args.preset
-    ) {
-      // Quick mode or explicit args
-      logger.info("Using provided arguments / defaults");
-      config = createConfigFromArgs({
-        name: args.name,
-        prefix: args.prefix,
-        stack: args.stack,
-        tracker: args.tracker,
-        harness: args.harness,
-        preset: args.preset,
-      });
+
+      p.log.success(
+        `Bun ${prereqs.bun.version ?? "detected"} (${prereqs.platform.os}/${prereqs.platform.arch})`,
+      );
     } else {
-      // Interactive mode
-      const wizardResult = await runWizard(context);
-      if (!wizardResult) {
-        process.exit(0);
+      p.log.info("Skipping prerequisite checks (--skip-prerequisites)");
+    }
+
+    // Step 5: Ensure ~/.luca/ directory structure
+    const homePaths = await ensureLucaHome();
+    p.log.success(`Luca home directory: ${homePaths.root}`);
+
+    // Step 6: Success message
+    p.note(
+      [
+        "Global setup complete. The following directories are ready:",
+        "",
+        `  ${homePaths.root}/`,
+        `  ${homePaths.bin}/`,
+        `  ${homePaths.manifests}/`,
+        `  ${homePaths.backups}/`,
+      ].join("\n"),
+      "Setup Complete",
+    );
+
+    // Step 7: Suggest vault:init (unless skipped)
+    if (!args["skip-vault"]) {
+      const cwd = process.cwd();
+      const hasPackageJson = existsSync(join(cwd, "package.json"));
+
+      if (hasPackageJson) {
+        const runNow = await p.confirm({
+          message:
+            "This directory looks like a project. Run `luca vault:init` to set up Luca here?",
+          initialValue: true,
+        });
+
+        if (!p.isCancel(runNow) && runNow) {
+          const { vaultInitCommand } = await import("./vault-init");
+          await runMain(vaultInitCommand);
+          return;
+        }
       }
-      config = wizardResult;
+
+      p.log.info("To initialize Luca in a project, run:");
+      p.log.info("  luca vault:init");
     }
 
-    // Generate files
-    const result = await generateFiles({ config });
-
-    if (!result.success) {
-      const reason = String(result.error ?? "Unknown error");
-      logger.error(`Installation failed: ${reason}`);
-      logger.info("");
-      logger.info("To recover, try the following:");
-      logger.info("  1. Check file permissions in the current directory");
-      logger.info("  2. Ensure sufficient disk space is available");
-      logger.info("  3. Run `bunx luca init` again");
-      logger.info("");
-      logger.info(
-        "If the problem persists, report a bug at: https://github.com/alecsibilia/luca-framework/issues",
-      );
-      process.exit(1);
-    }
-
-    // Success output
-    p.outro(`✅ ${config.branding.frameworkName} initialized!`);
-
-    const harnessNames = (config.harnesses ?? ["claude", "cursor"])
-      .map((h) => {
-        if (h === "claude") return ".claude/";
-        if (h === "cursor") return ".cursor/";
-        if (h === "pi") return ".pi/";
-        return h;
-      })
-      .join(", ");
-
-    logger.box(`
-Next steps:
-
-1. Review .planning/BRAIN.md and customize for your project
-2. Run /${config.branding.commandPrefix} to get started
-3. Use /${config.branding.commandPrefix}-help for command reference
-
-Files created:
-- .planning/config.json (workflow configuration)
-- .planning/BRAIN.md (project identity)
-- .planning/manifest.json (installation tracking)
-- ${harnessNames} (harness-specific files)
-    `);
-
-    // Offer interactive tour (unless --quick, --no-tour, or --config)
-    if (!args.quick && !args["no-tour"] && !args.config) {
-      try {
-        const { runTour } = await import("../utils/tour");
-        await runTour(config, context, result.stats);
-      } catch {
-        // Tour errors are non-fatal
-      }
-    }
+    p.outro("Luca is ready. Happy building!");
   },
 });
 
 /**
- * Run init command directly (used by create-luca)
+ * Run init command directly (used by create-luca and bin/luca.js).
+ *
+ * Preserves the export contract consumed by index.ts and downstream consumers.
  */
 export const runInit = () => runMain(initCommand);
