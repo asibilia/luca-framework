@@ -37,14 +37,12 @@ import * as p from "@clack/prompts";
 import {
   chmodSync,
   existsSync,
-  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
-  realpathSync,
   writeFileSync,
 } from "node:fs";
-import { join, dirname, relative } from "pathe";
+import { join, relative } from "pathe";
 import { homedir } from "node:os";
 
 import { logger } from "../utils/logger";
@@ -70,9 +68,10 @@ import {
   createDeployManifest,
   writeDeployManifest,
 } from "../utils/deploy-manifest-writer";
+import { copyDirForDeploy, rewriteHookPaths } from "../utils/deploy-helpers";
 
+import type { DeployedFileEntry } from "../utils/deploy-helpers";
 import type { DeploySourceType } from "../utils/deploy-manifest.schemas";
-
 import type { RuntimeContext } from "../utils/runtime-context";
 
 // ─── Deploy step implementation ─────────────────────────────────────────────
@@ -119,11 +118,7 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
     mkdirSync(globalDir, { recursive: true });
   }
 
-  const deployedFiles: Array<{
-    relativePath: string;
-    absolutePath: string;
-    sourceType: DeploySourceType;
-  }> = [];
+  const deployedFiles: DeployedFileEntry[] = [];
 
   let totalCount = 0;
 
@@ -195,7 +190,7 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
       chmodSync(target, 0o755);
 
       // Rewrite relative paths for global context
-      rewriteWrapperPathsForInit(target, sourceRoot);
+      rewriteHookPaths(target, sourceRoot);
 
       deployedFiles.push({
         relativePath: relative(globalDir, target),
@@ -213,7 +208,7 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
     const target = join(globalDir, "statusline.sh");
     writeFileSync(target, readFileSync(statuslineSource));
     chmodSync(target, 0o755);
-    rewriteWrapperPathsForInit(target, sourceRoot);
+    rewriteHookPaths(target, sourceRoot);
     deployedFiles.push({
       relativePath: "statusline.sh",
       absolutePath: target,
@@ -331,91 +326,6 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   p.log.success("Deploy manifest written");
 
   return totalCount;
-}
-
-/**
- * Recursively copy a directory, tracking deployed files for manifest.
- *
- * Includes a symlink traversal guard (SEC-008): before copying each file,
- * checks if it is a symlink. If the symlink resolves to a path outside
- * the source tree, the file is skipped with a warning to prevent directory
- * escape attacks during deployment.
- */
-function copyDirForDeploy(
-  source: string,
-  target: string,
-  globalDir: string,
-  deployedFiles: Array<{
-    relativePath: string;
-    absolutePath: string;
-    sourceType: DeploySourceType;
-  }>,
-  sourceType: DeploySourceType,
-  sourceRoot?: string,
-): void {
-  // Track the top-level source root for symlink validation
-  const root = sourceRoot ?? source;
-
-  mkdirSync(target, { recursive: true });
-  const entries = readdirSync(source, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = join(source, entry.name);
-    const tgtPath = join(target, entry.name);
-
-    // Symlink traversal guard (SEC-008)
-    if (lstatSync(srcPath).isSymbolicLink()) {
-      try {
-        const resolved = realpathSync(srcPath);
-        if (!resolved.startsWith(root)) {
-          console.warn(
-            `[deploy] Skipping symlink that escapes source tree: ${srcPath} -> ${resolved}`,
-          );
-          continue;
-        }
-      } catch {
-        console.warn(`[deploy] Skipping unresolvable symlink: ${srcPath}`);
-        continue;
-      }
-    }
-
-    if (entry.isDirectory()) {
-      copyDirForDeploy(
-        srcPath,
-        tgtPath,
-        globalDir,
-        deployedFiles,
-        sourceType,
-        root,
-      );
-    } else {
-      writeFileSync(tgtPath, readFileSync(srcPath));
-      deployedFiles.push({
-        relativePath: relative(globalDir, tgtPath),
-        absolutePath: tgtPath,
-        sourceType,
-      });
-    }
-  }
-}
-
-/**
- * Rewrite relative paths in shell wrappers to absolute paths for global context.
- *
- * Same logic as deploy-global.ts rewriteWrapperPaths(), inlined here to
- * avoid importing from scripts/ (which is outside the package boundary).
- */
-function rewriteWrapperPathsForInit(
-  targetPath: string,
-  projectRoot: string,
-): void {
-  const content = readFileSync(targetPath, "utf-8");
-  const rewritten = content
-    .replace(/\$\(dirname "\$0"\)\/\.\.\/\.\.\//g, `${projectRoot}/`)
-    .replace(/\$\(dirname "\$0"\)\/\.\.\//g, `${projectRoot}/`);
-
-  if (rewritten !== content) {
-    writeFileSync(targetPath, rewritten);
-  }
 }
 
 /**
