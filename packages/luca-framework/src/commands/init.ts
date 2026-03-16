@@ -46,6 +46,7 @@ import { join, dirname, relative } from "pathe";
 import { homedir } from "node:os";
 
 import { logger } from "../utils/logger";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import { detectRuntimeContext } from "../utils/runtime-context";
 import { checkPrerequisites, promptBunInstall } from "../utils/prerequisites";
 import { ensureLucaHome, getLucaHomePaths } from "../utils/luca-home";
@@ -270,7 +271,9 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   let existingSettings: Record<string, unknown> = {};
   if (existsSync(settingsPath)) {
     try {
-      existingSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      existingSettings = sanitizeJsonParse(
+        readFileSync(settingsPath, "utf-8"),
+      ) as Record<string, unknown>;
     } catch {
       p.log.warn("Could not parse existing settings.json, merging carefully.");
     }

@@ -38,6 +38,7 @@ import { join, relative, basename, dirname } from "path";
 import filter from "lodash/filter";
 
 // Library imports from packages/luca-framework
+import { sanitizeJsonParse } from "../packages/luca-framework/src/utils/sanitize";
 import {
   backupSettings,
   rotateBackups,
@@ -585,7 +586,9 @@ async function mergeSettingsWithLibrary(): Promise<string | null> {
   let existingSettings: Record<string, unknown> = {};
   if (existsSync(settingsPath)) {
     try {
-      existingSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      existingSettings = sanitizeJsonParse(
+        readFileSync(settingsPath, "utf-8"),
+      ) as Record<string, unknown>;
     } catch {
       console.error(
         "Warning: Could not parse existing settings.json, will merge carefully.",
@@ -752,7 +755,9 @@ async function removeGlobalArtifacts(): Promise<void> {
     process.exit(1);
   }
 
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  const manifest = sanitizeJsonParse(
+    readFileSync(manifestPath, "utf-8"),
+  ) as Record<string, any>;
   log(`Removing artifacts deployed at ${manifest.deployed_at}`);
 
   // Derive known Luca scripts from canonical registry
@@ -838,7 +843,9 @@ async function removeGlobalArtifacts(): Promise<void> {
   logHeader("Cleaning settings.json...");
   const settingsFilePath = join(GLOBAL_DIR, "settings.json");
   if (existsSync(settingsFilePath)) {
-    const settings = JSON.parse(readFileSync(settingsFilePath, "utf-8"));
+    const settings = sanitizeJsonParse(
+      readFileSync(settingsFilePath, "utf-8"),
+    ) as Record<string, any>;
 
     if (settings.hooks) {
       for (const event of Object.keys(settings.hooks)) {

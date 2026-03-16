@@ -32,6 +32,7 @@ import { chmodSync, existsSync } from "node:fs";
 import { join, basename } from "pathe";
 
 import { MUNINNDB_DEFAULT_PORT } from "./muninndb-schemas";
+import { sanitizeJsonParse } from "./sanitize";
 
 import type { ProjectContext } from "../types";
 
@@ -238,7 +239,7 @@ export async function writeVaultConfig(
   const file = Bun.file(configPath);
   if (await file.exists()) {
     try {
-      config = JSON.parse(await file.text()) as Record<string, unknown>;
+      config = sanitizeJsonParse(await file.text()) as Record<string, unknown>;
     } catch {
       // Corrupted JSON -- start fresh with just the muninn field
     }
