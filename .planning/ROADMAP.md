@@ -54,12 +54,12 @@
 
 **Goal:** Implement surgical settings.json merge and artifact deployment to ~/.claude/.
 
-- [ ] Parse existing hooks by `matcher` + `event` composite key
-- [ ] Non-conflicting hook addition (auto-merge)
-- [ ] Conflict prompt for same-key different-script hooks
-- [ ] Backup existing settings to `~/.luca/backups/`
-- [ ] Copy agents, skills, hooks, rules to `~/.claude/`
-- [ ] Deploy manifest tracking in `~/.luca/manifests/deploy-manifest.json`
+- [x] Parse existing hooks by `matcher` + `event` composite key
+- [x] Non-conflicting hook addition (auto-merge)
+- [x] Conflict prompt for same-key different-script hooks
+- [x] Backup existing settings to `~/.luca/backups/`
+- [x] Copy agents, skills, hooks, rules to `~/.claude/`
+- [x] Deploy manifest tracking in `~/.luca/manifests/deploy-manifest.json`
 
 **Depends on:** Phase 174
 **Covers:** REQ-05, REQ-09
