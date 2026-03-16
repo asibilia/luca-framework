@@ -1,7 +1,11 @@
 import { defineCommand } from "citty";
-import { logger } from "../utils/logger";
-import { detectRuntimeContext } from "../utils/runtime-context";
 import path from "path";
+
+import { logger } from "../utils/logger";
+import {
+  detectRuntimeContext,
+  resolveMonorepoRoot,
+} from "../utils/runtime-context";
 
 /**
  * CLI command: luca build
@@ -39,9 +43,7 @@ export const buildCommand = defineCommand({
   },
   async run({ args }) {
     const ctx = detectRuntimeContext();
-    const packageRoot = ctx.packageDir.includes("packages/luca-framework")
-      ? path.resolve(ctx.packageDir, "..", "..")
-      : ctx.packageDir;
+    const packageRoot = resolveMonorepoRoot(ctx.packageDir);
 
     logger.info(`Building Luca artifacts (mode: ${ctx.mode})...`);
     logger.info(`Package root: ${packageRoot}`);
