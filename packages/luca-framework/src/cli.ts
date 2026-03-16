@@ -27,6 +27,7 @@ const main = defineCommand({
     doctor: () => import("./commands/doctor").then((m) => m.default),
     "add-skill": () =>
       import("./commands/add-skill").then((m) => m.addSkillCommand),
+    build: () => import("./commands/build").then((m) => m.buildCommand),
     "run:claude": () =>
       import("./commands/run").then((m) => m.runClaudeCommand),
     "run:cursor": () =>
