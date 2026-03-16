@@ -35,6 +35,8 @@ import { hashFile } from "./manifest";
 import { getLucaHomePaths } from "./luca-home";
 import { detectRuntimeContext, resolveMonorepoRoot } from "./runtime-context";
 
+import { inferSourceType } from "./deploy-manifest.schemas";
+
 import type {
   DeployManifest,
   DeploySourceType,
@@ -118,23 +120,6 @@ function collectFiles(dir: string, base?: string): string[] {
   }
 
   return results;
-}
-
-/**
- * Infer the deploy source type from a relative path.
- *
- * @param relativePath - Path relative to ~/.claude/
- * @returns Appropriate DeploySourceType
- */
-function inferSourceType(relativePath: string): DeploySourceType {
-  if (relativePath.startsWith("agents/")) return "agent";
-  if (relativePath.startsWith("skills/")) return "skill";
-  if (relativePath.startsWith("hooks/")) {
-    return relativePath.startsWith("hooks/_lib/") ? "lib" : "hook";
-  }
-  if (relativePath.startsWith("rules/")) return "rule";
-  if (relativePath === "statusline.sh") return "statusline";
-  return "lib";
 }
 
 /**

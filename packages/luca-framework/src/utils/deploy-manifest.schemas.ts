@@ -98,3 +98,33 @@ export const DeployManifestSchema = z.object({
 
 /** Global deploy manifest tracking all artifacts deployed to ~/.claude/. */
 export type DeployManifest = z.infer<typeof DeployManifestSchema>;
+
+// ─── Source type inference ──────────────────────────────────────────────────
+
+/**
+ * Infer the deploy source type from a relative path within `~/.claude/`.
+ *
+ * Maps directory prefixes to their corresponding `DeploySourceType`.
+ * Falls back to `"lib"` for unrecognized paths.
+ *
+ * @param relativePath - Path relative to `~/.claude/`.
+ * @returns Appropriate `DeploySourceType`.
+ *
+ * @example
+ * ```typescript
+ * inferSourceType("agents/lu-router.md")     // "agent"
+ * inferSourceType("hooks/_lib/shared.sh")    // "lib"
+ * inferSourceType("hooks/session-start.sh")  // "hook"
+ * inferSourceType("statusline.sh")           // "statusline"
+ * ```
+ */
+export function inferSourceType(relativePath: string): DeploySourceType {
+  if (relativePath.startsWith("agents/")) return "agent";
+  if (relativePath.startsWith("skills/")) return "skill";
+  if (relativePath.startsWith("hooks/")) {
+    return relativePath.startsWith("hooks/_lib/") ? "lib" : "hook";
+  }
+  if (relativePath.startsWith("rules/")) return "rule";
+  if (relativePath === "statusline.sh") return "statusline";
+  return "lib";
+}
