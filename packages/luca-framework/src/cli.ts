@@ -18,6 +18,10 @@ const main = defineCommand({
   },
   subCommands: {
     init: () => import("./commands/init").then((m) => m.initCommand),
+    "vault:init": () =>
+      import("./commands/vault-init").then((m) => m.vaultInitCommand),
+    reinit: () => import("./commands/reinit").then((m) => m.reinitCommand),
+    version: () => import("./commands/version").then((m) => m.versionCommand),
     update: () => import("./commands/update").then((m) => m.updateCommand),
     status: () => import("./commands/status").then((m) => m.statusCommand),
     doctor: () => import("./commands/doctor").then((m) => m.default),
