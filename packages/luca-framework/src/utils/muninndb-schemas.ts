@@ -156,10 +156,10 @@ export const MUNINNDB_BINARY_NAME = "muninndb";
  * ```
  */
 export function resolveMuninndbPort(port?: number): number {
-  return (
-    port ??
-    (process.env.MUNINNDB_PORT
-      ? parseInt(process.env.MUNINNDB_PORT, 10)
-      : MUNINNDB_DEFAULT_PORT)
-  );
+  if (port !== undefined) return port;
+  if (process.env.MUNINNDB_PORT) {
+    const parsed = parseInt(process.env.MUNINNDB_PORT, 10);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return MUNINNDB_DEFAULT_PORT;
 }
