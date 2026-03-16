@@ -1,6 +1,6 @@
 {
   "status": "active",
-  "value": "verifying",
+  "value": "committing",
   "historyValue": {},
   "context": {
     "session_id": "2591a1b1-54be-4fb0-9500-85ef432f7a65",
@@ -102,7 +102,7 @@
     "memory_tags": [],
     "started_at": "2026-03-16T12:59:40.581Z",
     "current_milestone": "v5.0.0",
-    "last_transition_at": "2026-03-16T14:01:27.908Z",
+    "last_transition_at": "2026-03-16T19:10:46.903Z",
     "github_issue": 79,
     "branch": "79--v5-global-npm-package"
   },
