@@ -21,6 +21,7 @@
  */
 import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
+import { generateHooksRegistryJson } from "./generate-hooks-registry-json";
 import path from "path";
 
 async function main() {
@@ -328,6 +329,12 @@ async function main() {
     JSON.stringify(manifest, null, 2) + "\n",
   );
   console.log("\nBuild manifest written to .claude/.build-manifest.json");
+
+  // =========================================================================
+  // 8. Emit hooks registry JSON artifact
+  // =========================================================================
+  const hooksRegistryPath = await generateHooksRegistryJson();
+  console.log(`Hooks registry written to ${hooksRegistryPath}`);
 }
 
 main().catch((error) => {
