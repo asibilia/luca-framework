@@ -573,8 +573,24 @@ export const updateCommand = defineCommand({
       description: "Change configuration preset (starter, standard, full)",
       alias: "p",
     },
+    global: {
+      type: "boolean",
+      description:
+        "Update globally deployed artifacts in ~/.claude/ instead of per-project files",
+      default: false,
+      alias: "g",
+    },
   },
   async run({ args }) {
+    // Global update mode: delegate to global-update utility
+    if (args.global) {
+      const { executeGlobalUpdate } = await import("../utils/global-update");
+      const exitCode = await executeGlobalUpdate({
+        dryRun: args["dry-run"],
+      });
+      process.exit(exitCode);
+    }
+
     const cwd = process.cwd();
 
     // Step 1: Check Luca is installed (read manifest)
