@@ -107,14 +107,14 @@
 
 **Goal:** Address all security audit findings — binary integrity, file permissions, input sanitization.
 
-- [ ] Add SHA-256 checksum verification to binary download (SEC-001, HIGH)
-- [ ] Restrict .env file permissions to 0600 after writing API key (SEC-002, HIGH)
-- [ ] Validate HTTPS scheme on download URL override (SEC-003, MEDIUM)
-- [ ] Restrict PID file permissions + validate process identity before SIGTERM (SEC-004, MEDIUM)
-- [ ] Restrict backup file and directory permissions to 0600/0700 (SEC-005, MEDIUM)
-- [ ] Replace raw JSON.parse with sanitizeJsonParse in vault-setup.ts (SEC-006, LOW)
-- [ ] Replace raw JSON.parse with sanitizeJsonParse in init.ts and deploy-global.ts (SEC-007, LOW)
-- [ ] Add symlink-following guard to copyDirForDeploy (SEC-008, LOW)
+- [x] Add SHA-256 checksum verification to binary download (SEC-001, HIGH)
+- [x] Restrict .env file permissions to 0600 after writing API key (SEC-002, HIGH)
+- [x] Validate HTTPS scheme on download URL override (SEC-003, MEDIUM)
+- [x] Restrict PID file permissions + validate process identity before SIGTERM (SEC-004, MEDIUM)
+- [x] Restrict backup file and directory permissions to 0600/0700 (SEC-005, MEDIUM)
+- [x] Replace raw JSON.parse with sanitizeJsonParse in vault-setup.ts (SEC-006, LOW)
+- [x] Replace raw JSON.parse with sanitizeJsonParse in init.ts and deploy-global.ts (SEC-007, LOW)
+- [x] Add symlink-following guard to copyDirForDeploy (SEC-008, LOW)
 
 **Depends on:** Phase 178
 **Covers:** Audit findings SEC-001 through SEC-008
