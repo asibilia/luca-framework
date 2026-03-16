@@ -1,7 +1,9 @@
 import { join } from "pathe";
+
 import { sanitizeJsonParse } from "../../sanitize";
 import { validateBranding } from "../../branding";
 import { VALID_TRACKERS } from "../../wizard";
+
 import type { CheckResult, DoctorCheck } from "../types";
 
 export const configValidationCheck: DoctorCheck = {

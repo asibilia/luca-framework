@@ -1,7 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "pathe";
-import type { CheckResult, DoctorCheck } from "../types";
+
 import { readManifest } from "../../manifest";
+
+import type { CheckResult, DoctorCheck } from "../types";
 import type { HarnessId } from "../../../types";
 
 /**
