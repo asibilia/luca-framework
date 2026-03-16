@@ -107,9 +107,10 @@
 
 ## Backlog (Unassigned)
 
-| Todo | Title                | Target           | Reason                                                              |
-| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| Todo | Title                         | Target           | Reason                                                                                       |
+| ---- | ----------------------------- | ---------------- | -------------------------------------------------------------------------------------------- |
+| #37  | Test suite fragility          | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md`                          |
+| —    | Merge autopilot into lu skill | Post-v5.0.0      | WSJF 3.33, MEDIUM arch/QA risk. Skill consolidation orthogonal to v5.0.0 distribution goals. |
 
 ---
 
