@@ -1,3 +1,4 @@
+import { chmodSync } from "node:fs";
 import { join } from "pathe";
 
 import { getLucaHomePaths } from "./luca-home";
@@ -12,7 +13,10 @@ import {
   waitForMuninndbHealthy,
 } from "./muninndb-health";
 
-import type { MuninndbBinaryStatus, MuninndbServiceStatus } from "./muninndb-schemas";
+import type {
+  MuninndbBinaryStatus,
+  MuninndbServiceStatus,
+} from "./muninndb-schemas";
 
 /**
  * Options for `startMuninndb()`.
@@ -59,15 +63,18 @@ export async function startMuninndb(
     binaryPath: rawBinaryPath,
   } = options;
 
-  const port = rawPort ??
+  const port =
+    rawPort ??
     (process.env.MUNINNDB_PORT
       ? parseInt(process.env.MUNINNDB_PORT, 10)
       : MUNINNDB_DEFAULT_PORT);
 
   const homePaths = getLucaHomePaths();
   const binaryPath = rawBinaryPath ?? join(homePaths.bin, MUNINNDB_BINARY_NAME);
-  const dataDir = rawDataDir ??
-    (process.env.MUNINNDB_DATA_DIR ?? join(homePaths.root, "muninndb-data"));
+  const dataDir =
+    rawDataDir ??
+    process.env.MUNINNDB_DATA_DIR ??
+    join(homePaths.root, "muninndb-data");
   const pidfilePath = join(homePaths.root, "muninndb.pid");
 
   // Check if already running
@@ -97,9 +104,10 @@ export async function startMuninndb(
       },
     );
 
-    // Write PID to pidfile
+    // Write PID to pidfile with restrictive permissions (SEC-004)
     if (proc.pid) {
       await Bun.write(pidfilePath, String(proc.pid));
+      chmodSync(pidfilePath, 0o600);
       // Unref so parent can exit
       proc.unref();
     }
@@ -158,6 +166,15 @@ export async function stopMuninndb(): Promise<{
 
     // Check if process is actually running
     if (!isProcessRunning(pid)) {
+      await removePidfile(pidfilePath);
+      return { success: true, error: null };
+    }
+
+    // Verify the process is actually MuninnDB before sending signal (SEC-004)
+    if (!(await verifyProcessIdentity(pid))) {
+      console.warn(
+        `[muninndb-service] PID ${pid} is not a MuninnDB process. Cleaning stale pidfile.`,
+      );
       await removePidfile(pidfilePath);
       return { success: true, error: null };
     }
@@ -289,8 +306,46 @@ async function cleanStalePidfile(pidfilePath: string): Promise<void> {
 
     if (isNaN(pid) || pid <= 0 || !isProcessRunning(pid)) {
       await removePidfile(pidfilePath);
+      return;
+    }
+
+    // Process is running but may not be MuninnDB (SEC-004)
+    if (!(await verifyProcessIdentity(pid))) {
+      console.warn(
+        `[muninndb-service] PID ${pid} in pidfile is not a MuninnDB process. Removing stale pidfile.`,
+      );
+      await removePidfile(pidfilePath);
     }
   } catch {
     // Non-fatal — ignore pidfile issues
+  }
+}
+
+/**
+ * Verify that a given PID belongs to a MuninnDB process.
+ *
+ * Uses `ps -p <pid> -o comm=` to retrieve the process command name and
+ * checks whether it contains "muninndb" (case-insensitive). This prevents
+ * sending signals to unrelated processes if the PID file is stale or
+ * has been tampered with.
+ *
+ * @param pid - Process ID to verify.
+ * @returns `true` if the process command name contains "muninndb".
+ *
+ * @example
+ * ```typescript
+ * if (await verifyProcessIdentity(12345)) {
+ *   process.kill(12345, "SIGTERM");
+ * }
+ * ```
+ */
+async function verifyProcessIdentity(pid: number): Promise<boolean> {
+  try {
+    const result = await Bun.$`ps -p ${pid} -o comm=`.quiet();
+    const comm = result.text().trim().toLowerCase();
+    return comm.includes("muninndb");
+  } catch {
+    // ps failed — process may not exist or command unavailable
+    return false;
   }
 }
