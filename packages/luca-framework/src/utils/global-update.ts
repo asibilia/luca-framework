@@ -33,7 +33,7 @@ import {
 } from "./deploy-manifest-writer";
 import { hashFile } from "./manifest";
 import { getLucaHomePaths } from "./luca-home";
-import { detectRuntimeContext } from "./runtime-context";
+import { detectRuntimeContext, resolveMonorepoRoot } from "./runtime-context";
 
 import type {
   DeployManifest,
@@ -81,11 +81,7 @@ function resolveSourceClaudeDir(): string | null {
 
   let sourceRoot: string;
   if (ctx.mode === "dev") {
-    let dir = ctx.packageDir;
-    while (dir !== "/" && !existsSync(join(dir, "packages/luca-framework"))) {
-      dir = dirname(dir);
-    }
-    sourceRoot = dir;
+    sourceRoot = resolveMonorepoRoot(ctx.packageDir);
   } else {
     sourceRoot = ctx.packageDir;
   }
@@ -407,11 +403,7 @@ export async function executeGlobalUpdate(options: {
   // Resolve source root for manifest
   let sourceRoot: string;
   if (ctx.mode === "dev") {
-    let dir = ctx.packageDir;
-    while (dir !== "/" && !existsSync(join(dir, "packages/luca-framework"))) {
-      dir = dirname(dir);
-    }
-    sourceRoot = dir;
+    sourceRoot = resolveMonorepoRoot(ctx.packageDir);
   } else {
     sourceRoot = ctx.packageDir;
   }

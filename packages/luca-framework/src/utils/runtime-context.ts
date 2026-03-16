@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
+import { dirname, join } from "pathe";
 
 /**
  * Zod schema for the runtime context result.
@@ -51,4 +53,28 @@ export function detectRuntimeContext(): RuntimeContext {
   };
 
   return RuntimeContextSchema.parse(result);
+}
+
+/**
+ * Walk up from a starting directory to find the monorepo root.
+ *
+ * Checks for `packages/luca-framework/` in each ancestor directory.
+ * Returns the starting directory unchanged if no monorepo marker is found
+ * (e.g. when running from a global install).
+ *
+ * @param startDir - Directory to start walking up from.
+ * @returns Absolute path to the monorepo root, or startDir if not found.
+ *
+ * @example
+ * ```typescript
+ * const root = resolveMonorepoRoot("/Users/you/luca/packages/luca-framework/src/utils");
+ * // Returns: "/Users/you/luca"
+ * ```
+ */
+export function resolveMonorepoRoot(startDir: string): string {
+  let dir = startDir;
+  while (dir !== "/" && !existsSync(join(dir, "packages/luca-framework"))) {
+    dir = dirname(dir);
+  }
+  return dir;
 }

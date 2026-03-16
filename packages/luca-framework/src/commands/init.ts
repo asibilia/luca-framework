@@ -49,7 +49,10 @@ import { homedir } from "node:os";
 
 import { logger } from "../utils/logger";
 import { sanitizeJsonParse } from "../utils/sanitize";
-import { detectRuntimeContext } from "../utils/runtime-context";
+import {
+  detectRuntimeContext,
+  resolveMonorepoRoot,
+} from "../utils/runtime-context";
 import { checkPrerequisites, promptBunInstall } from "../utils/prerequisites";
 import { ensureLucaHome, getLucaHomePaths } from "../utils/luca-home";
 import { checkMuninndbBinary } from "../utils/muninndb-health";
@@ -98,12 +101,7 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   // In global mode, the source is relative to the installed package
   let sourceRoot: string;
   if (ctx.mode === "dev") {
-    // Walk up from packageDir to find monorepo root
-    let dir = ctx.packageDir;
-    while (dir !== "/" && !existsSync(join(dir, "packages/luca-framework"))) {
-      dir = dirname(dir);
-    }
-    sourceRoot = dir;
+    sourceRoot = resolveMonorepoRoot(ctx.packageDir);
   } else {
     // Global install: package directory contains the dist output
     sourceRoot = ctx.packageDir;
