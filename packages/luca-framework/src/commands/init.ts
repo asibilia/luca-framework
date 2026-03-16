@@ -37,9 +37,11 @@ import * as p from "@clack/prompts";
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   writeFileSync,
 } from "node:fs";
 import { join, dirname, relative } from "pathe";
@@ -335,6 +337,11 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
 
 /**
  * Recursively copy a directory, tracking deployed files for manifest.
+ *
+ * Includes a symlink traversal guard (SEC-008): before copying each file,
+ * checks if it is a symlink. If the symlink resolves to a path outside
+ * the source tree, the file is skipped with a warning to prevent directory
+ * escape attacks during deployment.
  */
 function copyDirForDeploy(
   source: string,
@@ -346,14 +353,42 @@ function copyDirForDeploy(
     sourceType: DeploySourceType;
   }>,
   sourceType: DeploySourceType,
+  sourceRoot?: string,
 ): void {
+  // Track the top-level source root for symlink validation
+  const root = sourceRoot ?? source;
+
   mkdirSync(target, { recursive: true });
   const entries = readdirSync(source, { withFileTypes: true });
   for (const entry of entries) {
     const srcPath = join(source, entry.name);
     const tgtPath = join(target, entry.name);
+
+    // Symlink traversal guard (SEC-008)
+    if (lstatSync(srcPath).isSymbolicLink()) {
+      try {
+        const resolved = realpathSync(srcPath);
+        if (!resolved.startsWith(root)) {
+          console.warn(
+            `[deploy] Skipping symlink that escapes source tree: ${srcPath} -> ${resolved}`,
+          );
+          continue;
+        }
+      } catch {
+        console.warn(`[deploy] Skipping unresolvable symlink: ${srcPath}`);
+        continue;
+      }
+    }
+
     if (entry.isDirectory()) {
-      copyDirForDeploy(srcPath, tgtPath, globalDir, deployedFiles, sourceType);
+      copyDirForDeploy(
+        srcPath,
+        tgtPath,
+        globalDir,
+        deployedFiles,
+        sourceType,
+        root,
+      );
     } else {
       writeFileSync(tgtPath, readFileSync(srcPath));
       deployedFiles.push({

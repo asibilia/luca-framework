@@ -29,6 +29,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   unlinkSync,
@@ -234,19 +235,45 @@ function deployDir(
 
 /**
  * Recursively copy a directory, tracking files for manifest.
+ *
+ * Includes a symlink traversal guard (SEC-008): before copying each file,
+ * checks if it is a symlink. If the symlink resolves to a path outside
+ * the source tree, the file is skipped with a warning to prevent directory
+ * escape attacks during deployment.
  */
 function copyDirRecursive(
   source: string,
   target: string,
   sourceType?: DeploySourceType,
+  sourceRoot?: string,
 ): void {
+  // Track the top-level source root for symlink validation
+  const root = sourceRoot ?? source;
+
   mkdirSync(target, { recursive: true });
   const entries = readdirSync(source, { withFileTypes: true });
   for (const entry of entries) {
     const srcPath = join(source, entry.name);
     const tgtPath = join(target, entry.name);
+
+    // Symlink traversal guard (SEC-008)
+    if (lstatSync(srcPath).isSymbolicLink()) {
+      try {
+        const resolved = realpathSync(srcPath);
+        if (!resolved.startsWith(root)) {
+          console.warn(
+            `[deploy] Skipping symlink that escapes source tree: ${srcPath} -> ${resolved}`,
+          );
+          continue;
+        }
+      } catch {
+        console.warn(`[deploy] Skipping unresolvable symlink: ${srcPath}`);
+        continue;
+      }
+    }
+
     if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, tgtPath, sourceType);
+      copyDirRecursive(srcPath, tgtPath, sourceType, root);
     } else {
       writeFileSync(tgtPath, readFileSync(srcPath));
       if (sourceType) {
