@@ -103,6 +103,49 @@
 **Depends on:** Phase 176, Phase 177
 **Covers:** REQ-10
 
+### Phase 179: Security Hardening
+
+**Goal:** Address all security audit findings — binary integrity, file permissions, input sanitization.
+
+- [ ] Add SHA-256 checksum verification to binary download (SEC-001, HIGH)
+- [ ] Restrict .env file permissions to 0600 after writing API key (SEC-002, HIGH)
+- [ ] Validate HTTPS scheme on download URL override (SEC-003, MEDIUM)
+- [ ] Restrict PID file permissions + validate process identity before SIGTERM (SEC-004, MEDIUM)
+- [ ] Restrict backup file and directory permissions to 0600/0700 (SEC-005, MEDIUM)
+- [ ] Replace raw JSON.parse with sanitizeJsonParse in vault-setup.ts (SEC-006, LOW)
+- [ ] Replace raw JSON.parse with sanitizeJsonParse in init.ts and deploy-global.ts (SEC-007, LOW)
+- [ ] Add symlink-following guard to copyDirForDeploy (SEC-008, LOW)
+
+**Depends on:** Phase 178
+**Covers:** Audit findings SEC-001 through SEC-008
+
+### Phase 180: DRY Consolidation & Convention Alignment
+
+**Goal:** Eliminate code duplication, align with project conventions (Bun APIs, Zod schema-first, lodash), reduce complexity in large functions.
+
+- [ ] Extract resolveMuninndbPort() to muninndb-schemas.ts (DRY-1, HIGH)
+- [ ] Delegate vault-setup health check to checkMuninndbService() (DRY-2, HIGH)
+- [ ] Extract resolveMonorepoRoot() to runtime-context.ts (DRY-3, HIGH)
+- [ ] Extract shared deploy utilities: copyArtifactDir, rewriteHookPaths (DRY-4, W3, W4, MEDIUM)
+- [ ] Migrate init.ts from node:fs to Bun.file/Bun.write (DRY-5, MEDIUM)
+- [ ] Fix deploy-global.ts barrel imports — use src/hooks barrel not \_\_helpers (W2, MEDIUM)
+- [ ] Convert muninndb-service/health interfaces to Zod schemas + remove destructuring defaults (DX, MEDIUM)
+- [ ] Emit build-time hook registry JSON artifact for init.ts (COMPLEXITY-1, MEDIUM)
+- [ ] Refactor executeGlobalUpdate() into composable helpers (COMPLEXITY-2, MEDIUM)
+- [ ] Refactor runDeployStep() into composable helpers (COMPLEXITY-3, MEDIUM)
+- [ ] Schema casing alignment in muninndb-schemas.ts (W1, MEDIUM)
+- [ ] Convert doctor CheckResult to Zod schema (W5, MEDIUM)
+- [ ] Extract extractErrorMessage() utility (DRY-6, LOW)
+- [ ] Move inferSourceType() to deploy-manifest.schemas.ts (DRY-7, LOW)
+- [ ] Replace direct homedir() calls with getLucaHomePaths() (ANTI-PATTERN-1, LOW)
+- [ ] Remove unused errorMsg variable in muninndb-service.ts (DEAD-CODE-1, LOW)
+- [ ] Add lodash filter/cloneDeep in init.ts (DX, LOW)
+- [ ] Fix import grouping in init.ts and muninndb-service.ts (DX, LOW)
+- [ ] Add JSDoc to copyDirForDeploy, rewriteWrapperPathsForInit, buildProposedHooksFromDeployed (DX, LOW)
+
+**Depends on:** Phase 179
+**Covers:** Audit findings DRY-1 through DRY-7, W1-W5, COMPLEXITY-1 through COMPLEXITY-3, DX findings
+
 ---
 
 ## Backlog (Unassigned)
