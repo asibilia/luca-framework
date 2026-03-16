@@ -5,3 +5,4 @@
  */
 
 export { executeDoctor } from "./run-doctor";
+export type { DoctorScope, CheckResult, DoctorCheck } from "./types";

@@ -28,6 +28,7 @@ const HARNESS_FILES: Record<HarnessId, string[]> = {
 
 export const harnessInstallationCheck: DoctorCheck = {
   name: "Harness Installation",
+  scope: "project",
 
   async run(): Promise<CheckResult> {
     const cwd = process.cwd();

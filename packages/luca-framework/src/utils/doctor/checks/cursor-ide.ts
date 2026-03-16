@@ -4,6 +4,7 @@ import type { CheckResult, DoctorCheck } from '../types';
 
 export const cursorIdeCheck: DoctorCheck = {
   name: 'Cursor IDE',
+  scope: 'prerequisites',
 
   async run(): Promise<CheckResult> {
     const isMac = process.platform === 'darwin';

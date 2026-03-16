@@ -1,10 +1,39 @@
-import { logger } from "../logger";
-import type { DoctorCheck } from "./types";
+/**
+ * Doctor check orchestrator.
+ *
+ * Runs all registered doctor checks in parallel, optionally filtering
+ * by scope. Reports results with pass/fail/warning icons and fix suggestions.
+ *
+ * @see packages/luca-framework/src/utils/doctor/types.ts for DoctorScope
+ */
 
+import filter from "lodash/filter";
+
+import { logger } from "../logger";
+
+import type { DoctorCheck, DoctorScope } from "./types";
+
+/**
+ * Execute all registered doctor checks, optionally filtered by scope.
+ *
+ * @param options - Execution options
+ * @param options.verbose - Show detailed check information for passing checks
+ * @param options.scope - Filter checks to a specific scope category
+ * @returns Exit code: 0 for success (possibly with warnings), 1 for failures
+ *
+ * @example
+ * ```typescript
+ * // Run all checks
+ * const exitCode = await executeDoctor({ verbose: true });
+ *
+ * // Run only global checks
+ * const exitCode = await executeDoctor({ scope: 'global' });
+ * ```
+ */
 export async function executeDoctor(
-  options: { verbose?: boolean } = {},
+  options: { verbose?: boolean; scope?: DoctorScope } = {},
 ): Promise<number> {
-  const { verbose = false } = options;
+  const { verbose = false, scope } = options;
   logger.info("Running environment diagnostics...\n");
 
   // Import all checks
@@ -14,14 +43,37 @@ export async function executeDoctor(
   const { harnessInstallationCheck } =
     await import("./checks/harness-installation");
   const { driftDetectionCheck } = await import("./checks/drift-detection");
+  const { muninndbHealthCheck } = await import("./checks/muninndb-health");
+  const { globalArtifactsCheck } = await import("./checks/global-artifacts");
+  const { frameworkRuntimeCheck } = await import("./checks/framework-runtime");
+  const { projectContextCheck } = await import("./checks/project-context");
 
-  const checks: DoctorCheck[] = [
+  const allChecks: DoctorCheck[] = [
+    // Prerequisites
     bunRuntimeCheck,
     cursorIdeCheck,
+    // Global
+    muninndbHealthCheck,
+    globalArtifactsCheck,
+    frameworkRuntimeCheck,
+    // Project
     configValidationCheck,
     harnessInstallationCheck,
     driftDetectionCheck,
+    projectContextCheck,
   ];
+
+  // Filter by scope if provided
+  const checks = scope
+    ? filter(allChecks, (check) => check.scope === scope)
+    : allChecks;
+
+  if (checks.length === 0) {
+    logger.warn(`No checks found for scope: ${scope}`);
+    return 0;
+  }
+
+  const scopeLabel = scope ? ` (scope: ${scope})` : "";
 
   // Run all checks in parallel
   const results = await Promise.all(checks.map((check) => check.run()));
@@ -32,12 +84,12 @@ export async function executeDoctor(
   const warningCount = results.filter((r) => r.status === "warning").length;
 
   // Display results
-  logger.info("Environment Diagnostics");
-  logger.info("═".repeat(50));
+  logger.info(`Environment Diagnostics${scopeLabel}`);
+  logger.info("=".repeat(50));
 
   for (const result of results) {
     const icon =
-      result.status === "pass" ? "✓" : result.status === "fail" ? "✗" : "⚠";
+      result.status === "pass" ? "+" : result.status === "fail" ? "x" : "!";
     const logLine = `${icon} ${result.name}: ${result.message}`;
 
     if (result.status === "pass") {
@@ -54,7 +106,7 @@ export async function executeDoctor(
   }
 
   logger.info("");
-  logger.info("═".repeat(50));
+  logger.info("=".repeat(50));
   logger.info(
     `Results: ${passCount} passing, ${failCount} failing, ${warningCount} warning(s)`,
   );
@@ -67,11 +119,11 @@ export async function executeDoctor(
   if (failedChecks.length > 0) {
     logger.info("");
     logger.info("Suggested fixes:");
-    logger.info("─".repeat(50));
+    logger.info("-".repeat(50));
 
     for (const check of failedChecks) {
       if (check.fixCommand) {
-        logger.info(`• ${check.name}:`);
+        logger.info(`  ${check.name}:`);
         logger.info(`  ${check.fixCommand}`);
       }
     }

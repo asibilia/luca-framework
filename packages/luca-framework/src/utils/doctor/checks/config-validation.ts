@@ -6,6 +6,7 @@ import type { CheckResult, DoctorCheck } from "../types";
 
 export const configValidationCheck: DoctorCheck = {
   name: "Config Validation",
+  scope: "project",
 
   async run(): Promise<CheckResult> {
     const cwd = process.cwd();
