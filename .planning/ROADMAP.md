@@ -29,11 +29,11 @@
 
 **Goal:** Download, install, and manage MuninnDB binary per platform.
 
-- [ ] Implement platform binary download (darwin-arm64, darwin-x64, linux-x64, linux-arm64)
-- [ ] Install binary to `~/.luca/bin/muninndb` with correct permissions
-- [ ] Health check MuninnDB on port 8476 after install
-- [ ] Service start/stop management
-- [ ] PATH guidance if `~/.luca/bin/` not on PATH
+- [x] Implement platform binary download (darwin-arm64, darwin-x64, linux-x64, linux-arm64)
+- [x] Install binary to `~/.luca/bin/muninndb` with correct permissions
+- [x] Health check MuninnDB on port 8476 after install
+- [x] Service start/stop management
+- [x] PATH guidance if `~/.luca/bin/` not on PATH
 
 **Depends on:** Phase 172
 **Covers:** REQ-03
@@ -42,10 +42,10 @@
 
 **Goal:** Make build pipeline work from installed package location.
 
-- [ ] Audit all skills/agents for monorepo-specific path references
-- [ ] Replace hardcoded paths with package-relative resolution
-- [ ] Ensure `bun run build:all` equivalent works from global install
-- [ ] Make artifact counts discoverable from installed package
+- [x] Audit all skills/agents for monorepo-specific path references
+- [x] Replace hardcoded paths with package-relative resolution
+- [x] Ensure `bun run build:all` equivalent works from global install
+- [x] Make artifact counts discoverable from installed package
 
 **Depends on:** Phase 172
 **Covers:** REQ-04
