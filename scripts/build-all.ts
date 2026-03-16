@@ -324,6 +324,12 @@ async function main() {
     built_at: new Date().toISOString(),
     output_count: keys.length,
     version: pkg.version ?? "0.0.0",
+    counts: {
+      agents: agentCount,
+      skills: skillCount,
+      rules: ruleCount,
+      hooks: claudeHookCount,
+    },
   };
   await Bun.write(
     path.join(claudeDir, ".build-manifest.json"),
