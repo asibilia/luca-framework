@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v5.0.0
-- **Status:** Verifying
+- **Status:** Routing
 - **Task Complexity:** MODERATE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-16
@@ -16,12 +16,8 @@
 ## Progress
 
 ```
-  Phase 173: complete — MuninnDB Binary Management — 5 new files, 4 commits
+(no phases completed yet)
 ```
-
-## Verification
-
-- **Attempts:** 0 / 3
 
 ## Git Context
 
@@ -30,9 +26,7 @@
 
 ## Allowed Events
 
-- `VERIFY_PASSED`
-- `VERIFY_FAILED`
-- `VERIFY_HALTED`
+- `ROUTE_COMPLETE`
 
 ## Previous Milestones
 
@@ -57,4 +51,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-16T17:58:52.354Z_
+_State generated from machine snapshot at 2026-03-16T18:06:06.799Z_
