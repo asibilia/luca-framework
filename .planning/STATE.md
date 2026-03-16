@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v5.0.0
-- **Status:** Planning
+- **Status:** Executing
 - **Task Complexity:** MODERATE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-16
@@ -26,7 +26,9 @@
 
 ## Allowed Events
 
-- `PLAN_COMPLETE`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -51,4 +53,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-16T13:07:09.005Z_
+_State generated from machine snapshot at 2026-03-16T13:15:16.086Z_
