@@ -14,7 +14,7 @@
  */
 
 import { mkdir } from "node:fs/promises";
-import { existsSync, readdirSync, unlinkSync } from "node:fs";
+import { chmodSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { join } from "pathe";
 import orderBy from "lodash/orderBy";
 import filter from "lodash/filter";
@@ -72,6 +72,9 @@ export async function backupSettings(
   const backupPath = join(backupsDir, backupFileName);
 
   await Bun.write(backupPath, content);
+
+  // Restrict permissions: owner read/write only (SEC-002)
+  chmodSync(backupPath, 0o600);
 
   return backupPath;
 }

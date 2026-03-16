@@ -28,7 +28,7 @@
  */
 import { z } from "zod";
 import * as p from "@clack/prompts";
-import { existsSync } from "node:fs";
+import { chmodSync, existsSync } from "node:fs";
 import { join, basename } from "pathe";
 
 import { MUNINNDB_DEFAULT_PORT } from "./muninndb-schemas";
@@ -262,6 +262,9 @@ export async function writeVaultConfig(
  * a `MUNINN_API_KEY=` line, the existing value is replaced. Otherwise the
  * key is appended on a new line.
  *
+ * After writing, the file permissions are set to `0600` (owner read/write
+ * only) to prevent other users on the system from reading the API key.
+ *
  * @param apiKey - The MuninnDB API key value to write.
  * @param envPath - Absolute path to the `.env` file.
  *
@@ -269,6 +272,7 @@ export async function writeVaultConfig(
  * ```typescript
  * await writeApiKeyToEnv("sk-abc123", "/path/to/.env");
  * // .env now contains: MUNINN_API_KEY=sk-abc123
+ * // File permissions: 0600 (owner read/write only)
  * ```
  */
 export async function writeApiKeyToEnv(
@@ -298,6 +302,9 @@ export async function writeApiKeyToEnv(
     // Create new .env file
     await Bun.write(envPath, envLine + "\n");
   }
+
+  // Restrict permissions: owner read/write only (SEC-002)
+  chmodSync(envPath, 0o600);
 }
 
 /**

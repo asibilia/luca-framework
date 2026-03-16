@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { existsSync } from "node:fs";
+import { chmodSync, existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "pathe";
 import { homedir } from "node:os";
@@ -60,13 +60,26 @@ export function getLucaHomePaths(): LucaHomePaths {
 }
 
 /**
+ * Directories that should have restrictive permissions (0700 -- owner only).
+ *
+ * These directories may contain sensitive data such as backup settings files
+ * or deployment manifests. Only the owner should be able to list and read
+ * their contents.
+ */
+const RESTRICTED_DIRS = new Set(["backups", "manifests"]);
+
+/**
  * Ensure the `~/.luca/` directory structure exists, creating directories as needed.
  *
  * Creates the following directories if they do not already exist:
  * - `~/.luca/`
  * - `~/.luca/bin/`
- * - `~/.luca/manifests/`
- * - `~/.luca/backups/`
+ * - `~/.luca/manifests/` (permissions: 0700)
+ * - `~/.luca/backups/` (permissions: 0700)
+ *
+ * The `manifests/` and `backups/` directories are set to `0700` (owner-only
+ * access) because they may contain sensitive deployment data and settings
+ * backups (SEC-002).
  *
  * Uses `mkdir` with `{ recursive: true }` so intermediate directories are
  * created automatically and existing directories are not affected.
@@ -88,6 +101,14 @@ export async function ensureLucaHome(): Promise<LucaHomePaths> {
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
+    }
+  }
+
+  // Set restrictive permissions on sensitive directories (SEC-002)
+  for (const dir of dirs) {
+    const dirName = dir.split("/").pop() ?? "";
+    if (RESTRICTED_DIRS.has(dirName)) {
+      chmodSync(dir, 0o700);
     }
   }
 
