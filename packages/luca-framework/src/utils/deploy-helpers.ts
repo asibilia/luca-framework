@@ -34,7 +34,7 @@ import {
   realpathSync,
   writeFileSync,
 } from "node:fs";
-import { join, relative } from "pathe";
+import { isAbsolute, join, relative } from "pathe";
 
 import type { DeploySourceType } from "./deploy-manifest.schemas";
 
@@ -106,7 +106,8 @@ export function copyDirForDeploy(
     if (lstatSync(srcPath).isSymbolicLink()) {
       try {
         const resolved = realpathSync(srcPath);
-        if (!resolved.startsWith(root)) {
+        const rel = relative(root, resolved);
+        if (rel.startsWith("..") || isAbsolute(rel)) {
           console.warn(
             `[deploy] Skipping symlink that escapes source tree: ${srcPath} -> ${resolved}`,
           );
