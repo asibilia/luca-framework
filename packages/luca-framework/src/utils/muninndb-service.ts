@@ -1,6 +1,7 @@
 import { chmodSync } from "node:fs";
 import { join } from "pathe";
 
+import { extractErrorMessage } from "./error-utils";
 import { getLucaHomePaths } from "./luca-home";
 import {
   MuninndbServiceStatusSchema,
@@ -107,9 +108,7 @@ export async function startMuninndb(
       // Unref so parent can exit
       proc.unref();
     }
-  } catch (err) {
-    const errorMsg =
-      err instanceof Error ? err.message : "Failed to spawn MuninnDB process";
+  } catch {
     return MuninndbServiceStatusSchema.parse({
       running: false,
       port,
@@ -202,9 +201,10 @@ export async function stopMuninndb(): Promise<{
     await removePidfile(pidfilePath);
     return { success: true, error: null };
   } catch (err) {
-    const errorMsg =
-      err instanceof Error ? err.message : "Failed to stop MuninnDB";
-    return { success: false, error: errorMsg };
+    return {
+      success: false,
+      error: extractErrorMessage(err, "Failed to stop MuninnDB"),
+    };
   }
 }
 
