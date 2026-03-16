@@ -22,6 +22,7 @@ import path from "path";
 
 import { ensureDir } from "./build-utils";
 import { resolveCanonicalRegistry } from "../src/hooks/__helpers/hook-registry";
+import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 /**
  * Generate the hooks registry JSON artifact.
@@ -33,7 +34,8 @@ import { resolveCanonicalRegistry } from "../src/hooks/__helpers/hook-registry";
  */
 export async function generateHooksRegistryJson(): Promise<string> {
   const registry = resolveCanonicalRegistry();
-  const outputDir = path.join(process.cwd(), "dist");
+  const packageRoot = resolvePackageRoot();
+  const outputDir = path.join(packageRoot, "dist");
   const outputPath = path.join(outputDir, "hooks-registry.json");
 
   await ensureDir(outputDir);
