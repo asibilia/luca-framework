@@ -19,6 +19,7 @@
 import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import path from "path";
 import { readdirSync, statSync } from "fs";
+import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 interface DriftResult {
   file: string;
@@ -27,7 +28,7 @@ interface DriftResult {
 }
 
 async function main() {
-  const projectDir = process.cwd();
+  const projectDir = resolvePackageRoot();
   const results: DriftResult[] = [];
 
   // Generate all outputs in memory

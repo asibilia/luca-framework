@@ -1,5 +1,6 @@
-import type { CheckResult, DoctorCheck } from "../types";
 import { readManifest, hashFile } from "../../manifest";
+
+import type { CheckResult, DoctorCheck } from "../types";
 
 /**
  * Doctor check: detect drift between manifest hashes and current file contents.
@@ -21,6 +22,7 @@ import { readManifest, hashFile } from "../../manifest";
  */
 export const driftDetectionCheck: DoctorCheck = {
   name: "Drift Detection",
+  scope: "project",
 
   async run(): Promise<CheckResult> {
     const cwd = process.cwd();

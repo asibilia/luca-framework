@@ -1,7 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "pathe";
-import type { CheckResult, DoctorCheck } from "../types";
+
 import { readManifest } from "../../manifest";
+
+import type { CheckResult, DoctorCheck } from "../types";
 import type { HarnessId } from "../../../types";
 
 /**
@@ -26,8 +28,22 @@ const HARNESS_FILES: Record<HarnessId, string[]> = {
   pi: ["hooks"],
 };
 
+/**
+ * Doctor check: verify harness directories and key files are installed.
+ *
+ * Reads the Luca manifest to determine which harnesses (claude, cursor, pi)
+ * are configured, then checks that each harness has its expected subdirectories
+ * and key files present on disk. Reports any missing directories or files.
+ *
+ * @example
+ * ```typescript
+ * const result = await harnessInstallationCheck.run();
+ * // { name: 'Harness Installation', status: 'pass', message: 'All 2 harness(es) installed: claude, cursor', ... }
+ * ```
+ */
 export const harnessInstallationCheck: DoctorCheck = {
   name: "Harness Installation",
+  scope: "project",
 
   async run(): Promise<CheckResult> {
     const cwd = process.cwd();

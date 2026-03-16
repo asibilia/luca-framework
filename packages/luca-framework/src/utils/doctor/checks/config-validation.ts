@@ -1,11 +1,28 @@
 import { join } from "pathe";
+
 import { sanitizeJsonParse } from "../../sanitize";
 import { validateBranding } from "../../branding";
 import { VALID_TRACKERS } from "../../wizard";
+
 import type { CheckResult, DoctorCheck } from "../types";
 
+/**
+ * Doctor check: validate the Luca configuration file (.planning/config.json).
+ *
+ * Verifies the config file exists, is valid JSON, contains required fields
+ * (branding, stack, workTracker), and passes deep validation on branding
+ * subfields and workTracker values. Also checks for the presence of
+ * the manifest file.
+ *
+ * @example
+ * ```typescript
+ * const result = await configValidationCheck.run();
+ * // { name: 'Config Validation', status: 'pass', message: 'Configuration is valid', ... }
+ * ```
+ */
 export const configValidationCheck: DoctorCheck = {
   name: "Config Validation",
+  scope: "project",
 
   async run(): Promise<CheckResult> {
     const cwd = process.cwd();

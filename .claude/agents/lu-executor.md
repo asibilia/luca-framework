@@ -240,8 +240,7 @@ Execute each task in the plan.
    - Work toward task completion
    - **If CLI/API returns authentication error:** Handle as authentication gate
    - **When you discover additional work not in plan:** Apply deviation rules automatically
-   - Run the verification
-   - Confirm done criteria met
+   - **Enter the task implementation loop** (see task_implementation_loop section)
    - **Commit the task** (see task_commit_protocol)
    - Track task completion and commit hash for Summary
    - Continue to next task

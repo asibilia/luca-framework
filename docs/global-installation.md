@@ -1,79 +1,129 @@
 # Global Installation
 
-Make Luca available in **any repository** by deploying agents, skills, hooks, and rules to `~/.claude/` (user-level Claude Code config).
+Install Luca as a global npm package and make it available in any project.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) installed
-- [Claude Code](https://claude.ai/claude-code) installed (`~/.claude/` exists)
-- Luca framework monorepo cloned locally
+- [Bun](https://bun.sh) (v1.0+)
+- [Claude Code](https://claude.ai/claude-code) installed
 
 ## Installation
 
 ```bash
-# 1. Clone and install dependencies
-cd ~/Github/luca-framework  # or wherever your clone lives
-bun install
+# Install globally
+npm install -g @alecsibilia/luca-framework
 
-# 2. Build all artifacts (must be done outside Claude Code)
-bun run build:all
-
-# 3. Deploy globally
-bun run deploy
+# Run guided setup (5 steps: prerequisites, MuninnDB, build, deploy, vault)
+luca init
 ```
 
-The deploy script:
+The `luca init` command:
 
-- Installs `luca-bridge` globally via `bun link`
-- Symlinks agents and skills to `~/.claude/`
-- Copies hooks and universal rules to `~/.claude/`
-- Merges Luca hooks into `~/.claude/settings.json` (preserving existing settings)
+1. Verifies Bun is installed and on PATH
+2. Downloads and starts MuninnDB (semantic memory service)
+3. Deploys agents, skills, hooks, and rules to `~/.claude/`
+4. Merges Luca hooks into `~/.claude/settings.json` (preserving existing settings)
+5. Optionally runs `luca vault:init` if the current directory is a project
 
-### Deploy Modes
+## Per-Project Setup
+
+After global installation, set up each project individually:
 
 ```bash
-bun run deploy           # Symlinks agents/skills (auto-update on rebuild)
-bun run deploy:copy      # File copies (standalone, no monorepo dependency)
-bun run deploy:remove    # Uninstall all Luca global artifacts
+cd ~/my-project
+luca vault:init
 ```
 
-For a preview without making changes:
+This wizard:
+
+- Detects your project stack (React+TS, Node+TS, Node, etc.)
+- Generates `.planning/config.json` with stack-appropriate harness checks
+- Configures MuninnDB vault for project-scoped memory
+- Scaffolds `.claude/` and/or `.cursor/` platform files
+
+### Harness Configuration
+
+The wizard auto-configures verification checks based on your stack:
+
+| Stack              | test       | typecheck      | lint     | build    |
+| ------------------ | ---------- | -------------- | -------- | -------- |
+| react-ts / node-ts | `bun test` | `tsc --noEmit` | disabled | disabled |
+| react / node       | `bun test` | disabled       | disabled | disabled |
+| unknown            | disabled   | disabled       | disabled | disabled |
+
+Edit `.planning/config.json` to enable/disable checks or change commands.
+
+## Commands Reference
+
+| Command                       | Description                                              |
+| ----------------------------- | -------------------------------------------------------- |
+| `luca init`                   | Global setup: prerequisites, MuninnDB, deploy, vault     |
+| `luca vault:init`             | Per-project wizard: stack detection, config, scaffolding |
+| `luca doctor`                 | Run environment diagnostics and health checks            |
+| `luca doctor --scope=global`  | Check only global artifacts and MuninnDB                 |
+| `luca doctor --scope=project` | Check only project config and drift                      |
+| `luca update`                 | Update global artifacts after package upgrade            |
+| `luca update --global`        | Re-deploy agents/skills/hooks/rules to `~/.claude/`      |
+| `luca reinit`                 | Reset and re-run initialization                          |
+| `luca reinit --force`         | Force re-initialization (overwrites existing)            |
+| `luca version`                | Show installed version and runtime info                  |
+
+## Updating
 
 ```bash
-bun scripts/deploy-global.ts --dry-run
+# Update the npm package
+npm update -g @alecsibilia/luca-framework
+
+# Re-deploy global artifacts
+luca update --global
 ```
-
-## Updating After Pulling Changes
-
-```bash
-cd ~/Github/luca-framework
-git pull
-bun run build:all
-bun run deploy
-```
-
-If you deployed with `--copy` mode, you must re-run `bun run deploy:copy` after every update. Symlink mode (default) auto-updates when you rebuild.
 
 ## Uninstalling
 
 ```bash
-cd ~/Github/luca-framework
-bun run deploy:remove
+# Remove the npm package
+npm uninstall -g @alecsibilia/luca-framework
+
+# Clean up global artifacts (optional)
+rm -rf ~/.claude/agents/ ~/.claude/skills/ ~/.claude/hooks/ ~/.claude/rules/
+rm -rf ~/.luca/
 ```
 
-This removes:
+To remove Luca from a specific project, delete the `.planning/` directory and any Luca-generated files in `.claude/` or `.cursor/`.
 
-- `~/.claude/agents/` (all Luca agents)
-- Luca skills from `~/.claude/skills/` (marketplace skills preserved)
-- Luca hooks from `~/.claude/hooks/` (`cleanup-processes.sh` preserved)
-- Luca rules from `~/.claude/rules/`
-- Luca hook registrations from `~/.claude/settings.json`
+## How It Works
+
+### Settings Merge
+
+When `luca init` deploys hooks to `~/.claude/`, it uses a three-tier merge:
+
+1. **Auto-merge**: New hook slots are added silently
+2. **Auto-skip**: Identical hooks already present are skipped
+3. **Conflict prompt**: Non-Luca hooks at the same slot prompt for resolution
+
+Your existing `~/.claude/settings.json` is backed up before any merge.
+
+### Hook Dedup
+
+When hooks are registered both globally (`~/.claude/settings.json`) and per-project (`.claude/settings.json`), Claude Code fires both. Every Luca hook includes a `guardDedup()` call that uses a per-project timestamp file in `/tmp/` with a 5-second TTL to prevent duplicate execution.
+
+### Deploy Manifest
+
+A manifest at `~/.luca/manifests/` tracks all deployed artifacts with checksums. Used by `luca doctor` and `luca update` to detect drift and manage upgrades.
+
+### MuninnDB Binary Management
+
+`luca init` downloads the MuninnDB binary to `~/.luca/bin/` and manages the service lifecycle. The binary is platform-specific (macOS arm64/x64, Linux x64).
 
 ## Per-Project Vault Configuration
 
-By default, MuninnDB operations use the `"default"` vault. To use a project-specific vault:
+By default, MuninnDB uses the `"default"` vault. For project-specific memory:
 
-### Option 1: Environment Variable
+### Option 1: Wizard (Recommended)
+
+`luca vault:init` configures the vault automatically during project setup.
+
+### Option 2: Environment Variable
 
 Create a `.env` file in your project root:
 
@@ -83,9 +133,9 @@ LUCA_MUNINN_VAULT=my-project
 
 Bun auto-loads `.env`, so no additional setup is needed.
 
-### Option 2: Config File
+### Option 3: Config File
 
-After Luca initializes `.planning/` in your project, edit `.planning/config.json`:
+Edit `.planning/config.json`:
 
 ```json
 {
@@ -95,99 +145,78 @@ After Luca initializes `.planning/` in your project, edit `.planning/config.json
 }
 ```
 
-## How It Works
-
-### Bridge Resolution
-
-Skills and agents invoke the state bridge via `luca-bridge` (not a hardcoded monorepo path). Resolution order:
-
-1. **Global binary**: `luca-bridge` on PATH (from `bun link`)
-2. **Local binary**: `node_modules/.bin/luca-bridge` (hooks add this to PATH)
-3. **Monorepo fallback**: `packages/luca-framework/src/state/bridge.ts` (in `common.sh` only)
-4. **Graceful skip**: `2>/dev/null || ...` handles missing bridge
-
-### Hook Dedup Prevention
-
-When hooks are registered both globally (`~/.claude/settings.json`) and per-project (`.claude/settings.json`), Claude Code fires both. Each hook includes a `guard_dedup` call that uses a per-project timestamp file in `/tmp/` with a 5-second TTL to prevent duplicate execution.
-
-### What Gets Deployed
-
-| Artifact | Count | Method  | Location            |
-| -------- | ----- | ------- | ------------------- |
-| Agents   | ~38   | Symlink | `~/.claude/agents/` |
-| Skills   | ~53   | Symlink | `~/.claude/skills/` |
-| Hooks    | ~9    | Copy    | `~/.claude/hooks/`  |
-| Rules    | 10    | Copy    | `~/.claude/rules/`  |
-
-**Skipped** (framework-specific):
-
-- `pre-commit-drift-check.sh` hook (checks `src/` vs `.claude/` drift)
-- 11 framework-specific rules (module-boundary, domain-architecture, etc.)
-
 ## Troubleshooting
 
-### `luca-bridge` Not Found
+### `luca` Command Not Found
 
 ```bash
-# Check if it's installed
-which luca-bridge
+# Verify global install
+npm list -g @alecsibilia/luca-framework
 
-# Re-install
-cd ~/Github/luca-framework/packages/luca-framework
-bun link
+# Check npm global bin directory is on PATH
+npm config get prefix
+# Add {prefix}/bin to your PATH if needed
+```
+
+### MuninnDB Not Starting
+
+```bash
+# Check binary exists and is executable
+ls -la ~/.luca/bin/muninndb
+
+# Check health manually
+luca doctor --scope=global
+
+# Re-download binary
+luca init --skip-deploy --skip-vault
 ```
 
 ### Hooks Firing Twice
 
-The dedup guard should prevent this. If it persists:
+The guardDedup mechanism should prevent this. If it persists:
 
 ```bash
 # Clear dedup state
 rm -f /tmp/.luca-dedup-*
 ```
 
-### Symlinks Broken After Moving Monorepo
+### Symlinks Broken After Moving Monorepo (Dev Mode)
 
-If you moved or renamed your monorepo directory:
+If using dev mode and you moved or renamed the monorepo:
 
 ```bash
-# Re-deploy with updated paths
 cd /new/path/to/luca-framework
-bun run deploy
+luca init --skip-muninndb --skip-vault
 ```
 
-Or switch to copy mode:
+### Config Missing Harness Section
+
+If `.planning/config.json` was created before Phase 178, it may lack the `harness` section. Re-run `luca vault:init` or manually add the harness section from the template.
+
+### Type Check Fails on First Run
+
+Ensure Bun is installed and TypeScript is a dependency:
 
 ```bash
-bun run deploy:copy
+bun install
+bunx --bun tsc --noEmit
 ```
 
-### Session Start Not Working
+## Dev Mode (Contributors)
 
-Verify hooks are registered:
+If developing Luca itself from the monorepo:
 
 ```bash
-cat ~/.claude/settings.json | grep session-start
+# Clone and install
+git clone https://github.com/alecsibilia/luca-framework.git
+cd luca-framework
+bun install
+
+# Build all artifacts (run outside Claude Code sessions)
+bun run build:all
+
+# Deploy globally from monorepo source
+luca init
 ```
 
-Verify the hook script exists and is executable:
-
-```bash
-ls -la ~/.claude/hooks/session-start.sh
-```
-
-### Deploy Manifest
-
-The deploy script writes `~/.claude/.luca-deploy-manifest.json` with metadata:
-
-```json
-{
-  "version": "1.0.0",
-  "deployed_at": "2026-03-10T...",
-  "mode": "symlink",
-  "source_path": "/Users/you/Github/luca-framework",
-  "counts": { "agents": 38, "skills": 53, "hooks": 9, "rules": 10 }
-}
-```
-
-This manifest is used by `bun run deploy:remove` to cleanly uninstall.
+In dev mode, `luca init` detects the monorepo and deploys from the local `.claude/` build output. Changes are reflected after rebuilding with `bun run build:all`.

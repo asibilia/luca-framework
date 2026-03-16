@@ -46,6 +46,7 @@ function isSemverGte(current: string, minimum: string): boolean {
  */
 export const bunRuntimeCheck: DoctorCheck = {
   name: "Bun Runtime",
+  scope: "prerequisites",
 
   async run(): Promise<CheckResult> {
     // Check if Bun global is available

@@ -1,2 +1,8 @@
 #!/bin/sh
-exec bun "$(dirname "$0")/../../src/hooks/scripts/snapshot-sync.ts" "$@" <&0
+# Resolve the hook script path: absolute (global) or relative (monorepo)
+if [ -n "$LUCA_PACKAGE_ROOT" ]; then
+  SCRIPT="$LUCA_PACKAGE_ROOT/src/hooks/scripts/snapshot-sync.ts"
+else
+  SCRIPT="$(dirname "$0")/../../src/hooks/scripts/snapshot-sync.ts"
+fi
+exec bun "$SCRIPT" "$@" <&0

@@ -7,6 +7,7 @@ import { createManifest, writeManifest } from "./manifest";
 import { sanitizeJsonParse } from "./sanitize";
 import { logger } from "./logger";
 import { getSkillsForPreset } from "./skill-manifest";
+import { getHarnessTemplate } from "./harness-templates";
 import type {
   LucaConfig,
   LucaManifest,
@@ -197,6 +198,36 @@ export async function generateFiles(options: {
     }
 
     spinner.stop(`Copied ${baseProcessed.length} base files`);
+
+    // Step 2.5: Merge stack-aware harness config into generated config.json
+    const generatedConfigPath = join(cwd, ".planning", "config.json");
+    if (existsSync(generatedConfigPath)) {
+      try {
+        const configText = await Bun.file(generatedConfigPath).text();
+        const configObj = sanitizeJsonParse(configText) as Record<
+          string,
+          unknown
+        >;
+
+        // Only add harness section if not already present
+        if (!configObj.harness) {
+          const harnessTemplate = getHarnessTemplate(config.stack);
+          configObj.harness = harnessTemplate;
+          await Bun.write(
+            generatedConfigPath,
+            JSON.stringify(configObj, null, 2) + "\n",
+          );
+          logger.debug(
+            `Merged harness config for stack "${config.stack}" into config.json`,
+          );
+        }
+      } catch (error) {
+        // Non-fatal: config will work without harness section
+        logger.debug(
+          `Could not merge harness config: ${error instanceof Error ? error.message : "unknown error"}`,
+        );
+      }
+    }
 
     // Step 3: Copy stack-specific templates (if not custom)
     if (config.stack !== "custom") {
