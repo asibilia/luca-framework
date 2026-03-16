@@ -95,10 +95,10 @@
 
 **Goal:** Generic config templates and end-to-end integration verification.
 
-- [ ] Auto-detect project stack for harness config template
-- [ ] Hook double-firing dedup logic
-- [ ] End-to-end verification of full install flow
-- [ ] Documentation for global installation
+- [x] Auto-detect project stack for harness config template
+- [x] Hook double-firing dedup logic
+- [x] End-to-end verification of full install flow
+- [x] Documentation for global installation
 
 **Depends on:** Phase 176, Phase 177
 **Covers:** REQ-10

@@ -250,8 +250,7 @@ Execute each task in the plan.
    - Work toward task completion
    - **If CLI/API returns authentication error:** Handle as authentication gate
    - **When you discover additional work not in plan:** Apply deviation rules automatically
-   - Run the verification
-   - Confirm done criteria met
+   - **Enter the task implementation loop** (see task_implementation_loop section)
    - **Commit the task** (see task_commit_protocol)
    - Track task completion and commit hash for Summary
    - Continue to next task
@@ -409,7 +408,7 @@ Apply these rules automatically. Track all deviations for Summary documentation.
 
 - YES → Rules 1-3 (fix automatically)
 - MAYBE → Rule 4 (return checkpoint for user decision)`,
-      order: 4,
+      order: 5,
     },
     {
       title: "tdd_execution_flow",
@@ -538,7 +537,7 @@ mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", con
 Proceed to commit the task (implementation + test file together).
 
 **If tests FAIL (exit code != 0):** GREEN phase not achieved. Enter retry loop (see \`tdd_retry_loop\` section).`,
-      order: 5,
+      order: 6,
     },
     {
       title: "tdd_retry_loop",
