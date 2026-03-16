@@ -13,6 +13,14 @@
  * - Memory context building and deferred recall cache
  */
 
+// ─── Package Root Resolution ─────────────────────────────────────────────────
+
+export {
+  resolvePackageRoot,
+  resolveSrcDir,
+  resolveScriptsDir,
+} from "./__helpers/resolve-package-root";
+
 // ─── Types and Schemas ─────────────────────────────────────────────────────────
 
 export type { Result } from "./__schemas/shared.schemas";
