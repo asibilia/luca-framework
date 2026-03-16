@@ -1,13 +1,13 @@
 {
   "status": "active",
-  "value": "committing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "2591a1b1-54be-4fb0-9500-85ef432f7a65",
+    "session_id": "fbc55ebb-664a-40ed-869a-04289e5dc8e2",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "MODERATE",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -86,25 +86,14 @@
       "cross_milestone": false,
       "backlog_scan": true
     },
-    "phase_results": [
-      {
-        "phase_id": 173,
-        "status": "passed",
-        "summary": "MuninnDB Binary Management — 5 new files, 4 commits",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-16T14:01:27.908Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "started_at": "2026-03-16T12:59:40.581Z",
-    "current_milestone": "v5.0.0",
-    "last_transition_at": "2026-03-16T19:10:46.903Z",
-    "github_issue": 79,
-    "branch": "79--v5-global-npm-package"
+    "started_at": "2026-03-16T19:14:42.057Z",
+    "current_milestone": "Planning next",
+    "last_transition_at": "2026-03-16T19:14:42.115Z"
   },
   "children": {}
 }
