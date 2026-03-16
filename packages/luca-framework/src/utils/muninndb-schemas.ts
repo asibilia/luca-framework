@@ -140,3 +140,26 @@ export const MUNINNDB_DEFAULT_PORT = 8476;
 
 /** Default binary name. */
 export const MUNINNDB_BINARY_NAME = "muninndb";
+
+/**
+ * Resolve the MuninnDB port from an explicit value, environment variable, or default.
+ *
+ * Priority: explicit port > MUNINNDB_PORT env var > MUNINNDB_DEFAULT_PORT (8476).
+ *
+ * @param port - Explicit port override, or undefined to use env/default.
+ * @returns Resolved port number.
+ *
+ * @example
+ * ```typescript
+ * const port = resolveMuninndbPort();       // Uses env or 8476
+ * const port = resolveMuninndbPort(9000);   // Uses 9000
+ * ```
+ */
+export function resolveMuninndbPort(port?: number): number {
+  return (
+    port ??
+    (process.env.MUNINNDB_PORT
+      ? parseInt(process.env.MUNINNDB_PORT, 10)
+      : MUNINNDB_DEFAULT_PORT)
+  );
+}

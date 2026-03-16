@@ -4,8 +4,8 @@ import { getLucaHomePaths } from "./luca-home";
 import {
   MuninndbBinaryStatusSchema,
   MuninndbServiceStatusSchema,
-  MUNINNDB_DEFAULT_PORT,
   MUNINNDB_BINARY_NAME,
+  resolveMuninndbPort,
 } from "./muninndb-schemas";
 
 import type {
@@ -98,11 +98,7 @@ export async function checkMuninndbBinary(
 export async function checkMuninndbService(
   port?: number,
 ): Promise<MuninndbServiceStatus> {
-  const resolvedPort =
-    port ??
-    (process.env.MUNINNDB_PORT
-      ? parseInt(process.env.MUNINNDB_PORT, 10)
-      : MUNINNDB_DEFAULT_PORT);
+  const resolvedPort = resolveMuninndbPort(port);
 
   // Read PID from pidfile
   let pid: number | null = null;

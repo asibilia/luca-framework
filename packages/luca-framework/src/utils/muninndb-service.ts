@@ -4,8 +4,8 @@ import { join } from "pathe";
 import { getLucaHomePaths } from "./luca-home";
 import {
   MuninndbServiceStatusSchema,
-  MUNINNDB_DEFAULT_PORT,
   MUNINNDB_BINARY_NAME,
+  resolveMuninndbPort,
 } from "./muninndb-schemas";
 import {
   checkMuninndbBinary,
@@ -63,11 +63,7 @@ export async function startMuninndb(
     binaryPath: rawBinaryPath,
   } = options;
 
-  const port =
-    rawPort ??
-    (process.env.MUNINNDB_PORT
-      ? parseInt(process.env.MUNINNDB_PORT, 10)
-      : MUNINNDB_DEFAULT_PORT);
+  const port = resolveMuninndbPort(rawPort);
 
   const homePaths = getLucaHomePaths();
   const binaryPath = rawBinaryPath ?? join(homePaths.bin, MUNINNDB_BINARY_NAME);

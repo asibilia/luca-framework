@@ -31,7 +31,7 @@ import * as p from "@clack/prompts";
 import { chmodSync, existsSync } from "node:fs";
 import { join, basename } from "pathe";
 
-import { MUNINNDB_DEFAULT_PORT } from "./muninndb-schemas";
+import { resolveMuninndbPort } from "./muninndb-schemas";
 import { sanitizeJsonParse } from "./sanitize";
 
 import type { ProjectContext } from "../types";
@@ -371,11 +371,7 @@ export async function verifyVaultConnection(
   vaultName: string,
   port?: number,
 ): Promise<boolean> {
-  const resolvedPort =
-    port ??
-    (process.env.MUNINNDB_PORT
-      ? parseInt(process.env.MUNINNDB_PORT, 10)
-      : MUNINNDB_DEFAULT_PORT);
+  const resolvedPort = resolveMuninndbPort(port);
 
   try {
     const controller = new AbortController();
