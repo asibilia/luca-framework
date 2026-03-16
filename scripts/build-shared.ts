@@ -36,6 +36,7 @@ import {
 } from "../src/compilers/__helpers/compile";
 import { generatePluginManifest } from "../src/compilers/__schemas/compilers.schemas";
 import path from "path";
+import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 /**
  * Hooks excluded from plugin builds.
@@ -229,9 +230,10 @@ export function generateMarketplaceManifest(version: string): object {
  * @returns Semver version string
  */
 export async function readVersion(): Promise<string> {
+  const packageRoot = resolvePackageRoot();
   // Try luca-framework package first (has version field)
   const frameworkPkgPath = path.join(
-    process.cwd(),
+    packageRoot,
     "packages",
     "luca-framework",
     "package.json",
@@ -247,7 +249,7 @@ export async function readVersion(): Promise<string> {
   }
 
   // Try root package.json
-  const rootPkgPath = path.join(process.cwd(), "package.json");
+  const rootPkgPath = path.join(packageRoot, "package.json");
   try {
     const rootPkg = Bun.file(rootPkgPath);
     if (await rootPkg.exists()) {
@@ -513,7 +515,12 @@ async function generateHookOutputs(
 async function generatePluginOutputs(
   generated: Map<string, string>,
 ): Promise<void> {
-  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
+  const hookScriptsDir = path.join(
+    resolvePackageRoot(),
+    "src",
+    "hooks",
+    "scripts",
+  );
 
   // Plugin commands (from skill registry, excluding internal prefixes)
   for (const [skillName, createSkill] of Object.entries(skillRegistry)) {
@@ -543,7 +550,7 @@ async function generatePluginOutputs(
 
   // Copy hook __helpers/ that plugin scripts import from (../__helpers/)
   const hookHelpersDir = path.join(
-    process.cwd(),
+    resolvePackageRoot(),
     "src",
     "hooks",
     "__helpers",

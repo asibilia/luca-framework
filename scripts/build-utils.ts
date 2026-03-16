@@ -8,6 +8,7 @@
  */
 import { readdir, unlink, rm, lstat, mkdir } from "node:fs/promises";
 import path from "path";
+import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 /**
  * Known safe root directories for clean operations.
@@ -35,7 +36,7 @@ export const SAFE_CLEAN_ROOTS = [".claude", "dist"] as const;
  */
 export function assertSafeCleanTarget(dir: string): void {
   const resolved = path.resolve(dir);
-  const projectRoot = path.resolve(process.cwd());
+  const projectRoot = path.resolve(resolvePackageRoot());
 
   // Must be within the project root (not equal to it — never clean project root itself)
   if (

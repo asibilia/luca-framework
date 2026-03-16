@@ -22,6 +22,7 @@
 import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
 import path from "path";
+import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 async function main() {
   // =========================================================================
@@ -29,7 +30,8 @@ async function main() {
   // =========================================================================
   const forceFlag = process.argv.includes("--force");
   const cleanupFlag = process.argv.includes("--cleanup-stale-locks");
-  const lockPath = path.join(process.cwd(), ".claude", ".session-lock");
+  const packageRoot = resolvePackageRoot();
+  const lockPath = path.join(packageRoot, ".claude", ".session-lock");
   const lockFile = Bun.file(lockPath);
 
   // Handle --cleanup-stale-locks: remove the lock file and exit without building
@@ -101,13 +103,13 @@ async function main() {
   // =========================================================================
   // 2. Define and prepare output directories
   // =========================================================================
-  const claudeDir = path.join(process.cwd(), ".claude");
+  const claudeDir = path.join(packageRoot, ".claude");
   const claudeAgentsDir = path.join(claudeDir, "agents");
   const claudeSkillsDir = path.join(claudeDir, "skills");
   const claudeRulesDir = path.join(claudeDir, "rules");
   const claudeHooksDir = path.join(claudeDir, "hooks");
 
-  const pluginDir = path.join(process.cwd(), "dist", "plugin");
+  const pluginDir = path.join(packageRoot, "dist", "plugin");
   const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
   const pluginAgentsDir = path.join(pluginDir, "agents");
   const pluginSkillsDir = path.join(pluginDir, "skills");
@@ -169,7 +171,7 @@ async function main() {
   // =========================================================================
   // 3. Write all generated content to disk
   // =========================================================================
-  const projectDir = process.cwd();
+  const projectDir = packageRoot;
   const hookScriptPaths: string[] = [];
   let settingsHooksFragment: string | undefined;
 
@@ -316,7 +318,7 @@ async function main() {
   // =========================================================================
   // 7. Write build manifest
   // =========================================================================
-  const pkgFile = Bun.file(path.join(process.cwd(), "package.json"));
+  const pkgFile = Bun.file(path.join(packageRoot, "package.json"));
   const pkg = JSON.parse(await pkgFile.text());
   const manifest = {
     built_at: new Date().toISOString(),
