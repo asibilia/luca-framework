@@ -1,11 +1,11 @@
 ---
-description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+description: Guidelines for creating and maintaining rules to ensure consistency and effectiveness.
 globs:
-  - .cursor/rules/*.mdc
+  - .claude/rules/*.md
 alwaysApply: true
 ---
 
-# Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+# Guidelines for creating and maintaining rules to ensure consistency and effectiveness.
 
 ## rule
 
@@ -24,7 +24,7 @@ alwaysApply: true
 
 - **File References:**
   - Use `[filename](mdc:path/to/file)` ([filename](mdc:filename)) to reference files
-  - Example: [prisma.mdc](mdc:.cursor/rules/prisma.mdc) for rule references
+  - Example: [prisma.md](mdc:.claude/rules/prisma.md) for rule references
   - Example: [schema.prisma](mdc:prisma/schema.prisma) for code references
 
 - **Code Examples:**

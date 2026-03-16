@@ -247,4 +247,4 @@ When refactoring existing code to follow this rule:
 - **Easier maintenance** with centralized logic
 - **Consistent behavior** across different features
 
-Follow [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.
+Follow [no-classes.md](mdc:.claude/rules/no-classes.md) for functional programming patterns.

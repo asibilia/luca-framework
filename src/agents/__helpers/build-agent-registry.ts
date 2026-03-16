@@ -30,6 +30,7 @@ import { luResearchSynthesizerAgent } from "../general/lu-research-synthesizer.a
 import { luRoadmapperAgent } from "../general/lu-roadmapper.agent";
 import { luRouterAgent } from "../general/lu-router.agent";
 import { luRouterFastAgent } from "../general/lu-router-fast.agent";
+import { luShadowScannerAgent } from "../general/lu-shadow-scanner.agent";
 import { luTestWriterAgent } from "../general/lu-test-writer.agent";
 import { luVerifierAgent } from "../general/lu-verifier.agent";
 import { luVerifierFastAgent } from "../general/lu-verifier-fast.agent";
@@ -53,7 +54,7 @@ import type { BaseAgent } from "../__schemas/agent.schemas";
  * Registry mapping agent names to factory functions for bulk processing.
  *
  * Consumed by the build pipeline (build-shared.ts) to generate
- * .claude/ and .cursor/ agent definition files.
+ * .claude/ agent definition files.
  */
 export const agentRegistry: Record<string, () => BaseAgent> = {
   "code-architect": () => codeArchitectAgent,
@@ -80,6 +81,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-roadmapper": () => luRoadmapperAgent,
   "lu-router": () => luRouterAgent,
   "lu-router-fast": () => luRouterFastAgent,
+  "lu-shadow-scanner": () => luShadowScannerAgent,
   "lu-test-writer": () => luTestWriterAgent,
   "lu-verifier": () => luVerifierAgent,
   "lu-verifier-fast": () => luVerifierFastAgent,

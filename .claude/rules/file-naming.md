@@ -1,3 +1,8 @@
+---
+description: Enforce kebab-case file naming conventions
+alwaysApply: true
+---
+
 # Enforce kebab-case file naming conventions
 
 ## rule

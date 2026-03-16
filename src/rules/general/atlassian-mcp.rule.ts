@@ -136,9 +136,9 @@ git checkout -b PROJ-1234--kebab-case-description
 
 **Solutions:**
 
-1. Check MCP status in Cursor Settings → MCP
-2. Verify API keys in \`.env\` or \`.cursor/mcp.json\`
-3. Restart MCP server (Cursor → Command Palette → "Restart MCP Server")
+1. Check MCP server status
+2. Verify API keys in \`.env\`
+3. Restart MCP server
 
 ### **CloudId Resolution**
 
@@ -162,9 +162,8 @@ CallMcpTool(
 
 **Solution:** Re-authenticate in Atlassian:
 
-1. Go to Cursor Settings → MCP → Atlassian
-2. Click "Re-authenticate"
-3. Complete OAuth flow
+1. Re-authenticate with Atlassian MCP
+2. Complete OAuth flow
 
 ## **Code Review Checklist**
 
@@ -179,7 +178,7 @@ When reviewing code that interacts with Jira:
 
 ## **Related Documentation**
 
-- [lu-workflow.mdc](mdc:.cursor/rules/lu-workflow.mdc) — Full Luca workflow
+- [lu-workflow.md](mdc:.claude/rules/lu-workflow.md) — Full Luca workflow
 - [CLAUDE.md](mdc:CLAUDE.md) — Project conventions including Jira ticket usage
 - [AGENTS.md](mdc:AGENTS.md) — Agent guide with commit conventions`,
       order: 1,

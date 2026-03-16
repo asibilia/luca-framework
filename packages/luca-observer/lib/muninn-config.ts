@@ -52,6 +52,18 @@ const MUNINN_BASE_URL = process.env.MUNINN_DB_URL ?? "http://127.0.0.1:8476";
 const MUNINN_TIMEOUT = 10_000;
 
 /**
+ * Loopback validation for MUNINN_DB_URL.
+ *
+ * Ensures requests are only sent to loopback addresses, preventing a
+ * compromised env var from redirecting MuninnDB traffic to an external host.
+ * Mirrors the pattern in src/hooks/__helpers/muninn.ts.
+ */
+const ALLOWED_ORIGINS = ["http://127.", "http://localhost", "http://[::1]"];
+
+const validateMuninnUrl = (url: string): boolean =>
+  ALLOWED_ORIGINS.some((origin) => url.startsWith(origin));
+
+/**
  * Resolve the API key for a specific MuninnDB vault.
  *
  * Lookup order:
@@ -167,6 +179,13 @@ async function muninnFetch(
   init?: RequestInit,
   vault?: string,
 ): Promise<Response> {
+  if (!validateMuninnUrl(MUNINN_BASE_URL)) {
+    return Promise.reject(
+      new Error(
+        "MUNINN_DB_URL must be a loopback address (127.x.x.x, localhost, or [::1])",
+      ),
+    );
+  }
   const url = `${MUNINN_BASE_URL}${path}`;
   const vaultKey = resolveVaultApiKey(vault);
   const genericKey = process.env.MUNINN_DB_API_KEY ?? "";
@@ -361,20 +380,25 @@ function createMuninnClient(): MuninnClient {
       let relationships: unknown[] = [];
       if (engrams.length > 0) {
         try {
-          const linksRes = await muninnFetch(
-            `/api/engrams/${engrams[0]!.id}/links`,
-            undefined,
-            vault,
-          );
-          if (linksRes.ok) {
-            const linksData = (await linksRes.json()) as Record<
-              string,
-              unknown
-            >;
-            relationships =
-              (linksData.associations as unknown[]) ??
-              (linksData.links as unknown[]) ??
-              [];
+          const engramId = engrams[0]!.id as string;
+          if (!engramId || !/^[a-zA-Z0-9_-]+$/.test(engramId)) {
+            // Skip links fetch — invalid engram ID
+          } else {
+            const linksRes = await muninnFetch(
+              `/api/engrams/${engramId}/links`,
+              undefined,
+              vault,
+            );
+            if (linksRes.ok) {
+              const linksData = (await linksRes.json()) as Record<
+                string,
+                unknown
+              >;
+              relationships =
+                (linksData.associations as unknown[]) ??
+                (linksData.links as unknown[]) ??
+                [];
+            }
           }
         } catch {
           /* links fetch is best-effort */

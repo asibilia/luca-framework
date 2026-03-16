@@ -53,5 +53,10 @@ __tests__/
 # next.js
 .next
 
+# removed platform output directories (Claude Code is sole target)
+.cursor/
+.pi/
+.qwen/
+
 #Playwright CLI
 .playwright-cli/

@@ -458,4 +458,4 @@ const { prop } = props
 const { prop = 'value' } = rawProps
 ```
 
-Follow [import-standards.mdc](mdc:.cursor/rules/import-standards.mdc) for import organization and [no-classes.mdc](mdc:.cursor/rules/no-classes.mdc) for functional programming patterns.
+Follow [import-standards.md](mdc:.claude/rules/import-standards.md) for import organization and [no-classes.md](mdc:.claude/rules/no-classes.md) for functional programming patterns.

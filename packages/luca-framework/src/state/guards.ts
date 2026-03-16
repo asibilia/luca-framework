@@ -10,7 +10,7 @@
  * be referenced by name in transitions.
  */
 import { meetsThreshold } from "./utils/complexity-utils";
-import type { ComplexityLevel, StepActivation } from "./utils/complexity-utils";
+import type { ComplexityLevel } from "./utils/complexity-utils";
 import { shouldStartIteration, budgetStateSchema } from "./utils/budget-utils";
 import get from "lodash/get";
 
@@ -42,16 +42,6 @@ function getGateField(
   return get(context.complexity_matrix, `${level}.${field}`);
 }
 
-/**
- * Check if a step activation value means the step should run.
- *
- * Returns true for any activation that is not "skip".
- */
-function shouldActivate(activation: StepActivation | undefined): boolean {
-  if (!activation) return false;
-  return activation !== "skip";
-}
-
 // ─── Guard Implementations ───────────────────────────────────────────────────
 
 /**
@@ -63,60 +53,58 @@ function shouldActivate(activation: StepActivation | undefined): boolean {
 export const workflowGuards = {
   // --- Complexity gating guards ---
 
-  /** Research step should run (required or run for this complexity) */
+  /**
+   * Research step should run.
+   *
+   * Always-on — returns true unless explicitly disabled via
+   * `workflow_config.research === false`.
+   */
   shouldRunResearch: ({
     context,
-    event,
   }: {
     context: WorkflowContext;
     event?: WorkflowEvent;
   }) => {
-    const activation = getGateField(context, "research", event) as
-      | StepActivation
-      | undefined;
-    return activation === "required" || activation === "run";
+    return context.workflow_config.research !== false;
   },
 
-  /** Discussion step should run (not skipped for this complexity) */
+  /**
+   * Discussion step should run.
+   *
+   * Always-on — returns true unless explicitly disabled via
+   * `workflow_config.discussion === false`.
+   */
   shouldRunDiscussion: ({
     context,
-    event,
   }: {
     context: WorkflowContext;
     event?: WorkflowEvent;
   }) => {
-    const activation = getGateField(context, "discussion", event) as
-      | StepActivation
-      | undefined;
-    return shouldActivate(activation);
+    return context.workflow_config.discussion !== false;
   },
 
-  /** UAT step should run */
+  /**
+   * UAT step should run.
+   *
+   * Always-on — returns true unless explicitly disabled via
+   * `workflow_config.uat_required === false`.
+   */
   shouldRunUAT: ({
     context,
-    event,
   }: {
     context: WorkflowContext;
     event?: WorkflowEvent;
   }) => {
-    const activation = getGateField(context, "uat", event) as
-      | StepActivation
-      | undefined;
-    return activation === "required" || activation === "required+thorough";
+    return context.workflow_config.uat_required !== false;
   },
 
-  /** Learning capture should run (not skipped) */
-  shouldCaptureLearnings: ({
-    context,
-    event,
-  }: {
-    context: WorkflowContext;
-    event?: WorkflowEvent;
-  }) => {
-    const capture = getGateField(context, "learningCapture", event) as
-      | string
-      | undefined;
-    return capture !== "skip" && capture !== undefined;
+  /**
+   * Learning capture should run.
+   *
+   * Always-on — every complexity level now runs learning capture.
+   */
+  shouldCaptureLearnings: () => {
+    return true;
   },
 
   /**
@@ -143,11 +131,11 @@ export const workflowGuards = {
   },
 
   /**
-   * Learning step has a specific depth level for the current complexity.
+   * Learning step runs at standard depth or higher for the current complexity.
    *
-   * Returns the learning capture mode ("skip" | "brief" | "standard" | "full" | "full+debrief").
+   * Returns the learning capture mode ("brief" | "standard" | "full" | "full+debrief").
    * Guard returns true when depth is at least "standard" (MODERATE+).
-   * For the full gating (brief vs standard), use shouldCaptureLearnings.
+   * For lightweight learning (TRIVIAL/SIMPLE, depth="brief"), use shouldCaptureLearnings.
    */
   shouldRunLearning: ({
     context,

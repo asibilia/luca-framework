@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 /**
- * check-drift.ts — Detect drift between src/ source and .claude/.cursor/dist/plugin/ outputs
+ * check-drift.ts — Detect drift between src/ source and .claude/dist/plugin/ outputs
  *
  * Generates all outputs in memory using the same compilation logic as
  * build-all.ts, then compares each generated file against its committed counterpart.
@@ -110,11 +110,6 @@ async function main() {
       dir: path.join(projectDir, ".claude", "rules"),
       prefix: ".claude/rules/",
       ext: ".md",
-    },
-    {
-      dir: path.join(projectDir, ".cursor", "rules"),
-      prefix: ".cursor/rules/",
-      ext: ".mdc",
     },
   ];
 

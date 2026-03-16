@@ -1,5 +1,5 @@
 /**
- * Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+ * Guidelines for creating and maintaining rules to ensure consistency and effectiveness.
  */
 import { createRule } from "~/rules/__helpers/create-rule";
 import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
@@ -7,8 +7,8 @@ import type { RuleConfig } from "~/rules/__schemas/rule.schemas";
 // Define the cursor-rules rule configuration
 const cursorRulesConfig: RuleConfig = {
   frontmatter: {
-    description: `Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.`,
-    globs: [".cursor/rules/*.mdc"],
+    description: `Guidelines for creating and maintaining rules to ensure consistency and effectiveness.`,
+    globs: [".claude/rules/*.md"],
     alwaysApply: true,
   },
   sections: [
@@ -29,7 +29,7 @@ const cursorRulesConfig: RuleConfig = {
 
 - **File References:**
   - Use \`[filename](mdc:path/to/file)\` ([filename](mdc:filename)) to reference files
-  - Example: [prisma.mdc](mdc:.cursor/rules/prisma.mdc) for rule references
+  - Example: [prisma.md](mdc:.claude/rules/prisma.md) for rule references
   - Example: [schema.prisma](mdc:prisma/schema.prisma) for code references
 
 - **Code Examples:**

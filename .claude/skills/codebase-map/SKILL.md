@@ -24,7 +24,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to analyze the codebase yourself. Spawn the mapper agents.
 
-**Reference:** See `.cursor/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -49,7 +49,7 @@ mapper_model = "fast"
 
 Read this reference file before executing:
 
-- `.cursor/luca/workflows/map-codebase.md`
+- `.claude/luca/workflows/map-codebase.md`
 
 ## When to Use
 

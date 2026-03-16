@@ -2,7 +2,7 @@
  * Cross-format verification parity checker (R10).
  *
  * Compares entity counts and content across compilation outputs
- * (Claude, Cursor, Pi, Plugin) to ensure all formats are in sync.
+ * (Claude, Plugin) to ensure all formats are in sync.
  *
  * Pure functions that operate on the output map produced by
  * `generateAllOutputs()` in `scripts/build-shared.ts`.
@@ -32,16 +32,6 @@ const FORMAT_PATTERNS: Record<
     skill: /^\.claude\/skills\/(.+)\/SKILL\.md$/,
     rule: /^\.claude\/rules\/(.+)\.md$/,
   },
-  cursor: {
-    agent: /^\.cursor\/agents\/(.+)\.md$/,
-    skill: /^\.cursor\/skills\/(.+)\/SKILL\.md$/,
-    rule: /^\.cursor\/rules\/(.+)\.mdc$/,
-  },
-  pi: {
-    agent: /^\.pi\/agents\/(.+)\.md$/,
-    skill: /^\.pi\/skills\/(.+)\/SKILL\.md$/,
-    // Pi merges rules into AGENTS.md — no individual rule files
-  },
   plugin: {
     agent: /^dist\/plugin\/agents\/(.+)\.md$/,
     skill: /^dist\/plugin\/skills\/(.+)\/SKILL\.md$/,
@@ -56,9 +46,9 @@ const FORMAT_PATTERNS: Record<
  * Pi and Plugin do not compile individual rule files.
  */
 const FORMAT_ENTITY_SUPPORT: Record<ParityEntityType, ParityFormat[]> = {
-  agent: ["claude", "cursor", "pi", "plugin"],
-  skill: ["claude", "cursor", "pi", "plugin"],
-  rule: ["claude", "cursor"],
+  agent: ["claude", "plugin"],
+  skill: ["claude", "plugin"],
+  rule: ["claude"],
 };
 
 /**

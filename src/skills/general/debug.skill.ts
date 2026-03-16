@@ -49,7 +49,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to debug or investigate issues yourself. Spawn the debugger agent.
 
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**Reference:** See \`.claude/luca/references/task-directive.md\` for Task() syntax patterns.
 
 ## Process
 

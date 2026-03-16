@@ -2,10 +2,10 @@
 /**
  * Copy compiled harness outputs to templates/harness/ for npm distribution.
  *
- * Copies the compiled platform-specific assets (.claude/, .cursor/, .pi/)
- * from the project root into the package's templates/harness/ directory.
- * This enables `luca init --harness=claude,pi` to scaffold from pre-built
- * templates without requiring the full monorepo build pipeline.
+ * Copies the compiled Claude Code assets (.claude/) from the project root
+ * into the package's templates/harness/ directory. This enables
+ * `luca init --harness=claude` to scaffold from pre-built templates
+ * without requiring the full monorepo build pipeline.
  *
  * Usage: bun run scripts/copy-harness-templates.ts
  */
@@ -34,18 +34,6 @@ const harnesses = [
     id: "claude",
     source: resolve(projectRoot, ".claude"),
     dirs: ["agents", "rules", "skills", "hooks"],
-    files: ["settings.json"],
-  },
-  {
-    id: "cursor",
-    source: resolve(projectRoot, ".cursor"),
-    dirs: ["agents", "rules", "skills", "hooks"],
-    files: ["hooks.json"],
-  },
-  {
-    id: "pi",
-    source: resolve(projectRoot, ".pi"),
-    dirs: ["agents", "skills", "extensions"],
     files: ["settings.json"],
   },
 ];

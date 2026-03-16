@@ -19,14 +19,13 @@
  *
  * Re-exports from src/hooks/index:
  * - generateClaudeHooksConfigFromCanonical(): Claude hooks config builder
- * - generateCursorHooksConfigFromCanonical(): Cursor hooks config builder
  */
 import {
   hookRegistry,
   resolveCanonicalRegistry,
   generateClaudeHooksConfigFromCanonical,
-  generateCursorHooksConfigFromCanonical,
 } from "../src/hooks/index";
+import { generateAllShellWrappers } from "../src/hooks/__helpers/generate-shell-wrappers";
 import { agentRegistry } from "../src/agents/index";
 import { ruleRegistry, ProfileConfigSchema } from "../src/rules/index";
 import { skillRegistry } from "../src/skills/index";
@@ -37,64 +36,6 @@ import {
 } from "../src/compilers/__helpers/compile";
 import { generatePluginManifest } from "../src/compilers/__schemas/compilers.schemas";
 import path from "path";
-
-/**
- * Pi extension source files that are copied from src/hooks/pi-extensions/
- * to .pi/extensions/ during build.
- *
- * This is the SINGLE SOURCE OF TRUTH for which extensions exist.
- * Both generatePiSettings() and generatePiOutputs() derive from this list.
- */
-export const PI_EXTENSION_FILES: readonly string[] = [
-  "luca-hooks.ts",
-  "luca-state.ts",
-  "luca-harness.ts",
-  "luca-complexity.ts",
-  "luca-roles.ts",
-  "luca-teams.ts",
-  "luca-chain.ts",
-  "luca-tilldone.ts",
-  "luca-query-experts.ts",
-  "luca-safety-rules.ts",
-  "luca-purpose-gating.ts",
-  "luca-subagents.ts",
-  "luca-commands.ts",
-  "luca-widgets.ts",
-  "luca-work-tracking.ts",
-  "luca-search.ts",
-] as const;
-
-/**
- * Pi extension helper files that are copied from
- * src/hooks/pi-extensions/__helpers/ to .pi/extensions/__helpers/.
- *
- * These are shared utilities imported by multiple extensions.
- * Must be copied alongside extensions for imports to resolve.
- */
-export const PI_HELPER_FILES: readonly string[] = [
-  "luca-constants.ts",
-  "sanitize.ts",
-  "response.ts",
-  "frontmatter.ts",
-  "exec.ts",
-  "registry.ts",
-  "status.ts",
-  "widget-renderers.ts",
-  "spawn.ts",
-  "subagent-registry.ts",
-  "notify.ts",
-  "follow-up.ts",
-  "model-routing.ts",
-  "state-bridge.ts",
-  "dialogs.ts",
-  "hook-handlers.ts",
-  "runtime-detect.ts",
-  "throttle.ts",
-  "session-init.ts",
-] as const;
-// Note: index.ts barrel is NOT included — Pi auto-discovers
-// .pi/extensions/*/index.ts as extensions. Extensions import
-// directly from individual helper files, not the barrel.
 
 /**
  * Hooks excluded from plugin builds.
@@ -467,10 +408,7 @@ export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
 export { resolveCanonicalRegistry } from "../src/hooks/index";
 
 // Re-export hook config generators for consumers
-export {
-  generateClaudeHooksConfigFromCanonical,
-  generateCursorHooksConfigFromCanonical,
-};
+export { generateClaudeHooksConfigFromCanonical };
 
 // Re-export profile infrastructure for build consumers
 export { profileRegistry, ProfileConfigSchema } from "../src/rules/index";
@@ -520,14 +458,9 @@ function generateAgentOutputs(generated: Map<string, string>): void {
       compileAgent(instance, "CLAUDE"),
     );
     generated.set(
-      `.cursor/agents/${agentName}.md`,
-      compileAgent(instance, "CURSOR"),
-    );
-    generated.set(
       `dist/plugin/agents/${agentName}.md`,
       compileAgent(instance, "PLUGIN"),
     );
-    generated.set(`.pi/agents/${agentName}.md`, compileAgent(instance, "PI"));
   }
 }
 
@@ -539,199 +472,42 @@ function generateSkillOutputs(generated: Map<string, string>): void {
       compileSkill(instance, "CLAUDE"),
     );
     generated.set(
-      `.cursor/skills/${skillName}/SKILL.md`,
-      compileSkill(instance, "CURSOR"),
-    );
-    generated.set(
       `dist/plugin/skills/${skillName}/SKILL.md`,
       compileSkill(instance, "PLUGIN"),
-    );
-    generated.set(
-      `.pi/skills/${skillName}/SKILL.md`,
-      compileSkill(instance, "PI"),
     );
   }
 }
 
 function generateRuleOutputs(generated: Map<string, string>): void {
-  // Per-rule compilation for Claude, Cursor, and Pi
-  const piRuleSections: string[] = [];
-
   for (const [ruleName, createRule] of Object.entries(ruleRegistry)) {
     const instance = createRule();
     generated.set(
       `.claude/rules/${ruleName}.md`,
       compileRule(instance, "CLAUDE"),
     );
-    generated.set(
-      `.cursor/rules/${ruleName}.mdc`,
-      compileRule(instance, "CURSOR"),
-    );
-
-    // Collect individual Pi rule compilations for AGENTS.md merge
-    piRuleSections.push(compileRule(instance, "PI"));
-  }
-
-  // Pi merges all rules into a single AGENTS.md (no rules directory)
-  const agentsMd = generatePiAgentsMd(piRuleSections);
-  generated.set(".pi/AGENTS.md", agentsMd);
-}
-
-/**
- * Generate Pi's AGENTS.md by merging all compiled rule sections.
- *
- * Pi has no rules directory — all project rules are combined into a single
- * AGENTS.md file that Pi reads at session start.
- *
- * @param ruleSections - Array of individually compiled rule markdown strings
- * @returns Complete AGENTS.md content
- */
-function generatePiAgentsMd(ruleSections: string[]): string {
-  const header = `# Project Rules
-
-> Auto-generated by Luca Framework. Do not edit directly.
-> Source: src/rules/ → compiled via \`bun run build:all\`
-
-`;
-  return header + ruleSections.join("\n\n---\n\n") + "\n";
-}
-
-/**
- * Generate Pi settings.json content.
- *
- * Maps Luca project configuration to Pi's settings format. Includes
- * references to generated extensions and project defaults.
- *
- * @returns JSON-serializable Pi settings object
- */
-function generatePiSettings(): object {
-  return {
-    model: "gemini-3.1-pro-preview",
-    provider: "google",
-    compaction: {
-      enabled: true,
-      threshold: 0.7,
-    },
-    extensions: [
-      // All extensions derived from PI_EXTENSION_FILES (single source of truth)
-      ...PI_EXTENSION_FILES.map((f) => `.pi/extensions/${f}`),
-    ],
-    shell: "/bin/zsh",
-  };
-}
-
-async function generatePiOutputs(
-  generated: Map<string, string>,
-): Promise<void> {
-  // Pi settings.json
-  generated.set(
-    ".pi/settings.json",
-    JSON.stringify(generatePiSettings(), null, 2) + "\n",
-  );
-
-  // Pi workflow extensions (static TypeScript source files)
-  const extensionsDir = path.join(
-    process.cwd(),
-    "src",
-    "hooks",
-    "pi-extensions",
-  );
-
-  // Copy extension source files (derived from PI_EXTENSION_FILES constant)
-  for (const fileName of PI_EXTENSION_FILES) {
-    const srcPath = path.join(extensionsDir, fileName);
-    const srcFile = Bun.file(srcPath);
-    if (await srcFile.exists()) {
-      generated.set(`.pi/extensions/${fileName}`, await srcFile.text());
-    }
-  }
-
-  // Copy shared helper files (required for extension imports to resolve)
-  const helpersDir = path.join(extensionsDir, "__helpers");
-  for (const fileName of PI_HELPER_FILES) {
-    const srcPath = path.join(helpersDir, fileName);
-    const srcFile = Bun.file(srcPath);
-    if (await srcFile.exists()) {
-      generated.set(
-        `.pi/extensions/__helpers/${fileName}`,
-        await srcFile.text(),
-      );
-    }
-  }
-
-  // Copy type definition files (shared interfaces for pi/ctx objects)
-  const typesDir = path.join(extensionsDir, "__types");
-  const typeFiles = ["pi-context.ts"];
-  for (const fileName of typeFiles) {
-    const srcPath = path.join(typesDir, fileName);
-    const srcFile = Bun.file(srcPath);
-    if (await srcFile.exists()) {
-      generated.set(`.pi/extensions/__types/${fileName}`, await srcFile.text());
-    }
   }
 }
 
 async function generateHookOutputs(
   generated: Map<string, string>,
 ): Promise<void> {
-  const hookScriptsDir = path.join(process.cwd(), "src", "hooks", "scripts");
   const canonical = resolveCanonicalRegistry();
 
-  // Copy hook scripts to .claude/ and .cursor/ (Pi uses native extension)
-  for (const [_hookName, hookDef] of Object.entries(canonical)) {
-    const srcPath = path.join(hookScriptsDir, hookDef.script);
-    const srcFile = Bun.file(srcPath);
-    if (await srcFile.exists()) {
-      const content = await srcFile.text();
-      generated.set(`.claude/hooks/${hookDef.script}`, content);
-      generated.set(`.cursor/hooks/${hookDef.script}`, content);
-    }
-  }
-
-  // Copy _lib/ shared library to all output directories
-  const libDir = path.join(hookScriptsDir, "_lib");
-  const libDirFile = Bun.file(path.join(libDir, "common.sh"));
-  if (await libDirFile.exists()) {
-    const libFiles = ["common.sh"];
-    for (const fileName of libFiles) {
-      const srcPath = path.join(libDir, fileName);
-      const srcFile = Bun.file(srcPath);
-      if (await srcFile.exists()) {
-        const content = await srcFile.text();
-        generated.set(`.claude/hooks/_lib/${fileName}`, content);
-        generated.set(`.cursor/hooks/_lib/${fileName}`, content);
-        generated.set(`.pi/hook-scripts/_lib/${fileName}`, content);
-        generated.set(`dist/plugin/scripts/_lib/${fileName}`, content);
-      }
-    }
-  }
-
-  // Copy statusline script (NOT a hook — lives at .claude/ root, not .claude/hooks/)
-  const statuslineSrcPath = path.join(hookScriptsDir, "statusline.sh");
-  const statuslineSrcFile = Bun.file(statuslineSrcPath);
-  if (await statuslineSrcFile.exists()) {
-    const content = await statuslineSrcFile.text();
-    generated.set(".claude/statusline.sh", content);
+  // Generate shell wrappers from the canonical registry
+  const wrappers = generateAllShellWrappers();
+  for (const [outputPath, content] of Object.entries(wrappers)) {
+    generated.set(outputPath, content);
   }
 
   // Claude settings.json hooks fragment
   const hooksConfig = generateClaudeHooksConfigFromCanonical(canonical, {
     commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+    scriptExtension: ".sh",
   });
   generated.set(
     ".claude/settings.json__hooks",
     JSON.stringify(hooksConfig, null, 2),
   );
-
-  // Cursor hooks.json
-  const cursorHooksConfig = generateCursorHooksConfigFromCanonical(canonical);
-  generated.set(
-    ".cursor/hooks.json",
-    JSON.stringify(cursorHooksConfig, null, 2) + "\n",
-  );
-
-  // Pi extension: luca-hooks.ts is now a source file in PI_EXTENSION_FILES
-  // (copied by generatePiOutputs, no longer generated from hook registry)
 }
 
 async function generatePluginOutputs(
@@ -762,6 +538,30 @@ async function generatePluginOutputs(
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
       generated.set(`dist/plugin/scripts/${def.script}`, await srcFile.text());
+    }
+  }
+
+  // Copy hook __helpers/ that plugin scripts import from (../__helpers/)
+  const hookHelpersDir = path.join(
+    process.cwd(),
+    "src",
+    "hooks",
+    "__helpers",
+  );
+  const pluginHelperFiles = [
+    "hook-io.ts",
+    "bridge.ts",
+    "vault.ts",
+    "muninn.ts",
+  ];
+  for (const helperFile of pluginHelperFiles) {
+    const helperPath = path.join(hookHelpersDir, helperFile);
+    const helperBunFile = Bun.file(helperPath);
+    if (await helperBunFile.exists()) {
+      generated.set(
+        `dist/plugin/__helpers/${helperFile}`,
+        await helperBunFile.text(),
+      );
     }
   }
 
@@ -819,7 +619,7 @@ async function generatePluginOutputs(
 /**
  * Generate all build outputs in memory.
  *
- * Runs every compiler (Cursor, Claude, Plugin) against every registry entity,
+ * Runs the Claude and Plugin compilers against every registry entity,
  * producing a Map of relative file paths to their generated content strings.
  * All entities (including Luca-specific ones) are discovered via registries —
  * no special-casing required.
@@ -841,10 +641,6 @@ export async function generateAllOutputs(): Promise<Map<string, string>> {
   generateAgentOutputs(generated);
   generateSkillOutputs(generated);
   generateRuleOutputs(generated);
-
-  // Pi-specific outputs (settings.json, workflow extensions; agents, skills,
-  // and AGENTS.md are already generated by the entity functions above)
-  await generatePiOutputs(generated);
 
   // Async outputs (file I/O for hook scripts, version reading)
   await generateHookOutputs(generated);

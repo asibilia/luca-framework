@@ -2,8 +2,8 @@
  * Compiler plugin registry for extensible compilation targets.
  *
  * Replaces the hardcoded switch statements in compile.ts with a
- * pluggable registry. Built-in plugins (Claude, Cursor, Pi, Plugin)
- * are pre-registered. Community targets can register via the public API.
+ * pluggable registry. Built-in plugins (Claude, Plugin) are pre-registered.
+ * Community targets can register via the public API.
  *
  * @module
  */
@@ -13,15 +13,9 @@ import {
   compileAgentClaude,
   compileSkillClaude,
   compileRuleClaude,
-  compileAgentCursor,
-  compileSkillCursor,
-  compileRuleCursor,
   compileAgentPlugin,
   compileSkillPlugin,
   compileRulePlugin,
-  compileAgentPi,
-  compileSkillPi,
-  compileRulePi,
 } from "./compile";
 
 // ─── Built-in Plugins ───────────────────────────────────────────────────────
@@ -34,28 +28,12 @@ const claudePlugin: CompilerPlugin = {
   compileRule: compileRuleClaude,
 };
 
-const cursorPlugin: CompilerPlugin = {
-  name: "Cursor IDE",
-  format: "CURSOR",
-  compileAgent: compileAgentCursor,
-  compileSkill: compileSkillCursor,
-  compileRule: compileRuleCursor,
-};
-
 const pluginFormatPlugin: CompilerPlugin = {
   name: "Claude Code Plugin",
   format: "PLUGIN",
   compileAgent: compileAgentPlugin,
   compileSkill: compileSkillPlugin,
   compileRule: compileRulePlugin,
-};
-
-const piPlugin: CompilerPlugin = {
-  name: "Pi Terminal",
-  format: "PI",
-  compileAgent: compileAgentPi,
-  compileSkill: compileSkillPi,
-  compileRule: compileRulePi,
 };
 
 // ─── Registry ───────────────────────────────────────────────────────────────
@@ -65,9 +43,7 @@ const piPlugin: CompilerPlugin = {
  */
 const registry = new Map<string, CompilerPlugin>([
   ["CLAUDE", claudePlugin],
-  ["CURSOR", cursorPlugin],
   ["PLUGIN", pluginFormatPlugin],
-  ["PI", piPlugin],
 ]);
 
 /**
@@ -114,7 +90,7 @@ export function listCompilerPlugins(): CompilerPlugin[] {
 /**
  * List all registered format names.
  *
- * @returns Array of format strings (e.g., ["CLAUDE", "CURSOR", "PI", "PLUGIN"])
+ * @returns Array of format strings (e.g., ["CLAUDE", "PLUGIN"])
  */
 export function listRegisteredFormats(): string[] {
   return Array.from(registry.keys());
@@ -201,7 +177,5 @@ export function compileRuleViaRegistry(
 export function resetCompilerPluginRegistry(): void {
   registry.clear();
   registry.set("CLAUDE", claudePlugin);
-  registry.set("CURSOR", cursorPlugin);
   registry.set("PLUGIN", pluginFormatPlugin);
-  registry.set("PI", piPlugin);
 }

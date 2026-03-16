@@ -28,7 +28,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   "post-edit-format": () => ({
     event: "post_tool_use",
     tool_filter: "Edit|Write",
-    script: "post-edit-format.sh",
+    script: "post-edit-format.ts",
     timeout: 10,
     async: false,
     status_message: "Formatting...",
@@ -36,7 +36,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   "post-edit-typecheck": () => ({
     event: "post_tool_use",
     tool_filter: "Edit|Write",
-    script: "post-edit-typecheck.sh",
+    script: "post-edit-typecheck.ts",
     timeout: 30,
     async: true,
     status_message: "Type-checking...",
@@ -46,7 +46,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Bash",
     command_filter:
       "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
-    script: "pre-commit-gate.sh",
+    script: "pre-commit-gate.ts",
     timeout: 120,
     async: false,
     status_message: "Running pre-commit checks...",
@@ -56,59 +56,87 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Bash",
     command_filter:
       "git commit|git merge|bun run commit|bunx commit|bunx --bun commit",
-    script: "pre-commit-drift-check.sh",
+    script: "pre-commit-drift-check.ts",
     timeout: 60,
     async: false,
     status_message: "Checking output drift...",
   }),
   "context-check-throttled": () => ({
     event: "post_tool_use",
-    script: "context-check-throttled.sh",
+    script: "context-check-throttled.ts",
     timeout: 10,
     async: true,
     status_message: "Checking context...",
   }),
   "snapshot-sync": () => ({
     event: "post_tool_use",
-    script: "snapshot-sync.sh",
+    script: "snapshot-sync.ts",
     timeout: 10,
     async: true,
     status_message: "Syncing STATE.md...",
   }),
   "context-monitor": () => ({
     event: "stop",
-    script: "context-monitor.sh",
+    script: "context-monitor.ts",
     timeout: 5,
     async: false,
     status_message: "Checking context usage...",
   }),
   "session-persist": () => ({
     event: "session_end",
-    script: "session-persist.sh",
+    script: "session-persist.ts",
     timeout: 10,
     async: false,
     status_message: "Saving session state...",
   }),
   "session-start": () => ({
     event: "session_start",
-    script: "session-start.sh",
+    script: "session-start.ts",
     timeout: 15,
     async: false,
     status_message: "Initializing Luca...",
   }),
   "pre-compact-checkpoint": () => ({
     event: "pre_compact",
-    script: "pre-compact-checkpoint.sh",
+    script: "pre-compact-checkpoint.ts",
     timeout: 15,
     async: true,
     status_message: "Saving context checkpoint...",
   }),
   "session-compact-restore": () => ({
     event: "session_start",
-    script: "session-compact-restore.sh",
+    script: "session-compact-restore.ts",
     timeout: 10,
     async: false,
     status_message: "Restoring context...",
+  }),
+  "user-prompt-submit": () => ({
+    event: "user_prompt_submit",
+    script: "user-prompt-submit.ts",
+    timeout: 5,
+    async: true,
+    status_message: "Saving prompt observation...",
+  }),
+  "subagent-stop": () => ({
+    event: "subagent_stop",
+    script: "subagent-stop.ts",
+    timeout: 5,
+    async: true,
+    status_message: "Capturing subagent summary...",
+  }),
+  "post-tool-use-failure": () => ({
+    event: "post_tool_use_failure",
+    script: "post-tool-use-failure.ts",
+    timeout: 5,
+    async: true,
+    status_message: "Recording failure pattern...",
+  }),
+  "muninn-context-recall": () => ({
+    event: "user_prompt_submit",
+    script: "muninn-context-recall.ts",
+    timeout: 8,
+    async: false,
+    status_message: "Recalling context...",
   }),
 };
 
@@ -135,7 +163,7 @@ export function resolveCanonicalRegistry(): Record<string, CanonicalHook> {
  * format continue to work unchanged.
  *
  * @deprecated Use `canonicalHookRegistry` with the adapter registry
- *   (`resolveAdapter(platform).adapt(hook)`) from `src/hooks/adapters/` instead.
+ *   (`resolveAdapter(platform).adapt(hook)`) from `src/hooks/__helpers/adapter-registry` instead.
  *   The canonical registry + adapter pattern replaces the need for a
  *   pre-flattened legacy registry.
  */

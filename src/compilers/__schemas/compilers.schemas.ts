@@ -198,7 +198,7 @@ export type ParityEntityType = z.infer<typeof parityEntityTypeSchema>;
 /**
  * Output formats to compare.
  */
-export const PARITY_FORMATS = ["claude", "cursor", "pi", "plugin"] as const;
+export const PARITY_FORMATS = ["claude", "plugin"] as const;
 export const parityFormatSchema = z.enum(PARITY_FORMATS);
 export type ParityFormat = z.infer<typeof parityFormatSchema>;
 

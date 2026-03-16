@@ -20,6 +20,7 @@ import { complexityGatingRule } from "../general/complexity-gating.rule";
 import { cursorRulesRule } from "../general/cursor-rules.rule";
 import { domainArchitectureRule } from "../general/domain-architecture.rule";
 import { fileNamingRule } from "../general/file-naming.rule";
+import { generatedFileGuardRule } from "../general/generated-file-guard.rule";
 import { harnessVerificationRule } from "../general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "../general/hook-skill-boundary.rule";
 import { luWorkflowRule } from "../general/lu-workflow.rule";
@@ -43,6 +44,7 @@ const generalRules: Record<string, () => BaseRule> = {
   "cursor-rules": () => cursorRulesRule,
   "domain-architecture": () => domainArchitectureRule,
   "file-naming": () => fileNamingRule,
+  "generated-file-guard": () => generatedFileGuardRule,
   "harness-verification": () => harnessVerificationRule,
   "hook-skill-boundary": () => hookSkillBoundaryRule,
   "mandatory-documentation": () => mandatoryDocumentationRule,
@@ -115,7 +117,7 @@ async function loadProfileRules(): Promise<Record<string, () => BaseRule>> {
  * Complete rule registry combining general rules with active profile rules.
  *
  * This is the single source of truth consumed by the build pipeline
- * (build-shared.ts) to generate .claude/ and .cursor/ rule files.
+ * (build-shared.ts) to generate .claude/ rule files.
  */
 export const ruleRegistry: Record<string, () => BaseRule> = {
   ...generalRules,

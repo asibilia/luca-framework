@@ -22,7 +22,7 @@ Restore complete project context and resume work seamlessly from previous sessio
 
 Read this reference file before executing:
 
-- \`.cursor/luca/workflows/resume-project.md\`
+- \`.claude/luca/workflows/resume-project.md\`
 
 ## Process
 

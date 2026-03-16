@@ -2,7 +2,7 @@
  * Cross-agent interop scanner.
  *
  * Discovers agent definition files across known IDE tool directories
- * (.claude/, .cursor/, .gemini/, .codex/, .github/copilot/), reads
+ * (.claude/, .gemini/, .codex/, .github/copilot/), reads
  * their content, and normalizes them into InteropAgentSummary records.
  *
  * Uses Bun file APIs exclusively (no node:fs). All file operations
@@ -43,7 +43,6 @@ import { normalizeAgent } from "./normalizer";
  */
 export const KNOWN_AGENT_DIRS: readonly string[] = [
   ".claude/agents",
-  ".cursor/agents",
   ".gemini",
   ".codex",
   ".github/copilot",

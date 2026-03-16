@@ -1,10 +1,9 @@
 /**
  * Portable hook abstraction layer.
  *
- * Provides a unified API for creating hooks that work across all supported
- * platforms (Claude Code, Cursor, Pi). Users define a hook once using a
- * PortableHookConfig, and the system generates platform-specific configs
- * for each target platform.
+ * Provides a unified API for creating hooks that work with Claude Code.
+ * Users define a hook once using a PortableHookConfig, and the system
+ * generates the platform-specific config.
  *
  * Source: src/hooks/__helpers/portable-hook.ts
  */
@@ -13,11 +12,11 @@ import { z } from "zod";
 import { CanonicalHookSchema } from "../__schemas/hook.schemas";
 import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { PlatformHookConfig } from "./platform-adapters";
-import { resolveAdapter } from "../adapters/adapter-registry";
+import { resolveAdapter } from "./adapter-registry";
 
 // ---- Supported platforms ----
 
-export const SUPPORTED_PLATFORMS = ["claude-code", "cursor", "pi"] as const;
+export const SUPPORTED_PLATFORMS = ["claude-code"] as const;
 
 export const supportedPlatformSchema = z.enum(SUPPORTED_PLATFORMS);
 export type SupportedPlatform = z.infer<typeof supportedPlatformSchema>;
@@ -54,9 +53,7 @@ export const PortableHookConfigSchema = z.object({
   /** Status message shown while hook runs (only supported on Claude Code) */
   status_message: z.string().optional(),
   /** Platforms to generate configs for (defaults to all) */
-  platforms: z
-    .array(supportedPlatformSchema)
-    .default(["claude-code", "cursor", "pi"]),
+  platforms: z.array(supportedPlatformSchema).default(["claude-code"]),
 });
 
 export type PortableHookConfig = z.infer<typeof PortableHookConfigSchema>;
@@ -83,8 +80,7 @@ export interface PortableHookResult {
 /**
  * Detect the current IDE/agent platform.
  *
- * Checks environment variables and file system indicators set by each
- * platform at runtime.
+ * Checks environment variables set by Claude Code at runtime.
  *
  * @returns The detected platform, or undefined if no platform is detected
  */
@@ -92,16 +88,6 @@ export function detectPlatform(): SupportedPlatform | undefined {
   // Claude Code sets CLAUDE_CODE or CLAUDE_PROJECT_DIR
   if (process.env.CLAUDE_CODE === "1" || process.env.CLAUDE_PROJECT_DIR) {
     return "claude-code";
-  }
-
-  // Cursor sets CURSOR or CURSOR_SESSION_ID
-  if (process.env.CURSOR === "1" || process.env.CURSOR_SESSION_ID) {
-    return "cursor";
-  }
-
-  // Pi sets PI_AGENT or PI_SESSION_ID
-  if (process.env.PI_AGENT === "1" || process.env.PI_SESSION_ID) {
-    return "pi";
   }
 
   return undefined;
@@ -132,8 +118,6 @@ export function detectPlatform(): SupportedPlatform | undefined {
  *
  * // result.canonical — CanonicalHook
  * // result.platforms["claude-code"] — PlatformHookConfig for Claude Code
- * // result.platforms.cursor — PlatformHookConfig for Cursor
- * // result.platforms.pi — PlatformHookConfig for Pi
  * ```
  */
 export function createPortableHook(

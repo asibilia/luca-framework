@@ -28,7 +28,6 @@ import { interopAgentSummarySchema } from "../__schemas/interop.schemas";
  */
 const PATH_PREFIX_MAP: ReadonlyArray<{ prefix: string; tool: SourceTool }> = [
   { prefix: ".claude/", tool: "claude" },
-  { prefix: ".cursor/", tool: "cursor" },
   { prefix: ".gemini/", tool: "gemini" },
   { prefix: ".codex/", tool: "codex" },
   { prefix: ".github/copilot", tool: "copilot" },
@@ -46,7 +45,7 @@ const PATH_PREFIX_MAP: ReadonlyArray<{ prefix: string; tool: SourceTool }> = [
  * @example
  * ```typescript
  * detectSourceTool(".claude/agents/lu-router.md")   // "claude"
- * detectSourceTool(".cursor/agents/dx-advocate.md") // "cursor"
+ * detectSourceTool(".gemini/agents/dx-advocate.md")  // "gemini"
  * detectSourceTool("custom/agents/my-agent.md")     // "other"
  * ```
  */

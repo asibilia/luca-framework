@@ -16,7 +16,7 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 1. **Check current version:**
 
    ```bash
-   cat .cursor/luca/VERSION 2>/dev/null || echo "unknown"
+   cat .claude/luca/VERSION 2>/dev/null || echo "unknown"
    ```
 
 2. **Check latest version:**

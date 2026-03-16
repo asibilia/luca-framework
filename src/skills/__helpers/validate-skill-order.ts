@@ -7,7 +7,7 @@
  *
  * T2-compliant: imports only from local schemas and helpers (T2).
  */
-import type { SkillDependencyMap } from "../__schemas/skill-dependencies";
+import type { SkillDependencyMap } from "../__schemas/skill-dependencies.schemas";
 
 import { SkillOrderValidationResultSchema } from "../__schemas/skill-order-validation.schemas";
 

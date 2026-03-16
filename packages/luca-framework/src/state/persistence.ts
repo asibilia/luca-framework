@@ -63,9 +63,13 @@ export async function persistActor(
  * Load a previously persisted actor from local JSON.
  *
  * Reads the state snapshot from `.planning/state.json` and reconstructs
- * the XState actor.
+ * the XState actor. Re-reads `.planning/config.json` on every load so that
+ * config-derived fields (gates, workflow_config, complexity_matrix,
+ * autopilot_config) always reflect the current config — not a stale copy
+ * frozen at initialization time.
  *
  * @param filePath - Path to the state file
+ * @param configPath - Path to the config file (re-read on every load)
  * @returns Result with the restored actor on success, or error message on failure
  *
  * @example
@@ -79,6 +83,7 @@ export async function persistActor(
  */
 export async function loadPersistedActor(
   filePath: string = STATE_FILE_PATH,
+  configPath: string = ".planning/config.json",
 ): Promise<Result<Actor<typeof workflowMachine>>> {
   try {
     const file = Bun.file(filePath);
@@ -111,7 +116,23 @@ export async function loadPersistedActor(
       };
     }
 
-    const context = initializeContext((snapshot as any).context || {});
+    // Re-read config.json so config-derived fields (gates, workflow_config,
+    // complexity_matrix, autopilot_config) reflect current config, not a
+    // stale snapshot frozen at initialization time.
+    let config: Record<string, unknown> = {};
+    try {
+      const configFile = Bun.file(configPath);
+      if (await configFile.exists()) {
+        config = await configFile.json();
+      }
+    } catch {
+      // Invalid config JSON — proceed with empty config (persisted values used as fallback)
+    }
+
+    const context = initializeContext({
+      ...((snapshot as any).context || {}),
+      config,
+    });
     const fullSnapshot = {
       ...(snapshot as any),
       context,

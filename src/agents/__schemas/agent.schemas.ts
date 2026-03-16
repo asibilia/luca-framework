@@ -114,7 +114,5 @@ export type BaseAgent = {
   readonly config: AgentConfig;
   readonly name: string;
   readonly description: string;
-  toCursorFormat(): string;
   toClaudeFormat(): string;
-  toPiFormat(): string;
 };

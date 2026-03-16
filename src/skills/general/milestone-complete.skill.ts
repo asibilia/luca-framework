@@ -31,9 +31,9 @@ Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUI
 
 Read these reference files before executing:
 
-- \`.cursor/luca/workflows/complete-milestone.md\`
-- \`.cursor/luca/templates/milestone-archive.md\`
-- \`.cursor/luca/workflows/learning-capture.md\`
+- \`.claude/luca/workflows/complete-milestone.md\`
+- \`.claude/luca/templates/milestone-archive.md\`
+- \`.claude/luca/workflows/learning-capture.md\`
 
 ## Learning Consolidation (NEW)
 
@@ -179,6 +179,88 @@ mcp__muninn__muninn_remember(
 
 Log a summary after completion:
 "Memory maintenance: {stale_detected} stale detected, {forgotten} forgotten (human-approved), {consolidated} consolidated. {total_engrams_analyzed} engrams analyzed."
+
+### Step 0.7: Pre-Archive Shadow Debt Gate
+
+Run a full shadow scan before milestone archival. This step catches debris accumulated across all phases
+in the milestone.
+
+\`\`\`bash
+SHADOW_ENABLED=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.enabled ?? true)" 2>/dev/null || echo "true")
+BLOCK_ON_CRITICAL=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.block_milestone_on_critical ?? true)" 2>/dev/null || echo "true")
+\`\`\`
+
+If \`SHADOW_ENABLED\` is false, skip this step entirely and proceed to Step 1.
+
+Spawn \`lu-shadow-scanner\` with \`full\` mode:
+
+\`\`\`
+Task(
+  prompt: """
+<shadow_scan_context>
+**Scan mode:** full
+**Context:** Pre-archive gate for milestone v{version}
+**Config:** {shadow_debt config JSON}
+</shadow_scan_context>
+
+Scan the repository for AI-session debris using full mode (all 5 categories).
+Return a valid ShadowScanReport JSON block as your final output.
+""",
+  subagent_type: "lu-shadow-scanner",
+  description: "Pre-archive shadow scan (full mode, milestone v{version})"
+)
+\`\`\`
+
+Parse the returned \`ShadowScanReport\`.
+
+**If no CRITICAL findings:** Store metric and continue to Step 1 (archival).
+
+**If CRITICAL findings exist AND \`block_milestone_on_critical\` is true:**
+
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca ► SHADOW DEBT GATE — {n} CRITICAL findings before milestone archive
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{findings list — file_path, description, recommendation for each CRITICAL finding}
+
+Actions:
+  [F] Fix now — run /shadow-cleanup --full --fix
+  [S] Skip    — note findings in milestone archive and proceed
+  [A] Abort   — halt milestone completion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+Handle user response:
+
+**F — Fix now:**
+- Instruct user to run \`/shadow-cleanup --full --fix\` in a new session.
+- Halt milestone completion: "Please run /shadow-cleanup --full --fix, then restart /milestone-complete."
+
+**S — Skip:**
+- Note the CRITICAL findings in the milestone archive (include in Step 4's milestone archive content).
+- Proceed to Step 1.
+
+**A — Abort:**
+- Halt milestone completion. Display: "Milestone completion aborted. Resolve shadow debt before archiving."
+
+Store metric regardless of user choice:
+
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: REPO_VAULT,
+  concept: "metric:shadow-debt-milestone-v{version}",
+  content: JSON.stringify({
+    scan_mode: "full",
+    total: {total},
+    critical: {critical},
+    high: {high},
+    medium: {medium},
+    low: {low},
+    gate_result: "blocked|skipped|clean",
+    scanned_at: "{ISO timestamp}"
+  })
+)
+\`\`\`
 
 ### Step 1: Archive Milestone Memory
 

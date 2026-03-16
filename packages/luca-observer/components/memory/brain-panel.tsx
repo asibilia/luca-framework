@@ -68,9 +68,18 @@ export function BrainPanel({ items }: { items: ActivationItem[] }) {
  *
  * Shows concept name, relevance score, and content. Content is
  * collapsible to keep the panel compact when many engrams exist.
+ *
+ * @param item - ActivationItem to display
+ * @param defaultExpanded - Whether the card starts expanded (default: true)
  */
-function BrainEngram({ item }: { item: ActivationItem }) {
-  const [expanded, setExpanded] = useState(true);
+export function BrainEngram({
+  item,
+  defaultExpanded = true,
+}: {
+  item: ActivationItem;
+  defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const relevancePercent = Math.round(item.score * 100);
 
   return (

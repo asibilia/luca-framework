@@ -8,7 +8,7 @@ const hookSkillBoundaryConfig: RuleConfig = {
   frontmatter: {
     description:
       "Hook/Skill boundary: when to use deterministic hooks vs interactive skills",
-    globs: ["*.ts", "*.sh", ".claude/settings.json", ".cursor/hooks.json"],
+    globs: ["*.ts", "*.sh", ".claude/settings.json"],
     alwaysApply: true,
   },
   sections: [
@@ -18,8 +18,8 @@ const hookSkillBoundaryConfig: RuleConfig = {
 
 ## Core Distinction
 
-- **Hooks** = Deterministic enforcement. Always run. No judgment. Fast. Both Claude Code and Cursor.
-- **Skills** = Interactive workflows. Run on demand. Require judgment. Can be slow. Cross-platform.
+- **Hooks** = Deterministic enforcement. Always run. No judgment. Fast.
+- **Skills** = Interactive workflows. Run on demand. Require judgment. Can be slow.
 
 ## Decision Matrix
 
@@ -32,7 +32,7 @@ const hookSkillBoundaryConfig: RuleConfig = {
 | Must it complete in < 2 seconds? | Yes | No |
 | Does it involve multi-step reasoning? | No | Yes |
 | Can Claude choose to skip it? | No (deterministic) | Yes (advisory) |
-| Does it work in Cursor IDE? | Yes (both platforms) | Yes (cross-platform) |
+| Does it work in Claude Code? | Yes | Yes |
 
 ## Current Hook/Skill Mapping
 
@@ -61,9 +61,7 @@ const hookSkillBoundaryConfig: RuleConfig = {
 
 ## Platform Behavior
 
-- **Claude Code**: Hooks via .claude/settings.json. Scripts in .claude/hooks/. Supports async hooks and statusMessage.
-- **Cursor IDE**: Hooks via .cursor/hooks.json. Scripts in .cursor/hooks/. Different event names (camelCase) and JSON formats.
-- **Both**: Same shell scripts with dual-format stdin/stdout parsing. Rules and skills work on both platforms.`,
+- **Claude Code**: Hooks via .claude/settings.json. Scripts in .claude/hooks/. Supports async hooks and statusMessage.`,
       order: 1,
     },
   ],

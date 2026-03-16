@@ -5,7 +5,7 @@
  * Uses composable pure functions for compilation.
  *
  * Each entity type (agent, skill, rule) has:
- * - Per-format functions: compileAgentClaude(), compileAgentCursor(), compileAgentPlugin()
+ * - Per-format functions: compileAgentClaude(), compileAgentPlugin()
  * - A format-dispatching function: compileAgent(entity, format)
  *
  * The internal buildAgentFrontmatter() helper consolidates shared
@@ -22,25 +22,18 @@ import { formatFrontmatter } from "~/shared/__helpers/utils";
  * Supported compilation output formats.
  *
  * - CLAUDE: Claude Code native format (.claude/ directory)
- * - CURSOR: Cursor IDE format (.cursor/ directory)
  * - PLUGIN: Claude Code plugin format (dist/plugin/ directory)
- * - PI: Pi terminal agent format (.pi/ directory)
  */
-export type SupportedFormat = "CURSOR" | "CLAUDE" | "PLUGIN" | "PI";
+export type SupportedFormat = "CLAUDE" | "PLUGIN";
 
 /**
  * Validate that a format string is one of the supported formats.
  *
  * @param format - The format string to validate
- * @throws Error if the format is not "CURSOR", "CLAUDE", "PLUGIN", or "PI"
+ * @throws Error if the format is not "CLAUDE" or "PLUGIN"
  */
 export function validateFormat(format: SupportedFormat): void {
-  if (
-    format !== "CURSOR" &&
-    format !== "CLAUDE" &&
-    format !== "PLUGIN" &&
-    format !== "PI"
-  ) {
+  if (format !== "CLAUDE" && format !== "PLUGIN") {
     throw new Error(`Unsupported format: ${format}`);
   }
 }
@@ -115,7 +108,7 @@ export function compileSkillClaude(skill: BaseSkill): string {
 /**
  * Compile a rule definition to Claude-format markdown.
  *
- * When the rule has scoping metadata (globs or alwaysApply: false), YAML
+ * When the rule has scoping metadata (globs or explicit alwaysApply), YAML
  * frontmatter is prepended. Claude Code `.claude/rules/*.md` files support
  * YAML frontmatter with `---` delimiters for description, globs, and
  * alwaysApply fields, enabling context-aware rule loading.
@@ -128,7 +121,7 @@ export function compileRuleClaude(rule: BaseRule): string {
   const { description, globs, alwaysApply } = rule.config.frontmatter;
 
   const hasScoping =
-    (globs !== undefined && globs.length > 0) || alwaysApply === false;
+    (globs !== undefined && globs.length > 0) || alwaysApply !== undefined;
 
   if (hasScoping) {
     const frontmatterData: Record<string, unknown> = { description };
@@ -143,40 +136,6 @@ export function compileRuleClaude(rule: BaseRule): string {
   }
 
   return markdown;
-}
-
-// ---------------------------------------------------------------------------
-// Cursor format
-// ---------------------------------------------------------------------------
-
-/**
- * Compile an agent definition to Cursor-format markdown.
- *
- * @param agent - The agent instance to compile
- * @returns Compiled markdown string with YAML frontmatter
- */
-export function compileAgentCursor(agent: BaseAgent): string {
-  return agent.toCursorFormat();
-}
-
-/**
- * Compile a skill definition to Cursor-format markdown.
- *
- * @param skill - The skill instance to compile
- * @returns Compiled markdown string with YAML frontmatter
- */
-export function compileSkillCursor(skill: BaseSkill): string {
-  return skill.toCursorFormat();
-}
-
-/**
- * Compile a rule definition to Cursor-format markdown.
- *
- * @param rule - The rule instance to compile
- * @returns Compiled markdown string with YAML frontmatter
- */
-export function compileRuleCursor(rule: BaseRule): string {
-  return rule.toCursorFormat();
 }
 
 // ---------------------------------------------------------------------------
@@ -229,51 +188,6 @@ export function compileRulePlugin(rule: BaseRule): string {
 }
 
 // ---------------------------------------------------------------------------
-// Pi format
-// ---------------------------------------------------------------------------
-
-/**
- * Compile an agent definition to Pi-format markdown.
- *
- * Pi agents use YAML frontmatter (name, description, tools, model) with
- * H2-section markdown body. Tool restrictions and model tier are included
- * in frontmatter when defined in the agent config.
- *
- * @param agent - The agent instance to compile
- * @returns Compiled markdown string with Pi-specific YAML frontmatter
- */
-export function compileAgentPi(agent: BaseAgent): string {
-  return agent.toPiFormat();
-}
-
-/**
- * Compile a skill definition to Pi-format SKILL.md.
- *
- * Pi skills use YAML frontmatter (name, description) with H2-section
- * markdown body, stored in .pi/skills/{name}/SKILL.md.
- *
- * @param skill - The skill instance to compile
- * @returns Compiled markdown string with Pi-specific YAML frontmatter
- */
-export function compileSkillPi(skill: BaseSkill): string {
-  return skill.toPiFormat();
-}
-
-/**
- * Compile a rule definition to Pi-format markdown.
- *
- * Note: Pi has no rules directory. Individual rule compilations are collected
- * and merged into a single AGENTS.md file by the build pipeline. This method
- * produces the rule's content section for inclusion in that merged file.
- *
- * @param rule - The rule instance to compile
- * @returns Compiled markdown string for AGENTS.md inclusion
- */
-export function compileRulePi(rule: BaseRule): string {
-  return rule.toPiFormat();
-}
-
-// ---------------------------------------------------------------------------
 // Format-dispatching functions
 // ---------------------------------------------------------------------------
 
@@ -283,7 +197,7 @@ export function compileRulePi(rule: BaseRule): string {
  * Dispatches to the appropriate per-format function based on the format parameter.
  *
  * @param agent - The agent instance to compile
- * @param format - Target format: "CLAUDE", "CURSOR", or "PLUGIN"
+ * @param format - Target format: "CLAUDE" or "PLUGIN"
  * @returns Compiled markdown string
  * @throws Error if format is not supported
  */
@@ -295,12 +209,8 @@ export function compileAgent(
   switch (format) {
     case "CLAUDE":
       return compileAgentClaude(agent);
-    case "CURSOR":
-      return compileAgentCursor(agent);
     case "PLUGIN":
       return compileAgentPlugin(agent);
-    case "PI":
-      return compileAgentPi(agent);
   }
 }
 
@@ -310,7 +220,7 @@ export function compileAgent(
  * Dispatches to the appropriate per-format function based on the format parameter.
  *
  * @param skill - The skill instance to compile
- * @param format - Target format: "CLAUDE", "CURSOR", or "PLUGIN"
+ * @param format - Target format: "CLAUDE" or "PLUGIN"
  * @returns Compiled markdown string
  * @throws Error if format is not supported
  */
@@ -322,12 +232,8 @@ export function compileSkill(
   switch (format) {
     case "CLAUDE":
       return compileSkillClaude(skill);
-    case "CURSOR":
-      return compileSkillCursor(skill);
     case "PLUGIN":
       return compileSkillPlugin(skill);
-    case "PI":
-      return compileSkillPi(skill);
   }
 }
 
@@ -337,7 +243,7 @@ export function compileSkill(
  * Dispatches to the appropriate per-format function based on the format parameter.
  *
  * @param rule - The rule instance to compile
- * @param format - Target format: "CLAUDE", "CURSOR", or "PLUGIN"
+ * @param format - Target format: "CLAUDE" or "PLUGIN"
  * @returns Compiled markdown string
  * @throws Error if format is not supported
  */
@@ -346,11 +252,7 @@ export function compileRule(rule: BaseRule, format: SupportedFormat): string {
   switch (format) {
     case "CLAUDE":
       return compileRuleClaude(rule);
-    case "CURSOR":
-      return compileRuleCursor(rule);
     case "PLUGIN":
       return compileRulePlugin(rule);
-    case "PI":
-      return compileRulePi(rule);
   }
 }

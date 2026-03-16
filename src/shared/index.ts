@@ -5,7 +5,7 @@
  * - Result<T> discriminated union type for operation outcomes
  * - CLI argument parsing (getArg, hasFlag, escapeRegex)
  * - Deep freeze for immutable object graphs
- * - Section formatting (Cursor/Claude format converters)
+ * - Section formatting (Claude format converter)
  * - YAML frontmatter formatting
  * - JSON sanitization and config validation
  * - Template sanitization for prompt injection prevention
@@ -27,11 +27,7 @@ export { deepFreeze } from "./__helpers/deep-freeze";
 
 // ─── Formatting ─────────────────────────────────────────────────────────────────
 
-export {
-  SectionSchema,
-  toCursorFormat,
-  toClaudeFormat,
-} from "./__helpers/format";
+export { SectionSchema, toClaudeFormat } from "./__helpers/format";
 export type { Section } from "./__helpers/format";
 export { formatFrontmatter } from "./__helpers/utils";
 
@@ -213,3 +209,17 @@ export type {
   SessionDigestConfig,
   SessionDigestResult,
 } from "./__helpers/session-digest";
+
+// ─── Shadow Scanner Schemas ────────────────────────────────────────────────────
+
+export {
+  ShadowFindingSchema,
+  ShadowScanReportSchema,
+  ShadowDebtConfigSchema,
+} from "./__schemas/shadow-scanner.schemas";
+
+export type {
+  ShadowFinding,
+  ShadowScanReport,
+  ShadowDebtConfig,
+} from "./__schemas/shadow-scanner.schemas";

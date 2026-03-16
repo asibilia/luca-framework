@@ -38,7 +38,7 @@ export interface ComplexityGate {
   /** UAT step activation */
   uat: StepActivation;
   /** Learning capture depth */
-  learningCapture: "skip" | "brief" | "standard" | "full" | "full+debrief";
+  learningCapture: "brief" | "standard" | "full" | "full+debrief";
   /** Optional cognition tier promotions at this complexity level */
   cognitionPromotions?: Record<string, string>;
   /** Optional context tier promotions at this complexity level */
@@ -64,26 +64,26 @@ export type ComplexityMatrix = Record<ComplexityLevel, ComplexityGate>;
 export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
   TRIVIAL: {
     cognitivePreflight: "lite",
-    research: "skip",
-    discussion: "skip",
+    research: "brief",
+    discussion: "brief",
     planVerificationIterations: 1,
     harnessFixIterations: 1,
     verifyFixIterations: 1,
     verificationMode: "quick",
-    codeReviewAgents: [],
-    uat: "skip",
-    learningCapture: "skip",
+    codeReviewAgents: ["code-simplifier"],
+    uat: "optional",
+    learningCapture: "brief",
   },
   SIMPLE: {
     cognitivePreflight: "lite",
-    research: "skip",
-    discussion: "skip",
+    research: "brief",
+    discussion: "brief",
     planVerificationIterations: 1,
     harnessFixIterations: 2,
     verifyFixIterations: 1,
     verificationMode: "quick",
-    codeReviewAgents: [],
-    uat: "skip",
+    codeReviewAgents: ["code-simplifier"],
+    uat: "optional",
     learningCapture: "brief",
   },
   MODERATE: {

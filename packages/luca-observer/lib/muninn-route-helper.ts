@@ -46,7 +46,11 @@ export async function muninnProxyHandler(
           "[muninn-proxy] Response validation failed:",
           parsed.error.message,
         );
+        // Validation failed — return raw data to avoid breaking UI on schema evolution
+        return NextResponse.json(data);
       }
+      // Validation succeeded — return the validated, coerced/stripped shape
+      return NextResponse.json(parsed.data);
     }
     return NextResponse.json(data);
   } catch {

@@ -105,7 +105,7 @@ This task benefits from structured planning and phased execution.
 
 | Aspect | Issue Workflow | Luca |
 |--------|----------------|------|
-| Planning | \`.cursor/plans/\` | \`.planning/\` |
+| Planning | GitHub issues | \`.planning/\` |
 | Commits | \`type(scope): #issue desc\` | \`type(phase-plan): #issue desc\` |
 | Branch | \`{issue}--{description}\` | \`{issue}--{description}\` |
 | State | Git history | State machine + STATE.md + Git |
