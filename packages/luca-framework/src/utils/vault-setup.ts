@@ -32,6 +32,7 @@ import { chmodSync, existsSync } from "node:fs";
 import { join, basename } from "pathe";
 
 import { resolveMuninndbPort } from "./muninndb-schemas";
+import { checkMuninndbService } from "./muninndb-health";
 import { sanitizeJsonParse } from "./sanitize";
 
 import type { ProjectContext } from "../types";
@@ -348,11 +349,14 @@ export async function ensureEnvInGitignore(cwd: string): Promise<void> {
 }
 
 /**
- * Verify MuninnDB vault connectivity by hitting the health endpoint.
+ * Verify MuninnDB vault connectivity by checking the health endpoint.
  *
- * Sends a GET request to `http://localhost:{port}/health` with a 3-second
- * timeout. Returns `true` if the service responds with an OK status, `false`
- * otherwise. This is a non-blocking check -- callers should warn on failure
+ * Delegates to `checkMuninndbService()` from `muninndb-health.ts` which
+ * handles the HTTP health check with timeout, PID file reading, and
+ * structured status reporting.
+ *
+ * Returns `true` if the service reports healthy, `false` otherwise.
+ * This is a non-blocking check -- callers should warn on failure
  * but never abort the flow.
  *
  * @param vaultName - The vault name (used for logging context, not in the request).
@@ -372,18 +376,6 @@ export async function verifyVaultConnection(
   port?: number,
 ): Promise<boolean> {
   const resolvedPort = resolveMuninndbPort(port);
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-
-    const response = await fetch(`http://localhost:${resolvedPort}/health`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    return response.ok;
-  } catch {
-    return false;
-  }
+  const status = await checkMuninndbService(resolvedPort);
+  return status.healthy;
 }
