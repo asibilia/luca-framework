@@ -2,15 +2,22 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Routing
-- **Task Complexity:** TRIVIAL
+- **Current Milestone:** v5.1.0 — Workflow Quality & Skill Simplification
+- **Status:** Executing
+- **Task Complexity:** SIMPLE
 - **Oversight:** milestone
-- **Last Updated:** 2026-03-16
+- **Last Updated:** 2026-03-17
 
 ## Session Identity
 
 - **Session ID:** fbc55ebb-664a-40ed-869a-04289e5dc8e2
+- **GitHub Issue:** #81
+
+## Appetite
+
+- **Level:** Medium
+- **Token Ceiling:** 100000
+- **Context Budget:** 50%
 
 ## Progress
 
@@ -20,11 +27,14 @@
 
 ## Git Context
 
+- **Branch:** 81--v5.1.0-workflow-quality-skill-simplification
 - **Base Branch:** main
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -45,8 +55,8 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 ## Session Continuity
 
 - **Session Started:** 2026-03-16
-- **Last Transition:** 2026-03-16
+- **Last Transition:** 2026-03-17
 
 ---
 
-_State generated from machine snapshot at 2026-03-17T00:04:22.551Z_
+_State generated from machine snapshot at 2026-03-17T00:19:24.635Z_

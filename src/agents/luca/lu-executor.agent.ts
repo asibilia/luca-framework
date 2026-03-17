@@ -268,6 +268,64 @@ Execute each task in the plan.
       order: 3,
     },
     {
+      title: "task_implementation_loop",
+      content: `## task_implementation_loop
+
+After implementing each task, enter a self-review cycle before committing.
+
+### Step 1: Implement
+
+Complete the task as described in the plan.
+
+### Step 2: Self-Review
+
+Re-read the code you just wrote. Evaluate it against:
+
+- **Task verification criteria** — the specific checks listed for this task
+- **Plan success criteria** — where applicable to this task
+- **Implementation quality** — Is this clear, correct, complete?
+  Would you be confident handing this to a reviewer?
+
+Produce a brief internal assessment:
+
+- What the implementation does well
+- What gaps remain (if any)
+- What could be improved
+
+### Step 3: Decision
+
+**If satisfied** (no meaningful gaps, criteria met, quality is good):
+\u2192 Exit loop, proceed to commit.
+
+**If gaps identified:**
+\u2192 Address the specific gaps you identified. Then return to Step 2.
+
+### Stall Detection
+
+If your self-review identifies the **same gaps** as the previous
+iteration \u2014 you\u2019ve made changes but the assessment hasn\u2019t improved \u2014
+you are stalled. Exit the loop and proceed to commit. Document
+remaining gaps as a deviation: \\\`[Implementation Loop \u2014 Stalled] {gaps}\\\`.
+
+### What to evaluate during self-review
+
+- Does the code actually do what the task asks, or did I implement
+  something adjacent?
+- Are edge cases handled, or did I only cover the happy path?
+- Is the API surface what the plan specified (function signatures,
+  return types, exports)?
+- Would the verification criteria pass if someone checked right now?
+- Is there dead code, unnecessary complexity, or leftover scaffolding?
+
+### What NOT to do during iteration
+
+- Do NOT expand scope beyond the task\u2019s criteria
+- Do NOT refactor surrounding code that isn\u2019t part of this task
+- Do NOT rewrite your approach from scratch \u2014 improve what you have
+- Do NOT iterate on style/cosmetics \u2014 focus on correctness and completeness`,
+      order: 4,
+    },
+    {
       title: "deviation_rules",
       content: `**While executing tasks, you WILL discover work not in the plan.** This is normal.
 
