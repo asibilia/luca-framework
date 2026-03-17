@@ -115,17 +115,24 @@ export function sanitizeVaultName(name: string): string {
 /**
  * Run the interactive MuninnDB vault wizard using @clack/prompts.
  *
- * Guides the user through:
+ * Performs a health pre-check before showing any prompts. If MuninnDB is not
+ * running, returns `null` immediately with a warning message telling the user
+ * to run `luca vault:init` later (REQ-03). This prevents the confusing UX of
+ * prompting for an API key when the MuninnDB Web UI is unreachable.
+ *
+ * When MuninnDB is healthy, guides the user through:
  * 1. Reviewing/editing the suggested vault name
  * 2. Understanding where to get an API key (MuninnDB Web UI)
  * 3. Entering their API key (password input)
  * 4. Confirming the configuration before proceeding
  *
- * Returns `null` if the user cancels at any step.
+ * Returns `null` if MuninnDB is unhealthy or the user cancels at any step.
+ * Both cases return `null`, but they are distinguished by the log messages
+ * emitted before returning.
  *
  * @param context - Detected project context from `detectProjectContext()`.
  * @param cwd - Working directory for vault name fallback.
- * @returns A validated `VaultConfig` object, or `null` if cancelled.
+ * @returns A validated `VaultConfig` object, or `null` if unhealthy/cancelled.
  *
  * @example
  * ```typescript
@@ -142,6 +149,18 @@ export async function runVaultWizard(
   cwd: string = process.cwd(),
 ): Promise<VaultConfig | null> {
   const suggested = suggestVaultName(context, cwd);
+
+  // Health gate: check if MuninnDB is reachable before prompting for API key (REQ-03)
+  const serviceStatus = await checkMuninndbService();
+  if (!serviceStatus.healthy) {
+    p.log.warn(
+      "MuninnDB is not running. Vault setup requires MuninnDB to be active.",
+    );
+    p.log.info(
+      "Start MuninnDB and run `luca vault:init` to complete vault setup.",
+    );
+    return null;
+  }
 
   p.log.info("MuninnDB Vault Setup");
   p.log.message(

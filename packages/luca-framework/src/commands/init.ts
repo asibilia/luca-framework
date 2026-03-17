@@ -637,7 +637,16 @@ export const initCommand = defineCommand({
     }
 
     // ── Step 5: Vault setup ──────────────────────────────────────────────
-    if (!args["skip-vault"]) {
+    if (args["skip-vault"]) {
+      p.log.info("Step 4/5: Vault setup (skipped)");
+    } else if (!muninndbHealthy && !args["skip-muninndb"]) {
+      // Health gate: skip vault:init if MuninnDB is not healthy (REQ-03)
+      p.log.step("Step 4/5: Project vault setup");
+      p.log.warn("MuninnDB is not running -- skipping vault setup.");
+      p.log.info(
+        "After starting MuninnDB, run `luca vault:init` in your project to complete setup.",
+      );
+    } else {
       p.log.step("Step 4/5: Project vault setup");
       const cwd = process.cwd();
       const hasPackageJson = existsSync(join(cwd, "package.json"));
@@ -660,8 +669,6 @@ export const initCommand = defineCommand({
 
       p.log.info("To initialize Luca in a project, run:");
       p.log.info("  luca vault:init");
-    } else {
-      p.log.info("Step 4/5: Vault setup (skipped)");
     }
 
     // ── Post-init readout ────────────────────────────────────────────────
@@ -706,8 +713,11 @@ export const initCommand = defineCommand({
     readout.push("");
     readout.push("Vault:");
     if (args["skip-vault"]) {
-      readout.push("  Skipped");
-    } else {
+      readout.push("  Skipped (--skip-vault)");
+    } else if (!muninndbHealthy && !args["skip-muninndb"]) {
+      readout.push("  Skipped (MuninnDB not running)");
+      readout.push("  Run `luca vault:init` after starting MuninnDB");
+    } else if (!vaultInitRan) {
       readout.push("  Not configured (run `luca vault:init` in a project)");
     }
 
