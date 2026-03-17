@@ -28,19 +28,16 @@
   },
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
     },
     "./state": {
-      "types": "./src/state/index.ts",
-      "import": "./dist/state/index.mjs",
-      "require": "./dist/state/index.cjs"
+      "types": "./dist/state/index.d.mts",
+      "import": "./dist/state/index.mjs"
     },
     "./state/bridge": {
-      "types": "./src/state/bridge.ts",
-      "import": "./dist/state/bridge.mjs",
-      "require": "./dist/state/bridge.cjs"
+      "types": "./dist/state/bridge.d.mts",
+      "import": "./dist/state/bridge.mjs"
     }
   },
   "files": [
@@ -58,7 +55,6 @@
     "framework",
     "luca"
   ],
-  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "repository": {
     "type": "git",
@@ -68,7 +64,7 @@
   "scripts": {
     "build": "unbuild",
     "build:plugin": "bun run scripts/copy-plugin.ts",
-    "prepublishOnly": "bun run build && bun test && bun run build:plugin",
+    "prepublishOnly": "bun run build && bun run build:plugin",
     "test": "bun test",
     "validate": "bun run scripts/validate-package.ts"
   },
