@@ -4,7 +4,7 @@
 
 - **Current Milestone:** v5.3.0
 - **Status:** Idle
-- **Task Complexity:** TRIVIAL
+- **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-17
 
@@ -15,9 +15,9 @@
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Small
+- **Token Ceiling:** 50000
+- **Context Budget:** 40%
 
 ## Progress
 
@@ -57,4 +57,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-17T16:54:25.040Z_
+_State generated from machine snapshot at 2026-03-17T17:05:01.163Z_
