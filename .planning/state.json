@@ -30,9 +30,7 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": [
-        "typescript"
-      ]
+      "tech_stack_profiles": ["typescript"]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -71,7 +69,7 @@
         "verificationMode": "full+human"
       }
     },
-    "autopilot_config": {},
+    "lu_config": {},
     "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
