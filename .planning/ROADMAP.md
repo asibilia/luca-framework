@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v5.0.0 — Global NPM Package
+**Current Milestone:** v5.1.0 — Workflow Quality & Skill Simplification
 
 ---
 
@@ -148,13 +148,51 @@
 
 ---
 
+## v5.1.0 — Workflow Quality & Skill Simplification
+
+**Goal:** Improve task execution quality with self-review loops and simplify the skill surface by consolidating autopilot into the unified lu entry point.
+
+**Source:** Todos: merge-autopilot-into-lu, task-implementation-loop
+
+### Phase 181: Task Implementation Loop
+
+**Goal:** Add task_implementation_loop section to lu-executor (and lu-executor-capable) introducing a self-review cycle after each task implementation, before committing.
+
+- [ ] Add task_implementation_loop section at order 4 to lu-executor.agent.ts
+- [ ] Bump existing sections 4-6 to orders 5-7
+- [ ] Update execute_tasks section to reference task_implementation_loop
+- [ ] Add matching section to lu-executor-capable.agent.ts for consistency
+
+**Depends on:** None
+**Verification:** Quick (typecheck only)
+**WSJF:** 9.5 (BV:8 TC:5 RR:6 / Effort:SIMPLE)
+
+### Phase 182: Skill Consolidation — Merge Autopilot into Lu
+
+**Goal:** Absorb autopilot.skill.ts into lu.skill.ts, delete autopilot, update all references across src/ and config, making lu the single unified entry point.
+
+- [ ] Absorb all autopilot sections into lu.skill.ts with full-auto as default behavior
+- [ ] Add --ask flag as shorthand for --oversight=phase
+- [ ] Delete src/skills/general/autopilot.skill.ts
+- [ ] Remove autopilot from skill registry (build-skill-registry.ts)
+- [ ] Update scaffolding.ts to remove autopilot references
+- [ ] Update 4 roadmap agent docstrings (lu-roadmap-architect, -prioritizer, -qa, -synthesizer)
+- [ ] Update phase-discuss.skill.ts autopilot references
+- [ ] Update .claude/rules/lu-workflow.md to remove autopilot references
+- [ ] Rename config.json 'autopilot' key to 'lu' (or support both with fallback)
+- [ ] Post-merge grep verification: `grep -r 'autopilot' src/ .claude/rules/ .planning/`
+
+**Depends on:** None (but sequenced after Phase 181 for workflow benefits)
+**Verification:** Standard + post-merge grep for stale 'autopilot' string references
+**WSJF:** 4.33 (BV:6 TC:3 RR:4 / Effort:MODERATE)
+
+---
+
 ## Backlog (Unassigned)
 
-| Todo | Title                          | Target           | Reason                                                                                       |
-| ---- | ------------------------------ | ---------------- | -------------------------------------------------------------------------------------------- |
-| #37  | Test suite fragility           | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md`                          |
-| —    | Merge autopilot into lu skill  | Post-v5.0.0      | WSJF 3.33, MEDIUM arch/QA risk. Skill consolidation orthogonal to v5.0.0 distribution goals. |
-| —    | Task-level implementation loop | Post-v5.0.0      | WSJF 7.0, LOW arch/QA risk. Executor behavior enhancement orthogonal to v5.0.0 distribution. |
+| Todo | Title                | Target           | Reason                                                              |
+| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
+| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
 
