@@ -154,22 +154,8 @@ export async function runWizard(
 
   const presetDefaults = getPresetDefaults(selectedPreset as PresetId);
 
-  // Group 2.75: Harness selection (pre-filled from preset)
-  const harnesses = await p.multiselect({
-    message: "Which AI harness platforms do you use?",
-    options: [
-      { value: "claude", label: "Claude Code", hint: "(.claude/ directory)" },
-      { value: "cursor", label: "Cursor IDE", hint: "(.cursor/ directory)" },
-      { value: "pi", label: "Pi", hint: "(.pi/ directory)" },
-    ],
-    initialValues: presetDefaults.harnesses,
-    required: true,
-  });
-
-  if (p.isCancel(harnesses)) {
-    p.cancel("Setup cancelled.");
-    return null;
-  }
+  // Harness is hardcoded to Claude (sole supported platform)
+  const harnesses: HarnessId[] = ["claude"];
 
   // Group 3: Work tracker
   const workTracker = await p.select({
@@ -241,14 +227,10 @@ function formatBrandingErrors(errors: Record<string, string>): string {
 
 export const VALID_STACKS = ["react-ts", "custom"] as const;
 export const VALID_TRACKERS = ["jira", "github", "none"] as const;
-export const VALID_HARNESSES: readonly HarnessId[] = [
-  "claude",
-  "cursor",
-  "pi",
-] as const;
+export const VALID_HARNESSES: readonly HarnessId[] = ["claude"] as const;
 
-/** Default harnesses when none specified (backward compat) */
-export const DEFAULT_HARNESSES: HarnessId[] = ["claude", "cursor"];
+/** Default harnesses — Claude is the sole supported platform */
+export const DEFAULT_HARNESSES: HarnessId[] = ["claude"];
 
 export function createConfigFromArgs(args: {
   name?: string;
@@ -392,7 +374,7 @@ export async function loadConfigFromFile(
     );
   }
 
-  // Parse and validate harnesses (default to ['claude', 'cursor'])
+  // Parse and validate harnesses (default to ['claude'])
   let harnesses: HarnessId[] = DEFAULT_HARNESSES;
   if (Array.isArray(parsed.harnesses)) {
     const invalid = (parsed.harnesses as string[]).filter(
