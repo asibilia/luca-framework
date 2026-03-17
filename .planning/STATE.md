@@ -34,6 +34,9 @@
 
 ## Previous Milestones
 
+- v5.1.0 — Workflow Quality & Skill Simplification (2026-03-17)
+- v5.0.0 — Global NPM Package (2026-03-17)
+- v4.5.0 — Platform Simplification & Proactive Intelligence (2026-03-15)
 - v4.4.0 — Smart Context Management (2026-03-14)
 - v4.3.0 — Observer Workflow Editor (2026-03-13)
 - v4.2.0 — Workflow Unification & Memory Architecture (2026-03-12)
@@ -46,7 +49,7 @@
 
 ---
 
-_State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next milestone_
+_State reset: 2026-03-17 — v5.2.0 milestone started_
 
 ## Session Continuity
 
@@ -55,4 +58,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-17T12:41:39.968Z_
+_State generated from machine snapshot at 2026-03-17T13:05:42.390Z_

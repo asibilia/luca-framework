@@ -8,20 +8,27 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current Milestone (v5.0.0 — In Progress)
+## Current Milestone (v5.2.0 — In Progress)
 
-**Goal:** Ship `@alecsibilia/luca-framework` as a globally-installable NPM package with one-command setup: prerequisite checks, MuninnDB binary installation, artifact building, deployment to `~/.claude/`, and guided vault configuration.
+**Goal:** Fix critical bugs in the `luca init` global install experience and automate npm publishing via GitHub Actions. Addresses 4 install bugs (2x P0, 1x P1, 1x P2) discovered after first npm publish, plus CI/CD automation.
 
-**Phases:** 172-178 (7 phases)
-**Complexity:** CRITICAL
-**Source:** Todo #17 (expert-panel-research + product discussion)
+**Phases:** 183-188 (6 phases)
+**Complexity:** COMPLEX
+**Source:** Todos: luca-init-global-install-issues, github-action-npm-publish
 
-### Key Features
+### Key Fixes
 
-- `luca init` — Global first-time setup (Bun check, MuninnDB install, build, deploy, vault)
-- `luca doctor` — Health check for prerequisites, global artifacts, MuninnDB, current project
-- `luca vault init` — Per-repo vault setup wizard (guided Web UI flow)
-- `luca update` / `luca reinit` — Version check, rebuild, redeploy
+- vault:init deploys to project `.claude/` instead of `~/.claude/` in global mode (P0)
+- MuninnDB download URL 404 + API key prompt ordering (P0)
+- Custom prefix not applied to agent/skill names (P1)
+- Platform selection still shows Cursor and Pi (P2)
+- GitHub Actions auto-publish to npm on release (CI/CD)
+
+## Previous State (v5.0.0 — Shipped)
+
+**Last Shipped:** v5.0.0 — Global NPM Package (2026-03-17)
+
+9 phases, 86 commits, 102 files changed. Ship `@alecsibilia/luca-framework` as globally-installable NPM package with one-command setup, MuninnDB binary installation, artifact deployment, and guided vault configuration.
 
 ## Previous State (v4.5.0 — Shipped)
 
