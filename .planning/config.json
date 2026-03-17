@@ -26,9 +26,7 @@
     "always_verify": true,
     "capture_learnings": true,
     "opinionated_guidelines": true,
-    "tech_stack_profiles": [
-      "typescript"
-    ]
+    "tech_stack_profiles": ["typescript"]
   },
   "planning": {
     "commit_docs": true,
@@ -144,11 +142,11 @@
       }
     }
   },
-  "autopilot": {
+  "lu": {
     "oversight": "full-auto",
     "max_phases_per_session": 10,
     "auto_plan_phases": true,
-    "skip_uat_in_autopilot": true,
+    "skip_uat": true,
     "gap_closure_retries": 1,
     "pause_on_critical_review": true,
     "cross_milestone": false,
@@ -178,9 +176,7 @@
   "dogfood": {
     "enabled": true,
     "source": "src/",
-    "outputs": [
-      ".claude/"
-    ],
+    "outputs": [".claude/"],
     "build_command": "bun run build:all",
     "lock_file": ".claude/.session-lock",
     "manifest_file": ".claude/.build-manifest.json"
@@ -199,12 +195,7 @@
     "phase_scan_mode": "quick",
     "milestone_scan_mode": "full",
     "block_milestone_on_critical": true,
-    "allowlist": [
-      "scripts/",
-      ".planning/",
-      "docs/",
-      "packages/"
-    ],
+    "allowlist": ["scripts/", ".planning/", "docs/", "packages/"],
     "denylist_patterns": [
       "test-*.ts",
       "debug-*.ts",
