@@ -171,16 +171,16 @@
 
 **Goal:** Absorb autopilot.skill.ts into lu.skill.ts, delete autopilot, update all references across src/ and config, making lu the single unified entry point.
 
-- [ ] Absorb all autopilot sections into lu.skill.ts with full-auto as default behavior
-- [ ] Add --ask flag as shorthand for --oversight=phase
-- [ ] Delete src/skills/general/autopilot.skill.ts
-- [ ] Remove autopilot from skill registry (build-skill-registry.ts)
-- [ ] Update scaffolding.ts to remove autopilot references
-- [ ] Update 4 roadmap agent docstrings (lu-roadmap-architect, -prioritizer, -qa, -synthesizer)
-- [ ] Update phase-discuss.skill.ts autopilot references
-- [ ] Update .claude/rules/lu-workflow.md to remove autopilot references
-- [ ] Rename config.json 'autopilot' key to 'lu' (or support both with fallback)
-- [ ] Post-merge grep verification: `grep -r 'autopilot' src/ .claude/rules/ .planning/`
+- [x] Absorb all autopilot sections into lu.skill.ts with full-auto as default behavior
+- [x] Add --ask flag as shorthand for --oversight=phase
+- [x] Delete src/skills/general/autopilot.skill.ts
+- [x] Remove autopilot from skill registry (build-skill-registry.ts)
+- [x] Update scaffolding.ts to remove autopilot references
+- [x] Update 4 roadmap agent docstrings (lu-roadmap-architect, -prioritizer, -qa, -synthesizer)
+- [x] Update phase-discuss.skill.ts autopilot references
+- [x] Update .claude/rules/lu-workflow.md to remove autopilot references
+- [x] Config key 'autopilot' stays for backward compat (decision: no rename needed)
+- [x] Post-merge grep verification: `grep -r 'autopilot' src/ .claude/rules/ .planning/`
 
 **Depends on:** None (but sequenced after Phase 181 for workflow benefits)
 **Verification:** Standard + post-merge grep for stale 'autopilot' string references
