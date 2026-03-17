@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-test-writer
+name: lu-test-writer
 description: Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by lu-executor during TDD cycle.
 cognition:
   default_tier: T1

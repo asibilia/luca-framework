@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-plan-checker
+name: lu-plan-checker
 description: Verifies plans will achieve phase goal before execution. Goal-backward analysis of plan quality. Spawned by /phase-plan orchestrator.
 cognition:
   default_tier: T1

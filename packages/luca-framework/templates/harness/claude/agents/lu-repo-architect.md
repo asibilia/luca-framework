@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-repo-architect
+name: lu-repo-architect
 description: Audits repository structure, enforces naming conventions, detects orphaned files, and reports health metrics. Use at phase boundaries or interactively via /repo-audit.
 cognition:
   default_tier: T1

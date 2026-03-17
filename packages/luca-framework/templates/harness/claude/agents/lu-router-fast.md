@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-router-fast
+name: lu-router-fast
 description: Fast-tier variant of lu-router for TRIVIAL/SIMPLE task classification. Optimized for quick routing decisions.
 cognition:
   default_tier: T0

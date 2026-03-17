@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-discuss-researcher
+name: lu-discuss-researcher
 description: Researches a single gray area question for phase-discuss auto mode. Uses WebSearch and WebFetch scoped to project tech stack to produce a cited recommendation with confidence level.
 cognition:
   default_tier: T1

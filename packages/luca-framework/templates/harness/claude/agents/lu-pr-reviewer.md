@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-pr-reviewer
+name: lu-pr-reviewer
 description: Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
 cognition:
   default_tier: T0

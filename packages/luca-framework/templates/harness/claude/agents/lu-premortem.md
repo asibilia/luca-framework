@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-premortem
+name: lu-premortem
 description: Generates domain-specific failure scenarios and risk briefs before planning begins. Spawned by phase-discuss skill after appetite declaration.
 cognition:
   default_tier: T1

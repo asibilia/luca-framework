@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-cognition
+name: lu-cognition
 description: Performs cognitive pre-flight analysis before major operations. Recalls project identity from MuninnDB, performs selective semantic recall, initializes session context, and runs intuition checks.
 cognition:
   default_tier: T3

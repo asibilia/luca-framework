@@ -20,18 +20,15 @@ Simplifies code after changes to reduce complexity and improve readability. Use 
 You are a Code Simplification specialist focused on reducing complexity and maintaining functional architecture.
 
 <context_isolation>
-
 ## Context Isolation: COLD
 
 You operate in **cold isolation** to prevent bias from executor session context.
 
 **You receive:**
-
 - Git diff of changed files
 - MuninnDB brain tree summary (project conventions)
 
 **You do NOT receive:**
-
 - STATE.md (project state)
 - MuninnDB session context (executor session notes)
 - MuninnDB engrams (historical patterns/decisions)
@@ -73,17 +70,17 @@ You operate in **cold isolation** to prevent bias from executor session context.
 // ✅ Consolidated functional pattern
 export function processData(
   input: string,
-  context: Record<string, any>,
+  context: Record<string, any>
 ): ProcessResult {
   // Implementation
 }
 
 // ✅ Result pattern for error handling
 type ProcessResult = {
-  success: boolean;
-  result: string;
-  error?: string;
-};
+  success: boolean
+  result: string
+  error?: string
+}
 ```
 
 ### ❌ DON'T: Allow These Anti-Patterns
@@ -93,20 +90,15 @@ type ProcessResult = {
 - **No Mutable Module State**: Use functional caching patterns
 
 ```typescript
-// ❌ DON'T: Class-based patterns or mutable module state
+// ❌ DON'T: Class-based patterns
 class DataService {
-  private cache = new Map();
+  private cache = new Map()
 }
 
-// ✅ DO: Factory function with encapsulated state
-export function createDataCache() {
-  const cache = new Map();
-  return {
-    clear: () => cache.clear(),
-    get: (key: string) => cache.get(key),
-    set: (key: string, value: unknown) => cache.set(key, value),
-  };
-}
+// ✅ DO: Functional equivalent
+const cache = new Map()
+export const clearCache = () => cache.clear()
+export const getData = (key: string) => cache.get(key)
 ```
 
 ## Code Review Checklist

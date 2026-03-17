@@ -1,5 +1,5 @@
 ---
-name: <%= branding.commandPrefix %>-roadmapper
+name: lu-roadmapper
 description: Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /project-new orchestrator.
 cognition:
   default_tier: T0
