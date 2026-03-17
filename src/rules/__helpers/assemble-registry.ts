@@ -20,6 +20,7 @@ import { complexityGatingRule } from "../general/complexity-gating.rule";
 import { cursorRulesRule } from "../general/cursor-rules.rule";
 import { domainArchitectureRule } from "../general/domain-architecture.rule";
 import { fileNamingRule } from "../general/file-naming.rule";
+import { gateEnforcementRule } from "../general/gate-enforcement.rule";
 import { generatedFileGuardRule } from "../general/generated-file-guard.rule";
 import { harnessVerificationRule } from "../general/harness-verification.rule";
 import { hookSkillBoundaryRule } from "../general/hook-skill-boundary.rule";
@@ -44,6 +45,7 @@ const generalRules: Record<string, () => BaseRule> = {
   "cursor-rules": () => cursorRulesRule,
   "domain-architecture": () => domainArchitectureRule,
   "file-naming": () => fileNamingRule,
+  "gate-enforcement": () => gateEnforcementRule,
   "generated-file-guard": () => generatedFileGuardRule,
   "harness-verification": () => harnessVerificationRule,
   "hook-skill-boundary": () => hookSkillBoundaryRule,
