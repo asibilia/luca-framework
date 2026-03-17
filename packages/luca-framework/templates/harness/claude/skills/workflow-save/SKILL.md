@@ -1,17 +1,17 @@
 # workflow-save
 
-Save <%= branding.frameworkName %> workflow run data to MuninnDB for persistent cross-session memory. Use this skill after phase execution completes, when a session pauses or ends, after verification runs, or when the user asks to save, snapshot, or persist workflow state. Also trigger when the user mentions muninn, workflow memory, run history, session tracking, or wants to record what happened during a workflow run.
+Save Luca workflow run data to MuninnDB for persistent cross-session memory. Use this skill after phase execution completes, when a session pauses or ends, after verification runs, or when the user asks to save, snapshot, or persist workflow state. Also trigger when the user mentions muninn, workflow memory, run history, session tracking, or wants to record what happened during a workflow run.
 
 ## main
 
 <main>
 # Workflow Save
 
-Persist <%= branding.frameworkName %> workflow run data as atomic memories in MuninnDB. Each piece of data becomes its own memory with inline enrichment (type, summary, entities), linked to related memories via shared entities. This creates a queryable history of everything <%= branding.frameworkName %> does across sessions.
+Persist Luca workflow run data as atomic memories in MuninnDB. Each piece of data becomes its own memory with inline enrichment (type, summary, entities), linked to related memories via shared entities. This creates a queryable history of everything Luca does across sessions.
 
 ## Why This Matters
 
-MuninnDB is <%= branding.frameworkName %>'s canonical memory system, providing semantic search, entity graphs, contradiction detection, and temporal decay — the foundation for <%= branding.frameworkName %> to genuinely learn from its own execution history. Every workflow run produces valuable signal; this skill captures it before it's lost.
+MuninnDB is Luca's canonical memory system, providing semantic search, entity graphs, contradiction detection, and temporal decay — the foundation for Luca to genuinely learn from its own execution history. Every workflow run produces valuable signal; this skill captures it before it's lost.
 
 ## Vault Resolution
 
@@ -99,7 +99,7 @@ Entities create the relational graph between memories. Use these types consisten
 | `phase` | `phase-{NN}` | `phase-06`, `phase-03` |
 | `plan` | plan filename | `PLAN-06-01.md` |
 | `branch` | full branch name | `53--v3-data-integrity` |
-| `agent` | agent name | `<%= branding.commandPrefix %>-executor`, `<%= branding.commandPrefix %>-verifier` |
+| `agent` | agent name | `lu-executor`, `lu-verifier` |
 | `commit` | short hash | `a0acf99c` |
 | `project` | project name | `luca-framework` |
 | `error` | fingerprint hash | `err-5f3a` |
@@ -234,8 +234,8 @@ After Phase 06 completes, the skill produces these memories:
 3. **commit**: "a0acf99c — docs(05-01,05-02): verify Phase 5 agentic reliability todos"
 4. **commit**: "506bbba6 — fix(03-01): add eventType/timestamp indexes to observer_events"
 5. **convergence**: "Phase 06 converged in 1 iteration. Error count: 0, delta: 0, status: improved."
-6. **agent_invocation**: "<%= branding.commandPrefix %>-executor: 3 invocations, 3 success, avg 42s, model: sonnet"
-7. **agent_invocation**: "<%= branding.commandPrefix %>-verifier: 1 invocation, 1 success, 18s, model: sonnet"
+6. **agent_invocation**: "lu-executor: 3 invocations, 3 success, avg 42s, model: sonnet"
+7. **agent_invocation**: "lu-verifier: 1 invocation, 1 success, 18s, model: sonnet"
 
 Then links:
 
@@ -249,7 +249,7 @@ Then links:
 At session pause, the skill produces:
 
 1. **session_end**: "Session sess-abc123 ended after 2h15m. Completed phases 05, 06. 4 commits. Paused: context window approaching limit."
-2. **scorecard_snapshot**: "Agent scorecard at session end: <%= branding.commandPrefix %>-executor 6/6 success avg 40s, <%= branding.commandPrefix %>-verifier 2/2 success avg 20s, <%= branding.commandPrefix %>-cognition 1/1 success avg 8s."
+2. **scorecard_snapshot**: "Agent scorecard at session end: lu-executor 6/6 success avg 40s, lu-verifier 2/2 success avg 20s, lu-cognition 1/1 success avg 8s."
 
 Links:
 

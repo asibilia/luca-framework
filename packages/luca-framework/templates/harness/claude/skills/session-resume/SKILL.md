@@ -5,7 +5,7 @@ Resume work from a previous session with full cognitive context restoration.
 ## main
 
 <main>
-# <%= branding.frameworkName %> Resume Work
+# Luca Resume Work
 
 Restore complete project context and resume work seamlessly from previous session.
 
@@ -13,7 +13,7 @@ Restore complete project context and resume work seamlessly from previous sessio
 
 Read this reference file before executing:
 
-- `.claude/<%= branding.nameLowercase %>/workflows/resume-project.md`
+- `.claude/luca/workflows/resume-project.md`
 
 ## Process
 

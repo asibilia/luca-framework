@@ -5,11 +5,11 @@ Gather phase context through adaptive questioning before creating execution plan
 ## main
 
 <main>
-# <%= branding.frameworkName %> Discuss Phase
+# Luca Discuss Phase
 
 Extract implementation decisions that downstream agents need — researcher and planner will use CONTEXT.md to know what to investigate and what choices are locked.
 
-**Arguments:** `<phase> [--auto]`
+**Arguments:** `<phase> [--auto] [--run-premortem | --skip-premortem]`
 
 ## Vault Resolution
 
@@ -39,12 +39,12 @@ Use REPO_VAULT for project-scoped operations (session, metric, brain:project) an
 1. Analyze the phase to identify gray areas (same as interactive)
 2. Auto-select ALL gray areas (no user prompt)
 3. Load project tech stack from MuninnDB
-4. Spawn `<%= branding.commandPrefix %>-discuss-researcher` agent per gray area question (web research)
+4. Spawn `lu-discuss-researcher` agent per gray area question (web research)
 5. Present research summary with citations before writing
 6. Offer user override: accept all / override some / switch to interactive
 7. Create CONTEXT.md with researched decisions (annotated with source provenance)
 
-Auto mode is useful when running via `<%= branding.commandSlash %>` in autonomous mode or when the user wants AI-researched decisions instead of manual discussion.
+Auto mode is useful when running via `/lu` in autonomous mode or when the user wants AI-researched decisions instead of manual discussion.
 
 **Output:** `{phase}-CONTEXT.md` — decisions clear enough that downstream agents can act without asking the user again
 
@@ -52,8 +52,8 @@ Auto mode is useful when running via `<%= branding.commandSlash %>` in autonomou
 
 Read these reference files before executing:
 
-- `.claude/<%= branding.nameLowercase %>/workflows/discuss-phase.md`
-- `.claude/<%= branding.nameLowercase %>/templates/context.md`
+- `.claude/luca/workflows/discuss-phase.md`
+- `.claude/luca/templates/context.md`
 
 ## Process
 
@@ -67,7 +67,7 @@ COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.pars
 
 **Always runs.** Discussion depth and model tier scale with complexity:
 
-| Complexity | Discussion Depth | Model Tier (<%= branding.commandPrefix %>-discuss-researcher) |
+| Complexity | Discussion Depth | Model Tier (lu-discuss-researcher) |
 |------------|-----------------|-------------------------------------|
 | TRIVIAL | Light (2 questions per area) | fast |
 | SIMPLE | Light (2 questions per area) | balanced |
@@ -75,7 +75,7 @@ COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.pars
 | COMPLEX | Extended (4+ questions per area) | capable |
 | CRITICAL | Thorough (6+ questions per area) | capable |
 
-The <%= branding.commandPrefix %>-discuss-researcher model tier is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-discuss-researcher", complexity)` from the centralized routing table.
+The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-discuss-researcher", complexity)` from the centralized routing table.
 
 1. **Validate phase number** (error if missing or not in roadmap)
 2. **Check if CONTEXT.md exists** (offer update/view/skip if yes)
@@ -96,15 +96,15 @@ The <%= branding.commandPrefix %>-discuss-researcher model tier is resolved via 
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
 6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via `muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")`
-7a. **Spawn <%= branding.commandPrefix %>-discuss-researcher per question** — For each gray area:
+7a. **Spawn lu-discuss-researcher per question** — For each gray area:
     - Formulate a focused question from the gray area topic
-    - Spawn `<%= branding.commandPrefix %>-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
+    - Spawn `lu-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
     - Collect the `<research_result>` response with recommendation, confidence, and sources
     - If `researchable: false`: flag for user input (even in auto mode)
 8a. **Present research summary** — Show consolidated results:
     ```
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     <%= branding.frameworkName %> ► AUTO-DISCUSS RESULTS
+     Luca ► AUTO-DISCUSS RESULTS
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     | # | Gray Area | Recommendation | Confidence | Sources |
@@ -213,9 +213,9 @@ For MODERATE, COMPLEX, and CRITICAL complexity, prompt the developer:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-<%= branding.frameworkName %> ► APPETITE DECLARATION
+Luca ► APPETITE DECLARATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-How much should <%= branding.frameworkName %> invest in this phase?
+How much should Luca invest in this phase?
 
 | Level  | Token Ceiling | Context % | Best For                    |
 |--------|--------------|-----------|------------------------------|
@@ -241,24 +241,30 @@ luca-bridge set-field --field=appetite_context_percent --value=$CHOSEN_CONTEXT_P
 
 After appetite declaration, run pre-mortem risk analysis to identify failure scenarios before planning begins. This step is gated on complexity and config.
 
-### Gate Check
+### Gate Check (Flag-Based, Fail-Closed)
+
+The premortem gate is resolved by the **lu orchestrator** and passed as an explicit flag. This skill does NOT resolve the gate itself.
 
 ```bash
-# 1. Read complexity (already available from earlier in the process)
-# 2. Check premortem gate via bridge
-PREMORTEM_GATE=$(luca-bridge gate-check --gate=premortem 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+# Check for orchestrator-supplied flag (fail-closed: absent flag = skip)
+if echo "$ARGS" | grep -q -- "--run-premortem"; then
+  PREMORTEM_GATE="true"
+else
+  # --skip-premortem OR no flag at all = skip (fail-closed)
+  PREMORTEM_GATE="false"
+fi
 ```
 
 ### Skip Conditions
 
 Skip pre-mortem (no prompt, no spawn) if:
-- `PREMORTEM_GATE` is "false"
+- `PREMORTEM_GATE` is "false" (either --skip-premortem was passed or no flag was present)
 
 When skipping, emit DISCUSS_COMPLETE as normal and proceed to next steps.
 
 ### Self-Tuning Auto-Skip
 
-If the config gate passes (premortem IS enabled), check whether signal rate data suggests pre-mortem is not providing value:
+If the orchestrator flag indicates premortem is enabled (`--run-premortem` was passed), check whether signal rate data suggests pre-mortem is not providing value:
 
 1. Recall \`metric:signal-rate-aggregate\` from MuninnDB:
    \`\`\`
@@ -270,7 +276,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
    - \`rate < 0.10\` (less than 10% of pre-mortem risks resulted in useful mitigations)
 
    Then AUTO-SKIP pre-mortem:
-   - Do NOT spawn <%= branding.commandPrefix %>-premortem
+   - Do NOT spawn lu-premortem
    - Store auto-skip decision as MuninnDB engram:
      \`\`\`
      mcp__muninn__muninn_remember(
@@ -284,11 +290,11 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
 
 3. If the aggregate does NOT exist or conditions are NOT met: proceed with pre-mortem as normal.
 
-**Important:** The config gate (\`gates.premortem\`) takes precedence. If config says disabled, pre-mortem never runs regardless of signal rate. Self-tuning only applies when config says enabled but data suggests low value.
+**Important:** The orchestrator flag takes precedence. If the orchestrator passed \`--skip-premortem\` (or no flag), pre-mortem never runs regardless of signal rate. Self-tuning only applies when \`--run-premortem\` was passed but data suggests low value.
 
 ### Execution (gate enabled)
 
-1. **Spawn <%= branding.commandPrefix %>-premortem agent** via Task() with this context:
+1. **Spawn lu-premortem agent** via Task() with this context:
 
 ```
 <premortem_context>
@@ -306,10 +312,10 @@ Generate a Tier 1 Risk Brief for this phase. Analyze the codebase context and pr
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PRE-MORTEM RISK BRIEF
+ Luca ► PRE-MORTEM RISK BRIEF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{Risk Brief content from <%= branding.commandPrefix %>-premortem agent}
+{Risk Brief content from lu-premortem agent}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Actions:

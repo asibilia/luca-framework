@@ -1,13 +1,13 @@
 # post-init-tour
 
-Guide new users through <%= branding.frameworkName %>'s core concepts after project initialization.
+Guide new users through Luca's core concepts after project initialization.
 
 ## main
 
 <main>
 # Post-Init Interactive Tour
 
-Walk the user through <%= branding.frameworkName %>'s core concepts after /project-new completes.
+Walk the user through Luca's core concepts after /project-new completes.
 
 ## Behavior
 
@@ -20,7 +20,7 @@ Walk the user through <%= branding.frameworkName %>'s core concepts after /proje
 
 ### Step 1: MuninnDB -- Project Memory
 
-MuninnDB is <%= branding.frameworkName %>'s memory system. It stores your project's identity (stack, architecture, conventions), long-term learnings (patterns, decisions, pitfalls), and session context. All memory is semantically searchable with entity graphs and temporal decay. Run /seed-memory to populate it from existing project knowledge.
+MuninnDB is Luca's memory system. It stores your project's identity (stack, architecture, conventions), long-term learnings (patterns, decisions, pitfalls), and session context. All memory is semantically searchable with entity graphs and temporal decay. Run /seed-memory to populate it from existing project knowledge.
 
 ### Step 2: Skills -- Interactive Workflows
 
@@ -28,7 +28,7 @@ Skills are user-invocable workflows triggered by /commands (e.g., /phase-plan, /
 
 ### Step 3: Agents -- Specialized AI Workers
 
-Agents are specialized sub-agents that handle focused tasks: <%= branding.commandPrefix %>-router classifies complexity, <%= branding.commandPrefix %>-executor runs code changes, <%= branding.commandPrefix %>-verifier validates results, and reviewers audit code quality. They are spawned automatically during workflow execution.
+Agents are specialized sub-agents that handle focused tasks: lu-router classifies complexity, lu-executor runs code changes, lu-verifier validates results, and reviewers audit code quality. They are spawned automatically during workflow execution.
 
 ### Step 4: Phases -- Structured Development
 

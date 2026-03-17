@@ -5,7 +5,7 @@ Plan the next coding session using WSJF prioritization of pending todos and road
 ## main
 
 <main>
-# <%= branding.frameworkName %> Session Planner
+# Luca Session Planner
 
 Plan the next AI coding session (or week) by analyzing pending todos, scoring them with WSJF, and scheduling an optimal session plan.
 
@@ -41,7 +41,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
    - Show count of pending todos by area
    - Note any items with dependencies
 
-### Step 2: Invoke PM Agent (<%= branding.commandPrefix %>-pm-planner)
+### Step 2: Invoke PM Agent (lu-pm-planner)
 
 1. **Prepare context for PM agent:**
    - Package TodoMetadata[] as structured input
@@ -49,7 +49,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
    - Include dependency graph
    - Include any calibration entries for effort estimates (via MuninnDB: `mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "effort estimates and calibration data")`)
 
-2. **Spawn <%= branding.commandPrefix %>-pm-planner sub-agent:**
+2. **Spawn lu-pm-planner sub-agent:**
    - Agent infers WSJF inputs (BV, TC, RR) for each todo from context
    - Agent maps complexity to effort points
    - Agent computes WSJF scores and ranks items

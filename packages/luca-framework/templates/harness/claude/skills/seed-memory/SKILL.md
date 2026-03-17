@@ -84,7 +84,7 @@ If `.planning/BRAIN.md` exists:
   "vault": "REPO_VAULT (resolved from .planning/config.json muninn.vault)",
   "root": {
     "concept": "brain:project-identity",
-    "content": "<%= branding.frameworkName %> Framework -- agentic development tooling monorepo. Builds agents, skills, rules, hooks for AI-assisted development.",
+    "content": "Luca Framework -- agentic development tooling monorepo. Builds agents, skills, rules, hooks for AI-assisted development.",
     "type": "project_identity",
     "summary": "Project identity and conventions for luca-framework",
     "entities": [{"name": "luca-framework", "type": "project"}]

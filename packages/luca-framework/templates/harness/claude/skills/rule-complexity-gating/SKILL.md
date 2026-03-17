@@ -6,7 +6,7 @@ Five complexity levels (TRIVIAL to CRITICAL) with model routing matrix for per-a
 
 ## Five Complexity Levels
 
-<%= branding.frameworkName %> classifies task complexity into five levels, grouped into three behavioral tiers:
+Luca classifies task complexity into five levels, grouped into three behavioral tiers:
 
 | Level | Tier | File Count | Scope | Risk |
 |-------|------|-----------|-------|------|
@@ -26,12 +26,12 @@ ALL workflow steps run at every complexity level. Complexity no longer gates ste
 4. Research
 5. Discussion
 6. Plan discovery and wave grouping
-7. Core execution (<%= branding.commandPrefix %>-executor)
+7. Core execution (lu-executor)
 8. Code review (all reviewers)
 9. UAT
 10. Result aggregation
 11. Verification harness
-12. <%= branding.commandPrefix %>-verifier
+12. lu-verifier
 13. Learning capture
 14. State/roadmap/requirements updates
 15. Commit
@@ -42,10 +42,10 @@ Complexity determines which model tier each agent category receives. The canonic
 
 | Agent Category | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
 |----------------|---------|--------|----------|---------|----------|
-| Classifiers (<%= branding.commandPrefix %>-cognition, <%= branding.commandPrefix %>-learner) | haiku | haiku | haiku | haiku | sonnet |
-| Routers (<%= branding.commandPrefix %>-router, <%= branding.commandPrefix %>-router-fast) | haiku | haiku | sonnet | sonnet | sonnet |
-| Orchestrators (<%= branding.commandPrefix %>-executor, <%= branding.commandPrefix %>-planner) | haiku | sonnet | sonnet | opus | opus |
-| Deep analysis (<%= branding.commandPrefix %>-verifier, <%= branding.commandPrefix %>-debugger) | haiku | sonnet | opus | opus | opus |
+| Classifiers (lu-cognition, lu-learner) | haiku | haiku | haiku | haiku | sonnet |
+| Routers (lu-router, lu-router-fast) | haiku | haiku | sonnet | sonnet | sonnet |
+| Orchestrators (lu-executor, lu-planner) | haiku | sonnet | sonnet | opus | opus |
+| Deep analysis (lu-verifier, lu-debugger) | haiku | sonnet | opus | opus | opus |
 | Reviewers (dx-advocate, code-simplifier) | haiku | sonnet | opus | opus | opus |
 
 Model tiers map to concrete models: **haiku** (fast/lightweight), **sonnet** (balanced/standard), **opus** (capable/deep analysis). Resolve at runtime via \`resolveModelForAgent(agentName, complexity)\`.
@@ -68,13 +68,13 @@ These parameters still scale with complexity:
 
 1. Read complexity from bridge: \`luca-bridge read-complexity 2>/dev/null\`
 2. Fallback: Read from STATE.md \`Task Complexity:\` field
-3. If not set, read from <%= branding.commandPrefix %>-router's classification output
+3. If not set, read from lu-router's classification output
 4. Call \`resolveModelForAgent(agentName, complexity)\` to get the model tier
 5. All steps run at every complexity level -- only the model tier varies
 6. Flag-based overrides (\`--skip-review\`, \`--skip-uat\`, \`--skip-research\`) still allow explicit skipping
 
 **Complexity is set by:**
-- <%= branding.commandPrefix %>-router (automatic inference)
+- lu-router (automatic inference)
 - \`--complexity=<level>\` flag (manual override)
 - Persisted in state machine (state.json + STATE.md) for session continuity
 

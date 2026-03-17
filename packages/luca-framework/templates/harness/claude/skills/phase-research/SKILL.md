@@ -5,7 +5,7 @@ Conduct comprehensive ecosystem research for niche or complex technical domains.
 ## main
 
 <main>
-# <%= branding.frameworkName %> Research Phase
+# Luca Research Phase
 
 Comprehensive ecosystem research for niche/complex domains.
 
@@ -35,7 +35,7 @@ Goes beyond "which library" to ecosystem knowledge:
 
 2. **Spawn researcher:**
 
-   - Use <%= branding.commandPrefix %>-phase-researcher agent
+   - Use lu-phase-researcher agent
    - Focus on ecosystem knowledge for the domain
 
 3. **Create RESEARCH.md:**

@@ -1,16 +1,16 @@
 # rule-lu-workflow
 
-<%= branding.frameworkName %> cognitive memory system: MuninnDB-backed workflow and quality curve.
+Luca cognitive memory system: MuninnDB-backed workflow and quality curve.
 
 ## main
 
-<%= branding.frameworkName %> is a framework for agentic development, combining spec-driven development with cognitive memory systems and integrated git workflow. It solves context rot while enabling AI to learn from past experience.
+Luca is a framework for agentic development, combining spec-driven development with cognitive memory systems and integrated git workflow. It solves context rot while enabling AI to learn from past experience.
 
-## What's New in <%= branding.frameworkName %>
+## What's New in Luca
 
 | Feature             | Description                                          |
 | ------------------- | ---------------------------------------------------- |
-| Entry Point         | Unified `<%= branding.commandSlash %>` with intelligent routing               |
+| Entry Point         | Unified `/lu` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
 | Memory              | MuninnDB (project identity, learnings, session)      |
 | Verification        | Always runs (all complexity levels)                  |
@@ -90,7 +90,7 @@ Active during workflow, cleared after learning extraction via `muninn_forget`:
 
 ## Cognitive Pre-Flight
 
-Before major operations, <%= branding.frameworkName %> runs cognitive pre-flight via MuninnDB:
+Before major operations, Luca runs cognitive pre-flight via MuninnDB:
 
 1. **Load project identity** — `muninn_recall_tree(id: "brain:project-identity")`
 2. **Selective recall** — `muninn_recall(context: "relevant patterns, decisions, pitfalls")`

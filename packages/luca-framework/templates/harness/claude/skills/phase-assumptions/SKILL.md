@@ -5,7 +5,7 @@ Preview AI planning assumptions for a phase before committing to execution.
 ## main
 
 <main>
-# <%= branding.frameworkName %> List Phase Assumptions
+# Luca List Phase Assumptions
 
 See what AI is planning to do before it starts.
 

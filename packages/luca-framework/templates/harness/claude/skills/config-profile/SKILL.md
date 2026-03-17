@@ -1,13 +1,13 @@
 # config-profile
 
-Switch the model profile (quality/balanced/budget) for <%= branding.frameworkName %> agent delegation.
+Switch the model profile (quality/balanced/budget) for Luca agent delegation.
 
 ## main
 
 <main>
-# <%= branding.frameworkName %> Set Profile
+# Luca Set Profile
 
-Quick switch model profile for <%= branding.frameworkName %> agents.
+Quick switch model profile for Luca agents.
 
 **Arguments:** `<profile>` (quality | balanced | budget)
 
@@ -23,14 +23,14 @@ Quick switch model profile for <%= branding.frameworkName %> agents.
 
 | Agent | quality | balanced | budget |
 |-------|---------|----------|--------|
-| <%= branding.commandPrefix %>-planner | opus | opus | sonnet |
-| <%= branding.commandPrefix %>-roadmapper | opus | sonnet | sonnet |
-| <%= branding.commandPrefix %>-executor | opus | sonnet | sonnet |
-| <%= branding.commandPrefix %>-phase-researcher | opus | sonnet | haiku |
-| <%= branding.commandPrefix %>-project-researcher | opus | sonnet | haiku |
-| <%= branding.commandPrefix %>-research-synthesizer | sonnet | sonnet | haiku |
-| <%= branding.commandPrefix %>-verifier | sonnet | sonnet | haiku |
-| <%= branding.commandPrefix %>-plan-checker | sonnet | sonnet | haiku |
+| lu-planner | opus | opus | sonnet |
+| lu-roadmapper | opus | sonnet | sonnet |
+| lu-executor | opus | sonnet | sonnet |
+| lu-phase-researcher | opus | sonnet | haiku |
+| lu-project-researcher | opus | sonnet | haiku |
+| lu-research-synthesizer | sonnet | sonnet | haiku |
+| lu-verifier | sonnet | sonnet | haiku |
+| lu-plan-checker | sonnet | sonnet | haiku |
 
 ## Process
 

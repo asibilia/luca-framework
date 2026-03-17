@@ -5,7 +5,7 @@ Archive a completed milestone, extract learnings, and prepare for the next versi
 ## main
 
 <main>
-# <%= branding.frameworkName %> Complete Milestone
+# Luca Complete Milestone
 
 Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
 
@@ -21,9 +21,9 @@ Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUI
 
 Read these reference files before executing:
 
-- `.claude/<%= branding.nameLowercase %>/workflows/complete-milestone.md`
-- `.claude/<%= branding.nameLowercase %>/templates/milestone-archive.md`
-- `.claude/<%= branding.nameLowercase %>/workflows/learning-capture.md`
+- `.claude/luca/workflows/complete-milestone.md`
+- `.claude/luca/templates/milestone-archive.md`
+- `.claude/luca/workflows/learning-capture.md`
 
 ## Learning Consolidation (NEW)
 
@@ -39,7 +39,7 @@ Before archiving, ensure all session learnings are captured:
    mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context and unextracted findings")
    ```
 
-2. **Invoke <%= branding.commandPrefix %>-learner** if candidate learnings exist
+2. **Invoke lu-learner** if candidate learnings exist
 
 3. **Review milestone-specific insights** in MuninnDB:
    - Patterns that were validated multiple times -> bump to High confidence via `mcp__muninn__muninn_evolve`
@@ -99,7 +99,7 @@ If stale engrams found, display them to the developer for review:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> > STALE ENGRAM REVIEW — v{version}
+ Luca > STALE ENGRAM REVIEW — v{version}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {count} stale engrams detected (5+ recalls, 0 positive, 3+ milestones dormant):
@@ -182,7 +182,7 @@ BLOCK_ON_CRITICAL=$(cat .planning/config.json | bun -e "const c=JSON.parse(await
 
 If `SHADOW_ENABLED` is false, skip this step entirely and proceed to Step 1.
 
-Spawn `<%= branding.commandPrefix %>-shadow-scanner` with `full` mode:
+Spawn `lu-shadow-scanner` with `full` mode:
 
 ```
 Task(
@@ -196,7 +196,7 @@ Task(
 Scan the repository for AI-session debris using full mode (all 5 categories).
 Return a valid ShadowScanReport JSON block as your final output.
 """,
-  subagent_type: "<%= branding.commandPrefix %>-shadow-scanner",
+  subagent_type: "lu-shadow-scanner",
   description: "Pre-archive shadow scan (full mode, milestone v{version})"
 )
 ```
@@ -209,7 +209,7 @@ Parse the returned `ShadowScanReport`.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► SHADOW DEBT GATE — {n} CRITICAL findings before milestone archive
+ Luca ► SHADOW DEBT GATE — {n} CRITICAL findings before milestone archive
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {findings list — file_path, description, recommendation for each CRITICAL finding}
 
@@ -388,7 +388,7 @@ Display results as an ASCII table:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> > PROCESS RETROSPECTIVE — v{version}
+ Luca > PROCESS RETROSPECTIVE — v{version}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Metric             | Phases | Trend   | Current |
@@ -520,7 +520,7 @@ If `consecutive_milestones >= 8` AND graduation check passes:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> > DIVERGENT MODE ADVISORY
+ Luca > DIVERGENT MODE ADVISORY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 You've completed {N} consecutive milestones in convergent

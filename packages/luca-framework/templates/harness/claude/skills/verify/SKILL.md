@@ -5,7 +5,7 @@ Validate built features through conversational UAT testing against acceptance cr
 ## main
 
 <main>
-# <%= branding.frameworkName %> Verify Work
+# Luca Verify Work
 
 Validate built features through conversational testing with persistent state.
 
@@ -15,9 +15,9 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `<%= branding.commandPrefix %>-debugger` - Diagnoses root causes of UAT failures (parallel)
-- `<%= branding.commandPrefix %>-planner` - Creates fix plans in --gaps mode
-- `<%= branding.commandPrefix %>-plan-checker` - Verifies fix plans before execution
+- `lu-debugger` - Diagnoses root causes of UAT failures (parallel)
+- `lu-planner` - Creates fix plans in --gaps mode
+- `lu-plan-checker` - Verifies fix plans before execution
 - `dx-advocate` - Code quality review
 - `code-simplifier` - DRY and complexity review
 - `code-architect` - Architecture review
@@ -26,7 +26,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to diagnose, plan, or review code yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -36,9 +36,9 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent              | quality | balanced | budget |
 | ------------------ | ------- | -------- | ------ |
-| <%= branding.commandPrefix %>-debugger     | opus    | sonnet   | sonnet |
-| <%= branding.commandPrefix %>-planner      | opus    | opus     | sonnet |
-| <%= branding.commandPrefix %>-plan-checker | sonnet  | sonnet   | haiku  |
+| lu-debugger     | opus    | sonnet   | sonnet |
+| lu-planner      | opus    | opus     | sonnet |
+| lu-plan-checker | sonnet  | sonnet   | haiku  |
 | reviewers (all)    | opus    | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
@@ -69,8 +69,8 @@ reviewer_model = (omit)
 
 Read these reference files before executing:
 
-- `.claude/<%= branding.nameLowercase %>/workflows/verify-work.md`
-- `.claude/<%= branding.nameLowercase %>/templates/UAT.md`
+- `.claude/luca/workflows/verify-work.md`
+- `.claude/luca/templates/UAT.md`
 
 ## Process
 
@@ -106,7 +106,7 @@ Read these reference files before executing:
    Diagnose the root cause of this UAT failure.
    Return diagnosis with affected files and suggested fix approach.
    """,
-     subagent_type="<%= branding.commandPrefix %>-debugger",
+     subagent_type="lu-debugger",
      model="{debugger_model}",
      description="Diagnose UAT issue: {issue_summary}"
    )
@@ -130,7 +130,7 @@ Read these reference files before executing:
 
    Create fix plans for these diagnosed UAT issues.
    """,
-     subagent_type="<%= branding.commandPrefix %>-planner",
+     subagent_type="lu-planner",
      model="{planner_model}",
      description="Plan UAT fixes"
    )
@@ -151,7 +151,7 @@ Read these reference files before executing:
 
    Verify these fix plans will address the UAT issues.
    """,
-     subagent_type="<%= branding.commandPrefix %>-plan-checker",
+     subagent_type="lu-plan-checker",
      model="{checker_model}",
      description="Verify fix plans"
    )
@@ -250,7 +250,7 @@ Read these reference files before executing:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
+ Luca ► PHASE {Z} VERIFIED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{N} UAT tests passed ✓
@@ -267,7 +267,7 @@ Code quality review passed ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
+ Luca ► PHASE {Z} VERIFIED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Final phase verified ✓
@@ -283,7 +283,7 @@ Code quality review passed ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} ISSUES FOUND ⚠
+ Luca ► PHASE {Z} ISSUES FOUND ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{M} tests passed
@@ -299,7 +299,7 @@ Fix plans verified ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} BLOCKED ✗
+ Luca ► PHASE {Z} BLOCKED ✗
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Manual intervention required
@@ -309,7 +309,7 @@ Manual intervention required
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} CODE REVIEW ⚠
+ Luca ► PHASE {Z} CODE REVIEW ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{N} UAT tests passed ✓
@@ -331,7 +331,7 @@ Manual intervention required
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► QUALITY FIXES READY ✓
+ Luca ► QUALITY FIXES READY ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N} quality issues planned for fixing.
@@ -350,8 +350,8 @@ Manual intervention required
 - [ ] Batched writes: on issue, every 5 passes, or completion
 - [ ] Committed on UAT completion
 - [ ] If UAT issues: parallel debug agents diagnose root causes
-- [ ] If UAT issues: <%= branding.commandPrefix %>-planner creates fix plans from diagnosed gaps
-- [ ] If UAT issues: <%= branding.commandPrefix %>-plan-checker verifies fix plans (max 3 iterations)
+- [ ] If UAT issues: lu-planner creates fix plans from diagnosed gaps
+- [ ] If UAT issues: lu-plan-checker verifies fix plans (max 3 iterations)
 - [ ] If UAT issues: ready for `/phase-execute --gaps-only`
 - [ ] If UAT passes: code quality review runs on changed files
 - [ ] If UAT passes: dx-advocate checks conventions

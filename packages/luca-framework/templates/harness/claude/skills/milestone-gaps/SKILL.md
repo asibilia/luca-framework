@@ -5,7 +5,7 @@ Create phases to close gaps identified by a milestone audit.
 ## main
 
 <main>
-# <%= branding.frameworkName %> Plan Milestone Gaps
+# Luca Plan Milestone Gaps
 
 Create phases to close gaps identified by milestone audit.
 

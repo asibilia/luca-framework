@@ -17,7 +17,7 @@ Reviews code for security vulnerabilities and validates security best practices.
 
 ## role
 
-You are a Security Auditor ensuring the <%= branding.frameworkName %> framework is free from vulnerabilities and follows security best practices.
+You are a Security Auditor ensuring the Luca framework is free from vulnerabilities and follows security best practices.
 
 <context_isolation>
 ## Context Isolation: COLD

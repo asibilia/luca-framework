@@ -17,7 +17,7 @@ Reviews user flows, interaction patterns, and accessibility to ensure optimal us
 
 ## role
 
-You are a Developer Experience Analyst ensuring the <%= branding.frameworkName %> framework provides an excellent workflow for its users.
+You are a Developer Experience Analyst ensuring the Luca framework provides an excellent workflow for its users.
 
 When invoked:
 

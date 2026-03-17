@@ -5,7 +5,7 @@ Create detailed PLAN.md execution plans for a specific phase with tasks, waves, 
 ## main
 
 <main>
-# <%= branding.frameworkName %> Plan Phase
+# Luca Plan Phase
 
 Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research and verification.
 
@@ -19,20 +19,20 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `<%= branding.commandPrefix %>-phase-researcher` - Researches implementation approaches before planning
-- `<%= branding.commandPrefix %>-planner` - Creates PLAN.md files with task breakdowns
-- `<%= branding.commandPrefix %>-plan-checker` - Validates plans before execution
+- `lu-phase-researcher` - Researches implementation approaches before planning
+- `lu-planner` - Creates PLAN.md files with task breakdowns
+- `lu-plan-checker` - Validates plans before execution
 
 **DO NOT** attempt to research, plan, or verify plans yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ## Execution Context
 
 Read this reference file before executing:
 
-- `.claude/<%= branding.nameLowercase %>/references/ui-brand.md`
-- `.claude/<%= branding.nameLowercase %>/workflows/cognitive-preflight.md`
+- `.claude/luca/references/ui-brand.md`
+- `.claude/luca/workflows/cognitive-preflight.md`
 
 ## Vault Resolution
 
@@ -142,9 +142,9 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent                  | quality | balanced | budget |
 | ---------------------- | ------- | -------- | ------ |
-| <%= branding.commandPrefix %>-phase-researcher | opus    | sonnet   | haiku  |
-| <%= branding.commandPrefix %>-planner          | opus    | opus     | sonnet |
-| <%= branding.commandPrefix %>-plan-checker     | sonnet  | sonnet   | haiku  |
+| lu-phase-researcher | opus    | sonnet   | haiku  |
+| lu-planner          | opus    | opus     | sonnet |
+| lu-plan-checker     | sonnet  | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -204,7 +204,7 @@ fi
 
 **If `--skip-research` flag:** Skip to step 6.
 
-**Always runs** (model tier for <%= branding.commandPrefix %>-phase-researcher resolved from routing table per complexity). The `--skip-research` flag still allows skipping entirely.
+**Always runs** (model tier for lu-phase-researcher resolved from routing table per complexity). The `--skip-research` flag still allows skipping entirely.
 
 | Complexity | Research | Model Tier (from routing table) |
 |------------|----------|---------------------------------|
@@ -220,7 +220,7 @@ Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
 COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
 ```
 
-The researcher model tier is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-phase-researcher", complexity)`.
+The researcher model tier is resolved via `resolveModelForAgent("lu-phase-researcher", complexity)`.
 
 **Check config for research setting:**
 
@@ -228,7 +228,7 @@ The researcher model tier is resolved via `resolveModelForAgent("<%= branding.co
 WORKFLOW_RESEARCH=$(cat .planning/config.json 2>/dev/null | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true|false' || echo "true")
 ```
 
-**MANDATORY**: If research is needed, you MUST spawn a <%= branding.commandPrefix %>-phase-researcher sub-agent. Do NOT attempt to research yourself.
+**MANDATORY**: If research is needed, you MUST spawn a lu-phase-researcher sub-agent. Do NOT attempt to research yourself.
 
 First, read the required context:
 
@@ -281,7 +281,7 @@ Task(
 
 Research how to implement this phase. Analyze the codebase, identify patterns, and document findings.
 """,
-  subagent_type="<%= branding.commandPrefix %>-phase-researcher",
+  subagent_type="lu-phase-researcher",
   model="{researcher_model}",
   description="Research Phase {phase_number}"
 )
@@ -305,19 +305,19 @@ Read and store context file contents for the planner agent:
 - REQUIREMENTS.md, CONTEXT.md, RESEARCH.md (if exist)
 - VERIFICATION.md, UAT.md (if --gaps mode)
 
-### 8. Spawn <%= branding.commandPrefix %>-planner Agent
+### 8. Spawn lu-planner Agent
 
 Display stage banner:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PLANNING PHASE {X}
+ Luca ► PLANNING PHASE {X}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Spawning planner...
 ```
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-planner sub-agent. Do NOT attempt to create plans yourself.
+**MANDATORY**: You MUST spawn a lu-planner sub-agent. Do NOT attempt to create plans yourself.
 
 First, read all context files (already done in step 7):
 
@@ -338,7 +338,7 @@ VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo ""
 import { requestMemoryContext } from "~/shared";
 
 const workingContent = requestMemoryContext({
-  agentName: "<%= branding.commandPrefix %>-planner",
+  agentName: "lu-planner",
   sessionId: SESSION_ID,
   memoryTags: ["planning", "architecture"],
   maxTokens: 500,
@@ -397,7 +397,7 @@ Plans must be executable prompts with:
 
 Create PLAN.md files for this phase with tasks, waves, and dependencies.
 """,
-  subagent_type="<%= branding.commandPrefix %>-planner",
+  subagent_type="lu-planner",
   model="{planner_model}",
   description="Plan Phase {phase_number}"
 )
@@ -411,17 +411,17 @@ Create PLAN.md files for this phase with tasks, waves, and dependencies.
 - **CHECKPOINT REACHED:** Present to user, get response
 - **PLANNING INCONCLUSIVE:** Offer options to add context, retry, or manual
 
-### 10. Spawn <%= branding.commandPrefix %>-plan-checker Agent
+### 10. Spawn lu-plan-checker Agent
 
 Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► VERIFYING PLANS
+ Luca ► VERIFYING PLANS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Always runs** (iteration count scales with complexity, model tier for <%= branding.commandPrefix %>-plan-checker resolved from routing table).
+**Always runs** (iteration count scales with complexity, model tier for lu-plan-checker resolved from routing table).
 
 | Complexity | Plan Verification Iterations | Model Tier (from routing table) |
 |------------|-----------------------------|---------------------------------|
@@ -431,9 +431,9 @@ Display:
 | COMPLEX | 2 iterations | capable |
 | CRITICAL | 3 iterations | capable |
 
-The plan-checker model tier is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-plan-checker", complexity)`.
+The plan-checker model tier is resolved via `resolveModelForAgent("lu-plan-checker", complexity)`.
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-plan-checker sub-agent. Do NOT attempt to verify plans yourself.
+**MANDATORY**: You MUST spawn a lu-plan-checker sub-agent. Do NOT attempt to verify plans yourself.
 
 First, read the created plans:
 
@@ -480,7 +480,7 @@ Task(
 
 Verify these plans will achieve the phase goal when executed.
 """,
-  subagent_type="<%= branding.commandPrefix %>-plan-checker",
+  subagent_type="lu-plan-checker",
   model="{checker_model}",
   description="Verify Phase {phase_number} plans"
 )
@@ -506,7 +506,7 @@ luca-bridge read-status 2>/dev/null
 
 If issues found and iteration_count < planVerificationIterations:
 
-- Spawn <%= branding.commandPrefix %>-planner with revision context
+- Spawn lu-planner with revision context
 - Re-verify with checker
 - Repeat until passed or max iterations
 
@@ -514,7 +514,7 @@ If issues found and iteration_count < planVerificationIterations:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {X} PLANNED ✓
+ Luca ► PHASE {X} PLANNED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Phase {X}: {Name}** — {N} plan(s) in {M} wave(s)
@@ -537,9 +537,9 @@ If issues found and iteration_count < planVerificationIterations:
 - [ ] Phase validated against roadmap
 - [ ] Phase directory created if needed
 - [ ] Research completed (unless --skip-research or --gaps or exists)
-- [ ] <%= branding.commandPrefix %>-planner spawned with context
+- [ ] lu-planner spawned with context
 - [ ] Plans created
-- [ ] <%= branding.commandPrefix %>-plan-checker spawned (unless --skip-verify)
+- [ ] lu-plan-checker spawned (unless --skip-verify)
 - [ ] Verification passed OR user override
 - [ ] User knows next steps (execute or review)
 

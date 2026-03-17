@@ -5,7 +5,7 @@ Check project progress, show current state, and suggest the next action to take.
 ## main
 
 <main>
-# <%= branding.frameworkName %> Progress
+# Luca Progress
 
 Check project progress, summarize recent work and what's ahead, then intelligently route to the next action - either executing an existing plan or creating the next one.
 

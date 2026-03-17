@@ -1,13 +1,13 @@
 # quick
 
-Execute a quick ad-hoc task with <%= branding.frameworkName %> quality guarantees but minimal ceremony.
+Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.
 
 ## main
 
 <main>
-# <%= branding.frameworkName %> Quick
+# Luca Quick
 
-Execute small, ad-hoc tasks with <%= branding.frameworkName %> guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
+Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
 
 ## Vault Resolution
 
@@ -25,8 +25,8 @@ Use REPO_VAULT for project-scoped operations (session, metric, brain:project) an
 
 Quick mode is the same system with a shorter path:
 
-- Spawns <%= branding.commandPrefix %>-planner (quick mode) + <%= branding.commandPrefix %>-executor(s)
-- Skips <%= branding.commandPrefix %>-phase-researcher, <%= branding.commandPrefix %>-plan-checker, <%= branding.commandPrefix %>-verifier
+- Spawns lu-planner (quick mode) + lu-executor(s)
+- Skips lu-phase-researcher, lu-plan-checker, lu-verifier
 - Quick tasks live in `.planning/quick/` separate from planned phases
 - Updates STATE.md "Quick Tasks Completed" table (NOT ROADMAP.md)
 
@@ -38,12 +38,12 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `<%= branding.commandPrefix %>-planner` - Creates quick plan with 1-3 tasks
-- `<%= branding.commandPrefix %>-executor` - Executes the plan
+- `lu-planner` - Creates quick plan with 1-3 tasks
+- `lu-executor` - Executes the plan
 
 **DO NOT** attempt to plan or execute yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ## Process
 
@@ -57,8 +57,8 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent          | quality | balanced | budget |
 | -------------- | ------- | -------- | ------ |
-| <%= branding.commandPrefix %>-planner  | opus    | opus     | sonnet |
-| <%= branding.commandPrefix %>-executor | opus    | sonnet   | sonnet |
+| lu-planner  | opus    | opus     | sonnet |
+| lu-executor | opus    | sonnet   | sonnet |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -72,7 +72,7 @@ executor_model = (omit)
 
 ### Step 1: Pre-flight Validation
 
-Check that an active <%= branding.frameworkName %> project exists:
+Check that an active Luca project exists:
 
 ```bash
 # Auto-initialize minimal .planning/ if needed (quick mode works without full project)
@@ -166,7 +166,7 @@ mkdir -p "$QUICK_DIR"
 
 ### Step 5: Spawn Planner (Quick Mode)
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-planner sub-agent. Do NOT attempt to plan yourself.
+**MANDATORY**: You MUST spawn a lu-planner sub-agent. Do NOT attempt to plan yourself.
 
 First, read context:
 
@@ -215,7 +215,7 @@ Task(
 
 Create a quick plan for this task.
 """,
-  subagent_type="<%= branding.commandPrefix %>-planner",
+  subagent_type="lu-planner",
   model="{planner_model}",
   description="Quick plan: {description}"
 )
@@ -225,7 +225,7 @@ Create a quick plan for this task.
 
 ### Step 6: Spawn Executor
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-executor sub-agent. Do NOT attempt to execute yourself.
+**MANDATORY**: You MUST spawn a lu-executor sub-agent. Do NOT attempt to execute yourself.
 
 First, read the plan:
 
@@ -270,7 +270,7 @@ Task(
 
 Execute this quick task plan.
 """,
-  subagent_type="<%= branding.commandPrefix %>-executor",
+  subagent_type="lu-executor",
   model="{executor_model}",
   description="Execute quick: {description}"
 )
@@ -297,7 +297,7 @@ Display completion:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► QUICK TASK COMPLETE ✓
+ Luca ► QUICK TASK COMPLETE ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Quick Task ${next_num}: ${DESCRIPTION}

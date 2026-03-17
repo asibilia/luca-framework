@@ -13,11 +13,11 @@ Run a repo structure health check to detect naming violations, orphaned files, i
 
 ## Sub-agent Delegation
 
-This skill delegates the analysis to the `<%= branding.commandPrefix %>-repo-architect` agent:
+This skill delegates the analysis to the `lu-repo-architect` agent:
 
 ```
 Task(
-  agent: "<%= branding.commandPrefix %>-repo-architect",
+  agent: "lu-repo-architect",
   prompt: "Run {mode} repo audit on this codebase. Report findings in structured format."
 )
 ```
@@ -47,13 +47,13 @@ bun run scripts/check-domain-boundaries.ts 2>&1
 bun run check:drift 2>&1
 ```
 
-### 3. Delegate to <%= branding.commandPrefix %>-repo-architect
+### 3. Delegate to lu-repo-architect
 
 Spawn the agent for deeper analysis based on the mode:
 
 ```
 Task(
-  agent: "<%= branding.commandPrefix %>-repo-architect",
+  agent: "lu-repo-architect",
   prompt: "Run {AUDIT_MODE} repo audit. The automated checks returned: {SCRIPT_RESULTS}. Now perform the additional checks for this mode and produce a structured health report."
 )
 ```
@@ -84,6 +84,6 @@ If `--fix` is passed and issues are auto-fixable (naming, empty dirs):
 ## Notes
 
 - This skill is invoked as `/repo-audit` or automatically at phase boundaries
-- The <%= branding.commandPrefix %>-repo-architect agent performs the actual analysis
+- The lu-repo-architect agent performs the actual analysis
 - Existing scripts (check-domain-boundaries, check-drift) handle the mechanical checks
 </main>

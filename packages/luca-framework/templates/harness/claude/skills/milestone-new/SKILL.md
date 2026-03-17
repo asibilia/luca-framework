@@ -5,7 +5,7 @@ Start a new milestone cycle with requirements gathering and roadmap generation.
 ## main
 
 <main>
-# <%= branding.frameworkName %> New Milestone
+# Luca New Milestone
 
 Start a new milestone through unified flow: questioning → research (optional) → requirements → roadmap.
 
@@ -27,10 +27,10 @@ This is the brownfield equivalent of new-project. The project exists, PROJECT.md
 
 Read these reference files before executing:
 
-- `.claude/<%= branding.nameLowercase %>/references/questioning.md`
-- `.claude/<%= branding.nameLowercase %>/references/ui-brand.md`
-- `.claude/<%= branding.nameLowercase %>/templates/project.md`
-- `.claude/<%= branding.nameLowercase %>/templates/requirements.md`
+- `.claude/luca/references/questioning.md`
+- `.claude/luca/references/ui-brand.md`
+- `.claude/luca/templates/project.md`
+- `.claude/luca/templates/requirements.md`
 
 ## Process
 
@@ -59,7 +59,7 @@ Read these reference files before executing:
 
 6. **Research Decision** — Spawn researchers if selected (milestone-aware context)
 7. **Define Requirements** — Present features, scope each category
-8. **Create Roadmap** — Spawn <%= branding.commandPrefix %>-roadmapper (continues phase numbering)
+8. **Create Roadmap** — Spawn lu-roadmapper (continues phase numbering)
 9. **GitHub Issue & Branch Decision** — See below
 10. **Done** — Present completion with next steps
 
@@ -69,7 +69,7 @@ After roadmap creation, present the user with tracking options:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► MILESTONE TRACKING
+ Luca ► MILESTONE TRACKING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 How should this milestone be tracked on GitHub?

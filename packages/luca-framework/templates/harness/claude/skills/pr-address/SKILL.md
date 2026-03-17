@@ -5,7 +5,7 @@ Address PR review comments by swarming reviewer agents, validating concerns, and
 ## main
 
 <main>
-# <%= branding.frameworkName %> Address PR
+# Luca Address PR
 
 Address pull request review comments through a coordinated agent swarm that validates concerns, plans fixes, executes changes, verifies updates, and responds to GitHub comments.
 
@@ -20,15 +20,15 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - `performance-auditor` - Validates performance concerns
 - `dx-advocate` - Validates code quality concerns
 - `ux` - Validates accessibility concerns
-- `<%= branding.commandPrefix %>-pr-reviewer` - Validates general feedback
-- `<%= branding.commandPrefix %>-planner` - Creates fix plans for valid concerns
-- `<%= branding.commandPrefix %>-executor` - Implements fixes
-- `<%= branding.commandPrefix %>-verifier` - Verifies fixes address concerns
-- `<%= branding.commandPrefix %>-learner` - Captures PR review patterns for future recall
+- `lu-pr-reviewer` - Validates general feedback
+- `lu-planner` - Creates fix plans for valid concerns
+- `lu-executor` - Implements fixes
+- `lu-verifier` - Verifies fixes address concerns
+- `lu-learner` - Captures PR review patterns for future recall
 
 **DO NOT** validate concerns, plan fixes, or execute fixes yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
 
 ### Vault Resolution
 
@@ -54,9 +54,9 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 | Agent           | quality | balanced | budget |
 | --------------- | ------- | -------- | ------ |
 | reviewers (all) | opus    | sonnet   | haiku  |
-| <%= branding.commandPrefix %>-planner   | opus    | opus     | sonnet |
-| <%= branding.commandPrefix %>-executor  | opus    | sonnet   | sonnet |
-| <%= branding.commandPrefix %>-verifier  | sonnet  | sonnet   | haiku  |
+| lu-planner   | opus    | opus     | sonnet |
+| lu-executor  | opus    | sonnet   | sonnet |
+| lu-verifier  | sonnet  | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -80,7 +80,7 @@ This skill orchestrates a multi-agent workflow to systematically address PR feed
 4. **Plan** - Create fix plan for valid concerns
 5. **Execute** - Implement fixes with atomic commits
 6. **Verify** - Confirm fixes address the concerns
-7. **Verify** (cont.) - Capture review patterns via <%= branding.commandPrefix %>-learner (Step 7.5)
+7. **Verify** (cont.) - Capture review patterns via lu-learner (Step 7.5)
 8. **Respond** - Post responses to PR comments
 
 ## Process
@@ -142,7 +142,7 @@ For each comment, categorize by concern type:
 | Code Quality  | "naming", "duplication", "readability", "convention"         | dx-advocate          |
 | Accessibility | "a11y", "accessibility", "ARIA", "keyboard", "screen reader" | accessibility-expert |
 | Testing       | "test", "coverage", "mock", "assertion"                      | test-engineer        |
-| General       | (default)                                                    | <%= branding.commandPrefix %>-pr-reviewer    |
+| General       | (default)                                                    | lu-pr-reviewer    |
 
 ### Step 3: Spawn Reviewer Agents (Parallel)
 
@@ -390,7 +390,7 @@ Use `buildSplitVerdictResult()` and `formatSplitVerdictForPR()` to build and dis
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> >>> SPLIT VERDICT: Comment #{comment_id}
+ Luca >>> SPLIT VERDICT: Comment #{comment_id}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Split: {split_ratio}
@@ -407,7 +407,7 @@ Update the "Disputed Concerns" table from Step 4 to include split verdict debate
 
 ### Step 5: Create Fix Plan
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-planner sub-agent to create fix plans. Do NOT plan fixes yourself.
+**MANDATORY**: You MUST spawn a lu-planner sub-agent to create fix plans. Do NOT plan fixes yourself.
 
 First, gather the validated concerns:
 
@@ -453,7 +453,7 @@ Create inline plan with:
 
 Create fix plan for these PR review concerns.
 """,
-  subagent_type="<%= branding.commandPrefix %>-planner",
+  subagent_type="lu-planner",
   model="{planner_model}",
   description="Plan PR fixes"
 )
@@ -463,7 +463,7 @@ Create fix plan for these PR review concerns.
 
 ### Step 6: Execute Fixes
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-executor sub-agent to implement fixes. Do NOT execute fixes yourself.
+**MANDATORY**: You MUST spawn a lu-executor sub-agent to implement fixes. Do NOT execute fixes yourself.
 
 First, read the plan from Step 5:
 
@@ -507,7 +507,7 @@ Return this tracking info in result.
 
 Execute all fixes in the plan. Commit each atomically.
 """,
-  subagent_type="<%= branding.commandPrefix %>-executor",
+  subagent_type="lu-executor",
   model="{executor_model}",
   description="Execute PR fixes"
 )
@@ -517,7 +517,7 @@ Execute all fixes in the plan. Commit each atomically.
 
 ### Step 7: Verify Fixes
 
-**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-verifier sub-agent to verify fixes. Do NOT verify fixes yourself.
+**MANDATORY**: You MUST spawn a lu-verifier sub-agent to verify fixes. Do NOT verify fixes yourself.
 
 First, gather execution results:
 
@@ -562,7 +562,7 @@ For each fix, return:
 
 Verify all PR fixes address their original concerns.
 """,
-  subagent_type="<%= branding.commandPrefix %>-verifier",
+  subagent_type="lu-verifier",
   model="{verifier_model}",
   description="Verify PR fixes"
 )
@@ -572,11 +572,11 @@ Verify all PR fixes address their original concerns.
 
 ### Step 7.5: Capture PR Review Learnings
 
-After fix verification completes (Step 7), spawn <%= branding.commandPrefix %>-learner to extract patterns from PR review comments. This step runs regardless of whether all fixes passed verification -- failed verifications are also learning opportunities.
+After fix verification completes (Step 7), spawn lu-learner to extract patterns from PR review comments. This step runs regardless of whether all fixes passed verification -- failed verifications are also learning opportunities.
 
-**Gate check:** Spawn <%= branding.commandPrefix %>-learner if there were any categorized concerns from Step 4 (valid, disputed, or informational). All comments are captured at low confidence — the confidence evolution system (3+ feedback heuristic) handles quality over time. Skip this step only if there were zero comments to process.
+**Gate check:** Spawn lu-learner if there were any categorized concerns from Step 4 (valid, disputed, or informational). All comments are captured at low confidence — the confidence evolution system (3+ feedback heuristic) handles quality over time. Skip this step only if there were zero comments to process.
 
-If gate check passes, gather the learning context and spawn <%= branding.commandPrefix %>-learner:
+If gate check passes, gather the learning context and spawn lu-learner:
 
 ```bash
 # Collect all categorized concerns from Step 4 and verification results from Step 7
@@ -622,7 +622,7 @@ Extract ONLY pitfalls from PR review feedback:
 
 Extract learnings from these PR review comments.
 """,
-  subagent_type="<%= branding.commandPrefix %>-learner",
+  subagent_type="lu-learner",
   description="Capture PR review learnings"
 )
 ```
@@ -690,7 +690,7 @@ If any split verdicts from Step 4.5 were resolved as "defer_to_human", include t
 - ${INFO_COMMENT_1}
 
 ---
-*Addressed via <%= branding.frameworkName %> `/pr-address`*
+*Addressed via Luca `/pr-address`*
 EOF
 )"
 ```
@@ -720,8 +720,8 @@ EOF
 | dx-advocate          | `.github/agents/` | Code quality, standards        |
 | accessibility-expert | `.github/agents/` | Accessibility issues           |
 | test-engineer        | `.github/agents/` | Testing concerns               |
-| <%= branding.commandPrefix %>-pr-reviewer    | `.claude/agents/` | Coordination, general feedback |
-| <%= branding.commandPrefix %>-learner        | `.claude/agents/` | Capture PR review patterns     |
+| lu-pr-reviewer    | `.claude/agents/` | Coordination, general feedback |
+| lu-learner        | `.claude/agents/` | Capture PR review patterns     |
 
 ## Success Criteria
 
@@ -756,12 +756,12 @@ Wait or provide GITHUB_TOKEN with higher limits.
 **Validation disagreement:**
 When reviewer agents disagree (split verdict), Step 4.5 triggers an automated debate round where the dissenting side articulates their argument and the majority responds. Both perspectives are presented with agent attribution. If the debate cannot resolve the disagreement, it escalates to the user as "defer_to_human" in the PR summary.
 
-## Integration with <%= branding.commandSlash %>
+## Integration with /lu
 
 This skill can be invoked:
 
 1. **Directly:** `/pr-address [PR]`
-2. **Via unified entry:** `<%= branding.commandSlash %> address PR comments` (routes here)
+2. **Via unified entry:** `/lu address PR comments` (routes here)
 3. **After PR creation:** Suggested as follow-up when comments arrive
 
 ## Related Skills

@@ -5,7 +5,7 @@ Append a new phase to the end of the current milestone roadmap.
 ## main
 
 <main>
-# <%= branding.frameworkName %> Add Phase
+# Luca Add Phase
 
 Add a new integer phase to the end of the current milestone in the roadmap.
 

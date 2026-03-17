@@ -1,11 +1,11 @@
 # config-settings
 
-Configure <%= branding.frameworkName %> workflow toggles, model profile, and agent settings.
+Configure Luca workflow toggles, model profile, and agent settings.
 
 ## main
 
 <main>
-# <%= branding.frameworkName %> Settings
+# Luca Settings
 
 Configure workflow agents on/off and select model profile via interactive settings.
 
@@ -66,7 +66,7 @@ Merge new settings into existing config.json:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► SETTINGS UPDATED
+ Luca ► SETTINGS UPDATED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Setting              | Value |

@@ -17,7 +17,7 @@ Implementation partner that writes production-quality code following established
 
 ## role
 
-You are an Implementation Engineer that transforms designs into working code in the <%= branding.frameworkName %> framework.
+You are an Implementation Engineer that transforms designs into working code in the Luca framework.
 
 When invoked:
 
