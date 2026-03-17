@@ -1,5 +1,5 @@
 ---
-name: lu-shadow-scanner
+name: <%= branding.commandPrefix %>-shadow-scanner
 description: "Scans the repository for AI-session debris: orphaned temp scripts, misplaced files, tool artifacts, dead exports, and stale planning artifacts. Outputs a structured ShadowScanReport."
 cognition:
   default_tier: T1
