@@ -26,19 +26,19 @@ export interface PresetDefaults {
  * Controls the default complexity of a Luca project setup.
  * Users can override any individual setting after selecting a preset.
  *
- * - **starter**: Minimal — single harness (Claude), no approval gates, no tracker.
+ * - **starter**: Minimal — Claude Code, no approval gates, no tracker.
  *   Best for solo experiments and quick prototypes.
  *
- * - **standard**: Balanced — Claude + Cursor harnesses, moderate approval gates,
+ * - **standard**: Balanced — Claude Code, moderate approval gates,
  *   GitHub tracker. Best for active solo or small-team projects.
  *
- * - **full**: Everything enabled — all harnesses, all approval gates,
+ * - **full**: Everything enabled — Claude Code, all approval gates,
  *   Jira tracker. Best for production workflows with full traceability.
  */
 export const PRESETS: Record<PresetId, PresetDefaults> = {
   starter: {
     label: "Starter",
-    description: "Minimal setup: single harness, no approval gates",
+    description: "Minimal setup: Claude Code, no approval gates",
     harnesses: ["claude"],
     approvals: {
       plans: false,
@@ -50,8 +50,8 @@ export const PRESETS: Record<PresetId, PresetDefaults> = {
   },
   standard: {
     label: "Standard",
-    description: "Balanced defaults: Claude + Cursor, moderate gates",
-    harnesses: ["claude", "cursor"],
+    description: "Balanced defaults: Claude Code, moderate gates",
+    harnesses: ["claude"],
     approvals: {
       plans: true,
       destructive: true,
@@ -62,8 +62,8 @@ export const PRESETS: Record<PresetId, PresetDefaults> = {
   },
   full: {
     label: "Full",
-    description: "All harnesses, all gates, full traceability",
-    harnesses: ["claude", "cursor", "pi"],
+    description: "Claude Code, all gates, full traceability",
+    harnesses: ["claude"],
     approvals: {
       plans: true,
       destructive: true,
@@ -110,7 +110,7 @@ export const DEFAULT_PRESET: PresetId = "standard";
  * // { label: 'Starter', harnesses: ['claude'], approvals: {...}, workTracker: 'none' }
  *
  * const standard = getPresetDefaults('standard');
- * // { label: 'Standard', harnesses: ['claude', 'cursor'], approvals: {...}, workTracker: 'github' }
+ * // { label: 'Standard', harnesses: ['claude'], approvals: {...}, workTracker: 'github' }
  * ```
  */
 export function getPresetDefaults(presetId: PresetId): PresetDefaults {
