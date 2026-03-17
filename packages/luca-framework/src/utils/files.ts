@@ -99,10 +99,7 @@ export function setupCleanupHandler() {
  *
  * Directory structure created:
  * - `.planning/` - Planning artifacts (always created)
- * - `.cursor/luca/` - Framework files (skipped when `planningOnly`)
- * - `.cursor/agents/` - Agent definitions (skipped when `planningOnly`)
- * - `.cursor/rules/` - Cursor rules (skipped when `planningOnly`)
- * - `.cursor/skills/` - Luca skills (skipped when `planningOnly`)
+ * - `.claude/` - Claude Code harness files (skipped when `planningOnly`)
  *
  * When `planningOnly` is true, only `.planning/` config files are created
  * and the function returns early. This is used in global mode where the
@@ -156,7 +153,7 @@ export async function generateFiles(options: {
 
   const { config, cwd = process.cwd() } = options;
   const templatesDir = getTemplatesDir();
-  const harnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
+  const harnesses: HarnessId[] = config.harnesses ?? ["claude"];
 
   // Track installation stats by category
   const stats: InstallationStats = {
@@ -179,22 +176,8 @@ export async function generateFiles(options: {
     // In planningOnly mode, skip harness directories entirely.
     // The harness is deployed globally by `luca init` Step 3.
     if (!options.planningOnly) {
-      if (harnesses.includes("cursor")) {
-        const cursorDir = join(cwd, ".cursor");
-        dirs.push(
-          join(cursorDir, "luca"),
-          join(cursorDir, "agents"),
-          join(cursorDir, "rules"),
-          join(cursorDir, "skills"),
-        );
-      }
-
       if (harnesses.includes("claude")) {
         dirs.push(join(cwd, ".claude"));
-      }
-
-      if (harnesses.includes("pi")) {
-        dirs.push(join(cwd, ".pi"));
       }
     }
 
@@ -216,8 +199,7 @@ export async function generateFiles(options: {
       destDir: cwd,
       config,
       // In planningOnly mode, only copy .planning/ files from base templates.
-      // Skip harness files (e.g. .cursor/luca/.gitkeep) to avoid creating
-      // harness directories in the project.
+      // Skip harness files to avoid creating harness directories in the project.
       filter: options.planningOnly
         ? (relPath) =>
             relPath.startsWith(".planning/") ||
@@ -315,30 +297,7 @@ export async function generateFiles(options: {
       }
     }
 
-    // Step 4: Copy framework files (.cursor/luca/) — only if cursor harness selected
-    if (harnesses.includes("cursor")) {
-      spinner.start("Installing framework files...");
-
-      const cursorDir = join(cwd, ".cursor");
-      const lucaDir = join(cursorDir, "luca");
-      const frameworkTemplatesDir = join(templatesDir, "framework");
-      if (existsSync(frameworkTemplatesDir)) {
-        const { processed: frameworkProcessed, copied: frameworkCopied } =
-          await copyTemplates({
-            sourceDir: frameworkTemplatesDir,
-            destDir: lucaDir,
-            config,
-          });
-
-        spinner.stop(
-          `Installed ${frameworkProcessed.length + frameworkCopied.length} framework files`,
-        );
-      } else {
-        spinner.stop("Framework templates not found");
-      }
-    }
-
-    // Hook templates shared between Claude and Cursor
+    // Hook templates for Claude Code
     const hookTemplatesDir = join(templatesDir, "hooks");
 
     // Step 4.5: Install Claude Code hooks — only if claude harness selected
@@ -419,65 +378,6 @@ export async function generateFiles(options: {
         }
       } else {
         spinner.stop("Hook templates not found, skipping hooks");
-      }
-    }
-
-    // Step 4.6: Install Cursor hooks — only if cursor harness selected
-    if (harnesses.includes("cursor")) {
-      spinner.start("Installing Cursor hooks...");
-
-      const cursorDir = join(cwd, ".cursor");
-      const cursorHooksDir = join(cursorDir, "hooks");
-
-      if (!existsSync(cursorHooksDir)) {
-        await mkdir(cursorHooksDir, { recursive: true });
-        trackCreated(cursorHooksDir);
-      }
-
-      if (existsSync(hookTemplatesDir)) {
-        const hookScriptsDirCursor = join(hookTemplatesDir, "scripts");
-        if (existsSync(hookScriptsDirCursor)) {
-          const cursorHookFiles = await readdir(hookScriptsDirCursor);
-          let cursorHooksCopied = 0;
-
-          for (const hookFile of cursorHookFiles) {
-            const srcPath = join(hookScriptsDirCursor, hookFile);
-            const destPath = join(cursorHooksDir, hookFile);
-
-            await copyFile(srcPath, destPath);
-            trackCreated(destPath);
-
-            try {
-              await chmod(destPath, 0o755);
-            } catch {
-              // chmod may fail on Windows
-            }
-
-            cursorHooksCopied++;
-          }
-
-          const cursorHooksJsonSrc = join(
-            hookTemplatesDir,
-            "cursor-hooks.json",
-          );
-          const cursorHooksJsonDest = join(cursorDir, "hooks.json");
-
-          if (await Bun.file(cursorHooksJsonSrc).exists()) {
-            await copyFile(cursorHooksJsonSrc, cursorHooksJsonDest);
-            trackCreated(cursorHooksJsonDest);
-          }
-
-          stats.hook_count += cursorHooksCopied;
-          spinner.stop(
-            `Installed ${cursorHooksCopied} Cursor hook scripts + hooks.json`,
-          );
-        } else {
-          spinner.stop(
-            "Hook scripts directory not found, skipping Cursor hooks",
-          );
-        }
-      } else {
-        spinner.stop("Hook templates not found, skipping Cursor hooks");
       }
     }
 
