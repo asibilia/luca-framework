@@ -938,8 +938,21 @@ luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY
 
 Discussion runs at every complexity level. The discussion depth and model tier scale with complexity via the routing table, but the step itself is never skipped.
 
+**Resolve premortem gate before invoking phase-discuss:**
+
+\`\`\`bash
+# Orchestrator resolves the premortem gate — sub-skill does NOT decide
+PREMORTEM_FLAG=""
+PREMORTEM_ENABLED=$(luca-bridge gate-check --gate=premortem 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+if [ "$PREMORTEM_ENABLED" = "true" ]; then
+  PREMORTEM_FLAG="--run-premortem"
+else
+  PREMORTEM_FLAG="--skip-premortem"
+fi
 \`\`\`
-Skill(skill: "phase-discuss", args: "{phase_number}")
+
+\`\`\`
+Skill(skill: "phase-discuss", args: "{phase_number} $PREMORTEM_FLAG")
 \`\`\`
 
 Transition state machine after discussion:
@@ -1002,6 +1015,20 @@ fi
 if [ "$OVERSIGHT" = "phase" ]; then
   EXEC_FLAGS="{phase_number}"  # No --skip-uat
 fi
+\`\`\`
+
+**Resolve process_data gate before invoking phase-execute:**
+
+\`\`\`bash
+# Orchestrator resolves the process_data gate — sub-skill does NOT decide
+PROCESS_DATA_FLAG=""
+PROCESS_DATA_ENABLED=$(luca-bridge gate-check --gate=process_data 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+if [ "$PROCESS_DATA_ENABLED" = "true" ]; then
+  PROCESS_DATA_FLAG="--run-process-data"
+else
+  PROCESS_DATA_FLAG="--skip-process-data"
+fi
+EXEC_FLAGS="$EXEC_FLAGS $PROCESS_DATA_FLAG"
 \`\`\`
 
 Invoke the full execution pipeline:
