@@ -87,6 +87,34 @@
 **Depends on:** None
 **Covers:** REQ-13, REQ-14, REQ-15, REQ-16
 
+### Phase 189: Gate Enforcement — Orchestrator Flag Plumbing
+
+**Goal:** Move gate decisions from sub-skill prompts to explicit orchestrator flags, preventing LLM ad-hoc skip reasoning.
+
+- [ ] Resolve premortem gate in lu.skill.ts and pass `--run-premortem` / `--skip-premortem` to phase-discuss
+- [ ] Resolve process_data gate in lu.skill.ts and pass `--run-process-data` / `--skip-process-data` to phase-execute
+- [ ] Replace bash gate-check pseudo-code in phase-discuss with flag check (fail-closed: no flag = skip)
+- [ ] Replace grep-based process_data check in phase-execute with flag check
+- [ ] Audit all sub-skills for other embedded gate checks and apply same pattern
+- [ ] Add `.claude/rules/gate-enforcement.md` rule enforcing orchestrator-resolved flags
+
+**Depends on:** None
+**Covers:** REQ-17, REQ-18, REQ-19
+
+### Phase 190: Config Rename — autopilot to lu
+
+**Goal:** Rename `config.autopilot` to `config.lu` with Zod schema and one-version fallback.
+
+- [ ] Rename `autopilot` → `lu` in `.planning/config.json`
+- [ ] Create `LuConfigSchema` Zod schema for the section (replace inline defaults)
+- [ ] Update lu.skill.ts to read from `c.lu` with fallback to `c.autopilot`
+- [ ] Rename `skip_uat_in_autopilot` → `skip_uat`
+- [ ] Update state machine types, guards, persistence references
+- [ ] Update luca-observer topology references
+
+**Depends on:** Phase 189 (both touch lu.skill.ts)
+**Covers:** REQ-20, REQ-21, REQ-22
+
 ---
 
 ---

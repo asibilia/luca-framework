@@ -28,6 +28,18 @@
 - **REQ-15**: Publish workflow must use `NPM_TOKEN` repository secret for authentication
 - **REQ-16**: Publish workflow must publish with `--access restricted` flag
 
+## Gate Enforcement
+
+- **REQ-17**: Gate decisions (premortem, process_data) must be resolved by the lu orchestrator and passed as explicit flags (`--run-*` / `--skip-*`) to sub-skills
+- **REQ-18**: Sub-skills must NOT make ad-hoc skip decisions based on oversight level, phase type, or contextual reasoning; absent flag = skip (fail-closed)
+- **REQ-19**: A rule (`.claude/rules/gate-enforcement.md`) must enforce that gate checks are orchestrator-resolved, not sub-skill-evaluated
+
+## Config Rename
+
+- **REQ-20**: `config.autopilot` must be renamed to `config.lu` in `.planning/config.json` with a `LuConfigSchema` Zod schema
+- **REQ-21**: `lu.skill.ts` must read from `c.lu` with one-version fallback to `c.autopilot`; `skip_uat_in_autopilot` renamed to `skip_uat`
+- **REQ-22**: All state machine types, guards, persistence, and observer topology references to `autopilot` must be updated to `lu`
+
 ## Out of Scope
 
 - Test suite reintroduction (tracked separately as todo #37)
