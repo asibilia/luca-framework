@@ -66,10 +66,10 @@
 
 **Goal:** End-to-end verification of custom prefix flow and update post-init tour output.
 
-- [ ] Update post-init tour to display prefix-aware commands (e.g., `/pt` instead of `/lu`)
-- [ ] End-to-end test: run init with custom prefix, verify all agents/skills/tour use it
-- [ ] Fix any remaining hardcoded `/lu` references discovered during integration
-- [ ] Document custom prefix feature in init documentation
+- [x] Update post-init tour to display prefix-aware commands (e.g., `/pt` instead of `/lu`)
+- [x] End-to-end test: run init with custom prefix, verify all agents/skills/tour use it
+- [x] Fix any remaining hardcoded `/lu` references discovered during integration
+- [x] Document custom prefix feature in init documentation
 
 **Depends on:** Phase 186
 **Covers:** REQ-12
