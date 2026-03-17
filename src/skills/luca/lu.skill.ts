@@ -263,7 +263,7 @@ Skill(skill: "git-commit", args: "--no-push")
     },
     {
       title: "configuration",
-      // Config key is 'autopilot' for backward compatibility
+      // Config key is 'lu' with one-version fallback to 'autopilot'
       content: `## Step 0: Configuration & Pre-Flight
 
 ### 0a. Read Config
@@ -282,39 +282,40 @@ Extract settings (with defaults):
 \`\`\`bash
 OVERSIGHT=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.oversight ?? 'milestone');
+  console.log((c.lu ?? c.autopilot)?.oversight ?? 'milestone');
 ")
 MAX_PHASES=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.max_phases_per_session ?? 10);
+  console.log((c.lu ?? c.autopilot)?.max_phases_per_session ?? 10);
 ")
 AUTO_PLAN=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.auto_plan_phases ?? true);
+  console.log((c.lu ?? c.autopilot)?.auto_plan_phases ?? true);
 ")
 SKIP_UAT=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.skip_uat_in_autopilot ?? true);
+  const lu = c.lu ?? c.autopilot;
+  console.log(lu?.skip_uat ?? lu?.skip_uat_in_autopilot ?? true);
 ")
 GAP_RETRIES=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.gap_closure_retries ?? 1);
+  console.log((c.lu ?? c.autopilot)?.gap_closure_retries ?? 1);
 ")
 CROSS_MILESTONE=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.cross_milestone ?? false);
+  console.log((c.lu ?? c.autopilot)?.cross_milestone ?? false);
 ")
 BACKLOG_SCAN=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.backlog_scan ?? true);
+  console.log((c.lu ?? c.autopilot)?.backlog_scan ?? true);
 ")
 SWARM_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.swarm_enabled ?? true);
+  console.log((c.lu ?? c.autopilot)?.swarm_enabled ?? true);
 ")
 MAX_PARALLEL=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.max_parallel_phases ?? 3);
+  console.log((c.lu ?? c.autopilot)?.max_parallel_phases ?? 3);
 ")
 \`\`\`
 
