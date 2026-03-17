@@ -87,11 +87,11 @@
 
 **Requirements:** Audit tech debt (should fix)
 
-- [ ] SEC-002: Add path containment guard in init.ts and build-deploy.ts (resolve(absPath).startsWith guard)
-- [ ] SEC-001: Validate hook command string paths with character allowlist regex in init.ts
-- [ ] SEC-003: Add explicit branding key allowlist in resolve-templates.ts
-- [ ] SEC-004: Use sanitizeJsonParse in build-deploy.ts loadBrandingContext
-- [ ] SEC-005: Replace Bun.spawnSync chmod with chmodSync in build-deploy.ts
+- [x] SEC-002: Add path containment guard in init.ts and build-deploy.ts (resolve(absPath).startsWith guard)
+- [x] SEC-001: Validate hook command string paths with character allowlist regex in init.ts
+- [x] SEC-003: Add explicit branding key allowlist in resolve-templates.ts
+- [x] SEC-004: Use sanitizeJsonParse in build-deploy.ts loadBrandingContext
+- [x] SEC-005: Replace Bun.spawnSync chmod with chmodSync in build-deploy.ts
 
 ### Phase 197: DX & Architecture Cleanup
 
@@ -101,17 +101,17 @@
 
 **Requirements:** Audit tech debt (nice to have)
 
-- [ ] DX-001: Rename `dirname` parameter to `segment` in template-transform.ts transformBrandingDirname
-- [ ] DX-002: Import defaultBranding from branding.ts in build-deploy.ts loadBrandingContext
-- [ ] DX-003: Replace node:path with pathe in resolve-templates.ts
-- [ ] DX-004: Add comment documenting shim indirection in build-deploy.ts imports
-- [ ] DX-005: Add try/catch around JSON.parse in build-compile.ts settings fragment
-- [ ] DX-006: Add @example to walkDir JSDoc in resolve-templates.ts
-- [ ] DX-008: Complete JSDoc for buildProposedHooksFromDeployed in init.ts
-- [ ] ARCH-001: Use barrel import (~/compilers) in build-compile.ts instead of direct \_\_helpers/
-- [ ] ARCH-002: Remove bun test references from qa-plan-generator.agent.ts
-- [ ] ARCH-003: Add coupling documentation comment in resolve-templates.ts shim
-- [ ] ARCH-004: Add canonical source comment for hook-to-event map in init.ts
+- [x] DX-001: Rename `dirname` parameter to `segment` in template-transform.ts transformBrandingDirname
+- [x] DX-002: Import defaultBranding from branding.ts in build-deploy.ts loadBrandingContext
+- [x] DX-003: Replace node:path with pathe in resolve-templates.ts
+- [x] DX-004: Add comment documenting shim indirection in build-deploy.ts imports
+- [x] DX-005: Add try/catch around JSON.parse in build-compile.ts settings fragment
+- [x] DX-006: Add @example to walkDir JSDoc in resolve-templates.ts
+- [x] DX-008: Complete JSDoc for buildProposedHooksFromDeployed in init.ts
+- [x] ARCH-001: Use barrel import (~/compilers) in build-compile.ts instead of direct \_\_helpers/
+- [x] ARCH-002: Remove bun test references from qa-plan-generator.agent.ts
+- [x] ARCH-003: Add coupling documentation comment in resolve-templates.ts shim
+- [x] ARCH-004: Add canonical source comment for hook-to-event map in init.ts
 
 ---
 
