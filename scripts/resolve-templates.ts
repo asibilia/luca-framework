@@ -1,14 +1,16 @@
 #!/usr/bin/env bun
 
 /**
- * resolve-templates.ts — Re-exports from the canonical package location.
+ * Thin re-export shim for resolve-templates.
  *
- * The core resolution logic lives in
- * `packages/luca-framework/src/utils/resolve-templates.ts` so that both
- * build scripts and the `luca init` command can import the same code.
+ * The canonical implementation lives in
+ * `packages/luca-framework/src/utils/resolve-templates.ts`.
+ * This shim exists so build scripts (build-deploy.ts) can import without
+ * referencing the deep package path directly. If the package file moves,
+ * update the import path below.
  *
- * This file is a thin re-export shim that preserves backward compatibility
- * for existing imports from `scripts/resolve-templates`.
+ * Both build scripts and the `luca init` command share the same canonical
+ * implementation through this indirection.
  *
  * @module resolve-templates
  */

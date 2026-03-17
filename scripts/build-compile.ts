@@ -30,7 +30,7 @@ import path from "path";
 import { rmSync, existsSync } from "node:fs";
 
 import { generateAllOutputs } from "./build-shared";
-import { transformOutputsToTemplates } from "../src/compilers/__helpers/template-transform";
+import { transformOutputsToTemplates } from "../src/compilers";
 import { ensureDir } from "./build-utils";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
@@ -99,7 +99,14 @@ export async function runCompile(): Promise<{
   // =========================================================================
   if (settingsHooksFragment) {
     const existingSettings: Record<string, unknown> = {};
-    existingSettings.hooks = JSON.parse(settingsHooksFragment);
+    try {
+      existingSettings.hooks = JSON.parse(settingsHooksFragment);
+    } catch {
+      console.warn(
+        "Failed to parse settings hooks fragment, using empty hooks",
+      );
+      existingSettings.hooks = {};
+    }
 
     // Add statusLine configuration (camelCase key required by Claude Code)
     existingSettings.statusLine = {

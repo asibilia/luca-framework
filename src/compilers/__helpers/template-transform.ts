@@ -194,14 +194,14 @@ export const transformBrandingFilename = (filename: string): string => {
  *
  * Only transforms the "lu" directory (the unified skill entry point).
  *
- * @param dirname - Original directory name (e.g., "lu")
+ * @param segment - Original directory name segment (e.g., "lu")
  * @returns Transformed directory name (e.g., "__branding.commandPrefix__")
  */
-export const transformBrandingDirname = (dirname: string): string => {
-  if (dirname === "lu") {
+export const transformBrandingDirname = (segment: string): string => {
+  if (segment === "lu") {
     return "__branding.commandPrefix__";
   }
-  return dirname;
+  return segment;
 };
 
 // ---------------------------------------------------------------------------
