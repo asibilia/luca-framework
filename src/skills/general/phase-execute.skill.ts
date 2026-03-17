@@ -21,7 +21,7 @@ Execute all plans in a phase using wave-based parallel execution, then verify wi
 
 Orchestrator stays lean: discover plans, analyze dependencies, group into waves, spawn subagents, collect results. Each subagent loads the full execute-plan context and handles its own plan.
 
-**Arguments:** \`<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory] [--skip-replay]\`
+**Arguments:** \`<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory] [--skip-replay] [--run-process-data | --skip-process-data]\`
 
 **Vault Resolution:** Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, brain:project, procedure, decision) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
 
@@ -198,13 +198,19 @@ The model tier for lu-learner is resolved via \`resolveModelForAgent("lu-learner
 
 ### Process Data Collection (after Learning Capture)
 
-After lu-learner returns, check the \`process_data\` gate in \`.planning/config.json\`:
+After lu-learner returns, check the \`process_data\` flag passed by the lu orchestrator (fail-closed: absent flag = skip):
 
 \`\`\`bash
-PROCESS_DATA_GATE=$(cat .planning/config.json 2>/dev/null | grep -o '"process_data"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\\|false' || echo "false")
+# Check for orchestrator-supplied flag (fail-closed: absent flag = skip)
+if echo "$ARGS" | grep -q -- "--run-process-data"; then
+  PROCESS_DATA_GATE="true"
+else
+  # --skip-process-data OR no flag at all = skip (fail-closed)
+  PROCESS_DATA_GATE="false"
+fi
 \`\`\`
 
-**If \`process_data\` gate is enabled (\`true\`):**
+**If \`process_data\` flag indicates enabled (\`--run-process-data\` was passed):**
 
 Collect metrics data from the orchestrator context and spawn \`lu-process-data\`:
 
@@ -282,7 +288,7 @@ luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 
 The model tier for lu-process-data is resolved via \`resolveModelForAgent("lu-process-data", complexity)\` from the centralized routing table.
 
-**If \`process_data\` gate is disabled (\`false\`):** Skip process data collection and emit LEARN_COMPLETE as before:
+**If \`process_data\` flag indicates disabled (\`--skip-process-data\` or no flag):** Skip process data collection and emit LEARN_COMPLETE as before:
 
 \`\`\`bash
 luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
