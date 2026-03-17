@@ -1,13 +1,14 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "executing",
   "historyValue": {},
   "context": {
     "session_id": "c278b630-3909-4270-81c5-9c91f40312c8",
     "base_branch": "main",
+    "current_milestone": "Planning next",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "SIMPLE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -72,7 +73,7 @@
       }
     },
     "autopilot_config": {
-      "oversight": "milestone",
+      "oversight": "full-auto",
       "max_phases_per_session": 10,
       "auto_plan_phases": true,
       "skip_uat_in_autopilot": true,
@@ -86,13 +87,39 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Medium",
-    "appetite_token_ceiling": 100000,
-    "appetite_context_percent": 50,
+    "appetite_level": "Small",
+    "appetite_token_ceiling": 50000,
+    "appetite_context_percent": 40,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-17T11:36:53.015Z",
-    "current_milestone": "Planning next",
-    "last_transition_at": "2026-03-17T11:41:53.527Z"
+    "started_at": "2026-03-17T13:41:08.802Z",
+    "last_transition_at": "2026-03-17T13:47:40.870Z"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "wave_executing",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 1,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {
+            "started_at": "2026-03-17T13:47:40.871Z"
+          }
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }

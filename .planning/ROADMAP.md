@@ -42,10 +42,10 @@
 
 **Goal:** Make agent template filenames use the configurable branding prefix instead of hardcoded `lu-`.
 
-- [ ] Audit all 39 agent template files for hardcoded `lu-` prefix in filenames
-- [ ] Implement filename substitution in template engine (e.g., `lu-router.md` → `{prefix}-router.md`)
-- [ ] Update agent template content to use `<%= branding.commandPrefix %>` where referencing the prefix
-- [ ] Verify deployed agent files use correct prefix after `luca init` with custom branding
+- [x] Audit all 39 agent template files for hardcoded `lu-` prefix in filenames
+- [x] Implement filename substitution in template engine (e.g., `lu-router.md` → `{prefix}-router.md`)
+- [x] Update agent template content to use `<%= branding.commandPrefix %>` where referencing the prefix
+- [x] Verify deployed agent files use correct prefix after `luca init` with custom branding
 
 **Depends on:** None
 **Covers:** REQ-08
