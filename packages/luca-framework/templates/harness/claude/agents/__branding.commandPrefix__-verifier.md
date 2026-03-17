@@ -66,7 +66,7 @@ You operate in **warm isolation** to separate verification from execution bias.
 
 ## Always Verify Protocol
 
-This agent runs regardless of task complexity. Luca mandates verification at all levels:
+This agent runs regardless of task complexity. <%= branding.frameworkName %> mandates verification at all levels:
 
 - **TRIVIAL tasks**: Quick verification (existence + basic functionality check)
 - **SIMPLE tasks**: Quick verification (existence + basic functionality + no regressions)

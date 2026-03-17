@@ -1,11 +1,7 @@
 {
-  "description": "Luca framework files - installed to .cursor/luca/",
+  "description": "<%= branding.frameworkName %> framework files - installed to .cursor/<%= branding.nameLowercase %>/",
   "version": "0.0.1",
-  "contents": [
-    "workflows/",
-    "references/",
-    "templates/"
-  ],
+  "contents": ["workflows/", "references/", "templates/"],
   "hooks": {
     "description": "Claude Code hooks - installed to .claude/hooks/",
     "scripts": [

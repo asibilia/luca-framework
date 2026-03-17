@@ -1,6 +1,6 @@
 # Cognitive Pre-Flight Workflow
 
-This workflow is executed by `lu-cognition` agent before major operations. It prepares the cognitive context for downstream agents.
+This workflow is executed by `<%= branding.commandPrefix %>-cognition` agent before major operations. It prepares the cognitive context for downstream agents.
 
 ## Purpose
 
@@ -11,10 +11,10 @@ This workflow is executed by `lu-cognition` agent before major operations. It pr
 
 ## When This Runs
 
-- Before `/lu` routes to execution
-- Before `/lu-plan-phase` begins planning
-- Before `/lu-execute-phase` begins execution
-- Before `/lu-debug` begins investigation
+- Before `<%= branding.commandSlash %>` routes to execution
+- Before `/<%= branding.commandPrefix %>-plan-phase` begins planning
+- Before `/<%= branding.commandPrefix %>-execute-phase` begins execution
+- Before `/<%= branding.commandPrefix %>-debug` begins investigation
 
 ## Process
 
@@ -307,7 +307,7 @@ Initialized at `.planning/WORKING.md`
 
 ### Step 7: Persist Complexity to STATE.md
 
-After complexity is classified (by lu-router), update STATE.md:
+After complexity is classified (by <%= branding.commandPrefix %>-router), update STATE.md:
 
 ```bash
 TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M")

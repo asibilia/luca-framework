@@ -298,7 +298,7 @@ Next steps:
 
 1. Review .planning/BRAIN.md and customize for your project
 2. Run /${config.branding.commandPrefix} to get started
-3. Use /${config.branding.commandPrefix}-help for command reference
+3. Use /help for command reference
 ${!vaultConfigured ? "4. Run `luca vault:init` interactively to set up MuninnDB vault" : ""}
 
 Files created:

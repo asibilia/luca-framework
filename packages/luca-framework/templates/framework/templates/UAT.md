@@ -103,7 +103,7 @@ skipped: [N]
 
 - APPEND only when issue found (YAML format)
 - After diagnosis: fill `root_cause`, `artifacts`, `missing`, `debug_session`
-- This section feeds directly into /lu-plan-phase --gaps
+- This section feeds directly into /<%= branding.commandPrefix %>-plan-phase --gaps
 
 </section_rules>
 
@@ -117,7 +117,7 @@ skipped: [N]
 4. UAT.md Gaps section updated with diagnosis:
    - Each gap gets `root_cause`, `artifacts`, `missing`, `debug_session` filled
 5. status → "diagnosed"
-6. Ready for /lu-plan-phase --gaps with root causes
+6. Ready for /<%= branding.commandPrefix %>-plan-phase --gaps with root causes
 
 **After diagnosis:**
 
@@ -142,7 +142,7 @@ skipped: [N]
 
 <lifecycle>
 
-**Creation:** When /lu-verify-work starts new session
+**Creation:** When /<%= branding.commandPrefix %>-verify-work starts new session
 
 - Extract tests from SUMMARY.md files
 - Set status to "testing"

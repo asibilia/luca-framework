@@ -44,7 +44,7 @@ Standard format for presenting next steps after completing a command or workflow
 
 **02-03: Refresh Token Rotation** — Add /api/auth/refresh with sliding expiry
 
-`/lu-execute-phase 2`
+`/<%= branding.commandPrefix %>-execute-phase 2`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -52,7 +52,7 @@ Standard format for presenting next steps after completing a command or workflow
 
 **Also available:**
 - Review plan before executing
-- `/lu-list-phase-assumptions 2` — check assumptions
+- `/<%= branding.commandPrefix %>-list-phase-assumptions 2` — check assumptions
 
 ---
 ```
@@ -69,7 +69,7 @@ Add note that this is the last plan and what comes after:
 **02-03: Refresh Token Rotation** — Add /api/auth/refresh with sliding expiry
 <sub>Final plan in Phase 2</sub>
 
-`/lu-execute-phase 2`
+`/<%= branding.commandPrefix %>-execute-phase 2`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -91,15 +91,15 @@ Add note that this is the last plan and what comes after:
 
 **Phase 2: Authentication** — JWT login flow with refresh tokens
 
-`/lu-plan-phase 2`
+`/<%= branding.commandPrefix %>-plan-phase 2`
 
 <sub>`/clear` first → fresh context window</sub>
 
 ---
 
 **Also available:**
-- `/lu-discuss-phase 2` — gather context first
-- `/lu-research-phase 2` — investigate unknowns
+- `/<%= branding.commandPrefix %>-discuss-phase 2` — gather context first
+- `/<%= branding.commandPrefix %>-research-phase 2` — investigate unknowns
 - Review roadmap
 
 ---
@@ -120,15 +120,15 @@ Show completion status before next action:
 
 **Phase 3: Core Features** — User dashboard, settings, and data export
 
-`/lu-plan-phase 3`
+`/<%= branding.commandPrefix %>-plan-phase 3`
 
 <sub>`/clear` first → fresh context window</sub>
 
 ---
 
 **Also available:**
-- `/lu-discuss-phase 3` — gather context first
-- `/lu-research-phase 3` — investigate unknowns
+- `/<%= branding.commandPrefix %>-discuss-phase 3` — gather context first
+- `/<%= branding.commandPrefix %>-research-phase 3` — investigate unknowns
 - Review what Phase 2 built
 
 ---
@@ -145,11 +145,11 @@ When there's no clear primary action:
 
 **Phase 3: Core Features** — User dashboard, settings, and data export
 
-**To plan directly:** `/lu-plan-phase 3`
+**To plan directly:** `/<%= branding.commandPrefix %>-plan-phase 3`
 
-**To discuss context first:** `/lu-discuss-phase 3`
+**To discuss context first:** `/<%= branding.commandPrefix %>-discuss-phase 3`
 
-**To research unknowns:** `/lu-research-phase 3`
+**To research unknowns:** `/<%= branding.commandPrefix %>-research-phase 3`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -169,7 +169,7 @@ All 4 phases shipped
 
 **Start v1.1** — questioning → research → requirements → roadmap
 
-`/lu-new-milestone`
+`/<%= branding.commandPrefix %>-new-milestone`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -214,7 +214,7 @@ Extract: `**02-03: Refresh Token Rotation** — Add /api/auth/refresh with slidi
 ## To Continue
 
 Run `/clear`, then paste:
-/lu-execute-phase 2
+/<%= branding.commandPrefix %>-execute-phase 2
 ```
 
 User has no idea what 02-03 is about.
@@ -222,7 +222,7 @@ User has no idea what 02-03 is about.
 ### Don't: Missing /clear explanation
 
 ```
-`/lu-plan-phase 3`
+`/<%= branding.commandPrefix %>-plan-phase 3`
 
 Run /clear first.
 ```
@@ -243,7 +243,7 @@ Sounds like an afterthought. Use "Also available:" instead.
 ```
 ```
 
-/lu-plan-phase 3
+/<%= branding.commandPrefix %>-plan-phase 3
 
 ```
 ```

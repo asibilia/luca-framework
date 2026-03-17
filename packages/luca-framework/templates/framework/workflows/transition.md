@@ -435,7 +435,7 @@ Next: Phase [X+1] — [Name]
 ⚡ Auto-continuing: Plan Phase [X+1] in detail
 ```
 
-Exit skill and invoke SlashCommand("/lu-plan-phase [X+1]")
+Exit skill and invoke SlashCommand("/<%= branding.commandPrefix %>-plan-phase [X+1]")
 
 </if>
 
@@ -450,15 +450,15 @@ Exit skill and invoke SlashCommand("/lu-plan-phase [X+1]")
 
 **Phase [X+1]: [Name]** — [Goal from ROADMAP.md]
 
-`/lu-plan-phase [X+1]`
+`/<%= branding.commandPrefix %>-plan-phase [X+1]`
 
 <sub>`/clear` first → fresh context window</sub>
 
 ---
 
 **Also available:**
-- `/lu-discuss-phase [X+1]` — gather context first
-- `/lu-research-phase [X+1]` — investigate unknowns
+- `/<%= branding.commandPrefix %>-discuss-phase [X+1]` — gather context first
+- `/<%= branding.commandPrefix %>-research-phase [X+1]` — investigate unknowns
 - Review roadmap
 
 ---
@@ -480,7 +480,7 @@ Phase {X} marked complete.
 ⚡ Auto-continuing: Complete milestone and archive
 ```
 
-Exit skill and invoke SlashCommand("/lu-complete-milestone {version}")
+Exit skill and invoke SlashCommand("/<%= branding.commandPrefix %>-complete-milestone {version}")
 
 </if>
 
@@ -497,7 +497,7 @@ Exit skill and invoke SlashCommand("/lu-complete-milestone {version}")
 
 **Complete Milestone {version}** — archive and prepare for next
 
-`/lu-complete-milestone {version}`
+`/<%= branding.commandPrefix %>-complete-milestone {version}`
 
 <sub>`/clear` first → fresh context window</sub>
 

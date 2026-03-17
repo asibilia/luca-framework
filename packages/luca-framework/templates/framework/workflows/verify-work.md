@@ -1,5 +1,5 @@
 <purpose>
-Validate built features through conversational testing with persistent state. Creates UAT.md that tracks test progress, survives /clear, and feeds gaps into /lu-plan-phase --gaps.
+Validate built features through conversational testing with persistent state. Creates UAT.md that tracks test progress, survives /clear, and feeds gaps into /<%= branding.commandPrefix %>-plan-phase --gaps.
 
 User tests, Claude records. One test at a time. Plain text responses.
 </purpose>
@@ -34,8 +34,8 @@ Default to "balanced" if not set.
 
 | Agent | quality | balanced | budget |
 |-------|---------|----------|--------|
-| lu-planner | opus | opus | sonnet |
-| lu-plan-checker | sonnet | sonnet | haiku |
+| <%= branding.commandPrefix %>-planner | opus | opus | sonnet |
+| <%= branding.commandPrefix %>-plan-checker | sonnet | sonnet | haiku |
 
 Store resolved models for use in Task calls below.
 </step>
@@ -79,7 +79,7 @@ If no, continue to `create_uat_file`.
 ```
 No active UAT sessions.
 
-Provide a phase number to start testing (e.g., /lu-verify-work 4)
+Provide a phase number to start testing (e.g., /<%= branding.commandPrefix %>-verify-work 4)
 ```
 
 **If no active sessions AND $ARGUMENTS provided:**
@@ -388,13 +388,13 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PLANNING FIXES
+ <%= branding.frameworkName %> ► PLANNING FIXES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Spawning planner for gap closure...
 ```
 
-Spawn lu-planner in --gaps mode:
+Spawn <%= branding.commandPrefix %>-planner in --gaps mode:
 
 ```
 Task(
@@ -416,11 +416,11 @@ Task(
 </planning_context>
 
 <downstream_consumer>
-Output consumed by /lu-execute-phase
+Output consumed by /<%= branding.commandPrefix %>-execute-phase
 Plans must be executable prompts.
 </downstream_consumer>
 """,
-  subagent_type="lu-planner",
+  subagent_type="<%= branding.commandPrefix %>-planner",
   model="{planner_model}",
   description="Plan gap fixes for Phase {phase}"
 )
@@ -439,7 +439,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► VERIFYING FIX PLANS
+ <%= branding.frameworkName %> ► VERIFYING FIX PLANS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Spawning plan checker...
@@ -447,7 +447,7 @@ Display:
 
 Initialize: `iteration_count = 1`
 
-Spawn lu-plan-checker:
+Spawn <%= branding.commandPrefix %>-plan-checker:
 
 ```
 Task(
@@ -468,7 +468,7 @@ Return one of:
 - ## ISSUES FOUND — structured issue list
 </expected_output>
 """,
-  subagent_type="lu-plan-checker",
+  subagent_type="<%= branding.commandPrefix %>-plan-checker",
   model="{checker_model}",
   description="Verify Phase {phase} fix plans"
 )
@@ -487,7 +487,7 @@ On return:
 
 Display: `Sending back to planner for revision... (iteration {N}/3)`
 
-Spawn lu-planner with revision context:
+Spawn <%= branding.commandPrefix %>-planner with revision context:
 
 ```
 Task(
@@ -510,7 +510,7 @@ Read existing PLAN.md files. Make targeted updates to address checker issues.
 Do NOT replan from scratch unless issues are fundamental.
 </instructions>
 """,
-  subagent_type="lu-planner",
+  subagent_type="<%= branding.commandPrefix %>-planner",
   model="{planner_model}",
   description="Revise Phase {phase} plans"
 )
@@ -527,7 +527,7 @@ Offer options:
 
 1. Force proceed (execute despite issues)
 2. Provide guidance (user gives direction, retry)
-3. Abandon (exit, user runs /lu-plan-phase manually)
+3. Abandon (exit, user runs /<%= branding.commandPrefix %>-plan-phase manually)
 
 Wait for user response.
 </step>
@@ -537,7 +537,7 @@ Wait for user response.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► FIXES READY ✓
+ <%= branding.frameworkName %> ► FIXES READY ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Phase {X}: {Name}** — {N} gap(s) diagnosed, {M} fix plan(s) created
@@ -555,7 +555,7 @@ Plans verified and ready for execution.
 
 **Execute fixes** — run fix plans
 
-`/clear` then `/lu-execute-phase {phase} --gaps-only`
+`/clear` then `/<%= branding.commandPrefix %>-execute-phase {phase} --gaps-only`
 
 ───────────────────────────────────────────────────────────────
 ```
@@ -581,7 +581,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► CODE QUALITY REVIEW
+ <%= branding.frameworkName %> ► CODE QUALITY REVIEW
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Reviewing {FILE_COUNT} changed files...
@@ -673,7 +673,7 @@ Categorize by severity:
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} CODE REVIEW ⚠
+ <%= branding.frameworkName %> ► PHASE {Z} CODE REVIEW ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{N} UAT tests passed ✓
@@ -709,14 +709,14 @@ Display:
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PLANNING QUALITY FIXES
+ <%= branding.frameworkName %> ► PLANNING QUALITY FIXES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Spawning planner for quality fixes...
 
 ```
 
-Spawn lu-planner in quality_fixes mode:
+Spawn <%= branding.commandPrefix %>-planner in quality_fixes mode:
 
 ```
 
@@ -751,11 +751,11 @@ Output: A PLAN.md with tasks to fix each issue.
 </instructions>
 
 <downstream_consumer>
-Output consumed by /lu-execute-phase
+Output consumed by /<%= branding.commandPrefix %>-execute-phase
 Plans must be executable prompts.
 </downstream_consumer>
 """,
-  subagent_type="lu-planner",
+  subagent_type="<%= branding.commandPrefix %>-planner",
   model="{planner_model}",
   description="Plan quality fixes for Phase {phase}"
 )
@@ -763,7 +763,7 @@ Plans must be executable prompts.
 ```
 
 On return:
-- **PLANNING COMPLETE:** Spawn lu-plan-checker (same as `verify_gap_plans`)
+- **PLANNING COMPLETE:** Spawn <%= branding.commandPrefix %>-plan-checker (same as `verify_gap_plans`)
 - **PLANNING INCONCLUSIVE:** Report and offer manual intervention
 
 After checker passes:
@@ -771,7 +771,7 @@ After checker passes:
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► QUALITY FIXES READY ✓
+ <%= branding.frameworkName %> ► QUALITY FIXES READY ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N} quality issue(s) planned for fixing.
@@ -780,7 +780,7 @@ After checker passes:
 
 **Execute quality fixes**
 
-`/clear` then `/lu-execute-phase {phase} --quality-fixes`
+`/clear` then `/<%= branding.commandPrefix %>-execute-phase {phase} --quality-fixes`
 
 ───────────────────────────────────────────────────────────────
 
@@ -807,7 +807,7 @@ NEXT_PHASE_DIR=$(ls -d .planning/phases/$(printf "%02d" $NEXT_PHASE)-* 2>/dev/nu
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} VERIFIED ✓
+ <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{N} UAT tests passed ✓
@@ -815,9 +815,9 @@ Code quality review passed ✓
 
 ## ▶ Next Up
 
-- `/lu-discuss-phase {Z+1}` — gather context and clarify approach
-- `/lu-plan-phase {Z+1}` — create implementation plan
-- `/lu-execute-phase {Z+1}` — execute if plan exists
+- `/<%= branding.commandPrefix %>-discuss-phase {Z+1}` — gather context and clarify approach
+- `/<%= branding.commandPrefix %>-plan-phase {Z+1}` — create implementation plan
+- `/<%= branding.commandPrefix %>-execute-phase {Z+1}` — execute if plan exists
 
 ───────────────────────────────────────────────────────────────
 ```
@@ -826,7 +826,7 @@ Code quality review passed ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} VERIFIED ✓
+ <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Final phase verified ✓
@@ -835,7 +835,7 @@ Code quality review passed ✓
 
 ## ▶ Next Up
 
-- `/lu-audit-milestone` — verify milestone completion
+- `/<%= branding.commandPrefix %>-audit-milestone` — verify milestone completion
 
 ───────────────────────────────────────────────────────────────
 ```
@@ -889,16 +889,16 @@ Default to **major** if unclear. User can correct if needed.
 - [ ] Batched writes: on issue, every 5 passes, or completion
 - [ ] Committed on completion
 - [ ] If UAT issues: parallel debug agents diagnose root causes
-- [ ] If UAT issues: lu-planner creates fix plans (gap_closure mode)
-- [ ] If UAT issues: lu-plan-checker verifies fix plans
+- [ ] If UAT issues: <%= branding.commandPrefix %>-planner creates fix plans (gap_closure mode)
+- [ ] If UAT issues: <%= branding.commandPrefix %>-plan-checker verifies fix plans
 - [ ] If UAT issues: revision loop until plans pass (max 3 iterations)
-- [ ] If UAT issues: ready for `/lu-execute-phase --gaps-only` when complete
+- [ ] If UAT issues: ready for `/<%= branding.commandPrefix %>-execute-phase --gaps-only` when complete
 - [ ] If UAT passes: code quality review runs on changed files
 - [ ] If UAT passes: dx-advocate checks conventions
 - [ ] If UAT passes: code-simplifier checks DRY/complexity
 - [ ] If UAT passes: security-auditor checks (if auth/api files changed)
 - [ ] CRITICAL quality issues block, HIGH/MEDIUM are warnings with options
-- [ ] If quality fixes needed: ready for `/lu-execute-phase --quality-fixes`
-- [ ] If all clean: show `/lu-discuss-phase`, `/lu-plan-phase`, `/lu-execute-phase` for next phase
-- [ ] If final phase: show `/lu-audit-milestone`
+- [ ] If quality fixes needed: ready for `/<%= branding.commandPrefix %>-execute-phase --quality-fixes`
+- [ ] If all clean: show `/<%= branding.commandPrefix %>-discuss-phase`, `/<%= branding.commandPrefix %>-plan-phase`, `/<%= branding.commandPrefix %>-execute-phase` for next phase
+- [ ] If final phase: show `/<%= branding.commandPrefix %>-audit-milestone`
 </success_criteria>

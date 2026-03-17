@@ -35,7 +35,7 @@ Default to "balanced" if not set.
 
 | Agent | quality | balanced | budget |
 |-------|---------|----------|--------|
-| lu-codebase-mapper | sonnet | haiku | haiku |
+| <%= branding.commandPrefix %>-codebase-mapper | sonnet | haiku | haiku |
 
 Store resolved model for use in Task calls below.
 </step>
@@ -90,18 +90,18 @@ Continue to spawn_agents.
 </step>
 
 <step name="spawn_agents">
-Spawn 4 parallel lu-codebase-mapper agents.
+Spawn 4 parallel <%= branding.commandPrefix %>-codebase-mapper agents.
 
-Use Task tool with `subagent_type="lu-codebase-mapper"`, `model="{mapper_model}"`, and `run_in_background=true` for parallel execution.
+Use Task tool with `subagent_type="<%= branding.commandPrefix %>-codebase-mapper"`, `model="{mapper_model}"`, and `run_in_background=true` for parallel execution.
 
-**CRITICAL:** Use the dedicated `lu-codebase-mapper` agent, NOT `Explore`. The mapper agent writes documents directly.
+**CRITICAL:** Use the dedicated `<%= branding.commandPrefix %>-codebase-mapper` agent, NOT `Explore`. The mapper agent writes documents directly.
 
 **Agent 1: Tech Focus**
 
 Task tool parameters:
 
 ```
-subagent_type: "lu-codebase-mapper"
+subagent_type: "<%= branding.commandPrefix %>-codebase-mapper"
 model: "{mapper_model}"
 run_in_background: true
 description: "Map codebase tech stack"
@@ -126,7 +126,7 @@ Explore thoroughly. Write documents directly using templates. Return confirmatio
 Task tool parameters:
 
 ```
-subagent_type: "lu-codebase-mapper"
+subagent_type: "<%= branding.commandPrefix %>-codebase-mapper"
 model: "{mapper_model}"
 run_in_background: true
 description: "Map codebase architecture"
@@ -151,7 +151,7 @@ Explore thoroughly. Write documents directly using templates. Return confirmatio
 Task tool parameters:
 
 ```
-subagent_type: "lu-codebase-mapper"
+subagent_type: "<%= branding.commandPrefix %>-codebase-mapper"
 model: "{mapper_model}"
 run_in_background: true
 description: "Map codebase conventions"
@@ -176,7 +176,7 @@ Explore thoroughly. Write documents directly using templates. Return confirmatio
 Task tool parameters:
 
 ```
-subagent_type: "lu-codebase-mapper"
+subagent_type: "<%= branding.commandPrefix %>-codebase-mapper"
 model: "{mapper_model}"
 run_in_background: true
 description: "Map codebase concerns"
@@ -304,14 +304,14 @@ Created .planning/codebase/:
 
 **Initialize project** — use codebase context for planning
 
-`/lu-new-project`
+`/<%= branding.commandPrefix %>-new-project`
 
 <sub>`/clear` first → fresh context window</sub>
 
 ---
 
 **Also available:**
-- Re-run mapping: `/lu-map-codebase`
+- Re-run mapping: `/<%= branding.commandPrefix %>-map-codebase`
 - Review specific file: `cat .planning/codebase/STACK.md`
 - Edit any document before proceeding
 
@@ -326,10 +326,10 @@ End workflow.
 <success_criteria>
 
 - .planning/codebase/ directory created
-- 4 parallel lu-codebase-mapper agents spawned with run_in_background=true
+- 4 parallel <%= branding.commandPrefix %>-codebase-mapper agents spawned with run_in_background=true
 - Agents write documents directly (orchestrator doesn't receive document contents)
 - Read agent output files to collect confirmations
 - All 7 codebase documents exist
 - Clear completion summary with line counts
-- User offered clear next steps in Luca style
+- User offered clear next steps in <%= branding.frameworkName %> style
 </success_criteria>

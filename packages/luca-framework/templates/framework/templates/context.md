@@ -7,8 +7,8 @@ Template for `.planning/phases/XX-name/{phase}-CONTEXT.md` - captures implementa
 **Key principle:** Categories are NOT predefined. They emerge from what was actually discussed for THIS phase. A CLI phase has CLI-relevant sections, a UI phase has UI-relevant sections.
 
 **Downstream consumers:**
-- `lu-phase-researcher` — Reads decisions to focus research (e.g., "card layout" → research card component patterns)
-- `lu-planner` — Reads decisions to create specific tasks (e.g., "infinite scroll" → task includes virtualization)
+- `<%= branding.commandPrefix %>-phase-researcher` — Reads decisions to focus research (e.g., "card layout" → research card component patterns)
+- `<%= branding.commandPrefix %>-planner` — Reads decisions to create specific tasks (e.g., "infinite scroll" → task includes virtualization)
 
 ---
 
@@ -277,7 +277,7 @@ The output should answer: "What does the researcher need to investigate? What ch
 
 **After creation:**
 - File lives in phase directory: `.planning/phases/XX-name/{phase}-CONTEXT.md`
-- `lu-phase-researcher` uses decisions to focus investigation
-- `lu-planner` uses decisions + research to create executable tasks
+- `<%= branding.commandPrefix %>-phase-researcher` uses decisions to focus investigation
+- `<%= branding.commandPrefix %>-planner` uses decisions + research to create executable tasks
 - Downstream agents should NOT need to ask the user again about captured decisions
 </guidelines>

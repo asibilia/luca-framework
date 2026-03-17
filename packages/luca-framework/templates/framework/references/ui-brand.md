@@ -1,6 +1,6 @@
 <ui_patterns>
 
-Visual patterns for user-facing Luca output. Orchestrators @-reference this file.
+Visual patterns for user-facing <%= branding.frameworkName %> output. Orchestrators @-reference this file.
 
 ## Stage Banners
 
@@ -8,7 +8,7 @@ Use for major workflow transitions.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► {STAGE NAME}
+ <%= branding.frameworkName %> ► {STAGE NAME}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -120,8 +120,8 @@ Always at end of major completions.
 ───────────────────────────────────────────────────────────────
 
 **Also available:**
-- `/lu-alternative-1` — description
-- `/lu-alternative-2` — description
+- `/<%= branding.commandPrefix %>-alternative-1` — description
+- `/<%= branding.commandPrefix %>-alternative-2` — description
 
 ───────────────────────────────────────────────────────────────
 ```
@@ -158,7 +158,7 @@ Always at end of major completions.
 
 - Varying box/banner widths
 - Mixing banner styles (`===`, `---`, `***`)
-- Skipping `Luca ►` prefix in banners
+- Skipping `<%= branding.frameworkName %> ►` prefix in banners
 - Random emoji (`🚀`, `✨`, `💫`)
 - Missing Next Up block after completions
 

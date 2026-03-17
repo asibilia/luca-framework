@@ -27,7 +27,7 @@ ls .planning/PROJECT.md 2>/dev/null && echo "Project file exists"
 
 **If STATE.md exists:** Proceed to load_state
 **If only ROADMAP.md/PROJECT.md exist:** Offer to reconstruct STATE.md
-**If .planning/ doesn't exist:** This is a new project - route to /lu-new-project
+**If .planning/ doesn't exist:** This is a new project - route to /<%= branding.commandPrefix %>-new-project
 </step>
 
 <step name="load_state">
@@ -131,7 +131,7 @@ Present complete project status to user:
     Resume with: Task tool (resume parameter with agent ID)
 
 [If pending todos exist:]
-📋 [N] pending todos — /lu-check-todos to review
+📋 [N] pending todos — /<%= branding.commandPrefix %>-check-todos to review
 
 [If blockers exist:]
 ⚠️  Carried concerns:
@@ -187,11 +187,11 @@ What would you like to do?
 [Primary action based on state - e.g.:]
 1. Resume interrupted agent [if interrupted agent found]
    OR
-1. Execute phase (/lu-execute-phase {phase})
+1. Execute phase (/<%= branding.commandPrefix %>-execute-phase {phase})
    OR
-1. Discuss Phase 3 context (/lu-discuss-phase 3) [if CONTEXT.md missing]
+1. Discuss Phase 3 context (/<%= branding.commandPrefix %>-discuss-phase 3) [if CONTEXT.md missing]
    OR
-1. Plan Phase 3 (/lu-plan-phase 3) [if CONTEXT.md exists or discuss option declined]
+1. Plan Phase 3 (/<%= branding.commandPrefix %>-plan-phase 3) [if CONTEXT.md exists or discuss option declined]
 
 [Secondary options:]
 2. Review current phase status
@@ -223,7 +223,7 @@ Based on user selection, route to appropriate workflow:
 
   **{phase}-{plan}: [Plan Name]** — [objective from PLAN.md]
 
-  `/lu-execute-phase {phase}`
+  `/<%= branding.commandPrefix %>-execute-phase {phase}`
 
   <sub>`/clear` first → fresh context window</sub>
 
@@ -239,15 +239,15 @@ Based on user selection, route to appropriate workflow:
 
   **Phase [N]: [Name]** — [Goal from ROADMAP.md]
 
-  `/lu-plan-phase [phase-number]`
+  `/<%= branding.commandPrefix %>-plan-phase [phase-number]`
 
   <sub>`/clear` first → fresh context window</sub>
 
   ---
 
   **Also available:**
-  - `/lu-discuss-phase [N]` — gather context first
-  - `/lu-research-phase [N]` — investigate unknowns
+  - `/<%= branding.commandPrefix %>-discuss-phase [N]` — gather context first
+  - `/<%= branding.commandPrefix %>-research-phase [N]` — investigate unknowns
 
   ---
   ```

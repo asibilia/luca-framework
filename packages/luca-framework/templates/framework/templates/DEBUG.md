@@ -105,7 +105,7 @@ files_changed: []
 
 <lifecycle>
 
-**Creation:** Immediately when /lu-debug is called
+**Creation:** Immediately when /<%= branding.commandPrefix %>-debug is called
 
 - Create file with trigger from user input
 - Set status to "gathering"

@@ -155,7 +155,7 @@ This enables:
 - PR creation targeting the correct base branch
 - Traceability from Jira through to merged code
 
-Set during `/lu` when a Jira ticket is provided, or during `/lu-new-milestone`.
+Set during `<%= branding.commandSlash %>` when a Jira ticket is provided, or during `/<%= branding.commandPrefix %>-new-milestone`.
 
 **PT-0000 placeholder** is used for:
 
@@ -199,11 +199,11 @@ Updated after each plan completion.
 
 **Decisions:** Reference to PROJECT.md Key Decisions table, plus recent decisions summary for quick access. Full decision log lives in PROJECT.md.
 
-**Pending Todos:** Ideas captured via /lu-add-todo
+**Pending Todos:** Ideas captured via /<%= branding.commandPrefix %>-add-todo
 
 - Count of pending todos
 - Reference to .planning/todos/pending/
-- Brief list if few, count if many (e.g., "5 pending todos — see /lu-check-todos")
+- Brief list if few, count if many (e.g., "5 pending todos — see /<%= branding.commandPrefix %>-check-todos")
 
 **Blockers/Concerns:** From "Next Phase Readiness" sections
 
@@ -221,16 +221,16 @@ Enables instant resumption:
 
 ### Trivial Tasks Completed
 
-Tracks TRIVIAL complexity tasks executed via `/lu`:
+Tracks TRIVIAL complexity tasks executed via `<%= branding.commandSlash %>`:
 
 ```markdown
 ## Trivial Tasks Completed
 
-| # | Description | Date | Commit | Complexity |
-|---|-------------|------|--------|------------|
+| #   | Description | Date | Commit | Complexity |
+| --- | ----------- | ---- | ------ | ---------- |
 ```
 
-Updated by lu TRIVIAL route after each trivial task completion.
+Updated by <%= branding.commandPrefix %> TRIVIAL route after each trivial task completion.
 Provides audit trail for fast-path tasks that skip full planning.
 
 </sections>

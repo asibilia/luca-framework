@@ -24,7 +24,7 @@ Default to "balanced" if not set.
 
 | Agent | quality | balanced | budget |
 |-------|---------|----------|--------|
-| lu-executor | opus | sonnet | sonnet |
+| <%= branding.commandPrefix %>-executor | opus | sonnet | sonnet |
 
 Store resolved model for use in Task calls below.
 </step>
@@ -228,7 +228,7 @@ No segmentation benefit - execute entirely in main
 ```
 1. Run init_agent_tracking step first (see step below)
 
-2. Use Task tool with subagent_type="lu-executor" and model="{executor_model}":
+2. Use Task tool with subagent_type="<%= branding.commandPrefix %>-executor" and model="{executor_model}":
 
    Prompt: "Execute plan at .planning/phases/{phase}-{plan}-PLAN.md
 
@@ -383,7 +383,7 @@ For Pattern A (fully autonomous) and Pattern C (decision-dependent), skip this s
 
    B. If routing = Subagent:
       ```
-      Spawn Task tool with subagent_type="lu-executor" and model="{executor_model}":
+      Spawn Task tool with subagent_type="<%= branding.commandPrefix %>-executor" and model="{executor_model}":
 
       Prompt: "Execute tasks [task numbers/names] from plan at [plan path].
 
@@ -1739,7 +1739,7 @@ Summary: .planning/phases/{phase-dir}/{phase}-{plan}-SUMMARY.md
 
 **{phase}-{next-plan}: [Plan Name]** — [objective from next PLAN.md]
 
-`/lu-execute-phase {phase}`
+`/<%= branding.commandPrefix %>-execute-phase {phase}`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -1747,7 +1747,7 @@ Summary: .planning/phases/{phase-dir}/{phase}-{plan}-SUMMARY.md
 
 **Also available:**
 
-- `/lu-verify-work {phase}-{plan}` — manual acceptance testing before continuing
+- `/<%= branding.commandPrefix %>-verify-work {phase}-{plan}` — manual acceptance testing before continuing
 - Review what was built before continuing
 
 ---
@@ -1803,7 +1803,7 @@ All {Y} plans finished.
 
 **Phase {Z+1}: {Next Phase Name}** — {Goal from ROADMAP.md}
 
-`/lu-plan-phase {Z+1}`
+`/<%= branding.commandPrefix %>-plan-phase {Z+1}`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -1811,8 +1811,8 @@ All {Y} plans finished.
 
 **Also available:**
 
-- `/lu-verify-work {Z}` — manual acceptance testing before continuing
-- `/lu-discuss-phase {Z+1}` — gather context first
+- `/<%= branding.commandPrefix %>-verify-work {Z}` — manual acceptance testing before continuing
+- `/<%= branding.commandPrefix %>-discuss-phase {Z+1}` — gather context first
 - Review phase accomplishments before continuing
 
 ---
@@ -1844,7 +1844,7 @@ All {Y} plans finished.
 
 **Complete Milestone** — archive and prepare for next
 
-`/lu-complete-milestone`
+`/<%= branding.commandPrefix %>-complete-milestone`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -1852,8 +1852,8 @@ All {Y} plans finished.
 
 **Also available:**
 
-- `/lu-verify-work` — manual acceptance testing before completing milestone
-- `/lu-add-phase <description>` — add another phase before completing
+- `/<%= branding.commandPrefix %>-verify-work` — manual acceptance testing before completing milestone
+- `/<%= branding.commandPrefix %>-add-phase <description>` — add another phase before completing
 - Review accomplishments before archiving
 
 ---

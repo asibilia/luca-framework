@@ -264,7 +264,7 @@ Ready for orchestrator summary.
 
 ## Detected Profiles
 
-Luca uses tech stack profiles to load opinionated coding rules.
+<%= branding.frameworkName %> uses tech stack profiles to load opinionated coding rules.
 Detect which profiles apply by checking for manifest files and indicators.
 
 **Profile Detection Rules:**

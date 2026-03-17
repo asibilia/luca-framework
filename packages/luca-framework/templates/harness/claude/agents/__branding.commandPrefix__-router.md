@@ -541,7 +541,7 @@ Include \`recommended_model\` in your output based on:
 
 ### Verification
 - **Mode**: {quick|standard|full}
-- **Runs**: Always (per Luca protocol)
+- **Runs**: Always (per <%= branding.frameworkName %> protocol)
 
 ### Handoff
 Ready for: {next agent/skill}
