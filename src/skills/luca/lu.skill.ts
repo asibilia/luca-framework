@@ -142,6 +142,8 @@ If already on a feature branch or \`--skip-branch\` is set, skip this step.
 
 ### Step 2: Cognitive Pre-Flight (if applicable)
 
+**Skip for autonomous pipeline.** This step applies only to non-autonomous routing paths (quick, pr-address, debug, session-plan). Autonomous pipeline cognitive pre-flight is handled in Step 0c of the configuration section.
+
 Unless \`--skip-memory\` is set, spawn the lu-cognition agent:
 
 \`\`\`
@@ -230,6 +232,8 @@ Skill(skill: "progress")
 
 ### Step 5: Verification (always runs)
 
+**Skip for autonomous pipeline.** Verification for autonomous pipeline phases is embedded inside phase-execute. This step applies only to non-autonomous routing paths (quick, pr-address, debug).
+
 After the handler skill completes, spawn lu-verifier:
 
 \`\`\`
@@ -237,6 +241,8 @@ Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-de
 \`\`\`
 
 ### Step 6: Learning Capture (always runs)
+
+**Skip for autonomous pipeline.** Learning capture for autonomous pipeline phases is handled internally by phase-execute. This step applies only to non-autonomous routing paths.
 
 Always spawn lu-learner (model tier resolved from routing table per complexity):
 
@@ -252,27 +258,15 @@ If on a feature branch with uncommitted changes:
 \`\`\`
 Skill(skill: "git-commit", args: "--no-push")
 \`\`\`
-
-### Complexity Override
-
-If \`--complexity=<level>\` is passed:
-1. Skip lu-router classification
-2. Use the specified level directly
-3. Look up gated steps from the complexity matrix in config.json
-4. Persist via bridge: \`luca-bridge set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true\`
-
-If \`--force-complex\` is passed (backward compatibility):
-- Equivalent to \`--complexity=COMPLEX\`
 `,
       order: 3,
     },
     {
       title: "configuration",
+      // Config key is 'autopilot' for backward compatibility
       content: `## Step 0: Configuration & Pre-Flight
 
 ### 0a. Read Config
-
-// Config key is 'autopilot' for backward compatibility
 
 \`\`\`bash
 CONFIG=$(cat .planning/config.json 2>/dev/null || echo '{}')
@@ -284,8 +278,6 @@ ROADMAP=$(cat .planning/ROADMAP.md 2>/dev/null || echo "")
 \`\`\`
 
 Extract settings (with defaults):
-
-// Config key is 'autopilot' for backward compatibility
 
 \`\`\`bash
 OVERSIGHT=$(echo "$CONFIG" | bun -e "
