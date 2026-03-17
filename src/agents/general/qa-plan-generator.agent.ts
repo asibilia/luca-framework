@@ -107,7 +107,6 @@ Generate a testing plan in this exact markdown format:
 - \`bunx --bun tsc --noEmit\` — TypeScript type checking
 - \`bun run build:all --force\` — Full build pipeline
 - \`bun run check:drift\` — Verify built outputs match source
-- \`bun run build:templates\` — Rebuild template outputs
 
 ## Guidelines
 

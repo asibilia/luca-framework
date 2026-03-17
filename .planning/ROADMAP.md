@@ -60,10 +60,10 @@
 
 **Requirements:** REQ-4
 
-- [ ] Remove `transformBrandingContent()`, `transformBrandingFilename()`, `transformBrandingDirname()` from copy-harness-templates.ts
-- [ ] Simplify or delete `scripts/copy-harness-templates.ts` entirely
-- [ ] Verify templates/harness/claude/ is populated directly by build:compile (no post-processing)
-- [ ] Update any references to the branding transform in docs or comments
+- [x] Remove `transformBrandingContent()`, `transformBrandingFilename()`, `transformBrandingDirname()` from copy-harness-templates.ts
+- [x] Simplify or delete `scripts/copy-harness-templates.ts` entirely
+- [x] Verify templates/harness/claude/ is populated directly by build:compile (no post-processing)
+- [x] Update any references to the branding transform in docs or comments
 
 ### Phase 195: Drift Check & CI Compatibility
 

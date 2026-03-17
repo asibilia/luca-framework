@@ -24,7 +24,6 @@
     "build:all": "bun run ./scripts/build-all.ts",
     "build:compile": "bun run ./scripts/build-compile.ts",
     "build:deploy": "bun run ./scripts/build-deploy.ts",
-    "build:templates": "bun run ./scripts/copy-harness-templates.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
     "commit": "bunx --bun @alecsibilia/commit",
     "css:observer": "bun run --filter @alecsibilia/luca-observer css:build",

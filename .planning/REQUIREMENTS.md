@@ -58,11 +58,11 @@ The reverse-engineering branding transform in `copy-harness-templates.ts` must b
 
 **Acceptance Criteria:**
 
-- [ ] `transformBrandingContent()` removed or reduced to a no-op pass-through
-- [ ] `transformBrandingFilename()` removed
-- [ ] `transformBrandingDirname()` removed
-- [ ] `copy-harness-templates.ts` becomes a simple copy (or is deleted entirely)
-- [ ] No regex-based branding substitution remains in the build pipeline
+- [x] `transformBrandingContent()` removed or reduced to a no-op pass-through
+- [x] `transformBrandingFilename()` removed
+- [x] `transformBrandingDirname()` removed
+- [x] `copy-harness-templates.ts` becomes a simple copy (or is deleted entirely)
+- [x] No regex-based branding substitution remains in the build pipeline
 
 ### REQ-5: Drift Check Compatibility
 
