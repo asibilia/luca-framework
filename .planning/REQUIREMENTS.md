@@ -14,12 +14,12 @@ The compilation pipeline (`src/compilers/`) must output files with EJS branding 
 
 **Acceptance Criteria:**
 
-- [ ] `compileAgent()` outputs `<%= branding.commandPrefix %>-{name}` in YAML name fields
-- [ ] `compileSkill()` outputs `<%= branding.commandSlash %>` for slash commands
-- [ ] `compileRule()` outputs `<%= branding.frameworkName %>` for brand references
-- [ ] Shell wrapper generator outputs `<%= branding.commandPrefix %>` in script paths
-- [ ] All compiled output uses EJS placeholders for: commandPrefix, commandSlash, frameworkName, nameLowercase
-- [ ] Non-branded content (code logic, markdown body) remains unchanged
+- [x] `compileAgent()` outputs `<%= branding.commandPrefix %>-{name}` in YAML name fields
+- [x] `compileSkill()` outputs `<%= branding.commandSlash %>` for slash commands
+- [x] `compileRule()` outputs `<%= branding.frameworkName %>` for brand references
+- [x] Shell wrapper generator outputs `<%= branding.commandPrefix %>` in script paths
+- [x] All compiled output uses EJS placeholders for: commandPrefix, commandSlash, frameworkName, nameLowercase
+- [x] Non-branded content (code logic, markdown body) remains unchanged
 
 ### REQ-2: Build Pipeline Split
 
@@ -29,12 +29,12 @@ Split `build:all` into two distinct stages: `build:compile` (src/ → templates/
 
 **Acceptance Criteria:**
 
-- [ ] `bun run build:compile` compiles src/ → `packages/luca-framework/templates/harness/claude/` with EJS placeholders
-- [ ] `bun run build:deploy` resolves EJS templates using local branding config and writes to `.claude/`
-- [ ] `bun run build:all` chains both stages (backward-compatible)
-- [ ] `build:compile` has no dependency on luca CLI or init command
-- [ ] `build:deploy` uses the same template resolution code path as `luca init`
-- [ ] Build manifest (`.claude/.build-manifest.json`) still generated after deploy
+- [x] `bun run build:compile` compiles src/ → `packages/luca-framework/templates/harness/claude/` with EJS placeholders
+- [x] `bun run build:deploy` resolves EJS templates using local branding config and writes to `.claude/`
+- [x] `bun run build:all` chains both stages (backward-compatible)
+- [x] `build:compile` has no dependency on luca CLI or init command
+- [x] `build:deploy` uses the same template resolution code path as `luca init`
+- [x] Build manifest (`.claude/.build-manifest.json`) still generated after deploy
 
 ### REQ-3: Dogfood via luca init
 
@@ -44,11 +44,11 @@ The `build:deploy` step must use `luca init` (or its core template-resolution lo
 
 **Acceptance Criteria:**
 
-- [ ] `bun link` registers the local package globally
-- [ ] `luca init` (or programmatic equivalent) resolves EJS templates with branding from `.planning/config.json`
-- [ ] Deployed `.claude/` output is byte-identical to what `build:all` produces today (except for whitespace/formatting)
-- [ ] Template resolution handles: filename branding (`__branding.commandPrefix__-` → `lu-`), directory branding, content branding
-- [ ] Chicken-and-egg resolved: compilation step requires no CLI; only deploy step uses it
+- [x] `bun link` registers the local package globally
+- [x] `luca init` (or programmatic equivalent) resolves EJS templates with branding from `.planning/config.json`
+- [x] Deployed `.claude/` output is byte-identical to what `build:all` produces today (except for whitespace/formatting)
+- [x] Template resolution handles: filename branding (`__branding.commandPrefix__-` → `lu-`), directory branding, content branding
+- [x] Chicken-and-egg resolved: compilation step requires no CLI; only deploy step uses it
 
 ### REQ-4: Remove Branding Transform
 
@@ -72,9 +72,9 @@ The existing `bun run check:drift` command must continue to work, verifying that
 
 **Acceptance Criteria:**
 
-- [ ] `check:drift` compares `.claude/` against the output of `build:compile` + `build:deploy`
-- [ ] CI pipeline (GitHub Actions) passes with the new build flow
-- [ ] No false positives from EJS template artifacts in the drift check
+- [x] `check:drift` compares `.claude/` against the output of `build:compile` + `build:deploy`
+- [x] CI pipeline (GitHub Actions) passes with the new build flow
+- [x] No false positives from EJS template artifacts in the drift check
 
 ### REQ-6: Session Lock & Manifest Compatibility
 
@@ -84,9 +84,9 @@ Session lock guard and build manifest must work with the new two-stage pipeline.
 
 **Acceptance Criteria:**
 
-- [ ] Session lock check runs before `build:deploy` (not `build:compile`)
-- [ ] Build manifest records artifact counts from the deploy stage
-- [ ] Existing `.claude/.session-lock` behavior preserved
+- [x] Session lock check runs before `build:deploy` (not `build:compile`)
+- [x] Build manifest records artifact counts from the deploy stage
+- [x] Existing `.claude/.session-lock` behavior preserved
 
 ## Out of Scope
 
