@@ -113,6 +113,17 @@
 - [x] ARCH-003: Add coupling documentation comment in resolve-templates.ts shim
 - [x] ARCH-004: Add canonical source comment for hook-to-event map in init.ts
 
+### Phase 198: MuninnDB Vault Routing Guard
+
+**Goal:** Add a global rule + PreToolUse prompt hook to prevent repo-specific memories from being saved to the default MuninnDB vault.
+
+**Depends on:** None
+
+- [ ] Create `~/.claude/rules/vault-guard.md` global rule reinforcing vault routing before MuninnDB writes
+- [ ] Add PreToolUse prompt hook for `mcp__muninn__muninn_remember` / `muninn_remember_batch` that validates concept prefix vs vault
+- [ ] Wire hook into generated settings.json via luca init
+- [ ] Move todo to done/
+
 ---
 
 ## Backlog (Unassigned)
