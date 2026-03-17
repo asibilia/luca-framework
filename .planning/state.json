@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "c278b630-3909-4270-81c5-9c91f40312c8",
+    "session_id": "fbc55ebb-664a-40ed-869a-04289e5dc8e2",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -40,35 +40,40 @@
         "planVerificationIterations": 1,
         "harnessFixIterations": 1,
         "verifyFixIterations": 1,
-        "verificationMode": "quick"
+        "verificationMode": "quick",
+        "recallDepth": 1
       },
       "SIMPLE": {
         "cognitivePreflight": "lite",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "quick"
+        "verificationMode": "quick",
+        "recallDepth": 1
       },
       "MODERATE": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "standard"
+        "verificationMode": "standard",
+        "recallDepth": 3
       },
       "COMPLEX": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 2,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "full"
+        "verificationMode": "full",
+        "recallDepth": null
       },
       "CRITICAL": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 3,
         "harnessFixIterations": 3,
         "verifyFixIterations": 2,
-        "verificationMode": "full+human"
+        "verificationMode": "full+human",
+        "recallDepth": null
       }
     },
     "autopilot_config": {
@@ -86,11 +91,9 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Medium",
-    "appetite_token_ceiling": 100000,
-    "appetite_context_percent": 50,
-    "appetite_used_tokens": 0,
-    "started_at": "2026-03-17T11:36:53.015Z"
+    "started_at": "2026-03-16T19:14:42.057Z",
+    "current_milestone": "Planning next",
+    "last_transition_at": "2026-03-16T19:14:42.115Z"
   },
   "children": {}
 }

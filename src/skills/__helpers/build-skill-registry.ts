@@ -50,6 +50,7 @@ import { ruleHarnessVerificationSkill } from "../general/rule-harness-verificati
 import { ruleHookSkillBoundarySkill } from "../general/rule-hook-skill-boundary.skill";
 import { ruleLuWorkflowSkill } from "../general/rule-lu-workflow.skill";
 import { noteSkill } from "../general/note.skill";
+import { autopilotSkill } from "../general/autopilot.skill";
 import { updateSkill } from "../general/update.skill";
 import { postInitTourSkill } from "../general/post-init-tour.skill";
 import { workflowSaveSkill } from "../general/workflow-save.skill";
@@ -116,6 +117,7 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "rule-hook-skill-boundary": () => ruleHookSkillBoundarySkill,
   "rule-lu-workflow": () => ruleLuWorkflowSkill,
   note: () => noteSkill,
+  autopilot: () => autopilotSkill,
   update: () => updateSkill,
   "post-init-tour": () => postInitTourSkill,
   "workflow-save": () => workflowSaveSkill,
