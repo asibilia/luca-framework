@@ -65,7 +65,7 @@ export async function persistActor(
  * Reads the state snapshot from `.planning/state.json` and reconstructs
  * the XState actor. Re-reads `.planning/config.json` on every load so that
  * config-derived fields (gates, workflow_config, complexity_matrix,
- * autopilot_config) always reflect the current config — not a stale copy
+ * lu_config) always reflect the current config — not a stale copy
  * frozen at initialization time.
  *
  * @param filePath - Path to the state file
@@ -117,7 +117,7 @@ export async function loadPersistedActor(
     }
 
     // Re-read config.json so config-derived fields (gates, workflow_config,
-    // complexity_matrix, autopilot_config) reflect current config, not a
+    // complexity_matrix, lu_config) reflect current config, not a
     // stale snapshot frozen at initialization time.
     let config: Record<string, unknown> = {};
     try {

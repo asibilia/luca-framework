@@ -296,12 +296,6 @@ export const SKILL_MANIFEST: SkillManifestEntryInput[] = [
     description: "Scaffold a new project with Luca integration",
   },
   {
-    name: "autopilot",
-    tier: "extended",
-    category: "workflow",
-    description: "Autonomous multi-phase execution mode",
-  },
-  {
     name: "note",
     tier: "extended",
     category: "workflow",

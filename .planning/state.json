@@ -31,9 +31,7 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": [
-        "typescript"
-      ]
+      "tech_stack_profiles": ["typescript"]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -72,11 +70,11 @@
         "verificationMode": "full+human"
       }
     },
-    "autopilot_config": {
+    "lu_config": {
       "oversight": "full-auto",
       "max_phases_per_session": 10,
       "auto_plan_phases": true,
-      "skip_uat_in_autopilot": true,
+      "skip_uat": true,
       "gap_closure_retries": 1,
       "pause_on_critical_review": true,
       "cross_milestone": false,
