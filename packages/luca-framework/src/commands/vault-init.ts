@@ -4,6 +4,7 @@ import { join } from "pathe";
 
 import { logger } from "../utils/logger";
 import { detectProjectContext } from "../utils/detect";
+import { detectRuntimeContext } from "../utils/runtime-context";
 import {
   runWizard,
   createConfigFromArgs,
@@ -35,6 +36,23 @@ import type { LucaConfig } from "../types";
  * 3. **Config file mode** (`--config <path>`): Reads config from a JSON file
  *
  * Includes a guard to prevent re-initialization if Luca is already installed.
+ *
+ * ## Runtime Mode Detection
+ *
+ * The command automatically detects whether Luca is running from a global
+ * install or from the monorepo in dev mode via `detectRuntimeContext()`.
+ *
+ * - **Global mode**: Only `.planning/` config files are created in the project
+ *   directory. The harness (agents, skills, rules, hooks) is already deployed
+ *   globally to `~/.claude/` by `luca init` Step 3, so duplicating it into
+ *   the project would be incorrect.
+ * - **Dev mode**: The full harness is generated into the project directory
+ *   (`.claude/`). This is the existing behavior for monorepo development.
+ *
+ * In both modes, the vault wizard (vault name + API key prompts) runs
+ * identically -- only the file generation scope differs.
+ *
+ * @see detectRuntimeContext — determines global vs dev mode
  *
  * @example
  * ```bash
@@ -110,6 +128,10 @@ export const vaultInitCommand = defineCommand({
     // Setup cleanup handler for SIGINT
     setupCleanupHandler();
 
+    // Detect runtime mode (global install vs monorepo dev)
+    const runtimeCtx = detectRuntimeContext();
+    const isGlobalMode = runtimeCtx.mode === "global";
+
     // Detect project context
     const context = await detectProjectContext();
 
@@ -178,7 +200,12 @@ export const vaultInitCommand = defineCommand({
     }
 
     // Generate files
-    const result = await generateFiles({ config });
+    if (isGlobalMode) {
+      p.log.info(
+        "Global install detected -- creating .planning/ config files only (harness already in ~/.claude/).",
+      );
+    }
+    const result = await generateFiles({ config, planningOnly: isGlobalMode });
 
     if (!result.success) {
       const reason = String(result.error ?? "Unknown error");
@@ -250,14 +277,16 @@ export const vaultInitCommand = defineCommand({
     // Success output
     p.outro(`Luca initialized in this project!`);
 
-    const harnessNames = (config.harnesses ?? ["claude", "cursor"])
+    const harnessNames = (config.harnesses ?? ["claude"])
       .map((h) => {
         if (h === "claude") return ".claude/";
-        if (h === "cursor") return ".cursor/";
-        if (h === "pi") return ".pi/";
         return h;
       })
       .join(", ");
+
+    const harnessLine = isGlobalMode
+      ? "- Harness files: deployed globally to ~/.claude/ (via luca init)"
+      : `- ${harnessNames} (harness-specific files)`;
 
     const vaultStatus = vaultConfigured
       ? `- .planning/config.json (vault: ${vaultName})\n- .env (MUNINN_API_KEY configured)`
@@ -268,14 +297,14 @@ Next steps:
 
 1. Review .planning/BRAIN.md and customize for your project
 2. Run /${config.branding.commandPrefix} to get started
-3. Use /${config.branding.commandPrefix}-help for command reference
+3. Use /help for command reference
 ${!vaultConfigured ? "4. Run `luca vault:init` interactively to set up MuninnDB vault" : ""}
 
 Files created:
 - .planning/config.json (workflow configuration)
 - .planning/BRAIN.md (project identity)
 - .planning/manifest.json (installation tracking)
-- ${harnessNames} (harness-specific files)
+- ${harnessLine}
 ${vaultStatus}
     `);
 

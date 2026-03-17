@@ -49,13 +49,11 @@ export async function detectProjectContext(
 
   // Directory existence checks — existsSync required (Bun.file doesn't support dirs)
   context.hasGit = existsSync(join(cwd, ".git"));
-  context.hasLuca = existsSync(join(cwd, ".cursor", "luca"));
+  context.hasLuca = existsSync(join(cwd, ".planning"));
 
   // Detect installed harness platforms
   const harnesses: string[] = [];
   if (existsSync(join(cwd, ".claude"))) harnesses.push("claude");
-  if (existsSync(join(cwd, ".cursor"))) harnesses.push("cursor");
-  if (existsSync(join(cwd, ".pi"))) harnesses.push("pi");
   context.detectedHarnesses = harnesses;
 
   // Detect existing source code directories

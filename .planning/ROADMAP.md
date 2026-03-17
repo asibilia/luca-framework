@@ -6,148 +6,6 @@
 
 ---
 
-## v5.0.0 — Global NPM Package
-
-**Goal:** Ship `@alecsibilia/luca-framework` as a one-command global installer with MuninnDB bundling, CLI tooling, and guided setup.
-
-**Source:** Todo #17
-
-### Phase 172: CLI Command Surface & Prerequisites
-
-**Goal:** Restructure CLI to support global install commands and add prerequisite detection.
-
-- [x] Add `vault init`, `reinit`, `version` subcommands to citty CLI
-- [x] Implement Bun prerequisite detection with install prompt
-- [x] Implement OS + architecture detection for platform-specific downloads
-- [x] Create `~/.luca/` directory structure on first run
-- [x] Add `--global` context detection (installed package vs monorepo dev)
-
-**Depends on:** None
-**Covers:** REQ-01, REQ-02, REQ-09
-
-### Phase 173: MuninnDB Binary Management
-
-**Goal:** Download, install, and manage MuninnDB binary per platform.
-
-- [x] Implement platform binary download (darwin-arm64, darwin-x64, linux-x64, linux-arm64)
-- [x] Install binary to `~/.luca/bin/muninndb` with correct permissions
-- [x] Health check MuninnDB on port 8476 after install
-- [x] Service start/stop management
-- [x] PATH guidance if `~/.luca/bin/` not on PATH
-
-**Depends on:** Phase 172
-**Covers:** REQ-03
-
-### Phase 174: Build Pipeline & Path Portability
-
-**Goal:** Make build pipeline work from installed package location.
-
-- [x] Audit all skills/agents for monorepo-specific path references
-- [x] Replace hardcoded paths with package-relative resolution
-- [x] Ensure `bun run build:all` equivalent works from global install
-- [x] Make artifact counts discoverable from installed package
-
-**Depends on:** Phase 172
-**Covers:** REQ-04
-
-### Phase 175: Settings Merge & Artifact Deployment
-
-**Goal:** Implement surgical settings.json merge and artifact deployment to ~/.claude/.
-
-- [x] Parse existing hooks by `matcher` + `event` composite key
-- [x] Non-conflicting hook addition (auto-merge)
-- [x] Conflict prompt for same-key different-script hooks
-- [x] Backup existing settings to `~/.luca/backups/`
-- [x] Copy agents, skills, hooks, rules to `~/.claude/`
-- [x] Deploy manifest tracking in `~/.luca/manifests/deploy-manifest.json`
-
-**Depends on:** Phase 174
-**Covers:** REQ-05, REQ-09
-
-### Phase 176: Vault Setup & Init Flow Integration
-
-**Goal:** Wire all init steps together and implement per-repo vault wizard.
-
-- [x] `luca vault init` guided wizard (detect project, suggest vault name, guide Web UI, verify key)
-- [x] Write vault to `.planning/config.json`, API key to `.env`
-- [x] Ensure `.env` in `.gitignore`
-- [x] Wire 5-step init flow: prerequisites → MuninnDB → build → deploy → vault
-- [x] Post-init readout with next steps
-
-**Depends on:** Phase 173, Phase 175
-**Covers:** REQ-06
-
-### Phase 177: Doctor Expansion, Update & Reinit
-
-**Goal:** Expand doctor for global context and implement update/reinit commands.
-
-- [x] Doctor: check prerequisites (Bun, MuninnDB, API key)
-- [x] Doctor: check global artifacts (~/.claude/ counts, settings.json hooks)
-- [x] Doctor: check framework runtime (state machine, bridge CLI)
-- [x] Doctor: check current project (config.json, vault, .env)
-- [x] `luca update`: npm registry check, rebuild, redeploy
-- [x] `luca reinit`: force rebuild + redeploy
-
-**Depends on:** Phase 172, Phase 175
-**Covers:** REQ-07, REQ-08
-
-### Phase 178: Config Portability & Integration
-
-**Goal:** Generic config templates and end-to-end integration verification.
-
-- [x] Auto-detect project stack for harness config template
-- [x] Hook double-firing dedup logic
-- [x] End-to-end verification of full install flow
-- [x] Documentation for global installation
-
-**Depends on:** Phase 176, Phase 177
-**Covers:** REQ-10
-
-### Phase 179: Security Hardening
-
-**Goal:** Address all security audit findings — binary integrity, file permissions, input sanitization.
-
-- [x] Add SHA-256 checksum verification to binary download (SEC-001, HIGH)
-- [x] Restrict .env file permissions to 0600 after writing API key (SEC-002, HIGH)
-- [x] Validate HTTPS scheme on download URL override (SEC-003, MEDIUM)
-- [x] Restrict PID file permissions + validate process identity before SIGTERM (SEC-004, MEDIUM)
-- [x] Restrict backup file and directory permissions to 0600/0700 (SEC-005, MEDIUM)
-- [x] Replace raw JSON.parse with sanitizeJsonParse in vault-setup.ts (SEC-006, LOW)
-- [x] Replace raw JSON.parse with sanitizeJsonParse in init.ts and deploy-global.ts (SEC-007, LOW)
-- [x] Add symlink-following guard to copyDirForDeploy (SEC-008, LOW)
-
-**Depends on:** Phase 178
-**Covers:** Audit findings SEC-001 through SEC-008
-
-### Phase 180: DRY Consolidation & Convention Alignment
-
-**Goal:** Eliminate code duplication, align with project conventions (Bun APIs, Zod schema-first, lodash), reduce complexity in large functions.
-
-- [x] Extract resolveMuninndbPort() to muninndb-schemas.ts (DRY-1, HIGH)
-- [x] Delegate vault-setup health check to checkMuninndbService() (DRY-2, HIGH)
-- [x] Extract resolveMonorepoRoot() to runtime-context.ts (DRY-3, HIGH)
-- [x] Extract shared deploy utilities: copyArtifactDir, rewriteHookPaths (DRY-4, W3, W4, MEDIUM)
-- [x] Migrate init.ts from node:fs to Bun.file/Bun.write (DRY-5, MEDIUM) — already done in prior phases
-- [x] Fix deploy-global.ts barrel imports — resolved as non-issue (W2, MEDIUM)
-- [x] Convert muninndb-service/health interfaces to Zod schemas + remove destructuring defaults (DX, MEDIUM) — no-op, already Zod
-- [x] Emit build-time hook registry JSON artifact for init.ts (COMPLEXITY-1, MEDIUM)
-- [x] Refactor executeGlobalUpdate() into composable helpers (COMPLEXITY-2, MEDIUM) — already refactored
-- [x] Refactor runDeployStep() into composable helpers (COMPLEXITY-3, MEDIUM) — already refactored
-- [x] Schema casing alignment in muninndb-schemas.ts (W1, MEDIUM) — confirmed camelCase correct
-- [x] Convert doctor CheckResult to Zod schema (W5, MEDIUM)
-- [x] Extract extractErrorMessage() utility (DRY-6, LOW)
-- [x] Move inferSourceType() to deploy-manifest.schemas.ts (DRY-7, LOW)
-- [x] Replace direct homedir() calls with getLucaHomePaths() (ANTI-PATTERN-1, LOW)
-- [x] Remove unused errorMsg variable in muninndb-service.ts (DEAD-CODE-1, LOW)
-- [x] Add lodash filter/cloneDeep in init.ts (DX, LOW) — no applicable calls found
-- [x] Fix import grouping in init.ts and muninndb-service.ts (DX, LOW)
-- [x] Add JSDoc to copyDirForDeploy, rewriteWrapperPathsForInit, buildProposedHooksFromDeployed (DX, LOW)
-
-**Depends on:** Phase 179
-**Covers:** Audit findings DRY-1 through DRY-7, W1-W5, COMPLEXITY-1 through COMPLEXITY-3, DX findings
-
----
-
 ---
 
 ## Backlog (Unassigned)
@@ -157,6 +15,12 @@
 | #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
 
 ---
+
+## Closed (v5.0.0 Completed)
+
+| Todo | Reason                                                                                                                                                         |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #17  | Global NPM Package: 9 phases, 86 commits, 102 files changed. CLI installer, MuninnDB binary management, artifact deployment, vault setup, doctor/update/reinit |
 
 ## Closed (v4.5.0 Completed)
 
@@ -316,6 +180,7 @@
 - **v4.5.0** — Platform Simplification & Proactive Intelligence: 14 phases, 93 commits, 793 files changed ([View Archive](milestones/v4.5.0-ROADMAP.md))
 - **v5.1.0** — Workflow Quality & Skill Simplification: 2 phases, 13 commits, 33 files changed ([View Archive](milestones/v5.1.0-ROADMAP.md))
 - **v5.0.0** — Global NPM Package: 9 phases, 86 commits, 102 files changed ([View Archive](milestones/v5.0.0-ROADMAP.md))
+- **v5.2.0** — Distribution & Install Quality: 8 phases, 43 commits, 201 files changed ([View Archive](milestones/v5.2.0-ROADMAP.md))
 
 ---
 

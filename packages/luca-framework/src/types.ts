@@ -11,7 +11,7 @@ export interface ProjectContext {
   hasTypeScript: boolean;
   /** Project name from package.json */
   projectName: string | null;
-  /** Harness platforms detected on disk (e.g., ["claude", "cursor"]) */
+  /** Harness platforms detected on disk (e.g., ["claude"]) */
   detectedHarnesses?: string[];
   /** Suggested first command based on detected harness (e.g., "/lu") */
   suggestedFirstCommand?: string;
@@ -68,8 +68,8 @@ export interface ApprovalConfig {
   custom_triggers: string[];
 }
 
-/** Supported AI harness platforms */
-export type HarnessId = "claude" | "cursor" | "pi";
+/** Supported AI harness platform — Claude is the sole supported platform */
+export type HarnessId = "claude";
 
 /**
  * Progressive configuration preset identifiers.
@@ -103,8 +103,17 @@ export interface LucaManifest {
   branding: BrandingConfig;
   stack: string;
   workTracker: string;
-  /** Harness platforms installed in this project (defaults to ['claude', 'cursor'] for backward compat) */
+  /** Harness platforms installed in this project */
   harnesses?: HarnessId[];
+  /**
+   * Installation mode that produced this manifest.
+   *
+   * - `"project"` — full harness scaffolded into the project directory
+   * - `"global"` — planning-only install; harness lives in ~/.claude/
+   *
+   * When absent, assume `"project"` for backward compatibility.
+   */
+  installation_mode?: "project" | "global";
   files: Record<
     string,
     {

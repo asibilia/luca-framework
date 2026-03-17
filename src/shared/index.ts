@@ -25,6 +25,11 @@ export {
 
 export type { Result } from "./__schemas/shared.schemas";
 
+// ─── Lu Config ──────────────────────────────────────────────────────────────────
+
+export { LuConfigSchema } from "./__schemas/lu-config.schemas";
+export type { LuConfig } from "./__schemas/lu-config.schemas";
+
 // ─── CLI Utilities ──────────────────────────────────────────────────────────────
 
 export { getArg, hasFlag, escapeRegex } from "./__helpers/cli-utils";

@@ -164,7 +164,7 @@ export const workflowContextSchema = z.object({
   gates: z.record(z.string(), z.boolean()).default({}),
   workflow_config: z.record(z.string(), z.unknown()).default({}),
   complexity_matrix: complexityMatrixSchema.default({}),
-  autopilot_config: z.record(z.string(), z.unknown()).default({}),
+  lu_config: z.record(z.string(), z.unknown()).default({}),
 
   // Execution tracking
   phase_results: z.array(phaseResultSchema).default([]),
@@ -510,7 +510,7 @@ export type TransitionRecord = z.infer<typeof transitionRecordSchema>;
  *   ticket_id: "PROJ-1234",
  *   config: {
  *     gates: { confirm_plan: true },
- *     autopilot: { oversight: "full-auto" },
+ *     lu: { oversight: "full-auto" },
  *   },
  * });
  * ```
@@ -529,11 +529,15 @@ export function initializeContext(
     ...inputFields,
     // Config-derived fields: only apply if not explicitly provided in input
     oversight:
-      input?.oversight ?? get(config, "autopilot.oversight") ?? "milestone",
+      input?.oversight ??
+      get(config, "lu.oversight") ??
+      get(config, "autopilot.oversight") ??
+      "milestone",
     gates: get(config, "gates") ?? input?.gates ?? {},
     workflow_config: get(config, "workflow") ?? input?.workflow_config ?? {},
     complexity_matrix:
       get(config, "complexity.matrix") ?? input?.complexity_matrix ?? {},
-    autopilot_config: get(config, "autopilot") ?? input?.autopilot_config ?? {},
+    lu_config:
+      get(config, "lu") ?? get(config, "autopilot") ?? input?.lu_config ?? {},
   });
 }

@@ -14,8 +14,8 @@ Phase number: $ARGUMENTS (required)
 ```
 Error: Phase number required.
 
-Usage: /lu-list-phase-assumptions [phase-number]
-Example: /lu-list-phase-assumptions 3
+Usage: /<%= branding.commandPrefix %>-list-phase-assumptions [phase-number]
+Example: /<%= branding.commandPrefix %>-list-phase-assumptions 3
 ```
 
 Exit workflow.
@@ -159,8 +159,8 @@ Present next steps:
 
 ```
 What's next?
-1. Discuss context (/lu-discuss-phase ${PHASE}) - Let me ask you questions to build comprehensive context
-2. Plan this phase (/lu-plan-phase ${PHASE}) - Create detailed execution plans
+1. Discuss context (/<%= branding.commandPrefix %>-discuss-phase ${PHASE}) - Let me ask you questions to build comprehensive context
+2. Plan this phase (/<%= branding.commandPrefix %>-plan-phase ${PHASE}) - Create detailed execution plans
 3. Re-examine assumptions - I'll analyze again with your corrections
 4. Done for now
 ```

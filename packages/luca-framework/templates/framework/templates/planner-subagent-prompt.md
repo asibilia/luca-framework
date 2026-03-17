@@ -1,6 +1,6 @@
 # Planner Subagent Prompt Template
 
-Template for spawning lu-planner agent. The agent contains all planning expertise - this template provides planning context only.
+Template for spawning <%= branding.commandPrefix %>-planner agent. The agent contains all planning expertise - this template provides planning context only.
 
 ---
 
@@ -34,7 +34,7 @@ Template for spawning lu-planner agent. The agent contains all planning expertis
 </planning_context>
 
 <downstream_consumer>
-Output consumed by /lu-execute-phase
+Output consumed by /<%= branding.commandPrefix %>-execute-phase
 Plans must be executable prompts with:
 - Frontmatter (wave, depends_on, files_modified, autonomous)
 - Tasks in XML format
@@ -68,22 +68,22 @@ Before returning PLANNING COMPLETE:
 
 ## Usage
 
-**From /lu-plan-phase (standard mode):**
+**From /<%= branding.commandPrefix %>-plan-phase (standard mode):**
 
 ```python
 Task(
   prompt=filled_template,
-  subagent_type="lu-planner",
+  subagent_type="<%= branding.commandPrefix %>-planner",
   description="Plan Phase {phase}"
 )
 ```
 
-**From /lu-plan-phase --gaps (gap closure mode):**
+**From /<%= branding.commandPrefix %>-plan-phase --gaps (gap closure mode):**
 
 ```python
 Task(
   prompt=filled_template,  # with mode: gap_closure
-  subagent_type="lu-planner",
+  subagent_type="<%= branding.commandPrefix %>-planner",
   description="Plan gaps for Phase {phase}"
 )
 ```
@@ -116,4 +116,4 @@ Continue: {standard | gap_closure}
 
 ---
 
-**Note:** Planning methodology, task breakdown, dependency analysis, wave assignment, TDD detection, and goal-backward derivation are baked into the lu-planner agent. This template only passes context.
+**Note:** Planning methodology, task breakdown, dependency analysis, wave assignment, TDD detection, and goal-backward derivation are baked into the <%= branding.commandPrefix %>-planner agent. This template only passes context.

@@ -22,7 +22,7 @@ import type {
  * Minimal context summary for transition records and audit logs.
  *
  * Contains only the fields useful for debugging and tracking,
- * excluding large objects like gates, complexity_matrix, and autopilot_config.
+ * excluding large objects like gates, complexity_matrix, and lu_config.
  *
  * Uses snake_case for all properties per API conventions.
  */
@@ -43,7 +43,7 @@ export interface ContextSummary {
  * Extract a minimal context summary from the full workflow context.
  *
  * Returns only the fields useful for transition records and audit logs,
- * excluding large objects like gates, complexity_matrix, and autopilot_config.
+ * excluding large objects like gates, complexity_matrix, and lu_config.
  *
  * @param context - The full workflow context
  * @returns A minimal subset of context fields

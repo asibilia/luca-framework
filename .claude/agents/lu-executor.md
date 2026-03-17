@@ -258,8 +258,6 @@ Execute each task in the plan.
 
 ## task_implementation_loop
 
-## task_implementation_loop
-
 After implementing each task, enter a self-review cycle before committing.
 
 ### Step 1: Implement

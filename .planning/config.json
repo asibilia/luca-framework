@@ -144,11 +144,11 @@
       }
     }
   },
-  "autopilot": {
-    "oversight": "milestone",
+  "lu": {
+    "oversight": "full-auto",
     "max_phases_per_session": 10,
     "auto_plan_phases": true,
-    "skip_uat_in_autopilot": true,
+    "skip_uat": true,
     "gap_closure_retries": 1,
     "pause_on_critical_review": true,
     "cross_milestone": false,

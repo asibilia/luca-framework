@@ -1,0 +1,45 @@
+# Publish @alecsibilia/luca-framework to npm when a GitHub release is created.
+#
+# Requirements:
+#   REQ-13: Auto-publish on release (type: published)
+#   REQ-14: Run typecheck before publishing
+#   REQ-15: Authenticate via NPM_TOKEN repository secret
+#   REQ-16: Publish with --access restricted
+#
+# Setup:
+#   1. Generate an npm access token (granular or classic) with publish permission
+#      scoped to @alecsibilia/luca-framework.
+#   2. Add it as a repository secret named NPM_TOKEN:
+#      Settings > Secrets and variables > Actions > New repository secret
+#   3. Create a GitHub release (tag format: v*.*.* recommended) to trigger this workflow.
+
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx --bun tsc --noEmit
+
+      - name: Publish to npm
+        run: cd packages/luca-framework && npm publish --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

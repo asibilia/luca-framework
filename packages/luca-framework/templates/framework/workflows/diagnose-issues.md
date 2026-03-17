@@ -191,7 +191,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► DIAGNOSIS COMPLETE
+ <%= branding.frameworkName %> ► DIAGNOSIS COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Gap (Truth) | Root Cause | Files |
@@ -226,7 +226,7 @@ Agents only diagnose—plan-phase --gaps handles fixes (no fix application).
 **Agent times out:**
 
 - Check DEBUG-{slug}.md for partial progress
-- Can resume with /lu-debug
+- Can resume with /<%= branding.commandPrefix %>-debug
 
 **All agents fail:**
 

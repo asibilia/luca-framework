@@ -263,7 +263,7 @@ Skill(skill: "git-commit", args: "--no-push")
     },
     {
       title: "configuration",
-      // Config key is 'autopilot' for backward compatibility
+      // Config key is 'lu' with one-version fallback to 'autopilot'
       content: `## Step 0: Configuration & Pre-Flight
 
 ### 0a. Read Config
@@ -282,39 +282,40 @@ Extract settings (with defaults):
 \`\`\`bash
 OVERSIGHT=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.oversight ?? 'milestone');
+  console.log((c.lu ?? c.autopilot)?.oversight ?? 'milestone');
 ")
 MAX_PHASES=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.max_phases_per_session ?? 10);
+  console.log((c.lu ?? c.autopilot)?.max_phases_per_session ?? 10);
 ")
 AUTO_PLAN=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.auto_plan_phases ?? true);
+  console.log((c.lu ?? c.autopilot)?.auto_plan_phases ?? true);
 ")
 SKIP_UAT=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.skip_uat_in_autopilot ?? true);
+  const lu = c.lu ?? c.autopilot;
+  console.log(lu?.skip_uat ?? lu?.skip_uat_in_autopilot ?? true);
 ")
 GAP_RETRIES=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.gap_closure_retries ?? 1);
+  console.log((c.lu ?? c.autopilot)?.gap_closure_retries ?? 1);
 ")
 CROSS_MILESTONE=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.cross_milestone ?? false);
+  console.log((c.lu ?? c.autopilot)?.cross_milestone ?? false);
 ")
 BACKLOG_SCAN=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.backlog_scan ?? true);
+  console.log((c.lu ?? c.autopilot)?.backlog_scan ?? true);
 ")
 SWARM_ENABLED=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.swarm_enabled ?? true);
+  console.log((c.lu ?? c.autopilot)?.swarm_enabled ?? true);
 ")
 MAX_PARALLEL=$(echo "$CONFIG" | bun -e "
   const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-  console.log(c.autopilot?.max_parallel_phases ?? 3);
+  console.log((c.lu ?? c.autopilot)?.max_parallel_phases ?? 3);
 ")
 \`\`\`
 
@@ -938,8 +939,21 @@ luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY
 
 Discussion runs at every complexity level. The discussion depth and model tier scale with complexity via the routing table, but the step itself is never skipped.
 
+**Resolve premortem gate before invoking phase-discuss:**
+
+\`\`\`bash
+# Orchestrator resolves the premortem gate — sub-skill does NOT decide
+PREMORTEM_FLAG=""
+PREMORTEM_ENABLED=$(luca-bridge gate-check --gate=premortem 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+if [ "$PREMORTEM_ENABLED" = "true" ]; then
+  PREMORTEM_FLAG="--run-premortem"
+else
+  PREMORTEM_FLAG="--skip-premortem"
+fi
 \`\`\`
-Skill(skill: "phase-discuss", args: "{phase_number}")
+
+\`\`\`
+Skill(skill: "phase-discuss", args: "{phase_number} $PREMORTEM_FLAG")
 \`\`\`
 
 Transition state machine after discussion:
@@ -1002,6 +1016,20 @@ fi
 if [ "$OVERSIGHT" = "phase" ]; then
   EXEC_FLAGS="{phase_number}"  # No --skip-uat
 fi
+\`\`\`
+
+**Resolve process_data gate before invoking phase-execute:**
+
+\`\`\`bash
+# Orchestrator resolves the process_data gate — sub-skill does NOT decide
+PROCESS_DATA_FLAG=""
+PROCESS_DATA_ENABLED=$(luca-bridge gate-check --gate=process_data 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+if [ "$PROCESS_DATA_ENABLED" = "true" ]; then
+  PROCESS_DATA_FLAG="--run-process-data"
+else
+  PROCESS_DATA_FLAG="--skip-process-data"
+fi
+EXEC_FLAGS="$EXEC_FLAGS $PROCESS_DATA_FLAG"
 \`\`\`
 
 Invoke the full execution pipeline:

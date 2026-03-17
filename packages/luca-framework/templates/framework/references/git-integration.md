@@ -1,12 +1,12 @@
 <overview>
-Git integration for Luca framework, aligned with project conventions.
+Git integration for <%= branding.frameworkName %> framework, aligned with project conventions.
 </overview>
 
 <branch_naming>
 
 ## Branch Naming
 
-When starting a Luca project tied to a GitHub issue, use the project's branch naming convention:
+When starting a <%= branding.frameworkName %> project tied to a GitHub issue, use the project's branch naming convention:
 
 ```
 {issue_number}--{dash-cased-description}
@@ -17,7 +17,7 @@ When starting a Luca project tied to a GitHub issue, use the project's branch na
 - `15--add-authentication-system`
 - `108--refactor-api-layer`
 
-**Why:** This connects Luca phase work back to GitHub issues for tracking and PR creation.
+**Why:** This connects <%= branding.frameworkName %> phase work back to GitHub issues for tracking and PR creation.
 
 </branch_naming>
 
@@ -48,7 +48,7 @@ The git log should read like a changelog of what shipped, not a diary of plannin
 [ -d .git ] && echo "GIT_EXISTS" || echo "NO_GIT"
 ```
 
-If NO_GIT: Run `git init` silently. Luca projects always get their own repo.
+If NO_GIT: Run `git init` silently. <%= branding.frameworkName %> projects always get their own repo.
 </git_check>
 
 <commit_formats>

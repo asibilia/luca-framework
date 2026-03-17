@@ -81,8 +81,8 @@ export async function hashFile(filePath: string): Promise<string> {
 /**
  * Determine the file source for a relative path based on harness directories.
  *
- * Files under `.claude/`, `.cursor/`, or `.pi/` are tagged with their
- * harness-specific source marker. All other files default to "framework".
+ * Files under `.claude/` are tagged with the harness-specific source marker.
+ * All other files default to "framework".
  *
  * @param relativePath - Path relative to project root
  * @param harnesses - Active harness IDs
@@ -112,7 +112,7 @@ export async function createManifest(options: {
 }): Promise<LucaManifest> {
   const { config, cwd, createdFiles, sourceMap } = options;
   const now = new Date().toISOString();
-  const harnesses: string[] = config.harnesses ?? ["claude", "cursor"];
+  const harnesses: string[] = config.harnesses ?? ["claude"];
 
   const files: LucaManifest["files"] = {};
 
@@ -140,7 +140,7 @@ export async function createManifest(options: {
     branding: config.branding,
     stack: config.stack,
     workTracker: config.workTracker,
-    harnesses: config.harnesses ?? ["claude", "cursor"],
+    harnesses: config.harnesses ?? ["claude"],
     files,
   };
 }

@@ -9,7 +9,7 @@ Gather phase context through adaptive questioning before creating execution plan
 
 Extract implementation decisions that downstream agents need — researcher and planner will use CONTEXT.md to know what to investigate and what choices are locked.
 
-**Arguments:** `<phase> [--auto]`
+**Arguments:** `<phase> [--auto] [--run-premortem | --skip-premortem]`
 
 ## Vault Resolution
 
@@ -241,24 +241,30 @@ luca-bridge set-field --field=appetite_context_percent --value=$CHOSEN_CONTEXT_P
 
 After appetite declaration, run pre-mortem risk analysis to identify failure scenarios before planning begins. This step is gated on complexity and config.
 
-### Gate Check
+### Gate Check (Flag-Based, Fail-Closed)
+
+The premortem gate is resolved by the **lu orchestrator** and passed as an explicit flag. This skill does NOT resolve the gate itself.
 
 ```bash
-# 1. Read complexity (already available from earlier in the process)
-# 2. Check premortem gate via bridge
-PREMORTEM_GATE=$(luca-bridge gate-check --gate=premortem 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.enabled)" 2>/dev/null || echo "false")
+# Check for orchestrator-supplied flag (fail-closed: absent flag = skip)
+if echo "$ARGS" | grep -q -- "--run-premortem"; then
+  PREMORTEM_GATE="true"
+else
+  # --skip-premortem OR no flag at all = skip (fail-closed)
+  PREMORTEM_GATE="false"
+fi
 ```
 
 ### Skip Conditions
 
 Skip pre-mortem (no prompt, no spawn) if:
-- `PREMORTEM_GATE` is "false"
+- `PREMORTEM_GATE` is "false" (either --skip-premortem was passed or no flag was present)
 
 When skipping, emit DISCUSS_COMPLETE as normal and proceed to next steps.
 
 ### Self-Tuning Auto-Skip
 
-If the config gate passes (premortem IS enabled), check whether signal rate data suggests pre-mortem is not providing value:
+If the orchestrator flag indicates premortem is enabled (`--run-premortem` was passed), check whether signal rate data suggests pre-mortem is not providing value:
 
 1. Recall \`metric:signal-rate-aggregate\` from MuninnDB:
    \`\`\`
@@ -284,7 +290,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
 
 3. If the aggregate does NOT exist or conditions are NOT met: proceed with pre-mortem as normal.
 
-**Important:** The config gate (\`gates.premortem\`) takes precedence. If config says disabled, pre-mortem never runs regardless of signal rate. Self-tuning only applies when config says enabled but data suggests low value.
+**Important:** The orchestrator flag takes precedence. If the orchestrator passed \`--skip-premortem\` (or no flag), pre-mortem never runs regardless of signal rate. Self-tuning only applies when \`--run-premortem\` was passed but data suggests low value.
 
 ### Execution (gate enabled)
 

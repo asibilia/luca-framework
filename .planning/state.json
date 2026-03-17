@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "c278b630-3909-4270-81c5-9c91f40312c8",
+    "session_id": "adf7c242-d552-4c41-ba55-509d39468871",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -30,9 +30,7 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": [
-        "typescript"
-      ]
+      "tech_stack_profiles": ["typescript"]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -71,16 +69,7 @@
         "verificationMode": "full+human"
       }
     },
-    "autopilot_config": {
-      "oversight": "milestone",
-      "max_phases_per_session": 10,
-      "auto_plan_phases": true,
-      "skip_uat_in_autopilot": true,
-      "gap_closure_retries": 1,
-      "pause_on_critical_review": true,
-      "cross_milestone": false,
-      "backlog_scan": true
-    },
+    "lu_config": {},
     "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
@@ -90,9 +79,9 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-17T11:36:53.015Z",
+    "started_at": "2026-03-17T15:23:47.017Z",
     "current_milestone": "Planning next",
-    "last_transition_at": "2026-03-17T11:41:53.527Z"
+    "last_transition_at": "2026-03-17T15:28:47.492Z"
   },
   "children": {}
 }

@@ -217,10 +217,10 @@ export const workflowGuards = {
     return get(context.workflow_config, params.key) === true;
   },
 
-  /** Autopilot has more phases to execute */
+  /** Lu orchestrator has more phases to execute */
   hasMorePhases: ({ context }: { context: WorkflowContext }) => {
     const maxPhases = get(
-      context.autopilot_config,
+      context.lu_config,
       "max_phases_per_session",
       1,
     ) as number;

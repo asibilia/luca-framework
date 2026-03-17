@@ -1,6 +1,6 @@
 # Learning Capture Workflow
 
-This workflow is executed by `lu-learner` agent after verification completes. It extracts validated insights and updates long-term memory.
+This workflow is executed by `<%= branding.commandPrefix %>-learner` agent after verification completes. It extracts validated insights and updates long-term memory.
 
 ## Purpose
 
@@ -11,9 +11,9 @@ This workflow is executed by `lu-learner` agent after verification completes. It
 
 ## When This Runs
 
-- After `lu-verifier` completes (pass or fail)
-- At `/lu-complete-milestone` for final consolidation
-- When `/lu` workflow completes
+- After `<%= branding.commandPrefix %>-verifier` completes (pass or fail)
+- At `/<%= branding.commandPrefix %>-complete-milestone` for final consolidation
+- When `<%= branding.commandSlash %>` workflow completes
 
 ## Process
 
@@ -60,17 +60,18 @@ cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 
 **Extraction criteria:**
 
-| Criterion | Include If | Exclude If |
-|-----------|------------|------------|
-| Validated | Verification passed | Verification failed |
-| Replicable | Could use again | One-time thing |
-| Non-obvious | Project-specific insight | Standard practice |
-| Not duplicate | New to MEMORY.md | Already documented |
+| Criterion     | Include If               | Exclude If          |
+| ------------- | ------------------------ | ------------------- |
+| Validated     | Verification passed      | Verification failed |
+| Replicable    | Could use again          | One-time thing      |
+| Non-obvious   | Project-specific insight | Standard practice   |
+| Not duplicate | New to MEMORY.md         | Already documented  |
 
 **Format approved patterns:**
 
 ```markdown
 #### [Pattern Name]
+
 - **Pattern**: [Description of the approach]
 - **When to use**: [Context where this applies]
 - **Example**: [Code snippet or file reference]
@@ -88,11 +89,11 @@ cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 
 **Extraction criteria:**
 
-| Criterion | Include If | Exclude If |
-|-----------|------------|------------|
-| Real choice | Multiple options existed | Only one option |
-| Rationale worth keeping | Why matters | Obvious choice |
-| Constrains future | Affects later work | Isolated decision |
+| Criterion               | Include If               | Exclude If        |
+| ----------------------- | ------------------------ | ----------------- |
+| Real choice             | Multiple options existed | Only one option   |
+| Rationale worth keeping | Why matters              | Obvious choice    |
+| Constrains future       | Affects later work       | Isolated decision |
 
 **Format approved decisions:**
 
@@ -100,7 +101,7 @@ cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 ### [Date] - [Decision Title]
 
 - **Context**: [What prompted this decision]
-- **Options Considered**: 
+- **Options Considered**:
   - Option A: [Description]
   - Option B: [Description]
 - **Choice**: [What was decided]
@@ -120,12 +121,12 @@ cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 
 **Extraction criteria (LOW BAR - capture more):**
 
-| Criterion | Include If | Exclude If |
-|-----------|------------|------------|
-| Root cause known | Why it happened | Mystery issue |
-| Preventable | Can avoid in future | Random/environmental |
-| Relevant again | Likely to recur | Truly one-time |
-| Not duplicate | New to MEMORY.md | Already documented |
+| Criterion        | Include If          | Exclude If           |
+| ---------------- | ------------------- | -------------------- |
+| Root cause known | Why it happened     | Mystery issue        |
+| Preventable      | Can avoid in future | Random/environmental |
+| Relevant again   | Likely to recur     | Truly one-time       |
+| Not duplicate    | New to MEMORY.md    | Already documented   |
 
 **Format approved pitfalls:**
 
@@ -160,11 +161,11 @@ IF modified:
 
 **Confidence levels:**
 
-| Level | Meaning | Validations |
-|-------|---------|-------------|
-| Low | First occurrence | 1 |
-| Medium | Multiple occurrences | 2-3 |
-| High | Established pattern | 4+ |
+| Level  | Meaning              | Validations |
+| ------ | -------------------- | ----------- |
+| Low    | First occurrence     | 1           |
+| Medium | Multiple occurrences | 2-3         |
+| High   | Established pattern  | 4+          |
 
 ### Step 7: Write to MEMORY.md
 
@@ -179,7 +180,8 @@ Append new entries to appropriate sections:
 Update statistics at bottom:
 
 ```markdown
-*Memory Statistics*
+_Memory Statistics_
+
 - Total patterns: {N}
 - Total decisions: {N}
 - Total pitfalls: {N}
@@ -191,7 +193,8 @@ Update statistics at bottom:
 Update WORKING.md status:
 
 ```markdown
-*Session Status*
+_Session Status_
+
 - [ ] Active
 - [x] Learnings extracted
 - [x] Ready to clear
@@ -202,11 +205,11 @@ Then reset for next session:
 ```markdown
 # Working Memory
 
-> Session-specific memory. Initialized by lu-cognition at workflow start.
+> Session-specific memory. Initialized by <%= branding.commandPrefix %>-cognition at workflow start.
 
-*Status: Cleared after learning extraction*
-*Last session: [timestamp]*
-*Learnings extracted: [N] patterns, [N] decisions, [N] pitfalls*
+_Status: Cleared after learning extraction_
+_Last session: [timestamp]_
+_Learnings extracted: [N] patterns, [N] decisions, [N] pitfalls_
 ```
 
 ### Step 9: Output Summary
@@ -215,6 +218,7 @@ Then reset for next session:
 ## LEARNING EXTRACTION COMPLETE
 
 ### Session Summary
+
 - **Workflow**: {workflow name}
 - **Duration**: {session duration}
 - **Verification**: {passed/failed}
@@ -231,13 +235,16 @@ Then reset for next session:
 {List of pitfall names}
 
 ### Confidence Updates
+
 {Any existing entries that got bumps}
 
 ### Working Memory
+
 - Status: Cleared
 - Ready for next session
 
 ### Memory Statistics
+
 - Total patterns: {N}
 - Total decisions: {N}
 - Total pitfalls: {N}
@@ -259,9 +266,11 @@ cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
 ## LEARNING EXTRACTION COMPLETE
 
 ### Status
+
 No new learnings to extract from this session.
 
 ### Working Memory
+
 Cleared. Ready for next session.
 ```
 

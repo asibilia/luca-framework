@@ -1,22 +1,22 @@
 # Model Profiles
 
-Model profiles control which Claude model each Luca agent uses. This allows balancing quality vs token spend.
+Model profiles control which Claude model each <%= branding.frameworkName %> agent uses. This allows balancing quality vs token spend.
 
 ## Profile Definitions
 
 | Agent | `quality` | `balanced` | `budget` |
 |-------|-----------|------------|----------|
-| lu-planner | opus | opus | sonnet |
-| lu-roadmapper | opus | sonnet | sonnet |
-| lu-executor | opus | sonnet | sonnet |
-| lu-phase-researcher | opus | sonnet | haiku |
-| lu-project-researcher | opus | sonnet | haiku |
-| lu-research-synthesizer | sonnet | sonnet | haiku |
-| lu-debugger | opus | sonnet | sonnet |
-| lu-codebase-mapper | sonnet | haiku | haiku |
-| lu-verifier | sonnet | sonnet | haiku |
-| lu-plan-checker | sonnet | sonnet | haiku |
-| lu-integration-checker | sonnet | sonnet | haiku |
+| <%= branding.commandPrefix %>-planner | opus | opus | sonnet |
+| <%= branding.commandPrefix %>-roadmapper | opus | sonnet | sonnet |
+| <%= branding.commandPrefix %>-executor | opus | sonnet | sonnet |
+| <%= branding.commandPrefix %>-phase-researcher | opus | sonnet | haiku |
+| <%= branding.commandPrefix %>-project-researcher | opus | sonnet | haiku |
+| <%= branding.commandPrefix %>-research-synthesizer | sonnet | sonnet | haiku |
+| <%= branding.commandPrefix %>-debugger | opus | sonnet | sonnet |
+| <%= branding.commandPrefix %>-codebase-mapper | sonnet | haiku | haiku |
+| <%= branding.commandPrefix %>-verifier | sonnet | sonnet | haiku |
+| <%= branding.commandPrefix %>-plan-checker | sonnet | sonnet | haiku |
+| <%= branding.commandPrefix %>-integration-checker | sonnet | sonnet | haiku |
 | dx-advocate | sonnet | sonnet | haiku |
 | code-simplifier | sonnet | sonnet | haiku |
 | security-auditor | sonnet | sonnet | haiku |
@@ -55,7 +55,7 @@ Orchestrators resolve model before spawning:
 
 ## Switching Profiles
 
-Runtime: `/lu-set-profile <profile>`
+Runtime: `/<%= branding.commandPrefix %>-set-profile <profile>`
 
 Per-project default: Set in `.planning/config.json`:
 
@@ -67,16 +67,16 @@ Per-project default: Set in `.planning/config.json`:
 
 ## Design Rationale
 
-**Why Opus for lu-planner?**
+**Why Opus for <%= branding.commandPrefix %>-planner?**
 Planning involves architecture decisions, goal decomposition, and task design. This is where model quality has the highest impact.
 
-**Why Sonnet for lu-executor?**
+**Why Sonnet for <%= branding.commandPrefix %>-executor?**
 Executors follow explicit PLAN.md instructions. The plan already contains the reasoning; execution is implementation.
 
 **Why Sonnet (not Haiku) for verifiers in balanced?**
 Verification requires goal-backward reasoning - checking if code *delivers* what the phase promised, not just pattern matching. Sonnet handles this well; Haiku may miss subtle gaps.
 
-**Why Haiku for lu-codebase-mapper?**
+**Why Haiku for <%= branding.commandPrefix %>-codebase-mapper?**
 Read-only exploration and pattern extraction. No reasoning required, just structured output from file contents.
 
 **Why Sonnet/Haiku for code reviewers (dx-advocate, code-simplifier, security-auditor)?**

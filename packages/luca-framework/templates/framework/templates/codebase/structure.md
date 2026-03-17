@@ -126,7 +126,7 @@ Template for `.planning/codebase/STRUCTURE.md` - captures physical file organiza
 vulcan/
 ├── bin/                # Executable entry points
 ├── commands/           # Slash command definitions
-│   └── vlcn/           # Luca-specific commands
+│   └── vlcn/           # <%= branding.frameworkName %>-specific commands
 ├── vulcan/     # Skill resources
 │   ├── references/    # Principle documents
 │   ├── templates/     # File templates

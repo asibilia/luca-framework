@@ -2,7 +2,7 @@
 
 ## Overview
 
-Luca uses five complexity levels to gate workflow steps. Each level determines which optional steps activate, how many agents are spawned, iteration limits, and verification depth.
+<%= branding.frameworkName %> uses five complexity levels to gate workflow steps. Each level determines which optional steps activate, how many agents are spawned, iteration limits, and verification depth.
 
 ## Levels
 
@@ -47,10 +47,10 @@ These always run regardless of complexity:
 1. Model profile resolution
 2. Phase/environment validation
 3. Plan discovery and wave grouping
-4. Core execution (lu-executor)
+4. Core execution (<%= branding.commandPrefix %>-executor)
 5. Result aggregation
 6. Verification harness (scope scales)
-7. lu-verifier (mode scales)
+7. <%= branding.commandPrefix %>-verifier (mode scales)
 8. State/roadmap/requirements updates
 9. Commit
 
@@ -115,4 +115,4 @@ The complexity matrix lives in `.planning/config.json` under the `complexity` ke
 }
 ```
 
-When `defaultLevel` is `"auto"`, lu-router infers complexity from cognitive report signals. Set to a specific level (e.g., `"MODERATE"`) to always use that level as the default.
+When `defaultLevel` is `"auto"`, <%= branding.commandPrefix %>-router infers complexity from cognitive report signals. Set to a specific level (e.g., `"MODERATE"`) to always use that level as the default.

@@ -39,7 +39,7 @@ function buildFileCounts(
  * @returns Formatted multi-line string for logger.box()
  */
 function formatStatusSummary(manifest: LucaManifest): string {
-  const harnesses: HarnessId[] = manifest.harnesses ?? ["claude", "cursor"];
+  const harnesses: HarnessId[] = manifest.harnesses ?? ["claude"];
   const fileCounts = buildFileCounts(manifest, harnesses);
   const totalFiles = Object.keys(manifest.files).length;
 
@@ -67,7 +67,7 @@ ${fileLines}`;
  * @returns Plain object with status fields
  */
 function buildStatusJson(manifest: LucaManifest): Record<string, unknown> {
-  const harnesses: HarnessId[] = manifest.harnesses ?? ["claude", "cursor"];
+  const harnesses: HarnessId[] = manifest.harnesses ?? ["claude"];
   const fileCounts = buildFileCounts(manifest, harnesses);
 
   return {

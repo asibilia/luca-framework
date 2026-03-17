@@ -12,8 +12,6 @@ import type { HarnessId } from "../../../types";
  */
 const HARNESS_DIRS: Record<HarnessId, string[]> = {
   claude: ["hooks", "agents", "rules", "skills"],
-  cursor: ["hooks", "agents", "rules", "skills"],
-  pi: ["hooks"],
 };
 
 /**
@@ -24,8 +22,6 @@ const HARNESS_DIRS: Record<HarnessId, string[]> = {
  */
 const HARNESS_FILES: Record<HarnessId, string[]> = {
   claude: ["settings.json"],
-  cursor: ["rules"],
-  pi: ["hooks"],
 };
 
 /**
@@ -38,7 +34,7 @@ const HARNESS_FILES: Record<HarnessId, string[]> = {
  * @example
  * ```typescript
  * const result = await harnessInstallationCheck.run();
- * // { name: 'Harness Installation', status: 'pass', message: 'All 2 harness(es) installed: claude, cursor', ... }
+ * // { name: 'Harness Installation', status: 'pass', message: 'All 1 harness(es) installed: claude', ... }
  * ```
  */
 export const harnessInstallationCheck: DoctorCheck = {
@@ -59,7 +55,7 @@ export const harnessInstallationCheck: DoctorCheck = {
       };
     }
 
-    const harnesses: HarnessId[] = manifest.harnesses ?? ["claude", "cursor"];
+    const harnesses: HarnessId[] = manifest.harnesses ?? ["claude"];
     const issues: string[] = [];
     const passed: string[] = [];
 

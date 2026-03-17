@@ -76,25 +76,25 @@ Task(
 
 ## Available Sub-agent Types
 
-### Luca Framework Agents
+### <%= branding.frameworkName %> Framework Agents
 
 | Agent Type                   | Purpose                               | Use When                  |
 | ---------------------------- | ------------------------------------- | ------------------------- |
-| `lu-cognition`            | Cognitive pre-flight analysis         | Before routing decisions  |
-| `lu-router`               | Complexity classification and routing | Determining workflow path |
-| `lu-planner`              | Create PLAN.md files with tasks       | Planning a phase          |
-| `lu-executor`             | Execute tasks from plans              | Running plan tasks        |
-| `lu-verifier`             | Verify goals achieved                 | After execution           |
-| `lu-learner`              | Extract and store learnings           | After verification        |
-| `lu-debugger`             | Investigate bugs systematically       | Debugging issues          |
-| `lu-phase-researcher`     | Research before planning              | Complex phases            |
-| `lu-plan-checker`         | Validate plans before execution       | After planning            |
-| `lu-roadmapper`           | Create project roadmaps               | New projects              |
-| `lu-codebase-mapper`      | Analyze existing codebase             | Brownfield projects       |
-| `lu-integration-checker`  | Verify cross-phase integration        | Multi-phase work          |
-| `lu-pr-reviewer`          | Coordinate PR review                  | PR feedback               |
-| `lu-project-researcher`   | Research project domain               | New projects              |
-| `lu-research-synthesizer` | Combine research outputs              | After parallel research   |
+| `<%= branding.commandPrefix %>-cognition`            | Cognitive pre-flight analysis         | Before routing decisions  |
+| `<%= branding.commandPrefix %>-router`               | Complexity classification and routing | Determining workflow path |
+| `<%= branding.commandPrefix %>-planner`              | Create PLAN.md files with tasks       | Planning a phase          |
+| `<%= branding.commandPrefix %>-executor`             | Execute tasks from plans              | Running plan tasks        |
+| `<%= branding.commandPrefix %>-verifier`             | Verify goals achieved                 | After execution           |
+| `<%= branding.commandPrefix %>-learner`              | Extract and store learnings           | After verification        |
+| `<%= branding.commandPrefix %>-debugger`             | Investigate bugs systematically       | Debugging issues          |
+| `<%= branding.commandPrefix %>-phase-researcher`     | Research before planning              | Complex phases            |
+| `<%= branding.commandPrefix %>-plan-checker`         | Validate plans before execution       | After planning            |
+| `<%= branding.commandPrefix %>-roadmapper`           | Create project roadmaps               | New projects              |
+| `<%= branding.commandPrefix %>-codebase-mapper`      | Analyze existing codebase             | Brownfield projects       |
+| `<%= branding.commandPrefix %>-integration-checker`  | Verify cross-phase integration        | Multi-phase work          |
+| `<%= branding.commandPrefix %>-pr-reviewer`          | Coordinate PR review                  | PR feedback               |
+| `<%= branding.commandPrefix %>-project-researcher`   | Research project domain               | New projects              |
+| `<%= branding.commandPrefix %>-research-synthesizer` | Combine research outputs              | After parallel research   |
 
 ### Code Review Agents
 
@@ -122,11 +122,11 @@ Standard lookup table format:
 
 | Agent          | quality | balanced | budget |
 | -------------- | ------- | -------- | ------ |
-| lu-planner  | opus    | opus     | sonnet |
-| lu-executor | opus    | sonnet   | sonnet |
-| lu-verifier | sonnet  | sonnet   | haiku  |
-| lu-debugger | opus    | sonnet   | sonnet |
-| lu-learner  | sonnet  | haiku    | haiku  |
+| <%= branding.commandPrefix %>-planner  | opus    | opus     | sonnet |
+| <%= branding.commandPrefix %>-executor | opus    | sonnet   | sonnet |
+| <%= branding.commandPrefix %>-verifier | sonnet  | sonnet   | haiku  |
+| <%= branding.commandPrefix %>-debugger | opus    | sonnet   | sonnet |
+| <%= branding.commandPrefix %>-learner  | sonnet  | haiku    | haiku  |
 | reviewers      | opus    | sonnet   | haiku  |
 
 ## Context Passing
@@ -157,7 +157,7 @@ Roadmap:
 Plan to execute:
 {plan_content}
 """,
-  subagent_type="lu-executor",
+  subagent_type="<%= branding.commandPrefix %>-executor",
   description="Execute plan"
 )
 ```
@@ -176,7 +176,7 @@ The Task tool **blocks** until the sub-agent completes. After the Task returns:
 Here's a complete spawn pattern for a planner:
 
 ````markdown
-### Step 8: Spawn lu-planner Agent
+### Step 8: Spawn <%= branding.commandPrefix %>-planner Agent
 
 **MANDATORY**: You MUST spawn a sub-agent using the Task tool. Do NOT attempt to plan yourself.
 
@@ -211,13 +211,13 @@ Task(
 </planning_context>
 
 <downstream_consumer>
-Output consumed by /lu-execute-phase.
+Output consumed by /<%= branding.commandPrefix %>-execute-phase.
 Plans must be executable prompts with frontmatter, tasks, and verification criteria.
 </downstream_consumer>
 
 Create PLAN.md files for this phase with tasks, waves, and dependencies.
 """,
-  subagent_type="lu-planner",
+  subagent_type="<%= branding.commandPrefix %>-planner",
   model="{planner_model}",
   description="Plan Phase {phase_number}"
 )
@@ -309,7 +309,7 @@ Based on the roadmap, I'll create the following tasks:
 
 ### Step 5: Plan the Phase
 
-**MANDATORY**: Spawn lu-planner to create the plan.
+**MANDATORY**: Spawn <%= branding.commandPrefix %>-planner to create the plan.
 [Task() call here]
 ```
 
@@ -318,13 +318,13 @@ Based on the roadmap, I'll create the following tasks:
 ```markdown
 # WRONG - vague instruction
 
-Use Task tool to spawn lu-planner with context.
+Use Task tool to spawn <%= branding.commandPrefix %>-planner with context.
 
 # CORRECT - explicit Task() call
 
 Task(
 prompt="...",
-subagent_type="lu-planner",
+subagent_type="<%= branding.commandPrefix %>-planner",
 description="..."
 )
 ```

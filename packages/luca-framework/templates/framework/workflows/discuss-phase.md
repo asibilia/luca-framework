@@ -7,11 +7,11 @@ You are a thinking partner, not an interviewer. The user is the visionary — yo
 <downstream_awareness>
 **CONTEXT.md feeds into:**
 
-1. **lu-phase-researcher** — Reads CONTEXT.md to know WHAT to research
+1. **<%= branding.commandPrefix %>-phase-researcher** — Reads CONTEXT.md to know WHAT to research
    - "User wants card-based layout" → researcher investigates card component patterns
    - "Infinite scroll decided" → researcher looks into virtualization libraries
 
-2. **lu-planner** — Reads CONTEXT.md to know WHAT decisions are locked
+2. **<%= branding.commandPrefix %>-planner** — Reads CONTEXT.md to know WHAT decisions are locked
    - "Pull-to-refresh on mobile" → planner includes that in task specs
    - "Claude's Discretion: loading skeleton" → planner can decide approach
 
@@ -127,7 +127,7 @@ Load and validate:
 ```
 Phase [X] not found in roadmap.
 
-Use /lu-progress to see available phases.
+Use /<%= branding.commandPrefix %>-progress to see available phases.
 ```
 
 Exit workflow.
@@ -396,14 +396,14 @@ Created: .planning/phases/${PADDED_PHASE}-${SLUG}/${PADDED_PHASE}-CONTEXT.md
 
 **Phase ${PHASE}: [Name]** — [Goal from ROADMAP.md]
 
-`/lu-plan-phase ${PHASE}`
+`/<%= branding.commandPrefix %>-plan-phase ${PHASE}`
 
 <sub>`/clear` first → fresh context window</sub>
 
 ---
 
 **Also available:**
-- `/lu-plan-phase ${PHASE} --skip-research` — plan without research
+- `/<%= branding.commandPrefix %>-plan-phase ${PHASE} --skip-research` — plan without research
 - Review/edit CONTEXT.md before continuing
 
 ---
