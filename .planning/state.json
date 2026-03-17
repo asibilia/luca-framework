@@ -1,16 +1,13 @@
 {
   "status": "active",
-  "value": "executing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "fbc55ebb-664a-40ed-869a-04289e5dc8e2",
-    "github_issue": 81,
-    "branch": "81--v5.1.0-workflow-quality-skill-simplification",
+    "session_id": "c278b630-3909-4270-81c5-9c91f40312c8",
     "base_branch": "main",
-    "current_milestone": "v5.1.0 — Workflow Quality & Skill Simplification",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -89,39 +86,11 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Large",
-    "appetite_token_ceiling": 200000,
-    "appetite_context_percent": 60,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-16T23:55:58.729Z",
-    "last_transition_at": "2026-03-17T00:25:42.844Z"
+    "started_at": "2026-03-17T11:36:53.015Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 2,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-03-17T00:17:29.063Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }
