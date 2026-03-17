@@ -53,21 +53,20 @@ let cachedLatestTag: string | null = null;
 /**
  * Resolve the `"latest"` MuninnDB version to an actual GitHub release tag.
  *
- * Queries the GitHub Releases API for the latest release of the given
- * repository and returns the `tag_name` (e.g. `"v0.5.0"`). The result
- * is cached at module scope so subsequent calls within the same process
- * return instantly without a network round-trip.
+ * Queries the GitHub Releases API for the latest release of `MUNINNDB_REPO_SLUG`
+ * and returns the `tag_name` (e.g. `"v0.5.0"`). The result is cached at
+ * module scope so subsequent calls within the same process return instantly
+ * without a network round-trip.
  *
  * On any failure (network error, rate limit, 404, malformed response),
  * returns `null` so the caller can fall back to the redirect-based
  * download URL pattern.
  *
- * @param repoSlug - GitHub `owner/repo` path (e.g. `"nicholasgasior/muninn"`).
  * @returns The release tag string (e.g. `"v0.5.0"`), or `null` on failure.
  *
  * @example
  * ```typescript
- * const tag = await resolveLatestReleaseTag("nicholasgasior/muninn");
+ * const tag = await resolveLatestReleaseTag();
  * if (tag) {
  *   console.log(`Latest release: ${tag}`); // "v0.5.0"
  * } else {
@@ -75,9 +74,7 @@ let cachedLatestTag: string | null = null;
  * }
  * ```
  */
-async function resolveLatestReleaseTag(
-  repoSlug: string,
-): Promise<string | null> {
+async function resolveLatestReleaseTag(): Promise<string | null> {
   if (cachedLatestTag) {
     return cachedLatestTag;
   }
@@ -87,7 +84,7 @@ async function resolveLatestReleaseTag(
 
   try {
     const response = await fetch(
-      `https://api.github.com/repos/${repoSlug}/releases/latest`,
+      `https://api.github.com/repos/${MUNINNDB_REPO_SLUG}/releases/latest`,
       {
         headers: { Accept: "application/vnd.github+json" },
         signal: controller.signal,
@@ -368,7 +365,7 @@ export async function downloadMuninndbBinary(
   let usingRedirectFallback = false;
 
   if (requestedVersion === "latest") {
-    const resolvedTag = await resolveLatestReleaseTag(MUNINNDB_REPO_SLUG);
+    const resolvedTag = await resolveLatestReleaseTag();
     if (resolvedTag) {
       effectiveVersion = resolvedTag;
     } else {
