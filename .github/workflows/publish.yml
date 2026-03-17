@@ -28,6 +28,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node (for npm publish auth)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
