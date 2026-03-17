@@ -30,10 +30,10 @@
 
 **Goal:** Remove Cursor and Pi platform options from wizard and file generation.
 
-- [ ] Remove Cursor and Pi from wizard multiselect (hardcode `["claude"]` or hide question)
-- [ ] Update preset defaults (`standard`, `full`, `minimal`) to only include `claude`
-- [ ] Remove `.cursor/` and `.pi/` directory creation from `generateFiles()`
-- [ ] Clean up any remaining Cursor/Pi references in wizard output text
+- [x] Remove Cursor and Pi from wizard multiselect (hardcode `["claude"]` or hide question)
+- [x] Update preset defaults (`standard`, `full`, `minimal`) to only include `claude`
+- [x] Remove `.cursor/` and `.pi/` directory creation from `generateFiles()`
+- [x] Clean up any remaining Cursor/Pi references in wizard output text
 
 **Depends on:** None
 **Covers:** REQ-05, REQ-06, REQ-07
