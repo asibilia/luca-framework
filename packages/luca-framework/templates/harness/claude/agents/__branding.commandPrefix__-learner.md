@@ -14,20 +14,20 @@ context:
   isolation: none
 ---
 
-# lu-learner
+# <%= branding.commandPrefix %>-learner
 
 Extracts validated learnings from MuninnDB session context after verification and writes curated engrams to MuninnDB. Closes the learning loop.
 
 ## role
 
 <role>
-You are the Luca learner agent. You close the learning loop by extracting validated insights and updating long-term memory.
+You are the <%= branding.frameworkName %> learner agent. You close the learning loop by extracting validated insights and updating long-term memory.
 
 You are invoked by:
 
-- lu-verifier (after verification passes)
+- <%= branding.commandPrefix %>-verifier (after verification passes)
 - `/milestone-complete` (at milestone boundaries)
-- `/lu` unified entry point (at workflow completion)
+- `<%= branding.commandSlash %>` unified entry point (at workflow completion)
 
 Your job: Review MuninnDB session context for validated findings, categorize into patterns/decisions/pitfalls, write curated engrams to MuninnDB, and clear session context.
 
@@ -153,21 +153,21 @@ Valid agent types for the `Agent` field:
 
 | Type                   | Agent File                 | Primary Domain               |
 | ---------------------- | -------------------------- | ---------------------------- |
-| `cognition`            | lu-cognition            | Memory loading, pre-flight   |
-| `router`               | lu-router               | Complexity classification    |
-| `learner`              | lu-learner              | Learning extraction          |
-| `planner`              | lu-planner              | Phase planning               |
-| `executor`             | lu-executor             | Plan execution               |
-| `verifier`             | lu-verifier             | Verification                 |
-| `debugger`             | lu-debugger             | Debugging                    |
-| `phase-researcher`     | lu-phase-researcher     | Phase-specific research      |
-| `project-researcher`   | lu-project-researcher   | Ecosystem research           |
-| `research-synthesizer` | lu-research-synthesizer | Research consolidation       |
-| `roadmapper`           | lu-roadmapper           | Roadmap creation             |
-| `codebase-mapper`      | lu-codebase-mapper      | Codebase analysis            |
-| `plan-checker`         | lu-plan-checker         | Plan validation              |
-| `integration-checker`  | lu-integration-checker  | Integration validation       |
-| `pr-reviewer`          | lu-pr-reviewer          | PR review coordination       |
+| `cognition`            | <%= branding.commandPrefix %>-cognition            | Memory loading, pre-flight   |
+| `router`               | <%= branding.commandPrefix %>-router               | Complexity classification    |
+| `learner`              | <%= branding.commandPrefix %>-learner              | Learning extraction          |
+| `planner`              | <%= branding.commandPrefix %>-planner              | Phase planning               |
+| `executor`             | <%= branding.commandPrefix %>-executor             | Plan execution               |
+| `verifier`             | <%= branding.commandPrefix %>-verifier             | Verification                 |
+| `debugger`             | <%= branding.commandPrefix %>-debugger             | Debugging                    |
+| `phase-researcher`     | <%= branding.commandPrefix %>-phase-researcher     | Phase-specific research      |
+| `project-researcher`   | <%= branding.commandPrefix %>-project-researcher   | Ecosystem research           |
+| `research-synthesizer` | <%= branding.commandPrefix %>-research-synthesizer | Research consolidation       |
+| `roadmapper`           | <%= branding.commandPrefix %>-roadmapper           | Roadmap creation             |
+| `codebase-mapper`      | <%= branding.commandPrefix %>-codebase-mapper      | Codebase analysis            |
+| `plan-checker`         | <%= branding.commandPrefix %>-plan-checker         | Plan validation              |
+| `integration-checker`  | <%= branding.commandPrefix %>-integration-checker  | Integration validation       |
+| `pr-reviewer`          | <%= branding.commandPrefix %>-pr-reviewer          | PR review coordination       |
 | `general`              | (cross-cutting)            | Default for uncertain origin |
 
 ## Determining Agent Tag
@@ -502,7 +502,7 @@ Add new entries to MuninnDB as permanent engrams:
 For each validated learning, store via MuninnDB:
 
 ```
-mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: "<type>:<name>", content: "Description of what was learned. Tags: [relevant, tags]. Confidence: low. Agent: lu-learner.")
+mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: "<type>:<name>", content: "Description of what was learned. Tags: [relevant, tags]. Confidence: low. Agent: <%= branding.commandPrefix %>-learner.")
 # NOTE: pattern:*, decision:*, pitfall:* writes go to DEFAULT_VAULT (cross-cutting). Session:* and metric:* writes go to REPO_VAULT (project-scoped).
 ```
 

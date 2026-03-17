@@ -14,7 +14,7 @@ context:
   isolation: none
 ---
 
-# lu-repo-architect
+# <%= branding.commandPrefix %>-repo-architect
 
 Audits repository structure, enforces naming conventions, detects orphaned files, and reports health metrics. Use at phase boundaries or interactively via /repo-audit.
 

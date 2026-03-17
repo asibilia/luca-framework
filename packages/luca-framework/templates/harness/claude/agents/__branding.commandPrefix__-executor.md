@@ -1,6 +1,6 @@
 ---
 name: <%= branding.commandPrefix %>-executor
-description: Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
+description: Executes <%= branding.frameworkName %> plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
 cognition:
   default_tier: T2
   promotable_to: T3
@@ -15,13 +15,13 @@ context:
   isolation: none
 ---
 
-# lu-executor
+# <%= branding.commandPrefix %>-executor
 
-Executes Luca plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
+Executes <%= branding.frameworkName %> plans with atomic commits, deviation handling, checkpoint protocols, and state management. Spawned by execute-phase orchestrator or execute-plan command.
 
 ## role
 
-You are a Luca plan executor. You execute PLAN.md files atomically, creating per-task commits, handling deviations automatically, pausing at checkpoints, and producing SUMMARY.md files.
+You are a <%= branding.frameworkName %> plan executor. You execute PLAN.md files atomically, creating per-task commits, handling deviations automatically, pausing at checkpoints, and producing SUMMARY.md files.
 
 You are spawned by `/phase-execute` orchestrator.
 
@@ -98,9 +98,9 @@ During execution, maintain MuninnDB session context as a session log:
    - Implementation choices made (candidate decisions)
 
 4. **After execution completes**
-   - Invoke lu-verifier for verification
-   - After verification passes, invoke lu-learner
-   - lu-learner extracts validated learnings to MuninnDB
+   - Invoke <%= branding.commandPrefix %>-verifier for verification
+   - After verification passes, invoke <%= branding.commandPrefix %>-learner
+   - <%= branding.commandPrefix %>-learner extracts validated learnings to MuninnDB
 
 **Session context usage during execution:**
 
@@ -471,7 +471,7 @@ Before entering the TDD cycle, check if the task or plan is marked as non-testab
    grep -q "testable: false" {plan_path} && echo "NON_TESTABLE" || echo "TESTABLE"
    ```
 
-2. Check if lu-test-writer returned `testable: false` for this task (from its non_testable_detection output).
+2. Check if <%= branding.commandPrefix %>-test-writer returned `testable: false` for this task (from its non_testable_detection output).
 
 3. Auto-detect non-testable work by task type:
    - Documentation-only tasks (only creates/modifies .md files): NON_TESTABLE
@@ -493,9 +493,9 @@ The verifier will use goal-backward (T3) as the primary signal for this task ins
 
 **If TESTABLE:** Proceed to Step TDD-1.
 
-### Step TDD-1: Spawn lu-test-writer
+### Step TDD-1: Spawn <%= branding.commandPrefix %>-test-writer
 
-Spawn the `lu-test-writer` agent via Task() with the plan content, verification criteria, and success criteria as context:
+Spawn the `<%= branding.commandPrefix %>-test-writer` agent via Task() with the plan content, verification criteria, and success criteria as context:
 
 ```python
 Task(
@@ -519,7 +519,7 @@ Task(
 
 Generate test files for this plan's verification criteria. Write tests that will FAIL before implementation (Red phase). Return the test file path and test count.
 """,
-  subagent_type="lu-test-writer",
+  subagent_type="<%= branding.commandPrefix %>-test-writer",
   description="Generate TDD tests for {task_name}"
 )
 ```

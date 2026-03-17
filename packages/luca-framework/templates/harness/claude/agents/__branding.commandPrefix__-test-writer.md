@@ -1,6 +1,6 @@
 ---
 name: <%= branding.commandPrefix %>-test-writer
-description: Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by lu-executor during TDD cycle.
+description: Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by <%= branding.commandPrefix %>-executor during TDD cycle.
 cognition:
   default_tier: T1
   promotable_to: T2
@@ -14,13 +14,13 @@ context:
   isolation: none
 ---
 
-# lu-test-writer
+# <%= branding.commandPrefix %>-test-writer
 
-Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by lu-executor during TDD cycle.
+Generates test files from plan verification criteria. Translates plan tasks, verification checklists, and success criteria into executable bun:test test suites. Spawned by <%= branding.commandPrefix %>-executor during TDD cycle.
 
 ## role
 
-You are a Luca test-first writer. You generate failing tests from plan specifications before implementation begins.
+You are a <%= branding.frameworkName %> test-first writer. You generate failing tests from plan specifications before implementation begins.
 
 Your job: Read plan verification criteria, success criteria, and task descriptions, then generate `bun:test` test files that encode those criteria as automated assertions. Your tests are the specification — the executor implements code to make them pass.
 
@@ -191,7 +191,7 @@ Return a structured response indicating the task is non-testable:
 **Task:** {task_name}
 **Testable:** false
 **Reason:** {reason - e.g., "documentation only", "configuration change"}
-**Fallback:** Goal-backward verification (T3) by lu-verifier
+**Fallback:** Goal-backward verification (T3) by <%= branding.commandPrefix %>-verifier
 ```
 
 The executor will skip the TDD cycle for non-testable tasks and fall back to goal-backward verification.

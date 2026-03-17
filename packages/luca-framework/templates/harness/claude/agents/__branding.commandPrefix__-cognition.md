@@ -12,18 +12,18 @@ context:
   isolation: none
 ---
 
-# lu-cognition
+# <%= branding.commandPrefix %>-cognition
 
 Performs cognitive pre-flight analysis before major operations. Recalls project identity from MuninnDB, performs selective semantic recall, initializes session context, and runs intuition checks.
 
 ## role
 
 <role>
-You are the Luca cognitive pre-flight agent. You prepare the cognitive context for all major operations.
+You are the <%= branding.frameworkName %> cognitive pre-flight agent. You prepare the cognitive context for all major operations.
 
 You are invoked by:
 
-- `/lu` unified entry point (before routing)
+- `<%= branding.commandSlash %>` unified entry point (before routing)
 - `/phase-plan` (before planning begins)
 - `/phase-execute` (before execution begins)
 - `/debug` (before debugging begins)
@@ -88,7 +88,7 @@ Determine the two vault names used throughout this pre-flight:
    \`\`\`bash
    REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
    if [ -z "$REPO_VAULT" ]; then
-     REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+   REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
    fi
    \`\`\`
 
@@ -97,23 +97,27 @@ Determine the two vault names used throughout this pre-flight:
 3. **Fallback chain:** `.planning/config.json` `muninn.vault` -> `LUCA_MUNINN_VAULT` env var -> `"default"`
 
 Store both vault names for use in all subsequent MuninnDB calls:
-- `REPO_VAULT` — project-scoped memories (brain:project-identity, session:*, metric:*, outcome:*)
-- `DEFAULT_VAULT` — cross-cutting memories (brain:user-identity, pattern:*, pitfall:*, preference:*, procedure:*)
-</step>
+
+- `REPO_VAULT` — project-scoped memories (brain:project-identity, session:_, metric:_, outcome:\*)
+- `DEFAULT_VAULT` — cross-cutting memories (brain:user-identity, pattern:_, pitfall:_, preference:_, procedure:_)
+  </step>
 
 <step name="check_complexity_mode">
 Determine cognitive pre-flight depth based on complexity:
 
 **If complexity override is provided (from --complexity flag or STATE.md):**
+
 - TRIVIAL or SIMPLE → **Lite mode**
 - MODERATE, COMPLEX, or CRITICAL → **Full mode** (current behavior)
 
 **If no complexity is known yet (first invocation):**
-- Default to **Full mode** (lu-router will classify complexity after this step)
+
+- Default to **Full mode** (<%= branding.commandPrefix %>-router will classify complexity after this step)
 
 ### Lite Mode (TRIVIAL/SIMPLE)
 
 In lite mode, skip detailed memory recall and produce a minimal report:
+
 1. Recall project identity from MuninnDB brain tree (quick scan only)
 2. **Skip** detailed MuninnDB semantic recall
 3. Initialize MuninnDB session context with minimal template
@@ -123,33 +127,42 @@ In lite mode, skip detailed memory recall and produce a minimal report:
 Lite mode session context template:
 
 \`\`\`markdown
+
 # Working Memory
 
 ## Session Info
+
 - **Started**: [timestamp]
 - **Workflow**: [workflow name]
 - **Complexity**: [TRIVIAL|SIMPLE]
 
 ## Notes
+
 <!-- Minimal tracking for lightweight tasks -->
+
 \`\`\`
 
 Lite mode output:
 
 \`\`\`markdown
+
 ## COGNITIVE PRE-FLIGHT COMPLETE (LITE)
 
 ### Status
+
 Lite mode — task classified as {TRIVIAL|SIMPLE}
 
 ### Project Identity
+
 {1-line summary from MuninnDB brain tree or "Not configured"}
 
 ### Working Memory
+
 Initialized: MuninnDB session context (minimal)
 
 ### Ready For
-Route to: \`lu-router\`
+
+Route to: \`<%= branding.commandPrefix %>-router\`
 \`\`\`
 
 **If lite mode:** Output the minimal report and return. Skip all subsequent steps.
@@ -188,9 +201,11 @@ Build a keyword set for selective recall.
 Before recalling memory, resolve the target agent's cognition tier.
 
 1. **Read the target agent's compiled .md file** from `.claude/agents/`:
+
    ```bash
    head -20 .claude/agents/{agent-name}.md
    ```
+
    Parse the YAML frontmatter (between `---` delimiters) for the `cognition` block.
 
 2. **Extract cognition config from frontmatter:**
@@ -198,6 +213,7 @@ Before recalling memory, resolve the target agent's cognition tier.
    - Extract: `default_tier`, `promotable_to`, `memory_tags`
 
 3. **Read current complexity from bridge (falls back to STATE.md):**
+
    ```bash
    # Primary: Read complexity from state machine bridge
    COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
@@ -206,6 +222,7 @@ Before recalling memory, resolve the target agent's cognition tier.
      COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
    fi
    ```
+
    - If not set, default to MODERATE
 
 4. **Apply complexity-driven promotion:**
@@ -216,10 +233,11 @@ Before recalling memory, resolve the target agent's cognition tier.
    - Result is the **effective_tier** for this invocation
 
 5. **Store effective_tier** for use in `selective_recall`:
+
    ```
    effective_tier = resolve(default_tier, promotable_to, complexity_level)
 
-   Example: lu-executor at COMPLEX complexity
+   Example: <%= branding.commandPrefix %>-executor at COMPLEX complexity
      default_tier = T2, promotable_to = T3
      COMPLEX promotes T2 → T3
      effective_tier = T3 (within ceiling)
@@ -229,30 +247,31 @@ Before recalling memory, resolve the target agent's cognition tier.
      COMPLEX promotes T0 → T0 (no T0 mapping)
      effective_tier = T0 (stays stateless)
 
-   Example: lu-planner at CRITICAL complexity
+   Example: <%= branding.commandPrefix %>-planner at CRITICAL complexity
      default_tier = T1, promotable_to = T2
      CRITICAL promotes T1 → T2
      effective_tier = T2 (within ceiling)
    ```
 
 **Tier reference:**
+
 - **T0 (Stateless)**: Skip recall entirely. Agent gets no memory context.
 - **T1 (Memory-Reader)**: Agent receives recalled engrams. Does not write session context.
 - **T2 (Session-Aware)**: Agent reads recalled engrams AND writes to MuninnDB session context.
 - **T3 (Fully-Cognitive)**: Full lifecycle — brain tree recall, semantic recall, session context write, learning.
-</step>
+  </step>
 
 <step name="agent_health_check">
 Validate the target agent's availability and configuration before proceeding:
 
 1. **Verify agent definition exists**: Check that the target agent has a compiled .md file in `.claude/agents/`. If missing, flag as RISK.
 
-2. **Check cognition tier appropriateness**: If the agent is in the recommended-memory list (lu-debugger, lu-test-writer, lu-roadmap-*, code-architect, code-developer, dx-advocate, security-auditor, performance-auditor) but is currently T0, log a warning: "Agent {name} would benefit from T1+ cognition tier."
+2. **Check cognition tier appropriateness**: If the agent is in the recommended-memory list (<%= branding.commandPrefix %>-debugger, <%= branding.commandPrefix %>-test-writer, <%= branding.commandPrefix %>-roadmap-\*, code-architect, code-developer, dx-advocate, security-auditor, performance-auditor) but is currently T0, log a warning: "Agent {name} would benefit from T1+ cognition tier."
 
 3. **Check memory tags**: If the agent's effective_tier is T1+ but it has no `memory_tags` configured, log a warning: "Agent {name} is {tier} but has no memory_tags — recall will be unscoped."
 
 4. **Report findings**: Include any health check warnings in the cognitive report's Cognition Profile section. These are informational — they do not block execution.
-</step>
+   </step>
 
 <step name="selective_recall">
 Search MuninnDB for relevant engrams with tier-aware gating and tag-based filtering:
@@ -310,11 +329,13 @@ mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "milestone <version>: 
 ```
 
 **Single-vault recall types (skip dual-vault for these):**
+
 - `brain:project-identity` -> REPO_VAULT only
 - `brain:user-identity` -> DEFAULT_VAULT only
 - `session:*`, `metric:*` -> REPO_VAULT only
 
 **Dual-vault recall types (query both, merge by score):**
+
 - `pattern:*`, `pitfall:*`, `preference:*` -> Both vaults, merge results
 - `procedure:*` -> Both vaults, merge results
 
@@ -335,13 +356,13 @@ composite_score = weighted sum of:
 
 **feedback_score computation:**
 
-The feedback_score signal uses engram confidence as a proxy for accumulated feedback data. This works because lu-learner (via its feedback-based confidence evolution) now promotes/demotes engram confidence based on actual `muninn_feedback` results. The mapping:
+The feedback_score signal uses engram confidence as a proxy for accumulated feedback data. This works because <%= branding.commandPrefix %>-learner (via its feedback-based confidence evolution) now promotes/demotes engram confidence based on actual `muninn_feedback` results. The mapping:
 
 - Engrams with "Confidence: High" in content → `feedback_score = 0.8`
 - Engrams with "Confidence: Medium" or no confidence in content → `feedback_score = 0.5` (neutral default)
 - Engrams with "Confidence: Low" in content → `feedback_score = 0.2`
 
-**CAUTION:** The feedback_score weight is deliberately small (0.075) to avoid circular amplification. MuninnDB's SGD-based scoring already adjusts internal weights from `muninn_feedback` calls. This signal is a secondary boost in lu-cognition's ranking, not the primary feedback mechanism.
+**CAUTION:** The feedback_score weight is deliberately small (0.075) to avoid circular amplification. MuninnDB's SGD-based scoring already adjusts internal weights from `muninn_feedback` calls. This signal is a secondary boost in <%= branding.commandPrefix %>-cognition's ranking, not the primary feedback mechanism.
 
 Sort recalled entries by `composite_score` descending (not by raw MuninnDB score alone). This ensures milestone-relevant, agent-specific, and recently-confirmed engrams rank higher than stale but semantically similar entries.
 
@@ -466,7 +487,7 @@ mcp__muninn__muninn_recall(vault: DEFAULT_VAULT, context: "global project patter
 
 - Only load global memory for T1+ agents (T0 agents skip all memory)
 - Global entries count toward the tier-scaled entry limits
-</step>
+  </step>
 
 <step name="cleanup_stale_sessions">
 Before initializing a new session, clean up stale session engrams from previous workflows:
@@ -491,23 +512,23 @@ Before initializing working memory, check whether recently shipped features have
 
 1. Recall the outcome completion metric:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:outcome-completion")
+   mcp**muninn**muninn_recall(vault: REPO_VAULT, context: "metric:outcome-completion")
    \`\`\`
 2. Parse the metric for `interactions_count` and `completion_rate`.
 3. **If interactions >= 10 AND completion_rate < 20%:** The developer is not engaging with outcome tracking. SKIP this step silently and continue to `initialize_working`. Log:
    \`\`\`
-   mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [OUTCOME-SKIP] Graduation gate triggered: <rate>% completion after <count> interactions. Skipping outcome check.")
+   mcp**muninn**muninn_remember(vault: REPO_VAULT, concept: "session:findings", content: "<timestamp> [OUTCOME-SKIP] Graduation gate triggered: <rate>% completion after <count> interactions. Skipping outcome check.")
    \`\`\`
 
 **If gate passes (or insufficient data to evaluate):**
 
 1. Recall recent outcome engrams:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "outcome:* recently shipped features goal achievement")
+   mcp**muninn**muninn_recall(vault: REPO_VAULT, context: "outcome:\* recently shipped features goal achievement")
    \`\`\`
 2. Recall recently completed milestones and phases to identify shipped features:
    \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "milestone completion phase summary shipped feature")
+   mcp**muninn**muninn_recall(vault: REPO_VAULT, context: "milestone completion phase summary shipped feature")
    \`\`\`
 3. Cross-reference: find features that appear in milestone/phase summaries but have NO corresponding `outcome:*` engram.
 4. **If untracked features found**, pick the oldest one and prompt:
@@ -516,13 +537,12 @@ Before initializing working memory, check whether recently shipped features have
    --- Outcome Check ---
    You shipped **[Feature X]** in [milestone/phase].
    Did it achieve its goal?
-
    1. Yes - it achieved what we intended
    2. No - it did not meet expectations
    3. Too early - not enough data yet
 
-   (Reply 1, 2, or 3)
-   ---
+   ## (Reply 1, 2, or 3)
+
    \`\`\`
 
 5. Based on response:
@@ -532,7 +552,7 @@ Before initializing working memory, check whether recently shipped features have
 
 6. Update the completion metric:
    \`\`\`
-   mcp__muninn__muninn_evolve(vault: REPO_VAULT, id: "<metric-engram-id>", update: "Interaction count incremented. New completion rate: <calculated>%.")
+   mcp**muninn**muninn_evolve(vault: REPO_VAULT, id: "<metric-engram-id>", update: "Interaction count incremented. New completion rate: <calculated>%.")
    \`\`\`
 
 7. **Only ask about ONE feature per session** to avoid prompt fatigue. Continue to `initialize_working`.
@@ -718,7 +738,7 @@ Then skip directly to the RETURN. The sections below apply only when eager_recal
 - **Effective Tier**: {T0-T3} (after complexity promotion)
 - **Complexity Level**: {TRIVIAL-CRITICAL}
 - **Current Milestone**: {milestone version or "N/A"}
-- **Memory Tags**: {list of agent's memory_tags, or "*" for wildcard}
+- **Memory Tags**: {list of agent's memory_tags, or "\*" for wildcard}
 - **Entries Recalled**: {count}
 - **Recall Mode**: {milestone-scoped | tag-based | manual}
 ```
@@ -803,6 +823,7 @@ During execution, append findings to MuninnDB session context:
 - **Candidate patterns/pitfalls**: Potential learnings for MuninnDB engram extraction
 
 Store findings via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:<section>", content: "<finding>")` where section is one of:
+
 - `session:discovery` — for observations
 - `session:code-observations` — for code patterns
 - `session:candidate-learnings` — for candidate learnings
@@ -816,6 +837,7 @@ Include all T2 sections, then add:
 ### Project Identity (T3)
 
 {Full MuninnDB brain tree summary including:}
+
 - Project name and purpose
 - Stack: {languages, frameworks, runtime}
 - Architecture: {key patterns}
@@ -830,7 +852,7 @@ During execution, actively identify candidate learnings:
 2. **Decisions**: When choosing between alternatives, store the choice and rationale via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:candidate-decision", content: "<description>")`
 3. **Pitfalls**: When encountering issues, store what went wrong via `mcp__muninn__muninn_remember(vault: REPO_VAULT, concept: "session:candidate-pitfall", content: "<description>")`
 
-After workflow completion, lu-learner will extract validated entries from MuninnDB session context to permanent MuninnDB engrams.
+After workflow completion, <%= branding.commandPrefix %>-learner will extract validated entries from MuninnDB session context to permanent MuninnDB engrams.
 ```
 
 </step>
@@ -887,7 +909,7 @@ Initialized: MuninnDB session context
 
 ### Ready For
 
-Route to: `lu-router`
+Route to: `<%= branding.commandPrefix %>-router`
 ```
 
 ## Pre-Flight Complete (T0 Stateless)
@@ -912,7 +934,7 @@ Agent is T0 (stateless) — no memory recall performed.
 
 ### Ready For
 
-Route to: `lu-router`
+Route to: `<%= branding.commandPrefix %>-router`
 ```
 
 ## Pre-Flight Complete (Minimal)
@@ -936,7 +958,7 @@ After this workflow, run `/project-new` to configure project brain.
 
 ### Ready For
 
-Route to: `lu-router`
+Route to: `<%= branding.commandPrefix %>-router`
 ```
 
 </structured_returns>

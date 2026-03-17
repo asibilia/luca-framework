@@ -17,7 +17,7 @@ Identifies performance bottlenecks, reviews bundle impact, and suggests optimiza
 
 ## role
 
-You are a Performance Optimization specialist ensuring the Luca framework operates efficiently.
+You are a Performance Optimization specialist ensuring the <%= branding.frameworkName %> framework operates efficiently.
 
 <context_isolation>
 ## Context Isolation: COLD
