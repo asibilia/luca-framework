@@ -91,12 +91,12 @@
 
 **Goal:** Move gate decisions from sub-skill prompts to explicit orchestrator flags, preventing LLM ad-hoc skip reasoning.
 
-- [ ] Resolve premortem gate in lu.skill.ts and pass `--run-premortem` / `--skip-premortem` to phase-discuss
-- [ ] Resolve process_data gate in lu.skill.ts and pass `--run-process-data` / `--skip-process-data` to phase-execute
-- [ ] Replace bash gate-check pseudo-code in phase-discuss with flag check (fail-closed: no flag = skip)
-- [ ] Replace grep-based process_data check in phase-execute with flag check
-- [ ] Audit all sub-skills for other embedded gate checks and apply same pattern
-- [ ] Add `.claude/rules/gate-enforcement.md` rule enforcing orchestrator-resolved flags
+- [x] Resolve premortem gate in lu.skill.ts and pass `--run-premortem` / `--skip-premortem` to phase-discuss
+- [x] Resolve process_data gate in lu.skill.ts and pass `--run-process-data` / `--skip-process-data` to phase-execute
+- [x] Replace bash gate-check pseudo-code in phase-discuss with flag check (fail-closed: no flag = skip)
+- [x] Replace grep-based process_data check in phase-execute with flag check
+- [x] Audit all sub-skills for other embedded gate checks and apply same pattern
+- [x] Add `.claude/rules/gate-enforcement.md` rule enforcing orchestrator-resolved flags
 
 **Depends on:** None
 **Covers:** REQ-17, REQ-18, REQ-19
