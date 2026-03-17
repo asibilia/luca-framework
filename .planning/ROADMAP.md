@@ -78,11 +78,11 @@
 
 **Goal:** Automate npm publishing of `@alecsibilia/luca-framework` on GitHub release.
 
-- [ ] Create `.github/workflows/publish.yml` triggered on `release` (type: `published`)
-- [ ] Install Bun and dependencies in workflow
-- [ ] Run typecheck (`bunx --bun tsc --noEmit`) before publish
-- [ ] Publish `packages/luca-framework` with `--access restricted` using `NPM_TOKEN` secret
-- [ ] Document required repository secret setup in workflow comments
+- [x] Create `.github/workflows/publish.yml` triggered on `release` (type: `published`)
+- [x] Install Bun and dependencies in workflow
+- [x] Run typecheck (`bunx --bun tsc --noEmit`) before publish
+- [x] Publish `packages/luca-framework` with `--access restricted` using `NPM_TOKEN` secret
+- [x] Document required repository secret setup in workflow comments
 
 **Depends on:** None
 **Covers:** REQ-13, REQ-14, REQ-15, REQ-16
