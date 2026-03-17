@@ -1,13 +1,16 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "executing",
   "historyValue": {},
   "context": {
     "session_id": "fbc55ebb-664a-40ed-869a-04289e5dc8e2",
+    "github_issue": 81,
+    "branch": "81--v5.1.0-workflow-quality-skill-simplification",
     "base_branch": "main",
+    "current_milestone": "v5.1.0 — Workflow Quality & Skill Simplification",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "SIMPLE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -40,40 +43,35 @@
         "planVerificationIterations": 1,
         "harnessFixIterations": 1,
         "verifyFixIterations": 1,
-        "verificationMode": "quick",
-        "recallDepth": 1
+        "verificationMode": "quick"
       },
       "SIMPLE": {
         "cognitivePreflight": "lite",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "quick",
-        "recallDepth": 1
+        "verificationMode": "quick"
       },
       "MODERATE": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 1,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "standard",
-        "recallDepth": 3
+        "verificationMode": "standard"
       },
       "COMPLEX": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 2,
         "harnessFixIterations": 2,
         "verifyFixIterations": 1,
-        "verificationMode": "full",
-        "recallDepth": null
+        "verificationMode": "full"
       },
       "CRITICAL": {
         "cognitivePreflight": "full",
         "planVerificationIterations": 3,
         "harnessFixIterations": 3,
         "verifyFixIterations": 2,
-        "verificationMode": "full+human",
-        "recallDepth": null
+        "verificationMode": "full+human"
       }
     },
     "autopilot_config": {
@@ -91,9 +89,39 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "started_at": "2026-03-16T19:14:42.057Z",
-    "current_milestone": "Planning next",
-    "last_transition_at": "2026-03-16T19:14:42.115Z"
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
+    "appetite_used_tokens": 0,
+    "started_at": "2026-03-16T23:55:58.729Z",
+    "last_transition_at": "2026-03-17T00:17:29.062Z"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "wave_executing",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 1,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {
+            "started_at": "2026-03-17T00:17:29.063Z"
+          }
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }

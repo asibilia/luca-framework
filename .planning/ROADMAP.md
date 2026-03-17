@@ -158,10 +158,10 @@
 
 **Goal:** Add task_implementation_loop section to lu-executor (and lu-executor-capable) introducing a self-review cycle after each task implementation, before committing.
 
-- [ ] Add task_implementation_loop section at order 4 to lu-executor.agent.ts
-- [ ] Bump existing sections 4-6 to orders 5-7
-- [ ] Update execute_tasks section to reference task_implementation_loop
-- [ ] Add matching section to lu-executor-capable.agent.ts for consistency
+- [x] Add task_implementation_loop section at order 4 to lu-executor.agent.ts
+- [x] Bump existing sections 4-6 to orders 5-7
+- [x] Update execute_tasks section to reference task_implementation_loop
+- [x] Add matching section to lu-executor-capable.agent.ts for consistency
 
 **Depends on:** None
 **Verification:** Quick (typecheck only)
