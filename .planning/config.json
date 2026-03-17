@@ -145,7 +145,7 @@
     }
   },
   "autopilot": {
-    "oversight": "milestone",
+    "oversight": "full-auto",
     "max_phases_per_session": 10,
     "auto_plan_phases": true,
     "skip_uat_in_autopilot": true,

@@ -16,12 +16,12 @@
 
 **Goal:** Fix the two P0 bugs: MuninnDB download URL 404 and vault:init deploying harness to wrong directory in global mode.
 
-- [ ] Fix MuninnDB download URL pattern (use `latest/download/` or resolve tag via GitHub API)
-- [ ] Verify binary exists and is executable after download before proceeding
-- [ ] Start MuninnDB service and wait for health endpoint before API key prompt
-- [ ] Skip vault setup gracefully if MuninnDB unreachable; advise `luca vault:init` later
-- [ ] Detect global install vs dev mode in vault:init command
-- [ ] In global mode: skip harness file generation, only create `.planning/` config files
+- [x] Fix MuninnDB download URL pattern (use `latest/download/` or resolve tag via GitHub API)
+- [x] Verify binary exists and is executable after download before proceeding
+- [x] Start MuninnDB service and wait for health endpoint before API key prompt
+- [x] Skip vault setup gracefully if MuninnDB unreachable; advise `luca vault:init` later
+- [x] Detect global install vs dev mode in vault:init command
+- [x] In global mode: skip harness file generation, only create `.planning/` config files
 
 **Depends on:** None
 **Covers:** REQ-01, REQ-02, REQ-03, REQ-04
