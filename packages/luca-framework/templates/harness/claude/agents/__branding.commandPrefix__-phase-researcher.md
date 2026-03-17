@@ -1,5 +1,5 @@
 ---
-name: lu-phase-researcher
+name: <%= branding.commandPrefix %>-phase-researcher
 description: Researches how to implement a phase before planning. Produces RESEARCH.md consumed by lu-planner. Spawned by /phase-plan orchestrator.
 cognition:
   default_tier: T1

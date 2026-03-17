@@ -1,5 +1,5 @@
 ---
-name: lu-process-data
+name: <%= branding.commandPrefix %>-process-data
 description: Computes process metrics from pre-assembled execution data. Pure-compute agent with no tools — receives all raw data as prompt context from the orchestrator and returns structured metric JSON.
 cognition:
   default_tier: T1

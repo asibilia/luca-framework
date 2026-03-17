@@ -1,5 +1,5 @@
 ---
-name: lu-research-synthesizer
+name: <%= branding.commandPrefix %>-research-synthesizer
 description: Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /project-new after 4 researcher agents complete.
 cognition:
   default_tier: T0

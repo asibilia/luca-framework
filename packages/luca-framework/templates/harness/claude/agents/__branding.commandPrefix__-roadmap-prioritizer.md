@@ -1,5 +1,5 @@
 ---
-name: lu-roadmap-prioritizer
+name: <%= branding.commandPrefix %>-roadmap-prioritizer
 description: "WSJF scoring and milestone scoping for roadmap revision. Scores pending todos by business value, time criticality, risk reduction, and effort. Recommends phase absorption, new phases, or new milestones. READ-ONLY: produces analysis but cannot execute changes."
 cognition:
   default_tier: T2

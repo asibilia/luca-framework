@@ -1,5 +1,5 @@
 ---
-name: lu-learner
+name: <%= branding.commandPrefix %>-learner
 description: Extracts validated learnings from MuninnDB session context after verification and writes curated engrams to MuninnDB. Closes the learning loop.
 cognition:
   default_tier: T2

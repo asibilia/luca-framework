@@ -1,5 +1,5 @@
 ---
-name: lu-roadmap-synthesizer
+name: <%= branding.commandPrefix %>-roadmap-synthesizer
 description: "Merges specialist analyses (architect, prioritizer, QA) into a unified roadmap revision proposal. Cross-references findings, resolves conflicts, and produces a cohesive ResultEnvelope matching the format the lu orchestrator expects. READ-ONLY: produces analysis but cannot execute changes."
 cognition:
   default_tier: T1

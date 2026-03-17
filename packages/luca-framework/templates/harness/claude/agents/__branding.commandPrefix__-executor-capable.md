@@ -1,5 +1,5 @@
 ---
-name: lu-executor-capable
+name: <%= branding.commandPrefix %>-executor-capable
 description: Capable-tier variant of lu-executor for COMPLEX/CRITICAL execution. Uses opus model for deep cross-cutting implementation.
 cognition:
   default_tier: T2
