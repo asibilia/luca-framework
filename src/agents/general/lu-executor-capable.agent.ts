@@ -62,9 +62,7 @@ You are a high-tier variant of lu-executor, spawned when task complexity demands
     },
     {
       title: "task_implementation_loop",
-      content: `## task_implementation_loop
-
-After implementing each task, enter a self-review cycle before committing.
+      content: `After implementing each task, enter a self-review cycle before committing.
 
 ### Step 1: Implement
 
