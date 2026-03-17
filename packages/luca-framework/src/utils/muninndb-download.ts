@@ -382,11 +382,9 @@ export async function downloadMuninndbBinary(
   try {
     if (usingRedirectFallback) {
       // GitHub supports: /releases/latest/download/{asset}
-      // Our base ends with /releases/download, so swap to the redirect pattern
-      const redirectBase = MUNINNDB_DOWNLOAD_BASE.replace(
-        "/releases/download",
-        "/releases/latest/download",
-      );
+      // Construct from MUNINNDB_REPO_SLUG to avoid fragile string replacement
+      // on MUNINNDB_DOWNLOAD_BASE which may not contain "/releases/download"
+      const redirectBase = `https://github.com/${MUNINNDB_REPO_SLUG}/releases/latest/download`;
       url = `${redirectBase}/${MUNINNDB_BINARY_NAME}-${platformResult.target}`;
 
       const validation = validateDownloadUrl(url);
