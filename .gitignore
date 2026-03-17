@@ -6,10 +6,9 @@ out
 dist
 *.tgz
 
-# harness templates (compiled output, not source — except agents which have EJS branding)
+# harness templates (compiled output, not source — except agents and skills which have EJS branding)
 packages/luca-framework/templates/harness/claude/hooks
 packages/luca-framework/templates/harness/claude/rules
-packages/luca-framework/templates/harness/claude/skills
 packages/luca-framework/templates/harness/claude/settings.json
 
 # code coverage
