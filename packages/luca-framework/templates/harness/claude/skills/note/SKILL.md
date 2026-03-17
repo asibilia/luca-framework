@@ -4,7 +4,7 @@ Add a new phase to the roadmap (default), or queue a developer note with --next/
 
 ## main
 
-# Luca Developer Note
+# <%= branding.frameworkName %> Developer Note
 
 Capture ideas as roadmap phases (default) or queue notes for agent pickup.
 

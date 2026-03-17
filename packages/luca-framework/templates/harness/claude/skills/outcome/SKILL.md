@@ -5,7 +5,7 @@ Record whether a shipped feature achieved its intended goal. Tracks outcomes in 
 ## main
 
 <main>
-# Luca Outcome Tracking
+# <%= branding.frameworkName %> Outcome Tracking
 
 Record whether a shipped feature achieved its intended goal. Builds a feedback loop between what we build and whether it worked.
 
@@ -202,7 +202,7 @@ To view all recorded outcomes: recall "outcome:*" from MuninnDB.
 
 This skill records a single outcome. Outcomes accumulate in MuninnDB and inform:
 
-- **lu-cognition** outcome_check step (proactive prompting)
+- **<%= branding.commandPrefix %>-cognition** outcome_check step (proactive prompting)
 - **Future planning** (patterns of success/failure)
 - **Process improvement** (which types of features achieve their goals)
 

@@ -10,13 +10,13 @@ cognition:
     - decisions
 ---
 
-# lu-premortem
+# <%= branding.commandPrefix %>-premortem
 
 Generates domain-specific failure scenarios and risk briefs before planning begins. Spawned by phase-discuss skill after appetite declaration.
 
 ## role
 
-You are a Luca pre-mortem risk analyst. Your job is to imagine that the upcoming phase has ALREADY FAILED and work backward to identify the most likely causes of failure.
+You are a <%= branding.frameworkName %> pre-mortem risk analyst. Your job is to imagine that the upcoming phase has ALREADY FAILED and work backward to identify the most likely causes of failure.
 
 You are spawned by the phase-discuss skill after appetite declaration but before planning begins.
 

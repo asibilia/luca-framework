@@ -5,7 +5,7 @@ Audit milestone completion against original requirements and acceptance criteria
 ## main
 
 <main>
-# Luca Audit Milestone
+# <%= branding.frameworkName %> Audit Milestone
 
 Audit milestone completion against original intent with cross-phase code review.
 
@@ -17,7 +17,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `lu-integration-checker` - Verifies cross-phase integration
+- `<%= branding.commandPrefix %>-integration-checker` - Verifies cross-phase integration
 - `dx-advocate` - Code quality review (milestone-wide)
 - `code-simplifier` - DRY and complexity review
 - `code-architect` - Architecture coherence review
@@ -26,7 +26,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **DO NOT** attempt to check integration or review code yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
 
 ## Model Profile
 
@@ -38,7 +38,7 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent                     | quality | balanced | budget |
 | ------------------------- | ------- | -------- | ------ |
-| lu-integration-checker | sonnet  | sonnet   | haiku  |
+| <%= branding.commandPrefix %>-integration-checker | sonnet  | sonnet   | haiku  |
 | dx-advocate               | opus    | sonnet   | haiku  |
 | code-simplifier           | opus    | sonnet   | haiku  |
 | code-architect            | opus    | sonnet   | haiku  |
@@ -70,7 +70,7 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 
 ### 3. Spawn Integration Checker
 
-**MANDATORY**: You MUST spawn a lu-integration-checker sub-agent. Do NOT verify integration yourself.
+**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-integration-checker sub-agent. Do NOT verify integration yourself.
 
 First, read the phase context:
 
@@ -122,7 +122,7 @@ gaps:
 
 Verify cross-phase integration for this milestone.
 """,
-subagent_type="lu-integration-checker",
+subagent_type="<%= branding.commandPrefix %>-integration-checker",
 model="{checker_model}",
 description="Integration check: v{version}"
 )
@@ -148,7 +148,7 @@ FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' || echo "0")
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► MILESTONE CODE REVIEW
+ <%= branding.frameworkName %> ► MILESTONE CODE REVIEW
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Reviewing {FILE_COUNT} files changed across all phases...
@@ -357,7 +357,7 @@ Collect all 5 code reviewer outputs (excluding integration checker) from Step 4.
 
 \`\`\`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca >>> MILESTONE DEBATE ROUND
+ <%= branding.frameworkName %> >>> MILESTONE DEBATE ROUND
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N} disagreements detected across {M} reviewers.
@@ -402,7 +402,7 @@ Parse rebuttal responses. For each:
 
 \`\`\`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca >>> DEBATE COMPLETE
+ <%= branding.frameworkName %> >>> DEBATE COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Metric                | Value |
@@ -467,7 +467,7 @@ Include:
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Luca ► MILESTONE v{version} AUDIT COMPLETE ✓
+<%= branding.frameworkName %> ► MILESTONE v{version} AUDIT COMPLETE ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Requirements: {X}/{Y} complete ✓
@@ -485,7 +485,7 @@ Code quality: passed ✓
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Luca ► MILESTONE v{version} AUDIT ⚠
+<%= branding.frameworkName %> ► MILESTONE v{version} AUDIT ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Requirements: {X}/{Y} complete

@@ -5,7 +5,7 @@ Detect and interactively clean up AI-session debris: orphaned scripts, misplaced
 ## main
 
 <main>
-# Luca Shadow Cleanup
+# <%= branding.frameworkName %> Shadow Cleanup
 
 Scan the repository for AI-session debris and interactively review findings.
 
@@ -71,7 +71,7 @@ Apply flags in priority order:
 (default)    → mode = "standard" (Categories 1+2+3+5)
 ```
 
-### Step 3: Spawn lu-shadow-scanner
+### Step 3: Spawn <%= branding.commandPrefix %>-shadow-scanner
 
 Spawn the scanner agent via Task with the determined mode and config context:
 
@@ -88,7 +88,7 @@ Task(
 Scan the repository for AI-session debris. Use the provided scan mode and config.
 Return a valid ShadowScanReport JSON block as your final output.
 """,
-  subagent_type: "lu-shadow-scanner",
+  subagent_type: "<%= branding.commandPrefix %>-shadow-scanner",
   description: "Shadow scan ({scan_mode} mode)"
 )
 ```
@@ -103,7 +103,7 @@ If parsing fails, display an error and exit with a suggestion to run again.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► SHADOW DEBT SCAN RESULTS
+ <%= branding.frameworkName %> ► SHADOW DEBT SCAN RESULTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Mode: {scan_mode} | Categories: {list} | Found: {total}
 
@@ -215,7 +215,7 @@ Display completion:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► SHADOW CLEANUP COMPLETE
+ <%= branding.frameworkName %> ► SHADOW CLEANUP COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Found: {total} | Fixed: {n_fixed} | Kept: {n_kept} | Skipped: {n_skipped}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

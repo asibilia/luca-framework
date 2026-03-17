@@ -1,13 +1,13 @@
 # help
 
-Show available Luca commands, usage guide, and workflow overview.
+Show available <%= branding.frameworkName %> commands, usage guide, and workflow overview.
 
 ## main
 
 <main>
-# Luca Help
+# <%= branding.frameworkName %> Help
 
-Display the complete Luca command reference.
+Display the complete <%= branding.frameworkName %> command reference.
 
 **Output ONLY the reference content below. Do NOT add:**
 
@@ -16,22 +16,22 @@ Display the complete Luca command reference.
 - Next-step suggestions
 - Any commentary beyond the reference
 
-## Luca Command Reference
+## <%= branding.frameworkName %> Command Reference
 
-**Luca** (Luca) creates hierarchical project plans optimized for solo agentic development with AI.
+**<%= branding.frameworkName %>** (<%= branding.frameworkName %>) creates hierarchical project plans optimized for solo agentic development with AI.
 
 ### Quick Start
 
 **For ticket-driven work:**
 
 ```
-/lu [TICKET-ID]
+/<%= branding.commandSlash %> [TICKET-ID]
 ```
 
 or
 
 ```
-/lu $JIRA_BASE_URL/browse/[TICKET-ID]
+/<%= branding.commandSlash %> $JIRA_BASE_URL/browse/[TICKET-ID]
 ```
 
 This automatically: fetches ticket details → creates GitHub issue (if using Jira) → creates branch → executes → offers PR
@@ -39,7 +39,7 @@ This automatically: fetches ticket details → creates GitHub issue (if using Ji
 **For ad-hoc work (no ticket):**
 
 ```
-/lu fix the typo in the readme
+/<%= branding.commandSlash %> fix the typo in the readme
 ```
 
 You'll be prompted to provide a ticket ID or use your configured placeholder (default: `PROJ-0000`).
@@ -58,7 +58,7 @@ You'll be prompted to provide a ticket ID or use your configured placeholder (de
 
 ### Unified Entry Point
 
-**`/lu <task | Jira-URL | [TICKET-ID]>`**
+**`/<%= branding.commandSlash %> <task | Jira-URL | [TICKET-ID]>`**
 The single entry point for all development work. Handles:
 
 - Git context setup (ticket → GitHub issue → feature branch)
@@ -102,7 +102,7 @@ Execute all plans in a phase
 ### Quick Mode
 
 **`/quick`**
-Execute small, ad-hoc tasks with Luca guarantees but skip optional agents
+Execute small, ad-hoc tasks with <%= branding.frameworkName %> guarantees but skip optional agents
 
 ### Roadmap Management
 
@@ -151,9 +151,9 @@ Flags: `--dry-run`, `--skip-validation`, `--category=<type>`, `--no-respond`
 **Via unified entry:**
 
 ```
-/lu PR #123
-/lu https://github.com/.../pull/123
-/lu address PR comments
+/<%= branding.commandSlash %> PR #123
+/<%= branding.commandSlash %> https://github.com/.../pull/123
+/<%= branding.commandSlash %> address PR comments
 ```
 
 ### Todo Management
@@ -191,10 +191,10 @@ Quick switch model profile (quality/balanced/budget)
 Show this command reference
 
 **`/update`**
-Update Luca to latest version with changelog preview
+Update <%= branding.frameworkName %> to latest version with changelog preview
 
 **`/lu-join-discord`**
-Join the Luca Discord community
+Join the <%= branding.frameworkName %> Discord community
 
 ## Files & Structure
 
@@ -225,7 +225,7 @@ Join the Luca Discord community
 **Working on a ticket (most common):**
 
 ```
-/lu PROJ-123
+/<%= branding.commandSlash %> PROJ-123
 ```
 
 This single command handles everything: ticket fetch → GitHub issue → branch creation → execution → PR.
@@ -233,7 +233,7 @@ This single command handles everything: ticket fetch → GitHub issue → branch
 **Ad-hoc work without ticket:**
 
 ```
-/lu fix typo in component
+/<%= branding.commandSlash %> fix typo in component
 ```
 
 When prompted, choose your configured placeholder (default: `PROJ-0000`) for work not tied to a ticket.
@@ -279,8 +279,8 @@ When prompted, choose your configured placeholder (default: `PROJ-0000`) for wor
 Or via unified entry:
 
 ```
-/lu PR #123
-/lu address PR comments
+/<%= branding.commandSlash %> PR #123
+/<%= branding.commandSlash %> address PR comments
 ```
 
 This spawns reviewer agents to validate concerns, plans fixes, executes with atomic commits, and responds to GitHub.
@@ -298,5 +298,5 @@ This is a reference command. Common follow-ups:
 
 - `/progress` — Check project status
 - `/project-new` — Start a new project
-- `/lu [TICKET-ID]` — Work on a ticket
+- `/<%= branding.commandSlash %> [TICKET-ID]` — Work on a ticket
 </main>

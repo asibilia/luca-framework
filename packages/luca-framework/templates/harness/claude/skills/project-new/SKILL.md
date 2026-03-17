@@ -1,11 +1,11 @@
 # project-new
 
-Initialize a new Luca project with deep context gathering and MuninnDB memory seeding.
+Initialize a new <%= branding.frameworkName %> project with deep context gathering and MuninnDB memory seeding.
 
 ## main
 
 <main>
-# Luca New Project
+# <%= branding.frameworkName %> New Project
 
 Initialize a new project through unified flow: questioning → research (optional) → requirements → roadmap.
 
@@ -17,13 +17,13 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `lu-project-researcher` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls)
-- `lu-research-synthesizer` - Synthesizes research outputs into SUMMARY.md
-- `lu-roadmapper` - Creates ROADMAP.md from requirements
+- `<%= branding.commandPrefix %>-project-researcher` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls)
+- `<%= branding.commandPrefix %>-research-synthesizer` - Synthesizes research outputs into SUMMARY.md
+- `<%= branding.commandPrefix %>-roadmapper` - Creates ROADMAP.md from requirements
 
 **DO NOT** attempt to research, synthesize, or create roadmaps yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -35,9 +35,9 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent                      | quality | balanced | budget |
 | -------------------------- | ------- | -------- | ------ |
-| lu-project-researcher   | opus    | sonnet   | haiku  |
-| lu-research-synthesizer | opus    | sonnet   | haiku  |
-| lu-roadmapper           | opus    | opus     | sonnet |
+| <%= branding.commandPrefix %>-project-researcher   | opus    | sonnet   | haiku  |
+| <%= branding.commandPrefix %>-research-synthesizer | opus    | sonnet   | haiku  |
+| <%= branding.commandPrefix %>-roadmapper           | opus    | opus     | sonnet |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -97,10 +97,10 @@ MuninnDB will then accumulate over time:
 
 Read these reference files before executing:
 
-- `.claude/luca/references/questioning.md`
-- `.claude/luca/references/ui-brand.md`
-- `.claude/luca/templates/project.md`
-- `.claude/luca/templates/requirements.md`
+- `.claude/<%= branding.nameLowercase %>/references/questioning.md`
+- `.claude/<%= branding.nameLowercase %>/references/ui-brand.md`
+- `.claude/<%= branding.nameLowercase %>/templates/project.md`
+- `.claude/<%= branding.nameLowercase %>/templates/requirements.md`
 
 ## Process
 
@@ -165,7 +165,7 @@ Use AskQuestion tool:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► QUESTIONING
+ <%= branding.frameworkName %> ► QUESTIONING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -283,7 +283,7 @@ Task(
 
 Research the optimal technology stack for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="<%= branding.commandPrefix %>-project-researcher",
   model="{researcher_model}",
   description="Research Stack"
 )
@@ -314,7 +314,7 @@ Task(
 
 Research features and competitive landscape for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="<%= branding.commandPrefix %>-project-researcher",
   model="{researcher_model}",
   description="Research Features"
 )
@@ -345,7 +345,7 @@ Task(
 
 Research architectural patterns and best practices for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="<%= branding.commandPrefix %>-project-researcher",
   model="{researcher_model}",
   description="Research Architecture"
 )
@@ -376,7 +376,7 @@ Task(
 
 Research common pitfalls and risks for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="<%= branding.commandPrefix %>-project-researcher",
   model="{researcher_model}",
   description="Research Pitfalls"
 )
@@ -414,7 +414,7 @@ Task(
 
 Synthesize all research outputs into a cohesive summary.
 """,
-  subagent_type="lu-research-synthesizer",
+  subagent_type="<%= branding.commandPrefix %>-research-synthesizer",
   model="{synthesizer_model}",
   description="Synthesize Research"
 )
@@ -429,7 +429,7 @@ Create `.planning/REQUIREMENTS.md` with REQ-IDs.
 
 ### Phase 8: Create Roadmap
 
-**MANDATORY**: You MUST spawn a lu-roadmapper sub-agent. Do NOT attempt to create the roadmap yourself.
+**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-roadmapper sub-agent. Do NOT attempt to create the roadmap yourself.
 
 First, read the required context:
 
@@ -488,7 +488,7 @@ Based on config depth setting:
 
 Create the project roadmap based on requirements and research.
 """,
-  subagent_type="lu-roadmapper",
+  subagent_type="<%= branding.commandPrefix %>-roadmapper",
   model="{roadmapper_model}",
   description="Create Roadmap"
 )
@@ -557,7 +557,7 @@ Present completion with next steps:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PROJECT INITIALIZED ✓
+ <%= branding.frameworkName %> ► PROJECT INITIALIZED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## ▶ Next Up

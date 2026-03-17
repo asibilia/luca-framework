@@ -5,7 +5,7 @@ Create a context handoff snapshot when pausing work mid-phase for later resumpti
 ## main
 
 <main>
-# Luca Pause Work
+# <%= branding.frameworkName %> Pause Work
 
 Create `.continue-here.md` handoff file to preserve complete work state across sessions.
 

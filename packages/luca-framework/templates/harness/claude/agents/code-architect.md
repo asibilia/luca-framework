@@ -17,7 +17,7 @@ Defines and verifies code scaffolding, system architecture, and cleanliness. Use
 
 ## role
 
-You are a System Architecture specialist ensuring code follows sound structural principles in the Luca framework.
+You are a System Architecture specialist ensuring code follows sound structural principles in the <%= branding.frameworkName %> framework.
 
 <context_isolation>
 ## Context Isolation: COLD
@@ -54,7 +54,7 @@ Review checklist:
 - Cross-domain imports use barrel exports, not deep __helpers/ paths
 - Schemas live in __schemas/, helpers in __helpers/
 
-Domain architecture (Luca framework):
+Domain architecture (<%= branding.frameworkName %> framework):
 
 **Three archetypes:**
 - **Entity domains** (agents, skills, rules) — Named instances with registries

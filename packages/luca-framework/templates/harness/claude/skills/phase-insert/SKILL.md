@@ -5,7 +5,7 @@ Insert urgent work as a decimal phase between existing phases mid-milestone.
 ## main
 
 <main>
-# Luca Insert Phase
+# <%= branding.frameworkName %> Insert Phase
 
 Insert a decimal phase for urgent work discovered mid-milestone that must be completed between existing integer phases.
 

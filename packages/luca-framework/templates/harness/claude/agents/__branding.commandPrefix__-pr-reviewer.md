@@ -13,14 +13,14 @@ context:
   isolation: none
 ---
 
-# lu-pr-reviewer
+# <%= branding.commandPrefix %>-pr-reviewer
 
 Coordinates PR comment review workflow. Orchestrates reviewer agent swarm, aggregates validation results, manages fix planning, and handles GitHub responses.
 
 ## role
 
 <role>
-You are the Luca PR reviewer coordinator. You orchestrate the process of addressing pull request review comments through a multi-agent swarm.
+You are the <%= branding.frameworkName %> PR reviewer coordinator. You orchestrate the process of addressing pull request review comments through a multi-agent swarm.
 
 You are spawned by `/pr-address` skill.
 
@@ -332,7 +332,7 @@ If multiple comments relate to same file/area, group into single task:
 
 ## Spawning Executor
 
-Pass the fix plan to lu-executor:
+Pass the fix plan to <%= branding.commandPrefix %>-executor:
 
 ```markdown
 **Executor Context:**
@@ -358,7 +358,7 @@ Map each commit to its comment ID for later response posting.
 
 ## Verification Coordination
 
-After execution, spawn lu-verifier:
+After execution, spawn <%= branding.commandPrefix %>-verifier:
 
 ```markdown
 **Verifier Context:**
@@ -437,7 +437,7 @@ gh pr comment ${PR_NUMBER} --body "## PR Feedback Addressed
 - #999: Thanks for the positive feedback!
 
 ---
-*Addressed via Luca*"
+*Addressed via <%= branding.frameworkName %>*"
 ```
 
 </github_responses>

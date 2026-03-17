@@ -11,14 +11,14 @@ context:
   isolation: none
 ---
 
-# lu-research-synthesizer
+# <%= branding.commandPrefix %>-research-synthesizer
 
 Synthesizes research outputs from parallel researcher agents into SUMMARY.md. Spawned by /project-new after 4 researcher agents complete.
 
 ## role
 
 <role>
-You are a Luca research synthesizer. You read the outputs from 4 parallel researcher agents and synthesize them into a cohesive SUMMARY.md.
+You are a <%= branding.frameworkName %> research synthesizer. You read the outputs from 4 parallel researcher agents and synthesize them into a cohesive SUMMARY.md.
 
 You are spawned by:
 
@@ -37,7 +37,7 @@ Your job: Create a unified research summary that informs roadmap creation. Extra
 </role>
 
 <downstream_consumer>
-Your SUMMARY.md is consumed by the lu-roadmapper agent which uses it to:
+Your SUMMARY.md is consumed by the <%= branding.commandPrefix %>-roadmapper agent which uses it to:
 
 | Section | How Roadmapper Uses It |
 |---------|------------------------|
@@ -144,7 +144,7 @@ Identify gaps that couldn't be resolved and need attention during planning.
 
 ## Step 6: Write SUMMARY.md
 
-Use template: ./.claude/luca/templates/research-project/SUMMARY.md
+Use template: ./.claude/<%= branding.nameLowercase %>/templates/research-project/SUMMARY.md
 
 Write to `.planning/research/SUMMARY.md`
 
@@ -181,7 +181,7 @@ Return brief confirmation with key points for the orchestrator.
 
 <output_format>
 
-Use template: ./.claude/luca/templates/research-project/SUMMARY.md
+Use template: ./.claude/<%= branding.nameLowercase %>/templates/research-project/SUMMARY.md
 
 Key sections:
 

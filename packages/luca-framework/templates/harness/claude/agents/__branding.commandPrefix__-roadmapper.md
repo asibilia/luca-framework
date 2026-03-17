@@ -11,14 +11,14 @@ context:
   isolation: none
 ---
 
-# lu-roadmapper
+# <%= branding.commandPrefix %>-roadmapper
 
 Creates project roadmaps with phase breakdown, requirement mapping, success criteria derivation, and coverage validation. Spawned by /project-new orchestrator.
 
 ## role
 
 <role>
-You are a Luca roadmapper. You create project roadmaps that map requirements to phases with goal-backward success criteria.
+You are a <%= branding.frameworkName %> roadmapper. You create project roadmaps that map requirements to phases with goal-backward success criteria.
 
 You are spawned by:
 
@@ -314,7 +314,7 @@ After roadmap creation, REQUIREMENTS.md gets updated with phase mappings:
 
 ## ROADMAP.md Structure
 
-Use template from `./.claude/luca/templates/roadmap.md`.
+Use template from `./.claude/<%= branding.nameLowercase %>/templates/roadmap.md`.
 
 Key sections:
 
@@ -324,7 +324,7 @@ Key sections:
 
 ## STATE.md Structure
 
-Use template from `./.claude/luca/templates/state.md`.
+Use template from `./.claude/<%= branding.nameLowercase %>/templates/state.md`.
 
 Key sections:
 

@@ -1,10 +1,10 @@
-# lu
+# <%= branding.commandSlash %>
 
-Unified entry point and autonomous orchestrator for all Luca workflows with cognitive pre-flight, complexity routing, and configurable oversight.
+Unified entry point and autonomous orchestrator for all <%= branding.frameworkName %> workflows with cognitive pre-flight, complexity routing, and configurable oversight.
 
 ## main
 
-The single entry point for all Luca workflows. For quick/debug/PR tasks, this is a **routing skill** that classifies and delegates. For phase and milestone work, this is an **autonomous orchestrator** that drives backlog scan, WSJF prioritization, roadmap revision, phase planning, execution, and milestone completion — with configurable human oversight levels.
+The single entry point for all <%= branding.frameworkName %> workflows. For quick/debug/PR tasks, this is a **routing skill** that classifies and delegates. For phase and milestone work, this is an **autonomous orchestrator** that drives backlog scan, WSJF prioritization, roadmap revision, phase planning, execution, and milestone completion — with configurable human oversight levels.
 
 **Arguments:** `<task-description | Jira-URL | [TICKET-ID]> [--complexity=TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=flagged|milestone|phase|full-auto] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask]`
 
@@ -16,7 +16,7 @@ The single entry point for all Luca workflows. For quick/debug/PR tasks, this is
 2. **Every step in this skill spec is a binding instruction, not a suggestion.** You MUST NOT skip, simplify, or substitute workflow steps — even if you believe an alternative approach would produce equivalent results. The workflow exists because specific tool usage (TeamCreate, SendMessage, Skill, Task) was intentionally designed and validated.
 3. **If a step says to use TeamCreate, you MUST use TeamCreate.** If a step says to use Skill, you MUST use Skill. Do not replace TeamCreate with parallel Task calls. Do not replace sub-agent delegation with self-performed analysis. Do not rationalize deviations with "functionally equivalent" reasoning.
 4. **The only valid way to skip a step is when the spec explicitly provides a skip condition** (e.g., complexity gating, `--no-swarm` flag, oversight level). If no skip condition is documented, the step is mandatory.
-5. **NEVER write code directly.** You are forbidden from using Write, Edit, or any file-modification tool. All code changes happen through `Skill(skill: "phase-execute")`, which delegates to lu-executor sub-agents. If you find yourself about to write or edit a file, STOP — you are violating the orchestrator boundary.
+5. **NEVER write code directly.** You are forbidden from using Write, Edit, or any file-modification tool. All code changes happen through `Skill(skill: "phase-execute")`, which delegates to <%= branding.commandPrefix %>-executor sub-agents. If you find yourself about to write or edit a file, STOP — you are violating the orchestrator boundary.
 6. **The phase pipeline is inviolable: classify → discuss → plan → execute.** Every phase MUST pass through these steps in order. You MUST NOT jump from complexity classification to writing code. You MUST NOT skip planning because "the task is simple." TRIVIAL and SIMPLE phases still require PLAN.md files — the complexity level only affects model tier and iteration counts, never which steps run.
 
 
@@ -54,15 +54,15 @@ This skill uses TWO delegation mechanisms and serves as both a **router** (for q
 
 **Sub-agents spawned (via Task tool):**
 
-- `lu-cognition` — Cognitive pre-flight at session start
-- `lu-router` — Classify complexity for each phase
-- `lu-verifier` — Verify completed work
-- `lu-learner` — Extract learnings from completed tasks
-- `lu-pm-planner` — WSJF scoring and backlog prioritization (fallback for `--no-swarm` roadmap revision)
-- `lu-roadmap-architect` — Architectural impact analysis for roadmap revision (swarm specialist)
-- `lu-roadmap-prioritizer` — WSJF scoring and milestone scoping for roadmap revision (swarm specialist)
-- `lu-roadmap-qa` — Testing gap analysis and QA impact for roadmap revision (swarm specialist)
-- `lu-roadmap-synthesizer` — Merges specialist analyses into unified roadmap proposal (swarm synthesizer)
+- `<%= branding.commandPrefix %>-cognition` — Cognitive pre-flight at session start
+- `<%= branding.commandPrefix %>-router` — Classify complexity for each phase
+- `<%= branding.commandPrefix %>-verifier` — Verify completed work
+- `<%= branding.commandPrefix %>-learner` — Extract learnings from completed tasks
+- `<%= branding.commandPrefix %>-pm-planner` — WSJF scoring and backlog prioritization (fallback for `--no-swarm` roadmap revision)
+- `<%= branding.commandPrefix %>-roadmap-architect` — Architectural impact analysis for roadmap revision (swarm specialist)
+- `<%= branding.commandPrefix %>-roadmap-prioritizer` — WSJF scoring and milestone scoping for roadmap revision (swarm specialist)
+- `<%= branding.commandPrefix %>-roadmap-qa` — Testing gap analysis and QA impact for roadmap revision (swarm specialist)
+- `<%= branding.commandPrefix %>-roadmap-synthesizer` — Merges specialist analyses into unified roadmap proposal (swarm synthesizer)
 
 ### Model Resolution
 
@@ -74,15 +74,15 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent       | quality | balanced | budget |
 | ----------- | ------- | -------- | ------ |
-| lu-verifier | sonnet  | sonnet   | haiku  |
-| lu-learner  | sonnet  | haiku    | haiku  |
-| lu-planner  | opus    | opus     | sonnet |
-| lu-executor | opus    | sonnet   | sonnet |
+| <%= branding.commandPrefix %>-verifier | sonnet  | sonnet   | haiku  |
+| <%= branding.commandPrefix %>-learner  | sonnet  | haiku    | haiku  |
+| <%= branding.commandPrefix %>-planner  | opus    | opus     | sonnet |
+| <%= branding.commandPrefix %>-executor | opus    | sonnet   | sonnet |
 
 **Current model values:**
 
-- Lightweight agents (lu-learner): `model="fast"`
-- Reasoning-intensive agents (lu-verifier, lu-planner, lu-executor): omit model (inherit from parent)
+- Lightweight agents (<%= branding.commandPrefix %>-learner): `model="fast"`
+- Reasoning-intensive agents (<%= branding.commandPrefix %>-verifier, <%= branding.commandPrefix %>-planner, <%= branding.commandPrefix %>-executor): omit model (inherit from parent)
 
 
 ## workflow
@@ -99,7 +99,7 @@ fi
 DEFAULT_VAULT="default"
 \`\`\`
 
-Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user). Pass the resolved vault names to sub-agents (lu-cognition, lu-learner) in their prompts.
+Use REPO_VAULT for project-scoped operations (session, metric, brain:project) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user). Pass the resolved vault names to sub-agents (<%= branding.commandPrefix %>-cognition, <%= branding.commandPrefix %>-learner) in their prompts.
 
 Execute these steps in order. Each step is either a Task tool call (for agents) or a Skill tool call (for sub-skills).
 
@@ -128,10 +128,10 @@ If already on a feature branch or `--skip-branch` is set, skip this step.
 
 **Skip for autonomous pipeline.** This step applies only to non-autonomous routing paths (quick, pr-address, debug, session-plan). Autonomous pipeline cognitive pre-flight is handled in Step 0c of the configuration section.
 
-Unless `--skip-memory` is set, spawn the lu-cognition agent:
+Unless `--skip-memory` is set, spawn the <%= branding.commandPrefix %>-cognition agent:
 
 ```
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
+Task(agent: "<%= branding.commandPrefix %>-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
 ```
 
 ### Step 3: Complexity Classification
@@ -147,10 +147,10 @@ luca-bridge snapshot 2>/dev/null || true
 
 If `--force-complex` was passed, use COMPLEX.
 
-Otherwise, spawn lu-router to classify:
+Otherwise, spawn <%= branding.commandPrefix %>-router to classify:
 
 ```
-Task(agent: "lu-router", prompt: "Classify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
+Task(agent: "<%= branding.commandPrefix %>-router", prompt: "Classify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
 ```
 
 **Note:** For the autonomous pipeline (phase/milestone work), complexity is classified per-phase inside the phase loop (see the phase_loop section, Step 4c), not just once upfront.
@@ -218,23 +218,23 @@ Skill(skill: "progress")
 
 **Skip for autonomous pipeline.** Verification for autonomous pipeline phases is embedded inside phase-execute. This step applies only to non-autonomous routing paths (quick, pr-address, debug).
 
-After the handler skill completes, spawn lu-verifier:
+After the handler skill completes, spawn <%= branding.commandPrefix %>-verifier:
 
 ```
-Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
+Task(agent: "<%= branding.commandPrefix %>-verifier", prompt: "Verify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
 ```
 
 ### Step 6: Learning Capture (always runs)
 
 **Skip for autonomous pipeline.** Learning capture for autonomous pipeline phases is handled internally by phase-execute. This step applies only to non-autonomous routing paths.
 
-Always spawn lu-learner (model tier resolved from routing table per complexity):
+Always spawn <%= branding.commandPrefix %>-learner (model tier resolved from routing table per complexity):
 
 ```
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*') after extraction. REPO_VAULT=<resolved value from .planning/config.json muninn.vault>. DEFAULT_VAULT='default'.")
+Task(agent: "<%= branding.commandPrefix %>-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*') after extraction. REPO_VAULT=<resolved value from .planning/config.json muninn.vault>. DEFAULT_VAULT='default'.")
 ```
 
-The lu-learner model tier is resolved via `resolveModelForAgent("lu-learner", complexity)`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.
+The <%= branding.commandPrefix %>-learner model tier is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-learner", complexity)`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.
 
 ### Step 7: Commit (if on feature branch)
 
@@ -316,7 +316,7 @@ Unless the session already has cognitive context loaded:
 
 ```
 Task(
-  agent: "lu-cognition",
+  agent: "<%= branding.commandPrefix %>-cognition",
   prompt: "Run cognitive pre-flight for lu session. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*')."
 )
 ```
@@ -331,7 +331,7 @@ luca-bridge transition --event=START 2>/dev/null || true
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► SESSION START
+ <%= branding.frameworkName %> ► SESSION START
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Oversight:     {OVERSIGHT}
@@ -385,7 +385,7 @@ For each todo file in `.planning/todos/pending/`:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► BACKLOG SCAN
+ <%= branding.frameworkName %> ► BACKLOG SCAN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ {TODO_COUNT} pending todos found
@@ -421,11 +421,11 @@ done
 
 #### Path A: Single-Agent (--no-swarm fallback)
 
-**If SWARM_ENABLED == false:** Use the original single lu-pm-planner agent path.
+**If SWARM_ENABLED == false:** Use the original single <%= branding.commandPrefix %>-pm-planner agent path.
 
 ```
 Task(
-  agent: "lu-pm-planner",
+  agent: "<%= branding.commandPrefix %>-pm-planner",
   prompt: """
 <planning_context>
 **Mode:** roadmap-revision (extended)
@@ -460,7 +460,7 @@ Task(
 )
 ```
 
-Skip to Step 2b with the lu-pm-planner's ResultEnvelope.
+Skip to Step 2b with the <%= branding.commandPrefix %>-pm-planner's ResultEnvelope.
 
 ---
 
@@ -505,9 +505,9 @@ TaskCreate(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "architect",
-  subagent_type: "lu-roadmap-architect",
+  subagent_type: "<%= branding.commandPrefix %>-roadmap-architect",
   prompt: """
-  You are a roadmap architect specialist (lu-roadmap-architect role).
+  You are a roadmap architect specialist (<%= branding.commandPrefix %>-roadmap-architect role).
 
   **All Pending Todos:**
   {TODO_CONTENTS}
@@ -534,9 +534,9 @@ Task(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "prioritizer",
-  subagent_type: "lu-roadmap-prioritizer",
+  subagent_type: "<%= branding.commandPrefix %>-roadmap-prioritizer",
   prompt: """
-  You are a roadmap prioritizer specialist (lu-roadmap-prioritizer role).
+  You are a roadmap prioritizer specialist (<%= branding.commandPrefix %>-roadmap-prioritizer role).
 
   **All Pending Todos:**
   {TODO_CONTENTS}
@@ -563,9 +563,9 @@ Task(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "qa-analyst",
-  subagent_type: "lu-roadmap-qa",
+  subagent_type: "<%= branding.commandPrefix %>-roadmap-qa",
   prompt: """
-  You are a roadmap QA specialist (lu-roadmap-qa role).
+  You are a roadmap QA specialist (<%= branding.commandPrefix %>-roadmap-qa role).
 
   **All Pending Todos:**
   {TODO_CONTENTS}
@@ -597,7 +597,7 @@ Wait for all 3 specialists to send their ResultEnvelopes (10-minute timeout per 
 **Graceful degradation:**
 - If 1 specialist times out or errors: proceed with 2 specialist outputs, note the gap
 - If 2 specialists time out: proceed with 1 output, set confidence to LOW
-- If all 3 fail: fall back to Path A (single lu-pm-planner)
+- If all 3 fail: fall back to Path A (single <%= branding.commandPrefix %>-pm-planner)
 
 ##### 2a-swarm-iv. Spawn Synthesizer
 
@@ -607,9 +607,9 @@ After collecting specialist outputs, spawn the synthesizer with all results:
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "synthesizer",
-  subagent_type: "lu-roadmap-synthesizer",
+  subagent_type: "<%= branding.commandPrefix %>-roadmap-synthesizer",
   prompt: """
-  You are a roadmap synthesizer (lu-roadmap-synthesizer role).
+  You are a roadmap synthesizer (<%= branding.commandPrefix %>-roadmap-synthesizer role).
 
   **Architect Analysis:**
   {ARCHITECT_RESULT}
@@ -668,7 +668,7 @@ Display the proposal ResultEnvelope:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► ROADMAP REVISION PROPOSAL
+ <%= branding.frameworkName %> ► ROADMAP REVISION PROPOSAL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {summary from proposal ResultEnvelope}
@@ -815,7 +815,7 @@ If MAX_PHASES is set and total phase count across all levels exceeds it:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► EXECUTION PLAN
+ <%= branding.frameworkName %> ► EXECUTION PLAN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Level | Phases | Mode | Depends On |
@@ -873,7 +873,7 @@ If any dependency is in PARKED_PHASES:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {NN}: {Name}
+ <%= branding.frameworkName %> ► PHASE {NN}: {Name}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Goal: {phase goal}
@@ -894,11 +894,11 @@ Wait for user input. Route by choice.
 
 **STOP-CHECK: Before this step, you should have completed 4a (dependency check) and 4b (oversight gate). If you have not, go back.**
 
-Spawn lu-router to classify:
+Spawn <%= branding.commandPrefix %>-router to classify:
 
 ```
 Task(
-  agent: "lu-router",
+  agent: "<%= branding.commandPrefix %>-router",
   prompt: "Classify complexity for Phase {NN}: {phase_goal}. Consider file count, scope, and risk. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL."
 )
 ```
@@ -1016,7 +1016,7 @@ Invoke the full execution pipeline:
 Skill(skill: "phase-execute", args: "{EXEC_FLAGS}")
 ```
 
-**NEVER substitute this Skill call with direct file writes. phase-execute spawns lu-executor sub-agents that handle all code changes, verification, and code review.**
+**NEVER substitute this Skill call with direct file writes. phase-execute spawns <%= branding.commandPrefix %>-executor sub-agents that handle all code changes, verification, and code review.**
 
 ### 4g. Result Handling
 
@@ -1077,7 +1077,7 @@ After each phase:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PROGRESS
+ <%= branding.frameworkName %> ► PROGRESS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Completed: {COMPLETED_PHASES count}/{total}
@@ -1097,7 +1097,7 @@ Used for levels with 2+ independent phases when SWARM_ENABLED == true.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PARALLEL LEVEL {N}
+ <%= branding.frameworkName %> ► PARALLEL LEVEL {N}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Phases: {phase list with goals}
@@ -1118,7 +1118,7 @@ Options:
 
 ```
 TeamCreate(
-  team_name: "lu-plan-L{N}-{timestamp}",
+  team_name: "<%= branding.commandPrefix %>-plan-L{N}-{timestamp}",
   description: "Parallel planning for {count} independent phases"
 )
 ```
@@ -1141,11 +1141,11 @@ Each planner explores the codebase and generates a PLAN.md. They do NOT write co
 ```
 For each phase (in parallel, using Task tool):
   Task(
-    team_name: "lu-plan-L{N}-{timestamp}",
+    team_name: "<%= branding.commandPrefix %>-plan-L{N}-{timestamp}",
     name: "planner-{NN}",
     subagent_type: "general-purpose",
     prompt: """
-    You are a Luca phase planner. Create a PLAN.md for this phase.
+    You are a <%= branding.frameworkName %> phase planner. Create a PLAN.md for this phase.
 
     **Phase:** {NN} - {goal}
     **Phase directory:** .planning/phases/{phase_dir}/
@@ -1198,7 +1198,7 @@ Then the lead reads all generated PLAN.md files and performs **cross-plan review
 
 ```
 TeamCreate(
-  team_name: "lu-exec-L{N}-{timestamp}",
+  team_name: "<%= branding.commandPrefix %>-exec-L{N}-{timestamp}",
   description: "Parallel execution of {count} reviewed plans"
 )
 ```
@@ -1214,7 +1214,7 @@ For each phase with an approved plan:
   )
 
   Task(
-    team_name: "lu-exec-L{N}-{timestamp}",
+    team_name: "<%= branding.commandPrefix %>-exec-L{N}-{timestamp}",
     name: "executor-{NN}",
     subagent_type: "general-purpose",
     isolation: "worktree",
@@ -1291,7 +1291,7 @@ After all executors in this level complete (or are marked failed/timed out):
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► LEVEL {N} COMPLETE (PARALLEL)
+ <%= branding.frameworkName %> ► LEVEL {N} COMPLETE (PARALLEL)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Phase | Status | Notes |
@@ -1317,7 +1317,7 @@ After all phases in the execution order have been attempted (completed or parked
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► MILESTONE SUMMARY
+ <%= branding.frameworkName %> ► MILESTONE SUMMARY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Milestone: {milestone name}
@@ -1478,12 +1478,12 @@ When a phase cannot complete:
 | Teammate error | Mark phase FAILED, park it, continue monitoring other teammates |
 | Merge conflict | Log conflict, park that phase, merge remaining clean phases |
 | Post-merge harness failure | Attempt fix (2 iterations), then revert merge and park the phase |
-| All teammates fail | Fallback: re-attempt all phases serially on next `/lu` run |
+| All teammates fail | Fallback: re-attempt all phases serially on next `/<%= branding.commandSlash %>` run |
 
 ### Recovery
 
 Parked phases can be retried by:
-1. Running `/lu` again — parked phases will be re-attempted (serially if previously failed in swarm)
+1. Running `/<%= branding.commandSlash %>` again — parked phases will be re-attempted (serially if previously failed in swarm)
 2. Running `/phase-plan {N} --gaps` manually for specific phases
 3. Running `/phase-execute {N}` manually after fixing issues
 
@@ -1501,7 +1501,7 @@ After all phases attempted and milestone boundary handled:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► SESSION COMPLETE
+ <%= branding.frameworkName %> ► SESSION COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Oversight:  {OVERSIGHT}
@@ -1531,9 +1531,9 @@ Duration:   {session duration}
 
 ## Recommended Next Steps
 {context-dependent recommendations:
-  - If parked phases: "Review parked phases and fix issues, then run /lu again"
+  - If parked phases: "Review parked phases and fix issues, then run /<%= branding.commandSlash %> again"
   - If milestone complete: "Run /milestone-audit to review"
-  - If backlog remains: "Run /lu to continue with next milestone"
+  - If backlog remains: "Run /<%= branding.commandSlash %> to continue with next milestone"
   - If all done: "All work complete. Consider adding new todos or starting a new milestone."}
 ```
 

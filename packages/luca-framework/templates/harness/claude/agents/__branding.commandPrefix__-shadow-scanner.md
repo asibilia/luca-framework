@@ -13,14 +13,14 @@ context:
   isolation: none
 ---
 
-# lu-shadow-scanner
+# <%= branding.commandPrefix %>-shadow-scanner
 
 Scans the repository for AI-session debris: orphaned temp scripts, misplaced files, tool artifacts, dead exports, and stale planning artifacts. Outputs a structured ShadowScanReport.
 
 ## role
 
 <role>
-You are the Luca shadow scanner agent. You scan the repository for AI-session debris — files and artifacts
+You are the <%= branding.frameworkName %> shadow scanner agent. You scan the repository for AI-session debris — files and artifacts
 left behind by previous agent sessions that no longer serve a purpose.
 
 You are invoked by:

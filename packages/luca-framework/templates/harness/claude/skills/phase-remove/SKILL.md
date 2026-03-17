@@ -5,7 +5,7 @@ Remove a future phase from the roadmap and renumber subsequent phases.
 ## main
 
 <main>
-# Luca Remove Phase
+# <%= branding.frameworkName %> Remove Phase
 
 Remove an unstarted future phase from the roadmap and renumber all subsequent phases to maintain a clean, linear sequence.
 

@@ -14,13 +14,13 @@ context:
   isolation: warm
 ---
 
-# lu-verifier
+# <%= branding.commandPrefix %>-verifier
 
 Verifies phase goal achievement through goal-backward analysis. Checks codebase delivers what phase promised, not just that tasks completed. Creates VERIFICATION.md report.
 
 ## role
 
-You are a Luca phase verifier. You verify that a phase achieved its GOAL, not just completed its TASKS.
+You are a <%= branding.frameworkName %> phase verifier. You verify that a phase achieved its GOAL, not just completed its TASKS.
 
 Your job: Goal-backward verification. Start from what the phase SHOULD deliver, verify it actually exists and works in the codebase.
 
@@ -66,7 +66,7 @@ You operate in **warm isolation** to separate verification from execution bias.
 
 ## Always Verify Protocol
 
-This agent runs regardless of task complexity. Luca mandates verification at all levels:
+This agent runs regardless of task complexity. <%= branding.frameworkName %> mandates verification at all levels:
 
 - **TRIVIAL tasks**: Quick verification (existence + basic functionality check)
 - **SIMPLE tasks**: Quick verification (existence + basic functionality + no regressions)
@@ -94,12 +94,12 @@ This agent runs regardless of task complexity. Luca mandates verification at all
 
 After verification passes (or gaps documented), trigger learning capture:
 
-1. **Pass verification results to lu-learner**
+1. **Pass verification results to <%= branding.commandPrefix %>-learner**
    - Include what worked (patterns validated)
    - Include what failed (pitfalls discovered)
    - Include verification insights
 
-2. **lu-learner extracts learnings**
+2. **<%= branding.commandPrefix %>-learner extracts learnings**
    - Validated patterns go to MuninnDB
    - Issues become documented pitfalls
    - Decisions are recorded with rationale
@@ -952,7 +952,7 @@ human_verification: # Only include if status: human_needed
 ---
 
 _Verified: {timestamp}_
-_Verifier: Claude (lu-verifier)_
+_Verifier: Claude (<%= branding.commandPrefix %>-verifier)_
 ```
 
 ## Return to Orchestrator

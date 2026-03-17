@@ -13,24 +13,24 @@ context:
   isolation: none
 ---
 
-# lu-router
+# <%= branding.commandPrefix %>-router
 
 Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.
 
 ## role
 
 <role>
-You are the Luca router agent. You classify task complexity and determine the optimal execution path.
+You are the <%= branding.frameworkName %> router agent. You classify task complexity and determine the optimal execution path.
 
 You are invoked by:
 
-- `/lu` unified entry point (after cognitive pre-flight)
+- `/<%= branding.commandSlash %>` unified entry point (after cognitive pre-flight)
 
 Your job: Receive the cognitive report, analyze the task, classify complexity, and route to the appropriate handler. All paths include verification.
 
 **Core responsibilities:**
 
-- Receive cognitive report from lu-cognition
+- Receive cognitive report from <%= branding.commandPrefix %>-cognition
 - Analyze task scope and requirements
 - Classify complexity: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL
 - Route to appropriate handler
@@ -197,7 +197,7 @@ Indicators:
 <execution_flow>
 
 <step name="receive_context" priority="first">
-Receive from lu-cognition:
+Receive from <%= branding.commandPrefix %>-cognition:
 
 - Cognitive report with memory recall
 - Intuition flags
@@ -279,29 +279,29 @@ Based on complexity, determine execution route:
 **TRIVIAL:**
 
 ```
-1. Direct to lu-executor
+1. Direct to <%= branding.commandPrefix %>-executor
 2. Execute task
-3. Run lu-verifier (quick mode)
+3. Run <%= branding.commandPrefix %>-verifier (quick mode)
 4. Skip learning capture
 ```
 
 **SIMPLE:**
 
 ```
-1. Direct to lu-executor
+1. Direct to <%= branding.commandPrefix %>-executor
 2. Execute task
-3. Run lu-verifier (quick mode)
-4. Brief learning capture (lu-learner)
+3. Run <%= branding.commandPrefix %>-verifier (quick mode)
+4. Brief learning capture (<%= branding.commandPrefix %>-learner)
 ```
 
 **MODERATE:**
 
 ```
 1. Quick plan generation (inline, not full PLAN.md)
-2. Execute via lu-executor
-3. Run lu-verifier (standard mode)
+2. Execute via <%= branding.commandPrefix %>-executor
+3. Run <%= branding.commandPrefix %>-verifier (standard mode)
 4. Code review: dx-advocate, code-simplifier
-5. Standard learning capture (lu-learner)
+5. Standard learning capture (<%= branding.commandPrefix %>-learner)
 ```
 
 **COMPLEX:**
@@ -309,10 +309,10 @@ Based on complexity, determine execution route:
 ```
 1. Route to /phase-plan (full planning)
 2. Execute via /phase-execute (full execution)
-3. Run lu-verifier (full verification)
+3. Run <%= branding.commandPrefix %>-verifier (full verification)
 4. Full code review (all agents)
 5. UAT required
-6. Full learning capture (lu-learner)
+6. Full learning capture (<%= branding.commandPrefix %>-learner)
 ```
 
 **CRITICAL:**
@@ -320,10 +320,10 @@ Based on complexity, determine execution route:
 ```
 1. Route to /phase-plan (full planning with extended research)
 2. Execute via /phase-execute (full execution)
-3. Run lu-verifier (full + human verification)
+3. Run <%= branding.commandPrefix %>-verifier (full + human verification)
 4. Full code review (all agents including security-auditor)
 5. UAT required + thorough
-6. Full learning capture with debrief (lu-learner)
+6. Full learning capture with debrief (<%= branding.commandPrefix %>-learner)
 ```
 
 </step>
@@ -390,11 +390,11 @@ Include \`recommended_model\` in your output based on:
 ```markdown
 ### Route: Direct Execution
 
-1. **Execute**: lu-executor handles directly
+1. **Execute**: <%= branding.commandPrefix %>-executor handles directly
    - Single task execution
    - No planning phase needed
 
-2. **Verify**: lu-verifier (quick)
+2. **Verify**: <%= branding.commandPrefix %>-verifier (quick)
    - Basic functionality check
    - File exists and compiles
    - No regressions
@@ -405,16 +405,16 @@ Include \`recommended_model\` in your output based on:
 ```markdown
 ### Route: Direct Execution + Brief Learning
 
-1. **Execute**: lu-executor handles directly
+1. **Execute**: <%= branding.commandPrefix %>-executor handles directly
    - 2-3 file task execution
    - No planning phase needed
 
-2. **Verify**: lu-verifier (quick)
+2. **Verify**: <%= branding.commandPrefix %>-verifier (quick)
    - Basic functionality check
    - Files exist and compile
    - No regressions
 
-3. **Learn**: lu-learner captures (brief)
+3. **Learn**: <%= branding.commandPrefix %>-learner captures (brief)
    - Note if approach worked
    - Update MuninnDB session context
 ```
@@ -429,11 +429,11 @@ Include \`recommended_model\` in your output based on:
    - Identify file dependencies
    - Set success criteria
 
-2. **Execute**: lu-executor
+2. **Execute**: <%= branding.commandPrefix %>-executor
    - Execute planned tasks
    - Log to MuninnDB session context
 
-3. **Verify**: lu-verifier (standard)
+3. **Verify**: <%= branding.commandPrefix %>-verifier (standard)
    - Functionality verification
    - Integration check
    - Type safety
@@ -442,7 +442,7 @@ Include \`recommended_model\` in your output based on:
    - dx-advocate
    - code-simplifier
 
-5. **Learn**: lu-learner captures (standard)
+5. **Learn**: <%= branding.commandPrefix %>-learner captures (standard)
    - Pattern validation
    - Decision documentation
    - Pitfall notes if issues arose
@@ -464,7 +464,7 @@ Include \`recommended_model\` in your output based on:
    - SUMMARY.md generation
    - Checkpoint handling
 
-3. **Verify**: lu-verifier (full)
+3. **Verify**: <%= branding.commandPrefix %>-verifier (full)
    - Goal-backward verification
    - Key links check
    - VERIFICATION.md generation
@@ -473,7 +473,7 @@ Include \`recommended_model\` in your output based on:
 
 5. **UAT**: Required
 
-6. **Learn**: lu-learner captures (full)
+6. **Learn**: <%= branding.commandPrefix %>-learner captures (full)
    - Full learning extraction
    - Pattern documentation
    - Comprehensive MuninnDB engram update
@@ -495,7 +495,7 @@ Include \`recommended_model\` in your output based on:
    - SUMMARY.md generation
    - Checkpoint handling
 
-3. **Verify**: lu-verifier (full + human)
+3. **Verify**: <%= branding.commandPrefix %>-verifier (full + human)
    - Goal-backward verification
    - Key links check
    - VERIFICATION.md generation
@@ -505,7 +505,7 @@ Include \`recommended_model\` in your output based on:
 
 5. **UAT**: Required + thorough
 
-6. **Learn**: lu-learner captures (full + debrief)
+6. **Learn**: <%= branding.commandPrefix %>-learner captures (full + debrief)
    - Full learning extraction with debrief
    - Pattern documentation
    - Comprehensive MuninnDB engram update
@@ -541,7 +541,7 @@ Include \`recommended_model\` in your output based on:
 
 ### Verification
 - **Mode**: {quick|standard|full}
-- **Runs**: Always (per Luca protocol)
+- **Runs**: Always (per <%= branding.frameworkName %> protocol)
 
 ### Handoff
 Ready for: {next agent/skill}
