@@ -82,10 +82,10 @@ async function resolveLatestReleaseTag(
     return cachedLatestTag;
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5_000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5_000);
 
+  try {
     const response = await fetch(
       `https://api.github.com/repos/${repoSlug}/releases/latest`,
       {
@@ -93,8 +93,6 @@ async function resolveLatestReleaseTag(
         signal: controller.signal,
       },
     );
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       return null;
@@ -111,6 +109,8 @@ async function resolveLatestReleaseTag(
     return tagName;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
