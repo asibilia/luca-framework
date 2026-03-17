@@ -105,6 +105,15 @@ export interface LucaManifest {
   workTracker: string;
   /** Harness platforms installed in this project */
   harnesses?: HarnessId[];
+  /**
+   * Installation mode that produced this manifest.
+   *
+   * - `"project"` — full harness scaffolded into the project directory
+   * - `"global"` — planning-only install; harness lives in ~/.claude/
+   *
+   * When absent, assume `"project"` for backward compatibility.
+   */
+  installation_mode?: "project" | "global";
   files: Record<
     string,
     {

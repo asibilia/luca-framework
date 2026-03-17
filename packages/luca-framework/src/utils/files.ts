@@ -255,6 +255,12 @@ export async function generateFiles(options: {
         createdFiles: createdPaths,
       });
 
+      // In global mode, no harnesses are scaffolded into the project.
+      // Set harnesses to empty and record installation mode so doctor/status
+      // checks don't report false failures looking for missing harness files.
+      manifest.harnesses = [];
+      manifest.installation_mode = "global";
+
       await writeManifest(manifest, cwd);
       trackCreated(join(cwd, ".planning", "manifest.json"));
 
