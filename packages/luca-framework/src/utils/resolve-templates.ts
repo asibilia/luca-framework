@@ -10,7 +10,7 @@
  */
 
 import { readdir, stat } from "node:fs/promises";
-import { join, basename } from "node:path";
+import { join, basename } from "pathe";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,17 +106,33 @@ export const resolveContent = (
  * // -> "lu"
  * ```
  */
+/** Allowlist of branding keys permitted in path segment placeholders. */
+const ALLOWED_BRANDING_KEYS = new Set<string>([
+  "frameworkName",
+  "commandPrefix",
+  "commandSlash",
+  "nameLowercase",
+  "nameUppercase",
+  "ticketPattern",
+  "placeholderTicket",
+  "ticketPatternJson",
+]);
+
 export const resolvePathSegment = (
   segment: string,
   branding: BrandingContext,
 ): string => {
-  return segment.replace(/__branding\.(\w+)__/g, (_match, key: string) => {
+  return segment.replace(/__branding\.(\w+)__/g, (match, key: string) => {
+    if (!ALLOWED_BRANDING_KEYS.has(key)) {
+      console.warn(`Unknown branding key in path: ${key}`);
+      return match; // leave unresolved
+    }
     const value = branding[key as keyof BrandingContext];
     if (value === undefined) {
       console.warn(
         `Template warning: unknown branding key "${key}" in filename`,
       );
-      return _match;
+      return match;
     }
     return String(value);
   });
@@ -151,6 +167,15 @@ export const resolveFilePath = (
  * @param dir - Absolute path to walk
  * @param prefix - Relative path prefix for the current directory
  * @returns Array of [relativePath, absolutePath] pairs
+ *
+ * @example
+ * ```typescript
+ * const files = await walkDir("/path/to/templates", "");
+ * // files === [
+ * //   ["agents/lu-router.md", "/path/to/templates/agents/lu-router.md"],
+ * //   ["skills/lu/SKILL.md", "/path/to/templates/skills/lu/SKILL.md"],
+ * // ]
+ * ```
  */
 const walkDir = async (
   dir: string,

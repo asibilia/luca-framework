@@ -28,11 +28,18 @@
  */
 
 import path from "path";
+import { chmodSync } from "node:fs";
 
+// resolveTemplates is imported via the scripts/ shim (./resolve-templates)
+// which re-exports from packages/luca-framework/src/utils/resolve-templates.ts.
+// This indirection exists so both build scripts and the npm package share
+// the same canonical implementation.
 import { resolveTemplates } from "./resolve-templates";
 import type { BrandingContext } from "./resolve-templates";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
+import { defaultBranding } from "../packages/luca-framework/src/utils/branding";
+import { sanitizeJsonParse } from "../packages/luca-framework/src/utils/sanitize";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -65,16 +72,21 @@ async function loadBrandingContext(): Promise<BrandingContext> {
     "config.json",
   );
 
-  let frameworkName = "Luca";
-  let commandPrefix = "lu";
-  let ticketPattern = "[A-Z]+-\\d+";
-  let placeholderTicket = "PROJ-0000";
+  let frameworkName = defaultBranding.frameworkName;
+  let commandPrefix = defaultBranding.commandPrefix;
+  let ticketPattern = defaultBranding.ticketPattern;
+  let placeholderTicket = defaultBranding.placeholderTicket;
 
   try {
     const configFile = Bun.file(configPath);
     if (await configFile.exists()) {
-      const raw = JSON.parse(await configFile.text());
-      const branding = raw?.branding;
+      const raw = sanitizeJsonParse(await configFile.text()) as Record<
+        string,
+        unknown
+      >;
+      const branding = (raw as Record<string, unknown>)?.branding as
+        | Record<string, string>
+        | undefined;
       if (branding) {
         frameworkName = branding.frameworkName ?? frameworkName;
         commandPrefix = branding.commandPrefix ?? commandPrefix;
@@ -184,6 +196,9 @@ export async function runDeploy(): Promise<{
     }
 
     const absPath = path.join(claudeDir, relPath);
+    if (!path.resolve(absPath).startsWith(path.resolve(claudeDir) + "/")) {
+      throw new Error(`Path traversal detected: ${relPath}`);
+    }
     await ensureDir(path.dirname(absPath));
     await Bun.write(absPath, content);
 
@@ -196,10 +211,7 @@ export async function runDeploy(): Promise<{
   // 5. chmod +x on .sh files
   // =========================================================================
   for (const scriptPath of hookScriptPaths) {
-    const { exitCode } = Bun.spawnSync(["chmod", "+x", scriptPath]);
-    if (exitCode !== 0) {
-      console.error(`Failed to chmod +x ${scriptPath}`);
-    }
+    chmodSync(scriptPath, 0o755);
   }
 
   // =========================================================================

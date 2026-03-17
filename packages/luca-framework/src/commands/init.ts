@@ -42,7 +42,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, relative } from "pathe";
+import { dirname, join, relative, resolve } from "pathe";
 import { logger } from "../utils/logger";
 import { sanitizeJsonParse } from "../utils/sanitize";
 import {
@@ -239,8 +239,11 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
       continue;
     }
 
-    // Write the resolved file
+    // Write the resolved file (with path containment guard)
     const absPath = join(globalDir, relPath);
+    if (!resolve(absPath).startsWith(resolve(globalDir) + "/")) {
+      throw new Error(`Path traversal detected: ${relPath}`);
+    }
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content);
 
@@ -371,6 +374,9 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   return totalCount;
 }
 
+/** Regex that only allows safe path characters (alphanumeric, slash, dot, dash, underscore). */
+const SAFE_PATH_RE = /^[\w/.\-]+$/;
+
 /**
  * Build a proposed hooks structure from the deployed hook files.
  *
@@ -380,12 +386,24 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
  * src/hooks/ tier and is not importable from the packages/ tier).
  *
  * For the full canonical registry approach, use `scripts/deploy-global.ts`.
+ *
+ * @param globalHooksDir - Absolute path to the deployed hooks directory
+ * @returns Claude Code settings.json hooks structure keyed by event name
  */
 function buildProposedHooksFromDeployed(
   globalHooksDir: string,
 ): Record<string, unknown> {
+  // Validate the hooks directory path before using it in command strings
+  if (!SAFE_PATH_RE.test(globalHooksDir)) {
+    throw new Error(`Unsafe hooks directory path: ${globalHooksDir}`);
+  }
+
   // Build a hooks structure matching the Claude Code settings.json format
   // Group hooks by their Claude Code event based on known script-to-event mapping
+  //
+  // IMPORTANT: This map duplicates knowledge from src/hooks/__helpers/hook-registry.ts.
+  // The duplication is necessary because packages/ cannot import from src/hooks/ (T3 boundary).
+  // When adding or renaming hooks in src/hooks/, update this map in sync.
   const scriptEventMap: Record<
     string,
     {
@@ -490,6 +508,9 @@ function buildProposedHooksFromDeployed(
   );
 
   for (const script of deployedScripts) {
+    // Skip filenames with unsafe characters to prevent command injection
+    if (!SAFE_PATH_RE.test(script)) continue;
+
     const mapping = scriptEventMap[script];
     if (!mapping) continue;
 
