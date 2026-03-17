@@ -124,6 +124,20 @@
 - [x] Wire hook into generated settings.json via luca init
 - [x] Move todo to done/
 
+### Phase 199: Build Pipeline DRY & Security
+
+**Goal:** Address 3 HIGH and 2 MEDIUM audit findings: extract shared build utilities, deduplicate vault-guard prompt, add branding validation, and align cross-boundary imports.
+
+**Depends on:** Phase 198
+
+**Requirements:** Audit tech debt (should fix)
+
+- [ ] Extract vault-guard prompt text to shared constant consumed by both build-compile.ts and settings-hooks.json
+- [ ] Extract file-count computation to build-utils.ts (deduplicate build-compile.ts + build-deploy.ts)
+- [ ] Extract shared buildErrorHandler to build-utils.ts (unify error output across 3 build scripts)
+- [ ] Add validateBranding() call in build-deploy.ts loadBrandingContext before template resolution
+- [ ] Replace deep cross-boundary imports in build-deploy.ts with shim pattern (matching resolve-templates.ts)
+
 ---
 
 ## Backlog (Unassigned)
