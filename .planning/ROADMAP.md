@@ -73,11 +73,11 @@
 
 **Requirements:** REQ-5, REQ-6
 
-- [ ] Update `check:drift` to compare .claude/ against build:compile + build:deploy output
-- [ ] Verify session lock guard runs at the correct stage (build:deploy, not build:compile)
-- [ ] Verify build manifest generation works with new pipeline
-- [ ] Run full CI check (typecheck + drift) to confirm green pipeline
-- [ ] Move todo to done/
+- [x] Update `check:drift` to compare .claude/ against build:compile + build:deploy output
+- [x] Verify session lock guard runs at the correct stage (build:deploy, not build:compile)
+- [x] Verify build manifest generation works with new pipeline
+- [x] Run full CI check (typecheck + drift) to confirm green pipeline
+- [x] Move todo to done/
 
 ---
 
