@@ -98,19 +98,26 @@ export function setupCleanupHandler() {
  * Tracks all created paths for cleanup on error.
  *
  * Directory structure created:
- * - `.planning/` - Planning artifacts
- * - `.cursor/luca/` - Framework files
- * - `.cursor/agents/` - Agent definitions
- * - `.cursor/rules/` - Cursor rules
- * - `.cursor/skills/` - Luca skills
+ * - `.planning/` - Planning artifacts (always created)
+ * - `.cursor/luca/` - Framework files (skipped when `planningOnly`)
+ * - `.cursor/agents/` - Agent definitions (skipped when `planningOnly`)
+ * - `.cursor/rules/` - Cursor rules (skipped when `planningOnly`)
+ * - `.cursor/skills/` - Luca skills (skipped when `planningOnly`)
+ *
+ * When `planningOnly` is true, only `.planning/` config files are created
+ * and the function returns early. This is used in global mode where the
+ * harness (agents, skills, rules, hooks) is already deployed to `~/.claude/`
+ * by `luca init` Step 3.
  *
  * @param options - Generation options
  * @param options.config - Luca configuration with branding
  * @param options.cwd - Working directory (default: process.cwd())
+ * @param options.planningOnly - When true, only create `.planning/` files and skip harness generation
  * @returns Result with success status, manifest if successful, error if failed
  *
  * @example
  * ```typescript
+ * // Full installation (dev mode)
  * const result = await generateFiles({
  *   config: {
  *     branding: { frameworkName: 'Luca', commandPrefix: 'lu', ... },
@@ -123,10 +130,23 @@ export function setupCleanupHandler() {
  *   console.log('Installed', Object.keys(result.data.files).length, 'files');
  * }
  * ```
+ *
+ * @example
+ * ```typescript
+ * // Planning-only installation (global mode)
+ * const result = await generateFiles({
+ *   config,
+ *   planningOnly: true,
+ * });
+ * // Only .planning/ directory and config files are created
+ * ```
+ *
+ * @see detectRuntimeContext — used by vault-init.ts to determine when to pass planningOnly
  */
 export async function generateFiles(options: {
   config: LucaConfig;
   cwd?: string;
+  planningOnly?: boolean;
 }): Promise<
   | { success: true; data: LucaManifest; stats: InstallationStats }
   | { success: false; error: string }
@@ -156,22 +176,26 @@ export async function generateFiles(options: {
     const planningDir = join(cwd, ".planning");
     const dirs: string[] = [planningDir];
 
-    if (harnesses.includes("cursor")) {
-      const cursorDir = join(cwd, ".cursor");
-      dirs.push(
-        join(cursorDir, "luca"),
-        join(cursorDir, "agents"),
-        join(cursorDir, "rules"),
-        join(cursorDir, "skills"),
-      );
-    }
+    // In planningOnly mode, skip harness directories entirely.
+    // The harness is deployed globally by `luca init` Step 3.
+    if (!options.planningOnly) {
+      if (harnesses.includes("cursor")) {
+        const cursorDir = join(cwd, ".cursor");
+        dirs.push(
+          join(cursorDir, "luca"),
+          join(cursorDir, "agents"),
+          join(cursorDir, "rules"),
+          join(cursorDir, "skills"),
+        );
+      }
 
-    if (harnesses.includes("claude")) {
-      dirs.push(join(cwd, ".claude"));
-    }
+      if (harnesses.includes("claude")) {
+        dirs.push(join(cwd, ".claude"));
+      }
 
-    if (harnesses.includes("pi")) {
-      dirs.push(join(cwd, ".pi"));
+      if (harnesses.includes("pi")) {
+        dirs.push(join(cwd, ".pi"));
+      }
     }
 
     for (const dir of dirs) {
@@ -191,6 +215,14 @@ export async function generateFiles(options: {
       sourceDir: baseTemplatesDir,
       destDir: cwd,
       config,
+      // In planningOnly mode, only copy .planning/ files from base templates.
+      // Skip harness files (e.g. .cursor/luca/.gitkeep) to avoid creating
+      // harness directories in the project.
+      filter: options.planningOnly
+        ? (relPath) =>
+            relPath.startsWith(".planning/") ||
+            relPath.startsWith(".planning\\")
+        : undefined,
     });
 
     for (const file of baseProcessed) {
@@ -227,6 +259,36 @@ export async function generateFiles(options: {
           `Could not merge harness config: ${error instanceof Error ? error.message : "unknown error"}`,
         );
       }
+    }
+
+    // Early return: in planningOnly mode, only .planning/ files are needed.
+    // The harness (agents, skills, rules, hooks) is deployed globally
+    // to ~/.claude/ by `luca init` Step 3.
+    if (options.planningOnly) {
+      spinner.start("Creating manifest...");
+
+      const manifest = await createManifest({
+        config,
+        cwd,
+        createdFiles: createdPaths,
+      });
+
+      await writeManifest(manifest, cwd);
+      trackCreated(join(cwd, ".planning", "manifest.json"));
+
+      spinner.stop("Manifest created");
+
+      // Clear tracking (success - don't cleanup)
+      const planningOnlyStats: InstallationStats = {
+        agent_count: 0,
+        skill_count: 0,
+        rule_count: 0,
+        hook_count: 0,
+        harnesses_installed: [],
+      };
+      createdPaths.length = 0;
+
+      return { success: true, data: manifest, stats: planningOnlyStats };
     }
 
     // Step 3: Copy stack-specific templates (if not custom)
