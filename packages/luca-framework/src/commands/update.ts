@@ -140,7 +140,7 @@ async function getNewFrameworkFiles(
   );
 
   // Collect per-harness templates (agents, rules, skills, hooks, settings)
-  const harnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
+  const harnesses: HarnessId[] = config.harnesses ?? ["claude"];
   for (const harnessId of harnesses) {
     const { files: harnessFiles, sourceMap: harnessSources } =
       await collectHarnessFiles(harnessId, config);
@@ -422,8 +422,7 @@ async function updateManifestAfterUpdate(
   removedFiles?: string[],
 ): Promise<LucaManifest> {
   const now = new Date().toISOString();
-  const harnesses = config.harnesses ??
-    manifest.harnesses ?? ["claude", "cursor"];
+  const harnesses = config.harnesses ?? manifest.harnesses ?? ["claude"];
   const updatedManifest: LucaManifest = {
     ...manifest,
     version: LUCA_VERSION,
@@ -647,7 +646,7 @@ export const updateCommand = defineCommand({
         : (manifest.workTracker as "jira" | "github" | "none"),
       harnesses: presetDefaults
         ? presetDefaults.harnesses
-        : (manifest.harnesses ?? ["claude", "cursor"]),
+        : (manifest.harnesses ?? ["claude"]),
       preset: (args.preset as PresetId) ?? undefined,
     };
 
@@ -658,11 +657,8 @@ export const updateCommand = defineCommand({
     spinner.stop(`Found ${newFiles.size} framework files`);
 
     // Step 2.5: Detect harness additions and removals
-    const oldHarnesses: HarnessId[] = manifest.harnesses ?? [
-      "claude",
-      "cursor",
-    ];
-    const newHarnesses: HarnessId[] = config.harnesses ?? ["claude", "cursor"];
+    const oldHarnesses: HarnessId[] = manifest.harnesses ?? ["claude"];
+    const newHarnesses: HarnessId[] = config.harnesses ?? ["claude"];
     const addedHarnesses = difference(
       newHarnesses,
       oldHarnesses,

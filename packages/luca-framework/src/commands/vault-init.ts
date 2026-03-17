@@ -278,11 +278,9 @@ export const vaultInitCommand = defineCommand({
     // Success output
     p.outro(`Luca initialized in this project!`);
 
-    const harnessNames = (config.harnesses ?? ["claude", "cursor"])
+    const harnessNames = (config.harnesses ?? ["claude"])
       .map((h) => {
         if (h === "claude") return ".claude/";
-        if (h === "cursor") return ".cursor/";
-        if (h === "pi") return ".pi/";
         return h;
       })
       .join(", ");

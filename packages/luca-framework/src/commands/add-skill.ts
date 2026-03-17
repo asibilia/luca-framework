@@ -80,7 +80,6 @@ async function listSkills(cwd: string): Promise<void> {
   const manifest = await readManifest(cwd);
   const harnesses: HarnessId[] = (manifest?.harnesses as HarnessId[]) ?? [
     "claude",
-    "cursor",
   ];
 
   // Group skills by tier
@@ -170,7 +169,6 @@ async function installSkill(skillName: string, cwd: string): Promise<void> {
 
   const harnesses: HarnessId[] = (manifest.harnesses as HarnessId[]) ?? [
     "claude",
-    "cursor",
   ];
 
   // Check if already installed

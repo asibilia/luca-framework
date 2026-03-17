@@ -54,15 +54,6 @@ function buildStartupInstructions(
     lines.push(`  Claude Code: Open terminal, type "claude" to start`);
     lines.push(`    Then use /${commandPrefix} to invoke the router`);
   }
-  if (harnesses.includes("cursor")) {
-    lines.push(`  Cursor IDE:  Open project in Cursor`);
-    lines.push(`    Then use /${commandPrefix} in the AI chat panel`);
-  }
-  if (harnesses.includes("pi")) {
-    lines.push(`  Pi:          Open project in Pi`);
-    lines.push(`    Then use /${commandPrefix} to invoke the router`);
-  }
-
   if (lines.length === 0) {
     lines.push(`  Use /${commandPrefix} in your AI assistant to get started`);
   }
@@ -86,7 +77,7 @@ function buildTourSteps(
   context: ProjectContext,
   stats?: InstallationStats,
 ): TourStep[] {
-  const harnesses = config.harnesses ?? ["claude", "cursor"];
+  const harnesses = config.harnesses ?? ["claude"];
   const harnessNames = formatHarnessNames(harnesses);
   const commandPrefix = config.branding.commandPrefix;
   const frameworkName = config.branding.frameworkName;
