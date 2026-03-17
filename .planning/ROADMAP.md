@@ -105,12 +105,12 @@
 
 **Goal:** Rename `config.autopilot` to `config.lu` with Zod schema and one-version fallback.
 
-- [ ] Rename `autopilot` → `lu` in `.planning/config.json`
-- [ ] Create `LuConfigSchema` Zod schema for the section (replace inline defaults)
-- [ ] Update lu.skill.ts to read from `c.lu` with fallback to `c.autopilot`
-- [ ] Rename `skip_uat_in_autopilot` → `skip_uat`
-- [ ] Update state machine types, guards, persistence references
-- [ ] Update luca-observer topology references
+- [x] Rename `autopilot` → `lu` in `.planning/config.json`
+- [x] Create `LuConfigSchema` Zod schema for the section (replace inline defaults)
+- [x] Update lu.skill.ts to read from `c.lu` with fallback to `c.autopilot`
+- [x] Rename `skip_uat_in_autopilot` → `skip_uat`
+- [x] Update state machine types, guards, persistence references
+- [x] Update luca-observer topology references
 
 **Depends on:** Phase 189 (both touch lu.skill.ts)
 **Covers:** REQ-20, REQ-21, REQ-22
