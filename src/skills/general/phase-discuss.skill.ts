@@ -54,7 +54,7 @@ Use REPO_VAULT for project-scoped operations (session, metric, brain:project) an
 6. Offer user override: accept all / override some / switch to interactive
 7. Create CONTEXT.md with researched decisions (annotated with source provenance)
 
-Auto mode is useful when running via \`/autopilot\` or when the user wants AI-researched decisions instead of manual discussion.
+Auto mode is useful when running via \`/lu\` in autonomous mode or when the user wants AI-researched decisions instead of manual discussion.
 
 **Output:** \`{phase}-CONTEXT.md\` — decisions clear enough that downstream agents can act without asking the user again
 
