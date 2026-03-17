@@ -2,7 +2,7 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
+- **Current Milestone:** v5.3.0
 - **Status:** Idle
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
@@ -10,7 +10,8 @@
 
 ## Session Identity
 
-- **Session ID:** adf7c242-d552-4c41-ba55-509d39468871
+- **Session ID:** 048408eb-75be-4d80-9929-dcc0d15d88fb
+- **GitHub Issue:** #88
 
 ## Appetite
 
@@ -26,6 +27,7 @@
 
 ## Git Context
 
+- **Branch:** 88--dogfood-via-global-install
 - **Base Branch:** main
 
 ## Allowed Events
@@ -55,4 +57,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-17T16:32:47.331Z_
+_State generated from machine snapshot at 2026-03-17T16:54:25.040Z_

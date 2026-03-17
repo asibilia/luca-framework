@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "adf7c242-d552-4c41-ba55-509d39468871",
+    "session_id": "048408eb-75be-4d80-9929-dcc0d15d88fb",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -30,7 +30,9 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": ["typescript"]
+      "tech_stack_profiles": [
+        "typescript"
+      ]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -69,7 +71,7 @@
         "verificationMode": "full+human"
       }
     },
-    "lu_config": {},
+    "autopilot_config": {},
     "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
@@ -79,9 +81,11 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-17T15:23:47.017Z",
-    "current_milestone": "Planning next",
-    "last_transition_at": "2026-03-17T15:28:47.492Z"
+    "started_at": "2026-03-17T16:51:08.375Z",
+    "current_milestone": "v5.3.0",
+    "last_transition_at": "2026-03-17T16:54:11.521Z",
+    "github_issue": 88,
+    "branch": "88--dogfood-via-global-install"
   },
   "children": {}
 }

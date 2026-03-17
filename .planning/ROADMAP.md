@@ -2,9 +2,82 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v5.3.0 — Dogfood via Global Install
+
+**Goal:** Invert the build flow so templates are the canonical intermediate format. Single code path for both dogfood and user consumption.
 
 ---
+
+## v5.3.0 — Dogfood via Global Install
+
+### Phase 191: Compiler EJS Output
+
+**Goal:** Modify compilers to output EJS-templated files instead of hardcoded lu- prefix values.
+
+**Depends on:** None
+
+**Requirements:** REQ-1
+
+- [ ] Update `compileAgent()` to emit EJS branding placeholders in name fields
+- [ ] Update `compileSkill()` to emit EJS placeholders for slash commands and paths
+- [ ] Update `compileRule()` to emit EJS placeholders for framework name references
+- [ ] Update shell wrapper generator to emit EJS placeholders in script paths
+- [ ] Add `SupportedFormat: "TEMPLATE"` or modify `"CLAUDE"` format to support template mode
+
+### Phase 192: Build Pipeline Split
+
+**Goal:** Split build:all into build:compile (src/ → templates/) and build:deploy (templates/ → .claude/).
+
+**Depends on:** Phase 191
+
+**Requirements:** REQ-2
+
+- [ ] Create `scripts/build-compile.ts` — compiles src/ → templates/harness/claude/ using new compiler template output
+- [ ] Create `scripts/build-deploy.ts` — resolves EJS templates from templates/ → .claude/ using branding config
+- [ ] Update `scripts/build-all.ts` to chain compile + deploy (backward compat)
+- [ ] Extract shared EJS resolution logic into reusable module (used by both build:deploy and luca init)
+- [ ] Add `build:compile` and `build:deploy` scripts to package.json
+
+### Phase 193: Dogfood via luca init
+
+**Goal:** Wire build:deploy to use luca init's template resolution, achieving true dogfood.
+
+**Depends on:** Phase 192
+
+**Requirements:** REQ-3
+
+- [ ] Extract template resolution from `packages/luca-framework/src/commands/init.ts` into importable module
+- [ ] Wire `build:deploy` to call the extracted resolution module programmatically
+- [ ] Ensure `bun link` + `luca init` produces identical output to `build:deploy`
+- [ ] Handle chicken-and-egg: compilation has no CLI dependency; only deploy uses resolution module
+- [ ] Verify `.claude/` output matches expected content (byte-comparison where possible)
+
+### Phase 194: Remove Branding Transform
+
+**Goal:** Delete the reverse-engineering branding transform now that compilers output templates directly.
+
+**Depends on:** Phase 193
+
+**Requirements:** REQ-4
+
+- [ ] Remove `transformBrandingContent()`, `transformBrandingFilename()`, `transformBrandingDirname()` from copy-harness-templates.ts
+- [ ] Simplify or delete `scripts/copy-harness-templates.ts` entirely
+- [ ] Verify templates/harness/claude/ is populated directly by build:compile (no post-processing)
+- [ ] Update any references to the branding transform in docs or comments
+
+### Phase 195: Drift Check & CI Compatibility
+
+**Goal:** Ensure check:drift and CI pipeline work with the new two-stage build.
+
+**Depends on:** Phase 194
+
+**Requirements:** REQ-5, REQ-6
+
+- [ ] Update `check:drift` to compare .claude/ against build:compile + build:deploy output
+- [ ] Verify session lock guard runs at the correct stage (build:deploy, not build:compile)
+- [ ] Verify build manifest generation works with new pipeline
+- [ ] Run full CI check (typecheck + drift) to confirm green pipeline
+- [ ] Move todo to done/
 
 ---
 
