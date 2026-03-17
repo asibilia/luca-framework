@@ -18,11 +18,11 @@
 
 **Requirements:** REQ-1
 
-- [ ] Update `compileAgent()` to emit EJS branding placeholders in name fields
-- [ ] Update `compileSkill()` to emit EJS placeholders for slash commands and paths
-- [ ] Update `compileRule()` to emit EJS placeholders for framework name references
-- [ ] Update shell wrapper generator to emit EJS placeholders in script paths
-- [ ] Add `SupportedFormat: "TEMPLATE"` or modify `"CLAUDE"` format to support template mode
+- [x] Update `compileAgent()` to emit EJS branding placeholders in name fields
+- [x] Update `compileSkill()` to emit EJS placeholders for slash commands and paths
+- [x] Update `compileRule()` to emit EJS placeholders for framework name references
+- [x] Update shell wrapper generator to emit EJS placeholders in script paths
+- [x] Add `SupportedFormat: "TEMPLATE"` or modify `"CLAUDE"` format to support template mode
 
 ### Phase 192: Build Pipeline Split
 
@@ -32,11 +32,11 @@
 
 **Requirements:** REQ-2
 
-- [ ] Create `scripts/build-compile.ts` — compiles src/ → templates/harness/claude/ using new compiler template output
-- [ ] Create `scripts/build-deploy.ts` — resolves EJS templates from templates/ → .claude/ using branding config
-- [ ] Update `scripts/build-all.ts` to chain compile + deploy (backward compat)
-- [ ] Extract shared EJS resolution logic into reusable module (used by both build:deploy and luca init)
-- [ ] Add `build:compile` and `build:deploy` scripts to package.json
+- [x] Create `scripts/build-compile.ts` — compiles src/ → templates/harness/claude/ using new compiler template output
+- [x] Create `scripts/build-deploy.ts` — resolves EJS templates from templates/ → .claude/ using branding config
+- [x] Update `scripts/build-all.ts` to chain compile + deploy (backward compat)
+- [x] Extract shared EJS resolution logic into reusable module (used by both build:deploy and luca init)
+- [x] Add `build:compile` and `build:deploy` scripts to package.json
 
 ### Phase 193: Dogfood via luca init
 
