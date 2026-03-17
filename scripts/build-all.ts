@@ -3,9 +3,12 @@
 /**
  * build-all.ts — Unified build script for Claude Code + Plugin output
  *
- * Calls generateAllOutputs() to compile every agent, skill, and rule
- * definition in src/ into platform-specific output, then writes the
- * results to .claude/ and dist/plugin/.
+ * Chains the two-stage build pipeline for .claude/ output:
+ *   Stage 1 (compile): src/ -> templates/harness/claude/ (EJS templates)
+ *   Stage 2 (deploy):  templates/harness/claude/ -> .claude/ (resolved)
+ *
+ * Plugin output (dist/plugin/) is still generated directly from
+ * `generateAllOutputs()` since it doesn't go through the template stage.
  *
  * Usage:
  *   bun run build:all                       # via package.json script
@@ -14,6 +17,7 @@
  *   bun run build:all --cleanup-stale-locks # remove lock file without building
  *
  * Output paths:
+ *   packages/luca-framework/templates/harness/claude/ (intermediate templates)
  *   .claude/agents/*.md
  *   .claude/skills/<name>/SKILL.md
  *   .claude/rules/*.md
@@ -22,6 +26,8 @@
 import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
 import { generateHooksRegistryJson } from "./generate-hooks-registry-json";
+import { runCompile } from "./build-compile";
+import { runDeploy } from "./build-deploy";
 import path from "path";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
@@ -97,18 +103,22 @@ async function main() {
   }
 
   // =========================================================================
-  // 1. Generate all outputs in memory
+  // 1. Stage 1 — Compile: src/ -> templates/harness/claude/
   // =========================================================================
-  const generated = await generateAllOutputs();
+  console.log("Stage 1: Compiling src/ -> templates/harness/claude/ ...");
+  const compileCounts = await runCompile();
 
   // =========================================================================
-  // 2. Define and prepare output directories
+  // 2. Stage 2 — Deploy: templates/harness/claude/ -> .claude/
   // =========================================================================
-  const claudeDir = path.join(packageRoot, ".claude");
-  const claudeAgentsDir = path.join(claudeDir, "agents");
-  const claudeSkillsDir = path.join(claudeDir, "skills");
-  const claudeRulesDir = path.join(claudeDir, "rules");
-  const claudeHooksDir = path.join(claudeDir, "hooks");
+  console.log("\nStage 2: Deploying templates/harness/claude/ -> .claude/ ...");
+  const deployCounts = await runDeploy();
+
+  // =========================================================================
+  // 3. Plugin output — generated directly (does not use template stage)
+  // =========================================================================
+  console.log("\nStage 3: Generating dist/plugin/ ...");
+  const generated = await generateAllOutputs();
 
   const pluginDir = path.join(packageRoot, "dist", "plugin");
   const pluginManifestDir = path.join(pluginDir, ".claude-plugin");
@@ -118,12 +128,7 @@ async function main() {
   const pluginHooksDir = path.join(pluginDir, "hooks");
   const pluginScriptsDir = path.join(pluginDir, "scripts");
 
-  // Ensure all output directories exist
   await Promise.all([
-    ensureDir(claudeAgentsDir),
-    ensureDir(claudeSkillsDir),
-    ensureDir(claudeRulesDir),
-    ensureDir(claudeHooksDir),
     ensureDir(pluginManifestDir),
     ensureDir(pluginAgentsDir),
     ensureDir(pluginSkillsDir),
@@ -132,22 +137,14 @@ async function main() {
     ensureDir(pluginScriptsDir),
   ]);
 
-  // Clean stale files before writing
+  // Clean plugin stale files
   const [
-    removedClaudeAgents,
-    removedClaudeSkills,
-    removedClaudeRules,
-    removedClaudeHooks,
     removedPluginAgents,
     removedPluginSkills,
     removedPluginCommands,
     removedPluginHooks,
     removedPluginScripts,
   ] = await Promise.all([
-    cleanDirectory(claudeAgentsDir, [".md"]),
-    cleanSkillsDirectory(claudeSkillsDir),
-    cleanDirectory(claudeRulesDir, [".md"]),
-    cleanDirectory(claudeHooksDir, [".sh"]),
     cleanDirectory(pluginAgentsDir, [".md"]),
     cleanSkillsDirectory(pluginSkillsDir),
     cleanDirectory(pluginCommandsDir, [".md"]),
@@ -155,159 +152,90 @@ async function main() {
     cleanDirectory(pluginScriptsDir, [".sh"]),
   ]);
 
-  const totalRemoved =
-    removedClaudeAgents.length +
-    removedClaudeSkills.length +
-    removedClaudeRules.length +
-    removedClaudeHooks.length +
+  const pluginRemoved =
     removedPluginAgents.length +
     removedPluginSkills.length +
     removedPluginCommands.length +
     removedPluginHooks.length +
     removedPluginScripts.length;
 
-  if (totalRemoved)
-    console.log(`Cleaned ${totalRemoved} stale files/directories`);
+  if (pluginRemoved) {
+    console.log(`Cleaned ${pluginRemoved} stale plugin files/directories`);
+  }
 
-  // =========================================================================
-  // 3. Write all generated content to disk
-  // =========================================================================
-  const projectDir = packageRoot;
-  const hookScriptPaths: string[] = [];
-  let settingsHooksFragment: string | undefined;
+  // Write plugin entries from generated Map (only dist/plugin/ keys)
+  const pluginHookScriptPaths: string[] = [];
 
   for (const [relPath, content] of generated) {
-    // Special key: settings.json hooks fragment (handled after the loop)
-    if (relPath === ".claude/settings.json__hooks") {
-      settingsHooksFragment = content;
-      continue;
-    }
+    if (!relPath.startsWith("dist/plugin/")) continue;
 
-    const absPath = path.join(projectDir, relPath);
-
-    // Ensure parent directory exists (handles skill subdirectories etc.)
+    const absPath = path.join(packageRoot, relPath);
     await ensureDir(path.dirname(absPath));
-
     await Bun.write(absPath, content);
 
-    // Track hook scripts for chmod pass
     if (relPath.endsWith(".sh")) {
-      hookScriptPaths.push(absPath);
+      pluginHookScriptPaths.push(absPath);
     }
   }
 
-  // =========================================================================
-  // 4. chmod +x on all hook scripts
-  // =========================================================================
-  for (const scriptPath of hookScriptPaths) {
-    const { exitCode } = Bun.spawnSync(["chmod", "+x", scriptPath]);
-    if (exitCode !== 0) {
-      console.error(`Failed to chmod +x ${scriptPath}`);
-    }
+  // chmod +x on plugin hook scripts
+  for (const scriptPath of pluginHookScriptPaths) {
+    Bun.spawnSync(["chmod", "+x", scriptPath]);
   }
 
   // =========================================================================
-  // 5. Merge hooks config into .claude/settings.json
+  // 4. Build summary
   // =========================================================================
-  if (settingsHooksFragment) {
-    const settingsPath = path.join(claudeDir, "settings.json");
-    let existingSettings: Record<string, unknown> = {};
-
-    // Preserve any existing settings
-    try {
-      const settingsFile = Bun.file(settingsPath);
-      if (await settingsFile.exists()) {
-        existingSettings = JSON.parse(await settingsFile.text());
-      }
-    } catch {
-      // File doesn't exist or is invalid JSON -- start fresh
-    }
-
-    existingSettings.hooks = JSON.parse(settingsHooksFragment);
-
-    // Add statusLine configuration (camelCase key required by Claude Code)
-    existingSettings.statusLine = {
-      type: "command",
-      command: '"$CLAUDE_PROJECT_DIR"/.claude/statusline.sh',
-    };
-    // Remove stale lowercase key if present from prior builds
-    delete (existingSettings as Record<string, unknown>).statusline;
-
-    await Bun.write(
-      settingsPath,
-      JSON.stringify(existingSettings, null, 2) + "\n",
-    );
-  }
-
-  // =========================================================================
-  // 6. Build summary
-  // =========================================================================
-  const keys = [...generated.keys()].filter(
+  const allKeys = [...generated.keys()].filter(
     (k) => k !== ".claude/settings.json__hooks",
   );
 
-  // Derive counts from Map keys
-  const claudeAgentCount = keys.filter((k) =>
-    k.startsWith(".claude/agents/"),
-  ).length;
-  const claudeSkillCount = keys.filter((k) =>
-    k.startsWith(".claude/skills/"),
-  ).length;
-  const claudeRuleCount = keys.filter((k) =>
-    k.startsWith(".claude/rules/"),
-  ).length;
-  const claudeHookCount = keys.filter(
-    (k) => k.startsWith(".claude/hooks/") && k.endsWith(".sh"),
-  ).length;
-
-  const pluginAgentCountVal = keys.filter((k) =>
+  const pluginAgentCountVal = allKeys.filter((k) =>
     k.startsWith("dist/plugin/agents/"),
   ).length;
-  const pluginSkillCountVal = keys.filter((k) =>
+  const pluginSkillCountVal = allKeys.filter((k) =>
     k.startsWith("dist/plugin/skills/"),
   ).length;
-  const pluginCommandCountVal = keys.filter((k) =>
+  const pluginCommandCountVal = allKeys.filter((k) =>
     k.startsWith("dist/plugin/commands/"),
   ).length;
-  const pluginHookCountVal = keys.filter((k) =>
+  const pluginHookCountVal = allKeys.filter((k) =>
     k.startsWith("dist/plugin/scripts/"),
   ).length;
-  const pluginMetaFiles = keys.filter(
+  const pluginMetaFiles = allKeys.filter(
     (k) =>
       k.startsWith("dist/plugin/.claude-plugin/") ||
       k.startsWith("dist/plugin/hooks/") ||
       k === "dist/plugin/README.md",
   ).length;
 
-  // Agent/skill/rule counts
-  const agentCount = claudeAgentCount;
-  const skillCount = claudeSkillCount;
-  const ruleCount = claudeRuleCount;
-
-  // Profile summary
   const activeProfiles = await getActiveProfileNames();
   console.log(`\n=== Build All Summary ===`);
   console.log(
     `Profiles: ${activeProfiles.length > 0 ? activeProfiles.join(", ") : "none (opinionated_guidelines disabled)"}`,
   );
   console.log(
-    `Agents: ${agentCount} (Claude + plugin = ${agentCount + pluginAgentCountVal} files)`,
+    `Agents: ${deployCounts.agents} (Claude + plugin = ${deployCounts.agents + pluginAgentCountVal} files)`,
   );
   console.log(
-    `Skills: ${skillCount} (Claude + plugin = ${skillCount + pluginSkillCountVal} files)`,
+    `Skills: ${deployCounts.skills} (Claude + plugin = ${deployCounts.skills + pluginSkillCountVal} files)`,
   );
-  console.log(`Rules:  ${ruleCount}`);
-  console.log(`Hooks:  ${claudeHookCount}`);
+  console.log(`Rules:  ${deployCounts.rules}`);
+  console.log(`Hooks:  ${deployCounts.hooks}`);
   console.log(
     `Plugin: ${pluginAgentCountVal} agents, ${pluginSkillCountVal} skills, ${pluginCommandCountVal} commands, ${pluginHookCountVal} hooks + ${pluginMetaFiles} meta files`,
   );
-  console.log(`Total:  ${keys.length} files`);
+
+  const totalFiles =
+    deployCounts.total +
+    allKeys.filter((k) => k.startsWith("dist/plugin/")).length;
+  console.log(`Total:  ${totalFiles} files`);
 
   console.log("\n--- .claude/ ---");
-  console.log(`  Agents: ${claudeAgentCount}`);
-  console.log(`  Skills: ${claudeSkillCount}`);
-  console.log(`  Rules:  ${claudeRuleCount}`);
-  console.log(`  Hooks:  ${claudeHookCount}`);
+  console.log(`  Agents: ${deployCounts.agents}`);
+  console.log(`  Skills: ${deployCounts.skills}`);
+  console.log(`  Rules:  ${deployCounts.rules}`);
+  console.log(`  Hooks:  ${deployCounts.hooks}`);
 
   console.log("\n--- dist/plugin/ ---");
   console.log(`  Agents:   ${pluginAgentCountVal}`);
@@ -317,32 +245,10 @@ async function main() {
   console.log(`  Meta:     ${pluginMetaFiles} files`);
 
   // =========================================================================
-  // 7. Write build manifest
-  // =========================================================================
-  const pkgFile = Bun.file(path.join(packageRoot, "package.json"));
-  const pkg = JSON.parse(await pkgFile.text());
-  const manifest = {
-    built_at: new Date().toISOString(),
-    output_count: keys.length,
-    version: pkg.version ?? "0.0.0",
-    counts: {
-      agents: agentCount,
-      skills: skillCount,
-      rules: ruleCount,
-      hooks: claudeHookCount,
-    },
-  };
-  await Bun.write(
-    path.join(claudeDir, ".build-manifest.json"),
-    JSON.stringify(manifest, null, 2) + "\n",
-  );
-  console.log("\nBuild manifest written to .claude/.build-manifest.json");
-
-  // =========================================================================
-  // 8. Emit hooks registry JSON artifact
+  // 5. Emit hooks registry JSON artifact
   // =========================================================================
   const hooksRegistryPath = await generateHooksRegistryJson();
-  console.log(`Hooks registry written to ${hooksRegistryPath}`);
+  console.log(`\nHooks registry written to ${hooksRegistryPath}`);
 }
 
 main().catch((error) => {
