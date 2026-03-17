@@ -1,5 +1,5 @@
 ---
-name: lu-router
+name: <%= branding.commandPrefix %>-router
 description: Classifies task complexity and routes to appropriate handler. Receives cognitive report and determines optimal execution path.
 cognition:
   default_tier: T1

@@ -1,5 +1,5 @@
 ---
-name: lu-roadmap-architect
+name: <%= branding.commandPrefix %>-roadmap-architect
 description: "Architectural impact analyzer for roadmap revision. Assesses dependency ordering, tier implications, domain boundaries, and structural risk for pending todos. READ-ONLY: produces analysis but cannot execute changes."
 cognition:
   default_tier: T1
