@@ -46,11 +46,11 @@
 
 **Requirements:** REQ-3
 
-- [ ] Extract template resolution from `packages/luca-framework/src/commands/init.ts` into importable module
-- [ ] Wire `build:deploy` to call the extracted resolution module programmatically
-- [ ] Ensure `bun link` + `luca init` produces identical output to `build:deploy`
-- [ ] Handle chicken-and-egg: compilation has no CLI dependency; only deploy uses resolution module
-- [ ] Verify `.claude/` output matches expected content (byte-comparison where possible)
+- [x] Extract template resolution from `packages/luca-framework/src/commands/init.ts` into importable module
+- [x] Wire `build:deploy` to call the extracted resolution module programmatically
+- [x] Ensure `bun link` + `luca init` produces identical output to `build:deploy`
+- [x] Handle chicken-and-egg: compilation has no CLI dependency; only deploy uses resolution module
+- [x] Verify `.claude/` output matches expected content (byte-comparison where possible)
 
 ### Phase 194: Remove Branding Transform
 
