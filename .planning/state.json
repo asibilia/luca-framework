@@ -1,13 +1,16 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "executing",
   "historyValue": {},
   "context": {
     "session_id": "048408eb-75be-4d80-9929-dcc0d15d88fb",
+    "github_issue": 88,
+    "branch": "88--dogfood-via-global-install",
     "base_branch": "main",
+    "current_milestone": "v5.3.0",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "SIMPLE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -77,15 +80,45 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Medium",
-    "appetite_token_ceiling": 100000,
-    "appetite_context_percent": 50,
+    "appetite_level": "Small",
+    "appetite_token_ceiling": 50000,
+    "appetite_context_percent": 40,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-17T16:51:08.375Z",
-    "current_milestone": "v5.3.0",
-    "last_transition_at": "2026-03-17T16:54:11.521Z",
-    "github_issue": 88,
-    "branch": "88--dogfood-via-global-install"
+    "pre_mortem_result": {
+      "risks": [],
+      "mitigations": [],
+      "confidence": 0,
+      "timestamp": "2026-03-17T20:36:44.610Z"
+    },
+    "started_at": "2026-03-17T20:31:32.665Z",
+    "last_transition_at": "2026-03-17T20:47:50.664Z"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "wave_executing",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 1,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {
+            "started_at": "2026-03-17T20:47:50.665Z"
+          }
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }

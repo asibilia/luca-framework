@@ -119,10 +119,10 @@
 
 **Depends on:** None
 
-- [ ] Create `~/.claude/rules/vault-guard.md` global rule reinforcing vault routing before MuninnDB writes
-- [ ] Add PreToolUse prompt hook for `mcp__muninn__muninn_remember` / `muninn_remember_batch` that validates concept prefix vs vault
-- [ ] Wire hook into generated settings.json via luca init
-- [ ] Move todo to done/
+- [x] Create `~/.claude/rules/vault-guard.md` global rule reinforcing vault routing before MuninnDB writes
+- [x] Add PreToolUse prompt hook for `mcp__muninn__muninn_remember` / `muninn_remember_batch` that validates concept prefix vs vault
+- [x] Wire hook into generated settings.json via luca init
+- [x] Move todo to done/
 
 ---
 
