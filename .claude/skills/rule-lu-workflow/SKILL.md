@@ -10,7 +10,7 @@ Luca is a framework for agentic development, combining spec-driven development w
 
 | Feature             | Description                                          |
 | ------------------- | ---------------------------------------------------- |
-| Entry Point         | Unified `/lu` with intelligent routing               |
+| Entry Point         | Unified `//lu` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
 | Memory              | MuninnDB (project identity, learnings, session)      |
 | Verification        | Always runs (all complexity levels)                  |

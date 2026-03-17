@@ -115,7 +115,7 @@ This skill helps you decide between workflows. After choosing:
 
 | Choice | Next Command |
 |--------|--------------|
-| Issue-driven | `/lu [TICKET-ID]` or `/lu {task}` |
+| Issue-driven | `//lu [TICKET-ID]` or `//lu {task}` |
 | Luca | `/project-new` |
 | Quick task | `/quick` |
 
