@@ -54,10 +54,10 @@
 
 **Goal:** Make skill directory names, SKILL.md content, and cross-skill references use the configurable branding prefix.
 
-- [ ] Rename skill directory templates from `lu/` to use dynamic prefix pattern
-- [ ] Template-process all SKILL.md files to replace `/lu` command references with dynamic prefix
-- [ ] Update cross-skill `Skill(skill: "lu")` references to use dynamic prefix
-- [ ] Verify deployed skill files use correct prefix after `luca init` with custom branding
+- [x] Rename skill directory templates from `lu/` to use dynamic prefix pattern
+- [x] Template-process all SKILL.md files to replace `/lu` command references with dynamic prefix
+- [x] Update cross-skill `Skill(skill: "lu")` references to use dynamic prefix
+- [x] Verify deployed skill files use correct prefix after `luca init` with custom branding
 
 **Depends on:** Phase 185
 **Covers:** REQ-09, REQ-10, REQ-11
