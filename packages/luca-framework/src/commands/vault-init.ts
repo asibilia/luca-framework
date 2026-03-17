@@ -47,8 +47,7 @@ import type { LucaConfig } from "../types";
  *   globally to `~/.claude/` by `luca init` Step 3, so duplicating it into
  *   the project would be incorrect.
  * - **Dev mode**: The full harness is generated into the project directory
- *   (`.claude/`, `.cursor/`, `.pi/` depending on selected harnesses).
- *   This is the existing behavior for monorepo development.
+ *   (`.claude/`). This is the existing behavior for monorepo development.
  *
  * In both modes, the vault wizard (vault name + API key prompts) runs
  * identically -- only the file generation scope differs.
