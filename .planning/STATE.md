@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v5.3.0
-- **Status:** Idle
+- **Status:** Executing
 - **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-17
@@ -32,7 +32,9 @@
 
 ## Allowed Events
 
-- `START`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -57,4 +59,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-17T20:20:02.855Z_
+_State generated from machine snapshot at 2026-03-17T20:51:08.471Z_

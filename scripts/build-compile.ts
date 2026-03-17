@@ -114,6 +114,62 @@ export async function runCompile(): Promise<{
       command: '"$CLAUDE_PROJECT_DIR"/.claude/statusline.sh',
     };
 
+    // =========================================================================
+    // 3b. Inject vault-guard prompt hook into PreToolUse
+    //
+    // The canonical hook registry (generateAllOutputs) only supports
+    // type: "command" hooks. This prompt hook bypasses the registry and is
+    // injected directly into the dogfood settings.json.
+    //
+    // SYNC: The prompt text below must match the prompt in
+    //   packages/luca-framework/templates/hooks/settings-hooks.json
+    //   (the PreToolUse entry with matcher "mcp__muninn__muninn_remember...")
+    // =========================================================================
+    const hooksObj = existingSettings.hooks as
+      | Record<string, unknown[]>
+      | undefined;
+    if (hooksObj) {
+      if (!Array.isArray(hooksObj.PreToolUse)) {
+        hooksObj.PreToolUse = [];
+      }
+      const preToolUse = hooksObj.PreToolUse as Array<Record<string, unknown>>;
+      const hasVaultGuard = preToolUse.some(
+        (entry) =>
+          typeof entry.matcher === "string" &&
+          entry.matcher.includes("muninn_remember"),
+      );
+      if (!hasVaultGuard) {
+        preToolUse.push({
+          matcher:
+            "mcp__muninn__muninn_remember|mcp__muninn__muninn_remember_batch",
+          hooks: [
+            {
+              type: "prompt",
+              prompt:
+                "VAULT ROUTING GUARD — Validate this MuninnDB write before it proceeds.\n\n" +
+                "1. Read the `vault` and `concept` parameters from the pending tool call.\n" +
+                "2. Resolve the expected repo vault: read `.planning/config.json` field `muninn.vault`. " +
+                "If the file does not exist or the field is missing, fall back to env var `LUCA_MUNINN_VAULT`. " +
+                'If that is also unset, fall back to `"default"`.\n' +
+                "3. Check the concept prefix against the write routing table:\n" +
+                '   - REPO VAULT targets (MUST use the resolved repo vault, NOT "default" — unless repo vault IS "default"): ' +
+                "`session:*`, `brain:project-*`, `metric:signal-rate-*`, `version:*`, `milestone:*`\n" +
+                '   - DEFAULT VAULT targets (MUST use "default"): ' +
+                "`pattern:*`, `pitfall:*`, `preference:*`, `brain:user-*`, `procedure:*`, `process:*`\n" +
+                "4. DECISION:\n" +
+                "   - If the vault parameter matches the expected target for the concept prefix: " +
+                'ALLOW the call. Respond with exactly: `{"decision":"allow"}`\n' +
+                "   - If misrouted: BLOCK the call. Respond with: " +
+                '`{"decision":"block","reason":"Concept prefix \'<prefix>\' must target vault \'<expected_vault>\' ' +
+                "but was routed to '<actual_vault>'. Fix the vault parameter before retrying.\"}`\n" +
+                "   - If the concept prefix does not match any known row, apply the ambiguity heuristic: " +
+                '"Would this memory be useful in a completely different repo?" Yes -> expect "default". No -> expect repo vault.',
+            },
+          ],
+        });
+      }
+    }
+
     claudeEntries.set(
       "settings.json",
       JSON.stringify(existingSettings, null, 2) + "\n",
