@@ -1,11 +1,11 @@
 # choose
 
-Choose between issue-driven development and Luca spec-driven workflow for a task.
+Choose between issue-driven development and <%= branding.frameworkName %> spec-driven workflow for a task.
 
 ## main
 
 <main>
-# Luca Choose Workflow
+# <%= branding.frameworkName %> Choose Workflow
 
 Help users select the right development workflow for their task.
 
@@ -16,7 +16,7 @@ This project supports two complementary workflows:
 | Workflow | Best For | Commands |
 |----------|----------|----------|
 | **Issue-Driven** | Quick fixes, single features | `/project:git/feature`, `bun commit` |
-| **Luca** | Complex initiatives, multi-phase | `/project-new`, `/phase-execute` |
+| **<%= branding.frameworkName %>** | Complex initiatives, multi-phase | `/project-new`, `/phase-execute` |
 
 ## Decision Matrix
 
@@ -24,11 +24,11 @@ This project supports two complementary workflows:
 |----------|-------------|-----|
 | Quick bug fix | Issue workflow | Single commit, fast turnaround |
 | Single feature (1-3 files) | Issue workflow | Simple scope, direct PR |
-| New module/system (5+ phases) | Luca | Structured planning prevents context rot |
-| Greenfield project | Luca | Full roadmap with research phases |
-| Complex refactor | Luca | Phase-based execution with verification |
+| New module/system (5+ phases) | <%= branding.frameworkName %> | Structured planning prevents context rot |
+| Greenfield project | <%= branding.frameworkName %> | Full roadmap with research phases |
+| Complex refactor | <%= branding.frameworkName %> | Phase-based execution with verification |
 | Same-day completion | Issue workflow | No planning overhead needed |
-| Multi-session work | Luca | State machine preserves context across sessions |
+| Multi-session work | <%= branding.frameworkName %> | State machine preserves context across sessions |
 
 ## Process
 
@@ -41,8 +41,8 @@ Use AskQuestion tool:
 - options:
   - "Bug fix or small enhancement" → Issue workflow
   - "Single feature (1-3 files changed)" → Issue workflow
-  - "New project or major initiative" → Luca
-  - "Complex refactor (many files)" → Luca
+  - "New project or major initiative" → <%= branding.frameworkName %>
+  - "Complex refactor (many files)" → <%= branding.frameworkName %>
   - "Not sure, help me decide" → Continue to Step 2
 
 ### Step 2: Gather More Context (if needed)
@@ -74,10 +74,10 @@ This task is well-suited for the issue workflow.
 - `/project:git/pr` — Create pull request
 ```
 
-**For Luca Workflow:**
+**For <%= branding.frameworkName %> Workflow:**
 
 ```
-## Recommended: Luca Workflow
+## Recommended: <%= branding.frameworkName %> Workflow
 
 This task benefits from structured planning and phased execution.
 
@@ -89,12 +89,12 @@ This task benefits from structured planning and phased execution.
 **Commands:**
 - `/project-new` — Initialize project with roadmap
 - `/progress` — Check current status
-- `/help` — See all Luca commands
+- `/help` — See all <%= branding.frameworkName %> commands
 ```
 
 ## Key Differences
 
-| Aspect | Issue Workflow | Luca |
+| Aspect | Issue Workflow | <%= branding.frameworkName %> |
 |--------|----------------|------|
 | Planning | GitHub issues | `.planning/` |
 | Commits | `type(scope): #issue desc` | `type(phase-plan): #issue desc` |
@@ -115,8 +115,8 @@ This skill helps you decide between workflows. After choosing:
 
 | Choice | Next Command |
 |--------|--------------|
-| Issue-driven | `/lu [TICKET-ID]` or `/lu {task}` |
-| Luca | `/project-new` |
+| Issue-driven | `<%= branding.commandSlash %> [TICKET-ID]` or `<%= branding.commandSlash %> {task}` |
+| <%= branding.frameworkName %> | `/project-new` |
 | Quick task | `/quick` |
 
 **Common follow-ups:**

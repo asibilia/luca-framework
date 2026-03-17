@@ -5,7 +5,7 @@ Execute all plans in a phase with wave-based parallelization and harness verific
 ## main
 
 <main>
-# Luca Execute Phase
+# <%= branding.frameworkName %> Execute Phase
 
 Execute all plans in a phase using wave-based parallel execution, then verify with code review and UAT.
 
@@ -21,22 +21,22 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `lu-executor` - Executes individual plans (PARALLEL per wave)
-- `lu-verifier` - Verifies phase goal achieved
-- `lu-learner` - Extracts learnings after verification
+- `<%= branding.commandPrefix %>-executor` - Executes individual plans (PARALLEL per wave)
+- `<%= branding.commandPrefix %>-verifier` - Verifies phase goal achieved
+- `<%= branding.commandPrefix %>-learner` - Extracts learnings after verification
 - `dx-advocate` - Code quality review
 - `code-simplifier` - DRY and complexity review
 - `code-architect` - Architecture review
 - `ui` - UI/styling review
 - `security-auditor` - Security review (conditional)
-- `lu-planner` - Plans fixes for issues (if needed)
-- `lu-plan-checker` - Validates fix plans (if needed)
-- `lu-test-writer` - Generates test files from plan verification criteria (spawned by lu-executor during TDD cycle)
-- `lu-process-data` - Computes process metrics after learning capture (conditional on `process_data` gate)
+- `<%= branding.commandPrefix %>-planner` - Plans fixes for issues (if needed)
+- `<%= branding.commandPrefix %>-plan-checker` - Validates fix plans (if needed)
+- `<%= branding.commandPrefix %>-test-writer` - Generates test files from plan verification criteria (spawned by <%= branding.commandPrefix %>-executor during TDD cycle)
+- `<%= branding.commandPrefix %>-process-data` - Computes process metrics after learning capture (conditional on `process_data` gate)
 
 **DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate agents.
 
-**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
 
 ## Context-Aware Sub-Agent Spawning (Phase 16+)
 
@@ -53,9 +53,9 @@ Each sub-agent receives only the context documents appropriate for its role and 
 **Isolation Modes:**
 | Mode | Restriction | Used By |
 |------|------------|---------|
-| none | Full context per tier | lu-executor, lu-planner, lu-learner |
+| none | Full context per tier | <%= branding.commandPrefix %>-executor, <%= branding.commandPrefix %>-planner, <%= branding.commandPrefix %>-learner |
 | cold | Only git diff + project identity | dx-advocate, code-simplifier, code-architect |
-| warm | Plans + summaries, NO session context | lu-verifier |
+| warm | Plans + summaries, NO session context | <%= branding.commandPrefix %>-verifier |
 
 **Complexity promotes context:** At MODERATE+, sub-agents may receive one tier higher than their default.
 
@@ -63,30 +63,30 @@ Each sub-agent receives only the context documents appropriate for its role and 
 
 Read these reference files before executing:
 
-- `.claude/luca/references/ui-brand.md`
-- `.claude/luca/workflows/execute-phase.md`
-- `.claude/luca/workflows/learning-capture.md`
+- `.claude/<%= branding.nameLowercase %>/references/ui-brand.md`
+- `.claude/<%= branding.nameLowercase %>/workflows/execute-phase.md`
+- `.claude/<%= branding.nameLowercase %>/workflows/learning-capture.md`
 
 ## Always Verify & Learning Capture (NEW)
 
-**Luca mandates verification at all levels.** After execution completes:
+**<%= branding.frameworkName %> mandates verification at all levels.** After execution completes:
 
 ### Verification
 
-Invoke lu-verifier with mode based on phase complexity:
+Invoke <%= branding.commandPrefix %>-verifier with mode based on phase complexity:
 
 | Phase Scope        | Verification Mode               |
 | ------------------ | ------------------------------- |
 | Simple (1-2 plans) | Standard verification           |
 | Complex (3+ plans) | Full goal-backward verification |
 
-**Verification always runs** - there is no skip option for verification in Luca.
+**Verification always runs** - there is no skip option for verification in <%= branding.frameworkName %>.
 
 ### Learning Capture
 
 After verification (pass or fail):
 
-**MANDATORY**: You MUST spawn a lu-learner sub-agent. Do NOT attempt to capture learnings yourself.
+**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-learner sub-agent. Do NOT attempt to capture learnings yourself.
 
 First, read the required context:
 
@@ -115,9 +115,9 @@ if (!hasRecallCache(SESSION_ID)) {
   });
 }
 
-// Format cached recall for lu-learner
+// Format cached recall for <%= branding.commandPrefix %>-learner
 const workingContent = requestMemoryContext({
-  agentName: "lu-learner",
+  agentName: "<%= branding.commandPrefix %>-learner",
   sessionId: SESSION_ID,
   memoryTags: ["*"],
   maxTokens: 500,
@@ -162,7 +162,7 @@ Task(
 
 Extract learnings from this phase execution and store in MuninnDB.
 """,
-  subagent_type="lu-learner",
+  subagent_type="<%= branding.commandPrefix %>-learner",
   model="{learner_model}",
   description="Capture phase learnings"
 )
@@ -170,7 +170,7 @@ Extract learnings from this phase execution and store in MuninnDB.
 
 **Do NOT proceed until the Task returns.**
 
-**Learning capture always runs.** The lu-learner model tier is resolved from the routing table based on complexity:
+**Learning capture always runs.** The <%= branding.commandPrefix %>-learner model tier is resolved from the routing table based on complexity:
 
 | Complexity | Learning Depth                                  | Model Tier (from routing table) |
 | ---------- | ----------------------------------------------- | ------------------------------- |
@@ -181,14 +181,14 @@ Extract learnings from this phase execution and store in MuninnDB.
 | CRITICAL   | Full + debrief (include retrospective analysis) | balanced                        |
 
 For TRIVIAL/SIMPLE: Include only execution summary, not full working memory.
-For MODERATE and above: Use the current lu-learner spawn as-is.
-For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
+For MODERATE and above: Use the current <%= branding.commandPrefix %>-learner spawn as-is.
+For CRITICAL: Add to the <%= branding.commandPrefix %>-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
 
-The model tier for lu-learner is resolved via `resolveModelForAgent("lu-learner", complexity)` from the centralized routing table in `src/complexity/__helpers/model-routing.ts`.
+The model tier for <%= branding.commandPrefix %>-learner is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-learner", complexity)` from the centralized routing table in `src/complexity/__helpers/model-routing.ts`.
 
 ### Process Data Collection (after Learning Capture)
 
-After lu-learner returns, check the `process_data` gate in `.planning/config.json`:
+After <%= branding.commandPrefix %>-learner returns, check the `process_data` gate in `.planning/config.json`:
 
 ```bash
 PROCESS_DATA_GATE=$(cat .planning/config.json 2>/dev/null | grep -o '"process_data"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true\|false' || echo "false")
@@ -196,7 +196,7 @@ PROCESS_DATA_GATE=$(cat .planning/config.json 2>/dev/null | grep -o '"process_da
 
 **If `process_data` gate is enabled (`true`):**
 
-Collect metrics data from the orchestrator context and spawn `lu-process-data`:
+Collect metrics data from the orchestrator context and spawn `<%= branding.commandPrefix %>-process-data`:
 
 ```python
 Task(
@@ -233,7 +233,7 @@ Task(
 
 Compute all applicable process metrics and return structured JSON.
 """,
-  subagent_type="lu-process-data",
+  subagent_type="<%= branding.commandPrefix %>-process-data",
   model="{process_data_model}",
   description="Compute process metrics for phase {phase_number}"
 )
@@ -241,10 +241,10 @@ Compute all applicable process metrics and return structured JSON.
 
 **Do NOT proceed until the Task returns.**
 
-After lu-process-data returns its JSON output, store each non-null metric as a MuninnDB engram:
+After <%= branding.commandPrefix %>-process-data returns its JSON output, store each non-null metric as a MuninnDB engram:
 
 ```python
-# Parse the JSON output from lu-process-data
+# Parse the JSON output from <%= branding.commandPrefix %>-process-data
 metrics_json = parse_json(process_data_result)
 
 # Store each non-null metric
@@ -270,7 +270,7 @@ Then emit the PROCESS_DATA_COMPLETE transition:
 luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 ```
 
-The model tier for lu-process-data is resolved via `resolveModelForAgent("lu-process-data", complexity)` from the centralized routing table.
+The model tier for <%= branding.commandPrefix %>-process-data is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-process-data", complexity)` from the centralized routing table.
 
 **If `process_data` gate is disabled (`false`):** Skip process data collection and emit LEARN_COMPLETE as before:
 
@@ -328,7 +328,7 @@ Read STATE.md and check for `GitHub Issue:` line.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► GITHUB TRACKING MISSING ⚠
+ <%= branding.frameworkName %> ► GITHUB TRACKING MISSING ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 No GitHub issue is configured for this milestone.
@@ -362,7 +362,7 @@ Commits will not reference issues and PR creation will require manual setup.
 
 **Skip if:** `--skip-replay` flag passed.
 
-Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for lu-executor.
+Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for <%= branding.commandPrefix %>-executor.
 
 ```bash
 # Read phase objective from ROADMAP.md or plan files
@@ -379,7 +379,7 @@ Parse the recall result to determine if relevant procedures exist (REPLAY_COUNT)
 
 **If replayable procedures found (REPLAY_COUNT > 0):**
 
-Store `REPLAY_JSON` for injection into lu-executor context. When spawning lu-executor for each plan, include the pre-plans as additional context:
+Store `REPLAY_JSON` for injection into <%= branding.commandPrefix %>-executor context. When spawning <%= branding.commandPrefix %>-executor for each plan, include the pre-plans as additional context:
 
 ```
 <procedure_replay_context>
@@ -420,7 +420,7 @@ Continue normally. No pre-plan context is injected.
 For each wave in order:
 
 - Read plan contents (@ syntax doesn't work across Task boundaries)
-- Spawn `lu-executor` for each plan in wave (parallel Task calls)
+- Spawn `<%= branding.commandPrefix %>-executor` for each plan in wave (parallel Task calls)
 - Wait for completion
 - Verify SUMMARYs created
 - **Append wave completion to journal** (persists across context compaction):
@@ -451,7 +451,7 @@ APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.std
 2. **At 80%** — Log a warning banner and continue:
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Luca ► APPETITE WARNING — 80% of {appetite_level} budget consumed
+   <%= branding.frameworkName %> ► APPETITE WARNING — 80% of {appetite_level} budget consumed
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Used: {appetite_used_tokens} / {appetite_token_ceiling} tokens ({percent_used}%)
    Remaining budget will be consumed in the next wave(s).
@@ -460,7 +460,7 @@ APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.std
 3. **At 100%** — PAUSE execution and present options to the developer:
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Luca ► APPETITE EXHAUSTED — {appetite_level} budget fully consumed
+   <%= branding.frameworkName %> ► APPETITE EXHAUSTED — {appetite_level} budget fully consumed
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Used: {appetite_used_tokens} / {appetite_token_ceiling} tokens (100%+)
 
@@ -478,7 +478,7 @@ APPETITE_USED=$(echo "$APPETITE_JSON" | bun -e "const r=JSON.parse(await Bun.std
    luca-bridge set-field --field=appetite_used_tokens --value={updated_token_count} 2>/dev/null || true
    ```
 
-**MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
+**MANDATORY**: You MUST spawn <%= branding.commandPrefix %>-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
 
 **Pre-wave context budget check** — run this before reading plan contents for each wave:
 
@@ -506,7 +506,7 @@ The phase-execute skill will read .wave-progress.jsonl to skip already-completed
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Luca ► CONTEXT BUDGET HIGH — GRACEFUL HANDOFF
+<%= branding.frameworkName %> ► CONTEXT BUDGET HIGH — GRACEFUL HANDOFF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Context budget is in the HIGH/CRITICAL zone before wave {N}.
 Progress saved to .wave-progress.jsonl and .continue-here.md.
@@ -566,7 +566,7 @@ if (!hasRecallCache(SESSION_ID)) {
 
 // Step 4: Format for sub-agents (cache-first, preferred approach)
 const workingContent = requestMemoryContext({
-  agentName: "lu-executor",
+  agentName: "<%= branding.commandPrefix %>-executor",
   sessionId: SESSION_ID,
   memoryTags: ["*"],
   maxTokens: 500,
@@ -618,7 +618,7 @@ Task(
 
 Execute this plan. Return SUMMARY when complete.
 """,
-  subagent_type="lu-executor",
+  subagent_type="<%= branding.commandPrefix %>-executor",
   model="{executor_model}",
   description="Execute {plan_01_name}"
 )
@@ -656,7 +656,7 @@ Task(
 
 Execute this plan. Return SUMMARY when complete.
 """,
-  subagent_type="lu-executor",
+  subagent_type="<%= branding.commandPrefix %>-executor",
   model="{executor_model}",
   description="Execute {plan_02_name}"
 )
@@ -712,7 +712,7 @@ from the last incomplete wave automatically.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE SUSPENDED
+ <%= branding.frameworkName %> ► PHASE SUSPENDED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Context usage is in the "stop" zone. Suspending to preserve quality.
@@ -773,7 +773,7 @@ Display when promotion occurs:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► COMPLEXITY PROMOTED: {OLD} -> {NEW}
+ <%= branding.frameworkName %> ► COMPLEXITY PROMOTED: {OLD} -> {NEW}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Trigger: {reason}
@@ -795,9 +795,9 @@ When sub-agents return, attempt to parse their output as a result envelope:
   "summary": "Brief description of what was accomplished",
   "artifacts": [{ "path": "file.ts", "action": "created" }],
   "issues": [
-    { "severity": "medium", "message": "...", "source_agent": "lu-executor" }
+    { "severity": "medium", "message": "...", "source_agent": "<%= branding.commandPrefix %>-executor" }
   ],
-  "metadata": { "agent_name": "lu-executor", "context_tier": "T2" }
+  "metadata": { "agent_name": "<%= branding.commandPrefix %>-executor", "context_tier": "T2" }
 }
 ```
 
@@ -871,7 +871,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► VERIFICATION HARNESS
+ <%= branding.frameworkName %> ► VERIFICATION HARNESS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Check     | Status | Errors | Duration |
@@ -994,7 +994,7 @@ Display loop start:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ITER ► LOOP A: HARNESS FIX (max {MAX_ITERATIONS} iterations, mode: {MODE})
+ <%= branding.frameworkName %> ITER ► LOOP A: HARNESS FIX (max {MAX_ITERATIONS} iterations, mode: {MODE})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -1101,7 +1101,7 @@ Display iteration summary table:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ITER ► ITERATION {N} COMPLETE
+ <%= branding.frameworkName %> ITER ► ITERATION {N} COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Metric          | Previous | Current | Delta |
@@ -1158,7 +1158,7 @@ Task(
 
 Fix these harness failures.
 """,
-  subagent_type="lu-executor",
+  subagent_type="<%= branding.commandPrefix %>-executor",
   model="{executor_model}",
   description="Fix harness failures (Loop A, iteration {N})"
 )
@@ -1187,7 +1187,7 @@ When the loop exits (any outcome), display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ITER ► LOOP A COMPLETE
+ <%= branding.frameworkName %> ITER ► LOOP A COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Outcome: {outcome}
@@ -1228,7 +1228,7 @@ This ensures that:
 
 ### 7. Verify Phase Goal
 
-**MANDATORY**: You MUST spawn a lu-verifier sub-agent. Do NOT attempt to verify yourself.
+**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-verifier sub-agent. Do NOT attempt to verify yourself.
 
 First, read the required context:
 
@@ -1304,7 +1304,7 @@ PLAN.md contents are included above. Use them in Step 2.5 (Specification Anchori
 
 Verify the phase goal was achieved using goal-backward analysis.
 """,
-  subagent_type="lu-verifier",
+  subagent_type="<%= branding.commandPrefix %>-verifier",
   model="{verifier_model}",
   description="Verify Phase {phase_number}"
 )
@@ -1415,7 +1415,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► MEMORY FEEDBACK RECORDED
+ <%= branding.frameworkName %> ► MEMORY FEEDBACK RECORDED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Engrams recalled: {TOTAL_RECALLED}
@@ -1463,7 +1463,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► CALIBRATION RECORDED
+ <%= branding.frameworkName %> ► CALIBRATION RECORDED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Predicted: {INITIAL_COMPLEXITY}
@@ -1494,7 +1494,7 @@ VT_ENABLED=$(echo "$CONFIG" | bun -e "
 3. **Spawn three diagnostic agents in PARALLEL**:
 
 ```python
-# Spawn lu-test-writer diagnostic
+# Spawn <%= branding.commandPrefix %>-test-writer diagnostic
 Task(
   prompt="""
 <diagnostic_context>
@@ -1506,12 +1506,12 @@ Task(
 Analyze the T1/T3 conflict from your perspective as test coverage expert.
 </diagnostic_context>
 """,
-  subagent_type="lu-test-writer",
+  subagent_type="<%= branding.commandPrefix %>-test-writer",
   model="{diagnostic_model}",
   description="Test Writer Diagnostic"
 )
 
-# Spawn lu-verifier diagnostic (IN PARALLEL)
+# Spawn <%= branding.commandPrefix %>-verifier diagnostic (IN PARALLEL)
 Task(
   prompt="""
 <diagnostic_context>
@@ -1523,12 +1523,12 @@ Task(
 Re-examine your T3 analysis for potential over-specification.
 </diagnostic_context>
 """,
-  subagent_type="lu-verifier",
+  subagent_type="<%= branding.commandPrefix %>-verifier",
   model="{diagnostic_model}",
   description="Verifier Diagnostic"
 )
 
-# Spawn lu-integration-checker diagnostic (IN PARALLEL)
+# Spawn <%= branding.commandPrefix %>-integration-checker diagnostic (IN PARALLEL)
 Task(
   prompt="""
 <diagnostic_context>
@@ -1540,7 +1540,7 @@ Task(
 Analyze cross-component wiring for integration gaps.
 </diagnostic_context>
 """,
-  subagent_type="lu-integration-checker",
+  subagent_type="<%= branding.commandPrefix %>-integration-checker",
   model="{diagnostic_model}",
   description="Integration Diagnostic"
 )
@@ -1562,7 +1562,7 @@ Analyze cross-component wiring for integration gaps.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca > VERIFICATION TRIBUNAL RESULTS
+ <%= branding.frameworkName %> > VERIFICATION TRIBUNAL RESULTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Metric                | Value                          |
@@ -1624,7 +1624,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ITER ► LOOP B: VERIFY FIX (max {VERIFY_MAX} iterations, mode: {MODE})
+ <%= branding.frameworkName %> ITER ► LOOP B: VERIFY FIX (max {VERIFY_MAX} iterations, mode: {MODE})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -1676,7 +1676,7 @@ Task(
 
 Fix the verification gaps for this plan.
 """,
-  subagent_type="lu-executor",
+  subagent_type="<%= branding.commandPrefix %>-executor",
   model="{executor_model}",
   description="Fix verify gaps for {plan_name} (Loop B, iteration {N})"
 )
@@ -1710,7 +1710,7 @@ Task(
 
 Re-verify the phase goal after gap fix iteration {N}.
 """,
-  subagent_type="lu-verifier",
+  subagent_type="<%= branding.commandPrefix %>-verifier",
   model="{verifier_model}",
   description="Re-verify Phase {phase_number} (Loop B, iteration {N})"
 )
@@ -1765,7 +1765,7 @@ Display:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► CODE QUALITY REVIEW
+ <%= branding.frameworkName %> ► CODE QUALITY REVIEW
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ◆ Reviewing {FILE_COUNT} changed files...
@@ -2137,7 +2137,7 @@ TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca > DESIGN TRIBUNAL RESULTS
+ <%= branding.frameworkName %> > DESIGN TRIBUNAL RESULTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Metric                | Value |
@@ -2170,7 +2170,7 @@ TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Luca ► CRITICAL CODE ISSUES ✗
+<%= branding.frameworkName %> ► CRITICAL CODE ISSUES ✗
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N} critical issues must be fixed before continuing.
@@ -2185,8 +2185,8 @@ Planning fixes automatically...
 
 ```
 
-- Spawn `lu-planner` in quality_fixes mode
-- Spawn `lu-plan-checker` to verify plans
+- Spawn `<%= branding.commandPrefix %>-planner` in quality_fixes mode
+- Spawn `<%= branding.commandPrefix %>-plan-checker` to verify plans
 - Present ready status for `/phase-execute {phase} --quality-fixes`
 - **EXIT** (user must run execute again with --quality-fixes)
 
@@ -2195,7 +2195,7 @@ Planning fixes automatically...
 ```
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Luca ► CODE REVIEW WARNINGS ⚠
+<%= branding.frameworkName %> ► CODE REVIEW WARNINGS ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 | Severity | Count | Examples      |
@@ -2292,7 +2292,7 @@ fi
 
 If `SHADOW_ENABLED` is false, log "Shadow scan skipped (disabled in config)" and continue.
 
-Spawn `lu-shadow-scanner` with the determined mode:
+Spawn `<%= branding.commandPrefix %>-shadow-scanner` with the determined mode:
 
 ```
 Task(
@@ -2306,7 +2306,7 @@ Task(
 
 Scan the repository for AI-session debris. Return a valid ShadowScanReport JSON block as your final output.
 """,
-  subagent_type: "lu-shadow-scanner",
+  subagent_type: "<%= branding.commandPrefix %>-shadow-scanner",
   description: "Shadow debt advisory scan (phase {phase_number}, {SCAN_MODE} mode)"
 )
 ```
@@ -2315,7 +2315,7 @@ If findings exist, display the advisory banner:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► SHADOW DEBT ADVISORY ({n} findings: {c} critical, {h} high)
+ <%= branding.frameworkName %> ► SHADOW DEBT ADVISORY ({n} findings: {c} critical, {h} high)
  Run /shadow-cleanup to review and fix.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -2363,7 +2363,7 @@ luca-bridge transition --event=COMMIT_COMPLETE 2>/dev/null || true
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} EXECUTION COMPLETE
+ <%= branding.frameworkName %> ► PHASE {Z} EXECUTION COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Phase {Z}: {Name}**
@@ -2378,7 +2378,7 @@ Testing deliverables from this phase...
 
 **Follow verify-work workflow inline:**
 
-Read `.claude/luca/workflows/verify-work.md` for detailed UAT process.
+Read `.claude/<%= branding.nameLowercase %>/workflows/verify-work.md` for detailed UAT process.
 
 1. **Find SUMMARY.md files** for the phase
 2. **Extract testable deliverables** (user-observable outcomes)
@@ -2395,7 +2395,7 @@ Read `.claude/luca/workflows/verify-work.md` for detailed UAT process.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} VERIFIED ✓
+ <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{N} UAT tests passed ✓
@@ -2412,7 +2412,7 @@ Code review passed ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► MILESTONE COMPLETE 🎉
+ <%= branding.frameworkName %> ► MILESTONE COMPLETE 🎉
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N} phases completed
@@ -2428,7 +2428,7 @@ All code reviews passed ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} ISSUES FOUND ⚠
+ <%= branding.frameworkName %> ► PHASE {Z} ISSUES FOUND ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N}/{M} tests passed
@@ -2440,15 +2440,15 @@ All code reviews passed ✓
 - Spawn parallel debug agents to diagnose root causes
 - **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
   - Gate: `root_cause_tribunal_enabled` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
-  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - When gated in: Spawn three tribunal agents in parallel (<%= branding.commandPrefix %>-debugger as defender, <%= branding.commandPrefix %>-verifier as challenger, <%= branding.commandPrefix %>-integration-checker as arbiter) to validate the proposed fix before planning
   - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
-- Spawn lu-planner in --gaps mode to create fix plans
-- Spawn lu-plan-checker to verify fix plans
+- Spawn <%= branding.commandPrefix %>-planner in --gaps mode to create fix plans
+- Spawn <%= branding.commandPrefix %>-plan-checker to verify fix plans
 - Present ready status:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► FIXES READY ✓
+ <%= branding.frameworkName %> ► FIXES READY ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {N} gap(s) diagnosed, {M} fix plan(s) created
@@ -2462,7 +2462,7 @@ All code reviews passed ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} GAPS FOUND ⚠
+ <%= branding.frameworkName %> ► PHASE {Z} GAPS FOUND ⚠
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Score: {N}/{M} must-haves verified

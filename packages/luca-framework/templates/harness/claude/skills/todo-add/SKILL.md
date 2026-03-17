@@ -5,7 +5,7 @@ Capture an idea or task as a todo for later without acting on it now.
 ## main
 
 <main>
-# Luca Add Todo
+# <%= branding.frameworkName %> Add Todo
 
 Capture idea or task as todo from current conversation.
 

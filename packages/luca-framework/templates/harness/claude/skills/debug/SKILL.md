@@ -5,13 +5,13 @@ Systematic debugging workflow with persistent hypothesis state across context re
 ## main
 
 <main>
-# Luca Debug
+# <%= branding.frameworkName %> Debug
 
 Debug issues using scientific method with subagent isolation.
 
 **Arguments:** `[issue description]`
 
-**Orchestrator role:** Gather symptoms, spawn lu-debugger agent, handle checkpoints, spawn continuations.
+**Orchestrator role:** Gather symptoms, spawn <%= branding.commandPrefix %>-debugger agent, handle checkpoints, spawn continuations.
 
 **Why subagent:** Investigation burns context fast (reading files, forming hypotheses, testing). Fresh 200k context per investigation. Main context stays lean for user interaction.
 
@@ -35,11 +35,11 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- `lu-debugger` - Investigates bugs using scientific method
+- `<%= branding.commandPrefix %>-debugger` - Investigates bugs using scientific method
 
 **DO NOT** attempt to debug or investigate issues yourself. Spawn the debugger agent.
 
-**Reference:** See `.claude/luca/references/task-directive.md` for Task() syntax patterns.
+**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
 
 ## Process
 
@@ -53,7 +53,7 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent          | quality | balanced | budget |
 | -------------- | ------- | -------- | ------ |
-| lu-debugger | opus    | sonnet   | sonnet |
+| <%= branding.commandPrefix %>-debugger | opus    | sonnet   | sonnet |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -93,9 +93,9 @@ Use AskQuestion for each:
 
 After all gathered, confirm ready to investigate.
 
-### 3. Spawn lu-debugger Agent
+### 3. Spawn <%= branding.commandPrefix %>-debugger Agent
 
-**MANDATORY**: You MUST spawn a lu-debugger sub-agent. Do NOT attempt to debug or investigate yourself.
+**MANDATORY**: You MUST spawn a <%= branding.commandPrefix %>-debugger sub-agent. Do NOT attempt to debug or investigate yourself.
 
 First, create debug session file:
 
@@ -159,7 +159,7 @@ Return one of:
 
 Investigate this issue using scientific method. Document all findings.
 """,
-  subagent_type="lu-debugger",
+  subagent_type="<%= branding.commandPrefix %>-debugger",
   model="{debugger_model}",
   description="Debug: {issue_summary}"
 )
@@ -207,31 +207,31 @@ TRIBUNAL_ENABLED=$(cat .planning/config.json 2>/dev/null | grep -o '"root_cause_
 ISSUE_COUNT=$(grep -c "^##\|^- \[" "${DEBUG_FILE}" 2>/dev/null || echo "1")
 ```
 
-**Skip if:** `TRIBUNAL_ENABLED` is "false", OR `COMPLEXITY` is below COMPLEX, OR `ISSUE_COUNT < 2`, OR lu-debugger did NOT return `## ROOT CAUSE FOUND` or `## DEBUG COMPLETE`.
+**Skip if:** `TRIBUNAL_ENABLED` is "false", OR `COMPLEXITY` is below COMPLEX, OR `ISSUE_COUNT < 2`, OR <%= branding.commandPrefix %>-debugger did NOT return `## ROOT CAUSE FOUND` or `## DEBUG COMPLETE`.
 
 **When gated in:** Parse the debugger's return to extract root_cause, proposed_fix, files_changed, evidence_summary.
 
 **Step 4.5.1:** Spawn three tribunal agents in PARALLEL:
 
 ```python
-# Defender: lu-debugger defends its own fix
+# Defender: <%= branding.commandPrefix %>-debugger defends its own fix
 Task(
   prompt=buildDebuggerDefensePrompt(fix_signal),
-  subagent_type="lu-debugger",
+  subagent_type="<%= branding.commandPrefix %>-debugger",
   description="Root Cause Tribunal: Defender"
 )
 
-# Challenger: lu-verifier independently challenges the fix
+# Challenger: <%= branding.commandPrefix %>-verifier independently challenges the fix
 Task(
   prompt=buildVerifierChallengePrompt(fix_signal),
-  subagent_type="lu-verifier",
+  subagent_type="<%= branding.commandPrefix %>-verifier",
   description="Root Cause Tribunal: Challenger"
 )
 
-# Arbiter: lu-integration-checker arbitrates
+# Arbiter: <%= branding.commandPrefix %>-integration-checker arbitrates
 Task(
   prompt=buildArbiterPrompt(fix_signal),
-  subagent_type="lu-integration-checker",
+  subagent_type="<%= branding.commandPrefix %>-integration-checker",
   description="Root Cause Tribunal: Arbiter"
 )
 ```
@@ -251,9 +251,9 @@ Action: {recommended_action}
 
 | Agent                  | Category        | Confidence |
 |------------------------|-----------------|------------|
-| lu-debugger (defender) | {category}      | {conf}     |
-| lu-verifier (chall.)   | {category}      | {conf}     |
-| lu-integ-checker (arb.)| {category}      | {conf}     |
+| <%= branding.commandPrefix %>-debugger (defender) | {category}      | {conf}     |
+| <%= branding.commandPrefix %>-verifier (chall.)   | {category}      | {conf}     |
+| <%= branding.commandPrefix %>-integ-checker (arb.)| {category}      | {conf}     |
 
 {dissenting_perspective if present}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -265,7 +265,7 @@ Action: {recommended_action}
 
 ### 5. Spawn Continuation Agent (After Checkpoint)
 
-**MANDATORY**: You MUST spawn a fresh lu-debugger sub-agent to continue. Do NOT attempt to continue debugging yourself.
+**MANDATORY**: You MUST spawn a fresh <%= branding.commandPrefix %>-debugger sub-agent to continue. Do NOT attempt to continue debugging yourself.
 
 First, read the checkpoint state:
 
@@ -309,7 +309,7 @@ Return one of:
 
 Continue investigating from the checkpoint.
 """,
-  subagent_type="lu-debugger",
+  subagent_type="<%= branding.commandPrefix %>-debugger",
   model="{debugger_model}",
   description="Debug continuation: {session_id}"
 )
@@ -323,7 +323,7 @@ Loop back to Step 4 to handle the return.
 
 - [ ] Active sessions checked
 - [ ] Symptoms gathered (if new)
-- [ ] lu-debugger spawned with context
+- [ ] <%= branding.commandPrefix %>-debugger spawned with context
 - [ ] Checkpoints handled correctly
 - [ ] Root cause confirmed before fixing
 

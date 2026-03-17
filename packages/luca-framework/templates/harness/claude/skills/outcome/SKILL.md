@@ -5,11 +5,11 @@ Record whether a shipped feature achieved its intended goal. Tracks outcomes in 
 ## main
 
 <main>
-# Luca Outcome Tracking
+# <%= branding.frameworkName %> Outcome Tracking
 
 Record whether a shipped feature achieved its intended goal. Builds a feedback loop between what we build and whether it worked.
 
-**Vault Resolution:** Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (outcome:*, metric:*, session:*) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
+**Vault Resolution:** Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (outcome:_, metric:_, session:\*) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, brain:user).
 
 ## Process
 
@@ -202,11 +202,12 @@ To view all recorded outcomes: recall "outcome:*" from MuninnDB.
 
 This skill records a single outcome. Outcomes accumulate in MuninnDB and inform:
 
-- **lu-cognition** outcome_check step (proactive prompting)
+- **<%= branding.commandPrefix %>-cognition** outcome_check step (proactive prompting)
 - **Future planning** (patterns of success/failure)
 - **Process improvement** (which types of features achieve their goals)
 
 **Common follow-ups:**
+
 - `/progress` -- Check current project state
 - `/help` -- See all available commands
 </main>

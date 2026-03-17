@@ -1,13 +1,13 @@
 # update
 
-Update Luca to the latest version with changelog preview and migration notes.
+Update <%= branding.frameworkName %> to the latest version with changelog preview and migration notes.
 
 ## main
 
 <main>
-# Luca Update
+# <%= branding.frameworkName %> Update
 
-Update Luca to latest version with changelog preview.
+Update <%= branding.frameworkName %> to latest version with changelog preview.
 
 Better than raw `npx vulcan-cc` because it shows what's new.
 
@@ -16,7 +16,7 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 1. **Check current version:**
 
    ```bash
-   cat .claude/luca/VERSION 2>/dev/null || echo "unknown"
+   cat .claude/<%= branding.nameLowercase %>/VERSION 2>/dev/null || echo "unknown"
    ```
 
 2. **Check latest version:**
@@ -31,7 +31,7 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 4. **Confirm update:**
 
    ```
-   ## Luca Update Available
+   ## <%= branding.frameworkName %> Update Available
    
    Current: v{current}
    Latest: v{latest}

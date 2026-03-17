@@ -5,7 +5,7 @@ Gather phase context through adaptive questioning before creating execution plan
 ## main
 
 <main>
-# Luca Discuss Phase
+# <%= branding.frameworkName %> Discuss Phase
 
 Extract implementation decisions that downstream agents need — researcher and planner will use CONTEXT.md to know what to investigate and what choices are locked.
 
@@ -39,12 +39,12 @@ Use REPO_VAULT for project-scoped operations (session, metric, brain:project) an
 1. Analyze the phase to identify gray areas (same as interactive)
 2. Auto-select ALL gray areas (no user prompt)
 3. Load project tech stack from MuninnDB
-4. Spawn `lu-discuss-researcher` agent per gray area question (web research)
+4. Spawn `<%= branding.commandPrefix %>-discuss-researcher` agent per gray area question (web research)
 5. Present research summary with citations before writing
 6. Offer user override: accept all / override some / switch to interactive
 7. Create CONTEXT.md with researched decisions (annotated with source provenance)
 
-Auto mode is useful when running via `/lu` in autonomous mode or when the user wants AI-researched decisions instead of manual discussion.
+Auto mode is useful when running via `<%= branding.commandSlash %>` in autonomous mode or when the user wants AI-researched decisions instead of manual discussion.
 
 **Output:** `{phase}-CONTEXT.md` — decisions clear enough that downstream agents can act without asking the user again
 
@@ -52,8 +52,8 @@ Auto mode is useful when running via `/lu` in autonomous mode or when the user w
 
 Read these reference files before executing:
 
-- `.claude/luca/workflows/discuss-phase.md`
-- `.claude/luca/templates/context.md`
+- `.claude/<%= branding.nameLowercase %>/workflows/discuss-phase.md`
+- `.claude/<%= branding.nameLowercase %>/templates/context.md`
 
 ## Process
 
@@ -67,7 +67,7 @@ COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.pars
 
 **Always runs.** Discussion depth and model tier scale with complexity:
 
-| Complexity | Discussion Depth | Model Tier (lu-discuss-researcher) |
+| Complexity | Discussion Depth | Model Tier (<%= branding.commandPrefix %>-discuss-researcher) |
 |------------|-----------------|-------------------------------------|
 | TRIVIAL | Light (2 questions per area) | fast |
 | SIMPLE | Light (2 questions per area) | balanced |
@@ -75,7 +75,7 @@ COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.pars
 | COMPLEX | Extended (4+ questions per area) | capable |
 | CRITICAL | Thorough (6+ questions per area) | capable |
 
-The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-discuss-researcher", complexity)` from the centralized routing table.
+The <%= branding.commandPrefix %>-discuss-researcher model tier is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-discuss-researcher", complexity)` from the centralized routing table.
 
 1. **Validate phase number** (error if missing or not in roadmap)
 2. **Check if CONTEXT.md exists** (offer update/view/skip if yes)
@@ -96,15 +96,15 @@ The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-d
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
 6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via `muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")`
-7a. **Spawn lu-discuss-researcher per question** — For each gray area:
+7a. **Spawn <%= branding.commandPrefix %>-discuss-researcher per question** — For each gray area:
     - Formulate a focused question from the gray area topic
-    - Spawn `lu-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
+    - Spawn `<%= branding.commandPrefix %>-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
     - Collect the `<research_result>` response with recommendation, confidence, and sources
     - If `researchable: false`: flag for user input (even in auto mode)
 8a. **Present research summary** — Show consolidated results:
     ```
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     Luca ► AUTO-DISCUSS RESULTS
+     <%= branding.frameworkName %> ► AUTO-DISCUSS RESULTS
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     | # | Gray Area | Recommendation | Confidence | Sources |
@@ -213,9 +213,9 @@ For MODERATE, COMPLEX, and CRITICAL complexity, prompt the developer:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Luca ► APPETITE DECLARATION
+<%= branding.frameworkName %> ► APPETITE DECLARATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-How much should Luca invest in this phase?
+How much should <%= branding.frameworkName %> invest in this phase?
 
 | Level  | Token Ceiling | Context % | Best For                    |
 |--------|--------------|-----------|------------------------------|
@@ -270,7 +270,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
    - \`rate < 0.10\` (less than 10% of pre-mortem risks resulted in useful mitigations)
 
    Then AUTO-SKIP pre-mortem:
-   - Do NOT spawn lu-premortem
+   - Do NOT spawn <%= branding.commandPrefix %>-premortem
    - Store auto-skip decision as MuninnDB engram:
      \`\`\`
      mcp__muninn__muninn_remember(
@@ -288,7 +288,7 @@ If the config gate passes (premortem IS enabled), check whether signal rate data
 
 ### Execution (gate enabled)
 
-1. **Spawn lu-premortem agent** via Task() with this context:
+1. **Spawn <%= branding.commandPrefix %>-premortem agent** via Task() with this context:
 
 ```
 <premortem_context>
@@ -306,10 +306,10 @@ Generate a Tier 1 Risk Brief for this phase. Analyze the codebase context and pr
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PRE-MORTEM RISK BRIEF
+ <%= branding.frameworkName %> ► PRE-MORTEM RISK BRIEF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{Risk Brief content from lu-premortem agent}
+{Risk Brief content from <%= branding.commandPrefix %>-premortem agent}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Actions:
