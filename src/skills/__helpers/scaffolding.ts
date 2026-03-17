@@ -48,6 +48,7 @@ export type ScaffoldResult = z.infer<typeof scaffoldResultSchema>;
  * - phase-plan: Phase planning
  * - progress: Progress tracking
  * - lu: Unified entry point
+ * - autopilot: Autonomous execution
  */
 const CORE_SKILL_NAMES = new Set([
   "git-commit",
@@ -55,6 +56,7 @@ const CORE_SKILL_NAMES = new Set([
   "phase-plan",
   "progress",
   "lu",
+  "autopilot",
 ]);
 
 // ─── Classification ────────────────────────────────────────────────────────────

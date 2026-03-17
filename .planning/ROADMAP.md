@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v5.0.0 — Global NPM Package
 
 ---
 
@@ -148,13 +148,13 @@
 
 ---
 
----
-
 ## Backlog (Unassigned)
 
-| Todo | Title                | Target           | Reason                                                              |
-| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| Todo | Title                          | Target           | Reason                                                                                       |
+| ---- | ------------------------------ | ---------------- | -------------------------------------------------------------------------------------------- |
+| #37  | Test suite fragility           | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md`                          |
+| —    | Merge autopilot into lu skill  | Post-v5.0.0      | WSJF 3.33, MEDIUM arch/QA risk. Skill consolidation orthogonal to v5.0.0 distribution goals. |
+| —    | Task-level implementation loop | Post-v5.0.0      | WSJF 7.0, LOW arch/QA risk. Executor behavior enhancement orthogonal to v5.0.0 distribution. |
 
 ---
 
@@ -314,7 +314,6 @@
 - **v4.3.0** — Observer Workflow Editor: 7 phases, 35 commits, 79 files changed ([View Archive](milestones/v4.3.0-ROADMAP.md))
 - **v4.4.0** — Smart Context Management: 7 phases, 23 commits, 74 files changed ([View Archive](milestones/v4.4.0-ROADMAP.md))
 - **v4.5.0** — Platform Simplification & Proactive Intelligence: 14 phases, 93 commits, 793 files changed ([View Archive](milestones/v4.5.0-ROADMAP.md))
-- **v5.1.0** — Workflow Quality & Skill Simplification: 2 phases, 13 commits, 33 files changed ([View Archive](milestones/v5.1.0-ROADMAP.md))
 - **v5.0.0** — Global NPM Package: 9 phases, 86 commits, 102 files changed ([View Archive](milestones/v5.0.0-ROADMAP.md))
 
 ---
