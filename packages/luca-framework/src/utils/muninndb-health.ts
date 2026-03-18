@@ -5,6 +5,7 @@ import {
   MuninndbBinaryStatusSchema,
   MuninndbServiceStatusSchema,
   MUNINNDB_BINARY_NAME,
+  getCommonBinaryPaths,
   resolveMuninndbPort,
 } from "./muninndb-schemas";
 
@@ -35,18 +36,41 @@ import type {
 export async function checkMuninndbBinary(
   binaryPath?: string,
 ): Promise<MuninndbBinaryStatus> {
-  const resolvedPath =
-    binaryPath ?? join(getLucaHomePaths().bin, MUNINNDB_BINARY_NAME);
+  const preferredPath = join(getLucaHomePaths().bin, MUNINNDB_BINARY_NAME);
+  let resolvedPath = binaryPath ?? preferredPath;
 
-  // Check existence
+  // Check preferred location first, then fall back to common locations
   const exists = await Bun.file(resolvedPath).exists();
   if (!exists) {
-    return MuninndbBinaryStatusSchema.parse({
-      installed: false,
-      path: null,
-      version: null,
-      executable: false,
-    });
+    // Search common install locations before reporting "not found"
+    const candidates = getCommonBinaryPaths();
+
+    let found = false;
+    for (const candidate of candidates) {
+      if (await Bun.file(candidate).exists()) {
+        resolvedPath = candidate;
+        found = true;
+        break;
+      }
+    }
+
+    // Fallback: Bun.which()
+    if (!found) {
+      const whichResult = Bun.which(MUNINNDB_BINARY_NAME);
+      if (whichResult && (await Bun.file(whichResult).exists())) {
+        resolvedPath = whichResult;
+        found = true;
+      }
+    }
+
+    if (!found) {
+      return MuninndbBinaryStatusSchema.parse({
+        installed: false,
+        path: null,
+        version: null,
+        executable: false,
+      });
+    }
   }
 
   // Check executable permission

@@ -44,7 +44,7 @@ import { VALID_PRESETS, getPresetDefaults } from "../utils/presets";
  * @param sourceDir - Template source directory
  * @param output - Map to write results into (relative path -> content)
  * @param context - EJS template context
- * @param destPrefix - Optional prefix prepended to output paths (e.g. '.cursor/luca')
+ * @param destPrefix - Optional prefix prepended to output paths (e.g. '.planning')
  */
 async function collectTemplateFiles(
   sourceDir: string,
@@ -136,7 +136,7 @@ async function getNewFrameworkFiles(
     join(templatesDir, "framework"),
     newFiles,
     context,
-    join(".cursor", "luca"),
+    ".planning",
   );
 
   // Collect per-harness templates (agents, rules, skills, hooks, settings)
@@ -220,7 +220,7 @@ async function createBackup(
   manifest: LucaManifest,
   cwd: string,
 ): Promise<string> {
-  const backupDir = join(cwd, ".cursor", "luca", ".backup");
+  const backupDir = join(cwd, ".planning", ".backup");
 
   // Remove old backup if exists
   if (existsSync(backupDir)) {
@@ -265,7 +265,7 @@ async function restoreBackup(backupDir: string, cwd: string): Promise<void> {
 }
 
 /**
- * Write conflicts to .cursor/luca/conflicts/ directory.
+ * Write conflicts to .planning/conflicts/ directory.
  */
 async function handleConflicts(
   conflicts: FileComparison[],
@@ -274,7 +274,7 @@ async function handleConflicts(
 ): Promise<void> {
   if (conflicts.length === 0) return;
 
-  const conflictsDir = join(cwd, ".cursor", "luca", "conflicts");
+  const conflictsDir = join(cwd, ".planning", "conflicts");
   await mkdir(conflictsDir, { recursive: true });
 
   for (const conflict of conflicts) {
@@ -828,9 +828,9 @@ Update Summary:
 
 Updated:    ${updated.length} files
 Skipped:    ${skipped.length} files (user modifications kept)
-Conflicts:  ${conflicted.length} files (saved to .cursor/luca/conflicts/)
+Conflicts:  ${conflicted.length} files (saved to .planning/conflicts/)
 
-${conflicted.length > 0 ? "Review conflicts in .cursor/luca/conflicts/ and resolve manually." : ""}
+${conflicted.length > 0 ? "Review conflicts in .planning/conflicts/ and resolve manually." : ""}
       `);
     } catch (error) {
       spinner.stop("Update failed");
