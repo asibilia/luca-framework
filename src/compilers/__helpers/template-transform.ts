@@ -126,7 +126,7 @@ export const transformBrandingContent = (
   //     Does NOT catch: `/lu-router` (that's an agent reference, not slash command)
   result = result.replace(/\/lu(?=[\s`"'\]).,;:!?]|$)/g, () => {
     replacements++;
-    return "/<%= branding.commandSlash %>";
+    return "<%= branding.commandSlash %>";
   });
 
   // 2e: Agent name references `lu-{name}` -> `<%= branding.commandPrefix %>-{name}`
