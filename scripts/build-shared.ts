@@ -560,6 +560,9 @@ async function generatePluginOutputs(
     "bridge.ts",
     "vault.ts",
     "muninn.ts",
+    "git-context.ts",
+    "commit-utils.ts",
+    "session-restore.ts",
   ];
   for (const helperFile of pluginHelperFiles) {
     const helperPath = path.join(hookHelpersDir, helperFile);
@@ -568,6 +571,25 @@ async function generatePluginOutputs(
       generated.set(
         `dist/plugin/__helpers/${helperFile}`,
         await helperBunFile.text(),
+      );
+    }
+  }
+
+  // Copy hook __schemas/ that plugin scripts import from (../__schemas/)
+  const hookSchemasDir = path.join(
+    resolvePackageRoot(),
+    "src",
+    "hooks",
+    "__schemas",
+  );
+  const pluginSchemaFiles = ["hook.schemas.ts"];
+  for (const schemaFile of pluginSchemaFiles) {
+    const schemaPath = path.join(hookSchemasDir, schemaFile);
+    const schemaBunFile = Bun.file(schemaPath);
+    if (await schemaBunFile.exists()) {
+      generated.set(
+        `dist/plugin/__schemas/${schemaFile}`,
+        await schemaBunFile.text(),
       );
     }
   }
