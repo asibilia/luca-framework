@@ -36,10 +36,16 @@ import { chmodSync } from "node:fs";
 // the same canonical implementation.
 import { resolveTemplates } from "./resolve-templates";
 import type { BrandingContext } from "./resolve-templates";
-import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
+import {
+  cleanDirectory,
+  cleanSkillsDirectory,
+  ensureDir,
+  computeOutputCounts,
+  buildErrorHandler,
+} from "./build-utils";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
-import { defaultBranding } from "../packages/luca-framework/src/utils/branding";
-import { sanitizeJsonParse } from "../packages/luca-framework/src/utils/sanitize";
+import { defaultBranding, validateBranding } from "./branding";
+import { sanitizeJsonParse } from "./sanitize";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -98,6 +104,22 @@ async function loadBrandingContext(): Promise<BrandingContext> {
     console.warn(
       "Warning: Could not read .planning/config.json, using default branding",
     );
+  }
+
+  // Validate resolved branding values (non-blocking: warn + continue on failure)
+  const validationResult = validateBranding({
+    frameworkName,
+    commandPrefix,
+    ticketPattern,
+    placeholderTicket,
+  });
+  if (!validationResult.valid) {
+    console.warn(
+      "Warning: Branding validation failed, continuing with current values:",
+    );
+    for (const [field, message] of Object.entries(validationResult.errors)) {
+      console.warn(`  ${field}: ${message}`);
+    }
   }
 
   return {
@@ -256,14 +278,7 @@ export async function runDeploy(): Promise<{
   const pkg = JSON.parse(await pkgFile.text());
   const keys = [...resolved.keys()].filter((k) => k !== "settings.json");
 
-  const counts = {
-    agents: keys.filter((k) => k.startsWith("agents/")).length,
-    skills: keys.filter((k) => k.startsWith("skills/")).length,
-    rules: keys.filter((k) => k.startsWith("rules/")).length,
-    hooks: keys.filter((k) => k.startsWith("hooks/") && k.endsWith(".sh"))
-      .length,
-    total: keys.length,
-  };
+  const counts = computeOutputCounts(keys);
 
   const manifest = {
     built_at: new Date().toISOString(),
@@ -303,13 +318,5 @@ export async function runDeploy(): Promise<{
 // Direct invocation
 // ---------------------------------------------------------------------------
 if (import.meta.main) {
-  runDeploy().catch((error) => {
-    console.error("\n========================================");
-    console.error("  BUILD FAILED: build-deploy");
-    console.error("========================================\n");
-    console.error("What failed:", error.message || error);
-    console.error("\nStack trace:");
-    console.error(error.stack || error);
-    process.exit(1);
-  });
+  runDeploy().catch((error) => buildErrorHandler("build-deploy", error));
 }

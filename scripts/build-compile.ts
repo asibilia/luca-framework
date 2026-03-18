@@ -31,7 +31,12 @@ import { rmSync, existsSync } from "node:fs";
 
 import { generateAllOutputs } from "./build-shared";
 import { transformOutputsToTemplates } from "../src/compilers";
-import { ensureDir } from "./build-utils";
+import {
+  ensureDir,
+  VAULT_GUARD_PROMPT,
+  computeOutputCounts,
+  buildErrorHandler,
+} from "./build-utils";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 // ---------------------------------------------------------------------------
@@ -145,25 +150,7 @@ export async function runCompile(): Promise<{
           hooks: [
             {
               type: "prompt",
-              prompt:
-                "VAULT ROUTING GUARD — Validate this MuninnDB write before it proceeds.\n\n" +
-                "1. Read the `vault` and `concept` parameters from the pending tool call.\n" +
-                "2. Resolve the expected repo vault: read `.planning/config.json` field `muninn.vault`. " +
-                "If the file does not exist or the field is missing, fall back to env var `LUCA_MUNINN_VAULT`. " +
-                'If that is also unset, fall back to `"default"`.\n' +
-                "3. Check the concept prefix against the write routing table:\n" +
-                '   - REPO VAULT targets (MUST use the resolved repo vault, NOT "default" — unless repo vault IS "default"): ' +
-                "`session:*`, `brain:project-*`, `metric:signal-rate-*`, `version:*`, `milestone:*`\n" +
-                '   - DEFAULT VAULT targets (MUST use "default"): ' +
-                "`pattern:*`, `pitfall:*`, `preference:*`, `brain:user-*`, `procedure:*`, `process:*`\n" +
-                "4. DECISION:\n" +
-                "   - If the vault parameter matches the expected target for the concept prefix: " +
-                'ALLOW the call. Respond with exactly: `{"decision":"allow"}`\n' +
-                "   - If misrouted: BLOCK the call. Respond with: " +
-                '`{"decision":"block","reason":"Concept prefix \'<prefix>\' must target vault \'<expected_vault>\' ' +
-                "but was routed to '<actual_vault>'. Fix the vault parameter before retrying.\"}`\n" +
-                "   - If the concept prefix does not match any known row, apply the ambiguity heuristic: " +
-                '"Would this memory be useful in a completely different repo?" Yes -> expect "default". No -> expect repo vault.',
+              prompt: VAULT_GUARD_PROMPT,
             },
           ],
         });
@@ -210,14 +197,7 @@ export async function runCompile(): Promise<{
   // 6. Compute counts and print summary
   // =========================================================================
   const keys = [...templates.keys()];
-  const counts = {
-    agents: keys.filter((k) => k.startsWith("agents/")).length,
-    skills: keys.filter((k) => k.startsWith("skills/")).length,
-    rules: keys.filter((k) => k.startsWith("rules/")).length,
-    hooks: keys.filter((k) => k.startsWith("hooks/") && k.endsWith(".sh"))
-      .length,
-    total: keys.length,
-  };
+  const counts = computeOutputCounts(keys);
 
   console.log(`\n=== Build Compile Summary ===`);
   console.log(`  Agents:   ${counts.agents}`);
@@ -233,13 +213,5 @@ export async function runCompile(): Promise<{
 // Direct invocation
 // ---------------------------------------------------------------------------
 if (import.meta.main) {
-  runCompile().catch((error) => {
-    console.error("\n========================================");
-    console.error("  BUILD FAILED: build-compile");
-    console.error("========================================\n");
-    console.error("What failed:", error.message || error);
-    console.error("\nStack trace:");
-    console.error(error.stack || error);
-    process.exit(1);
-  });
+  runCompile().catch((error) => buildErrorHandler("build-compile", error));
 }

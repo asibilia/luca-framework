@@ -24,7 +24,12 @@
  *   dist/plugin/ (complete plugin package)
  */
 import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
-import { cleanDirectory, cleanSkillsDirectory, ensureDir } from "./build-utils";
+import {
+  cleanDirectory,
+  cleanSkillsDirectory,
+  ensureDir,
+  buildErrorHandler,
+} from "./build-utils";
 import { generateHooksRegistryJson } from "./generate-hooks-registry-json";
 import { runCompile } from "./build-compile";
 import { runDeploy } from "./build-deploy";
@@ -251,22 +256,4 @@ async function main() {
   console.log(`\nHooks registry written to ${hooksRegistryPath}`);
 }
 
-main().catch((error) => {
-  console.error("\n========================================");
-  console.error("  BUILD FAILED: build-all");
-  console.error("========================================\n");
-  console.error("What failed:", error.message || error);
-  console.error("\nTroubleshooting:");
-  console.error(
-    "  1. Ensure all source files in src/ compile: bun build ./src/index.ts",
-  );
-  console.error(
-    "  2. Check that compile functions exist in src/compilers/compile.ts",
-  );
-  console.error(
-    "  3. Verify the registries export correctly from src/*/index.ts",
-  );
-  console.error("\nStack trace:");
-  console.error(error.stack || error);
-  process.exit(1);
-});
+main().catch((error) => buildErrorHandler("build-all", error));
