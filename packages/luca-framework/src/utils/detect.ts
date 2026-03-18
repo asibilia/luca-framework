@@ -62,16 +62,19 @@ export async function detectProjectContext(
     existsSync(join(cwd, "app")) ||
     existsSync(join(cwd, "lib"));
 
-  // Suggest first command based on project state
+  // Suggest first command hint based on project state.
+  // Uses {PREFIX} placeholder — resolved by tour.ts with the configured commandPrefix.
   const hasPlanning = existsSync(join(cwd, ".planning"));
   const hasReadme = await Bun.file(join(cwd, "README.md")).exists();
 
   if (hasReadme && !hasPlanning) {
-    context.suggestedFirstCommand = '/lu "help me understand this codebase"';
+    context.suggestedFirstCommand =
+      '/{PREFIX} "help me understand this codebase"';
   } else if (context.hasExistingSource) {
-    context.suggestedFirstCommand = '/lu "review the architecture"';
+    context.suggestedFirstCommand = '/{PREFIX} "review the architecture"';
   } else {
-    context.suggestedFirstCommand = "/lu";
+    // null — tour.ts will use /${commandPrefix} as the default
+    context.suggestedFirstCommand = undefined;
   }
 
   return context;

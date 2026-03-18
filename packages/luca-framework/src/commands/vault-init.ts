@@ -252,7 +252,11 @@ export const vaultInitCommand = defineCommand({
         await writeVaultConfig(vaultResult.vaultName, configPath);
         p.log.success(`Vault name written to .planning/config.json`);
 
-        await writeApiKeyToEnv(vaultResult.apiKey, envPath);
+        await writeApiKeyToEnv(
+          vaultResult.apiKey,
+          envPath,
+          vaultResult.vaultName,
+        );
         p.log.success(`API key written to .env`);
 
         await ensureEnvInGitignore(cwd);
@@ -289,7 +293,7 @@ export const vaultInitCommand = defineCommand({
       : `- ${harnessNames} (harness-specific files)`;
 
     const vaultStatus = vaultConfigured
-      ? `- .planning/config.json (vault: ${vaultName})\n- .env (MUNINN_API_KEY configured)`
+      ? `- .planning/config.json (vault: ${vaultName})\n- .env (MuninnDB API keys configured)`
       : "- MuninnDB vault: not configured (run interactively to set up)";
 
     logger.box(`

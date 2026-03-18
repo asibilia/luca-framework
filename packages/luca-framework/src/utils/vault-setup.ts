@@ -277,51 +277,80 @@ export async function writeVaultConfig(
 }
 
 /**
- * Append `MUNINN_API_KEY=<key>` to a `.env` file.
+ * Write MuninnDB API key(s) to a `.env` file using per-vault naming.
  *
- * Creates the `.env` file if it does not exist. If the file already contains
- * a `MUNINN_API_KEY=` line, the existing value is replaced. Otherwise the
- * key is appended on a new line.
+ * Creates the `.env` file if it does not exist. Writes up to three env vars:
+ * - `MUNINN_DB_<VAULT>_API_KEY` — per-vault key (when vaultName provided)
+ * - `MUNINN_DB_DEFAULT_API_KEY` — default vault key (for cross-cutting access)
+ * - `MUNINN_DB_API_KEY` — generic fallback (for runtime code that reads this)
+ *
+ * If the file already contains a matching line, the existing value is replaced.
+ * Otherwise the key is appended on a new line.
  *
  * After writing, the file permissions are set to `0600` (owner read/write
  * only) to prevent other users on the system from reading the API key.
  *
  * @param apiKey - The MuninnDB API key value to write.
  * @param envPath - Absolute path to the `.env` file.
+ * @param vaultName - Vault name for per-vault env var (e.g. "my-project").
  *
  * @example
  * ```typescript
- * await writeApiKeyToEnv("sk-abc123", "/path/to/.env");
- * // .env now contains: MUNINN_API_KEY=sk-abc123
+ * await writeApiKeyToEnv("sk-abc123", "/path/to/.env", "my-project");
+ * // .env now contains:
+ * //   MUNINN_DB_MY_PROJECT_API_KEY=sk-abc123
+ * //   MUNINN_DB_DEFAULT_API_KEY=sk-abc123
+ * //   MUNINN_DB_API_KEY=sk-abc123
  * // File permissions: 0600 (owner read/write only)
  * ```
  */
 export async function writeApiKeyToEnv(
   apiKey: string,
   envPath: string,
+  vaultName?: string,
 ): Promise<void> {
-  const envLine = `MUNINN_API_KEY=${apiKey}`;
+  // MuninnDB expects per-vault env vars: MUNINN_DB_<VAULT>_API_KEY
+  // Also write the default vault key and generic fallback for runtime consumers
+  const vaultKey = vaultName
+    ? `MUNINN_DB_${vaultName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_API_KEY`
+    : "MUNINN_DB_API_KEY";
+  const envLines = [
+    `${vaultKey}=${apiKey}`,
+    // Default vault key is always needed for cross-cutting memories
+    ...(vaultName && vaultName !== "default"
+      ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
+      : []),
+    // Generic fallback read by runtime code (bridge, emitter)
+    `MUNINN_DB_API_KEY=${apiKey}`,
+  ];
+
   const file = Bun.file(envPath);
 
   if (await file.exists()) {
-    const content = await file.text();
-    const lines = content.split("\n");
-    const existingIndex = lines.findIndex((line) =>
-      line.startsWith("MUNINN_API_KEY="),
-    );
+    let content = await file.text();
 
-    if (existingIndex >= 0) {
-      // Replace existing line
-      lines[existingIndex] = envLine;
-      await Bun.write(envPath, lines.join("\n"));
-    } else {
-      // Append to end, ensuring newline before the new entry
-      const separator = content.endsWith("\n") ? "" : "\n";
-      await Bun.write(envPath, content + separator + envLine + "\n");
+    for (const envLine of envLines) {
+      const keyName = envLine.split("=")[0];
+      const lines = content.split("\n");
+      const existingIndex = lines.findIndex((line) =>
+        line.startsWith(`${keyName}=`),
+      );
+
+      if (existingIndex >= 0) {
+        // Replace existing line
+        lines[existingIndex] = envLine;
+        content = lines.join("\n");
+      } else {
+        // Append to end, ensuring newline before the new entry
+        const separator = content.endsWith("\n") ? "" : "\n";
+        content = content + separator + envLine + "\n";
+      }
     }
+
+    await Bun.write(envPath, content);
   } else {
     // Create new .env file
-    await Bun.write(envPath, envLine + "\n");
+    await Bun.write(envPath, envLines.join("\n") + "\n");
   }
 
   // Restrict permissions: owner read/write only (SEC-002)
