@@ -1,3 +1,4 @@
+import { join } from "pathe";
 import { z } from "zod";
 
 import { checkPlatform } from "./prerequisites";
@@ -140,6 +141,33 @@ export const MUNINNDB_DEFAULT_PORT = 8476;
 
 /** Default binary name. */
 export const MUNINNDB_BINARY_NAME = "muninn";
+
+/**
+ * Common install locations to search for the MuninnDB binary.
+ *
+ * Used by both `checkMuninndbBinary()` (health check) and
+ * `findInstalledBinary()` (post-install search) to keep the
+ * search paths consistent. Returns only HOME-based paths when
+ * `process.env.HOME` is defined, plus `/usr/local/bin/`.
+ *
+ * @returns Array of absolute paths to check for the binary.
+ */
+export function getCommonBinaryPaths(): string[] {
+  const home = process.env.HOME;
+  return [
+    ...(home
+      ? [
+          join(home, ".local", "bin", MUNINNDB_BINARY_NAME),
+          join(home, "bin", MUNINNDB_BINARY_NAME),
+          join(home, ".muninndb", "bin", MUNINNDB_BINARY_NAME),
+          join(home, ".muninndb", MUNINNDB_BINARY_NAME),
+          join(home, ".muninn", "bin", MUNINNDB_BINARY_NAME),
+          join(home, ".cargo", "bin", MUNINNDB_BINARY_NAME),
+        ]
+      : []),
+    join("/usr", "local", "bin", MUNINNDB_BINARY_NAME),
+  ];
+}
 
 /**
  * Resolve the MuninnDB port from an explicit value, environment variable, or default.

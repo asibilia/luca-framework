@@ -140,7 +140,7 @@ export const vaultInitCommand = defineCommand({
       logger.error("Luca is already installed in this project.");
       logger.info("");
       logger.info("To update to the latest version:");
-      logger.info("  bunx luca update");
+      logger.info("  luca update");
       logger.info("");
       logger.info(
         "To reinitialize from scratch (this will overwrite existing config):",

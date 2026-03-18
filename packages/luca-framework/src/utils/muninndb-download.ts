@@ -7,6 +7,7 @@ import {
   resolvePlatformTarget,
   MuninndbInstallResultSchema,
   MUNINNDB_BINARY_NAME,
+  getCommonBinaryPaths,
 } from "./muninndb-schemas";
 
 import type {
@@ -192,21 +193,8 @@ async function findInstalledBinary(
     }
   }
 
-  // Check common install locations (only include HOME-based paths when HOME is defined)
-  const home = process.env.HOME;
-  const commonPaths = [
-    ...(home
-      ? [
-          join(home, ".local", "bin", MUNINNDB_BINARY_NAME),
-          join(home, "bin", MUNINNDB_BINARY_NAME),
-          // Tool-specific directories that install scripts commonly use
-          join(home, ".muninndb", "bin", MUNINNDB_BINARY_NAME),
-          join(home, ".muninndb", MUNINNDB_BINARY_NAME),
-          join(home, ".cargo", "bin", MUNINNDB_BINARY_NAME),
-        ]
-      : []),
-    join("/usr", "local", "bin", MUNINNDB_BINARY_NAME),
-  ];
+  // Check common install locations via shared helper
+  const commonPaths = getCommonBinaryPaths();
 
   for (const candidate of commonPaths) {
     if (existsSync(candidate)) {
@@ -221,6 +209,7 @@ async function findInstalledBinary(
   }
 
   // Last resort: limited find search in HOME directory (maxdepth 4 to keep it fast)
+  const home = process.env.HOME;
   if (home) {
     try {
       const findResult =

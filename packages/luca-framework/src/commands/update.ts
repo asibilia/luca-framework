@@ -136,7 +136,7 @@ async function getNewFrameworkFiles(
     join(templatesDir, "framework"),
     newFiles,
     context,
-    join(".cursor", "luca"),
+    ".planning",
   );
 
   // Collect per-harness templates (agents, rules, skills, hooks, settings)
@@ -220,7 +220,7 @@ async function createBackup(
   manifest: LucaManifest,
   cwd: string,
 ): Promise<string> {
-  const backupDir = join(cwd, ".cursor", "luca", ".backup");
+  const backupDir = join(cwd, ".planning", ".backup");
 
   // Remove old backup if exists
   if (existsSync(backupDir)) {
@@ -274,7 +274,7 @@ async function handleConflicts(
 ): Promise<void> {
   if (conflicts.length === 0) return;
 
-  const conflictsDir = join(cwd, ".cursor", "luca", "conflicts");
+  const conflictsDir = join(cwd, ".planning", "conflicts");
   await mkdir(conflictsDir, { recursive: true });
 
   for (const conflict of conflicts) {

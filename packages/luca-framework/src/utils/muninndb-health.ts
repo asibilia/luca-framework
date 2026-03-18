@@ -5,6 +5,7 @@ import {
   MuninndbBinaryStatusSchema,
   MuninndbServiceStatusSchema,
   MUNINNDB_BINARY_NAME,
+  getCommonBinaryPaths,
   resolveMuninndbPort,
 } from "./muninndb-schemas";
 
@@ -42,18 +43,7 @@ export async function checkMuninndbBinary(
   const exists = await Bun.file(resolvedPath).exists();
   if (!exists) {
     // Search common install locations before reporting "not found"
-    const home = process.env.HOME;
-    const candidates = [
-      ...(home
-        ? [
-            join(home, ".local", "bin", MUNINNDB_BINARY_NAME),
-            join(home, "bin", MUNINNDB_BINARY_NAME),
-            join(home, ".muninndb", "bin", MUNINNDB_BINARY_NAME),
-            join(home, ".muninn", "bin", MUNINNDB_BINARY_NAME),
-          ]
-        : []),
-      join("/usr", "local", "bin", MUNINNDB_BINARY_NAME),
-    ];
+    const candidates = getCommonBinaryPaths();
 
     let found = false;
     for (const candidate of candidates) {
