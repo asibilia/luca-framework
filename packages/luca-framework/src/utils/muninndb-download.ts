@@ -127,13 +127,16 @@ export interface DownloadMuninndbOptions {
  * @returns Absolute path to the binary mentioned in output, or `null`.
  */
 function extractPathFromOutput(stdout: string): string | null {
+  const binaryName = MUNINNDB_BINARY_NAME;
   const lines = stdout.split("\n");
   for (const line of lines) {
-    // Match patterns like: "Installed to /some/path/muninndb"
-    // or "MuninnDB installed: /some/path/muninndb"
-    const installMatch = line.match(
-      /(?:installed?\s+(?:to|at|in)?|saved?\s+(?:to|at|in)?|binary\s+(?:at|in)?)\s+(\S*muninndb\S*)/i,
+    // Match patterns like: "Installed to /some/path/muninn"
+    // or "MuninnDB installed: /some/path/muninn"
+    const installPattern = new RegExp(
+      `(?:installed?\\s+(?:to|at|in)?|saved?\\s+(?:to|at|in)?|binary\\s+(?:at|in)?)\\s+(\\S*${binaryName}\\S*)`,
+      "i",
     );
+    const installMatch = line.match(installPattern);
     if (installMatch?.[1]) {
       const candidate = installMatch[1].replace(/['"]+/g, "");
       if (candidate.startsWith("/") && existsSync(candidate)) {
@@ -141,8 +144,9 @@ function extractPathFromOutput(stdout: string): string | null {
       }
     }
 
-    // Match any absolute path ending with /muninndb on its own
-    const pathMatch = line.match(/(\/\S*\/muninndb)(?:\s|$)/);
+    // Match any absolute path ending with /muninn on its own
+    const pathPattern = new RegExp(`(\\/\\S*\\/${binaryName})(?:\\s|$)`);
+    const pathMatch = line.match(pathPattern);
     if (pathMatch?.[1]) {
       const candidate = pathMatch[1].replace(/['"]+/g, "");
       if (existsSync(candidate)) {

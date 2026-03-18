@@ -321,12 +321,12 @@ async function cleanStalePidfile(pidfilePath: string): Promise<void> {
  * Verify that a given PID belongs to a MuninnDB process.
  *
  * Uses `ps -p <pid> -o comm=` to retrieve the process command name and
- * checks whether it contains "muninndb" (case-insensitive). This prevents
+ * checks whether it contains "muninn" (case-insensitive). This prevents
  * sending signals to unrelated processes if the PID file is stale or
  * has been tampered with.
  *
  * @param pid - Process ID to verify.
- * @returns `true` if the process command name contains "muninndb".
+ * @returns `true` if the process command name contains "muninn".
  *
  * @example
  * ```typescript
@@ -339,7 +339,7 @@ async function verifyProcessIdentity(pid: number): Promise<boolean> {
   try {
     const result = await Bun.$`ps -p ${pid} -o comm=`.quiet();
     const comm = result.text().trim().toLowerCase();
-    return comm.includes("muninndb");
+    return comm.includes("muninn");
   } catch {
     // ps failed — process may not exist or command unavailable
     return false;
