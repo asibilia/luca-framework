@@ -25,13 +25,13 @@ const MUNINNDB_DOWNLOAD_BASE =
   process.env.MUNINNDB_DOWNLOAD_BASE ?? "https://muninndb.com";
 
 /**
- * GitHub repository slug for MuninnDB.
+ * Trusted hosts for the install script URL.
  *
- * Override via `MUNINNDB_REPO_SLUG` environment variable if the repository
- * has moved or you want to point at a fork.
+ * When `MUNINNDB_INSTALL_SCRIPT_URL` is overridden via env var, the URL
+ * hostname must match one of these entries. Set `MUNINNDB_ALLOW_UNTRUSTED=1`
+ * to bypass this restriction (e.g. for local development servers).
  */
-const MUNINNDB_REPO_SLUG =
-  process.env.MUNINNDB_REPO_SLUG ?? "scrypster/muninndb";
+const TRUSTED_INSTALL_HOSTS = new Set(["muninndb.com", "www.muninndb.com"]);
 
 /**
  * URL to the official MuninnDB install script.
@@ -141,11 +141,16 @@ async function findInstalledBinary(
     return preferredPath;
   }
 
-  // Check common install locations
+  // Check common install locations (only include HOME-based paths when HOME is defined)
+  const home = process.env.HOME;
   const commonPaths = [
-    join(process.env.HOME ?? "", ".local", "bin", MUNINNDB_BINARY_NAME),
+    ...(home
+      ? [
+          join(home, ".local", "bin", MUNINNDB_BINARY_NAME),
+          join(home, "bin", MUNINNDB_BINARY_NAME),
+        ]
+      : []),
     join("/usr", "local", "bin", MUNINNDB_BINARY_NAME),
-    join(process.env.HOME ?? "", "bin", MUNINNDB_BINARY_NAME),
   ];
 
   for (const candidate of commonPaths) {
@@ -154,15 +159,10 @@ async function findInstalledBinary(
     }
   }
 
-  // Fallback: use `which` to find it on PATH
-  try {
-    const result = await Bun.$`which ${MUNINNDB_BINARY_NAME}`.quiet();
-    const path = result.stdout.toString().trim();
-    if (path && existsSync(path)) {
-      return path;
-    }
-  } catch {
-    // `which` failed -- binary not on PATH
+  // Fallback: use Bun.which() to find it on PATH (more portable than shelling out)
+  const whichResult = Bun.which(MUNINNDB_BINARY_NAME);
+  if (whichResult && existsSync(whichResult)) {
+    return whichResult;
   }
 
   return null;
@@ -213,6 +213,24 @@ export async function downloadMuninndbBinary(
     });
   }
 
+  // Validate the URL hostname is trusted (prevents arbitrary script execution via env override)
+  if (process.env.MUNINNDB_ALLOW_UNTRUSTED !== "1") {
+    try {
+      const parsed = new URL(MUNINNDB_INSTALL_SCRIPT_URL);
+      if (!TRUSTED_INSTALL_HOSTS.has(parsed.hostname)) {
+        return MuninndbInstallResultSchema.parse({
+          success: false,
+          binaryPath: null,
+          error:
+            `Install script URL hostname "${parsed.hostname}" is not in the trusted hosts list. ` +
+            `Set MUNINNDB_ALLOW_UNTRUSTED=1 to bypass this check.`,
+        });
+      }
+    } catch {
+      // URL parsing already validated above
+    }
+  }
+
   // Resolve platform (early check before running install script)
   const platformResult = resolvePlatformTarget();
   if (!platformResult.success) {
@@ -233,10 +251,38 @@ export async function downloadMuninndbBinary(
       `Installing MuninnDB via official install script (${platformResult.target})...`,
     );
 
-    // Run the official install script.
-    // The script handles platform detection, binary download, and verification.
-    const installResult =
-      await Bun.$`curl -sSL ${MUNINNDB_INSTALL_SCRIPT_URL} | sh`.quiet();
+    // Download the install script first, then execute it.
+    // This avoids the curl|sh pipefail issue where curl failures are masked
+    // by the shell's exit code. Download separately so HTTP errors fail fast.
+    const curlResult = await Bun.$`curl -sSL -f ${MUNINNDB_INSTALL_SCRIPT_URL}`
+      .nothrow()
+      .quiet();
+
+    if (curlResult.exitCode !== 0) {
+      const stderr = curlResult.stderr.toString().trim();
+      const errorMsg = stderr
+        ? `Failed to download install script (exit ${curlResult.exitCode}): ${stderr}`
+        : `Failed to download install script (exit ${curlResult.exitCode}) from ${MUNINNDB_INSTALL_SCRIPT_URL}`;
+      spinner?.stop(`Install failed: ${errorMsg}`);
+      return MuninndbInstallResultSchema.parse({
+        success: false,
+        binaryPath: null,
+        error: errorMsg,
+      });
+    }
+
+    const scriptContent = curlResult.stdout.toString();
+    if (!scriptContent.trim()) {
+      spinner?.stop("Install failed: downloaded script is empty");
+      return MuninndbInstallResultSchema.parse({
+        success: false,
+        binaryPath: null,
+        error: "Downloaded install script is empty.",
+      });
+    }
+
+    // Execute the downloaded script
+    const installResult = await Bun.$`sh -c ${scriptContent}`.nothrow().quiet();
 
     if (installResult.exitCode !== 0) {
       const stderr = installResult.stderr.toString().trim();
