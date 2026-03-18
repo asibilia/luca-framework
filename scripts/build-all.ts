@@ -183,9 +183,10 @@ async function main() {
     }
   }
 
-  // chmod +x on plugin hook scripts
+  // chmod +x on plugin hook scripts (use chmodSync for consistency with build-compile/deploy)
+  const { chmodSync } = await import("node:fs");
   for (const scriptPath of pluginHookScriptPaths) {
-    Bun.spawnSync(["chmod", "+x", scriptPath]);
+    chmodSync(scriptPath, 0o755);
   }
 
   // =========================================================================
