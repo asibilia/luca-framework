@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Routing
-- **Task Complexity:** TRIVIAL
+- **Current Milestone:** v5.4.0 — Branding & Personalization
+- **Status:** Planning
+- **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-18
 
@@ -14,9 +14,9 @@
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Small
+- **Token Ceiling:** 50000
+- **Context Budget:** 40%
 
 ## Progress
 
@@ -26,11 +26,12 @@
 
 ## Git Context
 
+- **Branch:** feat/v5.4.0-branding-personalization
 - **Base Branch:** main
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `PLAN_COMPLETE`
 
 ## Previous Milestones
 
@@ -55,4 +56,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-18T23:27:54.275Z_
+_State generated from machine snapshot at 2026-03-18T23:35:59.756Z_
