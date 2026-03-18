@@ -156,9 +156,9 @@ function extractPathFromOutput(stdout: string): string | null {
 /**
  * Locate the installed muninndb binary after the install script runs.
  *
- * Checks the install script output first (if provided), then the preferred
- * directory, common install locations, `Bun.which()`, and finally a
- * limited `find` search as a last resort.
+ * Checks the preferred directory first (cheapest check), then parses
+ * install script output (if provided), common install locations,
+ * `Bun.which()`, and finally a limited `find` search as a last resort.
  *
  * @param preferredDir - The preferred target directory (e.g. `~/.luca/bin/`).
  * @param installStdout - Optional stdout from the install script to parse for paths.
