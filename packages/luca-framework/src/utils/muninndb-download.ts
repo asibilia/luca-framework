@@ -118,27 +118,74 @@ export interface DownloadMuninndbOptions {
 }
 
 /**
+ * Extract a binary path from the install script's stdout.
+ *
+ * Scans each line for common patterns like "installed to /path/to/muninndb"
+ * or lines ending with "/muninndb". Returns the first match, or `null`.
+ *
+ * @param stdout - Raw stdout from the install script execution.
+ * @returns Absolute path to the binary mentioned in output, or `null`.
+ */
+function extractPathFromOutput(stdout: string): string | null {
+  const lines = stdout.split("\n");
+  for (const line of lines) {
+    // Match patterns like: "Installed to /some/path/muninndb"
+    // or "MuninnDB installed: /some/path/muninndb"
+    const installMatch = line.match(
+      /(?:installed?\s+(?:to|at|in)?|saved?\s+(?:to|at|in)?|binary\s+(?:at|in)?)\s+(\S*muninndb\S*)/i,
+    );
+    if (installMatch?.[1]) {
+      const candidate = installMatch[1].replace(/['"]+/g, "");
+      if (candidate.startsWith("/") && existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    // Match any absolute path ending with /muninndb on its own
+    const pathMatch = line.match(/(\/\S*\/muninndb)(?:\s|$)/);
+    if (pathMatch?.[1]) {
+      const candidate = pathMatch[1].replace(/['"]+/g, "");
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Locate the installed muninndb binary after the install script runs.
  *
- * Checks common install locations and uses `which` as a fallback.
- * Returns the absolute path to the binary if found, or `null` if not.
+ * Checks the install script output first (if provided), then the preferred
+ * directory, common install locations, `Bun.which()`, and finally a
+ * limited `find` search as a last resort.
  *
  * @param preferredDir - The preferred target directory (e.g. `~/.luca/bin/`).
+ * @param installStdout - Optional stdout from the install script to parse for paths.
  * @returns Absolute path to the binary, or `null` if not found.
  *
  * @example
  * ```typescript
- * const path = await findInstalledBinary("/home/user/.luca/bin");
+ * const path = await findInstalledBinary("/home/user/.luca/bin", scriptOutput);
  * if (path) console.log(`Found at: ${path}`);
  * ```
  */
 async function findInstalledBinary(
   preferredDir: string,
+  installStdout?: string,
 ): Promise<string | null> {
   // Check preferred location first
   const preferredPath = join(preferredDir, MUNINNDB_BINARY_NAME);
   if (existsSync(preferredPath)) {
     return preferredPath;
+  }
+
+  // Try to extract path from install script output
+  if (installStdout) {
+    const outputPath = extractPathFromOutput(installStdout);
+    if (outputPath) {
+      return outputPath;
+    }
   }
 
   // Check common install locations (only include HOME-based paths when HOME is defined)
@@ -148,6 +195,10 @@ async function findInstalledBinary(
       ? [
           join(home, ".local", "bin", MUNINNDB_BINARY_NAME),
           join(home, "bin", MUNINNDB_BINARY_NAME),
+          // Tool-specific directories that install scripts commonly use
+          join(home, ".muninndb", "bin", MUNINNDB_BINARY_NAME),
+          join(home, ".muninndb", MUNINNDB_BINARY_NAME),
+          join(home, ".cargo", "bin", MUNINNDB_BINARY_NAME),
         ]
       : []),
     join("/usr", "local", "bin", MUNINNDB_BINARY_NAME),
@@ -163,6 +214,22 @@ async function findInstalledBinary(
   const whichResult = Bun.which(MUNINNDB_BINARY_NAME);
   if (whichResult && existsSync(whichResult)) {
     return whichResult;
+  }
+
+  // Last resort: limited find search in HOME directory (maxdepth 4 to keep it fast)
+  if (home) {
+    try {
+      const findResult =
+        await Bun.$`find ${home} -maxdepth 4 -name ${MUNINNDB_BINARY_NAME} -type f 2>/dev/null | head -1`
+          .nothrow()
+          .quiet();
+      const foundPath = findResult.stdout.toString().trim();
+      if (foundPath && existsSync(foundPath)) {
+        return foundPath;
+      }
+    } catch {
+      // find failed — acceptable
+    }
   }
 
   return null;
@@ -281,13 +348,19 @@ export async function downloadMuninndbBinary(
       });
     }
 
-    // Execute the downloaded script
-    const installResult = await Bun.$`sh -c ${scriptContent}`.nothrow().quiet();
+    // Execute the downloaded script with env vars to guide install location.
+    // Common install scripts honor INSTALL_DIR, BIN_DIR, or PREFIX.
+    const installResult =
+      await Bun.$`INSTALL_DIR=${dir} BIN_DIR=${dir} PREFIX=${dir} sh -c ${scriptContent}`
+        .nothrow()
+        .quiet();
+
+    const installStdout = installResult.stdout.toString();
+    const installStderr = installResult.stderr.toString().trim();
 
     if (installResult.exitCode !== 0) {
-      const stderr = installResult.stderr.toString().trim();
-      const errorMsg = stderr
-        ? `Install script failed (exit ${installResult.exitCode}): ${stderr}`
+      const errorMsg = installStderr
+        ? `Install script failed (exit ${installResult.exitCode}): ${installStderr}`
         : `Install script failed with exit code ${installResult.exitCode}`;
       spinner?.stop(`Install failed: ${errorMsg}`);
       return MuninndbInstallResultSchema.parse({
@@ -297,10 +370,17 @@ export async function downloadMuninndbBinary(
       });
     }
 
-    // Locate the installed binary
-    const foundPath = await findInstalledBinary(dir);
+    // Locate the installed binary (pass stdout for path extraction)
+    const foundPath = await findInstalledBinary(dir, installStdout);
 
     if (!foundPath) {
+      // Include script output in error for debugging
+      const outputHint = installStdout.trim()
+        ? `\nInstall script output:\n${installStdout.trim().slice(0, 500)}`
+        : "";
+      const stderrHint = installStderr
+        ? `\nInstall script stderr:\n${installStderr.slice(0, 300)}`
+        : "";
       spinner?.stop("Install script succeeded but binary not found on system");
       return MuninndbInstallResultSchema.parse({
         success: false,
@@ -308,7 +388,8 @@ export async function downloadMuninndbBinary(
         error:
           "MuninnDB install script completed successfully but the binary " +
           "could not be found. Check that the install script placed it in " +
-          "a standard location (~/.local/bin/, /usr/local/bin/, or ~/bin/).",
+          "a standard location (~/.local/bin/, /usr/local/bin/, ~/bin/, " +
+          `or ~/.muninndb/bin/).${outputHint}${stderrHint}`,
       });
     }
 
