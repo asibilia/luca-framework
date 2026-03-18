@@ -293,7 +293,7 @@ export const vaultInitCommand = defineCommand({
       : `- ${harnessNames} (harness-specific files)`;
 
     const vaultStatus = vaultConfigured
-      ? `- .planning/config.json (vault: ${vaultName})\n- .env (MUNINN_API_KEY configured)`
+      ? `- .planning/config.json (vault: ${vaultName})\n- .env (MuninnDB API keys configured)`
       : "- MuninnDB vault: not configured (run interactively to set up)";
 
     logger.box(`

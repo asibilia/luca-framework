@@ -277,24 +277,30 @@ export async function writeVaultConfig(
 }
 
 /**
- * Append `MUNINN_API_KEY=<key>` to a `.env` file.
+ * Write MuninnDB API key(s) to a `.env` file using per-vault naming.
  *
- * Creates the `.env` file if it does not exist. If the file already contains
- * a `MUNINN_API_KEY=` line, the existing value is replaced. Otherwise the
- * key is appended on a new line.
+ * Creates the `.env` file if it does not exist. Writes up to three env vars:
+ * - `MUNINN_DB_<VAULT>_API_KEY` — per-vault key (when vaultName provided)
+ * - `MUNINN_DB_DEFAULT_API_KEY` — default vault key (for cross-cutting access)
+ * - `MUNINN_DB_API_KEY` — generic fallback (for runtime code that reads this)
+ *
+ * If the file already contains a matching line, the existing value is replaced.
+ * Otherwise the key is appended on a new line.
  *
  * After writing, the file permissions are set to `0600` (owner read/write
  * only) to prevent other users on the system from reading the API key.
  *
  * @param apiKey - The MuninnDB API key value to write.
  * @param envPath - Absolute path to the `.env` file.
+ * @param vaultName - Vault name for per-vault env var (e.g. "my-project").
  *
  * @example
  * ```typescript
- * await writeApiKeyToEnv("sk-abc123", "/path/to/.env");
+ * await writeApiKeyToEnv("sk-abc123", "/path/to/.env", "my-project");
  * // .env now contains:
  * //   MUNINN_DB_MY_PROJECT_API_KEY=sk-abc123
  * //   MUNINN_DB_DEFAULT_API_KEY=sk-abc123
+ * //   MUNINN_DB_API_KEY=sk-abc123
  * // File permissions: 0600 (owner read/write only)
  * ```
  */
@@ -304,16 +310,18 @@ export async function writeApiKeyToEnv(
   vaultName?: string,
 ): Promise<void> {
   // MuninnDB expects per-vault env vars: MUNINN_DB_<VAULT>_API_KEY
-  // Also write the default vault key since it's required for cross-cutting access
+  // Also write the default vault key and generic fallback for runtime consumers
   const vaultKey = vaultName
     ? `MUNINN_DB_${vaultName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_API_KEY`
-    : "MUNINN_API_KEY";
+    : "MUNINN_DB_API_KEY";
   const envLines = [
     `${vaultKey}=${apiKey}`,
     // Default vault key is always needed for cross-cutting memories
     ...(vaultName && vaultName !== "default"
       ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
       : []),
+    // Generic fallback read by runtime code (bridge, emitter)
+    `MUNINN_DB_API_KEY=${apiKey}`,
   ];
 
   const file = Bun.file(envPath);
