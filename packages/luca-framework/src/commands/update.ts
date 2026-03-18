@@ -44,7 +44,7 @@ import { VALID_PRESETS, getPresetDefaults } from "../utils/presets";
  * @param sourceDir - Template source directory
  * @param output - Map to write results into (relative path -> content)
  * @param context - EJS template context
- * @param destPrefix - Optional prefix prepended to output paths (e.g. '.cursor/luca')
+ * @param destPrefix - Optional prefix prepended to output paths (e.g. '.planning')
  */
 async function collectTemplateFiles(
   sourceDir: string,
@@ -265,7 +265,7 @@ async function restoreBackup(backupDir: string, cwd: string): Promise<void> {
 }
 
 /**
- * Write conflicts to .cursor/luca/conflicts/ directory.
+ * Write conflicts to .planning/conflicts/ directory.
  */
 async function handleConflicts(
   conflicts: FileComparison[],
@@ -828,9 +828,9 @@ Update Summary:
 
 Updated:    ${updated.length} files
 Skipped:    ${skipped.length} files (user modifications kept)
-Conflicts:  ${conflicted.length} files (saved to .cursor/luca/conflicts/)
+Conflicts:  ${conflicted.length} files (saved to .planning/conflicts/)
 
-${conflicted.length > 0 ? "Review conflicts in .cursor/luca/conflicts/ and resolve manually." : ""}
+${conflicted.length > 0 ? "Review conflicts in .planning/conflicts/ and resolve manually." : ""}
       `);
     } catch (error) {
       spinner.stop("Update failed");

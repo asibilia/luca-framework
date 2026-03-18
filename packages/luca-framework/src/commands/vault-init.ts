@@ -145,7 +145,7 @@ export const vaultInitCommand = defineCommand({
       logger.info(
         "To reinitialize from scratch (this will overwrite existing config):",
       );
-      logger.info("  rm -rf .planning/ .cursor/luca/ && bunx luca vault:init");
+      logger.info("  rm -rf .planning/ && luca vault:init");
       process.exit(1);
     }
 
