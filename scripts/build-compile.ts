@@ -188,9 +188,10 @@ export async function runCompile(): Promise<{
     }
   }
 
-  // chmod +x on shell scripts
+  // chmod +x on shell scripts (use chmodSync for consistency with build-deploy.ts)
+  const { chmodSync } = await import("node:fs");
   for (const scriptPath of hookScriptPaths) {
-    Bun.spawnSync(["chmod", "+x", scriptPath]);
+    chmodSync(scriptPath, 0o755);
   }
 
   // =========================================================================
