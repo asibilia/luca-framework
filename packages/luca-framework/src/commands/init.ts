@@ -761,7 +761,7 @@ export const initCommand = defineCommand({
       }
     } else {
       readout.push(
-        "  Not running (start with `muninndb` or re-run `luca init`)",
+        "  Not running (start with `muninn start` or re-run `luca init`)",
       );
     }
 

@@ -70,8 +70,8 @@ export const muninndbHealthCheck: DoctorCheck = {
         name: this.name,
         status: "warning",
         message: `Binary installed${versionSuffix}, service not running`,
-        fixCommand: "muninndb",
-        details: `Binary at ${binary.path}. Start the service with: muninndb`,
+        fixCommand: "muninn start",
+        details: `Binary at ${binary.path}. Start the service with: muninn start`,
       };
     }
 

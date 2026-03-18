@@ -139,7 +139,7 @@ export function resolvePlatformTarget():
 export const MUNINNDB_DEFAULT_PORT = 8476;
 
 /** Default binary name. */
-export const MUNINNDB_BINARY_NAME = "muninndb";
+export const MUNINNDB_BINARY_NAME = "muninn";
 
 /**
  * Resolve the MuninnDB port from an explicit value, environment variable, or default.
