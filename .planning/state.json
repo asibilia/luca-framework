@@ -1,16 +1,13 @@
 {
   "status": "active",
-  "value": "verifying",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "048408eb-75be-4d80-9929-dcc0d15d88fb",
-    "github_issue": 88,
-    "branch": "88--dogfood-via-global-install",
+    "session_id": "b6b11cd3-3b5f-448d-b11c-748d2df6ab9b",
     "base_branch": "main",
-    "current_milestone": "v5.3.0",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -75,32 +72,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 198,
-        "status": "passed",
-        "summary": "MuninnDB vault routing guard - global rule + prompt hook",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-17T23:13:59.849Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "pre_mortem_result": {
-      "risks": [],
-      "mitigations": [],
-      "confidence": 0,
-      "timestamp": "2026-03-17T20:36:44.610Z"
-    },
-    "started_at": "2026-03-17T20:31:32.665Z",
-    "last_transition_at": "2026-03-17T23:53:04.379Z"
+    "started_at": "2026-03-18T12:39:40.880Z"
   },
   "children": {}
 }
