@@ -132,11 +132,11 @@
 
 **Requirements:** Audit tech debt (should fix)
 
-- [ ] Extract vault-guard prompt text to shared constant consumed by both build-compile.ts and settings-hooks.json
-- [ ] Extract file-count computation to build-utils.ts (deduplicate build-compile.ts + build-deploy.ts)
-- [ ] Extract shared buildErrorHandler to build-utils.ts (unify error output across 3 build scripts)
-- [ ] Add validateBranding() call in build-deploy.ts loadBrandingContext before template resolution
-- [ ] Replace deep cross-boundary imports in build-deploy.ts with shim pattern (matching resolve-templates.ts)
+- [x] Extract vault-guard prompt text to shared constant consumed by both build-compile.ts and settings-hooks.json
+- [x] Extract file-count computation to build-utils.ts (deduplicate build-compile.ts + build-deploy.ts)
+- [x] Extract shared buildErrorHandler to build-utils.ts (unify error output across 3 build scripts)
+- [x] Add validateBranding() call in build-deploy.ts loadBrandingContext before template resolution
+- [x] Replace deep cross-boundary imports in build-deploy.ts with shim pattern (matching resolve-templates.ts)
 
 ---
 
