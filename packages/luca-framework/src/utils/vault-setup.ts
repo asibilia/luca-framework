@@ -292,36 +292,57 @@ export async function writeVaultConfig(
  * @example
  * ```typescript
  * await writeApiKeyToEnv("sk-abc123", "/path/to/.env");
- * // .env now contains: MUNINN_API_KEY=sk-abc123
+ * // .env now contains:
+ * //   MUNINN_DB_MY_PROJECT_API_KEY=sk-abc123
+ * //   MUNINN_DB_DEFAULT_API_KEY=sk-abc123
  * // File permissions: 0600 (owner read/write only)
  * ```
  */
 export async function writeApiKeyToEnv(
   apiKey: string,
   envPath: string,
+  vaultName?: string,
 ): Promise<void> {
-  const envLine = `MUNINN_API_KEY=${apiKey}`;
+  // MuninnDB expects per-vault env vars: MUNINN_DB_<VAULT>_API_KEY
+  // Also write the default vault key since it's required for cross-cutting access
+  const vaultKey = vaultName
+    ? `MUNINN_DB_${vaultName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_API_KEY`
+    : "MUNINN_API_KEY";
+  const envLines = [
+    `${vaultKey}=${apiKey}`,
+    // Default vault key is always needed for cross-cutting memories
+    ...(vaultName && vaultName !== "default"
+      ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
+      : []),
+  ];
+
   const file = Bun.file(envPath);
 
   if (await file.exists()) {
-    const content = await file.text();
-    const lines = content.split("\n");
-    const existingIndex = lines.findIndex((line) =>
-      line.startsWith("MUNINN_API_KEY="),
-    );
+    let content = await file.text();
 
-    if (existingIndex >= 0) {
-      // Replace existing line
-      lines[existingIndex] = envLine;
-      await Bun.write(envPath, lines.join("\n"));
-    } else {
-      // Append to end, ensuring newline before the new entry
-      const separator = content.endsWith("\n") ? "" : "\n";
-      await Bun.write(envPath, content + separator + envLine + "\n");
+    for (const envLine of envLines) {
+      const keyName = envLine.split("=")[0];
+      const lines = content.split("\n");
+      const existingIndex = lines.findIndex((line) =>
+        line.startsWith(`${keyName}=`),
+      );
+
+      if (existingIndex >= 0) {
+        // Replace existing line
+        lines[existingIndex] = envLine;
+        content = lines.join("\n");
+      } else {
+        // Append to end, ensuring newline before the new entry
+        const separator = content.endsWith("\n") ? "" : "\n";
+        content = content + separator + envLine + "\n";
+      }
     }
+
+    await Bun.write(envPath, content);
   } else {
     // Create new .env file
-    await Bun.write(envPath, envLine + "\n");
+    await Bun.write(envPath, envLines.join("\n") + "\n");
   }
 
   // Restrict permissions: owner read/write only (SEC-002)

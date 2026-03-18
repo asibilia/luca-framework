@@ -109,20 +109,42 @@ function buildTourSteps(
   });
 
   // Step: Generated Files Summary (dynamic or static)
-  const step2Body = stats
-    ? `Installed ${stats.agent_count} agents, ${stats.skill_count} skills, ` +
+  // In global mode, stats are zero because harness files live in ~/.claude/
+  const isGlobalMode =
+    stats !== undefined &&
+    stats.agent_count === 0 &&
+    stats.skill_count === 0 &&
+    stats.rule_count === 0 &&
+    stats.hook_count === 0;
+
+  let step2Body: string;
+  if (isGlobalMode) {
+    step2Body =
+      `Agents, skills, rules, and hooks are deployed globally to ~/.claude/\n` +
+      `(via luca init). This project uses the global install.\n\n` +
+      `  Agents   (orchestration, code review, verification)\n` +
+      `  Skills   (git, planning, testing workflows)\n` +
+      `  Rules    (code conventions, architecture patterns)\n` +
+      `  Hooks    (pre-commit gate, type checking, formatting)\n\n` +
+      `To update global artifacts: luca init`;
+  } else if (stats) {
+    step2Body =
+      `Installed ${stats.agent_count} agents, ${stats.skill_count} skills, ` +
       `${stats.rule_count} rules, ${stats.hook_count} hooks into ${harnessNames}\n\n` +
       `  Agents   (orchestration, code review, verification)\n` +
       `  Skills   (git, planning, testing workflows)\n` +
       `  Rules    (code conventions, architecture patterns)\n` +
       `  Hooks    (pre-commit gate, type checking, formatting)\n\n` +
-      `These are generated from src/ -- edit sources, then bun run build:all.`
-    : `Installed into ${harnessNames}:\n\n` +
+      `These are generated from src/ -- edit sources, then bun run build:all.`;
+  } else {
+    step2Body =
+      `Installed into ${harnessNames}:\n\n` +
       `  Agents   (orchestration, code review, verification)\n` +
       `  Skills   (git, planning, testing workflows)\n` +
       `  Rules    (code conventions, architecture patterns)\n` +
       `  Hooks    (pre-commit gate, type checking, formatting)\n\n` +
       `These are generated from src/ -- edit sources, then bun run build:all.`;
+  }
 
   steps.push({
     title: `Step ${steps.length + 1}: What Was Generated`,
@@ -140,7 +162,8 @@ function buildTourSteps(
   });
 
   // Step: Suggested First Command (uses enhanced context detection)
-  const suggestedCommand = context.suggestedFirstCommand ?? `/${commandPrefix}`;
+  const rawSuggestion = context.suggestedFirstCommand ?? `/${commandPrefix}`;
+  const suggestedCommand = rawSuggestion.replace(/\{PREFIX\}/g, commandPrefix);
   steps.push({
     title: `Step ${steps.length + 1}: Your First Command`,
     body:
