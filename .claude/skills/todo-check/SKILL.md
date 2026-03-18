@@ -64,11 +64,11 @@ List pending todos and select one to work on.
 
 | Condition | Action | Command |
 |-----------|--------|---------|
-| Selected a todo to work on | Work on it | `//lu {selected todo}` |
+| Selected a todo to work on | Work on it | `/lu {selected todo}` |
 | No todos ready | Continue planned work | `/progress` |
 | Want to add more | Capture new todo | `/todo-add` |
 
-**Primary:** `//lu {selected}` — Work on the selected todo
+**Primary:** `/lu {selected}` — Work on the selected todo
 
 **Also available:**
 - `/progress` — Return to planned work

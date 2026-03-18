@@ -25,13 +25,13 @@ Display the complete Luca command reference.
 **For ticket-driven work:**
 
 ```
-//lu [TICKET-ID]
+/lu [TICKET-ID]
 ```
 
 or
 
 ```
-//lu $JIRA_BASE_URL/browse/[TICKET-ID]
+/lu $JIRA_BASE_URL/browse/[TICKET-ID]
 ```
 
 This automatically: fetches ticket details → creates GitHub issue (if using Jira) → creates branch → executes → offers PR
@@ -39,7 +39,7 @@ This automatically: fetches ticket details → creates GitHub issue (if using Ji
 **For ad-hoc work (no ticket):**
 
 ```
-//lu fix the typo in the readme
+/lu fix the typo in the readme
 ```
 
 You'll be prompted to provide a ticket ID or use your configured placeholder (default: `PROJ-0000`).
@@ -58,7 +58,7 @@ You'll be prompted to provide a ticket ID or use your configured placeholder (de
 
 ### Unified Entry Point
 
-**`//lu <task | Jira-URL | [TICKET-ID]>`**
+**`/lu <task | Jira-URL | [TICKET-ID]>`**
 The single entry point for all development work. Handles:
 
 - Git context setup (ticket → GitHub issue → feature branch)
@@ -151,9 +151,9 @@ Flags: `--dry-run`, `--skip-validation`, `--category=<type>`, `--no-respond`
 **Via unified entry:**
 
 ```
-//lu PR #123
-//lu https://github.com/.../pull/123
-//lu address PR comments
+/lu PR #123
+/lu https://github.com/.../pull/123
+/lu address PR comments
 ```
 
 ### Todo Management
@@ -225,7 +225,7 @@ Join the Luca Discord community
 **Working on a ticket (most common):**
 
 ```
-//lu PROJ-123
+/lu PROJ-123
 ```
 
 This single command handles everything: ticket fetch → GitHub issue → branch creation → execution → PR.
@@ -233,7 +233,7 @@ This single command handles everything: ticket fetch → GitHub issue → branch
 **Ad-hoc work without ticket:**
 
 ```
-//lu fix typo in component
+/lu fix typo in component
 ```
 
 When prompted, choose your configured placeholder (default: `PROJ-0000`) for work not tied to a ticket.
@@ -279,8 +279,8 @@ When prompted, choose your configured placeholder (default: `PROJ-0000`) for wor
 Or via unified entry:
 
 ```
-//lu PR #123
-//lu address PR comments
+/lu PR #123
+/lu address PR comments
 ```
 
 This spawns reviewer agents to validate concerns, plans fixes, executes with atomic commits, and responds to GitHub.
@@ -298,5 +298,5 @@ This is a reference command. Common follow-ups:
 
 - `/progress` — Check project status
 - `/project-new` — Start a new project
-- `//lu [TICKET-ID]` — Work on a ticket
+- `/lu [TICKET-ID]` — Work on a ticket
 </main>

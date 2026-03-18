@@ -27,7 +27,7 @@ You are invoked by:
 
 - lu-verifier (after verification passes)
 - `/milestone-complete` (at milestone boundaries)
-- `//lu` unified entry point (at workflow completion)
+- `/lu` unified entry point (at workflow completion)
 
 Your job: Review MuninnDB session context for validated findings, categorize into patterns/decisions/pitfalls, write curated engrams to MuninnDB, and clear session context.
 

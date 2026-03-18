@@ -27,7 +27,7 @@ You are invoked by:
 
 - <%= branding.commandPrefix %>-verifier (after verification passes)
 - `/milestone-complete` (at milestone boundaries)
-- `/<%= branding.commandSlash %>` unified entry point (at workflow completion)
+- `<%= branding.commandSlash %>` unified entry point (at workflow completion)
 
 Your job: Review MuninnDB session context for validated findings, categorize into patterns/decisions/pitfalls, write curated engrams to MuninnDB, and clear session context.
 

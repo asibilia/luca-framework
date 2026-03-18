@@ -10,7 +10,7 @@
 
 | Feature             | Description                                          |
 | ------------------- | ---------------------------------------------------- |
-| Entry Point         | Unified `/<%= branding.commandSlash %>` with intelligent routing               |
+| Entry Point         | Unified `<%= branding.commandSlash %>` with intelligent routing               |
 | **Git Integration** | Jira → GitHub issue → Branch → PR                    |
 | Memory              | MuninnDB (project identity, learnings, session)      |
 | Verification        | Always runs (all complexity levels)                  |

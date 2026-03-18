@@ -115,7 +115,7 @@ This skill helps you decide between workflows. After choosing:
 
 | Choice | Next Command |
 |--------|--------------|
-| Issue-driven | `/<%= branding.commandSlash %> [TICKET-ID]` or `/<%= branding.commandSlash %> {task}` |
+| Issue-driven | `<%= branding.commandSlash %> [TICKET-ID]` or `<%= branding.commandSlash %> {task}` |
 | <%= branding.frameworkName %> | `/project-new` |
 | Quick task | `/quick` |
 

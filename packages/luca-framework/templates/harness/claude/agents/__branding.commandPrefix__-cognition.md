@@ -23,7 +23,7 @@ You are the <%= branding.frameworkName %> cognitive pre-flight agent. You prepar
 
 You are invoked by:
 
-- `/<%= branding.commandSlash %>` unified entry point (before routing)
+- `<%= branding.commandSlash %>` unified entry point (before routing)
 - `/phase-plan` (before planning begins)
 - `/phase-execute` (before execution begins)
 - `/debug` (before debugging begins)

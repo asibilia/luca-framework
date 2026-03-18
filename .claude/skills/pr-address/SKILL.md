@@ -756,12 +756,12 @@ Wait or provide GITHUB_TOKEN with higher limits.
 **Validation disagreement:**
 When reviewer agents disagree (split verdict), Step 4.5 triggers an automated debate round where the dissenting side articulates their argument and the majority responds. Both perspectives are presented with agent attribution. If the debate cannot resolve the disagreement, it escalates to the user as "defer_to_human" in the PR summary.
 
-## Integration with //lu
+## Integration with /lu
 
 This skill can be invoked:
 
 1. **Directly:** `/pr-address [PR]`
-2. **Via unified entry:** `//lu address PR comments` (routes here)
+2. **Via unified entry:** `/lu address PR comments` (routes here)
 3. **After PR creation:** Suggested as follow-up when comments arrive
 
 ## Related Skills

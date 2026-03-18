@@ -1,31 +1,31 @@
 # workflow-start
 
-Start work on a Jira ticket. Redirects to //lu for the full development workflow.
+Start work on a Jira ticket. Redirects to /lu for the full development workflow.
 
 ## main
 
 <main>
 # Workflow Start
 
-**REDIRECT:** This workflow is now integrated into `//lu`.
+**REDIRECT:** This workflow is now integrated into `/lu`.
 
 ## Usage
 
 Instead of `/workflow-start PROJ-1234`, use:
 
 ```
-//lu PROJ-1234
+/lu PROJ-1234
 ```
 
 or
 
 ```
-//lu $JIRA_BASE_URL/browse/PROJ-1234
+/lu $JIRA_BASE_URL/browse/PROJ-1234
 ```
 
-## What //lu Does
+## What /lu Does
 
-When given a Jira ticket, `//lu` automatically:
+When given a Jira ticket, `/lu` automatically:
 
 1. **Fetches Jira details** via Atlassian MCP
 2. **Creates GitHub issue** linked to the ticket
@@ -45,7 +45,7 @@ When given a Jira ticket, `//lu` automatically:
 ## Example
 
 ```
-//lu PROJ-1234
+/lu PROJ-1234
 ```
 
 Output:
@@ -69,5 +69,5 @@ The original workflow was:
 Jira ticket -> GitHub issue -> Feature branch -> Plan -> Work -> PR
 ```
 
-This is now fully handled by `//lu` when given a Jira ticket input.
+This is now fully handled by `/lu` when given a Jira ticket input.
 </main>

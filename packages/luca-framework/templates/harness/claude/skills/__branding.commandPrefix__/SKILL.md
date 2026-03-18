@@ -1478,12 +1478,12 @@ When a phase cannot complete:
 | Teammate error | Mark phase FAILED, park it, continue monitoring other teammates |
 | Merge conflict | Log conflict, park that phase, merge remaining clean phases |
 | Post-merge harness failure | Attempt fix (2 iterations), then revert merge and park the phase |
-| All teammates fail | Fallback: re-attempt all phases serially on next `/<%= branding.commandSlash %>` run |
+| All teammates fail | Fallback: re-attempt all phases serially on next `<%= branding.commandSlash %>` run |
 
 ### Recovery
 
 Parked phases can be retried by:
-1. Running `/<%= branding.commandSlash %>` again — parked phases will be re-attempted (serially if previously failed in swarm)
+1. Running `<%= branding.commandSlash %>` again — parked phases will be re-attempted (serially if previously failed in swarm)
 2. Running `/phase-plan {N} --gaps` manually for specific phases
 3. Running `/phase-execute {N}` manually after fixing issues
 
@@ -1531,9 +1531,9 @@ Duration:   {session duration}
 
 ## Recommended Next Steps
 {context-dependent recommendations:
-  - If parked phases: "Review parked phases and fix issues, then run /<%= branding.commandSlash %> again"
+  - If parked phases: "Review parked phases and fix issues, then run <%= branding.commandSlash %> again"
   - If milestone complete: "Run /milestone-audit to review"
-  - If backlog remains: "Run /<%= branding.commandSlash %> to continue with next milestone"
+  - If backlog remains: "Run <%= branding.commandSlash %> to continue with next milestone"
   - If all done: "All work complete. Consider adding new todos or starting a new milestone."}
 ```
 
