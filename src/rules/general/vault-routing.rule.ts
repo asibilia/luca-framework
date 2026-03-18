@@ -88,7 +88,11 @@ When storing memories, use concept-prefix-based routing:
 When the concept prefix does not match any row above, ask: "Would this memory be useful in a completely different repo?"
 
 - **Yes** -> write to default vault
-- **No** -> write to repo vault`,
+- **No** -> write to repo vault
+
+## Dependent Artifacts
+
+The global rule \`~/.claude/rules/vault-guard.md\` mirrors the Write Routing Heuristic table above and adds a PreToolUse prompt hook for runtime enforcement. If the write routing table changes here, update the global rule manually to keep them in sync.`,
       order: 1,
     },
   ],

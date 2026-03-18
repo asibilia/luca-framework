@@ -72,3 +72,12 @@ export {
   compileRuleViaRegistry,
   resetCompilerPluginRegistry,
 } from "./__helpers/plugin-registry";
+
+// Branding template transforms (Phase 191)
+export {
+  CONTENT_EXCLUSIONS,
+  transformBrandingContent,
+  transformBrandingFilename,
+  transformBrandingDirname,
+  transformOutputsToTemplates,
+} from "./__helpers/template-transform";

@@ -145,3 +145,103 @@ export async function cleanSkillsDirectory(dir: string): Promise<string[]> {
 export async function ensureDir(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true });
 }
+
+/**
+ * Canonical vault-guard prompt text injected into PreToolUse hooks.
+ *
+ * This prompt validates MuninnDB writes against the vault routing table
+ * before they proceed, catching misrouted memories at write time.
+ *
+ * NOTE: This prompt text exists in 2 locations that must stay in sync.
+ * If you modify this constant, update the other copy:
+ * - scripts/build-utils.ts (this file — canonical source)
+ * - packages/luca-framework/templates/hooks/settings-hooks.json
+ *   (the PreToolUse entry with matcher "mcp__muninn__muninn_remember...")
+ */
+export const VAULT_GUARD_PROMPT =
+  "VAULT ROUTING GUARD — Validate this MuninnDB write before it proceeds.\n\n" +
+  "1. Read the `vault` and `concept` parameters from the pending tool call.\n" +
+  "2. Resolve the expected repo vault: read `.planning/config.json` field `muninn.vault`. " +
+  "If the file does not exist or the field is missing, fall back to env var `LUCA_MUNINN_VAULT`. " +
+  'If that is also unset, fall back to `"default"`.\n' +
+  "3. Check the concept prefix against the write routing table:\n" +
+  '   - REPO VAULT targets (MUST use the resolved repo vault, NOT "default" — unless repo vault IS "default"): ' +
+  "`session:*`, `brain:project-*`, `metric:signal-rate-*`, `version:*`, `milestone:*`\n" +
+  '   - DEFAULT VAULT targets (MUST use "default"): ' +
+  "`pattern:*`, `pitfall:*`, `preference:*`, `brain:user-*`, `procedure:*`, `process:*`\n" +
+  "4. DECISION:\n" +
+  "   - If the vault parameter matches the expected target for the concept prefix: " +
+  'ALLOW the call. Respond with exactly: `{"decision":"allow"}`\n' +
+  "   - If misrouted: BLOCK the call. Respond with: " +
+  '`{"decision":"block","reason":"Concept prefix \'<prefix>\' must target vault \'<expected_vault>\' ' +
+  "but was routed to '<actual_vault>'. Fix the vault parameter before retrying.\"}`\n" +
+  "   - If the concept prefix does not match any known row, apply the ambiguity heuristic: " +
+  '"Would this memory be useful in a completely different repo?" Yes -> expect "default". No -> expect repo vault.';
+
+/**
+ * Compute output file counts from a list of output keys.
+ *
+ * Extracts the file-count computation pattern used by build-compile and
+ * build-deploy. Filters keys by prefix and returns categorized counts.
+ *
+ * @param keys - Array of relative file paths (e.g., "agents/foo.md", "hooks/bar.sh")
+ * @returns Object with agents, skills, rules, hooks, and total counts
+ *
+ * @example
+ * ```typescript
+ * const keys = ["agents/lu-router.md", "skills/git-commit/SKILL.md", "hooks/pre-commit.sh"];
+ * const counts = computeOutputCounts(keys);
+ * // { agents: 1, skills: 1, rules: 0, hooks: 1, total: 3 }
+ * ```
+ */
+export function computeOutputCounts(keys: string[]): {
+  agents: number;
+  skills: number;
+  rules: number;
+  hooks: number;
+  total: number;
+} {
+  return {
+    agents: keys.filter((k) => k.startsWith("agents/")).length,
+    skills: keys.filter((k) => k.startsWith("skills/")).length,
+    rules: keys.filter((k) => k.startsWith("rules/")).length,
+    hooks: keys.filter((k) => k.startsWith("hooks/") && k.endsWith(".sh"))
+      .length,
+    total: keys.length,
+  };
+}
+
+/**
+ * Unified error handler for build scripts.
+ *
+ * Prints a formatted error banner, the error message, troubleshooting
+ * guidance, and a stack trace, then exits with code 1.
+ *
+ * @param scriptName - Name of the build script that failed (e.g., "build-compile")
+ * @param error - The caught error (typically from a top-level catch block)
+ *
+ * @example
+ * ```typescript
+ * main().catch((error) => buildErrorHandler("build-all", error));
+ * ```
+ */
+export function buildErrorHandler(scriptName: string, error: unknown): never {
+  const err = error as { message?: string; stack?: string };
+  console.error("\n========================================");
+  console.error(`  BUILD FAILED: ${scriptName}`);
+  console.error("========================================\n");
+  console.error("What failed:", err.message || error);
+  console.error("\nTroubleshooting:");
+  console.error(
+    "  1. Ensure all source files in src/ compile: bun build ./src/index.ts",
+  );
+  console.error(
+    "  2. Check that compile functions exist in src/compilers/compile.ts",
+  );
+  console.error(
+    "  3. Verify the registries export correctly from src/*/index.ts",
+  );
+  console.error("\nStack trace:");
+  console.error(err.stack || error);
+  process.exit(1);
+}

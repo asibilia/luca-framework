@@ -8,21 +8,27 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current Milestone (v5.2.0 — In Progress)
+## Current Milestone (v5.3.0 — In Progress)
 
-**Goal:** Fix critical bugs in the `luca init` global install experience and automate npm publishing via GitHub Actions. Addresses 4 install bugs (2x P0, 1x P1, 1x P2) discovered after first npm publish, plus CI/CD automation.
+**Goal:** Invert the build flow so templates are the canonical intermediate format. Compile src/ directly to templates/ with EJS branding placeholders, then dogfood via `bun link` + `luca init` to deploy templates to .claude/. Eliminates the backwards branding transform in copy-harness-templates.ts, creating a single code path for both dogfood and user consumption.
 
-**Phases:** 183-188 (6 phases)
+**Phases:** 191+ (TBD)
 **Complexity:** COMPLEX
-**Source:** Todos: luca-init-global-install-issues, github-action-npm-publish
+**Source:** Todo: dogfood-via-global-install
 
-### Key Fixes
+### Key Changes
 
-- vault:init deploys to project `.claude/` instead of `~/.claude/` in global mode (P0)
-- MuninnDB download URL 404 + API key prompt ordering (P0)
-- Custom prefix not applied to agent/skill names (P1)
-- Platform selection still shows Cursor and Pi (P2)
-- GitHub Actions auto-publish to npm on release (CI/CD)
+- Compilers output EJS-templated files to templates/harness/ (not hardcoded lu- to .claude/)
+- build:all splits into build:compile (src/ → templates/) + build:deploy (templates/ → .claude/ via luca init)
+- Dogfood uses the same luca init code path as end users
+- copy-harness-templates.ts branding transform removed (no longer needed)
+- Single code path for branding resolution
+
+## Previous State (v5.2.0 — Shipped)
+
+**Last Shipped:** v5.2.0 — Distribution & Install Quality (2026-03-17)
+
+8 phases, 43 commits, 201 files changed. Fixed critical install bugs (vault path, MuninnDB URL, prefix templating, platform selection), added GitHub Actions auto-publish.
 
 ## Previous State (v5.0.0 — Shipped)
 

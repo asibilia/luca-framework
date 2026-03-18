@@ -25,13 +25,13 @@ Display the complete <%= branding.frameworkName %> command reference.
 **For ticket-driven work:**
 
 ```
-/<%= branding.commandSlash %> [TICKET-ID]
+<%= branding.commandSlash %> [TICKET-ID]
 ```
 
 or
 
 ```
-/<%= branding.commandSlash %> $JIRA_BASE_URL/browse/[TICKET-ID]
+<%= branding.commandSlash %> $JIRA_BASE_URL/browse/[TICKET-ID]
 ```
 
 This automatically: fetches ticket details → creates GitHub issue (if using Jira) → creates branch → executes → offers PR
@@ -39,7 +39,7 @@ This automatically: fetches ticket details → creates GitHub issue (if using Ji
 **For ad-hoc work (no ticket):**
 
 ```
-/<%= branding.commandSlash %> fix the typo in the readme
+<%= branding.commandSlash %> fix the typo in the readme
 ```
 
 You'll be prompted to provide a ticket ID or use your configured placeholder (default: `PROJ-0000`).
@@ -58,7 +58,7 @@ You'll be prompted to provide a ticket ID or use your configured placeholder (de
 
 ### Unified Entry Point
 
-**`/<%= branding.commandSlash %> <task | Jira-URL | [TICKET-ID]>`**
+**`<%= branding.commandSlash %> <task | Jira-URL | [TICKET-ID]>`**
 The single entry point for all development work. Handles:
 
 - Git context setup (ticket → GitHub issue → feature branch)
@@ -151,9 +151,9 @@ Flags: `--dry-run`, `--skip-validation`, `--category=<type>`, `--no-respond`
 **Via unified entry:**
 
 ```
-/<%= branding.commandSlash %> PR #123
-/<%= branding.commandSlash %> https://github.com/.../pull/123
-/<%= branding.commandSlash %> address PR comments
+<%= branding.commandSlash %> PR #123
+<%= branding.commandSlash %> https://github.com/.../pull/123
+<%= branding.commandSlash %> address PR comments
 ```
 
 ### Todo Management
@@ -225,7 +225,7 @@ Join the <%= branding.frameworkName %> Discord community
 **Working on a ticket (most common):**
 
 ```
-/<%= branding.commandSlash %> PROJ-123
+<%= branding.commandSlash %> PROJ-123
 ```
 
 This single command handles everything: ticket fetch → GitHub issue → branch creation → execution → PR.
@@ -233,7 +233,7 @@ This single command handles everything: ticket fetch → GitHub issue → branch
 **Ad-hoc work without ticket:**
 
 ```
-/<%= branding.commandSlash %> fix typo in component
+<%= branding.commandSlash %> fix typo in component
 ```
 
 When prompted, choose your configured placeholder (default: `PROJ-0000`) for work not tied to a ticket.
@@ -279,8 +279,8 @@ When prompted, choose your configured placeholder (default: `PROJ-0000`) for wor
 Or via unified entry:
 
 ```
-/<%= branding.commandSlash %> PR #123
-/<%= branding.commandSlash %> address PR comments
+<%= branding.commandSlash %> PR #123
+<%= branding.commandSlash %> address PR comments
 ```
 
 This spawns reviewer agents to validate concerns, plans fixes, executes with atomic commits, and responds to GitHub.
@@ -298,5 +298,5 @@ This is a reference command. Common follow-ups:
 
 - `/progress` — Check project status
 - `/project-new` — Start a new project
-- `/<%= branding.commandSlash %> [TICKET-ID]` — Work on a ticket
+- `<%= branding.commandSlash %> [TICKET-ID]` — Work on a ticket
 </main>

@@ -1,31 +1,31 @@
 # workflow-start
 
-Start work on a Jira ticket. Redirects to /<%= branding.commandSlash %> for the full development workflow.
+Start work on a Jira ticket. Redirects to <%= branding.commandSlash %> for the full development workflow.
 
 ## main
 
 <main>
 # Workflow Start
 
-**REDIRECT:** This workflow is now integrated into `/<%= branding.commandSlash %>`.
+**REDIRECT:** This workflow is now integrated into `<%= branding.commandSlash %>`.
 
 ## Usage
 
 Instead of `/workflow-start PROJ-1234`, use:
 
 ```
-/<%= branding.commandSlash %> PROJ-1234
+<%= branding.commandSlash %> PROJ-1234
 ```
 
 or
 
 ```
-/<%= branding.commandSlash %> $JIRA_BASE_URL/browse/PROJ-1234
+<%= branding.commandSlash %> $JIRA_BASE_URL/browse/PROJ-1234
 ```
 
-## What /<%= branding.commandSlash %> Does
+## What <%= branding.commandSlash %> Does
 
-When given a Jira ticket, `/<%= branding.commandSlash %>` automatically:
+When given a Jira ticket, `<%= branding.commandSlash %>` automatically:
 
 1. **Fetches Jira details** via Atlassian MCP
 2. **Creates GitHub issue** linked to the ticket
@@ -45,7 +45,7 @@ When given a Jira ticket, `/<%= branding.commandSlash %>` automatically:
 ## Example
 
 ```
-/<%= branding.commandSlash %> PROJ-1234
+<%= branding.commandSlash %> PROJ-1234
 ```
 
 Output:
@@ -69,5 +69,5 @@ The original workflow was:
 Jira ticket -> GitHub issue -> Feature branch -> Plan -> Work -> PR
 ```
 
-This is now fully handled by `/<%= branding.commandSlash %>` when given a Jira ticket input.
+This is now fully handled by `<%= branding.commandSlash %>` when given a Jira ticket input.
 </main>

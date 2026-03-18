@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "adf7c242-d552-4c41-ba55-509d39468871",
+    "session_id": "b6b11cd3-3b5f-448d-b11c-748d2df6ab9b",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -30,7 +30,9 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": ["typescript"]
+      "tech_stack_profiles": [
+        "typescript"
+      ]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -69,7 +71,7 @@
         "verificationMode": "full+human"
       }
     },
-    "lu_config": {},
+    "autopilot_config": {},
     "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
@@ -79,9 +81,9 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-17T15:23:47.017Z",
+    "started_at": "2026-03-18T12:39:40.880Z",
     "current_milestone": "Planning next",
-    "last_transition_at": "2026-03-17T15:28:47.492Z"
+    "last_transition_at": "2026-03-18T12:44:40.989Z"
   },
   "children": {}
 }

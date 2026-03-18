@@ -21,8 +21,9 @@
   "private": true,
   "scripts": {
     "build": "bun run build:all",
-    "build:all": "bun run ./scripts/build-all.ts && bun run build:templates",
-    "build:templates": "bun run ./scripts/copy-harness-templates.ts",
+    "build:all": "bun run ./scripts/build-all.ts",
+    "build:compile": "bun run ./scripts/build-compile.ts",
+    "build:deploy": "bun run ./scripts/build-deploy.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
     "commit": "bunx --bun @alecsibilia/commit",
     "css:observer": "bun run --filter @alecsibilia/luca-observer css:build",

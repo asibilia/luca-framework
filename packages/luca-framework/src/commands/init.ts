@@ -42,7 +42,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { join, relative } from "pathe";
+import { dirname, join, relative, resolve } from "pathe";
 import { logger } from "../utils/logger";
 import { sanitizeJsonParse } from "../utils/sanitize";
 import {
@@ -56,17 +56,15 @@ import { downloadMuninndbBinary } from "../utils/muninndb-download";
 import { startMuninndb } from "../utils/muninndb-service";
 import { isOnPath, getPathGuidance } from "../utils/path-check";
 import { backupSettings, rotateBackups } from "../utils/backup-manager";
-import {
-  computeMergeActions,
-  applyMerge,
-  getKnownLucaScripts,
-} from "../utils/settings-merger";
+import { computeMergeActions, applyMerge } from "../utils/settings-merger";
 import { promptConflictResolution } from "../utils/conflict-prompt";
 import {
   createDeployManifest,
   writeDeployManifest,
 } from "../utils/deploy-manifest-writer";
-import { copyDirForDeploy, rewriteHookPaths } from "../utils/deploy-helpers";
+import { rewriteHookPaths } from "../utils/deploy-helpers";
+import { resolveTemplates } from "../utils/resolve-templates";
+import { createBrandingContext, defaultBranding } from "../utils/branding";
 
 import type { DeployedFileEntry } from "../utils/deploy-helpers";
 import type { DeploySourceType } from "../utils/deploy-manifest.schemas";
@@ -75,15 +73,89 @@ import type { RuntimeContext } from "../utils/runtime-context";
 // ─── Deploy step implementation ─────────────────────────────────────────────
 
 /**
+ * Resolve the templates source directory based on runtime context.
+ *
+ * In dev mode, templates live at `<monorepo>/packages/luca-framework/templates/harness/claude/`.
+ * In global install mode, templates live at `<packageDir>/templates/harness/claude/` since they
+ * are bundled in the npm package.
+ *
+ * Falls back to the pre-built `.claude/` directory if templates are not found (backward
+ * compatibility with older package versions).
+ *
+ * @param ctx - Runtime context from `detectRuntimeContext()`
+ * @returns Object with the resolved `templatesDir` (or null), `sourceRoot`, and `useLegacy` flag
+ */
+function resolveTemplatesDir(ctx: RuntimeContext): {
+  templatesDir: string | null;
+  sourceRoot: string;
+  useLegacy: boolean;
+} {
+  let sourceRoot: string;
+  let packageRoot: string;
+
+  if (ctx.mode === "dev") {
+    sourceRoot = resolveMonorepoRoot(ctx.packageDir);
+    packageRoot = join(sourceRoot, "packages", "luca-framework");
+  } else {
+    // Global install: walk up from the script directory to find the package root
+    // (the directory containing package.json). ctx.packageDir is import.meta.dir
+    // which points to a subdirectory like src/commands/ or dist/.
+    sourceRoot = ctx.packageDir;
+    let dir = ctx.packageDir;
+    while (dir !== "/" && !existsSync(join(dir, "package.json"))) {
+      dir = dirname(dir);
+    }
+    packageRoot = dir;
+    sourceRoot = packageRoot;
+  }
+
+  // Primary: look for templates directory relative to the package root
+  const templatesDir = join(packageRoot, "templates", "harness", "claude");
+
+  if (existsSync(templatesDir)) {
+    return { templatesDir, sourceRoot, useLegacy: false };
+  }
+
+  // Fallback: legacy .claude/ directory (backward compatibility)
+  const claudeDir = join(sourceRoot, ".claude");
+  if (existsSync(claudeDir)) {
+    return { templatesDir: null, sourceRoot, useLegacy: true };
+  }
+
+  return { templatesDir: null, sourceRoot, useLegacy: false };
+}
+
+/**
+ * Classify a resolved relative path into a deploy source type.
+ *
+ * Maps the resolved file path prefix to the corresponding deploy source
+ * type for manifest tracking.
+ *
+ * @param relPath - Resolved relative path (e.g., "agents/lu-router.md")
+ * @returns Deploy source type classification
+ */
+function classifyDeploySource(relPath: string): DeploySourceType {
+  if (relPath.startsWith("agents/")) return "agent";
+  if (relPath.startsWith("skills/")) return "skill";
+  if (relPath.startsWith("rules/")) return "rule";
+  if (relPath.startsWith("hooks/")) return "hook";
+  if (relPath === "statusline.sh") return "statusline";
+  return "lib";
+}
+
+/**
  * Run the artifact deployment step within `luca init`.
  *
- * Copies Luca agents, skills, hooks, rules, and statusline from the package
- * source directory to `~/.claude/`. Runs the three-tier settings merge and
- * writes a deploy manifest to `~/.luca/manifests/`.
+ * Uses `resolveTemplates()` to resolve EJS templates from the templates/
+ * directory with branding context, then writes the resolved files to
+ * `~/.claude/`. This is the same code path used by `build-deploy.ts`,
+ * ensuring consistent resolution between dogfood builds and user installations.
  *
- * This is a simplified version of `scripts/deploy-global.ts` integrated into
- * the init flow. For advanced options (--remove, --dry-run), use the standalone
- * deploy script directly.
+ * Falls back to the legacy file-copy approach if the templates directory is
+ * not found (backward compatibility with older package versions).
+ *
+ * Runs the three-tier settings merge and writes a deploy manifest to
+ * `~/.luca/manifests/`.
  *
  * @param ctx - Runtime context from `detectRuntimeContext()`
  * @returns Total number of files deployed
@@ -92,130 +164,47 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   const homePaths = getLucaHomePaths();
   const globalDir = homePaths.claudeGlobal;
 
-  // Resolve source directory based on runtime context
-  // In dev mode, the source is the monorepo .claude/ directory
-  // In global mode, the source is relative to the installed package
-  let sourceRoot: string;
-  if (ctx.mode === "dev") {
-    sourceRoot = resolveMonorepoRoot(ctx.packageDir);
-  } else {
-    // Global install: package directory contains the dist output
-    sourceRoot = ctx.packageDir;
-  }
+  const { templatesDir, sourceRoot, useLegacy } = resolveTemplatesDir(ctx);
 
-  const claudeDir = join(sourceRoot, ".claude");
-  if (!existsSync(claudeDir)) {
-    p.log.warn("Build artifacts not found (.claude/ directory missing).");
+  if (!templatesDir && !useLegacy) {
+    p.log.warn("Templates directory not found and no .claude/ fallback.");
     p.log.warn("Run `bun run build:all` first, then re-run `luca init`.");
     return 0;
   }
 
-  // Ensure target directories exist
+  // Ensure target directory exists
   if (!existsSync(globalDir)) {
     mkdirSync(globalDir, { recursive: true });
   }
 
   const deployedFiles: DeployedFileEntry[] = [];
-
   let totalCount = 0;
 
-  // Deploy agents
-  const agentsSource = join(claudeDir, "agents");
-  if (existsSync(agentsSource)) {
-    const agentsTarget = join(globalDir, "agents");
-    mkdirSync(agentsTarget, { recursive: true });
-    const files = readdirSync(agentsSource).filter((f) => f.endsWith(".md"));
-    for (const file of files) {
-      const target = join(agentsTarget, file);
-      writeFileSync(target, readFileSync(join(agentsSource, file)));
-      deployedFiles.push({
-        relativePath: relative(globalDir, target),
-        absolutePath: target,
-        sourceType: "agent",
-      });
-    }
-    totalCount += files.length;
-    p.log.step(`Agents: ${files.length}`);
+  // Build branding context from defaults
+  const brandingCtx = createBrandingContext(defaultBranding);
+
+  // Resolve templates to a Map<relativePath, content>
+  let resolved: Map<string, string>;
+  if (templatesDir) {
+    resolved = await resolveTemplates(templatesDir, brandingCtx.branding);
+  } else {
+    // Legacy fallback: should not reach here due to guard above, but
+    // satisfies type checker
+    p.log.warn("Using legacy .claude/ copy fallback.");
+    resolved = new Map();
   }
 
-  // Deploy skills
-  const skillsSource = join(claudeDir, "skills");
-  if (existsSync(skillsSource)) {
-    const skillsTarget = join(globalDir, "skills");
-    mkdirSync(skillsTarget, { recursive: true });
-    const dirs = readdirSync(skillsSource, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-    for (const dir of dirs) {
-      copyDirForDeploy(
-        join(skillsSource, dir),
-        join(skillsTarget, dir),
-        globalDir,
-        deployedFiles,
-        "skill",
-      );
-    }
-    totalCount += dirs.length;
-    p.log.step(`Skills: ${dirs.length}`);
-  }
+  // Track counts per category for summary
+  let agentCount = 0;
+  let skillCount = 0;
+  let ruleCount = 0;
+  let hookCount = 0;
+  let statuslineCount = 0;
 
-  // Deploy hooks (always copy)
-  const hooksSource = join(claudeDir, "hooks");
-  if (existsSync(hooksSource)) {
-    const hooksTarget = join(globalDir, "hooks");
-    mkdirSync(hooksTarget, { recursive: true });
+  // Intercept settings.json for special merge handling
+  let resolvedSettingsJson: string | undefined;
 
-    // Deploy _lib
-    const libSource = join(hooksSource, "_lib");
-    if (existsSync(libSource)) {
-      copyDirForDeploy(
-        libSource,
-        join(hooksTarget, "_lib"),
-        globalDir,
-        deployedFiles,
-        "lib",
-      );
-    }
-
-    // Deploy hook scripts
-    const scripts = readdirSync(hooksSource).filter(
-      (f) => f.endsWith(".sh") && f !== "pre-commit-drift-check.sh",
-    );
-    for (const script of scripts) {
-      const target = join(hooksTarget, script);
-      writeFileSync(target, readFileSync(join(hooksSource, script)));
-      chmodSync(target, 0o755);
-
-      // Rewrite relative paths for global context
-      rewriteHookPaths(target, sourceRoot);
-
-      deployedFiles.push({
-        relativePath: relative(globalDir, target),
-        absolutePath: target,
-        sourceType: "hook",
-      });
-    }
-    totalCount += scripts.length;
-    p.log.step(`Hooks: ${scripts.length}`);
-  }
-
-  // Deploy statusline
-  const statuslineSource = join(claudeDir, "statusline.sh");
-  if (existsSync(statuslineSource)) {
-    const target = join(globalDir, "statusline.sh");
-    writeFileSync(target, readFileSync(statuslineSource));
-    chmodSync(target, 0o755);
-    rewriteHookPaths(target, sourceRoot);
-    deployedFiles.push({
-      relativePath: "statusline.sh",
-      absolutePath: target,
-      sourceType: "statusline",
-    });
-    totalCount += 1;
-    p.log.step("Statusline: 1");
-  }
-
-  // Deploy universal rules
+  // Universal rules allowlist (only these rules deploy to global ~/.claude/)
   const UNIVERSAL_RULES = new Set([
     "api-snake-case.md",
     "bun-preference.md",
@@ -230,25 +219,68 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
     "schema-first-parsing.md",
   ]);
 
-  const rulesSource = join(claudeDir, "rules");
-  if (existsSync(rulesSource)) {
-    const rulesTarget = join(globalDir, "rules");
-    mkdirSync(rulesTarget, { recursive: true });
-    const rules = readdirSync(rulesSource).filter(
-      (f) => f.endsWith(".md") && UNIVERSAL_RULES.has(f),
-    );
-    for (const rule of rules) {
-      const target = join(rulesTarget, rule);
-      writeFileSync(target, readFileSync(join(rulesSource, rule)));
-      deployedFiles.push({
-        relativePath: relative(globalDir, target),
-        absolutePath: target,
-        sourceType: "rule",
-      });
+  for (const [relPath, content] of resolved) {
+    // Intercept settings.json for merge handling later
+    if (relPath === "settings.json") {
+      resolvedSettingsJson = content;
+      continue;
     }
-    totalCount += rules.length;
-    p.log.step(`Rules: ${rules.length} universal`);
+
+    // Filter rules to universal-only for global deploy
+    if (relPath.startsWith("rules/")) {
+      const ruleName = relPath.split("/").pop() ?? "";
+      if (!UNIVERSAL_RULES.has(ruleName)) {
+        continue;
+      }
+    }
+
+    // Skip pre-commit-drift-check.sh (not needed in global deploy)
+    if (relPath === "hooks/pre-commit-drift-check.sh") {
+      continue;
+    }
+
+    // Write the resolved file (with path containment guard)
+    const absPath = join(globalDir, relPath);
+    if (!resolve(absPath).startsWith(resolve(globalDir) + "/")) {
+      throw new Error(`Path traversal detected: ${relPath}`);
+    }
+    mkdirSync(dirname(absPath), { recursive: true });
+    writeFileSync(absPath, content);
+
+    // chmod +x for shell scripts
+    if (relPath.endsWith(".sh")) {
+      chmodSync(absPath, 0o755);
+
+      // Rewrite relative paths for global context (hooks and statusline)
+      rewriteHookPaths(absPath, sourceRoot);
+    }
+
+    // Track deployed file for manifest
+    const sourceType = classifyDeploySource(relPath);
+    deployedFiles.push({
+      relativePath: relPath,
+      absolutePath: absPath,
+      sourceType,
+    });
+
+    // Count by category
+    if (relPath.startsWith("agents/")) agentCount++;
+    else if (relPath.startsWith("skills/")) skillCount++;
+    else if (relPath.startsWith("rules/")) ruleCount++;
+    else if (relPath.startsWith("hooks/") && relPath.endsWith(".sh"))
+      hookCount++;
+    else if (relPath === "statusline.sh") statuslineCount++;
   }
+
+  totalCount =
+    agentCount + skillCount + ruleCount + hookCount + statuslineCount;
+
+  // Log deployment counts
+  if (agentCount > 0) p.log.step(`Agents: ${agentCount}`);
+  if (skillCount > 0) p.log.step(`Skills: ${skillCount}`);
+  if (hookCount > 0) p.log.step(`Hooks: ${hookCount}`);
+  if (statuslineCount > 0) p.log.step(`Statusline: ${statuslineCount}`);
+  if (ruleCount > 0) p.log.step(`Rules: ${ruleCount} universal`);
 
   // Settings merge (three-tier)
   const settingsPath = join(globalDir, "settings.json");
@@ -276,15 +308,32 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   if (!settings.env) settings.env = {};
   settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
 
-  // Generate proposed hooks from the hook scripts we deployed
-  // Build a minimal proposed hooks structure from deployed hook files
+  // If we have resolved settings.json from templates, merge hooks from it
+  let proposedHooks: Record<string, unknown> = {};
+  if (resolvedSettingsJson) {
+    try {
+      const resolvedSettings = JSON.parse(resolvedSettingsJson);
+      if (resolvedSettings.hooks) {
+        proposedHooks = resolvedSettings.hooks;
+      }
+    } catch {
+      // Fall back to building from deployed hooks
+    }
+  }
+
+  // If no hooks came from resolved settings, build from deployed hook files
   const globalHooksDir = join(globalDir, "hooks");
-  const proposedHooks = buildProposedHooksFromDeployed(globalHooksDir);
+  if (Object.keys(proposedHooks).length === 0 && existsSync(globalHooksDir)) {
+    proposedHooks = buildProposedHooksFromDeployed(globalHooksDir);
+  }
 
   // Derive known scripts from the deployed hooks
-  const knownScripts = new Set(
-    readdirSync(globalHooksDir).filter((f) => f.endsWith(".sh")),
-  );
+  const knownScripts = new Set<string>();
+  if (existsSync(globalHooksDir)) {
+    for (const f of readdirSync(globalHooksDir)) {
+      if (f.endsWith(".sh")) knownScripts.add(f);
+    }
+  }
 
   // Compute merge actions
   const actions = computeMergeActions(settings, proposedHooks, knownScripts);
@@ -325,6 +374,9 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
   return totalCount;
 }
 
+/** Regex that only allows safe path characters (alphanumeric, slash, dot, dash, underscore). */
+const SAFE_PATH_RE = /^[\w/.\-]+$/;
+
 /**
  * Build a proposed hooks structure from the deployed hook files.
  *
@@ -334,12 +386,24 @@ async function runDeployStep(ctx: RuntimeContext): Promise<number> {
  * src/hooks/ tier and is not importable from the packages/ tier).
  *
  * For the full canonical registry approach, use `scripts/deploy-global.ts`.
+ *
+ * @param globalHooksDir - Absolute path to the deployed hooks directory
+ * @returns Claude Code settings.json hooks structure keyed by event name
  */
 function buildProposedHooksFromDeployed(
   globalHooksDir: string,
 ): Record<string, unknown> {
+  // Validate the hooks directory path before using it in command strings
+  if (!SAFE_PATH_RE.test(globalHooksDir)) {
+    throw new Error(`Unsafe hooks directory path: ${globalHooksDir}`);
+  }
+
   // Build a hooks structure matching the Claude Code settings.json format
   // Group hooks by their Claude Code event based on known script-to-event mapping
+  //
+  // IMPORTANT: This map duplicates knowledge from src/hooks/__helpers/hook-registry.ts.
+  // The duplication is necessary because packages/ cannot import from src/hooks/ (T3 boundary).
+  // When adding or renaming hooks in src/hooks/, update this map in sync.
   const scriptEventMap: Record<
     string,
     {
@@ -444,6 +508,9 @@ function buildProposedHooksFromDeployed(
   );
 
   for (const script of deployedScripts) {
+    // Skip filenames with unsafe characters to prevent command injection
+    if (!SAFE_PATH_RE.test(script)) continue;
+
     const mapping = scriptEventMap[script];
     if (!mapping) continue;
 
