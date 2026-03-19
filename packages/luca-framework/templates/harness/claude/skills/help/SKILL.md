@@ -5,6 +5,8 @@ Show available <%= branding.frameworkName %> commands, usage guide, and workflow
 ## main
 
 <main>
+**Branding:** Read `.planning/config.json` branding section at session start. Use `/{commandPrefix}` instead of `<%= branding.commandSlash %>` and `{frameworkName}` instead of `<%= branding.frameworkName %>` in ALL user-facing output. If config is missing or branding is absent, fall back to defaults (`<%= branding.commandSlash %>`, `<%= branding.frameworkName %>`).
+
 # <%= branding.frameworkName %> Help
 
 Display the complete <%= branding.frameworkName %> command reference.

@@ -4,6 +4,8 @@ Unified entry point and autonomous orchestrator for all Luca workflows with cogn
 
 ## main
 
+**Branding:** Read `.planning/config.json` branding section at session start. Use `/{commandPrefix}` instead of `/lu` and `{frameworkName}` instead of `Luca` in ALL user-facing output (logs, summaries, help text, error messages). If config is missing or branding is absent, fall back to defaults (`/lu`, `Luca`).
+
 The single entry point for all Luca workflows. For quick/debug/PR tasks, this is a **routing skill** that classifies and delegates. For phase and milestone work, this is an **autonomous orchestrator** that drives backlog scan, WSJF prioritization, roadmap revision, phase planning, execution, and milestone completion — with configurable human oversight levels.
 
 **Arguments:** `<task-description | Jira-URL | [TICKET-ID]> [--complexity=TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=flagged|milestone|phase|full-auto] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask]`
