@@ -20,8 +20,8 @@
 
 **Depends on:** None
 
-- [ ] Add `readProjectBranding(projectDir?)` to `packages/luca-framework/src/utils/branding.ts`
-- [ ] Create `packages/luca-framework/src/utils/alias-skill.ts` with `createAliasSkill()` and `cleanupStaleAlias()`
+- [x] Add `readProjectBranding(projectDir?)` to `packages/luca-framework/src/utils/branding.ts`
+- [x] Create `packages/luca-framework/src/utils/alias-skill.ts` with `createAliasSkill()` and `cleanupStaleAlias()`
 
 ### Phase 2 — Vault-Init Wiring + Skill Preambles
 

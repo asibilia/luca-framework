@@ -1,6 +1,6 @@
 {
   "status": "active",
-  "value": "executing",
+  "value": "verifying",
   "historyValue": {},
   "context": {
     "session_id": "b6b11cd3-3b5f-448d-b11c-748d2df6ab9b",
@@ -74,7 +74,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [],
+    "phase_results": [
+      {
+        "phase_id": 1,
+        "status": "passed",
+        "summary": "Phase 1 passed",
+        "errors": [],
+        "duration_ms": 0,
+        "timestamp": "2026-03-19T00:05:00.499Z"
+      }
+    ],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
@@ -90,34 +99,7 @@
       "timestamp": "2026-03-18T23:32:36.734Z"
     },
     "started_at": "2026-03-18T23:22:01.071Z",
-    "last_transition_at": "2026-03-18T23:40:22.082Z"
+    "last_transition_at": "2026-03-19T00:07:58.537Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 2,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-03-18T23:40:22.083Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }
