@@ -223,18 +223,12 @@ export const vaultInitCommand = defineCommand({
       process.exit(1);
     }
 
-    // Create alias skill for custom command prefix
-    try {
-      await cleanupStaleAlias(config.branding.commandPrefix);
-      await createAliasSkill(
-        config.branding.commandPrefix,
-        config.branding.frameworkName,
-      );
-    } catch (error) {
-      // Alias creation failure is non-fatal
-      const reason = error instanceof Error ? error.message : String(error);
-      p.log.warn(`Alias skill creation failed: ${reason}`);
-    }
+    // Create alias skill for custom command prefix (both functions handle errors internally)
+    await cleanupStaleAlias(config.branding.commandPrefix);
+    await createAliasSkill(
+      config.branding.commandPrefix,
+      config.branding.frameworkName,
+    );
 
     // Vault setup step (after file generation, before success output)
     let vaultConfigured = false;

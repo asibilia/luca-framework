@@ -1,8 +1,25 @@
 import { join } from "pathe";
+import { z } from "zod";
 
 import type { BrandingConfig } from "../types";
 
 import { safeSanitizeJsonParse } from "./sanitize";
+
+/**
+ * Zod schema for validating the branding section of config.json.
+ *
+ * Ensures that branding fields from disk are actually strings before
+ * downstream callers like `.toUpperCase()` touch them. Unknown keys
+ * are passed through so future additions do not break validation.
+ */
+const BrandingConfigSchema = z
+  .object({
+    commandPrefix: z.string().optional(),
+    frameworkName: z.string().optional(),
+    ticketPattern: z.string().optional(),
+    placeholderTicket: z.string().optional(),
+  })
+  .passthrough();
 
 /**
  * Default branding configuration - used when user skips customization.
@@ -258,7 +275,10 @@ export async function readProjectBranding(
     }
 
     const raw = result.data as Record<string, unknown>;
-    const partial = (raw.branding ?? {}) as Partial<BrandingConfig>;
+    const parseResult = BrandingConfigSchema.safeParse(raw.branding ?? {});
+    const partial: Partial<BrandingConfig> = parseResult.success
+      ? parseResult.data
+      : {};
 
     return mergeBranding(partial);
   } catch {
