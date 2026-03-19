@@ -39,8 +39,8 @@
 
 **Depends on:** Phase 2
 
-- [ ] Version bump in `packages/luca-framework/package.json`
-- [ ] Verify: `bunx --bun tsc --noEmit` zero errors
+- [x] Version bump in `packages/luca-framework/package.json`
+- [x] Verify: `bunx --bun tsc --noEmit` zero errors
 - [ ] Verify: `bun run build:all` clean build (run outside Claude Code)
 - [ ] Verify: `luca vault:init` with custom prefix creates alias skill
 - [ ] Verify: `/prefix` delegates to `/lu`
