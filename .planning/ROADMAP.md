@@ -29,9 +29,9 @@
 
 **Depends on:** Phase 1
 
-- [ ] Modify `packages/luca-framework/src/commands/vault-init.ts` to call `createAliasSkill()` after `generateFiles()`
-- [ ] Add branding preamble to `src/skills/luca/lu.skill.ts`
-- [ ] Add branding preamble to `src/skills/general/help.skill.ts`
+- [x] Modify `packages/luca-framework/src/commands/vault-init.ts` to call `createAliasSkill()` after `generateFiles()`
+- [x] Add branding preamble to `src/skills/luca/lu.skill.ts`
+- [x] Add branding preamble to `src/skills/general/help.skill.ts`
 
 ### Phase 3 — Integration Verification + Version Bump
 

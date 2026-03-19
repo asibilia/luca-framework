@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v5.4.0 — Branding & Personalization
-- **Status:** Verifying
+- **Status:** Learning
 - **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-19
@@ -24,10 +24,6 @@
   Phase 1: complete — Phase 1 passed
 ```
 
-## Verification
-
-- **Attempts:** 0 / 3
-
 ## Git Context
 
 - **Branch:** feat/v5.4.0-branding-personalization
@@ -35,9 +31,9 @@
 
 ## Allowed Events
 
-- `VERIFY_PASSED`
-- `VERIFY_FAILED`
-- `VERIFY_HALTED`
+- `LEARN_COMPLETE`
+- `PROCESS_DATA_COMPLETE`
+- `SKIP`
 
 ## Previous Milestones
 
@@ -62,4 +58,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-19T13:36:17.393Z_
+_State generated from machine snapshot at 2026-03-19T13:39:32.724Z_
