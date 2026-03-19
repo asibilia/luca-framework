@@ -11,6 +11,7 @@ import {
   loadConfigFromFile,
 } from "../utils/wizard";
 import { generateFiles, setupCleanupHandler } from "../utils/files";
+import { createAliasSkill, cleanupStaleAlias } from "../utils/alias-skill";
 import {
   runVaultWizard,
   writeVaultConfig,
@@ -222,6 +223,13 @@ export const vaultInitCommand = defineCommand({
       process.exit(1);
     }
 
+    // Create alias skill for custom command prefix (both functions handle errors internally)
+    await cleanupStaleAlias(config.branding.commandPrefix);
+    await createAliasSkill(
+      config.branding.commandPrefix,
+      config.branding.frameworkName,
+    );
+
     // Vault setup step (after file generation, before success output)
     let vaultConfigured = false;
     let vaultName: string | null = null;
@@ -310,6 +318,7 @@ Files created:
 - .planning/manifest.json (installation tracking)
 - ${harnessLine}
 ${vaultStatus}
+${config.branding.commandPrefix !== "lu" ? `- /${config.branding.commandPrefix} alias skill created (delegates to /lu)` : ""}
     `);
 
     // Offer interactive tour (unless --quick, --no-tour, or --config)

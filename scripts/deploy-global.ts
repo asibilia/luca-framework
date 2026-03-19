@@ -559,8 +559,13 @@ async function mergeSettingsWithLibrary(): Promise<string | null> {
   settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
 
   // Step 3: Generate proposed hooks from canonical registry
+  // Filter out hooks that are in SKIP_HOOKS (not deployed globally)
   const globalHooksDir = join(GLOBAL_DIR, "hooks");
-  const registry = resolveCanonicalRegistry();
+  const fullRegistry = resolveCanonicalRegistry();
+  const skipNames = new Set([...SKIP_HOOKS].map((f) => f.replace(/\.sh$/, "")));
+  const registry = Object.fromEntries(
+    Object.entries(fullRegistry).filter(([name]) => !skipNames.has(name)),
+  );
   const proposedHooks = generateClaudeHooksConfigFromCanonical(registry, {
     commandPrefix: `"${globalHooksDir}`,
     scriptExtension: ".sh",

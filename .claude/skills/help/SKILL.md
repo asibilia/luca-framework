@@ -5,6 +5,8 @@ Show available Luca commands, usage guide, and workflow overview.
 ## main
 
 <main>
+**Branding:** Read `.planning/config.json` branding section at session start. Use `/{commandPrefix}` instead of `/lu` and `{frameworkName}` instead of `Luca` in ALL user-facing output. If config is missing or branding is absent, fall back to defaults (`/lu`, `Luca`).
+
 # Luca Help
 
 Display the complete Luca command reference.
