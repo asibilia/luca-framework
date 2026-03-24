@@ -13,9 +13,13 @@
  *
  * @module
  */
-import type { Adapter as FullAdapter } from "../__schemas/adapter.schemas";
+import type {
+  Adapter as FullAdapter,
+  AdapterStepResult,
+} from "../__schemas/adapter.schemas";
 import type {
   Adapter as WorkflowAdapter,
+  WorkflowStep,
   StepResult,
 } from "~/workflow/__schemas/workflow.schemas";
 
@@ -59,7 +63,14 @@ export function bridgeAdapterForExecutor(
   return {
     name: adapter.config.name,
     executeStep: async (step, _input, context): Promise<StepResult> => {
-      const result = await adapterExecuteStep(step, context);
+      // The DAG executor always provides fully-parsed WorkflowStep instances
+      // (with all defaults applied). The Zod z.function() input type makes
+      // defaults optional, but at runtime they are always present. Assert
+      // to the output type so the T3 adapter receives the correct shape.
+      const result: AdapterStepResult = await adapterExecuteStep(
+        step as WorkflowStep,
+        context,
+      );
       return {
         stepId: step.id,
         status: result.success ? "completed" : "failed",

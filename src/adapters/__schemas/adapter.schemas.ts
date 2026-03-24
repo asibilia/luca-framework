@@ -14,6 +14,7 @@ import { z } from "zod";
 import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
 import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
 import type { BaseRule } from "~/rules/__schemas/rule.schemas";
+import type { WorkflowStep } from "~/workflow/__schemas/workflow.schemas";
 
 /**
  * Describes what features an adapter supports.
@@ -151,16 +152,12 @@ export type Adapter = {
    * Execute a single DAG workflow step in this environment.
    * Optional because IDE adapters compile but do not execute.
    *
-   * The `step` parameter is typed as `unknown` as a temporary measure.
-   * B09 (DAG-adapter integration) will narrow this to the concrete
-   * `WorkflowStep` type from `src/workflow/`.
-   *
-   * @param step - The workflow step to execute (WorkflowStep from src/workflow/)
+   * @param step - The workflow step to execute
    * @param context - Accumulated execution context from prior steps
    * @returns The step execution result
    */
   executeStep?: (
-    step: unknown,
+    step: WorkflowStep,
     context: Record<string, unknown>,
   ) => Promise<AdapterStepResult>;
 

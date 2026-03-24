@@ -18,6 +18,7 @@ import type { Adapter, AdapterStepResult } from "../__schemas/adapter.schemas";
 import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
 import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
 import type { BaseRule } from "~/rules/__schemas/rule.schemas";
+import type { WorkflowStep } from "~/workflow/__schemas/workflow.schemas";
 import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { emitAgentMarkdown } from "./agent-emitter";
 import { emitSkillMarkdown } from "./skill-emitter";
@@ -101,16 +102,16 @@ export function createClaudeAdapter(): Adapter {
     },
 
     executeStep: async (
-      _step: unknown,
+      _step: WorkflowStep,
       _context: Record<string, unknown>,
     ): Promise<AdapterStepResult> => {
-      // Stub: DAG-to-prose compilation will be implemented in B09
-      // when Phase A's WorkflowStep type is available.
+      // Stub: DAG-to-prose compilation is future work.
+      // The bridge (adapter-executor-bridge.ts) wraps this into StepResult.
       return {
         success: false,
         error:
           "Claude adapter executeStep is not yet implemented. " +
-          "DAG-to-prose compilation requires Phase A WorkflowStep type (see B09).",
+          "DAG-to-prose compilation is a future task.",
       };
     },
 

@@ -15,6 +15,7 @@ import type { Adapter, AdapterStepResult } from "../__schemas/adapter.schemas";
 import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
 import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
 import type { BaseRule } from "~/rules/__schemas/rule.schemas";
+import type { WorkflowStep } from "~/workflow/__schemas/workflow.schemas";
 import { ApiExecutorConfigSchema, executeViaSDK } from "./api-executor";
 
 import type { ApiExecutorConfig } from "./api-executor";
@@ -116,19 +117,17 @@ export function createApiAdapter(
     },
 
     executeStep: async (
-      step: unknown,
+      step: WorkflowStep,
       context: Record<string, unknown>,
     ): Promise<AdapterStepResult> => {
-      // Extract prompt and system prompt from the step.
-      // The step is typed as unknown until B09 wires the concrete WorkflowStep type.
-      // For now, expect step to have at minimum { id, name, handler } and
-      // a prompt derived from context.
-      const stepObj = step as Record<string, unknown>;
-      const stepName = String(stepObj.name ?? stepObj.id ?? "unknown-step");
+      // Extract prompt from the step — use typed access for name/handler,
+      // cast only for the non-schema `prompt` field which may be added
+      // by callers as an extension property.
+      const stepName = step.name;
       const prompt =
-        typeof stepObj.prompt === "string"
-          ? stepObj.prompt
-          : `Execute workflow step: ${stepName}`;
+        typeof (step as Record<string, unknown>).prompt === "string"
+          ? String((step as Record<string, unknown>).prompt)
+          : `Execute workflow step: ${stepName}. Handler: ${step.handler}`;
 
       // Build system prompt from context if an agent definition is available
       const systemPrompt =
