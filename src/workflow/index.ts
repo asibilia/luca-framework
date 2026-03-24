@@ -79,8 +79,9 @@ export type {
 // --- DAG Builder -------------------------------------------------------------
 // Added by A04
 
-// --- DAG Sorter --------------------------------------------------------------
-// Added by A05
+// ─── DAG Sorter ──────────────────────────────────────────────────────────────
+
+export { topologicalSort, getExecutionOrder } from "./__helpers/dag-sorter.ts";
 
 // --- DAG Validator -----------------------------------------------------------
 // Added by A06
