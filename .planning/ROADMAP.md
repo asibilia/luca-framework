@@ -2,9 +2,145 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v6.0.0 — Runtime Foundation & Adapter Layer
 
 ---
+
+## v6.0.0 — Runtime Foundation & Adapter Layer
+
+**Goal:** Build the typed DAG workflow engine, adapter architecture, eval domain, and v2 research infrastructure. Establishes the runtime foundation for multi-IDE compilation, behavioral evaluation, and enhanced research workflows.
+
+**Todos:** runtime-a01–a11, runtime-b01–b10, runtime-c01–c10, runtime-x01–x08, v2-config, v2-open-questions, v2-phase-1–5
+
+**Complexity:** COMPLEX
+
+### Phase 1 — Architecture Docs + Boundary Script
+
+**Goal:** Register new domains (workflow T1, eval T1, adapters T3) in architecture docs and boundary check script before any implementation begins.
+
+**Depends on:** None
+
+- [ ] X01: Update domain-architecture and module-boundary docs for new domains
+- [ ] X02: Update boundary check script for workflow, adapters, eval domains
+
+### Phase 2 — Workflow Domain Scaffolding + Schemas
+
+**Goal:** Create src/workflow/ directory structure, core Zod schemas (WorkflowStep, WorkflowDAG, StepResult), and step contract schemas.
+
+**Depends on:** Phase 1
+
+- [ ] A01: Create workflow domain scaffolding
+- [ ] A02: Define core workflow schemas
+- [ ] A03: Define step contract schemas
+
+### Phase 3 — DAG Builder, Sorter, Validator
+
+**Goal:** Implement the DAG builder fluent API, topological sorter with wave grouping, and DAG validator with 5 static checks.
+
+**Depends on:** Phase 2
+
+- [ ] A04: Implement DAG builder fluent API
+- [ ] A05: Implement topological sorter with wave grouping
+- [ ] A06: Implement DAG validator with 5 static checks
+
+### Phase 4 — DAG Executor, Serializer, Visualizer, Pipeline, Registration
+
+**Goal:** Complete the workflow domain with the DAG executor, checkpoint/resume serializer, topology transformer, reference phase pipeline, and domain registration.
+
+**Depends on:** Phase 3
+
+- [ ] A07: Implement DAG executor with wave execution
+- [ ] A08: Implement DAG serializer for checkpoint/resume
+- [ ] A09: DAG-to-topology transformer for luca-observer
+- [ ] A10: Define reference phase pipeline DAG
+- [ ] A11: Register workflow domain in boundary check and docs
+
+### Phase 5 — Eval Domain (Full Build)
+
+**Goal:** Build the complete eval domain: scaffolding, graders (code/LLM/composite), runner, reporter, comparator, seed eval suites for lu-router/lu-verifier/convergence, CLI integration, and domain registration.
+
+**Depends on:** Phase 1
+
+- [ ] C01: Eval domain scaffolding + schemas
+- [ ] C02: Eval graders (code, LLM, composite)
+- [ ] C03: Eval runner
+- [ ] C04: Eval reporter
+- [ ] C05: Eval comparator
+- [ ] C06: Seed eval suite for lu-router
+- [ ] C07: Seed eval suite for lu-verifier
+- [ ] C08: Seed eval suite for convergence detector
+- [ ] C09: CLI integration for luca eval
+- [ ] C10: Domain barrel + boundary check registration
+
+### Phase 6 — Adapter Architecture (B01–B07, B09, B10)
+
+**Goal:** Build the adapter domain: schemas, registry, Claude agent/skill emitters, API executor, adapter assembly, DAG-adapter integration, and domain registration. Excludes B08 (compiler refactoring — isolated in Phase 7).
+
+**Depends on:** Phase 4
+
+- [ ] B01: Adapter schemas (AdapterConfigSchema, Adapter type, EmitResult)
+- [ ] B02: Adapter registry with discovery priority
+- [ ] B03: Claude adapter agent emitter
+- [ ] B04: Claude adapter skill emitter
+- [ ] B05: Claude adapter main (wire emitters into Adapter interface)
+- [ ] B06: API adapter executor (Claude Agent SDK)
+- [ ] B07: API adapter main (wire executor into Adapter interface)
+- [ ] B09: DAG-adapter integration (wire dag-executor to adapter.executeStep)
+- [ ] B10: Domain barrel, boundary registration, built-in adapter pre-registration
+
+### Phase 7 — Compiler Refactoring (B08 ISOLATED)
+
+**Goal:** Refactor compile.ts to delegate to new adapter emitters. CRITICAL: requires manual `bun run build:all` + diff verification outside Claude Code session. Byte-identical output constraint.
+
+**Depends on:** Phase 6
+
+- [ ] B08: Compiler refactoring — delegate compile.ts to Claude adapter emitters
+
+### Phase 8 — Cross-Cutting Integration
+
+**Goal:** Complete cross-cutting work: backlog integration audit, targeted recompilation script, behavioral equivalence criteria, state machine integration plan, iteration system plan, open questions resolution.
+
+**Depends on:** Phase 7
+
+- [ ] X03: Backlog integration audit — v2 pipeline overlap resolution
+- [ ] X04: Targeted recompilation script
+- [ ] X05: Behavioral equivalence acceptance criteria
+- [ ] X06: State machine integration plan
+- [ ] X07: Iteration system integration plan
+- [ ] X08: Open questions resolution
+
+### Phase 9 — v2 Research Infrastructure + Review Loop + MuninnDB Graduation
+
+**Goal:** Build v2 research system: 4 parallel researcher agents, convergence-based review loop, and MuninnDB graduation for research files.
+
+**Depends on:** Phase 8
+
+- [ ] v2-phase-1: Research Infrastructure — 4 parallel researcher agents
+- [ ] v2-phase-2: Review Loop — convergence-based research review
+- [ ] v2-phase-3: MuninnDB Graduation — research files to semantic memory
+
+### Phase 10 — v2 Plan/Executor Enhancement + Config Updates
+
+**Goal:** Enhance plan and executor with research refs, per-task MuninnDB recall, config schema updates, and resolve open questions.
+
+**Depends on:** Phase 9
+
+- [ ] v2-phase-4: Plan Enhancement — research refs + plan review loop
+- [ ] v2-phase-5: Executor Enhancement — per-task MuninnDB recall
+- [ ] v2-config-and-schema-updates: Config & schema updates for v2
+- [ ] v2-open-questions-to-resolve: Open questions resolution
+
+---
+
+## Deferred to M2
+
+| Todo Group                    | Scope                                  | Reason                                         |
+| ----------------------------- | -------------------------------------- | ---------------------------------------------- |
+| runtime-d01–d11               | Luca Studio (dev server + UI views)    | WSJF 2.8, CRITICAL effort, independent package |
+| runtime-e01–e04               | IDE adapters (Cursor/Windsurf/VS Code) | Depends on B-group stability                   |
+| v2-phase-6                    | Orchestrator integration (lu.skill.ts) | HIGH blast radius, Full+Human verification     |
+| v2-enhanced-existing-agents   | Agent enhancements                     | Sequential dependency on v2-phase-5            |
+| v2-external-research-patterns | External research patterns             | Design reference, low urgency                  |
 
 ## Backlog (Unassigned)
 
