@@ -1,16 +1,16 @@
 {
   "status": "active",
-  "value": "verifying",
+  "value": "executing",
   "historyValue": {},
   "context": {
-    "session_id": "eac8a93b-aaab-4a17-a589-7d5d88fa5ddc",
+    "session_id": "05be1d5e-f2a0-4f0b-b27f-9fcd0c77d172",
     "github_issue": 99,
     "branch": "99--v6-runtime-foundation-adapter-layer",
     "base_branch": "main",
     "current_milestone": "v6.0.0 — Runtime Foundation & Adapter Layer",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "COMPLEX",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -75,26 +75,44 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 1,
-        "status": "passed",
-        "summary": "Phase 1 passed: registered workflow/eval/adapters in docs + boundary script",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-24T13:54:48.522Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Large",
+    "appetite_token_ceiling": 200000,
+    "appetite_context_percent": 60,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-24T13:40:11.672Z",
-    "last_transition_at": "2026-03-24T14:12:04.252Z"
+    "started_at": "2026-03-24T14:43:45.145Z",
+    "last_transition_at": "2026-03-24T17:11:34.512Z"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "wave_executing",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 1,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {
+            "started_at": "2026-03-24T17:11:34.513Z"
+          }
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }
