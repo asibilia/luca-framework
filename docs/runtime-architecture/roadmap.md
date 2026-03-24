@@ -65,7 +65,9 @@
 
 ---
 
-### Phase C: Agent Evaluation Framework
+### Phase C: Agent Evaluation Framework -- COMPLETE
+
+**Status:** Complete (v6.0.0, Phase 05)
 
 **Goal:** Systematic agent quality measurement. Runs against the API adapter (headless), CI-friendly.
 
@@ -88,13 +90,14 @@
 
 **Key deliverables:**
 
-- `luca eval` command runs agent evaluation suite
+- `bun run eval:run` command runs agent evaluation suites
 - Quality reports per agent with pass/fail and accuracy metrics
 - Regression detection between agent versions
+- Three seed eval suites: lu-router (25 cases), lu-verifier (25 cases), convergence (25 cases)
 
 **Estimated effort:** 1-2 weeks
 
-**Note:** Phase C can run in parallel with Phase B since it depends on the adapter interface (defined in Phase B's schemas) but can be developed against a mock adapter.
+**Note:** Phase C was developed against a mock adapter in parallel with Phase B, as planned.
 
 ---
 
@@ -163,13 +166,13 @@ graph TD
 
 ## Timeline (estimated)
 
-| Phase                  | Effort      | Depends On         | Can Overlap With |
-| ---------------------- | ----------- | ------------------ | ---------------- |
-| A: DAG Engine          | 2-3 weeks   | None               | —                |
-| B: Adapters            | 2-3 weeks   | A                  | C                |
-| C: Eval Framework      | 1-2 weeks   | A (interface only) | B                |
-| D: Luca Studio         | 2-3 weeks   | B, C               | —                |
-| E: Additional Adapters | 1 week each | B                  | D                |
+| Phase                  | Effort      | Depends On         | Can Overlap With | Status       |
+| ---------------------- | ----------- | ------------------ | ---------------- | ------------ |
+| A: DAG Engine          | 2-3 weeks   | None               | —                |              |
+| B: Adapters            | 2-3 weeks   | A                  | C                |              |
+| C: Eval Framework      | 1-2 weeks   | A (interface only) | B                | **COMPLETE** |
+| D: Luca Studio         | 2-3 weeks   | B, C               | —                |              |
+| E: Additional Adapters | 1 week each | B                  | D                |              |
 
 **Total estimated:** 8-12 weeks for Phases A-D. Phase E is ongoing.
 
@@ -182,7 +185,7 @@ After all phases complete:
 - [ ] Mermaid diagrams auto-generated from DAG definitions
 - [ ] Claude adapter produces identical output to current build:all (backward compat)
 - [ ] API adapter enables headless workflow execution (CI/CD ready)
-- [ ] Agent evaluation suite with regression detection
+- [x] Agent evaluation suite with regression detection
 - [ ] Luca Studio provides visual DAG, agent browser, and eval viewer
 - [ ] At least one non-Claude adapter available
 - [ ] Existing Luca users experience zero breaking changes
