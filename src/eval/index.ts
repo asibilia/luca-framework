@@ -45,3 +45,27 @@ export type {
   EvalDeltas,
   EvalComparison,
 } from "./__schemas/eval.schemas";
+
+// ─── Helpers: Graders ────────────────────────────────────────────────────
+export { gradeWithCode } from "./__helpers/code-grader";
+export type { CustomGraderFn } from "./__helpers/code-grader";
+export { gradeWithLlm } from "./__helpers/llm-grader";
+export type { LlmAdapter } from "./__helpers/llm-grader";
+export { gradeWithComposite } from "./__helpers/composite-grader";
+
+// ─── Helpers: Reporter ───────────────────────────────────────────────────
+export {
+  writeJsonReport,
+  formatMarkdownReport,
+  printConsoleReport,
+  printComparisonReport,
+  loadLatestReport,
+  loadReport,
+} from "./__helpers/eval-reporter";
+export type { ReportFormat } from "./__helpers/eval-reporter";
+
+// ─── Helpers: Comparator ─────────────────────────────────────────────────
+export {
+  compareEvalRuns,
+  compareWithLatestBaseline,
+} from "./__helpers/eval-comparator";
