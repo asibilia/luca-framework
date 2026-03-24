@@ -31,6 +31,7 @@
     "deploy:copy": "bun run ./scripts/deploy-global.ts --copy",
     "deploy:remove": "bun run ./scripts/deploy-global.ts --remove",
     "dev:observer": "bun run --filter @alecsibilia/luca-observer dev",
+    "eval:run": "bun scripts/eval.ts",
     "eval:skills": "bun scripts/eval-skills.ts",
     "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts"
