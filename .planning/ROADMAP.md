@@ -39,9 +39,9 @@
 
 **Depends on:** Phase 2
 
-- [ ] A04: Implement DAG builder fluent API
-- [ ] A05: Implement topological sorter with wave grouping
-- [ ] A06: Implement DAG validator with 5 static checks
+- [x] A04: Implement DAG builder fluent API
+- [x] A05: Implement topological sorter with wave grouping
+- [x] A06: Implement DAG validator with 5 static checks
 
 ### Phase 4 — DAG Executor, Serializer, Visualizer, Pipeline, Registration
 
