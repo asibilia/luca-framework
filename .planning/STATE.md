@@ -2,43 +2,36 @@
 
 ## Current Position
 
-- **Current Milestone:** v6.0.0 — Runtime Foundation & Adapter Layer
-- **Status:** Verifying
+- **Status:** Executing
 - **Task Complexity:** COMPLEX
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-24
 
 ## Session Identity
 
-- **Session ID:** 05be1d5e-f2a0-4f0b-b27f-9fcd0c77d172
-- **GitHub Issue:** #99
+- **Session ID:** f99173e7-bbcc-4669-9818-27a064f526af
 
 ## Appetite
 
-- **Level:** Small
-- **Token Ceiling:** 50000
-- **Context Budget:** 40%
+- **Level:** Large
+- **Token Ceiling:** 200000
+- **Context Budget:** 60%
 
 ## Progress
 
 ```
-  Phase 6: complete — Phase 6 Adapter Architecture complete: 12 files, 1165 lines, 4 waves, all checks passed
+(no phases completed yet)
 ```
-
-## Verification
-
-- **Attempts:** 0 / 3
 
 ## Git Context
 
-- **Branch:** 99--v6-runtime-foundation-adapter-layer
 - **Base Branch:** main
 
 ## Allowed Events
 
-- `VERIFY_PASSED`
-- `VERIFY_FAILED`
-- `VERIFY_HALTED`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -63,4 +56,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-24T19:46:06.431Z_
+_State generated from machine snapshot at 2026-03-24T20:33:00.595Z_
