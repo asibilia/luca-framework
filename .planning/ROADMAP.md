@@ -2,51 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v5.4.0 — Branding & Personalization
-
----
-
-## v5.4.0 — Branding & Personalization
-
-**Goal:** Wire up the branding/personalization system so users who configure `commandPrefix` and `frameworkName` during `vault:init` see their chosen branding in the user-facing surface (entry command, help text, tour messages, status output). Internal names stay unchanged.
-
-**Todo:** fix-branding-personalization-system (WSJF 8.00)
-
-**Complexity:** SIMPLE
-
-### Phase 1 — Core Branding Infrastructure
-
-**Goal:** Create the foundational utilities — `readProjectBranding()` helper and `createAliasSkill()`/`cleanupStaleAlias()` factory.
-
-**Depends on:** None
-
-- [x] Add `readProjectBranding(projectDir?)` to `packages/luca-framework/src/utils/branding.ts`
-- [x] Create `packages/luca-framework/src/utils/alias-skill.ts` with `createAliasSkill()` and `cleanupStaleAlias()`
-
-### Phase 2 — Vault-Init Wiring + Skill Preambles
-
-**Goal:** Wire alias creation into `vault:init` and add runtime branding preambles to user-facing skills.
-
-**Depends on:** Phase 1
-
-- [x] Modify `packages/luca-framework/src/commands/vault-init.ts` to call `createAliasSkill()` after `generateFiles()`
-- [x] Add branding preamble to `src/skills/luca/lu.skill.ts`
-- [x] Add branding preamble to `src/skills/general/help.skill.ts`
-
-### Phase 3 — Integration Verification + Version Bump
-
-**Goal:** Bump version, run full verification checklist, confirm end-to-end branding works.
-
-**Depends on:** Phase 2
-
-- [x] Version bump in `packages/luca-framework/package.json`
-- [x] Verify: `bunx --bun tsc --noEmit` zero errors
-- [ ] Verify: `bun run build:all` clean build (run outside Claude Code)
-- [ ] Verify: `luca vault:init` with custom prefix creates alias skill
-- [ ] Verify: `/prefix` delegates to `/lu`
-- [ ] Verify: `/help` shows `/{prefix}` not `/lu`
-- [ ] Verify: Re-run with different prefix cleans up old alias
-- [ ] Verify: Default prefix "lu" creates no alias
+**Current Milestone:** Planning next
 
 ---
 
@@ -224,6 +180,7 @@
 - **v5.0.0** — Global NPM Package: 9 phases, 86 commits, 102 files changed ([View Archive](milestones/v5.0.0-ROADMAP.md))
 - **v5.2.0** — Distribution & Install Quality: 8 phases, 43 commits, 201 files changed ([View Archive](milestones/v5.2.0-ROADMAP.md))
 - **v5.3.0** — Dogfood via Global Install: 9 phases, 32 commits, 69 files changed ([View Archive](milestones/v5.3.0-ROADMAP.md))
+- **v5.4.0** — Branding & Personalization: 3 phases, 3 commits, 37 files changed ([View Archive](milestones/v5.4.0-ROADMAP.md))
 
 ---
 
