@@ -94,7 +94,7 @@
 
 **Depends on:** Phase 6
 
-- [ ] B08: Compiler refactoring — delegate compile.ts to Claude adapter emitters
+- [x] B08: Compiler refactoring — delegate compile.ts to Claude adapter emitters
 
 ### Phase 8 — Cross-Cutting Integration
 
