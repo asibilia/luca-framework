@@ -64,6 +64,15 @@ export {
 } from "./__helpers/eval-reporter";
 export type { ReportFormat } from "./__helpers/eval-reporter";
 
+// ─── Helpers: Runner ─────────────────────────────────────────────────────
+export { runEvalSuite, runEvalSuites } from "./__helpers/eval-runner";
+export type { RunEvalOptions } from "./__helpers/eval-runner";
+export {
+  createAnthropicAdapter,
+  createMockAdapter,
+  createMockAdapterWithResponses,
+} from "./__helpers/anthropic-adapter";
+
 // ─── Helpers: Comparator ─────────────────────────────────────────────────
 export {
   compareEvalRuns,
