@@ -89,8 +89,10 @@ export { topologicalSort, getExecutionOrder } from "./__helpers/dag-sorter.ts";
 
 export { validateDAG } from "./__helpers/dag-validator.ts";
 
-// --- DAG Executor ------------------------------------------------------------
-// Added by A07
+// ─── DAG Executor ────────────────────────────────────────────────────────────
+
+export { executeDAG } from "./__helpers/dag-executor.ts";
+export type { ExecuteDAGOptions } from "./__helpers/dag-executor.ts";
 
 // ─── DAG Serializer ──────────────────────────────────────────────────────────
 
