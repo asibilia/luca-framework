@@ -76,8 +76,10 @@ export type {
   CommitOutput,
 } from "./__schemas/contracts.schemas.ts";
 
-// --- DAG Builder -------------------------------------------------------------
-// Added by A04
+// ─── DAG Builder ─────────────────────────────────────────────────────────────
+
+export { buildPhaseDAG } from "./__helpers/dag-builder.ts";
+export type { StepConfig, DAGBuilder } from "./__helpers/dag-builder.ts";
 
 // ─── DAG Sorter ──────────────────────────────────────────────────────────────
 
