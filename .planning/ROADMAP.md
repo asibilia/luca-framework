@@ -29,9 +29,9 @@
 
 **Depends on:** Phase 1
 
-- [ ] A01: Create workflow domain scaffolding
-- [ ] A02: Define core workflow schemas
-- [ ] A03: Define step contract schemas
+- [x] A01: Create workflow domain scaffolding
+- [x] A02: Define core workflow schemas
+- [x] A03: Define step contract schemas
 
 ### Phase 3 — DAG Builder, Sorter, Validator
 
