@@ -49,11 +49,11 @@
 
 **Depends on:** Phase 3
 
-- [ ] A07: Implement DAG executor with wave execution
-- [ ] A08: Implement DAG serializer for checkpoint/resume
-- [ ] A09: DAG-to-topology transformer for luca-observer
-- [ ] A10: Define reference phase pipeline DAG
-- [ ] A11: Register workflow domain in boundary check and docs
+- [x] A07: Implement DAG executor with wave execution
+- [x] A08: Implement DAG serializer for checkpoint/resume
+- [x] A09: DAG-to-topology transformer for luca-observer
+- [x] A10: Define reference phase pipeline DAG
+- [x] A11: Register workflow domain in boundary check and docs
 
 ### Phase 5 — Eval Domain (Full Build)
 
