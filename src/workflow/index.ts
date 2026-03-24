@@ -12,7 +12,32 @@
 // Added by A02
 
 // --- Step Contracts ----------------------------------------------------------
-// Added by A03
+
+// ─── Step Contracts ──────────────────────────────────────────────────────────
+
+export {
+  ClassifyOutputSchema,
+  AppetiteSchema,
+  DiscussOutputSchema,
+  PlanOutputSchema,
+  ExecuteOutputSchema,
+  VerificationGapSchema,
+  VerifyOutputSchema,
+  LearnOutputSchema,
+  CommitOutputSchema,
+} from "./__schemas/contracts.schemas.ts";
+
+export type {
+  ClassifyOutput,
+  Appetite,
+  DiscussOutput,
+  PlanOutput,
+  ExecuteOutput,
+  VerificationGap,
+  VerifyOutput,
+  LearnOutput,
+  CommitOutput,
+} from "./__schemas/contracts.schemas.ts";
 
 // --- DAG Builder -------------------------------------------------------------
 // Added by A04
