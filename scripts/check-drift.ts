@@ -20,6 +20,57 @@ import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
 import path from "path";
 import { readdirSync, statSync } from "fs";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
+import { transformOutputsToTemplates } from "../src/compilers";
+import { sanitizeJsonParse } from "./sanitize";
+import { defaultBranding } from "./branding";
+
+/**
+ * Read branding config from .planning/config.json, falling back to defaults.
+ * Mirrors the branding resolution logic in build-deploy.ts.
+ */
+function readBrandingContext(projectDir: string): Record<string, string> {
+  let frameworkName = defaultBranding.frameworkName;
+  let commandPrefix = defaultBranding.commandPrefix;
+
+  try {
+    const configPath = path.join(projectDir, ".planning/config.json");
+    const configFile = Bun.file(configPath);
+    // Synchronous check via existsSync not available — use try/catch
+    const text = require("fs").readFileSync(configPath, "utf8");
+    const config = sanitizeJsonParse(text) as Record<string, unknown>;
+    const branding = config.branding as
+      | { frameworkName?: string; commandPrefix?: string }
+      | undefined;
+    if (branding) {
+      frameworkName = branding.frameworkName ?? frameworkName;
+      commandPrefix = branding.commandPrefix ?? commandPrefix;
+    }
+  } catch {
+    // Use defaults
+  }
+
+  return {
+    frameworkName,
+    commandPrefix,
+    commandSlash: `/${commandPrefix}`,
+    nameLowercase: frameworkName.toLowerCase(),
+    nameUppercase: frameworkName.toUpperCase(),
+  };
+}
+
+/**
+ * Resolve EJS template placeholders in content using branding context.
+ * Handles `<%= branding.X %>` patterns produced by transformOutputsToTemplates.
+ */
+function resolveBranding(
+  content: string,
+  branding: Record<string, string>,
+): string {
+  return content.replace(
+    /<%=\s*branding\.(\w+)\s*%>/g,
+    (_match, key) => branding[key] ?? _match,
+  );
+}
 
 interface DriftResult {
   file: string;
@@ -31,8 +82,42 @@ async function main() {
   const projectDir = resolvePackageRoot();
   const results: DriftResult[] = [];
 
-  // Generate all outputs in memory
-  const generated = await generateAllOutputs();
+  // Generate all outputs in memory (pre-branding)
+  const rawGenerated = await generateAllOutputs();
+
+  // Apply branding transform to .claude/ entries (same as compile+deploy pipeline)
+  // This converts `# lu` → `# /lu`, `lu-router` → `{prefix}-router`, etc.
+  const branding = readBrandingContext(projectDir);
+  const claudeEntries = new Map<string, string>();
+  const nonClaudeEntries = new Map<string, string>();
+
+  for (const [relPath, content] of rawGenerated) {
+    if (relPath.startsWith(".claude/")) {
+      claudeEntries.set(relPath, content);
+    } else {
+      nonClaudeEntries.set(relPath, content);
+    }
+  }
+
+  // Transform .claude/ entries through branding pipeline
+  const templates = transformOutputsToTemplates(claudeEntries);
+  const generated = new Map<string, string>();
+
+  for (const [templatePath, templateContent] of templates) {
+    // Resolve template path: __branding.commandPrefix__ → actual prefix
+    const resolvedPath = templatePath.replace(
+      /__branding\.(\w+)__/g,
+      (_match, key) => branding[key] ?? _match,
+    );
+    // Resolve template content: <%= branding.X %> → actual value
+    const resolvedContent = resolveBranding(templateContent, branding);
+    generated.set(resolvedPath, resolvedContent);
+  }
+
+  // Add non-.claude/ entries unchanged (dist/plugin/ etc.)
+  for (const [relPath, content] of nonClaudeEntries) {
+    generated.set(relPath, content);
+  }
 
   // Compare each generated file against committed output
   for (const [relPath, expectedContent] of generated) {
