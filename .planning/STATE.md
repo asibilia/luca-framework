@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v6.0.0 — Runtime Foundation & Adapter Layer
-- **Status:** Executing
+- **Status:** Verifying
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-24
@@ -22,8 +22,12 @@
 ## Progress
 
 ```
-(no phases completed yet)
+  Phase 1: complete — Phase 1 passed: registered workflow/eval/adapters in docs + boundary script
 ```
+
+## Verification
+
+- **Attempts:** 0 / 3
 
 ## Git Context
 
@@ -32,9 +36,9 @@
 
 ## Allowed Events
 
-- `PHASE_COMPLETE`
-- `PHASE_FAILED`
-- `SUSPEND`
+- `VERIFY_PASSED`
+- `VERIFY_FAILED`
+- `VERIFY_HALTED`
 
 ## Previous Milestones
 
@@ -59,4 +63,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-24T13:54:37.420Z_
+_State generated from machine snapshot at 2026-03-24T13:55:08.758Z_

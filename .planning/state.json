@@ -1,6 +1,6 @@
 {
   "status": "active",
-  "value": "executing",
+  "value": "verifying",
   "historyValue": {},
   "context": {
     "session_id": "eac8a93b-aaab-4a17-a589-7d5d88fa5ddc",
@@ -75,7 +75,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [],
+    "phase_results": [
+      {
+        "phase_id": 1,
+        "status": "passed",
+        "summary": "Phase 1 passed: registered workflow/eval/adapters in docs + boundary script",
+        "errors": [],
+        "duration_ms": 0,
+        "timestamp": "2026-03-24T13:54:48.522Z"
+      }
+    ],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
@@ -85,34 +94,7 @@
     "appetite_context_percent": 30,
     "appetite_used_tokens": 0,
     "started_at": "2026-03-24T13:40:11.672Z",
-    "last_transition_at": "2026-03-24T13:44:25.961Z"
+    "last_transition_at": "2026-03-24T13:54:48.522Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 1,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-03-24T13:44:25.962Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }
