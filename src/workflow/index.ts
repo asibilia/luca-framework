@@ -92,8 +92,13 @@ export { validateDAG } from "./__helpers/dag-validator.ts";
 // --- DAG Executor ------------------------------------------------------------
 // Added by A07
 
-// --- DAG Serializer ----------------------------------------------------------
-// Added by A08
+// ─── DAG Serializer ──────────────────────────────────────────────────────────
+
+export {
+  saveCheckpoint,
+  loadCheckpoint,
+  clearCheckpoint,
+} from "./__helpers/dag-serializer.ts";
 
 // --- DAG Visualizer ----------------------------------------------------------
 // Added by A09
