@@ -30,6 +30,7 @@ import { phaseResearchSkill } from "../general/phase-research.skill";
 import { phaseResearchReviewSkill } from "../general/phase-research-review.skill";
 import { phaseResearchExpandSkill } from "../general/phase-research-expand.skill";
 import { phaseGraduateSkill } from "../general/phase-graduate.skill";
+import { phasePlanReviewSkill } from "../general/phase-plan-review.skill";
 import { configProfileSkill } from "../general/config-profile.skill";
 import { quickSkill } from "../general/quick.skill";
 import { repoAuditSkill } from "../general/repo-audit.skill";
@@ -104,6 +105,7 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "repo-audit": () => repoAuditSkill,
   "milestone-gaps": () => milestoneGapsSkill,
   "phase-plan": () => phasePlanSkill,
+  "phase-plan-review": () => phasePlanReviewSkill,
   "session-plan": () => sessionPlanSkill,
   progress: () => progressSkill,
   "phase-assumptions": () => phaseAssumptionsSkill,
