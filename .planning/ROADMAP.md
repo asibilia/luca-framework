@@ -61,16 +61,16 @@
 
 **Depends on:** Phase 1
 
-- [ ] C01: Eval domain scaffolding + schemas
-- [ ] C02: Eval graders (code, LLM, composite)
-- [ ] C03: Eval runner
-- [ ] C04: Eval reporter
-- [ ] C05: Eval comparator
-- [ ] C06: Seed eval suite for lu-router
-- [ ] C07: Seed eval suite for lu-verifier
-- [ ] C08: Seed eval suite for convergence detector
-- [ ] C09: CLI integration for luca eval
-- [ ] C10: Domain barrel + boundary check registration
+- [x] C01: Eval domain scaffolding + schemas
+- [x] C02: Eval graders (code, LLM, composite)
+- [x] C03: Eval runner
+- [x] C04: Eval reporter
+- [x] C05: Eval comparator
+- [x] C06: Seed eval suite for lu-router
+- [x] C07: Seed eval suite for lu-verifier
+- [x] C08: Seed eval suite for convergence detector
+- [x] C09: CLI integration for luca eval
+- [x] C10: Domain barrel + boundary check registration
 
 ### Phase 6 — Adapter Architecture (B01–B07, B09, B10)
 
