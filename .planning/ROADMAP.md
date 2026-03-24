@@ -115,9 +115,9 @@
 
 **Depends on:** Phase 8
 
-- [ ] v2-phase-1: Research Infrastructure — 4 parallel researcher agents
-- [ ] v2-phase-2: Review Loop — convergence-based research review
-- [ ] v2-phase-3: MuninnDB Graduation — research files to semantic memory
+- [x] v2-phase-1: Research Infrastructure — 4 parallel researcher agents
+- [x] v2-phase-2: Review Loop — convergence-based research review
+- [x] v2-phase-3: MuninnDB Graduation — research files to semantic memory
 
 ### Phase 10 — v2 Plan/Executor Enhancement + Config Updates
 
