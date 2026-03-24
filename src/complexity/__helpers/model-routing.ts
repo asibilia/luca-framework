@@ -200,6 +200,9 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   product: ORCHESTRATOR,
   "qa-plan-generator": ORCHESTRATOR,
 
+  // --- v2 graduator agent (ORCHESTRATOR preset, Decision 10) ---
+  "lu-research-graduator": ORCHESTRATOR,
+
   // --- v2 research reviewer agents (DEEP_ANALYSIS preset, Decision 10) ---
   "lu-completeness-reviewer": DEEP_ANALYSIS,
   "lu-accuracy-reviewer": DEEP_ANALYSIS,
