@@ -28,11 +28,14 @@ const DOMAIN_TIER: Record<string, number> = {
   iteration: 1,
   observability: 1,
   interop: 1,
+  workflow: 1,
+  eval: 1,
   agents: 2,
   skills: 2,
   rules: 2,
   compilers: 3,
   hooks: 3,
+  adapters: 3,
 };
 
 const ENTITY_DOMAINS = new Set(["agents", "skills", "rules"]);
