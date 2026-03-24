@@ -100,8 +100,10 @@ export {
   clearCheckpoint,
 } from "./__helpers/dag-serializer.ts";
 
-// --- DAG Visualizer ----------------------------------------------------------
-// Added by A09
+// ─── DAG Visualizer ──────────────────────────────────────────────────────────
 
-// --- Phase Pipeline ----------------------------------------------------------
-// Added by A10
+export { dagToTopology } from "./__helpers/dag-visualizer.ts";
+
+// ─── Phase Pipeline ──────────────────────────────────────────────────────────
+
+export { PHASE_PIPELINE } from "./__helpers/phase-pipeline.ts";
