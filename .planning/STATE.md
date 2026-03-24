@@ -2,8 +2,8 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Idle
+- **Current Milestone:** v6.0.0 — Runtime Foundation & Adapter Layer
+- **Status:** Executing
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-24
@@ -11,12 +11,13 @@
 ## Session Identity
 
 - **Session ID:** eac8a93b-aaab-4a17-a589-7d5d88fa5ddc
+- **GitHub Issue:** #99
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Micro
+- **Token Ceiling:** 25000
+- **Context Budget:** 30%
 
 ## Progress
 
@@ -26,11 +27,14 @@
 
 ## Git Context
 
+- **Branch:** 99--v6-runtime-foundation-adapter-layer
 - **Base Branch:** main
 
 ## Allowed Events
 
-- `START`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -55,4 +59,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-24T13:38:20.099Z_
+_State generated from machine snapshot at 2026-03-24T13:50:39.696Z_
