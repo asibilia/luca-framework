@@ -73,7 +73,10 @@ export function generateAllShellWrappers(): Record<string, string> {
   const registry = resolveCanonicalRegistry();
   const wrappers: Record<string, string> = {};
 
-  for (const hookName of Object.keys(registry)) {
+  for (const [hookName, hook] of Object.entries(registry)) {
+    // Prompt hooks don't need shell wrappers — they're inline LLM evaluations
+    if (hook.type === "prompt") continue;
+
     const outputPath = `.claude/hooks/${hookName}.sh`;
     const content = generateShellWrapper(hookName, outputPath);
     wrappers[outputPath] = content;

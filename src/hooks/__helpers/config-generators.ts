@@ -61,11 +61,15 @@ export function generateClaudeHooksConfigFromCanonical(
       eventGroups.push(group);
     }
 
-    const hookEntry: Record<string, unknown> = {
-      type: "command",
-      command: `${options.commandPrefix}/${options.scriptExtension ? adapted.script.replace(/\.\w+$/, options.scriptExtension) : adapted.script}`,
-      timeout: adapted.timeout,
-    };
+    const hookType = canonical.type ?? "command";
+    const hookEntry: Record<string, unknown> = { type: hookType };
+
+    if (hookType === "prompt") {
+      hookEntry.prompt = canonical.prompt;
+    } else if (adapted.script) {
+      hookEntry.command = `${options.commandPrefix}/${options.scriptExtension ? adapted.script.replace(/\.\w+$/, options.scriptExtension) : adapted.script}`;
+      hookEntry.timeout = adapted.timeout;
+    }
 
     if (adapted.async) hookEntry.async = true;
     if (adapted.statusMessage) hookEntry.statusMessage = adapted.statusMessage;

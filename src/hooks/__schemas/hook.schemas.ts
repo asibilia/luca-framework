@@ -57,8 +57,12 @@ export const CanonicalHookSchema = z.object({
   tool_filter: z.string().optional(),
   /** Command substring filter for pre_tool_use hooks (e.g., commit command patterns) */
   command_filter: z.string().optional(),
-  /** Shell script filename in src/hooks/scripts/ */
-  script: z.string(),
+  /** Hook type: "command" runs a shell script (default), "prompt" injects an LLM evaluation prompt */
+  type: z.enum(["command", "prompt"]).optional(),
+  /** Shell script filename in src/hooks/scripts/ (required for command hooks) */
+  script: z.string().optional(),
+  /** Inline prompt text for prompt-type hooks (required for prompt hooks) */
+  prompt: z.string().optional(),
   /** Timeout in seconds */
   timeout: z.number().positive(),
   /** Run asynchronously in background (supported by Claude Code) */
@@ -75,8 +79,8 @@ export const HookDefinitionSchema = z.object({
   event: z.string(),
   /** Regex matcher for Claude Code tool name filtering (undefined = always fire) */
   matcher: z.string().optional(),
-  /** Shell script filename in src/hooks/scripts/ */
-  script: z.string(),
+  /** Shell script filename in src/hooks/scripts/ (undefined for prompt hooks) */
+  script: z.string().optional(),
   /** Timeout in seconds */
   timeout: z.number().positive(),
   /** Run asynchronously in background (Claude Code only) */
@@ -153,8 +157,8 @@ export interface PlatformHookConfig {
   event: string;
   /** Platform-specific matcher (undefined = always fire) */
   matcher?: string | string[];
-  /** Shell script filename */
-  script: string;
+  /** Shell script filename (undefined for prompt hooks) */
+  script?: string;
   /** Timeout in seconds */
   timeout: number;
   /** Async execution flag */

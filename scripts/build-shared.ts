@@ -541,6 +541,7 @@ async function generatePluginOutputs(
   );
 
   for (const [_name, def] of Object.entries(pluginCanonicalRegistry)) {
+    if (!def.script) continue; // Skip prompt hooks (no script file)
     const srcPath = path.join(hookScriptsDir, def.script);
     const srcFile = Bun.file(srcPath);
     if (await srcFile.exists()) {
