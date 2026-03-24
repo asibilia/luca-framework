@@ -35,6 +35,7 @@
     "eval:run": "bun scripts/eval.ts",
     "eval:skills": "bun scripts/eval-skills.ts",
     "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
+    "build:domain": "bun run ./scripts/targeted-recompile.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts"
   },
   "type": "module",
