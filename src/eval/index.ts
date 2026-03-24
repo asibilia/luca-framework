@@ -78,3 +78,8 @@ export {
   compareEvalRuns,
   compareWithLatestBaseline,
 } from "./__helpers/eval-comparator";
+
+// ─── Suites ──────────────────────────────────────────────────────────────
+export { luRouterEvalSuite } from "./suites/lu-router.eval";
+export { luVerifierEvalSuite } from "./suites/lu-verifier.eval";
+export { convergenceEvalSuite } from "./suites/convergence.eval";
