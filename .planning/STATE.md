@@ -3,31 +3,27 @@
 ## Current Position
 
 - **Current Milestone:** v6.0.0 — Runtime Foundation & Adapter Layer
-- **Status:** Verifying
-- **Task Complexity:** TRIVIAL
+- **Status:** Executing
+- **Task Complexity:** COMPLEX
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-24
 
 ## Session Identity
 
-- **Session ID:** eac8a93b-aaab-4a17-a589-7d5d88fa5ddc
+- **Session ID:** 05be1d5e-f2a0-4f0b-b27f-9fcd0c77d172
 - **GitHub Issue:** #99
 
 ## Appetite
 
-- **Level:** Small
-- **Token Ceiling:** 50000
-- **Context Budget:** 40%
+- **Level:** Large
+- **Token Ceiling:** 200000
+- **Context Budget:** 60%
 
 ## Progress
 
 ```
-  Phase 1: complete — Phase 1 passed: registered workflow/eval/adapters in docs + boundary script
+(no phases completed yet)
 ```
-
-## Verification
-
-- **Attempts:** 0 / 3
 
 ## Git Context
 
@@ -36,9 +32,9 @@
 
 ## Allowed Events
 
-- `VERIFY_PASSED`
-- `VERIFY_FAILED`
-- `VERIFY_HALTED`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -63,4 +59,4 @@ _State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-24T14:34:13.107Z_
+_State generated from machine snapshot at 2026-03-24T17:15:06.427Z_
