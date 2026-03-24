@@ -20,8 +20,8 @@
 
 **Depends on:** None
 
-- [ ] X01: Update domain-architecture and module-boundary docs for new domains
-- [ ] X02: Update boundary check script for workflow, adapters, eval domains
+- [x] X01: Update domain-architecture and module-boundary docs for new domains
+- [x] X02: Update boundary check script for workflow, adapters, eval domains
 
 ### Phase 2 — Workflow Domain Scaffolding + Schemas
 
