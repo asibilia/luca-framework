@@ -24,6 +24,7 @@ import { luRiskResearcherAgent } from "../general/lu-risk-researcher.agent";
 import { luCompletenessReviewerAgent } from "../general/lu-completeness-reviewer.agent";
 import { luAccuracyReviewerAgent } from "../general/lu-accuracy-reviewer.agent";
 import { luActionabilityReviewerAgent } from "../general/lu-actionability-reviewer.agent";
+import { luResearchGraduatorAgent } from "../general/lu-research-graduator.agent";
 import { luPlanCheckerAgent } from "../general/lu-plan-checker.agent";
 import { luPmPlannerAgent } from "../general/lu-pm-planner.agent";
 import { luPrReviewerAgent } from "../general/lu-pr-reviewer.agent";
@@ -82,6 +83,7 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-completeness-reviewer": () => luCompletenessReviewerAgent,
   "lu-accuracy-reviewer": () => luAccuracyReviewerAgent,
   "lu-actionability-reviewer": () => luActionabilityReviewerAgent,
+  "lu-research-graduator": () => luResearchGraduatorAgent,
   "lu-plan-checker": () => luPlanCheckerAgent,
   "lu-pm-planner": () => luPmPlannerAgent,
   "lu-pr-reviewer": () => luPrReviewerAgent,
