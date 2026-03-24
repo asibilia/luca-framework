@@ -21,6 +21,9 @@ import { luEcosystemResearcherAgent } from "../general/lu-ecosystem-researcher.a
 import { luImplementationResearcherAgent } from "../general/lu-implementation-researcher.agent";
 import { luPhaseResearcherAgent } from "../general/lu-phase-researcher.agent";
 import { luRiskResearcherAgent } from "../general/lu-risk-researcher.agent";
+import { luCompletenessReviewerAgent } from "../general/lu-completeness-reviewer.agent";
+import { luAccuracyReviewerAgent } from "../general/lu-accuracy-reviewer.agent";
+import { luActionabilityReviewerAgent } from "../general/lu-actionability-reviewer.agent";
 import { luPlanCheckerAgent } from "../general/lu-plan-checker.agent";
 import { luPmPlannerAgent } from "../general/lu-pm-planner.agent";
 import { luPrReviewerAgent } from "../general/lu-pr-reviewer.agent";
@@ -76,6 +79,9 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-implementation-researcher": () => luImplementationResearcherAgent,
   "lu-phase-researcher": () => luPhaseResearcherAgent,
   "lu-risk-researcher": () => luRiskResearcherAgent,
+  "lu-completeness-reviewer": () => luCompletenessReviewerAgent,
+  "lu-accuracy-reviewer": () => luAccuracyReviewerAgent,
+  "lu-actionability-reviewer": () => luActionabilityReviewerAgent,
   "lu-plan-checker": () => luPlanCheckerAgent,
   "lu-pm-planner": () => luPmPlannerAgent,
   "lu-pr-reviewer": () => luPrReviewerAgent,
