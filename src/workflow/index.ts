@@ -85,8 +85,9 @@ export type { StepConfig, DAGBuilder } from "./__helpers/dag-builder.ts";
 
 export { topologicalSort, getExecutionOrder } from "./__helpers/dag-sorter.ts";
 
-// --- DAG Validator -----------------------------------------------------------
-// Added by A06
+// ─── DAG Validator ───────────────────────────────────────────────────────────
+
+export { validateDAG } from "./__helpers/dag-validator.ts";
 
 // --- DAG Executor ------------------------------------------------------------
 // Added by A07
