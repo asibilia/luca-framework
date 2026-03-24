@@ -137,6 +137,7 @@ depends_on: [list of prerequisite plans if any]
 **Type:** auto | checkpoint:human-verify | checkpoint:decision | checkpoint:human-action
 **TDD:** true | false # Whether to use test-driven development
 **Depends on:** [task numbers if any]
+**Research refs:** research:concept-name-1, research:concept-name-2
 
 [Detailed description of what needs to be done]
 
@@ -161,6 +162,8 @@ depends_on: [list of prerequisite plans if any]
 
 [What artifacts this plan produces]
 \`\`\`
+
+**Research refs note:** Include \`**Research refs:**\` only when a GRADUATION-REPORT.md is provided in the planning context. Omit the line entirely if no graduated research exists. Each ref should be a specific \`research:*\` concept name from the graduation report, matched to the task's implementation scope.
 
 ## Frontmatter Guidelines
 
