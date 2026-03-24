@@ -9,7 +9,44 @@
  */
 
 // --- Core Schemas ------------------------------------------------------------
-// Added by A02
+
+export {
+  StepCategorySchema,
+  StepStatusSchema,
+  ExecutionStatusSchema,
+  BackoffStrategySchema,
+  RetryConfigSchema,
+  StepMetadataSchema,
+  WorkflowStepSchema,
+  WorkflowDAGSchema,
+  TraceEntrySchema,
+  StepResultSchema,
+  ExecutionResultSchema,
+  ValidationIssueSchema,
+  ValidationResultSchema,
+  FailedStepInfoSchema,
+  DAGCheckpointSchema,
+  AdapterSchema,
+} from "./__schemas/workflow.schemas.ts";
+
+export type {
+  StepCategory,
+  StepStatus,
+  ExecutionStatus,
+  BackoffStrategy,
+  RetryConfig,
+  StepMetadata,
+  WorkflowStep,
+  WorkflowDAG,
+  TraceEntry,
+  StepResult,
+  ExecutionResult,
+  ValidationIssue,
+  ValidationResult,
+  FailedStepInfo,
+  DAGCheckpoint,
+  Adapter,
+} from "./__schemas/workflow.schemas.ts";
 
 // --- Step Contracts ----------------------------------------------------------
 
