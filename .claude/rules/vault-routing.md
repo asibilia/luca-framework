@@ -43,14 +43,15 @@ The question to ask: "Would this memory be useful in a completely different repo
 
 When recalling memories, use type-based routing to decide which vault(s) to query:
 
-| Memory Type | Vault Source | Rationale |
-|---|---|---|
-| brain:project-identity | Repo vault only | Project-specific identity tree |
-| brain:user-identity | Default vault only | Cross-project user preferences |
-| session:* | Repo vault only | Session context is project-scoped |
-| pattern:*, pitfall:*, preference:* | Both vaults, merge by score | Cross-cutting + project-specific |
-| procedure:* | Both vaults, merge by score | Reusable across projects |
-| metric:* | Repo vault only | Project metrics are scoped |
+| Memory Type                         | Vault Source                | Rationale                                     |
+| ----------------------------------- | --------------------------- | --------------------------------------------- |
+| brain:project-identity              | Repo vault only             | Project-specific identity tree                |
+| brain:user-identity                 | Default vault only          | Cross-project user preferences                |
+| session:\*                          | Repo vault only             | Session context is project-scoped             |
+| research:\*                         | Repo vault only             | Research is project-scoped, not cross-cutting |
+| pattern:_, pitfall:_, preference:\* | Both vaults, merge by score | Cross-cutting + project-specific              |
+| procedure:\*                        | Both vaults, merge by score | Reusable across projects                      |
+| metric:\*                           | Repo vault only             | Project metrics are scoped                    |
 
 ### Merge Strategy
 
@@ -66,18 +67,19 @@ When querying both vaults:
 
 When storing memories, use concept-prefix-based routing:
 
-| Concept Prefix | Write To | Rationale |
-|---|---|---|
-| session:* | Repo vault | Session context is project-scoped |
-| version:*, milestone:* | Repo vault | Release history is project-scoped |
-| brain:project-* | Repo vault | Project identity |
-| brain:user-* | Default vault | User identity is cross-cutting |
-| pattern:* | Default vault | Generalizable patterns |
-| pitfall:* | Default vault | Generalizable warnings |
-| preference:* | Default vault | User preferences are cross-cutting |
-| procedure:* | Default vault | Reusable workflows |
-| metric:signal-rate-* | Repo vault | Per-project process metrics |
-| process:* | Default vault | Process tuning is cross-cutting |
+| Concept Prefix         | Write To      | Rationale                                        |
+| ---------------------- | ------------- | ------------------------------------------------ |
+| session:\*             | Repo vault    | Session context is project-scoped                |
+| version:_, milestone:_ | Repo vault    | Release history is project-scoped                |
+| brain:project-\*       | Repo vault    | Project identity                                 |
+| brain:user-\*          | Default vault | User identity is cross-cutting                   |
+| pattern:\*             | Default vault | Generalizable patterns                           |
+| pitfall:\*             | Default vault | Generalizable warnings                           |
+| preference:\*          | Default vault | User preferences are cross-cutting               |
+| procedure:\*           | Default vault | Reusable workflows                               |
+| research:\*            | Repo vault    | Phase-scoped research findings, project-specific |
+| metric:signal-rate-\*  | Repo vault    | Per-project process metrics                      |
+| process:\*             | Default vault | Process tuning is cross-cutting                  |
 
 ### Ambiguity Heuristic
 
