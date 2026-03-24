@@ -102,12 +102,12 @@
 
 **Depends on:** Phase 7
 
-- [ ] X03: Backlog integration audit — v2 pipeline overlap resolution
-- [ ] X04: Targeted recompilation script
-- [ ] X05: Behavioral equivalence acceptance criteria
-- [ ] X06: State machine integration plan
-- [ ] X07: Iteration system integration plan
-- [ ] X08: Open questions resolution
+- [x] X03: Backlog integration audit — v2 pipeline overlap resolution
+- [x] X04: Targeted recompilation script
+- [x] X05: Behavioral equivalence acceptance criteria
+- [x] X06: State machine integration plan
+- [x] X07: Iteration system integration plan
+- [x] X08: Open questions resolution
 
 ### Phase 9 — v2 Research Infrastructure + Review Loop + MuninnDB Graduation
 
