@@ -78,15 +78,15 @@
 
 **Depends on:** Phase 4
 
-- [ ] B01: Adapter schemas (AdapterConfigSchema, Adapter type, EmitResult)
-- [ ] B02: Adapter registry with discovery priority
-- [ ] B03: Claude adapter agent emitter
-- [ ] B04: Claude adapter skill emitter
-- [ ] B05: Claude adapter main (wire emitters into Adapter interface)
-- [ ] B06: API adapter executor (Claude Agent SDK)
-- [ ] B07: API adapter main (wire executor into Adapter interface)
-- [ ] B09: DAG-adapter integration (wire dag-executor to adapter.executeStep)
-- [ ] B10: Domain barrel, boundary registration, built-in adapter pre-registration
+- [x] B01: Adapter schemas (AdapterConfigSchema, Adapter type, EmitResult)
+- [x] B02: Adapter registry with discovery priority
+- [x] B03: Claude adapter agent emitter
+- [x] B04: Claude adapter skill emitter
+- [x] B05: Claude adapter main (wire emitters into Adapter interface)
+- [x] B06: API adapter executor (Claude Agent SDK)
+- [x] B07: API adapter main (wire executor into Adapter interface)
+- [x] B09: DAG-adapter integration (wire dag-executor to adapter.executeStep)
+- [x] B10: Domain barrel, boundary registration, built-in adapter pre-registration
 
 ### Phase 7 — Compiler Refactoring (B08 ISOLATED)
 
