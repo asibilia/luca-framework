@@ -229,6 +229,23 @@ export const workflowContextSchema = z.object({
   started_at: z.string().optional(),
   last_transition_at: z.string().optional(),
 
+  // DAG execution tracking (only populated when workflow.engine is "dag")
+  /** Active DAG step tracking for sub-phase granularity observability */
+  dag_execution: z
+    .object({
+      /** Current active step ID */
+      current_step_id: z.string().optional(),
+      /** Steps completed in current phase */
+      completed_steps: z.array(z.string()).default([]),
+      /** Current wave number (0-indexed) */
+      current_wave: z.number().int().nonnegative().default(0),
+      /** Total waves in current phase */
+      total_waves: z.number().int().nonnegative().default(0),
+      /** DAG execution mode flag */
+      active: z.boolean().default(false),
+    })
+    .optional(),
+
   // Error tracking
   last_error: z.string().optional(),
 });
@@ -330,6 +347,37 @@ export const workflowEventSchema = z.discriminatedUnion("type", [
     context_percent_used: z.number().min(0).max(100).default(0),
     agent_invocations: z.number().nonnegative().default(0),
     wall_clock_ms: z.number().nonnegative().default(0),
+  }),
+
+  // DAG executor lifecycle events (informational, logged to ledger)
+  /** DAG executor reports a step has started */
+  z.object({
+    type: z.literal("DAG_STEP_START"),
+    step_id: z.string(),
+    step_name: z.string(),
+    wave: z.number().int().nonnegative(),
+  }),
+  /** DAG executor reports a step completed successfully */
+  z.object({
+    type: z.literal("DAG_STEP_COMPLETE"),
+    step_id: z.string(),
+    step_name: z.string(),
+    output: z.record(z.string(), z.unknown()).optional(),
+  }),
+  /** DAG executor reports a step failed */
+  z.object({
+    type: z.literal("DAG_STEP_FAILED"),
+    step_id: z.string(),
+    step_name: z.string(),
+    error: z.string(),
+  }),
+  /** DAG executor reports a step is being retried */
+  z.object({
+    type: z.literal("DAG_STEP_RETRY"),
+    step_id: z.string(),
+    step_name: z.string(),
+    attempt: z.number().int().positive(),
+    max_attempts: z.number().int().positive(),
   }),
 ]);
 
