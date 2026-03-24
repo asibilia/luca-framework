@@ -46,6 +46,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .planning/.context-metrics.json
 .planning/.context-checkpoint.json
 
+# DAG workflow checkpoints (ephemeral local state)
+.planning/checkpoints/
+
 # tests (removed wholesale — see src/rules/general/no-tests.rule.ts)
 __tests__/
 *.test.ts
