@@ -1,22 +1,37 @@
 /**
- * Zod schema for the `lu` config section in `.planning/config.json`.
+ * Zod schemas for `.planning/config.json` sections.
  *
- * Defines all fields with proper defaults for the autonomous orchestration
- * configuration. Previously named `autopilot` -- renamed to `lu` in Phase 190
- * to align with the unified `/lu` entry point branding.
- *
- * Uses snake_case for all properties per API conventions.
+ * Aggregates config-related schemas and re-exports them for barrel consumption:
+ * - `LuConfigSchema` — the `lu` orchestration section
+ * - `WorkflowVersionSchema` — the `workflow.version` discriminator (v2)
+ * - `ResearchConfigSchema` / `ResearchConfigRefinedSchema` — the `research` section (v2)
  *
  * @example
  * ```typescript
- * import { LuConfigSchema } from "~/shared";
+ * import { LuConfigSchema, WorkflowVersionSchema, ResearchConfigSchema } from "~/shared";
  *
  * const raw = JSON.parse(configFileContents);
  * const luConfig = LuConfigSchema.parse(raw.lu ?? raw.autopilot ?? {});
- * // All fields guaranteed with defaults
+ * const version = WorkflowVersionSchema.parse(raw.workflow?.version);
+ * const research = ResearchConfigSchema.parse(raw.research ?? {});
  * ```
  */
 import { z } from "zod";
+
+// ─── Re-exports: Workflow Version ────────────────────────────────────────────
+
+export {
+  WorkflowVersionSchema,
+  type WorkflowVersion,
+} from "./workflow-version.schemas";
+
+// ─── Re-exports: Research Config ─────────────────────────────────────────────
+
+export {
+  ResearchConfigSchema,
+  ResearchConfigRefinedSchema,
+  type ResearchConfig,
+} from "./research-config.schemas";
 
 /**
  * Schema for the `lu` orchestration config section.
