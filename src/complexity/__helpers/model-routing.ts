@@ -173,6 +173,12 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   // --- Router (balanced from MODERATE+) ---
   "lu-router": ROUTER,
 
+  // --- v2 researcher agents (ROUTER preset, Decision 10) ---
+  "lu-architecture-researcher": ROUTER,
+  "lu-implementation-researcher": ROUTER,
+  "lu-ecosystem-researcher": ROUTER,
+  "lu-risk-researcher": ROUTER,
+
   // --- Orchestrators (balanced → capable ramp) ---
   "lu-executor": ORCHESTRATOR,
   "lu-planner": ORCHESTRATOR,
