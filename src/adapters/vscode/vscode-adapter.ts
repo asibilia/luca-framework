@@ -12,7 +12,8 @@
  * @module
  */
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import orderBy from "lodash/orderBy";
 
@@ -196,6 +197,11 @@ function compileVscodeRule(rule: BaseRule): {
  * ```
  */
 export function createVscodeAdapter(): Adapter {
+  /** Internal buffer: relative path -> compiled content */
+  const compiledOutputs = new Map<string, string>();
+  /** Warnings accumulated during compile*() calls */
+  const ruleWarnings: string[] = [];
+
   return {
     config: {
       name: "vscode",
@@ -211,23 +217,79 @@ export function createVscodeAdapter(): Adapter {
     },
 
     compileAgent: (agent: BaseAgent): string => {
-      const { content } = compileVscodeAgent(agent);
+      const { content, warning } = compileVscodeAgent(agent);
+      compiledOutputs.set(
+        `agents/${agent.config.frontmatter.name}.agent.md`,
+        content,
+      );
+      if (warning) {
+        ruleWarnings.push(warning);
+      }
       return content;
     },
 
     compileSkill: (skill: BaseSkill): string => {
-      return compileVscodeSkill(skill);
+      const compiled = compileVscodeSkill(skill);
+      compiledOutputs.set(`skills/${skill.name}/SKILL.md`, compiled);
+      return compiled;
     },
 
     compileRule: (rule: BaseRule): string => {
-      const { content } = compileVscodeRule(rule);
+      const { content, warning } = compileVscodeRule(rule);
+      if (content) {
+        compiledOutputs.set(`copilot-instructions/${rule.name}.md`, content);
+      }
+      if (warning) {
+        ruleWarnings.push(warning);
+      }
       return content;
     },
 
-    emit: async (_outputDir: string): Promise<EmitResult> => {
-      // Stub: artifact emission to .github/ directory.
-      // The build pipeline will wire this when it becomes adapter-aware.
-      return { filesWritten: 0, filesPaths: [], warnings: [] };
+    /**
+     * Write compiled artifacts to disk.
+     *
+     * Writes agent and skill files directly from the buffer. Aggregates all
+     * `copilot-instructions/*` entries into a single `copilot-instructions.md`
+     * file separated by `\n\n---\n\n`. Clears the buffer after emission.
+     *
+     * @param outputDir - Root directory for output artifacts
+     * @returns Emission result with file counts, paths, and warnings
+     */
+    emit: async (outputDir: string): Promise<EmitResult> => {
+      const filesPaths: string[] = [];
+      const ruleSections: string[] = [];
+
+      // Write agents and skills; collect rule sections for aggregation
+      for (const [relativePath, content] of compiledOutputs) {
+        if (relativePath.startsWith("copilot-instructions/")) {
+          ruleSections.push(content);
+          continue;
+        }
+
+        const absolutePath = join(outputDir, relativePath);
+        await mkdir(dirname(absolutePath), { recursive: true });
+        await Bun.write(absolutePath, content);
+        filesPaths.push(absolutePath);
+      }
+
+      // Aggregate rules into single copilot-instructions.md
+      if (ruleSections.length > 0) {
+        const aggregated = ruleSections.join("\n\n---\n\n");
+        const instructionsPath = join(outputDir, "copilot-instructions.md");
+        await mkdir(dirname(instructionsPath), { recursive: true });
+        await Bun.write(instructionsPath, aggregated);
+        filesPaths.push(instructionsPath);
+      }
+
+      const result: EmitResult = {
+        filesWritten: filesPaths.length,
+        filesPaths,
+        warnings: [...ruleWarnings],
+      };
+
+      compiledOutputs.clear();
+      ruleWarnings.length = 0;
+      return result;
     },
 
     detect: (projectRoot: string): boolean => {
