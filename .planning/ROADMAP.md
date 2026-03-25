@@ -125,10 +125,10 @@
 
 **Depends on:** Phase 9
 
-- [ ] v2-phase-4: Plan Enhancement — research refs + plan review loop
-- [ ] v2-phase-5: Executor Enhancement — per-task MuninnDB recall
-- [ ] v2-config-and-schema-updates: Config & schema updates for v2
-- [ ] v2-open-questions-to-resolve: Open questions resolution
+- [x] v2-phase-4: Plan Enhancement — research refs + plan review loop
+- [x] v2-phase-5: Executor Enhancement — per-task MuninnDB recall
+- [x] v2-config-and-schema-updates: Config & schema updates for v2
+- [x] v2-open-questions-to-resolve: Open questions resolution
 
 ---
 
