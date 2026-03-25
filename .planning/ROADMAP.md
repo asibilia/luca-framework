@@ -107,13 +107,13 @@
 **Depends on:** Phase 8
 **Verification:** Full
 
-- [ ] CRIT-1: Replace Bun.file/write/CryptoHasher/Glob with node:fs/promises in Next.js route files (entity-route-helpers, etag, config-section-handler, state/route, ledger/route)
-- [ ] CRIT-2: Delete dead shared-constant-registry.ts (broken imports, zero consumers)
-- [ ] CRIT-3: Fix sidecar compiler.ts — use barrel import from ~/compilers instead of \_\_helpers/ deep path
-- [ ] HIGH-5: Deduplicate ETag — config/route.ts inline → import from lib/etag.ts
-- [ ] HIGH-6: Fix dynamic inline import in ts-round-trip.ts — move to top-level static import
-- [ ] MED-3: Remove "use client" directive from stores/pipeline-atoms.ts
-- [ ] MED-5: Document camelCase exception in config-section-schemas.ts HarnessSectionSchema
+- [x] CRIT-1: Replace Bun.file/write/CryptoHasher/Glob with node:fs/promises in Next.js route files (entity-route-helpers, etag, config-section-handler, state/route, ledger/route)
+- [x] CRIT-2: Delete dead shared-constant-registry.ts (broken imports, zero consumers)
+- [x] CRIT-3: Fix sidecar compiler.ts — use barrel import from ~/compilers instead of \_\_helpers/ deep path
+- [x] HIGH-5: Deduplicate ETag — config/route.ts inline → import from lib/etag.ts
+- [x] HIGH-6: Fix dynamic inline import in ts-round-trip.ts — move to top-level static import
+- [x] MED-3: Remove "use client" directive from stores/pipeline-atoms.ts
+- [x] MED-5: Document camelCase exception in config-section-schemas.ts HarnessSectionSchema
 
 ### Phase 11: Audit Closure — Integration + State Model Fixes
 
@@ -121,13 +121,13 @@
 **Depends on:** Phase 9, Phase 10
 **Verification:** Standard
 
-- [ ] INT-1: Add configAtom hydration — fetch GET /api/config in provider or pipeline page
-- [ ] HIGH-4: Fix configDraftAtom/routingDraftAtom circular set — use two-atom pattern (private primitive + derived read/write)
-- [ ] INT-2: Wire agent form field edits through to save payload in use-agent-save.ts
-- [ ] INT-3: Connect compile route to agents "Compiled" tab (replace local placeholder)
-- [ ] MED-2: Use random UUID suffix for .tmp files in atomic-write.ts (race condition fix)
-- [ ] MED-4: Deduplicate KNOWN_ENTITY_TYPES — import from graph-types.ts in use-vault-health.ts
-- [ ] MED-7: Sanitize sidecar error response — truncate reflected user input
+- [x] INT-1: Add configAtom hydration — fetch GET /api/config in provider or pipeline page
+- [x] HIGH-4: Fix configDraftAtom/routingDraftAtom circular set — use two-atom pattern (private primitive + derived read/write)
+- [x] INT-2: Wire agent form field edits through to save payload in use-agent-save.ts
+- [x] INT-3: Connect compile route to agents "Compiled" tab (replace local placeholder)
+- [x] MED-2: Use random UUID suffix for .tmp files in atomic-write.ts (race condition fix)
+- [x] MED-4: Deduplicate KNOWN_ENTITY_TYPES — import from graph-types.ts in use-vault-health.ts
+- [x] MED-7: Sanitize sidecar error response — truncate reflected user input
 
 ---
 
