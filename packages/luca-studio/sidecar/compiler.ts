@@ -97,7 +97,7 @@ function resolveOutputPath(
     case "rules":
       return `${prefix}/rules/${name}.md`;
     default:
-      throw new Error(`Unknown domain: ${domain}`);
+      throw new Error("Unsupported domain for output path resolution");
   }
 }
 
@@ -119,14 +119,14 @@ async function compileEntity(
 
   const registry = DOMAIN_REGISTRIES[domain];
   if (!registry) {
-    throw new Error(
-      `Invalid domain: ${domain}. Must be agents, skills, or rules.`,
-    );
+    throw new Error("Invalid domain. Must be agents, skills, or rules.");
   }
 
   const factory = registry[name];
   if (!factory) {
-    const error = new Error(`${domain}/${name} not found in registry`);
+    const safeDomain = String(domain).slice(0, 64);
+    const safeName = String(name).slice(0, 64);
+    const error = new Error(`${safeDomain}/${safeName} not found in registry`);
     (error as Error & { statusCode: number }).statusCode = 404;
     throw error;
   }
@@ -154,7 +154,7 @@ async function compileEntity(
       );
       break;
     default:
-      throw new Error(`Unknown domain: ${domain}`);
+      throw new Error("Unsupported domain for compilation");
   }
 
   const outputPath = resolveOutputPath(domain, name, format as SupportedFormat);
@@ -244,7 +244,7 @@ async function handleCompile(request: Request): Promise<Response> {
       {
         status: "error",
         error: hasDomainError
-          ? `Invalid domain: ${(rawBody as Record<string, unknown>)?.domain}. Must be agents, skills, or rules.`
+          ? "Invalid domain value. Must be agents, skills, or rules."
           : "Validation failed",
         details: parseResult.error.issues,
         duration_ms: Date.now() - startMs,

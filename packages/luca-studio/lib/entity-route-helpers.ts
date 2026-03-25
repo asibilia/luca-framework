@@ -11,11 +11,56 @@ import { join } from "node:path";
 
 import { Glob } from "bun";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { computeETag } from "~/lib/etag";
 import { resolveProjectRoot } from "~/lib/project-root";
 import type { EntityDomain, EntityMetadata } from "~/lib/ts-round-trip";
 import { readEntityFile, writeEntityFile } from "~/lib/ts-round-trip";
+
+// ---------------------------------------------------------------------------
+// Security: entity name allowlist (SEC-001)
+// ---------------------------------------------------------------------------
+
+/**
+ * Regex that only permits kebab-case entity names.
+ * Blocks path traversal (`../../etc/passwd`), slashes, spaces, dots, etc.
+ */
+const SAFE_ENTITY_NAME = /^[a-z0-9][a-z0-9-]*$/;
+
+// ---------------------------------------------------------------------------
+// Security: Zod schema for PUT body validation (SEC-002)
+// ---------------------------------------------------------------------------
+
+/** Maximum allowed size (in characters) for rawConfigText payloads. */
+const MAX_CONFIG_TEXT_BYTES = 512 * 1024; // 512 KB
+
+/**
+ * Schema for entity PUT request bodies.
+ *
+ * Validates shape, types, and enforces a 512 KB size cap on rawConfigText
+ * to prevent oversized payloads from being written to `.ts` source files.
+ *
+ * The metadata schema uses `.passthrough()` so that all fields of the full
+ * `EntityMetadata` interface are forwarded to `writeEntityFile()`, while
+ * still enforcing the required structural fields.
+ */
+const EntityPutBodySchema = z.object({
+  rawConfigText: z.string().min(1).max(MAX_CONFIG_TEXT_BYTES),
+  metadata: z
+    .object({
+      varName: z.string().min(1),
+      configType: z.string().min(1),
+      exportVarName: z.string().min(1),
+      factoryFn: z.string().min(1),
+      domain: z.enum(["agents", "skills", "rules"]),
+      imports: z.array(z.string()),
+      sharedConstants: z.array(z.string()),
+      prefix: z.string(),
+      suffix: z.string(),
+    })
+    .passthrough(),
+});
 
 // ---------------------------------------------------------------------------
 // Types
@@ -225,6 +270,14 @@ export function createEntityDetailHandler(domain: EntityDomain): {
     ): Promise<NextResponse> {
       try {
         const { name } = await params;
+
+        if (!SAFE_ENTITY_NAME.test(name)) {
+          return NextResponse.json(
+            { error: "Invalid entity name" },
+            { status: 400 },
+          );
+        }
+
         const root = await resolveProjectRoot();
         const filePath = await resolveEntityPath(root, domain, name);
 
@@ -277,6 +330,14 @@ export function createEntityDetailHandler(domain: EntityDomain): {
     ): Promise<NextResponse> {
       try {
         const { name } = await params;
+
+        if (!SAFE_ENTITY_NAME.test(name)) {
+          return NextResponse.json(
+            { error: "Invalid entity name" },
+            { status: 400 },
+          );
+        }
+
         const root = await resolveProjectRoot();
         const filePath = await resolveEntityPath(root, domain, name);
 
@@ -287,27 +348,32 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        // If-Match concurrency check
+        // If-Match concurrency check — mandatory (SEC-003)
         const ifMatch = request.headers.get("If-Match");
-        if (ifMatch) {
-          const currentSource = await Bun.file(filePath).text();
-          const currentEtag = computeETag(currentSource);
-
-          if (ifMatch !== currentEtag) {
-            return NextResponse.json(
-              {
-                error: "Conflict: entity has been modified since last read",
-                currentEtag,
-              },
-              { status: 409 },
-            );
-          }
+        if (!ifMatch) {
+          return NextResponse.json(
+            { error: "If-Match header is required for PUT operations" },
+            { status: 428 },
+          );
         }
 
-        // Parse request body
-        let body: { rawConfigText?: string; metadata?: EntityMetadata };
+        const currentSource = await Bun.file(filePath).text();
+        const currentEtag = computeETag(currentSource);
+
+        if (ifMatch !== currentEtag) {
+          return NextResponse.json(
+            {
+              error: "Conflict: entity has been modified since last read",
+              currentEtag,
+            },
+            { status: 409 },
+          );
+        }
+
+        // Parse and validate request body (SEC-002)
+        let rawBody: unknown;
         try {
-          body = await request.json();
+          rawBody = await request.json();
         } catch {
           return NextResponse.json(
             { error: "Invalid JSON body" },
@@ -315,18 +381,22 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        if (!body.rawConfigText || !body.metadata) {
+        const bodyResult = EntityPutBodySchema.safeParse(rawBody);
+        if (!bodyResult.success) {
           return NextResponse.json(
-            {
-              error:
-                "Request body must include rawConfigText and metadata fields",
-            },
+            { error: "Invalid request body", details: bodyResult.error.issues },
             { status: 422 },
           );
         }
 
         // Write via ts-round-trip (atomic write)
-        await writeEntityFile(filePath, body.rawConfigText, body.metadata);
+        // Cast metadata: Zod passthrough preserves all EntityMetadata fields
+        // but the inferred type is wider than the nominal interface.
+        await writeEntityFile(
+          filePath,
+          bodyResult.data.rawConfigText,
+          bodyResult.data.metadata as EntityMetadata,
+        );
 
         // Read back and return fresh data with new ETag
         const updatedResult = await readEntityFile(filePath);

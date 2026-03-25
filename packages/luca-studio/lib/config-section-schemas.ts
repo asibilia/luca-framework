@@ -57,7 +57,13 @@ export type GatesSection = z.infer<typeof GatesSectionSchema>;
 
 const CheckConfigSchema = z.object({
   name: z.string(),
-  command: z.string(),
+  command: z
+    .string()
+    .max(256)
+    .regex(
+      /^[a-zA-Z0-9 _.\-/]+$/,
+      "Command must contain only alphanumeric characters, spaces, dots, hyphens, underscores, and forward slashes",
+    ),
   enabled: z.boolean(),
   timeout: z.number().positive(),
   parser: z.string(),
@@ -158,7 +164,9 @@ export const PlannerSectionSchema = z.object({
       degrading_end: z.number().min(0).max(100).default(70),
     })
     .default({}),
-  cold_start_costs: z.record(z.string(), z.number().int().nonnegative()).default({}),
+  cold_start_costs: z
+    .record(z.string(), z.number().int().nonnegative())
+    .default({}),
 });
 
 export type PlannerSection = z.infer<typeof PlannerSectionSchema>;

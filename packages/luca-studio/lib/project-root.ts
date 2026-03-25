@@ -63,8 +63,14 @@ export async function resolveProjectRoot(): Promise<string> {
   const envRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
 
   if (envRoot) {
-    cachedRoot = resolve(envRoot);
-    return cachedRoot;
+    const resolved = resolve(envRoot);
+    try {
+      await access(resolve(resolved, ".planning"));
+      cachedRoot = resolved;
+      return cachedRoot;
+    } catch {
+      // Env var points to a directory without .planning/ -- fall through to auto-detect
+    }
   }
 
   const detected = await walkUpForPlanning(process.cwd());
