@@ -2,7 +2,25 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v7.2.0 — Audit Gap Closure
+
+---
+
+## v7.2.0 — Audit Gap Closure
+
+Addresses 3 HIGH DRY violations from v7.1.0 audit. All in adapter domain (T3, src/adapters/).
+
+**Branch:** 101--v7-ide-adapter-layer
+
+### Phase 1: Adapter DRY Extraction
+
+**Goal:** Extract duplicated code across 3 adapter files into shared helpers: sectionsToMarkdown, emit orchestration, and frontmatter building.
+
+**Depends on:** None
+
+- [ ] Plan 1 — Extract shared adapter helpers and unify 3 adapters
+
+**Audit findings addressed:** HIGH #1 (sectionsToMarkdown), HIGH #2 (emit orchestration), HIGH #3 (frontmatter building)
 
 ---
 

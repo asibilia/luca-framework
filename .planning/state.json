@@ -81,7 +81,9 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-25T11:56:06.039Z"
+    "started_at": "2026-03-25T11:56:06.039Z",
+    "current_milestone": "v7.2.0 — Audit Gap Closure",
+    "last_transition_at": "2026-03-25T12:12:33.065Z"
   },
   "children": {}
 }
