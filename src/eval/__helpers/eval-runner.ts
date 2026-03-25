@@ -120,6 +120,7 @@ async function gradeTrial(
           evalCase.composite_grader_config,
           judgeModel,
           adapter,
+          evalCase.id,
           customGraders,
         );
       }

@@ -101,6 +101,7 @@ async function gradeEntry(
  * @param config - Composite grader config with entries and pass threshold
  * @param defaultJudgeModel - Fallback judge model for any LLM sub-graders
  * @param adapter - LLM adapter for LLM sub-graders (can be null if no LLM entries)
+ * @param caseId - Eval case ID used to look up the correct custom grader function
  * @param customFns - Map of custom grader functions keyed by eval case ID or strategy name
  * @returns GraderResult with weighted score and per-grader breakdown in metadata
  *
@@ -127,6 +128,7 @@ export async function gradeWithComposite(
   config: CompositeGraderConfig,
   defaultJudgeModel: string,
   adapter: LlmAdapter | null,
+  caseId: string,
   customFns?: Map<string, CustomGraderFn>,
 ): Promise<GraderResult> {
   const perGrader: Array<{
@@ -140,9 +142,7 @@ export async function gradeWithComposite(
 
   for (const entry of config.graders) {
     // Resolve custom function if needed
-    const customFn = customFns?.values().next().value as
-      | CustomGraderFn
-      | undefined;
+    const customFn = customFns?.get(caseId);
 
     const result = await gradeEntry(
       entry,
