@@ -51,11 +51,11 @@
         "@types/update-notifier": "^6.0.8",
       },
     },
-    "packages/luca-observer": {
-      "name": "@alecsibilia/luca-observer",
+    "packages/luca-studio": {
+      "name": "@alecsibilia/luca-studio",
       "version": "0.1.0",
       "bin": {
-        "luca-observer": "./bin/luca-observer.js",
+        "luca-studio": "./bin/luca-studio.js",
       },
       "dependencies": {
         "@tremor/react": "^3",
@@ -101,7 +101,7 @@
 
     "@alecsibilia/luca-framework": ["@alecsibilia/luca-framework@workspace:packages/luca-framework"],
 
-    "@alecsibilia/luca-observer": ["@alecsibilia/luca-observer@workspace:packages/luca-observer"],
+    "@alecsibilia/luca-studio": ["@alecsibilia/luca-studio@workspace:packages/luca-studio"],
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
@@ -2431,7 +2431,7 @@
 
     "@alecsibilia/commit/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
-    "@alecsibilia/luca-observer/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+    "@alecsibilia/luca-studio/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@aws-crypto/sha256-browser/@smithy/util-utf8": ["@smithy/util-utf8@2.3.0", "", { "dependencies": { "@smithy/util-buffer-from": "^2.2.0", "tslib": "^2.6.2" } }, "sha512-R8Rdn8Hy72KKcebgLiv8jQcQkXoLMOGGv5uI1/k0l+snqkOzQ1R0ChUBCxWMlBsFMekWjq0wRudIweFs7sKT5A=="],
 
