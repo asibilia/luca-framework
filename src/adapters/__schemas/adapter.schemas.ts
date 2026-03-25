@@ -15,7 +15,6 @@ import type { BaseAgent } from "~/agents";
 import type { BaseSkill } from "~/skills";
 import type { BaseRule } from "~/rules";
 import type { WorkflowStep } from "~/workflow";
-import type { CompatibilityReport } from "./compatibility-report.schemas";
 
 /**
  * Describes what features an adapter supports.
@@ -161,18 +160,6 @@ export type Adapter = {
     step: WorkflowStep,
     context: Record<string, unknown>,
   ) => Promise<AdapterStepResult>;
-
-  /**
-   * Validate compiled output against IDE-specific constraints.
-   * Optional because not all adapters have per-IDE constraint validators.
-   *
-   * When present, the report CLI prefers this method over the standalone
-   * VALIDATOR_MAP lookup, enabling adapters to own their own validation logic.
-   *
-   * @param emitResult - The result of a prior emit() call
-   * @returns A structured compatibility report for this adapter
-   */
-  validate?: (emitResult: EmitResult) => Promise<CompatibilityReport>;
 
   /**
    * Write compiled artifacts to disk (e.g., .claude/ directory).
