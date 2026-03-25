@@ -3,8 +3,8 @@
 ## Current Position
 
 - **Current Milestone:** v8.1.0 — Studio Polish & Prompt Quality
-- **Status:** Routing
-- **Task Complexity:** TRIVIAL
+- **Status:** Planning
+- **Task Complexity:** COMPLEX
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-25
 
@@ -32,7 +32,7 @@
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `PLAN_COMPLETE`
 
 ## Previous Milestones
 
@@ -59,4 +59,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T22:53:03.084Z_
+_State generated from machine snapshot at 2026-03-25T23:29:06.722Z_
