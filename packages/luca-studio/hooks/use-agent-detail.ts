@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSetAtom } from "jotai";
+import { RESET } from "jotai-history";
 
-import { agentDraftAtom } from "~/stores/entity-atoms";
+import { agentDraftAtom, agentHistoryAtom } from "~/stores/entity-atoms";
 
 import type { EntityDetail } from "~/lib/entity-route-helpers";
 
@@ -49,6 +50,7 @@ export function useAgentDetail(name: string | null): UseAgentDetailReturn {
   const [error, setError] = useState<string | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
   const setDraft = useSetAtom(agentDraftAtom(name ?? "__noop__"));
+  const resetHistory = useSetAtom(agentHistoryAtom(name ?? "__noop__"));
 
   // Track which name we last fetched to avoid stale updates
   const nameRef = useRef(name);
@@ -79,6 +81,9 @@ export function useAgentDetail(name: string | null): UseAgentDetailReturn {
           name: json.data.name,
           domain: json.data.domain,
         } as Record<string, unknown>);
+        // Reset undo history so users cannot undo back to the empty state
+        // that existed before the server data arrived.
+        resetHistory(RESET);
       }
     } catch (err) {
       if (nameRef.current === name) {
@@ -91,7 +96,7 @@ export function useAgentDetail(name: string | null): UseAgentDetailReturn {
         setLoading(false);
       }
     }
-  }, [name, setDraft]);
+  }, [name, setDraft, resetHistory]);
 
   useEffect(() => {
     if (name) {
