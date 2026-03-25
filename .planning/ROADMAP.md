@@ -2,25 +2,57 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v7.0.0 — IDE Adapter Layer
 
 ---
 
-## Deferred to M2
+## v7.0.0 — IDE Adapter Layer
 
-| Todo Group                    | Scope                                  | Reason                                         |
-| ----------------------------- | -------------------------------------- | ---------------------------------------------- |
-| runtime-d01–d11               | Luca Studio (dev server + UI views)    | WSJF 2.8, CRITICAL effort, independent package |
-| runtime-e01–e04               | IDE adapters (Cursor/Windsurf/VS Code) | Depends on B-group stability                   |
-| v2-phase-6                    | Orchestrator integration (lu.skill.ts) | HIGH blast radius, Full+Human verification     |
-| v2-enhanced-existing-agents   | Agent enhancements                     | Sequential dependency on v2-phase-5            |
-| v2-external-research-patterns | External research patterns             | Design reference, low urgency                  |
+**Goal:** Extend multi-IDE support by implementing Cursor, Windsurf, and VS Code adapters using the Adapter interface built in v6.0.0. Validates the adapter abstraction and delivers Luca's write-once-deploy-everywhere value proposition.
 
-## Backlog (Unassigned)
+**WSJF:** 4.4 (highest in backlog). All dependencies (B01, B02) completed in v6.0.0.
 
-| Todo | Title                | Target           | Reason                                                              |
-| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+### Phase 1: IDE Adapters (E01 + E02 + E03) — PARALLEL
+
+**Goal:** Implement 3 IDE adapters in parallel — each implements the existing Adapter interface independently.
+
+**Depends on:** None (B01+B02 done in v6.0.0)
+
+- [ ] E01 — Cursor adapter: compile rules to .mdc format, map hook events (camelCase), passthrough skills
+- [ ] E02 — Windsurf adapter: character budget enforcement (12K workspace/6K global), rules.md compilation
+- [ ] E03 — VS Code adapter: tool name translation, .github/ output dir, Preview-stability hooks
+
+### Phase 2: Adapter Compatibility Report (E04) — SEQUENTIAL
+
+**Goal:** Build validate() per adapter producing compatibility-report.json with feature support matrix.
+
+**Depends on:** Phase 1
+
+- [ ] E04 — Compatibility report: CompatibilityReport schema, per-adapter validate(), CLI summary, dist/ artifact
+
+---
+
+## Deferred to Future Milestones
+
+| Todo Group                  | Target   | Scope                                  | Reason                                               |
+| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
+| runtime-d01–d11             | v8.0.0   | Luca Studio (dev server + UI views)    | WSJF 1.6, CRITICAL effort, test reintro opportunity  |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+
+## Closed (Reference / Not Actionable)
+
+| Todo                          | Reason                                                          |
+| ----------------------------- | --------------------------------------------------------------- |
+| v2-external-research-patterns | Reference document, not an implementation task. Moved to docs/. |
+
+## Backlog (Blocked)
+
+| Todo | Title                | Blocker          | Reason                                                                  |
+| ---- | -------------------- | ---------------- | ----------------------------------------------------------------------- |
+| #37  | Test suite fragility | no-tests.md rule | Testing reintroduction per dedicated effort. v8.0.0 Studio may unblock. |
 
 ---
 
