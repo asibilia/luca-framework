@@ -48,7 +48,7 @@ export { createApiAdapter, ApiAdapterOptionsSchema } from "./api";
 export type { ApiAdapterOptions } from "./api";
 export {
   ApiExecutorConfigSchema,
-  TokenUsageSchema,
+  AdapterTokenUsageSchema,
   executeViaSDK,
 } from "./api";
-export type { ApiExecutorConfig, TokenUsage } from "./api";
+export type { ApiExecutorConfig, AdapterTokenUsage } from "./api";

@@ -5,7 +5,7 @@ export { createApiAdapter, ApiAdapterOptionsSchema } from "./api-adapter";
 export type { ApiAdapterOptions } from "./api-adapter";
 export {
   ApiExecutorConfigSchema,
-  TokenUsageSchema,
+  AdapterTokenUsageSchema,
   executeViaSDK,
 } from "./api-executor";
-export type { ApiExecutorConfig, TokenUsage } from "./api-executor";
+export type { ApiExecutorConfig, AdapterTokenUsage } from "./api-executor";

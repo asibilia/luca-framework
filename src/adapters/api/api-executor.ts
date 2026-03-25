@@ -68,12 +68,12 @@ export type ApiExecutorConfig = z.infer<typeof ApiExecutorConfigSchema>;
  * Tracks input and output tokens consumed during the SDK call.
  * Values are extracted from the SDK's result message usage field.
  */
-export const TokenUsageSchema = z.object({
+export const AdapterTokenUsageSchema = z.object({
   inputTokens: z.number().int().nonnegative().default(0),
   outputTokens: z.number().int().nonnegative().default(0),
 });
 
-export type TokenUsage = z.infer<typeof TokenUsageSchema>;
+export type AdapterTokenUsage = z.infer<typeof AdapterTokenUsageSchema>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -142,7 +142,7 @@ function isResultError(message: SDKMessage): message is SDKResultError {
  */
 function extractTokenUsage(
   result: SDKResultSuccess | SDKResultError,
-): TokenUsage {
+): AdapterTokenUsage {
   const usage = result.usage;
   return {
     inputTokens: usage.input_tokens ?? 0,
@@ -188,7 +188,7 @@ export async function executeViaSDK(
   config: ApiExecutorConfig,
   sessionId?: string,
 ): Promise<AdapterStepResult> {
-  let tokenUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+  let tokenUsage: AdapterTokenUsage = { inputTokens: 0, outputTokens: 0 };
 
   try {
     const options: Options = {
