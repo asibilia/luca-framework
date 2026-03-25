@@ -73,9 +73,14 @@ export type ConfigSectionHandlerOptions<T extends z.ZodType> = {
  * 2. Validates the body against the section schema (422 on failure).
  * 3. Runs semantic validators if any (422 on failure).
  * 4. Reads the current full config.json from disk.
- * 5. Replaces only the target section key.
- * 6. Atomically writes the updated config.json.
- * 7. Returns 200 with the updated section data and an ETag header.
+ * 5. Checks `If-Match` header for optimistic concurrency (428 if missing,
+ *    409 on mismatch against the full-file ETag).
+ * 6. Replaces only the target section key.
+ * 7. Atomically writes the updated config.json.
+ * 8. Returns 200 with the updated section data and a full-file ETag header.
+ *
+ * The ETag is always computed from the full raw config.json file contents
+ * (not the section alone), ensuring consistency with `GET /api/config`.
  *
  * @param options - Section key, schema, and optional semantic validators.
  * @returns Async `(request: Request) => Promise<NextResponse>` handler.
@@ -132,6 +137,7 @@ export function createConfigSectionHandler<T extends z.ZodType>(
     // -----------------------------------------------------------------------
     let fullConfig: Record<string, unknown>;
     let configPath: string;
+    let rawFileContent: string;
 
     try {
       const root = await resolveProjectRoot();
@@ -142,9 +148,10 @@ export function createConfigSectionHandler<T extends z.ZodType>(
       );
 
       if (exists) {
-        const raw = await readFile(configPath, "utf-8");
-        fullConfig = JSON.parse(raw) as Record<string, unknown>;
+        rawFileContent = await readFile(configPath, "utf-8");
+        fullConfig = JSON.parse(rawFileContent) as Record<string, unknown>;
       } else {
+        rawFileContent = "{}";
         fullConfig = {};
       }
     } catch (err) {
@@ -157,15 +164,40 @@ export function createConfigSectionHandler<T extends z.ZodType>(
     }
 
     // -----------------------------------------------------------------------
-    // 5. Merge: replace only the target section
+    // 5. If-Match concurrency check (full-file ETag)
+    // -----------------------------------------------------------------------
+    const ifMatch = request.headers.get("If-Match");
+
+    if (!ifMatch) {
+      return NextResponse.json(
+        { error: "If-Match header is required for PUT operations" },
+        { status: 428 },
+      );
+    }
+
+    const currentEtag = computeETag(rawFileContent);
+
+    if (ifMatch !== currentEtag) {
+      return NextResponse.json(
+        {
+          error: "Conflict: config has been modified since last read",
+          currentEtag,
+        },
+        { status: 409 },
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. Merge: replace only the target section
     // -----------------------------------------------------------------------
     fullConfig[section] = sectionData;
 
     // -----------------------------------------------------------------------
-    // 6. Atomic write
+    // 7. Atomic write
     // -----------------------------------------------------------------------
+    let serialized: string;
     try {
-      const serialized = JSON.stringify(fullConfig, null, 2);
+      serialized = JSON.stringify(fullConfig, null, 2);
       await atomicWrite(configPath, serialized);
     } catch (err) {
       const message =
@@ -177,14 +209,13 @@ export function createConfigSectionHandler<T extends z.ZodType>(
     }
 
     // -----------------------------------------------------------------------
-    // 7. Return updated section with ETag
+    // 8. Return updated section with full-file ETag
     // -----------------------------------------------------------------------
-    const sectionJson = JSON.stringify(sectionData, null, 2);
-    const etag = computeETag(sectionJson);
+    const freshEtag = computeETag(serialized);
 
     return NextResponse.json(
       { data: sectionData },
-      { headers: { ETag: etag } },
+      { headers: { ETag: freshEtag } },
     );
   };
 }
