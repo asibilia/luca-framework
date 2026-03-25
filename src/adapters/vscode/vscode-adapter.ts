@@ -22,6 +22,7 @@ import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { enforceCharacterBudget } from "../__helpers/character-budget";
 import { sectionsToMarkdown } from "../__helpers/format-sections";
 import { emitCompiledOutputs } from "../__helpers/adapter-emit";
+import { validateVscodeOutput } from "../__helpers/compatibility-validator";
 
 /**
  * Maximum character count for a VS Code agent profile.
@@ -229,6 +230,8 @@ export function createVscodeAdapter(): Adapter {
      * @param outputDir - Root directory for output artifacts
      * @returns Emission result with file counts, paths, and warnings
      */
+    validate: (emitResult: EmitResult) => validateVscodeOutput(emitResult),
+
     emit: async (outputDir: string): Promise<EmitResult> => {
       const result = await emitCompiledOutputs(compiledOutputs, outputDir, {
         existingWarnings: [...ruleWarnings],
