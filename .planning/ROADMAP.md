@@ -85,8 +85,8 @@
 **Depends on:** Phase 5, Phase 7
 **Verification:** Standard
 
-- [ ] studio-w6-agents-page — Three-column agent browser + configure (read-only prompts in v1)
-- [ ] studio-w6-pipeline-page — Interactive React Flow workflow editor (4 phases)
+- [x] studio-w6-agents-page — Three-column agent browser + configure (read-only prompts in v1)
+- [x] studio-w6-pipeline-page — Interactive React Flow workflow editor (4 phases)
 
 ---
 
