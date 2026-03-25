@@ -19,6 +19,7 @@ import type {
   ValidationIssue,
 } from "../__schemas/workflow.schemas.ts";
 import { topologicalSort } from "./dag-sorter.ts";
+import { buildSuccessorsMap } from "./dag-adjacency.ts";
 
 /**
  * Validate a DAG definition before execution.
@@ -208,20 +209,7 @@ function checkNoOrphanedSteps(
   const queue = [...roots];
 
   // Build forward adjacency: step -> steps that depend on it
-  const forwardAdj = new Map<string, string[]>();
-  for (const id of stepIds) {
-    forwardAdj.set(id, []);
-  }
-  for (const step of dag.steps) {
-    for (const dep of step.dependsOn) {
-      if (stepIds.has(dep)) {
-        const adj = forwardAdj.get(dep);
-        if (adj) {
-          adj.push(step.id);
-        }
-      }
-    }
-  }
+  const forwardAdj = buildSuccessorsMap(dag);
 
   while (queue.length > 0) {
     const current = queue.shift()!;

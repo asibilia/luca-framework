@@ -81,6 +81,10 @@ export type {
 export { buildPhaseDAG } from "./__helpers/dag-builder.ts";
 export type { StepConfig, DAGBuilder } from "./__helpers/dag-builder.ts";
 
+// ─── DAG Adjacency ───────────────────────────────────────────────────────────
+
+export { buildSuccessorsMap } from "./__helpers/dag-adjacency.ts";
+
 // ─── DAG Sorter ──────────────────────────────────────────────────────────────
 
 export { topologicalSort, getExecutionOrder } from "./__helpers/dag-sorter.ts";

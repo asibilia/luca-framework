@@ -16,6 +16,7 @@
  */
 
 import type { WorkflowDAG } from "../__schemas/workflow.schemas.ts";
+import { buildSuccessorsMap } from "./dag-adjacency.ts";
 
 /**
  * Topologically sort a DAG into parallel waves using Kahn's algorithm.
@@ -43,24 +44,18 @@ export function topologicalSort(dag: WorkflowDAG): string[][] {
 
   // Build adjacency list and compute in-degrees
   const inDegree = new Map<string, number>();
-  const successors = new Map<string, string[]>();
+  const successors = buildSuccessorsMap(dag);
 
   for (const step of dag.steps) {
     inDegree.set(step.id, 0);
-    successors.set(step.id, []);
   }
 
   for (const step of dag.steps) {
     for (const dep of step.dependsOn) {
       if (!stepIds.has(dep)) {
-        // Skip missing dependencies — the validator handles this error
         continue;
       }
       inDegree.set(step.id, (inDegree.get(step.id) ?? 0) + 1);
-      const succs = successors.get(dep);
-      if (succs) {
-        succs.push(step.id);
-      }
     }
   }
 
