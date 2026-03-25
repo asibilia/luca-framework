@@ -45,6 +45,10 @@ export {
 // ─── Adapter-Executor Bridge ───────────────────────────────────────────────
 export { bridgeAdapterForExecutor } from "./__helpers/adapter-executor-bridge";
 
+// ─── Character Budget ─────────────────────────────────────────────────────
+export { enforceCharacterBudget } from "./__helpers/character-budget";
+export type { CharacterBudgetResult } from "./__helpers/character-budget";
+
 // ─── Claude Adapter ────────────────────────────────────────────────────────
 export { createClaudeAdapter } from "./claude";
 export { emitAgentMarkdown } from "./claude";
