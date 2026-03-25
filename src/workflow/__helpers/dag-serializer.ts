@@ -6,7 +6,7 @@
  * - Load: deserialize from JSON and validate via DAGCheckpointSchema.safeParse()
  * - Clear: remove checkpoint file after successful completion
  *
- * Uses Bun.file() and Bun.write() per bun-preference rule.
+ * Uses Bun.write() for the write path per bun-preference rule.
  *
  * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Serializer
  * @see docs/runtime-architecture/research/dag-engines.md — Pattern #8 (JSON state snapshot)
@@ -16,6 +16,7 @@
 import { DAGCheckpointSchema } from "../__schemas/workflow.schemas.ts";
 
 import type { DAGCheckpoint } from "../__schemas/workflow.schemas.ts";
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -59,9 +60,8 @@ export function saveCheckpoint(
   const filePath = `${dir}/${checkpoint.dagName}.json`;
 
   // Ensure directory exists
-  const fs = require("node:fs");
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
   }
 
   const json = JSON.stringify(checkpoint, null, 2);
@@ -99,20 +99,12 @@ export function loadCheckpoint(
   const dir = basePath ?? DEFAULT_CHECKPOINT_BASE_PATH;
   const filePath = `${dir}/${dagName}.json`;
 
-  const file = Bun.file(filePath);
-
-  // Check if file exists (Bun.file().size is 0 for non-existent files)
-  // Use node:fs.existsSync for reliable existence check
-  const fs = require("node:fs");
-  if (!fs.existsSync(filePath)) {
+  if (!existsSync(filePath)) {
     return null;
   }
 
   try {
-    const text = file.text();
-    // Bun.file().text() returns a Promise, but we need sync access.
-    // Use node:fs.readFileSync as fallback for synchronous read.
-    const content = fs.readFileSync(filePath, "utf-8");
+    const content = readFileSync(filePath, "utf-8");
     const raw: unknown = JSON.parse(content);
 
     const parseResult = DAGCheckpointSchema.safeParse(raw);
@@ -166,10 +158,9 @@ export function clearCheckpoint(dagName: string, basePath?: string): void {
   const dir = basePath ?? DEFAULT_CHECKPOINT_BASE_PATH;
   const filePath = `${dir}/${dagName}.json`;
 
-  const fs = require("node:fs");
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
     }
   } catch {
     // Silently ignore deletion failures
