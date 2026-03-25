@@ -48,33 +48,40 @@ export const stateAtom = atom<Record<string, unknown> | null>(null);
 // atom. Once set, they become independently writable -- edits modify only the
 // draft, leaving the server state atom untouched until a save round-trip.
 //
-// When the server state atom updates (e.g., after save or SSE push), the draft
-// atom resets to the new server value *unless* the draft is dirty.
+// Implementation uses a two-atom pattern to avoid circular `set()` calls:
+// 1. A private primitive atom holds the draft override (`null` = not yet set).
+// 2. A derived atom reads from the private atom when set, otherwise falls
+//    through to the server state atom. Writing targets the private atom only.
 // ---------------------------------------------------------------------------
+
+/** @internal Private primitive backing `configDraftAtom`. `null` = not overridden. */
+const _configDraftPrimitiveAtom = atom<Record<string, unknown> | null>(null);
 
 /**
  * Writable draft copy of `configAtom`.
  *
- * Initialised from the live server state. The `set` callback makes the draft
- * independently writable so edits accumulate locally without touching the
- * server state atom.
+ * `get` returns the draft override when present, otherwise the server state.
+ * `set` writes only to the private primitive -- never self-referencing.
  */
 export const configDraftAtom = atom(
-  (get) => get(configAtom),
+  (get) => get(_configDraftPrimitiveAtom) ?? get(configAtom),
   (_get, set, value: Record<string, unknown> | null) => {
-    set(configDraftAtom, value);
+    set(_configDraftPrimitiveAtom, value);
   },
 );
+
+/** @internal Private primitive backing `routingDraftAtom`. `null` = not overridden. */
+const _routingDraftPrimitiveAtom = atom<Record<string, unknown> | null>(null);
 
 /**
  * Writable draft copy of `routingTableAtom`.
  *
- * Same semantics as `configDraftAtom` -- derives from server state and becomes
- * independently writable.
+ * Same two-atom pattern as `configDraftAtom` -- derives from server state and
+ * becomes independently writable without circular `set()` calls.
  */
 export const routingDraftAtom = atom(
-  (get) => get(routingTableAtom),
+  (get) => get(_routingDraftPrimitiveAtom) ?? get(routingTableAtom),
   (_get, set, value: Record<string, unknown> | null) => {
-    set(routingDraftAtom, value);
+    set(_routingDraftPrimitiveAtom, value);
   },
 );

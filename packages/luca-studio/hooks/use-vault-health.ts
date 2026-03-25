@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
 
+import { KNOWN_ENTITY_TYPES } from "~/lib/graph-types";
 import type { MuninnEngram, MuninnStatsResponse } from "~/lib/muninn-types";
 import { vaultAtom } from "~/stores/vault";
 
@@ -27,25 +28,8 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 // -- Engram type resolution --------------------------------------------------
 
-/**
- * Known engram type labels for categorization.
- *
- * Each engram has a concept field with optional `type:` prefix,
- * or a memory_type field. This set defines known types to categorize.
- */
-const KNOWN_TYPES = new Set([
-  "pattern",
-  "decision",
-  "pitfall",
-  "preference",
-  "fact",
-  "observation",
-  "procedure",
-  "identity",
-  "session",
-  "brain",
-  "reference",
-]);
+// Known entity types imported from ~/lib/graph-types (canonical source).
+// The KNOWN_ENTITY_TYPES set is used for engram type categorization below.
 
 const TYPE_DISPLAY: Record<string, { label: string; color: string }> = {
   pattern: { label: "Patterns", color: "success" },
@@ -70,14 +54,14 @@ const TYPE_DISPLAY: Record<string, { label: string; color: string }> = {
  * 3. "other" as fallback
  */
 function resolveEngramType(engram: MuninnEngram): string {
-  if (engram.memory_type && KNOWN_TYPES.has(engram.memory_type)) {
+  if (engram.memory_type && KNOWN_ENTITY_TYPES.has(engram.memory_type)) {
     return engram.memory_type;
   }
 
   const colonIndex = engram.concept.indexOf(":");
   if (colonIndex > 0) {
     const prefix = engram.concept.slice(0, colonIndex).toLowerCase().trim();
-    if (KNOWN_TYPES.has(prefix)) {
+    if (KNOWN_ENTITY_TYPES.has(prefix)) {
       return prefix;
     }
   }
@@ -230,7 +214,9 @@ export function useVaultHealth(): VaultHealthData {
       const v = encodeURIComponent(vault);
       const [statsRes, engramsRes] = await Promise.allSettled([
         fetchJson<MuninnStatsResponse>(`/api/muninn/stats?vault=${v}`),
-        fetchJson<{ engrams: MuninnEngram[] }>(`/api/muninn/engrams?vault=${v}&limit=500`),
+        fetchJson<{ engrams: MuninnEngram[] }>(
+          `/api/muninn/engrams?vault=${v}&limit=500`,
+        ),
       ]);
 
       // Check for 503 (not configured)

@@ -54,8 +54,9 @@ export function useAgentSave(
 
     const entityKey = `agent:${name}`;
 
-    // Build the PUT payload from the draft
-    const rawConfigText = (draft.rawConfigText as string) ?? "";
+    // Build the PUT payload from the draft, merging form-field overrides
+    // back into rawConfigText so edits are not silently discarded.
+    const rawConfigText = mergeFieldOverrides(draft);
     const metadata = {
       varName: (draft.varName as string) ?? "",
       domain: (draft.domain as string) ?? "agents",
@@ -110,4 +111,101 @@ export function useAgentSave(
   }, [name, setDraft, markClean]);
 
   return { save, discard };
+}
+
+// ---------------------------------------------------------------------------
+// Field merge helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Field-to-config-key mapping.
+ *
+ * Maps draft field names to the config property names used in rawConfigText.
+ * Each entry carries both snake_case and camelCase variants since agent config
+ * files use both conventions.
+ */
+const FIELD_KEY_MAP: Record<string, string[]> = {
+  description: ["description"],
+  modelTier: ["model_tier", "modelTier"],
+  purpose: ["purpose"],
+  stage: ["stage"],
+};
+
+/**
+ * Replace a quoted string value for a given key in raw config text.
+ *
+ * Matches the same patterns used by `parseAgentConfig` in agent-config-form.tsx:
+ * `key: "value"`, `key: 'value'`, or `key: \`value\`` with optional whitespace.
+ *
+ * @param text     - The raw config text
+ * @param key      - The config key to match
+ * @param newValue - The replacement value (will be double-quoted)
+ * @returns Updated text, or original if no match found
+ */
+function replaceStringField(
+  text: string,
+  key: string,
+  newValue: string,
+): string {
+  // Escape special regex chars in the key
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(${escaped}\\s*:\\s*)["'\`]([^"'\`]*?)["'\`]`);
+  if (pattern.test(text)) {
+    return text.replace(pattern, `$1"${newValue}"`);
+  }
+  return text;
+}
+
+/**
+ * Replace a boolean value for a given key in raw config text.
+ *
+ * Matches `key: true` or `key: false` with optional whitespace.
+ *
+ * @param text     - The raw config text
+ * @param key      - The config key to match
+ * @param newValue - The replacement boolean
+ * @returns Updated text, or original if no match found
+ */
+function replaceBoolField(
+  text: string,
+  key: string,
+  newValue: boolean,
+): string {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(${escaped}\\s*:\\s*)(true|false)`);
+  if (pattern.test(text)) {
+    return text.replace(pattern, `$1${String(newValue)}`);
+  }
+  return text;
+}
+
+/**
+ * Merge form-field overrides from the draft atom into rawConfigText.
+ *
+ * For each known form field that has been set on the draft (not undefined),
+ * applies a targeted regex replacement matching the extraction patterns used
+ * by `parseAgentConfig` in agent-config-form.tsx. Fields not changed by the
+ * user (still undefined in the draft) are left untouched.
+ *
+ * @param draft - The entity draft object
+ * @returns The patched rawConfigText string
+ */
+function mergeFieldOverrides(draft: Record<string, unknown>): string {
+  let text = (draft.rawConfigText as string) ?? "";
+
+  // String fields
+  for (const [field, keys] of Object.entries(FIELD_KEY_MAP)) {
+    const value = draft[field];
+    if (value === undefined) continue;
+    for (const key of keys) {
+      text = replaceStringField(text, key, String(value));
+    }
+  }
+
+  // Boolean: enabled
+  if (draft.enabled !== undefined) {
+    text = replaceBoolField(text, "enabled", Boolean(draft.enabled));
+  }
+
+  return text;
 }

@@ -4,7 +4,8 @@
  * Defines node/link shapes for ForceGraph2D, cluster state management,
  * entity type classification, and display metadata (colors, labels).
  *
- * Entity type list mirrors KNOWN_TYPES from use-vault-health.ts for consistency.
+ * Canonical source for entity type classification, used by both graph-types
+ * and use-vault-health.ts (which imports KNOWN_ENTITY_TYPES from here).
  */
 
 // -- Entity type classification -----------------------------------------------
@@ -12,8 +13,7 @@
 /**
  * Known MuninnDB entity types for graph node classification.
  *
- * Matches the KNOWN_TYPES set in hooks/use-vault-health.ts.
- * When updating, keep both locations in sync.
+ * Canonical type union for entity classification across the app.
  */
 export type EntityType =
   | "pattern"
@@ -32,7 +32,8 @@ export type EntityType =
 /**
  * Known entity types set for runtime membership checks.
  *
- * NOTE: Keep in sync with KNOWN_TYPES in hooks/use-vault-health.ts
+ * Canonical source -- imported by hooks/use-vault-health.ts for engram
+ * type categorization.
  */
 export const KNOWN_ENTITY_TYPES = new Set<string>([
   "pattern",
