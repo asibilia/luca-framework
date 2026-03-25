@@ -57,7 +57,7 @@ export function useAgentList(): UseAgentListReturn {
       const json = (await res.json()) as { data: EntitySummary[] };
       setAgents(json.data);
       // Populate server-state mirror atom
-      setRegistry(json.data as unknown as Record<string, unknown>[]);
+      setRegistry(json.data);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load agent list";

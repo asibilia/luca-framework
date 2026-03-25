@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
+
 import dynamic from "next/dynamic";
 
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { StepConfigPanel } from "~/components/workflow/step-config-panel";
@@ -58,8 +60,15 @@ const PipelineCanvas = dynamic(
 export default function PipelinePage() {
   const selectedNodeId = useAtomValue(selectedPipelineNodeIdAtom);
   const nodes = useAtomValue(pipelineNodesAtom);
-  const panelState = useAtomValue(detailPanelStateAtom);
+  const setDetailPanelState = useSetAtom(detailPanelStateAtom);
   const { handleSave, handleDiscard } = usePipelineSave();
+
+  // Keep LayoutShell's detail panel closed so it doesn't render a duplicate.
+  // PipelineCanvas sets detailPanelStateAtom to "docked" on node click;
+  // override that here so only the in-page absolute-positioned panel shows.
+  useEffect(() => {
+    setDetailPanelState("closed");
+  }, [selectedNodeId, setDetailPanelState]);
 
   // Find the selected node data
   const selectedNode = selectedNodeId
@@ -79,8 +88,8 @@ export default function PipelinePage() {
           <PipelineCanvas />
         </ErrorBoundary>
 
-        {/* Docked detail panel */}
-        {panelState !== "closed" && selectedNodeId && (
+        {/* Docked detail panel (managed in-page, not via LayoutShell) */}
+        {selectedNodeId && (
           <div className="absolute right-0 top-0 z-20 h-full">
             <DetailPanel title={detailTitle}>
               <StepConfigPanel nodeId={selectedNodeId} />

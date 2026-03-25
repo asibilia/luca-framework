@@ -1,5 +1,7 @@
 import { atom } from "jotai";
 
+import type { EntitySummary } from "~/lib/entity-route-helpers";
+
 // ---------------------------------------------------------------------------
 // Layer 1 -- Server State (read-only mirrors)
 //
@@ -20,10 +22,10 @@ export const configAtom = atom<Record<string, unknown> | null>(null);
 /**
  * Mirrors the agent registry from GET `/api/entities/agents`.
  *
- * Each entry is a summary object with agent name and frontmatter.
+ * Each entry is an `EntitySummary` with agent name, domain, and frontmatter.
  * `null` until the first successful fetch.
  */
-export const agentRegistryAtom = atom<Record<string, unknown>[] | null>(null);
+export const agentRegistryAtom = atom<EntitySummary[] | null>(null);
 
 /**
  * Mirrors the MODEL_ROUTING_TABLE from GET `/api/routing-table`.

@@ -201,3 +201,13 @@
     @apply font-sans;
   }
 }
+
+/* Workflow edge flow animation (used by WorkflowEdge component) */
+@keyframes workflow-edge-flow {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

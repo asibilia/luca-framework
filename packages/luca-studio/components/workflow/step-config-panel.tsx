@@ -26,8 +26,11 @@ interface StepConfigPanelProps {
  * Reads the selected node's data from `pipelineNodesAtom` and provides
  * editors for: Identity, Model Routing, Loop Budgets, Agents, and Gates.
  *
- * All configuration changes write to `configDraftAtom` and trigger
- * `markDirtyAtom("config")`.
+ * Configuration changes are applied via two paths:
+ * - Some sections (e.g. `StepIdentitySection`) update `pipelineNodesAtom` directly
+ *   for fields stored on the node itself.
+ * - Other sections write to `configDraftAtom` and trigger `markDirtyAtom("config")`
+ *   for draft configuration changes.
  *
  * @param nodeId - The React Flow node ID to configure.
  */

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getSmoothStepPath,
-} from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from "@xyflow/react";
 import type { EdgeProps } from "@xyflow/react";
 
 import { cn } from "~/lib/utils";
@@ -19,21 +15,6 @@ export interface WorkflowEdgeData {
   label?: string;
   [key: string]: unknown;
 }
-
-// -- Styles -------------------------------------------------------------------
-
-/**
- * CSS keyframe animation for edge flow direction.
- *
- * Injected once into the DOM via a <style> tag inside the component.
- * Animates strokeDashoffset to create a flowing dash pattern along the path.
- */
-const EDGE_ANIMATION_STYLE = `
-@keyframes workflow-edge-flow {
-  from { stroke-dashoffset: 24; }
-  to { stroke-dashoffset: 0; }
-}
-`;
 
 // -- Component ----------------------------------------------------------------
 
@@ -84,9 +65,6 @@ export function WorkflowEdge({
 
   return (
     <>
-      {/* Inject animation keyframes */}
-      <style>{EDGE_ANIMATION_STYLE}</style>
-
       {/* Arrowhead marker definition */}
       <defs>
         <marker
@@ -101,9 +79,7 @@ export function WorkflowEdge({
           <path
             d="M 0 0 L 8 4 L 0 8 Z"
             className={cn(
-              selected
-                ? "fill-primary"
-                : "fill-muted-foreground/60",
+              selected ? "fill-primary" : "fill-muted-foreground/60",
             )}
           />
         </marker>

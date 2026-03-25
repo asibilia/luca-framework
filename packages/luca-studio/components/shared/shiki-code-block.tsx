@@ -22,11 +22,13 @@ type ShikiCodeBlockProps = {
 // ---------------------------------------------------------------------------
 
 /**
- * Static syntax-highlighted code block using Shiki.
+ * Static syntax-highlighted code block using Shiki with client-side highlighting.
  *
- * Renders code with Shiki server-side-compatible highlighting. Falls back to a
- * plain `<pre>` block while the highlighter is loading. Uses the `github-dark`
- * and `github-light` themes to match the app's dark/light mode via CSS.
+ * Performs Shiki highlighting on the client in a `useEffect` and is therefore
+ * SSR-safe (no server-side highlighting). On the server it renders a plain
+ * `<pre><code>` block, which is then upgraded to highlighted HTML once the
+ * highlighter has loaded in the browser. Uses the `github-dark` and
+ * `github-light` themes to match the app's dark/light mode via CSS.
  *
  * @param code - The source code to highlight.
  * @param language - The Shiki language identifier.

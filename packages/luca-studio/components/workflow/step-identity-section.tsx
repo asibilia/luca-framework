@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { ChangeEvent } from "react";
 
 import { useAtom } from "jotai";
 import { ChevronDown } from "lucide-react";
@@ -63,14 +64,14 @@ export function StepIdentitySection({
   );
 
   const handleNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       updateNodeData({ label: e.target.value });
     },
     [updateNodeData],
   );
 
   const handleDescriptionChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
       updateNodeData({ description: e.target.value });
     },
     [updateNodeData],
