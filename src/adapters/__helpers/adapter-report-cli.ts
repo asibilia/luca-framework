@@ -118,7 +118,8 @@ export async function generateCompatibilityReport(
     }
 
     // --- Validation phase ---
-    const validator = VALIDATOR_MAP[adapterName];
+    // Prefer adapter.validate() (adapter owns its validation), fall back to standalone VALIDATOR_MAP
+    const validator = adapter.validate ?? VALIDATOR_MAP[adapterName];
     if (!validator) {
       console.error(
         `[compatibility-report] No validator for adapter '${adapterName}', skipping validation`,
