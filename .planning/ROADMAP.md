@@ -135,12 +135,12 @@
 **Depends on:** Phase 11
 **Verification:** Quick
 
-- [ ] TD-2: Remove or consolidate legacy components/workflow-editor/ directory (10 files, superseded by components/workflow/)
-- [ ] TD-3: Add barrel index.ts to component subdirectories (layout/, agents/, workflow-editor/ if kept), stores/, and document lib/ contract
-- [ ] TD-4: Create check:studio-drift script in package.json (validates mirrored schemas match src/)
-- [ ] LOW-1: Add missing JSDoc to SaveBarProps, minimapNodeColor, and other undocumented exports
-- [ ] LOW-2: Add v9.0.0 removal timeline to deprecated NAV_ITEMS export
-- [ ] LOW-3: Fix destructuring defaults in CodeMirrorWrapper (use Zod schema or constants)
+- [x] TD-2: Remove or consolidate legacy components/workflow-editor/ directory (10 files, superseded by components/workflow/)
+- [x] TD-3: Add barrel index.ts to component subdirectories (layout/, agents/, workflow-editor/ if kept), stores/, and document lib/ contract
+- [x] TD-4: Create check:studio-drift script in package.json (validates mirrored schemas match src/)
+- [x] LOW-1: Add missing JSDoc to SaveBarProps, minimapNodeColor, and other undocumented exports
+- [x] LOW-2: Add v9.0.0 removal timeline to deprecated NAV_ITEMS export
+- [x] LOW-3: Fix destructuring defaults in CodeMirrorWrapper (use Zod schema or constants)
 
 ---
 
