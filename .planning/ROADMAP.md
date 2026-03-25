@@ -56,9 +56,9 @@
 **Depends on:** Phase 4
 **Verification:** Full
 
-- [ ] studio-w3-config-write-routes — 6 PUT endpoints for config.json sections
-- [ ] studio-w3-entity-crud-routes — Entity CRUD API routes (agents, skills, rules)
-- [ ] studio-w3-compile-routes — POST /api/compile proxy to sidecar
+- [x] studio-w3-config-write-routes — 6 PUT endpoints for config.json sections
+- [x] studio-w3-entity-crud-routes — Entity CRUD API routes (agents, skills, rules)
+- [x] studio-w3-compile-routes — POST /api/compile proxy to sidecar
 
 ### Phase 6: W4 UI Foundation
 
