@@ -2,9 +2,8 @@
  * Claude Code adapter — compiles Luca definitions to .claude/ directory artifacts.
  *
  * Factory function returning an Adapter that delegates compilation of agents,
- * skills, and rules to the respective emitters. Rule compilation is inlined
- * (not a separate emitter) because the logic is compact (~20 lines) and only
- * used by the Claude adapter.
+ * skills, and rules to the respective emitters (agent-emitter, skill-emitter,
+ * rule-emitter).
  *
  * This is the default adapter and preserves 100% backward compatibility
  * with the existing Luca experience.
@@ -19,41 +18,9 @@ import type { BaseAgent } from "~/agents";
 import type { BaseSkill } from "~/skills";
 import type { BaseRule } from "~/rules";
 import type { WorkflowStep } from "~/workflow";
-import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { emitAgentMarkdown } from "./agent-emitter";
 import { emitSkillMarkdown } from "./skill-emitter";
-
-/**
- * Compile a rule definition to Claude Code format markdown.
- *
- * When the rule has scoping metadata (globs or explicit alwaysApply), YAML
- * frontmatter is prepended. This is the exact logic from the original
- * compileRuleClaude() in src/compilers/__helpers/compile.ts lines 119-139.
- *
- * @param rule - The rule instance to compile
- * @returns Compiled markdown string, optionally prefixed with YAML frontmatter
- */
-function emitRuleMarkdown(rule: BaseRule): string {
-  const markdown = rule.toClaudeFormat();
-  const { description, globs, alwaysApply } = rule.config.frontmatter;
-
-  const hasScoping =
-    (globs !== undefined && globs.length > 0) || alwaysApply !== undefined;
-
-  if (hasScoping) {
-    const frontmatterData: Record<string, unknown> = { description };
-    if (globs !== undefined && globs.length > 0) {
-      frontmatterData.globs = globs;
-    }
-    if (alwaysApply !== undefined) {
-      frontmatterData.alwaysApply = alwaysApply;
-    }
-    const frontmatter = formatFrontmatter(frontmatterData);
-    return `${frontmatter}\n\n${markdown}`;
-  }
-
-  return markdown;
-}
+import { emitRuleMarkdown } from "./rule-emitter";
 
 /**
  * Create the Claude Code adapter.

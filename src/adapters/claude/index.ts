@@ -4,3 +4,4 @@
 export { createClaudeAdapter } from "./claude-adapter";
 export { emitAgentMarkdown } from "./agent-emitter";
 export { emitSkillMarkdown, emitSkillPluginMarkdown } from "./skill-emitter";
+export { emitRuleMarkdown } from "./rule-emitter";
