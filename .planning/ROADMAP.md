@@ -2,25 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v7.2.0 — Audit Gap Closure
-
----
-
-## v7.2.0 — Audit Gap Closure
-
-Addresses 3 HIGH DRY violations from v7.1.0 audit. All in adapter domain (T3, src/adapters/).
-
-**Branch:** 101--v7-ide-adapter-layer
-
-### Phase 1: Adapter DRY Extraction
-
-**Goal:** Extract duplicated code across 3 adapter files into shared helpers: sectionsToMarkdown, emit orchestration, and frontmatter building.
-
-**Depends on:** None
-
-- [ ] Plan 1 — Extract shared adapter helpers and unify 3 adapters
-
-**Audit findings addressed:** HIGH #1 (sectionsToMarkdown), HIGH #2 (emit orchestration), HIGH #3 (frontmatter building)
+**Current Milestone:** Planning next
 
 ---
 
@@ -237,6 +219,7 @@ Addresses 3 HIGH DRY violations from v7.1.0 audit. All in adapter domain (T3, sr
 - **v6.1.0** — Audit Gap Closure: 3 phases, 20 commits, 30 files changed ([View Archive](milestones/v6.1.0-ROADMAP.md))
 - **v7.0.0** — IDE Adapter Layer: 2 phases, 6 plans, 27 commits, 15 files changed (+2,378 LOC) ([View Archive](milestones/v7.0.0-ROADMAP.md))
 - **v7.1.0** — Multi-IDE Adapter Completion: 3 phases, 3 plans, 10 commits, 22 files changed (+1,780 LOC) ([View Archive](milestones/v7.1.0-ROADMAP.md))
+- **v7.2.0** — Audit Gap Closure: 1 phase, 1 plan, 3 commits, 8 files changed (-140 LOC) ([View Archive](milestones/v7.2.0-ROADMAP.md))
 
 ---
 
