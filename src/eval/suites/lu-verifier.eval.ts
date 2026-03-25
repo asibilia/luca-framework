@@ -289,7 +289,7 @@ new file mode 100644
 --- /dev/null
 +++ b/packages-dev/bun-scripts/eval.ts
 @@ -0,0 +1,30 @@
-+import { getArg, hasFlag } from "~/shared/__helpers/cli-utils";
++import { getArg, hasFlag } from "~/shared";
 +const args = Bun.argv.slice(2);
 +const suite = getArg(args, "suite", "");
 +const tag = getArg(args, "tag", "");

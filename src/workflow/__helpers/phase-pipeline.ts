@@ -16,7 +16,7 @@
  * @see docs/runtime-architecture/dag-workflow-engine.md — How This Replaces lu.skill.ts
  */
 
-import { buildPhaseDAG } from "./dag-builder.ts";
+import { buildPhaseDAG } from "./dag-builder";
 
 import {
   ClassifyOutputSchema,
@@ -26,9 +26,9 @@ import {
   VerifyOutputSchema,
   LearnOutputSchema,
   CommitOutputSchema,
-} from "../__schemas/contracts.schemas.ts";
+} from "../__schemas/contracts.schemas";
 
-import type { WorkflowDAG } from "../__schemas/workflow.schemas.ts";
+import type { WorkflowDAG } from "../__schemas/workflow.schemas";
 
 // ─── Phase Pipeline ──────────────────────────────────────────────────────────
 

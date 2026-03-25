@@ -7,6 +7,13 @@
  * Built-in adapters (Claude, API) are pre-registered via a separate
  * side-effect module (register-builtins.ts), NOT imported here.
  * Barrel imports must not have side effects.
+ *
+ * **Side-effect import required:** Consumers that need built-in adapters
+ * registered in the global registry must import the registration module:
+ * ```typescript
+ * import "~/adapters/__helpers/register-builtins";
+ * ```
+ * This import triggers adapter registration as a side effect.
  */
 
 // ─── Schemas and Types ─────────────────────────────────────────────────────

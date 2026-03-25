@@ -31,14 +31,14 @@
 
 import type { z } from "zod";
 
-import { deepFreeze } from "~/shared/__helpers/deep-freeze.ts";
+import { deepFreeze } from "~/shared/__helpers/deep-freeze";
 
 import {
   WorkflowDAGSchema,
   WorkflowStepSchema,
-} from "../__schemas/workflow.schemas.ts";
+} from "../__schemas/workflow.schemas";
 
-import type { WorkflowDAG } from "../__schemas/workflow.schemas.ts";
+import type { WorkflowDAG } from "../__schemas/workflow.schemas";
 
 // ─── Step Config ─────────────────────────────────────────────────────────────
 

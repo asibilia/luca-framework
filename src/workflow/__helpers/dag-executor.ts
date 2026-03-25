@@ -31,10 +31,10 @@ import type {
   ExecutionResult,
   DAGCheckpoint,
   TraceEntry,
-} from "../__schemas/workflow.schemas.ts";
-import { topologicalSort } from "./dag-sorter.ts";
-import { validateDAG } from "./dag-validator.ts";
-import { saveCheckpoint, clearCheckpoint } from "./dag-serializer.ts";
+} from "../__schemas/workflow.schemas";
+import { topologicalSort } from "./dag-sorter";
+import { validateDAG } from "./dag-validator";
+import { saveCheckpoint, clearCheckpoint } from "./dag-serializer";
 
 // ─── Executor Options ────────────────────────────────────────────────────────
 

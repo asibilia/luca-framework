@@ -27,7 +27,7 @@ export {
   FailedStepInfoSchema,
   DAGCheckpointSchema,
   AdapterSchema,
-} from "./__schemas/workflow.schemas.ts";
+} from "./__schemas/workflow.schemas";
 
 export type {
   StepCategory,
@@ -46,9 +46,7 @@ export type {
   FailedStepInfo,
   DAGCheckpoint,
   Adapter,
-} from "./__schemas/workflow.schemas.ts";
-
-// --- Step Contracts ----------------------------------------------------------
+} from "./__schemas/workflow.schemas";
 
 // ─── Step Contracts ──────────────────────────────────────────────────────────
 
@@ -62,7 +60,7 @@ export {
   VerifyOutputSchema,
   LearnOutputSchema,
   CommitOutputSchema,
-} from "./__schemas/contracts.schemas.ts";
+} from "./__schemas/contracts.schemas";
 
 export type {
   ClassifyOutput,
@@ -74,29 +72,29 @@ export type {
   VerifyOutput,
   LearnOutput,
   CommitOutput,
-} from "./__schemas/contracts.schemas.ts";
+} from "./__schemas/contracts.schemas";
 
 // ─── DAG Builder ─────────────────────────────────────────────────────────────
 
-export { buildPhaseDAG } from "./__helpers/dag-builder.ts";
-export type { StepConfig, DAGBuilder } from "./__helpers/dag-builder.ts";
+export { buildPhaseDAG } from "./__helpers/dag-builder";
+export type { StepConfig, DAGBuilder } from "./__helpers/dag-builder";
 
 // ─── DAG Adjacency ───────────────────────────────────────────────────────────
 
-export { buildSuccessorsMap } from "./__helpers/dag-adjacency.ts";
+export { buildSuccessorsMap } from "./__helpers/dag-adjacency";
 
 // ─── DAG Sorter ──────────────────────────────────────────────────────────────
 
-export { topologicalSort, getExecutionOrder } from "./__helpers/dag-sorter.ts";
+export { topologicalSort, getExecutionOrder } from "./__helpers/dag-sorter";
 
 // ─── DAG Validator ───────────────────────────────────────────────────────────
 
-export { validateDAG } from "./__helpers/dag-validator.ts";
+export { validateDAG } from "./__helpers/dag-validator";
 
 // ─── DAG Executor ────────────────────────────────────────────────────────────
 
-export { executeDAG } from "./__helpers/dag-executor.ts";
-export type { ExecuteDAGOptions } from "./__helpers/dag-executor.ts";
+export { executeDAG } from "./__helpers/dag-executor";
+export type { ExecuteDAGOptions } from "./__helpers/dag-executor";
 
 // ─── DAG Serializer ──────────────────────────────────────────────────────────
 
@@ -104,12 +102,12 @@ export {
   saveCheckpoint,
   loadCheckpoint,
   clearCheckpoint,
-} from "./__helpers/dag-serializer.ts";
+} from "./__helpers/dag-serializer";
 
 // ─── DAG Visualizer ──────────────────────────────────────────────────────────
 
-export { dagToTopology } from "./__helpers/dag-visualizer.ts";
+export { dagToTopology } from "./__helpers/dag-visualizer";
 
 // ─── Phase Pipeline ──────────────────────────────────────────────────────────
 
-export { PHASE_PIPELINE } from "./__helpers/phase-pipeline.ts";
+export { PHASE_PIPELINE } from "./__helpers/phase-pipeline";
