@@ -1,16 +1,14 @@
 {
   "status": "active",
-  "value": "verifying",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "7d6f75dd-a47a-4b5f-b1a9-1a121caaa1d4",
-    "github_issue": 101,
-    "branch": "101--v7-ide-adapter-layer",
+    "session_id": "b10a7162-6057-4d06-8d81-a7b60db954e5",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
-    "oversight": "full-auto",
+    "complexity": "TRIVIAL",
+    "oversight": "milestone",
     "gates": {
       "confirm_project": true,
       "confirm_phases": true,
@@ -74,32 +72,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 1,
-        "status": "passed",
-        "summary": "Phase 1 IDE Adapters: 3 adapters (Cursor, Windsurf, VS Code) + shared utility + registration. 13 files, 1427 lines. Verification 7/7.",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-25T02:36:14.156Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "pre_mortem_result": {
-      "risks": [],
-      "mitigations": [],
-      "confidence": 0,
-      "timestamp": "2026-03-25T02:15:39.064Z"
-    },
-    "started_at": "2026-03-25T01:49:43.167Z",
-    "last_transition_at": "2026-03-25T02:37:52.031Z"
+    "started_at": "2026-03-25T02:48:23.493Z"
   },
   "children": {}
 }
