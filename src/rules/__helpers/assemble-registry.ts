@@ -28,6 +28,7 @@ import { luWorkflowRule } from "../general/lu-workflow.rule";
 import { moduleBoundaryRule } from "../general/module-boundary.rule";
 import { mandatoryDocumentationRule } from "../general/mandatory-documentation.rule";
 import { noTestsRule } from "../general/no-tests.rule";
+import { planningStructureRule } from "../general/planning-structure.rule";
 import { posthogIntegrationRule } from "../general/posthog-integration.rule";
 import { selfImproveRule } from "../general/self-improve.rule";
 import { stateMachineBridgeRule } from "../general/state-machine-bridge.rule";
@@ -52,6 +53,7 @@ const generalRules: Record<string, () => BaseRule> = {
   "mandatory-documentation": () => mandatoryDocumentationRule,
   "module-boundary": () => moduleBoundaryRule,
   "no-tests": () => noTestsRule,
+  "planning-structure": () => planningStructureRule,
   "posthog-integration": () => posthogIntegrationRule,
   "self-improve": () => selfImproveRule,
   "state-machine-bridge": () => stateMachineBridgeRule,

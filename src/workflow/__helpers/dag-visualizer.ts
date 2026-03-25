@@ -1,12 +1,12 @@
 /**
  * Transform a WorkflowDAG into the WorkflowTopologyResponse format
- * consumed by luca-observer's React Flow workflow editor.
+ * consumed by luca-studio's React Flow workflow editor.
  *
  * Maps DAG steps to TopologyNode/TopologyEdge structures, preserving
  * the stage-group container pattern used by the existing editor.
  *
- * @see packages/luca-observer/lib/workflow-types.ts — target schema
- * @see packages/luca-observer/lib/workflow-topology.ts — reference impl
+ * @see packages/luca-studio/lib/workflow-types.ts — target schema
+ * @see packages/luca-studio/lib/workflow-topology.ts — reference impl
  * @see docs/runtime-architecture/dag-workflow-engine.md — DAG design
  */
 
@@ -16,14 +16,14 @@ import type {
   StepCategory,
 } from "../__schemas/workflow.schemas.ts";
 
-// ─── Types (matching luca-observer's WorkflowTopologyResponse) ──────────────
+// ─── Types (matching luca-studio's WorkflowTopologyResponse) ──────────────
 
 /**
- * Topology node in the format luca-observer expects.
+ * Topology node in the format luca-studio expects.
  *
- * NOTE: These types mirror luca-observer/lib/workflow-types.ts but are defined
+ * NOTE: These types mirror luca-studio/lib/workflow-types.ts but are defined
  * here to avoid a cross-package import. They are structurally compatible —
- * the observer validates via Zod at the API boundary.
+ * the studio validates via Zod at the API boundary.
  */
 interface TopologyNode {
   id: string;
@@ -68,7 +68,7 @@ interface TopologyResponse {
  * Category-to-stage mapping.
  *
  * StepCategory from WorkflowStepSchema maps to WorkflowStage from
- * luca-observer. "gate" is not a stage — gate steps inherit the stage
+ * luca-studio. "gate" is not a stage — gate steps inherit the stage
  * of their first dependency.
  */
 const CATEGORY_TO_STAGE: Record<string, string> = {
@@ -102,7 +102,7 @@ const KNOWN_SKILL_HANDLERS = new Set([
   "git-commit",
 ]);
 
-// ─── Container sizing (mirrors luca-observer/lib/workflow-topology.ts) ──────
+// ─── Container sizing (mirrors luca-studio/lib/workflow-topology.ts) ──────
 
 const HEADER_HEIGHT = 50;
 const CHILD_PADDING_TOP = 10;
@@ -180,19 +180,19 @@ function resolveNodeType(step: WorkflowStep): "agent" | "skill" | "gate" {
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Transform a WorkflowDAG into luca-observer's topology format.
+ * Transform a WorkflowDAG into luca-studio's topology format.
  *
  * Creates stage-group container nodes (one per unique stage in the DAG),
  * nests step nodes inside them via parent_id, and generates data-flow
  * edges from dependsOn relationships.
  *
  * The output is structurally compatible with the WorkflowTopologyResponseSchema
- * in packages/luca-observer/lib/workflow-types.ts and can be served from an
+ * in packages/luca-studio/lib/workflow-types.ts and can be served from an
  * API endpoint or passed directly to the observer's useWorkflowGraph hook.
  *
  * @param dag - The WorkflowDAG to transform
  * @param complexity - Optional complexity level for downstream tier resolution
- * @returns TopologyResponse compatible with luca-observer's React Flow editor
+ * @returns TopologyResponse compatible with luca-studio's React Flow editor
  *
  * @example
  * ```typescript
@@ -246,7 +246,7 @@ export function dagToTopology(
     }
   }
 
-  // Stage descriptions (subset of luca-observer's STAGE_DESCRIPTIONS)
+  // Stage descriptions (subset of luca-studio's STAGE_DESCRIPTIONS)
   const STAGE_DESCRIPTIONS: Record<string, string> = {
     entry: "Entry point for workflow invocation",
     classify: "Route task complexity via lu-router",

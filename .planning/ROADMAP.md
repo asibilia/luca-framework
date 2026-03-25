@@ -8,19 +8,20 @@
 
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                  | Reason                                               |
-| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
-| runtime-d01–d11             | v8.0.0   | Luca Studio (dev server + UI views)    | WSJF 1.6, CRITICAL effort, test reintro opportunity  |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+| Todo Group                  | Target   | Scope                                        | Reason                                               |
+| --------------------------- | -------- | -------------------------------------------- | ---------------------------------------------------- |
+| studio W7-W8 (11 todos)     | v8.1.0   | Studio Polish (SSE, ETag, undo, pages, keys) | P2/P3 polish — deferred at W6/W7 arch split boundary |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts)       | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)                | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol               | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                       | Depends on cross-talk + adapters + Studio            |
 
 ## Closed (Reference / Not Actionable)
 
 | Todo                          | Reason                                                          |
 | ----------------------------- | --------------------------------------------------------------- |
 | v2-external-research-patterns | Reference document, not an implementation task. Moved to docs/. |
+| runtime-d01–d11               | Superseded by studio-w\* todos in v8.0.0 (scope revised)        |
 
 ## Backlog (Blocked)
 
@@ -220,6 +221,7 @@
 - **v7.0.0** — IDE Adapter Layer: 2 phases, 6 plans, 27 commits, 15 files changed (+2,378 LOC) ([View Archive](milestones/v7.0.0-ROADMAP.md))
 - **v7.1.0** — Multi-IDE Adapter Completion: 3 phases, 3 plans, 10 commits, 22 files changed (+1,780 LOC) ([View Archive](milestones/v7.1.0-ROADMAP.md))
 - **v7.2.0** — Audit Gap Closure: 1 phase, 1 plan, 3 commits, 8 files changed (-140 LOC) ([View Archive](milestones/v7.2.0-ROADMAP.md))
+- **v8.0.0** — Luca Studio MVP: 12 phases, 23 plans, 45 commits, 365 files changed (+17,647 LOC) ([View Archive](milestones/v8.0.0-ROADMAP.md))
 
 ---
 

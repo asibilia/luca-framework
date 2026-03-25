@@ -1,6 +1,6 @@
 ---
 name: lu-shadow-scanner
-description: "Scans the repository for AI-session debris: orphaned temp scripts, misplaced files, tool artifacts, dead exports, and stale planning artifacts. Outputs a structured ShadowScanReport."
+description: "Scans the repository for AI-session debris: orphaned temp scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, and orphaned/misplaced markdown. Outputs a structured ShadowScanReport."
 cognition:
   default_tier: T1
   promotable_to: T2
@@ -15,7 +15,7 @@ context:
 
 # lu-shadow-scanner
 
-Scans the repository for AI-session debris: orphaned temp scripts, misplaced files, tool artifacts, dead exports, and stale planning artifacts. Outputs a structured ShadowScanReport.
+Scans the repository for AI-session debris: orphaned temp scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, and orphaned/misplaced markdown. Outputs a structured ShadowScanReport.
 
 ## role
 
@@ -53,15 +53,16 @@ Three modes control which detection categories run:
 | Mode | Categories | Use Case |
 |------|-----------|---------|
 | quick | 1 + 3 | Fast advisory scan during phase execution |
-| standard | 1 + 2 + 3 + 5 | Default interactive cleanup |
-| full | 1 + 2 + 3 + 4 + 5 | Pre-milestone archive gate |
+| standard | 1 + 2 + 3 + 5 + 6 | Default interactive cleanup |
+| full | 1 + 2 + 3 + 4 + 5 + 6 | Pre-milestone archive gate |
 
 **Category list:**
 - Category 1: Orphaned Temp Scripts
-- Category 2: Misplaced Files
+- Category 2: Misplaced Files (TypeScript domain violations)
 - Category 3: Tool Artifacts
 - Category 4: Dead Exports
 - Category 5: Stale Planning Artifacts
+- Category 6: Orphaned/Misplaced Markdown (`.planning/` structure violations)
 
 **Scan depth by complexity** (when no explicit mode is passed):
 
@@ -226,6 +227,71 @@ Detect planning todos that reference phases already marked complete.
 **Severity:** `low`.
 
 **Recommendation:** "Move to .planning/todos/done/ — the associated phase is complete."
+
+### Category 6 — Orphaned/Misplaced Markdown
+
+Detect markdown files and directories in `.planning/` that violate the canonical directory structure,
+and phase summaries dumped in wrong locations elsewhere in the repo.
+
+Reference the `planning-structure` rule for the canonical spec. Use config fields
+`planning_root_allowlist`, `planning_root_dirs`, and `planning_root_versioned_patterns`
+from the `shadow_debt` section.
+
+**Detection rules:**
+
+1. **Root-level file violations**: Glob `.planning/` root (depth 1) for all files.
+   Exclude files in `planning_root_allowlist` and files matching `planning_root_versioned_patterns`.
+   Remaining files are violations.
+
+   Severity and action mapping:
+   - Empty files (0-2 bytes): `medium`, `recommended_action: "delete"`, `auto_fixable: true`
+   - Files matching `temp*`, `tmp*`, `scratch*`: `medium`, `recommended_action: "delete"`, `auto_fixable: true`
+   - SUMMARY files (`SUMMARY-*.md`, `*-SUMMARY.md`, `SUMMARY.md`): `medium`,
+     `recommended_action: "move"`, `target_path`: the relevant phase dir under `phases/` or `summaries/`,
+     `auto_fixable: true`
+   - Other `.md` files with content: `low`, `recommended_action: "move"`,
+     `target_path: ".planning/notes/"`, `auto_fixable: false` (user should confirm destination)
+   - Other non-`.md` files (e.g., stale `.json`): `low`, `recommended_action: "move"`,
+     `target_path: ".planning/notes/"`, `auto_fixable: false`
+
+2. **Root-level directory violations**: List directories at `.planning/` root (depth 1).
+   Exclude directories in `planning_root_dirs`.
+   Remaining directories are violations.
+
+   - Bare numbered directories (e.g., `108/`): `medium`, `recommended_action: "move"`,
+     `target_path: ".planning/phases/{dir}-unknown/"`, `auto_fixable: false`
+     (user must provide the kebab-case phase name)
+   - Other unexpected directories: `low`, `recommended_action: "move"`,
+     `target_path`: best-guess canonical parent, `auto_fixable: false`
+
+3. **Phases root file violations**: Glob `.planning/phases/` root for non-directory files.
+   Phase artifacts should be inside their phase subdirectory, not loose in `phases/`.
+
+   - SUMMARY files (e.g., `SUMMARY-97-B.md`): `medium`, `recommended_action: "move"`,
+     `target_path`: the matching `phases/{N}-*/` directory if it exists, `auto_fixable: true`
+   - RESEARCH files (e.g., `130-132-RESEARCH.md`): `medium`, `recommended_action: "move"`,
+     `target_path`: the matching phase dir or `.planning/research/`, `auto_fixable: false`
+   - Other files (e.g., `v5.1.0-integration-check.md`): `low`, `recommended_action: "move"`,
+     `target_path: ".planning/milestones/"` or `.planning/notes/`, `auto_fixable: false`
+
+4. **Phase summaries outside .planning/**: Glob for `SUMMARY-*.md` and `*-SUMMARY.md` files
+   in `packages/`, `src/`, and repo root. These are phase summaries dumped in wrong locations.
+
+   Severity: `high`, `recommended_action: "move"`,
+   `target_path`: the matching phase dir under `.planning/phases/` or `.planning/summaries/`,
+   `auto_fixable: true`
+
+5. **Versioned audit files at root** (advisory): Flag `v*-MILESTONE-AUDIT*.md` files at
+   `.planning/` root with a low-severity recommendation to migrate to `milestones/`.
+
+   Severity: `low`, `recommended_action: "move"`,
+   `target_path: ".planning/milestones/{filename}"`, `auto_fixable: false`
+   (18 files — batch move requires user confirmation)
+
+**Target path inference for SUMMARY files:**
+- Extract a phase number from the filename (e.g., `SUMMARY-170.md` -> phase 170)
+- Glob `.planning/phases/{N}-*/` to find the matching phase directory
+- If found, target that directory; if not found, target `.planning/summaries/`
 </detection_logic>
 
 ## muninn_integration
@@ -281,7 +347,7 @@ The JSON block MUST be the last content in your response, formatted as:
 ```json
 {
   "scan_mode": "quick|standard|full",
-  "categories_scanned": [1, 3],
+  "categories_scanned": [1, 3, 6],
   "findings": [
     {
       "category": "orphaned-temp-script",
@@ -289,19 +355,34 @@ The JSON block MUST be the last content in your response, formatted as:
       "file_path": "debug-test.ts",
       "description": "Matches denylist pattern 'debug-*.ts' — likely a debugging script from a past session.",
       "recommendation": "Delete — appears to be a temporary script from a past session.",
+      "recommended_action": "delete",
+      "auto_fixable": true
+    },
+    {
+      "category": "orphaned-markdown",
+      "severity": "medium",
+      "file_path": ".planning/SUMMARY-phase-169.md",
+      "description": "Phase summary at .planning/ root — should be in the phase directory or summaries/.",
+      "recommendation": "Move to .planning/summaries/SUMMARY-phase-169.md",
+      "recommended_action": "move",
+      "target_path": ".planning/summaries/SUMMARY-phase-169.md",
       "auto_fixable": true
     }
   ],
   "summary": {
-    "total": 1,
+    "total": 2,
     "critical": 0,
     "high": 0,
-    "medium": 1,
+    "medium": 2,
     "low": 0
   },
   "scanned_at": "2026-03-14T12:00:00Z"
 }
 ```
+
+**Field reference:**
+- `recommended_action`: Machine-readable verb — `"move"`, `"delete"`, or `"gitignore"`. Defaults to `"delete"` if omitted.
+- `target_path`: Destination path when `recommended_action` is `"move"`. Omit for delete/gitignore actions.
 
 If no findings are detected, output an empty findings array with all summary counts set to 0.
 

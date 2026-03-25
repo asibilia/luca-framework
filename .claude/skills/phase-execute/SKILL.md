@@ -27,7 +27,6 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - `dx-advocate` - Code quality review
 - `code-simplifier` - DRY and complexity review
 - `code-architect` - Architecture review
-- `ui` - UI/styling review
 - `security-auditor` - Security review (conditional)
 - `lu-planner` - Plans fixes for issues (if needed)
 - `lu-plan-checker` - Validates fix plans (if needed)
@@ -135,6 +134,8 @@ Task(
   prompt="""
 <learning_context>
 
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 **Phase:** {phase_number}
 **Verification Result:** {verification_result}
 
@@ -208,6 +209,8 @@ Collect metrics data from the orchestrator context and spawn `lu-process-data`:
 Task(
   prompt="""
 <process_data_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
 
 **Phase:** {phase_number}
 **Milestone:** {milestone_id}
@@ -423,10 +426,21 @@ Continue normally. No pre-plan context is injected.
 
 ### 4. Execute Waves
 
-For each wave in order:
+#### 4.0.1. Sub-Wave Splitting (Team Size Cap)
+
+If a wave contains more than 5 plans, split it into sub-waves of at most 5 plans each:
+
+1. Sort plans within the wave by dependency order (plans with fewer deps first)
+2. Create sub-waves of max 5 plans each
+3. Execute sub-waves sequentially within the wave (each sub-wave's plans run in parallel)
+4. Wait for all sub-wave executors to complete before starting the next sub-wave
+
+This cap prevents context exhaustion from too many parallel agent outputs.
+
+For each wave (or sub-wave) in order:
 
 - Read plan contents (@ syntax doesn't work across Task boundaries)
-- Spawn `lu-executor` for each plan in wave (parallel Task calls)
+- Spawn `lu-executor` for each plan in wave (parallel Task calls, max 5 per batch)
 - Wait for completion
 - Verify SUMMARYs created
 - **Append wave completion to journal** (persists across context compaction):
@@ -626,6 +640,8 @@ Task(
   prompt="""
 <execution_context>
 
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 **Plan:** {plan_01_name}
 **Phase:** {phase_number}
 **Wave:** {wave_number}
@@ -672,6 +688,8 @@ Execute this plan. Return SUMMARY when complete.
 Task(
   prompt="""
 <execution_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
 
 **Plan:** {plan_02_name}
 **Phase:** {phase_number}
@@ -1192,6 +1210,9 @@ Prepare fix context from classified errors. Include only correctable and transie
 Task(
   prompt="""
 <fix_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 **Harness failures (Loop A, iteration {N}/{MAX}):**
 
 **Correctable errors (retry with context):**
@@ -1310,6 +1331,8 @@ Then spawn the verifier:
 Task(
   prompt="""
 <verification_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
 
 **Phase:** {phase_number}
 **Phase Directory:** {phase_dir}
@@ -1553,6 +1576,9 @@ VT_ENABLED=$(echo "$CONFIG" | bun -e "
 Task(
   prompt="""
 <diagnostic_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 {test_writer_diagnostic_prompt}
 
 **Phase:** {phase_number}
@@ -1560,6 +1586,15 @@ Task(
 
 Analyze the T1/T3 conflict from your perspective as test coverage expert.
 </diagnostic_context>
+
+<output_format>
+Return your analysis in this exact format:
+
+CATEGORY: tests_incomplete | goal_over_specified | wiring_issue
+CONFIDENCE: HIGH | MEDIUM | LOW
+EVIDENCE: [1-3 sentence summary of evidence]
+ACTION: [Recommended remediation step]
+</output_format>
 """,
   subagent_type="lu-test-writer",
   model="{diagnostic_model}",
@@ -1570,6 +1605,9 @@ Analyze the T1/T3 conflict from your perspective as test coverage expert.
 Task(
   prompt="""
 <diagnostic_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 {verifier_diagnostic_prompt}
 
 **Phase:** {phase_number}
@@ -1577,6 +1615,15 @@ Task(
 
 Re-examine your T3 analysis for potential over-specification.
 </diagnostic_context>
+
+<output_format>
+Return your analysis in this exact format:
+
+CATEGORY: tests_incomplete | goal_over_specified | wiring_issue
+CONFIDENCE: HIGH | MEDIUM | LOW
+EVIDENCE: [1-3 sentence summary of evidence]
+ACTION: [Recommended remediation step]
+</output_format>
 """,
   subagent_type="lu-verifier",
   model="{diagnostic_model}",
@@ -1587,6 +1634,9 @@ Re-examine your T3 analysis for potential over-specification.
 Task(
   prompt="""
 <diagnostic_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 {integration_diagnostic_prompt}
 
 **Phase:** {phase_number}
@@ -1594,6 +1644,15 @@ Task(
 
 Analyze cross-component wiring for integration gaps.
 </diagnostic_context>
+
+<output_format>
+Return your analysis in this exact format:
+
+CATEGORY: tests_incomplete | goal_over_specified | wiring_issue
+CONFIDENCE: HIGH | MEDIUM | LOW
+EVIDENCE: [1-3 sentence summary of evidence]
+ACTION: [Recommended remediation step]
+</output_format>
 """,
   subagent_type="lu-integration-checker",
   model="{diagnostic_model}",
@@ -1712,6 +1771,9 @@ For each plan with gaps, spawn a fix executor with gap-targeted instructions:
 Task(
   prompt="""
 <gap_fix_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 **Verify Loop B (iteration {N}/{MAX}):**
 **Plan:** {plan_name}
 
@@ -1728,6 +1790,16 @@ Task(
 - Do NOT refactor or change unrelated code
 - Commit fixes atomically
 </gap_fix_context>
+
+<output_format>
+When complete, return:
+- status: success | partial | failed
+- summary: What was fixed (1-2 sentences)
+- artifacts: List of files modified
+- remaining_gaps: Any gaps not addressed and why
+
+Update the plan's SUMMARY.md to reflect gap-fix changes (append a "## Gap Fix Iteration {N}" section).
+</output_format>
 
 Fix the verification gaps for this plan.
 """,
@@ -1757,6 +1829,9 @@ Spawn the verifier again (same context as Step 7, updated with new summaries):
 Task(
   prompt="""
 <verification_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 **Phase:** {phase_number}
 **Phase Directory:** {phase_dir}
 **Mode:** full (re-verification after gap fixes)
@@ -1893,7 +1968,6 @@ PRE_MORTEM_MITIGATIONS=$(cat {phase_dir}/DISCUSSION.md 2>/dev/null | grep -A 100
 | dx-advocate      | fast    | balanced | capable  | capable | capable  |
 | code-simplifier  | fast    | balanced | capable  | capable | capable  |
 | code-architect   | fast    | balanced | capable  | capable | capable  |
-| performance-auditor | fast | balanced | capable  | capable | capable  |
 | security-auditor | fast    | balanced | capable  | capable | capable  |
 
 At lower complexity, reviewers run with lighter models (fast tier), making them low-cost but still active. The `--skip-review` flag and `workflow.code_review: false` config override still allow skipping entirely.
@@ -1926,6 +2000,8 @@ Then spawn all reviewers in PARALLEL:
 # DX Advocate - conventions, coding standards
 Task(
   prompt="""
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 Review the following changed files for code quality issues.
 
 **Changed files:**
@@ -1958,6 +2034,8 @@ description="DX review"
 
 Task(
 prompt="""
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 Review the following changed files for complexity and duplication.
 
 **Changed files:**
@@ -1988,6 +2066,8 @@ description="Simplification review"
 
 Task(
 prompt="""
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 Review the following changed files for architecture issues.
 
 **Changed files:**
@@ -2014,42 +2094,14 @@ model="{reviewer_model}",
 description="Architecture review"
 )
 
-# Tailwind Auditor - styling patterns
-
-Task(
-prompt="""
-Review the following changed files for Tailwind and styling issues.
-
-**Changed files:**
-{CHANGED_FILES}
-
-**Your focus:** Dynamic color system usage, Tailwind patterns, shadcn anti-patterns, MUI deprecation compliance.
-
-**Return format:**
-
-```yaml
-issues:
-  - severity: CRITICAL|HIGH|MEDIUM|LOW
-    file: path/to/file.ts
-    line: 42
-    issue: Brief description
-    suggestion: How to fix
-    source_agent: ui
-```
-
-If no issues found, return: `issues: []`
-""",
-subagent_type="ui",
-model="{reviewer_model}",
-description="Tailwind review"
-)
-
 # Security Auditor - ONLY if auth/api files changed
 
 # (Spawn this only if NEEDS_SECURITY=true from earlier check)
 
 Task(
 prompt="""
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 Review the following changed files for security issues.
 
 **Changed files:**
@@ -2083,6 +2135,8 @@ description="Security review"
 
 Task(
 prompt="""
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 Review the following changed files for **architecture and structural integrity** issues.
 
 **Changed files:**
@@ -2123,6 +2177,8 @@ description="Architecture lens review"
 
 Task(
 prompt="""
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 Review the following changed files for **data flow and schema consistency** issues.
 
 **Changed files:**
@@ -2278,7 +2334,7 @@ cat > {phase_dir}/REVIEW.md << 'REVIEW_EOF'
 
 **Timestamp:** {timestamp_utc}
 **Files reviewed:** {file_count}
-**Reviewers:** dx-advocate, code-simplifier, code-architect, ui, security-auditor{MULTI_LENS_GATE_MET ? ", architecture-lens, data-lens" : ""}
+**Reviewers:** dx-advocate, code-simplifier, code-architect, security-auditor{MULTI_LENS_GATE_MET ? ", architecture-lens, data-lens" : ""}
 
 ## Severity Summary
 
@@ -2353,6 +2409,9 @@ Spawn `lu-shadow-scanner` with the determined mode:
 Task(
   prompt: """
 <shadow_scan_context>
+
+**Recipient:** phase-execute orchestrator (report findings back to this orchestrator)
+
 **Scan mode:** {SCAN_MODE}
 **Complexity:** {COMPLEXITY}
 **Phase:** {phase_number}
@@ -2567,7 +2626,7 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 - [ ] Each plan has SUMMARY.md
 - [ ] Phase goal verified (must_haves checked against codebase)
 - [ ] VERIFICATION.md created in phase directory
-- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, ui, security-auditor)
+- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, security-auditor)
 - [ ] CRITICAL code issues block until fixed
 - [ ] HIGH/MEDIUM code issues presented with options
 - [ ] UAT.md created with tests from SUMMARY.md

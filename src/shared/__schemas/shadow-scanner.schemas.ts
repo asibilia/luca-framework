@@ -5,7 +5,7 @@ import { z } from "zod";
  *
  * Represents one piece of AI-session debris detected in the repository.
  * Categories cover orphaned temp scripts, misplaced files, tool artifacts,
- * dead exports, and stale planning artifacts.
+ * dead exports, stale planning artifacts, and orphaned/misplaced markdown.
  *
  * Uses snake_case for data schema compatibility.
  */
@@ -17,6 +17,7 @@ export const ShadowFindingSchema = z.object({
     "tool-artifact",
     "dead-export",
     "stale-planning-artifact",
+    "orphaned-markdown",
   ]),
   /** Severity level of the finding */
   severity: z.enum(["critical", "high", "medium", "low"]),
@@ -24,8 +25,12 @@ export const ShadowFindingSchema = z.object({
   file_path: z.string(),
   /** Human-readable description of the issue */
   description: z.string(),
-  /** Recommended remediation action */
+  /** Recommended remediation action (human-readable context) */
   recommendation: z.string(),
+  /** Machine-readable remediation verb */
+  recommended_action: z.enum(["move", "delete", "gitignore"]).default("delete"),
+  /** Destination path when recommended_action is "move" */
+  target_path: z.string().optional(),
   /** Whether Luca can automatically apply the fix */
   auto_fixable: z.boolean().default(false),
 });
@@ -44,8 +49,8 @@ export type ShadowFinding = z.infer<typeof ShadowFindingSchema>;
 export const ShadowScanReportSchema = z.object({
   /** Scan depth used for this run */
   scan_mode: z.enum(["quick", "standard", "full"]),
-  /** Category numbers that were actually scanned (1-5) */
-  categories_scanned: z.array(z.number().int().min(1).max(5)).default([]),
+  /** Category numbers that were actually scanned (1-6) */
+  categories_scanned: z.array(z.number().int().min(1).max(6)).default([]),
   /** All findings from the scan */
   findings: z.array(ShadowFindingSchema).default([]),
   /** Severity breakdown totals */
@@ -104,6 +109,48 @@ export const ShadowDebtConfigSchema = z.object({
   known_artifact_dirs: z
     .array(z.string())
     .default([".playwright-cli", ".next", ".turbo", ".cache", "coverage"]),
+  /** Canonical files allowed at .planning/ root level */
+  planning_root_allowlist: z
+    .array(z.string())
+    .default([
+      "config.json",
+      "state.json",
+      "STATE.md",
+      "session-ledger.jsonl",
+      "ROADMAP.md",
+      "PROJECT.md",
+      "CANONICAL-DECISIONS.md",
+      "MILESTONE-AUDIT.md",
+      "BRAIN.md",
+      "brain.json",
+      "MEMORY.md",
+      "memory.json",
+      "WORKING.md",
+      "working.json",
+      ".context-metrics.json",
+      "harness-result.json",
+    ]),
+  /** Canonical directories allowed at .planning/ root level */
+  planning_root_dirs: z
+    .array(z.string())
+    .default([
+      "phases/",
+      "milestones/",
+      "todos/",
+      "summaries/",
+      "research/",
+      "notes/",
+      "codebase/",
+      "checkpoints/",
+      "harness-runs/",
+      "migration/",
+      "done/",
+      "plans/",
+    ]),
+  /** Glob patterns for versioned files allowed at .planning/ root (e.g., milestone audits) */
+  planning_root_versioned_patterns: z
+    .array(z.string())
+    .default(["v*-MILESTONE-AUDIT*.md"]),
 });
 
 export type ShadowDebtConfig = z.infer<typeof ShadowDebtConfigSchema>;

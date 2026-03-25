@@ -33,6 +33,6 @@
   },
   "exclude": [
     "packages/luca-framework/templates/harness",
-    "packages/luca-observer"
+    "packages/luca-studio"
   ]
 }

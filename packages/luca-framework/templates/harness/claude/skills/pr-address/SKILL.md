@@ -163,6 +163,8 @@ Task(
   prompt="""
 <validation_context>
 
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
+
 **PR:** #{pr_number}
 **Comment ID:** {comment_id}
 **Comment Text:** {comment_text}
@@ -211,6 +213,8 @@ description="Validate security concern"
 Task(
 prompt="""
 <validation_context>
+
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
 
 **PR:** #{pr_number}
 **Comment ID:** {comment_id}
@@ -262,6 +266,8 @@ description="Validate architecture concern"
 Task(
 prompt="""
 <validation_context>
+
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
 
 **PR:** #{pr_number}
 **Comment ID:** {comment_id}
@@ -423,6 +429,8 @@ Task(
   prompt="""
 <planning_context>
 
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
+
 **PR:** #{pr_number}
 **Mode:** pr_fixes
 
@@ -477,6 +485,8 @@ Then spawn the executor:
 Task(
   prompt="""
 <execution_context>
+
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
 
 **PR:** #{pr_number}
 **Mode:** pr_fixes
@@ -533,6 +543,8 @@ Task(
   prompt="""
 <verification_context>
 
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
+
 **PR:** #{pr_number}
 **Mode:** pr_fixes
 
@@ -588,6 +600,8 @@ VERIFICATION_RESULT="[from verifier return value in Step 7]"
 Task(
   prompt="""
 <learning_context>
+
+**Recipient:** pr-address orchestrator (report findings back to this orchestrator)
 
 **Source:** PR review comments
 **PR:** #{pr_number}

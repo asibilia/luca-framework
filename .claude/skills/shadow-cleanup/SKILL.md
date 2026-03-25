@@ -1,6 +1,6 @@
 # shadow-cleanup
 
-Detect and interactively clean up AI-session debris: orphaned scripts, misplaced files, tool artifacts, dead exports, and stale planning artifacts.
+Detect and interactively clean up AI-session debris: orphaned scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, and orphaned/misplaced markdown.
 
 ## main
 
@@ -12,19 +12,19 @@ Scan the repository for AI-session debris and interactively review findings.
 **Arguments:**
 
 ```
-/shadow-cleanup [--quick|--full] [--fix] [--dry-run] [--category=<1-5>]
+/shadow-cleanup [--quick|--full] [--fix] [--dry-run] [--category=<1-6>]
 ```
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| (default) | Standard mode — Categories 1+2+3+5 |
+| (default) | Standard mode — Categories 1+2+3+5+6 |
 | `--quick` | Quick mode — Categories 1+3 only |
-| `--full` | Full mode — All 5 categories |
+| `--full` | Full mode — All 6 categories |
 | `--dry-run` | Report only, no deletions or moves |
 | `--fix` | Auto-apply all auto-fixable findings without interactive prompt |
-| `--category=N` | Run only the specified category (1-5) |
+| `--category=N` | Run only the specified category (1-6) |
 
 ## Vault Resolution
 
@@ -66,9 +66,9 @@ Apply flags in priority order:
 
 ```
 --quick      → mode = "quick"    (Categories 1+3)
---full       → mode = "full"     (Categories 1+2+3+4+5)
+--full       → mode = "full"     (Categories 1+2+3+4+5+6)
 --category=N → mode = "quick"    (single category, override scanner categories)
-(default)    → mode = "standard" (Categories 1+2+3+5)
+(default)    → mode = "standard" (Categories 1+2+3+5+6)
 ```
 
 ### Step 3: Spawn lu-shadow-scanner
@@ -130,15 +130,29 @@ If `--dry-run` flag is present OR `total` findings = 0:
 
 If `--fix` flag is present:
 1. Collect all findings where `auto_fixable: true`.
-2. Apply each fix:
-   - For orphaned temp scripts: `rm {file_path}`
-   - For tool artifacts: `rm -rf {dir}` or add to `.gitignore`
-   - For stale planning artifacts: `mv {file_path} .planning/todos/done/`
+2. Apply each fix based on `recommended_action`:
+
+   **For `"delete"` actions:**
+   - `rm {file_path}` (or `rm -rf {file_path}` for directories)
+
+   **For `"move"` actions:**
+   - Ensure target directory exists: `mkdir -p $(dirname {target_path})`
+   - Move the file: `git mv {file_path} {target_path}` (use plain `mv` if untracked)
+   - Grep for references to the old path: `grep -r "{old_basename}" .planning/ --include="*.md" -l`
+   - If references found, log warning: "Found {n} files referencing old path — review manually: {list}"
+
+   **For `"gitignore"` actions:**
+   - Append pattern to `.gitignore`
+
+   **Backward compatibility:** If a finding has no `recommended_action` field, fall back to `"delete"`.
+
 3. Report actions taken:
    ```
    Auto-fixed {n} findings:
    - Deleted: {file_path}
-   - Moved: {file_path} -> .planning/todos/done/
+   - Moved: {file_path} -> {target_path}
+   - Added to .gitignore: {pattern}
+   ⚠ {n} files may have references to moved paths — review manually
    ```
 4. Findings where `auto_fixable: false` are reported but not acted on.
 5. Proceed to Step 9 (store metric).
@@ -154,7 +168,7 @@ For each finding, display:
 [{severity}] {category}
 File: {file_path}
 Issue: {description}
-Action: {recommendation}
+Action: {recommended_action}{target_path ? " -> " + target_path : ""}: {recommendation}
 Auto-fixable: {yes|no}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [F] Fix  [K] Keep (add to allowlist)  [S] Skip  [A] Fix all remaining
@@ -163,7 +177,10 @@ Auto-fixable: {yes|no}
 Handle user response:
 
 **F — Fix:**
-- Apply the fix (delete, move, or add to .gitignore per recommendation).
+- Apply the fix using the same action-type-aware logic from Step 7:
+  - `"delete"`: remove file/directory
+  - `"move"`: `mkdir -p` + `git mv` + grep for reference warnings
+  - `"gitignore"`: append to `.gitignore`
 - Log action and continue to next finding.
 
 **K — Keep:**
