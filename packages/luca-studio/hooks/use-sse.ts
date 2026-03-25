@@ -26,7 +26,7 @@ import { useEffect, useRef } from "react";
 
 import { useSetAtom } from "jotai";
 
-import { configAtom, stateAtom } from "~/stores/config-atoms";
+import { configAtom, configEtagAtom, stateAtom } from "~/stores/config-atoms";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,21 +43,29 @@ interface SSEFileChangeEvent {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Result from a safe JSON fetch, including an optional ETag header. */
+interface FetchJsonResult {
+  data: Record<string, unknown> | null;
+  etag: string | null;
+}
+
 /**
  * Fetch JSON from the given URL, returning `null` on any error.
  *
+ * Also extracts the `ETag` response header when present.
+ *
  * @param url - Absolute or relative URL to fetch.
- * @returns Parsed JSON or `null`.
+ * @returns Parsed JSON and ETag, or nulls on failure.
  */
-async function fetchJsonSafe(
-  url: string,
-): Promise<Record<string, unknown> | null> {
+async function fetchJsonSafe(url: string): Promise<FetchJsonResult> {
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
-    return (await res.json()) as Record<string, unknown>;
+    if (!res.ok) return { data: null, etag: null };
+    const etag = res.headers.get("ETag");
+    const data = (await res.json()) as Record<string, unknown>;
+    return { data, etag };
   } catch {
-    return null;
+    return { data: null, etag: null };
   }
 }
 
@@ -76,6 +84,7 @@ async function fetchJsonSafe(
  */
 export function useSSE(): void {
   const setConfig = useSetAtom(configAtom);
+  const setConfigEtag = useSetAtom(configEtagAtom);
   const setState = useSetAtom(stateAtom);
   const esRef = useRef<EventSource | null>(null);
 
@@ -97,10 +106,11 @@ export function useSSE(): void {
 
       const { path } = event;
 
-      // config.json changed -> re-hydrate configAtom
+      // config.json changed -> re-hydrate configAtom + configEtagAtom
       if (path.endsWith("config.json") && path.includes(".planning")) {
-        void fetchJsonSafe("/api/config").then((data) => {
+        void fetchJsonSafe("/api/config").then(({ data, etag }) => {
           if (data) setConfig(data);
+          if (etag) setConfigEtag(etag);
         });
       }
 
@@ -109,7 +119,7 @@ export function useSSE(): void {
         (path.endsWith("state.json") || path.endsWith("STATE.md")) &&
         path.includes(".planning")
       ) {
-        void fetchJsonSafe("/api/state").then((data) => {
+        void fetchJsonSafe("/api/state").then(({ data }) => {
           if (data) setState(data);
         });
       }
@@ -119,5 +129,5 @@ export function useSSE(): void {
       es.close();
       esRef.current = null;
     };
-  }, [setConfig, setState]);
+  }, [setConfig, setConfigEtag, setState]);
 }
