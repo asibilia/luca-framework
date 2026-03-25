@@ -15,7 +15,7 @@ import { cn } from "~/lib/utils";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Luca Observer",
+  title: "Luca Studio",
   description: "Real-time dashboard for Luca workflow observability",
 };
 
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("luca-observer-theme");try{t=JSON.parse(t)}catch(e){}if(t==="dark"){document.documentElement.classList.add("dark")}else if(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches){document.documentElement.classList.add("dark")}}catch(e){document.documentElement.classList.add("dark")}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("luca-studio-theme");try{t=JSON.parse(t)}catch(e){}if(t==="dark"){document.documentElement.classList.add("dark")}else if(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches){document.documentElement.classList.add("dark")}}catch(e){document.documentElement.classList.add("dark")}})()`,
           }}
         />
       </head>

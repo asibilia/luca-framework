@@ -1,21 +1,21 @@
 #!/usr/bin/env bun
 /**
- * Observer schema drift check.
+ * Studio schema drift check.
  *
  * Compares field names between luca-framework source schemas and their
- * observer-local mirrors in packages/luca-observer/lib/types.ts.
+ * studio-local mirrors in packages/luca-studio/lib/types.ts.
  *
  * Reports any fields present in the source but missing from the mirror,
  * or vice versa.
  *
  * Usage:
- *   bun scripts/check-observer-schema-drift.ts
+ *   bun scripts/check-studio-schema-drift.ts
  *
  * Exit codes:
  *   0 - No drift detected
  *   1 - Drift detected (fields added/removed in source but not mirror)
  *
- * @module scripts/check-observer-schema-drift
+ * @module scripts/check-studio-schema-drift
  */
 
 /**
@@ -62,40 +62,38 @@ async function main(): Promise<void> {
     await import("../packages/luca-framework/src/state/ledger");
   const frameworkHarness =
     await import("../src/harness/__schemas/harness.schemas");
-  const observerTypes = await import("../packages/luca-observer/lib/types");
+  const studioTypes = await import("../packages/luca-studio/lib/types");
 
   const pairs: SchemaPair[] = [
     {
       name: "LedgerEntry",
       source: frameworkLedger.ledgerEntrySchema,
-      mirror: observerTypes.LedgerEntrySchema,
+      mirror: studioTypes.LedgerEntrySchema,
     },
     {
       name: "ParsedError -> ParsedErrorSnapshot",
       source: frameworkHarness.ParsedErrorSchema,
-      mirror: observerTypes.ParsedErrorSnapshotSchema,
+      mirror: studioTypes.ParsedErrorSnapshotSchema,
     },
     {
       name: "CheckResult -> CheckResultSnapshot",
       source: frameworkHarness.CheckResultSchema,
-      mirror: observerTypes.CheckResultSnapshotSchema,
+      mirror: studioTypes.CheckResultSnapshotSchema,
     },
     {
       name: "HarnessResult -> HarnessResultSnapshot",
       source: frameworkHarness.HarnessResultSchema,
-      mirror: observerTypes.HarnessResultSnapshotSchema,
+      mirror: studioTypes.HarnessResultSnapshotSchema,
     },
   ];
 
-  console.log("Observer Schema Drift Check");
-  console.log("===========================\n");
+  console.log("Studio Schema Drift Check");
+  console.log("=========================\n");
 
   const drifts = pairs.map(checkDrift).filter(Boolean);
 
   if (drifts.length === 0) {
-    console.log(
-      "No drift detected. All observer mirrors match source schemas.",
-    );
+    console.log("No drift detected. All studio mirrors match source schemas.");
     process.exit(0);
   }
 
@@ -117,7 +115,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    "Fix: Update the observer-local mirrors in packages/luca-observer/lib/types.ts",
+    "Fix: Update the studio-local mirrors in packages/luca-studio/lib/types.ts",
   );
   process.exit(1);
 }

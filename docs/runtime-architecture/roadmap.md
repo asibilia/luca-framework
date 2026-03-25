@@ -101,36 +101,15 @@
 
 ---
 
-### Phase D: Luca Studio (Lightweight Dev Server)
+### Phase D: Luca Studio
 
-**Goal:** Visual development tooling — workflow DAG visualization, agent browser, eval results, state machine inspector. Eliminates the build:all feedback loop problem.
+> **SUPERSEDED (2026-03-25):** The scope and implementation approach for Phase D have been fundamentally revised. Studio is no longer a separate Bun.serve() package — it is the existing `packages/luca-studio/` Next.js app (renamed from luca-observer), with expanded capabilities (observe + browse + configure/edit). See `docs/brainstorm/observer-studio-rework/` for the current plan. BUILD pages (Pipeline, Agents, Skills, Rules) can ship independently of Phases B and C since they read from the filesystem.
 
-**Scope:**
+**Goal:** Visual development tooling — workflow DAG visualization, agent browser, eval results, state machine inspector, **and configuration/editing capabilities** for workflow customization.
 
-- New package: `packages/luca-studio/`
-- Bun.serve() local dev server (no React dependency — lightweight HTML/CSS)
-- Routes:
-  - `/dag` — interactive workflow DAG visualization (from dag-visualizer.ts)
-  - `/agents` — browse agent definitions, view compiled output, test invocation
-  - `/evals` — run and view eval results
-  - `/state` — inspect state machine transitions and current state
-  - `/adapters` — view registered adapters and their capabilities
-- File watcher — hot reload on `src/` changes without build:all
-- No production deployment — local dev tool only
+**Scope (revised):** See `docs/brainstorm/observer-studio-rework/1.product-vision.md` for full feature inventory.
 
-**Does NOT include:**
-
-- Full Mastra Studio feature parity
-- Agent playground with live LLM calls (future, requires API adapter)
-- Team collaboration features
-
-**Key deliverables:**
-
-- `luca studio` command opens browser with DAG visualization
-- Agent changes visible in seconds (no build:all required)
-- Eval results viewable in browser
-
-**Estimated effort:** 2-3 weeks
+**Estimated effort:** 160-220 hours across 28 work items (see `docs/brainstorm/observer-studio-rework/12.cleanup-todo-gaps.md`)
 
 ---
 
@@ -161,18 +140,18 @@ graph TD
 
 - **A** is the foundation — everything else depends on it
 - **B** and **C** can overlap (C develops against mock adapter)
-- **D** requires both B and C
+- **D** BUILD pages can ship independently of B and C (filesystem-based); OBSERVE pages need MuninnDB
 - **E** requires B only
 
 ## Timeline (estimated)
 
-| Phase                  | Effort      | Depends On         | Can Overlap With | Status       |
-| ---------------------- | ----------- | ------------------ | ---------------- | ------------ |
-| A: DAG Engine          | 2-3 weeks   | None               | —                |              |
-| B: Adapters            | 2-3 weeks   | A                  | C                |              |
-| C: Eval Framework      | 1-2 weeks   | A (interface only) | B                | **COMPLETE** |
-| D: Luca Studio         | 2-3 weeks   | B, C               | —                |              |
-| E: Additional Adapters | 1 week each | B                  | D                |              |
+| Phase                  | Effort      | Depends On                     | Can Overlap With | Status         |
+| ---------------------- | ----------- | ------------------------------ | ---------------- | -------------- |
+| A: DAG Engine          | 2-3 weeks   | None                           | —                |                |
+| B: Adapters            | 2-3 weeks   | A                              | C                |                |
+| C: Eval Framework      | 1-2 weeks   | A (interface only)             | B                | **COMPLETE**   |
+| D: Luca Studio         | 160-220 hrs | BUILD: None; OBSERVE: MuninnDB | E                | See brainstorm |
+| E: Additional Adapters | 1 week each | B                              | D                |                |
 
 **Total estimated:** 8-12 weeks for Phases A-D. Phase E is ongoing.
 
@@ -186,6 +165,6 @@ After all phases complete:
 - [ ] Claude adapter produces identical output to current build:all (backward compat)
 - [ ] API adapter enables headless workflow execution (CI/CD ready)
 - [x] Agent evaluation suite with regression detection
-- [ ] Luca Studio provides visual DAG, agent browser, and eval viewer
+- [ ] Luca Studio provides visual DAG, agent browser, eval viewer, and config editing (see brainstorm for full scope)
 - [ ] At least one non-Claude adapter available
 - [ ] Existing Luca users experience zero breaking changes

@@ -1,8 +1,8 @@
 {
-  "name": "@alecsibilia/luca-observer",
+  "name": "@alecsibilia/luca-studio",
   "version": "0.1.0",
   "bin": {
-    "luca-observer": "./bin/luca-observer.js"
+    "luca-studio": "./bin/luca-studio.js"
   },
   "dependencies": {
     "@tremor/react": "^3",

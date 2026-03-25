@@ -1,18 +1,18 @@
 import { z } from "zod";
 
 /**
- * Observer-local type definitions.
+ * Studio-local type definitions.
  *
  * ## Schema Coupling Policy
  *
- * Several schemas in this file are intentional observer-local mirrors of
+ * Several schemas in this file are intentional studio-local mirrors of
  * schemas defined in `packages/luca-framework/src/state/` and
  * `packages/luca-framework/src/harness/`. They are duplicated — NOT imported —
- * to avoid a cross-package runtime dependency between luca-observer (Next.js app)
+ * to avoid a cross-package runtime dependency between luca-studio (Next.js app)
  * and luca-framework (Node/Bun CLI tool).
  *
- * **When luca-framework schemas change**, the corresponding observer-local mirrors
- * must be updated manually. Run `bun run check:observer-drift` to detect mismatches:
+ * **When luca-framework schemas change**, the corresponding studio-local mirrors
+ * must be updated manually. Run `bun run check:studio-drift` to detect mismatches:
  * - `LedgerEntrySchema` mirrors `ledger.ts::ledgerEntrySchema`
  * - `HarnessResultSnapshotSchema` mirrors `harness.schemas.ts::HarnessResultSchema`
  *   (with snake_case field names; the original uses camelCase for internal use)
@@ -20,7 +20,7 @@ import { z } from "zod";
  * - `SessionPlanSnapshotSchema` mirrors luca-framework planner schemas
  * - `TribunalResultSnapshotSchema` mirrors luca-framework tribunal schemas
  *
- * All observer-local schemas use snake_case for API compatibility, even when
+ * All studio-local schemas use snake_case for API compatibility, even when
  * the source schema uses camelCase for internal TypeScript use.
  *
  * @see packages/luca-framework/src/state/ledger.ts
@@ -108,9 +108,9 @@ export type WorkflowSnapshot = z.infer<typeof WorkflowSnapshotSchema>;
 
 // ─── Ledger Entry Schema ─────────────────────────────────────────────────────
 
-// NOTE: Observer-local mirror of luca-framework's LedgerEntry
+// NOTE: Studio-local mirror of luca-framework's LedgerEntry
 /**
- * Observer-local mirror of luca-framework's TransitionRecord + LedgerEntry.
+ * Studio-local mirror of luca-framework's TransitionRecord + LedgerEntry.
  *
  * Represents a single state machine transition recorded in session-ledger.jsonl.
  * Locally defined to avoid cross-package dependency.
@@ -138,9 +138,9 @@ export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
 
 // ─── Harness Result Snapshot Schemas ─────────────────────────────────────────
 
-// NOTE: Observer-local mirrors of luca-framework's harness check schemas (snake_case fields)
+// NOTE: Studio-local mirrors of luca-framework's harness check schemas (snake_case fields)
 /**
- * Observer-local mirror of luca-framework's ParsedError.
+ * Studio-local mirror of luca-framework's ParsedError.
  *
  * A single parsed error from toolchain output.
  *
@@ -162,7 +162,7 @@ export const ParsedErrorSnapshotSchema = z.object({
 export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>;
 
 /**
- * Observer-local mirror of luca-framework's CheckResult.
+ * Studio-local mirror of luca-framework's CheckResult.
  *
  * Result of a single harness check (test, typecheck, lint, build).
  *
@@ -185,7 +185,7 @@ export const CheckResultSnapshotSchema = z.object({
 export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>;
 
 /**
- * Observer-local mirror of luca-framework's HarnessResult.
+ * Studio-local mirror of luca-framework's HarnessResult.
  *
  * Aggregate result of running all harness checks.
  *
@@ -208,9 +208,9 @@ export type HarnessResultSnapshot = z.infer<typeof HarnessResultSnapshotSchema>;
 
 // ─── Iteration Snapshot Schemas ──────────────────────────────────────────────
 
-// NOTE: Observer-local mirrors of luca-framework's iteration schemas
+// NOTE: Studio-local mirrors of luca-framework's iteration schemas
 /**
- * Observer-local mirror of luca-framework's ConvergenceSignals.
+ * Studio-local mirror of luca-framework's ConvergenceSignals.
  *
  * Multi-signal convergence metrics for an iteration.
  *
@@ -231,7 +231,7 @@ export type ConvergenceSignalsSnapshot = z.infer<
 >;
 
 /**
- * Observer-local mirror of luca-framework's IterationRecord.
+ * Studio-local mirror of luca-framework's IterationRecord.
  *
  * A single iteration checkpoint with error counts, convergence status,
  * and classification breakdown.
@@ -260,7 +260,7 @@ export type IterationRecordSnapshot = z.infer<
 >;
 
 /**
- * Observer-local mirror of luca-framework's BudgetState.
+ * Studio-local mirror of luca-framework's BudgetState.
  *
  * Budget tracking for an iteration loop.
  * Uses snake_case for API compatibility.
@@ -276,9 +276,9 @@ export type BudgetStateSnapshot = z.infer<typeof BudgetStateSnapshotSchema>;
 
 // ─── Planning Snapshot Schemas ───────────────────────────────────────────────
 
-// NOTE: Observer-local mirrors of luca-framework's planner schemas
+// NOTE: Studio-local mirrors of luca-framework's planner schemas
 /**
- * Observer-local mirror of luca-framework's WSJFScoredItem.
+ * Studio-local mirror of luca-framework's WSJFScoredItem.
  *
  * A todo item with computed WSJF score.
  *
@@ -302,7 +302,7 @@ export type WSJFScoredItemSnapshot = z.infer<
 >;
 
 /**
- * Observer-local mirror of luca-framework's SessionPlan.
+ * Studio-local mirror of luca-framework's SessionPlan.
  *
  * A session plan with WSJF-ordered items.
  * Uses snake_case for API compatibility.
@@ -320,9 +320,9 @@ export type SessionPlanSnapshot = z.infer<typeof SessionPlanSnapshotSchema>;
 
 // ─── Tribunal Snapshot Schemas ───────────────────────────────────────────────
 
-// NOTE: Observer-local mirrors of luca-framework's tribunal/code-review schemas
+// NOTE: Studio-local mirrors of luca-framework's tribunal/code-review schemas
 /**
- * Observer-local mirror of luca-framework's ReviewFinding.
+ * Studio-local mirror of luca-framework's ReviewFinding.
  *
  * A single finding from a code reviewer agent.
  *
@@ -344,7 +344,7 @@ export const ReviewFindingSnapshotSchema = z.object({
 export type ReviewFindingSnapshot = z.infer<typeof ReviewFindingSnapshotSchema>;
 
 /**
- * Observer-local mirror of luca-framework's Disagreement.
+ * Studio-local mirror of luca-framework's Disagreement.
  *
  * A detected conflict between reviewer findings.
  * Uses snake_case for API compatibility.
@@ -364,7 +364,7 @@ export const DisagreementSnapshotSchema = z.object({
 export type DisagreementSnapshot = z.infer<typeof DisagreementSnapshotSchema>;
 
 /**
- * Observer-local mirror of luca-framework's Rebuttal.
+ * Studio-local mirror of luca-framework's Rebuttal.
  *
  * A rebuttal record from a debate round.
  * Uses snake_case for API compatibility.
@@ -380,7 +380,7 @@ export const RebuttalSnapshotSchema = z.object({
 export type RebuttalSnapshot = z.infer<typeof RebuttalSnapshotSchema>;
 
 /**
- * Observer-local mirror of luca-framework's TribunalResult.
+ * Studio-local mirror of luca-framework's TribunalResult.
  *
  * Complete result of a Design Tribunal session.
  * Uses snake_case for API compatibility.
@@ -403,7 +403,7 @@ export type TribunalResultSnapshot = z.infer<
 // ─── Agent Activity Snapshot Schemas ─────────────────────────────────────────
 
 /**
- * Observer-local schema for agent activity summary.
+ * Studio-local schema for agent activity summary.
  *
  * Derived from ledger entries filtered by agent-related event data.
  * Uses snake_case for API compatibility.

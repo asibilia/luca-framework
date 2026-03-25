@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 /**
- * Global error boundary for the observer app.
+ * Global error boundary for the studio app.
  *
  * Catches any unhandled rendering error in child routes and
  * displays a recovery UI with reset and navigation options.
@@ -22,7 +22,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[luca-observer] Unhandled error:", error);
+    console.error("[luca-studio] Unhandled error:", error);
   }, [error]);
 
   return (

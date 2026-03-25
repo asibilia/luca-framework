@@ -32,7 +32,7 @@ export function PageError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(`[luca-observer] Error on ${pageName} page:`, error);
+    console.error(`[luca-studio] Error on ${pageName} page:`, error);
   }, [pageName, error]);
 
   return (
