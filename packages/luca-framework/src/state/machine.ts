@@ -294,6 +294,39 @@ export const workflowMachine = setup({
       },
     }),
 
+    /** Record DAG step start — updates dag_execution context */
+    recordDagStepStart: assign({
+      dag_execution: ({ context, event }) => {
+        if (event.type !== "DAG_STEP_START") return context.dag_execution;
+        return {
+          ...context.dag_execution,
+          current_step_id: event.step_id,
+          current_wave: event.wave,
+          active: true,
+          completed_steps: context.dag_execution?.completed_steps ?? [],
+          total_waves: context.dag_execution?.total_waves ?? 0,
+        };
+      },
+    }),
+
+    /** Record DAG step completion — moves step to completed list */
+    recordDagStepComplete: assign({
+      dag_execution: ({ context, event }) => {
+        if (event.type !== "DAG_STEP_COMPLETE") return context.dag_execution;
+        return {
+          ...context.dag_execution,
+          current_step_id: undefined,
+          completed_steps: [
+            ...(context.dag_execution?.completed_steps ?? []),
+            event.step_id,
+          ],
+          active: true,
+          current_wave: context.dag_execution?.current_wave ?? 0,
+          total_waves: context.dag_execution?.total_waves ?? 0,
+        };
+      },
+    }),
+
     /** Handle onDone output from the phase child actor */
     recordPhaseActorDone: assign({
       phase_results: ({ context, event }) => {
@@ -432,6 +465,23 @@ export const workflowMachine = setup({
         SUSPEND: {
           target: "suspended",
           actions: ["recordSuspend", "recordTransition"],
+        },
+
+        // DAG step events — self-transitions that update context
+        DAG_STEP_START: {
+          actions: ["recordDagStepStart", "recordTransition"],
+        },
+        DAG_STEP_COMPLETE: {
+          actions: ["recordDagStepComplete", "recordTransition"],
+        },
+        DAG_STEP_FAILED: {
+          // Step failure is recorded but does NOT transition to failed.
+          // The DAG executor handles retry logic. If all retries exhausted,
+          // the executor sends PHASE_FAILED which transitions to verifying/failed.
+          actions: ["recordTransition"],
+        },
+        DAG_STEP_RETRY: {
+          actions: ["recordTransition"],
         },
       },
     },

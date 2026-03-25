@@ -1,6 +1,7 @@
 {
   "name": "luca-monorepo",
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.2.81",
     "@playwright/cli": "^0.1.1",
     "js-tiktoken": "^1.0.21",
     "js-yaml": "^4.1.0",
@@ -31,8 +32,10 @@
     "deploy:copy": "bun run ./scripts/deploy-global.ts --copy",
     "deploy:remove": "bun run ./scripts/deploy-global.ts --remove",
     "dev:observer": "bun run --filter @alecsibilia/luca-observer dev",
+    "eval:run": "bun scripts/eval.ts",
     "eval:skills": "bun scripts/eval-skills.ts",
     "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
+    "build:domain": "bun run ./scripts/targeted-recompile.ts",
     "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts"
   },
   "type": "module",

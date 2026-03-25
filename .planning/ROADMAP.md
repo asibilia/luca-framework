@@ -2,53 +2,19 @@
 
 ## Overview
 
-**Current Milestone:** v5.4.0 — Branding & Personalization
+**Current Milestone:** Planning next
 
 ---
 
-## v5.4.0 — Branding & Personalization
+## Deferred to M2
 
-**Goal:** Wire up the branding/personalization system so users who configure `commandPrefix` and `frameworkName` during `vault:init` see their chosen branding in the user-facing surface (entry command, help text, tour messages, status output). Internal names stay unchanged.
-
-**Todo:** fix-branding-personalization-system (WSJF 8.00)
-
-**Complexity:** SIMPLE
-
-### Phase 1 — Core Branding Infrastructure
-
-**Goal:** Create the foundational utilities — `readProjectBranding()` helper and `createAliasSkill()`/`cleanupStaleAlias()` factory.
-
-**Depends on:** None
-
-- [x] Add `readProjectBranding(projectDir?)` to `packages/luca-framework/src/utils/branding.ts`
-- [x] Create `packages/luca-framework/src/utils/alias-skill.ts` with `createAliasSkill()` and `cleanupStaleAlias()`
-
-### Phase 2 — Vault-Init Wiring + Skill Preambles
-
-**Goal:** Wire alias creation into `vault:init` and add runtime branding preambles to user-facing skills.
-
-**Depends on:** Phase 1
-
-- [x] Modify `packages/luca-framework/src/commands/vault-init.ts` to call `createAliasSkill()` after `generateFiles()`
-- [x] Add branding preamble to `src/skills/luca/lu.skill.ts`
-- [x] Add branding preamble to `src/skills/general/help.skill.ts`
-
-### Phase 3 — Integration Verification + Version Bump
-
-**Goal:** Bump version, run full verification checklist, confirm end-to-end branding works.
-
-**Depends on:** Phase 2
-
-- [x] Version bump in `packages/luca-framework/package.json`
-- [x] Verify: `bunx --bun tsc --noEmit` zero errors
-- [ ] Verify: `bun run build:all` clean build (run outside Claude Code)
-- [ ] Verify: `luca vault:init` with custom prefix creates alias skill
-- [ ] Verify: `/prefix` delegates to `/lu`
-- [ ] Verify: `/help` shows `/{prefix}` not `/lu`
-- [ ] Verify: Re-run with different prefix cleans up old alias
-- [ ] Verify: Default prefix "lu" creates no alias
-
----
+| Todo Group                    | Scope                                  | Reason                                         |
+| ----------------------------- | -------------------------------------- | ---------------------------------------------- |
+| runtime-d01–d11               | Luca Studio (dev server + UI views)    | WSJF 2.8, CRITICAL effort, independent package |
+| runtime-e01–e04               | IDE adapters (Cursor/Windsurf/VS Code) | Depends on B-group stability                   |
+| v2-phase-6                    | Orchestrator integration (lu.skill.ts) | HIGH blast radius, Full+Human verification     |
+| v2-enhanced-existing-agents   | Agent enhancements                     | Sequential dependency on v2-phase-5            |
+| v2-external-research-patterns | External research patterns             | Design reference, low urgency                  |
 
 ## Backlog (Unassigned)
 
@@ -83,6 +49,24 @@
 | #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
 
 ---
+
+## Closed (v6.1.0 Completed)
+
+| Todo        | Reason                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Audit #1-24 | All 24 code quality findings from v6.0.0 audit resolved: 1 CRITICAL bug fix, 3 HIGH import violations, 5 DRY extractions, 2 schema placements, naming collisions, import style fixes |
+
+## Closed (v6.0.0 Completed)
+
+| Todo              | Reason                                                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| runtime-a01–a11   | Workflow domain: DAG engine with builder, sorter, validator, executor, serializer, visualizer, pipeline, registration                     |
+| runtime-b01–b10   | Adapter architecture: schemas, registry, Claude agent/skill emitters, API executor, compiler refactoring, DAG integration                 |
+| runtime-c01–c10   | Eval domain: graders (code/LLM/composite), runner, reporter, comparator, seed eval suites, CLI integration                                |
+| runtime-x01–x08   | Cross-cutting: architecture docs, boundary script, integration audit, recompilation script, behavioral equivalence, state/iteration plans |
+| v2-phase-1–5      | v2 research infrastructure: 4 parallel researchers, convergence review loop, MuninnDB graduation, plan/executor enhancement               |
+| v2-config         | Config & schema updates: WorkflowVersionSchema, ResearchConfigSchema, complexity matrix extensions                                        |
+| v2-open-questions | 7 open questions resolved (Q5, Q6, Q8, Q9, Q11, Q15, Q16) in CANONICAL-DECISIONS.md                                                       |
 
 ## Closed (By Design)
 
@@ -224,6 +208,9 @@
 - **v5.0.0** — Global NPM Package: 9 phases, 86 commits, 102 files changed ([View Archive](milestones/v5.0.0-ROADMAP.md))
 - **v5.2.0** — Distribution & Install Quality: 8 phases, 43 commits, 201 files changed ([View Archive](milestones/v5.2.0-ROADMAP.md))
 - **v5.3.0** — Dogfood via Global Install: 9 phases, 32 commits, 69 files changed ([View Archive](milestones/v5.3.0-ROADMAP.md))
+- **v5.4.0** — Branding & Personalization: 3 phases, 3 commits, 37 files changed ([View Archive](milestones/v5.4.0-ROADMAP.md))
+- **v6.0.0** — Runtime Foundation & Adapter Layer: 10 phases, 129 commits, 205 files changed (+25,371 LOC) ([View Archive](milestones/v6.0.0-ROADMAP.md))
+- **v6.1.0** — Audit Gap Closure: 3 phases, 20 commits, 30 files changed ([View Archive](milestones/v6.1.0-ROADMAP.md))
 
 ---
 

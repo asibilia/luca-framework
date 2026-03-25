@@ -18,8 +18,20 @@ import { z } from "zod";
  *
  * These are semantic lifecycle events mapped to Claude Code PascalCase
  * event names (e.g., "post_tool_use" -> "PostToolUse").
+ *
+ * Events with active hooks in the registry:
+ *   post_tool_use, pre_tool_use, stop, session_end, session_start,
+ *   pre_compact, user_prompt_submit, subagent_stop, post_tool_use_failure
+ *
+ * Forward-compatibility entries (valid Claude Code events, no hooks yet):
+ *   subagent_start, notification, instructions_loaded, permission_request,
+ *   teammate_idle, task_completed, config_change, worktree_create, worktree_remove
+ *
+ * The full set is retained because CLAUDE_EVENT_MAP in platform-adapters.ts
+ * is typed as Record<CanonicalEvent, string> and must cover all members.
  */
 export const CANONICAL_EVENTS = [
+  // --- Active (have hooks in canonicalHookRegistry) ---
   "post_tool_use",
   "pre_tool_use",
   "stop",
@@ -28,9 +40,10 @@ export const CANONICAL_EVENTS = [
   "pre_compact",
   "user_prompt_submit",
   "subagent_stop",
+  "post_tool_use_failure",
+  // --- Forward-compatibility (valid events, no hooks yet) ---
   "subagent_start",
   "notification",
-  "post_tool_use_failure",
   "instructions_loaded",
   "permission_request",
   "teammate_idle",
@@ -57,8 +70,12 @@ export const CanonicalHookSchema = z.object({
   tool_filter: z.string().optional(),
   /** Command substring filter for pre_tool_use hooks (e.g., commit command patterns) */
   command_filter: z.string().optional(),
-  /** Shell script filename in src/hooks/scripts/ */
-  script: z.string(),
+  /** Hook type: "command" runs a shell script (default), "prompt" injects an LLM evaluation prompt */
+  type: z.enum(["command", "prompt"]).optional(),
+  /** Shell script filename in src/hooks/scripts/ (required for command hooks) */
+  script: z.string().optional(),
+  /** Inline prompt text for prompt-type hooks (required for prompt hooks) */
+  prompt: z.string().optional(),
   /** Timeout in seconds */
   timeout: z.number().positive(),
   /** Run asynchronously in background (supported by Claude Code) */
@@ -75,8 +92,8 @@ export const HookDefinitionSchema = z.object({
   event: z.string(),
   /** Regex matcher for Claude Code tool name filtering (undefined = always fire) */
   matcher: z.string().optional(),
-  /** Shell script filename in src/hooks/scripts/ */
-  script: z.string(),
+  /** Shell script filename in src/hooks/scripts/ (undefined for prompt hooks) */
+  script: z.string().optional(),
   /** Timeout in seconds */
   timeout: z.number().positive(),
   /** Run asynchronously in background (Claude Code only) */
@@ -153,8 +170,8 @@ export interface PlatformHookConfig {
   event: string;
   /** Platform-specific matcher (undefined = always fire) */
   matcher?: string | string[];
-  /** Shell script filename */
-  script: string;
+  /** Shell script filename (undefined for prompt hooks) */
+  script?: string;
   /** Timeout in seconds */
   timeout: number;
   /** Async execution flag */

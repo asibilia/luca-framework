@@ -48,6 +48,7 @@ When recalling memories, use type-based routing to decide which vault(s) to quer
 | brain:project-identity | Repo vault only | Project-specific identity tree |
 | brain:user-identity | Default vault only | Cross-project user preferences |
 | session:* | Repo vault only | Session context is project-scoped |
+| research:* | Repo vault only | Research is project-scoped, not cross-cutting |
 | pattern:*, pitfall:*, preference:* | Both vaults, merge by score | Cross-cutting + project-specific |
 | procedure:* | Both vaults, merge by score | Reusable across projects |
 | metric:* | Repo vault only | Project metrics are scoped |
@@ -76,6 +77,7 @@ When storing memories, use concept-prefix-based routing:
 | pitfall:* | Default vault | Generalizable warnings |
 | preference:* | Default vault | User preferences are cross-cutting |
 | procedure:* | Default vault | Reusable workflows |
+| research:* | Repo vault | Phase-scoped research findings, project-specific |
 | metric:signal-rate-* | Repo vault | Per-project process metrics |
 | process:* | Default vault | Process tuning is cross-cutting |
 

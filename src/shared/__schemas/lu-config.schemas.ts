@@ -1,11 +1,9 @@
 /**
- * Zod schema for the `lu` config section in `.planning/config.json`.
+ * Zod schemas for `.planning/config.json` sections.
  *
- * Defines all fields with proper defaults for the autonomous orchestration
- * configuration. Previously named `autopilot` -- renamed to `lu` in Phase 190
- * to align with the unified `/lu` entry point branding.
- *
- * Uses snake_case for all properties per API conventions.
+ * Contains `LuConfigSchema` — the `lu` orchestration section.
+ * WorkflowVersionSchema and ResearchConfigSchema live in their own schema files
+ * and are re-exported directly from the shared barrel (index.ts).
  *
  * @example
  * ```typescript
@@ -13,7 +11,6 @@
  *
  * const raw = JSON.parse(configFileContents);
  * const luConfig = LuConfigSchema.parse(raw.lu ?? raw.autopilot ?? {});
- * // All fields guaranteed with defaults
  * ```
  */
 import { z } from "zod";

@@ -156,6 +156,29 @@ export const ComplexityGateSchema = z.object({
   /** Optional default model for this complexity level.
    *  Used as a fallback when an agent has no model_routing config. */
   default_model: ModelIdSchema.optional(),
+
+  /**
+   * Research review loop iteration budget (v2 workflow).
+   *
+   * Overrides `research.reviewLoop.maxIterations` at this complexity level.
+   * Uses `.nonnegative()` because 0 means "skip review loop entirely".
+   *
+   * Not to be confused with `planVerificationIterations` which controls the
+   * lu-plan-checker verification loop (existing v1 concept).
+   */
+  researchReviewIterations: z.number().int().nonnegative().default(1),
+
+  /**
+   * Plan review loop iteration budget (v2 workflow).
+   *
+   * Overrides `research.planReviewLoop.maxIterations` at this complexity level.
+   * Uses `.nonnegative()` because 0 means "skip plan review loop entirely".
+   *
+   * Distinct from `planVerificationIterations` (existing v1 field):
+   * - `planVerificationIterations`: lu-plan-checker loop (mechanical plan correctness)
+   * - `planReviewIterations`: plan REVIEW loop (semantic plan quality in v2 pipeline)
+   */
+  planReviewIterations: z.number().int().nonnegative().default(1),
 });
 export type ComplexityGate = z.infer<typeof ComplexityGateSchema>;
 

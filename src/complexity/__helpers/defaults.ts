@@ -103,6 +103,8 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     verificationMode: "quick",
     recallDepth: 1,
     default_model: "haiku",
+    researchReviewIterations: 1,
+    planReviewIterations: 1,
   },
   SIMPLE: {
     cognitivePreflight: "lite",
@@ -112,6 +114,8 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     verificationMode: "quick",
     recallDepth: 1,
     default_model: "haiku",
+    researchReviewIterations: 2,
+    planReviewIterations: 1,
   },
   MODERATE: {
     cognitivePreflight: "full",
@@ -122,6 +126,8 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     recallDepth: 3,
     contextPromotions: { T0: "T1", T1: "T2" },
     default_model: "sonnet",
+    researchReviewIterations: 2,
+    planReviewIterations: 2,
   },
   COMPLEX: {
     cognitivePreflight: "full",
@@ -133,6 +139,8 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     cognitionPromotions: { T1: "T2", T2: "T3" },
     contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     default_model: "sonnet",
+    researchReviewIterations: 3,
+    planReviewIterations: 2,
   },
   CRITICAL: {
     cognitivePreflight: "full",
@@ -144,6 +152,8 @@ export const DEFAULT_COMPLEXITY_MATRIX: ComplexityMatrix = {
     cognitionPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     contextPromotions: { T0: "T1", T1: "T2", T2: "T3" },
     default_model: "opus",
+    researchReviewIterations: 3,
+    planReviewIterations: 3,
   },
 };
 

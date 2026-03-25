@@ -587,6 +587,37 @@ MEMORY_TOKENS_INJECTED += estimateTokens(workingContent);
 
 **Note:** `requestMemoryContext()` reads the cache populated above and formats it via `buildMemoryContextBlock()` internally. You can still use `buildMemoryContextBlock()` directly if you need custom formatting, but `requestMemoryContext()` is the preferred approach for the deferred pattern.
 
+### 4.2.1 Research Context Injection (v2)
+
+Before spawning executors, extract research refs from plan content and recall graduated engrams from MuninnDB.
+
+```bash
+# Parse research refs from all tasks in this plan
+RESEARCH_REFS=$(echo "$PLAN_N_CONTENT" | grep -oP '(?<=\*\*Research refs:\*\*\s).*' | tr ',' '\n' | sed 's/^ *//' | sort -u)
+
+# If no research refs found, skip recall entirely
+if [ -z "$RESEARCH_REFS" ]; then
+  RESEARCH_CONTEXT_BLOCK=""
+  RESEARCH_GAPS=""
+else
+  # For each ref, recall from MuninnDB REPO vault (research:* routes to repo vault ONLY)
+  RESEARCH_CONTEXT_BLOCK=""
+  RESEARCH_GAPS=""
+  for REF in $RESEARCH_REFS; do
+    ENGRAM=$(mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "$REF"))
+    if [ -n "$ENGRAM" ]; then
+      RESEARCH_CONTEXT_BLOCK="$RESEARCH_CONTEXT_BLOCK\n- **$REF**: $ENGRAM"
+    else
+      RESEARCH_GAPS="$RESEARCH_GAPS\n- $REF (no engram found)"
+    fi
+  done
+fi
+```
+
+**CRITICAL:** All recall calls MUST use `REPO_VAULT` (not "default") because `research:*` prefix routes to repo vault only per vault-routing rule.
+
+If no `**Research refs:**` lines exist in the plan, skip recall entirely and omit the `<research_context>` block (v1 behavior -- backward compatible).
+
 Then spawn all executors for the wave in PARALLEL (same message, multiple Task calls):
 
 ```python
@@ -609,6 +640,15 @@ Task(
 {working_content}
 
 </execution_context>
+
+{if RESEARCH_CONTEXT_BLOCK is not empty:}
+<research_context>
+{research_context_block}
+</research_context>
+<research_gaps>
+{research_gaps -- refs with no engrams found}
+</research_gaps>
+{end if -- omit entirely when no research refs exist in plan (v1 behavior)}
 
 **TDD Mode:** {tdd_enabled_or_disabled — read plan frontmatter for `tdd: true`. If present: "ENABLED", else: "DISABLED (standard execution)"}
 
@@ -647,6 +687,15 @@ Task(
 {working_content}
 
 </execution_context>
+
+{if RESEARCH_CONTEXT_BLOCK is not empty:}
+<research_context>
+{research_context_block}
+</research_context>
+<research_gaps>
+{research_gaps -- refs with no engrams found}
+</research_gaps>
+{end if -- omit entirely when no research refs exist in plan (v1 behavior)}
 
 **TDD Mode:** {tdd_enabled_or_disabled — read plan frontmatter for `tdd: true`. If present: "ENABLED", else: "DISABLED (standard execution)"}
 

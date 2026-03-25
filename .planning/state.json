@@ -1,12 +1,10 @@
 {
   "status": "active",
-  "value": "learning",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "b6b11cd3-3b5f-448d-b11c-748d2df6ab9b",
-    "branch": "feat/v5.4.0-branding-personalization",
+    "session_id": "7d6f75dd-a47a-4b5f-b1a9-1a121caaa1d4",
     "base_branch": "main",
-    "current_milestone": "v5.4.0 — Branding & Personalization",
     "current_plan_ids": [],
     "current_wave_count": 0,
     "complexity": "TRIVIAL",
@@ -74,32 +72,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 1,
-        "status": "passed",
-        "summary": "Phase 1 passed",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-19T00:05:00.499Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "pre_mortem_result": {
-      "risks": [],
-      "mitigations": [],
-      "confidence": 0,
-      "timestamp": "2026-03-18T23:32:36.734Z"
-    },
-    "started_at": "2026-03-18T23:22:01.071Z",
-    "last_transition_at": "2026-03-19T13:40:39.276Z"
+    "started_at": "2026-03-25T01:29:15.815Z"
   },
   "children": {}
 }

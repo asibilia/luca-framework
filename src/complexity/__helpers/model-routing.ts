@@ -173,6 +173,12 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   // --- Router (balanced from MODERATE+) ---
   "lu-router": ROUTER,
 
+  // --- v2 researcher agents (ROUTER preset, Decision 10) ---
+  "lu-architecture-researcher": ROUTER,
+  "lu-implementation-researcher": ROUTER,
+  "lu-ecosystem-researcher": ROUTER,
+  "lu-risk-researcher": ROUTER,
+
   // --- Orchestrators (balanced → capable ramp) ---
   "lu-executor": ORCHESTRATOR,
   "lu-planner": ORCHESTRATOR,
@@ -193,6 +199,14 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   "lu-roadmap-synthesizer": ORCHESTRATOR,
   product: ORCHESTRATOR,
   "qa-plan-generator": ORCHESTRATOR,
+
+  // --- v2 graduator agent (ORCHESTRATOR preset, Decision 10) ---
+  "lu-research-graduator": ORCHESTRATOR,
+
+  // --- v2 research reviewer agents (DEEP_ANALYSIS preset, Decision 10) ---
+  "lu-completeness-reviewer": DEEP_ANALYSIS,
+  "lu-accuracy-reviewer": DEEP_ANALYSIS,
+  "lu-actionability-reviewer": DEEP_ANALYSIS,
 
   // --- Deep analysis (capable from MODERATE+) ---
   "lu-verifier": DEEP_ANALYSIS,

@@ -52,6 +52,8 @@ Internal logic modules consumed by entities and other core modules.
 | observability | Agent scorecard engine, telemetry metrics |
 | interop | Cross-agent discovery, IDE tool directory scanning |
 | shared | Cross-cutting utilities (format, validation, CLI) |
+| workflow | DAG definition, step registry, typed step contracts |
+| eval | Behavioral equivalence evaluation, golden-output comparison |
 
 **Structure:**
 
@@ -72,6 +74,7 @@ Build-time, verification, or orchestration modules.
 | complexity | Complexity gating matrix and classifications |
 | harness | Verification runner (test/typecheck/lint/build) |
 | hooks | Hook registry and config generators |
+| adapters | IDE-specific compilation adapters (Claude, Cursor, Windsurf, VS Code) |
 
 **Structure:**
 
@@ -90,9 +93,9 @@ Import direction flows downward only. Tier N may import from tiers 0..N-1. Same-
 | Tier | Domains | Role |
 |------|---------|------|
 | T0 Foundation | shared, complexity | Imported by many, imports nothing from src/ |
-| T1 Core | context, planner, harness, iteration, observability, interop | Import T0–T1 (same-tier allowed) |
+| T1 Core | context, planner, harness, iteration, observability, interop, workflow, eval | Import T0–T1 (same-tier allowed) |
 | T2 Entity | agents, skills, rules | Import T0-T1; parallel, never cross-import |
-| T3 Build | compilers, hooks | Terminal; imported by nothing in src/ |
+| T3 Build | compilers, hooks, adapters | Terminal; imported by nothing in src/ |
 
 See \`.claude/rules/module-boundary.md\` for detailed import rules.
 

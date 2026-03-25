@@ -30,6 +30,19 @@ export type { Result } from "./__schemas/shared.schemas";
 export { LuConfigSchema } from "./__schemas/lu-config.schemas";
 export type { LuConfig } from "./__schemas/lu-config.schemas";
 
+// ─── Workflow Version ───────────────────────────────────────────────────────────
+
+export { WorkflowVersionSchema } from "./__schemas/workflow-version.schemas";
+export type { WorkflowVersion } from "./__schemas/workflow-version.schemas";
+
+// ─── Research Config ────────────────────────────────────────────────────────────
+
+export {
+  ResearchConfigSchema,
+  ResearchConfigRefinedSchema,
+} from "./__schemas/research-config.schemas";
+export type { ResearchConfig } from "./__schemas/research-config.schemas";
+
 // ─── CLI Utilities ──────────────────────────────────────────────────────────────
 
 export { getArg, hasFlag, escapeRegex } from "./__helpers/cli-utils";

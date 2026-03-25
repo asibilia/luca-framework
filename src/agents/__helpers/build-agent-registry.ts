@@ -16,7 +16,15 @@ import { luCognitionAgent } from "../general/lu-cognition.agent";
 import { luDebuggerAgent } from "../general/lu-debugger.agent";
 import { luIntegrationCheckerAgent } from "../general/lu-integration-checker.agent";
 import { luLearnerAgent } from "../general/lu-learner.agent";
+import { luArchitectureResearcherAgent } from "../general/lu-architecture-researcher.agent";
+import { luEcosystemResearcherAgent } from "../general/lu-ecosystem-researcher.agent";
+import { luImplementationResearcherAgent } from "../general/lu-implementation-researcher.agent";
 import { luPhaseResearcherAgent } from "../general/lu-phase-researcher.agent";
+import { luRiskResearcherAgent } from "../general/lu-risk-researcher.agent";
+import { luCompletenessReviewerAgent } from "../general/lu-completeness-reviewer.agent";
+import { luAccuracyReviewerAgent } from "../general/lu-accuracy-reviewer.agent";
+import { luActionabilityReviewerAgent } from "../general/lu-actionability-reviewer.agent";
+import { luResearchGraduatorAgent } from "../general/lu-research-graduator.agent";
 import { luPlanCheckerAgent } from "../general/lu-plan-checker.agent";
 import { luPmPlannerAgent } from "../general/lu-pm-planner.agent";
 import { luPrReviewerAgent } from "../general/lu-pr-reviewer.agent";
@@ -67,7 +75,15 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-discuss-researcher": () => luDiscussResearcherAgent,
   "lu-integration-checker": () => luIntegrationCheckerAgent,
   "lu-learner": () => luLearnerAgent,
+  "lu-architecture-researcher": () => luArchitectureResearcherAgent,
+  "lu-ecosystem-researcher": () => luEcosystemResearcherAgent,
+  "lu-implementation-researcher": () => luImplementationResearcherAgent,
   "lu-phase-researcher": () => luPhaseResearcherAgent,
+  "lu-risk-researcher": () => luRiskResearcherAgent,
+  "lu-completeness-reviewer": () => luCompletenessReviewerAgent,
+  "lu-accuracy-reviewer": () => luAccuracyReviewerAgent,
+  "lu-actionability-reviewer": () => luActionabilityReviewerAgent,
+  "lu-research-graduator": () => luResearchGraduatorAgent,
   "lu-plan-checker": () => luPlanCheckerAgent,
   "lu-pm-planner": () => luPmPlannerAgent,
   "lu-pr-reviewer": () => luPrReviewerAgent,

@@ -139,6 +139,72 @@ If no memory context was provided, omit this section entirely.`,
       order: 2,
     },
     {
+      title: "per_task_recall",
+      content: `## Per-Task Research Recall
+
+Before implementing each task, check for research context:
+
+### 1. Check for research_context Block
+
+If your prompt includes a \`<research_context>\` block, it contains pre-recalled research engrams relevant to this plan's tasks. This context was assembled by the phase-execute orchestrator using MuninnDB recall based on the plan's \`**Research refs:**\` fields.
+
+### 2. Match Research to Current Task
+
+Each research entry in the \`<research_context>\` block is tagged with concept names (e.g., \`research:approach-ws-reconnect\`). Match these to the current task's \`**Research refs:**\` line to identify which research is relevant to THIS task specifically.
+
+Parse research refs from the task using:
+
+\\\`\\\`\\\`
+line.match(/\\*\\*Research refs:\\*\\*\\s*(.+)/)?.[1].split(',').map(s => s.trim())
+\\\`\\\`\\\`
+
+### 3. Apply Research Context
+
+Use matched research findings to inform your implementation:
+
+- Follow recommended approaches from \`research:approach-*\` entries
+- Apply API patterns from \`research:api-*\` entries
+- Watch for issues flagged in \`research:pitfall-*\` entries
+- Respect configuration details from \`research:config-*\` entries
+- Honor constraints from \`research:constraint-*\` entries
+
+### 4. Handle Research Gaps
+
+If a task references a \`research:*\` concept but no matching content exists in your \`<research_context>\` block, log the gap:
+
+\\\`\\\`\\\`
+mcp__muninn__muninn_remember(
+  vault: REPO_VAULT,
+  concept: "session:findings",
+  content: "<timestamp> [RESEARCH-GAP] Task '{task_name}' references research:{concept} but no matching context found. Proceeding without this context."
+)
+\\\`\\\`\\\`
+
+Continue implementation without that context (graceful degradation). Use your training knowledge as fallback, but mark any decisions made without research backing.
+
+### 5. Engram Cap
+
+Maximum 5 engrams per task (from config \`perTaskRecall.maxEngramsPerTask\`). If a task references more than 5 research refs, use only the first 5 by order of appearance.
+
+### 6. No Research Refs
+
+If the current task has no \`**Research refs:**\` line, skip research recall entirely and use v1 behavior (no per-task research context).
+
+### 7. Include in SUMMARY.md
+
+Add a "Research gaps encountered" section in SUMMARY.md listing any refs that had no matching context:
+
+\\\`\\\`\\\`markdown
+## Research Gaps Encountered
+
+- \\\`research:constraint-bun-ws-version\\\` — Not found in MuninnDB (Task 2.3)
+- \\\`research:pattern-retry-jitter\\\` — Not found in MuninnDB (Task 2.2)
+\\\`\\\`\\\`
+
+If no gaps were encountered, omit this section entirely.`,
+      order: 2.5,
+    },
+    {
       title: "execution_flow",
       content: `<step name="load_project_state" priority="first">
 Before any operation, read project state:

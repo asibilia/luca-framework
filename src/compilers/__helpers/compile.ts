@@ -2,21 +2,21 @@
  * Functional compiler module for converting TypeScript entity definitions
  * to target format markdown.
  *
- * Uses composable pure functions for compilation.
- *
- * Each entity type (agent, skill, rule) has:
- * - Per-format functions: compileAgentClaude(), compileAgentPlugin()
- * - A format-dispatching function: compileAgent(entity, format)
- *
- * The internal buildAgentFrontmatter() helper consolidates shared
- * YAML frontmatter logic.
+ * This module is a thin delegation layer. The real compilation logic lives
+ * in src/adapters/claude/ (agent-emitter.ts, skill-emitter.ts, claude-adapter.ts).
+ * This file preserves all existing exports for backward compatibility.
  *
  * @module
  */
-import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
-import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
-import type { BaseRule } from "~/rules/__schemas/rule.schemas";
-import { formatFrontmatter } from "~/shared/__helpers/utils";
+import type { BaseAgent } from "~/agents";
+import type { BaseSkill } from "~/skills";
+import type { BaseRule } from "~/rules";
+import {
+  createClaudeAdapter,
+  emitAgentMarkdown,
+  emitSkillMarkdown,
+  emitSkillPluginMarkdown,
+} from "~/adapters/claude";
 
 /**
  * Supported compilation output formats.
@@ -38,163 +38,102 @@ export function validateFormat(format: SupportedFormat): void {
   }
 }
 
-/**
- * Build YAML frontmatter for agents with cognition and/or context config.
- *
- * Returns null if the agent has neither cognition nor context configuration.
- *
- * @param agent - The agent whose frontmatter config to process
- * @returns YAML frontmatter string or null if no cognition/context config
- */
-function buildAgentFrontmatter(agent: BaseAgent): string {
-  const cognition = agent.config.frontmatter.cognition;
-  const context = agent.config.frontmatter.context;
-
-  const frontmatterData: Record<string, unknown> = {
-    name: agent.name,
-    description: agent.description,
-  };
-
-  if (cognition) {
-    frontmatterData.cognition = {
-      default_tier: cognition.default_tier,
-      promotable_to: cognition.promotable_to,
-      memory_tags: cognition.memory_tags,
-    };
+// Lazily-created Claude adapter instance for rule compilation
+let _claudeAdapter: ReturnType<typeof createClaudeAdapter> | null = null;
+function getClaudeAdapter() {
+  if (!_claudeAdapter) {
+    _claudeAdapter = createClaudeAdapter();
   }
-
-  if (context) {
-    frontmatterData.context = {
-      default_tier: context.default_tier,
-      promotable_to: context.promotable_to,
-      isolation: context.isolation,
-    };
-  }
-
-  return formatFrontmatter(frontmatterData);
+  return _claudeAdapter;
 }
 
 // ---------------------------------------------------------------------------
-// Claude format
+// Claude format — delegates to adapter emitters
 // ---------------------------------------------------------------------------
 
 /**
  * Compile an agent definition to Claude-format markdown.
  *
- * When the agent has cognition or context configuration, YAML frontmatter
- * is prepended to the markdown body. This enables lu-cognition and lu-context
- * to parse compiled .md files and extract config at runtime without importing
- * TypeScript modules.
+ * Delegates to emitAgentMarkdown from src/adapters/claude/agent-emitter.ts.
+ * Output is byte-identical to the previous inline implementation.
  *
  * @param agent - The agent instance to compile
- * @returns Compiled markdown string, optionally prefixed with YAML frontmatter
+ * @returns Compiled markdown string, prefixed with YAML frontmatter
  */
 export function compileAgentClaude(agent: BaseAgent): string {
-  const markdown = agent.toClaudeFormat();
-  const frontmatter = buildAgentFrontmatter(agent);
-  return `${frontmatter}\n\n${markdown}`;
+  return emitAgentMarkdown(agent);
 }
 
 /**
  * Compile a skill definition to Claude-format markdown.
  *
+ * Delegates to emitSkillMarkdown from src/adapters/claude/skill-emitter.ts.
+ *
  * @param skill - The skill instance to compile
  * @returns Compiled markdown string
  */
 export function compileSkillClaude(skill: BaseSkill): string {
-  return skill.toClaudeFormat();
+  return emitSkillMarkdown(skill);
 }
 
 /**
  * Compile a rule definition to Claude-format markdown.
  *
- * When the rule has scoping metadata (globs or explicit alwaysApply), YAML
- * frontmatter is prepended. Claude Code `.claude/rules/*.md` files support
- * YAML frontmatter with `---` delimiters for description, globs, and
- * alwaysApply fields, enabling context-aware rule loading.
+ * Delegates to the Claude adapter's compileRule method.
  *
  * @param rule - The rule instance to compile
  * @returns Compiled markdown string, optionally prefixed with YAML frontmatter
  */
 export function compileRuleClaude(rule: BaseRule): string {
-  const markdown = rule.toClaudeFormat();
-  const { description, globs, alwaysApply } = rule.config.frontmatter;
-
-  const hasScoping =
-    (globs !== undefined && globs.length > 0) || alwaysApply !== undefined;
-
-  if (hasScoping) {
-    const frontmatterData: Record<string, unknown> = { description };
-    if (globs !== undefined && globs.length > 0) {
-      frontmatterData.globs = globs;
-    }
-    if (alwaysApply !== undefined) {
-      frontmatterData.alwaysApply = alwaysApply;
-    }
-    const frontmatter = formatFrontmatter(frontmatterData);
-    return `${frontmatter}\n\n${markdown}`;
-  }
-
-  return markdown;
+  return getClaudeAdapter().compileRule!(rule) as string;
 }
 
 // ---------------------------------------------------------------------------
-// Plugin format
+// Plugin format — delegates to adapter emitters
 // ---------------------------------------------------------------------------
 
 /**
  * Compile an agent definition to plugin-compatible markdown.
  *
- * Produces the same output as compileAgentClaude: if the agent has cognition
- * or context configuration in its frontmatter, YAML frontmatter is prepended
- * to the markdown body. This enables runtime systems (lu-cognition, lu-context)
- * to extract configuration from compiled .md files without TypeScript imports.
+ * Plugin agents use the same format as Claude agents.
  *
  * @param agent - The agent instance to compile
  * @returns Compiled markdown string, optionally prefixed with YAML frontmatter
  */
 export function compileAgentPlugin(agent: BaseAgent): string {
-  return compileAgentClaude(agent);
+  return emitAgentMarkdown(agent);
 }
 
 /**
  * Compile a skill definition to plugin-compatible markdown.
  *
- * Plugin SKILL.md files use Claude-format H1/H2 markdown body, but per
- * the official Claude Code plugin spec they also require YAML frontmatter
- * with at least a `description` field for discoverability.
+ * Plugin skills add YAML frontmatter with a description field.
  *
  * @param skill - The skill instance to compile
  * @returns Compiled markdown string with description frontmatter
  */
 export function compileSkillPlugin(skill: BaseSkill): string {
-  const markdown = skill.toClaudeFormat();
-  const frontmatter = formatFrontmatter({ description: skill.description });
-  return `${frontmatter}\n\n${markdown}`;
+  return emitSkillPluginMarkdown(skill);
 }
 
 /**
  * Compile a rule definition to plugin-compatible markdown.
  *
- * Note: Claude Code plugins cannot inject rules into the host project's
- * rule resolution pipeline. This method is provided for completeness --
- * plugins may bundle rule files as reference documentation.
+ * Plugin rules use the same format as Claude rules.
  *
  * @param rule - The rule instance to compile
- * @returns Compiled markdown string (informational only; not injected as a host rule)
+ * @returns Compiled markdown string
  */
 export function compileRulePlugin(rule: BaseRule): string {
-  return compileRuleClaude(rule);
+  return getClaudeAdapter().compileRule!(rule) as string;
 }
 
 // ---------------------------------------------------------------------------
-// Format-dispatching functions
+// Format-dispatching functions (unchanged signatures)
 // ---------------------------------------------------------------------------
 
 /**
  * Compile an agent definition to the specified format.
- *
- * Dispatches to the appropriate per-format function based on the format parameter.
  *
  * @param agent - The agent instance to compile
  * @param format - Target format: "CLAUDE" or "PLUGIN"
@@ -217,8 +156,6 @@ export function compileAgent(
 /**
  * Compile a skill definition to the specified format.
  *
- * Dispatches to the appropriate per-format function based on the format parameter.
- *
  * @param skill - The skill instance to compile
  * @param format - Target format: "CLAUDE" or "PLUGIN"
  * @returns Compiled markdown string
@@ -239,8 +176,6 @@ export function compileSkill(
 
 /**
  * Compile a rule definition to the specified format.
- *
- * Dispatches to the appropriate per-format function based on the format parameter.
  *
  * @param rule - The rule instance to compile
  * @param format - Target format: "CLAUDE" or "PLUGIN"

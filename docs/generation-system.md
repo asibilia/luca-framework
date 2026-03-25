@@ -57,6 +57,23 @@ src/
 │   ├── __schemas/   # Hook definition schemas
 │   ├── __helpers/   # Registry and config generators
 │   └── scripts/     # Hook shell scripts
+├── adapters/        # [T3 Build] Adapter architecture
+│   ├── __schemas/
+│   │   └── adapter.schemas.ts  # Adapter interface, config, result schemas
+│   ├── __helpers/
+│   │   ├── adapter-registry.ts # Registry: register, get, list, detect
+│   │   ├── adapter-executor-bridge.ts  # Bridge between Adapter (T3) and WorkflowAdapter (T1)
+│   │   └── register-builtins.ts  # Side-effect: pre-register Claude + API adapters
+│   ├── claude/
+│   │   ├── claude-adapter.ts   # Claude Code adapter factory
+│   │   ├── agent-emitter.ts    # Agent markdown compilation
+│   │   ├── skill-emitter.ts    # Skill markdown compilation
+│   │   └── index.ts            # Claude adapter barrel
+│   ├── api/
+│   │   ├── api-adapter.ts      # API/headless adapter factory
+│   │   ├── api-executor.ts     # Claude Agent SDK execution wrapper
+│   │   └── index.ts            # API adapter barrel
+│   └── index.ts                # Domain barrel (re-exports only)
 ```
 
 > **Note:** `__schemas/` and `__helpers/` directories use the double-underscore prefix convention to visually separate internal infrastructure from entity directories. See `.claude/rules/module-boundary.md` for import rules. All cross-domain imports use the `~/` path alias (resolves to `src/`).

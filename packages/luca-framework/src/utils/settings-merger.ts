@@ -190,12 +190,13 @@ export function isLucaHook(
  * ```
  */
 export function getKnownLucaScripts(
-  registry: Record<string, { script: string } | (() => { script: string })>,
+  registry: Record<string, { script?: string } | (() => { script?: string })>,
 ): Set<string> {
   const scripts = new Set<string>();
 
   for (const entry of Object.values(registry)) {
     const hook = typeof entry === "function" ? entry() : entry;
+    if (!hook.script) continue; // Skip prompt hooks (no script file)
     // Replace .ts extension with .sh (deployed hooks use shell wrappers)
     const shName = hook.script.replace(/\.ts$/, ".sh");
     scripts.add(shName);
