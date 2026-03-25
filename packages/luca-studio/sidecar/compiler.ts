@@ -363,10 +363,12 @@ try {
 } catch (err) {
   const error = err instanceof Error ? err : new Error(String(err));
 
-  // Port conflict detection
+  // Port conflict detection — Bun uses various error messages depending on version
   if (
     error.message.includes("EADDRINUSE") ||
-    error.message.includes("address already in use")
+    error.message.includes("address already in use") ||
+    error.message.includes("Is port") ||
+    error.message.includes("Failed to start server")
   ) {
     console.error(
       `[sidecar] Port ${SIDECAR_PORT} is already in use. ` +
