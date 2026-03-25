@@ -65,8 +65,8 @@ export const WINDSURF_EVENT_MAP: Record<string, string | null> = {
 export function translateWindsurfEvent(
   claudeEvent: string,
 ): string | null | undefined {
-  if (claudeEvent in WINDSURF_EVENT_MAP) {
-    return WINDSURF_EVENT_MAP[claudeEvent];
+  if (Object.hasOwn(WINDSURF_EVENT_MAP, claudeEvent)) {
+    return WINDSURF_EVENT_MAP[claudeEvent as keyof typeof WINDSURF_EVENT_MAP];
   }
   return undefined;
 }

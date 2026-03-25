@@ -51,8 +51,8 @@ export const CURSOR_EVENT_MAP: Readonly<Record<string, string | null>> = {
 export function translateCursorEvent(
   claudeEvent: string,
 ): string | null | undefined {
-  if (claudeEvent in CURSOR_EVENT_MAP) {
-    return CURSOR_EVENT_MAP[claudeEvent];
+  if (Object.hasOwn(CURSOR_EVENT_MAP, claudeEvent)) {
+    return CURSOR_EVENT_MAP[claudeEvent as keyof typeof CURSOR_EVENT_MAP];
   }
   return undefined;
 }

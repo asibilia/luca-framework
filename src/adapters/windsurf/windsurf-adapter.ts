@@ -93,9 +93,14 @@ function mapTrigger(frontmatter: {
  * const ruleMarkdown = adapter.compileRule(myRule);
  * ```
  */
+/** Maximum characters allowed for all global (always_on) rules combined. */
+const GLOBAL_RULES_CHAR_LIMIT = 6_000;
+
 export function createWindsurfAdapter(): Adapter {
   /** Internal buffer: relative path -> compiled content */
   const compiledOutputs = new Map<string, string>();
+  /** Track always_on rule paths for global budget enforcement at emit time */
+  const alwaysOnRulePaths = new Set<string>();
 
   return {
     config: {
@@ -216,7 +221,11 @@ export function createWindsurfAdapter(): Adapter {
         `rules/${rule.name}`,
       );
 
-      compiledOutputs.set(`rules/${rule.name}.md`, result);
+      const rulePath = `rules/${rule.name}.md`;
+      compiledOutputs.set(rulePath, result);
+      if (trigger === "always_on") {
+        alwaysOnRulePaths.add(rulePath);
+      }
       return result;
     },
 
@@ -230,7 +239,25 @@ export function createWindsurfAdapter(): Adapter {
      * @returns Emission result with file counts, paths, and warnings
      */
     emit: async (outputDir: string): Promise<EmitResult> => {
-      return emitCompiledOutputs(compiledOutputs, outputDir);
+      return emitCompiledOutputs(compiledOutputs, outputDir, {
+        preEmit: (outputs) => {
+          const warnings: string[] = [];
+
+          // Enforce 6K global rules budget across all always_on rules
+          let globalTotal = 0;
+          for (const path of alwaysOnRulePaths) {
+            const content = outputs.get(path);
+            if (content) globalTotal += content.length;
+          }
+          if (globalTotal > GLOBAL_RULES_CHAR_LIMIT) {
+            warnings.push(
+              `Global always_on rules total ${globalTotal} chars exceeds ${GLOBAL_RULES_CHAR_LIMIT} char limit (${alwaysOnRulePaths.size} rules)`,
+            );
+          }
+
+          return { files: outputs, warnings };
+        },
+      });
     },
 
     /**

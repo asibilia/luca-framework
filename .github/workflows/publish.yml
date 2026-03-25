@@ -49,7 +49,7 @@ jobs:
       - name: Set version from release tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Release tag must be in v*.*.* format (got: $GITHUB_REF_NAME)"
             exit 1
           fi

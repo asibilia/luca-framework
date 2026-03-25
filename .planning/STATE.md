@@ -2,10 +2,11 @@
 
 ## Current Position
 
-- **Status:** Idle
+- **Current Milestone:** Planning next
+- **Status:** Pre-flight
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
-- **Last Updated:** unknown
+- **Last Updated:** 2026-03-25
 
 ## Session Identity
 
@@ -29,7 +30,8 @@
 
 ## Allowed Events
 
-- `START`
+- `PREFLIGHT_COMPLETE`
+- `SKIP`
 
 ## Previous Milestones
 
@@ -52,8 +54,8 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 ## Session Continuity
 
 - **Session Started:** 2026-03-25
-- **Last Transition:** unknown
+- **Last Transition:** 2026-03-25
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T12:24:50.229Z_
+_State generated from machine snapshot at 2026-03-25T13:03:19.462Z_
