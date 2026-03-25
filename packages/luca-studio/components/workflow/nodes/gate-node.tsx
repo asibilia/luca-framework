@@ -3,7 +3,7 @@
 import type { NodeProps } from "@xyflow/react";
 
 import { WorkflowNodeDataSchema } from "~/lib/workflow-types";
-import { NodeCard } from "~/components/workflow-editor/nodes/node-card";
+import { NodeCard } from "~/components/workflow/nodes/node-card";
 
 /**
  * Custom React Flow node for complexity gates (decision points).

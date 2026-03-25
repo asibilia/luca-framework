@@ -28,7 +28,7 @@ import {
   pipelineEdgesAtom,
 } from "~/stores/pipeline-atoms";
 import { markDirtyAtom } from "~/stores/dirty-tracking";
-import { applyGroupedColumnLayout } from "~/components/workflow-editor/auto-layout";
+import { applyGroupedColumnLayout } from "~/components/workflow/auto-layout";
 
 // -- Types --------------------------------------------------------------------
 

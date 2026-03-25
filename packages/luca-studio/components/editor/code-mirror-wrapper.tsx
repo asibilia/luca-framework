@@ -39,17 +39,25 @@ export type CodeMirrorHandle = {
 
 /** Props for the CodeMirrorWrapper component. */
 export type CodeMirrorWrapperProps = {
-  /** Current editor content. */
+  /** Current editor content. Defaults to `""`. */
   value?: string;
   /** Called on every document change with the new string value. */
   onChange?: (value: string) => void;
-  /** When true, editing is disabled and the toolbar is hidden. */
+  /** When true, editing is disabled and the toolbar is hidden. Defaults to `false`. */
   readOnly?: boolean;
   /** Placeholder text shown when the editor is empty. */
   placeholder?: string;
   /** Additional CSS class names for the outer wrapper. */
   className?: string;
 };
+
+// -- Prop defaults (single source of truth) -----------------------------------
+
+/** Default value for the editor content prop. */
+const DEFAULT_VALUE = "";
+
+/** Default value for the readOnly prop. */
+const DEFAULT_READ_ONLY = false;
 
 // ---------------------------------------------------------------------------
 // Luca Theme (CSS-variable-aware)
@@ -174,9 +182,11 @@ export const CodeMirrorWrapper = forwardRef<
   CodeMirrorHandle,
   CodeMirrorWrapperProps
 >(function CodeMirrorWrapper(
-  { value = "", onChange, readOnly = false, placeholder, className },
+  { value: rawValue, onChange, readOnly: rawReadOnly, placeholder, className },
   ref,
 ) {
+  const value = rawValue ?? DEFAULT_VALUE;
+  const readOnly = rawReadOnly ?? DEFAULT_READ_ONLY;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);

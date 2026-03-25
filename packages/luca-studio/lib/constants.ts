@@ -60,22 +60,60 @@ export const COMPLEXITY_LEVELS = {
   CRITICAL: { label: "Critical", color: "destructive", tier: "thorough" },
 } as const;
 
+/** Shape of a single navigation item. */
+export type NavItem = {
+  readonly href: string;
+  readonly label: string;
+  readonly icon: string;
+};
+
+/** Shape of a navigation group containing items. */
+export type NavGroup = {
+  readonly label: string;
+  readonly items: readonly NavItem[];
+};
+
 /**
- * Navigation items for the sidebar.
+ * Grouped navigation structure for the NavRail.
+ *
+ * Three groups: OBSERVE (monitoring), BUILD (pipeline authoring),
+ * CONFIGURE (settings and configuration).
  */
-export const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/sessions", label: "Sessions", icon: "Activity" },
-  { href: "/memory", label: "Memory", icon: "Brain" },
-  { href: "/learning", label: "Learning", icon: "BookOpen" },
-  { href: "/vault", label: "Vault", icon: "Database" },
-  { href: "/knowledge-graph", label: "Knowledge Graph", icon: "Network" },
-  { href: "/workflow-editor", label: "Workflow Editor", icon: "Workflow" },
-  { href: "/semantic-search", label: "Semantic Search", icon: "Search" },
-  { href: "/decisions", label: "Decisions", icon: "GitPullRequest" },
-  { href: "/contradictions", label: "Contradictions", icon: "AlertTriangle" },
-  { href: "/entities", label: "Entities", icon: "Fingerprint" },
-] as const;
+export const NAV_GROUPS: readonly NavGroup[] = [
+  {
+    label: "OBSERVE",
+    items: [
+      { href: "/", label: "Home", icon: "LayoutDashboard" },
+      { href: "/sessions", label: "Sessions", icon: "Activity" },
+      { href: "/memory", label: "Memory", icon: "Brain" },
+    ],
+  },
+  {
+    label: "BUILD",
+    items: [
+      { href: "/pipeline", label: "Pipeline", icon: "Workflow" },
+      { href: "/agents", label: "Agents", icon: "Bot" },
+      { href: "/skills", label: "Skills", icon: "Hexagon" },
+      { href: "/rules", label: "Rules", icon: "Shield" },
+    ],
+  },
+  {
+    label: "CONFIGURE",
+    items: [
+      { href: "/config", label: "Config", icon: "SlidersHorizontal" },
+      { href: "/settings", label: "Settings", icon: "Settings" },
+    ],
+  },
+];
+
+/**
+ * Flat navigation items derived from NAV_GROUPS for backward compatibility.
+ *
+ * @deprecated Use NAV_GROUPS instead for grouped rendering. Will be removed in v9.0.0.
+ */
+export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap(
+  (group) => group.items,
+);
 
 /**
  * Convergence status to CSS color token mapping.

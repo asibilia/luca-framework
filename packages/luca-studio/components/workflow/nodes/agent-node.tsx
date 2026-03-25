@@ -7,7 +7,7 @@ import { cn } from "~/lib/utils";
 import { TIER_DISPLAY_CONFIG } from "~/lib/workflow-constants";
 import { resolveTierAtComplexity } from "~/lib/workflow-topology";
 import { WorkflowNodeDataSchema } from "~/lib/workflow-types";
-import { NodeCard } from "~/components/workflow-editor/nodes/node-card";
+import { NodeCard } from "~/components/workflow/nodes/node-card";
 
 /**
  * Custom React Flow node for agent instances (lu-router, lu-executor, etc.).

@@ -28,6 +28,7 @@ const GROUP_X = 200;
 
 // -- Node dimensions (used by React Flow for edge routing) --------------------
 
+/** Pixel width per node type, used by React Flow for edge routing. */
 export const NODE_WIDTH: Record<string, number> = {
   "stage-group": 576,
   agent: 250,
@@ -36,6 +37,7 @@ export const NODE_WIDTH: Record<string, number> = {
   default: 200,
 };
 
+/** Pixel height per node type, used by React Flow for edge routing. */
 export const NODE_HEIGHT: Record<string, number> = {
   "stage-group": 300,
   agent: 80,

@@ -32,14 +32,14 @@ import {
   NODE_TYPE_COLORS,
   NODE_TYPE_COLOR_DEFAULT,
 } from "~/lib/workflow-constants";
-import { applyEdgeStyles } from "~/components/workflow-editor/edge-styles";
-import { applyGroupedColumnLayout } from "~/components/workflow-editor/auto-layout";
-import { ComplexityFilter } from "~/components/workflow-editor/complexity-filter";
-import { WorkflowStatsBar } from "~/components/workflow-editor/workflow-stats-bar";
-import { StageGroupNode } from "~/components/workflow-editor/nodes/stage-group-node";
-import { AgentNode } from "~/components/workflow-editor/nodes/agent-node";
-import { GateNode } from "~/components/workflow-editor/nodes/gate-node";
-import { SkillNode } from "~/components/workflow-editor/nodes/skill-node";
+import { applyEdgeStyles } from "~/components/workflow/edge-styles";
+import { applyGroupedColumnLayout } from "~/components/workflow/auto-layout";
+import { ComplexityFilter } from "~/components/workflow/complexity-filter";
+import { WorkflowStatsBar } from "~/components/workflow/workflow-stats-bar";
+import { StageGroupNode } from "~/components/workflow/nodes/stage-group-node";
+import { AgentNode } from "~/components/workflow/nodes/agent-node";
+import { GateNode } from "~/components/workflow/nodes/gate-node";
+import { SkillNode } from "~/components/workflow/nodes/skill-node";
 import { WorkflowNode } from "~/components/workflow/workflow-node";
 import { WorkflowEdge } from "~/components/workflow/workflow-edge";
 import { CanvasToolbar } from "~/components/workflow/canvas-toolbar";
@@ -71,6 +71,16 @@ const edgeTypes: EdgeTypes = {
 
 // -- Minimap color helper -----------------------------------------------------
 
+/**
+ * Resolve a minimap node color from the node's `node_type` data field.
+ *
+ * Maps the node type to the hex color defined in `NODE_TYPE_COLORS`.
+ * Falls back to `NODE_TYPE_COLOR_DEFAULT.hex` when the type is missing
+ * or unmapped.
+ *
+ * @param node - React Flow node with `WorkflowNodeData` in `data`
+ * @returns Hex color string for the minimap node
+ */
 function minimapNodeColor(node: Node): string {
   const nodeType = (node.data as WorkflowNodeData)?.node_type;
   return (
