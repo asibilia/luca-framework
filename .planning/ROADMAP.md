@@ -29,8 +29,8 @@
 **Depends on:** Phase 1
 **Verification:** Quick
 
-- [ ] studio-w2-new-dependencies — CodeMirror 6, Shiki, jotai-history, chokidar, react-resizable-panels
-- [ ] studio-w2-jotai-atom-model — Three-layer Jotai atoms (server/draft/dirty tracking)
+- [x] studio-w2-new-dependencies — CodeMirror 6, Shiki, jotai-history, chokidar, react-resizable-panels
+- [x] studio-w2-jotai-atom-model — Three-layer Jotai atoms (server/draft/dirty tracking)
 
 ### Phase 3: W2 HIGH-Risk Infrastructure
 
