@@ -19,9 +19,9 @@
 **Depends on:** None
 **Verification:** Standard
 
-- [ ] studio-w1-package-rename — Rename luca-observer to luca-studio (~25 files)
-- [ ] agent-team-prompt-audit-fixes — 8 prompt audit fixes across 5 skill files
-- [ ] runtime-e04-adapter-compatibility-report — validate() per adapter + compatibility-report.json
+- [x] studio-w1-package-rename — Rename luca-observer to luca-studio (~25 files)
+- [x] agent-team-prompt-audit-fixes — 8 prompt audit fixes across 5 skill files
+- [x] runtime-e04-adapter-compatibility-report — validate() per adapter + compatibility-report.json
 
 ### Phase 2: W2 Dependencies + Atom Model
 
