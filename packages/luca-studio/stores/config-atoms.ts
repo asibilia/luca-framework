@@ -43,6 +43,17 @@ export const routingTableAtom = atom<Record<string, unknown> | null>(null);
  */
 export const stateAtom = atom<Record<string, unknown> | null>(null);
 
+/**
+ * Stores the full-file ETag from the latest `GET /api/config` response.
+ *
+ * Used by `usePipelineSave` to send `If-Match` on PUT requests for
+ * optimistic concurrency control. Updated on initial hydration, SSE
+ * re-fetch, and successful save responses.
+ *
+ * `null` until the first successful config fetch.
+ */
+export const configEtagAtom = atom<string | null>(null);
+
 // ---------------------------------------------------------------------------
 // Layer 2 -- Config Draft State (writable copies)
 //
