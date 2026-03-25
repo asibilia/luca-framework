@@ -18,9 +18,9 @@
 
 ### Phase 201: Studio W7 Infrastructure (SSE, ETag, Undo)
 
-- [ ] SSE event stream + useSSE hook (studio-w7-sse-layer)
-- [ ] ETag-based optimistic locking (studio-w7-etag-locking)
-- [ ] Undo/redo with jotai-history (studio-w7-undo-redo)
+- [x] SSE event stream + useSSE hook (studio-w7-sse-layer)
+- [x] ETag-based optimistic locking (studio-w7-etag-locking)
+- [x] Undo/redo with jotai-history (studio-w7-undo-redo)
 
 **Goal:** Add cross-cutting Studio infrastructure: live file-change events via SSE, optimistic locking for concurrent edits, and undo/redo for all editing surfaces.
 **Depends on:** None
