@@ -82,12 +82,8 @@ export function createAnthropicAdapter(): LlmAdapter {
  * Create a mock adapter that returns canned responses.
  *
  * For development and CI environments without API keys.
- * The mock returns a fixed response based on the system prompt content:
- * - If system prompt contains "evaluator" (judge prompt): returns a valid
- *   judge JSON response with score 0.8 and passed true.
- * - Otherwise: returns a generic text response.
- *
- * Token usage is simulated as input_tokens: 100, output_tokens: 50.
+ * Delegates to createMockAdapterWithResponses with an empty response map,
+ * which provides the same default mock behavior (judge-aware responses).
  *
  * @returns LlmAdapter that returns mock responses without API calls
  *
@@ -97,30 +93,8 @@ export function createAnthropicAdapter(): LlmAdapter {
  * const report = await runEvalSuite(suite, { adapter: mockAdapter });
  * ```
  */
-export function createMockAdapter(): LlmAdapter {
-  return {
-    async call(
-      _model: string,
-      systemPrompt: string,
-      _userMessage: string,
-      _temperature: number,
-    ) {
-      if (systemPrompt.includes("evaluator")) {
-        return {
-          text: '{"score": 0.8, "passed": true, "reasoning": "Mock evaluation: output meets rubric criteria."}',
-          input_tokens: 100,
-          output_tokens: 50,
-        };
-      }
-
-      return {
-        text: "Mock response for eval",
-        input_tokens: 100,
-        output_tokens: 50,
-      };
-    },
-  };
-}
+export const createMockAdapter = (): LlmAdapter =>
+  createMockAdapterWithResponses(new Map());
 
 /**
  * Create a mock adapter with custom response mapping.
