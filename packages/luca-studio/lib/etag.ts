@@ -6,7 +6,7 @@
  * enough for HTTP ETag headers while still providing negligible collision
  * probability for configuration-sized files.
  *
- * Uses Bun's built-in `CryptoHasher` for native-speed hashing.
+ * Uses Node.js `node:crypto` for hashing (compatible with Next.js API routes).
  *
  * @param content - The string content to hash.
  * @returns A 16-character lowercase hex string.
@@ -19,8 +19,8 @@
  * // => "a1b2c3d4e5f67890"  (deterministic for same input)
  * ```
  */
+import { createHash } from "node:crypto";
+
 export function computeETag(content: string): string {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(content);
-  return hasher.digest("hex").substring(0, 16);
+  return createHash("sha256").update(content).digest("hex").substring(0, 16);
 }

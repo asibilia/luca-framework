@@ -24,6 +24,7 @@
  * }
  * ```
  */
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -135,11 +136,13 @@ export function createConfigSectionHandler<T extends z.ZodType>(
     try {
       const root = await resolveProjectRoot();
       configPath = join(root, ".planning", "config.json");
-      const file = Bun.file(configPath);
-      const exists = await file.exists();
+      const exists = await access(configPath).then(
+        () => true,
+        () => false,
+      );
 
       if (exists) {
-        const raw = await file.text();
+        const raw = await readFile(configPath, "utf-8");
         fullConfig = JSON.parse(raw) as Record<string, unknown>;
       } else {
         fullConfig = {};

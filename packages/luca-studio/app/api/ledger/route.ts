@@ -9,6 +9,7 @@
  *
  * Returns the **last N** entries in most-recent-first order.
  */
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import filter from "lodash/filter";
@@ -62,14 +63,16 @@ export async function GET(request: Request) {
   try {
     const root = await resolveProjectRoot();
     const ledgerPath = join(root, ".planning", "session-ledger.jsonl");
-    const file = Bun.file(ledgerPath);
-    const exists = await file.exists();
+    const exists = await access(ledgerPath).then(
+      () => true,
+      () => false,
+    );
 
     if (!exists) {
       return NextResponse.json([]);
     }
 
-    const raw = await file.text();
+    const raw = await readFile(ledgerPath, "utf-8");
     const allEntries = parseJsonl(raw);
 
     // Take the last N entries, then reverse for most-recent-first order

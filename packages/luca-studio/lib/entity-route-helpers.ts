@@ -7,9 +7,9 @@
  *
  * @module entity-route-helpers
  */
+import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { Glob } from "bun";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -130,15 +130,33 @@ async function resolveEntityPath(
 
     // Direct file in subdir
     const directPath = join(dirPath, filename);
-    if (await Bun.file(directPath).exists()) {
+    if (
+      await access(directPath).then(
+        () => true,
+        () => false,
+      )
+    ) {
       return directPath;
     }
 
     // For rules/profiles, check nested subdirectories (e.g. profiles/typescript/)
     if (domain === "rules" && subdir === "profiles") {
-      const glob = new Glob(`*/${filename}`);
-      for await (const match of glob.scan({ cwd: dirPath, absolute: false })) {
-        return join(dirPath, match);
+      let entries: string[];
+      try {
+        entries = await readdir(dirPath);
+      } catch {
+        continue;
+      }
+      for (const entry of entries) {
+        const nestedPath = join(dirPath, entry, filename);
+        if (
+          await access(nestedPath).then(
+            () => true,
+            () => false,
+          )
+        ) {
+          return nestedPath;
+        }
       }
     }
   }
@@ -190,18 +208,40 @@ export function createEntityListHandler(
 
       for (const subdir of config.subdirs) {
         const dirPath = join(root, "src", domain, subdir);
-        const globPattern =
-          domain === "rules" && subdir === "profiles"
-            ? `**/*${config.suffix}`
-            : `*${config.suffix}`;
+        const isNestedProfiles = domain === "rules" && subdir === "profiles";
 
-        const glob = new Glob(globPattern);
+        /** Collect matching file paths from dirPath (and nested dirs for profiles). */
+        const matchingFiles: string[] = [];
 
-        for await (const match of glob.scan({
-          cwd: dirPath,
-          absolute: false,
-        })) {
-          const filePath = join(dirPath, match);
+        let topEntries: string[];
+        try {
+          topEntries = await readdir(dirPath);
+        } catch {
+          // Directory may not exist -- skip silently
+          continue;
+        }
+
+        for (const entry of topEntries) {
+          if (entry.endsWith(config.suffix)) {
+            matchingFiles.push(join(dirPath, entry));
+          } else if (isNestedProfiles) {
+            // Recurse one level into profile subdirectories
+            const nestedDir = join(dirPath, entry);
+            let nestedEntries: string[];
+            try {
+              nestedEntries = await readdir(nestedDir);
+            } catch {
+              continue;
+            }
+            for (const nested of nestedEntries) {
+              if (nested.endsWith(config.suffix)) {
+                matchingFiles.push(join(nestedDir, nested));
+              }
+            }
+          }
+        }
+
+        for (const filePath of matchingFiles) {
           const result = await readEntityFile(filePath);
 
           if (result.success) {
@@ -301,7 +341,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         }
 
         // Compute ETag from full source file contents
-        const source = await Bun.file(filePath).text();
+        const source = await readFile(filePath, "utf-8");
         const etag = computeETag(source);
 
         const detail: EntityDetail = {
@@ -357,7 +397,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        const currentSource = await Bun.file(filePath).text();
+        const currentSource = await readFile(filePath, "utf-8");
         const currentEtag = computeETag(currentSource);
 
         if (ifMatch !== currentEtag) {
@@ -411,7 +451,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        const updatedSource = await Bun.file(filePath).text();
+        const updatedSource = await readFile(filePath, "utf-8");
         const freshEtag = computeETag(updatedSource);
 
         const detail: EntityDetail = {

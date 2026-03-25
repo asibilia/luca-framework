@@ -74,6 +74,11 @@ const CheckConfigSchema = z.object({
  *
  * Controls the verification harness: enabled state, check array,
  * iteration limits, and fail-fast behavior.
+ *
+ * NOTE: `maxFixIterations` and `failFast` use camelCase to match the
+ * canonical schema in `src/harness/__schemas/harness.schemas.ts` and the
+ * existing `config.json` shape. This is an intentional exception to the
+ * project's snake_case API convention.
  */
 export const HarnessSectionSchema = z.object({
   enabled: z.boolean(),

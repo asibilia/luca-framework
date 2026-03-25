@@ -4,6 +4,7 @@
  * Serves the Luca workflow state for the Studio frontend state inspector.
  * Missing state files return `{}` with 200 (not 500).
  */
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -15,14 +16,16 @@ export async function GET() {
   try {
     const root = await resolveProjectRoot();
     const statePath = join(root, ".planning", "state.json");
-    const file = Bun.file(statePath);
-    const exists = await file.exists();
+    const exists = await access(statePath).then(
+      () => true,
+      () => false,
+    );
 
     if (!exists) {
       return NextResponse.json({});
     }
 
-    const raw = await file.text();
+    const raw = await readFile(statePath, "utf-8");
     const parsed = safeJsonParse(raw, {});
 
     return NextResponse.json(parsed);

@@ -27,8 +27,8 @@ import {
   compileAgent,
   compileSkill,
   compileRule,
-} from "../../../src/compilers/__helpers/compile.ts";
-import type { SupportedFormat } from "../../../src/compilers/__helpers/compile.ts";
+} from "../../../src/compilers/index.ts";
+import type { SupportedFormat } from "../../../src/compilers/index.ts";
 
 // ---------------------------------------------------------------------------
 // Constants

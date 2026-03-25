@@ -14,6 +14,7 @@
  *
  * @module ts-round-trip
  */
+import { readFile, rename, writeFile } from "node:fs/promises";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,7 +119,7 @@ const DOMAIN_MAP = {
  *
  * @example
  * ```typescript
- * const source = await Bun.file("src/agents/general/code-developer.agent.ts").text();
+ * const source = await readFile("src/agents/general/code-developer.agent.ts", "utf-8");
  * const result = extractConfigFromSource(source, "agents");
  * if (result.success) {
  *   console.log(result.metadata.varName); // "codeDeveloperConfig"
@@ -287,7 +288,7 @@ export async function readEntityFile(
     };
   }
 
-  const source = await Bun.file(filePath).text();
+  const source = await readFile(filePath, "utf-8");
   return extractConfigFromSource(source, domain);
 }
 
@@ -317,8 +318,7 @@ export async function writeEntityFile(
 ): Promise<void> {
   const source = generateEntitySource(rawConfigText, metadata);
   const tmpPath = filePath + ".tmp";
-  await Bun.write(tmpPath, source);
-  const { rename } = await import("node:fs/promises");
+  await writeFile(tmpPath, source, "utf-8");
   await rename(tmpPath, filePath);
 }
 
@@ -349,7 +349,7 @@ export async function roundTripEntityFile(filePath: string): Promise<{
     return { success: false, error: `Cannot detect domain: ${filePath}` };
   }
 
-  const originalSource = await Bun.file(filePath).text();
+  const originalSource = await readFile(filePath, "utf-8");
   const result = extractConfigFromSource(originalSource, domain);
 
   if (!result.success) {
