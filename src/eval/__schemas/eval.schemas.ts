@@ -348,3 +348,72 @@ export const EvalComparisonSchema = z.object({
   significance_threshold: z.number().min(0).max(1),
 });
 export type EvalComparison = z.infer<typeof EvalComparisonSchema>;
+
+// ─── Interfaces (moved from __helpers/ per audit #14-15) ────────────────
+
+/**
+ * Type for user-provided custom grading functions.
+ *
+ * Receives the extracted output value and the full expected record.
+ * Must return a GraderResult synchronously.
+ *
+ * @param output - The value extracted from the agent output (via output_path or full output)
+ * @param expected - The full expected record from the eval case
+ * @returns GraderResult with passed, score, reason, and optional metadata
+ */
+export type CustomGraderFn = (
+  output: unknown,
+  expected: Record<string, unknown> | undefined,
+) => GraderResult;
+
+/**
+ * Adapter interface for making LLM calls.
+ *
+ * Abstracted so the eval runner can inject a mock adapter for testing
+ * or a real Anthropic API adapter for production runs.
+ */
+export interface LlmAdapter {
+  /**
+   * Send a message to an LLM and get a text response.
+   *
+   * @param model - Model identifier (e.g., "claude-haiku-4-5-20250514")
+   * @param systemPrompt - System prompt for the judge
+   * @param userMessage - User message containing the eval context
+   * @param temperature - Sampling temperature (0.0 for deterministic)
+   * @returns Object with text response and token usage
+   */
+  call(
+    model: string,
+    systemPrompt: string,
+    userMessage: string,
+    temperature: number,
+  ): Promise<{
+    text: string;
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+}
+
+/**
+ * Options for running an eval suite.
+ */
+export interface RunEvalOptions {
+  /** LLM adapter for agent calls and LLM-graded cases. Required for llm/composite graders. */
+  adapter: LlmAdapter | null;
+  /** Map of custom grader functions keyed by eval case ID */
+  custom_graders?: Map<string, CustomGraderFn>;
+  /** Override trial count for all cases (useful for quick smoke runs) */
+  trial_override?: number;
+  /** Dry-run mode: validate suite structure without executing any cases */
+  dry_run?: boolean;
+  /** Agent model to use for agent calls (for metadata tracking) */
+  agent_model?: string;
+  /** Git commit hash of current agent definitions (for metadata tracking) */
+  agent_version_hash?: string;
+  /** Callback invoked after each trial completes (for progress reporting) */
+  on_trial_complete?: (
+    case_id: string,
+    trial: number,
+    result: EvalResult,
+  ) => void;
+}

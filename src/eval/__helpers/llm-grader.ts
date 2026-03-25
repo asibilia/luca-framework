@@ -1,32 +1,8 @@
-import type { GraderResult, LlmGraderConfig } from "../__schemas/eval.schemas";
-
-/**
- * Adapter interface for making LLM calls.
- *
- * Abstracted so the eval runner can inject a mock adapter for testing
- * or a real Anthropic API adapter for production runs.
- */
-export interface LlmAdapter {
-  /**
-   * Send a message to an LLM and get a text response.
-   *
-   * @param model - Model identifier (e.g., "claude-haiku-4-5-20250514")
-   * @param systemPrompt - System prompt for the judge
-   * @param userMessage - User message containing the eval context
-   * @param temperature - Sampling temperature (0.0 for deterministic)
-   * @returns Object with text response and token usage
-   */
-  call(
-    model: string,
-    systemPrompt: string,
-    userMessage: string,
-    temperature: number,
-  ): Promise<{
-    text: string;
-    input_tokens: number;
-    output_tokens: number;
-  }>;
-}
+import type {
+  GraderResult,
+  LlmGraderConfig,
+  LlmAdapter,
+} from "../__schemas/eval.schemas";
 
 /**
  * System prompt for the LLM judge.

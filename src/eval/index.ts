@@ -44,14 +44,16 @@ export type {
   ComparisonVerdict,
   EvalDeltas,
   EvalComparison,
+  // Interfaces (moved from __helpers/ per audit #14-15)
+  CustomGraderFn,
+  LlmAdapter,
+  RunEvalOptions,
 } from "./__schemas/eval.schemas";
 
 // ─── Helpers: Graders ────────────────────────────────────────────────────
 export { gradeWithCode } from "./__helpers/code-grader";
-export type { CustomGraderFn } from "./__helpers/code-grader";
 export { makeFailResult } from "./__helpers/grader-utils";
 export { gradeWithLlm } from "./__helpers/llm-grader";
-export type { LlmAdapter } from "./__helpers/llm-grader";
 export { gradeWithComposite } from "./__helpers/composite-grader";
 
 // ─── Helpers: Reporter ───────────────────────────────────────────────────
@@ -67,7 +69,6 @@ export type { ReportFormat } from "./__helpers/eval-reporter";
 
 // ─── Helpers: Runner ─────────────────────────────────────────────────────
 export { runEvalSuite, runEvalSuites } from "./__helpers/eval-runner";
-export type { RunEvalOptions } from "./__helpers/eval-runner";
 export {
   createAnthropicAdapter,
   createMockAdapter,

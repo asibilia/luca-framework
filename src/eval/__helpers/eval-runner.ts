@@ -7,39 +7,15 @@ import type {
   EvalReport,
   EvalRunMetadata,
   GraderResult,
+  LlmAdapter,
+  CustomGraderFn,
+  RunEvalOptions,
 } from "../__schemas/eval.schemas";
 import { EvalReportSchema, EvalSuiteSchema } from "../__schemas/eval.schemas";
 import { gradeWithCode } from "./code-grader";
 import { makeFailResult } from "./grader-utils";
 import { gradeWithLlm } from "./llm-grader";
 import { gradeWithComposite } from "./composite-grader";
-
-import type { LlmAdapter } from "./llm-grader";
-import type { CustomGraderFn } from "./code-grader";
-
-/**
- * Options for running an eval suite.
- */
-export interface RunEvalOptions {
-  /** LLM adapter for agent calls and LLM-graded cases. Required for llm/composite graders. */
-  adapter: LlmAdapter | null;
-  /** Map of custom grader functions keyed by eval case ID */
-  custom_graders?: Map<string, CustomGraderFn>;
-  /** Override trial count for all cases (useful for quick smoke runs) */
-  trial_override?: number;
-  /** Dry-run mode: validate suite structure without executing any cases */
-  dry_run?: boolean;
-  /** Agent model to use for agent calls (for metadata tracking) */
-  agent_model?: string;
-  /** Git commit hash of current agent definitions (for metadata tracking) */
-  agent_version_hash?: string;
-  /** Callback invoked after each trial completes (for progress reporting) */
-  on_trial_complete?: (
-    case_id: string,
-    trial: number,
-    result: EvalResult,
-  ) => void;
-}
 
 /**
  * Grade a single trial of a single eval case.

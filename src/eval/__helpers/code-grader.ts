@@ -1,22 +1,14 @@
 import get from "lodash/get";
 
-import type { GraderResult, CodeGraderConfig } from "../__schemas/eval.schemas";
+import type {
+  GraderResult,
+  CodeGraderConfig,
+  CustomGraderFn,
+} from "../__schemas/eval.schemas";
 import { makeFailResult } from "./grader-utils";
 
-/**
- * Type for user-provided custom grading functions.
- *
- * Receives the extracted output value and the full expected record.
- * Must return a GraderResult synchronously.
- *
- * @param output - The value extracted from the agent output (via output_path or full output)
- * @param expected - The full expected record from the eval case
- * @returns GraderResult with passed, score, reason, and optional metadata
- */
-export type CustomGraderFn = (
-  output: unknown,
-  expected: Record<string, unknown> | undefined,
-) => GraderResult;
+// Re-export CustomGraderFn for backward compatibility (moved to __schemas/)
+export type { CustomGraderFn } from "../__schemas/eval.schemas";
 
 /**
  * Extract the value to grade from the raw output.

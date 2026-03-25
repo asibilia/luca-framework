@@ -1,4 +1,4 @@
-import type { LlmAdapter } from "./llm-grader";
+import type { LlmAdapter } from "../__schemas/eval.schemas";
 
 /**
  * Anthropic Messages API response shape (subset).

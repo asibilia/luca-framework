@@ -2,13 +2,12 @@ import type {
   GraderResult,
   CompositeGraderConfig,
   CompositeGraderEntry,
+  LlmAdapter,
+  CustomGraderFn,
 } from "../__schemas/eval.schemas";
 import { gradeWithCode } from "./code-grader";
 import { makeFailResult } from "./grader-utils";
 import { gradeWithLlm } from "./llm-grader";
-
-import type { LlmAdapter } from "./llm-grader";
-import type { CustomGraderFn } from "./code-grader";
 
 /**
  * Grade a single entry within a composite grader.
