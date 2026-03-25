@@ -15,9 +15,9 @@
 
 ## Appetite
 
-- **Level:** Small
-- **Token Ceiling:** 50000
-- **Context Budget:** 40%
+- **Level:** Large
+- **Token Ceiling:** 200000
+- **Context Budget:** 60%
 
 ## Progress
 
@@ -59,4 +59,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T22:17:04.149Z_
+_State generated from machine snapshot at 2026-03-25T22:27:38.427Z_
