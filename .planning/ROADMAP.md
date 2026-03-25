@@ -66,8 +66,8 @@
 **Depends on:** Phase 2
 **Verification:** Quick
 
-- [ ] studio-w4-layout-components — LayoutShell, DetailPanel, ResizableSplit, NavRail
-- [ ] studio-w4-navigation-restructure — 11 flat items to 9 grouped (OBSERVE/BUILD/CONFIGURE)
+- [x] studio-w4-layout-components — LayoutShell, DetailPanel, ResizableSplit, NavRail
+- [x] studio-w4-navigation-restructure — 11 flat items to 9 grouped (OBSERVE/BUILD/CONFIGURE)
 
 ### Phase 7: W5 Component Library
 
