@@ -18,7 +18,7 @@ Format:
 
 **Rationale:** PLAN.md tasks already use `**Checkpoint:**`, `**Verification:**` as bold-key patterns. Adding `**Research refs:**` follows the same convention. The executor parses this with a simple regex.
 
-**Parsing:** `const refs = line.match(/\*\*Research refs:\*\*\s*(.+)/)?.[1].split(',').map(s => s.trim())`
+**Parsing:** `const refs = line.match(/\*\*Research refs:\*\*\s*(.+)/)?.[1]?.split(',')?.map(s => s.trim())`
 
 ### 2. Plan Review Loop Architecture
 

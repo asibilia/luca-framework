@@ -26,7 +26,10 @@ const phaseResearchExpandConfig: SkillConfig = {
 ### Step 1: Load Expansion Context
 
 \`\`\`
-PADDED_PHASE=$(printf "%02d" $PHASE)
+PADDED_PHASE="$PHASE"
+if echo "$PHASE" | grep -qE '^[0-9]+$'; then
+  PADDED_PHASE=$(printf "%02d" "$PHASE")
+fi
 PHASE_DIR=$(ls -d .planning/phases/$PADDED_PHASE-* .planning/phases/$PHASE-* 2>/dev/null | head -1)
 RESEARCH_DIR="$PHASE_DIR/research"
 

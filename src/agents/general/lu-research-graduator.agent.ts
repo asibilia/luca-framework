@@ -31,7 +31,7 @@ const luResearchGraduatorConfig: AgentConfig = {
     context: {
       default_tier: "T2",
       promotable_to: "T2",
-      isolation: "warm",
+      isolation: "cold",
     },
     background_spawnable: false,
     purpose: "synthesizer",

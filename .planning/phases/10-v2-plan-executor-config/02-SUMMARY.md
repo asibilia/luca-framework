@@ -44,6 +44,6 @@ None. All tasks executed as specified.
 
 ## Verification
 
-- TypeScript compilation passes (`bunx --bun tsc --noEmit`) -- 5 pre-existing errors in `research-config.schemas.ts` (from a parallel wave), no new errors introduced
+- TypeScript compilation passes (`bunx --bun tsc --noEmit`) -- Note: During parallel Wave 1 execution, transient type errors appeared in `research-config.schemas.ts` before Plan 01 wired the barrel exports. These resolved automatically when both plans completed. No new errors introduced
 - Both agent files maintain valid AgentConfig structure with properly ordered sections
 - Section ordering: planner has 4 -> 4.5 -> 5; executor has 2 -> 2.5 -> 3

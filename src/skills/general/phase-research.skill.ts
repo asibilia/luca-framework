@@ -61,7 +61,7 @@ PHASE_DIR=$(ls -d .planning/phases/$PADDED_PHASE-* .planning/phases/$PHASE-* 2>/
 Read \`.planning/config.json\` for \`workflow.version\` field.
 
 \`\`\`bash
-VERSION=$(cat .planning/config.json 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"v[^"]*"' | tr -d '"' || echo "v1")
+VERSION=$(bun -e "const c=JSON.parse(require('fs').readFileSync('.planning/config.json','utf8')); console.log(c.workflow?.version ?? 'v1')" 2>/dev/null || echo "v1")
 \`\`\`
 
 **If \`workflow.version == "v2"\`:** Use v2 multi-agent research (Step 3a)

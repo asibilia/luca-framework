@@ -603,7 +603,7 @@ Before spawning executors, extract research refs from plan content and recall gr
 
 \`\`\`bash
 # Parse research refs from all tasks in this plan
-RESEARCH_REFS=$(echo "$PLAN_N_CONTENT" | grep -oP '(?<=\\*\\*Research refs:\\*\\*\\s).*' | tr ',' '\\n' | sed 's/^ *//' | sort -u)
+RESEARCH_REFS=$(printf '%s\\n' "$PLAN_N_CONTENT" | awk '/\\*\\*Research refs:\\*\\*/ { sub(/.*\\*\\*Research refs:\\*\\*[[:space:]]*/, ""); print }' | tr ',' '\\n' | sed 's/^ *//' | sort -u)
 
 # If no research refs found, skip recall entirely
 if [ -z "$RESEARCH_REFS" ]; then
