@@ -11,10 +11,10 @@
  */
 import { z } from "zod";
 
-import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
-import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
-import type { BaseRule } from "~/rules/__schemas/rule.schemas";
-import type { WorkflowStep } from "~/workflow/__schemas/workflow.schemas";
+import type { BaseAgent } from "~/agents";
+import type { BaseSkill } from "~/skills";
+import type { BaseRule } from "~/rules";
+import type { WorkflowStep } from "~/workflow";
 
 /**
  * Describes what features an adapter supports.

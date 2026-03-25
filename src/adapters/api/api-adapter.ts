@@ -12,10 +12,10 @@
 import { z } from "zod";
 
 import type { Adapter, AdapterStepResult } from "../__schemas/adapter.schemas";
-import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
-import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
-import type { BaseRule } from "~/rules/__schemas/rule.schemas";
-import type { WorkflowStep } from "~/workflow/__schemas/workflow.schemas";
+import type { BaseAgent } from "~/agents";
+import type { BaseSkill } from "~/skills";
+import type { BaseRule } from "~/rules";
+import type { WorkflowStep } from "~/workflow";
 import { ApiExecutorConfigSchema, executeViaSDK } from "./api-executor";
 
 import type { ApiExecutorConfig } from "./api-executor";

@@ -15,10 +15,10 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Adapter, AdapterStepResult } from "../__schemas/adapter.schemas";
-import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
-import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
-import type { BaseRule } from "~/rules/__schemas/rule.schemas";
-import type { WorkflowStep } from "~/workflow/__schemas/workflow.schemas";
+import type { BaseAgent } from "~/agents";
+import type { BaseSkill } from "~/skills";
+import type { BaseRule } from "~/rules";
+import type { WorkflowStep } from "~/workflow";
 import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { emitAgentMarkdown } from "./agent-emitter";
 import { emitSkillMarkdown } from "./skill-emitter";
