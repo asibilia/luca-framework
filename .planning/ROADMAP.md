@@ -2,25 +2,110 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v8.0.0 — Luca Studio MVP
+
+---
+
+## v8.0.0 — Luca Studio MVP
+
+**Goal:** Rename luca-observer to luca-studio, build the full API layer (read + write + compile), establish UI foundation (layout, navigation, components), and ship two core feature pages (Agents browser, Pipeline editor). Also ships two independent quick-wins (agent team prompt audit fixes, adapter compatibility report).
+
+**Effort:** 65 points across 8 phases (19 todos)
+**Risk:** HIGH-risk items isolated in Phase 3 (ts-round-trip, compilation-sidecar). No-tests constraint mitigated by Full verification mode on file-mutation phases.
+
+### Phase 1: Bootstrap + Non-Studio Quick Wins
+
+**Goal:** Rename package, ship audit fixes, add adapter validation
+**Depends on:** None
+**Verification:** Standard
+
+- [ ] studio-w1-package-rename — Rename luca-observer to luca-studio (~25 files)
+- [ ] agent-team-prompt-audit-fixes — 8 prompt audit fixes across 5 skill files
+- [ ] runtime-e04-adapter-compatibility-report — validate() per adapter + compatibility-report.json
+
+### Phase 2: W2 Dependencies + Atom Model
+
+**Goal:** Install new packages and establish three-layer Jotai state model
+**Depends on:** Phase 1
+**Verification:** Quick
+
+- [ ] studio-w2-new-dependencies — CodeMirror 6, Shiki, jotai-history, chokidar, react-resizable-panels
+- [ ] studio-w2-jotai-atom-model — Three-layer Jotai atoms (server/draft/dirty tracking)
+
+### Phase 3: W2 HIGH-Risk Infrastructure
+
+**Goal:** Build TypeScript round-trip utilities and compilation sidecar (isolated HIGH-risk work)
+**Depends on:** Phase 2
+**Verification:** Full
+
+- [ ] studio-w2-ts-round-trip — Read/write entity TS files with serializeSectionContent (round-trip all 129 files)
+- [ ] studio-w2-compilation-sidecar — Bun sidecar on localhost:3457 (MUST NOT invoke build:all)
+
+### Phase 4: W3 Validation Pipeline First
+
+**Goal:** Build shared validation middleware before write routes consume it
+**Depends on:** Phase 3
+**Verification:** Full
+
+- [ ] studio-w3-validation-pipeline — Schema + semantic + atomic write pipeline
+- [ ] studio-w3-read-api-routes — GET /api/config, /api/state, /api/ledger
+
+### Phase 5: W3 Write Routes
+
+**Goal:** Implement config write, entity CRUD, and compile routes against validation pipeline
+**Depends on:** Phase 4
+**Verification:** Full
+
+- [ ] studio-w3-config-write-routes — 6 PUT endpoints for config.json sections
+- [ ] studio-w3-entity-crud-routes — Entity CRUD API routes (agents, skills, rules)
+- [ ] studio-w3-compile-routes — POST /api/compile proxy to sidecar
+
+### Phase 6: W4 UI Foundation
+
+**Goal:** Build layout shell and navigation that all pages mount into
+**Depends on:** Phase 2
+**Verification:** Quick
+
+- [ ] studio-w4-layout-components — LayoutShell, DetailPanel, ResizableSplit, NavRail
+- [ ] studio-w4-navigation-restructure — 11 flat items to 9 grouped (OBSERVE/BUILD/CONFIGURE)
+
+### Phase 7: W5 Component Library
+
+**Goal:** Build editor, feedback, and visualization shared components
+**Depends on:** Phase 6
+**Verification:** Quick
+
+- [ ] studio-w5-editor-components — CodeMirrorWrapper, ModelRoutingGrid, EntityTree
+- [ ] studio-w5-feedback-components — DirtyIndicator, SaveBar, ValidationBanner
+- [ ] studio-w5-visualization-components — WorkflowNode, WorkflowEdge, ComplexityBadge
+
+### Phase 8: W6 Feature Pages — MVP Completion
+
+**Goal:** Ship agents browser and pipeline editor as core MVP views
+**Depends on:** Phase 5, Phase 7
+**Verification:** Standard
+
+- [ ] studio-w6-agents-page — Three-column agent browser + configure (read-only prompts in v1)
+- [ ] studio-w6-pipeline-page — Interactive React Flow workflow editor (4 phases)
 
 ---
 
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                  | Reason                                               |
-| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
-| runtime-d01–d11             | v8.0.0   | Luca Studio (dev server + UI views)    | WSJF 1.6, CRITICAL effort, test reintro opportunity  |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+| Todo Group                  | Target   | Scope                                        | Reason                                               |
+| --------------------------- | -------- | -------------------------------------------- | ---------------------------------------------------- |
+| studio W7-W8 (11 todos)     | v8.1.0   | Studio Polish (SSE, ETag, undo, pages, keys) | P2/P3 polish — deferred at W6/W7 arch split boundary |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts)       | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)                | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol               | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                       | Depends on cross-talk + adapters + Studio            |
 
 ## Closed (Reference / Not Actionable)
 
 | Todo                          | Reason                                                          |
 | ----------------------------- | --------------------------------------------------------------- |
 | v2-external-research-patterns | Reference document, not an implementation task. Moved to docs/. |
+| runtime-d01–d11               | Superseded by studio-w\* todos in v8.0.0 (scope revised)        |
 
 ## Backlog (Blocked)
 

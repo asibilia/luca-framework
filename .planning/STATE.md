@@ -2,8 +2,7 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Pre-flight
+- **Status:** Routing
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-25
@@ -30,8 +29,7 @@
 
 ## Allowed Events
 
-- `PREFLIGHT_COMPLETE`
-- `SKIP`
+- `ROUTE_COMPLETE`
 
 ## Previous Milestones
 
@@ -58,4 +56,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T13:03:19.462Z_
+_State generated from machine snapshot at 2026-03-25T16:33:45.899Z_
