@@ -367,6 +367,26 @@ export function printComparisonReport(
 // ─── Report Loading ─────────────────────────────────────────────────────
 
 /**
+ * Load an eval report from a file path.
+ *
+ * Shared implementation for both loadLatestReport and loadReport.
+ * Uses Bun.file() for file access per bun-preference rule.
+ *
+ * @param filePath - Path to the JSON report file
+ * @returns The EvalReport or null if not found or invalid
+ */
+async function loadReportFile(filePath: string): Promise<EvalReport | null> {
+  try {
+    const file = Bun.file(filePath);
+    const exists = await file.exists();
+    if (!exists) return null;
+    return (await file.json()) as EvalReport;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Load the latest eval report for a component.
  *
  * Reads `.planning/evals/{component}/latest.json`.
@@ -378,15 +398,7 @@ export function printComparisonReport(
 export async function loadLatestReport(
   component: string,
 ): Promise<EvalReport | null> {
-  try {
-    const filePath = `.planning/evals/${component}/latest.json`;
-    const file = Bun.file(filePath);
-    const exists = await file.exists();
-    if (!exists) return null;
-    return (await file.json()) as EvalReport;
-  } catch {
-    return null;
-  }
+  return loadReportFile(`.planning/evals/${component}/latest.json`);
 }
 
 /**
@@ -402,13 +414,5 @@ export async function loadReport(
   component: string,
   run_id: string,
 ): Promise<EvalReport | null> {
-  try {
-    const filePath = `.planning/evals/${component}/${run_id}.json`;
-    const file = Bun.file(filePath);
-    const exists = await file.exists();
-    if (!exists) return null;
-    return (await file.json()) as EvalReport;
-  } catch {
-    return null;
-  }
+  return loadReportFile(`.planning/evals/${component}/${run_id}.json`);
 }
