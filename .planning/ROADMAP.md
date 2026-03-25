@@ -18,7 +18,7 @@ Continues v7.0.0 foundation. All 3 adapters (Cursor, Windsurf, VS Code) already 
 
 **Depends on:** None (B01/B02 prerequisites completed in v6.0.0, adapter implementations completed in v7.0.0)
 
-- [ ] Plan 1 — Wire emit() for Cursor, Windsurf, and VS Code adapters
+- [x] Plan 1 — Wire emit() for Cursor, Windsurf, and VS Code adapters
 
 **Todos absorbed:** runtime-e01, runtime-e02, runtime-e03 (rescoped to emit() wiring only)
 
@@ -28,7 +28,7 @@ Continues v7.0.0 foundation. All 3 adapters (Cursor, Windsurf, VS Code) already 
 
 **Depends on:** Phase 1 (validators need wired emit output to inspect)
 
-- [ ] Plan 1 — Compatibility report CLI integration
+- [x] Plan 1 — Compatibility report CLI integration
 
 **Todos absorbed:** runtime-e04 (rescoped — schemas + validators already exist)
 
@@ -38,7 +38,7 @@ Continues v7.0.0 foundation. All 3 adapters (Cursor, Windsurf, VS Code) already 
 
 **Depends on:** None (architecturally independent from adapter work)
 
-- [ ] Plan 1 — Prompt audit fixes across phase-execute, phase-research, phase-discuss, lu, pr-address
+- [x] Plan 1 — Prompt audit fixes across phase-execute, phase-research, phase-discuss, lu, pr-address
 
 **Todos absorbed:** agent-team-prompt-audit-fixes
 
