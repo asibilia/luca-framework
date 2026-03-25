@@ -3,13 +3,11 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "955673a5-c2d9-4ec2-9c60-c3334df36a08",
-    "github_issue": 103,
-    "branch": "103--v8-luca-studio-mvp",
+    "session_id": "8ad59fcb-353a-407c-ac10-438667d59e0b",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -79,12 +77,11 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Large",
-    "appetite_token_ceiling": 200000,
-    "appetite_context_percent": 60,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-25T13:13:44.731Z",
-    "last_transition_at": "2026-03-25T18:29:00.199Z"
+    "started_at": "2026-03-25T20:16:15.980Z"
   },
   "children": {}
 }
