@@ -6,21 +6,27 @@
 
 ---
 
-## Deferred to M2
+## Deferred to Future Milestones
 
-| Todo Group                    | Scope                                  | Reason                                         |
-| ----------------------------- | -------------------------------------- | ---------------------------------------------- |
-| runtime-d01–d11               | Luca Studio (dev server + UI views)    | WSJF 2.8, CRITICAL effort, independent package |
-| runtime-e01–e04               | IDE adapters (Cursor/Windsurf/VS Code) | Depends on B-group stability                   |
-| v2-phase-6                    | Orchestrator integration (lu.skill.ts) | HIGH blast radius, Full+Human verification     |
-| v2-enhanced-existing-agents   | Agent enhancements                     | Sequential dependency on v2-phase-5            |
-| v2-external-research-patterns | External research patterns             | Design reference, low urgency                  |
+| Todo Group                  | Target   | Scope                                  | Reason                                               |
+| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
+| runtime-d01–d11             | v8.0.0   | Luca Studio (dev server + UI views)    | WSJF 1.6, CRITICAL effort, test reintro opportunity  |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
 
-## Backlog (Unassigned)
+## Closed (Reference / Not Actionable)
 
-| Todo | Title                | Target           | Reason                                                              |
-| ---- | -------------------- | ---------------- | ------------------------------------------------------------------- |
-| #37  | Test suite fragility | Dedicated effort | Testing reintroduction per `.planning/notes/0-reintroduce-tests.md` |
+| Todo                          | Reason                                                          |
+| ----------------------------- | --------------------------------------------------------------- |
+| v2-external-research-patterns | Reference document, not an implementation task. Moved to docs/. |
+
+## Backlog (Blocked)
+
+| Todo | Title                | Blocker          | Reason                                                                  |
+| ---- | -------------------- | ---------------- | ----------------------------------------------------------------------- |
+| #37  | Test suite fragility | no-tests.md rule | Testing reintroduction per dedicated effort. v8.0.0 Studio may unblock. |
 
 ---
 
@@ -211,6 +217,9 @@
 - **v5.4.0** — Branding & Personalization: 3 phases, 3 commits, 37 files changed ([View Archive](milestones/v5.4.0-ROADMAP.md))
 - **v6.0.0** — Runtime Foundation & Adapter Layer: 10 phases, 129 commits, 205 files changed (+25,371 LOC) ([View Archive](milestones/v6.0.0-ROADMAP.md))
 - **v6.1.0** — Audit Gap Closure: 3 phases, 20 commits, 30 files changed ([View Archive](milestones/v6.1.0-ROADMAP.md))
+- **v7.0.0** — IDE Adapter Layer: 2 phases, 6 plans, 27 commits, 15 files changed (+2,378 LOC) ([View Archive](milestones/v7.0.0-ROADMAP.md))
+- **v7.1.0** — Multi-IDE Adapter Completion: 3 phases, 3 plans, 10 commits, 22 files changed (+1,780 LOC) ([View Archive](milestones/v7.1.0-ROADMAP.md))
+- **v7.2.0** — Audit Gap Closure: 1 phase, 1 plan, 3 commits, 8 files changed (-140 LOC) ([View Archive](milestones/v7.2.0-ROADMAP.md))
 
 ---
 

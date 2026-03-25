@@ -45,6 +45,40 @@ export {
 // ─── Adapter-Executor Bridge ───────────────────────────────────────────────
 export { bridgeAdapterForExecutor } from "./__helpers/adapter-executor-bridge";
 
+// ─── Character Budget ─────────────────────────────────────────────────────
+export { enforceCharacterBudget } from "./__helpers/character-budget";
+export type { CharacterBudgetResult } from "./__helpers/character-budget";
+
+// ─── Shared Adapter Helpers ──────────────────────────────────────────────
+export { sectionsToMarkdown } from "./__helpers/format-sections";
+export { emitCompiledOutputs } from "./__helpers/adapter-emit";
+export type { PreEmitResult, EmitOptions } from "./__helpers/adapter-emit";
+
+// ─── Compatibility Report Schemas ─────────────────────────────────────────
+export {
+  featureMappingStatusSchema,
+  featureMappingSchema,
+  compatibilityReportSchema,
+  aggregatedReportSchema,
+} from "./__schemas/compatibility-report.schemas";
+export type {
+  FeatureMappingStatus,
+  FeatureMapping,
+  CompatibilityReport,
+  AggregatedReport,
+} from "./__schemas/compatibility-report.schemas";
+
+// ─── Compatibility Validators ─────────────────────────────────────────────
+export {
+  validateCursorOutput,
+  validateWindsurfOutput,
+  validateVscodeOutput,
+  aggregateReports,
+} from "./__helpers/compatibility-validator";
+
+// ─── Compatibility Report CLI ────────────────────────────────────────────
+export { generateCompatibilityReport } from "./__helpers/adapter-report-cli";
+
 // ─── Claude Adapter ────────────────────────────────────────────────────────
 export { createClaudeAdapter } from "./claude";
 export { emitAgentMarkdown } from "./claude";
@@ -59,3 +93,30 @@ export {
   executeViaSDK,
 } from "./api";
 export type { ApiExecutorConfig, AdapterTokenUsage } from "./api";
+
+// ─── Cursor Adapter ──────────────────────────────────────────────────────
+export { createCursorAdapter } from "./cursor";
+export { CURSOR_EVENT_MAP, translateCursorEvent } from "./cursor";
+
+// ─── Windsurf Adapter ─────────────────────────────────────────────────────
+export {
+  createWindsurfAdapter,
+  FORMAT_VERSION as WINDSURF_FORMAT_VERSION,
+} from "./windsurf";
+export { WINDSURF_EVENT_MAP, translateWindsurfEvent } from "./windsurf";
+
+// ─── VS Code Adapter ─────────────────────────────────────────────────────
+export {
+  createVscodeAdapter,
+  compileVscodeAgent,
+  compileVscodeSkill,
+  compileVscodeRule,
+} from "./vscode";
+export { VSCODE_TOOL_MAP, translateVscodeToolName } from "./vscode";
+export type { ToolTranslationResult } from "./vscode";
+export {
+  VSCODE_EVENT_MAP,
+  VSCODE_HOOK_PREVIEW_WARNING,
+  translateVscodeEvent,
+} from "./vscode";
+export type { VscodeEventMapping } from "./vscode";

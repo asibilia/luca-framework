@@ -102,15 +102,151 @@ VERSION=$(bun -e "const c=JSON.parse(require('fs').readFileSync('.planning/confi
    | lu-ecosystem-researcher | \`$PHASE_DIR/research/03-existing-solutions.md\` | Libraries, community, state of art |
    | lu-risk-researcher | \`$PHASE_DIR/research/04-pitfalls-and-risks.md\` | Pitfalls, failures, security, perf |
 
-   **Task() prompt template for each researcher:**
-   \`\`\`
-   Phase {N}: {phase_name}
-   Description: {phase_description}
-   Constraints: {context_md_decisions}
-   Output file: {output_file_path}
+   **Spawn ALL 4 researchers in PARALLEL (same message, multiple Task calls):**
 
-   Research your focus area for this phase. Write your findings to the output file path.
+   \`\`\`python
+   # Agent 1: Architecture Researcher
+   Task(
+     prompt="""
+<research_context>
+
+**Recipient:** phase-research orchestrator (report findings back to this orchestrator)
+
+**Phase:** {N} - {phase_name}
+**Description:** {phase_description}
+**Constraints:** {context_md_decisions}
+**Output file:** $PHASE_DIR/research/01-architecture-patterns.md
+
+</research_context>
+
+<analysis_targets>
+- System design patterns applicable to this phase
+- Architecture approaches and structural decisions
+- Component boundaries and interaction patterns
+- Scalability and maintainability considerations
+</analysis_targets>
+
+<output_requirements>
+- Write findings to $PHASE_DIR/research/01-architecture-patterns.md
+- Include confidence level (HIGH/MEDIUM/LOW) for each finding
+- Include cited sources where applicable
+- Return confirmation with document line count
+</output_requirements>
+
+Research system design and architecture patterns for this phase. Write your findings to the output file.
+""",
+     subagent_type="lu-architecture-researcher",
+     model="{researcher_model}",
+     description="Architecture research"
+   )
+
+   # Agent 2: Implementation Researcher
+   Task(
+     prompt="""
+<research_context>
+
+**Recipient:** phase-research orchestrator (report findings back to this orchestrator)
+
+**Phase:** {N} - {phase_name}
+**Description:** {phase_description}
+**Constraints:** {context_md_decisions}
+**Output file:** $PHASE_DIR/research/02-implementation-approaches.md
+
+</research_context>
+
+<analysis_targets>
+- API patterns and code-level implementation approaches
+- Configuration and setup requirements
+- Integration patterns with existing codebase
+- Code examples and reference implementations
+</analysis_targets>
+
+<output_requirements>
+- Write findings to $PHASE_DIR/research/02-implementation-approaches.md
+- Include confidence level (HIGH/MEDIUM/LOW) for each finding
+- Include cited sources where applicable
+- Return confirmation with document line count
+</output_requirements>
+
+Research APIs, code patterns, and implementation approaches for this phase. Write your findings to the output file.
+""",
+     subagent_type="lu-implementation-researcher",
+     model="{researcher_model}",
+     description="Implementation research"
+   )
+
+   # Agent 3: Ecosystem Researcher
+   Task(
+     prompt="""
+<research_context>
+
+**Recipient:** phase-research orchestrator (report findings back to this orchestrator)
+
+**Phase:** {N} - {phase_name}
+**Description:** {phase_description}
+**Constraints:** {context_md_decisions}
+**Output file:** $PHASE_DIR/research/03-existing-solutions.md
+
+</research_context>
+
+<analysis_targets>
+- Existing libraries and tools in this domain
+- Community best practices and conventions
+- State of the art and recent developments
+- Comparison of available solutions with trade-offs
+</analysis_targets>
+
+<output_requirements>
+- Write findings to $PHASE_DIR/research/03-existing-solutions.md
+- Include confidence level (HIGH/MEDIUM/LOW) for each finding
+- Include cited sources where applicable
+- Return confirmation with document line count
+</output_requirements>
+
+Research existing solutions, libraries, and community practices for this phase. Write your findings to the output file.
+""",
+     subagent_type="lu-ecosystem-researcher",
+     model="{researcher_model}",
+     description="Ecosystem research"
+   )
+
+   # Agent 4: Risk Researcher
+   Task(
+     prompt="""
+<research_context>
+
+**Recipient:** phase-research orchestrator (report findings back to this orchestrator)
+
+**Phase:** {N} - {phase_name}
+**Description:** {phase_description}
+**Constraints:** {context_md_decisions}
+**Output file:** $PHASE_DIR/research/04-pitfalls-and-risks.md
+
+</research_context>
+
+<analysis_targets>
+- Common pitfalls and failure modes in this domain
+- Security considerations and vulnerabilities
+- Performance risks and bottlenecks
+- Migration and compatibility risks
+</analysis_targets>
+
+<output_requirements>
+- Write findings to $PHASE_DIR/research/04-pitfalls-and-risks.md
+- Include confidence level (HIGH/MEDIUM/LOW) for each finding
+- Include cited sources where applicable
+- Return confirmation with document line count
+</output_requirements>
+
+Research pitfalls, risks, security concerns, and failure modes for this phase. Write your findings to the output file.
+""",
+     subagent_type="lu-risk-researcher",
+     model="{researcher_model}",
+     description="Risk research"
+   )
    \`\`\`
+
+   **Do NOT proceed until ALL 4 Tasks return.**
 
 4. **Collect results and present summary:**
    \`\`\`
@@ -141,7 +277,7 @@ VERSION=$(bun -e "const c=JSON.parse(require('fs').readFileSync('.planning/confi
 ### Step 3b: v1 Single-Agent Research (Default)
 
 1. **Spawn researcher:**
-   - Use lu-phase-researcher agent
+   - Use lu-phase-researcher agent via Task() with \`**Recipient:** phase-research orchestrator\`
    - Focus on ecosystem knowledge for the domain
 
 2. **Create RESEARCH.md:**

@@ -2,14 +2,15 @@
 
 ## Current Position
 
-- **Status:** Idle
+- **Current Milestone:** Planning next
+- **Status:** Pre-flight
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
-- **Last Updated:** unknown
+- **Last Updated:** 2026-03-25
 
 ## Session Identity
 
-- **Session ID:** 7d6f75dd-a47a-4b5f-b1a9-1a121caaa1d4
+- **Session ID:** 955673a5-c2d9-4ec2-9c60-c3334df36a08
 
 ## Appetite
 
@@ -29,7 +30,8 @@
 
 ## Allowed Events
 
-- `START`
+- `PREFLIGHT_COMPLETE`
+- `SKIP`
 
 ## Previous Milestones
 
@@ -52,8 +54,8 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 ## Session Continuity
 
 - **Session Started:** 2026-03-25
-- **Last Transition:** unknown
+- **Last Transition:** 2026-03-25
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T01:41:13.445Z_
+_State generated from machine snapshot at 2026-03-25T13:03:19.462Z_

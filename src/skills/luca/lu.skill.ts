@@ -1167,7 +1167,7 @@ For each phase (in parallel, using Task tool):
   Task(
     team_name: "lu-plan-L{N}-{timestamp}",
     name: "planner-{NN}",
-    subagent_type: "general-purpose",
+    subagent_type: "lu-planner",
     prompt: """
     You are a Luca phase planner. Create a PLAN.md for this phase.
 
@@ -1240,7 +1240,7 @@ For each phase with an approved plan:
   Task(
     team_name: "lu-exec-L{N}-{timestamp}",
     name: "executor-{NN}",
-    subagent_type: "general-purpose",
+    subagent_type: "lu-executor",
     isolation: "worktree",
     prompt: """
     You are a lu executor. Implement the approved plan for Phase {NN}.
