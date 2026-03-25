@@ -18,8 +18,20 @@ import { z } from "zod";
  *
  * These are semantic lifecycle events mapped to Claude Code PascalCase
  * event names (e.g., "post_tool_use" -> "PostToolUse").
+ *
+ * Events with active hooks in the registry:
+ *   post_tool_use, pre_tool_use, stop, session_end, session_start,
+ *   pre_compact, user_prompt_submit, subagent_stop, post_tool_use_failure
+ *
+ * Forward-compatibility entries (valid Claude Code events, no hooks yet):
+ *   subagent_start, notification, instructions_loaded, permission_request,
+ *   teammate_idle, task_completed, config_change, worktree_create, worktree_remove
+ *
+ * The full set is retained because CLAUDE_EVENT_MAP in platform-adapters.ts
+ * is typed as Record<CanonicalEvent, string> and must cover all members.
  */
 export const CANONICAL_EVENTS = [
+  // --- Active (have hooks in canonicalHookRegistry) ---
   "post_tool_use",
   "pre_tool_use",
   "stop",
@@ -28,9 +40,10 @@ export const CANONICAL_EVENTS = [
   "pre_compact",
   "user_prompt_submit",
   "subagent_stop",
+  "post_tool_use_failure",
+  // --- Forward-compatibility (valid events, no hooks yet) ---
   "subagent_start",
   "notification",
-  "post_tool_use_failure",
   "instructions_loaded",
   "permission_request",
   "teammate_idle",
