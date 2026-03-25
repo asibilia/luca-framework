@@ -71,6 +71,9 @@ export {
   aggregateReports,
 } from "./__helpers/compatibility-validator";
 
+// ─── Compatibility Report CLI ────────────────────────────────────────────
+export { generateCompatibilityReport } from "./__helpers/adapter-report-cli";
+
 // ─── Claude Adapter ────────────────────────────────────────────────────────
 export { createClaudeAdapter } from "./claude";
 export { emitAgentMarkdown } from "./claude";
