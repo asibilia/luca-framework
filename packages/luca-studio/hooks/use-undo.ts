@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo } from "react";
 
-import { useAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { REDO, RESET, UNDO } from "jotai-history";
 
 import type { WritableAtom } from "jotai";
@@ -33,16 +33,22 @@ type UseUndoReturn = {
 /**
  * Accepted history atom type.
  *
- * This is the return type of `withHistory(draftAtom, limit)` from
- * jotai-history. The read value is an array (history entries) intersected
- * with `{ canUndo: boolean; canRedo: boolean }`. The write accepts
- * the original atom args OR one of the action symbols (UNDO / REDO / RESET).
+ * This matches the return type of `withHistory(draftAtom, limit)` from
+ * jotai-history (`withUndoableHistory` internally). The read value is an
+ * array (history entries) intersected with `{ canUndo: boolean; canRedo:
+ * boolean }`. The write accepts the original atom's write args unioned
+ * with action symbols (UNDO / REDO / RESET).
+ *
+ * We use `any` for the write args to accommodate the union produced by
+ * `withUndoableHistory` (e.g. `[SetStateAction<T>] | [UNDO | REDO | RESET]`).
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HistoryAtom = WritableAtom<
   unknown[] & { canUndo: boolean; canRedo: boolean },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [typeof UNDO | typeof REDO | typeof RESET] | any[],
-  void
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any
 >;
 
 // ---------------------------------------------------------------------------
@@ -67,7 +73,8 @@ type HistoryAtom = WritableAtom<
  * ```
  */
 export function useUndo(historyAtom: HistoryAtom): UseUndoReturn {
-  const [history, dispatch] = useAtom(historyAtom);
+  const history = useAtomValue(historyAtom);
+  const dispatch = useSetAtom(historyAtom);
 
   const canUndo = history.canUndo;
   const canRedo = history.canRedo;

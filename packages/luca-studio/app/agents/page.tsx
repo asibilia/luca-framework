@@ -13,7 +13,9 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { useAgentDetail } from "~/hooks/use-agent-detail";
 import { useAgentList } from "~/hooks/use-agent-list";
 import { useAgentSave } from "~/hooks/use-agent-save";
+import { useUndo } from "~/hooks/use-undo";
 import { layoutContextAtom } from "~/stores/layout";
+import { agentHistoryAtom } from "~/stores/entity-atoms";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
 
@@ -45,6 +47,11 @@ export default function AgentsPage() {
 
   // Fetch selected agent detail
   const { detail, loading: detailLoading, etag } = useAgentDetail(selectedName);
+
+  // Undo/redo for the selected agent's draft
+  const { canUndo, canRedo, undo, redo } = useUndo(
+    agentHistoryAtom(selectedName ?? "__noop__"),
+  );
 
   // Map API summaries to EntityTree items
   const entityItems: EntityItem[] = useMemo(() => {
