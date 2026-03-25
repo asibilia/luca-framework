@@ -53,11 +53,11 @@ import type { WorkflowStep } from "~/workflow";
 import type { AgentConfig } from "~/agents";
 
 // ✅ T3 (adapters) importing T1 (workflow) — downward
-import type { Adapter } from "~/workflow";
+import type { WorkflowAdapter } from "~/workflow";
 
 // ❌ T1 (eval) importing T3 (adapters) — upward dependency
 import { cursorAdapter } from "~/adapters";
-// FIX: eval imports Adapter interface from workflow (T1), not adapter impl (T3)
+// FIX: eval imports WorkflowAdapter interface from workflow (T1), not adapter impl (T3)
 ```
 
 **Clarification: Same-tier imports (T1->T1) are permitted.** The tier map shorthand "T1 imports T0-T1" means T1 cannot import from T2 or T3. Cross-domain imports within the same tier are allowed (e.g., context importing from interop). The enforcement script (`check-domain-boundaries.ts`) validates this: `sourceTier < targetTier` is the violation condition, so same-tier imports pass.

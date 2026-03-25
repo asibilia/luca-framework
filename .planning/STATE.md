@@ -35,6 +35,7 @@
 
 ## Previous Milestones
 
+- v6.1.0 — Audit Gap Closure (2026-03-25)
 - v6.0.0 — Runtime Foundation & Adapter Layer (2026-03-25)
 - v4.4.0 — Smart Context Management (2026-03-14)
 - v4.3.0 — Observer Workflow Editor (2026-03-13)
@@ -57,4 +58,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T01:17:37.603Z_
+_State generated from machine snapshot at 2026-03-25T01:27:37.949Z_
