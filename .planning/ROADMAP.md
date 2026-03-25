@@ -38,8 +38,8 @@
 **Depends on:** Phase 2
 **Verification:** Full
 
-- [ ] studio-w2-ts-round-trip — Read/write entity TS files with serializeSectionContent (round-trip all 129 files)
-- [ ] studio-w2-compilation-sidecar — Bun sidecar on localhost:3457 (MUST NOT invoke build:all)
+- [x] studio-w2-ts-round-trip — Read/write entity TS files with serializeSectionContent (round-trip all 129 files)
+- [x] studio-w2-compilation-sidecar — Bun sidecar on localhost:3457 (MUST NOT invoke build:all)
 
 ### Phase 4: W3 Validation Pipeline First
 
