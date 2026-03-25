@@ -9,9 +9,6 @@
  * built-in adapters happens in `src/adapters/index.ts` (B10) to
  * avoid circular imports.
  */
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-
 import type { Adapter } from "../__schemas/adapter.schemas";
 
 /**
@@ -100,21 +97,13 @@ export function listRegisteredAdapterNames(): string[] {
  *          Returns undefined only if the "claude" adapter is not registered.
  */
 export function detectAdapter(projectRoot: string): Adapter | undefined {
-  // First, try each adapter's own detect() method via the priority order
+  // Try each adapter's own detect() method via the priority order.
+  // Each adapter's detect() already checks for directory existence,
+  // so a separate existsSync fallback loop is unnecessary.
   for (const entry of DETECTION_ORDER) {
     const adapter = registry.get(entry.adapterName);
     if (adapter && adapter.detect(projectRoot)) {
       return adapter;
-    }
-  }
-
-  // Fallback: check for directory existence in priority order
-  for (const entry of DETECTION_ORDER) {
-    if (existsSync(join(projectRoot, entry.path))) {
-      const adapter = registry.get(entry.adapterName);
-      if (adapter) {
-        return adapter;
-      }
     }
   }
 

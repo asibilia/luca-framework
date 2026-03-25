@@ -80,20 +80,37 @@ export type AdapterTokenUsage = z.infer<typeof AdapterTokenUsageSchema>;
 // ---------------------------------------------------------------------------
 
 /**
+ * Type guard for SDK messages with a specific type and optional subtype.
+ *
+ * Consolidates the repeated `typeof === "object" && !== null && "type" in message`
+ * prelude shared by all SDK message type guards.
+ *
+ * @param message - An SDK message to check
+ * @param type - The expected message type (e.g., "system", "result")
+ * @param subtype - Optional expected subtype (e.g., "init", "success")
+ * @returns true if the message matches the given type and subtype
+ */
+function isSdkMessage(
+  message: SDKMessage,
+  type: string,
+  subtype?: string,
+): boolean {
+  if (typeof message !== "object" || message === null) return false;
+  if (!("type" in message) || message.type !== type) return false;
+  if (subtype !== undefined) {
+    return "subtype" in message && message.subtype === subtype;
+  }
+  return true;
+}
+
+/**
  * Type guard for SDKSystemMessage (init).
  *
  * @param message - An SDK message to check
  * @returns true if this is the system init message containing session_id
  */
 function isSystemInitMessage(message: SDKMessage): message is SDKSystemMessage {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    "type" in message &&
-    message.type === "system" &&
-    "subtype" in message &&
-    message.subtype === "init"
-  );
+  return isSdkMessage(message, "system", "init");
 }
 
 /**
@@ -103,14 +120,7 @@ function isSystemInitMessage(message: SDKMessage): message is SDKSystemMessage {
  * @returns true if this is a successful result message
  */
 function isResultSuccess(message: SDKMessage): message is SDKResultSuccess {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    "type" in message &&
-    message.type === "result" &&
-    "subtype" in message &&
-    message.subtype === "success"
-  );
+  return isSdkMessage(message, "result", "success");
 }
 
 /**
@@ -121,10 +131,7 @@ function isResultSuccess(message: SDKMessage): message is SDKResultSuccess {
  */
 function isResultError(message: SDKMessage): message is SDKResultError {
   return (
-    typeof message === "object" &&
-    message !== null &&
-    "type" in message &&
-    message.type === "result" &&
+    isSdkMessage(message, "result") &&
     "subtype" in message &&
     message.subtype !== "success" &&
     "errors" in message
