@@ -7,6 +7,7 @@
  * as reviewers with BLOCKING/ADVISORY severity labels.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
+import { CONVERGENCE_BLOCKING_TRANSITIONS } from "~/skills/__helpers/convergence-loop-shared";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 const phasePlanReviewConfig: SkillConfig = {
@@ -146,14 +147,7 @@ A(n) = total ADVISORY gaps across all reviewers
 if B(n) == 0:
     status = "CONVERGED" -> APPROVED
 elif B(n) > 0 AND iteration < MAX_ITERATIONS:
-    if iteration > 1 AND B(n) < B(n-1):
-        status = "IMPROVING" -> continue
-    elif iteration > 1 AND B(n) == B(n-1):
-        status = "STALLED" -> continue with enhanced request
-    elif iteration > 1 AND B(n) > B(n-1):
-        status = "DIVERGING" -> continue with warning
-    else:
-        status = "REVIEWING" -> continue
+${CONVERGENCE_BLOCKING_TRANSITIONS}
 elif B(n) > 0 AND iteration >= MAX_ITERATIONS:
     status = "ESCALATE" -> present BLOCKING gaps to user
 \`\`\`

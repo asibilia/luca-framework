@@ -3,6 +3,7 @@
  * review loop with cold-isolated reviewer agents.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
+import { CONVERGENCE_BLOCKING_TRANSITIONS } from "~/skills/__helpers/convergence-loop-shared";
 
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
@@ -108,14 +109,7 @@ if B(n) == 0 AND (I(n) == 0 OR NOT continueForImportant OR iteration >= MAX_ITER
 elif B(n) == 0 AND I(n) > 0 AND continueForImportant AND iteration < MAX_ITERATIONS:
     status = "IMPROVING" -> continue with IMPORTANT gap targets
 elif B(n) > 0 AND iteration < MAX_ITERATIONS:
-    if iteration > 1 AND B(n) < B(n-1):
-        status = "IMPROVING" -> continue
-    elif iteration > 1 AND B(n) == B(n-1):
-        status = "STALLED" -> continue with enhanced request
-    elif iteration > 1 AND B(n) > B(n-1):
-        status = "DIVERGING" -> continue with warning
-    else:
-        status = "REVIEWING" -> continue
+${CONVERGENCE_BLOCKING_TRANSITIONS}
 elif B(n) > 0 AND iteration >= MAX_ITERATIONS:
     status = "ESCALATE" -> present to user
 \`\`\`
