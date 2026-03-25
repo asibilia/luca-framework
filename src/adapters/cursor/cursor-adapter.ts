@@ -21,6 +21,7 @@ import type { BaseRule } from "~/rules";
 import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { sectionsToMarkdown } from "../__helpers/format-sections";
 import { emitCompiledOutputs } from "../__helpers/adapter-emit";
+import { validateCursorOutput } from "../__helpers/compatibility-validator";
 
 /**
  * Compile a rule to Cursor .mdc format with YAML frontmatter.
@@ -148,6 +149,8 @@ export function createCursorAdapter(): Adapter {
       compiledOutputs.set(`rules/${rule.name}.mdc`, compiled);
       return compiled;
     },
+
+    validate: (emitResult: EmitResult) => validateCursorOutput(emitResult),
 
     emit: async (outputDir: string): Promise<EmitResult> => {
       return emitCompiledOutputs(compiledOutputs, outputDir);
