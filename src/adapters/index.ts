@@ -64,9 +64,29 @@ export {
 } from "./api";
 export type { ApiExecutorConfig, AdapterTokenUsage } from "./api";
 
+// ─── Cursor Adapter ──────────────────────────────────────────────────────
+export { createCursorAdapter } from "./cursor";
+export { CURSOR_EVENT_MAP, translateCursorEvent } from "./cursor";
+
 // ─── Windsurf Adapter ─────────────────────────────────────────────────────
 export {
   createWindsurfAdapter,
   FORMAT_VERSION as WINDSURF_FORMAT_VERSION,
 } from "./windsurf";
 export { WINDSURF_EVENT_MAP, translateWindsurfEvent } from "./windsurf";
+
+// ─── VS Code Adapter ─────────────────────────────────────────────────────
+export {
+  createVscodeAdapter,
+  compileVscodeAgent,
+  compileVscodeSkill,
+  compileVscodeRule,
+} from "./vscode";
+export { VSCODE_TOOL_MAP, translateVscodeToolName } from "./vscode";
+export type { ToolTranslationResult } from "./vscode";
+export {
+  VSCODE_EVENT_MAP,
+  VSCODE_HOOK_PREVIEW_WARNING,
+  translateVscodeEvent,
+} from "./vscode";
+export type { VscodeEventMapping } from "./vscode";
