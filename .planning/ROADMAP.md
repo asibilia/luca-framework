@@ -10,7 +10,7 @@
 
 ### Phase 200: Agent Team Prompt Audit Fixes
 
-- [ ] Implement 8 agent team prompt audit fixes (agent-team-prompt-audit-fixes)
+- [x] Implement 8 agent team prompt audit fixes (agent-team-prompt-audit-fixes)
 
 **Goal:** Apply 8 prioritized fixes from the agent team prompt audit: XML block restructuring, recipient declarations, output format specs, code review team reduction, parallel researcher spawning, wave executor cap, named agent types, gap-fix return format.
 **Depends on:** None
