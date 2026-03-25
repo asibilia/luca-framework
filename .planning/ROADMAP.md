@@ -88,6 +88,47 @@
 - [x] studio-w6-agents-page — Three-column agent browser + configure (read-only prompts in v1)
 - [x] studio-w6-pipeline-page — Interactive React Flow workflow editor (4 phases)
 
+### Phase 9: Audit Closure — Security + Input Hardening
+
+**Goal:** Fix all HIGH security findings + input validation gaps from milestone audit
+**Depends on:** Phase 8
+**Verification:** Full
+
+- [ ] SEC-001: Path traversal — add name allowlist regex `/^[a-z0-9][a-z0-9-]*$/` in entity-route-helpers.ts
+- [ ] SEC-002: TS injection — add Zod schema for PUT body (rawConfigText + metadata) with size cap
+- [ ] SEC-003: If-Match enforcement — make mandatory (428 on absence) for all entity PUT routes
+- [ ] SEC-006: Harness command injection — constrain command field to z.enum() of safe commands
+- [ ] SEC-007: Reflected input — remove user input from sidecar error messages
+- [ ] SEC-008: Env root validation — verify .planning/ exists when using LUCA_PROJECT_DIR
+
+### Phase 10: Audit Closure — Runtime Compatibility + Dead Code
+
+**Goal:** Fix Bun/Node runtime mismatch, remove dead code, fix import violations
+**Depends on:** Phase 8
+**Verification:** Full
+
+- [ ] CRIT-1: Replace Bun.file/write/CryptoHasher/Glob with node:fs/promises in Next.js route files (entity-route-helpers, etag, config-section-handler, state/route, ledger/route)
+- [ ] CRIT-2: Delete dead shared-constant-registry.ts (broken imports, zero consumers)
+- [ ] CRIT-3: Fix sidecar compiler.ts — use barrel import from ~/compilers instead of \_\_helpers/ deep path
+- [ ] HIGH-5: Deduplicate ETag — config/route.ts inline → import from lib/etag.ts
+- [ ] HIGH-6: Fix dynamic inline import in ts-round-trip.ts — move to top-level static import
+- [ ] MED-3: Remove "use client" directive from stores/pipeline-atoms.ts
+- [ ] MED-5: Document camelCase exception in config-section-schemas.ts HarnessSectionSchema
+
+### Phase 11: Audit Closure — Integration + State Model Fixes
+
+**Goal:** Fix configAtom hydration, draft atom circular set, agent save path, DRY violations
+**Depends on:** Phase 9, Phase 10
+**Verification:** Standard
+
+- [ ] INT-1: Add configAtom hydration — fetch GET /api/config in provider or pipeline page
+- [ ] HIGH-4: Fix configDraftAtom/routingDraftAtom circular set — use two-atom pattern (private primitive + derived read/write)
+- [ ] INT-2: Wire agent form field edits through to save payload in use-agent-save.ts
+- [ ] INT-3: Connect compile route to agents "Compiled" tab (replace local placeholder)
+- [ ] MED-2: Use random UUID suffix for .tmp files in atomic-write.ts (race condition fix)
+- [ ] MED-4: Deduplicate KNOWN_ENTITY_TYPES — import from graph-types.ts in use-vault-health.ts
+- [ ] MED-7: Sanitize sidecar error response — truncate reflected user input
+
 ---
 
 ## Deferred to Future Milestones
