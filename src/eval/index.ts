@@ -80,6 +80,6 @@ export {
 } from "./__helpers/eval-comparator";
 
 // ─── Suites ──────────────────────────────────────────────────────────────
-export { luRouterEvalSuite } from "./suites/lu-router.eval";
-export { luVerifierEvalSuite } from "./suites/lu-verifier.eval";
-export { convergenceEvalSuite } from "./suites/convergence.eval";
+// Eval suite instances are large data objects and should be imported directly
+// from src/eval/suites/ rather than via this barrel. Re-exports removed per
+// audit finding #8 to keep the barrel lightweight (API-only exports).

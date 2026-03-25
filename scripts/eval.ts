@@ -31,10 +31,10 @@ import {
   printConsoleReport,
   printComparisonReport,
   compareWithLatestBaseline,
-  luRouterEvalSuite,
-  luVerifierEvalSuite,
-  convergenceEvalSuite,
 } from "~/eval";
+import { luRouterEvalSuite } from "~/eval/suites/lu-router.eval";
+import { luVerifierEvalSuite } from "~/eval/suites/lu-verifier.eval";
+import { convergenceEvalSuite } from "~/eval/suites/convergence.eval";
 import type { EvalSuite, EvalReport, EvalCase } from "~/eval";
 import type { RunEvalOptions } from "~/eval";
 import type { ReportFormat } from "~/eval";
