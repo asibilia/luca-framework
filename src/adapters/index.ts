@@ -63,3 +63,10 @@ export {
   executeViaSDK,
 } from "./api";
 export type { ApiExecutorConfig, AdapterTokenUsage } from "./api";
+
+// ─── Windsurf Adapter ─────────────────────────────────────────────────────
+export {
+  createWindsurfAdapter,
+  FORMAT_VERSION as WINDSURF_FORMAT_VERSION,
+} from "./windsurf";
+export { WINDSURF_EVENT_MAP, translateWindsurfEvent } from "./windsurf";
