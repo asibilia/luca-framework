@@ -1,0 +1,367 @@
+/**
+ * Shared factory functions for entity CRUD API routes.
+ *
+ * Provides `createEntityListHandler` and `createEntityDetailHandler` so that
+ * agent, skill, and rule routes share a single code path for glob-scan,
+ * parse, ETag computation, and optimistic-concurrency writes.
+ *
+ * @module entity-route-helpers
+ */
+import { join } from "node:path";
+
+import { Glob } from "bun";
+import { NextResponse } from "next/server";
+
+import { computeETag } from "~/lib/etag";
+import { resolveProjectRoot } from "~/lib/project-root";
+import type { EntityDomain, EntityMetadata } from "~/lib/ts-round-trip";
+import { readEntityFile, writeEntityFile } from "~/lib/ts-round-trip";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Summary returned by the list endpoint for each entity. */
+export interface EntitySummary {
+  /** Kebab-case entity name (e.g. "lu-router") */
+  name: string;
+  /** Domain identifier */
+  domain: EntityDomain;
+  /** camelCase config variable name */
+  varName: string;
+  /** TypeScript config type annotation */
+  configType: string;
+  /** Absolute path to the source file */
+  filePath: string;
+  /** Approximate raw config size in characters (UI hint) */
+  configSize: number;
+}
+
+/** Full detail returned by the single-entity GET endpoint. */
+export interface EntityDetail {
+  name: string;
+  domain: EntityDomain;
+  rawConfigText: string;
+  metadata: EntityMetadata;
+}
+
+/** Maps domain to its file extension suffix and subdirectories to scan. */
+const DOMAIN_CONFIG: Record<
+  EntityDomain,
+  { suffix: string; subdirs: string[] }
+> = {
+  agents: { suffix: ".agent.ts", subdirs: ["general", "luca"] },
+  skills: { suffix: ".skill.ts", subdirs: ["general", "luca"] },
+  rules: { suffix: ".rule.ts", subdirs: ["general", "profiles"] },
+};
+
+// ---------------------------------------------------------------------------
+// Name resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve an entity name to its absolute file path by scanning known subdirs.
+ *
+ * Given a name like "lu-router" and domain "agents", searches for
+ * `lu-router.agent.ts` inside `src/agents/general/` and `src/agents/luca/`.
+ * For rules with profile subdirectories, also recurses one level deeper
+ * (e.g. `src/rules/profiles/typescript/`).
+ *
+ * @param root - Project root directory.
+ * @param domain - Entity domain.
+ * @param name - Kebab-case entity name.
+ * @returns Absolute file path, or null if not found.
+ */
+async function resolveEntityPath(
+  root: string,
+  domain: EntityDomain,
+  name: string,
+): Promise<string | null> {
+  const config = DOMAIN_CONFIG[domain];
+  const filename = `${name}${config.suffix}`;
+
+  for (const subdir of config.subdirs) {
+    const dirPath = join(root, "src", domain, subdir);
+
+    // Direct file in subdir
+    const directPath = join(dirPath, filename);
+    if (await Bun.file(directPath).exists()) {
+      return directPath;
+    }
+
+    // For rules/profiles, check nested subdirectories (e.g. profiles/typescript/)
+    if (domain === "rules" && subdir === "profiles") {
+      const glob = new Glob(`*/${filename}`);
+      for await (const match of glob.scan({ cwd: dirPath, absolute: false })) {
+        return join(dirPath, match);
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract the kebab-case entity name from a file path.
+ *
+ * @param filePath - Absolute path to the entity file.
+ * @param domain - Entity domain (to determine suffix).
+ * @returns The kebab-case name (e.g. "lu-router" from "lu-router.agent.ts").
+ */
+function extractNameFromPath(filePath: string, domain: EntityDomain): string {
+  const suffix = DOMAIN_CONFIG[domain].suffix;
+  const filename = filePath.split("/").pop() ?? "";
+  return filename.replace(suffix, "");
+}
+
+// ---------------------------------------------------------------------------
+// List handler factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a Next.js GET handler that lists all entities for a given domain.
+ *
+ * Scans the configured subdirectories for entity files, reads each with the
+ * ts-round-trip read path, and returns an array of summaries.
+ *
+ * @param domain - The entity domain to scan.
+ * @returns An async function suitable for `export async function GET()`.
+ *
+ * @example
+ * ```typescript
+ * import { createEntityListHandler } from "~/lib/entity-route-helpers";
+ * export const GET = createEntityListHandler("agents");
+ * ```
+ */
+export function createEntityListHandler(
+  domain: EntityDomain,
+): () => Promise<NextResponse> {
+  const config = DOMAIN_CONFIG[domain];
+
+  return async (): Promise<NextResponse> => {
+    try {
+      const root = await resolveProjectRoot();
+      const summaries: EntitySummary[] = [];
+
+      for (const subdir of config.subdirs) {
+        const dirPath = join(root, "src", domain, subdir);
+        const globPattern =
+          domain === "rules" && subdir === "profiles"
+            ? `**/*${config.suffix}`
+            : `*${config.suffix}`;
+
+        const glob = new Glob(globPattern);
+
+        for await (const match of glob.scan({
+          cwd: dirPath,
+          absolute: false,
+        })) {
+          const filePath = join(dirPath, match);
+          const result = await readEntityFile(filePath);
+
+          if (result.success) {
+            summaries.push({
+              name: extractNameFromPath(filePath, domain),
+              domain,
+              varName: result.metadata.varName,
+              configType: result.metadata.configType,
+              filePath,
+              configSize: result.rawConfigText.length,
+            });
+          }
+          // Skip files that fail extraction (malformed entity files)
+        }
+      }
+
+      return NextResponse.json({ data: summaries });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unknown error listing entities";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Detail handler factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Create Next.js GET and PUT handlers for a single entity by name.
+ *
+ * **GET:** Reads the entity file, returns the full extraction result with an
+ * ETag header computed from the raw source file contents.
+ *
+ * **PUT:** Accepts `{ rawConfigText, metadata }` in the request body, checks
+ * `If-Match` against the current file ETag for optimistic concurrency, writes
+ * the entity via `writeEntityFile()`, and returns the updated entity with a
+ * fresh ETag.
+ *
+ * @param domain - The entity domain.
+ * @returns An object with `GET` and `PUT` async handler functions.
+ *
+ * @example
+ * ```typescript
+ * import { createEntityDetailHandler } from "~/lib/entity-route-helpers";
+ * const handlers = createEntityDetailHandler("agents");
+ * export const GET = handlers.GET;
+ * export const PUT = handlers.PUT;
+ * ```
+ */
+export function createEntityDetailHandler(domain: EntityDomain): {
+  GET: (
+    request: Request,
+    context: { params: Promise<{ name: string }> },
+  ) => Promise<NextResponse>;
+  PUT: (
+    request: Request,
+    context: { params: Promise<{ name: string }> },
+  ) => Promise<NextResponse>;
+} {
+  return {
+    async GET(
+      _request: Request,
+      { params }: { params: Promise<{ name: string }> },
+    ): Promise<NextResponse> {
+      try {
+        const { name } = await params;
+        const root = await resolveProjectRoot();
+        const filePath = await resolveEntityPath(root, domain, name);
+
+        if (!filePath) {
+          return NextResponse.json(
+            { error: `Entity not found: ${name}` },
+            { status: 404 },
+          );
+        }
+
+        const result = await readEntityFile(filePath);
+
+        if (!result.success) {
+          return NextResponse.json(
+            {
+              error: "Failed to extract entity config",
+              details: result.error,
+            },
+            { status: 422 },
+          );
+        }
+
+        // Compute ETag from full source file contents
+        const source = await Bun.file(filePath).text();
+        const etag = computeETag(source);
+
+        const detail: EntityDetail = {
+          name,
+          domain,
+          rawConfigText: result.rawConfigText,
+          metadata: result.metadata,
+        };
+
+        return NextResponse.json(
+          { data: detail },
+          {
+            headers: { ETag: etag },
+          },
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Unknown error reading entity";
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+    },
+
+    async PUT(
+      request: Request,
+      { params }: { params: Promise<{ name: string }> },
+    ): Promise<NextResponse> {
+      try {
+        const { name } = await params;
+        const root = await resolveProjectRoot();
+        const filePath = await resolveEntityPath(root, domain, name);
+
+        if (!filePath) {
+          return NextResponse.json(
+            { error: `Entity not found: ${name}` },
+            { status: 404 },
+          );
+        }
+
+        // If-Match concurrency check
+        const ifMatch = request.headers.get("If-Match");
+        if (ifMatch) {
+          const currentSource = await Bun.file(filePath).text();
+          const currentEtag = computeETag(currentSource);
+
+          if (ifMatch !== currentEtag) {
+            return NextResponse.json(
+              {
+                error: "Conflict: entity has been modified since last read",
+                currentEtag,
+              },
+              { status: 409 },
+            );
+          }
+        }
+
+        // Parse request body
+        let body: { rawConfigText?: string; metadata?: EntityMetadata };
+        try {
+          body = await request.json();
+        } catch {
+          return NextResponse.json(
+            { error: "Invalid JSON body" },
+            { status: 400 },
+          );
+        }
+
+        if (!body.rawConfigText || !body.metadata) {
+          return NextResponse.json(
+            {
+              error:
+                "Request body must include rawConfigText and metadata fields",
+            },
+            { status: 422 },
+          );
+        }
+
+        // Write via ts-round-trip (atomic write)
+        await writeEntityFile(filePath, body.rawConfigText, body.metadata);
+
+        // Read back and return fresh data with new ETag
+        const updatedResult = await readEntityFile(filePath);
+
+        if (!updatedResult.success) {
+          return NextResponse.json(
+            {
+              error: "Write succeeded but re-read failed",
+              details: updatedResult.error,
+            },
+            { status: 500 },
+          );
+        }
+
+        const updatedSource = await Bun.file(filePath).text();
+        const freshEtag = computeETag(updatedSource);
+
+        const detail: EntityDetail = {
+          name,
+          domain,
+          rawConfigText: updatedResult.rawConfigText,
+          metadata: updatedResult.metadata,
+        };
+
+        return NextResponse.json(
+          { data: detail },
+          {
+            headers: { ETag: freshEtag },
+          },
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Unknown error writing entity";
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+    },
+  };
+}
