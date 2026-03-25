@@ -2,20 +2,20 @@
 
 ## Current Position
 
-- **Status:** Executing
-- **Task Complexity:** COMPLEX
+- **Status:** Idle
+- **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
-- **Last Updated:** 2026-03-24
+- **Last Updated:** unknown
 
 ## Session Identity
 
-- **Session ID:** f99173e7-bbcc-4669-9818-27a064f526af
+- **Session ID:** 8e84f840-ec75-4442-8130-cb5bd507cb97
 
 ## Appetite
 
-- **Level:** Large
-- **Token Ceiling:** 200000
-- **Context Budget:** 60%
+- **Level:** Medium
+- **Token Ceiling:** 100000
+- **Context Budget:** 50%
 
 ## Progress
 
@@ -29,12 +29,11 @@
 
 ## Allowed Events
 
-- `PHASE_COMPLETE`
-- `PHASE_FAILED`
-- `SUSPEND`
+- `START`
 
 ## Previous Milestones
 
+- v6.0.0 — Runtime Foundation & Adapter Layer (2026-03-25)
 - v4.4.0 — Smart Context Management (2026-03-14)
 - v4.3.0 — Observer Workflow Editor (2026-03-13)
 - v4.2.0 — Workflow Unification & Memory Architecture (2026-03-12)
@@ -47,13 +46,13 @@
 
 ---
 
-_State updated: 2026-03-14 — v4.4.0 milestone archived, state reset for next milestone_
+_State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next milestone_
 
 ## Session Continuity
 
-- **Session Started:** 2026-03-24
-- **Last Transition:** 2026-03-24
+- **Session Started:** 2026-03-25
+- **Last Transition:** unknown
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T00:05:41.205Z_
+_State generated from machine snapshot at 2026-03-25T00:17:16.771Z_
