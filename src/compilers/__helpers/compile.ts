@@ -8,15 +8,15 @@
  *
  * @module
  */
-import type { BaseAgent } from "~/agents/__schemas/agent.schemas";
-import type { BaseSkill } from "~/skills/__schemas/skill.schemas";
-import type { BaseRule } from "~/rules/__schemas/rule.schemas";
-import { emitAgentMarkdown } from "~/adapters/claude/agent-emitter";
+import type { BaseAgent } from "~/agents";
+import type { BaseSkill } from "~/skills";
+import type { BaseRule } from "~/rules";
 import {
+  createClaudeAdapter,
+  emitAgentMarkdown,
   emitSkillMarkdown,
   emitSkillPluginMarkdown,
-} from "~/adapters/claude/skill-emitter";
-import { createClaudeAdapter } from "~/adapters/claude/claude-adapter";
+} from "~/adapters/claude";
 
 /**
  * Supported compilation output formats.
