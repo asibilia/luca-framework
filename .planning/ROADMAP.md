@@ -47,8 +47,8 @@
 **Depends on:** Phase 3
 **Verification:** Full
 
-- [ ] studio-w3-validation-pipeline — Schema + semantic + atomic write pipeline
-- [ ] studio-w3-read-api-routes — GET /api/config, /api/state, /api/ledger
+- [x] studio-w3-validation-pipeline — Schema + semantic + atomic write pipeline
+- [x] studio-w3-read-api-routes — GET /api/config, /api/state, /api/ledger
 
 ### Phase 5: W3 Write Routes
 

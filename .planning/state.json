@@ -1,6 +1,6 @@
 {
   "status": "active",
-  "value": "complete",
+  "value": "idle",
   "historyValue": {},
   "context": {
     "session_id": "955673a5-c2d9-4ec2-9c60-c3334df36a08",
@@ -74,16 +74,7 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 1,
-        "status": "passed",
-        "summary": "Phase 1 Bootstrap + Quick Wins complete: 9/9 must-haves verified",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-25T17:18:56.887Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
@@ -92,14 +83,8 @@
     "appetite_token_ceiling": 200000,
     "appetite_context_percent": 60,
     "appetite_used_tokens": 0,
-    "pre_mortem_result": {
-      "risks": [],
-      "mitigations": [],
-      "confidence": 0,
-      "timestamp": "2026-03-25T16:40:55.198Z"
-    },
     "started_at": "2026-03-25T13:13:44.731Z",
-    "last_transition_at": "2026-03-25T17:19:35.972Z"
+    "last_transition_at": "2026-03-25T18:29:00.199Z"
   },
   "children": {}
 }
