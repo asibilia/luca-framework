@@ -2,19 +2,59 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v8.1.0 — Studio Polish & Prompt Quality
+
+---
+
+## Active Phases
+
+### Phase 200: Agent Team Prompt Audit Fixes
+
+- [ ] Implement 8 agent team prompt audit fixes (agent-team-prompt-audit-fixes)
+
+**Goal:** Apply 8 prioritized fixes from the agent team prompt audit: XML block restructuring, recipient declarations, output format specs, code review team reduction, parallel researcher spawning, wave executor cap, named agent types, gap-fix return format.
+**Depends on:** None
+**Files:** `src/skills/general/phase-execute.skill.ts`, `src/skills/general/phase-research.skill.ts`, `src/skills/general/phase-discuss.skill.ts`, `src/skills/luca/lu.skill.ts`, `src/skills/general/pr-address.skill.ts`
+
+### Phase 201: Studio W7 Infrastructure (SSE, ETag, Undo)
+
+- [ ] SSE event stream + useSSE hook (studio-w7-sse-layer)
+- [ ] ETag-based optimistic locking (studio-w7-etag-locking)
+- [ ] Undo/redo with jotai-history (studio-w7-undo-redo)
+
+**Goal:** Add cross-cutting Studio infrastructure: live file-change events via SSE, optimistic locking for concurrent edits, and undo/redo for all editing surfaces.
+**Depends on:** None
+
+### Phase 202: Studio W7 Pages & Consolidation
+
+- [ ] Home page with status card and activity feed (studio-w7-home-page)
+- [ ] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
+- [ ] Skills + Rules browser pages (studio-w7-skills-rules-pages)
+- [ ] Memory page consolidation into tabs (studio-w7-memory-consolidation)
+- [ ] Edit vs Observe mode distinction (studio-w7-edit-observe-modes)
+
+**Goal:** Build remaining Studio pages and consolidate existing pages, using patterns established by the Agents page in v8.0.0.
+**Depends on:** Phase 201
+
+### Phase 203: Studio W8 Polish
+
+- [ ] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
+- [ ] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
+- [ ] Settings page with raw config editor (studio-w8-settings-page)
+
+**Goal:** Final polish features: safety net via git rollback, keyboard shortcuts for power users, and a settings escape hatch.
+**Depends on:** Phase 202
 
 ---
 
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                        | Reason                                               |
-| --------------------------- | -------- | -------------------------------------------- | ---------------------------------------------------- |
-| studio W7-W8 (11 todos)     | v8.1.0   | Studio Polish (SSE, ETag, undo, pages, keys) | P2/P3 polish — deferred at W6/W7 arch split boundary |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts)       | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)                | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol               | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                       | Depends on cross-talk + adapters + Studio            |
+| Todo Group                  | Target   | Scope                                  | Reason                                               |
+| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
 
 ## Closed (Reference / Not Actionable)
 
@@ -22,6 +62,19 @@
 | ----------------------------- | --------------------------------------------------------------- |
 | v2-external-research-patterns | Reference document, not an implementation task. Moved to docs/. |
 | runtime-d01–d11               | Superseded by studio-w\* todos in v8.0.0 (scope revised)        |
+
+## Closed (v8.0.0 Backlog Cleanup)
+
+| Todo                          | Reason                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| studio-w1 (1 todo)            | Package rename (luca-observer → luca-studio) shipped in v8.0.0                                            |
+| studio-w2 (4 todos)           | Foundation (compilation sidecar, Jotai atoms, new deps, TS round-trip) shipped in v8.0.0                  |
+| studio-w3 (5 todos)           | API layer (read routes, compile routes, config write, entity CRUD, validation pipeline) shipped in v8.0.0 |
+| studio-w4 (2 todos)           | UI layout (layout components, navigation restructure) shipped in v8.0.0                                   |
+| studio-w5 (3 todos)           | Editor components (editor, feedback, visualization) shipped in v8.0.0                                     |
+| studio-w6 (2 todos)           | Core pages (agents page, pipeline page) shipped in v8.0.0                                                 |
+| runtime-e04                   | Adapter compatibility report (schema + validator + CLI) shipped in v7.x/v8.0.0                            |
+| v2-external-research-patterns | Reference document, not implementation task (already in Closed section above)                             |
 
 ## Backlog (Blocked)
 

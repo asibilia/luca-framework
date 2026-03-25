@@ -1,10 +1,11 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "routing",
   "historyValue": {},
   "context": {
     "session_id": "8ad59fcb-353a-407c-ac10-438667d59e0b",
     "base_branch": "main",
+    "current_milestone": "v8.1.0 — Studio Polish & Prompt Quality",
     "current_plan_ids": [],
     "current_wave_count": 0,
     "complexity": "TRIVIAL",
@@ -81,9 +82,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-25T20:16:15.980Z",
-    "current_milestone": "Planning next",
-    "last_transition_at": "2026-03-25T20:21:16.114Z"
+    "started_at": "2026-03-25T21:40:01.493Z",
+    "last_transition_at": "2026-03-25T21:53:46.483Z"
   },
   "children": {}
 }
