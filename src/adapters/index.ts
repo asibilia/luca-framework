@@ -49,6 +49,11 @@ export { bridgeAdapterForExecutor } from "./__helpers/adapter-executor-bridge";
 export { enforceCharacterBudget } from "./__helpers/character-budget";
 export type { CharacterBudgetResult } from "./__helpers/character-budget";
 
+// ─── Shared Adapter Helpers ──────────────────────────────────────────────
+export { sectionsToMarkdown } from "./__helpers/format-sections";
+export { emitCompiledOutputs } from "./__helpers/adapter-emit";
+export type { PreEmitResult, EmitOptions } from "./__helpers/adapter-emit";
+
 // ─── Compatibility Report Schemas ─────────────────────────────────────────
 export {
   featureMappingStatusSchema,
