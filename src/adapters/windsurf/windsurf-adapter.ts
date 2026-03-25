@@ -14,7 +14,8 @@
  * @module
  */
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import orderBy from "lodash/orderBy";
 
@@ -150,6 +151,9 @@ function compileSectionsToBody(
  * ```
  */
 export function createWindsurfAdapter(): Adapter {
+  /** Internal buffer: relative path -> compiled content */
+  const compiledOutputs = new Map<string, string>();
+
   return {
     config: {
       name: "windsurf",
@@ -219,6 +223,7 @@ export function createWindsurfAdapter(): Adapter {
         `skills/${skill.name}`,
       );
 
+      compiledOutputs.set(`workflows/${skill.name}.md`, result);
       return result;
     },
 
@@ -260,20 +265,39 @@ export function createWindsurfAdapter(): Adapter {
         `rules/${rule.name}`,
       );
 
+      compiledOutputs.set(`rules/${rule.name}.md`, result);
       return result;
     },
 
     /**
      * Write compiled artifacts to disk.
      *
-     * Stub: returns empty EmitResult. Will be wired when the build
-     * pipeline is adapter-aware.
+     * Iterates all entries accumulated by compile*() calls, writes each
+     * to the corresponding path under `outputDir`, and returns a populated
+     * EmitResult. Clears the buffer after emission.
      *
-     * @param _outputDir - Root directory for output artifacts (unused)
-     * @returns Empty emission result
+     * @param outputDir - Root directory for output artifacts
+     * @returns Emission result with file counts, paths, and warnings
      */
-    emit: async (_outputDir: string): Promise<EmitResult> => {
-      return { filesWritten: 0, filesPaths: [], warnings: [] };
+    emit: async (outputDir: string): Promise<EmitResult> => {
+      const filesPaths: string[] = [];
+      const warnings: string[] = [];
+
+      for (const [relativePath, content] of compiledOutputs) {
+        const absolutePath = join(outputDir, relativePath);
+        await mkdir(dirname(absolutePath), { recursive: true });
+        await Bun.write(absolutePath, content);
+        filesPaths.push(absolutePath);
+      }
+
+      const result: EmitResult = {
+        filesWritten: filesPaths.length,
+        filesPaths,
+        warnings,
+      };
+
+      compiledOutputs.clear();
+      return result;
     },
 
     /**
