@@ -18,9 +18,9 @@
 
 **Depends on:** None (B01+B02 done in v6.0.0)
 
-- [ ] E01 — Cursor adapter: compile rules to .mdc format, map hook events (camelCase), passthrough skills
-- [ ] E02 — Windsurf adapter: character budget enforcement (12K workspace/6K global), rules.md compilation
-- [ ] E03 — VS Code adapter: tool name translation, .github/ output dir, Preview-stability hooks
+- [x] E01 — Cursor adapter: compile rules to .mdc format, map hook events (camelCase), passthrough skills
+- [x] E02 — Windsurf adapter: character budget enforcement (12K workspace/6K global), rules.md compilation
+- [x] E03 — VS Code adapter: tool name translation, .github/ output dir, Preview-stability hooks
 
 ### Phase 2: Adapter Compatibility Report (E04) — SEQUENTIAL
 
@@ -28,7 +28,7 @@
 
 **Depends on:** Phase 1
 
-- [ ] E04 — Compatibility report: CompatibilityReport schema, per-adapter validate(), CLI summary, dist/ artifact
+- [x] E04 — Compatibility report: CompatibilityReport schema, per-adapter validate(), CLI summary, dist/ artifact
 
 ---
 
