@@ -49,6 +49,28 @@ export { bridgeAdapterForExecutor } from "./__helpers/adapter-executor-bridge";
 export { enforceCharacterBudget } from "./__helpers/character-budget";
 export type { CharacterBudgetResult } from "./__helpers/character-budget";
 
+// ─── Compatibility Report Schemas ─────────────────────────────────────────
+export {
+  featureMappingStatusSchema,
+  featureMappingSchema,
+  compatibilityReportSchema,
+  aggregatedReportSchema,
+} from "./__schemas/compatibility-report.schemas";
+export type {
+  FeatureMappingStatus,
+  FeatureMapping,
+  CompatibilityReport,
+  AggregatedReport,
+} from "./__schemas/compatibility-report.schemas";
+
+// ─── Compatibility Validators ─────────────────────────────────────────────
+export {
+  validateCursorOutput,
+  validateWindsurfOutput,
+  validateVscodeOutput,
+  aggregateReports,
+} from "./__helpers/compatibility-validator";
+
 // ─── Claude Adapter ────────────────────────────────────────────────────────
 export { createClaudeAdapter } from "./claude";
 export { emitAgentMarkdown } from "./claude";
