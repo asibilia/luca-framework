@@ -1,7 +1,7 @@
 /**
  * Lightweight MuninnDB HTTP client for writing engrams.
  *
- * Replicates the HTTP client pattern from `packages/luca-studio/lib/muninn-config.ts`
+ * Replicates the HTTP client pattern from `packages/luca-observer/lib/muninn-config.ts`
  * but built locally for the framework package (no cross-package imports).
  *
  * Uses Bun native `fetch`, AbortController for timeout, and Bearer auth.
@@ -41,7 +41,7 @@ export interface MuninnHttpClient {
  * Create a MuninnDB HTTP client for writing engrams.
  *
  * Factory function that returns an object with a `writeEngram` method.
- * Follows the singleton pattern from `packages/luca-studio/lib/muninn-config.ts`.
+ * Follows the singleton pattern from `packages/luca-observer/lib/muninn-config.ts`.
  *
  * The client never throws. All failures return null and are safe for
  * fire-and-forget usage.

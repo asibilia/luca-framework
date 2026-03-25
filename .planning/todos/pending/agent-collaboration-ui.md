@@ -33,6 +33,5 @@ Design and build IDE panel UI for multi-agent awareness:
 
 - This is the UI counterpart to the behavioral protocol in `agent-cross-talk-protocol.md`
 - Needs to work across supported IDE adapters (Claude Code, Cursor, Windsurf, VS Code)
-- Consider whether this is a standalone panel or integrates into Luca Studio views (the Agents page in `docs/brainstorm/observer-studio-rework/2.ux-design.md` may be the integration point)
-- The D-series todos (including runtime-d05) have been archived — Studio now absorbs into the existing Next.js luca-observer app. See `docs/brainstorm/observer-studio-rework/`
-- **Post-v1 scope**: The brainstorm's v1 focuses on config editing + read-only browsing. Multi-agent collaboration UI is a future enhancement
+- Consider whether this is a standalone panel or integrates into existing dev server views (runtime-d05 agent browser view may be relevant)
+- The dev server already has agent browser view planned (runtime-d05) — this could extend it with real-time collaboration awareness

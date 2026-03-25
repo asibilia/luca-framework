@@ -52,13 +52,11 @@ src/eval/
 └── index.ts
 ```
 
-### 4. Development Studio
-
-> **Updated (2026-03-25):** Studio scope and implementation revised. See `docs/brainstorm/observer-studio-rework/` for current plan.
+### 4. Development Studio (Lightweight)
 
 **Problem:** Testing an agent change requires exiting Claude Code, running `build:all` manually (which crashes Claude Code), then restarting. The feedback loop is 5+ minutes.
 
-**Solution:** The existing `packages/luca-studio/` Next.js app is expanded from a read-only observability dashboard into a three-mode control plane: observe (sessions, memory, state), browse (agents, skills, rules, pipeline), and configure/edit (workflow customization, model routing, gates, entity editing). Larger scope than originally planned — includes config editing, agent management, and progressive disclosure for consumer vs editor personas.
+**Solution:** A lightweight Bun-native dev server (`packages/luca-studio/`) that visualizes and tests Luca workflows. Not Mastra Studio — much smaller scope. Renders the workflow DAG as an interactive graph, lets you browse agent definitions, run evals, and inspect state machine transitions.
 
 ### 5. Typed Step Contracts
 
@@ -93,11 +91,11 @@ These capabilities remain unchanged:
 
 New domains added to the tier system:
 
-| Domain                  | Tier             | Archetype          | Purpose                                                                                                                                     |
-| ----------------------- | ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/workflow/`         | T1 Core          | B (Core Domain)    | DAG engine, step definitions, execution loop. Adapter interface (`Adapter` type) lives here.                                                |
-| `src/adapters/`         | T3 Build         | C (Infrastructure) | Pluggable execution adapter implementations (Claude, API, Cursor). Terminal — imported by nothing in src/.                                  |
-| `src/eval/`             | T1 Core          | B (Core Domain)    | Agent evaluation framework                                                                                                                  |
-| `packages/luca-studio/` | Separate package | —                  | Renamed from luca-observer. Next.js app for observation, browsing, and configuration editing. See `docs/brainstorm/observer-studio-rework/` |
+| Domain                  | Tier             | Archetype          | Purpose                                                                                                    |
+| ----------------------- | ---------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `src/workflow/`         | T1 Core          | B (Core Domain)    | DAG engine, step definitions, execution loop. Adapter interface (`Adapter` type) lives here.               |
+| `src/adapters/`         | T3 Build         | C (Infrastructure) | Pluggable execution adapter implementations (Claude, API, Cursor). Terminal — imported by nothing in src/. |
+| `src/eval/`             | T1 Core          | B (Core Domain)    | Agent evaluation framework                                                                                 |
+| `packages/luca-studio/` | Separate package | —                  | Dev server for visualization and testing                                                                   |
 
 Import direction: `workflow` sits at T1 and defines the `Adapter` interface. `adapters` sits at T3 (like `compilers`) and implements that interface — it consumes T0-T1 but is not imported by other src/ domains. Adapter selection uses dependency injection at the CLI entry point, not direct imports. The existing compiler domain becomes a thin wrapper around the Claude adapter.

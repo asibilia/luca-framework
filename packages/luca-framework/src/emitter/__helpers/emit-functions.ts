@@ -118,7 +118,7 @@ let _emitter: EmitterInstance | null = null;
  * Bun auto-loads .env, so `MUNINN_DB_URL` and `MUNINN_DB_API_KEY` are
  * available via `process.env`.
  *
- * Follows the `getMuninnClient()` pattern from `packages/luca-studio/lib/muninn-config.ts`.
+ * Follows the `getMuninnClient()` pattern from `packages/luca-observer/lib/muninn-config.ts`.
  *
  * @returns The singleton EmitterInstance
  *

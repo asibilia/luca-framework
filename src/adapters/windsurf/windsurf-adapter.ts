@@ -24,7 +24,6 @@ import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { enforceCharacterBudget } from "../__helpers/character-budget";
 import { sectionsToMarkdown } from "../__helpers/format-sections";
 import { emitCompiledOutputs } from "../__helpers/adapter-emit";
-import { validateWindsurfOutput } from "../__helpers/compatibility-validator";
 
 /**
  * Format version for the Windsurf adapter output.
@@ -239,8 +238,6 @@ export function createWindsurfAdapter(): Adapter {
      * @param outputDir - Root directory for output artifacts
      * @returns Emission result with file counts, paths, and warnings
      */
-    validate: (emitResult: EmitResult) => validateWindsurfOutput(emitResult),
-
     emit: async (outputDir: string): Promise<EmitResult> => {
       return emitCompiledOutputs(compiledOutputs, outputDir, {
         preEmit: (outputs) => {
