@@ -4,6 +4,7 @@ import type {
   CompositeGraderEntry,
 } from "../__schemas/eval.schemas";
 import { gradeWithCode } from "./code-grader";
+import { makeFailResult } from "./grader-utils";
 import { gradeWithLlm } from "./llm-grader";
 
 import type { LlmAdapter } from "./llm-grader";
@@ -34,32 +35,17 @@ async function gradeEntry(
   switch (entry.type) {
     case "code": {
       if (!entry.code_config) {
-        return {
-          passed: false,
-          score: 0.0,
-          reason: "Code grader config missing for code entry",
-          metadata: {},
-        };
+        return makeFailResult("Code grader config missing for code entry");
       }
       return gradeWithCode(output, entry.code_config, customFn);
     }
 
     case "llm": {
       if (!adapter) {
-        return {
-          passed: false,
-          score: 0.0,
-          reason: "LLM adapter required for LLM grading",
-          metadata: {},
-        };
+        return makeFailResult("LLM adapter required for LLM grading");
       }
       if (!entry.llm_config) {
-        return {
-          passed: false,
-          score: 0.0,
-          reason: "LLM grader config missing for LLM entry",
-          metadata: {},
-        };
+        return makeFailResult("LLM grader config missing for LLM entry");
       }
       return gradeWithLlm(
         output,
@@ -71,21 +57,11 @@ async function gradeEntry(
     }
 
     case "composite": {
-      return {
-        passed: false,
-        score: 0.0,
-        reason: "Nested composite graders not supported",
-        metadata: {},
-      };
+      return makeFailResult("Nested composite graders not supported");
     }
 
     default: {
-      return {
-        passed: false,
-        score: 0.0,
-        reason: `Unknown grader type: ${entry.type}`,
-        metadata: {},
-      };
+      return makeFailResult(`Unknown grader type: ${entry.type}`);
     }
   }
 }

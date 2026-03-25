@@ -10,6 +10,7 @@ import type {
 } from "../__schemas/eval.schemas";
 import { EvalReportSchema, EvalSuiteSchema } from "../__schemas/eval.schemas";
 import { gradeWithCode } from "./code-grader";
+import { makeFailResult } from "./grader-utils";
 import { gradeWithLlm } from "./llm-grader";
 import { gradeWithComposite } from "./composite-grader";
 
@@ -64,12 +65,7 @@ async function gradeTrial(
     switch (evalCase.grader) {
       case "code": {
         if (!evalCase.code_grader_config) {
-          return {
-            passed: false,
-            score: 0.0,
-            reason: "Code grader config missing",
-            metadata: {},
-          };
+          return makeFailResult("Code grader config missing");
         }
         const customFn = customGraders?.get(evalCase.id);
         return gradeWithCode(
@@ -81,20 +77,12 @@ async function gradeTrial(
 
       case "llm": {
         if (!adapter) {
-          return {
-            passed: false,
-            score: 0.0,
-            reason: "LLM adapter required for LLM grading but adapter is null",
-            metadata: {},
-          };
+          return makeFailResult(
+            "LLM adapter required for LLM grading but adapter is null",
+          );
         }
         if (!evalCase.llm_grader_config) {
-          return {
-            passed: false,
-            score: 0.0,
-            reason: "LLM grader config missing",
-            metadata: {},
-          };
+          return makeFailResult("LLM grader config missing");
         }
         return gradeWithLlm(
           evalCase.input,
@@ -107,12 +95,7 @@ async function gradeTrial(
 
       case "composite": {
         if (!evalCase.composite_grader_config) {
-          return {
-            passed: false,
-            score: 0.0,
-            reason: "Composite grader config missing",
-            metadata: {},
-          };
+          return makeFailResult("Composite grader config missing");
         }
         return gradeWithComposite(
           evalCase.input,
@@ -126,24 +109,18 @@ async function gradeTrial(
       }
 
       default:
-        return {
-          passed: false,
-          score: 0.0,
-          reason: `Unknown grader type: ${evalCase.grader}`,
-          metadata: {},
-        };
+        return makeFailResult(`Unknown grader type: ${evalCase.grader}`);
     }
   })();
 
   // Enforce timeout via Promise.race
   const timeoutPromise = new Promise<GraderResult>((resolve) => {
     setTimeout(() => {
-      resolve({
-        passed: false,
-        score: 0.0,
-        reason: `Trial timed out after ${timeoutMs}ms`,
-        metadata: { timeout: true },
-      });
+      resolve(
+        makeFailResult(`Trial timed out after ${timeoutMs}ms`, {
+          timeout: true,
+        }),
+      );
     }, timeoutMs);
   });
 

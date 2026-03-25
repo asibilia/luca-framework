@@ -1,6 +1,7 @@
 import get from "lodash/get";
 
 import type { GraderResult, CodeGraderConfig } from "../__schemas/eval.schemas";
+import { makeFailResult } from "./grader-utils";
 
 /**
  * Type for user-provided custom grading functions.
@@ -70,12 +71,7 @@ function gradeContains(
 ): GraderResult {
   const substrings = config.expected_substrings ?? [];
   if (substrings.length === 0) {
-    return {
-      passed: false,
-      score: 0.0,
-      reason: "No expected substrings provided",
-      metadata: {},
-    };
+    return makeFailResult("No expected substrings provided");
   }
 
   const text = String(extracted);
@@ -104,12 +100,7 @@ function gradeRegex(
   config: CodeGraderConfig,
 ): GraderResult {
   if (!config.pattern) {
-    return {
-      passed: false,
-      score: 0.0,
-      reason: "No regex pattern provided",
-      metadata: {},
-    };
+    return makeFailResult("No regex pattern provided");
   }
 
   const text = String(extracted);
@@ -163,12 +154,7 @@ function gradeThreshold(
 ): GraderResult {
   const value = Number(extracted);
   if (Number.isNaN(value)) {
-    return {
-      passed: false,
-      score: 0.0,
-      reason: "Output is not a number",
-      metadata: {},
-    };
+    return makeFailResult("Output is not a number");
   }
 
   const aboveMin = config.min === undefined || value >= config.min;
@@ -233,21 +219,11 @@ export function gradeWithCode(
       return gradeThreshold(extracted, config);
     case "custom": {
       if (!customFn) {
-        return {
-          passed: false,
-          score: 0.0,
-          reason: "No custom grading function provided",
-          metadata: {},
-        };
+        return makeFailResult("No custom grading function provided");
       }
       return customFn(extracted, undefined);
     }
     default:
-      return {
-        passed: false,
-        score: 0.0,
-        reason: `Unknown strategy: ${config.strategy}`,
-        metadata: {},
-      };
+      return makeFailResult(`Unknown strategy: ${config.strategy}`);
   }
 }

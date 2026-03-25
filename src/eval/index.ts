@@ -49,6 +49,7 @@ export type {
 // ─── Helpers: Graders ────────────────────────────────────────────────────
 export { gradeWithCode } from "./__helpers/code-grader";
 export type { CustomGraderFn } from "./__helpers/code-grader";
+export { makeFailResult } from "./__helpers/grader-utils";
 export { gradeWithLlm } from "./__helpers/llm-grader";
 export type { LlmAdapter } from "./__helpers/llm-grader";
 export { gradeWithComposite } from "./__helpers/composite-grader";
