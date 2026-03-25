@@ -129,6 +129,19 @@
 - [x] MED-4: Deduplicate KNOWN_ENTITY_TYPES — import from graph-types.ts in use-vault-health.ts
 - [x] MED-7: Sanitize sidecar error response — truncate reflected user input
 
+### Phase 12: Audit Closure — Tech Debt Cleanup
+
+**Goal:** Remove legacy code, add missing barrels, create schema drift tooling, minor JSDoc/style fixes
+**Depends on:** Phase 11
+**Verification:** Quick
+
+- [ ] TD-2: Remove or consolidate legacy components/workflow-editor/ directory (10 files, superseded by components/workflow/)
+- [ ] TD-3: Add barrel index.ts to component subdirectories (layout/, agents/, workflow-editor/ if kept), stores/, and document lib/ contract
+- [ ] TD-4: Create check:studio-drift script in package.json (validates mirrored schemas match src/)
+- [ ] LOW-1: Add missing JSDoc to SaveBarProps, minimapNodeColor, and other undocumented exports
+- [ ] LOW-2: Add v9.0.0 removal timeline to deprecated NAV_ITEMS export
+- [ ] LOW-3: Fix destructuring defaults in CodeMirrorWrapper (use Zod schema or constants)
+
 ---
 
 ## Deferred to Future Milestones
