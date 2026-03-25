@@ -4,7 +4,11 @@ import { useCallback, useEffect } from "react";
 
 import { useAtom, useAtomValue } from "jotai";
 
-import { configAtom, configDraftAtom } from "~/stores/config-atoms";
+import {
+  configAtom,
+  configDraftAtom,
+  configEtagAtom,
+} from "~/stores/config-atoms";
 import { canSaveAtom, markCleanAtom } from "~/stores/dirty-tracking";
 import { pipelineNodesAtom, pipelineEdgesAtom } from "~/stores/pipeline-atoms";
 
@@ -43,6 +47,7 @@ export function usePipelineSave(): PipelineSaveActions {
   const canSave = useAtomValue(canSaveAtom);
   const [, markClean] = useAtom(markCleanAtom);
   const [, setConfigDraft] = useAtom(configDraftAtom);
+  const [configEtag, setConfigEtag] = useAtom(configEtagAtom);
   const [, setNodes] = useAtom(pipelineNodesAtom);
   const [, setEdges] = useAtom(pipelineEdgesAtom);
 
@@ -53,23 +58,52 @@ export function usePipelineSave(): PipelineSaveActions {
     const workflowSection =
       (configDraft as Record<string, unknown>).workflow ?? {};
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (configEtag) {
+      headers["If-Match"] = configEtag;
+    }
+
     const response = await fetch("/api/config/workflow", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(workflowSection),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const message =
-        (errorData as Record<string, unknown>)?.error ??
-        `Save failed: ${response.status}`;
+      const errorObj = errorData as Record<string, unknown>;
+
+      // 409 Conflict -- another tab or SSE update changed config.json
+      if (response.status === 409) {
+        throw new Error(
+          "Save conflict: the configuration was modified by another " +
+            "source. Please reload and try again.",
+        );
+      }
+
+      // 428 Precondition Required -- client lost its ETag
+      if (response.status === 428) {
+        throw new Error(
+          "Save failed: concurrency token missing. Please reload the page.",
+        );
+      }
+
+      const message = errorObj?.error ?? `Save failed: ${response.status}`;
       throw new Error(String(message));
+    }
+
+    // Update ETag from response for next save round-trip
+    const freshEtag = response.headers.get("ETag");
+    if (freshEtag) {
+      setConfigEtag(freshEtag);
     }
 
     // Clear dirty state on success
     markClean("config");
-  }, [configDraft, markClean]);
+  }, [configDraft, configEtag, setConfigEtag, markClean]);
 
   const handleDiscard = useCallback(() => {
     // Reset config draft to server state
