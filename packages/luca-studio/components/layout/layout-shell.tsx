@@ -57,10 +57,14 @@ export function LayoutShell({
   // Clamp detail panel width
   const clampedPanelWidth = Math.min(600, Math.max(400, panelWidth));
 
+  // In editor context, NavRail forces 48px regardless of expanded/hovered state.
+  // Mirror that here so the grid column width matches the rail's actual width.
+  const effectiveNavWidth = layoutContext === "editor" ? 48 : navWidth;
+
   // Build grid columns: NavRail | Content | DetailPanel (if docked)
   const gridColumns = isDocked
-    ? `${navWidth}px 1fr ${clampedPanelWidth}px`
-    : `${navWidth}px 1fr 0px`;
+    ? `${effectiveNavWidth}px 1fr ${clampedPanelWidth}px`
+    : `${effectiveNavWidth}px 1fr 0px`;
 
   return (
     <div

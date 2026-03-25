@@ -85,7 +85,7 @@ export function NavContent() {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
-                : pathname.startsWith(item.href);
+                : pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = ICON_MAP[item.icon];
 
             return (

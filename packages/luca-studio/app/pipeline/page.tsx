@@ -4,11 +4,13 @@ import { useEffect } from "react";
 
 import dynamic from "next/dynamic";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+
+import { X } from "lucide-react";
 
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { StepConfigPanel } from "~/components/workflow/step-config-panel";
-import { DetailPanel } from "~/components/layout/detail-panel";
+import { Button } from "~/components/ui/button";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { usePipelineSave } from "~/hooks/use-pipeline-save";
 import {
@@ -58,7 +60,9 @@ const PipelineCanvas = dynamic(
  * to collapse the NavRail and maximize canvas space.
  */
 export default function PipelinePage() {
-  const selectedNodeId = useAtomValue(selectedPipelineNodeIdAtom);
+  const [selectedNodeId, setSelectedNodeId] = useAtom(
+    selectedPipelineNodeIdAtom,
+  );
   const nodes = useAtomValue(pipelineNodesAtom);
   const setDetailPanelState = useSetAtom(detailPanelStateAtom);
   const { handleSave, handleDiscard } = usePipelineSave();
@@ -88,13 +92,29 @@ export default function PipelinePage() {
           <PipelineCanvas />
         </ErrorBoundary>
 
-        {/* Docked detail panel (managed in-page, not via LayoutShell) */}
+        {/* Docked detail panel (plain div, not atom-driven DetailPanel) */}
         {selectedNodeId && (
-          <div className="absolute right-0 top-0 z-20 h-full">
-            <DetailPanel title={detailTitle}>
+          <aside className="absolute right-0 top-0 z-20 flex h-full w-[480px] flex-col border-l bg-background shadow-xl">
+            {/* Header */}
+            <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
+              <span className="text-sm font-medium text-foreground">
+                {detailTitle}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground"
+                onClick={() => setSelectedNodeId(null)}
+                aria-label="Close detail panel"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
               <StepConfigPanel nodeId={selectedNodeId} />
-            </DetailPanel>
-          </div>
+            </div>
+          </aside>
         )}
       </div>
 
