@@ -38,7 +38,7 @@ import { z } from "zod";
 export const ResearchConfigSchema = z.object({
   /**
    * Number of parallel researcher agents to spawn.
-   * Set to 4 for full v2 multi-agent research. Default 4.
+   * Set to 4 for full v2 multi-agent research.
    * The complexity matrix does NOT override this -- researcher/reviewer
    * counts are always 4/3 at all complexity levels (Decision 13).
    */

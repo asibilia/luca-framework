@@ -7,7 +7,6 @@
  * as reviewers with BLOCKING/ADVISORY severity labels.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
-
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 const phasePlanReviewConfig: SkillConfig = {

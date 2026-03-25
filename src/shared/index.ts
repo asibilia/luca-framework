@@ -32,16 +32,16 @@ export type { LuConfig } from "./__schemas/lu-config.schemas";
 
 // ─── Workflow Version ───────────────────────────────────────────────────────────
 
-export { WorkflowVersionSchema } from "./__schemas/lu-config.schemas";
-export type { WorkflowVersion } from "./__schemas/lu-config.schemas";
+export { WorkflowVersionSchema } from "./__schemas/workflow-version.schemas";
+export type { WorkflowVersion } from "./__schemas/workflow-version.schemas";
 
 // ─── Research Config ────────────────────────────────────────────────────────────
 
 export {
   ResearchConfigSchema,
   ResearchConfigRefinedSchema,
-} from "./__schemas/lu-config.schemas";
-export type { ResearchConfig } from "./__schemas/lu-config.schemas";
+} from "./__schemas/research-config.schemas";
+export type { ResearchConfig } from "./__schemas/research-config.schemas";
 
 // ─── CLI Utilities ──────────────────────────────────────────────────────────────
 

@@ -1,37 +1,19 @@
 /**
  * Zod schemas for `.planning/config.json` sections.
  *
- * Aggregates config-related schemas and re-exports them for barrel consumption:
- * - `LuConfigSchema` — the `lu` orchestration section
- * - `WorkflowVersionSchema` — the `workflow.version` discriminator (v2)
- * - `ResearchConfigSchema` / `ResearchConfigRefinedSchema` — the `research` section (v2)
+ * Contains `LuConfigSchema` — the `lu` orchestration section.
+ * WorkflowVersionSchema and ResearchConfigSchema live in their own schema files
+ * and are re-exported directly from the shared barrel (index.ts).
  *
  * @example
  * ```typescript
- * import { LuConfigSchema, WorkflowVersionSchema, ResearchConfigSchema } from "~/shared";
+ * import { LuConfigSchema } from "~/shared";
  *
  * const raw = JSON.parse(configFileContents);
  * const luConfig = LuConfigSchema.parse(raw.lu ?? raw.autopilot ?? {});
- * const version = WorkflowVersionSchema.parse(raw.workflow?.version);
- * const research = ResearchConfigSchema.parse(raw.research ?? {});
  * ```
  */
 import { z } from "zod";
-
-// ─── Re-exports: Workflow Version ────────────────────────────────────────────
-
-export {
-  WorkflowVersionSchema,
-  type WorkflowVersion,
-} from "./workflow-version.schemas";
-
-// ─── Re-exports: Research Config ─────────────────────────────────────────────
-
-export {
-  ResearchConfigSchema,
-  ResearchConfigRefinedSchema,
-  type ResearchConfig,
-} from "./research-config.schemas";
 
 /**
  * Schema for the `lu` orchestration config section.
