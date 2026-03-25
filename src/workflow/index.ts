@@ -26,7 +26,7 @@ export {
   ValidationResultSchema,
   FailedStepInfoSchema,
   DAGCheckpointSchema,
-  AdapterSchema,
+  WorkflowAdapterSchema,
 } from "./__schemas/workflow.schemas";
 
 export type {
@@ -45,7 +45,7 @@ export type {
   ValidationResult,
   FailedStepInfo,
   DAGCheckpoint,
-  Adapter,
+  WorkflowAdapter,
 } from "./__schemas/workflow.schemas";
 
 // ─── Step Contracts ──────────────────────────────────────────────────────────

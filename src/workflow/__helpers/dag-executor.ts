@@ -26,7 +26,7 @@ import type { z } from "zod";
 import type {
   WorkflowDAG,
   WorkflowStep,
-  Adapter,
+  WorkflowAdapter,
   StepResult,
   ExecutionResult,
   DAGCheckpoint,
@@ -104,7 +104,7 @@ export interface ExecuteDAGOptions {
  */
 export async function executeDAG(
   dag: WorkflowDAG,
-  adapter: Adapter,
+  adapter: WorkflowAdapter,
   context: Record<string, unknown>,
   options: ExecuteDAGOptions = {},
 ): Promise<ExecutionResult> {
@@ -326,7 +326,7 @@ export async function executeDAG(
  */
 async function executeStepWithRetry(
   step: WorkflowStep,
-  adapter: Adapter,
+  adapter: WorkflowAdapter,
   context: Record<string, unknown>,
   schemaValidationMode: "warn" | "strict",
 ): Promise<StepResult> {
@@ -451,7 +451,7 @@ async function executeStepWithRetry(
  */
 async function executeWithTimeout(
   step: WorkflowStep,
-  adapter: Adapter,
+  adapter: WorkflowAdapter,
   input: Record<string, unknown>,
   context: Record<string, unknown>,
   timeoutMs: number,

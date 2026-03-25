@@ -8,7 +8,7 @@
  * - StepResult: Result of a single step execution
  * - ExecutionResult: Result of full DAG execution
  * - ValidationResult: Result of static DAG validation
- * - Adapter: Interface for step execution adapters
+ * - WorkflowAdapter: Interface for step execution adapters
  *
  * @see docs/runtime-architecture/dag-workflow-engine.md — Core Schemas section
  */
@@ -363,10 +363,13 @@ export const DAGCheckpointSchema = z.object({
 
 export type DAGCheckpoint = z.infer<typeof DAGCheckpointSchema>;
 
-// ─── Adapter ─────────────────────────────────────────────────────────────────
+// ─── Workflow Adapter ────────────────────────────────────────────────────────
 
 /**
- * Interface for step execution adapters.
+ * Interface for step execution adapters (workflow-domain definition).
+ *
+ * Named `WorkflowAdapter` to avoid collision with the full `Adapter`
+ * type in the adapters domain (`src/adapters/__schemas/adapter.schemas.ts`).
  *
  * Defined at T1 so that adapters at T3 (compilers tier or future adapters
  * domain) can implement it without creating tier violations.
@@ -377,7 +380,7 @@ export type DAGCheckpoint = z.infer<typeof DAGCheckpointSchema>;
  *
  * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Executor
  */
-export const AdapterSchema = z.object({
+export const WorkflowAdapterSchema = z.object({
   /** Unique adapter name (e.g., "claude", "api", "mock"). */
   name: z.string().min(1),
 
@@ -399,4 +402,4 @@ export const AdapterSchema = z.object({
   }),
 });
 
-export type Adapter = z.infer<typeof AdapterSchema>;
+export type WorkflowAdapter = z.infer<typeof WorkflowAdapterSchema>;

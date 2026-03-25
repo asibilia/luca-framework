@@ -2,8 +2,8 @@
  * Bridge between the full T3 Adapter interface and the minimal T1 WorkflowAdapter
  * shape expected by the DAG executor.
  *
- * The DAG executor lives in T1 (workflow domain) and accepts a minimal Adapter
- * type defined in `workflow.schemas.ts`. The full Adapter from the adapters
+ * The DAG executor lives in T1 (workflow domain) and accepts a minimal
+ * WorkflowAdapter type defined in `workflow.schemas.ts`. The full Adapter from the adapters
  * domain (T3) has a richer interface (compile, emit, detect, executeStep).
  *
  * This bridge wraps a full T3 Adapter into the T1 shape, handling the type
@@ -18,7 +18,7 @@ import type {
   AdapterStepResult,
 } from "../__schemas/adapter.schemas";
 import type {
-  Adapter as WorkflowAdapter,
+  WorkflowAdapter,
   WorkflowStep,
   StepResult,
 } from "~/workflow/__schemas/workflow.schemas";
