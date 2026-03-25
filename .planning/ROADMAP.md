@@ -75,9 +75,9 @@
 **Depends on:** Phase 6
 **Verification:** Quick
 
-- [ ] studio-w5-editor-components — CodeMirrorWrapper, ModelRoutingGrid, EntityTree
-- [ ] studio-w5-feedback-components — DirtyIndicator, SaveBar, ValidationBanner
-- [ ] studio-w5-visualization-components — WorkflowNode, WorkflowEdge, ComplexityBadge
+- [x] studio-w5-editor-components — CodeMirrorWrapper, ModelRoutingGrid, EntityTree
+- [x] studio-w5-feedback-components — DirtyIndicator, SaveBar, ValidationBanner
+- [x] studio-w5-visualization-components — WorkflowNode, WorkflowEdge, ComplexityBadge
 
 ### Phase 8: W6 Feature Pages — MVP Completion
 
