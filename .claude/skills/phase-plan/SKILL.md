@@ -329,6 +329,7 @@ STATE_CONTENT=$(cat .planning/STATE.md)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")
+GRADUATION_REPORT_CONTENT=$(cat "${PHASE_DIR}/research/GRADUATION-REPORT.md" 2>/dev/null || echo "No graduation report -- omit research refs from tasks.")
 VERIFICATION_CONTENT=$(cat "${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
 ```
 
@@ -370,6 +371,9 @@ Task(
 
 **Research (if available):**
 {research_content}
+
+**Graduated Research Engrams (for research_refs):**
+{graduation_report_content}
 
 **Verification Issues (for gap mode):**
 {verification_content}

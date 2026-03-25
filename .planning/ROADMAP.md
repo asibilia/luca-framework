@@ -2,7 +2,57 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v6.1.0 — Audit Gap Closure
+
+---
+
+## v6.1.0 — Audit Gap Closure
+
+**Goal:** Fix all 24 code quality findings from the v6.0.0 milestone audit. Critical bug fix, architecture violations, DRY violations, schema placement, and polish.
+
+**Complexity:** MODERATE
+
+### Phase 1 — Critical Fixes + Bug + Import Violations
+
+**Goal:** Fix the composite-grader logic bug, compile.ts barrel bypass, dag-serializer require() violations, and deep \_\_schemas/ import pattern across adapters.
+
+**Depends on:** None
+
+- [ ] #1: Fix compile.ts barrel bypass — use ~/adapters/claude sub-barrel
+- [ ] #2: Fix dag-serializer.ts — replace require('node:fs') with top-level import, remove dead Bun.file() code
+- [ ] #4: Fix composite-grader.ts — pass caseId to customFns lookup
+- [ ] #5-7: Fix adapter deep \_\_schemas/ imports — export BaseAgent/BaseSkill/BaseRule from entity barrels, use barrel imports in adapters
+
+### Phase 2 — Eval Domain + DRY Cleanup
+
+**Goal:** Clean up eval domain structure (barrel, schema placement, DRY violations) and cross-domain DRY issues.
+
+**Depends on:** Phase 1
+
+- [ ] #3: Extract shared buildSuccessorsMap from dag-validator/dag-sorter
+- [ ] #8: Remove eval suite re-exports from eval barrel
+- [ ] #9: Extract makeFailResult factory for eval graders
+- [ ] #10: Collapse createMockAdapter into createMockAdapterWithResponses
+- [ ] #13: Rename duplicate TokenUsageSchema (AdapterTokenUsage vs EvalTokenUsage)
+- [ ] #14-15: Move LlmAdapter and RunEvalOptions from **helpers/ to **schemas/
+
+### Phase 3 — Polish + Naming + Misc
+
+**Goal:** Fix remaining medium/low issues: convergence loop DRY, naming collisions, import style, documentation gaps.
+
+**Depends on:** Phase 2
+
+- [ ] #11: Extract shared convergence state machine for review skills
+- [ ] #12: Extract shared SDK type guard predicate in api-executor
+- [ ] #16: Remove duplicate section header in workflow/index.ts
+- [ ] #17: Rename workflow Adapter to WorkflowAdapter
+- [ ] #18: Extract emitRuleMarkdown to rule-emitter.ts
+- [ ] #19: Remove redundant detectAdapter second loop
+- [ ] #20: Extract shared loadReportFile helper in eval-reporter
+- [ ] #21: Add side-effect import comment to adapters barrel
+- [ ] #22: Fix lu-verifier.eval.ts to use barrel import
+- [ ] #23: Remove .ts extensions from workflow imports
+- [ ] #24: Remove unreachable event types from CANONICAL_EVENTS
 
 ---
 

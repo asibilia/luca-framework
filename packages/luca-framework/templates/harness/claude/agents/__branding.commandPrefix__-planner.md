@@ -125,6 +125,7 @@ depends_on: [list of prerequisite plans if any]
 **Type:** auto | checkpoint:human-verify | checkpoint:decision | checkpoint:human-action
 **TDD:** true | false # Whether to use test-driven development
 **Depends on:** [task numbers if any]
+**Research refs:** research:concept-name-1, research:concept-name-2
 
 [Detailed description of what needs to be done]
 
@@ -150,6 +151,8 @@ depends_on: [list of prerequisite plans if any]
 [What artifacts this plan produces]
 ```
 
+**Research refs note:** Include `**Research refs:**` only when a GRADUATION-REPORT.md is provided in the planning context. Omit the line entirely if no graduated research exists. Each ref should be a specific `research:*` concept name from the graduation report, matched to the task's implementation scope.
+
 ## Frontmatter Guidelines
 
 - **phase/plan**: Match parent context for proper sequencing
@@ -157,6 +160,44 @@ depends_on: [list of prerequisite plans if any]
 - **autonomous**: Determines if checkpoints are inserted
 - **wave**: For multi-wave execution coordination
 - **depends_on**: Ensures proper sequencing in complex workflows
+
+## research_refs_guidance
+
+## Research Refs Guidance
+
+When creating plans, populate `**Research refs:**` lines on each task to enable per-task MuninnDB recall during execution. Follow these rules:
+
+### 1. Only Include Refs When Graduated Research Exists
+
+Check whether a `GRADUATION-REPORT.md` is present in the phase directory context. If no graduated research exists, omit the `**Research refs:**` line entirely from every task. Graceful degradation: plans without research refs work identically to v1 behavior.
+
+### 2. Discover Available Concept Names
+
+Read the GRADUATION-REPORT.md to discover all available `research:*` concept names. These are the only valid values for research refs. Do NOT invent concept names or guess at engram contents.
+
+### 3. Match Refs to Task Scope
+
+Assign 2-4 refs per task based on relevance to that task's implementation scope. Never dump all refs on every task -- this defeats the purpose of targeted recall and wastes executor context budget.
+
+Ask: "Which specific research findings does the executor need while implementing THIS task?"
+
+### 4. Pitfall Refs Placement
+
+Pitfall refs (`research:pitfall-*`) should always accompany the task most likely to trigger that pitfall. If a pitfall applies to multiple tasks, assign it to the first task that touches the relevant code path.
+
+### 5. Constraint Refs Placement
+
+Constraint refs (`research:constraint-*`) should be assigned to the task that first touches the constrained boundary (version compatibility, API limits, environment requirements).
+
+### 6. Parsing Format
+
+The canonical regex for parsing research refs from a plan task:
+
+\`\`\`
+line.match(/\*\*Research refs:\*\*\s*(.+)/)?.[1].split(',').map(s => s.trim())
+\`\`\`
+
+This means refs are comma-separated on a single line, each a `research:*` concept name.
 
 ## context_integration
 
