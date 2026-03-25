@@ -2,8 +2,8 @@
 
 ## Current Position
 
-- **Status:** Executing
-- **Task Complexity:** MODERATE
+- **Status:** Verifying
+- **Task Complexity:** SIMPLE
 - **Oversight:** full-auto
 - **Last Updated:** 2026-03-25
 
@@ -14,15 +14,19 @@
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Small
+- **Token Ceiling:** 50000
+- **Context Budget:** 40%
 
 ## Progress
 
 ```
-(no phases completed yet)
+  Phase 1: complete — Phase 1 IDE Adapters: 3 adapters (Cursor, Windsurf, VS Code) + shared utility + registration. 13 files, 1427 lines. Verification 7/7.
 ```
+
+## Verification
+
+- **Attempts:** 0 / 3
 
 ## Git Context
 
@@ -31,9 +35,9 @@
 
 ## Allowed Events
 
-- `PHASE_COMPLETE`
-- `PHASE_FAILED`
-- `SUSPEND`
+- `VERIFY_PASSED`
+- `VERIFY_FAILED`
+- `VERIFY_HALTED`
 
 ## Previous Milestones
 
@@ -60,4 +64,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T02:35:32.011Z_
+_State generated from machine snapshot at 2026-03-25T02:39:37.355Z_
