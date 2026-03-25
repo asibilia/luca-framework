@@ -43,4 +43,4 @@
   5. v2-phase-6 (orchestrator integration — now targets DAG, blocks on Phase A)
   6. Phase C (eval framework — 1-2 weeks, can overlap Phase B)
   7. Phase E (additional adapters — 1 week each, blocks on Phase B)
-  8. Phase D (Luca Studio — 2-3 weeks, blocks on Phase B + C)
+  8. Phase D (Luca Studio — 160-220 hrs, scope revised; BUILD pages can ship independently of B+C since they read from filesystem. See `docs/brainstorm/observer-studio-rework/`)

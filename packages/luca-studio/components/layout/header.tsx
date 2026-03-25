@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAtom } from "jotai";
-import { Sun, Moon, Database, ChevronsUpDown, Check } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Database,
+  ChevronsUpDown,
+  Check,
+  Hexagon,
+} from "lucide-react";
 
 import { ContextWindowBar } from "~/components/layout/context-window-bar";
 import { MemoryHealthIndicator } from "~/components/layout/memory-health-indicator";
@@ -19,7 +26,6 @@ import {
   DropdownMenuRadioItem,
 } from "~/components/ui/dropdown-menu";
 import { Separator } from "~/components/ui/separator";
-import { SidebarTrigger } from "~/components/ui/sidebar";
 import {
   Tooltip,
   TooltipTrigger,
@@ -29,10 +35,10 @@ import { themeAtom } from "~/stores/theme";
 import { vaultAtom } from "~/stores/vault";
 
 /**
- * Site header matching shadcn dashboard-01 layout.
+ * Site header for the LayoutShell content zone.
  *
- * Uses `--header-height` CSS var, SidebarTrigger + Separator +
- * vault switcher dropdown + theme toggle.
+ * Displays the Luca Studio logo/title, vault switcher dropdown,
+ * context window bar, memory health indicator, and theme toggle.
  */
 export function Header() {
   const [theme, setTheme] = useAtom(themeAtom);
@@ -63,9 +69,10 @@ export function Header() {
   }, [fetchVaults]);
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
+        <Hexagon className="size-5 text-primary" />
+        <span className="text-sm font-semibold">Luca Studio</span>
         <Separator orientation="vertical" className="mx-2 h-4" />
         <div className="flex-1" />
         <ContextWindowBar />

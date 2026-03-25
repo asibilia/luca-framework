@@ -81,7 +81,9 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-25T20:16:15.980Z"
+    "started_at": "2026-03-25T20:16:15.980Z",
+    "current_milestone": "Planning next",
+    "last_transition_at": "2026-03-25T20:21:16.114Z"
   },
   "children": {}
 }

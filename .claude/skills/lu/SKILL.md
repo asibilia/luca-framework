@@ -133,7 +133,7 @@ If already on a feature branch or `--skip-branch` is set, skip this step.
 Unless `--skip-memory` is set, spawn the lu-cognition agent:
 
 ```
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
+Task(agent: "lu-cognition", prompt: "**Recipient:** lu orchestrator (report findings back to this orchestrator)\n\nRun cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
 ```
 
 ### Step 3: Complexity Classification
@@ -152,7 +152,7 @@ If `--force-complex` was passed, use COMPLEX.
 Otherwise, spawn lu-router to classify:
 
 ```
-Task(agent: "lu-router", prompt: "Classify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
+Task(agent: "lu-router", prompt: "**Recipient:** lu orchestrator (report classification back to this orchestrator)\n\nClassify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
 ```
 
 **Note:** For the autonomous pipeline (phase/milestone work), complexity is classified per-phase inside the phase loop (see the phase_loop section, Step 4c), not just once upfront.
@@ -223,7 +223,7 @@ Skill(skill: "progress")
 After the handler skill completes, spawn lu-verifier:
 
 ```
-Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
+Task(agent: "lu-verifier", prompt: "**Recipient:** lu orchestrator (report verification results back to this orchestrator)\n\nVerify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
 ```
 
 ### Step 6: Learning Capture (always runs)
@@ -233,7 +233,7 @@ Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-de
 Always spawn lu-learner (model tier resolved from routing table per complexity):
 
 ```
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*') after extraction. REPO_VAULT=<resolved value from .planning/config.json muninn.vault>. DEFAULT_VAULT='default'.")
+Task(agent: "lu-learner", model: "fast", prompt: "**Recipient:** lu orchestrator (report learnings summary back to this orchestrator)\n\nExtract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: DEFAULT_VAULT, concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*') after extraction. REPO_VAULT=<resolved value from .planning/config.json muninn.vault>. DEFAULT_VAULT='default'.")
 ```
 
 The lu-learner model tier is resolved via `resolveModelForAgent("lu-learner", complexity)`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.
@@ -319,7 +319,7 @@ Unless the session already has cognitive context loaded:
 ```
 Task(
   agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for lu session. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*')."
+  prompt: "**Recipient:** lu orchestrator (report findings back to this orchestrator)\n\nRun cognitive pre-flight for lu session. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*')."
 )
 ```
 
@@ -901,7 +901,7 @@ Spawn lu-router to classify:
 ```
 Task(
   agent: "lu-router",
-  prompt: "Classify complexity for Phase {NN}: {phase_goal}. Consider file count, scope, and risk. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL."
+  prompt: "**Recipient:** lu orchestrator (report classification back to this orchestrator)\n\nClassify complexity for Phase {NN}: {phase_goal}. Consider file count, scope, and risk. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL."
 )
 ```
 
@@ -1145,7 +1145,7 @@ For each phase (in parallel, using Task tool):
   Task(
     team_name: "lu-plan-L{N}-{timestamp}",
     name: "planner-{NN}",
-    subagent_type: "general-purpose",
+    subagent_type: "lu-planner",
     prompt: """
     You are a Luca phase planner. Create a PLAN.md for this phase.
 
@@ -1218,7 +1218,7 @@ For each phase with an approved plan:
   Task(
     team_name: "lu-exec-L{N}-{timestamp}",
     name: "executor-{NN}",
-    subagent_type: "general-purpose",
+    subagent_type: "lu-executor",
     isolation: "worktree",
     prompt: """
     You are a lu executor. Implement the approved plan for Phase {NN}.

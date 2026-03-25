@@ -96,10 +96,52 @@ The lu-discuss-researcher model tier is resolved via `resolveModelForAgent("lu-d
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
 6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via `muninn_recall_tree(vault: REPO_VAULT, id: "brain:project-identity")`
-7a. **Spawn lu-discuss-researcher per question** — For each gray area:
-    - Formulate a focused question from the gray area topic
-    - Spawn `lu-discuss-researcher` via Task() with: question, phase context, tech stack from MuninnDB
-    - Collect the `<research_result>` response with recommendation, confidence, and sources
+7a. **Spawn ALL researchers in PARALLEL (same message, multiple Task calls)** — For each gray area question, spawn a researcher:
+
+    ```python
+    # Spawn ALL researchers in PARALLEL (same message, multiple Task calls)
+    For each gray_area question:
+      Task(
+        prompt="""
+    <research_context>
+
+    **Recipient:** phase-discuss orchestrator (report findings back to this orchestrator)
+
+    **Phase:** {phase_number} - {phase_name}
+    **Question:** {gray_area_question}
+    **Tech stack:** {tech_stack_from_muninn}
+    **Project context:** {project_identity_summary}
+
+    </research_context>
+
+    <analysis_targets>
+    - Research this specific question for the phase context
+    - Consider the project's tech stack when recommending solutions
+    - Look for community best practices and common patterns
+    </analysis_targets>
+
+    <output_requirements>
+    Return your findings in this format:
+    <research_result>
+    recommendation: [Your recommendation]
+    confidence: HIGH | MEDIUM | LOW
+    researchable: true | false
+    sources: [List of sources/references]
+    reasoning: [Why this recommendation]
+    </research_result>
+    </output_requirements>
+
+    Research this question and provide a recommendation.
+    """,
+        subagent_type="lu-discuss-researcher",
+        model="{researcher_model}",
+        description="Research: {gray_area_topic}"
+      )
+    ```
+
+    **Do NOT proceed until ALL Tasks return.**
+
+    - Collect the `<research_result>` response from each researcher with recommendation, confidence, and sources
     - If `researchable: false`: flag for user input (even in auto mode)
 8a. **Present research summary** — Show consolidated results:
     ```

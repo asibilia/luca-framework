@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 
 import type { Metadata } from "next";
 
-import { Sidebar } from "~/components/layout/sidebar";
+import { LayoutShell } from "~/components/layout/layout-shell";
 import { Header } from "~/components/layout/header";
-import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
+import { NavContent } from "~/components/layout/nav-content";
 
 import { Providers } from "./providers";
 
@@ -33,26 +33,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }}
         />
       </head>
-      <body className="flex h-screen overflow-hidden">
+      <body className="overflow-hidden">
         <Providers>
-          <SidebarProvider
-            style={
-              {
-                "--sidebar-width": "calc(var(--spacing) * 72)",
-                "--header-height": "calc(var(--spacing) * 12)",
-              } as React.CSSProperties
-            }
-          >
-            <Sidebar variant="inset" />
-            <SidebarInset>
-              <Header />
-              <div className="flex flex-1 flex-col overflow-auto">
-                <div className="@container/main flex flex-1 flex-col gap-2">
-                  {children}
-                </div>
+          <LayoutShell navChildren={<NavContent />}>
+            <Header />
+            <div className="flex flex-1 flex-col overflow-auto">
+              <div className="@container/main flex flex-1 flex-col gap-2">
+                {children}
               </div>
-            </SidebarInset>
-          </SidebarProvider>
+            </div>
+          </LayoutShell>
         </Providers>
       </body>
     </html>

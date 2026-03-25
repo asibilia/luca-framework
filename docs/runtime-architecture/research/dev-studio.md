@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-03-25):** This research recommended a standalone Bun.serve() + vanilla HTML/CSS approach. A subsequent brainstorm decided to absorb Studio into the existing Next.js 15 luca-observer app instead, using React + shadcn + Tailwind + React Flow + SSE (no WebSocket) + CodeMirror 6 + chokidar v5. See `docs/brainstorm/observer-studio-rework/` for the current plan. This document is preserved for reference value (technology evaluations, Elk.js comparison, Evil Martians patterns).
+
 # Research: Luca Studio -- Developer Workflow Visualization Tooling
 
 **Domain:** Developer studio / workflow visualization for agentic development tooling

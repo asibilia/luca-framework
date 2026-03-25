@@ -1,5 +1,7 @@
 # Runtime Architecture Evolution
 
+> **Note (2026-03-25):** Phase D (Luca Studio) planning has moved to `docs/brainstorm/observer-studio-rework/`. These docs remain authoritative for Phases A (DAG engine), B (adapters), C (eval), and E (additional adapters) only.
+
 Documentation for Luca's architectural evolution from a prompt compiler to a typed workflow engine with pluggable execution adapters.
 
 ## Background

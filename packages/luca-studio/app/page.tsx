@@ -19,13 +19,13 @@ import { useDashboard } from "~/hooks/use-dashboard";
 import { relativeTime } from "~/lib/format";
 
 /**
- * Dashboard overview page.
+ * Home overview page (formerly Dashboard).
  *
  * Aggregates data from MuninnDB, todos, and knowledge graph into
  * a single overview with stat cards, recent memories, backlog,
  * and quick navigation links.
  */
-export default function DashboardPage() {
+export default function HomePage() {
   const { stats, recentEngrams, configured, loading, lastUpdated, refresh } =
     useDashboard();
 
@@ -35,7 +35,7 @@ export default function DashboardPage() {
 
   return (
     <PageContainer
-      title="Dashboard"
+      title="Home"
       subtitle="Luca workflow observability"
       actions={
         <div className="flex items-center gap-3">
