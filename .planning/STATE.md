@@ -11,12 +11,13 @@
 ## Session Identity
 
 - **Session ID:** 8ad59fcb-353a-407c-ac10-438667d59e0b
+- **GitHub Issue:** #107
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Small
+- **Token Ceiling:** 50000
+- **Context Budget:** 40%
 
 ## Progress
 
@@ -26,6 +27,7 @@
 
 ## Git Context
 
+- **Branch:** 107--v8.1.0-studio-polish-prompt-quality
 - **Base Branch:** main
 
 ## Allowed Events
@@ -57,4 +59,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T21:53:58.607Z_
+_State generated from machine snapshot at 2026-03-25T22:02:51.550Z_
