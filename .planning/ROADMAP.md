@@ -94,12 +94,12 @@
 **Depends on:** Phase 8
 **Verification:** Full
 
-- [ ] SEC-001: Path traversal — add name allowlist regex `/^[a-z0-9][a-z0-9-]*$/` in entity-route-helpers.ts
-- [ ] SEC-002: TS injection — add Zod schema for PUT body (rawConfigText + metadata) with size cap
-- [ ] SEC-003: If-Match enforcement — make mandatory (428 on absence) for all entity PUT routes
-- [ ] SEC-006: Harness command injection — constrain command field to z.enum() of safe commands
-- [ ] SEC-007: Reflected input — remove user input from sidecar error messages
-- [ ] SEC-008: Env root validation — verify .planning/ exists when using LUCA_PROJECT_DIR
+- [x] SEC-001: Path traversal — add name allowlist regex `/^[a-z0-9][a-z0-9-]*$/` in entity-route-helpers.ts
+- [x] SEC-002: TS injection — add Zod schema for PUT body (rawConfigText + metadata) with size cap
+- [x] SEC-003: If-Match enforcement — make mandatory (428 on absence) for all entity PUT routes
+- [x] SEC-006: Harness command injection — constrain command field to z.enum() of safe commands
+- [x] SEC-007: Reflected input — remove user input from sidecar error messages
+- [x] SEC-008: Env root validation — verify .planning/ exists when using LUCA_PROJECT_DIR
 
 ### Phase 10: Audit Closure — Runtime Compatibility + Dead Code
 
