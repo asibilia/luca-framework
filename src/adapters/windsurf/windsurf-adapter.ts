@@ -14,16 +14,16 @@
  * @module
  */
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-import orderBy from "lodash/orderBy";
+import { join } from "node:path";
 
 import type { Adapter, EmitResult } from "../__schemas/adapter.schemas";
 import type { BaseAgent } from "~/agents";
 import type { BaseSkill } from "~/skills";
 import type { BaseRule } from "~/rules";
+import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { enforceCharacterBudget } from "../__helpers/character-budget";
+import { sectionsToMarkdown } from "../__helpers/format-sections";
+import { emitCompiledOutputs } from "../__helpers/adapter-emit";
 
 /**
  * Format version for the Windsurf adapter output.
@@ -75,63 +75,6 @@ function mapTrigger(frontmatter: {
     return "glob";
   }
   return "model_decision";
-}
-
-/**
- * Build the Windsurf workspace rule frontmatter block.
- *
- * Format:
- * ```yaml
- * ---
- * trigger: always_on | glob | model_decision
- * description: {description}
- * globs: {glob patterns, only if trigger is "glob"}
- * ---
- * ```
- *
- * @param trigger - The resolved Windsurf trigger value
- * @param description - The rule description
- * @param globs - Optional glob patterns (included only when trigger is "glob")
- * @returns The YAML frontmatter string including delimiters
- */
-function buildWindsurfFrontmatter(
-  trigger: WindsurfTrigger,
-  description: string,
-  globs?: string[],
-): string {
-  const lines: string[] = ["---"];
-  lines.push(`trigger: ${trigger}`);
-  lines.push(`description: ${description}`);
-  if (trigger === "glob" && globs && globs.length > 0) {
-    lines.push(`globs: ${globs.join(", ")}`);
-  }
-  lines.push("---");
-  return lines.join("\n") + "\n";
-}
-
-/**
- * Compile a Luca rule's sections into a body string.
- *
- * Sections are ordered by their `order` field (ascending, defaulting to 0),
- * then concatenated with `## Title` headings for sections that have titles.
- *
- * CRITICAL: This reads directly from rule.config.sections, NOT toClaudeFormat().
- *
- * @param sections - The rule's config sections
- * @returns The compiled body string
- */
-function compileSectionsToBody(
-  sections: ReadonlyArray<{ title: string; content: string; order?: number }>,
-): string {
-  return orderBy(sections, [(s) => s.order ?? 0], ["asc"])
-    .map((section) => {
-      if (section.title) {
-        return `## ${section.title}\n\n${section.content}`;
-      }
-      return section.content;
-    })
-    .join("\n\n")
-    .trim();
 }
 
 /**
@@ -203,7 +146,7 @@ export function createWindsurfAdapter(): Adapter {
       const { frontmatter, sections } = skill.config;
 
       // Build workflow body from sections
-      const sectionsBody = compileSectionsToBody(sections);
+      const sectionsBody = sectionsToMarkdown(sections);
 
       // Assemble Windsurf Workflow format
       const workflow = [
@@ -245,18 +188,26 @@ export function createWindsurfAdapter(): Adapter {
       // Map Luca rule properties to Windsurf trigger
       const trigger = mapTrigger(frontmatter);
 
-      // Build Windsurf frontmatter
-      const windsurfFrontmatter = buildWindsurfFrontmatter(
+      // Build frontmatter fields object
+      const fields: Record<string, unknown> = {
         trigger,
-        frontmatter.description,
-        frontmatter.globs,
-      );
+        description: frontmatter.description,
+      };
+      if (
+        trigger === "glob" &&
+        frontmatter.globs &&
+        frontmatter.globs.length > 0
+      ) {
+        fields.globs = frontmatter.globs.join(", ");
+      }
+
+      const windsurfFrontmatter = formatFrontmatter(fields);
 
       // Compile sections to body (directly from config, NOT toClaudeFormat)
-      const body = compileSectionsToBody(sections);
+      const body = sectionsToMarkdown(sections);
 
       // Assemble full rule content
-      const compiled = windsurfFrontmatter + "\n" + body + "\n";
+      const compiled = windsurfFrontmatter + "\n\n" + body + "\n";
 
       // Enforce character budget
       const { result } = enforceCharacterBudget(
@@ -272,32 +223,14 @@ export function createWindsurfAdapter(): Adapter {
     /**
      * Write compiled artifacts to disk.
      *
-     * Iterates all entries accumulated by compile*() calls, writes each
-     * to the corresponding path under `outputDir`, and returns a populated
-     * EmitResult. Clears the buffer after emission.
+     * Delegates to the shared emit orchestration helper.
+     * Clears the buffer after emission.
      *
      * @param outputDir - Root directory for output artifacts
      * @returns Emission result with file counts, paths, and warnings
      */
     emit: async (outputDir: string): Promise<EmitResult> => {
-      const filesPaths: string[] = [];
-      const warnings: string[] = [];
-
-      for (const [relativePath, content] of compiledOutputs) {
-        const absolutePath = join(outputDir, relativePath);
-        await mkdir(dirname(absolutePath), { recursive: true });
-        await Bun.write(absolutePath, content);
-        filesPaths.push(absolutePath);
-      }
-
-      const result: EmitResult = {
-        filesWritten: filesPaths.length,
-        filesPaths,
-        warnings,
-      };
-
-      compiledOutputs.clear();
-      return result;
+      return emitCompiledOutputs(compiledOutputs, outputDir);
     },
 
     /**

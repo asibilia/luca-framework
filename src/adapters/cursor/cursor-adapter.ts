@@ -12,37 +12,15 @@
  * @module
  */
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-import orderBy from "lodash/orderBy";
+import { join } from "node:path";
 
 import type { Adapter, EmitResult } from "../__schemas/adapter.schemas";
 import type { BaseAgent } from "~/agents";
 import type { BaseSkill } from "~/skills";
 import type { BaseRule } from "~/rules";
-import type { Section } from "~/shared/__helpers/format";
-
-/**
- * Concatenate entity sections into a markdown body, ordered by `section.order`.
- *
- * Each section renders as `## {title}\n\n{content}`. Sections without a title
- * render as bare content blocks.
- *
- * @param sections - Array of sections to concatenate
- * @returns Concatenated markdown string
- */
-function sectionsToMarkdown(sections: Section[]): string {
-  return orderBy(sections, [(s) => s.order ?? 0], ["asc"])
-    .map((section) => {
-      if (section.title) {
-        return `## ${section.title}\n\n${section.content}`;
-      }
-      return section.content;
-    })
-    .join("\n\n")
-    .trim();
-}
+import { formatFrontmatter } from "~/shared/__helpers/utils";
+import { sectionsToMarkdown } from "../__helpers/format-sections";
+import { emitCompiledOutputs } from "../__helpers/adapter-emit";
 
 /**
  * Compile a rule to Cursor .mdc format with YAML frontmatter.
@@ -62,14 +40,12 @@ function sectionsToMarkdown(sections: Section[]): string {
 function compileCursorRule(rule: BaseRule): string {
   const { description, globs, alwaysApply } = rule.config.frontmatter;
 
-  // Build frontmatter fields
-  const frontmatterLines: string[] = ["---"];
-
-  frontmatterLines.push(`description: ${description}`);
+  // Build frontmatter fields object
+  const fields: Record<string, unknown> = { description };
 
   const hasGlobs = globs !== undefined && globs.length > 0;
   if (hasGlobs) {
-    frontmatterLines.push(`globs: ${globs.join(", ")}`);
+    fields.globs = globs.join(", ");
   }
 
   // Determine alwaysApply value:
@@ -84,11 +60,9 @@ function compileCursorRule(rule: BaseRule): string {
   } else {
     alwaysApplyValue = false;
   }
-  frontmatterLines.push(`alwaysApply: ${alwaysApplyValue}`);
+  fields.alwaysApply = alwaysApplyValue;
 
-  frontmatterLines.push("---");
-
-  const frontmatter = frontmatterLines.join("\n");
+  const frontmatter = formatFrontmatter(fields);
   const body = sectionsToMarkdown(rule.config.sections);
 
   return `${frontmatter}\n\n${body}`;
@@ -176,24 +150,7 @@ export function createCursorAdapter(): Adapter {
     },
 
     emit: async (outputDir: string): Promise<EmitResult> => {
-      const filesPaths: string[] = [];
-      const warnings: string[] = [];
-
-      for (const [relativePath, content] of compiledOutputs) {
-        const absolutePath = join(outputDir, relativePath);
-        await mkdir(dirname(absolutePath), { recursive: true });
-        await Bun.write(absolutePath, content);
-        filesPaths.push(absolutePath);
-      }
-
-      const result: EmitResult = {
-        filesWritten: filesPaths.length,
-        filesPaths,
-        warnings,
-      };
-
-      compiledOutputs.clear();
-      return result;
+      return emitCompiledOutputs(compiledOutputs, outputDir);
     },
 
     detect: (projectRoot: string): boolean => {

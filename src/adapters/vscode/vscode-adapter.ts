@@ -12,18 +12,16 @@
  * @module
  */
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-import orderBy from "lodash/orderBy";
+import { join } from "node:path";
 
 import type { Adapter, EmitResult } from "../__schemas/adapter.schemas";
 import type { BaseAgent } from "~/agents";
 import type { BaseSkill } from "~/skills";
 import type { BaseRule } from "~/rules";
-import type { Section } from "~/shared/__helpers/format";
 import { formatFrontmatter } from "~/shared/__helpers/utils";
 import { enforceCharacterBudget } from "../__helpers/character-budget";
+import { sectionsToMarkdown } from "../__helpers/format-sections";
+import { emitCompiledOutputs } from "../__helpers/adapter-emit";
 
 /**
  * Maximum character count for a VS Code agent profile.
@@ -32,31 +30,6 @@ import { enforceCharacterBudget } from "../__helpers/character-budget";
  * Content exceeding this limit is truncated at section boundaries with a warning.
  */
 const VSCODE_AGENT_CHAR_LIMIT = 30_000;
-
-/**
- * Concatenate entity sections into a markdown body string.
- *
- * Sections are ordered by their `order` field (ascending, nulls treated as 0),
- * then rendered as `## {title}\n\n{content}` blocks. Sections without a title
- * emit content only (no heading).
- *
- * CRITICAL: This function reads from `config.sections` directly, never from
- * `toClaudeFormat()`. See PREMORTEM.md Risk #1.
- *
- * @param sections - Array of Section objects to concatenate
- * @returns Markdown body string
- */
-function concatenateSections(sections: Section[]): string {
-  return orderBy(sections, [(s) => s.order ?? 0], ["asc"])
-    .map((section) => {
-      if (section.title) {
-        return `## ${section.title}\n\n${section.content}`;
-      }
-      return section.content;
-    })
-    .join("\n\n")
-    .trim();
-}
 
 /**
  * Compile an agent definition to VS Code `.agent.md` format.
@@ -97,7 +70,7 @@ function compileVscodeAgent(agent: BaseAgent): {
   }
 
   const yamlFrontmatter = formatFrontmatter(vscodeFields);
-  const body = concatenateSections(sections);
+  const body = sectionsToMarkdown(sections);
   const fullContent = `${yamlFrontmatter}\n\n${body}`;
 
   // Enforce 30K character budget
@@ -132,7 +105,7 @@ function compileVscodeSkill(skill: BaseSkill): string {
   };
 
   const yamlFrontmatter = formatFrontmatter(vscodeFields);
-  const body = concatenateSections(sections);
+  const body = sectionsToMarkdown(sections);
 
   return `${yamlFrontmatter}\n\n${body}`;
 }
@@ -169,7 +142,7 @@ function compileVscodeRule(rule: BaseRule): {
     };
   }
 
-  const body = concatenateSections(sections);
+  const body = sectionsToMarkdown(sections);
   const content = `## ${rule.name}\n\n${body}`;
 
   return { content, warning: null };
@@ -248,46 +221,43 @@ export function createVscodeAdapter(): Adapter {
     /**
      * Write compiled artifacts to disk.
      *
-     * Writes agent and skill files directly from the buffer. Aggregates all
-     * `copilot-instructions/*` entries into a single `copilot-instructions.md`
-     * file separated by `\n\n---\n\n`. Clears the buffer after emission.
+     * Delegates to the shared emit orchestration helper with a preEmit hook
+     * that aggregates all `copilot-instructions/*` entries into a single
+     * `copilot-instructions.md` file separated by `\n\n---\n\n`.
+     * Clears the buffer and ruleWarnings after emission.
      *
      * @param outputDir - Root directory for output artifacts
      * @returns Emission result with file counts, paths, and warnings
      */
     emit: async (outputDir: string): Promise<EmitResult> => {
-      const filesPaths: string[] = [];
-      const ruleSections: string[] = [];
+      const result = await emitCompiledOutputs(compiledOutputs, outputDir, {
+        existingWarnings: [...ruleWarnings],
+        preEmit: (entries) => {
+          const ruleSections: string[] = [];
+          const filteredFiles = new Map<string, string>();
 
-      // Write agents and skills; collect rule sections for aggregation
-      for (const [relativePath, content] of compiledOutputs) {
-        if (relativePath.startsWith("copilot-instructions/")) {
-          ruleSections.push(content);
-          continue;
-        }
+          // Separate copilot-instructions entries from other files
+          for (const [relativePath, content] of entries) {
+            if (relativePath.startsWith("copilot-instructions/")) {
+              ruleSections.push(content);
+            } else {
+              filteredFiles.set(relativePath, content);
+            }
+          }
 
-        const absolutePath = join(outputDir, relativePath);
-        await mkdir(dirname(absolutePath), { recursive: true });
-        await Bun.write(absolutePath, content);
-        filesPaths.push(absolutePath);
-      }
+          // Aggregate rules into a single copilot-instructions.md
+          const extraFiles: Array<{ path: string; content: string }> = [];
+          if (ruleSections.length > 0) {
+            extraFiles.push({
+              path: "copilot-instructions.md",
+              content: ruleSections.join("\n\n---\n\n"),
+            });
+          }
 
-      // Aggregate rules into single copilot-instructions.md
-      if (ruleSections.length > 0) {
-        const aggregated = ruleSections.join("\n\n---\n\n");
-        const instructionsPath = join(outputDir, "copilot-instructions.md");
-        await mkdir(dirname(instructionsPath), { recursive: true });
-        await Bun.write(instructionsPath, aggregated);
-        filesPaths.push(instructionsPath);
-      }
+          return { files: filteredFiles, extraFiles };
+        },
+      });
 
-      const result: EmitResult = {
-        filesWritten: filesPaths.length,
-        filesPaths,
-        warnings: [...ruleWarnings],
-      };
-
-      compiledOutputs.clear();
       ruleWarnings.length = 0;
       return result;
     },
