@@ -12,7 +12,8 @@
  * @module
  */
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import orderBy from "lodash/orderBy";
 
@@ -141,6 +142,9 @@ function compileCursorAgent(agent: BaseAgent): string {
  * ```
  */
 export function createCursorAdapter(): Adapter {
+  /** Internal buffer: relative path -> compiled content */
+  const compiledOutputs = new Map<string, string>();
+
   return {
     config: {
       name: "cursor",
@@ -160,17 +164,36 @@ export function createCursorAdapter(): Adapter {
     },
 
     compileSkill: (skill: BaseSkill): string => {
-      return compileCursorSkill(skill);
+      const compiled = compileCursorSkill(skill);
+      compiledOutputs.set(`skills/${skill.name}/SKILL.md`, compiled);
+      return compiled;
     },
 
     compileRule: (rule: BaseRule): string => {
-      return compileCursorRule(rule);
+      const compiled = compileCursorRule(rule);
+      compiledOutputs.set(`rules/${rule.name}.mdc`, compiled);
+      return compiled;
     },
 
-    emit: async (_outputDir: string): Promise<EmitResult> => {
-      // Stub: artifact emission to .cursor/ directory.
-      // Will be wired when the build pipeline becomes adapter-aware.
-      return { filesWritten: 0, filesPaths: [], warnings: [] };
+    emit: async (outputDir: string): Promise<EmitResult> => {
+      const filesPaths: string[] = [];
+      const warnings: string[] = [];
+
+      for (const [relativePath, content] of compiledOutputs) {
+        const absolutePath = join(outputDir, relativePath);
+        await mkdir(dirname(absolutePath), { recursive: true });
+        await Bun.write(absolutePath, content);
+        filesPaths.push(absolutePath);
+      }
+
+      const result: EmitResult = {
+        filesWritten: filesPaths.length,
+        filesPaths,
+        warnings,
+      };
+
+      compiledOutputs.clear();
+      return result;
     },
 
     detect: (projectRoot: string): boolean => {
