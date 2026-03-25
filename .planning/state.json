@@ -1,13 +1,10 @@
 {
   "status": "active",
-  "value": "routing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "b10a7162-6057-4d06-8d81-a7b60db954e5",
-    "github_issue": 101,
-    "branch": "101--v7-ide-adapter-layer",
+    "session_id": "de3ac907-793f-4c93-b790-00772e92321c",
     "base_branch": "main",
-    "current_milestone": "v7.1.0 — Multi-IDE Adapter Completion",
     "current_plan_ids": [],
     "current_wave_count": 0,
     "complexity": "TRIVIAL",
@@ -80,12 +77,11 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-25T11:12:38.197Z",
-    "last_transition_at": "2026-03-25T11:44:16.569Z"
+    "started_at": "2026-03-25T11:56:06.039Z"
   },
   "children": {}
 }

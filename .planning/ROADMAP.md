@@ -2,45 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v7.1.0 — Multi-IDE Adapter Completion
-
----
-
-## v7.1.0 — Multi-IDE Adapter Completion
-
-Continues v7.0.0 foundation. All 3 adapters (Cursor, Windsurf, VS Code) already exist from v7.0.0 with compile methods, hook maps, and compatibility validators. Remaining work: wire emit() stubs, CLI integration, and prompt quality improvements.
-
-**Branch:** 101--v7-ide-adapter-layer
-
-### Phase 1: Adapter Emit Wiring (E01+E02+E03)
-
-**Goal:** Complete emit() implementation for all 3 IDE adapters so compiled output is written to disk (.cursor/, .windsurf/, .github/).
-
-**Depends on:** None (B01/B02 prerequisites completed in v6.0.0, adapter implementations completed in v7.0.0)
-
-- [x] Plan 1 — Wire emit() for Cursor, Windsurf, and VS Code adapters
-
-**Todos absorbed:** runtime-e01, runtime-e02, runtime-e03 (rescoped to emit() wiring only)
-
-### Phase 2: Compatibility Report CLI (E04)
-
-**Goal:** Wire validate() into emit results and add CLI integration (stdout summary + dist/compatibility-report.json).
-
-**Depends on:** Phase 1 (validators need wired emit output to inspect)
-
-- [x] Plan 1 — Compatibility report CLI integration
-
-**Todos absorbed:** runtime-e04 (rescoped — schemas + validators already exist)
-
-### Phase 3: Agent Team Prompt Audit Fixes
-
-**Goal:** Implement 8 prioritized prompt quality improvements across 5 skill files (XML blocks, recipient declarations, output formats, team size caps).
-
-**Depends on:** None (architecturally independent from adapter work)
-
-- [x] Plan 1 — Prompt audit fixes across phase-execute, phase-research, phase-discuss, lu, pr-address
-
-**Todos absorbed:** agent-team-prompt-audit-fixes
+**Current Milestone:** Planning next
 
 ---
 
@@ -256,6 +218,7 @@ Continues v7.0.0 foundation. All 3 adapters (Cursor, Windsurf, VS Code) already 
 - **v6.0.0** — Runtime Foundation & Adapter Layer: 10 phases, 129 commits, 205 files changed (+25,371 LOC) ([View Archive](milestones/v6.0.0-ROADMAP.md))
 - **v6.1.0** — Audit Gap Closure: 3 phases, 20 commits, 30 files changed ([View Archive](milestones/v6.1.0-ROADMAP.md))
 - **v7.0.0** — IDE Adapter Layer: 2 phases, 6 plans, 27 commits, 15 files changed (+2,378 LOC) ([View Archive](milestones/v7.0.0-ROADMAP.md))
+- **v7.1.0** — Multi-IDE Adapter Completion: 3 phases, 3 plans, 10 commits, 22 files changed (+1,780 LOC) ([View Archive](milestones/v7.1.0-ROADMAP.md))
 
 ---
 

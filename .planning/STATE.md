@@ -2,22 +2,20 @@
 
 ## Current Position
 
-- **Current Milestone:** v7.1.0 — Multi-IDE Adapter Completion
-- **Status:** Routing
+- **Status:** Idle
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
-- **Last Updated:** 2026-03-25
+- **Last Updated:** unknown
 
 ## Session Identity
 
-- **Session ID:** b10a7162-6057-4d06-8d81-a7b60db954e5
-- **GitHub Issue:** #101
+- **Session ID:** de3ac907-793f-4c93-b790-00772e92321c
 
 ## Appetite
 
-- **Level:** Small
-- **Token Ceiling:** 50000
-- **Context Budget:** 40%
+- **Level:** Medium
+- **Token Ceiling:** 100000
+- **Context Budget:** 50%
 
 ## Progress
 
@@ -27,12 +25,11 @@
 
 ## Git Context
 
-- **Branch:** 101--v7-ide-adapter-layer
 - **Base Branch:** main
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `START`
 
 ## Previous Milestones
 
@@ -55,8 +52,8 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 ## Session Continuity
 
 - **Session Started:** 2026-03-25
-- **Last Transition:** 2026-03-25
+- **Last Transition:** unknown
 
 ---
 
-_State generated from machine snapshot at 2026-03-25T11:54:34.769Z_
+_State generated from machine snapshot at 2026-03-25T11:58:04.570Z_
