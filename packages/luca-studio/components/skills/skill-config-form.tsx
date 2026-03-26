@@ -4,7 +4,9 @@ import { useCallback, useMemo } from "react";
 
 import { useAtom, useSetAtom } from "jotai";
 
+import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
+import { cn } from "~/lib/utils";
 import { markDirtyAtom } from "~/stores/dirty-tracking";
 import { skillDraftAtom } from "~/stores/entity-atoms";
 
@@ -19,6 +21,8 @@ type SkillConfigFormProps = {
   name: string;
   /** Full skill detail from the API. */
   detail: EntityDetail;
+  /** Whether the form is in edit mode. When false, fields render as read-only text. */
+  isEditing?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -40,7 +44,11 @@ type SkillConfigFormProps = {
  * <SkillConfigForm name="git-commit" detail={skillDetail} />
  * ```
  */
-export function SkillConfigForm({ name, detail }: SkillConfigFormProps) {
+export function SkillConfigForm({
+  name,
+  detail,
+  isEditing,
+}: SkillConfigFormProps) {
   const [draft, setDraft] = useAtom(skillDraftAtom(name));
   const markDirty = useSetAtom(markDirtyAtom);
   const entityKey = `skill:${name}`;
@@ -97,14 +105,20 @@ export function SkillConfigForm({ name, detail }: SkillConfigFormProps) {
           >
             Description
           </label>
-          <textarea
-            id={`${name}-description`}
-            value={currentValues.description}
-            onChange={(e) => updateField("description", e.target.value)}
-            rows={3}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Skill description..."
-          />
+          {isEditing ? (
+            <textarea
+              id={`${name}-description`}
+              value={currentValues.description}
+              onChange={(e) => updateField("description", e.target.value)}
+              rows={3}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Skill description..."
+            />
+          ) : (
+            <p className="text-sm text-foreground">
+              {currentValues.description || "No description"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -118,21 +132,32 @@ export function SkillConfigForm({ name, detail }: SkillConfigFormProps) {
           <label className="text-xs font-medium text-muted-foreground">
             Enabled
           </label>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={currentValues.enabled}
-            onClick={() => updateField("enabled", !currentValues.enabled)}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors ${
-              currentValues.enabled ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform ${
-                currentValues.enabled ? "translate-x-4" : "translate-x-0"
-              }`}
-            />
-          </button>
+          {isEditing ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={currentValues.enabled}
+              onClick={() => updateField("enabled", !currentValues.enabled)}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
+                currentValues.enabled ? "bg-primary" : "bg-muted",
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform",
+                  currentValues.enabled ? "translate-x-4" : "translate-x-0",
+                )}
+              />
+            </button>
+          ) : (
+            <Badge
+              variant={currentValues.enabled ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {currentValues.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          )}
         </div>
       </div>
 

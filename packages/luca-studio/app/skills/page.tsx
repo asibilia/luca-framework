@@ -6,10 +6,13 @@ import { useSetAtom } from "jotai";
 import { Hexagon, Loader2 } from "lucide-react";
 
 import { EntityTree } from "~/components/editor/entity-tree";
+import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { ResizableSplit } from "~/components/layout/resizable-split";
 import { SkillTabContainer } from "~/components/skills/skill-tab-container";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useDirtyTitle } from "~/hooks/use-dirty-title";
+import { useEditMode } from "~/hooks/use-edit-mode";
 import { useSkillDetail } from "~/hooks/use-skill-detail";
 import { useSkillList } from "~/hooks/use-skill-list";
 import { useSkillSave } from "~/hooks/use-skill-save";
@@ -73,13 +76,22 @@ export default function SkillsPage() {
   // Save/discard integration
   const { save, discard } = useSkillSave(selectedName, etag);
 
+  // Edit mode for the selected entity
+  const entityKey = selectedName ? `skill:${selectedName}` : "";
+  const editMode = useEditMode(entityKey, discard);
+
+  // Browser tab title signal
+  useDirtyTitle("skill:");
+
   const handleSave = useCallback(async () => {
     await save();
-  }, [save]);
+    editMode.forceExit();
+  }, [save, editMode]);
 
   const handleDiscard = useCallback(() => {
     discard();
-  }, [discard]);
+    editMode.forceExit();
+  }, [discard, editMode]);
 
   // Cmd+S keyboard shortcut
   useEffect(() => {
@@ -131,16 +143,32 @@ export default function SkillsPage() {
           ) : detailLoading ? (
             <LoadingState />
           ) : detail ? (
-            <SkillTabContainer name={selectedName} detail={detail} />
+            <SkillTabContainer
+              name={selectedName}
+              detail={detail}
+              isEditing={editMode.isEditing}
+              onEnterEdit={editMode.enterEdit}
+              onExitEdit={editMode.exitEdit}
+            />
           ) : (
             <EmptyState />
           )}
 
-          {/* Save bar scoped to skill entities */}
-          <SaveBar
-            onSave={handleSave}
-            onDiscard={handleDiscard}
-            entityFilter="skill:"
+          {/* Save bar scoped to skill entities -- only visible in edit mode */}
+          {editMode.isEditing && (
+            <SaveBar
+              onSave={handleSave}
+              onDiscard={handleDiscard}
+              entityFilter="skill:"
+            />
+          )}
+
+          {/* Navigation guard for unsaved changes */}
+          <NavigationGuard
+            when={editMode.isEditing && editMode.isDirty}
+            showDialog={editMode.showExitConfirm}
+            onConfirm={editMode.confirmExit}
+            onCancel={editMode.cancelExit}
           />
         </div>
       </ResizableSplit>
