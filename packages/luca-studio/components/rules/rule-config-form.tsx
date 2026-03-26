@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 
 import { useAtom, useSetAtom } from "jotai";
 
+import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
 import { markDirtyAtom } from "~/stores/dirty-tracking";
@@ -20,6 +21,8 @@ type RuleConfigFormProps = {
   name: string;
   /** Full rule detail from the API. */
   detail: EntityDetail;
+  /** Whether the form is in edit mode. When false, fields render as read-only text. */
+  isEditing?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -42,7 +45,11 @@ type RuleConfigFormProps = {
  * <RuleConfigForm name="no-classes" detail={ruleDetail} />
  * ```
  */
-export function RuleConfigForm({ name, detail }: RuleConfigFormProps) {
+export function RuleConfigForm({
+  name,
+  detail,
+  isEditing,
+}: RuleConfigFormProps) {
   const [draft, setDraft] = useAtom(ruleDraftAtom(name));
   const markDirty = useSetAtom(markDirtyAtom);
   const entityKey = `rule:${name}`;
@@ -104,14 +111,20 @@ export function RuleConfigForm({ name, detail }: RuleConfigFormProps) {
           >
             Description
           </label>
-          <textarea
-            id={`${name}-description`}
-            value={currentValues.description}
-            onChange={(e) => updateField("description", e.target.value)}
-            rows={3}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Rule description..."
-          />
+          {isEditing ? (
+            <textarea
+              id={`${name}-description`}
+              value={currentValues.description}
+              onChange={(e) => updateField("description", e.target.value)}
+              rows={3}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Rule description..."
+            />
+          ) : (
+            <p className="text-sm text-foreground">
+              {currentValues.description || "No description"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -128,16 +141,24 @@ export function RuleConfigForm({ name, detail }: RuleConfigFormProps) {
           >
             Glob Patterns
           </label>
-          <Input
-            id={`${name}-globs`}
-            value={currentValues.globs}
-            onChange={(e) => updateField("globs", e.target.value)}
-            className="h-8 font-mono text-xs"
-            placeholder="path/to/files/*.ext, other/**/*"
-          />
-          <p className="text-[10px] text-muted-foreground">
-            Comma-separated glob patterns for file matching
-          </p>
+          {isEditing ? (
+            <>
+              <Input
+                id={`${name}-globs`}
+                value={currentValues.globs}
+                onChange={(e) => updateField("globs", e.target.value)}
+                className="h-8 font-mono text-xs"
+                placeholder="path/to/files/*.ext, other/**/*"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Comma-separated glob patterns for file matching
+              </p>
+            </>
+          ) : (
+            <p className="font-mono text-xs text-foreground">
+              {currentValues.globs || "None"}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-between">
@@ -147,10 +168,19 @@ export function RuleConfigForm({ name, detail }: RuleConfigFormProps) {
               Apply this rule regardless of file match
             </p>
           </div>
-          <Switch
-            checked={currentValues.alwaysApply}
-            onCheckedChange={(checked) => updateField("alwaysApply", checked)}
-          />
+          {isEditing ? (
+            <Switch
+              checked={currentValues.alwaysApply}
+              onCheckedChange={(checked) => updateField("alwaysApply", checked)}
+            />
+          ) : (
+            <Badge
+              variant={currentValues.alwaysApply ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {currentValues.alwaysApply ? "Yes" : "No"}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center justify-between">
@@ -160,10 +190,19 @@ export function RuleConfigForm({ name, detail }: RuleConfigFormProps) {
               Whether this rule is active
             </p>
           </div>
-          <Switch
-            checked={currentValues.enabled}
-            onCheckedChange={(checked) => updateField("enabled", checked)}
-          />
+          {isEditing ? (
+            <Switch
+              checked={currentValues.enabled}
+              onCheckedChange={(checked) => updateField("enabled", checked)}
+            />
+          ) : (
+            <Badge
+              variant={currentValues.enabled ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {currentValues.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          )}
         </div>
       </div>
 

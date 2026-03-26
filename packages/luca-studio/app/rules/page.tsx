@@ -6,10 +6,13 @@ import { useSetAtom } from "jotai";
 import { Loader2, Shield } from "lucide-react";
 
 import { EntityTree } from "~/components/editor/entity-tree";
+import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { ResizableSplit } from "~/components/layout/resizable-split";
 import { RuleTabContainer } from "~/components/rules/rule-tab-container";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useDirtyTitle } from "~/hooks/use-dirty-title";
+import { useEditMode } from "~/hooks/use-edit-mode";
 import { useRuleDetail } from "~/hooks/use-rule-detail";
 import { useRuleList } from "~/hooks/use-rule-list";
 import { useRuleSave } from "~/hooks/use-rule-save";
@@ -83,13 +86,22 @@ export default function RulesPage() {
   // Save/discard integration
   const { save, discard } = useRuleSave(selectedName, etag);
 
+  // Edit mode for the selected entity
+  const entityKey = selectedName ? `rule:${selectedName}` : "";
+  const editMode = useEditMode(entityKey, discard);
+
+  // Browser tab title signal
+  useDirtyTitle("rule:");
+
   const handleSave = useCallback(async () => {
     await save();
-  }, [save]);
+    editMode.forceExit();
+  }, [save, editMode]);
 
   const handleDiscard = useCallback(() => {
     discard();
-  }, [discard]);
+    editMode.forceExit();
+  }, [discard, editMode]);
 
   // Cmd+S keyboard shortcut
   useEffect(() => {
@@ -141,16 +153,32 @@ export default function RulesPage() {
           ) : detailLoading ? (
             <LoadingState />
           ) : detail ? (
-            <RuleTabContainer name={selectedName} detail={detail} />
+            <RuleTabContainer
+              name={selectedName}
+              detail={detail}
+              isEditing={editMode.isEditing}
+              onEnterEdit={editMode.enterEdit}
+              onExitEdit={editMode.exitEdit}
+            />
           ) : (
             <EmptyState />
           )}
 
-          {/* Save bar scoped to rule entities */}
-          <SaveBar
-            onSave={handleSave}
-            onDiscard={handleDiscard}
-            entityFilter="rule:"
+          {/* Save bar scoped to rule entities -- only visible in edit mode */}
+          {editMode.isEditing && (
+            <SaveBar
+              onSave={handleSave}
+              onDiscard={handleDiscard}
+              entityFilter="rule:"
+            />
+          )}
+
+          {/* Navigation guard for unsaved changes */}
+          <NavigationGuard
+            when={editMode.isEditing && editMode.isDirty}
+            showDialog={editMode.showExitConfirm}
+            onConfirm={editMode.confirmExit}
+            onCancel={editMode.cancelExit}
           />
         </div>
       </ResizableSplit>
