@@ -259,8 +259,8 @@ export function EntityTabContainer({
             {!isEditing && onEnterEdit && (
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
+                size="icon"
+                className="size-7"
                 onClick={onEnterEdit}
                 aria-label="Enter edit mode"
               >
@@ -270,8 +270,8 @@ export function EntityTabContainer({
             {isEditing && onExitEdit && (
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
+                size="icon"
+                className="size-7"
                 onClick={onExitEdit}
                 aria-label="Exit edit mode"
               >
