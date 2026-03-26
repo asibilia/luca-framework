@@ -149,7 +149,7 @@ export function VaultConfig() {
         )}
 
         {state === "error" && (
-          <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <div className="flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
             <AlertCircle className="size-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -182,8 +182,8 @@ export function VaultConfig() {
                   <span
                     className={
                       vaultInfo.health.status === "healthy"
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-amber-600 dark:text-amber-400"
+                        ? "text-success"
+                        : "text-warning"
                     }
                   >
                     {vaultInfo.health.status}
