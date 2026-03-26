@@ -74,6 +74,35 @@ export const navRailHoveredAtom = atom<boolean>(false);
 export const layoutContextAtom = atom<LayoutContext>("dashboard");
 
 // ---------------------------------------------------------------------------
+// Keyboard Shortcut Atoms
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether the command palette overlay is open.
+ *
+ * Toggled by Cmd+K shortcut and Escape key. Not persisted.
+ */
+export const commandPaletteOpenAtom = atom<boolean>(false);
+
+/**
+ * Whether the compiled preview overlay/panel is open.
+ *
+ * Toggled by Cmd+Shift+P shortcut. Not persisted.
+ */
+export const compiledPreviewOpenAtom = atom<boolean>(false);
+
+/**
+ * Global save callback registered by the currently active page.
+ *
+ * Pages with save functionality (agents, skills, rules, config, settings)
+ * register their save function on mount and clear it on unmount. The
+ * centralized keyboard shortcut hook calls this when Cmd+S is pressed.
+ *
+ * `null` when no save function is registered (e.g., on the home page).
+ */
+export const globalSaveCallbackAtom = atom<(() => Promise<void>) | null>(null);
+
+// ---------------------------------------------------------------------------
 // Derived atoms
 // ---------------------------------------------------------------------------
 
