@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAtomValue } from "jotai";
 
@@ -69,9 +69,9 @@ export function useConfigConflict(): UseConfigConflictReturn {
     }
   }, [etag, dirtySet]);
 
-  const dismissConflict = () => {
+  const dismissConflict = useCallback(() => {
     setHasConflict(false);
-  };
+  }, []);
 
   return { hasConflict, dismissConflict };
 }

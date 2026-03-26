@@ -1,27 +1,5 @@
 "use client";
 
-/**
- * Client-side hook that connects to the `/api/events` SSE endpoint and
- * invalidates Jotai atoms when relevant files change on disk.
- *
- * Uses `EventSource` for automatic reconnection. On each file-change
- * message the hook inspects the path and re-fetches the appropriate
- * server-state atom:
- *
- * - `config.json` changes -> re-fetch and set `configAtom`
- * - `state.json` / `STATE.md` changes -> re-fetch and set `stateAtom`
- *
- * Designed to be mounted once in a top-level provider component (similar
- * to `ThemeSync`). Returns `null` -- purely a side-effect hook.
- *
- * @example
- * ```tsx
- * function SSESync() {
- *   useSSE();
- *   return null;
- * }
- * ```
- */
 import { useEffect, useRef } from "react";
 
 import { useSetAtom } from "jotai";
@@ -74,13 +52,32 @@ async function fetchJsonSafe(url: string): Promise<FetchJsonResult> {
 // ---------------------------------------------------------------------------
 
 /**
- * Connect to the SSE file-change stream and invalidate atoms on changes.
+ * Client-side hook that connects to the `/api/events` SSE endpoint and
+ * invalidates Jotai atoms when relevant files change on disk.
+ *
+ * Uses `EventSource` for automatic reconnection. On each file-change
+ * message the hook inspects the path and re-fetches the appropriate
+ * server-state atom:
+ *
+ * - `config.json` changes -> re-fetch and set `configAtom`
+ * - `state.json` / `STATE.md` changes -> re-fetch and set `stateAtom`
+ *
+ * Designed to be mounted once in a top-level provider component (similar
+ * to `ThemeSync`). Returns `null` -- purely a side-effect hook.
  *
  * Safe to call multiple times -- a `useRef` guard ensures only one
  * `EventSource` connection is established per component lifecycle.
  *
  * The EventSource is closed on unmount (or HMR re-render) via the
  * effect cleanup function.
+ *
+ * @example
+ * ```tsx
+ * function SSESync() {
+ *   useSSE();
+ *   return null;
+ * }
+ * ```
  */
 export function useSSE(): void {
   const setConfig = useSetAtom(configAtom);
