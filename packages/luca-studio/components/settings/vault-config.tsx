@@ -212,7 +212,7 @@ export function VaultConfig() {
                 </TooltipContent>
               </Tooltip>
               <div className="rounded-md border">
-                <Table>
+                <Table aria-label="Dual-vault routing table">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[180px]">
