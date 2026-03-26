@@ -9,6 +9,7 @@ import { ModelRoutingDisplay } from "~/components/agents/model-routing-display";
 import { ValidationBanner } from "~/components/feedback/validation-banner";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
+import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/utils";
 import { markDirtyAtom } from "~/stores/dirty-tracking";
 import { agentDraftAtom } from "~/stores/entity-atoms";
@@ -190,23 +191,10 @@ export function AgentConfigForm({
       <CollapsibleSection title="Model Configuration" defaultOpen>
         <FormField label="Enabled">
           {isEditing ? (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={currentValues.enabled}
-              onClick={() => updateField("enabled", !currentValues.enabled)}
-              className={cn(
-                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
-                currentValues.enabled ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <span
-                className={cn(
-                  "pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform",
-                  currentValues.enabled ? "translate-x-4" : "translate-x-0",
-                )}
-              />
-            </button>
+            <Switch
+              checked={currentValues.enabled}
+              onCheckedChange={(checked) => updateField("enabled", checked)}
+            />
           ) : (
             <Badge
               variant={currentValues.enabled ? "default" : "secondary"}
