@@ -52,7 +52,7 @@ export default function RulesPage() {
   const { detail, loading: detailLoading, etag } = useRuleDetail(selectedName);
 
   // Undo/redo for the selected rule's draft
-  const { canUndo, canRedo, undo, redo } = useUndo(
+  const { undo, redo } = useUndo(
     ruleHistoryAtom(selectedName ?? "__noop__"),
   );
 

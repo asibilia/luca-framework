@@ -52,9 +52,7 @@ export default function AgentsPage() {
   const { detail, loading: detailLoading, etag } = useAgentDetail(selectedName);
 
   // Undo/redo for the selected agent's draft
-  const { canUndo, canRedo, undo, redo } = useUndo(
-    agentHistoryAtom(selectedName ?? "__noop__"),
-  );
+  const { undo, redo } = useUndo(agentHistoryAtom(selectedName ?? "__noop__"));
 
   // Map API summaries to EntityTree items
   const entityItems: EntityItem[] = useMemo(() => {

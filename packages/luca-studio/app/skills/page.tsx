@@ -51,9 +51,7 @@ export default function SkillsPage() {
   const { detail, loading: detailLoading, etag } = useSkillDetail(selectedName);
 
   // Undo/redo for the selected skill's draft
-  const { canUndo, canRedo, undo, redo } = useUndo(
-    skillHistoryAtom(selectedName ?? "__noop__"),
-  );
+  const { undo, redo } = useUndo(skillHistoryAtom(selectedName ?? "__noop__"));
 
   // Map API summaries to EntityTree items
   const entityItems: EntityItem[] = useMemo(() => {
