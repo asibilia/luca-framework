@@ -8,25 +8,22 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current Milestone (v5.3.0 — In Progress)
+## Current State (v8.1.0 — Shipped)
 
-**Goal:** Invert the build flow so templates are the canonical intermediate format. Compile src/ directly to templates/ with EJS branding placeholders, then dogfood via `bun link` + `luca init` to deploy templates to .claude/. Eliminates the backwards branding transform in copy-harness-templates.ts, creating a single code path for both dogfood and user consumption.
+**Last Shipped:** v8.1.0 — Studio Polish & Prompt Quality (2026-03-25)
 
-**Phases:** 191+ (TBD)
-**Complexity:** COMPLEX
-**Source:** Todo: dogfood-via-global-install
+### Key Deliverables
 
-### Key Changes
+- Agent team prompt audit (8 fixes across 5 skill files)
+- Studio W7 infrastructure: SSE, ETag locking, undo/redo
+- Studio W7 pages: Home, Config, Skills, Rules, Memory consolidation, Edit/Observe modes
+- Studio W8 polish: Settings page with raw config editor, Git rollback APIs, keyboard shortcuts, command palette, progressive disclosure
 
-- Compilers output EJS-templated files to templates/harness/ (not hardcoded lu- to .claude/)
-- build:all splits into build:compile (src/ → templates/) + build:deploy (templates/ → .claude/ via luca init)
-- Dogfood uses the same luca init code path as end users
-- copy-harness-templates.ts branding transform removed (no longer needed)
-- Single code path for branding resolution
+**Stats:** 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC)
 
-## Previous State (v5.2.0 — Shipped)
+## Previous State (v8.0.0 — Shipped)
 
-**Last Shipped:** v5.2.0 — Distribution & Install Quality (2026-03-17)
+**Last Shipped:** v8.0.0 — Luca Studio MVP (2026-03-25)
 
 8 phases, 43 commits, 201 files changed. Fixed critical install bugs (vault path, MuninnDB URL, prefix templating, platform selection), added GitHub Actions auto-publish.
 

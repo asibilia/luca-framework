@@ -2,48 +2,13 @@
 
 ## Overview
 
-**Current Milestone:** v8.1.0 — Studio Polish & Prompt Quality
+**Current Milestone:** Planning next
 
 ---
 
 ## Active Phases
 
-### Phase 200: Agent Team Prompt Audit Fixes
-
-- [x] Implement 8 agent team prompt audit fixes (agent-team-prompt-audit-fixes)
-
-**Goal:** Apply 8 prioritized fixes from the agent team prompt audit: XML block restructuring, recipient declarations, output format specs, code review team reduction, parallel researcher spawning, wave executor cap, named agent types, gap-fix return format.
-**Depends on:** None
-**Files:** `src/skills/general/phase-execute.skill.ts`, `src/skills/general/phase-research.skill.ts`, `src/skills/general/phase-discuss.skill.ts`, `src/skills/luca/lu.skill.ts`, `src/skills/general/pr-address.skill.ts`
-
-### Phase 201: Studio W7 Infrastructure (SSE, ETag, Undo)
-
-- [x] SSE event stream + useSSE hook (studio-w7-sse-layer)
-- [x] ETag-based optimistic locking (studio-w7-etag-locking)
-- [x] Undo/redo with jotai-history (studio-w7-undo-redo)
-
-**Goal:** Add cross-cutting Studio infrastructure: live file-change events via SSE, optimistic locking for concurrent edits, and undo/redo for all editing surfaces.
-**Depends on:** None
-
-### Phase 202: Studio W7 Pages & Consolidation
-
-- [x] Home page with status card and activity feed (studio-w7-home-page)
-- [x] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
-- [x] Skills + Rules browser pages (studio-w7-skills-rules-pages)
-- [x] Memory page consolidation into tabs (studio-w7-memory-consolidation)
-- [x] Edit vs Observe mode distinction (studio-w7-edit-observe-modes)
-
-**Goal:** Build remaining Studio pages and consolidate existing pages, using patterns established by the Agents page in v8.0.0.
-**Depends on:** Phase 201
-
-### Phase 203: Studio W8 Polish
-
-- [x] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
-- [x] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
-- [x] Settings page with raw config editor (studio-w8-settings-page)
-
-**Goal:** Final polish features: safety net via git rollback, keyboard shortcuts for power users, and a settings escape hatch.
-**Depends on:** Phase 202
+(No active phases)
 
 ---
 
@@ -275,6 +240,7 @@
 - **v7.1.0** — Multi-IDE Adapter Completion: 3 phases, 3 plans, 10 commits, 22 files changed (+1,780 LOC) ([View Archive](milestones/v7.1.0-ROADMAP.md))
 - **v7.2.0** — Audit Gap Closure: 1 phase, 1 plan, 3 commits, 8 files changed (-140 LOC) ([View Archive](milestones/v7.2.0-ROADMAP.md))
 - **v8.0.0** — Luca Studio MVP: 12 phases, 23 plans, 45 commits, 365 files changed (+17,647 LOC) ([View Archive](milestones/v8.0.0-ROADMAP.md))
+- **v8.1.0** — Studio Polish & Prompt Quality: 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC) ([View Archive](milestones/v8.1.0-ROADMAP.md))
 
 ---
 
