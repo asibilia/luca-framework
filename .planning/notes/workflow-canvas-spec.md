@@ -74,17 +74,17 @@ Ollama calls can optionally go direct from browser (CORS enabled by default) but
 
 ### RESOLVED: Tension 4 -- Persistence Layer
 
-**Decision:** `bun:sqlite` for MVP, with repository abstraction. SpacetimeDB deferred to Phase 2+.
+**Decision:** SpacetimeDB v2 as primary persistence layer, with repository abstraction and JSON export escape hatch.
 
-**Vote:** 5-1 against SpacetimeDB for MVP. Architect conceded after debate.
+**Override:** Team voted 5-1 for bun:sqlite during debate. **Founder overrode**: SpacetimeDB v2 is a non-negotiable product requirement. The previous removal from `luca-framework` (CLI tooling monorepo) was because the CLI didn't need a database — it does not apply to `luca-studio` which is a web app that will have users.
 
-**Rationale:** The debate revealed SpacetimeDB was **previously removed** from the Luca framework (phases 02, todos 75/76/78). Zero references in source code. Re-introducing a deliberately removed dependency requires strong justification. The team concluded:
+**Rationale:**
 
-1. **`bun:sqlite` is zero-config**: Built into Bun, matches the Bun-first philosophy, no external service.
-2. **Filesystem persistence already proven**: Studio persists config to JSON, entities to `src/` files.
-3. **Real-time subscriptions not needed for MVP**: Solo developer, single browser tab.
-4. **Repository abstraction preserves optionality**: `WorkflowRepository` interface with `SqliteWorkflowRepository` for MVP.
-5. **JSON export from day 1**: Every workflow exports to `luca-workflow-v1` JSON. Backup escape hatch + VCS friendly.
+1. **Product vision**: This feature will become its own app with users. SpacetimeDB's real-time subscriptions, built-in auth, and managed hosting align with that trajectory.
+2. **Real-time execution visualization**: SpacetimeDB subscriptions provide live node status updates without building WebSocket infrastructure.
+3. **Repository abstraction preserved**: All DB operations go through `WorkflowRepository` interface. `SpacetimeWorkflowRepository` is the primary implementation. `SqliteWorkflowRepository` exists as a dev/fallback option.
+4. **JSON export from day 1**: Every workflow exports to `luca-workflow-v1` JSON. Backup escape hatch + VCS friendly.
+5. **Team's risk concerns are mitigations, not blockers**: Maturity risk handled by repository abstraction. No JOINs handled by client-side queries against subscription cache. API key storage handled by client-side encryption before persisting.
 
 ### RESOLVED: Tension 5 -- Cost Unit
 
@@ -225,7 +225,7 @@ Ollama calls can optionally go direct from browser (CORS enabled by default) but
 Browser (Next.js App)
 ├── Canvas UI (React Flow + Jotai)
 ├── Execution UI (XState + SSE)
-└── API Client (SpacetimeDB SDK)
+└── API Client (SpacetimeDB SDK + fetch)
         │
         ▼
 Next.js API Routes
@@ -247,15 +247,15 @@ LLM Providers (via Vercel AI SDK)
 
 ### 5.2 Key Architectural Decisions
 
-| Decision         | Choice                                | Alternatives Considered                              |
-| ---------------- | ------------------------------------- | ---------------------------------------------------- |
-| Canvas library   | @xyflow/react v12 (already installed) | Custom canvas (rejected: 2000+ LOC rewrite)          |
-| State: canvas UI | Jotai atoms (already in use)          | Zustand (rejected: migration cost)                   |
-| State: execution | XState v5                             | Jotai (rejected: no transition guards)               |
-| Persistence      | SpacetimeDB v2 + repository pattern   | Supabase (fallback), SQLite (too limited)            |
-| LLM calls        | Vercel AI SDK via Next.js API routes  | Direct browser calls (rejected: CORS)                |
-| Cost precision   | Microdollars (u64)                    | Cents with f64 (rejected: accumulation drift)        |
-| Undo/redo        | jotai-history on combined graph atom  | Command pattern (rejected: over-engineering for MVP) |
+| Decision         | Choice                                | Alternatives Considered                                      |
+| ---------------- | ------------------------------------- | ------------------------------------------------------------ |
+| Canvas library   | @xyflow/react v12 (already installed) | Custom canvas (rejected: 2000+ LOC rewrite)                  |
+| State: canvas UI | Jotai atoms (already in use)          | Zustand (rejected: migration cost)                           |
+| State: execution | XState v5                             | Jotai (rejected: no transition guards)                       |
+| Persistence      | SpacetimeDB v2 + repository pattern   | bun:sqlite (dev fallback), Supabase (rejected: external dep) |
+| LLM calls        | Vercel AI SDK via Next.js API routes  | Direct browser calls (rejected: CORS)                        |
+| Cost precision   | Microdollars (u64)                    | Cents with f64 (rejected: accumulation drift)                |
+| Undo/redo        | jotai-history on combined graph atom  | Command pattern (rejected: over-engineering for MVP)         |
 
 ### 5.3 Mapping to Existing Luca Definitions
 
@@ -584,7 +584,7 @@ const MODEL_PRICING: Record<
 
 ### 8.3 BYOK Key Security
 
-- Keys stored server-side only (Next.js environment or encrypted in SQLite)
+- Keys stored server-side only (Next.js environment or encrypted in SpacetimeDB private table)
 - Keys NEVER sent to the browser
 - Keys NEVER included in workflow export JSON
 - Keys masked in UI (show last 4 characters only)
@@ -653,15 +653,16 @@ Bridge to Jotai: `runStateAtom` subscribes to XState service, exposing `state.va
 
 ## 10. Persistence Layer
 
-### 10.1 SQLite via bun:sqlite (MVP)
+### 10.1 SpacetimeDB v2 Tables
 
 All tables map to the Zod schemas in Section 6. Key design choices:
 
 - **UUIDs** for all IDs (client-generated via `crypto.randomUUID()`)
-- **JSON columns** for nested/complex data (SQLite's JSON1 extension)
-- **Single file** database at `.luca/workflows.db` (portable, backup-friendly)
-- **Cost stored as microdollars** (INTEGER) for precision
+- **JSON string columns** for nested/complex data (`config`, `metadata`, `output_data`)
+- **`provider_config`** table is `public: false` for row-level security (only owning identity can read)
+- **Cost stored as microdollars** (`u64`) for integer precision
 - **API key encryption**: Encrypted client-side before storage (Web Crypto API AES-256-GCM)
+- **Subscriptions**: SQL-like queries with real-time push (`SELECT * FROM node WHERE workflow_version_id = ?`)
 
 ### 10.2 Repository Abstraction
 
@@ -698,11 +699,11 @@ interface WorkflowRepository {
 }
 ```
 
-Primary implementation: `SqliteWorkflowRepository` via `bun:sqlite`. Future: `SpacetimeWorkflowRepository` if real-time multi-client sync is needed (Phase 2+).
+Primary implementation: `SpacetimeWorkflowRepository` via SpacetimeDB v2 SDK. Fallback: `SqliteWorkflowRepository` via `bun:sqlite` for local development without SpacetimeDB running.
 
-### 10.3 Real-Time Updates via SSE
+### 10.3 Real-Time Updates via SpacetimeDB Subscriptions + SSE
 
-The studio already has SSE infrastructure (`hooks/use-sse.ts` + `app/api/events/route.ts`). Execution events flow via SSE:
+SpacetimeDB subscriptions provide real-time row-level updates for canvas state (nodes, edges, run steps). The studio's existing SSE infrastructure (`hooks/use-sse.ts` + `app/api/events/route.ts`) supplements for execution streaming. Execution events flow via SSE:
 
 ```typescript
 // SSE event types for execution (Phase 2)
@@ -726,7 +727,7 @@ LLM streaming output flows via SSE directly to the UI -- NOT through the persist
 
 ### 10.4 Debounced Writes
 
-Node drag operations: update Jotai atom immediately (optimistic), flush position to SQLite every 200ms. Inspector panel edits: debounce at 1000ms.
+Node drag operations: update Jotai atom immediately (optimistic), flush position to SpacetimeDB via reducer every 200ms. Inspector panel edits: debounce at 1000ms.
 
 ---
 
@@ -734,14 +735,14 @@ Node drag operations: update Jotai atom immediately (optimistic), flush position
 
 ### 11.1 Threat Model
 
-| Threat                                  | Mitigation                                                                 | Phase   |
-| --------------------------------------- | -------------------------------------------------------------------------- | ------- |
-| API key exposure in browser             | Keys never sent to client; server-side only                                | Phase 2 |
-| XSS via node name/metadata              | React JSX auto-escapes; no `dangerouslySetInnerHTML`                       | Phase 1 |
-| Prompt injection via node body          | System prompts immutable; user text in user role only                      | Phase 2 |
-| SSRF via Ollama endpoint                | Validate URL against allowlist (localhost, \*.local)                       | Phase 2 |
-| Resource exhaustion (runaway workflows) | Budget cap ($10 default), max iterations (100), execution timeout (30min)  | Phase 2 |
-| SpacetimeDB data access                 | `provider_config` table is private; workflow data scoped by owner identity | Phase 1 |
+| Threat                                  | Mitigation                                                                | Phase   |
+| --------------------------------------- | ------------------------------------------------------------------------- | ------- |
+| API key exposure in browser             | Keys never sent to client; server-side only                               | Phase 2 |
+| XSS via node name/metadata              | React JSX auto-escapes; no `dangerouslySetInnerHTML`                      | Phase 1 |
+| Prompt injection via node body          | System prompts immutable; user text in user role only                     | Phase 2 |
+| SSRF via Ollama endpoint                | Validate URL against allowlist (localhost, \*.local)                      | Phase 2 |
+| Resource exhaustion (runaway workflows) | Budget cap ($10 default), max iterations (100), execution timeout (30min) | Phase 2 |
+| SpacetimeDB data access                 | `provider_config` table is private; identity-based auth; encrypted keys   | Phase 1 |
 
 ### 11.2 Expression Sandboxing
 
@@ -783,23 +784,23 @@ Template expressions (`{{...}}`) are resolved via string interpolation with dot-
 
 ### 12.3 Performance Targets
 
-| Metric              | 10 nodes | 50 nodes | 100 nodes |
-| ------------------- | -------- | -------- | --------- |
-| Initial render      | < 100ms  | < 200ms  | < 500ms   |
-| Pan/zoom FPS        | 60fps    | 60fps    | 30fps+    |
-| Add node latency    | < 16ms   | < 16ms   | < 50ms    |
-| Save to SpacetimeDB | < 200ms  | < 500ms  | < 1s      |
-| Memory usage        | < 50MB   | < 100MB  | < 200MB   |
+| Metric           | 10 nodes | 50 nodes | 100 nodes |
+| ---------------- | -------- | -------- | --------- |
+| Initial render   | < 100ms  | < 200ms  | < 500ms   |
+| Pan/zoom FPS     | 60fps    | 60fps    | 30fps+    |
+| Add node latency | < 16ms   | < 16ms   | < 50ms    |
+| Save to SQLite   | < 200ms  | < 500ms  | < 1s      |
+| Memory usage     | < 50MB   | < 100MB  | < 200MB   |
 
 ### 12.4 Launch-Blocking Risks
 
-| Risk                          | Severity | Mitigation                                                              |
-| ----------------------------- | -------- | ----------------------------------------------------------------------- |
-| SpacetimeDB data loss         | HIGH     | JSON export escape hatch from day 1; repository abstraction for swap    |
-| API key security              | HIGH     | Keys never leave server; encrypted at rest in SpacetimeDB private table |
-| Budget enforcement gaps       | HIGH     | Pre-wave budget check; default $10 cap; hard stop on exceed             |
-| Canvas performance regression | MEDIUM   | Memoize all node components; performance budget in review               |
-| Concurrent modification       | MEDIUM   | Canvas lock during execution (MVP); version snapshots for runs          |
+| Risk                          | Severity | Mitigation                                                                |
+| ----------------------------- | -------- | ------------------------------------------------------------------------- |
+| SpacetimeDB maturity          | MEDIUM   | Repository abstraction for swap; JSON export escape hatch; SqliteFallback |
+| API key security              | HIGH     | Keys never leave server; encrypted before storage; private tables         |
+| Budget enforcement gaps       | HIGH     | Pre-wave budget check; default $10 cap; hard stop on exceed               |
+| Canvas performance regression | MEDIUM   | Memoize all node components; performance budget in review                 |
+| Concurrent modification       | MEDIUM   | Canvas lock during execution (MVP); version snapshots for runs            |
 
 ---
 
@@ -884,13 +885,14 @@ Template expressions (`{{...}}`) are resolved via string interpolation with dot-
 
 Each question below needs a dedicated research spike before implementation.
 
-### 14.1 bun:sqlite Schema Design (Backend Team)
+### 14.1 SpacetimeDB v2 Integration (Backend Team)
 
-- **SQLite JSON1 extension:** Test JSON column queries via `bun:sqlite`. Can we filter nodes by `json_extract(config, '$.model')`?
-- **Concurrent access:** What happens if two Next.js API routes write to the same SQLite file simultaneously? Test WAL mode.
-- **Migration strategy:** How do we evolve the SQLite schema without data loss? Test with ALTER TABLE + data migration scripts.
-- **Backup:** Is copying the `.db` file sufficient for backup? Test with concurrent reads during copy.
-- **Performance:** Benchmark CRUD operations for workflows with 50+ nodes and 100+ edges.
+- **TypeScript server SDK:** Test WASM module compilation from TypeScript. Verify table definitions, reducer registration, and deployment to SpacetimeDB Cloud.
+- **React client SDK:** Benchmark `useTable` / `useReducer` hooks with 50+ nodes updating simultaneously during execution. Measure subscription latency.
+- **Schema migrations:** When we add columns to tables, how does SpacetimeDB handle existing data? Test with a real schema evolution.
+- **Private table enforcement:** Verify `public: false` on `provider_config` actually prevents unauthorized reads via the subscription API.
+- **Backup/restore:** What is SpacetimeDB Cloud's backup story? For self-hosted, what's the WAL backup procedure?
+- **Performance:** Benchmark reducer call latency and subscription update propagation for workflows with 50+ nodes and 100+ edges.
 
 ### 14.2 Vercel AI SDK Research (Backend Team)
 
@@ -987,7 +989,7 @@ packages/luca-studio/
     ├── canvas-to-dag.ts                 # Phase 3 export converter
     ├── template-resolver.ts             # Phase 2
     ├── model-pricing.ts                 # Phase 2
-    └── workflow-repository.ts           # Repository interface + SQLite impl
+    └── workflow-repository.ts           # Repository interface + SpacetimeDB impl
 ```
 
 ---
@@ -1042,14 +1044,14 @@ The 6-agent grooming session included a cross-review phase where each agent crit
 
 ### Positions by Tension
 
-| Tension | Product | UX | Architect | Frontend | Backend | QA | Final |
-|---------|---------|----|-----------|---------|---------|----|-------|
-| 1. Route | `/canvas/[id]` | Evolve `/pipeline` | `/canvas/[id]` | `/pipeline` | `/canvas/[id]` | `/pipeline/[id]` | **`/canvas/[id]`** |
-| 2. Execution | Server-side (Phase 2) | Server-side day 1 | Server-side day 1 | Server-side day 1 | Server-side (changed) | Server-side day 1 | **Server-side day 1** |
-| 3. Cycles | DAG-only | DAG-only | DAG-only (conceded) | DAG-only | DAG-only | DAG-only | **DAG-only** |
-| 4. Persistence | Filesystem JSON | SQLite | SQLite (conceded) | bun:sqlite | SpacetimeDB w/ repo | Filesystem JSON | **bun:sqlite** |
-| 5. Cost unit | Microdollars | Microdollars | Microdollars (conceded) | Microdollars | Microdollars | Microdollars | **Microdollars (u64)** |
-| 6. Node types | 4 | 5 | 5 (reduced from 17) | 4 | 5 | 4 | **5** |
+| Tension        | Product               | UX                 | Architect               | Frontend          | Backend               | QA                | Final                  |
+| -------------- | --------------------- | ------------------ | ----------------------- | ----------------- | --------------------- | ----------------- | ---------------------- |
+| 1. Route       | `/canvas/[id]`        | Evolve `/pipeline` | `/canvas/[id]`          | `/pipeline`       | `/canvas/[id]`        | `/pipeline/[id]`  | **`/canvas/[id]`**     |
+| 2. Execution   | Server-side (Phase 2) | Server-side day 1  | Server-side day 1       | Server-side day 1 | Server-side (changed) | Server-side day 1 | **Server-side day 1**  |
+| 3. Cycles      | DAG-only              | DAG-only           | DAG-only (conceded)     | DAG-only          | DAG-only              | DAG-only          | **DAG-only**           |
+| 4. Persistence | Filesystem JSON       | SQLite             | SQLite (conceded)       | bun:sqlite        | SpacetimeDB w/ repo   | Filesystem JSON   | **bun:sqlite**         |
+| 5. Cost unit   | Microdollars          | Microdollars       | Microdollars (conceded) | Microdollars      | Microdollars          | Microdollars      | **Microdollars (u64)** |
+| 6. Node types  | 4                     | 5                  | 5 (reduced from 17)     | 4                 | 5                     | 4                 | **5**                  |
 
 ### Notable Concessions
 

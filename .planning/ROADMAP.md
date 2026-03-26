@@ -19,8 +19,8 @@
 
 ### Phase 205: Entity Hook DRY Extraction
 
-- [ ] Extract useEntityDetail, useEntitySave, useEntityList generics (audit-entity-hook-dry)
-- [ ] Schema-first metadata + dead undo cleanup (audit-entity-schema-cleanup)
+- [x] Extract useEntityDetail, useEntitySave, useEntityList generics (audit-entity-hook-dry)
+- [x] Schema-first metadata + dead undo cleanup (audit-entity-schema-cleanup)
 
 **Goal:** Eliminate ~530 lines of entity hook triplication by extracting generic useEntityDetail, useEntitySave, and useEntityList hooks. Fix schema-first violations in save hooks with Zod metadata schemas. Remove dead canUndo/canRedo destructuring from 3 entity pages.
 **Depends on:** None
