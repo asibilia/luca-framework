@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v8.2.0 — Audit Gap Closure
-- **Status:** Verifying
+- **Status:** Learning
 - **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-26
@@ -25,10 +25,6 @@
   Phase 205: complete — Entity Hook DRY Extraction — 3 generic hooks, 9 thin wrappers, Zod schemas, dead code removed
 ```
 
-## Verification
-
-- **Attempts:** 0 / 3
-
 ## Git Context
 
 - **Branch:** 107--v8.1.0-studio-polish-prompt-quality
@@ -36,9 +32,9 @@
 
 ## Allowed Events
 
-- `VERIFY_PASSED`
-- `VERIFY_FAILED`
-- `VERIFY_HALTED`
+- `LEARN_COMPLETE`
+- `PROCESS_DATA_COMPLETE`
+- `SKIP`
 
 ## Previous Milestones
 
@@ -65,4 +61,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-26T16:12:46.571Z_
+_State generated from machine snapshot at 2026-03-26T16:20:57.761Z_

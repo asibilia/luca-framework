@@ -174,8 +174,7 @@ export function SaveBar({
       aria-live="polite"
       className={cn(
         "sticky bottom-0 z-40 flex items-center justify-between gap-3 border-t px-4 py-2 text-sm transition-all duration-300 ease-in-out",
-        barState === "saved" &&
-          "bg-green-500/10 text-green-700 dark:text-green-400",
+        barState === "saved" && "bg-success/10 text-success",
         barState === "error" && "bg-destructive/10 text-destructive",
         barState !== "saved" && barState !== "error" && "bg-background",
         className,
