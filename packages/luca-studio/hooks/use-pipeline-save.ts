@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 
 import { useAtom } from "jotai";
+import cloneDeep from "lodash/cloneDeep";
 
 import {
   configAtom,
@@ -106,9 +107,7 @@ export function usePipelineSave(): PipelineSaveActions {
   const handleDiscard = useCallback(() => {
     // Reset config draft to server state
     if (serverConfig) {
-      setConfigDraft(
-        JSON.parse(JSON.stringify(serverConfig)) as Record<string, unknown>,
-      );
+      setConfigDraft(cloneDeep(serverConfig) as Record<string, unknown>);
     }
 
     // Note: We intentionally do NOT reset pipeline nodes/edges here.
