@@ -13,6 +13,8 @@
  * @module entity-hook-config
  */
 
+import { z } from "zod";
+
 import type { WritableAtom } from "jotai";
 
 import {
@@ -57,6 +59,54 @@ function extractMetadata(
     prefix: (draft.prefix as string) ?? "",
     suffix: (draft.suffix as string) ?? "",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Zod schemas for field key map validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Zod schema for `FieldKeyMap`.
+ *
+ * Validates that each entry is a record of field names to arrays of config key
+ * variants (e.g., both snake_case and camelCase alternatives).
+ */
+export const FieldKeyMapSchema = z.record(z.string(), z.array(z.string()));
+
+/**
+ * Zod schema for the subset of `EntitySaveConfig` fields that are
+ * statically validatable (excludes runtime-only values like atom factories
+ * and function references).
+ *
+ * Used to validate the per-entity config constants at module load time.
+ */
+export const EntitySaveStaticConfigSchema = z.object({
+  entityType: z.string().min(1),
+  entitySingular: z.string().min(1),
+  endpoint: z.string().startsWith("/"),
+  fieldKeyMap: FieldKeyMapSchema,
+});
+
+/**
+ * Validate a FieldKeyMap value via safeParse. Logs a development warning
+ * on failure and returns the raw value as a passthrough fallback.
+ *
+ * @param raw   - The value to validate
+ * @param label - Human-readable label for the config (used in warnings)
+ * @returns The validated FieldKeyMap, or the raw value if validation fails
+ */
+function validateFieldKeyMap(raw: FieldKeyMap, label: string): FieldKeyMap {
+  const result = FieldKeyMapSchema.safeParse(raw);
+  if (!result.success) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `[entity-hook-config] FieldKeyMap validation failed for ${label}:`,
+        result.error.issues,
+      );
+    }
+    return raw;
+  }
+  return result.data;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,12 +181,15 @@ export const AGENT_SAVE_CONFIG: EntitySaveConfig = {
   entitySingular: "agent",
   endpoint: "/api/entities/agents",
   draftAtomFactory: agentDraftAtom,
-  fieldKeyMap: {
-    description: ["description"],
-    modelTier: ["model_tier", "modelTier"],
-    purpose: ["purpose"],
-    stage: ["stage"],
-  },
+  fieldKeyMap: validateFieldKeyMap(
+    {
+      description: ["description"],
+      modelTier: ["model_tier", "modelTier"],
+      purpose: ["purpose"],
+      stage: ["stage"],
+    },
+    "AGENT_SAVE_CONFIG",
+  ),
   extractMetadata: (draft) => extractMetadata(draft, "agents"),
 };
 
@@ -146,9 +199,12 @@ export const SKILL_SAVE_CONFIG: EntitySaveConfig = {
   entitySingular: "skill",
   endpoint: "/api/entities/skills",
   draftAtomFactory: skillDraftAtom,
-  fieldKeyMap: {
-    description: ["description"],
-  },
+  fieldKeyMap: validateFieldKeyMap(
+    {
+      description: ["description"],
+    },
+    "SKILL_SAVE_CONFIG",
+  ),
   extractMetadata: (draft) => extractMetadata(draft, "skills"),
 };
 
@@ -158,10 +214,13 @@ export const RULE_SAVE_CONFIG: EntitySaveConfig = {
   entitySingular: "rule",
   endpoint: "/api/entities/rules",
   draftAtomFactory: ruleDraftAtom,
-  fieldKeyMap: {
-    description: ["description"],
-    alwaysApply: ["alwaysApply"],
-  },
+  fieldKeyMap: validateFieldKeyMap(
+    {
+      description: ["description"],
+      alwaysApply: ["alwaysApply"],
+    },
+    "RULE_SAVE_CONFIG",
+  ),
   extractMetadata: (draft) => extractMetadata(draft, "rules"),
 };
 
