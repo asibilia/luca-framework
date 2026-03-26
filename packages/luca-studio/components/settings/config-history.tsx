@@ -253,6 +253,7 @@ export function ConfigHistory() {
                   {/* Commit header */}
                   <button
                     type="button"
+                    aria-expanded={isExpanded}
                     onClick={() => toggleExpand(commit.sha)}
                     className="flex w-full items-start gap-2 text-left hover:bg-muted/50 rounded-md px-2 py-1 -ml-2 transition-colors"
                   >

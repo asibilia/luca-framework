@@ -60,6 +60,7 @@ function SettingsSection({
       <CollapsibleTrigger asChild>
         <button
           type="button"
+          aria-expanded={open}
           className="flex w-full items-center justify-between rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50"
         >
           <div>
