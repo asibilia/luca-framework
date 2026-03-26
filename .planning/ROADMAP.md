@@ -46,6 +46,49 @@
 
 ---
 
+## Planned: v8.3.0 — Studio Feature Suite
+
+Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todos grouped into 4 phases.
+
+### Phase 208: API Layer Foundation
+
+- [ ] SSE event stream + useSSE hook (studio-w7-sse-layer)
+- [ ] ETag-based optimistic locking middleware (studio-w7-etag-locking)
+- [ ] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
+
+**Goal:** Build foundational API infrastructure (event streaming, concurrency control, git safety) required by all downstream Studio pages.
+**Depends on:** Phase 207 (v8.2.0 complete)
+**Risk:** HIGH (arch + QA) — Full+Manual verification required
+
+### Phase 209: Core Pages
+
+- [ ] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
+- [ ] Home page with status card and recent activity (studio-w7-home-page)
+- [ ] Skills + Rules browser pages (studio-w7-skills-rules-pages)
+
+**Goal:** Deliver core Studio page layer on stable API foundation.
+**Depends on:** Phase 208
+
+### Phase 210: Advanced UI & State
+
+- [ ] Undo/redo with jotai-history (studio-w7-undo-redo)
+- [ ] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
+- [ ] Consolidate Memory page (studio-w7-memory-consolidation)
+
+**Goal:** Advanced UX features (state history, keyboard shortcuts, page consolidation) on stable pages.
+**Depends on:** Phase 209
+
+### Phase 211: Observability & Polish
+
+- [ ] Edit/observe visual mode distinction (studio-w7-edit-observe-modes)
+- [ ] Settings page (studio-w8-settings-page)
+- [ ] Agent team prompt audit fixes (agent-team-prompt-audit-fixes)
+
+**Goal:** Polish pass — visual modes, settings aggregation, and prompt quality fixes.
+**Depends on:** Phase 210
+
+---
+
 ## Deferred to Future Milestones
 
 | Todo Group                  | Target   | Scope                                  | Reason                                               |
