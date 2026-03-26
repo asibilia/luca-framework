@@ -179,10 +179,7 @@ export function createConfigSectionHandler<T extends z.ZodType>(
 
     if (ifMatch !== currentEtag) {
       return NextResponse.json(
-        {
-          error: "Conflict: config has been modified since last read",
-          currentEtag,
-        },
+        { error: "Conflict: config has been modified since last read" },
         { status: 409 },
       );
     }
