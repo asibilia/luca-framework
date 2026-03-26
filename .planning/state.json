@@ -1,16 +1,13 @@
 {
   "status": "active",
-  "value": "learning",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "ecabddd3-72e2-41bf-8cf6-cabd5222d316",
-    "github_issue": 107,
-    "branch": "107--v8.1.0-studio-polish-prompt-quality",
+    "session_id": "4076a650-b98d-408f-8f75-e852cd7dcaf3",
     "base_branch": "main",
-    "current_milestone": "v8.2.0 — Audit Gap Closure",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -75,26 +72,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 205,
-        "status": "passed",
-        "summary": "Entity Hook DRY Extraction — 3 generic hooks, 9 thin wrappers, Zod schemas, dead code removed",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-26T15:33:52.948Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-26T14:20:12.335Z",
-    "last_transition_at": "2026-03-26T16:14:36.158Z"
+    "started_at": "2026-03-26T16:33:47.793Z"
   },
   "children": {}
 }
