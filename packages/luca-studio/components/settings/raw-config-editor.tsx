@@ -406,7 +406,7 @@ export function RawConfigEditor({ readOnly }: { readOnly?: boolean }) {
       <div
         ref={containerRef}
         className={cn(
-          "min-h-[300px] max-h-[500px] overflow-auto rounded-md border border-border",
+          "min-h-[200px] max-h-[min(500px,60vh)] overflow-auto rounded-md border border-border",
           readOnly && "opacity-75",
         )}
       />
