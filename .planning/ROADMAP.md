@@ -27,11 +27,11 @@
 
 ### Phase 202: Studio W7 Pages & Consolidation
 
-- [ ] Home page with status card and activity feed (studio-w7-home-page)
-- [ ] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
-- [ ] Skills + Rules browser pages (studio-w7-skills-rules-pages)
-- [ ] Memory page consolidation into tabs (studio-w7-memory-consolidation)
-- [ ] Edit vs Observe mode distinction (studio-w7-edit-observe-modes)
+- [x] Home page with status card and activity feed (studio-w7-home-page)
+- [x] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
+- [x] Skills + Rules browser pages (studio-w7-skills-rules-pages)
+- [x] Memory page consolidation into tabs (studio-w7-memory-consolidation)
+- [x] Edit vs Observe mode distinction (studio-w7-edit-observe-modes)
 
 **Goal:** Build remaining Studio pages and consolidate existing pages, using patterns established by the Agents page in v8.0.0.
 **Depends on:** Phase 201
