@@ -21,6 +21,12 @@ type HistoryCommit = {
 
 export async function GET(request: Request) {
   try {
+    // Localhost guard: restrict to local development server
+    const host = request.headers.get("host") ?? "";
+    if (!host.startsWith("localhost") && !host.startsWith("127.0.0.1")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(
       Math.max(parseInt(searchParams.get("limit") ?? "20", 10) || 20, 1),
@@ -54,6 +60,9 @@ export async function GET(request: Request) {
       const author = entries[i + 3].trim();
 
       if (!sha) continue;
+
+      // Validate SHA is a well-formed full hex SHA before calling git
+      if (!/^[0-9a-f]{40}$/i.test(sha)) continue;
 
       // Get files changed in this commit
       let files: string[] = [];
