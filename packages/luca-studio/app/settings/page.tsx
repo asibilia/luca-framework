@@ -170,7 +170,7 @@ export default function SettingsPage() {
     >
       {/* Publish result feedback */}
       {publishState === "success" && publishResult && (
-        <div className="mb-4 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400">
+        <div className="mb-4 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           Published {publishResult.file_count} file
           {publishResult.file_count !== 1 ? "s" : ""} (
           <span className="font-mono">{publishResult.commit_sha}</span>)
@@ -202,7 +202,7 @@ export default function SettingsPage() {
 
       {/* SSE conflict warning */}
       {hasConflict && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Config changed externally. Discard your changes or force save.
