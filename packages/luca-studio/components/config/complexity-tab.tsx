@@ -6,6 +6,11 @@ import { useAtom, useSetAtom } from "jotai";
 import get from "lodash/get";
 
 import { Input } from "~/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { COMPLEXITY_LEVELS } from "~/lib/constants";
 import { markDirtyAtom } from "~/stores/dirty-tracking";
 import { configDraftAtom } from "~/stores/config-atoms";
@@ -97,9 +102,18 @@ export function ComplexityTab() {
 
       {/* Loop budget matrix */}
       <div>
-        <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-          Loop Budget Matrix
-        </h4>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <h4 className="mb-2 inline-flex cursor-help text-xs font-medium text-muted-foreground underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
+              Loop Budget Matrix
+            </h4>
+          </TooltipTrigger>
+          <TooltipContent>
+            Controls how many retry iterations each verification step gets at
+            each complexity level. Higher budgets allow more fix attempts before
+            failing.
+          </TooltipContent>
+        </Tooltip>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

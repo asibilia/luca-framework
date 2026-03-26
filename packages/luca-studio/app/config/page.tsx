@@ -70,7 +70,12 @@ export default function ConfigPage() {
         <TabsList variant="line">
           <TabsTrigger value="complexity">Complexity Routing</TabsTrigger>
           <TabsTrigger value="gates">Gates</TabsTrigger>
-          <TabsTrigger value="harness">Harness</TabsTrigger>
+          <TabsTrigger value="harness">
+            Harness{" "}
+            <span className="text-[10px] font-normal text-muted-foreground">
+              (Advanced)
+            </span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="complexity" className="pt-2">

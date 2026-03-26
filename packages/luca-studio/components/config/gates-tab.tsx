@@ -7,6 +7,11 @@ import get from "lodash/get";
 
 import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { markDirtyAtom } from "~/stores/dirty-tracking";
 import { configDraftAtom } from "~/stores/config-atoms";
 
@@ -87,9 +92,17 @@ export function GatesTab() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="font-mono text-sm">{name}</span>
-              <Badge variant="outline" className="text-[10px]">
-                fail-closed
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-[10px] cursor-help">
+                    fail-closed
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  When disabled, the gate is skipped — not auto-approved.
+                  Missing flags are treated as &quot;skip&quot; for safety.
+                </TooltipContent>
+              </Tooltip>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {GATE_DESCRIPTIONS[name] ?? "Custom gate"}

@@ -217,6 +217,9 @@ export function SaveBar({
             </Button>
             <Button size="sm" onClick={handleSave} disabled={!canSave}>
               Save
+              <kbd className="ml-1.5 rounded border bg-background/50 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+                Cmd+S
+              </kbd>
             </Button>
           </>
         )}

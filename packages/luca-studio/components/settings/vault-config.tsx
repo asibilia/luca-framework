@@ -21,6 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -194,9 +199,18 @@ export function VaultConfig() {
 
             {/* Routing table */}
             <div className="space-y-1">
-              <h4 className="text-sm font-medium">
-                Dual-Vault Routing Summary
-              </h4>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h4 className="inline-flex cursor-help text-sm font-medium underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
+                    Dual-Vault Routing Summary
+                  </h4>
+                </TooltipTrigger>
+                <TooltipContent>
+                  MuninnDB uses two vaults: a repo vault for project-specific
+                  memories and a default vault for cross-cutting patterns and
+                  preferences.
+                </TooltipContent>
+              </Tooltip>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
