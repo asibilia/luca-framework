@@ -126,7 +126,7 @@ export function KnowledgeGraphMini({
         {/* Link to full graph */}
         <div className="mt-3 text-right">
           <a
-            href="/knowledge-graph"
+            href="/memory?tab=graph"
             className="font-mono text-xs text-primary underline-offset-2 hover:underline"
           >
             View full graph &rarr;

@@ -108,7 +108,7 @@ export function SearchResultCard({
           </button>
 
           <a
-            href={`/knowledge-graph?entity=${encodeURIComponent(result.concept)}`}
+            href={`/memory?tab=graph&entity=${encodeURIComponent(result.concept)}`}
             className="font-mono text-xs text-primary hover:underline"
           >
             Traverse
