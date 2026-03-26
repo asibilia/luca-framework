@@ -291,6 +291,7 @@ export function CommandPalette() {
             ref={inputRef}
             type="text"
             placeholder="Type a command..."
+            aria-label="Search commands"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -298,7 +299,11 @@ export function CommandPalette() {
         </div>
 
         {/* Command list */}
-        <div className="max-h-80 overflow-y-auto p-2">
+        <div
+          role="listbox"
+          aria-label="Commands"
+          className="max-h-[min(320px,50vh)] overflow-y-auto p-2"
+        >
           {filtered.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               No matching commands
@@ -396,8 +401,10 @@ function CommandRow({
   return (
     <button
       type="button"
+      role="option"
+      aria-selected={isSelected}
       className={cn(
-        "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring",
         isSelected
           ? "bg-primary/10 text-primary"
           : "text-foreground hover:bg-muted",
