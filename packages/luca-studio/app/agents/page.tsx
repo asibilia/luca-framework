@@ -17,7 +17,7 @@ import { useAgentSave } from "~/hooks/use-agent-save";
 import { useDirtyTitle } from "~/hooks/use-dirty-title";
 import { useEditMode } from "~/hooks/use-edit-mode";
 import { useUndo } from "~/hooks/use-undo";
-import { layoutContextAtom } from "~/stores/layout";
+import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
 import { agentHistoryAtom } from "~/stores/entity-atoms";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
@@ -94,17 +94,12 @@ export default function AgentsPage() {
     editMode.forceExit();
   }, [discard, editMode]);
 
-  // Cmd+S keyboard shortcut
+  // Register save callback for centralized Cmd+S shortcut
+  const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        void save();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [save]);
+    setSaveCallback(() => save());
+    return () => setSaveCallback(null);
+  }, [save, setSaveCallback]);
 
   return (
     <div className="flex h-full flex-col">

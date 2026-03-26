@@ -17,7 +17,7 @@ import { useRuleDetail } from "~/hooks/use-rule-detail";
 import { useRuleList } from "~/hooks/use-rule-list";
 import { useRuleSave } from "~/hooks/use-rule-save";
 import { useUndo } from "~/hooks/use-undo";
-import { layoutContextAtom } from "~/stores/layout";
+import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
 import { ruleHistoryAtom } from "~/stores/entity-atoms";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
@@ -103,17 +103,12 @@ export default function RulesPage() {
     editMode.forceExit();
   }, [discard, editMode]);
 
-  // Cmd+S keyboard shortcut
+  // Register save callback for centralized Cmd+S shortcut
+  const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        void save();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [save]);
+    setSaveCallback(() => save());
+    return () => setSaveCallback(null);
+  }, [save, setSaveCallback]);
 
   return (
     <div className="flex h-full flex-col">

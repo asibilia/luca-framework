@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
+import { useSetAtom } from "jotai";
 import { AlertTriangle } from "lucide-react";
 
 import { ComplexityTab } from "~/components/config/complexity-tab";
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useConfigConflict } from "~/hooks/use-config-conflict";
 import { useConfigHydration } from "~/hooks/use-config-hydration";
 import { useConfigSave } from "~/hooks/use-config-save";
+import { setGlobalSaveCallbackAtom } from "~/stores/layout";
 
 /**
  * Config page with three-tab editor for project configuration.
@@ -39,6 +41,13 @@ export default function ConfigPage() {
   const handleSave = useCallback(async () => {
     await save();
   }, [save]);
+
+  // Register save callback for centralized Cmd+S shortcut
+  const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
+  useEffect(() => {
+    setSaveCallback(() => save());
+    return () => setSaveCallback(null);
+  }, [save, setSaveCallback]);
 
   const handleDiscard = useCallback(() => {
     discard();

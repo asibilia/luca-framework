@@ -92,15 +92,44 @@ export const commandPaletteOpenAtom = atom<boolean>(false);
 export const compiledPreviewOpenAtom = atom<boolean>(false);
 
 /**
- * Global save callback registered by the currently active page.
+ * Internal storage for the global save callback.
  *
- * Pages with save functionality (agents, skills, rules, config, settings)
- * register their save function on mount and clear it on unmount. The
- * centralized keyboard shortcut hook calls this when Cmd+S is pressed.
- *
- * `null` when no save function is registered (e.g., on the home page).
+ * Not exported -- use `globalSaveCallbackAtom` (read) and
+ * `setGlobalSaveCallbackAtom` (write) instead.
  */
-export const globalSaveCallbackAtom = atom<(() => Promise<void>) | null>(null);
+const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null);
+
+/**
+ * Read-only atom for the global save callback.
+ *
+ * Used by the keyboard shortcut hook to invoke the current page's save.
+ * Returns `null` when no save function is registered.
+ */
+export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom));
+
+/**
+ * Write atom to register/unregister the global save callback.
+ *
+ * Pages with save functionality register their save function on mount
+ * and pass `null` on unmount. Uses a write atom to avoid the
+ * SetStateAction ambiguity that occurs when storing functions in
+ * basic atoms.
+ *
+ * @example
+ * ```ts
+ * const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
+ * useEffect(() => {
+ *   setSaveCallback(() => save());
+ *   return () => setSaveCallback(null);
+ * }, [save, setSaveCallback]);
+ * ```
+ */
+export const setGlobalSaveCallbackAtom = atom(
+  null,
+  (_get, set, callback: (() => Promise<void>) | null) => {
+    set(_saveCallbackAtom, callback);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Derived atoms
