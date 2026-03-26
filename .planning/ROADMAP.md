@@ -38,9 +38,9 @@
 
 ### Phase 203: Studio W8 Polish
 
-- [ ] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
-- [ ] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
-- [ ] Settings page with raw config editor (studio-w8-settings-page)
+- [x] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
+- [x] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
+- [x] Settings page with raw config editor (studio-w8-settings-page)
 
 **Goal:** Final polish features: safety net via git rollback, keyboard shortcuts for power users, and a settings escape hatch.
 **Depends on:** Phase 202
