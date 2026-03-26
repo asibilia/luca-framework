@@ -37,8 +37,8 @@
 
 ### Phase 207: UI Token & Accessibility Polish
 
-- [ ] Hardcoded color migration to CSS variable tokens (audit-ui-tokens)
-- [ ] Accessibility fixes (focus-visible, aria, responsive heights) (audit-ui-a11y)
+- [x] Hardcoded color migration to CSS variable tokens (audit-ui-tokens)
+- [x] Accessibility fixes (focus-visible, aria, responsive heights) (audit-ui-a11y)
 
 **Goal:** Replace all hardcoded green/amber color values with CSS variable tokens across 8+ components. Fix accessibility gaps: add focus-visible rings, aria-expanded attributes, aria-labels on tables. Fix responsive issues in command palette and CodeMirror heights. Unify icon button sizing to shadcn size="icon" pattern.
 **Depends on:** Phase 206
