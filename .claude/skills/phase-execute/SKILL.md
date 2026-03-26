@@ -1961,7 +1961,7 @@ PRE_MORTEM_MITIGATIONS=$(cat {phase_dir}/DISCUSSION.md 2>/dev/null | grep -A 100
 
 **Determine which reviewers to spawn:**
 
-**Always spawn ALL standard reviewers.** If the multi-lens gate is ACTIVE, also spawn Architecture and Data lens reviewers in the SAME parallel batch. Each reviewer resolves its model tier from the routing table based on complexity:
+**Always spawn the 3 core reviewers** (dx-advocate, code-simplifier, code-architect). Conditionally spawn security-auditor if changed files match security patterns (see below). If the multi-lens gate is ACTIVE, also spawn Architecture and Data lens reviewers in the SAME parallel batch. Each reviewer resolves its model tier from the routing table based on complexity:
 
 | Agent            | TRIVIAL | SIMPLE  | MODERATE | COMPLEX | CRITICAL |
 | ---------------- | ------- | ------- | -------- | ------- | -------- |
@@ -2334,7 +2334,7 @@ cat > {phase_dir}/REVIEW.md << 'REVIEW_EOF'
 
 **Timestamp:** {timestamp_utc}
 **Files reviewed:** {file_count}
-**Reviewers:** dx-advocate, code-simplifier, code-architect, security-auditor{MULTI_LENS_GATE_MET ? ", architecture-lens, data-lens" : ""}
+**Reviewers:** dx-advocate, code-simplifier, code-architect{NEEDS_SECURITY ? ", security-auditor" : ""}{MULTI_LENS_GATE_MET ? ", architecture-lens, data-lens" : ""}
 
 ## Severity Summary
 
@@ -2626,7 +2626,7 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 - [ ] Each plan has SUMMARY.md
 - [ ] Phase goal verified (must_haves checked against codebase)
 - [ ] VERIFICATION.md created in phase directory
-- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, security-auditor)
+- [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect; security-auditor if triggered)
 - [ ] CRITICAL code issues block until fixed
 - [ ] HIGH/MEDIUM code issues presented with options
 - [ ] UAT.md created with tests from SUMMARY.md
