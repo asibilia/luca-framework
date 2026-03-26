@@ -28,8 +28,8 @@
 
 ### Phase 206: Component DRY & Convention Alignment
 
-- [ ] Tab container extraction + config form components (audit-component-dry)
-- [ ] Pipeline Cmd+S fix + node:fs migration + convention fixes (audit-convention-alignment)
+- [x] Tab container extraction + config form components (audit-component-dry)
+- [x] Pipeline Cmd+S fix + node:fs migration + convention fixes (audit-convention-alignment)
 
 **Goal:** Extract shared tab container components (edit header, compiled fetch hook), unify config form section components, fix duplicate Cmd+S handler in pipeline save, migrate node:fs to Bun.file, fix JSDoc import ordering, add missing useCallback, replace JSON.parse/stringify clone with lodash cloneDeep, unify Switch component usage.
 **Depends on:** Phase 205
