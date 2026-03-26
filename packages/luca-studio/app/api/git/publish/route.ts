@@ -8,7 +8,7 @@
  * Studio-tracked paths: `src/agents/`, `src/skills/`, `src/rules/`, `.planning/config.json`
  *
  * @returns `{ commit_sha, message, file_count }` on success
- * @returns `{ error, files }` with 409 on non-Studio dirty files
+ * @returns `{ error, file_count }` with 409 on non-Studio dirty files
  * @returns `{ message }` with 200 if no Studio changes exist
  */
 import { NextResponse } from "next/server";
@@ -57,8 +57,14 @@ function buildCommitSummary(files: string[]): string {
   return `${unique.slice(0, 3).join(", ")} +${unique.length - 3} more`;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // Localhost guard: restrict to local development server
+    const host = request.headers.get("host") ?? "";
+    if (!host.startsWith("localhost") && !host.startsWith("127.0.0.1")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const root = await resolveProjectRoot();
 
     // 1. Get uncommitted files via git status --porcelain
@@ -90,7 +96,7 @@ export async function POST() {
       return NextResponse.json(
         {
           error: "Non-Studio uncommitted changes detected",
-          files: nonStudioFiles,
+          file_count: nonStudioFiles.length,
         },
         { status: 409 },
       );
