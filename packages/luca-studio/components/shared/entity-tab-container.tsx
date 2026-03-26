@@ -249,9 +249,7 @@ export function EntityTabContainer({
             {isEditing ? (
               <>
                 Editing: <span className="text-foreground">{name}</span>
-                {isDirty && (
-                  <span className="ml-1 text-amber-500">(edited)</span>
-                )}
+                {isDirty && <span className="ml-1 text-warning">(edited)</span>}
               </>
             ) : (
               name
@@ -354,7 +352,7 @@ export function EntityTabContainer({
           {!compiledLoading && compiledError === "sidecar-offline" && (
             <>
               <div className="mb-3 flex items-center gap-2 rounded-md border border-border/50 bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                <AlertTriangle className="size-3.5 shrink-0 text-amber-500" />
+                <AlertTriangle className="size-3.5 shrink-0 text-warning" />
                 <span>
                   Compilation sidecar is offline. Showing local placeholder.
                   Start the sidecar with{" "}
