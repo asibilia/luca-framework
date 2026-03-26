@@ -73,7 +73,7 @@ export function QuickActions() {
           <Link
             key={action.href}
             href={action.href}
-            className="flex items-start gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50"
+            className="flex items-start gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <div className="mt-0.5 shrink-0 text-muted-foreground">
               {action.icon}
