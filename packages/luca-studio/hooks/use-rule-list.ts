@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { RULE_LIST_CONFIG } from "~/hooks/schemas/entity-hook-config";
+import { useEntityList } from "~/hooks/use-entity-list";
 
 import type { EntitySummary } from "~/lib/entity-route-helpers";
 
@@ -20,14 +21,14 @@ type UseRuleListReturn = {
 };
 
 // ---------------------------------------------------------------------------
-// Hook
+// Thin wrapper
 // ---------------------------------------------------------------------------
 
 /**
  * Fetches the rule list from `/api/entities/rules`.
  *
- * Returns the list, loading state, error state, and a manual refresh function.
- * Follows the same pattern as `useAgentList`.
+ * Delegates to the generic `useEntityList` and renames `entities` to
+ * `rules` for backward compatibility with existing consumers.
  *
  * @returns Rule list data and status indicators.
  *
@@ -37,32 +38,6 @@ type UseRuleListReturn = {
  * ```
  */
 export function useRuleList(): UseRuleListReturn {
-  const [rules, setRules] = useState<EntitySummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchRules = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/entities/rules");
-      if (!res.ok) {
-        throw new Error(`Failed to fetch rules: ${res.status}`);
-      }
-      const json = (await res.json()) as { data: EntitySummary[] };
-      setRules(json.data);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load rule list";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchRules();
-  }, [fetchRules]);
-
-  return { rules, loading, error, refresh: fetchRules };
+  const { entities, loading, error, refresh } = useEntityList(RULE_LIST_CONFIG);
+  return { rules: entities, loading, error, refresh };
 }

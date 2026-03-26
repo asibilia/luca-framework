@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { SKILL_LIST_CONFIG } from "~/hooks/schemas/entity-hook-config";
+import { useEntityList } from "~/hooks/use-entity-list";
 
 import type { EntitySummary } from "~/lib/entity-route-helpers";
 
@@ -20,14 +21,14 @@ type UseSkillListReturn = {
 };
 
 // ---------------------------------------------------------------------------
-// Hook
+// Thin wrapper
 // ---------------------------------------------------------------------------
 
 /**
  * Fetches the skill list from `/api/entities/skills`.
  *
- * Returns the list, loading state, error state, and a manual refresh function.
- * Follows the same pattern as `useAgentList`.
+ * Delegates to the generic `useEntityList` and renames `entities` to
+ * `skills` for backward compatibility with existing consumers.
  *
  * @returns Skill list data and status indicators.
  *
@@ -37,32 +38,7 @@ type UseSkillListReturn = {
  * ```
  */
 export function useSkillList(): UseSkillListReturn {
-  const [skills, setSkills] = useState<EntitySummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchSkills = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/entities/skills");
-      if (!res.ok) {
-        throw new Error(`Failed to fetch skills: ${res.status}`);
-      }
-      const json = (await res.json()) as { data: EntitySummary[] };
-      setSkills(json.data);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load skill list";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchSkills();
-  }, [fetchSkills]);
-
-  return { skills, loading, error, refresh: fetchSkills };
+  const { entities, loading, error, refresh } =
+    useEntityList(SKILL_LIST_CONFIG);
+  return { skills: entities, loading, error, refresh };
 }
