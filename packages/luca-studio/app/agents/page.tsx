@@ -7,12 +7,15 @@ import { Bot, Loader2 } from "lucide-react";
 
 import { AgentTabContainer } from "~/components/agents/agent-tab-container";
 import { EntityTree } from "~/components/editor/entity-tree";
+import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { ResizableSplit } from "~/components/layout/resizable-split";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useAgentDetail } from "~/hooks/use-agent-detail";
 import { useAgentList } from "~/hooks/use-agent-list";
 import { useAgentSave } from "~/hooks/use-agent-save";
+import { useDirtyTitle } from "~/hooks/use-dirty-title";
+import { useEditMode } from "~/hooks/use-edit-mode";
 import { useUndo } from "~/hooks/use-undo";
 import { layoutContextAtom } from "~/stores/layout";
 import { agentHistoryAtom } from "~/stores/entity-atoms";
@@ -74,13 +77,22 @@ export default function AgentsPage() {
   // Save/discard integration
   const { save, discard } = useAgentSave(selectedName, etag);
 
+  // Edit mode for the selected entity
+  const entityKey = selectedName ? `agent:${selectedName}` : "";
+  const editMode = useEditMode(entityKey, discard);
+
+  // Browser tab title signal
+  useDirtyTitle("agent:");
+
   const handleSave = useCallback(async () => {
     await save();
-  }, [save]);
+    editMode.forceExit();
+  }, [save, editMode]);
 
   const handleDiscard = useCallback(() => {
     discard();
-  }, [discard]);
+    editMode.forceExit();
+  }, [discard, editMode]);
 
   // Cmd+S keyboard shortcut
   useEffect(() => {
@@ -132,16 +144,32 @@ export default function AgentsPage() {
           ) : detailLoading ? (
             <LoadingState />
           ) : detail ? (
-            <AgentTabContainer name={selectedName} detail={detail} />
+            <AgentTabContainer
+              name={selectedName}
+              detail={detail}
+              isEditing={editMode.isEditing}
+              onEnterEdit={editMode.enterEdit}
+              onExitEdit={editMode.exitEdit}
+            />
           ) : (
             <EmptyState />
           )}
 
-          {/* Save bar scoped to agent entities */}
-          <SaveBar
-            onSave={handleSave}
-            onDiscard={handleDiscard}
-            entityFilter="agent:"
+          {/* Save bar scoped to agent entities -- only visible in edit mode */}
+          {editMode.isEditing && (
+            <SaveBar
+              onSave={handleSave}
+              onDiscard={handleDiscard}
+              entityFilter="agent:"
+            />
+          )}
+
+          {/* Navigation guard for unsaved changes */}
+          <NavigationGuard
+            when={editMode.isEditing && editMode.isDirty}
+            showDialog={editMode.showExitConfirm}
+            onConfirm={editMode.confirmExit}
+            onCancel={editMode.cancelExit}
           />
         </div>
       </ResizableSplit>

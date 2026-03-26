@@ -24,6 +24,8 @@ type AgentConfigFormProps = {
   name: string;
   /** Full agent detail from the API. */
   detail: EntityDetail;
+  /** Whether the form is in edit mode. When false, fields render as read-only text. */
+  isEditing?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -112,7 +114,11 @@ function FormField({
  * <AgentConfigForm name="lu-router" detail={agentDetail} />
  * ```
  */
-export function AgentConfigForm({ name, detail }: AgentConfigFormProps) {
+export function AgentConfigForm({
+  name,
+  detail,
+  isEditing,
+}: AgentConfigFormProps) {
   const [draft, setDraft] = useAtom(agentDraftAtom(name));
   const markDirty = useSetAtom(markDirtyAtom);
   const entityKey = `agent:${name}`;
@@ -163,51 +169,72 @@ export function AgentConfigForm({ name, detail }: AgentConfigFormProps) {
         </FormField>
 
         <FormField label="Description" htmlFor={`${name}-description`}>
-          <textarea
-            id={`${name}-description`}
-            value={currentValues.description}
-            onChange={(e) => updateField("description", e.target.value)}
-            rows={3}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Agent description..."
-          />
+          {isEditing ? (
+            <textarea
+              id={`${name}-description`}
+              value={currentValues.description}
+              onChange={(e) => updateField("description", e.target.value)}
+              rows={3}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Agent description..."
+            />
+          ) : (
+            <p className="text-sm text-foreground">
+              {currentValues.description || "No description"}
+            </p>
+          )}
         </FormField>
       </CollapsibleSection>
 
       {/* Model Configuration section */}
       <CollapsibleSection title="Model Configuration" defaultOpen>
         <FormField label="Enabled">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={currentValues.enabled}
-            onClick={() => updateField("enabled", !currentValues.enabled)}
-            className={cn(
-              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
-              currentValues.enabled ? "bg-primary" : "bg-muted",
-            )}
-          >
-            <span
+          {isEditing ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={currentValues.enabled}
+              onClick={() => updateField("enabled", !currentValues.enabled)}
               className={cn(
-                "pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform",
-                currentValues.enabled ? "translate-x-4" : "translate-x-0",
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
+                currentValues.enabled ? "bg-primary" : "bg-muted",
               )}
-            />
-          </button>
+            >
+              <span
+                className={cn(
+                  "pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform",
+                  currentValues.enabled ? "translate-x-4" : "translate-x-0",
+                )}
+              />
+            </button>
+          ) : (
+            <Badge
+              variant={currentValues.enabled ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {currentValues.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          )}
         </FormField>
 
         <FormField label="Model Tier" htmlFor={`${name}-model-tier`}>
-          <select
-            id={`${name}-model-tier`}
-            value={currentValues.modelTier}
-            onChange={(e) => updateField("modelTier", e.target.value)}
-            className="h-8 w-full rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Not specified</option>
-            <option value="fast">fast (haiku/lightweight)</option>
-            <option value="balanced">balanced (sonnet/standard)</option>
-            <option value="capable">capable (opus/deep analysis)</option>
-          </select>
+          {isEditing ? (
+            <select
+              id={`${name}-model-tier`}
+              value={currentValues.modelTier}
+              onChange={(e) => updateField("modelTier", e.target.value)}
+              className="h-8 w-full rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Not specified</option>
+              <option value="fast">fast (haiku/lightweight)</option>
+              <option value="balanced">balanced (sonnet/standard)</option>
+              <option value="capable">capable (opus/deep analysis)</option>
+            </select>
+          ) : (
+            <Badge variant="secondary" className="font-mono text-xs">
+              {currentValues.modelTier || "Not specified"}
+            </Badge>
+          )}
         </FormField>
       </CollapsibleSection>
 
@@ -219,13 +246,19 @@ export function AgentConfigForm({ name, detail }: AgentConfigFormProps) {
       {/* Metadata section */}
       <CollapsibleSection title="Metadata" defaultOpen={false}>
         <FormField label="Purpose" htmlFor={`${name}-purpose`}>
-          <Input
-            id={`${name}-purpose`}
-            value={currentValues.purpose}
-            onChange={(e) => updateField("purpose", e.target.value)}
-            className="h-8 text-sm"
-            placeholder="Agent purpose..."
-          />
+          {isEditing ? (
+            <Input
+              id={`${name}-purpose`}
+              value={currentValues.purpose}
+              onChange={(e) => updateField("purpose", e.target.value)}
+              className="h-8 text-sm"
+              placeholder="Agent purpose..."
+            />
+          ) : (
+            <p className="text-sm text-foreground">
+              {currentValues.purpose || "Not specified"}
+            </p>
+          )}
         </FormField>
 
         <FormField label="Stage">

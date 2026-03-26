@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAtomValue } from "jotai";
 
@@ -70,6 +70,12 @@ export function useEditMode(
 
   const [isEditing, setIsEditing] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Reset editing state when the entity changes (user selects a different entity)
+  useEffect(() => {
+    setIsEditing(false);
+    setShowExitConfirm(false);
+  }, [entityKey]);
 
   const enterEdit = useCallback(() => {
     setIsEditing(true);
