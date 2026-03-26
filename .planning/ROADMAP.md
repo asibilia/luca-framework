@@ -10,8 +10,8 @@
 
 ### Phase 204: Security Hardening
 
-- [ ] Git revert path allowlist + commit_sha hex validation (audit-security-revert)
-- [ ] ETag leak removal + localhost guard on git endpoints (audit-security-api)
+- [x] Git revert path allowlist + commit_sha hex validation (audit-security-revert)
+- [x] ETag leak removal + localhost guard on git endpoints (audit-security-api)
 
 **Goal:** Fix all 6 security findings from v8.1.0 audit: path allowlist on git revert, commit_sha hex-only regex, ETag removal from 409 response, localhost guard on mutating API routes, git log SHA validation, publish 409 file path redaction.
 **Depends on:** None
