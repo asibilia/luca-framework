@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { useAtomValue } from "jotai";
 
+import { CommandPalette } from "~/components/layout/command-palette";
 import { NavRail } from "~/components/layout/nav-rail";
 import { DetailPanel } from "~/components/layout/detail-panel";
 import { useConfigHydration } from "~/hooks/use-config-hydration";
@@ -97,6 +98,9 @@ export function LayoutShell({
       {isFloating && (
         <DetailPanel title={detailTitle}>{detailChildren}</DetailPanel>
       )}
+
+      {/* Command palette overlay (Cmd+K) */}
+      <CommandPalette />
     </div>
   );
 }
