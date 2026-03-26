@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 
 import {
   configAtom,
   configDraftAtom,
   configEtagAtom,
 } from "~/stores/config-atoms";
-import { canSaveAtom, markCleanAtom } from "~/stores/dirty-tracking";
+import { markCleanAtom } from "~/stores/dirty-tracking";
 import { pipelineNodesAtom, pipelineEdgesAtom } from "~/stores/pipeline-atoms";
 
 // -- Types --------------------------------------------------------------------
@@ -31,7 +31,6 @@ interface PipelineSaveActions {
  *   `/api/config/workflow`, then clears dirty tracking.
  * - **Discard**: Resets `configDraftAtom` to the server state and
  *   re-initializes pipeline nodes/edges from the original topology.
- * - **Cmd+S**: Registers a keyboard shortcut for saving.
  *
  * @returns Object with `handleSave` and `handleDiscard` callbacks.
  *
@@ -44,7 +43,6 @@ interface PipelineSaveActions {
 export function usePipelineSave(): PipelineSaveActions {
   const [configDraft] = useAtom(configDraftAtom);
   const [serverConfig] = useAtom(configAtom);
-  const canSave = useAtomValue(canSaveAtom);
   const [, markClean] = useAtom(markCleanAtom);
   const [, setConfigDraft] = useAtom(configDraftAtom);
   const [configEtag, setConfigEtag] = useAtom(configEtagAtom);
@@ -120,20 +118,6 @@ export function usePipelineSave(): PipelineSaveActions {
     // which focuses on config changes.
     markClean("config");
   }, [serverConfig, setConfigDraft, markClean]);
-
-  // Cmd+S keyboard shortcut
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        if (canSave) {
-          void handleSave();
-        }
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [canSave, handleSave]);
 
   return { handleSave, handleDiscard };
 }
