@@ -59,16 +59,18 @@ export function GatesTab() {
 
   const toggleGate = useCallback(
     (name: string, checked: boolean) => {
-      const current = { ...(config ?? {}) };
-      const currentGates = {
-        ...(get(current, "gates", {}) as Record<string, boolean>),
-      };
-      currentGates[name] = checked;
-      current.gates = currentGates;
-      setConfig(current);
+      setConfig((prev) => {
+        const current = { ...(prev ?? {}) };
+        const currentGates = {
+          ...(get(current, "gates", {}) as Record<string, boolean>),
+        };
+        currentGates[name] = checked;
+        current.gates = currentGates;
+        return current;
+      });
       markDirty("config");
     },
-    [config, setConfig, markDirty],
+    [setConfig, markDirty],
   );
 
   const gateEntries = Object.entries(gates);

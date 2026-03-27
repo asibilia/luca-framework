@@ -70,16 +70,28 @@ export const configEtagAtom = atom<string | null>(null);
 /** @internal Private primitive backing `configDraftAtom`. `null` = not overridden. */
 const _configDraftPrimitiveAtom = atom<Record<string, unknown> | null>(null);
 
+/** Setter type for configDraftAtom -- accepts a value or a functional updater. */
+type ConfigDraftUpdate =
+  | Record<string, unknown>
+  | null
+  | ((prev: Record<string, unknown> | null) => Record<string, unknown> | null);
+
 /**
  * Writable draft copy of `configAtom`.
  *
  * `get` returns the draft override when present, otherwise the server state.
- * `set` writes only to the private primitive -- never self-referencing.
+ * `set` accepts either a direct value or a functional updater `(prev) => next`
+ * to avoid stale-closure issues in callbacks.
  */
 export const configDraftAtom = atom(
   (get) => get(_configDraftPrimitiveAtom) ?? get(configAtom),
-  (_get, set, value: Record<string, unknown> | null) => {
-    set(_configDraftPrimitiveAtom, value);
+  (get, set, update: ConfigDraftUpdate) => {
+    if (typeof update === "function") {
+      const current = get(_configDraftPrimitiveAtom) ?? get(configAtom);
+      set(_configDraftPrimitiveAtom, update(current));
+    } else {
+      set(_configDraftPrimitiveAtom, update);
+    }
   },
 );
 

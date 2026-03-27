@@ -60,34 +60,38 @@ export function HarnessTab() {
 
   const updateHarnessField = useCallback(
     (field: string, value: unknown) => {
-      const current = { ...(config ?? {}) };
-      const currentHarness = {
-        ...(get(current, "harness", {}) as Record<string, unknown>),
-      };
-      currentHarness[field] = value;
-      current.harness = currentHarness;
-      setConfig(current);
+      setConfig((prev) => {
+        const current = { ...(prev ?? {}) };
+        const currentHarness = {
+          ...(get(current, "harness", {}) as Record<string, unknown>),
+        };
+        currentHarness[field] = value;
+        current.harness = currentHarness;
+        return current;
+      });
       markDirty("config");
     },
-    [config, setConfig, markDirty],
+    [setConfig, markDirty],
   );
 
   const updateCheck = useCallback(
     (idx: number, field: keyof HarnessCheck, value: unknown) => {
-      const current = { ...(config ?? {}) };
-      const currentHarness = {
-        ...(get(current, "harness", {}) as Record<string, unknown>),
-      };
-      const currentChecks = [
-        ...(get(currentHarness, "checks", []) as HarnessCheck[]),
-      ];
-      currentChecks[idx] = { ...currentChecks[idx], [field]: value };
-      currentHarness.checks = currentChecks;
-      current.harness = currentHarness;
-      setConfig(current);
+      setConfig((prev) => {
+        const current = { ...(prev ?? {}) };
+        const currentHarness = {
+          ...(get(current, "harness", {}) as Record<string, unknown>),
+        };
+        const currentChecks = [
+          ...(get(currentHarness, "checks", []) as HarnessCheck[]),
+        ];
+        currentChecks[idx] = { ...currentChecks[idx], [field]: value };
+        currentHarness.checks = currentChecks;
+        current.harness = currentHarness;
+        return current;
+      });
       markDirty("config");
     },
-    [config, setConfig, markDirty],
+    [setConfig, markDirty],
   );
 
   return (
