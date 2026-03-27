@@ -2,7 +2,72 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v8.4.0 — Studio Quality & Bug Fixes
+
+---
+
+## Phase 214: Critical Save & Layout Fixes
+
+**Goal:** Fix the two P0 crashers — Jotai save callback bug and build pages sidebar collapse.
+
+**Depends on:** None
+
+**Todos:** studio-entity-save-428, studio-build-sidebar-collapse
+
+**Requirements:** REQ-01, REQ-02
+
+- [ ] Plan 214-01: Fix Jotai save callback + defense-in-depth guards
+- [ ] Plan 214-02: Fix build pages entity sidebar layout
+
+## Phase 215: Home & Sessions Data Fixes
+
+**Goal:** Fix P1 data flow issues — home page field mismatches and sessions page empty data.
+
+**Depends on:** None
+
+**Todos:** studio-home-field-mismatches, studio-sessions-empty-data
+
+**Requirements:** REQ-03, REQ-04
+
+- [ ] Plan 215-01: Fix home page field names and summary synthesis
+- [ ] Plan 215-02: Fix sessions API filter and vault default
+
+## Phase 216: Git Routes Runtime Fix
+
+**Goal:** Fix git routes using Bun.$ in Next.js runtime — all git features broken.
+
+**Depends on:** None
+
+**Todos:** studio-git-routes-bun-shell
+
+**Requirements:** REQ-05
+
+- [ ] Plan 216-01: Replace Bun.$ with Node.js-compatible shell execution in git routes
+
+## Phase 217: Memory & Metrics Fixes
+
+**Goal:** Fix MuninnDB integration issues — memory metrics and timeline display.
+
+**Depends on:** None
+
+**Todos:** studio-memory-metrics-timeline
+
+**Requirements:** REQ-06
+
+- [ ] Plan 217-01: Fix metrics, observations, and zone-history endpoints
+
+## Phase 218: API Quality & Security Cleanup
+
+**Goal:** DRY extraction of localhost guard and address Phase 208 code review HIGH findings.
+
+**Depends on:** Phase 216 (git routes may share localhost guard pattern)
+
+**Todos:** studio-localhost-guard-extract, studio-phase-208-review-cleanup
+
+**Requirements:** REQ-07, REQ-08
+
+- [ ] Plan 218-01: Extract localhost guard helper and consolidate constants
+- [ ] Plan 218-02: Address Phase 208 HIGH findings (imports, barrels, DRY, Bun.file)
 
 ---
 

@@ -8,7 +8,21 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v8.1.0 — Shipped)
+## Current Milestone (v8.4.0 — In Progress)
+
+**v8.4.0 — Studio Quality & Bug Fixes**
+
+Fix 8 bugs and quality issues identified during comprehensive Studio audit. Two P0 crashers (Jotai save callback, sidebar collapse), three P1 data flow fixes (home fields, sessions empty, git routes runtime), one P2 MuninnDB integration fix (metrics/timeline), and two P3 code quality items (localhost guard DRY, Phase 208 review findings).
+
+**Scope:** 8 todos, all Studio-focused (5 UI, 3 API)
+
+## Previous State (v8.3.0 — Shipped)
+
+**Last Shipped:** v8.3.0 — Studio Feature Suite (2026-03-27)
+
+6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC).
+
+## Previous State (v8.1.0 — Shipped)
 
 **Last Shipped:** v8.1.0 — Studio Polish & Prompt Quality (2026-03-25)
 
