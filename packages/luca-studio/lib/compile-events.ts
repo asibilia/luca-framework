@@ -38,19 +38,30 @@
 /**
  * Discriminated union for compile lifecycle events.
  *
+ * Uses a proper discriminated union so that `compile:error` always carries
+ * the `error` field while `compile:start` and `compile:complete` do not.
+ *
  * @property type      - The event discriminator.
  * @property domain    - Entity domain being compiled (agents, skills, rules).
  * @property name      - Entity name being compiled (e.g. "lu-router").
  * @property timestamp - ISO-8601 timestamp of when the event occurred.
  * @property error     - Error message (present only for `compile:error`).
  */
-export type CompileEvent = {
-  type: "compile:start" | "compile:complete" | "compile:error";
-  domain: string;
-  name: string;
-  timestamp: string;
-  error?: string;
-};
+export type CompileEvent =
+  | { type: "compile:start"; domain: string; name: string; timestamp: string }
+  | {
+      type: "compile:complete";
+      domain: string;
+      name: string;
+      timestamp: string;
+    }
+  | {
+      type: "compile:error";
+      domain: string;
+      name: string;
+      timestamp: string;
+      error: string;
+    };
 
 /** Callback signature for compile-event subscribers. */
 export type CompileEventListener = (event: CompileEvent) => void;
