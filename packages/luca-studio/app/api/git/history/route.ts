@@ -6,6 +6,8 @@
  *
  * @returns `{ commits: Array<{ sha, message, date, author, files }> }`
  */
+import { execSync } from "node:child_process";
+
 import { NextResponse } from "next/server";
 
 import { resolveProjectRoot } from "~/lib/project-root";
@@ -40,8 +42,10 @@ export async function GET(request: Request) {
     const SEP = "\x1f";
     const format = `${SEP}%H${SEP}%s${SEP}%aI${SEP}%an`;
 
-    const logResult =
-      await Bun.$`git -C ${root} log --fixed-strings --grep=[studio-edit] --format=${format} -n ${limit}`.text();
+    const logResult = execSync(
+      `git log --fixed-strings --grep="[studio-edit]" --format="${format}" -n ${limit}`,
+      { cwd: root, encoding: "utf-8" },
+    );
 
     if (!logResult.trim()) {
       return NextResponse.json({ commits: [] });
@@ -67,8 +71,10 @@ export async function GET(request: Request) {
       // Get files changed in this commit
       let files: string[] = [];
       try {
-        const diffResult =
-          await Bun.$`git -C ${root} diff-tree --no-commit-id --name-only -r ${sha}`.text();
+        const diffResult = execSync(
+          `git diff-tree --no-commit-id --name-only -r ${sha}`,
+          { cwd: root, encoding: "utf-8" },
+        );
         files = diffResult
           .split("\n")
           .map((f) => f.trim())
