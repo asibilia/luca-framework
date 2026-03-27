@@ -31,6 +31,59 @@ export type HomeData = {
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Synthesize a human-readable summary from a ledger entry's event_data.
+ *
+ * Priority:
+ * 1. Use existing summary field if present.
+ * 2. For `field_set` events: "Set {field} to {value}".
+ * 3. For transitions with previous_state/current_state: "{prev} -> {current}".
+ * 4. For actions_executed arrays: join action names.
+ * 5. Fallback: empty string.
+ *
+ * @param entry - Raw ledger entry object
+ * @returns Synthesized summary string
+ */
+function synthesizeSummary(entry: Record<string, unknown>): string {
+  // 1. Use existing summary if present
+  const existing = get(entry, "summary", "") as string;
+  if (existing) return existing;
+
+  const eventData = get(entry, "event_data", {}) as Record<string, unknown>;
+  const eventType = get(entry, "event_type", "") as string;
+
+  // 2. For field_set: "Set {field} to {value}"
+  if (eventType === "field_set") {
+    const field = get(eventData, "field", "") as string;
+    const value = get(eventData, "value", "") as unknown;
+    if (field) {
+      const displayValue =
+        typeof value === "string" ? value : JSON.stringify(value);
+      return `Set ${field} to ${displayValue}`;
+    }
+  }
+
+  // 3. For transitions: "{previous_state} -> {current_state}"
+  const prevState = get(eventData, "previous_state", "") as string;
+  const currState = get(eventData, "current_state", "") as string;
+  if (prevState && currState) {
+    return `${prevState} -> ${currState}`;
+  }
+
+  // 4. For actions_executed: join action names
+  const actions = get(eventData, "actions_executed", null) as string[] | null;
+  if (Array.isArray(actions) && actions.length > 0) {
+    return actions.join(", ");
+  }
+
+  // 5. Fallback
+  return "";
+}
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -79,11 +132,12 @@ export function useHomeData(): HomeData {
         const parsed: LedgerEntry[] = [];
         for (const entry of ledgerJson) {
           if (entry && typeof entry === "object") {
+            const entryObj = entry as Record<string, unknown>;
             parsed.push({
-              event: get(entry, "event_type", "unknown") as string,
-              timestamp: get(entry, "timestamp", "") as string,
-              summary: get(entry, "summary", undefined) as string | undefined,
-              ...(entry as Record<string, unknown>),
+              event: get(entryObj, "event_type", "unknown") as string,
+              timestamp: get(entryObj, "timestamp", "") as string,
+              summary: synthesizeSummary(entryObj) || undefined,
+              ...entryObj,
             });
           }
         }
