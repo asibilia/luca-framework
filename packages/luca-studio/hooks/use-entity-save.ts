@@ -60,9 +60,8 @@ export function useEntitySave(
   const save = useCallback(async () => {
     if (!name) return;
     if (!etag) {
-      throw new Error(
-        "Cannot save: no ETag available. Please reload the entity.",
-      );
+      console.warn("Cannot save: no ETag available. Please reload the entity.");
+      return;
     }
 
     const entityKey = `${config.entitySingular}:${name}`;
