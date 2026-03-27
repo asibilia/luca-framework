@@ -9,6 +9,7 @@
  * @returns `{ reverted: true, file_path }` on success
  * @returns `{ error }` with 400/500 on failure
  */
+import { execSync } from "node:child_process";
 import { normalize } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -88,7 +89,10 @@ export async function POST(request: Request) {
     const root = await resolveProjectRoot();
 
     // 3. Checkout the file from the given commit
-    await Bun.$`git -C ${root} checkout ${commit_sha} -- ${normalizedPath}`.quiet();
+    execSync(`git checkout ${commit_sha} -- "${normalizedPath}"`, {
+      cwd: root,
+      encoding: "utf-8",
+    });
 
     // 4. File is automatically staged by git checkout -- no extra add needed
 
