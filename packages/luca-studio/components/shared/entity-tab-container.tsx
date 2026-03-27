@@ -81,6 +81,92 @@ const TAB_IDS = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Internal: Compile status indicator components
+// ---------------------------------------------------------------------------
+
+/**
+ * Compile status configuration for each SSE state.
+ *
+ * Maps compile states to their icon, color tokens, and label factory.
+ */
+const COMPILE_STATUS_CONFIG = {
+  compiling: {
+    Icon: Loader2,
+    iconClass: "animate-spin text-primary",
+    borderClass: "border-primary/30",
+    bgClass: "bg-primary/5",
+    textClass: "text-primary",
+    label: (domain: string, name: string) =>
+      `Compiling ${domain}/${name} via sidecar...`,
+  },
+  success: {
+    Icon: CheckCircle2,
+    iconClass: "text-green-500",
+    borderClass: "border-green-500/30",
+    bgClass: "bg-green-500/5",
+    textClass: "text-green-600 dark:text-green-400",
+    label: (domain: string, name: string) =>
+      `Compilation succeeded for ${domain}/${name}.`,
+  },
+  error: {
+    Icon: XCircle,
+    iconClass: "text-destructive",
+    borderClass: "border-destructive/30",
+    bgClass: "bg-destructive/5",
+    textClass: "text-destructive",
+    label: (_domain: string, _name: string, error?: string) =>
+      `Compilation failed: ${error ?? "unknown error"}`,
+  },
+} as const;
+
+type CompileState = keyof typeof COMPILE_STATUS_CONFIG;
+
+/**
+ * Small inline icon for the compile status in the tab trigger.
+ *
+ * Renders the appropriate icon (spinner/check/x) based on SSE compile state.
+ */
+function CompileStatusIcon({ state }: { state: CompileState }) {
+  const config = COMPILE_STATUS_CONFIG[state];
+  const { Icon, iconClass } = config;
+  return <Icon className={cn("size-3", iconClass)} />;
+}
+
+/**
+ * Full-width banner showing compile status with icon and descriptive text.
+ *
+ * Used inside the Compiled tab content area to show SSE compile progress,
+ * success, or error messages.
+ */
+function CompileStatusBanner({
+  state,
+  domain,
+  name,
+  error,
+}: {
+  state: CompileState;
+  domain: string;
+  name: string;
+  error?: string;
+}) {
+  const config = COMPILE_STATUS_CONFIG[state];
+  const { Icon, iconClass, borderClass, bgClass, textClass, label } = config;
+  return (
+    <div
+      className={cn(
+        "mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-xs",
+        borderClass,
+        bgClass,
+        textClass,
+      )}
+    >
+      <Icon className={cn("size-3.5 shrink-0", iconClass)} />
+      <span>{label(domain, name, error)}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -317,14 +403,8 @@ export function EntityTabContainer({
           {hasCompiledTab && (
             <TabsTrigger value={TAB_IDS.compiled} className="gap-1.5">
               Compiled
-              {sseMatchesEntity && compileStatus.state === "compiling" && (
-                <Loader2 className="size-3 animate-spin text-primary" />
-              )}
-              {sseMatchesEntity && compileStatus.state === "success" && (
-                <CheckCircle2 className="size-3 text-green-500" />
-              )}
-              {sseMatchesEntity && compileStatus.state === "error" && (
-                <XCircle className="size-3 text-destructive" />
+              {sseMatchesEntity && compileStatus.state !== "idle" && (
+                <CompileStatusIcon state={compileStatus.state} />
               )}
             </TabsTrigger>
           )}
@@ -379,29 +459,13 @@ export function EntityTabContainer({
           className="flex-1 overflow-y-auto p-4"
         >
           {/* SSE compile status (supplementary to HTTP response) */}
-          {sseMatchesEntity && compileStatus.state === "compiling" && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-              <Loader2 className="size-3.5 animate-spin shrink-0" />
-              <span>
-                Compiling {compileStatus.domain}/{compileStatus.name} via
-                sidecar...
-              </span>
-            </div>
-          )}
-          {sseMatchesEntity && compileStatus.state === "success" && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-xs text-green-600 dark:text-green-400">
-              <CheckCircle2 className="size-3.5 shrink-0" />
-              <span>
-                Compilation succeeded for {compileStatus.domain}/
-                {compileStatus.name}.
-              </span>
-            </div>
-          )}
-          {sseMatchesEntity && compileStatus.state === "error" && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              <XCircle className="size-3.5 shrink-0" />
-              <span>Compilation failed: {compileStatus.error}</span>
-            </div>
+          {sseMatchesEntity && compileStatus.state !== "idle" && (
+            <CompileStatusBanner
+              state={compileStatus.state}
+              domain={"domain" in compileStatus ? compileStatus.domain : ""}
+              name={"name" in compileStatus ? compileStatus.name : ""}
+              error={"error" in compileStatus ? compileStatus.error : undefined}
+            />
           )}
 
           {/* HTTP-based compile states (primary feedback) */}
