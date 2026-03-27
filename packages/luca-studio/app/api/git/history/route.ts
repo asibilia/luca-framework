@@ -58,10 +58,10 @@ export async function GET(request: Request) {
 
     // Entries come in groups of 4 (sha, message, date, author) after split
     for (let i = 0; i + 3 < entries.length; i += 4) {
-      const sha = entries[i].trim();
-      const message = entries[i + 1].trim();
-      const date = entries[i + 2].trim();
-      const author = entries[i + 3].trim();
+      const sha = entries[i]?.trim() ?? "";
+      const message = entries[i + 1]?.trim() ?? "";
+      const date = entries[i + 2]?.trim() ?? "";
+      const author = entries[i + 3]?.trim() ?? "";
 
       if (!sha) continue;
 

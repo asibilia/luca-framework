@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const parseResult = RevertBodySchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.issues[0].message },
+        { error: parseResult.error.issues[0]?.message ?? "Validation failed" },
         { status: 400 },
       );
     }
