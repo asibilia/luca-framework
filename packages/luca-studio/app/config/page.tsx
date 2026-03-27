@@ -58,7 +58,7 @@ export default function ConfigPage() {
     <PageContainer title="Config" subtitle="Project configuration editor">
       {/* SSE conflict warning */}
       {hasConflict && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Config changed externally. Discard your changes or force save.
