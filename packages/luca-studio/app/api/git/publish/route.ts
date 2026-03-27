@@ -11,6 +11,8 @@
  * @returns `{ error, file_count }` with 409 on non-Studio dirty files
  * @returns `{ message }` with 200 if no Studio changes exist
  */
+import { execSync } from "node:child_process";
+
 import { NextResponse } from "next/server";
 
 import { STUDIO_PATH_PREFIXES } from "~/lib/constants";
@@ -72,7 +74,10 @@ export async function POST(request: Request) {
     const root = await resolveProjectRoot();
 
     // 1. Get uncommitted files via git status --porcelain
-    const statusResult = await Bun.$`git -C ${root} status --porcelain`.text();
+    const statusResult = execSync("git status --porcelain", {
+      cwd: root,
+      encoding: "utf-8",
+    });
     const lines = statusResult
       .split("\n")
       .filter((line) => line.trim().length > 0);
@@ -114,17 +119,23 @@ export async function POST(request: Request) {
 
     // 5. Stage only Studio files
     for (const file of studioFiles) {
-      await Bun.$`git -C ${root} add ${file}`.quiet();
+      execSync(`git add "${file}"`, { cwd: root, encoding: "utf-8" });
     }
 
     // 6. Commit with [studio-edit] prefix
     const summary = buildCommitSummary(studioFiles);
     const commitMessage = `[studio-edit] ${summary}`;
 
-    await Bun.$`git -C ${root} commit -m ${commitMessage}`.quiet();
+    execSync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, {
+      cwd: root,
+      encoding: "utf-8",
+    });
 
     // 7. Get the commit SHA
-    const sha = await Bun.$`git -C ${root} rev-parse --short HEAD`.text();
+    const sha = execSync("git rev-parse --short HEAD", {
+      cwd: root,
+      encoding: "utf-8",
+    });
 
     return NextResponse.json({
       commit_sha: sha.trim(),
