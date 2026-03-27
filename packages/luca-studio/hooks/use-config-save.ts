@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import get from "lodash/get";
 
-import { markCleanAtom } from "~/stores/dirty-tracking";
+import { dirtySetAtom, markCleanAtom } from "~/stores/dirty-tracking";
 import { configDraftAtom, configEtagAtom } from "~/stores/config-atoms";
 
 // ---------------------------------------------------------------------------
@@ -87,10 +87,12 @@ async function putSection(
 export function useConfigSave(): UseConfigSaveReturn {
   const config = useAtomValue(configDraftAtom);
   const etag = useAtomValue(configEtagAtom);
+  const dirtySet = useAtomValue(dirtySetAtom);
   const setDraft = useSetAtom(configDraftAtom);
   const markClean = useSetAtom(markCleanAtom);
 
   const save = useCallback(async () => {
+    if (!dirtySet.has("config")) return;
     if (!config) return;
 
     // Save each section in parallel
@@ -103,7 +105,7 @@ export function useConfigSave(): UseConfigSaveReturn {
 
     await Promise.all(promises);
     markClean("config");
-  }, [config, etag, markClean]);
+  }, [config, dirtySet, etag, markClean]);
 
   const discard = useCallback(() => {
     setDraft(null);
