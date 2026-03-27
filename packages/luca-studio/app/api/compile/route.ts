@@ -19,6 +19,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 
 import { publishCompileEvent } from "~/lib/compile-events";
+import { isLocalhostRequest } from "~/lib/request-guards";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -87,6 +88,11 @@ function mapSidecarStatus(sidecarStatus: number): number {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
+  // Localhost guard: restrict to local development server
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   // Step 1: Parse JSON body
   let rawBody: unknown;
   try {

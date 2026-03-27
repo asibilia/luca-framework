@@ -26,6 +26,7 @@
  */
 import { subscribeCompile } from "~/lib/compile-events";
 import { subscribe } from "~/lib/file-watcher";
+import { isLocalhostRequest } from "~/lib/request-guards";
 
 import type { CompileEvent } from "~/lib/compile-events";
 import type { FileChangeEvent } from "~/lib/file-watcher";
@@ -71,12 +72,7 @@ function classifyFileEvent(path: string): string {
 
 export async function GET(request: Request): Promise<Response> {
   // Localhost guard: restrict to local development server
-  const host = request.headers.get("host") ?? "";
-  if (
-    !host.startsWith("localhost") &&
-    !host.startsWith("127.0.0.1") &&
-    !host.startsWith("[::1]")
-  ) {
+  if (!isLocalhostRequest(request)) {
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { "Content-Type": "application/json" },

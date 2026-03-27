@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { resolveProjectRoot } from "~/lib/project-root";
+import { isLocalhostRequest } from "~/lib/request-guards";
 
 /** Paths considered Studio-tracked entities. */
 const STUDIO_PATH_PREFIXES = [
@@ -51,12 +52,7 @@ const RevertBodySchema = z.object({
 export async function POST(request: Request) {
   try {
     // Localhost guard: restrict to local development server
-    const host = request.headers.get("host") ?? "";
-    if (
-      !host.startsWith("localhost") &&
-      !host.startsWith("127.0.0.1") &&
-      !host.startsWith("[::1]")
-    ) {
+    if (!isLocalhostRequest(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
