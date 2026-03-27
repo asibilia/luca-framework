@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { Hexagon, Loader2 } from "lucide-react";
 
 import { EntityTree } from "~/components/editor/entity-tree";
@@ -13,11 +13,11 @@ import { SkillTabContainer } from "~/components/skills/skill-tab-container";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useDirtyTitle } from "~/hooks/use-dirty-title";
 import { useEditMode } from "~/hooks/use-edit-mode";
+import { useEntityConflict } from "~/hooks/use-entity-conflict";
 import { useSkillDetail } from "~/hooks/use-skill-detail";
 import { useSkillList } from "~/hooks/use-skill-list";
 import { useSkillSave } from "~/hooks/use-skill-save";
 import { useUndo } from "~/hooks/use-undo";
-import { conflictAtom } from "~/stores/config-atoms";
 import { skillHistoryAtom } from "~/stores/entity-atoms";
 import {
   entitySidebarAtom,
@@ -41,7 +41,6 @@ export default function SkillsPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const setLayoutContext = useSetAtom(layoutContextAtom);
   const setEntitySidebar = useSetAtom(entitySidebarAtom);
-  const [conflict, setConflict] = useAtom(conflictAtom);
 
   // Set editor layout context on mount (collapses NavRail)
   useEffect(() => {
@@ -132,44 +131,19 @@ export default function SkillsPage() {
     editMode.forceExit();
   }, [discard, editMode]);
 
-  // Conflict resolution: does the current conflict match this entity?
-  const entityConflict =
-    conflict && conflict.entityKey === entityKey ? conflict : null;
-
-  const handleAcceptLocal = useCallback(async () => {
-    if (!entityConflict) return;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "If-Match": entityConflict.serverEtag,
-    };
-    try {
-      const res = await fetch(
-        `/api/entities/skills/${encodeURIComponent(selectedName ?? "")}`,
-        {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({
-            rawConfigText: entityConflict.localContent,
-            metadata: detail?.metadata ?? {},
-          }),
-        },
-      );
-      if (res.ok) {
-        setConflict(null);
-      }
-    } catch {
-      // If force-overwrite fails, keep the conflict dialog open
-    }
-  }, [entityConflict, selectedName, setConflict]);
-
-  const handleAcceptServer = useCallback(() => {
-    setConflict(null);
-    discard();
-  }, [setConflict, discard]);
-
-  const handleDismissConflict = useCallback(() => {
-    setConflict(null);
-  }, [setConflict]);
+  // Conflict resolution via shared hook
+  const {
+    entityConflict,
+    handleAcceptLocal,
+    handleAcceptServer,
+    handleDismissConflict,
+  } = useEntityConflict({
+    entityKey,
+    endpoint: "/api/entities/skills",
+    name: selectedName,
+    metadata: detail?.metadata ?? {},
+    discard,
+  });
 
   // Register save callback for centralized Cmd+S shortcut
   const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
