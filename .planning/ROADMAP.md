@@ -54,7 +54,7 @@
 
 **Requirements:** REQ-06
 
-- [ ] Plan 217-01: Fix metrics, observations, and zone-history endpoints
+- [x] Plan 217-01: Fix metrics, observations, and zone-history endpoints
 
 ## Phase 218: API Quality & Security Cleanup
 
