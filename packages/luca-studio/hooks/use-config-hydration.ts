@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { useSetAtom } from "jotai";
 
-import { configAtom } from "~/stores/config-atoms";
+import { configAtom, configEtagAtom } from "~/stores/config-atoms";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -30,6 +30,7 @@ import { configAtom } from "~/stores/config-atoms";
  */
 export function useConfigHydration(): void {
   const setConfig = useSetAtom(configAtom);
+  const setConfigEtag = useSetAtom(configEtagAtom);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -41,6 +42,9 @@ export function useConfigHydration(): void {
         const res = await fetch("/api/config");
         if (!res.ok) return;
 
+        const etag = res.headers.get("ETag");
+        if (etag) setConfigEtag(etag);
+
         const data = (await res.json()) as Record<string, unknown>;
         setConfig(data);
       } catch {
@@ -48,5 +52,5 @@ export function useConfigHydration(): void {
         // fall back to their default behavior.
       }
     })();
-  }, [setConfig]);
+  }, [setConfig, setConfigEtag]);
 }

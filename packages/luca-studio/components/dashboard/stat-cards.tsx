@@ -41,7 +41,7 @@ const STAT_CARDS: Array<{
     icon: Shield,
     colorVar: "var(--color-success)",
     format: (v) => (v !== null ? `${(v * 100).toFixed(1)}%` : "--"),
-    href: "/vault",
+    href: "/memory?tab=health",
   },
   {
     key: "learning_total",
@@ -49,7 +49,7 @@ const STAT_CARDS: Array<{
     icon: BookOpen,
     colorVar: "var(--color-info)",
     format: (v) => (v ?? 0).toLocaleString(),
-    href: "/learning",
+    href: "/memory?tab=learning",
   },
   {
     key: "entity_count",
@@ -57,7 +57,7 @@ const STAT_CARDS: Array<{
     icon: Network,
     colorVar: "var(--color-warning)",
     format: (v) => (v ?? 0).toLocaleString(),
-    href: "/knowledge-graph",
+    href: "/memory?tab=graph",
   },
   {
     key: "storage_bytes",
@@ -65,7 +65,7 @@ const STAT_CARDS: Array<{
     icon: Database,
     colorVar: "var(--color-muted-foreground)",
     format: (v) => formatBytes(v ?? 0),
-    href: "/vault",
+    href: "/memory?tab=health",
   },
 ];
 

@@ -276,15 +276,56 @@ Research pitfalls, risks, security concerns, and failure modes for this phase. W
 
 ### Step 3b: v1 Single-Agent Research (Default)
 
-1. **Spawn researcher:**
-   - Use lu-phase-researcher agent via Task() with \`**Recipient:** phase-research orchestrator\`
-   - Focus on ecosystem knowledge for the domain
+1. **Spawn researcher via Task():**
 
-2. **Create RESEARCH.md:**
-   - Location: \`$PHASE_DIR/{phase}-RESEARCH.md\`
-   - Include: stack recommendations, architecture patterns, pitfalls
+   \`\`\`python
+   Task(
+     prompt="""
+<research_context>
 
-3. **Present findings:**
+**Recipient:** phase-research orchestrator (report findings back to this orchestrator)
+
+**Phase:** {N} - {phase_name}
+**Description:** {phase_description}
+**Domain Focus:** {domain_from_roadmap}
+**Constraints:** {context_md_decisions}
+**Output file:** $PHASE_DIR/{phase}-RESEARCH.md
+
+</research_context>
+
+<analysis_targets>
+- Standard architectures and design patterns in this domain
+- Recommended tech stack with specific versions
+- API patterns and code-level implementation approaches
+- Existing libraries, tools, and community best practices
+- Common pitfalls, failure modes, and anti-patterns
+- Security considerations and performance risks
+- Migration and compatibility concerns
+</analysis_targets>
+
+<output_requirements>
+- Write all findings to $PHASE_DIR/{phase}-RESEARCH.md
+- Structure the document with these sections:
+  1. Stack Recommendations (specific, versioned)
+  2. Architecture Patterns (with trade-offs)
+  3. Implementation Approaches (with code examples where helpful)
+  4. Pitfalls & Risks (actionable, with prevention strategies)
+  5. Confidence Assessment (HIGH/MEDIUM/LOW per section)
+- Include cited sources where applicable
+- Return confirmation with document line count
+</output_requirements>
+
+Research the ecosystem knowledge for this phase's domain. Investigate standard architectures, recommended stack, pitfalls, and best practices. Write your findings to the output file.
+""",
+     subagent_type="lu-phase-researcher",
+     model="{researcher_model}",
+     description="v1 single-agent research for phase {N}"
+   )
+   \`\`\`
+
+   **Do NOT proceed until the Task returns.**
+
+2. **Present findings:**
    \`\`\`
    ## Research Complete
 

@@ -6,15 +6,57 @@
 
 ---
 
+## Planned: v8.3.0 — Studio Feature Suite
+
+Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todos grouped into 4 phases.
+
+### Phase 208: API Layer Foundation
+
+- [ ] SSE event stream + useSSE hook (studio-w7-sse-layer)
+- [ ] ETag-based optimistic locking middleware (studio-w7-etag-locking)
+- [ ] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
+
+**Goal:** Build foundational API infrastructure (event streaming, concurrency control, git safety) required by all downstream Studio pages.
+**Depends on:** Phase 207 (v8.2.0 complete)
+**Risk:** HIGH (arch + QA) — Full+Manual verification required
+
+### Phase 209: Core Pages
+
+- [ ] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
+- [ ] Home page with status card and recent activity (studio-w7-home-page)
+- [ ] Skills + Rules browser pages (studio-w7-skills-rules-pages)
+
+**Goal:** Deliver core Studio page layer on stable API foundation.
+**Depends on:** Phase 208
+
+### Phase 210: Advanced UI & State
+
+- [ ] Undo/redo with jotai-history (studio-w7-undo-redo)
+- [ ] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
+- [ ] Consolidate Memory page (studio-w7-memory-consolidation)
+
+**Goal:** Advanced UX features (state history, keyboard shortcuts, page consolidation) on stable pages.
+**Depends on:** Phase 209
+
+### Phase 211: Observability & Polish
+
+- [ ] Edit/observe visual mode distinction (studio-w7-edit-observe-modes)
+- [ ] Settings page (studio-w8-settings-page)
+- [ ] Agent team prompt audit fixes (agent-team-prompt-audit-fixes)
+
+**Goal:** Polish pass — visual modes, settings aggregation, and prompt quality fixes.
+**Depends on:** Phase 210
+
+---
+
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                        | Reason                                               |
-| --------------------------- | -------- | -------------------------------------------- | ---------------------------------------------------- |
-| studio W7-W8 (11 todos)     | v8.1.0   | Studio Polish (SSE, ETag, undo, pages, keys) | P2/P3 polish — deferred at W6/W7 arch split boundary |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts)       | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)                | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol               | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                       | Depends on cross-talk + adapters + Studio            |
+| Todo Group                  | Target   | Scope                                  | Reason                                               |
+| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
 
 ## Closed (Reference / Not Actionable)
 
@@ -22,6 +64,19 @@
 | ----------------------------- | --------------------------------------------------------------- |
 | v2-external-research-patterns | Reference document, not an implementation task. Moved to docs/. |
 | runtime-d01–d11               | Superseded by studio-w\* todos in v8.0.0 (scope revised)        |
+
+## Closed (v8.0.0 Backlog Cleanup)
+
+| Todo                          | Reason                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| studio-w1 (1 todo)            | Package rename (luca-observer → luca-studio) shipped in v8.0.0                                            |
+| studio-w2 (4 todos)           | Foundation (compilation sidecar, Jotai atoms, new deps, TS round-trip) shipped in v8.0.0                  |
+| studio-w3 (5 todos)           | API layer (read routes, compile routes, config write, entity CRUD, validation pipeline) shipped in v8.0.0 |
+| studio-w4 (2 todos)           | UI layout (layout components, navigation restructure) shipped in v8.0.0                                   |
+| studio-w5 (3 todos)           | Editor components (editor, feedback, visualization) shipped in v8.0.0                                     |
+| studio-w6 (2 todos)           | Core pages (agents page, pipeline page) shipped in v8.0.0                                                 |
+| runtime-e04                   | Adapter compatibility report (schema + validator + CLI) shipped in v7.x/v8.0.0                            |
+| v2-external-research-patterns | Reference document, not implementation task (already in Closed section above)                             |
 
 ## Backlog (Blocked)
 
@@ -222,6 +277,8 @@
 - **v7.1.0** — Multi-IDE Adapter Completion: 3 phases, 3 plans, 10 commits, 22 files changed (+1,780 LOC) ([View Archive](milestones/v7.1.0-ROADMAP.md))
 - **v7.2.0** — Audit Gap Closure: 1 phase, 1 plan, 3 commits, 8 files changed (-140 LOC) ([View Archive](milestones/v7.2.0-ROADMAP.md))
 - **v8.0.0** — Luca Studio MVP: 12 phases, 23 plans, 45 commits, 365 files changed (+17,647 LOC) ([View Archive](milestones/v8.0.0-ROADMAP.md))
+- **v8.1.0** — Studio Polish & Prompt Quality: 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC) ([View Archive](milestones/v8.1.0-ROADMAP.md))
+- **v8.2.0** — Audit Gap Closure: 4 phases, 10 plans, 106 commits, 170 files changed (+18,960 LOC) ([View Archive](milestones/v8.2.0-ROADMAP.md))
 
 ---
 

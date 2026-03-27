@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import type { ReactNode } from "react";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -49,17 +49,8 @@ export function NavRail({ children }: { children?: ReactNode }) {
     setExpanded((prev) => !prev);
   }, [setExpanded]);
 
-  // Keyboard shortcut: Cmd+\ to toggle pin
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
-        e.preventDefault();
-        togglePin();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [togglePin]);
+  // Keyboard shortcut Cmd+\ is handled by the centralized
+  // useKeyboardShortcuts hook in LayoutShell — no local listener needed.
 
   return (
     <nav

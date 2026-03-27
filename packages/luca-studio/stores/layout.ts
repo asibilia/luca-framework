@@ -74,6 +74,64 @@ export const navRailHoveredAtom = atom<boolean>(false);
 export const layoutContextAtom = atom<LayoutContext>("dashboard");
 
 // ---------------------------------------------------------------------------
+// Keyboard Shortcut Atoms
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether the command palette overlay is open.
+ *
+ * Toggled by Cmd+K shortcut and Escape key. Not persisted.
+ */
+export const commandPaletteOpenAtom = atom<boolean>(false);
+
+/**
+ * Whether the compiled preview overlay/panel is open.
+ *
+ * Toggled by Cmd+Shift+P shortcut. Not persisted.
+ */
+export const compiledPreviewOpenAtom = atom<boolean>(false);
+
+/**
+ * Internal storage for the global save callback.
+ *
+ * Not exported -- use `globalSaveCallbackAtom` (read) and
+ * `setGlobalSaveCallbackAtom` (write) instead.
+ */
+const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null);
+
+/**
+ * Read-only atom for the global save callback.
+ *
+ * Used by the keyboard shortcut hook to invoke the current page's save.
+ * Returns `null` when no save function is registered.
+ */
+export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom));
+
+/**
+ * Write atom to register/unregister the global save callback.
+ *
+ * Pages with save functionality register their save function on mount
+ * and pass `null` on unmount. Uses a write atom to avoid the
+ * SetStateAction ambiguity that occurs when storing functions in
+ * basic atoms.
+ *
+ * @example
+ * ```ts
+ * const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
+ * useEffect(() => {
+ *   setSaveCallback(() => save());
+ *   return () => setSaveCallback(null);
+ * }, [save, setSaveCallback]);
+ * ```
+ */
+export const setGlobalSaveCallbackAtom = atom(
+  null,
+  (_get, set, callback: (() => Promise<void>) | null) => {
+    set(_saveCallbackAtom, callback);
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Derived atoms
 // ---------------------------------------------------------------------------
 

@@ -46,7 +46,7 @@ export function EntityCoOccurrences({
                   style={{ backgroundColor: color }}
                 />
                 <Link
-                  href={`/entities/${encodeURIComponent(coOcc.entity_name)}`}
+                  href={`/memory?tab=graph&entity=${encodeURIComponent(coOcc.entity_name)}`}
                   className="font-mono text-sm text-primary hover:underline truncate"
                 >
                   {coOcc.entity_name}

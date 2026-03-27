@@ -6,9 +6,6 @@ import {
   Database,
   Network,
   Search,
-  GitPullRequest,
-  AlertTriangle,
-  Fingerprint,
   Activity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -33,28 +30,28 @@ const QUICK_LINKS: Array<{
     colorVar: "var(--color-event-memory)",
   },
   {
-    href: "/learning",
+    href: "/memory?tab=learning",
     label: "Learning",
     description: "Patterns & decisions",
     icon: BookOpen,
     colorVar: "var(--color-info)",
   },
   {
-    href: "/vault",
+    href: "/memory?tab=health",
     label: "Vault Health",
     description: "Coherence metrics",
     icon: Database,
     colorVar: "var(--color-warning)",
   },
   {
-    href: "/knowledge-graph",
+    href: "/memory?tab=graph",
     label: "Knowledge Graph",
     description: "Entity relationships",
     icon: Network,
     colorVar: "var(--color-success)",
   },
   {
-    href: "/semantic-search",
+    href: "/memory?tab=search",
     label: "Search",
     description: "Query knowledge base",
     icon: Search,
@@ -66,27 +63,6 @@ const QUICK_LINKS: Array<{
     description: "Workflow history",
     icon: Activity,
     colorVar: "var(--color-event-session)",
-  },
-  {
-    href: "/decisions",
-    label: "Decisions",
-    description: "Decision trail",
-    icon: GitPullRequest,
-    colorVar: "var(--color-info)",
-  },
-  {
-    href: "/contradictions",
-    label: "Contradictions",
-    description: "Knowledge conflicts",
-    icon: AlertTriangle,
-    colorVar: "var(--color-destructive)",
-  },
-  {
-    href: "/entities",
-    label: "Entities",
-    description: "Entity browser",
-    icon: Fingerprint,
-    colorVar: "var(--color-muted-foreground)",
   },
 ];
 

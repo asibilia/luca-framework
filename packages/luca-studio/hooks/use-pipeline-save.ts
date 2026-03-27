@@ -1,11 +1,16 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
+import cloneDeep from "lodash/cloneDeep";
 
-import { configAtom, configDraftAtom } from "~/stores/config-atoms";
-import { canSaveAtom, markCleanAtom } from "~/stores/dirty-tracking";
+import {
+  configAtom,
+  configDraftAtom,
+  configEtagAtom,
+} from "~/stores/config-atoms";
+import { markCleanAtom } from "~/stores/dirty-tracking";
 import { pipelineNodesAtom, pipelineEdgesAtom } from "~/stores/pipeline-atoms";
 
 // -- Types --------------------------------------------------------------------
@@ -27,7 +32,6 @@ interface PipelineSaveActions {
  *   `/api/config/workflow`, then clears dirty tracking.
  * - **Discard**: Resets `configDraftAtom` to the server state and
  *   re-initializes pipeline nodes/edges from the original topology.
- * - **Cmd+S**: Registers a keyboard shortcut for saving.
  *
  * @returns Object with `handleSave` and `handleDiscard` callbacks.
  *
@@ -40,9 +44,9 @@ interface PipelineSaveActions {
 export function usePipelineSave(): PipelineSaveActions {
   const [configDraft] = useAtom(configDraftAtom);
   const [serverConfig] = useAtom(configAtom);
-  const canSave = useAtomValue(canSaveAtom);
   const [, markClean] = useAtom(markCleanAtom);
   const [, setConfigDraft] = useAtom(configDraftAtom);
+  const [configEtag, setConfigEtag] = useAtom(configEtagAtom);
   const [, setNodes] = useAtom(pipelineNodesAtom);
   const [, setEdges] = useAtom(pipelineEdgesAtom);
 
@@ -53,30 +57,57 @@ export function usePipelineSave(): PipelineSaveActions {
     const workflowSection =
       (configDraft as Record<string, unknown>).workflow ?? {};
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (configEtag) {
+      headers["If-Match"] = configEtag;
+    }
+
     const response = await fetch("/api/config/workflow", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(workflowSection),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const message =
-        (errorData as Record<string, unknown>)?.error ??
-        `Save failed: ${response.status}`;
+      const errorObj = errorData as Record<string, unknown>;
+
+      // 409 Conflict -- another tab or SSE update changed config.json
+      if (response.status === 409) {
+        throw new Error(
+          "Save conflict: the configuration was modified by another " +
+            "source. Please reload and try again.",
+        );
+      }
+
+      // 428 Precondition Required -- client lost its ETag
+      if (response.status === 428) {
+        throw new Error(
+          "Save failed: concurrency token missing. Please reload the page.",
+        );
+      }
+
+      const message = errorObj?.error ?? `Save failed: ${response.status}`;
       throw new Error(String(message));
+    }
+
+    // Update ETag from response for next save round-trip
+    const freshEtag = response.headers.get("ETag");
+    if (freshEtag) {
+      setConfigEtag(freshEtag);
     }
 
     // Clear dirty state on success
     markClean("config");
-  }, [configDraft, markClean]);
+  }, [configDraft, configEtag, setConfigEtag, markClean]);
 
   const handleDiscard = useCallback(() => {
     // Reset config draft to server state
     if (serverConfig) {
-      setConfigDraft(
-        JSON.parse(JSON.stringify(serverConfig)) as Record<string, unknown>,
-      );
+      setConfigDraft(cloneDeep(serverConfig) as Record<string, unknown>);
     }
 
     // Note: We intentionally do NOT reset pipeline nodes/edges here.
@@ -86,20 +117,6 @@ export function usePipelineSave(): PipelineSaveActions {
     // which focuses on config changes.
     markClean("config");
   }, [serverConfig, setConfigDraft, markClean]);
-
-  // Cmd+S keyboard shortcut
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        if (canSave) {
-          void handleSave();
-        }
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [canSave, handleSave]);
 
   return { handleSave, handleDiscard };
 }

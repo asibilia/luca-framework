@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 
 import { useAtomValue } from "jotai";
 
+import { CommandPalette } from "~/components/layout/command-palette";
 import { NavRail } from "~/components/layout/nav-rail";
 import { DetailPanel } from "~/components/layout/detail-panel";
 import { useConfigHydration } from "~/hooks/use-config-hydration";
+import { useKeyboardShortcuts } from "~/hooks/use-keyboard-shortcuts";
 import {
   layoutContextAtom,
   detailPanelStateAtom,
@@ -44,6 +46,9 @@ export function LayoutShell({
 }) {
   // Hydrate configAtom from the server on app mount (runs once)
   useConfigHydration();
+
+  // Register centralized keyboard shortcuts (Cmd+K, Cmd+S, etc.)
+  useKeyboardShortcuts();
 
   const layoutContext = useAtomValue(layoutContextAtom);
   const panelState = useAtomValue(detailPanelStateAtom);
@@ -93,6 +98,9 @@ export function LayoutShell({
       {isFloating && (
         <DetailPanel title={detailTitle}>{detailChildren}</DetailPanel>
       )}
+
+      {/* Command palette overlay (Cmd+K) */}
+      <CommandPalette />
     </div>
   );
 }

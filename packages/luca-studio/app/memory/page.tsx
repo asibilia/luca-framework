@@ -1,78 +1,79 @@
 "use client";
 
+import { Suspense, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 import { PageContainer } from "~/components/layout/page-container";
-import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { Button } from "~/components/ui/button";
-import { SessionStatusHero } from "~/components/memory/session-status-hero";
-import { HealthDashboard } from "~/components/memory/health-dashboard";
-import { RecallEffectiveness } from "~/components/memory/recall-effectiveness";
-import { MemoryTimeline } from "~/components/memory/memory-timeline";
-import { EnhancedBrainTree } from "~/components/memory/enhanced-brain-tree";
-import { KnowledgeGraphMini } from "~/components/memory/knowledge-graph-mini";
-import { useMemory } from "~/hooks/use-memory";
-import { useMemoryHealth } from "~/hooks/use-memory-health";
-import { useObservations } from "~/hooks/use-observations";
-import { useCheckpoint } from "~/hooks/use-checkpoint";
-import { useEntityClusters } from "~/hooks/use-entity-clusters";
-import { relativeTime } from "~/lib/format";
+import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { BrowseTab } from "~/components/memory/tabs/browse-tab";
+import { GraphTab } from "~/components/memory/tabs/graph-tab";
+import { SearchTab } from "~/components/memory/tabs/search-tab";
+import { HealthTab } from "~/components/memory/tabs/health-tab";
+import { LearningTab } from "~/components/memory/tabs/learning-tab";
+
+/** Valid tab values for the Memory page. */
+const VALID_TABS = ["browse", "graph", "search", "health", "learning"] as const;
+type MemoryTab = (typeof VALID_TABS)[number];
+
+/** Tab display metadata. */
+const TAB_META: Record<MemoryTab, { label: string }> = {
+  browse: { label: "Browse" },
+  graph: { label: "Graph" },
+  search: { label: "Search" },
+  health: { label: "Health" },
+  learning: { label: "Learning" },
+};
 
 /**
- * MuninnDB Memory Observability page.
+ * Resolves the active tab from the URL search param.
  *
- * Six-section dashboard covering session status, memory health,
- * recall effectiveness, memory timeline, brain tree drill-down,
- * and knowledge graph mini. Uses a 2-column grid for the middle
- * sections and full-width for hero, timeline, brain, and graph.
- *
- * All four hooks are wired at the page level and data is passed
- * down to section components. Each section is independently
- * error-bounded for fault isolation.
+ * @param raw - Raw query parameter value
+ * @returns A valid MemoryTab, defaulting to "browse"
  */
-export default function MemoryPage() {
-  const memory = useMemory();
-  const health = useMemoryHealth();
-  const observations = useObservations();
-  const checkpoint = useCheckpoint();
-  const entityClusters = useEntityClusters();
+function resolveTab(raw: string | null): MemoryTab {
+  if (raw && VALID_TABS.includes(raw as MemoryTab)) {
+    return raw as MemoryTab;
+  }
+  return "browse";
+}
 
-  // Aggregate loading state: show skeleton if ALL hooks are loading
-  const allLoading =
-    memory.loading &&
-    health.loading &&
-    observations.loading &&
-    checkpoint.loading;
+/**
+ * MuninnDB Memory page with five-tab interface.
+ *
+ * Uses conditional rendering (mount/unmount) for each tab so only the
+ * active tab's hooks fetch data. Tab state is URL-driven via the
+ * `?tab=` search parameter for bookmarking and deep-linking.
+ *
+ * Tabs:
+ * - Browse: Original six-section dashboard (session, health, recall, timeline, brain, graph mini)
+ * - Graph: Full Knowledge Graph Explorer (absorbed from /knowledge-graph)
+ * - Search: Semantic Search interface (absorbed from /semantic-search)
+ * - Health: Vault Health deep-dive (absorbed from /vault)
+ * - Learning: Pattern/decision/pitfall tracking (absorbed from /learning)
+ */
+function MemoryPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = resolveTab(searchParams.get("tab"));
 
-  // Aggregate refresh: trigger all hooks
-  const refreshAll = () => {
-    memory.refresh();
-    health.refresh();
-    observations.refresh();
-    checkpoint.refresh();
-  };
+  // Mutable ref for the active tab's refresh function
+  const refreshRef = useRef<(() => void) | null>(null);
 
-  // Use the most recent lastUpdated across all hooks
-  const lastUpdated =
-    [
-      memory.lastUpdated,
-      health.lastUpdated,
-      observations.lastUpdated,
-      checkpoint.lastUpdated,
-    ]
-      .filter((d): d is Date => d !== null)
-      .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  const handleTabChange = useCallback(
+    (value: string) => {
+      // Clear old tab's refresh ref before switching
+      refreshRef.current = null;
+      router.replace(`/memory?tab=${value}`, { scroll: false });
+    },
+    [router],
+  );
 
-  const lastUpdatedText = lastUpdated
-    ? `Last updated: ${relativeTime(lastUpdated)}`
-    : null;
-
-  const isLoading =
-    memory.loading ||
-    health.loading ||
-    observations.loading ||
-    checkpoint.loading;
+  const handleRefresh = useCallback(() => {
+    refreshRef.current?.();
+  }, []);
 
   return (
     <PageContainer
@@ -80,112 +81,49 @@ export default function MemoryPage() {
       subtitle="MuninnDB Memory Observability"
       actions={
         <div className="flex items-center gap-3">
-          {/* Connection status */}
-          <div className="flex items-center gap-1.5">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{
-                backgroundColor: health.configured
-                  ? "var(--color-success)"
-                  : "var(--color-muted-foreground)",
-              }}
-            />
-            <span className="font-mono text-xs text-muted-foreground">
-              {health.configured ? "Connected" : "Disconnected"}
-            </span>
-          </div>
-
-          {/* Last updated timestamp */}
-          {lastUpdatedText && (
-            <span className="font-mono text-xs text-muted-foreground/60">
-              {lastUpdatedText}
-            </span>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshAll}
-            disabled={isLoading}
-          >
-            <RefreshCw className={isLoading ? "animate-spin" : undefined} />
-            {isLoading ? "Loading..." : "Refresh"}
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw />
+            Refresh
           </Button>
         </div>
       }
     >
-      {allLoading ? (
-        <div className="space-y-6">
-          <LoadingSkeleton variant="card" />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <LoadingSkeleton variant="card" />
-            <LoadingSkeleton variant="card" />
-          </div>
-          <LoadingSkeleton variant="text" rows={6} />
-          <LoadingSkeleton variant="text" rows={6} />
-          <LoadingSkeleton variant="text" rows={4} />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* 1. Session Status Hero (full width) */}
-          <ErrorBoundary name="SessionStatusHero">
-            {checkpoint.loading ? (
-              <LoadingSkeleton variant="card" />
-            ) : (
-              <SessionStatusHero data={checkpoint} />
-            )}
-          </ErrorBoundary>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList variant="line" className="mb-6">
+          {VALID_TABS.map((tab) => (
+            <TabsTrigger key={tab} value={tab}>
+              {TAB_META[tab].label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-          {/* 2-3. Health Dashboard + Recall Effectiveness (2-column grid) */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <ErrorBoundary name="HealthDashboard">
-              {health.loading ? (
-                <LoadingSkeleton variant="card" />
-              ) : (
-                <HealthDashboard data={health} />
-              )}
-            </ErrorBoundary>
-
-            <ErrorBoundary name="RecallEffectiveness">
-              {observations.loading ? (
-                <LoadingSkeleton variant="card" />
-              ) : (
-                <RecallEffectiveness data={observations} />
-              )}
-            </ErrorBoundary>
-          </div>
-
-          {/* 4. Memory Timeline (full width) */}
-          <ErrorBoundary name="MemoryTimeline">
-            {observations.loading || checkpoint.loading ? (
-              <LoadingSkeleton variant="text" rows={6} />
-            ) : (
-              <MemoryTimeline
-                observations={observations}
-                checkpoint={checkpoint}
-              />
-            )}
-          </ErrorBoundary>
-
-          {/* 5. Enhanced Brain Tree (full width) */}
-          <ErrorBoundary name="EnhancedBrainTree">
-            {memory.loading ? (
-              <LoadingSkeleton variant="text" rows={6} />
-            ) : (
-              <EnhancedBrainTree items={memory.brain} />
-            )}
-          </ErrorBoundary>
-
-          {/* 6. Knowledge Graph Mini (full width) */}
-          <ErrorBoundary name="KnowledgeGraphMini">
-            <KnowledgeGraphMini
-              clusters={entityClusters.clusters}
-              loading={entityClusters.loading}
-              error={entityClusters.error}
-            />
-          </ErrorBoundary>
-        </div>
-      )}
+      {/* Conditional rendering: only the active tab is mounted */}
+      {activeTab === "browse" && <BrowseTab onRefreshRef={refreshRef} />}
+      {activeTab === "graph" && <GraphTab onRefreshRef={refreshRef} />}
+      {activeTab === "search" && <SearchTab onRefreshRef={refreshRef} />}
+      {activeTab === "health" && <HealthTab onRefreshRef={refreshRef} />}
+      {activeTab === "learning" && <LearningTab onRefreshRef={refreshRef} />}
     </PageContainer>
+  );
+}
+
+/**
+ * Memory page entry point.
+ *
+ * Wraps the inner page in a Suspense boundary required by Next.js
+ * when using useSearchParams() in a client component.
+ */
+export default function MemoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageContainer title="Memory" subtitle="MuninnDB Memory Observability">
+          <LoadingSkeleton variant="card" />
+        </PageContainer>
+      }
+    >
+      <MemoryPageInner />
+    </Suspense>
   );
 }
