@@ -8,6 +8,50 @@
  */
 import { z } from "zod";
 
+// -- Reusable schema fragments ------------------------------------------------
+
+/**
+ * Reusable vault parameter schema.
+ *
+ * Used across all MuninnDB route schemas for the `vault` field.
+ * Non-empty string, max 100 chars, defaults to "default".
+ */
+export const vaultParam = z.string().min(1).max(100).default("default");
+
+/**
+ * Factory for reusable limit parameter schemas.
+ *
+ * Used for all `limit` fields in query/request schemas. Uses `z.coerce.number()`
+ * for query parameter schemas (URLSearchParams values are always strings) and
+ * `z.number()` for request body schemas (already parsed JSON).
+ *
+ * @param max - Maximum allowed value
+ * @param def - Default value when not provided
+ * @returns Zod schema for a coerced integer with min(1), max(max), default(def)
+ *
+ * @example
+ * ```typescript
+ * const schema = z.object({
+ *   limit: limitParam(500, 50),
+ * });
+ * ```
+ */
+export const limitParam = (max: number, def: number) =>
+  z.coerce.number().int().min(1).max(max).default(def);
+
+/**
+ * Factory for limit parameter schemas in request bodies (non-coerced).
+ *
+ * Same as `limitParam` but uses `z.number()` instead of `z.coerce.number()`
+ * since request body values are already parsed from JSON.
+ *
+ * @param max - Maximum allowed value
+ * @param def - Default value when not provided
+ * @returns Zod schema for an integer with min(1), max(max), default(def)
+ */
+export const bodyLimitParam = (max: number, def: number) =>
+  z.number().int().min(1).max(max).default(def);
+
 // -- Request validation schemas -----------------------------------------------
 
 /**
@@ -19,8 +63,8 @@ export const ActivateRequestSchema = z.object({
   context: z
     .array(z.string())
     .min(1, "context must be a non-empty string array"),
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.number().int().min(1).max(100).default(20),
+  vault: vaultParam,
+  limit: bodyLimitParam(100, 20),
 });
 
 export type ActivateRequest = z.infer<typeof ActivateRequestSchema>;
@@ -33,8 +77,8 @@ export type ActivateRequest = z.infer<typeof ActivateRequestSchema>;
  * Uses z.coerce.number() because URLSearchParams values are always strings.
  */
 export const EngramsQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(1000).default(100),
+  vault: vaultParam,
+  limit: limitParam(1000, 100),
   offset: z.coerce.number().int().min(0).default(0),
   tag: z.string().optional(),
   type: z.string().optional(),
@@ -48,8 +92,8 @@ export type EngramsQuery = z.infer<typeof EngramsQuerySchema>;
  * GET /api/muninn/session — query parameters.
  */
 export const SessionQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
+  vault: vaultParam,
+  limit: limitParam(500, 50),
 });
 
 export type SessionQuery = z.infer<typeof SessionQuerySchema>;
@@ -58,7 +102,7 @@ export type SessionQuery = z.infer<typeof SessionQuerySchema>;
  * GET /api/muninn/stats — query parameters.
  */
 export const StatsQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
 });
 
 export type StatsQuery = z.infer<typeof StatsQuerySchema>;
@@ -108,7 +152,7 @@ export const StatsResponseSchema = z
  * Uses snake_case for all properties per API conventions.
  */
 export const ForgetRequestSchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
   id: z.string().min(1, "id is required"),
 });
 
@@ -129,7 +173,7 @@ export const ForgetResponseSchema = z
  * GET /api/muninn/contradictions — query parameters.
  */
 export const ContradictionsQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
 });
 
 export type ContradictionsQuery = z.infer<typeof ContradictionsQuerySchema>;
@@ -138,8 +182,8 @@ export type ContradictionsQuery = z.infer<typeof ContradictionsQuerySchema>;
  * GET /api/muninn/entity/[name] — query parameters (name comes from path).
  */
 export const EntityQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  vault: vaultParam,
+  limit: limitParam(100, 20),
 });
 
 export type EntityQuery = z.infer<typeof EntityQuerySchema>;
@@ -148,8 +192,8 @@ export type EntityQuery = z.infer<typeof EntityQuerySchema>;
  * GET /api/muninn/entity/[name]/timeline — query parameters.
  */
 export const EntityTimelineQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
+  vault: vaultParam,
+  limit: limitParam(200, 50),
 });
 
 export type EntityTimelineQuery = z.infer<typeof EntityTimelineQuerySchema>;
@@ -158,7 +202,7 @@ export type EntityTimelineQuery = z.infer<typeof EntityTimelineQuerySchema>;
  * GET /api/muninn/entity-clusters — query parameters.
  */
 export const EntityClustersQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
   top_n: z.coerce.number().int().min(1).max(100).default(20),
   min_count: z.coerce.number().int().min(1).default(2),
 });
@@ -174,10 +218,10 @@ export type EntityClustersQuery = z.infer<typeof EntityClustersQuerySchema>;
  * Uses snake_case for all properties per API conventions.
  */
 export const TraverseRequestSchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
   start_id: z.string().min(1, "start_id is required"),
   max_hops: z.number().int().min(1).max(10).default(2),
-  max_nodes: z.number().int().min(1).max(500).default(50),
+  max_nodes: bodyLimitParam(500, 50),
   follow_entities: z.boolean().default(true),
   rel_types: z.array(z.string()).optional(),
 });
@@ -191,7 +235,7 @@ export type TraverseRequest = z.infer<typeof TraverseRequestSchema>;
  * Uses snake_case for all properties per API conventions.
  */
 export const ExplainRequestSchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
   engram_id: z.string().min(1, "engram_id is required"),
   query: z.array(z.string()).min(1, "query must be a non-empty string array"),
 });
@@ -205,9 +249,9 @@ export type ExplainRequest = z.infer<typeof ExplainRequestSchema>;
  * Uses snake_case for all properties per API conventions.
  */
 export const FindByEntityRequestSchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
   entity_name: z.string().min(1, "entity_name is required"),
-  limit: z.number().int().min(1).max(200).default(50),
+  limit: bodyLimitParam(200, 50),
 });
 
 export type FindByEntityRequest = z.infer<typeof FindByEntityRequestSchema>;
@@ -219,7 +263,7 @@ export type FindByEntityRequest = z.infer<typeof FindByEntityRequestSchema>;
  * Uses snake_case for all properties per API conventions.
  */
 export const ExportGraphRequestSchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
+  vault: vaultParam,
   format: z.enum(["json-ld"]).default("json-ld"),
   include_engrams: z.boolean().default(false),
 });
@@ -322,8 +366,8 @@ export const ExportGraphResponseSchema = z
  * Uses z.coerce.number() because URLSearchParams values are always strings.
  */
 export const GraphDataQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(2000).default(500),
+  vault: vaultParam,
+  limit: limitParam(2000, 500),
 });
 
 export type GraphDataQuery = z.infer<typeof GraphDataQuerySchema>;
@@ -375,8 +419,8 @@ export const HealthResponseSchema = z
  * Uses z.coerce.number() because URLSearchParams values are always strings.
  */
 export const ObservationsQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
+  vault: vaultParam,
+  limit: limitParam(500, 50),
 });
 
 export type ObservationsQuery = z.infer<typeof ObservationsQuerySchema>;
@@ -398,8 +442,8 @@ export const ObservationsResponseSchema = z
  * Uses z.coerce.number() because URLSearchParams values are always strings.
  */
 export const MetricsQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
+  vault: vaultParam,
+  limit: limitParam(500, 50),
 });
 
 export type MetricsQuery = z.infer<typeof MetricsQuerySchema>;
@@ -446,8 +490,8 @@ export const CheckpointResponseSchema = z
  * Uses z.coerce.number() because URLSearchParams values are always strings.
  */
 export const ZoneHistoryQuerySchema = z.object({
-  vault: z.string().min(1).max(100).default("default"),
-  limit: z.coerce.number().int().min(1).max(500).default(100),
+  vault: vaultParam,
+  limit: limitParam(500, 100),
 });
 
 export type ZoneHistoryQuery = z.infer<typeof ZoneHistoryQuerySchema>;
