@@ -42,7 +42,7 @@
 
 **Requirements:** REQ-05
 
-- [ ] Plan 216-01: Replace Bun.$ with Node.js-compatible shell execution in git routes
+- [x] Plan 216-01: Replace Bun.$ with Node.js-compatible shell execution in git routes
 
 ## Phase 217: Memory & Metrics Fixes
 
