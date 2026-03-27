@@ -1,5 +1,7 @@
 "use client";
 
+import type { MutableRefObject } from "react";
+
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { LearningStats } from "~/components/learning/learning-stats";
@@ -66,5 +68,5 @@ export function LearningTab({ onRefreshRef }: LearningTabProps) {
 /** Props for the LearningTab component. */
 export interface LearningTabProps {
   /** Mutable ref to expose the tab's refresh function to the parent. */
-  onRefreshRef?: React.MutableRefObject<(() => void) | null>;
+  onRefreshRef?: MutableRefObject<(() => void) | null>;
 }

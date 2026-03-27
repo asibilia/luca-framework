@@ -2,6 +2,8 @@
 
 import { useCallback } from "react";
 
+import type { MutableRefObject } from "react";
+
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { SessionStatusHero } from "~/components/memory/session-status-hero";
@@ -129,5 +131,5 @@ export function BrowseTab({ onRefreshRef }: BrowseTabProps) {
 /** Props for the BrowseTab component. */
 export interface BrowseTabProps {
   /** Mutable ref to expose the tab's refresh function to the parent. */
-  onRefreshRef?: React.MutableRefObject<(() => void) | null>;
+  onRefreshRef?: MutableRefObject<(() => void) | null>;
 }

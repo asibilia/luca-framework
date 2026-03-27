@@ -1,5 +1,7 @@
 "use client";
 
+import type { MutableRefObject } from "react";
+
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
 import { VaultOverview } from "~/components/vault/vault-overview";
@@ -65,5 +67,5 @@ export function HealthTab({ onRefreshRef }: HealthTabProps) {
 /** Props for the HealthTab component. */
 export interface HealthTabProps {
   /** Mutable ref to expose the tab's refresh function to the parent. */
-  onRefreshRef?: React.MutableRefObject<(() => void) | null>;
+  onRefreshRef?: MutableRefObject<(() => void) | null>;
 }

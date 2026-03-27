@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 
+import type { MutableRefObject } from "react";
+
 import { ErrorBoundary } from "~/components/shared/error-boundary";
 import { EmptyState } from "~/components/shared/empty-state";
 import { LoadingSkeleton } from "~/components/shared/loading-skeleton";
@@ -96,5 +98,5 @@ export function SearchTab({ onRefreshRef }: SearchTabProps) {
 /** Props for the SearchTab component. */
 export interface SearchTabProps {
   /** Mutable ref to expose the tab's refresh function to the parent. */
-  onRefreshRef?: React.MutableRefObject<(() => void) | null>;
+  onRefreshRef?: MutableRefObject<(() => void) | null>;
 }
