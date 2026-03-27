@@ -7,7 +7,7 @@
  *
  * @module entity-route-helpers
  */
-import { readdir } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -130,8 +130,11 @@ async function resolveEntityPath(
 
     // Direct file in subdir
     const directPath = join(dirPath, filename);
-    if (await Bun.file(directPath).exists()) {
+    try {
+      await access(directPath);
       return directPath;
+    } catch {
+      // File does not exist at this path -- continue searching
     }
 
     // For rules/profiles, check nested subdirectories (e.g. profiles/typescript/)
@@ -144,8 +147,11 @@ async function resolveEntityPath(
       }
       for (const entry of entries) {
         const nestedPath = join(dirPath, entry, filename);
-        if (await Bun.file(nestedPath).exists()) {
+        try {
+          await access(nestedPath);
           return nestedPath;
+        } catch {
+          // File does not exist at this nested path -- continue
         }
       }
     }
@@ -331,7 +337,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         }
 
         // Compute ETag from full source file contents
-        const source = await Bun.file(filePath).text();
+        const source = await readFile(filePath, "utf-8");
         const etag = computeETag(source);
 
         const detail: EntityDetail = {
@@ -387,7 +393,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        const currentSource = await Bun.file(filePath).text();
+        const currentSource = await readFile(filePath, "utf-8");
         const currentEtag = computeETag(currentSource);
 
         if (ifMatch !== currentEtag) {
@@ -446,7 +452,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        const updatedSource = await Bun.file(filePath).text();
+        const updatedSource = await readFile(filePath, "utf-8");
         const freshEtag = computeETag(updatedSource);
 
         const detail: EntityDetail = {
