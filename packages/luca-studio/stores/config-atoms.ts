@@ -3,6 +3,34 @@ import { atom } from "jotai";
 import type { EntitySummary } from "~/lib/entity-route-helpers";
 
 // ---------------------------------------------------------------------------
+// Compile Status
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents the current compilation status as reported by SSE events.
+ *
+ * - `idle` — No compilation in progress.
+ * - `compiling` — A `compile:start` SSE event was received.
+ * - `success` — A `compile:complete` SSE event was received.
+ * - `error` — A `compile:error` SSE event was received.
+ */
+export type CompileStatus =
+  | { state: "idle" }
+  | { state: "compiling"; domain: string; name: string }
+  | { state: "success"; domain: string; name: string }
+  | { state: "error"; domain: string; name: string; error: string };
+
+/**
+ * Atom tracking the latest compile status received via SSE.
+ *
+ * Updated by the `useSSE` hook in response to `compile:start`,
+ * `compile:complete`, and `compile:error` server-sent events.
+ * Entity editor components read this atom to show supplementary
+ * compile feedback (spinner, success, error indicators).
+ */
+export const compileStatusAtom = atom<CompileStatus>({ state: "idle" });
+
+// ---------------------------------------------------------------------------
 // Layer 1 -- Server State (read-only mirrors)
 //
 // These atoms hold the latest server-side state, populated by fetch hooks or

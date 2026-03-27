@@ -4,17 +4,52 @@ import { useEffect, useRef } from "react";
 
 import { useSetAtom } from "jotai";
 
-import { configAtom, configEtagAtom, stateAtom } from "~/stores/config-atoms";
+import {
+  compileStatusAtom,
+  configAtom,
+  configEtagAtom,
+  stateAtom,
+} from "~/stores/config-atoms";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/** Shape of the SSE event data sent by `GET /api/events`. */
-interface SSEFileChangeEvent {
+/** Parsed payload for `file:changed` SSE events. */
+interface FileChangedPayload {
   type: "add" | "change" | "unlink";
   path: string;
   timestamp: string;
+}
+
+/** Parsed payload for `compile:start` SSE events. */
+interface CompileStartPayload {
+  domain: string;
+  name: string;
+}
+
+/** Parsed payload for `compile:complete` SSE events. */
+interface CompileCompletePayload {
+  domain: string;
+  name: string;
+}
+
+/** Parsed payload for `compile:error` SSE events. */
+interface CompileErrorPayload {
+  domain: string;
+  name: string;
+  error: string;
+}
+
+/** Parsed payload for `state:transition` SSE events. */
+interface StateTransitionPayload {
+  event: string;
+  [key: string]: unknown;
+}
+
+/** Parsed payload for `ledger:entry` SSE events. */
+interface LedgerEntryPayload {
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,23 +82,43 @@ async function fetchJsonSafe(url: string): Promise<FetchJsonResult> {
   }
 }
 
+/**
+ * Safely parse JSON from an SSE event's `data` field.
+ *
+ * @param raw - The raw string from `MessageEvent.data`.
+ * @returns The parsed object, or `null` if parsing fails.
+ */
+function safeParseEventData<T>(raw: string): T | null {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
 /**
  * Client-side hook that connects to the `/api/events` SSE endpoint and
- * invalidates Jotai atoms when relevant files change on disk.
+ * dispatches typed event handlers for each SSE event type.
  *
- * Uses `EventSource` for automatic reconnection. On each file-change
- * message the hook inspects the path and re-fetches the appropriate
- * server-state atom:
+ * Uses `EventSource` for automatic reconnection. Registers typed
+ * `addEventListener` bindings for each known event type instead of a
+ * generic `onmessage` handler:
  *
- * - `config.json` changes -> re-fetch and set `configAtom`
- * - `state.json` / `STATE.md` changes -> re-fetch and set `stateAtom`
+ * - `file:changed` -- re-fetch configAtom/configEtagAtom for config.json,
+ *   re-fetch stateAtom for state files
+ * - `state:transition` -- re-fetch stateAtom
+ * - `compile:start` -- set compileStatusAtom to compiling
+ * - `compile:complete` -- set compileStatusAtom to success
+ * - `compile:error` -- set compileStatusAtom to error
+ * - `ledger:entry` -- placeholder (console.log)
+ * - `heartbeat` -- no-op
  *
- * Designed to be mounted once in a top-level provider component (similar
- * to `ThemeSync`). Returns `null` -- purely a side-effect hook.
+ * Designed to be mounted once in a top-level provider component.
+ * Returns `void` -- purely a side-effect hook.
  *
  * Safe to call multiple times -- a `useRef` guard ensures only one
  * `EventSource` connection is established per component lifecycle.
@@ -83,6 +138,7 @@ export function useSSE(): void {
   const setConfig = useSetAtom(configAtom);
   const setConfigEtag = useSetAtom(configEtagAtom);
   const setState = useSetAtom(stateAtom);
+  const setCompileStatus = useSetAtom(compileStatusAtom);
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -92,16 +148,14 @@ export function useSSE(): void {
     const es = new EventSource("/api/events");
     esRef.current = es;
 
-    es.onmessage = (msg: MessageEvent<string>) => {
-      let event: SSEFileChangeEvent;
-      try {
-        event = JSON.parse(msg.data) as SSEFileChangeEvent;
-      } catch {
-        // Malformed event -- ignore.
-        return;
-      }
+    // -----------------------------------------------------------------
+    // file:changed -- re-fetch atoms when relevant files change on disk
+    // -----------------------------------------------------------------
+    es.addEventListener("file:changed", (msg: MessageEvent<string>) => {
+      const payload = safeParseEventData<FileChangedPayload>(msg.data);
+      if (!payload) return;
 
-      const { path } = event;
+      const { path } = payload;
 
       // config.json changed -> re-hydrate configAtom + configEtagAtom
       if (path.endsWith("config.json") && path.includes(".planning")) {
@@ -120,11 +174,80 @@ export function useSSE(): void {
           if (data) setState(data);
         });
       }
-    };
+    });
+
+    // -----------------------------------------------------------------
+    // state:transition -- re-fetch state atom
+    // -----------------------------------------------------------------
+    es.addEventListener("state:transition", (msg: MessageEvent<string>) => {
+      const _payload = safeParseEventData<StateTransitionPayload>(msg.data);
+      // Re-fetch state regardless of payload content
+      void fetchJsonSafe("/api/state").then(({ data }) => {
+        if (data) setState(data);
+      });
+    });
+
+    // -----------------------------------------------------------------
+    // compile:start -- set compile status to compiling
+    // -----------------------------------------------------------------
+    es.addEventListener("compile:start", (msg: MessageEvent<string>) => {
+      const payload = safeParseEventData<CompileStartPayload>(msg.data);
+      if (!payload) return;
+      setCompileStatus({
+        state: "compiling",
+        domain: payload.domain,
+        name: payload.name,
+      });
+    });
+
+    // -----------------------------------------------------------------
+    // compile:complete -- set compile status to success
+    // -----------------------------------------------------------------
+    es.addEventListener("compile:complete", (msg: MessageEvent<string>) => {
+      const payload = safeParseEventData<CompileCompletePayload>(msg.data);
+      if (!payload) return;
+      setCompileStatus({
+        state: "success",
+        domain: payload.domain,
+        name: payload.name,
+      });
+    });
+
+    // -----------------------------------------------------------------
+    // compile:error -- set compile status to error
+    // -----------------------------------------------------------------
+    es.addEventListener("compile:error", (msg: MessageEvent<string>) => {
+      const payload = safeParseEventData<CompileErrorPayload>(msg.data);
+      if (!payload) return;
+      setCompileStatus({
+        state: "error",
+        domain: payload.domain,
+        name: payload.name,
+        error: payload.error ?? "Unknown compile error",
+      });
+    });
+
+    // -----------------------------------------------------------------
+    // ledger:entry -- placeholder
+    // -----------------------------------------------------------------
+    es.addEventListener("ledger:entry", (msg: MessageEvent<string>) => {
+      const payload = safeParseEventData<LedgerEntryPayload>(msg.data);
+      if (payload) {
+        // eslint-disable-next-line no-console
+        console.log("[SSE] ledger:entry", payload);
+      }
+    });
+
+    // -----------------------------------------------------------------
+    // heartbeat -- no-op (keeps connection alive)
+    // -----------------------------------------------------------------
+    es.addEventListener("heartbeat", () => {
+      // Intentional no-op -- heartbeat events keep the connection alive.
+    });
 
     return () => {
       es.close();
       esRef.current = null;
     };
-  }, [setConfig, setConfigEtag, setState]);
+  }, [setConfig, setConfigEtag, setState, setCompileStatus]);
 }
