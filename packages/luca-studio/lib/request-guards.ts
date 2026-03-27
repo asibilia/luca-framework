@@ -10,8 +10,10 @@
 /**
  * Check if the request originates from localhost.
  *
- * Inspects the `host` header for `localhost`, `127.0.0.1`, and `[::1]`
- * prefixes. Used to restrict API routes to the local development server.
+ * Parses the `host` header to extract the hostname (stripping any port
+ * suffix and IPv6 brackets) and compares for an exact match against
+ * known localhost identifiers. This prevents spoofed hostnames like
+ * `localhost.evil.com` from passing the guard.
  *
  * @param request - The incoming HTTP request
  * @returns `true` if the request originates from localhost
@@ -25,9 +27,8 @@
  */
 export function isLocalhostRequest(request: Request): boolean {
   const host = request.headers.get("host") ?? "";
+  const hostname = host.replace(/:\d+$/, "").replace(/^\[|\]$/g, "");
   return (
-    host.startsWith("localhost") ||
-    host.startsWith("127.0.0.1") ||
-    host.startsWith("[::1]")
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   );
 }
