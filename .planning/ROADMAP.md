@@ -14,7 +14,7 @@
 
 **Audit findings:** #1 (HIGH), #4 (HIGH), #5 (MEDIUM), #6 (MEDIUM), #13 (LOW), #16 (LOW)
 
-- [ ] Plan 219-01: Migrate all execSync calls to array syntax + consolidate git types/constants
+- [x] Plan 219-01: Migrate all execSync calls to array syntax + consolidate git types/constants
 
 ## Phase 220: Layout & Architecture Cleanup
 
@@ -24,7 +24,7 @@
 
 **Audit findings:** #2 (HIGH), #10 (MEDIUM), #11 (MEDIUM), #14 (LOW), #17 (LOW)
 
-- [ ] Plan 220-01: Fix detail panel guard + barrel exports + config constants + atom docs
+- [x] Plan 220-01: Fix detail panel guard + barrel exports + config constants + atom docs
 
 ## Phase 221: Schema & UI DRY Consolidation
 
@@ -34,7 +34,7 @@
 
 **Audit findings:** #7 (MEDIUM), #8 (MEDIUM), #9 (MEDIUM), #12 (MEDIUM), #15 (LOW)
 
-- [ ] Plan 221-01: Extract schema fragments + concept filter helper + compile status components + sidecar schemas
+- [x] Plan 221-01: Extract schema fragments + concept filter helper + compile status components + sidecar schemas
 
 ---
 
