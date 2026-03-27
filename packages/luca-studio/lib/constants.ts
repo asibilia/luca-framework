@@ -144,6 +144,19 @@ export const CONVERGENCE_STATUS_COLORS: Record<string, string> = {
 export const DEFAULT_PORT = 3456;
 
 /**
+ * Maps a singular entity type to its plural domain name.
+ *
+ * Used by components that need to translate UI-level entity types
+ * (agent, skill, rule) to the API-level domain identifier (agents,
+ * skills, rules).
+ */
+export const ENTITY_DOMAIN: Record<"agent" | "skill" | "rule", string> = {
+  agent: "agents",
+  skill: "skills",
+  rule: "rules",
+};
+
+/**
  * File path prefixes that Studio considers "tracked" for git publish operations.
  *
  * These are the source directories and config files that Studio may edit.

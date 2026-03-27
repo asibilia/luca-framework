@@ -14,9 +14,8 @@
  * - 504: Sidecar timed out (>30s)
  * - 404/422: Forwarded directly from sidecar error responses
  */
-import { z } from "zod";
-
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { publishCompileEvent } from "~/lib/compile-events";
 import { SIDECAR_TIMEOUT_MS, SIDECAR_URL } from "~/lib/constants";
@@ -77,6 +76,14 @@ function mapSidecarStatus(sidecarStatus: number): number {
   return sidecarStatus;
 }
 
+/**
+ * Return the current UTC timestamp as an ISO-8601 string.
+ *
+ * Extracted to avoid six identical `new Date().toISOString()` calls
+ * scattered across the handler.
+ */
+const now = (): string => new Date().toISOString();
+
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
@@ -110,7 +117,7 @@ export async function POST(request: Request) {
   const { domain, name, format } = parseResult.data;
 
   // Step 3: Publish compile:start event
-  const timestamp = new Date().toISOString();
+  const timestamp = now();
   publishCompileEvent({ type: "compile:start", domain, name, timestamp });
 
   // Step 4: Forward to sidecar with timeout
@@ -141,7 +148,7 @@ export async function POST(request: Request) {
         type: "compile:complete",
         domain,
         name,
-        timestamp: new Date().toISOString(),
+        timestamp: now(),
       });
       return NextResponse.json(responseBody);
     }
@@ -152,7 +159,7 @@ export async function POST(request: Request) {
       type: "compile:error",
       domain,
       name,
-      timestamp: new Date().toISOString(),
+      timestamp: now(),
       error: `Sidecar returned ${sidecarResponse.status}`,
     });
     return NextResponse.json(responseBody, { status: proxyStatus });
@@ -165,7 +172,7 @@ export async function POST(request: Request) {
         type: "compile:error",
         domain,
         name,
-        timestamp: new Date().toISOString(),
+        timestamp: now(),
         error: "Sidecar timed out after 30 seconds",
       });
       return NextResponse.json(
@@ -183,7 +190,7 @@ export async function POST(request: Request) {
         type: "compile:error",
         domain,
         name,
-        timestamp: new Date().toISOString(),
+        timestamp: now(),
         error: "Sidecar unreachable",
       });
       return NextResponse.json(
@@ -206,7 +213,7 @@ export async function POST(request: Request) {
       type: "compile:error",
       domain,
       name,
-      timestamp: new Date().toISOString(),
+      timestamp: now(),
       error: safeErrorMessage,
     });
     const clientMessage = isProduction

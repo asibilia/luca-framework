@@ -18,6 +18,7 @@ import { DirtyIndicator } from "~/components/feedback/dirty-indicator";
 import { ShikiCodeBlock } from "~/components/shared/shiki-code-block";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { ENTITY_DOMAIN } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { compileStatusAtom } from "~/stores/config-atoms";
 import { dirtySetAtom } from "~/stores/dirty-tracking";
@@ -71,13 +72,6 @@ export type EntityTabContainerProps = {
 // ---------------------------------------------------------------------------
 // Tab identifiers
 // ---------------------------------------------------------------------------
-
-/** Maps singular entity type to its plural domain name. */
-const ENTITY_DOMAIN: Record<"agent" | "skill" | "rule", string> = {
-  agent: "agents",
-  skill: "skills",
-  rule: "rules",
-};
 
 const TAB_IDS = {
   configure: "configure",

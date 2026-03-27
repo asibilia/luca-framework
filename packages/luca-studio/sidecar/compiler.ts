@@ -16,9 +16,9 @@
  *
  * @module
  */
-import { z } from "zod";
-import { mkdir } from "node:fs/promises";
 import path from "node:path";
+
+import { z } from "zod";
 
 import { agentRegistry } from "../../../src/agents/index.ts";
 import { skillRegistry } from "../../../src/skills/index.ts";
@@ -159,10 +159,11 @@ async function compileEntity(
 
   const outputPath = resolveOutputPath(domain, name, format as SupportedFormat);
 
-  // Ensure parent directory exists before writing
+  // Ensure parent directory exists before writing (Bun-native shell)
   const repoRoot = path.resolve(import.meta.dir, "..", "..", "..");
   const absolutePath = path.join(repoRoot, outputPath);
-  await mkdir(path.dirname(absolutePath), { recursive: true });
+  const parentDir = path.dirname(absolutePath);
+  await Bun.$`mkdir -p ${parentDir}`.quiet();
   await Bun.write(absolutePath, content);
 
   return { output_path: outputPath, content };
