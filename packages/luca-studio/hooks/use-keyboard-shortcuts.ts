@@ -121,7 +121,9 @@ export function useKeyboardShortcuts(): void {
       if (mod && e.key === "s") {
         e.preventDefault();
         if (saveCallback) {
-          void saveCallback();
+          void saveCallback().catch((err: unknown) => {
+            console.error("[Cmd+S] save callback failed:", err);
+          });
         }
         return;
       }
