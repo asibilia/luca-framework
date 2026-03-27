@@ -198,17 +198,20 @@ export async function POST(request: Request) {
     // Unknown fetch error -- mask internal details in production
     const internalMessage =
       error instanceof Error ? error.message : String(error);
+    const isProduction = process.env.NODE_ENV === "production";
+    const safeErrorMessage = isProduction
+      ? "Unexpected compilation error"
+      : internalMessage;
     publishCompileEvent({
       type: "compile:error",
       domain,
       name,
       timestamp: new Date().toISOString(),
-      error: internalMessage,
+      error: safeErrorMessage,
     });
-    const clientMessage =
-      process.env.NODE_ENV !== "production"
-        ? `Proxy error: ${internalMessage}`
-        : "Unexpected compilation error";
+    const clientMessage = isProduction
+      ? "Unexpected compilation error"
+      : `Proxy error: ${internalMessage}`;
     return NextResponse.json({ error: clientMessage }, { status: 502 });
   }
 }
