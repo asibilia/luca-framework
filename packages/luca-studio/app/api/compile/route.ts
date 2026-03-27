@@ -201,18 +201,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Unknown fetch error
-    const message = error instanceof Error ? error.message : String(error);
+    // Unknown fetch error -- mask internal details in production
+    const internalMessage =
+      error instanceof Error ? error.message : String(error);
     publishCompileEvent({
       type: "compile:error",
       domain,
       name,
       timestamp: new Date().toISOString(),
-      error: message,
+      error: internalMessage,
     });
-    return NextResponse.json(
-      { error: `Proxy error: ${message}` },
-      { status: 502 },
-    );
+    const clientMessage =
+      process.env.NODE_ENV !== "production"
+        ? `Proxy error: ${internalMessage}`
+        : "Unexpected compilation error";
+    return NextResponse.json({ error: clientMessage }, { status: 502 });
   }
 }
