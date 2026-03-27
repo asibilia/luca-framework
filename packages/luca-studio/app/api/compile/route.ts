@@ -18,6 +18,8 @@ import { z } from "zod";
 
 import { NextResponse } from "next/server";
 
+import { publishCompileEvent } from "~/lib/compile-events";
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -107,7 +109,11 @@ export async function POST(request: Request) {
 
   const { domain, name, format } = parseResult.data;
 
-  // Step 3: Forward to sidecar with timeout
+  // Step 3: Publish compile:start event
+  const timestamp = new Date().toISOString();
+  publishCompileEvent({ type: "compile:start", domain, name, timestamp });
+
+  // Step 4: Forward to sidecar with timeout
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SIDECAR_TIMEOUT_MS);
 
@@ -131,17 +137,37 @@ export async function POST(request: Request) {
 
     // Success path
     if (sidecarResponse.ok) {
+      publishCompileEvent({
+        type: "compile:complete",
+        domain,
+        name,
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json(responseBody);
     }
 
     // Error path -- map sidecar status to proxy status
     const proxyStatus = mapSidecarStatus(sidecarResponse.status);
+    publishCompileEvent({
+      type: "compile:error",
+      domain,
+      name,
+      timestamp: new Date().toISOString(),
+      error: `Sidecar returned ${sidecarResponse.status}`,
+    });
     return NextResponse.json(responseBody, { status: proxyStatus });
   } catch (error) {
     clearTimeout(timeout);
 
     // Timeout (AbortController)
     if (error instanceof DOMException && error.name === "AbortError") {
+      publishCompileEvent({
+        type: "compile:error",
+        domain,
+        name,
+        timestamp: new Date().toISOString(),
+        error: "Sidecar timed out after 30 seconds",
+      });
       return NextResponse.json(
         {
           error:
@@ -153,6 +179,13 @@ export async function POST(request: Request) {
 
     // Sidecar unreachable
     if (isSidecarUnreachable(error)) {
+      publishCompileEvent({
+        type: "compile:error",
+        domain,
+        name,
+        timestamp: new Date().toISOString(),
+        error: "Sidecar unreachable",
+      });
       return NextResponse.json(
         {
           error:
@@ -164,6 +197,13 @@ export async function POST(request: Request) {
 
     // Unknown fetch error
     const message = error instanceof Error ? error.message : String(error);
+    publishCompileEvent({
+      type: "compile:error",
+      domain,
+      name,
+      timestamp: new Date().toISOString(),
+      error: message,
+    });
     return NextResponse.json(
       { error: `Proxy error: ${message}` },
       { status: 502 },
