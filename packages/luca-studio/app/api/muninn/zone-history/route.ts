@@ -1,106 +1,126 @@
-import { access, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import filter from "lodash/filter";
+import orderBy from "lodash/orderBy";
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-
-import { ZoneHistoryResponseSchema } from "~/lib/muninn-schemas";
-
-/**
- * Minimal schema for the context-metrics snapshot file.
- * Validates the raw JSON before field access to prevent type confusion.
- */
-const ContextMetricsSchema = z.object({
-  zone: z.string().optional(),
-  usage_percent: z.number().optional(),
-  checked_at: z.string().optional(),
-});
-
-/**
- * Walk up from startDir looking for a directory containing `.planning/`.
- * Returns the first match, or null if none found.
- */
-async function findProjectRoot(startDir: string): Promise<string | null> {
-  let current = resolve(startDir);
-  const root = resolve("/");
-  while (current !== root) {
-    try {
-      await access(join(current, ".planning"));
-      return current;
-    } catch {
-      /* not found at this level, keep walking up */
-    }
-    current = resolve(current, "..");
-  }
-  return null;
-}
+import {
+  muninnProxyHandler,
+  parseQueryParams,
+} from "~/lib/muninn-route-helper";
+import {
+  ZoneHistoryQuerySchema,
+  ZoneHistoryResponseSchema,
+} from "~/lib/muninn-schemas";
 
 /**
  * GET /api/muninn/zone-history
  *
- * Reads .planning/.context-metrics.json for zone transition data.
- * This is NOT a MuninnDB proxy — it reads a local file written by
- * the context-monitor hook.
+ * Returns historical zone transitions from MuninnDB.
  *
- * The context-metrics file is a single snapshot (overwritten each check).
- * Returns the current entry as a single-element array for the timeline view.
+ * Queries MuninnDB for engrams with concept prefix "session:context-zone"
+ * or "metric:context-zone", then transforms them into the zone history
+ * response format (entries with zone, usage_percent, checked_at).
  *
- * Returns 200 with empty entries array when file is missing.
+ * Previously read a single-snapshot `.planning/.context-metrics.json` file,
+ * which only contained the most recent zone check. Now queries MuninnDB
+ * to provide a full timeline of zone transitions.
  *
- * Workspace root resolution: LUCA_PROJECT_DIR > WORKSPACE_ROOT > findProjectRoot(cwd)
+ * Accepts optional query params:
+ * - vault (default: "default")
+ * - limit (default: 100)
  */
-export async function GET() {
-  const emptyResponse = { entries: [], total: 0 };
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const result = parseQueryParams(searchParams, ZoneHistoryQuerySchema);
+  if (!result.success) return result.response;
 
+  const { vault, limit } = result.data;
+
+  return muninnProxyHandler(
+    async (client) => {
+      // Fetch without tag filter — MuninnDB tags do exact matching, not prefix
+      const fetchLimit = Math.min(limit * 5, 500);
+      const data = await client.listEngrams(vault, fetchLimit, 0);
+
+      // Filter for zone-related engrams by concept prefix
+      const zoneEngrams = filter(
+        data.engrams ?? [],
+        (e) =>
+          typeof e.concept === "string" &&
+          (e.concept.startsWith("session:context-zone") ||
+            e.concept.startsWith("metric:context-zone")),
+      );
+
+      // Sort by creation time ascending (oldest first) for timeline display
+      const sorted = orderBy(zoneEngrams, (e) => e.created_at, "asc");
+
+      // Transform engram content into zone history entries
+      const entries = sorted.slice(0, limit).map((e) => {
+        // Parse structured zone data from engram content
+        const parsed = parseZoneContent(e.content);
+        return {
+          zone: parsed.zone ?? e.concept.split(":").pop() ?? "unknown",
+          usage_percent: parsed.usage_percent,
+          checked_at:
+            parsed.checked_at ??
+            (typeof e.created_at === "number"
+              ? new Date(e.created_at).toISOString()
+              : String(e.created_at)),
+        };
+      });
+
+      return {
+        entries,
+        total: entries.length,
+      };
+    },
+    "Failed to fetch MuninnDB zone history",
+    ZoneHistoryResponseSchema,
+  );
+}
+
+/**
+ * Parse zone data from engram content string.
+ *
+ * Engram content may contain structured data like:
+ * - "Zone: PEAK, Usage: 15%, Checked: 2026-03-27T12:00:00Z"
+ * - JSON: { "zone": "PEAK", "usage_percent": 15, "checked_at": "..." }
+ * - Plain text description of zone transition
+ *
+ * @param content - Raw engram content string
+ * @returns Parsed zone fields (all optional, falls back gracefully)
+ */
+function parseZoneContent(content: string): {
+  zone?: string;
+  usage_percent?: number;
+  checked_at?: string;
+} {
+  // Try JSON parse first
   try {
-    const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
-    const explicitRoot = rawRoot ? resolve(rawRoot) : null;
-    const workspaceRoot =
-      explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
-    const filePath = join(workspaceRoot, ".planning", ".context-metrics.json");
-
-    const raw = await readFile(filePath, "utf-8");
-    const rawParsed = JSON.parse(raw);
-
-    // Validate the raw metrics with Zod before field access
-    const metricsResult = ContextMetricsSchema.safeParse(rawParsed);
-    if (!metricsResult.success) {
-      console.error(
-        "[zone-history] Metrics validation failed:",
-        metricsResult.error.message,
-      );
-      return NextResponse.json(emptyResponse);
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "object" && parsed !== null) {
+      return {
+        zone: typeof parsed.zone === "string" ? parsed.zone : undefined,
+        usage_percent:
+          typeof parsed.usage_percent === "number"
+            ? parsed.usage_percent
+            : undefined,
+        checked_at:
+          typeof parsed.checked_at === "string" ? parsed.checked_at : undefined,
+      };
     }
-
-    // The file is a single snapshot object, not an array
-    const entry = {
-      zone: metricsResult.data.zone,
-      usage_percent: metricsResult.data.usage_percent,
-      checked_at: metricsResult.data.checked_at,
-    };
-
-    // Only include entry if it has meaningful data
-    if (!entry.zone && entry.usage_percent === undefined) {
-      return NextResponse.json(emptyResponse);
-    }
-
-    const response = {
-      entries: [entry],
-      total: 1,
-    };
-
-    const result = ZoneHistoryResponseSchema.safeParse(response);
-    if (!result.success) {
-      console.error(
-        "[zone-history] Response validation failed:",
-        result.error.message,
-      );
-      return NextResponse.json(emptyResponse);
-    }
-
-    return NextResponse.json(result.data);
   } catch {
-    // File missing or unreadable — return empty entries
-    return NextResponse.json(emptyResponse);
+    /* not JSON — try regex patterns */
   }
+
+  // Try structured text patterns
+  const zoneMatch = content.match(/zone:\s*(\w+)/i);
+  const usageMatch = content.match(/usage:\s*([\d.]+)%?/i);
+  const checkedMatch = content.match(
+    /checked(?:_at)?:\s*(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)/i,
+  );
+
+  return {
+    zone: zoneMatch?.[1],
+    usage_percent: usageMatch ? parseFloat(usageMatch[1]!) : undefined,
+    checked_at: checkedMatch?.[1],
+  };
 }

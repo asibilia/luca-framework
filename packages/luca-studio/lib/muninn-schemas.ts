@@ -440,11 +440,15 @@ export const CheckpointResponseSchema = z
   .passthrough();
 
 /**
- * GET /api/muninn/zone-history — no query parameters.
+ * GET /api/muninn/zone-history — query parameters.
  *
- * Reads local .planning/.context-metrics.json history file.
+ * Queries MuninnDB for zone transition engrams.
+ * Uses z.coerce.number() because URLSearchParams values are always strings.
  */
-export const ZoneHistoryQuerySchema = z.object({});
+export const ZoneHistoryQuerySchema = z.object({
+  vault: z.string().min(1).max(100).default("default"),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
 
 export type ZoneHistoryQuery = z.infer<typeof ZoneHistoryQuerySchema>;
 
