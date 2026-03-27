@@ -16,6 +16,7 @@
  *
  * @module
  */
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { z } from "zod";
@@ -197,11 +198,12 @@ async function compileEntity(
 
   const outputPath = resolveOutputPath(domain, name, format as SupportedFormat);
 
-  // Ensure parent directory exists before writing (Bun-native shell)
+  // Ensure parent directory exists before writing (node:fs/promises — safe from
+  // shell injection since the path comes from request data).
   const repoRoot = path.resolve(import.meta.dir, "..", "..", "..");
   const absolutePath = path.join(repoRoot, outputPath);
   const parentDir = path.dirname(absolutePath);
-  await Bun.$`mkdir -p ${parentDir}`.quiet();
+  await mkdir(parentDir, { recursive: true });
   await Bun.write(absolutePath, content);
 
   return { output_path: outputPath, content };
