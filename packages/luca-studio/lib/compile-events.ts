@@ -59,9 +59,9 @@ export type CompileEventListener = (event: CompileEvent) => void;
 // Singleton state (survives HMR via globalThis)
 // ---------------------------------------------------------------------------
 
-interface CompileEventState {
+type CompileEventState = {
   listeners: Set<CompileEventListener>;
-}
+};
 
 const GLOBAL_KEY = "__luca_studio_compile_events__" as const;
 

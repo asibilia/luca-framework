@@ -16,51 +16,51 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Parsed payload for `file:changed` SSE events. */
-interface FileChangedPayload {
+type FileChangedPayload = {
   type: "add" | "change" | "unlink";
   path: string;
   timestamp: string;
-}
+};
 
 /** Parsed payload for `compile:start` SSE events. */
-interface CompileStartPayload {
+type CompileStartPayload = {
   domain: string;
   name: string;
-}
+};
 
 /** Parsed payload for `compile:complete` SSE events. */
-interface CompileCompletePayload {
+type CompileCompletePayload = {
   domain: string;
   name: string;
-}
+};
 
 /** Parsed payload for `compile:error` SSE events. */
-interface CompileErrorPayload {
+type CompileErrorPayload = {
   domain: string;
   name: string;
   error: string;
-}
+};
 
 /** Parsed payload for `state:transition` SSE events. */
-interface StateTransitionPayload {
+type StateTransitionPayload = {
   event: string;
   [key: string]: unknown;
-}
+};
 
 /** Parsed payload for `ledger:entry` SSE events. */
-interface LedgerEntryPayload {
+type LedgerEntryPayload = {
   [key: string]: unknown;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /** Result from a safe JSON fetch, including an optional ETag header. */
-interface FetchJsonResult {
+type FetchJsonResult = {
   data: Record<string, unknown> | null;
   etag: string | null;
-}
+};
 
 /**
  * Fetch JSON from the given URL, returning `null` on any error.

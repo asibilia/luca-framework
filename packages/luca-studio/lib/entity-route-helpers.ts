@@ -67,7 +67,7 @@ const EntityPutBodySchema = z.object({
 // ---------------------------------------------------------------------------
 
 /** Summary returned by the list endpoint for each entity. */
-export interface EntitySummary {
+export type EntitySummary = {
   /** Kebab-case entity name (e.g. "lu-router") */
   name: string;
   /** Domain identifier */
@@ -80,15 +80,15 @@ export interface EntitySummary {
   filePath: string;
   /** Approximate raw config size in characters (UI hint) */
   configSize: number;
-}
+};
 
 /** Full detail returned by the single-entity GET endpoint. */
-export interface EntityDetail {
+export type EntityDetail = {
   name: string;
   domain: EntityDomain;
   rawConfigText: string;
   metadata: EntityMetadata;
-}
+};
 
 /** Maps domain to its file extension suffix and subdirectories to scan. */
 const DOMAIN_CONFIG: Record<
