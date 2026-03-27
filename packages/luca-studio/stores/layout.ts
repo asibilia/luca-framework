@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
@@ -90,6 +92,17 @@ export const commandPaletteOpenAtom = atom<boolean>(false);
  * Toggled by Cmd+Shift+P shortcut. Not persisted.
  */
 export const compiledPreviewOpenAtom = atom<boolean>(false);
+
+/**
+ * Entity sidebar content for build pages (Agents, Skills, Rules).
+ *
+ * Build pages set this atom on mount with their entity tree JSX and
+ * clear it on unmount. When non-null, LayoutShell inserts a fixed-width
+ * sidebar column between the NavRail and the main content area.
+ *
+ * Not persisted -- resets to null on navigation.
+ */
+export const entitySidebarAtom = atom<ReactNode | null>(null);
 
 /**
  * Internal storage for the global save callback.

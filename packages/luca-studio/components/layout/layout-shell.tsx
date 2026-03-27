@@ -13,15 +13,20 @@ import {
   layoutContextAtom,
   detailPanelStateAtom,
   detailPanelWidthAtom,
+  entitySidebarAtom,
   navRailWidthAtom,
 } from "~/stores/layout";
 import { cn } from "~/lib/utils";
 
 /**
- * Three-zone CSS Grid layout shell for Luca Studio.
+ * CSS Grid layout shell for Luca Studio.
  *
- * Composes NavRail (left) + content slot (center) + DetailPanel (right)
- * into a `grid-template-columns: auto 1fr auto` grid.
+ * Composes NavRail (left) + optional entity sidebar + content slot (center) +
+ * DetailPanel (right) into a responsive grid. When an entity sidebar is
+ * present (build pages), the grid expands to 4 columns; otherwise 3 columns.
+ *
+ * The entity sidebar is driven by `entitySidebarAtom` -- build pages
+ * (Agents, Skills, Rules) set this atom on mount with their entity tree JSX.
  *
  * Reads `layoutContextAtom` to apply adaptation:
  * - **dashboard**: NavRail expanded (240px), content max-w-7xl centered, detail closed
@@ -53,6 +58,7 @@ export function LayoutShell({
   const layoutContext = useAtomValue(layoutContextAtom);
   const panelState = useAtomValue(detailPanelStateAtom);
   const panelWidth = useAtomValue(detailPanelWidthAtom);
+  const entitySidebar = useAtomValue(entitySidebarAtom);
   const navWidth = useAtomValue(navRailWidthAtom);
 
   // Docked detail panel occupies grid space; floating/closed does not
@@ -66,10 +72,14 @@ export function LayoutShell({
   // Mirror that here so the grid column width matches the rail's actual width.
   const effectiveNavWidth = layoutContext === "editor" ? 48 : navWidth;
 
-  // Build grid columns: NavRail | Content | DetailPanel (if docked)
-  const gridColumns = isDocked
-    ? `${effectiveNavWidth}px 1fr ${clampedPanelWidth}px`
-    : `${effectiveNavWidth}px 1fr 0px`;
+  // Entity sidebar width (fixed 260px when present)
+  const entitySidebarCol = entitySidebar ? "260px" : "";
+
+  // Build grid columns: NavRail | [EntitySidebar] | Content | DetailPanel (if docked)
+  const detailCol = isDocked ? `${clampedPanelWidth}px` : "0px";
+  const gridColumns = entitySidebar
+    ? `${effectiveNavWidth}px ${entitySidebarCol} 1fr ${detailCol}`
+    : `${effectiveNavWidth}px 1fr ${detailCol}`;
 
   return (
     <div
@@ -78,6 +88,13 @@ export function LayoutShell({
     >
       {/* Zone A: Navigation Rail */}
       <NavRail>{navChildren}</NavRail>
+
+      {/* Zone A.5: Entity Sidebar (build pages only) */}
+      {entitySidebar && (
+        <aside className="flex h-full flex-col overflow-y-auto border-r bg-muted/30">
+          {entitySidebar}
+        </aside>
+      )}
 
       {/* Zone B: Primary Content */}
       <main
