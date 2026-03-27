@@ -109,6 +109,8 @@ export const entitySidebarAtom = atom<ReactNode | null>(null);
  *
  * Not exported -- use `globalSaveCallbackAtom` (read) and
  * `setGlobalSaveCallbackAtom` (write) instead.
+ *
+ * @private
  */
 const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null);
 

@@ -106,13 +106,13 @@ export function LayoutShell({
         {children}
       </main>
 
-      {/* Zone C: Detail Panel */}
-      {isDocked && (
+      {/* Zone C: Detail Panel (docked — occupies grid column) */}
+      {isDocked && !isFloating && (
         <DetailPanel title={detailTitle}>{detailChildren}</DetailPanel>
       )}
 
-      {/* Floating overlay (not part of grid flow) */}
-      {isFloating && (
+      {/* Floating overlay (absolute positioned, not part of grid flow) */}
+      {isFloating && !isDocked && (
         <DetailPanel title={detailTitle}>{detailChildren}</DetailPanel>
       )}
 

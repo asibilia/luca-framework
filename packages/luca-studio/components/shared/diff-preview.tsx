@@ -16,7 +16,7 @@ import { ShikiCodeBlock } from "~/components/shared/shiki-code-block";
 // Types
 // ---------------------------------------------------------------------------
 
-type DiffPreviewProps = {
+export type DiffPreviewProps = {
   /** The user's local version of the content. */
   localContent: string;
   /** The latest server version of the content. */

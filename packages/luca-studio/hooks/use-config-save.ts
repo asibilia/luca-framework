@@ -9,6 +9,18 @@ import { dirtySetAtom, markCleanAtom } from "~/stores/dirty-tracking";
 import { configDraftAtom, configEtagAtom } from "~/stores/config-atoms";
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Config section keys that are individually persisted to the server.
+ *
+ * Each section maps to a PUT endpoint at `/api/config/{section}`.
+ * Update this array when new top-level config sections are added.
+ */
+const CONFIG_SECTIONS = ["complexity", "gates", "harness"] as const;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -25,6 +37,11 @@ type UseConfigSaveReturn = {
 
 /**
  * PUT a single config section to its API route with If-Match concurrency.
+ *
+ * NOTE: The ETag header pattern (Content-Type + conditional If-Match) is shared
+ * across save hooks: use-entity-save.ts, use-pipeline-save.ts, use-agent-save.ts,
+ * use-skill-save.ts, use-rule-save.ts. If this pattern grows beyond 3-4 lines,
+ * consider extracting a shared `buildFetchHeaders` helper in lib/fetch-helpers.ts.
  *
  * @param section - Config section key (e.g., "complexity", "gates", "harness")
  * @param data    - Section payload to write
@@ -96,8 +113,7 @@ export function useConfigSave(): UseConfigSaveReturn {
     if (!config) return;
 
     // Save each section in parallel
-    const sections = ["complexity", "gates", "harness"] as const;
-    const promises = sections.map((section) => {
+    const promises = CONFIG_SECTIONS.map((section) => {
       const sectionData = get(config, section, null);
       if (sectionData == null) return Promise.resolve();
       return putSection(section, sectionData, etag);
