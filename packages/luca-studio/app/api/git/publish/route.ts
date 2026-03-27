@@ -13,16 +13,9 @@
  */
 import { NextResponse } from "next/server";
 
+import { STUDIO_PATH_PREFIXES } from "~/lib/constants";
 import { resolveProjectRoot } from "~/lib/project-root";
 import { isLocalhostRequest } from "~/lib/request-guards";
-
-/** Paths considered Studio-tracked entities. */
-const STUDIO_PATH_PREFIXES = [
-  "src/agents/",
-  "src/skills/",
-  "src/rules/",
-  ".planning/config.json",
-];
 
 /**
  * Check whether a file path belongs to a Studio-tracked entity.

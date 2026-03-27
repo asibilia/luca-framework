@@ -19,14 +19,8 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 
 import { publishCompileEvent } from "~/lib/compile-events";
+import { SIDECAR_TIMEOUT_MS, SIDECAR_URL } from "~/lib/constants";
 import { isLocalhostRequest } from "~/lib/request-guards";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const SIDECAR_URL = "http://localhost:3457";
-const SIDECAR_TIMEOUT_MS = 30_000;
 
 // ---------------------------------------------------------------------------
 // Request schema
