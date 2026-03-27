@@ -11,6 +11,8 @@ import {
   GitCommit,
   Loader2,
   RotateCcw,
+  Upload,
+  X,
 } from "lucide-react";
 
 import {
@@ -106,6 +108,9 @@ export function ConfigHistory() {
   const [revertTarget, setRevertTarget] = useState<RevertTarget | null>(null);
   const [reverting, setReverting] = useState(false);
   const [revertError, setRevertError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishBlockedFiles, setPublishBlockedFiles] = useState<string[]>([]);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
 
   // ---------------------------
@@ -197,21 +202,147 @@ export function ConfigHistory() {
   }, []);
 
   // ---------------------------
+  // Publish flow
+  // ---------------------------
+
+  const handlePublish = useCallback(async () => {
+    setPublishing(true);
+    setPublishError(null);
+    setPublishBlockedFiles([]);
+
+    try {
+      const res = await fetch("/api/git/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.status === 409) {
+        const data = (await res.json().catch(() => ({}))) as {
+          non_studio_files?: string[];
+          error?: string;
+        };
+        setPublishBlockedFiles(data.non_studio_files ?? []);
+        return;
+      }
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setPublishError(data.error ?? `Publish failed (${res.status})`);
+        return;
+      }
+
+      // Success -- refresh history
+      setPublishBlockedFiles([]);
+      setPublishError(null);
+      fetchedRef.current = false;
+      void fetchHistory();
+    } catch (err) {
+      setPublishError(
+        err instanceof Error ? err.message : "Publish failed unexpectedly",
+      );
+    } finally {
+      setPublishing(false);
+    }
+  }, [fetchHistory]);
+
+  const dismissPublishWarning = useCallback(() => {
+    setPublishBlockedFiles([]);
+    setPublishError(null);
+  }, []);
+
+  // ---------------------------
   // Render
   // ---------------------------
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <GitCommit className="size-4" />
-          Config History
-        </CardTitle>
-        <CardDescription>
-          Studio commit timeline with per-file rollback
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <GitCommit className="size-4" />
+              Config History
+            </CardTitle>
+            <CardDescription>
+              Studio commit timeline with per-file rollback
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={handlePublish}
+            disabled={publishing}
+            className="shrink-0 gap-1.5"
+          >
+            {publishing ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Upload className="size-3.5" />
+            )}
+            {publishing ? "Publishing..." : "Publish All"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {/* Publish blocked by non-Studio files (409) */}
+        {publishBlockedFiles.length > 0 && (
+          <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium text-warning">
+                    Publishing is blocked by {publishBlockedFiles.length}{" "}
+                    uncommitted file
+                    {publishBlockedFiles.length === 1 ? "" : "s"} outside
+                    Studio:
+                  </p>
+                  <ul className="space-y-0.5">
+                    {publishBlockedFiles.map((file) => (
+                      <li
+                        key={file}
+                        className="font-mono text-xs text-warning/80"
+                      >
+                        {file}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    Resolution: commit or stash these files from your terminal.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0"
+                onClick={dismissPublishWarning}
+                aria-label="Dismiss publish warning"
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* General publish error */}
+        {publishError && publishBlockedFiles.length === 0 && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{publishError}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-6 shrink-0"
+              onClick={dismissPublishWarning}
+              aria-label="Dismiss publish error"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        )}
+
         {state === "loading" && (
           <div className="space-y-3">
             <Skeleton className="h-12 w-full" />
