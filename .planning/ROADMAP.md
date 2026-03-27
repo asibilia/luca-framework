@@ -31,17 +31,17 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 
 ### Phase 210: Advanced UI & State
 
-- [ ] Undo/redo with jotai-history (studio-w7-undo-redo)
-- [ ] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
-- [ ] Consolidate Memory page (studio-w7-memory-consolidation)
+- [x] Undo/redo with jotai-history (studio-w7-undo-redo)
+- [x] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
+- [x] Consolidate Memory page (studio-w7-memory-consolidation)
 
 **Goal:** Advanced UX features (state history, keyboard shortcuts, page consolidation) on stable pages.
 **Depends on:** Phase 209
 
 ### Phase 211: Observability & Polish
 
-- [ ] Edit/observe visual mode distinction (studio-w7-edit-observe-modes)
-- [ ] Settings page (studio-w8-settings-page)
+- [x] Edit/observe visual mode distinction (studio-w7-edit-observe-modes)
+- [x] Settings page (studio-w8-settings-page)
 - [ ] Agent team prompt audit fixes (agent-team-prompt-audit-fixes)
 
 **Goal:** Polish pass — visual modes, settings aggregation, and prompt quality fixes.
