@@ -138,3 +138,36 @@ export const routingDraftAtom = atom(
     set(_routingDraftPrimitiveAtom, value);
   },
 );
+
+// ---------------------------------------------------------------------------
+// Layer 3 -- Conflict Resolution
+//
+// Stores a pending ETag conflict returned by a 409 response from the entity
+// PUT endpoint. When non-null, entity pages render the DiffPreview dialog to
+// let the user resolve the conflict.
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents the state of an ETag conflict on entity save.
+ *
+ * Populated by `useEntitySave` when a PUT returns 409, consumed by entity
+ * pages to render the `DiffPreview` dialog. `null` when no conflict exists.
+ */
+export type ConflictState = {
+  /** Entity key in `{type}:{name}` format (e.g. "agent:lu-router") */
+  entityKey: string;
+  /** The user's local draft content that failed to save */
+  localContent: string;
+  /** The current server content returned in the 409 response body */
+  serverContent: string;
+  /** The current server ETag returned in the 409 response body */
+  serverEtag: string;
+} | null;
+
+/**
+ * Atom tracking the current entity conflict state.
+ *
+ * Set by `useEntitySave` on 409 conflict, cleared by entity pages after
+ * the user resolves the conflict via DiffPreview.
+ */
+export const conflictAtom = atom<ConflictState>(null);

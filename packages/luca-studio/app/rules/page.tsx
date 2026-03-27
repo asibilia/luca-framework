@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Loader2, Shield } from "lucide-react";
 
 import { EntityTree } from "~/components/editor/entity-tree";
+import { DiffPreview } from "~/components/shared/diff-preview";
 import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { ResizableSplit } from "~/components/layout/resizable-split";
@@ -17,8 +18,9 @@ import { useRuleDetail } from "~/hooks/use-rule-detail";
 import { useRuleList } from "~/hooks/use-rule-list";
 import { useRuleSave } from "~/hooks/use-rule-save";
 import { useUndo } from "~/hooks/use-undo";
-import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
+import { conflictAtom } from "~/stores/config-atoms";
 import { ruleHistoryAtom } from "~/stores/entity-atoms";
+import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
 
@@ -36,6 +38,7 @@ import type { EntityItem } from "~/components/editor/entity-tree";
 export default function RulesPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const setLayoutContext = useSetAtom(layoutContextAtom);
+  const [conflict, setConflict] = useAtom(conflictAtom);
 
   // Set editor layout context on mount (collapses NavRail)
   useEffect(() => {
@@ -52,9 +55,7 @@ export default function RulesPage() {
   const { detail, loading: detailLoading, etag } = useRuleDetail(selectedName);
 
   // Undo/redo for the selected rule's draft
-  const { undo, redo } = useUndo(
-    ruleHistoryAtom(selectedName ?? "__noop__"),
-  );
+  const { undo, redo } = useUndo(ruleHistoryAtom(selectedName ?? "__noop__"));
 
   // Map API summaries to EntityTree items
   // CRITICAL: Rules use profiles/{language}/ subdirectories that need two-level extraction
@@ -103,6 +104,45 @@ export default function RulesPage() {
     editMode.forceExit();
   }, [discard, editMode]);
 
+  // Conflict resolution: does the current conflict match this entity?
+  const entityConflict =
+    conflict && conflict.entityKey === entityKey ? conflict : null;
+
+  const handleAcceptLocal = useCallback(async () => {
+    if (!entityConflict) return;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "If-Match": entityConflict.serverEtag,
+    };
+    try {
+      const res = await fetch(
+        `/api/entities/rules/${encodeURIComponent(selectedName ?? "")}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            rawConfigText: entityConflict.localContent,
+            metadata: {},
+          }),
+        },
+      );
+      if (res.ok) {
+        setConflict(null);
+      }
+    } catch {
+      // If force-overwrite fails, keep the conflict dialog open
+    }
+  }, [entityConflict, selectedName, setConflict]);
+
+  const handleAcceptServer = useCallback(() => {
+    setConflict(null);
+    discard();
+  }, [setConflict, discard]);
+
+  const handleDismissConflict = useCallback(() => {
+    setConflict(null);
+  }, [setConflict]);
+
   // Register save callback for centralized Cmd+S shortcut
   const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
   useEffect(() => {
@@ -112,6 +152,16 @@ export default function RulesPage() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Conflict resolution dialog */}
+      {entityConflict && (
+        <DiffPreview
+          localContent={entityConflict.localContent}
+          serverContent={entityConflict.serverContent}
+          onAcceptLocal={handleAcceptLocal}
+          onAcceptServer={handleAcceptServer}
+          onDismiss={handleDismissConflict}
+        />
+      )}
       <ResizableSplit
         orientation="horizontal"
         defaultFirstSize={20}
