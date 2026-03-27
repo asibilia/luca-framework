@@ -16,7 +16,7 @@ import type { MuninnEngram } from "~/lib/muninn-types";
  * - limit (default: 100)
  * - offset (default: 0)
  * - tag — server-side tag filter (passed to MuninnDB)
- * - type — client-side memory_type filter
+ * - type — client-side concept-prefix filter (matches engrams whose concept starts with `{type}:`)
  * - entity — client-side entity tag filter (searches engram tags)
  * - since — client-side timestamp filter (engrams created after this epoch)
  */
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
       // Apply client-side filters
       if (type) {
-        engrams = engrams.filter((e) => e.memory_type === type);
+        engrams = engrams.filter((e) => e.concept?.startsWith(type + ":"));
       }
       if (entity) {
         engrams = engrams.filter((e) => e.tags?.includes(entity));
