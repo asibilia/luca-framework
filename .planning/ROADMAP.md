@@ -29,8 +29,8 @@
 
 **Requirements:** REQ-03, REQ-04
 
-- [ ] Plan 215-01: Fix home page field names and summary synthesis
-- [ ] Plan 215-02: Fix sessions API filter and vault default
+- [x] Plan 215-01: Fix home page field names and summary synthesis
+- [x] Plan 215-02: Fix sessions API filter and vault default
 
 ## Phase 216: Git Routes Runtime Fix
 
