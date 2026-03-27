@@ -2,8 +2,9 @@
 
 ## Current Position
 
-- **Status:** Idle
-- **Task Complexity:** TRIVIAL
+- **Current Milestone:** v8.4.0
+- **Status:** Executing
+- **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-27
 
@@ -14,9 +15,9 @@
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Small
+- **Token Ceiling:** 50000
+- **Context Budget:** 40%
 
 ## Progress
 
@@ -31,7 +32,9 @@
 
 ## Allowed Events
 
-- `START`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -58,4 +61,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-27T20:58:32.851Z_
+_State generated from machine snapshot at 2026-03-27T21:07:45.611Z_

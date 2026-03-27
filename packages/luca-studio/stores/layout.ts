@@ -127,7 +127,7 @@ export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom));
 export const setGlobalSaveCallbackAtom = atom(
   null,
   (_get, set, callback: (() => Promise<void>) | null) => {
-    set(_saveCallbackAtom, callback);
+    set(_saveCallbackAtom, callback ? () => callback : null);
   },
 );
 
