@@ -66,8 +66,8 @@
 
 **Requirements:** REQ-07, REQ-08
 
-- [ ] Plan 218-01: Extract localhost guard helper and consolidate constants
-- [ ] Plan 218-02: Address Phase 208 HIGH findings (imports, barrels, DRY, Bun.file)
+- [x] Plan 218-01: Extract localhost guard helper and consolidate constants
+- [x] Plan 218-02: Address Phase 208 HIGH findings (imports, barrels, DRY, Bun.file)
 
 ---
 
