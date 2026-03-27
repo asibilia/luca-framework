@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useAtomValue } from "jotai";
-import { AlertTriangle, Info, Loader2, Pencil, X } from "lucide-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Loader2,
+  Pencil,
+  X,
+  XCircle,
+} from "lucide-react";
 
 import { CodeMirrorWrapper } from "~/components/editor/code-mirror-wrapper";
 import { DirtyIndicator } from "~/components/feedback/dirty-indicator";
@@ -11,6 +19,7 @@ import { ShikiCodeBlock } from "~/components/shared/shiki-code-block";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { cn } from "~/lib/utils";
+import { compileStatusAtom } from "~/stores/config-atoms";
 import { dirtySetAtom } from "~/stores/dirty-tracking";
 
 import type { ComponentType } from "react";
@@ -62,6 +71,13 @@ export type EntityTabContainerProps = {
 // ---------------------------------------------------------------------------
 // Tab identifiers
 // ---------------------------------------------------------------------------
+
+/** Maps singular entity type to its plural domain name. */
+const ENTITY_DOMAIN: Record<"agent" | "skill" | "rule", string> = {
+  agent: "agents",
+  skill: "skills",
+  rule: "rules",
+};
 
 const TAB_IDS = {
   configure: "configure",
@@ -140,12 +156,7 @@ export function EntityTabContainer({
   /** Local fallback placeholder shown when sidecar is offline. */
   const compiledFallback = useMemo(() => {
     if (!hasCompiledTab) return "";
-    const label =
-      entityType === "agent"
-        ? "Agent"
-        : entityType === "skill"
-          ? "Skill"
-          : "Rule";
+    const label = entityType.charAt(0).toUpperCase() + entityType.slice(1);
     return [
       `# ${label}: ${name}`,
       "",
@@ -166,12 +177,7 @@ export function EntityTabContainer({
     setCompiledLoading(true);
     setCompiledError(null);
     try {
-      const domainPlural =
-        entityType === "agent"
-          ? "agents"
-          : entityType === "skill"
-            ? "skills"
-            : "rules";
+      const domainPlural = ENTITY_DOMAIN[entityType];
       const res = await fetch("/api/compile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -220,15 +226,39 @@ export function EntityTabContainer({
   }, [activeTab, fetchCompiled, hasCompiledTab]);
 
   // ---------------------------------------------------------------------------
+  // SSE compile status (supplementary to HTTP response feedback)
+  // ---------------------------------------------------------------------------
+
+  const compileStatus = useAtomValue(compileStatusAtom);
+  const setCompileStatus = useSetAtom(compileStatusAtom);
+
+  /**
+   * Whether the SSE compile status applies to THIS entity.
+   * Only show the SSE indicator when the domain + name match.
+   */
+  const domainPlural = ENTITY_DOMAIN[entityType];
+
+  const sseMatchesEntity =
+    compileStatus.state !== "idle" &&
+    compileStatus.domain === domainPlural &&
+    compileStatus.name === name;
+
+  // Auto-reset compileStatusAtom to idle 3 seconds after success
+  useEffect(() => {
+    if (!sseMatchesEntity || compileStatus.state !== "success") return;
+
+    const timer = setTimeout(() => {
+      setCompileStatus({ state: "idle" });
+    }, 3_000);
+
+    return () => clearTimeout(timer);
+  }, [sseMatchesEntity, compileStatus.state, setCompileStatus]);
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  const entityLabel =
-    entityType === "agent"
-      ? "agent"
-      : entityType === "skill"
-        ? "skill"
-        : "rule";
+  const entityLabel = entityType;
 
   return (
     <Tabs
@@ -291,7 +321,18 @@ export function EntityTabContainer({
           )}
           <TabsTrigger value={TAB_IDS.source}>Source</TabsTrigger>
           {hasCompiledTab && (
-            <TabsTrigger value={TAB_IDS.compiled}>Compiled</TabsTrigger>
+            <TabsTrigger value={TAB_IDS.compiled} className="gap-1.5">
+              Compiled
+              {sseMatchesEntity && compileStatus.state === "compiling" && (
+                <Loader2 className="size-3 animate-spin text-primary" />
+              )}
+              {sseMatchesEntity && compileStatus.state === "success" && (
+                <CheckCircle2 className="size-3 text-green-500" />
+              )}
+              {sseMatchesEntity && compileStatus.state === "error" && (
+                <XCircle className="size-3 text-destructive" />
+              )}
+            </TabsTrigger>
           )}
         </TabsList>
       </div>
@@ -343,6 +384,33 @@ export function EntityTabContainer({
           value={TAB_IDS.compiled}
           className="flex-1 overflow-y-auto p-4"
         >
+          {/* SSE compile status (supplementary to HTTP response) */}
+          {sseMatchesEntity && compileStatus.state === "compiling" && (
+            <div className="mb-3 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+              <Loader2 className="size-3.5 animate-spin shrink-0" />
+              <span>
+                Compiling {compileStatus.domain}/{compileStatus.name} via
+                sidecar...
+              </span>
+            </div>
+          )}
+          {sseMatchesEntity && compileStatus.state === "success" && (
+            <div className="mb-3 flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-xs text-green-600 dark:text-green-400">
+              <CheckCircle2 className="size-3.5 shrink-0" />
+              <span>
+                Compilation succeeded for {compileStatus.domain}/
+                {compileStatus.name}.
+              </span>
+            </div>
+          )}
+          {sseMatchesEntity && compileStatus.state === "error" && (
+            <div className="mb-3 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <XCircle className="size-3.5 shrink-0" />
+              <span>Compilation failed: {compileStatus.error}</span>
+            </div>
+          )}
+
+          {/* HTTP-based compile states (primary feedback) */}
           {compiledLoading && (
             <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />

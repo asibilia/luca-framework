@@ -41,9 +41,9 @@ const MAX_CONFIG_TEXT_BYTES = 512 * 1024; // 512 KB
  * Validates shape, types, and enforces a 512 KB size cap on rawConfigText
  * to prevent oversized payloads from being written to `.ts` source files.
  *
- * The metadata schema uses `.passthrough()` so that all fields of the full
- * `EntityMetadata` interface are forwarded to `writeEntityFile()`, while
- * still enforcing the required structural fields.
+ * The metadata schema uses `.strict()` to reject unexpected fields that are
+ * not part of the `EntityMetadata` interface. All nine EntityMetadata fields
+ * are explicitly listed to maintain a tight contract.
  */
 const EntityPutBodySchema = z.object({
   rawConfigText: z.string().min(1).max(MAX_CONFIG_TEXT_BYTES),
@@ -59,7 +59,7 @@ const EntityPutBodySchema = z.object({
       prefix: z.string(),
       suffix: z.string(),
     })
-    .passthrough(),
+    .strict(),
 });
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ const EntityPutBodySchema = z.object({
 // ---------------------------------------------------------------------------
 
 /** Summary returned by the list endpoint for each entity. */
-export interface EntitySummary {
+export type EntitySummary = {
   /** Kebab-case entity name (e.g. "lu-router") */
   name: string;
   /** Domain identifier */
@@ -80,15 +80,15 @@ export interface EntitySummary {
   filePath: string;
   /** Approximate raw config size in characters (UI hint) */
   configSize: number;
-}
+};
 
 /** Full detail returned by the single-entity GET endpoint. */
-export interface EntityDetail {
+export type EntityDetail = {
   name: string;
   domain: EntityDomain;
   rawConfigText: string;
   metadata: EntityMetadata;
-}
+};
 
 /** Maps domain to its file extension suffix and subdirectories to scan. */
 const DOMAIN_CONFIG: Record<
@@ -130,13 +130,11 @@ async function resolveEntityPath(
 
     // Direct file in subdir
     const directPath = join(dirPath, filename);
-    if (
-      await access(directPath).then(
-        () => true,
-        () => false,
-      )
-    ) {
+    try {
+      await access(directPath);
       return directPath;
+    } catch {
+      // File does not exist at this path -- continue searching
     }
 
     // For rules/profiles, check nested subdirectories (e.g. profiles/typescript/)
@@ -149,13 +147,11 @@ async function resolveEntityPath(
       }
       for (const entry of entries) {
         const nestedPath = join(dirPath, entry, filename);
-        if (
-          await access(nestedPath).then(
-            () => true,
-            () => false,
-          )
-        ) {
+        try {
+          await access(nestedPath);
           return nestedPath;
+        } catch {
+          // File does not exist at this nested path -- continue
         }
       }
     }
@@ -401,10 +397,15 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         const currentEtag = computeETag(currentSource);
 
         if (ifMatch !== currentEtag) {
+          // Include current entity source so the client can merge/display
+          const currentEntity = await readEntityFile(filePath);
           return NextResponse.json(
             {
               error: "Conflict: entity has been modified since last read",
-              currentEtag,
+              current_etag: currentEtag,
+              current_content: currentEntity.success
+                ? currentEntity.rawConfigText
+                : null,
             },
             { status: 409 },
           );
@@ -430,8 +431,8 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         }
 
         // Write via ts-round-trip (atomic write)
-        // Cast metadata: Zod passthrough preserves all EntityMetadata fields
-        // but the inferred type is wider than the nominal interface.
+        // Cast metadata: Zod strict schema matches EntityMetadata fields
+        // exactly, but the inferred type is structural (not nominal).
         await writeEntityFile(
           filePath,
           bodyResult.data.rawConfigText,

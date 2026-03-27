@@ -128,3 +128,33 @@ export const CONVERGENCE_STATUS_COLORS: Record<string, string> = {
 } as const;
 
 export const DEFAULT_PORT = 3456;
+
+/**
+ * File path prefixes that Studio considers "tracked" for git publish operations.
+ *
+ * These are the source directories and config files that Studio may edit.
+ * Used by the git/publish route to separate Studio-tracked changes from
+ * non-Studio changes.
+ */
+export const STUDIO_PATH_PREFIXES = [
+  "src/agents/",
+  "src/skills/",
+  "src/rules/",
+  ".planning/config.json",
+];
+
+/**
+ * Base URL for the compilation sidecar process.
+ *
+ * The sidecar runs on a fixed port and handles entity compilation requests
+ * proxied from the Studio API routes.
+ */
+export const SIDECAR_URL = "http://localhost:3457";
+
+/**
+ * Timeout (in milliseconds) for compilation requests to the sidecar.
+ *
+ * If the sidecar does not respond within this window, the proxy route
+ * returns 504 Gateway Timeout.
+ */
+export const SIDECAR_TIMEOUT_MS = 30_000;

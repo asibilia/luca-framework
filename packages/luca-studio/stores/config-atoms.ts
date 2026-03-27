@@ -3,6 +3,34 @@ import { atom } from "jotai";
 import type { EntitySummary } from "~/lib/entity-route-helpers";
 
 // ---------------------------------------------------------------------------
+// Compile Status
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents the current compilation status as reported by SSE events.
+ *
+ * - `idle` — No compilation in progress.
+ * - `compiling` — A `compile:start` SSE event was received.
+ * - `success` — A `compile:complete` SSE event was received.
+ * - `error` — A `compile:error` SSE event was received.
+ */
+export type CompileStatus =
+  | { state: "idle" }
+  | { state: "compiling"; domain: string; name: string }
+  | { state: "success"; domain: string; name: string }
+  | { state: "error"; domain: string; name: string; error: string };
+
+/**
+ * Atom tracking the latest compile status received via SSE.
+ *
+ * Updated by the `useSSE` hook in response to `compile:start`,
+ * `compile:complete`, and `compile:error` server-sent events.
+ * Entity editor components read this atom to show supplementary
+ * compile feedback (spinner, success, error indicators).
+ */
+export const compileStatusAtom = atom<CompileStatus>({ state: "idle" });
+
+// ---------------------------------------------------------------------------
 // Layer 1 -- Server State (read-only mirrors)
 //
 // These atoms hold the latest server-side state, populated by fetch hooks or
@@ -110,3 +138,36 @@ export const routingDraftAtom = atom(
     set(_routingDraftPrimitiveAtom, value);
   },
 );
+
+// ---------------------------------------------------------------------------
+// Layer 3 -- Conflict Resolution
+//
+// Stores a pending ETag conflict returned by a 409 response from the entity
+// PUT endpoint. When non-null, entity pages render the DiffPreview dialog to
+// let the user resolve the conflict.
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents the state of an ETag conflict on entity save.
+ *
+ * Populated by `useEntitySave` when a PUT returns 409, consumed by entity
+ * pages to render the `DiffPreview` dialog. `null` when no conflict exists.
+ */
+export type ConflictState = {
+  /** Entity key in `{type}:{name}` format (e.g. "agent:lu-router") */
+  entityKey: string;
+  /** The user's local draft content that failed to save */
+  localContent: string;
+  /** The current server content returned in the 409 response body */
+  serverContent: string;
+  /** The current server ETag returned in the 409 response body */
+  serverEtag: string;
+} | null;
+
+/**
+ * Atom tracking the current entity conflict state.
+ *
+ * Set by `useEntitySave` on 409 conflict, cleared by entity pages after
+ * the user resolves the conflict via DiffPreview.
+ */
+export const conflictAtom = atom<ConflictState>(null);

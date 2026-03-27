@@ -13,15 +13,9 @@
  */
 import { NextResponse } from "next/server";
 
+import { STUDIO_PATH_PREFIXES } from "~/lib/constants";
 import { resolveProjectRoot } from "~/lib/project-root";
-
-/** Paths considered Studio-tracked entities. */
-const STUDIO_PATH_PREFIXES = [
-  "src/agents/",
-  "src/skills/",
-  "src/rules/",
-  ".planning/config.json",
-];
+import { isLocalhostRequest } from "~/lib/request-guards";
 
 /**
  * Check whether a file path belongs to a Studio-tracked entity.
@@ -39,33 +33,39 @@ function isStudioFile(filePath: string): boolean {
 /**
  * Extract a human-readable summary of changed entity names from file paths.
  *
+ * The result is sanitized for safe use in git commit messages:
+ * - Non-printable / non-ASCII characters are stripped
+ * - Capped at 72 characters (conventional commit subject line limit)
+ * - Falls back to "studio edit" if the sanitized result is empty
+ *
  * @param files - Array of Studio-tracked file paths
- * @returns Summary string for the commit message
+ * @returns Sanitized summary string for the commit message
  */
 function buildCommitSummary(files: string[]): string {
   const entityNames = files.map((f) => {
     const parts = f.trim().split("/");
     // For entity files, use the filename sans extension
-    const last = parts[parts.length - 1];
+    const last = parts.at(-1) ?? "";
     return last.replace(/\.[^.]+$/, "");
   });
 
   const unique = [...new Set(entityNames)];
+  let raw: string;
   if (unique.length <= 3) {
-    return unique.join(", ");
+    raw = unique.join(", ");
+  } else {
+    raw = `${unique.slice(0, 3).join(", ")} +${unique.length - 3} more`;
   }
-  return `${unique.slice(0, 3).join(", ")} +${unique.length - 3} more`;
+
+  // Sanitize: strip non-printable / non-ASCII, cap length, provide fallback
+  const sanitized = raw.replace(/[^\x20-\x7E]/g, "").slice(0, 72);
+  return sanitized || "studio edit";
 }
 
 export async function POST(request: Request) {
   try {
     // Localhost guard: restrict to local development server
-    const host = request.headers.get("host") ?? "";
-    if (
-      !host.startsWith("localhost") &&
-      !host.startsWith("127.0.0.1") &&
-      !host.startsWith("[::1]")
-    ) {
+    if (!isLocalhostRequest(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         {
           error: "Non-Studio uncommitted changes detected",
           file_count: nonStudioFiles.length,
+          non_studio_files: nonStudioFiles,
         },
         { status: 409 },
       );

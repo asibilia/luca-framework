@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Bot, Loader2 } from "lucide-react";
 
 import { AgentTabContainer } from "~/components/agents/agent-tab-container";
 import { EntityTree } from "~/components/editor/entity-tree";
+import { DiffPreview } from "~/components/shared/diff-preview";
 import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { ResizableSplit } from "~/components/layout/resizable-split";
@@ -17,8 +18,9 @@ import { useAgentSave } from "~/hooks/use-agent-save";
 import { useDirtyTitle } from "~/hooks/use-dirty-title";
 import { useEditMode } from "~/hooks/use-edit-mode";
 import { useUndo } from "~/hooks/use-undo";
-import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
+import { conflictAtom } from "~/stores/config-atoms";
 import { agentHistoryAtom } from "~/stores/entity-atoms";
+import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
 
@@ -36,6 +38,7 @@ import type { EntityItem } from "~/components/editor/entity-tree";
 export default function AgentsPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const setLayoutContext = useSetAtom(layoutContextAtom);
+  const [conflict, setConflict] = useAtom(conflictAtom);
 
   // Set editor layout context on mount (collapses NavRail)
   useEffect(() => {
@@ -92,6 +95,47 @@ export default function AgentsPage() {
     editMode.forceExit();
   }, [discard, editMode]);
 
+  // Conflict resolution: does the current conflict match this entity?
+  const entityConflict =
+    conflict && conflict.entityKey === entityKey ? conflict : null;
+
+  const handleAcceptLocal = useCallback(async () => {
+    if (!entityConflict) return;
+    // Re-save with the server's current ETag to force overwrite
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "If-Match": entityConflict.serverEtag,
+    };
+    try {
+      const res = await fetch(
+        `/api/entities/agents/${encodeURIComponent(selectedName ?? "")}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            rawConfigText: entityConflict.localContent,
+            metadata: detail?.metadata ?? {},
+          }),
+        },
+      );
+      if (res.ok) {
+        setConflict(null);
+      }
+    } catch {
+      // If force-overwrite fails, keep the conflict dialog open
+    }
+  }, [entityConflict, selectedName, setConflict]);
+
+  const handleAcceptServer = useCallback(() => {
+    // Discard local changes, reload entity from server
+    setConflict(null);
+    discard();
+  }, [setConflict, discard]);
+
+  const handleDismissConflict = useCallback(() => {
+    setConflict(null);
+  }, [setConflict]);
+
   // Register save callback for centralized Cmd+S shortcut
   const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
   useEffect(() => {
@@ -101,6 +145,16 @@ export default function AgentsPage() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Conflict resolution dialog */}
+      {entityConflict && (
+        <DiffPreview
+          localContent={entityConflict.localContent}
+          serverContent={entityConflict.serverContent}
+          onAcceptLocal={handleAcceptLocal}
+          onAcceptServer={handleAcceptServer}
+          onDismiss={handleDismissConflict}
+        />
+      )}
       <ResizableSplit
         orientation="horizontal"
         defaultFirstSize={20}

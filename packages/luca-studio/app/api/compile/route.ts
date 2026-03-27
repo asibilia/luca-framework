@@ -18,12 +18,9 @@ import { z } from "zod";
 
 import { NextResponse } from "next/server";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const SIDECAR_URL = "http://localhost:3457";
-const SIDECAR_TIMEOUT_MS = 30_000;
+import { publishCompileEvent } from "~/lib/compile-events";
+import { SIDECAR_TIMEOUT_MS, SIDECAR_URL } from "~/lib/constants";
+import { isLocalhostRequest } from "~/lib/request-guards";
 
 // ---------------------------------------------------------------------------
 // Request schema
@@ -85,6 +82,11 @@ function mapSidecarStatus(sidecarStatus: number): number {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
+  // Localhost guard: restrict to local development server
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   // Step 1: Parse JSON body
   let rawBody: unknown;
   try {
@@ -107,7 +109,11 @@ export async function POST(request: Request) {
 
   const { domain, name, format } = parseResult.data;
 
-  // Step 3: Forward to sidecar with timeout
+  // Step 3: Publish compile:start event
+  const timestamp = new Date().toISOString();
+  publishCompileEvent({ type: "compile:start", domain, name, timestamp });
+
+  // Step 4: Forward to sidecar with timeout
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SIDECAR_TIMEOUT_MS);
 
@@ -131,17 +137,37 @@ export async function POST(request: Request) {
 
     // Success path
     if (sidecarResponse.ok) {
+      publishCompileEvent({
+        type: "compile:complete",
+        domain,
+        name,
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json(responseBody);
     }
 
     // Error path -- map sidecar status to proxy status
     const proxyStatus = mapSidecarStatus(sidecarResponse.status);
+    publishCompileEvent({
+      type: "compile:error",
+      domain,
+      name,
+      timestamp: new Date().toISOString(),
+      error: `Sidecar returned ${sidecarResponse.status}`,
+    });
     return NextResponse.json(responseBody, { status: proxyStatus });
   } catch (error) {
     clearTimeout(timeout);
 
     // Timeout (AbortController)
     if (error instanceof DOMException && error.name === "AbortError") {
+      publishCompileEvent({
+        type: "compile:error",
+        domain,
+        name,
+        timestamp: new Date().toISOString(),
+        error: "Sidecar timed out after 30 seconds",
+      });
       return NextResponse.json(
         {
           error:
@@ -153,6 +179,13 @@ export async function POST(request: Request) {
 
     // Sidecar unreachable
     if (isSidecarUnreachable(error)) {
+      publishCompileEvent({
+        type: "compile:error",
+        domain,
+        name,
+        timestamp: new Date().toISOString(),
+        error: "Sidecar unreachable",
+      });
       return NextResponse.json(
         {
           error:
@@ -162,11 +195,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Unknown fetch error
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: `Proxy error: ${message}` },
-      { status: 502 },
-    );
+    // Unknown fetch error -- mask internal details in production
+    const internalMessage =
+      error instanceof Error ? error.message : String(error);
+    const isProduction = process.env.NODE_ENV === "production";
+    const safeErrorMessage = isProduction
+      ? "Unexpected compilation error"
+      : internalMessage;
+    publishCompileEvent({
+      type: "compile:error",
+      domain,
+      name,
+      timestamp: new Date().toISOString(),
+      error: safeErrorMessage,
+    });
+    const clientMessage = isProduction
+      ? "Unexpected compilation error"
+      : `Proxy error: ${internalMessage}`;
+    return NextResponse.json({ error: clientMessage }, { status: 502 });
   }
 }
