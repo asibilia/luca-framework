@@ -24,7 +24,7 @@ export type ConfigFormSectionProps = {
   /** Callback when the value changes. */
   onChange: (value: unknown) => void;
   /** Field type — determines the input widget. Defaults to "text". */
-  type?: "text" | "boolean" | "select";
+  type?: "text" | "boolean" | "readonly";
   /** Whether to render a textarea instead of a single-line input. Defaults to false. */
   multiline?: boolean;
   /** HTML `for` attribute for the label. */
@@ -54,7 +54,7 @@ export type ConfigFormSectionProps = {
  * @param value - Current field value (string or boolean).
  * @param isEditing - Whether the parent form is in edit mode.
  * @param onChange - Callback when the value changes.
- * @param type - Input type: "text" (default), "boolean", or "select".
+ * @param type - Input type: "text" (default), "boolean", or "readonly".
  * @param multiline - Whether to use textarea for text fields.
  * @param htmlFor - HTML for attribute linking label to input.
  * @param placeholder - Placeholder text for text inputs.
