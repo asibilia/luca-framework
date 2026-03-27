@@ -40,22 +40,33 @@ function isStudioFile(filePath: string): boolean {
 /**
  * Extract a human-readable summary of changed entity names from file paths.
  *
+ * The result is sanitized for safe use in git commit messages:
+ * - Non-printable / non-ASCII characters are stripped
+ * - Capped at 72 characters (conventional commit subject line limit)
+ * - Falls back to "studio edit" if the sanitized result is empty
+ *
  * @param files - Array of Studio-tracked file paths
- * @returns Summary string for the commit message
+ * @returns Sanitized summary string for the commit message
  */
 function buildCommitSummary(files: string[]): string {
   const entityNames = files.map((f) => {
     const parts = f.trim().split("/");
     // For entity files, use the filename sans extension
-    const last = parts[parts.length - 1];
+    const last = parts.at(-1) ?? "";
     return last.replace(/\.[^.]+$/, "");
   });
 
   const unique = [...new Set(entityNames)];
+  let raw: string;
   if (unique.length <= 3) {
-    return unique.join(", ");
+    raw = unique.join(", ");
+  } else {
+    raw = `${unique.slice(0, 3).join(", ")} +${unique.length - 3} more`;
   }
-  return `${unique.slice(0, 3).join(", ")} +${unique.length - 3} more`;
+
+  // Sanitize: strip non-printable / non-ASCII, cap length, provide fallback
+  const sanitized = raw.replace(/[^\x20-\x7E]/g, "").slice(0, 72);
+  return sanitized || "studio edit";
 }
 
 export async function POST(request: Request) {
