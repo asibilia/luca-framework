@@ -1,5 +1,6 @@
 export { ComplexityBadge } from "./complexity-badge";
 export { ConfigFormSection } from "./config-form-section";
+export { DiffPreview } from "./diff-preview";
 export { EmptyState } from "./empty-state";
 export { EntityTabContainer } from "./entity-tab-container";
 export { ErrorBoundary } from "./error-boundary";
