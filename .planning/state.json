@@ -1,13 +1,10 @@
 {
   "status": "active",
-  "value": "routing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "3fadbad6-a934-4a64-b531-4b2acdc29fa9",
-    "github_issue": 109,
-    "branch": "109--v8.3.0-studio-feature-suite",
+    "session_id": "de67dc0b-ef24-4183-a0c5-1d9a65dc0d59",
     "base_branch": "main",
-    "current_milestone": "v8.3.0 — Studio Feature Suite",
     "current_plan_ids": [],
     "current_wave_count": 0,
     "complexity": "TRIVIAL",
@@ -84,8 +81,7 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-27T16:42:09.291Z",
-    "last_transition_at": "2026-03-27T16:42:11.374Z"
+    "started_at": "2026-03-27T17:16:34.571Z"
   },
   "children": {}
 }

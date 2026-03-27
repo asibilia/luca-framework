@@ -2,74 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.3.0 — Studio Feature Suite
-
----
-
-## Planned: v8.3.0 — Studio Feature Suite
-
-Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todos grouped into 4 phases.
-
-### Phase 208: API Layer Foundation
-
-- [x] SSE event stream + useSSE hook (studio-w7-sse-layer)
-- [x] ETag-based optimistic locking middleware (studio-w7-etag-locking)
-- [x] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
-
-**Goal:** Build foundational API infrastructure (event streaming, concurrency control, git safety) required by all downstream Studio pages.
-**Depends on:** Phase 207 (v8.2.0 complete)
-**Risk:** HIGH (arch + QA) — Full+Manual verification required
-
-### Phase 209: Core Pages
-
-- [x] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
-- [x] Home page with status card and recent activity (studio-w7-home-page)
-- [x] Skills + Rules browser pages (studio-w7-skills-rules-pages)
-
-**Goal:** Deliver core Studio page layer on stable API foundation.
-**Depends on:** Phase 208
-
-### Phase 210: Advanced UI & State
-
-- [x] Undo/redo with jotai-history (studio-w7-undo-redo)
-- [x] Keyboard shortcuts + progressive disclosure (studio-w8-keyboard-shortcuts)
-- [x] Consolidate Memory page (studio-w7-memory-consolidation)
-
-**Goal:** Advanced UX features (state history, keyboard shortcuts, page consolidation) on stable pages.
-**Depends on:** Phase 209
-
-### Phase 211: Observability & Polish
-
-- [x] Edit/observe visual mode distinction (studio-w7-edit-observe-modes)
-- [x] Settings page (studio-w8-settings-page)
-- [x] Agent team prompt audit fixes (agent-team-prompt-audit-fixes)
-
-**Goal:** Polish pass — visual modes, settings aggregation, and prompt quality fixes.
-**Depends on:** Phase 210
-
-### Phase 212: Integration & Security Hardening
-
-- [x] Wire DiffPreview into entity save hooks (409 current_content → DiffPreview dialog)
-- [x] Extract localhost guard into shared helper + add to compile route
-- [x] Replace .passthrough() with .strict() on entity metadata schema
-- [x] Sanitize commit message in git publish route (prevent trailer injection)
-- [x] Mask internal error messages in compile proxy (production safety)
-
-**Goal:** Close the DiffPreview integration gap and harden API routes against security findings from the v8.3.0 audit.
-**Depends on:** Phase 211
-**Risk:** MEDIUM — targeted fixes to existing files, no new infrastructure
-
-### Phase 213: DRY & Convention Cleanup
-
-- [x] Extract STUDIO_PATH_PREFIXES + SIDECAR constants into ~/lib/constants.ts
-- [x] Migrate node:fs/promises to Bun.file() in entity-route-helpers.ts
-- [x] Align interface/type convention (type for local shapes, interface for extension points)
-- [x] Extract entityType-to-domainPlural mapping into shared lookup
-- [x] Remove dead code (\_payload parse, incomplete barrel exports, console.log placeholder)
-
-**Goal:** Address DRY violations, convention inconsistencies, and dead code from the v8.3.0 audit.
-**Depends on:** Phase 212
-**Risk:** LOW — mechanical cleanup, no behavioral changes
+**Current Milestone:** Planning next
 
 ---
 
@@ -303,6 +236,7 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 - **v8.0.0** — Luca Studio MVP: 12 phases, 23 plans, 45 commits, 365 files changed (+17,647 LOC) ([View Archive](milestones/v8.0.0-ROADMAP.md))
 - **v8.1.0** — Studio Polish & Prompt Quality: 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC) ([View Archive](milestones/v8.1.0-ROADMAP.md))
 - **v8.2.0** — Audit Gap Closure: 4 phases, 10 plans, 106 commits, 170 files changed (+18,960 LOC) ([View Archive](milestones/v8.2.0-ROADMAP.md))
+- **v8.3.0** — Studio Feature Suite: 6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC) ([View Archive](milestones/v8.3.0-ROADMAP.md))
 
 ---
 
