@@ -41,9 +41,9 @@ const MAX_CONFIG_TEXT_BYTES = 512 * 1024; // 512 KB
  * Validates shape, types, and enforces a 512 KB size cap on rawConfigText
  * to prevent oversized payloads from being written to `.ts` source files.
  *
- * The metadata schema uses `.passthrough()` so that all fields of the full
- * `EntityMetadata` interface are forwarded to `writeEntityFile()`, while
- * still enforcing the required structural fields.
+ * The metadata schema uses `.strict()` to reject unexpected fields that are
+ * not part of the `EntityMetadata` interface. All nine EntityMetadata fields
+ * are explicitly listed to maintain a tight contract.
  */
 const EntityPutBodySchema = z.object({
   rawConfigText: z.string().min(1).max(MAX_CONFIG_TEXT_BYTES),
@@ -59,7 +59,7 @@ const EntityPutBodySchema = z.object({
       prefix: z.string(),
       suffix: z.string(),
     })
-    .passthrough(),
+    .strict(),
 });
 
 // ---------------------------------------------------------------------------
@@ -435,8 +435,8 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         }
 
         // Write via ts-round-trip (atomic write)
-        // Cast metadata: Zod passthrough preserves all EntityMetadata fields
-        // but the inferred type is wider than the nominal interface.
+        // Cast metadata: Zod strict schema matches EntityMetadata fields
+        // exactly, but the inferred type is structural (not nominal).
         await writeEntityFile(
           filePath,
           bodyResult.data.rawConfigText,
