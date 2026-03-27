@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         {
           error: "Non-Studio uncommitted changes detected",
           file_count: nonStudioFiles.length,
+          non_studio_files: nonStudioFiles,
         },
         { status: 409 },
       );
