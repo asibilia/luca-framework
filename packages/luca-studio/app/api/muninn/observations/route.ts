@@ -1,9 +1,8 @@
-import filter from "lodash/filter";
-
 import {
   muninnProxyHandler,
   parseQueryParams,
 } from "~/lib/muninn-route-helper";
+import { filterByConceptPrefix } from "~/lib/muninn-helpers";
 import {
   ObservationsQuerySchema,
   ObservationsResponseSchema,
@@ -30,16 +29,12 @@ export async function GET(request: Request) {
 
   return muninnProxyHandler(
     async (client) => {
-      // Fetch without tag filter — MuninnDB tags do exact matching, not prefix
-      // Use a larger fetch limit to account for post-filter reduction
-      const fetchLimit = Math.min(limit * 5, 500);
-      const data = await client.listEngrams(vault, fetchLimit, 0);
-      const observations = filter(
-        data.engrams ?? [],
-        (e) =>
-          typeof e.concept === "string" &&
-          e.concept.startsWith("session:observation"),
-      ).slice(0, limit);
+      const observations = await filterByConceptPrefix(
+        client,
+        vault,
+        ["session:observation"],
+        limit,
+      );
       return {
         observations,
         total: observations.length,

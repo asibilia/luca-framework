@@ -1,10 +1,10 @@
-import filter from "lodash/filter";
 import orderBy from "lodash/orderBy";
 
 import {
   muninnProxyHandler,
   parseQueryParams,
 } from "~/lib/muninn-route-helper";
+import { filterByConceptPrefix } from "~/lib/muninn-helpers";
 import {
   ZoneHistoryQuerySchema,
   ZoneHistoryResponseSchema,
@@ -36,28 +36,31 @@ export async function GET(request: Request) {
 
   return muninnProxyHandler(
     async (client) => {
-      // Fetch without tag filter — MuninnDB tags do exact matching, not prefix
-      const fetchLimit = Math.min(limit * 5, 500);
-      const data = await client.listEngrams(vault, fetchLimit, 0);
-
-      // Filter for zone-related engrams by concept prefix
-      const zoneEngrams = filter(
-        data.engrams ?? [],
-        (e) =>
-          typeof e.concept === "string" &&
-          (e.concept.startsWith("session:context-zone") ||
-            e.concept.startsWith("metric:context-zone")),
+      const zoneEngrams = await filterByConceptPrefix(
+        client,
+        vault,
+        ["session:context-zone", "metric:context-zone"],
+        limit,
       );
 
       // Sort by creation time ascending (oldest first) for timeline display
-      const sorted = orderBy(zoneEngrams, (e) => e.created_at, "asc");
+      const sorted = orderBy(
+        zoneEngrams,
+        (e) => e.created_at as number | undefined,
+        "asc",
+      );
 
       // Transform engram content into zone history entries
       const entries = sorted.slice(0, limit).map((e) => {
         // Parse structured zone data from engram content
-        const parsed = parseZoneContent(e.content);
+        const parsed = parseZoneContent(String(e.content ?? ""));
         return {
-          zone: parsed.zone ?? e.concept.split(":").pop() ?? "unknown",
+          zone:
+            parsed.zone ??
+            (typeof e.concept === "string"
+              ? e.concept.split(":").pop()
+              : undefined) ??
+            "unknown",
           usage_percent: parsed.usage_percent,
           checked_at:
             parsed.checked_at ??
@@ -108,7 +111,7 @@ function parseZoneContent(content: string): {
       };
     }
   } catch {
-    /* not JSON — try regex patterns */
+    /* not JSON -- try regex patterns */
   }
 
   // Try structured text patterns
