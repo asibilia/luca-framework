@@ -2,72 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.4.0 — Studio Quality & Bug Fixes
-
----
-
-## Phase 214: Critical Save & Layout Fixes
-
-**Goal:** Fix the two P0 crashers — Jotai save callback bug and build pages sidebar collapse.
-
-**Depends on:** None
-
-**Todos:** studio-entity-save-428, studio-build-sidebar-collapse
-
-**Requirements:** REQ-01, REQ-02
-
-- [x] Plan 214-01: Fix Jotai save callback + defense-in-depth guards
-- [x] Plan 214-02: Fix build pages entity sidebar layout
-
-## Phase 215: Home & Sessions Data Fixes
-
-**Goal:** Fix P1 data flow issues — home page field mismatches and sessions page empty data.
-
-**Depends on:** None
-
-**Todos:** studio-home-field-mismatches, studio-sessions-empty-data
-
-**Requirements:** REQ-03, REQ-04
-
-- [x] Plan 215-01: Fix home page field names and summary synthesis
-- [x] Plan 215-02: Fix sessions API filter and vault default
-
-## Phase 216: Git Routes Runtime Fix
-
-**Goal:** Fix git routes using Bun.$ in Next.js runtime — all git features broken.
-
-**Depends on:** None
-
-**Todos:** studio-git-routes-bun-shell
-
-**Requirements:** REQ-05
-
-- [x] Plan 216-01: Replace Bun.$ with Node.js-compatible shell execution in git routes
-
-## Phase 217: Memory & Metrics Fixes
-
-**Goal:** Fix MuninnDB integration issues — memory metrics and timeline display.
-
-**Depends on:** None
-
-**Todos:** studio-memory-metrics-timeline
-
-**Requirements:** REQ-06
-
-- [x] Plan 217-01: Fix metrics, observations, and zone-history endpoints
-
-## Phase 218: API Quality & Security Cleanup
-
-**Goal:** DRY extraction of localhost guard and address Phase 208 code review HIGH findings.
-
-**Depends on:** Phase 216 (git routes may share localhost guard pattern)
-
-**Todos:** studio-localhost-guard-extract, studio-phase-208-review-cleanup
-
-**Requirements:** REQ-07, REQ-08
-
-- [x] Plan 218-01: Extract localhost guard helper and consolidate constants
-- [x] Plan 218-02: Address Phase 208 HIGH findings (imports, barrels, DRY, Bun.file)
+**Current Milestone:** Planning next
 
 ---
 
@@ -302,6 +237,7 @@
 - **v8.1.0** — Studio Polish & Prompt Quality: 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC) ([View Archive](milestones/v8.1.0-ROADMAP.md))
 - **v8.2.0** — Audit Gap Closure: 4 phases, 10 plans, 106 commits, 170 files changed (+18,960 LOC) ([View Archive](milestones/v8.2.0-ROADMAP.md))
 - **v8.3.0** — Studio Feature Suite: 6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC) ([View Archive](milestones/v8.3.0-ROADMAP.md))
+- **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
 
 ---
 
