@@ -61,11 +61,11 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 
 ### Phase 213: DRY & Convention Cleanup
 
-- [ ] Extract STUDIO_PATH_PREFIXES + SIDECAR constants into ~/lib/constants.ts
-- [ ] Migrate node:fs/promises to Bun.file() in entity-route-helpers.ts
-- [ ] Align interface/type convention (type for local shapes, interface for extension points)
-- [ ] Extract entityType-to-domainPlural mapping into shared lookup
-- [ ] Remove dead code (\_payload parse, incomplete barrel exports, console.log placeholder)
+- [x] Extract STUDIO_PATH_PREFIXES + SIDECAR constants into ~/lib/constants.ts
+- [x] Migrate node:fs/promises to Bun.file() in entity-route-helpers.ts
+- [x] Align interface/type convention (type for local shapes, interface for extension points)
+- [x] Extract entityType-to-domainPlural mapping into shared lookup
+- [x] Remove dead code (\_payload parse, incomplete barrel exports, console.log placeholder)
 
 **Goal:** Address DRY violations, convention inconsistencies, and dead code from the v8.3.0 audit.
 **Depends on:** Phase 212
