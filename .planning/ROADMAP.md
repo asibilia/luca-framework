@@ -49,11 +49,11 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 
 ### Phase 212: Integration & Security Hardening
 
-- [ ] Wire DiffPreview into entity save hooks (409 current_content → DiffPreview dialog)
-- [ ] Extract localhost guard into shared helper + add to compile route
-- [ ] Replace .passthrough() with .strict() on entity metadata schema
-- [ ] Sanitize commit message in git publish route (prevent trailer injection)
-- [ ] Mask internal error messages in compile proxy (production safety)
+- [x] Wire DiffPreview into entity save hooks (409 current_content → DiffPreview dialog)
+- [x] Extract localhost guard into shared helper + add to compile route
+- [x] Replace .passthrough() with .strict() on entity metadata schema
+- [x] Sanitize commit message in git publish route (prevent trailer injection)
+- [x] Mask internal error messages in compile proxy (production safety)
 
 **Goal:** Close the DiffPreview integration gap and harden API routes against security findings from the v8.3.0 audit.
 **Depends on:** Phase 211
