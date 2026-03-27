@@ -50,6 +50,16 @@ const RevertBodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // Localhost guard: restrict to local development server
+    const host = request.headers.get("host") ?? "";
+    if (
+      !host.startsWith("localhost") &&
+      !host.startsWith("127.0.0.1") &&
+      !host.startsWith("[::1]")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // 1. Parse and validate body
     let body: unknown;
     try {

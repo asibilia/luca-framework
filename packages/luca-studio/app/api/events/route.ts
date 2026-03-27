@@ -22,6 +22,19 @@ import type { FileChangeEvent } from "~/lib/file-watcher";
 const HEARTBEAT_MS = 15_000;
 
 export async function GET(request: Request): Promise<Response> {
+  // Localhost guard: restrict to local development server
+  const host = request.headers.get("host") ?? "";
+  if (
+    !host.startsWith("localhost") &&
+    !host.startsWith("127.0.0.1") &&
+    !host.startsWith("[::1]")
+  ) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
