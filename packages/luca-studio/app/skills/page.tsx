@@ -9,7 +9,6 @@ import { EntityTree } from "~/components/editor/entity-tree";
 import { DiffPreview } from "~/components/shared/diff-preview";
 import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
-import { ResizableSplit } from "~/components/layout/resizable-split";
 import { SkillTabContainer } from "~/components/skills/skill-tab-container";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useDirtyTitle } from "~/hooks/use-dirty-title";
@@ -20,7 +19,11 @@ import { useSkillSave } from "~/hooks/use-skill-save";
 import { useUndo } from "~/hooks/use-undo";
 import { conflictAtom } from "~/stores/config-atoms";
 import { skillHistoryAtom } from "~/stores/entity-atoms";
-import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
+import {
+  entitySidebarAtom,
+  layoutContextAtom,
+  setGlobalSaveCallbackAtom,
+} from "~/stores/layout";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
 
@@ -37,6 +40,7 @@ import type { EntityItem } from "~/components/editor/entity-tree";
 export default function SkillsPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const setLayoutContext = useSetAtom(layoutContextAtom);
+  const setEntitySidebar = useSetAtom(entitySidebarAtom);
   const [conflict, setConflict] = useAtom(conflictAtom);
 
   // Set editor layout context on mount (collapses NavRail)
@@ -73,6 +77,40 @@ export default function SkillsPage() {
       };
     });
   }, [skills]);
+
+  // Push entity tree into the LayoutShell entity sidebar slot
+  useEffect(() => {
+    setEntitySidebar(
+      <div className="flex h-full flex-col pt-2">
+        <div className="px-2 pb-1.5">
+          <h2 className="text-xs font-semibold text-muted-foreground">
+            Skills
+          </h2>
+        </div>
+        {listLoading ? (
+          <div className="space-y-1 px-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 w-full" />
+            ))}
+          </div>
+        ) : (
+          <EntityTree
+            entities={entityItems}
+            selectedName={selectedName}
+            onSelect={setSelectedName}
+            className="flex-1 overflow-y-auto"
+          />
+        )}
+      </div>,
+    );
+    return () => setEntitySidebar(null);
+  }, [
+    entityItems,
+    listLoading,
+    selectedName,
+    setSelectedName,
+    setEntitySidebar,
+  ]);
 
   // Save/discard integration
   const { save, discard } = useSkillSave(selectedName, etag);
@@ -152,71 +190,42 @@ export default function SkillsPage() {
           onDismiss={handleDismissConflict}
         />
       )}
-      <ResizableSplit
-        orientation="horizontal"
-        defaultFirstSize={20}
-        minFirstSize={15}
-        maxFirstSize={30}
-      >
-        {/* Left panel: Entity tree */}
-        <div className="flex h-full flex-col border-r bg-muted/30 pt-2">
-          <div className="px-2 pb-1.5">
-            <h2 className="text-xs font-semibold text-muted-foreground">
-              Skills
-            </h2>
-          </div>
-          {listLoading ? (
-            <div className="space-y-1 px-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-full" />
-              ))}
-            </div>
-          ) : (
-            <EntityTree
-              entities={entityItems}
-              selectedName={selectedName}
-              onSelect={setSelectedName}
-              className="flex-1 overflow-y-auto"
-            />
-          )}
-        </div>
 
-        {/* Right panel: Editor area */}
-        <div className="flex h-full flex-col overflow-hidden">
-          {!selectedName ? (
-            <EmptyState />
-          ) : detailLoading ? (
-            <LoadingState />
-          ) : detail ? (
-            <SkillTabContainer
-              name={selectedName}
-              detail={detail}
-              isEditing={editMode.isEditing}
-              onEnterEdit={editMode.enterEdit}
-              onExitEdit={editMode.exitEdit}
-            />
-          ) : (
-            <EmptyState />
-          )}
-
-          {/* Save bar scoped to skill entities -- only visible in edit mode */}
-          {editMode.isEditing && (
-            <SaveBar
-              onSave={handleSave}
-              onDiscard={handleDiscard}
-              entityFilter="skill:"
-            />
-          )}
-
-          {/* Navigation guard for unsaved changes */}
-          <NavigationGuard
-            when={editMode.isEditing && editMode.isDirty}
-            showDialog={editMode.showExitConfirm}
-            onConfirm={editMode.confirmExit}
-            onCancel={editMode.cancelExit}
+      {/* Editor area (entity tree is rendered via entitySidebarAtom in LayoutShell) */}
+      <div className="flex h-full flex-col overflow-hidden">
+        {!selectedName ? (
+          <EmptyState />
+        ) : detailLoading ? (
+          <LoadingState />
+        ) : detail ? (
+          <SkillTabContainer
+            name={selectedName}
+            detail={detail}
+            isEditing={editMode.isEditing}
+            onEnterEdit={editMode.enterEdit}
+            onExitEdit={editMode.exitEdit}
           />
-        </div>
-      </ResizableSplit>
+        ) : (
+          <EmptyState />
+        )}
+
+        {/* Save bar scoped to skill entities -- only visible in edit mode */}
+        {editMode.isEditing && (
+          <SaveBar
+            onSave={handleSave}
+            onDiscard={handleDiscard}
+            entityFilter="skill:"
+          />
+        )}
+
+        {/* Navigation guard for unsaved changes */}
+        <NavigationGuard
+          when={editMode.isEditing && editMode.isDirty}
+          showDialog={editMode.showExitConfirm}
+          onConfirm={editMode.confirmExit}
+          onCancel={editMode.cancelExit}
+        />
+      </div>
     </div>
   );
 }
