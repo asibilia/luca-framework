@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v8.3.0 — Studio Feature Suite
 
 ---
 
@@ -12,9 +12,9 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 
 ### Phase 208: API Layer Foundation
 
-- [ ] SSE event stream + useSSE hook (studio-w7-sse-layer)
-- [ ] ETag-based optimistic locking middleware (studio-w7-etag-locking)
-- [ ] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
+- [x] SSE event stream + useSSE hook (studio-w7-sse-layer)
+- [x] ETag-based optimistic locking middleware (studio-w7-etag-locking)
+- [x] Git rollback with batch-commit-on-publish (studio-w8-git-rollback)
 
 **Goal:** Build foundational API infrastructure (event streaming, concurrency control, git safety) required by all downstream Studio pages.
 **Depends on:** Phase 207 (v8.2.0 complete)
