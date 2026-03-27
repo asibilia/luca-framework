@@ -1,3 +1,5 @@
+import filter from "lodash/filter";
+
 import {
   muninnProxyHandler,
   parseQueryParams,
@@ -11,6 +13,10 @@ import {
  * GET /api/muninn/observations
  *
  * Recalls recent session:observation-* engrams from MuninnDB.
+ *
+ * Fetches engrams without a tag filter (MuninnDB tags do exact matching,
+ * not prefix matching), then filters client-side using concept.startsWith().
+ *
  * Accepts optional query params:
  * - vault (default: "default")
  * - limit (default: 50)
@@ -24,15 +30,19 @@ export async function GET(request: Request) {
 
   return muninnProxyHandler(
     async (client) => {
-      const data = await client.listEngrams(
-        vault,
-        limit,
-        0,
-        "session:observation",
-      );
+      // Fetch without tag filter — MuninnDB tags do exact matching, not prefix
+      // Use a larger fetch limit to account for post-filter reduction
+      const fetchLimit = Math.min(limit * 5, 500);
+      const data = await client.listEngrams(vault, fetchLimit, 0);
+      const observations = filter(
+        data.engrams ?? [],
+        (e) =>
+          typeof e.concept === "string" &&
+          e.concept.startsWith("session:observation"),
+      ).slice(0, limit);
       return {
-        observations: data.engrams ?? [],
-        total: data.total ?? 0,
+        observations,
+        total: observations.length,
       };
     },
     "Failed to fetch MuninnDB observations",
