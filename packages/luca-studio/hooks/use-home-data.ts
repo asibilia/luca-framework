@@ -67,14 +67,16 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
   }
 
   // 3. For transitions: "{previous_state} -> {current_state}"
-  const prevState = get(eventData, "previous_state", "") as string;
-  const currState = get(eventData, "current_state", "") as string;
+  //    These fields live at the entry root, not nested in event_data.
+  const prevState = get(entry, "previous_state", "") as string;
+  const currState = get(entry, "current_state", "") as string;
   if (prevState && currState) {
     return `${prevState} -> ${currState}`;
   }
 
   // 4. For actions_executed: join action names
-  const actions = get(eventData, "actions_executed", null) as string[] | null;
+  //    This field also lives at the entry root level.
+  const actions = get(entry, "actions_executed", null) as string[] | null;
   if (Array.isArray(actions) && actions.length > 0) {
     return actions.join(", ");
   }
