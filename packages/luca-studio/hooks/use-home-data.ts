@@ -80,7 +80,7 @@ export function useHomeData(): HomeData {
         for (const entry of ledgerJson) {
           if (entry && typeof entry === "object") {
             parsed.push({
-              event: get(entry, "event", "unknown") as string,
+              event: get(entry, "event_type", "unknown") as string,
               timestamp: get(entry, "timestamp", "") as string,
               summary: get(entry, "summary", undefined) as string | undefined,
               ...(entry as Record<string, unknown>),

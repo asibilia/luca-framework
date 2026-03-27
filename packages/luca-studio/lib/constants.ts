@@ -26,6 +26,20 @@ export const EVENT_TYPES = {
   "note.added": { label: "Note Added", color: "event-memory" },
   "phase.added": { label: "Phase Added", color: "event-state" },
   "note.consumed": { label: "Note Consumed", color: "event-commit" },
+
+  // State machine event types
+  START: { label: "Start", color: "event-session" },
+  RESET: { label: "Reset", color: "event-state" },
+  PREFLIGHT_COMPLETE: { label: "Pre-Flight Done", color: "event-state" },
+  PHASE_STARTED: { label: "Phase Started", color: "event-state" },
+  PHASE_COMPLETE: { label: "Phase Complete", color: "event-state" },
+  VERIFY_PASS: { label: "Verify Pass", color: "event-state" },
+  field_set: { label: "Field Set", color: "event-state" },
+  ROUTE_COMPLETE: { label: "Route Complete", color: "event-state" },
+  DISCUSS_COMPLETE: { label: "Discuss Complete", color: "event-state" },
+  PLAN_COMPLETE: { label: "Plan Complete", color: "event-state" },
+  COMMIT_COMPLETE: { label: "Commit Complete", color: "event-commit" },
+  LEARN_COMPLETE: { label: "Learn Complete", color: "event-memory" },
 } as const;
 
 export type EventTypeName = keyof typeof EVENT_TYPES;
