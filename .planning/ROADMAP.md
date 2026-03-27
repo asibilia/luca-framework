@@ -22,9 +22,9 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 
 ### Phase 209: Core Pages
 
-- [ ] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
-- [ ] Home page with status card and recent activity (studio-w7-home-page)
-- [ ] Skills + Rules browser pages (studio-w7-skills-rules-pages)
+- [x] Config page with Complexity/Gates/Harness tabs (studio-w7-config-page)
+- [x] Home page with status card and recent activity (studio-w7-home-page)
+- [x] Skills + Rules browser pages (studio-w7-skills-rules-pages)
 
 **Goal:** Deliver core Studio page layer on stable API foundation.
 **Depends on:** Phase 208
