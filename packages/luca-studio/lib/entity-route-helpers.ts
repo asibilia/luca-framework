@@ -401,10 +401,15 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         const currentEtag = computeETag(currentSource);
 
         if (ifMatch !== currentEtag) {
+          // Include current entity source so the client can merge/display
+          const currentEntity = await readEntityFile(filePath);
           return NextResponse.json(
             {
               error: "Conflict: entity has been modified since last read",
-              currentEtag,
+              current_etag: currentEtag,
+              current_content: currentEntity.success
+                ? currentEntity.rawConfigText
+                : null,
             },
             { status: 409 },
           );
