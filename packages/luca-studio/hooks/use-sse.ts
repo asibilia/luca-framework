@@ -41,17 +41,6 @@ type CompileErrorPayload = {
   error: string;
 };
 
-/** Parsed payload for `state:transition` SSE events. */
-type StateTransitionPayload = {
-  event: string;
-  [key: string]: unknown;
-};
-
-/** Parsed payload for `ledger:entry` SSE events. */
-type LedgerEntryPayload = {
-  [key: string]: unknown;
-};
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -179,8 +168,7 @@ export function useSSE(): void {
     // -----------------------------------------------------------------
     // state:transition -- re-fetch state atom
     // -----------------------------------------------------------------
-    es.addEventListener("state:transition", (msg: MessageEvent<string>) => {
-      const _payload = safeParseEventData<StateTransitionPayload>(msg.data);
+    es.addEventListener("state:transition", (_msg: MessageEvent<string>) => {
       // Re-fetch state regardless of payload content
       void fetchJsonSafe("/api/state").then(({ data }) => {
         if (data) setState(data);
@@ -230,12 +218,8 @@ export function useSSE(): void {
     // -----------------------------------------------------------------
     // ledger:entry -- placeholder
     // -----------------------------------------------------------------
-    es.addEventListener("ledger:entry", (msg: MessageEvent<string>) => {
-      const payload = safeParseEventData<LedgerEntryPayload>(msg.data);
-      if (payload) {
-        // eslint-disable-next-line no-console
-        console.log("[SSE] ledger:entry", payload);
-      }
+    es.addEventListener("ledger:entry", () => {
+      // Placeholder: ledger entries not yet consumed by UI
     });
 
     // -----------------------------------------------------------------

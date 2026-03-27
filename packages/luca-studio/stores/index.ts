@@ -1,12 +1,16 @@
 // -- Config atoms (Layer 1: server state + Layer 2: drafts) -------------------
 export {
+  compileStatusAtom,
   configAtom,
+  configEtagAtom,
+  conflictAtom,
   agentRegistryAtom,
   routingTableAtom,
   stateAtom,
   configDraftAtom,
   routingDraftAtom,
 } from "./config-atoms";
+export type { CompileStatus, ConflictState } from "./config-atoms";
 
 // -- Entity draft atoms (Layer 2: per-entity drafts + history) ----------------
 export {
