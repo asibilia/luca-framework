@@ -38,10 +38,29 @@ export type FieldKeyMap = Record<string, string[]>;
 // ---------------------------------------------------------------------------
 
 /**
+ * Escape special characters in a string before injecting into a quoted
+ * TypeScript string literal. Prevents broken syntax from backslashes,
+ * double quotes, and newlines in user-provided values.
+ *
+ * @param value - Raw string to escape
+ * @returns Escaped string safe for embedding in double-quoted literals
+ */
+function escapeForQuotedString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r");
+}
+
+/**
  * Replace a quoted string value for a given key in raw config text.
  *
  * Matches `key: "value"`, `key: 'value'`, or `key: \`value\`` with optional
  * whitespace. Returns the original text if no match is found.
+ *
+ * Special characters in `newValue` (backslashes, double quotes, newlines)
+ * are escaped before injection to prevent syntax corruption.
  *
  * @param text     - The raw config text
  * @param key      - The config key to match
@@ -56,7 +75,8 @@ export function replaceStringField(
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`(${escaped}\\s*:\\s*)["'\`]([^"'\`]*?)["'\`]`);
   if (pattern.test(text)) {
-    return text.replace(pattern, `$1"${newValue}"`);
+    const safeValue = escapeForQuotedString(newValue);
+    return text.replace(pattern, `$1"${safeValue}"`);
   }
   return text;
 }
