@@ -42,7 +42,7 @@ Triaged via roadmap revision swarm (2026-03-26). 12 unplanned studio/skills todo
 
 - [x] Edit/observe visual mode distinction (studio-w7-edit-observe-modes)
 - [x] Settings page (studio-w8-settings-page)
-- [ ] Agent team prompt audit fixes (agent-team-prompt-audit-fixes)
+- [x] Agent team prompt audit fixes (agent-team-prompt-audit-fixes)
 
 **Goal:** Polish pass — visual modes, settings aggregation, and prompt quality fixes.
 **Depends on:** Phase 210
