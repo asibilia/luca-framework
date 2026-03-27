@@ -7,21 +7,7 @@
 import filter from "lodash/filter";
 
 import type { MuninnClient } from "~/lib/muninn-config";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal engram shape needed for concept prefix filtering.
- *
- * MuninnDB engrams have many fields, but filtering only needs the concept
- * string. Using a minimal type avoids coupling to the full engram shape.
- */
-type EngramLike = {
-  concept?: string | null;
-  [key: string]: unknown;
-};
+import type { MuninnEngram } from "~/lib/muninn-types";
 
 // ---------------------------------------------------------------------------
 // Concept prefix filtering
@@ -61,16 +47,16 @@ export async function filterByConceptPrefix(
   vault: string,
   prefixes: string[],
   limit: number,
-): Promise<EngramLike[]> {
+): Promise<MuninnEngram[]> {
   // Over-fetch to account for post-filter reduction
   const fetchLimit = Math.min(limit * 5, 500);
   const data = await client.listEngrams(vault, fetchLimit, 0);
 
   const filtered = filter(
-    (data.engrams ?? []) as EngramLike[],
-    (e) =>
+    data.engrams ?? [],
+    (e: MuninnEngram) =>
       typeof e.concept === "string" &&
-      prefixes.some((prefix) => e.concept!.startsWith(prefix)),
+      prefixes.some((prefix) => e.concept.startsWith(prefix)),
   );
 
   return filtered.slice(0, limit);

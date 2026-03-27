@@ -31,7 +31,7 @@ type UseEntityConflictConfig = {
   /** Entity name for the URL path segment. */
   name: string | null;
   /** Metadata to include in the force-overwrite PUT body. */
-  metadata: Record<string, unknown>;
+  metadata: unknown;
   /** Callback to discard local draft changes (called on accept-server). */
   discard: () => void;
 };

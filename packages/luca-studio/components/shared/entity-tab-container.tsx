@@ -403,7 +403,7 @@ export function EntityTabContainer({
           {hasCompiledTab && (
             <TabsTrigger value={TAB_IDS.compiled} className="gap-1.5">
               Compiled
-              {sseMatchesEntity && compileStatus.state !== "idle" && (
+              {sseMatchesEntity && (
                 <CompileStatusIcon state={compileStatus.state} />
               )}
             </TabsTrigger>
@@ -459,11 +459,11 @@ export function EntityTabContainer({
           className="flex-1 overflow-y-auto p-4"
         >
           {/* SSE compile status (supplementary to HTTP response) */}
-          {sseMatchesEntity && compileStatus.state !== "idle" && (
+          {sseMatchesEntity && (
             <CompileStatusBanner
               state={compileStatus.state}
-              domain={"domain" in compileStatus ? compileStatus.domain : ""}
-              name={"name" in compileStatus ? compileStatus.name : ""}
+              domain={compileStatus.domain}
+              name={compileStatus.name}
               error={"error" in compileStatus ? compileStatus.error : undefined}
             />
           )}
