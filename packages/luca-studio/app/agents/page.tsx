@@ -114,7 +114,7 @@ export default function AgentsPage() {
           headers,
           body: JSON.stringify({
             rawConfigText: entityConflict.localContent,
-            metadata: {},
+            metadata: detail?.metadata ?? {},
           }),
         },
       );

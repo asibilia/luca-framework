@@ -122,7 +122,7 @@ export default function RulesPage() {
           headers,
           body: JSON.stringify({
             rawConfigText: entityConflict.localContent,
-            metadata: {},
+            metadata: detail?.metadata ?? {},
           }),
         },
       );
