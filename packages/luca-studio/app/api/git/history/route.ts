@@ -6,21 +6,13 @@
  *
  * @returns `{ commits: Array<{ sha, message, date, author, files }> }`
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 import { NextResponse } from "next/server";
 
+import type { HistoryCommit } from "~/lib/git-types";
 import { resolveProjectRoot } from "~/lib/project-root";
 import { isLocalhostRequest } from "~/lib/request-guards";
-
-/** Schema for a single commit entry in the history response. */
-type HistoryCommit = {
-  sha: string;
-  message: string;
-  date: string;
-  author: string;
-  files: string[];
-};
 
 export async function GET(request: Request) {
   try {
@@ -42,8 +34,16 @@ export async function GET(request: Request) {
     const SEP = "\x1f";
     const format = `${SEP}%H${SEP}%s${SEP}%aI${SEP}%an`;
 
-    const logResult = execSync(
-      `git log --fixed-strings --grep="[studio-edit]" --format="${format}" -n ${limit}`,
+    const logResult = execFileSync(
+      "git",
+      [
+        "log",
+        "--fixed-strings",
+        "--grep=[studio-edit]",
+        `--format=${format}`,
+        "-n",
+        String(limit),
+      ],
       { cwd: root, encoding: "utf-8" },
     );
 
@@ -71,8 +71,9 @@ export async function GET(request: Request) {
       // Get files changed in this commit
       let files: string[] = [];
       try {
-        const diffResult = execSync(
-          `git diff-tree --no-commit-id --name-only -r ${sha}`,
+        const diffResult = execFileSync(
+          "git",
+          ["diff-tree", "--no-commit-id", "--name-only", "-r", sha],
           { cwd: root, encoding: "utf-8" },
         );
         files = diffResult

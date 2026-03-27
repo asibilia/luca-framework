@@ -9,22 +9,15 @@
  * @returns `{ reverted: true, file_path }` on success
  * @returns `{ error }` with 400/500 on failure
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { normalize } from "node:path";
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { STUDIO_PATH_PREFIXES } from "~/lib/constants";
 import { resolveProjectRoot } from "~/lib/project-root";
 import { isLocalhostRequest } from "~/lib/request-guards";
-
-/** Paths considered Studio-tracked entities. */
-const STUDIO_PATH_PREFIXES = [
-  "src/agents/",
-  "src/skills/",
-  "src/rules/",
-  ".planning/config.json",
-];
 
 /**
  * Check whether a file path belongs to a Studio-tracked entity.
@@ -89,7 +82,7 @@ export async function POST(request: Request) {
     const root = await resolveProjectRoot();
 
     // 3. Checkout the file from the given commit
-    execSync(`git checkout ${commit_sha} -- "${normalizedPath}"`, {
+    execFileSync("git", ["checkout", commit_sha, "--", normalizedPath], {
       cwd: root,
       encoding: "utf-8",
     });
