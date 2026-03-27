@@ -1,13 +1,16 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "executing",
   "historyValue": {},
   "context": {
     "session_id": "bcf93300-8c8c-4492-a829-44043d9b7cda",
+    "github_issue": 111,
+    "branch": "111--studio-quality-bug-fixes",
     "base_branch": "main",
+    "current_milestone": "v8.4.0",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "SIMPLE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -77,14 +80,39 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Medium",
-    "appetite_token_ceiling": 100000,
-    "appetite_context_percent": 50,
+    "appetite_level": "Small",
+    "appetite_token_ceiling": 50000,
+    "appetite_context_percent": 40,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-27T20:54:40.688Z",
-    "github_issue": 111,
-    "last_transition_at": "2026-03-27T20:58:22.391Z",
-    "branch": "111--studio-quality-bug-fixes"
+    "started_at": "2026-03-27T20:59:19.610Z",
+    "last_transition_at": "2026-03-27T21:06:08.517Z"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "wave_executing",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 1,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {
+            "started_at": "2026-03-27T21:06:08.517Z"
+          }
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }

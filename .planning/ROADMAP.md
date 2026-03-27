@@ -16,8 +16,8 @@
 
 **Requirements:** REQ-01, REQ-02
 
-- [ ] Plan 214-01: Fix Jotai save callback + defense-in-depth guards
-- [ ] Plan 214-02: Fix build pages entity sidebar layout
+- [x] Plan 214-01: Fix Jotai save callback + defense-in-depth guards
+- [x] Plan 214-02: Fix build pages entity sidebar layout
 
 ## Phase 215: Home & Sessions Data Fixes
 
