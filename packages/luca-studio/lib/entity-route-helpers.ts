@@ -7,7 +7,7 @@
  *
  * @module entity-route-helpers
  */
-import { access, readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { NextResponse } from "next/server";
@@ -130,12 +130,7 @@ async function resolveEntityPath(
 
     // Direct file in subdir
     const directPath = join(dirPath, filename);
-    if (
-      await access(directPath).then(
-        () => true,
-        () => false,
-      )
-    ) {
+    if (await Bun.file(directPath).exists()) {
       return directPath;
     }
 
@@ -149,12 +144,7 @@ async function resolveEntityPath(
       }
       for (const entry of entries) {
         const nestedPath = join(dirPath, entry, filename);
-        if (
-          await access(nestedPath).then(
-            () => true,
-            () => false,
-          )
-        ) {
+        if (await Bun.file(nestedPath).exists()) {
           return nestedPath;
         }
       }
@@ -341,7 +331,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
         }
 
         // Compute ETag from full source file contents
-        const source = await readFile(filePath, "utf-8");
+        const source = await Bun.file(filePath).text();
         const etag = computeETag(source);
 
         const detail: EntityDetail = {
@@ -397,7 +387,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        const currentSource = await readFile(filePath, "utf-8");
+        const currentSource = await Bun.file(filePath).text();
         const currentEtag = computeETag(currentSource);
 
         if (ifMatch !== currentEtag) {
@@ -456,7 +446,7 @@ export function createEntityDetailHandler(domain: EntityDomain): {
           );
         }
 
-        const updatedSource = await readFile(filePath, "utf-8");
+        const updatedSource = await Bun.file(filePath).text();
         const freshEtag = computeETag(updatedSource);
 
         const detail: EntityDetail = {
