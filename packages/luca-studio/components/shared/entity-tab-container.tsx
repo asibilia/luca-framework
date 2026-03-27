@@ -72,6 +72,13 @@ export type EntityTabContainerProps = {
 // Tab identifiers
 // ---------------------------------------------------------------------------
 
+/** Maps singular entity type to its plural domain name. */
+const ENTITY_DOMAIN: Record<"agent" | "skill" | "rule", string> = {
+  agent: "agents",
+  skill: "skills",
+  rule: "rules",
+};
+
 const TAB_IDS = {
   configure: "configure",
   prompt: "prompt",
@@ -149,12 +156,7 @@ export function EntityTabContainer({
   /** Local fallback placeholder shown when sidecar is offline. */
   const compiledFallback = useMemo(() => {
     if (!hasCompiledTab) return "";
-    const label =
-      entityType === "agent"
-        ? "Agent"
-        : entityType === "skill"
-          ? "Skill"
-          : "Rule";
+    const label = entityType.charAt(0).toUpperCase() + entityType.slice(1);
     return [
       `# ${label}: ${name}`,
       "",
@@ -175,12 +177,7 @@ export function EntityTabContainer({
     setCompiledLoading(true);
     setCompiledError(null);
     try {
-      const domainPlural =
-        entityType === "agent"
-          ? "agents"
-          : entityType === "skill"
-            ? "skills"
-            : "rules";
+      const domainPlural = ENTITY_DOMAIN[entityType];
       const res = await fetch("/api/compile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -239,12 +236,7 @@ export function EntityTabContainer({
    * Whether the SSE compile status applies to THIS entity.
    * Only show the SSE indicator when the domain + name match.
    */
-  const domainPlural =
-    entityType === "agent"
-      ? "agents"
-      : entityType === "skill"
-        ? "skills"
-        : "rules";
+  const domainPlural = ENTITY_DOMAIN[entityType];
 
   const sseMatchesEntity =
     compileStatus.state !== "idle" &&
@@ -266,12 +258,7 @@ export function EntityTabContainer({
   // Render
   // ---------------------------------------------------------------------------
 
-  const entityLabel =
-    entityType === "agent"
-      ? "agent"
-      : entityType === "skill"
-        ? "skill"
-        : "rule";
+  const entityLabel = entityType;
 
   return (
     <Tabs
