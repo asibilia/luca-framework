@@ -44,7 +44,7 @@ This sub-skill is an **orchestrator** for code review. YOU MUST delegate work to
 - \`code-simplifier\` — DRY and complexity review
 - \`code-architect\` — Architecture and pattern review
 - \`performance-auditor\` — Performance review
-- \`security-auditor\` — Security review (conditional: only if auth/api files changed)
+- \`security-auditor\` — Security review
 
 **DO NOT** review code yourself. Spawn the appropriate agents.
 
@@ -112,7 +112,6 @@ Task(
   description="Performance review"
 )
 
-# Conditional: only if auth/api files changed
 Task(
   prompt="Review for security: {changed_files}",
   subagent_type="security-auditor",
