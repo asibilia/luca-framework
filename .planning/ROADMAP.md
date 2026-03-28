@@ -29,8 +29,8 @@ Make step-skipping structurally impossible in critical workflow paths via typed 
 **Verification:** Full+Human
 **Depends on:** Phase 222
 
-- [ ] anti-skip-layer0-skill-decomposition — Decompose pr-address into atomic sub-skill chains
-- [ ] anti-skip-pilot-pr-address — Apply all 5 layers to pr-address
+- [x] anti-skip-layer0-skill-decomposition — Decompose pr-address into atomic sub-skill chains
+- [x] anti-skip-pilot-pr-address — Apply all 5 layers to pr-address
 
 ### Phase 224: Anti-Skip Rollout
 

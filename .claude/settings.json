@@ -60,6 +60,17 @@
         ]
       },
       {
+        "matcher": "Bash|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-step-enforcement.sh",
+            "timeout": 5,
+            "statusMessage": "Validating step prerequisites..."
+          }
+        ]
+      },
+      {
         "matcher": "mcp__muninn__muninn_remember|mcp__muninn__muninn_remember_batch",
         "hooks": [
           {
