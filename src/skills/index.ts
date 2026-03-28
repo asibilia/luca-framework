@@ -152,3 +152,31 @@ export type { SkillOrderValidationResult } from "./__schemas/skill-order-validat
 
 // Skill order validation helper
 export { validateSkillOrder } from "./__helpers/validate-skill-order";
+
+// PR address context schemas
+export {
+  PrFetchOutputSchema,
+  PrValidateOutputSchema,
+  PrDebateOutputSchema,
+  PrFixOutputSchema,
+  PrLearnOutputSchema,
+  PrRespondOutputSchema,
+  PrAddressContextSchema,
+  PR_ADDRESS_CONTEXT_PATH,
+  readPrContext,
+  writePrContext,
+} from "./__schemas/pr-address-context.schemas";
+
+export type {
+  PrFetchOutput,
+  PrValidateOutput,
+  PrDebateOutput,
+  PrFixOutput,
+  PrLearnOutput,
+  PrRespondOutput,
+  PrAddressContext,
+} from "./__schemas/pr-address-context.schemas";
+
+// PR address state machine
+export { prAddressStateMachine } from "./__schemas/states/pr-address.states";
+export type { PrAddressMachineContext } from "./__schemas/states/pr-address.states";

@@ -63,6 +63,12 @@ import { seedMemorySkill } from "../general/seed-memory.skill";
 import { outcomeSkill } from "../general/outcome.skill";
 import { contextRestoreSkill } from "../general/context-restore.skill";
 import { shadowCleanupSkill } from "../general/shadow-cleanup.skill";
+import { prFetchSkill } from "../general/pr-fetch.skill";
+import { prValidateSkill } from "../general/pr-validate.skill";
+import { prDebateSkill } from "../general/pr-debate.skill";
+import { prFixSkill } from "../general/pr-fix.skill";
+import { prLearnSkill } from "../general/pr-learn.skill";
+import { prRespondSkill } from "../general/pr-respond.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -133,5 +139,11 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   outcome: () => outcomeSkill,
   "context-restore": () => contextRestoreSkill,
   "shadow-cleanup": () => shadowCleanupSkill,
+  "pr-fetch": () => prFetchSkill,
+  "pr-validate": () => prValidateSkill,
+  "pr-debate": () => prDebateSkill,
+  "pr-fix": () => prFixSkill,
+  "pr-learn": () => prLearnSkill,
+  "pr-respond": () => prRespondSkill,
   lu: () => luSkill,
 };
