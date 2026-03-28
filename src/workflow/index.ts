@@ -155,3 +155,7 @@ export type {
 // ─── Phase Pipeline ──────────────────────────────────────────────────────────
 
 export { PHASE_PIPELINE } from "./__helpers/phase-pipeline";
+
+// ─── pr-address DAG ─────────────────────────────────────────────────────────
+
+export { prAddressDAG } from "./__helpers/pr-address-dag";
