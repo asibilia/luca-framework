@@ -58,6 +58,8 @@ This skill is a **thin orchestrator**. It contains ONLY:
 
 **Zero inline logic constraint:** No \`gh\` commands, no \`Task()\` spawns, no template parsing, no data processing. All business logic lives in the sub-skills.
 
+**NEVER inline sub-skill logic.** If a sub-skill fails, re-invoke it. Do NOT copy its implementation into this orchestrator.
+
 ## State Machine
 
 \`\`\`
