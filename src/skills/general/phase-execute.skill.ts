@@ -170,7 +170,7 @@ import { writePhaseExecuteContext } from "src/skills/__schemas/phase-execute-con
 
 await writePhaseExecuteContext({});
 // Write initial state
-await writePhaseExecuteContext({ current_state: "idle" } as any);
+await writePhaseExecuteContext({ current_state: "idle" });
 \`\`\`
 
 #### 0.1 Resolve Model Routing
@@ -201,7 +201,7 @@ Unless \`--skip-replay\` is passed:
 After all setup steps complete, transition:
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "setup" } as any);
+await writePhaseExecuteContext({ current_state: "setup" });
 \`\`\`
 
 **State: idle -> SETUP_COMPLETE -> setup**
@@ -223,7 +223,7 @@ if (!ctx.success) { /* ABORT */ }
 Transition:
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "executed" } as any);
+await writePhaseExecuteContext({ current_state: "executed" });
 \`\`\`
 
 **State: setup -> WAVES_COMPLETE -> executed**
@@ -252,7 +252,7 @@ luca-bridge transition --event=VERIFY_PASSED 2>/dev/null || true
 Transition:
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "verified" } as any);
+await writePhaseExecuteContext({ current_state: "verified" });
 \`\`\`
 
 **State: executed -> VERIFY_COMPLETE -> verified**
@@ -277,7 +277,7 @@ Skill("phase-execute-review", "{phase_number}")
 Wait for completion. Transition:
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "reviewed" } as any);
+await writePhaseExecuteContext({ current_state: "reviewed" });
 \`\`\`
 
 **State: verified -> REVIEW_COMPLETE -> reviewed**
@@ -285,7 +285,7 @@ await writePhaseExecuteContext({ current_state: "reviewed" } as any);
 **If code review should be skipped:**
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "reviewed" } as any);
+await writePhaseExecuteContext({ current_state: "reviewed" });
 \`\`\`
 
 **State: verified -> SKIP_REVIEW -> reviewed**
@@ -367,7 +367,7 @@ luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
 Transition:
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "learned" } as any);
+await writePhaseExecuteContext({ current_state: "learned" });
 \`\`\`
 
 **State: reviewed -> LEARN_COMPLETE -> learned**
@@ -388,7 +388,7 @@ luca-bridge transition --event=COMMIT_COMPLETE 2>/dev/null || true
 Transition:
 
 \`\`\`typescript
-await writePhaseExecuteContext({ current_state: "committed" } as any);
+await writePhaseExecuteContext({ current_state: "committed" });
 \`\`\`
 
 **State: learned -> COMMIT_COMPLETE -> committed**
