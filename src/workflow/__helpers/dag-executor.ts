@@ -31,6 +31,7 @@ import type {
   ExecutionResult,
   DAGCheckpoint,
   TraceEntry,
+  SkippedStepEntry,
 } from "../__schemas/workflow.schemas";
 import { topologicalSort } from "./dag-sorter";
 import { validateDAG } from "./dag-validator";
@@ -117,6 +118,7 @@ export async function executeDAG(
 
   const startTime = Date.now();
   const stepResults: Record<string, StepResult> = {};
+  const skippedEntries: SkippedStepEntry[] = [];
   const trace: TraceEntry[] = [];
   const accumulatedContext: Record<string, unknown> = { ...context };
 
@@ -151,14 +153,15 @@ export async function executeDAG(
       };
       accumulatedContext[stepId] = output;
     }
-    // Restore skipped steps from checkpoint
-    for (const stepId of checkpoint.skippedSteps) {
-      stepResults[stepId] = {
-        stepId,
+    // Restore skipped steps from checkpoint (structured entries)
+    for (const entry of checkpoint.skippedSteps) {
+      stepResults[entry.id] = {
+        stepId: entry.id,
         status: "skipped",
         durationMs: 0,
         retryCount: 0,
       };
+      skippedEntries.push(entry);
     }
     // Restore context from checkpoint
     Object.assign(accumulatedContext, checkpoint.context);
@@ -191,6 +194,11 @@ export async function executeDAG(
               durationMs: 0,
               retryCount: 0,
             };
+            skippedEntries.push({
+              id: stepId,
+              reason: "guard-false",
+              optional: step.optional,
+            });
             continue;
           }
         } catch {
@@ -201,6 +209,11 @@ export async function executeDAG(
             durationMs: 0,
             retryCount: 0,
           };
+          skippedEntries.push({
+            id: stepId,
+            reason: "guard-exception",
+            optional: step.optional,
+          });
           continue;
         }
       }
@@ -273,9 +286,7 @@ export async function executeDAG(
             .filter(([, r]) => r.status === "completed")
             .map(([id, r]) => [id, r.output]),
         ),
-        skippedSteps: Object.entries(stepResults)
-          .filter(([, r]) => r.status === "skipped")
-          .map(([id]) => id),
+        skippedSteps: skippedEntries,
         failedSteps: Object.fromEntries(
           Object.entries(stepResults)
             .filter(([, r]) => r.status === "failed" || r.status === "timeout")
