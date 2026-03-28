@@ -5,377 +5,206 @@ Validate built features through conversational UAT testing against acceptance cr
 ## main
 
 <main>
-# <%= branding.frameworkName %> Verify Work
+# <%= branding.frameworkName %> Verify Work — Thin Orchestrator
 
 Validate built features through conversational testing with persistent state.
 
-## Sub-agent Delegation Requirements
+**Arguments:** `[phase_number] [--gaps-only]`
 
-This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using the Task tool.
+**Output:** `{phase}-UAT.md` tracking all test results. If issues found: diagnosed gaps, verified fix plans ready for `/phase-execute --gaps-only`.
 
-**Required sub-agents for this skill:**
+## Orchestration Protocol
 
-- `<%= branding.commandPrefix %>-debugger` - Diagnoses root causes of UAT failures (parallel)
-- `<%= branding.commandPrefix %>-planner` - Creates fix plans in --gaps mode
-- `<%= branding.commandPrefix %>-plan-checker` - Verifies fix plans before execution
-- `dx-advocate` - Code quality review
-- `code-simplifier` - DRY and complexity review
-- `code-architect` - Architecture review
-- `ui` - Tailwind/styling review
-- `security-auditor` - Security review (conditional)
+This skill is a **thin orchestrator**. It contains ONLY:
+- Arg parsing
+- Skill() calls to sub-skills
+- Context file reads for path decisions
+- `current_state` writes after every state transition
+- Summary reporting to user
 
-**DO NOT** attempt to diagnose, plan, or review code yourself. Spawn the appropriate agents.
+**Zero inline logic constraint:** No `gh` commands, no `Task()` spawns, no template parsing, no data processing. All business logic lives in the sub-skills.
 
-**Reference:** See `.claude/<%= branding.nameLowercase %>/references/task-directive.md` for Task() syntax patterns.
-
-### Model Resolution
-
-```bash
-MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-```
-
-| Agent              | quality | balanced | budget |
-| ------------------ | ------- | -------- | ------ |
-| <%= branding.commandPrefix %>-debugger     | opus    | sonnet   | sonnet |
-| <%= branding.commandPrefix %>-planner      | opus    | opus     | sonnet |
-| <%= branding.commandPrefix %>-plan-checker | sonnet  | sonnet   | haiku  |
-| reviewers (all)    | opus    | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
+## State Machine
 
 ```
-# All verification agents require reasoning → omit (inherit from parent)
-debugger_model = (omit)
-planner_model = (omit)
-checker_model = (omit)
-reviewer_model = (omit)
+idle -> EXTRACT_COMPLETE -> extracted -> TEST_COMPLETE -> tested
+  Path A (no issues): tested -> SKIP_DIAGNOSE -> reviewed (terminal)
+  Path B (issues):    tested -> DIAGNOSE_COMPLETE -> diagnosed (terminal)
 ```
 
-**Note:** This is now integrated into `/phase-execute` by default. Use this standalone command only if:
-
-- You want to re-run UAT on a previously completed phase
-- You skipped UAT during execution (`--skip-uat`)
-- You want to resume an interrupted UAT session
-
-**Purpose:** Confirm what AI built actually works from user's perspective. One test at a time, plain text responses, no interrogation. When issues are found, automatically diagnose, plan fixes, and prepare for execution.
-
-**Arguments:** `[phase number, e.g., '4']`
-
-**Output:** `{phase}-UAT.md` tracking all test results. If issues found: diagnosed gaps, verified fix plans ready for `/phase-execute`
-
-## Execution Context
-
-Read these reference files before executing:
-
-- `.claude/<%= branding.nameLowercase %>/workflows/verify-work.md`
-- `.claude/<%= branding.nameLowercase %>/templates/UAT.md`
+**CRITICAL:** Write `current_state` to context file after EVERY transition:
+```typescript
+import { writeVerifyContext } from "src/skills/__schemas/verify-context.schemas";
+await writeVerifyContext({ current_state: "extracted" } as any);
+```
 
 ## Process
 
-1. **Check for active UAT sessions** (resume or start new)
-2. **Find SUMMARY.md files** for the phase
-3. **Extract testable deliverables** (user-observable outcomes)
-4. **Create {phase}-UAT.md** with test list
-5. **Present tests one at a time:**
-   - Show expected behavior
-   - Wait for plain text response
-   - "yes/y/next" = pass, anything else = issue (severity inferred)
-6. **Update UAT.md** after each response
-7. **On UAT completion:** commit results
-8. **If UAT issues found:**
+### Step 0: Parse Arguments and Initialize Context
 
-   **MANDATORY**: You MUST spawn sub-agents to diagnose and plan fixes. Do NOT attempt to diagnose or plan yourself.
+Parse the phase number from arguments. Check for `--gaps-only` flag.
 
-   First, spawn parallel debuggers to diagnose each issue:
+Initialize the context file:
 
-   ```python
-   # For each UAT issue - spawn in PARALLEL
-   Task(
-     prompt="""
-   <debug_context>
+```typescript
+import { VERIFY_CONTEXT_PATH, writeVerifyContext } from "src/skills/__schemas/verify-context.schemas";
+import { unlinkSync } from "fs";
 
-   **UAT Issue:** {issue_description}
-   **Phase:** {phase_number}
-   **Expected:** {expected_behavior}
-   **Actual:** {actual_behavior}
+// Clear any previous context (fresh run)
+try { unlinkSync(VERIFY_CONTEXT_PATH); } catch {}
 
-   </debug_context>
+// Initialize with context_version and current_state
+await writeVerifyContext({} as any);
+// Write initial state
+const contextFile = Bun.file(VERIFY_CONTEXT_PATH);
+const ctx = await contextFile.json();
+ctx.current_state = "idle";
+await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx, null, 2));
+```
 
-   Diagnose the root cause of this UAT failure.
-   Return diagnosis with affected files and suggested fix approach.
-   """,
-     subagent_type="<%= branding.commandPrefix %>-debugger",
-     model="{debugger_model}",
-     description="Diagnose UAT issue: {issue_summary}"
-   )
-   ```
+### Step 1: Extract (idle -> extracted)
 
-   After diagnosis, spawn planner in gaps mode:
+```
+Skill("verify-extract", "{phase_number}")
+```
 
-   ```python
-   Task(
-     prompt="""
-   <planning_context>
+On success, write state transition:
+```typescript
+await writeVerifyContext({} as any);
+// Update current_state
+const ctx1 = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
+ctx1.current_state = "extracted";
+await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx1, null, 2));
+```
 
-   **Phase:** {phase_number}
-   **Mode:** gap_closure
-   **Phase Directory:** {phase_dir}
+### Step 2: Test (extracted -> tested)
 
-   **Diagnosed Issues:**
-   {diagnosed_issues}
+```
+Skill("verify-test", "{phase_number}")
+```
 
-   </planning_context>
+On success, write state transition:
+```typescript
+const ctx2 = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
+ctx2.current_state = "tested";
+await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx2, null, 2));
+```
 
-   Create fix plans for these diagnosed UAT issues.
-   """,
-     subagent_type="<%= branding.commandPrefix %>-planner",
-     model="{planner_model}",
-     description="Plan UAT fixes"
-   )
-   ```
+### Step 3: Path Decision (tested -> diagnosed OR reviewed)
 
-   Then verify with plan-checker (iterate max 3 times):
+Read the context file to check `issues_found`:
 
-   ```python
-   Task(
-     prompt="""
-   <verification_context>
+```typescript
+import { readVerifyContext } from "src/skills/__schemas/verify-context.schemas";
 
-   **Phase:** {phase_number}
-   **Fix Plans:** {plans_content}
-   **Original Issues:** {diagnosed_issues}
+const result = await readVerifyContext();
+if (!result.success) { /* ABORT */ }
+const issuesFound = result.data.verify_test?.issues_found ?? false;
+```
 
-   </verification_context>
+#### Path B: Issues Found (tested -> diagnosed)
 
-   Verify these fix plans will address the UAT issues.
-   """,
-     subagent_type="<%= branding.commandPrefix %>-plan-checker",
-     model="{checker_model}",
-     description="Verify fix plans"
-   )
-   ```
+```
+Skill("verify-diagnose", "{phase_number}")
+```
 
-   - Present ready status with `/clear` then `/phase-execute`
+On success, write state transition:
+```typescript
+const ctx3b = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
+ctx3b.current_state = "diagnosed";
+await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx3b, null, 2));
+```
 
-9. **If UAT passes:** Run code quality review
+**diagnosed is terminal.** Report to user and suggest `/phase-execute --gaps-only`.
 
-   **Always runs.** Each reviewer resolves its model tier from the routing table based on complexity.
+#### Path A: No Issues (tested -> reviewed)
 
-   **Read complexity from bridge (with STATE.md fallback):**
+```
+Skill("verify-review", "{phase_number}")
+```
 
-   ```bash
-   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
-   ```
+On success, write state transition:
+```typescript
+const ctx3a = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
+ctx3a.current_state = "reviewed";
+await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx3a, null, 2));
+```
 
-   **Always spawn ALL reviewers with model tier from routing table:**
+**reviewed is terminal.** Report to user and suggest next phase.
 
-   | Agent | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-   |-------|---------|--------|----------|---------|----------|
-   | dx-advocate | fast | balanced | capable | capable | capable |
-   | code-simplifier | fast | balanced | capable | capable | capable |
-   | code-architect | fast | balanced | capable | capable | capable |
-   | performance-auditor | fast | balanced | capable | capable | capable |
-   | security-auditor | fast | balanced | capable | capable | capable |
+### Step 4: Report Summary
 
-   Each model tier is resolved via `resolveModelForAgent(agentName, complexity)` from the centralized routing table.
+Read final context and report to user based on terminal state.
 
-   **MANDATORY**: You MUST spawn reviewer agents in PARALLEL. Do NOT review code yourself.
+**If diagnosed (Path B — issues found):**
 
-   Get changed files and spawn reviewers:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ <%= branding.frameworkName %> > PHASE {N} ISSUES FOUND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   ```bash
-   CHANGED_FILES=$(git diff --name-only main...HEAD -- '*.ts' '*.tsx' 2>/dev/null | head -50)
-   ```
+{passed}/{total} tests passed
+{failed} issues diagnosed
+Fix plans verified
 
-   ```python
-   # Spawn ALL reviewers in PARALLEL (same message)
-   Task(
-     prompt="Review for conventions and standards: {changed_files}",
-     subagent_type="dx-advocate",
-     model="{reviewer_model}",
-     description="DX review"
-   )
+Next: /phase-execute {N} --gaps-only
+```
 
-   Task(
-     prompt="Review for DRY and complexity: {changed_files}",
-     subagent_type="code-simplifier",
-     model="{reviewer_model}",
-     description="Simplification review"
-   )
+**If reviewed (Path A — all clean):**
 
-   Task(
-     prompt="Review for architecture: {changed_files}",
-     subagent_type="code-architect",
-     model="{reviewer_model}",
-     description="Architecture review"
-   )
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ <%= branding.frameworkName %> > PHASE {N} VERIFIED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   Task(
-     prompt="Review for Tailwind patterns: {changed_files}",
-     subagent_type="ui",
-     model="{reviewer_model}",
-     description="Tailwind review"
-   )
+{N}/{N} UAT tests passed
+Code quality review completed
 
-   # Conditional: only if auth/api files changed
-   Task(
-     prompt="Review for security: {changed_files}",
-     subagent_type="security-auditor",
-     model="{reviewer_model}",
-     description="Security review"
-   )
-   ```
+Next: /phase-discuss {N+1} or /milestone-audit
+```
 
-   **Do NOT proceed until ALL Tasks return.**
+**If reviewed with quality issues:**
 
-   - Merge findings by severity (CRITICAL/HIGH/MEDIUM/LOW)
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ <%= branding.frameworkName %> > PHASE {N} CODE REVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-10. **If CRITICAL quality issues:** Plan fixes (same planner → checker loop)
-11. **If HIGH/MEDIUM only:** Report and offer options (fix now / continue / review)
-12. **Present ready status** for next phase
+{N}/{N} UAT tests passed
+{X} code quality issues found
+
+Options:
+1. Fix now
+2. Continue
+3. Review details
+```
+
+## Error Handling
+
+If any sub-skill fails, send ABORT to the state machine:
+```typescript
+const ctxErr = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
+ctxErr.current_state = "failed";
+await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctxErr, null, 2));
+```
+
+Report the failure to the user with the failing sub-skill name.
 
 ## Anti-Patterns
 
-- Don't use AskQuestion for test responses — plain text conversation
-- Don't ask severity — infer from description
-- Don't present full checklist upfront — one test at a time
-- Don't run automated tests — this is manual user validation
-- Don't fix issues during testing — log as gaps, diagnose after all tests complete
-
-## Routes After Testing
-
-**Route A: All tests pass, more phases remain**
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{N} UAT tests passed ✓
-Code quality review passed ✓
-
-## ▶ Next Up
-
-- /phase-discuss {Z+1} — gather context and clarify approach
-- /phase-plan {Z+1} — create implementation plan
-- /phase-execute {Z+1} — execute if plan exists
-```
-
-**Route B: All tests pass, milestone complete**
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} VERIFIED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Final phase verified ✓
-All UAT tests passed ✓
-Code quality review passed ✓
-
-## ▶ Next Up
-
-/milestone-audit
-```
-
-**Route C: Issues found, fix plans ready**
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} ISSUES FOUND ⚠
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{M} tests passed
-{X} issues diagnosed
-Fix plans verified ✓
-
-## ▶ Next Up
-
-/phase-execute {Z} --gaps-only
-```
-
-**Route D: Issues found, planning blocked**
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} BLOCKED ✗
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Manual intervention required
-```
-
-**Route E: UAT passes, code quality issues found**
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► PHASE {Z} CODE REVIEW ⚠
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{N} UAT tests passed ✓
-{X} code quality issues found
-
-| Severity | Count | Examples |
-|----------|-------|----------|
-| HIGH | {N} | Native .map() instead of Lodash |
-| MEDIUM | {N} | Duplicated validation logic |
-
-## Options
-
-1. Fix now — plan and execute quality fixes
-2. Continue — address in future iteration
-3. Review details — see full findings
-```
-
-**Route F: UAT passes, quality fixes ready**
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- <%= branding.frameworkName %> ► QUALITY FIXES READY ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N} quality issues planned for fixing.
-
-## ▶ Next Up
-
-/phase-execute {Z} --quality-fixes
-```
+- **DO NOT** contain any gh commands, Task() spawns, data processing, or file reads beyond context file checks
+- **DO NOT** diagnose, plan, or review code — delegate to sub-skills
+- **DO NOT** skip writing current_state — the pre-step hook depends on it
+- **DO NOT** silently omit a sub-skill call — every transition must be explicit
 
 ## Success Criteria
 
 - [ ] UAT.md created with tests from SUMMARY.md
 - [ ] Tests presented one at a time with expected behavior
-- [ ] Plain text responses (no structured forms)
-- [ ] Severity inferred, never asked
-- [ ] Batched writes: on issue, every 5 passes, or completion
-- [ ] Committed on UAT completion
 - [ ] If UAT issues: parallel debug agents diagnose root causes
 - [ ] If UAT issues: <%= branding.commandPrefix %>-planner creates fix plans from diagnosed gaps
-- [ ] If UAT issues: <%= branding.commandPrefix %>-plan-checker verifies fix plans (max 3 iterations)
 - [ ] If UAT issues: ready for `/phase-execute --gaps-only`
 - [ ] If UAT passes: code quality review runs on changed files
-- [ ] If UAT passes: dx-advocate checks conventions
-- [ ] If UAT passes: code-simplifier checks DRY/complexity
-- [ ] If UAT passes: code-architect checks structure/patterns
-- [ ] If UAT passes: tailwind-auditor checks Tailwind/dynamic colors
-- [ ] If UAT passes: security-auditor checks (if auth/api files changed)
-- [ ] CRITICAL quality issues block, HIGH/MEDIUM are warnings with options
-- [ ] If quality fixes needed: ready for `/phase-execute --quality-fixes`
-- [ ] If all clean: show next-phase commands (`/phase-discuss`, `/phase-plan`, `/phase-execute`)
-- [ ] If final phase: show `/milestone-audit`
-
-## Next Steps
-
-| Condition | Action | Command |
-|-----------|--------|---------|
-| All tests passed, more phases | Plan next phase | `/phase-plan {N+1}` |
-| All tests passed, milestone done | Complete milestone | `/milestone-audit` |
-| Issues found | Plan fixes | `/phase-plan {N} --gaps` |
-
-**Primary:** `/progress` — Check status and get smart routing
-
-**Also available:**
-
-- `/phase-plan {N} --gaps` — Create fix plans for failures
-- `/milestone-audit` — Complete the milestone
+- [ ] current_state written after every transition
+- [ ] Orchestrator contains ONLY Skill() calls + context reads + state writes
 </main>

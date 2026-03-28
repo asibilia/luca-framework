@@ -17,9 +17,9 @@ Close 11 code quality and security findings from the v8.5.0 milestone audit.
 **Verification:** Standard
 **Depends on:** None
 
-- [ ] dry-hook-factory — Extract `createSubSkillEnforcementHook(config)` factory to replace 5 identical hooks (DRY-001)
-- [ ] dry-context-factory — Extract `createContextHelpers<T>(config)` factory to replace 5 identical read/write helpers (DRY-002)
-- [ ] dry-shared-constants — Move ABORT_TRANSITION to shared module, standardize orchestrator patterns (DRY-003, DRY-004, DRY-005)
+- [x] dry-hook-factory — Extract `createSubSkillEnforcementHook(config)` factory to replace 5 identical hooks (DRY-001)
+- [x] dry-context-factory — Extract `createContextHelpers<T>(config)` factory to replace 5 identical read/write helpers (DRY-002)
+- [x] dry-shared-constants — Move ABORT_TRANSITION to shared module, standardize orchestrator patterns (DRY-003, DRY-004, DRY-005)
 
 ### Phase 226: Security Hardening
 

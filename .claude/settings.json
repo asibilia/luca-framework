@@ -78,6 +78,30 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-step-pr-address.sh",
             "timeout": 5,
             "statusMessage": "Validating pr-address step order..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-step-milestone-complete.sh",
+            "timeout": 5,
+            "statusMessage": "Validating milestone-complete step order..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-step-verify.sh",
+            "timeout": 5,
+            "statusMessage": "Validating verify step order..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-step-phase-execute.sh",
+            "timeout": 5,
+            "statusMessage": "Validating phase-execute step order..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-step-lu.sh",
+            "timeout": 5,
+            "statusMessage": "Validating lu step order..."
           }
         ]
       },
