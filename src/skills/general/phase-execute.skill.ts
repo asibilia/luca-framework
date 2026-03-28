@@ -395,6 +395,18 @@ await writePhaseExecuteContext({ current_state: "committed" });
 
 **State: learned -> COMMIT_COMPLETE -> committed**
 
+### Step 11.5: Gap Detection Audit
+
+After all sub-skills and learning capture complete, verify execution coverage:
+
+1. Read the context file at \`/tmp/phase-execute-context.json\` — each populated section indicates a completed sub-skill
+2. Check that ALL required sections are populated:
+   - \`phase_execute_waves\`: required (wave execution must have run)
+   - \`phase_execute_verify\`: required (verification must have run)
+   - \`phase_execute_review\`: optional (may be skipped via SKIP_REVIEW when --skip-review flag, workflow.code_review: false, or harness failed)
+3. If any required section is missing, log: "WARNING: {sub_skill} was not invoked — potential step skip"
+4. This audit is advisory — it documents gaps but does not block completion
+
 ### Step 12: User Acceptance Testing (UAT)
 
 **Skip if:** \`--skip-uat\` flag passed OR \`workflow.uat_required: false\` in config.

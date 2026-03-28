@@ -161,7 +161,20 @@ On success, write final state transition:
 writeLuContext({ current_state: "complete" });
 \`\`\`
 
-### Step 6: Done
+### Step 6: Gap Detection Audit
+
+After all sub-skills complete (state machine in \`complete\`), verify execution coverage:
+
+1. Read the context file at \`/tmp/lu-context.json\` — each populated section indicates a completed sub-skill
+2. Check that ALL required sections are populated:
+   - \`lu_route\`: required (routing decision must exist)
+   - \`lu_configure\`: required (configuration must be resolved)
+   - \`lu_backlog\`: optional (may be skipped via SKIP_BACKLOG when --skip-backlog is set or config backlog_scan == false)
+   - \`lu_phase_loop\`: required (phase execution must have run)
+3. If any required section is missing, log: "WARNING: {sub_skill} was not invoked — potential step skip"
+4. This audit is advisory — it documents gaps but does not block completion
+
+### Step 7: Done
 
 The lu session is complete. lu-phase-loop handles the session summary, state updates, and final commit internally.
 `,

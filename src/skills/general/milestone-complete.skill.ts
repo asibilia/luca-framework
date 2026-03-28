@@ -191,6 +191,20 @@ On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 await writeMilestoneCompleteContext({ current_state: "finalized" });
 \`\`\`
 
+### Step 6: Gap Detection Audit
+
+After all sub-skills complete (state machine in \`finalized\` or \`failed\`), verify execution coverage:
+
+1. Read the context file at \`/tmp/milestone-complete-context.json\` — each populated section indicates a completed sub-skill
+2. Check that ALL required sections are populated:
+   - \`milestone_learn\`: required (learning extraction must have run)
+   - \`milestone_prune\`: required (stale memory pruning must have run)
+   - \`milestone_shadow_gate\`: optional (may be skipped via SKIP_SCAN when shadow_debt.enabled == false)
+   - \`milestone_archive\`: required (archival must have run)
+   - \`milestone_finalize\`: required (finalization must have run)
+3. If any required section is missing, log: "WARNING: {sub_skill} was not invoked — potential step skip"
+4. This audit is advisory — it documents gaps but does not block completion
+
 ## Error Handling
 
 **Required sub-skills** (milestone-learn, milestone-prune, milestone-archive, milestone-finalize):

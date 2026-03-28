@@ -211,6 +211,19 @@ await writeVerifyContext({ current_state: "failed" });
 
 Report the failure to the user with the failing sub-skill name.
 
+### Step 5: Gap Detection Audit
+
+After all sub-skills complete (state machine in a terminal state), verify execution coverage:
+
+1. Read the context file at \`/tmp/verify-context.json\` — each populated section indicates a completed sub-skill
+2. Check that ALL required sections are populated:
+   - \`verify_extract\`: required (extraction must have run)
+   - \`verify_test\`: required (testing must have run)
+   - Path A (no issues): \`verify_review\`: required (code review must have run)
+   - Path B (issues found): \`verify_diagnose\`: required (diagnosis must have run)
+3. If any required section is missing, log: "WARNING: {sub_skill} was not invoked — potential step skip"
+4. This audit is advisory — it documents gaps but does not block completion
+
 ## Anti-Patterns
 
 - **DO NOT** contain any gh commands, Task() spawns, data processing, or file reads beyond context file checks
