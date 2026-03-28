@@ -85,7 +85,7 @@ After EVERY state transition, the orchestrator MUST write \`current_state\` to t
 \`\`\`typescript
 import { writeMilestoneCompleteContext } from "src/skills/__schemas/milestone-complete-context.schemas";
 
-await writeMilestoneCompleteContext({ current_state: "learned" } as any);
+await writeMilestoneCompleteContext({ current_state: "learned" });
 \`\`\`
 
 The pre-step enforcement hook (\`pre-step-milestone-complete\`) reads this field to validate that sub-skills are called in the correct order. If \`current_state\` is not written, the hook defaults to "idle" and blocks all non-initial sub-skills.
@@ -124,7 +124,7 @@ On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
 **Write state:**
 \`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "learned" } as any);
+await writeMilestoneCompleteContext({ current_state: "learned" });
 \`\`\`
 
 ### Step 2: Stale Memory Pruning
@@ -138,7 +138,7 @@ On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
 **Write state:**
 \`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "pruned" } as any);
+await writeMilestoneCompleteContext({ current_state: "pruned" });
 \`\`\`
 
 ### Step 3: Shadow Debt Gate (Conditional)
@@ -160,7 +160,7 @@ Send \`SKIP_SCAN\` explicitly -> state becomes \`scanned\` (fail-closed: always 
 
 **Write state (in both cases):**
 \`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "scanned" } as any);
+await writeMilestoneCompleteContext({ current_state: "scanned" });
 \`\`\`
 
 ### Step 4: Archive Milestone
@@ -174,7 +174,7 @@ On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
 **Write state:**
 \`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "archived" } as any);
+await writeMilestoneCompleteContext({ current_state: "archived" });
 \`\`\`
 
 ### Step 5: Finalize (Commit + Tag + Divergent Mode)
@@ -188,7 +188,7 @@ On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
 **Write state:**
 \`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "finalized" } as any);
+await writeMilestoneCompleteContext({ current_state: "finalized" });
 \`\`\`
 
 ## Error Handling
