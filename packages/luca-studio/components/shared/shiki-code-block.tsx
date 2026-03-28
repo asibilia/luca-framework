@@ -8,7 +8,7 @@ import { cn } from "~/lib/utils";
 // Types
 // ---------------------------------------------------------------------------
 
-type ShikiCodeBlockProps = {
+export type ShikiCodeBlockProps = {
   /** Source code string to highlight. */
   code: string;
   /** Language identifier for Shiki (e.g. "typescript", "markdown"). */

@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "de67dc0b-ef24-4183-a0c5-1d9a65dc0d59",
+    "session_id": "dbd8ffe1-fc70-4174-a4bc-99bff383872a",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -81,7 +81,9 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-27T17:16:34.571Z"
+    "started_at": "2026-03-27T21:42:31.056Z",
+    "current_milestone": "Planning next",
+    "last_transition_at": "2026-03-27T21:47:31.127Z"
   },
   "children": {}
 }

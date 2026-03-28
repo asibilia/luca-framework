@@ -16,9 +16,10 @@
  *
  * @module
  */
-import { z } from "zod";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
+
+import { z } from "zod";
 
 import { agentRegistry } from "../../../src/agents/index.ts";
 import { skillRegistry } from "../../../src/skills/index.ts";
@@ -56,6 +57,44 @@ const CompileRequestSchema = z.object({
 });
 
 type CompileRequest = z.infer<typeof CompileRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// Zod response schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * Schema for successful compile response validation.
+ *
+ * Validates the response shape before returning it to the client.
+ * Uses snake_case for all properties per API conventions.
+ *
+ * @property status      - Always "compiled" for success
+ * @property output_path - Relative path from repo root to the compiled file
+ * @property duration_ms - Compilation duration in milliseconds
+ */
+const CompileSuccessResponseSchema = z.object({
+  status: z.literal("compiled"),
+  output_path: z.string().min(1),
+  duration_ms: z.number().int().min(0),
+});
+
+/**
+ * Schema for error compile response validation.
+ *
+ * Validates the error response shape before returning it to the client.
+ * Uses snake_case for all properties per API conventions.
+ *
+ * @property status      - Always "error" for failures
+ * @property error       - Human-readable error message
+ * @property duration_ms - Time elapsed before error in milliseconds
+ * @property details     - Optional Zod validation issue details
+ */
+const CompileErrorResponseSchema = z.object({
+  status: z.literal("error"),
+  error: z.string(),
+  duration_ms: z.number().int().min(0),
+  details: z.array(z.any()).optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Domain registry mapping
@@ -159,10 +198,12 @@ async function compileEntity(
 
   const outputPath = resolveOutputPath(domain, name, format as SupportedFormat);
 
-  // Ensure parent directory exists before writing
+  // Ensure parent directory exists before writing. Uses node:fs/promises mkdir
+  // (no shell invocation). Path traversal is bounded by resolveOutputPath().
   const repoRoot = path.resolve(import.meta.dir, "..", "..", "..");
   const absolutePath = path.join(repoRoot, outputPath);
-  await mkdir(path.dirname(absolutePath), { recursive: true });
+  const parentDir = path.dirname(absolutePath);
+  await mkdir(parentDir, { recursive: true });
   await Bun.write(absolutePath, content);
 
   return { output_path: outputPath, content };
@@ -173,13 +214,31 @@ async function compileEntity(
 // ---------------------------------------------------------------------------
 
 /**
- * Create a JSON Response with the given body and status code.
+ * Create a JSON Response with the given body, status code, and optional schema validation.
  *
- * @param body   - JSON-serializable object
- * @param status - HTTP status code (default: 200)
+ * When a responseSchema is provided, validates the body before serialization.
+ * Validation failures are logged but do NOT block the response to avoid
+ * breaking clients on schema evolution.
+ *
+ * @param body           - JSON-serializable object
+ * @param status         - HTTP status code (default: 200)
+ * @param responseSchema - Optional Zod schema for response shape validation
  * @returns Response with application/json content type
  */
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse(
+  body: unknown,
+  status = 200,
+  responseSchema?: z.ZodType,
+): Response {
+  if (responseSchema) {
+    const parsed = responseSchema.safeParse(body);
+    if (!parsed.success) {
+      console.error(
+        `[sidecar] Response validation failed: ${parsed.error.message}`,
+      );
+      // Still return the body to avoid breaking clients
+    }
+  }
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
@@ -250,6 +309,7 @@ async function handleCompile(request: Request): Promise<Response> {
         duration_ms: Date.now() - startMs,
       },
       statusCode,
+      CompileErrorResponseSchema,
     );
   }
 
@@ -265,11 +325,15 @@ async function handleCompile(request: Request): Promise<Response> {
       ),
     ]);
 
-    return jsonResponse({
-      status: "compiled",
-      output_path: result.output_path,
-      duration_ms: Date.now() - startMs,
-    });
+    return jsonResponse(
+      {
+        status: "compiled",
+        output_path: result.output_path,
+        duration_ms: Date.now() - startMs,
+      },
+      200,
+      CompileSuccessResponseSchema,
+    );
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     const statusCode = (error as Error & { statusCode?: number }).statusCode;
@@ -282,6 +346,7 @@ async function handleCompile(request: Request): Promise<Response> {
           duration_ms: Date.now() - startMs,
         },
         504,
+        CompileErrorResponseSchema,
       );
     }
 
@@ -293,6 +358,7 @@ async function handleCompile(request: Request): Promise<Response> {
           duration_ms: Date.now() - startMs,
         },
         404,
+        CompileErrorResponseSchema,
       );
     }
 
@@ -305,6 +371,7 @@ async function handleCompile(request: Request): Promise<Response> {
           duration_ms: Date.now() - startMs,
         },
         400,
+        CompileErrorResponseSchema,
       );
     }
 
@@ -316,6 +383,7 @@ async function handleCompile(request: Request): Promise<Response> {
         duration_ms: Date.now() - startMs,
       },
       500,
+      CompileErrorResponseSchema,
     );
   }
 }

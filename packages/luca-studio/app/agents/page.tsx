@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { Bot, Loader2 } from "lucide-react";
 
 import { AgentTabContainer } from "~/components/agents/agent-tab-container";
@@ -10,17 +10,20 @@ import { EntityTree } from "~/components/editor/entity-tree";
 import { DiffPreview } from "~/components/shared/diff-preview";
 import { NavigationGuard } from "~/components/feedback/navigation-guard";
 import { SaveBar } from "~/components/feedback/save-bar";
-import { ResizableSplit } from "~/components/layout/resizable-split";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useAgentDetail } from "~/hooks/use-agent-detail";
 import { useAgentList } from "~/hooks/use-agent-list";
 import { useAgentSave } from "~/hooks/use-agent-save";
 import { useDirtyTitle } from "~/hooks/use-dirty-title";
 import { useEditMode } from "~/hooks/use-edit-mode";
+import { useEntityConflict } from "~/hooks/use-entity-conflict";
 import { useUndo } from "~/hooks/use-undo";
-import { conflictAtom } from "~/stores/config-atoms";
 import { agentHistoryAtom } from "~/stores/entity-atoms";
-import { layoutContextAtom, setGlobalSaveCallbackAtom } from "~/stores/layout";
+import {
+  entitySidebarAtom,
+  layoutContextAtom,
+  setGlobalSaveCallbackAtom,
+} from "~/stores/layout";
 
 import type { EntityItem } from "~/components/editor/entity-tree";
 
@@ -38,7 +41,7 @@ import type { EntityItem } from "~/components/editor/entity-tree";
 export default function AgentsPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const setLayoutContext = useSetAtom(layoutContextAtom);
-  const [conflict, setConflict] = useAtom(conflictAtom);
+  const setEntitySidebar = useSetAtom(entitySidebarAtom);
 
   // Set editor layout context on mount (collapses NavRail)
   useEffect(() => {
@@ -75,6 +78,40 @@ export default function AgentsPage() {
     });
   }, [agents]);
 
+  // Push entity tree into the LayoutShell entity sidebar slot
+  useEffect(() => {
+    setEntitySidebar(
+      <div className="flex h-full flex-col pt-2">
+        <div className="px-2 pb-1.5">
+          <h2 className="text-xs font-semibold text-muted-foreground">
+            Agents
+          </h2>
+        </div>
+        {listLoading ? (
+          <div className="space-y-1 px-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 w-full" />
+            ))}
+          </div>
+        ) : (
+          <EntityTree
+            entities={entityItems}
+            selectedName={selectedName}
+            onSelect={setSelectedName}
+            className="flex-1 overflow-y-auto"
+          />
+        )}
+      </div>,
+    );
+    return () => setEntitySidebar(null);
+  }, [
+    entityItems,
+    listLoading,
+    selectedName,
+    setSelectedName,
+    setEntitySidebar,
+  ]);
+
   // Save/discard integration
   const { save, discard } = useAgentSave(selectedName, etag);
 
@@ -95,46 +132,19 @@ export default function AgentsPage() {
     editMode.forceExit();
   }, [discard, editMode]);
 
-  // Conflict resolution: does the current conflict match this entity?
-  const entityConflict =
-    conflict && conflict.entityKey === entityKey ? conflict : null;
-
-  const handleAcceptLocal = useCallback(async () => {
-    if (!entityConflict) return;
-    // Re-save with the server's current ETag to force overwrite
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "If-Match": entityConflict.serverEtag,
-    };
-    try {
-      const res = await fetch(
-        `/api/entities/agents/${encodeURIComponent(selectedName ?? "")}`,
-        {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({
-            rawConfigText: entityConflict.localContent,
-            metadata: detail?.metadata ?? {},
-          }),
-        },
-      );
-      if (res.ok) {
-        setConflict(null);
-      }
-    } catch {
-      // If force-overwrite fails, keep the conflict dialog open
-    }
-  }, [entityConflict, selectedName, setConflict]);
-
-  const handleAcceptServer = useCallback(() => {
-    // Discard local changes, reload entity from server
-    setConflict(null);
-    discard();
-  }, [setConflict, discard]);
-
-  const handleDismissConflict = useCallback(() => {
-    setConflict(null);
-  }, [setConflict]);
+  // Conflict resolution via shared hook
+  const {
+    entityConflict,
+    handleAcceptLocal,
+    handleAcceptServer,
+    handleDismissConflict,
+  } = useEntityConflict({
+    entityKey,
+    endpoint: "/api/entities/agents",
+    name: selectedName,
+    metadata: detail?.metadata ?? {},
+    discard,
+  });
 
   // Register save callback for centralized Cmd+S shortcut
   const setSaveCallback = useSetAtom(setGlobalSaveCallbackAtom);
@@ -155,71 +165,42 @@ export default function AgentsPage() {
           onDismiss={handleDismissConflict}
         />
       )}
-      <ResizableSplit
-        orientation="horizontal"
-        defaultFirstSize={20}
-        minFirstSize={15}
-        maxFirstSize={30}
-      >
-        {/* Left panel: Entity tree */}
-        <div className="flex h-full flex-col border-r bg-muted/30 pt-2">
-          <div className="px-2 pb-1.5">
-            <h2 className="text-xs font-semibold text-muted-foreground">
-              Agents
-            </h2>
-          </div>
-          {listLoading ? (
-            <div className="space-y-1 px-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-full" />
-              ))}
-            </div>
-          ) : (
-            <EntityTree
-              entities={entityItems}
-              selectedName={selectedName}
-              onSelect={setSelectedName}
-              className="flex-1 overflow-y-auto"
-            />
-          )}
-        </div>
 
-        {/* Right panel: Editor area */}
-        <div className="flex h-full flex-col overflow-hidden">
-          {!selectedName ? (
-            <EmptyState />
-          ) : detailLoading ? (
-            <LoadingState />
-          ) : detail ? (
-            <AgentTabContainer
-              name={selectedName}
-              detail={detail}
-              isEditing={editMode.isEditing}
-              onEnterEdit={editMode.enterEdit}
-              onExitEdit={editMode.exitEdit}
-            />
-          ) : (
-            <EmptyState />
-          )}
-
-          {/* Save bar scoped to agent entities -- only visible in edit mode */}
-          {editMode.isEditing && (
-            <SaveBar
-              onSave={handleSave}
-              onDiscard={handleDiscard}
-              entityFilter="agent:"
-            />
-          )}
-
-          {/* Navigation guard for unsaved changes */}
-          <NavigationGuard
-            when={editMode.isEditing && editMode.isDirty}
-            showDialog={editMode.showExitConfirm}
-            onConfirm={editMode.confirmExit}
-            onCancel={editMode.cancelExit}
+      {/* Editor area (entity tree is rendered via entitySidebarAtom in LayoutShell) */}
+      <div className="flex h-full flex-col overflow-hidden">
+        {!selectedName ? (
+          <EmptyState />
+        ) : detailLoading ? (
+          <LoadingState />
+        ) : detail ? (
+          <AgentTabContainer
+            name={selectedName}
+            detail={detail}
+            isEditing={editMode.isEditing}
+            onEnterEdit={editMode.enterEdit}
+            onExitEdit={editMode.exitEdit}
           />
-        </div>
-      </ResizableSplit>
+        ) : (
+          <EmptyState />
+        )}
+
+        {/* Save bar scoped to agent entities -- only visible in edit mode */}
+        {editMode.isEditing && (
+          <SaveBar
+            onSave={handleSave}
+            onDiscard={handleDiscard}
+            entityFilter="agent:"
+          />
+        )}
+
+        {/* Navigation guard for unsaved changes */}
+        <NavigationGuard
+          when={editMode.isEditing && editMode.isDirty}
+          showDialog={editMode.showExitConfirm}
+          onConfirm={editMode.confirmExit}
+          onCancel={editMode.cancelExit}
+        />
+      </div>
     </div>
   );
 }

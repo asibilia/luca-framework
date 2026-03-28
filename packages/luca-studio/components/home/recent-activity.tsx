@@ -2,8 +2,6 @@
 
 import { useMemo } from "react";
 
-import get from "lodash/get";
-
 import { Badge } from "~/components/ui/badge";
 import { EVENT_TYPES } from "~/lib/constants";
 
@@ -65,10 +63,7 @@ export function RecentActivity({ entries }: RecentActivityProps) {
     return entries.map((entry, idx) => {
       const eventMeta = EVENT_TYPES[entry.event as EventTypeName] ?? null;
       const label = eventMeta?.label ?? entry.event;
-      const summary =
-        (entry.summary as string) ??
-        (get(entry, "message", "") as string) ??
-        "";
+      const summary = (entry.summary as string) ?? "";
       const time = formatTimestamp(entry.timestamp);
 
       return { key: `${entry.timestamp}-${idx}`, label, summary, time };

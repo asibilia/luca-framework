@@ -69,6 +69,12 @@
 
 ---
 
+## Closed (v8.4.1 Completed)
+
+| Todo        | Reason                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Audit #1-17 | 16/17 code quality findings from v8.4.0 audit resolved: shell injection eliminated, DRY consolidation, barrel exports, UI fixes |
+
 ## Closed (v6.1.0 Completed)
 
 | Todo        | Reason                                                                                                                                                                               |
@@ -237,6 +243,8 @@
 - **v8.1.0** — Studio Polish & Prompt Quality: 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC) ([View Archive](milestones/v8.1.0-ROADMAP.md))
 - **v8.2.0** — Audit Gap Closure: 4 phases, 10 plans, 106 commits, 170 files changed (+18,960 LOC) ([View Archive](milestones/v8.2.0-ROADMAP.md))
 - **v8.3.0** — Studio Feature Suite: 6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC) ([View Archive](milestones/v8.3.0-ROADMAP.md))
+- **v8.4.1** — Audit Gap Closure: 3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC) ([View Archive](milestones/v8.4.1-ROADMAP.md))
+- **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
 
 ---
 

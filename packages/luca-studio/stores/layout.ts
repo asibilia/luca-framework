@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
@@ -92,10 +94,23 @@ export const commandPaletteOpenAtom = atom<boolean>(false);
 export const compiledPreviewOpenAtom = atom<boolean>(false);
 
 /**
+ * Entity sidebar content for build pages (Agents, Skills, Rules).
+ *
+ * Build pages set this atom on mount with their entity tree JSX and
+ * clear it on unmount. When non-null, LayoutShell inserts a fixed-width
+ * sidebar column between the NavRail and the main content area.
+ *
+ * Not persisted -- resets to null on navigation.
+ */
+export const entitySidebarAtom = atom<ReactNode | null>(null);
+
+/**
  * Internal storage for the global save callback.
  *
  * Not exported -- use `globalSaveCallbackAtom` (read) and
  * `setGlobalSaveCallbackAtom` (write) instead.
+ *
+ * @private
  */
 const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null);
 
@@ -127,7 +142,7 @@ export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom));
 export const setGlobalSaveCallbackAtom = atom(
   null,
   (_get, set, callback: (() => Promise<void>) | null) => {
-    set(_saveCallbackAtom, callback);
+    set(_saveCallbackAtom, callback ? () => callback : null);
   },
 );
 

@@ -2,6 +2,7 @@ import {
   muninnProxyHandler,
   parseQueryParams,
 } from "~/lib/muninn-route-helper";
+import { filterByConceptPrefix } from "~/lib/muninn-helpers";
 import {
   ObservationsQuerySchema,
   ObservationsResponseSchema,
@@ -11,6 +12,10 @@ import {
  * GET /api/muninn/observations
  *
  * Recalls recent session:observation-* engrams from MuninnDB.
+ *
+ * Fetches engrams without a tag filter (MuninnDB tags do exact matching,
+ * not prefix matching), then filters client-side using concept.startsWith().
+ *
  * Accepts optional query params:
  * - vault (default: "default")
  * - limit (default: 50)
@@ -24,15 +29,15 @@ export async function GET(request: Request) {
 
   return muninnProxyHandler(
     async (client) => {
-      const data = await client.listEngrams(
+      const observations = await filterByConceptPrefix(
+        client,
         vault,
+        ["session:observation"],
         limit,
-        0,
-        "session:observation",
       );
       return {
-        observations: data.engrams ?? [],
-        total: data.total ?? 0,
+        observations,
+        total: observations.length,
       };
     },
     "Failed to fetch MuninnDB observations",

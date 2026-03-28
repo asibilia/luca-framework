@@ -36,17 +36,11 @@ import {
 } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 
+import type { HistoryCommit } from "~/lib/git-types";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type HistoryCommit = {
-  sha: string;
-  message: string;
-  date: string;
-  author: string;
-  files: string[];
-};
 
 type FetchState = "loading" | "loaded" | "error";
 

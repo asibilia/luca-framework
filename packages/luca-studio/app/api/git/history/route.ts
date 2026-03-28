@@ -6,19 +6,13 @@
  *
  * @returns `{ commits: Array<{ sha, message, date, author, files }> }`
  */
+import { execFileSync } from "node:child_process";
+
 import { NextResponse } from "next/server";
 
+import type { HistoryCommit } from "~/lib/git-types";
 import { resolveProjectRoot } from "~/lib/project-root";
 import { isLocalhostRequest } from "~/lib/request-guards";
-
-/** Schema for a single commit entry in the history response. */
-type HistoryCommit = {
-  sha: string;
-  message: string;
-  date: string;
-  author: string;
-  files: string[];
-};
 
 export async function GET(request: Request) {
   try {
@@ -40,8 +34,18 @@ export async function GET(request: Request) {
     const SEP = "\x1f";
     const format = `${SEP}%H${SEP}%s${SEP}%aI${SEP}%an`;
 
-    const logResult =
-      await Bun.$`git -C ${root} log --fixed-strings --grep=[studio-edit] --format=${format} -n ${limit}`.text();
+    const logResult = execFileSync(
+      "git",
+      [
+        "log",
+        "--fixed-strings",
+        "--grep=[studio-edit]",
+        `--format=${format}`,
+        "-n",
+        String(limit),
+      ],
+      { cwd: root, encoding: "utf-8" },
+    );
 
     if (!logResult.trim()) {
       return NextResponse.json({ commits: [] });
@@ -54,10 +58,10 @@ export async function GET(request: Request) {
 
     // Entries come in groups of 4 (sha, message, date, author) after split
     for (let i = 0; i + 3 < entries.length; i += 4) {
-      const sha = entries[i].trim();
-      const message = entries[i + 1].trim();
-      const date = entries[i + 2].trim();
-      const author = entries[i + 3].trim();
+      const sha = entries[i]?.trim() ?? "";
+      const message = entries[i + 1]?.trim() ?? "";
+      const date = entries[i + 2]?.trim() ?? "";
+      const author = entries[i + 3]?.trim() ?? "";
 
       if (!sha) continue;
 
@@ -67,8 +71,11 @@ export async function GET(request: Request) {
       // Get files changed in this commit
       let files: string[] = [];
       try {
-        const diffResult =
-          await Bun.$`git -C ${root} diff-tree --no-commit-id --name-only -r ${sha}`.text();
+        const diffResult = execFileSync(
+          "git",
+          ["diff-tree", "--no-commit-id", "--name-only", "-r", sha],
+          { cwd: root, encoding: "utf-8" },
+        );
         files = diffResult
           .split("\n")
           .map((f) => f.trim())

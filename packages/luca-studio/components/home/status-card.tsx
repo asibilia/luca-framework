@@ -54,9 +54,9 @@ export function StatusCard({ state }: StatusCardProps) {
     const color = meta?.color ?? "muted-foreground";
 
     const context = get(state, "context", {}) as Record<string, unknown>;
-    const phase = get(context, "current_phase_id", null) as number | null;
+    const phase = get(context, "current_phase", null) as number | null;
     const complexity = get(context, "complexity", null) as string | null;
-    const milestone = get(context, "milestone_label", null) as string | null;
+    const milestone = get(context, "current_milestone", null) as string | null;
 
     return { label, color, phase, complexity, milestone };
   }, [state]);
