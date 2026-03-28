@@ -2,18 +2,71 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v8.5.0 — Anti-Skip Enforcement Layer
+
+---
+
+## v8.5.0 — Anti-Skip Enforcement Layer
+
+Make step-skipping structurally impossible in critical workflow paths via typed state machines, progressive disclosure, hook enforcement, and event-sourced gap detection.
+
+### Phase 222: Anti-Skip Infrastructure
+
+**Goal:** Build the core enforcement infrastructure — state machines, progressive disclosure, hook gates, gap detection.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** None
+
+- [ ] anti-skip-layer2-skill-state-machines — Per-skill state machine definitions + bridge extension
+- [ ] anti-skip-layer1-progressive-disclosure — Progressive disclosure executor mode
+- [ ] anti-skip-layer3-hook-enforcement — Pre-step hook enforcement (framework-level guardrails)
+- [ ] anti-skip-layer4-gap-detection — Event-sourced gap detection (catch-all safety net)
+
+### Phase 223: Anti-Skip Pilot
+
+**Goal:** Decompose pr-address and apply all 5 enforcement layers end-to-end as proof of concept.
+**Complexity:** COMPLEX
+**Verification:** Full+Human
+**Depends on:** Phase 222
+
+- [ ] anti-skip-layer0-skill-decomposition — Decompose pr-address into atomic sub-skill chains
+- [ ] anti-skip-pilot-pr-address — Apply all 5 layers to pr-address
+
+### Phase 224: Anti-Skip Rollout
+
+**Goal:** Apply validated architecture to remaining high-risk skills (milestone-complete, lu, verify, phase-execute).
+**Complexity:** COMPLEX
+**Verification:** Full+Human
+**Depends on:** Phase 223
+
+- [ ] anti-skip-rollout-remaining-skills — Rollout to remaining high-risk skills
+
+---
+
+## Next: v8.6.0 — Scout Article Intelligence (after v8.5.0)
+
+Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
+
+**Prerequisite:** v8.5.0 complete (scout-02 borrows createSkillStateMachine; scout-04 requires progressive disclosure)
+
+### Planned Phases
+
+- **Phase 1: Scout Foundation** (6 todos) — Directory structure, state machine, templates, orchestrator, index updater, shared sections
+- **Phase 2: Per-Article Pipeline** (8 todos) — Ingest, relevance, research, analyst, analyze, impl-research agents + skills
+- **Phase 3: Cross-Cutting Batch** (5 todos) — Integrator, integrate, planner, plan, graduate agents + skills
+- **Phase 4: UX + Docs** (3 todos) — Review command, deferred command, workflow documentation
 
 ---
 
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                  | Reason                                               |
-| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+| Todo Group                    | Target   | Scope                                  | Reason                                               |
+| ----------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
+| anti-skip-hardening-contracts | TBD      | Agent behavioral contracts + LTL       | WSJF 1.50, CRITICAL effort — escalation path only    |
+| v2-phase-6                    | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents   | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol     | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui        | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
 
 ## Closed (Reference / Not Actionable)
 
