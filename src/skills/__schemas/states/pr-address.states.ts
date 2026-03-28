@@ -27,6 +27,8 @@ import { z } from "zod";
 
 import { createSkillStateMachine } from "~/workflow/__helpers/skill-state-machine";
 
+import { ABORT_TRANSITION } from "./shared-transitions";
+
 // ─── Context Schema ─────────────────────────────────────────────────────────
 
 /**
@@ -42,16 +44,6 @@ const PrAddressMachineContextSchema = z.object({
   split_verdicts: z.array(z.any()).default([]),
   valid_concerns: z.array(z.any()).default([]),
 });
-
-// ─── ABORT Transition ───────────────────────────────────────────────────────
-
-/**
- * ABORT transition available from every non-terminal state.
- *
- * The orchestrator sends ABORT when a required sub-skill fails
- * or context validation fails (PREMORTEM Constraint #1).
- */
-const ABORT_TRANSITION = { ABORT: "failed" } as const;
 
 // ─── State Machine ──────────────────────────────────────────────────────────
 
