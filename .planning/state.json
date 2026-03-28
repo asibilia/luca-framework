@@ -1,13 +1,14 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "routing",
   "historyValue": {},
   "context": {
     "session_id": "ab7dfef6-0286-4a1a-a289-254d125cb4ff",
     "base_branch": "main",
+    "current_milestone": "v8.5.1",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "MODERATE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -81,9 +82,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-28T20:10:28.908Z",
-    "current_milestone": "v8.5.1",
-    "last_transition_at": "2026-03-28T21:56:30.909Z"
+    "started_at": "2026-03-28T21:57:14.207Z",
+    "last_transition_at": "2026-03-28T21:57:16.297Z"
   },
   "children": {}
 }
