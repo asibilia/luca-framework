@@ -2,21 +2,22 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Routing
-- **Task Complexity:** TRIVIAL
+- **Current Milestone:** v8.5.0 — Anti-Skip Enforcement Layer
+- **Status:** Planning
+- **Task Complexity:** COMPLEX
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-28
 
 ## Session Identity
 
 - **Session ID:** dbd8ffe1-fc70-4174-a4bc-99bff383872a
+- **GitHub Issue:** #113
 
 ## Appetite
 
-- **Level:** Medium
-- **Token Ceiling:** 100000
-- **Context Budget:** 50%
+- **Level:** Large
+- **Token Ceiling:** 200000
+- **Context Budget:** 60%
 
 ## Progress
 
@@ -26,11 +27,12 @@
 
 ## Git Context
 
+- **Branch:** 113--anti-skip-enforcement-layer
 - **Base Branch:** main
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `PLAN_COMPLETE`
 
 ## Previous Milestones
 
@@ -58,4 +60,4 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-28T14:30:50.079Z_
+_State generated from machine snapshot at 2026-03-28T14:45:15.575Z_
