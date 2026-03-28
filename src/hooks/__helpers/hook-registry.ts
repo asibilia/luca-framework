@@ -178,6 +178,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Validating phase-execute step order...",
   }),
+  "pre-step-lu": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Skill",
+    script: "pre-step-lu.ts",
+    timeout: 5,
+    async: false,
+    status_message: "Validating lu step order...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:

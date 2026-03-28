@@ -82,8 +82,12 @@ import { phaseExecuteWavesSkill } from "../general/phase-execute-waves.skill";
 import { phaseExecuteVerifySkill } from "../general/phase-execute-verify.skill";
 import { phaseExecuteReviewSkill } from "../general/phase-execute-review.skill";
 
-// Import Luca-specific skill
+// Import Luca-specific skills
 import { luSkill } from "../luca/lu.skill";
+import { luRouteSkill } from "../luca/lu-route.skill";
+import { luConfigureSkill } from "../luca/lu-configure.skill";
+import { luBacklogSkill } from "../luca/lu-backlog.skill";
+import { luPhaseLoopSkill } from "../luca/lu-phase-loop.skill";
 
 import type { BaseSkill } from "../__schemas/skill.schemas";
 
@@ -170,4 +174,8 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "phase-execute-verify": () => phaseExecuteVerifySkill,
   "phase-execute-review": () => phaseExecuteReviewSkill,
   lu: () => luSkill,
+  "lu-route": () => luRouteSkill,
+  "lu-configure": () => luConfigureSkill,
+  "lu-backlog": () => luBacklogSkill,
+  "lu-phase-loop": () => luPhaseLoopSkill,
 };
