@@ -28,9 +28,9 @@ Close 11 code quality and security findings from the v8.5.0 milestone audit.
 **Verification:** Standard
 **Depends on:** Phase 225 (factories must exist before hardening them)
 
-- [ ] sec-skill-matching — Fix loose skill name matching with exact match pattern (SEC-001)
-- [ ] sec-context-validation — Add Zod safeParse for context file state validation, use sanitizeJsonParse (SEC-002, SEC-006)
-- [ ] sec-file-permissions — Set 0o600 on context files and dedup guard files, validate bridge args (SEC-003, SEC-004, SEC-005)
+- [x] sec-skill-matching — Fix loose skill name matching with exact match pattern (SEC-001)
+- [x] sec-context-validation — Add Zod safeParse for context file state validation, use sanitizeJsonParse (SEC-002, SEC-006)
+- [x] sec-file-permissions — Set 0o600 on context files and dedup guard files, validate bridge args (SEC-003, SEC-004, SEC-005)
 
 ---
 
