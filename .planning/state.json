@@ -1,13 +1,13 @@
 {
   "status": "active",
-  "value": "verifying",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "eed74919-9f6b-458d-abc5-03275e91444e",
+    "session_id": "ab7dfef6-0286-4a1a-a289-254d125cb4ff",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -72,26 +72,16 @@
       }
     },
     "autopilot_config": {},
-    "phase_results": [
-      {
-        "phase_id": 225,
-        "status": "passed",
-        "summary": "DRY consolidation complete",
-        "errors": [],
-        "duration_ms": 0,
-        "timestamp": "2026-03-28T19:58:26.332Z"
-      }
-    ],
+    "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-28T19:13:28.359Z",
-    "last_transition_at": "2026-03-28T19:58:45.715Z"
+    "started_at": "2026-03-28T20:10:28.908Z"
   },
   "children": {}
 }
