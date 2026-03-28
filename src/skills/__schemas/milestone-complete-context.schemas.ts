@@ -122,6 +122,7 @@ export type MilestoneFinalizeOutput = z.infer<
  */
 export const MilestoneCompleteContextSchema = z.object({
   context_version: z.literal(1),
+  current_state: z.string().optional(),
   milestone_learn: MilestoneLearnOutputSchema.optional(),
   milestone_prune: MilestonePruneOutputSchema.optional(),
   milestone_shadow_gate: MilestoneShadowGateOutputSchema.optional(),

@@ -3,8 +3,8 @@
 ## Current Position
 
 - **Current Milestone:** v8.5.1
-- **Status:** Idle
-- **Task Complexity:** TRIVIAL
+- **Status:** Routing
+- **Task Complexity:** MODERATE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-28
 
@@ -30,7 +30,7 @@
 
 ## Allowed Events
 
-- `START`
+- `ROUTE_COMPLETE`
 
 ## Previous Milestones
 
@@ -58,4 +58,4 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-28T21:56:39.948Z_
+_State generated from machine snapshot at 2026-03-28T22:02:58.623Z_

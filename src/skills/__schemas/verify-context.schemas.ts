@@ -100,6 +100,7 @@ export type VerifyReviewOutput = z.infer<typeof VerifyReviewOutputSchema>;
  */
 export const VerifyContextSchema = z.object({
   context_version: z.literal(1),
+  current_state: z.string().optional(),
   verify_extract: VerifyExtractOutputSchema.optional(),
   verify_test: VerifyTestOutputSchema.optional(),
   verify_diagnose: VerifyDiagnoseOutputSchema.optional(),

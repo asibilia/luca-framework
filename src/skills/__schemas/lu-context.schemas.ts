@@ -10,7 +10,7 @@
  * Failed `safeParse` = ABORT (sub-skill treats as terminal failure).
  *
  * **Note:** `current_state` is written by the orchestrator to the context file
- * for hook consumption but is NOT part of the Zod schema (runtime-only field).
+ * for hook consumption and is tracked in the Zod schema as an optional field.
  *
  * Uses snake_case for all field names per API conventions.
  *
@@ -95,6 +95,7 @@ export type LuPhaseLoopOutput = z.infer<typeof LuPhaseLoopOutputSchema>;
  */
 export const LuContextSchema = z.object({
   context_version: z.literal(1),
+  current_state: z.string().optional(),
   lu_route: LuRouteOutputSchema.optional(),
   lu_configure: LuConfigureOutputSchema.optional(),
   lu_backlog: LuBacklogOutputSchema.optional(),
