@@ -78,6 +78,9 @@ import { verifyExtractSkill } from "../general/verify-extract.skill";
 import { verifyTestSkill } from "../general/verify-test.skill";
 import { verifyDiagnoseSkill } from "../general/verify-diagnose.skill";
 import { verifyReviewSkill } from "../general/verify-review.skill";
+import { phaseExecuteWavesSkill } from "../general/phase-execute-waves.skill";
+import { phaseExecuteVerifySkill } from "../general/phase-execute-verify.skill";
+import { phaseExecuteReviewSkill } from "../general/phase-execute-review.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -163,5 +166,8 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "verify-test": () => verifyTestSkill,
   "verify-diagnose": () => verifyDiagnoseSkill,
   "verify-review": () => verifyReviewSkill,
+  "phase-execute-waves": () => phaseExecuteWavesSkill,
+  "phase-execute-verify": () => phaseExecuteVerifySkill,
+  "phase-execute-review": () => phaseExecuteReviewSkill,
   lu: () => luSkill,
 };
