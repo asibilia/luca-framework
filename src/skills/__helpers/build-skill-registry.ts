@@ -69,6 +69,11 @@ import { prDebateSkill } from "../general/pr-debate.skill";
 import { prFixSkill } from "../general/pr-fix.skill";
 import { prLearnSkill } from "../general/pr-learn.skill";
 import { prRespondSkill } from "../general/pr-respond.skill";
+import { milestoneLearnSkill } from "../general/milestone-learn.skill";
+import { milestonePruneSkill } from "../general/milestone-prune.skill";
+import { milestoneShadowGateSkill } from "../general/milestone-shadow-gate.skill";
+import { milestoneArchiveSkill } from "../general/milestone-archive.skill";
+import { milestoneFinalizeSkill } from "../general/milestone-finalize.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -145,5 +150,10 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "pr-fix": () => prFixSkill,
   "pr-learn": () => prLearnSkill,
   "pr-respond": () => prRespondSkill,
+  "milestone-learn": () => milestoneLearnSkill,
+  "milestone-prune": () => milestonePruneSkill,
+  "milestone-shadow-gate": () => milestoneShadowGateSkill,
+  "milestone-archive": () => milestoneArchiveSkill,
+  "milestone-finalize": () => milestoneFinalizeSkill,
   lu: () => luSkill,
 };
