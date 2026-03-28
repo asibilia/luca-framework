@@ -25,6 +25,8 @@ export {
   ValidationIssueSchema,
   ValidationResultSchema,
   FailedStepInfoSchema,
+  SkipReasonSchema,
+  SkippedStepEntrySchema,
   DAGCheckpointSchema,
   WorkflowAdapterSchema,
 } from "./__schemas/workflow.schemas";
@@ -44,6 +46,8 @@ export type {
   ValidationIssue,
   ValidationResult,
   FailedStepInfo,
+  SkipReason,
+  SkippedStepEntry,
   DAGCheckpoint,
   WorkflowAdapter,
 } from "./__schemas/workflow.schemas";
@@ -107,6 +111,14 @@ export {
 // ─── DAG Visualizer ──────────────────────────────────────────────────────────
 
 export { dagToTopology } from "./__helpers/dag-visualizer";
+
+// ─── Skill State Machine ─────────────────────────────────────────────────────
+
+export { createSkillStateMachine } from "./__helpers/skill-state-machine";
+export type {
+  SkillMachineConfig,
+  SkillMachineResult,
+} from "./__helpers/skill-state-machine";
 
 // ─── Phase Pipeline ──────────────────────────────────────────────────────────
 
