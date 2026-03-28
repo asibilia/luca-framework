@@ -51,6 +51,6 @@ Created `createContextHelpers<TSchema>(path, schema)` generic factory returning 
 
 Three new TypeScript source files ready for consumption by Wave 2 refactoring tasks:
 
-- `/Users/alecsibilia/Github/luca-framework/src/skills/__schemas/states/shared-transitions.ts`
-- `/Users/alecsibilia/Github/luca-framework/src/hooks/__helpers/enforcement-hook-factory.ts`
-- `/Users/alecsibilia/Github/luca-framework/src/skills/__schemas/context-helpers.ts`
+- `src/skills/__schemas/states/shared-transitions.ts`
+- `src/hooks/__helpers/enforcement-hook-factory.ts`
+- `src/skills/__schemas/context-helpers.ts`
