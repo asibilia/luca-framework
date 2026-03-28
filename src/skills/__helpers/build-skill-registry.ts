@@ -74,6 +74,10 @@ import { milestonePruneSkill } from "../general/milestone-prune.skill";
 import { milestoneShadowGateSkill } from "../general/milestone-shadow-gate.skill";
 import { milestoneArchiveSkill } from "../general/milestone-archive.skill";
 import { milestoneFinalizeSkill } from "../general/milestone-finalize.skill";
+import { verifyExtractSkill } from "../general/verify-extract.skill";
+import { verifyTestSkill } from "../general/verify-test.skill";
+import { verifyDiagnoseSkill } from "../general/verify-diagnose.skill";
+import { verifyReviewSkill } from "../general/verify-review.skill";
 
 // Import Luca-specific skill
 import { luSkill } from "../luca/lu.skill";
@@ -155,5 +159,9 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "milestone-shadow-gate": () => milestoneShadowGateSkill,
   "milestone-archive": () => milestoneArchiveSkill,
   "milestone-finalize": () => milestoneFinalizeSkill,
+  "verify-extract": () => verifyExtractSkill,
+  "verify-test": () => verifyTestSkill,
+  "verify-diagnose": () => verifyDiagnoseSkill,
+  "verify-review": () => verifyReviewSkill,
   lu: () => luSkill,
 };

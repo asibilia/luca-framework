@@ -162,6 +162,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Validating milestone-complete step order...",
   }),
+  "pre-step-verify": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Skill",
+    script: "pre-step-verify.ts",
+    timeout: 5,
+    async: false,
+    status_message: "Validating verify step order...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:
