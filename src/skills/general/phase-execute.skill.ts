@@ -62,6 +62,8 @@ The orchestrator MUST NOT contain:
 - Harness execution or fix loop logic (moved to phase-execute-verify)
 - Reviewer spawning or finding aggregation (moved to phase-execute-review)
 
+**NEVER inline sub-skill logic.** If a sub-skill fails, re-invoke it. Do NOT copy its implementation into this orchestrator. The orchestrator MUST NOT: write code directly, read files for implementation purposes, or perform any task that a sub-skill is designed to handle.
+
 The orchestrator RETAINS:
 - **Steps 0-0.6**: Setup (arg parsing, model routing, phase start commit, GitHub tracking, procedure replay) — these are configuration/initialization
 - **Learning capture** (lu-learner, lu-process-data spawns, bridge events) — these are post-execution wrap-up
