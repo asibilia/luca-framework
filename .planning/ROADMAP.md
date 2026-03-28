@@ -21,9 +21,9 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 **Verification:** Standard
 **Depends on:** Phase 226
 
-- [ ] enforce-state-writes — Audit all 5 orchestrator SKILL.md specs and verify `current_state` write instructions are present and explicit after every Skill() call. Fix any that are missing or ambiguous.
-- [ ] enforce-context-init — Ensure context file initialization uses `writePrContext({})` (typed helper) not manual `cat > /tmp/...` in all orchestrators. The typed helpers set `context_version: 1` and permissions.
-- [ ] enforce-no-inline — Add explicit "NEVER do work inline that a sub-skill handles" constraint to all 5 orchestrator specs, matching the pattern already in lu-phase-loop
+- [x] enforce-state-writes — Audit all 5 orchestrator SKILL.md specs and verify `current_state` write instructions are present and explicit after every Skill() call. Fix any that are missing or ambiguous.
+- [x] enforce-context-init — Ensure context file initialization uses `writePrContext({})` (typed helper) not manual `cat > /tmp/...` in all orchestrators. The typed helpers set `context_version: 1` and permissions.
+- [x] enforce-no-inline — Add explicit "NEVER do work inline that a sub-skill handles" constraint to all 5 orchestrator specs, matching the pattern already in lu-phase-loop
 
 ### Phase 228: Post-Execution Gap Detection
 
@@ -32,9 +32,9 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 **Verification:** Standard
 **Depends on:** Phase 227
 
-- [ ] gap-audit-pr-address — Implement the Step 7 gap detection audit documented in pr-address.skill.ts: build DAGCheckpoint from execution trace, call detectGaps(), report coverage
-- [ ] gap-audit-all-orchestrators — Add equivalent post-execution gap audits to lu-phase-loop, phase-execute, verify, and milestone-complete orchestrators
-- [ ] gap-audit-hook — Create a SessionEnd or Stop hook that checks if any active orchestrator's context file has a non-terminal `current_state`, indicating the session ended mid-workflow with steps potentially skipped
+- [x] gap-audit-pr-address — Implement the Step 7 gap detection audit documented in pr-address.skill.ts: build DAGCheckpoint from execution trace, call detectGaps(), report coverage
+- [x] gap-audit-all-orchestrators — Add equivalent post-execution gap audits to lu-phase-loop, phase-execute, verify, and milestone-complete orchestrators
+- [x] gap-audit-hook — Create a SessionEnd or Stop hook that checks if any active orchestrator's context file has a non-terminal `current_state`, indicating the session ended mid-workflow with steps potentially skipped
 
 ---
 
