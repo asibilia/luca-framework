@@ -83,6 +83,7 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 3. **If a step says to use TeamCreate, you MUST use TeamCreate.** Do not replace with parallel Task calls.
 4. **NEVER write code directly.** All code changes happen through \`Skill(skill: "phase-execute")\`.
 5. **The phase pipeline is inviolable: classify -> discuss -> plan -> execute.** Every phase MUST pass through these steps in order.
+6. **current_state Tracking:** Write \`current_state\` to the lu context file via \`writeLuContext({ current_state: "..." })\` after each major phase-loop transition. The pre-step hook reads this field to validate sub-skill ordering.
 </main>`,
       order: 1,
     },
@@ -269,6 +270,11 @@ Transition state machine after discussion:
 luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 \`\`\`
 
+**Write state:**
+\`\`\`typescript
+await writeLuContext({ current_state: "executing" });
+\`\`\`
+
 ### 4e. Planning (MANDATORY — No Exceptions)
 
 **You MUST ensure PLAN.md files exist before proceeding to execution. phase-execute WILL FAIL without them.**
@@ -298,6 +304,11 @@ Transition state machine:
 
 \`\`\`bash
 luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
+\`\`\`
+
+**Write state:**
+\`\`\`typescript
+await writeLuContext({ current_state: "executing" });
 \`\`\`
 
 ### 4f. Execution (MANDATORY — Via Sub-Skill Only)
@@ -334,6 +345,11 @@ Skill(skill: "phase-execute", args: "{EXEC_FLAGS}")
 \`\`\`
 
 **NEVER substitute this Skill call with direct file writes.**
+
+**Write state after execution:**
+\`\`\`typescript
+await writeLuContext({ current_state: "executing" });
+\`\`\`
 
 ### 4g. Result Handling
 
@@ -507,6 +523,11 @@ Display milestone summary table with all phase results.
 
 - If OVERSIGHT == "milestone" or "phase":
   Present options: Complete milestone / Review / Stop
+
+**Write state after milestone-complete:**
+\`\`\`typescript
+await writeLuContext({ current_state: "complete" });
+\`\`\`
 
 **If some phases were parked:**
 
