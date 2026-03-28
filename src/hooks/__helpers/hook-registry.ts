@@ -138,6 +138,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Recalling context...",
   }),
+  "pre-step-enforcement": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Bash|Skill",
+    script: "pre-step-enforcement.ts",
+    timeout: 5,
+    async: false,
+    status_message: "Validating step prerequisites...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:
