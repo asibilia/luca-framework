@@ -100,6 +100,23 @@ export { validateDAG } from "./__helpers/dag-validator";
 export { executeDAG } from "./__helpers/dag-executor";
 export type { ExecuteDAGOptions } from "./__helpers/dag-executor";
 
+// ─── Progressive Executor ────────────────────────────────────────────────────
+
+export {
+  executeProgressively,
+  resolveContextZone,
+  degradeSummary,
+  formatSummariesForContext,
+  StepSummarySchema,
+  ProgressiveExecutorConfigSchema,
+} from "./__helpers/progressive-executor";
+
+export type {
+  StepSummary,
+  ProgressiveExecutorConfig,
+  ContextZone,
+} from "./__helpers/progressive-executor";
+
 // ─── DAG Serializer ──────────────────────────────────────────────────────────
 
 export {
@@ -119,6 +136,21 @@ export type {
   SkillMachineConfig,
   SkillMachineResult,
 } from "./__helpers/skill-state-machine";
+
+// ─── Gap Detector ───────────────────────────────────────────────────────────
+
+export {
+  detectGaps,
+  GapSeveritySchema,
+  ExecutionGapSchema,
+  GapAuditResultSchema,
+} from "./__helpers/gap-detector";
+
+export type {
+  GapSeverity,
+  ExecutionGap,
+  GapAuditResult,
+} from "./__helpers/gap-detector";
 
 // ─── Phase Pipeline ──────────────────────────────────────────────────────────
 
