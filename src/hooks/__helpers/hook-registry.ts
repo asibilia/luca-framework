@@ -146,6 +146,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Validating step prerequisites...",
   }),
+  "pre-step-pr-address": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Skill",
+    script: "pre-step-pr-address.ts",
+    timeout: 5,
+    async: false,
+    status_message: "Validating pr-address step order...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:
