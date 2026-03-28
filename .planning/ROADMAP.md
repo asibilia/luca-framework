@@ -17,10 +17,10 @@ Make step-skipping structurally impossible in critical workflow paths via typed 
 **Verification:** Full
 **Depends on:** None
 
-- [ ] anti-skip-layer2-skill-state-machines — Per-skill state machine definitions + bridge extension
-- [ ] anti-skip-layer1-progressive-disclosure — Progressive disclosure executor mode
-- [ ] anti-skip-layer3-hook-enforcement — Pre-step hook enforcement (framework-level guardrails)
-- [ ] anti-skip-layer4-gap-detection — Event-sourced gap detection (catch-all safety net)
+- [x] anti-skip-layer2-skill-state-machines — Per-skill state machine definitions + bridge extension
+- [x] anti-skip-layer1-progressive-disclosure — Progressive disclosure executor mode
+- [x] anti-skip-layer3-hook-enforcement — Pre-step hook enforcement (framework-level guardrails)
+- [x] anti-skip-layer4-gap-detection — Event-sourced gap detection (catch-all safety net)
 
 ### Phase 223: Anti-Skip Pilot
 
