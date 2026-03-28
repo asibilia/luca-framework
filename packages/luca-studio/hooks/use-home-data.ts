@@ -136,10 +136,10 @@ export function useHomeData(): HomeData {
           if (entry && typeof entry === "object") {
             const entryObj = entry as Record<string, unknown>;
             parsed.push({
+              ...entryObj,
               event: get(entryObj, "event_type", "unknown") as string,
               timestamp: get(entryObj, "timestamp", "") as string,
               summary: synthesizeSummary(entryObj) || undefined,
-              ...entryObj,
             });
           }
         }

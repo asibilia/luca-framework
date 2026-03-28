@@ -119,7 +119,7 @@ export async function POST(request: Request) {
 
     // 5. Stage only Studio files
     for (const file of studioFiles) {
-      execFileSync("git", ["add", file], { cwd: root, encoding: "utf-8" });
+      execFileSync("git", ["add", "--", file], { cwd: root, encoding: "utf-8" });
     }
 
     // 6. Commit with [studio-edit] prefix
