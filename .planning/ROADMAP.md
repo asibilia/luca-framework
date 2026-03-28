@@ -2,48 +2,11 @@
 
 ## Overview
 
-**Current Milestone:** v8.5.0 — Anti-Skip Enforcement Layer
+**Current Milestone:** (none — planning next)
 
 ---
 
-## v8.5.0 — Anti-Skip Enforcement Layer
-
-Make step-skipping structurally impossible in critical workflow paths via typed state machines, progressive disclosure, hook enforcement, and event-sourced gap detection.
-
-### Phase 222: Anti-Skip Infrastructure
-
-**Goal:** Build the core enforcement infrastructure — state machines, progressive disclosure, hook gates, gap detection.
-**Complexity:** COMPLEX
-**Verification:** Full
-**Depends on:** None
-
-- [x] anti-skip-layer2-skill-state-machines — Per-skill state machine definitions + bridge extension
-- [x] anti-skip-layer1-progressive-disclosure — Progressive disclosure executor mode
-- [x] anti-skip-layer3-hook-enforcement — Pre-step hook enforcement (framework-level guardrails)
-- [x] anti-skip-layer4-gap-detection — Event-sourced gap detection (catch-all safety net)
-
-### Phase 223: Anti-Skip Pilot
-
-**Goal:** Decompose pr-address and apply all 5 enforcement layers end-to-end as proof of concept.
-**Complexity:** COMPLEX
-**Verification:** Full+Human
-**Depends on:** Phase 222
-
-- [x] anti-skip-layer0-skill-decomposition — Decompose pr-address into atomic sub-skill chains
-- [x] anti-skip-pilot-pr-address — Apply all 5 layers to pr-address
-
-### Phase 224: Anti-Skip Rollout
-
-**Goal:** Apply validated architecture to remaining high-risk skills (milestone-complete, lu, verify, phase-execute).
-**Complexity:** COMPLEX
-**Verification:** Full+Human
-**Depends on:** Phase 223
-
-- [ ] anti-skip-rollout-remaining-skills — Rollout to remaining high-risk skills
-
----
-
-## Next: v8.6.0 — Scout Article Intelligence (after v8.5.0)
+## Next: v8.6.0 — Scout Article Intelligence
 
 Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
 
@@ -121,6 +84,12 @@ Automated article ingestion, research, and actionable todo generation from exter
 | #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
 
 ---
+
+## Closed (v8.5.0 Completed)
+
+| Todo                               | Reason                                                                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| anti-skip-layer0-4, pilot, rollout | 3 phases, 10 plans, 79 commits, 113 files (+18,033/-6,800 LOC). 5-layer anti-skip architecture, 5 skills decomposed into 23 sub-skills, state machines + hooks + gap detection |
 
 ## Closed (v8.4.1 Completed)
 
@@ -298,6 +267,7 @@ Automated article ingestion, research, and actionable todo generation from exter
 - **v8.3.0** — Studio Feature Suite: 6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC) ([View Archive](milestones/v8.3.0-ROADMAP.md))
 - **v8.4.1** — Audit Gap Closure: 3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC) ([View Archive](milestones/v8.4.1-ROADMAP.md))
 - **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
+- **v8.5.0** — Anti-Skip Enforcement Layer: 3 phases, 10 plans, 79 commits, 113 files changed (+18,033 LOC) ([View Archive](milestones/v8.5.0-ROADMAP.md))
 
 ---
 
