@@ -1,16 +1,13 @@
 {
   "status": "active",
-  "value": "executing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "dbd8ffe1-fc70-4174-a4bc-99bff383872a",
-    "github_issue": 113,
-    "branch": "113--anti-skip-enforcement-layer",
+    "session_id": "eed74919-9f6b-458d-abc5-03275e91444e",
     "base_branch": "main",
-    "current_milestone": "v8.5.0 — Anti-Skip Enforcement Layer",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "COMPLEX",
+    "complexity": "TRIVIAL",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -80,39 +77,11 @@
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Small",
-    "appetite_token_ceiling": 50000,
-    "appetite_context_percent": 40,
+    "appetite_level": "Medium",
+    "appetite_token_ceiling": 100000,
+    "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-28T14:20:31.068Z",
-    "last_transition_at": "2026-03-28T16:08:29.082Z"
+    "started_at": "2026-03-28T17:20:59.582Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 2,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-03-28T14:57:00.758Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }

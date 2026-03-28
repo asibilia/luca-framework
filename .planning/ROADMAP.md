@@ -6,6 +6,34 @@
 
 ---
 
+## v8.5.1 — Audit Gap Closure
+
+Close 11 code quality and security findings from the v8.5.0 milestone audit.
+
+### Phase 225: DRY Consolidation
+
+**Goal:** Extract shared factories for enforcement hooks, context schemas, and state machine constants to eliminate ~650 LOC of duplication across 5 decomposed skills.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** None
+
+- [ ] dry-hook-factory — Extract `createSubSkillEnforcementHook(config)` factory to replace 5 identical hooks (DRY-001)
+- [ ] dry-context-factory — Extract `createContextHelpers<T>(config)` factory to replace 5 identical read/write helpers (DRY-002)
+- [ ] dry-shared-constants — Move ABORT_TRANSITION to shared module, standardize orchestrator patterns (DRY-003, DRY-004, DRY-005)
+
+### Phase 226: Security Hardening
+
+**Goal:** Harden enforcement hooks with input validation, schema-based parsing, and file permission controls.
+**Complexity:** SIMPLE
+**Verification:** Standard
+**Depends on:** Phase 225 (factories must exist before hardening them)
+
+- [ ] sec-skill-matching — Fix loose skill name matching with exact match pattern (SEC-001)
+- [ ] sec-context-validation — Add Zod safeParse for context file state validation, use sanitizeJsonParse (SEC-002, SEC-006)
+- [ ] sec-file-permissions — Set 0o600 on context files and dedup guard files, validate bridge args (SEC-003, SEC-004, SEC-005)
+
+---
+
 ## Next: v8.6.0 — Scout Article Intelligence
 
 Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
