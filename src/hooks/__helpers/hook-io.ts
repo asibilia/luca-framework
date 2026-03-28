@@ -9,7 +9,7 @@
  */
 
 import { createHash } from "crypto";
-import { readFileSync, writeFileSync } from "fs";
+import { chmodSync, readFileSync } from "node:fs";
 
 import type { ZodSchema } from "zod";
 
@@ -175,7 +175,14 @@ export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  writeFileSync(guardFile, String(now));
+  // Fire-and-forget: guard write is best-effort (timestamp already in memory)
+  void Bun.write(guardFile, String(now)).then(() => {
+    try {
+      chmodSync(guardFile, 0o600);
+    } catch {
+      // Non-critical: chmod may fail on certain platforms
+    }
+  });
 };
 
 // ─── Pre-Step Dedup Guard ────────────────────────────────────────────────────
@@ -222,7 +229,14 @@ export const guardPreStep = (
   }
 
   const now = Date.now();
-  writeFileSync(guardFile, String(now));
+  // Fire-and-forget: guard write is best-effort (timestamp already in memory)
+  void Bun.write(guardFile, String(now)).then(() => {
+    try {
+      chmodSync(guardFile, 0o600);
+    } catch {
+      // Non-critical: chmod may fail on certain platforms
+    }
+  });
 };
 
 // ─── Throttle Helpers ────────────────────────────────────────────────────────
@@ -264,11 +278,18 @@ export const checkThrottle = (key: string, ttlSeconds: number): boolean => {
  * @param key - Unique throttle key (e.g. `.luca-snapshot-sync-${hash}-ts`)
  */
 export const recordThrottle = (key: string): void => {
-  try {
-    writeFileSync(key, String(Math.floor(Date.now() / 1000)));
-  } catch {
-    // /tmp not writable — non-critical
-  }
+  // Fire-and-forget: throttle write is best-effort
+  void Bun.write(key, String(Math.floor(Date.now() / 1000)))
+    .then(() => {
+      try {
+        chmodSync(key, 0o600);
+      } catch {
+        // Non-critical: chmod may fail on certain platforms
+      }
+    })
+    .catch(() => {
+      // /tmp not writable — non-critical
+    });
 };
 
 // ─── Utility: Project Hash ──────────────────────────────────────────────────

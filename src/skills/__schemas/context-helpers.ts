@@ -28,6 +28,8 @@
  * @see src/skills/__schemas/milestone-complete-context.schemas.ts
  */
 
+import { chmod } from "node:fs/promises";
+
 import { z } from "zod";
 import merge from "lodash/merge";
 
@@ -207,6 +209,15 @@ export const createContextHelpers = <TSchema extends z.ZodType>(
     const merged = merge({}, current, patch);
 
     await Bun.write(path, JSON.stringify(merged, null, 2));
+
+    // Restrict context files to owner read/write only.
+    // Context files in /tmp contain workflow state and should not be
+    // world-readable.
+    try {
+      await chmod(path, 0o600);
+    } catch {
+      // Non-critical: chmod may fail on certain platforms or file systems
+    }
   };
 
   return { read, write };
