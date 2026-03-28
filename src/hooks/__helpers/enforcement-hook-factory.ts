@@ -25,7 +25,7 @@
  * @see src/hooks/scripts/pre-step-milestone-complete.ts
  */
 
-import { readFileSync } from "fs";
+import { z } from "zod";
 
 import {
   readStdinJson,
@@ -33,6 +33,20 @@ import {
   exitBlock,
   guardPreStep,
 } from "./hook-io.ts";
+
+// ─── Context File Schema ──────────────────────────────────────────────────
+
+/**
+ * Minimal Zod schema for context file validation in enforcement hooks.
+ *
+ * Only validates `current_state` — the single field used by enforcement logic.
+ * Other context fields (outputs, metadata) are ignored via `passthrough()`.
+ */
+const EnforcementContextSchema = z
+  .object({
+    current_state: z.string().optional(),
+  })
+  .passthrough();
 
 // ─── Config Interface ──────────────────────────────────────────────────────
 
@@ -110,10 +124,10 @@ export interface EnforcementHookConfig {
  * 1. Reads stdin via `readStdinJson()` from hook-io
  * 2. Exits success if `tool_name !== "Skill"`
  * 3. Calls `guardPreStep(hookName, toolName)` for 200ms TTL dedup
- * 4. Extracts skill name from `tool_input.skill` or `tool_input.args`
- * 5. Matches against `subSkills` set
+ * 4. Extracts skill name from `tool_input.skill` (exact) or first token of `tool_input.args`
+ * 5. Exact set lookup against `subSkills` (no substring matching)
  * 6. If no match, exits success (not our sub-skill)
- * 7. Reads context file at `contextPath` via `readFileSync`
+ * 7. Reads context file at `contextPath` via `Bun.file()` and validates with Zod `safeParse`
  * 8. On file-not-found:
  *    - If `initialSkill` is set AND matched skill === `initialSkill`,
  *      exits success (fail-open for bootstrap)
@@ -163,48 +177,66 @@ export const createSubSkillEnforcementHook = (
     // Step 3: PREMORTEM Constraint #2: 200ms TTL dedup guard
     guardPreStep(hookName, toolName);
 
-    // Step 4: Extract skill name from tool_input
+    // Step 4: Extract skill name from tool_input (exact match)
+    // `tool_input.skill` contains the exact skill name. If absent,
+    // fall back to the first whitespace-delimited token from `tool_input.args`.
     const toolInput = stdinData?.tool_input as
       | Record<string, unknown>
       | undefined;
-    const skillArg =
-      (toolInput?.skill as string) || (toolInput?.args as string) || "";
+    const skillName =
+      (toolInput?.skill as string) ||
+      ((toolInput?.args as string) || "").split(/\s+/)[0];
 
-    // Step 5: Match against sub-skills set
-    let matchedSkill: string | null = null;
-    for (const name of subSkills) {
-      if (skillArg.includes(name)) {
-        matchedSkill = name;
-        break;
-      }
-    }
-
-    // Step 6: Not our sub-skill — allow
-    if (!matchedSkill) {
+    // Step 5: Exact set lookup — no substring matching
+    if (!skillName || !subSkills.has(skillName)) {
+      // Not our sub-skill — allow
       return exitSuccess();
     }
+    const matchedSkill = skillName;
 
-    // Step 7: Read the context file to determine current state
+    // Step 7: Read the context file via Bun.file and validate with Zod
     let currentState = "idle"; // Default to idle if no context file yet
     try {
-      const raw = readFileSync(contextPath, "utf-8");
-      const context = JSON.parse(raw) as Record<string, unknown>;
+      const file = Bun.file(contextPath);
+      const exists = await file.exists();
+
+      if (!exists) {
+        // Step 8a: File doesn't exist.
+        if (initialSkill && matchedSkill === initialSkill) {
+          // initialSkill from missing context = valid (bootstrap scenario)
+          return exitSuccess();
+        }
+        // All other sub-skills: missing context = invalid state (fail-closed)
+        return exitBlock(
+          `${hookName}: cannot run ${matchedSkill} — context file not found at ${contextPath}. ` +
+            `Has ${initialSkill || "the orchestrator"} been run first?`,
+        );
+      }
+
+      const raw = await file.json();
+      const parseResult = EnforcementContextSchema.safeParse(raw);
+
+      if (!parseResult.success) {
+        // Context file exists but failed schema validation — fail-closed
+        return exitBlock(
+          `${hookName}: context file at ${contextPath} failed validation. ` +
+            `Errors: ${parseResult.error.message}`,
+        );
+      }
 
       // The state is tracked by the orchestrator in the context file.
       // If the context file exists but has no state field, we're in the
       // initial state (idle — first sub-skill hasn't run yet).
-      if (typeof context.current_state === "string") {
-        currentState = context.current_state;
+      if (parseResult.data.current_state) {
+        currentState = parseResult.data.current_state;
       }
     } catch {
-      // Step 8: File doesn't exist or can't be read.
+      // Step 8b: File can't be read (permissions, corrupted JSON, etc.)
       if (initialSkill && matchedSkill === initialSkill) {
-        // initialSkill from missing context = valid (bootstrap scenario)
         return exitSuccess();
       }
-      // All other sub-skills: missing context = invalid state (fail-closed)
       return exitBlock(
-        `${hookName}: cannot run ${matchedSkill} — context file not found at ${contextPath}. ` +
+        `${hookName}: cannot run ${matchedSkill} — context file not readable at ${contextPath}. ` +
           `Has ${initialSkill || "the orchestrator"} been run first?`,
       );
     }
