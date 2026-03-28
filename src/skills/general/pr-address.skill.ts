@@ -118,6 +118,20 @@ Conditional paths use explicit SKIP events (fail-closed):
 - \`SKIP_DEBATE\`: No split verdicts found (orchestrator decides, not the machine)
 - \`SKIP_LEARN\`: No learnable comments found (orchestrator decides, not the machine)
 
+## CRITICAL: current_state Tracking
+
+After EVERY state transition, the orchestrator MUST write \`current_state\` to the context file:
+
+\`\`\`typescript
+import { writePrContext } from "src/skills/__schemas/pr-address-context.schemas";
+
+await writePrContext({ current_state: "fetched" });
+\`\`\`
+
+The pre-step enforcement hook (\`pre-step-pr-address\`) reads this field to validate that sub-skills are called in the correct order. If \`current_state\` is not written, the hook defaults to "idle" and blocks all non-initial sub-skills.
+
+**NEVER inline sub-skill logic.** If a sub-skill fails, re-invoke it. Do NOT copy its implementation into this orchestrator.
+
 ## Orchestrator Flow
 
 ### Step 0: Parse Args and Initialize Context
@@ -131,6 +145,8 @@ import { writePrContext } from "src/skills/__schemas/pr-address-context.schemas"
 
 await writePrContext({});
 // This creates the file with context_version: 1
+// Write initial state
+await writePrContext({ current_state: "idle" });
 \`\`\`
 
 State: \`idle\`
@@ -144,6 +160,11 @@ Skill("pr-fetch", "{pr_number}")
 On success: send \`FETCH_COMPLETE\` -> state becomes \`fetched\`
 On failure: send \`ABORT\` -> state becomes \`failed\` (required sub-skill)
 
+**Write state:**
+\`\`\`typescript
+await writePrContext({ current_state: "fetched" });
+\`\`\`
+
 ### Step 2: Validate and Categorize Comments
 
 \`\`\`
@@ -155,6 +176,11 @@ categorization, reviewer agent spawning, and aggregation.
 
 On success: send \`CATEGORIZE_COMPLETE\` -> state becomes \`categorized\`, then send \`VALIDATE_COMPLETE\` -> state becomes \`validated\`
 On failure: send \`ABORT\` -> state becomes \`failed\` (required sub-skill)
+
+**Write state:**
+\`\`\`typescript
+await writePrContext({ current_state: "validated" });
+\`\`\`
 
 ### Step 3: Conditional Debate (Split Verdicts)
 
@@ -186,6 +212,11 @@ On failure (optional sub-skill): record guard-exception skip entry, log warning,
 
 Send \`SKIP_DEBATE\` explicitly -> state becomes \`planned\` (fail-closed: always send a transition event)
 
+**Write state (in both cases):**
+\`\`\`typescript
+await writePrContext({ current_state: "debated" });
+\`\`\`
+
 ### Step 4: Plan and Execute Fixes
 
 \`\`\`
@@ -197,6 +228,11 @@ planning fixes, executing them, and verifying them.
 
 On success: send \`FIX_COMPLETE\` -> state becomes \`fixed\`, then send \`VERIFY_COMPLETE\` -> state becomes \`verified\`
 On failure: send \`ABORT\` -> state becomes \`failed\` (required sub-skill)
+
+**Write state:**
+\`\`\`typescript
+await writePrContext({ current_state: "fixed" });
+\`\`\`
 
 ### Step 5: Conditional Learning
 
@@ -225,6 +261,11 @@ On failure (optional sub-skill): record guard-exception skip entry, log warning,
 
 Send \`SKIP_LEARN\` explicitly -> state becomes \`responded\` (fail-closed)
 
+**Write state (in both cases):**
+\`\`\`typescript
+await writePrContext({ current_state: "learned" });
+\`\`\`
+
 ### Step 6: Respond and Push
 
 \`\`\`
@@ -233,6 +274,11 @@ Skill("pr-respond", "{pr_number}")
 
 On success: send \`RESPOND_COMPLETE\` -> state becomes \`responded\` (if not already), then send \`PUSH_COMPLETE\` -> state becomes \`pushed\` (final)
 On failure: send \`ABORT\` -> state becomes \`failed\` (required sub-skill)
+
+**Write state:**
+\`\`\`typescript
+await writePrContext({ current_state: "pushed" });
+\`\`\`
 
 ### Step 7: Gap Detection Audit
 
@@ -263,6 +309,11 @@ After all Skill() calls complete (state machine in \`pushed\` or \`failed\`), ru
 
 This pattern ensures anti-skip enforcement: every step transition is either an explicit completion event, an explicit skip event, or an abort. No silent omission.
 
+**Write state on failure:**
+\`\`\`typescript
+await writePrContext({ current_state: "failed" });
+\`\`\`
+
 ## Success Criteria
 
 - [ ] PR identified (from branch or input)
@@ -273,6 +324,7 @@ This pattern ensures anti-skip enforcement: every step transition is either an e
 - [ ] Responses posted and changes pushed (pr-respond)
 - [ ] Gap detection audit passes with \`clean\` or \`warning\`-only status
 - [ ] State machine reaches \`pushed\` (success) or \`failed\` (error) terminal state
+- [ ] \`current_state\` written after every state transition
 
 ## Related Skills
 
