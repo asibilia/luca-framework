@@ -74,27 +74,18 @@
         "verificationMode": "full+human"
       }
     },
-    "lu_config": {
-      "oversight": "full-auto",
-      "max_phases_per_session": 10,
-      "auto_plan_phases": true,
-      "skip_uat": true,
-      "gap_closure_retries": 1,
-      "pause_on_critical_review": true,
-      "cross_milestone": false,
-      "backlog_scan": true
-    },
+    "autopilot_config": {},
     "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
     "intuition_flags": [],
     "memory_tags": [],
-    "appetite_level": "Large",
-    "appetite_token_ceiling": 200000,
-    "appetite_context_percent": 60,
+    "appetite_level": "Small",
+    "appetite_token_ceiling": 50000,
+    "appetite_context_percent": 40,
     "appetite_used_tokens": 0,
     "started_at": "2026-03-28T14:20:31.068Z",
-    "last_transition_at": "2026-03-28T15:26:34.226Z"
+    "last_transition_at": "2026-03-28T16:08:29.082Z"
   },
   "children": {
     "phase": {
