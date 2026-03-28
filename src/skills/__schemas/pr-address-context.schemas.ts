@@ -14,7 +14,8 @@
  * @see .planning/phases/223-anti-skip-pilot/01-CONTEXT.md Decision #1
  */
 import { z } from "zod";
-import merge from "lodash/merge";
+
+import { createContextHelpers } from "./context-helpers";
 
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
@@ -208,95 +209,16 @@ export const PR_ADDRESS_CONTEXT_PATH = "/tmp/pr-address-context.json";
 // ─── Context File Helpers ───────────────────────────────────────────────────
 
 /**
- * Read the pr-address context file and validate it via safeParse.
+ * Typed read/write helpers for the pr-address context file.
  *
- * Returns the safeParse result directly. Callers MUST check `.success`
- * and treat `success: false` as ABORT per PREMORTEM Constraint #1.
+ * Created via `createContextHelpers` factory. `readPrContext()`
+ * validates the file via safeParse — callers MUST check `.success` and
+ * treat `success: false` as ABORT per PREMORTEM Constraint #1.
  *
- * @returns safeParse result with `success: true` and `data`, or `success: false` and `error`
- *
- * @example
- * ```typescript
- * const result = await readPrContext();
- * if (!result.success) {
- *   // ABORT: context file missing or malformed
- *   return;
- * }
- * const context = result.data;
- * ```
+ * `writePrContext()` deep-merges a typed patch into the existing file.
  */
-export async function readPrContext(): Promise<
-  | { success: true; data: PrAddressContext }
-  | { success: false; error: z.ZodError }
-> {
-  try {
-    const file = Bun.file(PR_ADDRESS_CONTEXT_PATH);
-    const exists = await file.exists();
-    if (!exists) {
-      // File does not exist — return a failed parse
-      const result = PrAddressContextSchema.safeParse({});
-      // This will fail because context_version is missing
-      return result as
-        | { success: true; data: PrAddressContext }
-        | { success: false; error: z.ZodError };
-    }
-    const raw = await file.json();
-    const result = PrAddressContextSchema.safeParse(raw);
-    return result as
-      | { success: true; data: PrAddressContext }
-      | { success: false; error: z.ZodError };
-  } catch {
-    // JSON parse error or file read error — return failed parse
-    const result = PrAddressContextSchema.safeParse({});
-    return result as
-      | { success: true; data: PrAddressContext }
-      | { success: false; error: z.ZodError };
-  }
-}
-
-/**
- * Write a partial update to the pr-address context file.
- *
- * Reads the current file (if it exists), deep-merges the patch via lodash
- * `merge`, and writes back. Creates the file with `context_version: 1`
- * if it does not yet exist.
- *
- * @param patch - Partial context to merge into the existing context
- *
- * @example
- * ```typescript
- * await writePrContext({
- *   pr_fetch: {
- *     pr_number: 123,
- *     repo: "owner/repo",
- *     review_comments: [...],
- *   },
- * });
- * ```
- */
-export async function writePrContext(
-  patch: Partial<Omit<PrAddressContext, "context_version">>,
-): Promise<void> {
-  let current: Record<string, unknown> = { context_version: 1 };
-
-  try {
-    const file = Bun.file(PR_ADDRESS_CONTEXT_PATH);
-    const exists = await file.exists();
-    if (exists) {
-      const raw = await file.json();
-      if (raw && typeof raw === "object") {
-        current = raw as Record<string, unknown>;
-      }
-    }
-  } catch {
-    // File doesn't exist or can't be read — start fresh
-  }
-
-  // Ensure context_version is always 1
-  current.context_version = 1;
-
-  // Deep merge the patch into current context
-  const merged = merge({}, current, patch);
-
-  await Bun.write(PR_ADDRESS_CONTEXT_PATH, JSON.stringify(merged, null, 2));
-}
+const { read: readPrContext, write: writePrContext } = createContextHelpers(
+  PR_ADDRESS_CONTEXT_PATH,
+  PrAddressContextSchema,
+);
+export { readPrContext, writePrContext };

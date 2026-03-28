@@ -17,7 +17,8 @@
  * @see .planning/phases/224-anti-skip-rollout/04-PLAN.md Task 2
  */
 import { z } from "zod";
-import merge from "lodash/merge";
+
+import { createContextHelpers } from "./context-helpers";
 
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
@@ -110,96 +111,18 @@ export const LU_CONTEXT_PATH = "/tmp/lu-context.json";
 // ─── Context File Helpers ───────────────────────────────────────────────────
 
 /**
- * Read the lu context file and validate it via safeParse.
+ * Typed read/write helpers for the lu context file.
  *
- * Returns the safeParse result directly. Callers MUST check `.success`
- * and treat `success: false` as ABORT per PREMORTEM Constraint #1.
+ * Created via `createContextHelpers` factory. `readLuContext()` validates
+ * the file via safeParse — callers MUST check `.success` and treat
+ * `success: false` as ABORT per PREMORTEM Constraint #1.
  *
- * @returns safeParse result with `success: true` and `data`, or `success: false` and `error`
- *
- * @example
- * ```typescript
- * const result = await readLuContext();
- * if (!result.success) {
- *   // ABORT: context file missing or malformed
- *   return;
- * }
- * const context = result.data;
- * ```
+ * `writeLuContext()` deep-merges a typed patch into the existing file.
+ * The patch type is `Partial<Omit<LuContext, "context_version">>` with
+ * NO `Record<string, unknown>` escape hatch (PREMORTEM R2).
  */
-export async function readLuContext(): Promise<
-  { success: true; data: LuContext } | { success: false; error: z.ZodError }
-> {
-  try {
-    const file = Bun.file(LU_CONTEXT_PATH);
-    const exists = await file.exists();
-    if (!exists) {
-      // File does not exist — return a failed parse
-      const result = LuContextSchema.safeParse({});
-      // This will fail because context_version is missing
-      return result as
-        | { success: true; data: LuContext }
-        | { success: false; error: z.ZodError };
-    }
-    const raw = await file.json();
-    const result = LuContextSchema.safeParse(raw);
-    return result as
-      | { success: true; data: LuContext }
-      | { success: false; error: z.ZodError };
-  } catch {
-    // JSON parse error or file read error — return failed parse
-    const result = LuContextSchema.safeParse({});
-    return result as
-      | { success: true; data: LuContext }
-      | { success: false; error: z.ZodError };
-  }
-}
-
-/**
- * Write a partial update to the lu context file.
- *
- * Reads the current file (if it exists), deep-merges the patch via lodash
- * `merge`, and writes back. Creates the file with `context_version: 1`
- * if it does not yet exist.
- *
- * @param patch - Partial context to merge into the existing context
- *
- * @example
- * ```typescript
- * await writeLuContext({
- *   lu_route: {
- *     request_parsed: true,
- *     git_context_loaded: true,
- *     cognition_ran: false,
- *     complexity_level: "MODERATE",
- *     routing_decision: "phase-execute",
- *   },
- * });
- * ```
- */
-export async function writeLuContext(
-  patch: Partial<Omit<LuContext, "context_version">> & Record<string, unknown>,
-): Promise<void> {
-  let current: Record<string, unknown> = { context_version: 1 };
-
-  try {
-    const file = Bun.file(LU_CONTEXT_PATH);
-    const exists = await file.exists();
-    if (exists) {
-      const raw = await file.json();
-      if (raw && typeof raw === "object") {
-        current = raw as Record<string, unknown>;
-      }
-    }
-  } catch {
-    // File doesn't exist or can't be read — start fresh
-  }
-
-  // Ensure context_version is always 1
-  current.context_version = 1;
-
-  // Deep merge the patch into current context
-  const merged = merge({}, current, patch);
-
-  await Bun.write(LU_CONTEXT_PATH, JSON.stringify(merged, null, 2));
-}
+const { read: readLuContext, write: writeLuContext } = createContextHelpers(
+  LU_CONTEXT_PATH,
+  LuContextSchema,
+);
+export { readLuContext, writeLuContext };
