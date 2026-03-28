@@ -198,8 +198,8 @@ async function compileEntity(
 
   const outputPath = resolveOutputPath(domain, name, format as SupportedFormat);
 
-  // Ensure parent directory exists before writing (node:fs/promises — safe from
-  // shell injection since the path comes from request data).
+  // Ensure parent directory exists before writing. Uses node:fs/promises mkdir
+  // (no shell invocation). Path traversal is bounded by resolveOutputPath().
   const repoRoot = path.resolve(import.meta.dir, "..", "..", "..");
   const absolutePath = path.join(repoRoot, outputPath);
   const parentDir = path.dirname(absolutePath);
