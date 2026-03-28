@@ -69,7 +69,7 @@ idle -> EXTRACT_COMPLETE -> extracted -> TEST_COMPLETE -> tested
 **CRITICAL:** Write \`current_state\` to context file after EVERY transition:
 \`\`\`typescript
 import { writeVerifyContext } from "src/skills/__schemas/verify-context.schemas";
-await writeVerifyContext({ current_state: "extracted" } as any);
+await writeVerifyContext({ current_state: "extracted" });
 \`\`\`
 
 ## Process
@@ -88,12 +88,9 @@ import { unlinkSync } from "fs";
 try { unlinkSync(VERIFY_CONTEXT_PATH); } catch {}
 
 // Initialize with context_version and current_state
-await writeVerifyContext({} as any);
+await writeVerifyContext({});
 // Write initial state
-const contextFile = Bun.file(VERIFY_CONTEXT_PATH);
-const ctx = await contextFile.json();
-ctx.current_state = "idle";
-await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx, null, 2));
+await writeVerifyContext({ current_state: "idle" });
 \`\`\`
 
 ### Step 1: Extract (idle -> extracted)
@@ -104,11 +101,7 @@ Skill("verify-extract", "{phase_number}")
 
 On success, write state transition:
 \`\`\`typescript
-await writeVerifyContext({} as any);
-// Update current_state
-const ctx1 = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
-ctx1.current_state = "extracted";
-await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx1, null, 2));
+await writeVerifyContext({ current_state: "extracted" });
 \`\`\`
 
 ### Step 2: Test (extracted -> tested)
@@ -119,9 +112,7 @@ Skill("verify-test", "{phase_number}")
 
 On success, write state transition:
 \`\`\`typescript
-const ctx2 = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
-ctx2.current_state = "tested";
-await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx2, null, 2));
+await writeVerifyContext({ current_state: "tested" });
 \`\`\`
 
 ### Step 3: Path Decision (tested -> diagnosed OR reviewed)
@@ -144,9 +135,7 @@ Skill("verify-diagnose", "{phase_number}")
 
 On success, write state transition:
 \`\`\`typescript
-const ctx3b = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
-ctx3b.current_state = "diagnosed";
-await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx3b, null, 2));
+await writeVerifyContext({ current_state: "diagnosed" });
 \`\`\`
 
 **diagnosed is terminal.** Report to user and suggest \`/phase-execute --gaps-only\`.
@@ -159,9 +148,7 @@ Skill("verify-review", "{phase_number}")
 
 On success, write state transition:
 \`\`\`typescript
-const ctx3a = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
-ctx3a.current_state = "reviewed";
-await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctx3a, null, 2));
+await writeVerifyContext({ current_state: "reviewed" });
 \`\`\`
 
 **reviewed is terminal.** Report to user and suggest next phase.
@@ -217,9 +204,7 @@ Options:
 
 If any sub-skill fails, send ABORT to the state machine:
 \`\`\`typescript
-const ctxErr = JSON.parse(readFileSync(VERIFY_CONTEXT_PATH, "utf-8"));
-ctxErr.current_state = "failed";
-await Bun.write(VERIFY_CONTEXT_PATH, JSON.stringify(ctxErr, null, 2));
+await writeVerifyContext({ current_state: "failed" });
 \`\`\`
 
 Report the failure to the user with the failing sub-skill name.
