@@ -2,11 +2,39 @@
 
 ## Overview
 
-**Current Milestone:** (none — planning next)
+**Current Milestone:** v8.5.1 — Audit Gap Closure
 
 ---
 
-## (Planning next milestone)
+## v8.5.1 — Audit Gap Closure (reopened)
+
+Close code quality, security, and enforcement findings. Phases 225-226 shipped DRY + hardening. Phases 227-228 address the orchestrator enforcement gap discovered during PR review.
+
+### Phase 225: DRY Consolidation — COMPLETE
+
+### Phase 226: Security Hardening — COMPLETE
+
+### Phase 227: Orchestrator State Tracking
+
+**Goal:** Ensure all 5 decomposed orchestrators (lu, phase-execute, verify, milestone-complete, pr-address) write `current_state` to their context files after every state transition, so pre-step hooks can enforce ordering.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 226
+
+- [ ] enforce-state-writes — Audit all 5 orchestrator SKILL.md specs and verify `current_state` write instructions are present and explicit after every Skill() call. Fix any that are missing or ambiguous.
+- [ ] enforce-context-init — Ensure context file initialization uses `writePrContext({})` (typed helper) not manual `cat > /tmp/...` in all orchestrators. The typed helpers set `context_version: 1` and permissions.
+- [ ] enforce-no-inline — Add explicit "NEVER do work inline that a sub-skill handles" constraint to all 5 orchestrator specs, matching the pattern already in lu-phase-loop
+
+### Phase 228: Post-Execution Gap Detection
+
+**Goal:** Implement post-execution gap detection audits that verify all expected sub-skills were actually invoked, catching cases where the LLM bypasses enforcement by going ad-hoc.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 227
+
+- [ ] gap-audit-pr-address — Implement the Step 7 gap detection audit documented in pr-address.skill.ts: build DAGCheckpoint from execution trace, call detectGaps(), report coverage
+- [ ] gap-audit-all-orchestrators — Add equivalent post-execution gap audits to lu-phase-loop, phase-execute, verify, and milestone-complete orchestrators
+- [ ] gap-audit-hook — Create a SessionEnd or Stop hook that checks if any active orchestrator's context file has a non-terminal `current_state`, indicating the session ended mid-workflow with steps potentially skipped
 
 ---
 
@@ -94,12 +122,6 @@ Automated article ingestion, research, and actionable todo generation from exter
 | Todo                               | Reason                                                                                                                                                                         |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | anti-skip-layer0-4, pilot, rollout | 3 phases, 10 plans, 79 commits, 113 files (+18,033/-6,800 LOC). 5-layer anti-skip architecture, 5 skills decomposed into 23 sub-skills, state machines + hooks + gap detection |
-
-## Closed (v8.5.1 Completed)
-
-| Todo                     | Reason                                                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| DRY-001–005, SEC-001–006 | 2 phases, 3 plans, 13 commits, 78 files changed (-1,784 LOC net). DRY factories for hooks/context/transitions + security hardening |
 
 ## Closed (v8.4.1 Completed)
 

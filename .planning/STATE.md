@@ -2,7 +2,7 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
+- **Current Milestone:** v8.5.1
 - **Status:** Idle
 - **Task Complexity:** TRIVIAL
 - **Oversight:** milestone
@@ -58,4 +58,4 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-28T20:29:55.908Z_
+_State generated from machine snapshot at 2026-03-28T21:56:39.948Z_
