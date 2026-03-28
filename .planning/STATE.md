@@ -58,4 +58,8 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
+<<<<<<< Updated upstream
 _State generated from machine snapshot at 2026-03-28T22:13:57.746Z_
+=======
+_State generated from machine snapshot at 2026-03-27T19:35:11.690Z_
+>>>>>>> Stashed changes

@@ -1,0 +1,59 @@
+# Phase 228 — Post-Execution Gap Detection: Wave 1 Summary
+
+## Objective
+
+Add post-execution gap detection audits to orchestrator specs and create a non-terminal state detection hook, closing the observability gap for silently skipped workflow steps.
+
+## Tasks Completed
+
+### Task 1: Verify gap audit in pr-address.skill.ts
+
+**Status:** Pre-existing (skipped)
+
+Step 7 of pr-address.skill.ts already contains complete gap detection audit instructions — building a DAGCheckpoint, calling `detectGaps()`, and reporting results with the three-tier tolerance model. No changes needed.
+
+### Task 2: Add gap audit step to remaining 4 orchestrators
+
+**Commit:** `863cd9d1` — `feat(228): add gap audit step to lu, phase-execute, verify, milestone-complete specs`
+
+Added Gap Detection Audit steps to:
+
+- `src/skills/luca/lu.skill.ts` — Step 6 (before "Done"), checks lu_route, lu_configure, lu_backlog (optional), lu_phase_loop
+- `src/skills/general/phase-execute.skill.ts` — Step 11.5 (after final commit, before UAT), checks phase_execute_waves, phase_execute_verify, phase_execute_review (optional)
+- `src/skills/general/verify.skill.ts` — Step 5 (after report summary), checks verify_extract, verify_test, and path-dependent verify_review or verify_diagnose
+- `src/skills/general/milestone-complete.skill.ts` — Step 6 (after finalize, before error handling), checks milestone_learn, milestone_prune, milestone_shadow_gate (optional), milestone_archive, milestone_finalize
+
+Each audit instructs the orchestrator to read its context file, verify required sections are populated, and log warnings for missing sub-skills. All audits are advisory only.
+
+### Task 3: Create session-end-audit hook
+
+**Commit:** `e787f761` — `feat(228): create session-end-audit hook for non-terminal state detection`
+
+Created `src/hooks/scripts/session-end-audit.ts` — a SessionEnd/Stop hook that:
+
+- Checks all 5 orchestrator context files (`/tmp/lu-context.json`, `/tmp/phase-execute-context.json`, `/tmp/verify-context.json`, `/tmp/milestone-complete-context.json`, `/tmp/pr-address-context.json`)
+- Reads `current_state` from each existing file
+- Compares against terminal states (lu: `complete`; phase-execute: `committed`/`failed`; verify: `reviewed`/`diagnosed`/`failed`; milestone-complete: `finalized`/`failed`; pr-address: `pushed`/`failed`)
+- Emits advisory warnings via `emitResult({ systemMessage })` for non-terminal states
+- Always exits 0 (never blocks session end)
+- Uses `guardDedup` for deduplication
+- Uses `Bun.file()` for reads (per bun-preference rule)
+- Follows functional patterns (no classes)
+
+Note: The hook source was created but NOT registered in `.claude/settings.json` (generated file). It will be wired up during the next `bun run build:all`.
+
+## Verification
+
+- `bunx --bun tsc --noEmit` passes with zero new errors (pre-existing `dist/plugin/` errors are from build artifacts needing `bun run build:all`)
+
+## Deviations
+
+None.
+
+## Files Modified
+
+- `src/skills/luca/lu.skill.ts` — Added Step 6 gap audit
+- `src/skills/general/phase-execute.skill.ts` — Added Step 11.5 gap audit
+- `src/skills/general/verify.skill.ts` — Added Step 5 gap audit
+- `src/skills/general/milestone-complete.skill.ts` — Added Step 6 gap audit
+- `src/hooks/scripts/session-end-audit.ts` — New file (session-end non-terminal state detection hook)
