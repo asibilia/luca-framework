@@ -2,39 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.4.1 — Audit Gap Closure
-
----
-
-## Phase 219: Git Routes Shell Safety
-
-**Goal:** Eliminate shell injection vulnerabilities in git routes by migrating execSync from template literals to array syntax with shell: false. Consolidate git types and constants.
-
-**Depends on:** None
-
-**Audit findings:** #1 (HIGH), #4 (HIGH), #5 (MEDIUM), #6 (MEDIUM), #13 (LOW), #16 (LOW)
-
-- [x] Plan 219-01: Migrate all execSync calls to array syntax + consolidate git types/constants
-
-## Phase 220: Layout & Architecture Cleanup
-
-**Goal:** Fix detail panel dual-rendering bug and address architecture findings (barrel exports, config constants, atom docs).
-
-**Depends on:** None
-
-**Audit findings:** #2 (HIGH), #10 (MEDIUM), #11 (MEDIUM), #14 (LOW), #17 (LOW)
-
-- [x] Plan 220-01: Fix detail panel guard + barrel exports + config constants + atom docs
-
-## Phase 221: Schema & UI DRY Consolidation
-
-**Goal:** Extract reusable schema fragments, shared UI components, and concept prefix filtering helper.
-
-**Depends on:** None
-
-**Audit findings:** #7 (MEDIUM), #8 (MEDIUM), #9 (MEDIUM), #12 (MEDIUM), #15 (LOW)
-
-- [x] Plan 221-01: Extract schema fragments + concept filter helper + compile status components + sidecar schemas
+**Current Milestone:** Planning next
 
 ---
 
@@ -100,6 +68,12 @@
 | #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
 
 ---
+
+## Closed (v8.4.1 Completed)
+
+| Todo        | Reason                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Audit #1-17 | 16/17 code quality findings from v8.4.0 audit resolved: shell injection eliminated, DRY consolidation, barrel exports, UI fixes |
 
 ## Closed (v6.1.0 Completed)
 
@@ -269,6 +243,7 @@
 - **v8.1.0** — Studio Polish & Prompt Quality: 4 phases, 10 plans, 58 commits, 123 files changed (+12,956 LOC) ([View Archive](milestones/v8.1.0-ROADMAP.md))
 - **v8.2.0** — Audit Gap Closure: 4 phases, 10 plans, 106 commits, 170 files changed (+18,960 LOC) ([View Archive](milestones/v8.2.0-ROADMAP.md))
 - **v8.3.0** — Studio Feature Suite: 6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC) ([View Archive](milestones/v8.3.0-ROADMAP.md))
+- **v8.4.1** — Audit Gap Closure: 3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC) ([View Archive](milestones/v8.4.1-ROADMAP.md))
 - **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
 
 ---

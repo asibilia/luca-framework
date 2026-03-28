@@ -34,6 +34,7 @@
 
 ## Previous Milestones
 
+- v8.4.1 — Audit Gap Closure (2026-03-28)
 - v6.1.0 — Audit Gap Closure (2026-03-25)
 - v6.0.0 — Runtime Foundation & Adapter Layer (2026-03-25)
 - v4.4.0 — Smart Context Management (2026-03-14)
@@ -48,7 +49,7 @@
 
 ---
 
-_State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next milestone_
+_State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next milestone_
 
 ## Session Continuity
 
@@ -57,4 +58,4 @@ _State updated: 2026-03-25 — v6.0.0 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-28T13:40:00.150Z_
+_State generated from machine snapshot at 2026-03-28T13:51:02.805Z_
