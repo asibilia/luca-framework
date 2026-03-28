@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Current Milestone:** v8.5.0 — Anti-Skip Enforcement Layer
-- **Status:** Planning
+- **Status:** Executing
 - **Task Complexity:** COMPLEX
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-28
@@ -32,7 +32,9 @@
 
 ## Allowed Events
 
-- `PLAN_COMPLETE`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
 
 ## Previous Milestones
 
@@ -60,4 +62,4 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-28T14:45:15.575Z_
+_State generated from machine snapshot at 2026-03-28T14:59:50.508Z_
