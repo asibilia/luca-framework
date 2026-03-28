@@ -59,8 +59,8 @@ fi
 Read shadow debt configuration:
 
 \`\`\`bash
-SHADOW_ENABLED=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.enabled ?? true)" 2>/dev/null || echo "true")
-BLOCK_ON_CRITICAL=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.block_milestone_on_critical ?? true)" 2>/dev/null || echo "true")
+SHADOW_ENABLED=$(cat .planning/config.json 2>/dev/null | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.enabled ?? true)" 2>/dev/null || echo "true")
+BLOCK_ON_CRITICAL=$(cat .planning/config.json 2>/dev/null | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.block_milestone_on_critical ?? true)" 2>/dev/null || echo "true")
 \`\`\`
 
 Note: If this sub-skill is being called, the orchestrator has already determined that shadow scanning is enabled. However, verify the config as a safety check.
