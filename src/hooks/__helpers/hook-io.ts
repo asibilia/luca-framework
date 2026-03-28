@@ -178,6 +178,53 @@ export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
   writeFileSync(guardFile, String(now));
 };
 
+// ─── Pre-Step Dedup Guard ────────────────────────────────────────────────────
+
+/**
+ * Millisecond-precision dedup guard for pre-step enforcement hooks.
+ *
+ * Unlike guardDedup (second precision, 5s TTL), this uses Date.now()
+ * directly for sub-second TTL windows. Designed for pre-step hooks
+ * where parallel wave execution may fire multiple Skill calls in
+ * rapid succession.
+ *
+ * Guard key format: /tmp/.luca-prestep-{hookName}-{projectHash}-{toolName}-ts
+ *
+ * TTL: 200ms -- sufficient to collapse duplicate-within-same-event-loop
+ * bursts while allowing distinct skill invocations in parallel waves
+ * to pass through. (PREMORTEM Constraint #2)
+ *
+ * @param hookName - Unique hook identifier
+ * @param toolName - Tool name from hook stdin (for per-tool scoping)
+ * @param ttlMs - Window in milliseconds to deduplicate (default: 200)
+ */
+export const guardPreStep = (
+  hookName: string,
+  toolName: string,
+  ttlMs = 200, // PREMORTEM Constraint #2: explicitly 200ms, documented here
+): void => {
+  const hash = createHash("sha256")
+    .update(projectDir())
+    .digest("hex")
+    .slice(0, 8);
+  const safeTool = toolName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const guardFile = `/tmp/.luca-prestep-${hookName}-${hash}-${safeTool}-ts`;
+
+  try {
+    const content = readFileSync(guardFile, "utf-8").trim();
+    const lastRun = parseInt(content, 10);
+    const now = Date.now();
+    if (now - lastRun < ttlMs) {
+      process.exit(0);
+    }
+  } catch {
+    // File doesn't exist or can't be read — continue
+  }
+
+  const now = Date.now();
+  writeFileSync(guardFile, String(now));
+};
+
 // ─── Throttle Helpers ────────────────────────────────────────────────────────
 
 /**
