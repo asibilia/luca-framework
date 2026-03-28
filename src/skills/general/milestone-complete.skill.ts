@@ -1,635 +1,215 @@
 /**
- * milestone-complete Skill - Archive a completed milestone, extract learnings, and prepare for the next version.
+ * milestone-complete Skill — Thin orchestrator for the milestone completion workflow.
+ *
+ * Delegates all work to 5 sub-skills via Skill() calls:
+ *   milestone-learn, milestone-prune, milestone-shadow-gate,
+ *   milestone-archive, milestone-finalize
+ *
+ * Contains ONLY:
+ *   - Skill() calls to sub-skills
+ *   - Context file reads via readMilestoneCompleteContext()
+ *   - State machine transitions (milestoneCompleteStateMachine events)
+ *   - Arg parsing and flag handling
+ *   - current_state writes after each state transition
+ *
+ * Contains NO inline logic:
+ *   - No MuninnDB calls (moved to milestone-learn, milestone-prune)
+ *   - No Task() spawns (moved to milestone-shadow-gate)
+ *   - No gh commands (moved to milestone-archive)
+ *   - No git tag/commit (moved to milestone-finalize)
+ *   - No data processing or template interpolation
+ *
+ * **CRITICAL (Pitfall 1):** After each state transition event, the
+ * orchestrator MUST write `current_state` to the context file. The
+ * pre-step hook reads this field to validate ordering.
+ *
+ * @see .planning/phases/224-anti-skip-rollout/01-PLAN.md Task 10
+ * @see src/skills/__schemas/states/milestone-complete.states.ts
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
+
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-// Define the milestone-complete skill configuration
 const milestoneCompleteConfig: SkillConfig = {
   frontmatter: {
     name: "milestone-complete",
-    description: `Archive a completed milestone, extract learnings, and prepare for the next version.`,
+    description:
+      "Archive a completed milestone by orchestrating sub-skills: milestone-learn, milestone-prune, milestone-shadow-gate, milestone-archive, milestone-finalize.",
     "disable-model-invocation": true,
   },
   sections: [
     {
       title: "main",
       content: `<main>
-# Luca Complete Milestone
+# milestone-complete — Thin Orchestrator
 
-Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
+Archive a completed milestone through a coordinated sub-skill chain. This skill is a **thin orchestrator** — it delegates ALL work to sub-skills via Skill() calls, reads context between steps, and transitions state.
 
-**Arguments:** \`<version>\` (e.g., "1.0", "1.1", "2.0")
+## Zero-Inline-Logic Constraint
 
-**Vault Resolution:** Read \`.planning/config.json\` and extract \`muninn.vault\` as REPO_VAULT. Set DEFAULT_VAULT = "default". Use REPO_VAULT for project-scoped operations (session, metric, milestone, brain:project, agent:scorecard) and DEFAULT_VAULT for cross-cutting operations (pattern, pitfall, preference, process, brain:user).
+This orchestrator MUST contain ONLY:
+- **Skill() calls** to the 5 sub-skills
+- **Context file reads** via \`readMilestoneCompleteContext()\` to check conditions between steps
+- **State writes** via \`writeMilestoneCompleteContext({ current_state: "..." })\` after each transition
+- **Arg parsing** and config reads (shadow_debt.enabled check)
 
-**Purpose:** Create historical record of shipped version, archive milestone artifacts (roadmap + requirements), and prepare for next milestone.
+This orchestrator MUST NOT contain:
+- MuninnDB calls (those belong in milestone-learn and milestone-prune)
+- \`Task()\` spawns (those belong in milestone-shadow-gate)
+- \`gh api\` calls (those belong in milestone-archive)
+- \`git tag\` or \`git commit\` (those belong in milestone-finalize)
+- Any business logic beyond reading context and choosing the next Skill() call
 
-**Output:** Milestone archived (roadmap + requirements), PROJECT.md evolved, learnings consolidated, git tagged.
+## Arguments
 
-## Execution Context
+\`<version>\` (e.g., "8.5.0", "9.0")
 
-Read these reference files before executing:
+## State Machine
 
-- \`.claude/luca/workflows/complete-milestone.md\`
-- \`.claude/luca/templates/milestone-archive.md\`
-- \`.claude/luca/workflows/learning-capture.md\`
-
-## Learning Consolidation (NEW)
-
-At milestone completion, consolidate all learnings:
-
-### Step 0: Final Learning Extraction
-
-Before archiving, ensure all session learnings are captured:
-
-1. **Check for unextracted session learnings** in MuninnDB:
-
-   \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context and unextracted findings")
-   \`\`\`
-
-2. **Invoke lu-learner** if candidate learnings exist
-
-3. **Review milestone-specific insights** in MuninnDB:
-   - Patterns that were validated multiple times -> bump to High confidence via \`mcp__muninn__muninn_evolve\`
-   - Decisions that held throughout milestone -> mark as Established
-   - Pitfalls that were successfully avoided -> note as Validated
-
-### Step 0.5: Stale Memory Detection and Pruning
-
-Before archiving, analyze memory health and prune stale engrams.
-
-**1. Recall engrams and metrics for the rolling window:**
-
-Split into two focused recalls to ensure accurate data:
-
-**1a. Recent phase metrics** (rolling window of last 10 phases):
+This orchestrator drives the \`milestoneCompleteStateMachine\` defined in
+\`src/skills/__schemas/states/milestone-complete.states.ts\`. States flow:
 
 \`\`\`
-mcp__muninn__muninn_recall(
-  vault: REPO_VAULT,
-  context: "metric:memory-recall-precision metric:memory-hit-rate",
-  mode: "recent",
-  limit: 10
-)
+idle -> learned -> pruned -> scanned -> archived -> finalized
 \`\`\`
 
-**1b. Pattern/decision/pitfall engrams** (for cross-referencing feedback):
+Terminal states: \`finalized\` (success) or \`failed\` (error).
 
-\`\`\`
-mcp__muninn__muninn_recall(
-  vault: REPO_VAULT,
-  context: "pattern: decision: pitfall:",
-  mode: "deep",
-  limit: 100
-)
-\`\`\`
+Conditional path uses explicit SKIP event (fail-closed):
+- \`SKIP_SCAN\`: Shadow debt scanning is disabled in config (orchestrator decides)
 
-**2. Identify stale engrams:**
+## CRITICAL: current_state Tracking
 
-An engram is "stale" when BOTH conditions are met:
+After EVERY state transition, the orchestrator MUST write \`current_state\` to the context file:
 
-1. 5+ recalls with 0 positive feedback (useful=true) across the rolling window
-2. 3+ milestones with no positive feedback
+\`\`\`typescript
+import { writeMilestoneCompleteContext } from "src/skills/__schemas/milestone-complete-context.schemas";
 
-Steps to compute:
-a. Recall last 10 phase metric engrams from MuninnDB
-b. For each pattern/decision/pitfall engram that appeared in recalls:
-   - Count total recalls across phases
-   - Count positive feedback instances (useful=true)
-   - Group by milestone, count milestones with 0 positive feedback
-c. Flag engrams meeting BOTH thresholds
-
-**3. Human review checkpoint:**
-
-If no stale engrams detected, display: "No stale engrams detected. Memory is healthy." and skip to section 5 (consolidation).
-
-If stale engrams found, display them to the developer for review:
-
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca > STALE ENGRAM REVIEW — v{version}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{count} stale engrams detected (5+ recalls, 0 positive, 3+ milestones dormant):
-
-| #   | Concept                  | Recalls | Positive | Milestones Dormant |
-| --- | ------------------------ | ------- | -------- | ------------------ |
-| 1   | pitfall:old-issue        | 7       | 0        | 4                  |
-| 2   | pattern:deprecated-flow  | 5       | 0        | 3                  |
-
-[Y] Prune all  [N] Keep all  [S] Select individually
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+await writeMilestoneCompleteContext({ current_state: "learned" } as any);
 \`\`\`
 
-Handle each response:
+The pre-step enforcement hook (\`pre-step-milestone-complete\`) reads this field to validate that sub-skills are called in the correct order. If \`current_state\` is not written, the hook defaults to "idle" and blocks all non-initial sub-skills.
 
-- **Y (Prune all):** Delete all listed engrams via \`muninn_forget\` (see section 4)
-- **N (Keep all):** Skip deletion, proceed to section 5 (consolidation)
-- **S (Select individually):** Present each engram and ask Y/N per engram, then delete approved ones via \`muninn_forget\`
+## Orchestrator Flow
 
-**4. Prune after approval:**
+### Step 0: Parse Args and Initialize Context
 
-For each engram approved for deletion (via Y or S response in section 3):
+Parse the milestone version from Skill() args.
 
-\`\`\`
-mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "{engram_id}")
-\`\`\`
+Initialize the context file at \`/tmp/milestone-complete-context.json\`:
 
-Note: \`muninn_forget\` performs a soft-delete with a 7-day recovery window. This is the strongest delete available in MuninnDB. If a mistake is made, the developer can use \`muninn_restore\` within 7 days to recover the engram.
+\`\`\`typescript
+import { writeMilestoneCompleteContext } from "src/skills/__schemas/milestone-complete-context.schemas";
 
-Stale engrams are deleted (after human approval), not evolved. Evolution is reserved for engrams that are still useful but need content updates.
-
-**5. Consolidate near-duplicates:**
-
-Run \`muninn_consolidate\` at every milestone boundary, regardless of whether stale engrams were found or pruned:
-
-\`\`\`
-mcp__muninn__muninn_consolidate(vault: REPO_VAULT)
+await writeMilestoneCompleteContext({});
+// This creates the file with context_version: 1
 \`\`\`
 
-This step:
-- Merges near-duplicate engrams using MuninnDB's built-in semantic similarity
-- Reduces recall noise by collapsing redundant entries
-- Runs AFTER pruning to avoid consolidating engrams that were just deleted
-- Runs even if no stale engrams were found (deduplication is always valuable)
-
-Log the consolidation result in the pruning report.
-
-**6. Report pruning results:**
-
-Store pruning report as a milestone metric:
-
-\`\`\`
-mcp__muninn__muninn_remember(
-  vault: REPO_VAULT,
-  concept: "metric:memory-pruning-{milestone_version}",
-  content: JSON.stringify({
-    stale_detected: {count},
-    human_approved_for_deletion: {count},
-    forgotten: {count},
-    consolidated: {count from muninn_consolidate result},
-    total_engrams_analyzed: {count},
-    stale_threshold: "5+ recalls, 0 positive, 3+ milestones dormant",
-    pruned_at: new Date().toISOString()
-  })
-)
-\`\`\`
-
-Log a summary after completion:
-"Memory maintenance: {stale_detected} stale detected, {forgotten} forgotten (human-approved), {consolidated} consolidated. {total_engrams_analyzed} engrams analyzed."
-
-### Step 0.7: Pre-Archive Shadow Debt Gate
-
-Run a full shadow scan before milestone archival. This step catches debris accumulated across all phases
-in the milestone.
+Read shadow debt config for the SKIP_SCAN decision:
 
 \`\`\`bash
 SHADOW_ENABLED=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.enabled ?? true)" 2>/dev/null || echo "true")
-BLOCK_ON_CRITICAL=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.block_milestone_on_critical ?? true)" 2>/dev/null || echo "true")
 \`\`\`
 
-If \`SHADOW_ENABLED\` is false, skip this step entirely and proceed to Step 1.
+State: \`idle\`
 
-Spawn \`lu-shadow-scanner\` with \`full\` mode:
-
-\`\`\`
-Task(
-  prompt: """
-<shadow_scan_context>
-**Scan mode:** full
-**Context:** Pre-archive gate for milestone v{version}
-**Config:** {shadow_debt config JSON}
-</shadow_scan_context>
-
-Scan the repository for AI-session debris using full mode (all 5 categories).
-Return a valid ShadowScanReport JSON block as your final output.
-""",
-  subagent_type: "lu-shadow-scanner",
-  description: "Pre-archive shadow scan (full mode, milestone v{version})"
-)
-\`\`\`
-
-Parse the returned \`ShadowScanReport\`.
-
-**If no CRITICAL findings:** Store metric and continue to Step 1 (archival).
-
-**If CRITICAL findings exist AND \`block_milestone_on_critical\` is true:**
+### Step 1: Learning Extraction
 
 \`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► SHADOW DEBT GATE — {n} CRITICAL findings before milestone archive
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{findings list — file_path, description, recommendation for each CRITICAL finding}
-
-Actions:
-  [F] Fix now — run /shadow-cleanup --full --fix
-  [S] Skip    — note findings in milestone archive and proceed
-  [A] Abort   — halt milestone completion
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Skill("milestone-learn")
 \`\`\`
 
-Handle user response:
+On success: state becomes \`learned\`
+On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
-**F — Fix now:**
-- Instruct user to run \`/shadow-cleanup --full --fix\` in a new session.
-- Halt milestone completion: "Please run /shadow-cleanup --full --fix, then restart /milestone-complete."
-
-**S — Skip:**
-- Note the CRITICAL findings in the milestone archive (include in Step 4's milestone archive content).
-- Proceed to Step 1.
-
-**A — Abort:**
-- Halt milestone completion. Display: "Milestone completion aborted. Resolve shadow debt before archiving."
-
-Store metric regardless of user choice:
-
-\`\`\`
-mcp__muninn__muninn_remember(
-  vault: REPO_VAULT,
-  concept: "metric:shadow-debt-milestone-v{version}",
-  content: JSON.stringify({
-    scan_mode: "full",
-    total: {total},
-    critical: {critical},
-    high: {high},
-    medium: {medium},
-    low: {low},
-    gate_result: "blocked|skipped|clean",
-    scanned_at: "{ISO timestamp}"
-  })
-)
+**Write state:**
+\`\`\`typescript
+await writeMilestoneCompleteContext({ current_state: "learned" } as any);
 \`\`\`
 
-### Step 1: Archive Milestone Memory
-
-Create milestone-specific memory snapshot in MuninnDB:
+### Step 2: Stale Memory Pruning
 
 \`\`\`
-# Export milestone memory graph for archival
-mcp__muninn__muninn_export_graph(vault: REPO_VAULT)
+Skill("milestone-prune")
 \`\`\`
 
-Store the export as \`.planning/milestones/v{version}-MEMORY-SNAPSHOT.json\`.
+On success: state becomes \`pruned\`
+On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
-Include in archive:
-
-- All patterns validated during this milestone
-- Key decisions and their outcomes
-- Pitfalls discovered and avoided
-- Memory effectiveness summary (precision, hit rate, token cost across milestone)
-
-### Step 2: Clean Session State
-
-After archiving, clear session context:
-
-\`\`\`
-mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "session:*")
+**Write state:**
+\`\`\`typescript
+await writeMilestoneCompleteContext({ current_state: "pruned" } as any);
 \`\`\`
 
-Long-term learnings persist in MuninnDB across milestones.
+### Step 3: Shadow Debt Gate (Conditional)
 
-## State Machine Integration
+Check the config value parsed in Step 0:
 
-When updating state during milestone completion, use the bridge CLI as primary with STATE.md fallback:
-
-\`\`\`bash
-# Read current state
-STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly
-STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
-\`\`\`
-
-After archiving the milestone, reset state for the next milestone:
-
-\`\`\`bash
-# Reset state machine for next milestone
-luca-bridge transition --event=RESET 2>/dev/null || true
-luca-bridge ensure-init --force 2>/dev/null || true
-luca-bridge set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
-luca-bridge snapshot 2>/dev/null || true
-# Fallback: Update STATE.md directly if bridge unavailable
-\`\`\`
-
-The bridge \`snapshot\` command automatically preserves the "Previous Milestones" section when regenerating STATE.md. Manually append the completed milestone to "Previous Milestones" before calling snapshot.
-
-## Process
-
-0. **Check for audit:**
-
-   - Look for \`.planning/v{version}-MILESTONE-AUDIT.md\`
-   - If missing or stale: recommend \`/milestone-audit\` first
-   - If audit status is \`gaps_found\`: recommend \`/milestone-gaps\` first
-   - If audit status is \`passed\`: proceed
-
-1. **Verify readiness:**
-
-   - Check all phases have completed plans (SUMMARY.md exists)
-   - Present milestone scope and stats
-   - Wait for confirmation
-
-2. **Gather stats:**
-
-   - Count phases, plans, tasks
-   - Calculate git range, file changes, LOC
-   - Extract timeline from git log
-
-3. **Extract accomplishments:**
-
-   - Read all phase SUMMARY.md files
-   - Extract 4-6 key accomplishments
-   - Present for approval
-
-4. **Archive milestone:**
-
-   - Create \`.planning/milestones/v{version}-ROADMAP.md\`
-   - Fill milestone-archive.md template
-   - Update ROADMAP.md to one-line summary with link
-
-5. **Archive requirements:**
-
-   - Create \`.planning/milestones/v{version}-REQUIREMENTS.md\`
-   - Mark all v1 requirements as complete
-   - Delete \`.planning/REQUIREMENTS.md\` (fresh one created for next milestone)
-
-6. **Update PROJECT.md:**
-
-   - Add "Current State" section with shipped version
-   - Add "Next Milestone Goals" section
-
-7. **Commit and tag:**
-
-   \`\`\`bash
-   git add .
-   bun run commit --message="archive v{version} milestone" --type=chore --scope=milestone --no-push --skip-checks
-   git tag -a v{version} -m "[milestone summary]"
-   \`\`\`
-
-   - Ask about pushing tag
-
-7.5. **Process retrospective:**
-
-### Dashboard (always shown)
-
-Recall process metrics from MuninnDB for the current milestone:
-
-1. Appetite accuracy trend:
-   \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:appetite-accuracy {milestone_version}")
-   \`\`\`
-
-2. Rework ratio trend:
-   \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:rework-ratio {milestone_version}")
-   \`\`\`
-
-3. Pre-mortem signal rate trend:
-   \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:signal-rate {milestone_version}")
-   \`\`\`
-
-4. Agent performance scores:
-   \`\`\`
-   mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "agent:scorecard {milestone_version}")
-   \`\`\`
-
-Display results as an ASCII table:
+**If shadow scanning is ENABLED:**
 
 \`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca > PROCESS RETROSPECTIVE — v{version}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-| Metric             | Phases | Trend   | Current |
-| ------------------ | ------ | ------- | ------- |
-| Appetite Accuracy  | {N}    | {trend} | {val}   |
-| Rework Ratio       | {N}    | {trend} | {val}   |
-| Pre-Mortem Signal  | {N}    | {trend} | {val}   |
-| Agent Scores (avg) | {N}    | {trend} | {val}   |
-
-Trend: improving / stable / declining (compare first half vs second half of phases)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Skill("milestone-shadow-gate")
 \`\`\`
 
-If no metric data is found in MuninnDB (first milestone with process data), display:
-\`\`\`
-No process metrics found for v{version}. Dashboard will populate after future milestones with process data collection enabled.
-\`\`\`
+On success: state becomes \`scanned\` (via SCAN_COMPLETE)
+On failure: state becomes \`scanned\` (via SKIP_SCAN — shadow gate is optional)
 
-### Developer Question (gated)
+**If shadow scanning is DISABLED:**
 
-Before asking the question, check graduation criteria:
-\`\`\`
-mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:retro-response-rate")
-\`\`\`
+Send \`SKIP_SCAN\` explicitly -> state becomes \`scanned\` (fail-closed: always send a transition event)
 
-Parse the recalled engram:
-- If \`sample_count >= 10\` AND \`response_rate < 0.30\`: SKIP the question (developer rarely engages). Show dashboard only. Update \`metric:retro-response-rate\` with \`responded: false\`.
-- Otherwise: proceed with the question.
-
-Ask the developer:
-\`\`\`
-Anything to change about how we work? (optional — press Enter to skip)
+**Write state (in both cases):**
+\`\`\`typescript
+await writeMilestoneCompleteContext({ current_state: "scanned" } as any);
 \`\`\`
 
-**If developer responds with content:**
-- Store as MuninnDB engram:
-  \`\`\`
-  mcp__muninn__muninn_remember(
-    vault: DEFAULT_VAULT,
-    concept: "process:workflow-change",
-    content: "Milestone: v{version}\\nFeedback: {developer_response}\\nRecorded: {timestamp}"
-  )
-  \`\`\`
-- Update retro response rate:
-  \`\`\`
-  mcp__muninn__muninn_evolve(
-    vault: REPO_VAULT,
-    id: "metric:retro-response-rate",
-    content: "sample_count: {N+1}, responses: {M+1}, response_rate: {updated_rate}"
-  )
-  \`\`\`
-  If the metric engram does not exist yet, create it with \`muninn_remember\` instead of \`muninn_evolve\`.
-
-**If developer skips (presses Enter or says "no"):**
-- Update retro response rate (responded: false):
-  \`\`\`
-  mcp__muninn__muninn_evolve(
-    vault: REPO_VAULT,
-    id: "metric:retro-response-rate",
-    content: "sample_count: {N+1}, responses: {M}, response_rate: {updated_rate}"
-  )
-  \`\`\`
-  If the metric engram does not exist yet, create it with \`muninn_remember\`.
-
-8. **Create GitHub milestone:**
-
-   Create a GitHub milestone to match the local milestone archive. This provides visibility in GitHub's milestone tracker and links PRs to their milestone.
-
-   \`\`\`bash
-   # Create the milestone (closed, since it's already complete)
-   gh api repos/{owner}/{repo}/milestones -X POST \\
-     -f title="v{version} — {milestone title}" \\
-     -f state="closed" \\
-     -f due_on="{completion date ISO 8601}" \\
-     -f description="{summary: phases, plans, commits, files changed, key deliverables}"
-
-   # Attach the milestone PR (if one exists on the current branch)
-   PR_NUMBER=$(gh pr list --head "$(git branch --show-current)" --json number --jq '.[0].number')
-   if [ -n "$PR_NUMBER" ]; then
-     MILESTONE_NUMBER=$(gh api repos/{owner}/{repo}/milestones --jq '.[] | select(.title | startswith("v{version}")) | .number')
-     gh api repos/{owner}/{repo}/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER
-   fi
-   \`\`\`
-
-   - The milestone description should include: phase count, plan count, commit count, files changed, and 4-6 key deliverables
-   - Set \`state: "closed"\` since the milestone is already complete
-   - Set \`due_on\` to the completion date (last commit date)
-   - Attach the branch PR to the milestone if one exists
-
-8.5. **Divergent mode advisory:**
-
-### Milestone Counter
-
-Recall the convergent streak counter from MuninnDB:
-\`\`\`
-mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:convergent-streak")
-\`\`\`
-
-If no counter exists, create it with count = 1:
-\`\`\`
-mcp__muninn__muninn_remember(
-  vault: REPO_VAULT,
-  concept: "metric:convergent-streak",
-  content: "consecutive_milestones: 1, last_milestone: v{version}, last_updated: {timestamp}"
-)
-\`\`\`
-
-If counter exists, increment it:
-\`\`\`
-mcp__muninn__muninn_evolve(
-  vault: REPO_VAULT,
-  id: "metric:convergent-streak",
-  content: "consecutive_milestones: {N+1}, last_milestone: v{version}, last_updated: {timestamp}"
-)
-\`\`\`
-
-### Graduation Check
-
-Before showing the nudge, check if divergent mode has graduated out:
-\`\`\`
-mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "metric:divergent-optin-rate")
-\`\`\`
-
-If \`sample_count >= 20\` AND \`rate < 0.10\`: SKIP the nudge entirely. Developer consistently opts out. Update convergent streak and proceed to Step 9.
-
-### Nudge (streak >= 8 AND not graduated out)
-
-If \`consecutive_milestones >= 8\` AND graduation check passes:
+### Step 4: Archive Milestone
 
 \`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca > DIVERGENT MODE ADVISORY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-You've completed {N} consecutive milestones in convergent
-(spec-driven) mode. Consider taking a divergent break:
-
-  - Architecture sketching and exploration
-  - Research reading and technology evaluation
-  - Product exploration and shaping future work
-  - Anything cognitively distinct from spec-driven development
-
-Recommended duration: 1 calendar day (COMPLEX), 2 days (CRITICAL)
-No acceptance criteria. No deliverables required.
-
-[Y] Enter divergent mode  [N] Continue convergent work
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Skill("milestone-archive")
 \`\`\`
 
-**If developer opts IN (Y):**
-- Reset convergent streak to 0:
-  \`\`\`
-  mcp__muninn__muninn_evolve(
-    vault: REPO_VAULT,
-    id: "metric:convergent-streak",
-    content: "consecutive_milestones: 0, last_milestone: v{version}, divergent_mode_entered: {timestamp}"
-  )
-  \`\`\`
-- Update divergent opt-in rate (opted_in: true):
-  \`\`\`
-  mcp__muninn__muninn_evolve(
-    vault: REPO_VAULT,
-    id: "metric:divergent-optin-rate",
-    content: "sample_count: {N+1}, optins: {M+1}, rate: {updated_rate}"
-  )
-  \`\`\`
-  If the metric does not exist yet, create it with \`muninn_remember\`.
-- Set cooldown reason via bridge:
-  \`\`\`bash
-  luca-bridge set-field \\
-    --field=cooldown_reason \\
-    --value='"Divergent mode: {N} consecutive milestones completed"' \\
-    2>/dev/null || true
-  \`\`\`
-- Emit COOLDOWN_COMPLETE via bridge to transition complete -> cooldown:
-  \`\`\`bash
-  luca-bridge transition \\
-    --event=COOLDOWN_COMPLETE 2>/dev/null || true
-  \`\`\`
-- Display: "Entering divergent mode. When ready to return, start a new session."
+On success: state becomes \`archived\`
+On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
 
-**If developer opts OUT (N):**
-- Update divergent opt-in rate (opted_in: false):
-  \`\`\`
-  mcp__muninn__muninn_evolve(
-    vault: REPO_VAULT,
-    id: "metric:divergent-optin-rate",
-    content: "sample_count: {N+1}, optins: {M}, rate: {updated_rate}"
-  )
-  \`\`\`
-  If the metric does not exist yet, create it with \`muninn_remember\`.
-- Emit SKIP_COOLDOWN via bridge to transition complete -> idle:
-  \`\`\`bash
-  luca-bridge transition \\
-    --event=SKIP_COOLDOWN 2>/dev/null || true
-  \`\`\`
-- Proceed to Step 9.
-
-### No Nudge (streak < 8)
-
-If \`consecutive_milestones < 8\`: do not show the nudge. Silently emit SKIP_COOLDOWN:
-
-\`\`\`bash
-luca-bridge transition \\
-  --event=SKIP_COOLDOWN 2>/dev/null || true
+**Write state:**
+\`\`\`typescript
+await writeMilestoneCompleteContext({ current_state: "archived" } as any);
 \`\`\`
 
-Proceed to Step 9.
+### Step 5: Finalize (Commit + Tag + Divergent Mode)
 
-9. **Offer next steps:**
-   - \`/milestone-new\` — start next milestone
+\`\`\`
+Skill("milestone-finalize")
+\`\`\`
+
+On success: state becomes \`finalized\`
+On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
+
+**Write state:**
+\`\`\`typescript
+await writeMilestoneCompleteContext({ current_state: "finalized" } as any);
+\`\`\`
+
+## Error Handling
+
+**Required sub-skills** (milestone-learn, milestone-prune, milestone-archive, milestone-finalize):
+- On failure -> send ABORT -> terminal \`failed\` state
+- The workflow halts; no further Skill() calls
+
+**Optional sub-skills** (milestone-shadow-gate):
+- On failure -> log warning, send SKIP_SCAN -> continue to next state
+- Shadow scanning failure does not block milestone completion
 
 ## Success Criteria
 
-- [ ] Milestone archived to \`.planning/milestones/v{version}-ROADMAP.md\`
-- [ ] Requirements archived to \`.planning/milestones/v{version}-REQUIREMENTS.md\`
-- [ ] \`.planning/REQUIREMENTS.md\` deleted (fresh for next milestone)
-- [ ] ROADMAP.md collapsed to one-line entry
-- [ ] PROJECT.md updated with current state
-- [ ] Git tag v{version} created
-- [ ] Commit successful
-- [ ] GitHub milestone created (closed) and PR attached
-- [ ] Process retrospective dashboard shown with metric trends
-- [ ] Developer question asked (or skipped per graduation criteria)
-- [ ] Retro response rate tracked in MuninnDB
-- [ ] Divergent mode advisory shown (if streak >= 8)
-- [ ] Convergent streak counter updated in MuninnDB
-- [ ] Divergent opt-in rate tracked in MuninnDB
-- [ ] Stale engrams reviewed by developer (if any found)
-- [ ] Near-duplicates consolidated via muninn_consolidate
-- [ ] Memory pruning report stored in MuninnDB
+- [ ] All learnings extracted (milestone-learn)
+- [ ] Stale memories pruned (milestone-prune)
+- [ ] Shadow debt scanned OR explicitly skipped (milestone-shadow-gate or SKIP_SCAN)
+- [ ] Milestone archived with stats and retrospective (milestone-archive)
+- [ ] Git tagged and committed (milestone-finalize)
+- [ ] State machine reaches \`finalized\` (success) or \`failed\` (error) terminal state
+- [ ] \`current_state\` written after every state transition
 
 ## Next Steps
 
@@ -638,14 +218,8 @@ Proceed to Step 9.
 | Ready for next milestone | Start new milestone | \`/milestone-new\` |
 | Want to review completion | Check progress | \`/progress\` |
 | Need to create PR | Create pull request | Run \`gh pr create\` |
-| Opted into divergent mode | Take a break | No command — start new session when ready |
 
-**Primary:** \`/milestone-new\` — Start the next milestone cycle
-
-**Also available:**
-
-- \`/progress\` — Review completed work
-- \`/help\` — See all available commands
+**Primary:** \`/milestone-new\` -- Start the next milestone cycle
 </main>`,
       order: 1,
     },
