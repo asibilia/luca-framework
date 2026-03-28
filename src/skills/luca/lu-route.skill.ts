@@ -76,7 +76,7 @@ If already on a feature branch or \`--skip-branch\` is set, skip this step.
 Unless \`--skip-memory\` is set, spawn the lu-cognition agent:
 
 \`\`\`
-Task(agent: "lu-cognition", prompt: "**Recipient:** lu orchestrator (report findings back to this orchestrator)\\n\\nRun cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
+Task(subagent_type: "lu-cognition", prompt: "**Recipient:** lu orchestrator (report findings back to this orchestrator)\\n\\nRun cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
 \`\`\`
 
 **SKIP_COGNITION** is handled internally: if \`--skip-memory\` is set, skip the Task() call and set \`cognition_ran: false\` in the output.
@@ -95,7 +95,7 @@ If \`--force-complex\` was passed, use COMPLEX.
 Otherwise, spawn lu-router to classify:
 
 \`\`\`
-Task(agent: "lu-router", prompt: "**Recipient:** lu orchestrator (report classification back to this orchestrator)\\n\\nClassify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
+Task(subagent_type: "lu-router", prompt: "**Recipient:** lu orchestrator (report classification back to this orchestrator)\\n\\nClassify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
 \`\`\`
 
 ### Step 4: Determine Routing Decision

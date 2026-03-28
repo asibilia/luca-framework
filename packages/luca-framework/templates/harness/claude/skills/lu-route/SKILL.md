@@ -51,7 +51,7 @@ If already on a feature branch or `--skip-branch` is set, skip this step.
 Unless `--skip-memory` is set, spawn the <%= branding.commandPrefix %>-cognition agent:
 
 ```
-Task(agent: "<%= branding.commandPrefix %>-cognition", prompt: "**Recipient:** lu orchestrator (report findings back to this orchestrator)\n\nRun cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
+Task(subagent_type: "<%= branding.commandPrefix %>-cognition", prompt: "**Recipient:** lu orchestrator (report findings back to this orchestrator)\n\nRun cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: REPO_VAULT, context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: REPO_VAULT, id: 'session:*'). REPO_VAULT=<resolved value from .planning/config.json muninn.vault>.")
 ```
 
 **SKIP_COGNITION** is handled internally: if `--skip-memory` is set, skip the Task() call and set `cognition_ran: false` in the output.
@@ -70,7 +70,7 @@ If `--force-complex` was passed, use COMPLEX.
 Otherwise, spawn <%= branding.commandPrefix %>-router to classify:
 
 ```
-Task(agent: "<%= branding.commandPrefix %>-router", prompt: "**Recipient:** lu orchestrator (report classification back to this orchestrator)\n\nClassify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
+Task(subagent_type: "<%= branding.commandPrefix %>-router", prompt: "**Recipient:** lu orchestrator (report classification back to this orchestrator)\n\nClassify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
 ```
 
 ### Step 4: Determine Routing Decision
@@ -87,6 +87,7 @@ Based on the classified complexity and task type:
 - **Progress check** -> routing_decision: "progress"
 
 Route to `quick` ONLY if ALL of these conditions are true:
+
 - Task is TRIVIAL or SIMPLE complexity
 - Task does NOT appear in `.planning/ROADMAP.md` or `.planning/todos/pending/`
 - Task does NOT require creating new files (only modifications to 1-2 existing files)
@@ -111,4 +112,5 @@ writeLuContext({
 ## Completion
 
 After writing results, return to the lu orchestrator. The orchestrator will write `current_state: "routed"` and invoke <%= branding.commandPrefix %>-configure next.
+
 </main>
