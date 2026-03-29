@@ -199,6 +199,15 @@ export { checkContractPreconditions } from "./__helpers/contract-hook-adapter";
 
 export type { PreconditionCheckResult } from "./__helpers/contract-hook-adapter";
 
+// ─── Contract Metrics ───────────────────────────────────────────────────────
+
+export {
+  formatContractMetrics,
+  buildContractDriftReport,
+} from "./__helpers/contract-metrics";
+
+export type { ContractMetric } from "./__helpers/contract-metrics";
+
 // ─── pr-address DAG ─────────────────────────────────────────────────────────
 
 export { prAddressDAG } from "./__helpers/pr-address-dag";
