@@ -8,7 +8,7 @@
 
 ## v8.5.1 — Audit Gap Closure (reopened)
 
-Close code quality, security, and enforcement findings. Phases 225-226 shipped DRY + hardening. Phases 227-228 address the orchestrator enforcement gap discovered during PR review.
+Close code quality, security, and enforcement findings. Phases 225-226 shipped DRY + hardening. Phases 227-228 address the orchestrator enforcement gap discovered during PR review. Phase 229 adds behavioral contracts for critical workflow invariant enforcement.
 
 ### Phase 225: DRY Consolidation — COMPLETE
 
@@ -36,6 +36,19 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 - [x] gap-audit-all-orchestrators — Add equivalent post-execution gap audits to lu-phase-loop, phase-execute, verify, and milestone-complete orchestrators
 - [x] gap-audit-hook — Create a SessionEnd or Stop hook that checks if any active orchestrator's context file has a non-terminal `current_state`, indicating the session ended mid-workflow with steps potentially skipped
 
+### Phase 229: Agent Behavioral Contracts
+
+**Goal:** Define and enforce hard/soft invariants for critical workflow paths. Behavioral contracts make illegal workflow state transitions detectable and recoverable at runtime, catching violations that state machines alone cannot express (cross-step temporal properties).
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 228
+
+- [x] contract-schemas — Create `src/workflow/__schemas/contracts/` with Zod schemas for hard invariants (must hold at every step), soft invariants (allow transient violations with bounded recovery), and recovery mechanism definitions
+- [x] contract-definitions — Define behavioral contracts for the 5 critical workflow paths: pr-address (no push without LEARNED), milestone-complete (no archive without shadow scan), lu (no phase-execute without configured), verify (no review without extract), phase-execute (no commit without harness pass)
+- [x] contract-runtime — Implement contract evaluation engine that checks invariants against the session ledger event log, detects violations, and triggers recovery mechanisms for soft invariant breaches
+- [x] contract-integration — Integrate contract checking into existing post-execution gap audits and pre-step enforcement hooks so contracts are evaluated at both pre-step and post-execution boundaries
+- [x] drift-metrics — Add contract violation metrics to MuninnDB (violation rate, recovery success rate, drift detection) for process intelligence feedback loop
+
 ---
 
 ## Next: v8.6.0 — Scout Article Intelligence
@@ -55,13 +68,12 @@ Automated article ingestion, research, and actionable todo generation from exter
 
 ## Deferred to Future Milestones
 
-| Todo Group                    | Target   | Scope                                  | Reason                                               |
-| ----------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
-| anti-skip-hardening-contracts | TBD      | Agent behavioral contracts + LTL       | WSJF 1.50, CRITICAL effort — escalation path only    |
-| v2-phase-6                    | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents   | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol     | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui        | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+| Todo Group                  | Target   | Scope                                  | Reason                                               |
+| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
+| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
+| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
+| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
+| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
 
 ## Closed (Reference / Not Actionable)
 
