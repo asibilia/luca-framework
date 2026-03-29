@@ -52,6 +52,26 @@ export type {
   WorkflowAdapter,
 } from "./__schemas/workflow.schemas";
 
+// ─── Behavioral Contract Schemas ─────────────────────────────────────────────
+
+export {
+  InvariantKindSchema,
+  ContractInvariantSchema,
+  BehavioralContractSchema,
+  ContractViolationSchema,
+  ContractAuditSummarySchema,
+  ContractAuditResultSchema,
+} from "./__schemas/contracts";
+
+export type {
+  InvariantKind,
+  ContractInvariant,
+  BehavioralContract,
+  ContractViolation,
+  ContractAuditSummary,
+  ContractAuditResult,
+} from "./__schemas/contracts";
+
 // ─── Step Contracts ──────────────────────────────────────────────────────────
 
 export {
