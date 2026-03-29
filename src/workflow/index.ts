@@ -193,6 +193,12 @@ export type {
 
 export { CONTRACT_REGISTRY } from "./__helpers/contract-definitions";
 
+// ─── Contract Hook Adapter ──────────────────────────────────────────────────
+
+export { checkContractPreconditions } from "./__helpers/contract-hook-adapter";
+
+export type { PreconditionCheckResult } from "./__helpers/contract-hook-adapter";
+
 // ─── pr-address DAG ─────────────────────────────────────────────────────────
 
 export { prAddressDAG } from "./__helpers/pr-address-dag";

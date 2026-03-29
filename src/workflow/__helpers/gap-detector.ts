@@ -23,12 +23,16 @@
  */
 
 import { z } from "zod";
+import isEmpty from "lodash/isEmpty";
 
 import type {
   WorkflowDAG,
   DAGCheckpoint,
   SkippedStepEntry,
 } from "../__schemas/workflow.schemas";
+import type { BehavioralContract } from "../__schemas/contracts";
+
+import { evaluateContract } from "./contract-evaluator";
 
 // ─── Gap Severity ───────────────────────────────────────────────────────────
 
@@ -140,6 +144,7 @@ export type GapAuditResult = z.infer<typeof GapAuditResultSchema>;
  *
  * @param dag - The workflow DAG definition (source of truth for expected steps)
  * @param checkpoint - The execution checkpoint with completed/skipped/failed steps
+ * @param contracts - Optional behavioral contracts to evaluate alongside gap detection
  * @returns GapAuditResult with gaps, summary, and overall status
  *
  * @example
@@ -168,10 +173,20 @@ export type GapAuditResult = z.infer<typeof GapAuditResultSchema>;
  * // result.gaps[0].stepId === "execute"
  * // result.gaps[0].severity === "fail"
  * ```
+ *
+ * @example
+ * ```typescript
+ * // With contract evaluation
+ * import { detectGaps, CONTRACT_REGISTRY } from "~/workflow";
+ *
+ * const result = detectGaps(dag, checkpoint, [CONTRACT_REGISTRY["pr-address"]]);
+ * // Contract violations appear as additional gaps with source "contract"
+ * ```
  */
 export function detectGaps(
   dag: WorkflowDAG,
   checkpoint: DAGCheckpoint,
+  contracts?: BehavioralContract[],
 ): GapAuditResult {
   const gaps: ExecutionGap[] = [];
 
@@ -276,6 +291,44 @@ export function detectGaps(
         recommendation:
           "Required step was never executed. This must be addressed before verification can pass.",
       });
+    }
+  }
+
+  // ─── Contract Evaluation (optional) ──────────────────────────────────────
+
+  if (contracts && !isEmpty(contracts)) {
+    for (const contract of contracts) {
+      const auditResult = evaluateContract(contract, checkpoint);
+
+      // Convert contract violations into ExecutionGap entries
+      for (const violation of auditResult.violations) {
+        const severity =
+          violation.kind === "hard" ? ("fail" as const) : ("warning" as const);
+
+        if (severity === "fail") {
+          missingCount++;
+        } else {
+          optionalMissingCount++;
+        }
+
+        gaps.push({
+          stepId: violation.postcondition_attempted,
+          stepName: `contract:${violation.invariant_id}`,
+          optional: violation.kind !== "hard",
+          expectedStatus: `precondition:${violation.precondition_missing}`,
+          actualStatus: "contract-violation",
+          severity,
+          recommendation:
+            violation.kind === "hard"
+              ? `Hard contract violation: ${violation.invariant_id}. ` +
+                `Step "${violation.postcondition_attempted}" completed without ` +
+                `required precondition "${violation.precondition_missing}".`
+              : `Soft contract violation: ${violation.invariant_id}. ` +
+                `Step "${violation.postcondition_attempted}" completed without ` +
+                `precondition "${violation.precondition_missing}". ` +
+                `Recovery ${violation.recovery_attempted ? "attempted" : "not attempted"}.`,
+        });
+      }
     }
   }
 
