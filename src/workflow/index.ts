@@ -176,6 +176,19 @@ export type {
 
 export { PHASE_PIPELINE } from "./__helpers/phase-pipeline";
 
+// ─── Contract Evaluator ─────────────────────────────────────────────────────
+
+export {
+  evaluateContract,
+  evaluateContractFromLedger,
+  mergeContractAndGapAudits,
+} from "./__helpers/contract-evaluator";
+
+export type {
+  LedgerEntry,
+  MergedAuditResult,
+} from "./__helpers/contract-evaluator";
+
 // ─── Contract Definitions ───────────────────────────────────────────────────
 
 export { CONTRACT_REGISTRY } from "./__helpers/contract-definitions";
