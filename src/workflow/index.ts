@@ -176,6 +176,10 @@ export type {
 
 export { PHASE_PIPELINE } from "./__helpers/phase-pipeline";
 
+// ─── Contract Definitions ───────────────────────────────────────────────────
+
+export { CONTRACT_REGISTRY } from "./__helpers/contract-definitions";
+
 // ─── pr-address DAG ─────────────────────────────────────────────────────────
 
 export { prAddressDAG } from "./__helpers/pr-address-dag";
