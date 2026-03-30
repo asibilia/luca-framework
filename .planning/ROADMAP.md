@@ -72,10 +72,10 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 **Verification:** Full
 **Depends on:** Phase 229, v2 Phases 1-5 (shipped in v6.0.0)
 
-- [ ] researcher-orchestrator — Modify lu-phase-researcher to spawn 4 specialist researchers (lu-architecture-researcher, lu-implementation-researcher, lu-ecosystem-researcher, lu-risk-researcher) in parallel when v2 is enabled; preserve v1 single-researcher behavior
-- [ ] learner-graduation — Add `research:*` engram promotion pathway to lu-learner: promote high-value research engrams to permanent `pattern:*`/`pitfall:*`/`decision:*` in default vault, then clean up remaining `research:*` via `muninn_forget`
-- [ ] premortem-research — Modify lu-premortem to accept research files as input alongside the plan, enabling research-informed risk analysis
-- [ ] plan-checker-review-loop — Add review loop support with convergence detection to lu-plan-checker, replacing single-pass checking with multi-reviewer plan review loop
+- [x] researcher-orchestrator — Modify lu-phase-researcher to spawn 4 specialist researchers (lu-architecture-researcher, lu-implementation-researcher, lu-ecosystem-researcher, lu-risk-researcher) in parallel when v2 is enabled; preserve v1 single-researcher behavior
+- [x] learner-graduation — Add `research:*` engram promotion pathway to lu-learner: promote high-value research engrams to permanent `pattern:*`/`pitfall:*`/`decision:*` in default vault, then clean up remaining `research:*` via `muninn_forget`
+- [x] premortem-research — Modify lu-premortem to accept research files as input alongside the plan, enabling research-informed risk analysis
+- [x] plan-checker-review-loop — Add review loop support with convergence detection to lu-plan-checker, replacing single-pass checking with multi-reviewer plan review loop
 
 ### Phase 231: v2 Orchestrator Integration
 
