@@ -8,7 +8,13 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v8.5.0 — Shipped)
+## Current State (v8.5.2 — Shipped)
+
+**Last Shipped:** v8.5.2 — Statusline HUD & Edit Gate (2026-03-30)
+
+5 phases (236-240), 13 commits, 60 files changed (+3,082/-1,368 LOC). Delivered statusline HUD with two-line workflow display, pre-edit workflow gate blocking source edits without prerequisite steps, code review fix loop in phase-execute pipeline, unified state architecture eliminating dual-state (~700 lines dead code removed), and audit gap closure fixing terminal state divergence, barrel bypass imports, schema duplication, and Bun-first gaps.
+
+## Previous State (v8.5.0 — Shipped)
 
 **Last Shipped:** v8.5.0 — Anti-Skip Enforcement Layer (2026-03-28)
 
