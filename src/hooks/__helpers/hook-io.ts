@@ -157,11 +157,12 @@ export const exitSuccess = (): never => {
  * @param ttlSeconds - Window in seconds to deduplicate (default: 5)
  */
 export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
+  const safeHookName = hookName.replace(/[^a-zA-Z0-9_-]/g, "_");
   const projectHash = createHash("sha256")
     .update(projectDir())
     .digest("hex")
     .slice(0, 8);
-  const guardFile = `/tmp/.luca-dedup-${hookName}-${projectHash}`;
+  const guardFile = `/tmp/.luca-dedup-${safeHookName}-${projectHash}`;
 
   try {
     const content = readFileSync(guardFile, "utf-8").trim();
@@ -210,12 +211,13 @@ export const guardPreStep = (
   toolName: string,
   ttlMs = 200, // PREMORTEM Constraint #2: explicitly 200ms, documented here
 ): void => {
+  const safeHookName = hookName.replace(/[^a-zA-Z0-9_-]/g, "_");
   const hash = createHash("sha256")
     .update(projectDir())
     .digest("hex")
     .slice(0, 8);
   const safeTool = toolName.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const guardFile = `/tmp/.luca-prestep-${hookName}-${hash}-${safeTool}-ts`;
+  const guardFile = `/tmp/.luca-prestep-${safeHookName}-${hash}-${safeTool}-ts`;
 
   try {
     const content = readFileSync(guardFile, "utf-8").trim();

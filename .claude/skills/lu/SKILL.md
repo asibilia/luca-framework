@@ -8,7 +8,7 @@ Unified entry point and autonomous orchestrator for all Luca workflows with cogn
 
 The single entry point for all Luca workflows. This is a **flat Agent() orchestrator** — it spawns leaf-worker agents via Agent(), manages state, and controls the pipeline.
 
-**Arguments:** `<task-description | Jira-URL | [TICKET-ID]> [--complexity=LEVEL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=MODE] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask]`
+**Arguments:** `<task-description | Jira-URL | [TICKET-ID]> [--complexity=LEVEL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=MODE] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask] [--v2]`
 
 ## Constraints
 
@@ -17,6 +17,7 @@ The single entry point for all Luca workflows. This is a **flat Agent() orchestr
 3. **NEVER write code directly** — delegate to Agent() sub-agents for all code work
 4. **Write `current_state` after EVERY transition** — enforcement hooks depend on it
 5. **Prompt templates** are in `src/skills/__helpers/agent-prompts.ts` — read that file with the Read tool when you need a template, then pass its content as the Agent() prompt
+6. **v2 prompt templates** are also in `agent-prompts.ts` — RESEARCH_SCOPE_PROMPT, PARALLEL_RESEARCH_PROMPT, RESEARCH_SYNTHESIS_PROMPT, RESEARCH_REVIEW_PROMPT, RESEARCH_GRADUATION_PROMPT, PLAN_REVIEW_PROMPT
 
 ## Context File: `/tmp/lu-context.json`
 
@@ -87,6 +88,15 @@ After agent returns: `luca-bridge transition --event=START` and `--event=PREFLIG
 bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"configured"}'
 ```
 
+**v2 config resolution:**
+```bash
+# Read workflow version from config (default: "v1")
+WORKFLOW_VERSION=$(cat .planning/config.json 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$WORKFLOW_VERSION" ]; then WORKFLOW_VERSION="v1"; fi
+# CLI override: --v2 flag forces v2 regardless of config
+if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
+```
+
 ### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
 
 If --skip-backlog or config backlog_scan==false: skip, write state "scanned".
@@ -131,6 +141,50 @@ PREMORTEM=$(luca-bridge gate-check --gate=premortem 2>/dev/null | ...)
 PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 ```
 
+#### 7d-v2. Research Pipeline (v2 ONLY — skip entirely if WORKFLOW_VERSION != "v2")
+
+**Gate:** If WORKFLOW_VERSION != "v2": SKIP to 7e. This entire block is fail-closed.
+
+**Graceful degradation:** If ANY v2 step below fails (agent returns failure or error), log the failure and SKIP remaining v2 steps. Continue to 7e (Discussion) with whatever research context is available. v1 pipeline is never blocked by v2 failures.
+
+**7d-v2a. Research Scope** (skip if research/ directory already populated)
+```
+Agent(name: "research-scope-{NN}", prompt: RESEARCH_SCOPE_PROMPT({phase: NN, ...}))
+```
+Parse RESEARCH-SCOPE.md to get specialist assignments.
+
+**7d-v2b. Parallel Research** (spawn 4 specialists simultaneously)
+```
+Agent(name: "research-arch-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("architecture", {...}))
+Agent(name: "research-impl-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("implementation", {...}))
+Agent(name: "research-eco-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("ecosystem", {...}))
+Agent(name: "research-risk-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("risks", {...}))
+```
+
+**7d-v2c. Research Synthesis**
+```
+Agent(name: "research-synth-{NN}", prompt: RESEARCH_SYNTHESIS_PROMPT({phase: NN, ...}))
+```
+
+**7d-v2d. Research Review Loop** (iterate up to researchReviewIterations)
+```
+FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
+  # Spawn 3 reviewers in parallel
+  Agent(name: "review-accuracy-{NN}", prompt: RESEARCH_REVIEW_PROMPT("accuracy", {...}))
+  Agent(name: "review-completeness-{NN}", prompt: RESEARCH_REVIEW_PROMPT("completeness", {...}))
+  Agent(name: "review-actionability-{NN}", prompt: RESEARCH_REVIEW_PROMPT("actionability", {...}))
+  # Check results
+  IF all reviewers PASS or no CRITICAL_GAPS: BREAK
+  # Expand research for gaps
+  Agent(name: "research-expand-{NN}-{iteration}", prompt: expand gaps from reviewer feedback)
+  Agent(name: "research-synth-{NN}-{iteration}", prompt: RESEARCH_SYNTHESIS_PROMPT re-merge)
+```
+
+**7d-v2e. Research Graduation**
+```
+Agent(name: "research-graduate-{NN}", prompt: RESEARCH_GRADUATION_PROMPT({phase: NN, ...}))
+```
+
 #### 7e. Discussion (conditional: skip if --skip-discuss)
 ```
 Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-premortem)
@@ -142,6 +196,22 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 #### 7g. Planning
 ```
 Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
+```
+
+#### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
+
+**Gate:** If WORKFLOW_VERSION != "v2": SKIP to 7h. Fail-closed.
+
+```
+PREVIOUS_ISSUES=""
+FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
+  Agent(name: "plan-review-{NN}-{iteration}", prompt: PLAN_REVIEW_PROMPT(iteration, PREVIOUS_ISSUES, {...}))
+  Parse RECOMMEND from agent output.
+  IF RECOMMEND == "approve": BREAK
+  IF RECOMMEND == "escalate": prompt user for decision, BREAK
+  # Planner revises
+  PREVIOUS_ISSUES = agent's issues output
+  Agent(name: "plan-revise-{NN}-{iteration}", prompt: revise PLAN.md based on issues)
 ```
 
 #### 7h. Execution

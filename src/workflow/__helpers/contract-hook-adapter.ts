@@ -27,7 +27,7 @@ import { CONTRACT_REGISTRY } from "./contract-definitions";
  * Only validates `current_state` and `completed_states` — the fields
  * needed for contract precondition checking. Other fields are passed through.
  */
-const HookContextSchema = z
+export const HookContextSchema = z
   .object({
     current_state: z.string().optional(),
     completed_states: z.array(z.string()).optional(),
@@ -85,6 +85,13 @@ export async function checkContractPreconditions(
   targetStep: string,
   contextPath: string,
 ): Promise<PreconditionCheckResult> {
+  if (
+    !contextPath.startsWith("/tmp/") ||
+    !contextPath.endsWith("-context.json")
+  ) {
+    return { allowed: true, violations: [] };
+  }
+
   // Look up the contract for this workflow
   const contract = CONTRACT_REGISTRY[workflow];
 
@@ -118,8 +125,8 @@ export async function checkContractPreconditions(
       };
     }
 
-    const fileContent = await file.text();
-    const parsed = HookContextSchema.safeParse(JSON.parse(fileContent));
+    const raw = await file.json();
+    const parsed = HookContextSchema.safeParse(raw);
 
     if (!parsed.success) {
       // Context file is malformed — fail-closed (block the step)

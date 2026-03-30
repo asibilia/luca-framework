@@ -741,6 +741,12 @@ When all checks pass:
 ### Ready for Execution
 
 Plans verified. Run `/phase-execute {phase}` to proceed.
+
+### Review Loop Status
+
+ITERATION: {N}
+CONVERGING: resolved
+RECOMMEND: approve
 ```
 
 ## ISSUES FOUND
@@ -786,6 +792,14 @@ issues:
 
 {N} blocker(s) require revision. Returning to planner with feedback.
 
+### Review Loop Status
+
+ITERATION: {N}
+CONVERGING: {true/false/n/a}
+RECOMMEND: {continue/escalate}
+PREVIOUS_BLOCKERS: {N}
+CURRENT_BLOCKERS: {N}
+DELTA: {change}
 ```
 
 </structured_returns>
@@ -826,3 +840,88 @@ Plan verification complete when:
 - [ ] Result returned to orchestrator
 
 </success_criteria>
+
+## review_loop
+
+## Review Loop Protocol (v2 — Convergence Detection)
+
+<%= branding.commandPrefix %>-plan-checker supports multi-pass review when invoked by an orchestrator managing a plan review loop. The agent itself is stateless between invocations — the orchestrator passes iteration context.
+
+### Iteration Context
+
+When re-invoked for a subsequent iteration, the orchestrator provides:
+
+```xml
+<iteration_context>
+  <iteration>2</iteration>
+  <max_iterations>3</max_iterations>
+  <previous_issues>
+    <!-- Issues from the previous iteration's check -->
+    <issue dimension="requirement_coverage" severity="blocker">AUTH-02 (logout) has no covering task</issue>
+    <issue dimension="scope_sanity" severity="warning">Plan 01 has 4 tasks</issue>
+  </previous_issues>
+  <previous_issue_count>2</previous_issue_count>
+</iteration_context>
+```
+
+### Convergence Detection
+
+After completing the standard verification process (Steps 1-10), compare current findings against the previous iteration:
+
+**Converging (improving):**
+- Current blocker count < previous blocker count
+- OR current total issue count < previous total issue count
+- Recommendation: CONTINUE (planner is making progress)
+
+**Stalled (not improving):**
+- Current blocker count >= previous blocker count after planner revision
+- Same issues appearing across iterations (semantic match, not exact string)
+- Recommendation: ESCALATE (human review needed or fundamental plan restructure required)
+
+**Resolved:**
+- Zero blockers remain
+- Recommendation: APPROVE (plans ready for execution)
+
+### First Iteration Behavior
+
+When no `<iteration_context>` is provided (first pass):
+- Run standard verification (existing Steps 1-10)
+- Report iteration as 1
+- Set CONVERGING to "n/a" (no baseline)
+- Set RECOMMEND to "continue" if issues found, "approve" if passed
+
+### Enhanced Structured Returns
+
+When operating in review loop mode, append these fields to the structured return:
+
+**For VERIFICATION PASSED:**
+```
+ITERATION: {N}
+CONVERGING: resolved
+RECOMMEND: approve
+```
+
+**For ISSUES FOUND:**
+```
+ITERATION: {N}
+CONVERGING: {true/false/n/a}
+RECOMMEND: {continue/escalate/approve}
+PREVIOUS_BLOCKERS: {N from previous iteration, or "n/a"}
+CURRENT_BLOCKERS: {N from this iteration}
+DELTA: {+N/-N/0 change in blocker count}
+
+### Convergence Analysis
+
+{Explanation of what improved, what's stuck, and why the recommendation was made}
+```
+
+### Orchestrator Contract
+
+The orchestrator (lu.skill.ts in Phase 231) manages the loop:
+1. Invoke plan-checker (iteration 1, no context)
+2. If RECOMMEND == "approve": proceed to execution
+3. If RECOMMEND == "continue": invoke planner with issues, then re-invoke plan-checker with iteration_context
+4. If RECOMMEND == "escalate": present to user for decision
+5. If iteration > planReviewLoop.maxIterations: force escalation regardless of convergence
+
+The agent does NOT read config for maxIterations — the orchestrator handles loop termination.

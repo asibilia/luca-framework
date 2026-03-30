@@ -45,28 +45,30 @@ const memoryProtocol = (
   isolation: "none" | "warm" | "cold",
   recallContext: string,
 ): string => {
+  const safeVault = vault.replace(/'/g, "\\'");
+  const safeRecallContext = recallContext.replace(/'/g, "\\'");
   const lines = [
     "<memory_protocol>",
     "PHASE 1 — RECALL (do this FIRST):",
-    `1. Load project identity: mcp__muninn__muninn_recall(vault: '${vault}', context: ['project identity', 'brain project'])`,
+    `1. Load project identity: mcp__muninn__muninn_recall(vault: '${safeVault}', context: ['project identity', 'brain project'])`,
   ];
 
   if (isolation !== "cold") {
     lines.push(
-      `2. Load session context: mcp__muninn__muninn_recall(vault: '${vault}', context: ['session context', '${recallContext}'])`,
+      `2. Load session context: mcp__muninn__muninn_recall(vault: '${safeVault}', context: ['session context', '${safeRecallContext}'])`,
     );
   }
 
   if (isolation === "none") {
     lines.push(
-      `3. Load relevant patterns: mcp__muninn__muninn_recall(vault: 'default', context: ['${recallContext}'])`,
+      `3. Load relevant patterns: mcp__muninn__muninn_recall(vault: 'default', context: ['${safeRecallContext}'])`,
     );
   }
 
   lines.push(
     "",
     "PHASE 2 — OBSERVE (during your work):",
-    `Store significant findings: mcp__muninn__muninn_remember(vault: '${vault}', concept: 'session:candidate-pattern', content: '...')`,
+    `Store significant findings: mcp__muninn__muninn_remember(vault: '${safeVault}', concept: 'session:candidate-pattern', content: '...')`,
     "",
     "PHASE 3 — HANDOFF: Return results in the output contract format below.",
     "",
@@ -462,7 +464,9 @@ ${outputContract("PASSED: true/false\nERROR_COUNT: {N}\nERRORS: {newline-separat
 export const HARNESS_FIX_PROMPT = (
   errors: string,
   p: AgentPromptParams,
-): string => `
+): string => {
+  const sanitizedErrors = errors.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `
 <role>
 You are the harness fixer. Fix the specific TypeScript errors listed below.
 ${AGENT_CONSTRAINT}
@@ -471,7 +475,7 @@ ${AGENT_CONSTRAINT}
 ${memoryProtocol(p.vault, "warm", "fixing harness errors")}
 
 <errors_to_fix>
-${errors}
+${sanitizedErrors}
 </errors_to_fix>
 
 <task>
@@ -483,6 +487,7 @@ ${errors}
 
 ${outputContract("FIXED_COUNT: {N}\nREMAINING_ERRORS: {N}")}
 `;
+};
 
 /**
  * Prompt for goal-backward verification: verify phase goal was achieved.
@@ -512,10 +517,21 @@ ${outputContract("VERDICT: PASSED/ISSUES\nCRITERIA_MET: {N}/{total}\nVERIFICATIO
  *
  * @param reviewer - The review dimension (architecture, dx-advocate, security, simplifier)
  */
+const VALID_REVIEWERS = [
+  "architecture",
+  "dx-advocate",
+  "security",
+  "simplifier",
+] as const;
+
 export const CODE_REVIEW_PROMPT = (
   reviewer: string,
   p: AgentPromptParams,
-): string => `
+): string => {
+  if (!VALID_REVIEWERS.includes(reviewer as (typeof VALID_REVIEWERS)[number])) {
+    throw new Error(`Invalid reviewer: ${reviewer}`);
+  }
+  return `
 <role>
 You are a ${reviewer} code reviewer. Review phase ${p.phase} changes for ${reviewer} concerns.
 ${AGENT_CONSTRAINT}
@@ -533,6 +549,7 @@ ${memoryProtocol(p.vault, "cold", `${reviewer} review`)}
 
 ${outputContract("FINDINGS_COUNT: {N}\nCRITICAL_COUNT: {N}")}
 `;
+};
 
 /**
  * Prompt for learning capture: extract patterns, decisions, pitfalls.
@@ -664,10 +681,16 @@ ${outputContract("UNPLANNED_COUNT: {N}\nPROPOSED_CHANGES: {description of roadma
  *
  * @param route - The specific route (quick, pr-address, debug, etc.)
  */
+const VALID_ROUTES = ["phase-execute", "quick", "pr-address", "debug", "session-plan", "progress", "project-new", "milestone-new"] as const;
+
 export const ROUTE_HANDLER_PROMPT = (
   route: string,
   p: AgentPromptParams,
-): string => `
+): string => {
+  if (!VALID_ROUTES.includes(route as (typeof VALID_ROUTES)[number])) {
+    throw new Error(`Invalid route: ${route}`);
+  }
+  return `
 <role>
 You are the ${route} route handler. Execute the ${route} workflow.
 ${AGENT_CONSTRAINT}
@@ -682,6 +705,7 @@ Read any relevant files, implement changes, and return the result.
 
 ${outputContract()}
 `;
+};
 
 // ─── v2 Research Pipeline Templates ─────────────────────────────────────
 

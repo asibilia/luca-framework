@@ -31,8 +31,6 @@
  * @see src/hooks/scripts/pre-step-pr-address.ts
  */
 
-import { z } from "zod";
-
 import {
   readStdinJson,
   exitSuccess,
@@ -40,19 +38,7 @@ import {
   guardPreStep,
 } from "./hook-io.ts";
 
-// ─── Context File Schema ──────────────────────────────────────────────────
-
-/**
- * Minimal Zod schema for context file validation in enforcement hooks.
- *
- * Only validates `current_state` — the single field used by enforcement logic.
- * Other context fields (outputs, metadata) are ignored via `passthrough()`.
- */
-const EnforcementContextSchema = z
-  .object({
-    current_state: z.string().optional(),
-  })
-  .passthrough();
+import { HookContextSchema } from "../../workflow/__helpers/contract-hook-adapter";
 
 // ─── Config Interface ──────────────────────────────────────────────────────
 
@@ -254,7 +240,7 @@ export const createSubSkillEnforcementHook = (
       }
 
       const raw = await file.json();
-      const parseResult = EnforcementContextSchema.safeParse(raw);
+      const parseResult = HookContextSchema.safeParse(raw);
 
       if (!parseResult.success) {
         // Context file exists but failed schema validation — fail-closed

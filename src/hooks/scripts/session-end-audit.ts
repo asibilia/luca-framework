@@ -17,6 +17,8 @@
  * @module session-end-audit
  */
 
+import { z } from "zod";
+
 import { guardDedup, emitResult, exitSuccess } from "../__helpers/hook-io.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
@@ -62,6 +64,10 @@ const ORCHESTRATOR_TERMINALS: ReadonlyArray<{
   },
 ] as const;
 
+const AuditContextSchema = z
+  .object({ current_state: z.string().optional() })
+  .passthrough();
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const main = async (): Promise<void> => {
@@ -76,8 +82,10 @@ const main = async (): Promise<void> => {
       const raw = await file.text();
       if (!raw.trim()) continue;
 
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const currentState = parsed.current_state;
+      const parseResult = AuditContextSchema.safeParse(JSON.parse(raw));
+      if (!parseResult.success) continue;
+
+      const currentState = parseResult.data.current_state;
 
       if (typeof currentState !== "string") continue;
       if (currentState === "") continue;

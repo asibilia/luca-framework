@@ -186,6 +186,13 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Validating lu step order...",
   }),
+  "session-end-audit": () => ({
+    event: "stop",
+    script: "session-end-audit.ts",
+    timeout: 10,
+    async: true,
+    status_message: "Auditing session state...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:

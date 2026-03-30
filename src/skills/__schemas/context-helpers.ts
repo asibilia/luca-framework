@@ -208,7 +208,12 @@ export const createContextHelpers = <TSchema extends z.ZodType>(
     // Deep merge the patch into current context
     const merged = merge({}, current, patch);
 
-    await Bun.write(path, JSON.stringify(merged, null, 2));
+    const validated = schema.safeParse(merged);
+    if (!validated.success) {
+      throw new Error(`Schema validation failed: ${validated.error.message}`);
+    }
+
+    await Bun.write(path, JSON.stringify(validated.data, null, 2));
 
     // Restrict context files to owner read/write only.
     // Context files in /tmp contain workflow state and should not be

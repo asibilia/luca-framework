@@ -17,6 +17,7 @@
  * @see src/workflow/__helpers/gap-detector.ts
  */
 
+import { z } from "zod";
 import isEmpty from "lodash/isEmpty";
 
 import type { DAGCheckpoint } from "../__schemas/workflow.schemas";
@@ -27,36 +28,38 @@ import type {
 } from "../__schemas/contracts";
 import type { ExecutionGap, GapAuditResult } from "./gap-detector";
 
-// ─── Ledger Entry Type ──────────────────────────────────────────────────────
+// ─── Ledger Entry Schema ────────────────────────────────────────────────────
 
 /**
- * Minimal shape for session ledger entries used in event-sourced evaluation.
+ * Minimal schema for session ledger entries used in event-sourced evaluation.
  *
  * The ledger entry only needs an event name, an optional step ID, and a
  * timestamp. This is intentionally loose to accommodate various ledger formats.
  */
-export interface LedgerEntry {
+export const LedgerEntrySchema = z.object({
   /** Event name (e.g., "STEP_COMPLETE", "STEP_SKIPPED"). */
-  event: string;
+  event: z.string(),
 
   /** Step ID associated with the event. */
-  stepId?: string;
+  stepId: z.string().optional(),
 
   /** ISO timestamp of the event. */
-  timestamp: string;
-}
+  timestamp: z.string(),
+});
 
-// ─── Merged Audit Result ────────────────────────────────────────────────────
+export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
+
+// ─── Merged Audit Result Schema ─────────────────────────────────────────────
 
 /**
- * Result of merging contract violations with gap audit results.
+ * Schema for results of merging contract violations with gap audit results.
  */
-export interface MergedAuditResult {
+export const MergedAuditResultSchema = z.object({
   /** Combined execution gaps (original gaps + contract-derived gaps). */
-  gaps: ExecutionGap[];
+  gaps: z.array(z.any()),
 
   /** Contract violations that were detected. */
-  contractViolations: ContractViolation[];
+  contractViolations: z.array(z.any()),
 
   /**
    * Overall status:
@@ -65,8 +68,15 @@ export interface MergedAuditResult {
    * - `gaps_found`: Execution gaps detected (no contract violations)
    * - `gaps_and_violations`: Both gaps and contract violations detected
    */
-  status: string;
-}
+  status: z.enum([
+    "clean",
+    "violations_found",
+    "gaps_found",
+    "gaps_and_violations",
+  ]),
+});
+
+export type MergedAuditResult = z.infer<typeof MergedAuditResultSchema>;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -165,9 +175,9 @@ export function evaluateContract(
       invariant.kind === "soft" &&
       checkpoint.failedSteps[invariant.precondition] !== undefined;
 
-    const recoverySucceeded = recoveryAttempted
-      ? checkpoint.completedSteps[invariant.precondition] !== undefined
-      : null;
+    // recoverySucceeded is always false here: if the precondition were in
+    // completedSteps the prior guard would have `continue`d.
+    const recoverySucceeded: boolean | null = recoveryAttempted ? false : null;
 
     violations.push({
       contract_id: contract.workflow,
@@ -248,9 +258,9 @@ export function evaluateContractFromLedger(
     const recoveryAttempted =
       invariant.kind === "soft" && failedSteps.has(invariant.precondition);
 
-    const recoverySucceeded = recoveryAttempted
-      ? completedSteps.has(invariant.precondition)
-      : null;
+    // recoverySucceeded is always false here: if the precondition were in
+    // completedSteps the prior guard would have `continue`d.
+    const recoverySucceeded: boolean | null = recoveryAttempted ? false : null;
 
     violations.push({
       contract_id: contract.workflow,
@@ -265,6 +275,39 @@ export function evaluateContractFromLedger(
   }
 
   return buildAuditResult(contract, violations);
+}
+
+// ─── Violation-to-Gap Conversion ────────────────────────────────────────────
+
+/**
+ * Convert a single ContractViolation into an ExecutionGap entry.
+ *
+ * Soft violations produce optional/warning gaps; hard violations produce
+ * required/fail gaps. Shared by both mergeContractAndGapAudits and
+ * gap-detector's detectGaps to eliminate duplicate conversion logic.
+ *
+ * @param violation - The contract violation to convert
+ * @returns An ExecutionGap representing the violation
+ */
+export function violationToGap(violation: ContractViolation): ExecutionGap {
+  return {
+    stepId: violation.postcondition_attempted,
+    stepName: `contract:${violation.invariant_id}`,
+    optional: violation.kind !== "hard",
+    expectedStatus: `precondition:${violation.precondition_missing}`,
+    actualStatus: "contract-violation",
+    severity:
+      violation.kind === "hard" ? ("fail" as const) : ("warning" as const),
+    recommendation:
+      violation.kind === "hard"
+        ? `Hard contract violation: ${violation.invariant_id}. ` +
+          `Step "${violation.postcondition_attempted}" completed without ` +
+          `required precondition "${violation.precondition_missing}".`
+        : `Soft contract violation: ${violation.invariant_id}. ` +
+          `Step "${violation.postcondition_attempted}" completed without ` +
+          `precondition "${violation.precondition_missing}". ` +
+          `Recovery ${violation.recovery_attempted ? "attempted" : "not attempted"}.`,
+  };
 }
 
 // ─── Merge Contract + Gap Audits ────────────────────────────────────────────
@@ -294,26 +337,8 @@ export function mergeContractAndGapAudits(
   contractResult: ContractAuditResult,
   gapResult: GapAuditResult,
 ): MergedAuditResult {
-  // Convert contract violations into ExecutionGap entries
-  const contractGaps: ExecutionGap[] = contractResult.violations.map(
-    (violation) => ({
-      stepId: violation.postcondition_attempted,
-      stepName: `contract:${violation.invariant_id}`,
-      optional: false,
-      expectedStatus: `precondition:${violation.precondition_missing}`,
-      actualStatus: "contract-violation",
-      severity:
-        violation.kind === "hard" ? ("fail" as const) : ("warning" as const),
-      recommendation:
-        violation.kind === "hard"
-          ? `Hard contract violation: ${violation.invariant_id}. ` +
-            `Step "${violation.postcondition_attempted}" completed without ` +
-            `required precondition "${violation.precondition_missing}".`
-          : `Soft contract violation: ${violation.invariant_id}. ` +
-            `Step "${violation.postcondition_attempted}" completed without ` +
-            `precondition "${violation.precondition_missing}". Recovery ${violation.recovery_attempted ? "attempted" : "not attempted"}.`,
-    }),
-  );
+  const contractGaps: ExecutionGap[] =
+    contractResult.violations.map(violationToGap);
 
   // Combine gaps: original gaps first, then contract-derived gaps
   const combinedGaps = [...gapResult.gaps, ...contractGaps];
@@ -322,7 +347,7 @@ export function mergeContractAndGapAudits(
   const hasContractViolations = !isEmpty(contractResult.violations);
   const hasGaps = gapResult.status !== "clean";
 
-  let status: string;
+  let status: MergedAuditResult["status"];
   if (hasContractViolations && hasGaps) {
     status = "gaps_and_violations";
   } else if (hasContractViolations) {

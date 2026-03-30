@@ -32,7 +32,7 @@ import type {
 } from "../__schemas/workflow.schemas";
 import type { BehavioralContract } from "../__schemas/contracts";
 
-import { evaluateContract } from "./contract-evaluator";
+import { evaluateContract, violationToGap } from "./contract-evaluator";
 
 // ─── Gap Severity ───────────────────────────────────────────────────────────
 
@@ -300,42 +300,22 @@ export function detectGaps(
     for (const contract of contracts) {
       const auditResult = evaluateContract(contract, checkpoint);
 
-      // Convert contract violations into ExecutionGap entries
       for (const violation of auditResult.violations) {
-        const severity =
-          violation.kind === "hard" ? ("fail" as const) : ("warning" as const);
+        const gap = violationToGap(violation);
 
-        if (severity === "fail") {
+        if (gap.severity === "fail") {
           missingCount++;
         } else {
           optionalMissingCount++;
         }
 
-        gaps.push({
-          stepId: violation.postcondition_attempted,
-          stepName: `contract:${violation.invariant_id}`,
-          optional: violation.kind !== "hard",
-          expectedStatus: `precondition:${violation.precondition_missing}`,
-          actualStatus: "contract-violation",
-          severity,
-          recommendation:
-            violation.kind === "hard"
-              ? `Hard contract violation: ${violation.invariant_id}. ` +
-                `Step "${violation.postcondition_attempted}" completed without ` +
-                `required precondition "${violation.precondition_missing}".`
-              : `Soft contract violation: ${violation.invariant_id}. ` +
-                `Step "${violation.postcondition_attempted}" completed without ` +
-                `precondition "${violation.precondition_missing}". ` +
-                `Recovery ${violation.recovery_attempted ? "attempted" : "not attempted"}.`,
-        });
+        gaps.push(gap);
       }
     }
   }
 
   // Determine overall status
-  const hasFails = gaps.some((g) => g.severity === "fail");
-  const hasGaps = gaps.length > 0;
-  const status = hasFails ? "gaps_found" : hasGaps ? "gaps_found" : "clean";
+  const status = gaps.length > 0 ? "gaps_found" : "clean";
 
   return {
     status,
