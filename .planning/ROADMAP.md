@@ -130,18 +130,31 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 
 ---
 
-## v8.5.2 — Statusline HUD
+## v8.5.2 — Statusline HUD & Edit Gate
 
-Add workflow phase/progress display to the statusline, giving developers at-a-glance awareness of the current phase, state, wave progress, complexity, and milestone version.
+Add workflow HUD to the statusline and close the anti-skip enforcement gap with a PreToolUse edit gate.
 
-### Phase 236: Statusline HUD Workflow Display — COMPLETE
+### Phase 236: Statusline HUD Workflow Display
 
 **Goal:** Add a two-line HUD to the statusline showing workflow state (phase, state, wave progress, complexity, milestone) above the existing system line. Gracefully collapse to idle indicator when no workflow is active.
 **Complexity:** SIMPLE
 **Verification:** Quick
 **Depends on:** None
 
-- [x] statusline-hud — Add workflow HUD line to `src/hooks/scripts/statusline.ts`: Zod schema for display state, read `.planning/state.json`, render progress bar, emit two-line output with graceful fallback
+- [ ] statusline-hud — Add workflow HUD line to `src/hooks/scripts/statusline.ts`: Zod schema for display state, read `.planning/state.json`, render progress bar, emit two-line output with graceful fallback
+
+### Phase 237: Pre-Edit Workflow Gate — COMPLETE
+
+**Goal:** Close the anti-skip enforcement gap by adding a PreToolUse hook on Edit/Write that blocks source file edits when any workflow pipeline hasn't completed required prerequisite steps. Adds tamper-resistant `completed_states` tracking and stale context cleanup.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 236
+
+- [x] completed-states-schema — Add `completed_states: z.array(z.string()).default([])` to all 5 orchestrator context schemas
+- [x] completed-states-tracking — Auto-populate `completed_states` in context-helpers.ts write(), strip from incoming patches to prevent injection
+- [x] edit-gate-hook — Create `pre-edit-workflow-gate.ts` with per-orchestrator gate config, source-dir blocklist, env var override, actionable block messages
+- [x] stale-context-cleanup — Add stale context file cleanup to session-start hook for all 5 orchestrators
+- [x] hook-registration — Register pre-edit-workflow-gate in hook-registry.ts
 
 ---
 

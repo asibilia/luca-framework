@@ -3,10 +3,10 @@
 ## Current Position
 
 - **Current Milestone:** v8.5.2 — Statusline HUD
-- **Status:** Complete
-- **Task Complexity:** SIMPLE
+- **Status:** idle
+- **Task Complexity:** —
 - **Oversight:** milestone
-- **Last Updated:** 2026-03-29
+- **Last Updated:** 2026-03-30
 
 ## Session Identity
 
@@ -61,4 +61,4 @@ _State updated: 2026-03-30 — v8.5.2 milestone started, Phase 236 executing_
 
 ---
 
-_State generated from machine snapshot at 2026-03-30T16:06:05.433Z_
+_State generated from machine snapshot at 2026-03-30T16:20:30.974Z_

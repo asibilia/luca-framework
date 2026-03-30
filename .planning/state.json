@@ -1,6 +1,6 @@
 {
-  "status": "done",
-  "value": "complete",
+  "status": "active",
+  "value": "idle",
   "historyValue": {},
   "context": {
     "session_id": "de67dc0b-ef24-4183-a0c5-1d9a65dc0d59",
@@ -8,7 +8,7 @@
     "current_milestone": "v8.5.2 — Statusline HUD",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -31,7 +31,9 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": ["typescript"]
+      "tech_stack_profiles": [
+        "typescript"
+      ]
     },
     "complexity_matrix": {
       "TRIVIAL": {
@@ -81,7 +83,8 @@
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
     "started_at": "2026-03-28T23:33:04.774Z",
-    "last_transition_at": "2026-03-29T17:02:07.557Z"
+    "last_transition_at": "2026-03-29T17:02:07.557Z",
+    "current_phase": ""
   },
   "children": {}
 }
