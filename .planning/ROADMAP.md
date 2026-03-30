@@ -167,7 +167,7 @@ Add workflow HUD to the statusline, close the anti-skip enforcement gap with a P
 - [x] review-fix-loop — Review → fix → review loop with REVIEW_FIX_PROMPT, no-progress guard, bridge transitions
 - [x] bridge-sync-review-state — Verified no bridge sync changes needed (loop stays in "verified", exits via REVIEW_COMPLETE/SKIP_REVIEW)
 
-### Phase 239: Unify State Architecture
+### Phase 239: Unify State Architecture — COMPLETE
 
 **Goal:** Eliminate the dual-state architecture (`/tmp/lu-context.json` + `.planning/state.json`) by making `pipeline_position` a computed property derived from XState `value` at read time. Delete `syncBridgeState()` and ~700 lines of dead code. Single source of truth, zero sync bridges.
 **Complexity:** COMPLEX
