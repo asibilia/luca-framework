@@ -109,10 +109,15 @@ ${memoryProtocol(p.vault, "warm", "PR review workflow")}
 1. Resolve PR context — find the PR number from the current branch or arguments
 2. Use gh CLI to fetch: review comments, issue comments, reviews, and diff
 3. Filter to actionable comments (not from author, not resolved, not from bots)
-4. Return the actionable comment count and PR metadata
+4. **Deduplicate comments:** Group comments with identical or near-identical body text.
+   For each group, designate ONE as the primary and track the remaining IDs as duplicates.
+   Automated reviewers (e.g., Copilot) often post the same comment multiple times on the
+   same file. Every duplicate ID must still receive a reply — the respond agent needs
+   the full ID list per unique concern.
+5. Return: actionable comment count, PR metadata, and the duplicate map
 </task>
 
-${outputContract("ACTIONABLE_COUNT: {number of actionable comments}\nPR_NUMBER: {PR number}")}
+${outputContract("ACTIONABLE_COUNT: {unique actionable comments}\nDUPLICATE_COUNT: {total duplicate IDs across all groups}\nPR_NUMBER: {PR number}")}
 `;
 
 /**
@@ -221,11 +226,22 @@ ${memoryProtocol(p.vault, "warm", "PR response workflow")}
 2. For each addressed fix: reply to the PR comment with the fix commit hash using gh CLI
 3. For each disputed concern: reply with a respectful explanation of why we disagree
 4. For deferred items: reply noting both perspectives, deferring to human judgment
-5. Push all fix commits to remote: git push
-6. Post a summary comment on the PR with a table of: fixes applied, responses, contested items
+5. **Reply to ALL comment IDs including duplicates.** Automated reviewers (e.g., Copilot)
+   often post the same comment multiple times. For the primary comment, post the full
+   response. For each duplicate ID of the same concern, post a short reply:
+   "Duplicate — {fixed in COMMIT_HASH / see reply on primary comment}."
+6. **Verify zero unreplied:** After posting all replies, run a verification query:
+   \\\`\\\`\\\`bash
+   gh api repos/{owner}/{repo}/pulls/{pr}/comments --paginate --jq '
+     [.[] | select(.user.login == "{author}") | .in_reply_to_id] as $replied |
+     [.[] | select(.user.login != "{author}") | select(.id as $id | $replied | index($id) | not)] | length'
+   \\\`\\\`\\\`
+   If count > 0, post replies to remaining unreplied comment IDs before proceeding.
+7. Push all fix commits to remote: git push
+8. Post a summary comment on the PR with a table of: fixes applied, responses, contested items
 </task>
 
-${outputContract("REPLIES_POSTED: {N}\nPUSH_STATUS: {success/failure}")}
+${outputContract("REPLIES_POSTED: {N}\\nDUPLICATE_REPLIES: {N}\\nUNREPLIED_REMAINING: {should be 0}\\nPUSH_STATUS: {success/failure}")}
 `;
 
 // ─── verify Templates ─────────────────────────────────────────────────────
@@ -681,7 +697,16 @@ ${outputContract("UNPLANNED_COUNT: {N}\nPROPOSED_CHANGES: {description of roadma
  *
  * @param route - The specific route (quick, pr-address, debug, etc.)
  */
-const VALID_ROUTES = ["phase-execute", "quick", "pr-address", "debug", "session-plan", "progress", "project-new", "milestone-new"] as const;
+const VALID_ROUTES = [
+  "phase-execute",
+  "quick",
+  "pr-address",
+  "debug",
+  "session-plan",
+  "progress",
+  "project-new",
+  "milestone-new",
+] as const;
 
 export const ROUTE_HANDLER_PROMPT = (
   route: string,

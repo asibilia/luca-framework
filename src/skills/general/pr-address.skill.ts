@@ -99,12 +99,16 @@ Agent(name: "fetch", description: "Fetch PR data",
   prompt: PR_FETCH_PROMPT with phase={pr_number}, vault=REPO_VAULT, complexity=current, currentState="idle")
 \`\`\`
 
-Parse Agent output for STATUS. On failure: write state "failed", HALT.
+Parse Agent output for STATUS and DUPLICATE_COUNT. On failure: write state "failed", HALT.
 
-**Write state:**
+**Write state (include duplicate map so respond agent can use it):**
 \`\`\`bash
 bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"fetched"}'
 \`\`\`
+
+**IMPORTANT:** The fetch agent groups duplicate comments (same body text) and returns
+a duplicate map. Pass this map through context so the respond agent (Step 6) can reply
+to ALL comment IDs, not just the primary ones.
 
 ### Step 2: Validate and Categorize Comments
 
@@ -185,8 +189,12 @@ bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"lear
 
 \`\`\`
 Agent(name: "respond", description: "Post PR responses",
-  prompt: PR_RESPOND_PROMPT with fix tracking and debate results)
+  prompt: PR_RESPOND_PROMPT with fix tracking, debate results, AND the duplicate map from Step 1)
 \`\`\`
+
+The respond agent replies to ALL comment IDs — primary comments get full responses,
+duplicate IDs get short "Duplicate — see reply on primary" responses. After posting,
+it runs a verification query to confirm zero unreplied comments remain.
 
 On failure: write state "failed", HALT.
 
