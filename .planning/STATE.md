@@ -2,8 +2,8 @@
 
 ## Current Position
 
-- **Current Milestone:** v8.5.2 — Statusline HUD
-- **Status:** idle
+- **Current Milestone:** v8.5.2 — Statusline HUD & Edit Gate
+- **Status:** Complete
 - **Task Complexity:** —
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-30
@@ -36,6 +36,7 @@
 
 ## Previous Milestones
 
+- v8.5.2 — Statusline HUD & Edit Gate (2026-03-30)
 - v8.5.1 — Audit Gap Closure (2026-03-30)
 - v8.4.1 — Audit Gap Closure (2026-03-28)
 - v6.1.0 — Audit Gap Closure (2026-03-25)
@@ -52,7 +53,7 @@
 
 ---
 
-_State updated: 2026-03-30 — v8.5.2 milestone started, Phase 236 executing_
+_State updated: 2026-03-30 — v8.5.2 milestone complete (Phase 236 + Phase 237 shipped)_
 
 ## Session Continuity
 

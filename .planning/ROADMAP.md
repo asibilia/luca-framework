@@ -130,18 +130,18 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 
 ---
 
-## v8.5.2 — Statusline HUD & Edit Gate
+## v8.5.2 — Statusline HUD & Edit Gate (COMPLETE)
 
 Add workflow HUD to the statusline and close the anti-skip enforcement gap with a PreToolUse edit gate.
 
-### Phase 236: Statusline HUD Workflow Display
+### Phase 236: Statusline HUD Workflow Display — COMPLETE
 
 **Goal:** Add a two-line HUD to the statusline showing workflow state (phase, state, wave progress, complexity, milestone) above the existing system line. Gracefully collapse to idle indicator when no workflow is active.
 **Complexity:** SIMPLE
 **Verification:** Quick
 **Depends on:** None
 
-- [ ] statusline-hud — Add workflow HUD line to `src/hooks/scripts/statusline.ts`: Zod schema for display state, read `.planning/state.json`, render progress bar, emit two-line output with graceful fallback
+- [x] statusline-hud — Add workflow HUD line to `src/hooks/scripts/statusline.ts`: Zod schema for display state, read `.planning/state.json`, render progress bar, emit two-line output with graceful fallback
 
 ### Phase 237: Pre-Edit Workflow Gate — COMPLETE
 
