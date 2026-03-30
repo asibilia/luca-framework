@@ -40,8 +40,8 @@ import {
   guardPreStep,
 } from "./hook-io.ts";
 
-import { computePipelinePosition } from "../../../packages/luca-framework/src/state/__helpers/pipeline-position";
-import { HookContextSchema } from "../../workflow/__helpers/contract-hook-adapter";
+import { computePipelinePosition } from "../../../packages/luca-framework/src/state";
+import { HookContextSchema } from "../../workflow";
 
 // ─── Stdin Payload Schema ────────────────────────────────────────────────
 
@@ -60,21 +60,36 @@ const StdinPayloadSchema = z
   })
   .passthrough();
 
-// ─── Config Interface ──────────────────────────────────────────────────────
+// ─── Config Schema ──────────────────────────────────────────────────────
 
 /**
- * Configuration for a pre-step enforcement hook.
+ * Zod schema for pre-step enforcement hook configuration.
  *
  * Defines the hook identity, context file location, sub-skill registry,
  * valid state mapping, and optional initial skill.
+ *
+ * Uses `z.instanceof` for Set and Record types since Zod does not
+ * natively model ReadonlySet. The inferred type preserves the same
+ * shape as the previous interface.
+ *
+ * @example
+ * ```typescript
+ * const config: EnforcementHookConfig = {
+ *   hookName: "pre-step-lu",
+ *   contextPath: "/tmp/lu-context.json",
+ *   subSkills: new Set(["cognition", "configure"]),
+ *   validStates: { cognition: new Set(["idle"]) },
+ *   initialSkill: "cognition",
+ * };
+ * ```
  */
-export interface EnforcementHookConfig {
+export const EnforcementHookConfigSchema = z.object({
   /**
    * Unique hook identifier used for dedup guard file naming.
    *
    * @example "pre-step-lu"
    */
-  hookName: string;
+  hookName: z.string(),
 
   /**
    * Absolute path to the context JSON file written by the orchestrator.
@@ -83,7 +98,7 @@ export interface EnforcementHookConfig {
    *
    * @example "/tmp/lu-context.json"
    */
-  contextPath: string;
+  contextPath: z.string(),
 
   /**
    * Set of sub-skill/agent names that this hook enforces via exact match.
@@ -91,7 +106,7 @@ export interface EnforcementHookConfig {
    *
    * @example new Set(["cognition", "configure", "backlog", "milestone-learn"])
    */
-  subSkills: ReadonlySet<string>;
+  subSkills: z.instanceof(Set) as z.ZodType<ReadonlySet<string>>,
 
   /**
    * Optional set of agent name prefixes for matching dynamic Agent() names.
@@ -105,7 +120,9 @@ export interface EnforcementHookConfig {
    *
    * @example new Set(["classify-", "execute-", "harness-", "review-", "milestone-learn"])
    */
-  agentPrefixes?: ReadonlySet<string>;
+  agentPrefixes: (
+    z.instanceof(Set) as z.ZodType<ReadonlySet<string>>
+  ).optional(),
 
   /**
    * Maps each sub-skill/agent name (or prefix) to the set of state machine
@@ -119,7 +136,10 @@ export interface EnforcementHookConfig {
    *
    * @example { "cognition": new Set(["idle"]), "execute-": new Set(["planned"]) }
    */
-  validStates: Record<string, ReadonlySet<string>>;
+  validStates: z.record(
+    z.string(),
+    z.instanceof(Set) as z.ZodType<ReadonlySet<string>>,
+  ),
 
   /**
    * Optional skill/agent that is valid when the context file does not exist.
@@ -136,8 +156,10 @@ export interface EnforcementHookConfig {
    *
    * @example "cognition" — valid from missing context because it creates the file
    */
-  initialSkill?: string;
-}
+  initialSkill: z.string().optional(),
+});
+
+export type EnforcementHookConfig = z.infer<typeof EnforcementHookConfigSchema>;
 
 // ─── Factory ───────────────────────────────────────────────────────────────
 

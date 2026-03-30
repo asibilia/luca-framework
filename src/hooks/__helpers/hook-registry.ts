@@ -239,6 +239,12 @@ export function resolveCanonicalRegistry(): Record<string, CanonicalHook> {
  *   (`resolveAdapter(platform).adapt(hook)`) from `src/hooks/__helpers/adapter-registry` instead.
  *   The canonical registry + adapter pattern replaces the need for a
  *   pre-flattened legacy registry.
+ *
+ * TODO: Migrate remaining consumers to canonicalHookRegistry + adapter pattern,
+ *   then remove this export. Known consumers as of 2026-03-30:
+ *   - index.ts (root barrel)
+ *   - src/hooks/index.ts (barrel)
+ *   - scripts/build-shared.ts (import + re-export)
  */
 export const hookRegistry: Record<string, () => HookDefinition> =
   Object.fromEntries(
@@ -253,6 +259,8 @@ export const hookRegistry: Record<string, () => HookDefinition> =
  * Convenience helper for consumers that need the resolved registry.
  *
  * @deprecated Use `resolveCanonicalRegistry()` with the adapter registry instead.
+ *
+ * TODO: Remove once hookRegistry is removed (see TODO on hookRegistry above).
  */
 export function resolveHookRegistry(): Record<string, HookDefinition> {
   return Object.fromEntries(

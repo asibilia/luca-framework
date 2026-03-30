@@ -19,9 +19,7 @@
 
 import { resolve } from "path";
 
-import { z } from "zod";
-
-import { computePipelinePosition } from "../../../packages/luca-framework/src/state/__helpers/pipeline-position";
+import { HookContextSchema } from "../../workflow";
 
 import {
   readStdinJson,
@@ -32,6 +30,7 @@ import {
 } from "../__helpers/hook-io.ts";
 import {
   ORCHESTRATOR_GATES,
+  derivePipelineState,
   type OrchestratorGateConfig,
 } from "../__helpers/orchestrator-gate-config.ts";
 
@@ -39,15 +38,6 @@ import {
 
 /** Directories containing source code — edits here are gated. */
 const SOURCE_DIRS = ["src/", "scripts/", "packages/", "packages-dev/"];
-
-// ─── HookContextSchema (inline to avoid cross-tier import complexity) ─────────
-
-const HookContextSchema = z
-  .object({
-    current_state: z.string().optional(),
-    completed_states: z.array(z.string()).optional(),
-  })
-  .passthrough();
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -110,7 +100,7 @@ const main = async (): Promise<void> => {
 const checkOrchestratorGate = async (
   gate: OrchestratorGateConfig,
 ): Promise<string | null> => {
-  const file = Bun.file(gate.contextPath);
+  const file = Bun.file(gate.context_path);
 
   // Missing context file — no active workflow for this orchestrator
   if (!(await file.exists())) {
@@ -123,7 +113,7 @@ const checkOrchestratorGate = async (
     raw = await file.json();
   } catch {
     process.stderr.write(
-      `pre-edit-workflow-gate: Failed to read ${gate.contextPath} — skipping (fail-open)\n`,
+      `pre-edit-workflow-gate: Failed to read ${gate.context_path} — skipping (fail-open)\n`,
     );
     return null;
   }
@@ -132,61 +122,39 @@ const checkOrchestratorGate = async (
   const parseResult = HookContextSchema.safeParse(raw);
   if (!parseResult.success) {
     process.stderr.write(
-      `pre-edit-workflow-gate: Schema parse failed for ${gate.contextPath} — skipping (fail-open)\n`,
+      `pre-edit-workflow-gate: Schema parse failed for ${gate.context_path} — skipping (fail-open)\n`,
     );
     return null;
   }
 
-  let currentState: string | undefined;
-  let completedStates: string[] | undefined;
-
-  if (gate.useComputedPosition) {
-    // For lu: derive pipeline position from XState value field
-    const rawObj = raw as Record<string, unknown>;
-    const xstateValue = String(rawObj.value ?? "idle");
-    currentState = computePipelinePosition(xstateValue);
-    // Synthesize completed_states from pipeline position order.
-    // If the computed position is "executing" (index 4), then all prior
-    // positions are considered completed, satisfying predecessor checks.
-    const pipelineOrder = [
-      "idle",
-      "routed",
-      "configured",
-      "scanned",
-      "executing",
-      "complete",
-    ];
-    const currentIdx = pipelineOrder.indexOf(currentState);
-    if (currentIdx >= 0) {
-      completedStates = pipelineOrder.slice(0, currentIdx + 1);
-    }
-  } else {
-    // For other orchestrators: read current_state directly from context file
-    currentState = parseResult.data.current_state;
-    completedStates = parseResult.data.completed_states;
-  }
+  const derived = derivePipelineState(
+    raw as Record<string, unknown>,
+    gate.use_computed_position ?? false,
+  );
 
   // No current_state — treat as inactive
-  if (!currentState) {
+  if (!derived) {
     return null;
   }
 
+  const { currentState, completedStates } = derived;
+
   // Terminal state — workflow is done, edits allowed
-  if (gate.terminalStates.includes(currentState)) {
+  if (gate.terminal_states.includes(currentState)) {
     return null;
   }
 
   // Active workflow — check if state permits edits
-  if (gate.editPermittingStates.length === 0) {
+  if (gate.edit_permitting_states.length === 0) {
     // Workflow has no edit-permitting states (read-only workflow like verify)
     return formatBlockMessage(gate, currentState, completedStates);
   }
 
-  if (gate.editPermittingStates.includes(currentState)) {
+  if (gate.edit_permitting_states.includes(currentState)) {
     // In an edit-permitting state — check prerequisites
-    if (gate.requiredPredecessor) {
+    if (gate.required_predecessor) {
       const history = completedStates ?? [];
-      if (!history.includes(gate.requiredPredecessor)) {
+      if (!history.includes(gate.required_predecessor)) {
         return formatBlockMessage(gate, currentState, completedStates);
       }
     }
@@ -212,8 +180,8 @@ const formatBlockMessage = (
   completedStates: string[] | undefined,
 ): string => {
   const history = (completedStates ?? []).join(", ") || "(none)";
-  const predecessor = gate.requiredPredecessor
-    ? `\nRequired: '${gate.requiredPredecessor}' must be in completed_states`
+  const predecessor = gate.required_predecessor
+    ? `\nRequired: '${gate.required_predecessor}' must be in completed_states`
     : "";
 
   return [
@@ -223,10 +191,10 @@ const formatBlockMessage = (
     `completed the required steps before code changes are permitted.`,
     ``,
     `Completed states: [${history}]${predecessor}`,
-    `Context file: ${gate.contextPath}`,
+    `Context file: ${gate.context_path}`,
     ``,
     `To proceed: continue the pipeline, or override with:`,
-    `  rm ${gate.contextPath}`,
+    `  rm ${gate.context_path}`,
   ].join("\n");
 };
 

@@ -158,6 +158,26 @@ export async function loadPersistedActor(
   }
 }
 
+/**
+ * Create a brand-new workflow actor from config and optional overrides.
+ *
+ * Reads `.planning/config.json` from disk (or from `configPath`), merges
+ * any caller-supplied overrides into the machine input, and starts the
+ * actor. Use this when no prior state exists (first run or after reset).
+ *
+ * @param configPath - Path to the Luca config file (default: `.planning/config.json`)
+ * @param overrides - Partial machine input fields to merge on top of config-derived defaults
+ * @returns Result with the started actor on success, or error message on failure
+ *
+ * @example
+ * ```typescript
+ * const result = await createFreshActor();
+ * if (result.success) {
+ *   result.data.send({ type: "START", ticket_id: "PROJ-1" });
+ *   await persistActor(result.data);
+ * }
+ * ```
+ */
 export async function createFreshActor(
   configPath: string = ".planning/config.json",
   overrides?: Partial<WorkflowMachineInput>,

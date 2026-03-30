@@ -19,10 +19,12 @@ import {
   unlinkSync,
   statSync,
   appendFileSync,
-} from "fs";
+} from "node:fs";
 import { join } from "path";
 
 import { z } from "zod";
+
+import { sanitizeJsonParse } from "../../shared";
 
 import {
   guardDedup,
@@ -35,6 +37,10 @@ import {
 import { runBridge } from "../__helpers/bridge.ts";
 import { resolveVault } from "../__helpers/vault.ts";
 import { buildRestoreMessage } from "../__helpers/session-restore.ts";
+import {
+  ORCHESTRATOR_GATES,
+  derivePipelineState,
+} from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -161,7 +167,9 @@ const main = async (): Promise<void> => {
   let staleSessionMsg = "";
   if (existsSync(sessionEndMarker)) {
     try {
-      const rawMarker = JSON.parse(await Bun.file(sessionEndMarker).text());
+      const rawMarker = sanitizeJsonParse(
+        await Bun.file(sessionEndMarker).text(),
+      );
       const markerResult = SessionEndMarkerSchema.safeParse(rawMarker);
       const marker = markerResult.success ? markerResult.data : {};
       if (marker.cleanup_pending) {
@@ -358,7 +366,9 @@ const main = async (): Promise<void> => {
   } else {
     // config.json exists — update runtime field only
     try {
-      const cfg = JSON.parse(await Bun.file(configPath).text());
+      const cfg = sanitizeJsonParse(
+        await Bun.file(configPath).text(),
+      ) as Record<string, unknown>;
       cfg.runtime = runtime;
       await Bun.write(configPath, JSON.stringify(cfg, null, 2) + "\n");
     } catch {
@@ -405,53 +415,40 @@ const main = async (): Promise<void> => {
   // session crashed mid-workflow. Transition to "failed" so the pre-edit
   // workflow gate doesn't lock out the new session.
   // Uses shared config from orchestrator-gate-config.ts (single source of truth).
-  const { ORCHESTRATOR_GATES } =
-    await import("../__helpers/orchestrator-gate-config.ts");
-  const { computePipelinePosition } =
-    await import("../../../packages/luca-framework/src/state/__helpers/pipeline-position");
-
   for (const gate of ORCHESTRATOR_GATES) {
-    const ctxFile = Bun.file(gate.contextPath);
+    const ctxFile = Bun.file(gate.context_path);
     if (await ctxFile.exists()) {
       try {
         const raw = await ctxFile.json();
+        const derived = derivePipelineState(
+          raw as Record<string, unknown>,
+          gate.use_computed_position ?? false,
+        );
+        const state = derived?.currentState;
 
-        // For the lu gate, derive pipeline position from XState `value`
-        // instead of reading `current_state` (which no longer exists in the
-        // lu context schema). Other 4 gates continue reading current_state.
-        let state: string | undefined;
-        if (gate.useComputedPosition) {
-          const xstateValue = raw?.value;
-          if (typeof xstateValue === "string") {
-            state = computePipelinePosition(xstateValue);
-          }
-        } else {
-          state = raw?.current_state;
-        }
-
-        if (state && !gate.terminalStates.includes(state)) {
+        if (state && !gate.terminal_states.includes(state)) {
           process.stderr.write(
             `session-start: Stale ${gate.name} context detected (state: '${state}') — transitioning to 'failed'\n`,
           );
 
-          if (gate.useComputedPosition) {
+          if (gate.use_computed_position) {
             // For state.json: reset via bridge to properly transition the
             // XState machine, rather than writing current_state directly.
             await runBridge(["ensure-init", "--force"]);
           } else {
             raw.current_state = "failed";
-            await Bun.write(gate.contextPath, JSON.stringify(raw, null, 2));
+            await Bun.write(gate.context_path, JSON.stringify(raw, null, 2));
           }
         }
       } catch {
         process.stderr.write(
-          `session-start: Corrupted ${gate.name} context at ${gate.contextPath} — clearing\n`,
+          `session-start: Corrupted ${gate.name} context at ${gate.context_path} — clearing\n`,
         );
-        if (gate.useComputedPosition) {
+        if (gate.use_computed_position) {
           // For state.json: reinitialize via bridge
           await runBridge(["ensure-init", "--force"]);
         } else {
-          await Bun.write(gate.contextPath, "{}");
+          await Bun.write(gate.context_path, "{}");
         }
       }
     }
@@ -463,8 +460,10 @@ const main = async (): Promise<void> => {
     let buildManifestAt: string | null = null;
     if (existsSync(manifestPath)) {
       try {
-        const manifest = JSON.parse(await Bun.file(manifestPath).text());
-        buildManifestAt = manifest.built_at ?? null;
+        const manifest = sanitizeJsonParse(
+          await Bun.file(manifestPath).text(),
+        ) as Record<string, unknown>;
+        buildManifestAt = (manifest.built_at as string) ?? null;
       } catch {
         // No manifest or parse error
       }

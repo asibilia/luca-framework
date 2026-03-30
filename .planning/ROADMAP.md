@@ -179,6 +179,17 @@ Add workflow HUD to the statusline, close the anti-skip enforcement gap with a P
 - [x] wave-2-hook-migration — Migrate enforcement hooks (pre-step-lu, enforcement-hook-factory, orchestrator-gate-config, pre-edit-workflow-gate, session-end-audit) to read computed pipeline position from state.json instead of lu-context.json
 - [x] wave-3-cleanup — Delete `syncBridgeState()`, `LU_STATE_TO_BRIDGE_EVENTS`, `current_state`/`completed_states` from lu schema, dead CLI file (`cli.ts`), 5 dead bridge commands, dead `reset` command, update session-start stale detection, update `context-cli init lu`
 
+### Phase 240: v8.5.2 Audit Gap Closure — COMPLETE
+
+**Goal:** Fix all CRITICAL, HIGH, and MEDIUM findings from the v8.5.2 milestone audit. Addresses terminal state divergence, barrel bypass imports, schema duplication, Bun-first gaps, and sanitizeJsonParse inconsistency.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 239
+
+- [x] wave-1-critical-high — Fix C1 (ORCHESTRATOR_TERMINALS divergence), H1-H5 (barrel bypass imports), H6 (HookContextSchema dedup), H7-H8 (bare fs imports), H9 (interface-to-Zod)
+- [x] wave-2-medium-security — Fix M5 (dynamic imports), M6 (AuditContextSchema dedup), M9-M11 (sanitizeJsonParse), M8 (JSDoc), M1 (pipeline position helper extraction)
+- [x] wave-3-cleanup — Fix M7 (camelCase schema), L1 (deprecated exports), L4 (checkDualWriteDivergence gating), remaining LOW items that are safe mechanical fixes
+
 ---
 
 ## Next: v8.6.0 — Scout Article Intelligence

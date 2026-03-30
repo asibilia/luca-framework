@@ -10,10 +10,12 @@
  * @module statusline
  */
 
-import { realpathSync } from "fs";
+import { realpathSync } from "node:fs";
 import { resolve } from "path";
 import { z } from "zod";
 import get from "lodash/get";
+
+import { sanitizeJsonParse } from "../../shared";
 
 import { projectDir } from "../__helpers/hook-io.ts";
 
@@ -239,7 +241,10 @@ const main = async (): Promise<void> => {
   // --- Read stdin ---
   let input: Record<string, unknown>;
   try {
-    input = JSON.parse(await Bun.stdin.text());
+    input = sanitizeJsonParse(await Bun.stdin.text()) as Record<
+      string,
+      unknown
+    >;
   } catch {
     process.exit(0);
   }

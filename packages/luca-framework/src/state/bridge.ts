@@ -72,6 +72,10 @@ const STATE_MD_PATH = ".planning/STATE.md";
  * phase) against the intended values. Logs a warning if divergence is found.
  * Best-effort only -- never throws.
  *
+ * Gated behind `LUCA_DEBUG` env var to avoid unnecessary I/O on every
+ * transition in production use. The check provides no actionable recovery --
+ * it only logs warnings -- so it only runs when debugging is enabled.
+ *
  * @param intended - The intended field values to verify against
  */
 async function checkDualWriteDivergence(intended: {
@@ -79,6 +83,8 @@ async function checkDualWriteDivergence(intended: {
   complexity: string;
   phase: string | number | null;
 }): Promise<void> {
+  if (!process.env.LUCA_DEBUG) return;
+
   try {
     const file = Bun.file(STATE_FILE_PATH);
     if (!(await file.exists())) return;

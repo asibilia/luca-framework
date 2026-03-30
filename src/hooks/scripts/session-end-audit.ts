@@ -17,11 +17,13 @@
  * @module session-end-audit
  */
 
-import { z } from "zod";
-
-import { computePipelinePosition } from "../../../packages/luca-framework/src/state/__helpers/pipeline-position";
+import { sanitizeJsonParse } from "../../shared";
 
 import { guardDedup, emitResult, exitSuccess } from "../__helpers/hook-io.ts";
+import {
+  ORCHESTRATOR_GATES,
+  derivePipelineState,
+} from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-end-audit");
@@ -29,48 +31,17 @@ guardDedup("session-end-audit");
 // ─── Terminal State Definitions ─────────────────────────────────────────────
 
 /**
- * Maps each orchestrator context file to its set of terminal states.
+ * Derives terminal state entries from the canonical ORCHESTRATOR_GATES config.
  *
- * A `current_state` value NOT in this set indicates the orchestrator
- * was abandoned mid-flow (non-terminal).
+ * Maps each gate to `{ name, path, terminal_states, use_computed_position }`
+ * so the audit loop can detect non-terminal orchestrator states on session end.
  */
-const ORCHESTRATOR_TERMINALS: ReadonlyArray<{
-  readonly name: string;
-  readonly path: string;
-  readonly terminalStates: ReadonlyArray<string>;
-  readonly useComputedPosition?: boolean;
-}> = [
-  {
-    name: "lu",
-    path: ".planning/state.json",
-    terminalStates: ["complete"],
-    useComputedPosition: true,
-  },
-  {
-    name: "phase-execute",
-    path: "/tmp/phase-execute-context.json",
-    terminalStates: ["committed", "failed"],
-  },
-  {
-    name: "verify",
-    path: "/tmp/verify-context.json",
-    terminalStates: ["reviewed", "diagnosed", "failed"],
-  },
-  {
-    name: "milestone-complete",
-    path: "/tmp/milestone-complete-context.json",
-    terminalStates: ["finalized", "failed"],
-  },
-  {
-    name: "pr-address",
-    path: "/tmp/pr-address-context.json",
-    terminalStates: ["pushed", "failed"],
-  },
-] as const;
-
-const AuditContextSchema = z
-  .object({ current_state: z.string().optional() })
-  .passthrough();
+const ORCHESTRATOR_TERMINALS = ORCHESTRATOR_GATES.map((gate) => ({
+  name: gate.name,
+  path: gate.context_path,
+  terminal_states: gate.terminal_states,
+  use_computed_position: gate.use_computed_position ?? false,
+}));
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
@@ -86,27 +57,21 @@ const main = async (): Promise<void> => {
       const raw = await file.text();
       if (!raw.trim()) continue;
 
-      const parsed = JSON.parse(raw);
-      const parseResult = AuditContextSchema.safeParse(parsed);
-      if (!parseResult.success) continue;
+      const parsed = sanitizeJsonParse(raw) as Record<string, unknown>;
+      const derived = derivePipelineState(
+        parsed,
+        orchestrator.use_computed_position,
+      );
+      if (!derived) continue;
 
-      let currentState: string | undefined;
-      if (orchestrator.useComputedPosition) {
-        // lu gate: derive pipeline position from XState value field
-        const rawObj = parsed as Record<string, unknown>;
-        currentState = computePipelinePosition(String(rawObj.value ?? "idle"));
-      } else {
-        currentState = parseResult.data.current_state;
-      }
-
-      if (typeof currentState !== "string") continue;
+      const { currentState } = derived;
       if (currentState === "") continue;
 
-      const isTerminal = orchestrator.terminalStates.includes(currentState);
+      const isTerminal = orchestrator.terminal_states.includes(currentState);
       if (!isTerminal) {
         warnings.push(
           `${orchestrator.name}: non-terminal state "${currentState}" ` +
-            `(expected one of: ${orchestrator.terminalStates.join(", ")})`,
+            `(expected one of: ${orchestrator.terminal_states.join(", ")})`,
         );
       }
     } catch {
