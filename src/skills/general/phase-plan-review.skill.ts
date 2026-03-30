@@ -66,7 +66,7 @@ For each iteration, spawn all 3 reviewers as parallel Task() calls.
 Reviewers receive ONLY the plan files and phase context (cold isolation -- no session state, no MuninnDB context, no prior execution summaries).
 
 \`\`\`
-Task(agent: "code-architect", prompt: "Review these PLAN.md files for architectural soundness.
+Task(subagent_type: "code-architect", prompt: "Review these PLAN.md files for architectural soundness.
 Phase intent: {phase_description}
 Plan files: {list of *-PLAN.md files with content}
 Roadmap context: {roadmap_excerpt for this phase}
@@ -84,7 +84,7 @@ Score: 0.0-1.0
 Gaps:
 G-ARCH-NNN: [severity: BLOCKING|ADVISORY] Description")
 
-Task(agent: "dx-advocate", prompt: "Review these PLAN.md files for developer experience quality.
+Task(subagent_type: "dx-advocate", prompt: "Review these PLAN.md files for developer experience quality.
 Phase intent: {phase_description}
 Plan files: {list of *-PLAN.md files with content}
 Roadmap context: {roadmap_excerpt for this phase}
@@ -103,7 +103,7 @@ Score: 0.0-1.0
 Gaps:
 G-DX-NNN: [severity: BLOCKING|ADVISORY] Description")
 
-Task(agent: "security-auditor", prompt: "Review these PLAN.md files for security considerations.
+Task(subagent_type: "security-auditor", prompt: "Review these PLAN.md files for security considerations.
 Phase intent: {phase_description}
 Plan files: {list of *-PLAN.md files with content}
 Roadmap context: {roadmap_excerpt for this phase}

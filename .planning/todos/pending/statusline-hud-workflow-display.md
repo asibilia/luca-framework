@@ -115,6 +115,7 @@ const renderProgressBar = (
   emptyFn: (s: string) => string,
   width = 10,
 ): string => {
+  if (total === 0) return emptyFn("\u2591".repeat(width));
   const filled = Math.max(
     0,
     Math.min(width, Math.round((current / total) * width)),

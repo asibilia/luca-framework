@@ -55,7 +55,7 @@ VAULT=$(cat .planning/config.json | parse muninn.vault)
 ### Step 3: Spawn lu-research-graduator
 
 \`\`\`
-Task(agent: "lu-research-graduator", prompt: "
+Task(subagent_type: "lu-research-graduator", prompt: "
   Graduate research findings for Phase {PHASE}.
 
   Research directory: $RESEARCH_DIR
