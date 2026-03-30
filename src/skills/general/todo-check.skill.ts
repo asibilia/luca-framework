@@ -61,10 +61,29 @@ List pending todos and select one to work on.
    - Move todo to \`.planning/todos/done/\`
    - Route to appropriate action
 
+6. **Show deferred items (if any exist):**
+
+   \`\`\`bash
+   ls .planning/todos/deferred/*.md 2>/dev/null
+   \`\`\`
+
+   If deferred items exist, show them in a separate section below the pending list:
+
+   \`\`\`
+   ## Deferred Items (intentionally postponed)
+
+   | # | Title | Area | Deferred Since |
+   |---|-------|------|----------------|
+   | 1 | Agent cross-talk protocol | agents | 2026-03-24 |
+
+   To promote a deferred item, move it to pending/ manually or ask to work on deferred items.
+   \`\`\`
+
 ## Success Criteria
 
 - [ ] Pending todos listed with title, area, age
 - [ ] Area filter works (if provided)
+- [ ] Deferred items shown separately below pending list
 - [ ] Selected todo shows full context
 - [ ] Options appropriate to todo content
 - [ ] Completed todos moved to done/

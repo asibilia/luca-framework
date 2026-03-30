@@ -55,7 +55,7 @@ Any other file at \`.planning/\` root is a violation. Remediation:
 |-----------|---------|
 | \`phases/\` | Phase execution directories |
 | \`milestones/\` | Versioned milestone snapshots (\`v{SEMVER}-{type}.md\` files) |
-| \`todos/\` | Work items: \`pending/\`, \`done/\`, \`completed/\`, \`archived/\` |
+| \`todos/\` | Work items: \`pending/\`, \`done/\`, \`completed/\`, \`deferred/\`, \`archived/\` |
 | \`summaries/\` | Phase summary archive |
 | \`research/\` | Research artifacts |
 | \`notes/\` | Freeform notes and proposals |
@@ -67,6 +67,18 @@ Any other file at \`.planning/\` root is a violation. Remediation:
 | \`plans/\` | Plan artifacts |
 
 Any other directory at \`.planning/\` root is a violation. Common case: bare numbered directories (e.g., \`108/\`) that should be under \`phases/\`.
+
+## Todo Subdirectory Semantics
+
+| Subdirectory | Purpose | Resurface? |
+|---|---|---|
+| \`pending/\` | Active backlog — items available for planning | Always (default scan target) |
+| \`done/\` | Work completed — moved here when work is finished | No |
+| \`completed/\` | Verified complete — post-verification archive | No |
+| \`deferred/\` | Valid work intentionally postponed to a future milestone | Only manually, on explicit user request |
+| \`archived/\` | Superseded/obsolete — replaced by newer approaches | Never |
+
+**Key distinction:** \`deferred/\` items are valid work that MAY return to the backlog when the user explicitly decides to review them. \`archived/\` items are dead — they were replaced or made irrelevant by subsequent work. No automated workflow reads \`deferred/\` or \`archived/\`.
 
 ## Phase Directory Structure
 

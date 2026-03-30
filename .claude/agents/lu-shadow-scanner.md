@@ -228,6 +228,9 @@ Detect planning todos that reference phases already marked complete.
 
 **Recommendation:** "Move to .planning/todos/done/ — the associated phase is complete."
 
+5. **Do NOT flag items in `.planning/todos/deferred/`.** Deferred items are intentionally postponed
+   and will only be reviewed when the user explicitly requests it. They are not stale.
+
 ### Category 6 — Orphaned/Misplaced Markdown
 
 Detect markdown files and directories in `.planning/` that violate the canonical directory structure,
