@@ -40,10 +40,12 @@ Both `research-config.schemas.ts` and `workflow-version.schemas.ts` were shipped
 
 ### Todo 5: v2 Graceful Degradation
 
-- All v2 blocks gated on `WORKFLOW_VERSION == "v2"` (fail-closed)
+Config key: `workflow.version` in config.json (read as `WORKFLOW_VERSION` shell variable in lu.skill.ts, stored as `workflow_version` in LuConfigSchema).
+
+- **Gating (fail-closed):** All v2 blocks check `WORKFLOW_VERSION == "v2"` — if not v2, entire block is skipped (v1 runs unchanged)
+- **Degradation (fail-safe):** If a v2 step fails at runtime, it logs and falls through to the next step — the v1 pipeline (discuss/plan/execute) always runs regardless of v2 failures
 - Config default is "v1" — v2 is opt-in only
 - `--v2` CLI flag overrides config for single invocation
-- Explicit graceful degradation: v2 step failures log and fall through to v1 pipeline
 - Existing v1 steps (7a-7p) completely unchanged
 
 ## Verification
