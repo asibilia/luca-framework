@@ -2,9 +2,10 @@
 
 ## Current Position
 
-- **Current Milestone:** v8.5.2 — Statusline HUD & Edit Gate
-- **Status:** Complete
-- **Task Complexity:** —
+- **Current Milestone:** v8.5.2 — Statusline HUD
+- **Current Phase:** Phase 236
+- **Status:** Idle
+- **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-30
 
@@ -21,7 +22,7 @@
 ## Progress
 
 ```
-(no phases completed yet)
+  Phase 0: complete
 ```
 
 ## Git Context
@@ -30,9 +31,7 @@
 
 ## Allowed Events
 
-- `SKIP_COOLDOWN`
-- `COOLDOWN_COMPLETE`
-- `RESET`
+- `START`
 
 ## Previous Milestones
 
@@ -57,9 +56,9 @@ _State updated: 2026-03-30 — v8.5.2 milestone complete (Phase 236 + Phase 237 
 
 ## Session Continuity
 
-- **Session Started:** 2026-03-28
-- **Last Transition:** 2026-03-29
+- **Session Started:** 2026-03-30
+- **Last Transition:** 2026-03-30
 
 ---
 
-_State generated from machine snapshot at 2026-03-30T16:20:30.974Z_
+_State generated from machine snapshot at 2026-03-30T17:31:40.903Z_

@@ -402,44 +402,30 @@ const main = async (): Promise<void> => {
 
   // Step 7c: Clean stale orchestrator context files from crashed sessions.
   // If a context file has a non-terminal current_state, it means the previous
-  // session crashed mid-workflow. Transition to "failed" so the pre-edit gate
-  // doesn't lock out the new session.
-  const STALE_CONTEXT_FILES: Array<{ path: string; terminals: string[] }> = [
-    {
-      path: "/tmp/lu-context.json",
-      terminals: ["idle", "complete", "failed"],
-    },
-    {
-      path: "/tmp/phase-execute-context.json",
-      terminals: ["idle", "committed", "failed"],
-    },
-    {
-      path: "/tmp/verify-context.json",
-      terminals: ["idle", "reviewed", "diagnosed", "failed"],
-    },
-    {
-      path: "/tmp/milestone-complete-context.json",
-      terminals: ["idle", "finalized", "failed"],
-    },
-    {
-      path: "/tmp/pr-address-context.json",
-      terminals: ["idle", "pushed", "failed"],
-    },
-  ];
+  // session crashed mid-workflow. Transition to "failed" so the pre-edit
+  // workflow gate doesn't lock out the new session.
+  // Uses shared config from orchestrator-gate-config.ts (single source of truth).
+  const { ORCHESTRATOR_GATES } =
+    await import("../__helpers/orchestrator-gate-config.ts");
 
-  for (const { path, terminals } of STALE_CONTEXT_FILES) {
-    const ctxFile = Bun.file(path);
+  for (const gate of ORCHESTRATOR_GATES) {
+    const ctxFile = Bun.file(gate.contextPath);
     if (await ctxFile.exists()) {
       try {
         const raw = await ctxFile.json();
         const state = raw?.current_state;
-        if (state && !terminals.includes(state)) {
+        if (state && !gate.terminalStates.includes(state)) {
+          process.stderr.write(
+            `session-start: Stale ${gate.name} context detected (state: '${state}') — transitioning to 'failed'\n`,
+          );
           raw.current_state = "failed";
-          await Bun.write(path, JSON.stringify(raw, null, 2));
+          await Bun.write(gate.contextPath, JSON.stringify(raw, null, 2));
         }
       } catch {
-        // Corrupted file — write empty object
-        await Bun.write(path, "{}");
+        process.stderr.write(
+          `session-start: Corrupted ${gate.name} context at ${gate.contextPath} — clearing\n`,
+        );
+        await Bun.write(gate.contextPath, "{}");
       }
     }
   }

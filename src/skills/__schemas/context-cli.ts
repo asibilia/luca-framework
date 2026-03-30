@@ -73,6 +73,111 @@ import {
 import type { z } from "zod";
 import type { ContextHelpers } from "./context-helpers";
 
+// ─── Bridge Sync ─────────────────────────────────────────────────────────
+
+/**
+ * Mapping from lu context `current_state` values to the sequence of
+ * bridge events needed to reach that state in the workflow state machine.
+ *
+ * When the lu orchestrator writes a `current_state` change via context-cli,
+ * this mapping fires the corresponding bridge transitions so that
+ * `.planning/state.json`'s `value` field stays in sync — which the
+ * statusline HUD reads for real-time workflow display.
+ *
+ * Events are fired in order. XState silently ignores events that are
+ * invalid from the current state, so it's safe to fire the full sequence
+ * even if the machine has already advanced past some states.
+ *
+ * @see packages/luca-framework/src/state/machine.ts for the state graph
+ * @see src/hooks/scripts/statusline.ts for the HUD that reads state.json
+ */
+const LU_STATE_TO_BRIDGE_EVENTS: Record<string, string[]> = {
+  routed: ["START", "PREFLIGHT_COMPLETE"],
+  configured: ["START", "PREFLIGHT_COMPLETE", "ROUTE_COMPLETE"],
+  scanned: ["START", "PREFLIGHT_COMPLETE", "ROUTE_COMPLETE"],
+  executing: [
+    "START",
+    "PREFLIGHT_COMPLETE",
+    "ROUTE_COMPLETE",
+    "DISCUSS_COMPLETE",
+    "PLAN_COMPLETE",
+  ],
+  complete: [
+    "PHASE_COMPLETE",
+    "VERIFY_PASSED",
+    "LEARN_COMPLETE",
+    "COMMIT_COMPLETE",
+  ],
+};
+
+/**
+ * Fire bridge transitions to sync state.json with the lu context state.
+ *
+ * Best-effort: all errors are swallowed. Bridge sync must never block
+ * the orchestrator or cause context-cli to fail.
+ *
+ * Some events require data payloads (e.g., ROUTE_COMPLETE needs complexity).
+ * This function reads the current complexity from state.json to populate
+ * required fields. If state.json is unreadable, falls back to "MODERATE".
+ *
+ * @param contextState - The new `current_state` value from the lu context
+ */
+const syncBridgeState = (contextState: string): void => {
+  const events = LU_STATE_TO_BRIDGE_EVENTS[contextState];
+  if (!events) return;
+
+  // Read current complexity from state.json for events that require it
+  let complexity = "MODERATE";
+  try {
+    const result = Bun.spawnSync(["luca-bridge", "read-complexity"], {
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    if (result.exitCode === 0) {
+      const parsed = JSON.parse(result.stdout.toString());
+      if (parsed.complexity) complexity = parsed.complexity;
+    }
+  } catch {
+    // Fall back to MODERATE
+  }
+
+  // Read current phase from state.json for events that require it
+  let phaseId = 0;
+  try {
+    const phaseResult = Bun.spawnSync(["luca-bridge", "read-phase"], {
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    if (phaseResult.exitCode === 0) {
+      const parsed = JSON.parse(phaseResult.stdout.toString());
+      if (typeof parsed.phase === "number") phaseId = parsed.phase;
+    }
+  } catch {
+    // Fall back to 0
+  }
+
+  // Event data payloads for events that require them
+  const eventData: Record<string, string> = {
+    ROUTE_COMPLETE: JSON.stringify({ complexity }),
+    PHASE_COMPLETE: JSON.stringify({ phase_id: phaseId }),
+  };
+
+  for (const event of events) {
+    try {
+      const args = ["luca-bridge", "transition", `--event=${event}`];
+      const data = eventData[event];
+      if (data) args.push(`--data=${data}`);
+
+      Bun.spawnSync(args, {
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+    } catch {
+      // Best-effort: bridge failure must never block the orchestrator
+    }
+  }
+};
+
 // ─── Context Registry ─────────────────────────────────────────────────────
 
 interface ContextEntry {
@@ -195,6 +300,13 @@ const handleWrite = async (
   }
 
   await entry.helpers.write(patch as never);
+
+  // Auto-sync bridge state when lu context's current_state changes.
+  // This keeps state.json in sync so the statusline HUD updates in real-time.
+  if (name === "lu" && typeof patch.current_state === "string") {
+    syncBridgeState(patch.current_state);
+  }
+
   succeed({ success: true });
 };
 

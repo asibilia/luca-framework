@@ -28,65 +28,10 @@ import {
   exitBlock,
   projectDir,
 } from "../__helpers/hook-io.ts";
-
-// ─── Orchestrator Gate Config ─────────────────────────────────────────────────
-
-/**
- * Per-orchestrator gate configuration.
- *
- * - editPermittingStates: states where source file edits are legitimate
- * - requiredPredecessor: state that must appear in completed_states before
- *   edits are allowed (null = no predecessor check, used for workflows with
- *   no edit-permitting states)
- * - terminalStates: states where the workflow is done (edits always allowed)
- */
-const OrchestratorGateConfigSchema = z.object({
-  name: z.string(),
-  contextPath: z.string(),
-  editPermittingStates: z.array(z.string()),
-  requiredPredecessor: z.string().nullable(),
-  terminalStates: z.array(z.string()),
-});
-
-type OrchestratorGateConfig = z.infer<typeof OrchestratorGateConfigSchema>;
-
-const ORCHESTRATOR_GATES: readonly OrchestratorGateConfig[] = [
-  {
-    name: "lu",
-    contextPath: "/tmp/lu-context.json",
-    editPermittingStates: ["executing"],
-    requiredPredecessor: "configured",
-    terminalStates: ["idle", "complete", "failed"],
-  },
-  {
-    name: "phase-execute",
-    contextPath: "/tmp/phase-execute-context.json",
-    editPermittingStates: ["setup", "executed", "verified"],
-    requiredPredecessor: "setup",
-    terminalStates: ["idle", "committed", "failed"],
-  },
-  {
-    name: "verify",
-    contextPath: "/tmp/verify-context.json",
-    editPermittingStates: [],
-    requiredPredecessor: null,
-    terminalStates: ["idle", "reviewed", "diagnosed", "failed"],
-  },
-  {
-    name: "milestone-complete",
-    contextPath: "/tmp/milestone-complete-context.json",
-    editPermittingStates: [],
-    requiredPredecessor: null,
-    terminalStates: ["idle", "finalized", "failed"],
-  },
-  {
-    name: "pr-address",
-    contextPath: "/tmp/pr-address-context.json",
-    editPermittingStates: ["fixed", "verified"],
-    requiredPredecessor: "validated",
-    terminalStates: ["idle", "pushed", "failed"],
-  },
-] as const;
+import {
+  ORCHESTRATOR_GATES,
+  type OrchestratorGateConfig,
+} from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Source Directory Blocklist ───────────────────────────────────────────────
 
