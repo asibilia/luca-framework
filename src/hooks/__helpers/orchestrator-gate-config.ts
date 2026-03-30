@@ -12,9 +12,13 @@
  * @see src/hooks/scripts/session-start.ts
  */
 
+import { isAbsolute, resolve } from "path";
+
 import { z } from "zod";
 
 import { computePipelinePosition } from "../../../packages/luca-framework/src/state";
+
+import { projectDir } from "./hook-io.ts";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -96,13 +100,40 @@ export const ORCHESTRATOR_GATES: readonly OrchestratorGateConfig[] = [
   },
 ] as const;
 
+// ─── Path Resolution ─────────────────────────────────────────────────────────
+
+/**
+ * Resolve a gate's context_path to an absolute path.
+ *
+ * Absolute paths (e.g. `/tmp/phase-execute-context.json`) pass through
+ * unchanged. Relative paths (e.g. `.planning/state.json`) are resolved
+ * against `projectDir()` so that `Bun.file()` works regardless of CWD.
+ *
+ * @param contextPath - The `context_path` string from an OrchestratorGateConfig
+ * @returns Absolute path suitable for `Bun.file()` or `node:fs` operations
+ *
+ * @example
+ * ```typescript
+ * const absPath = resolveGatePath(".planning/state.json");
+ * // => "/Users/dev/project/.planning/state.json"
+ *
+ * const absPath2 = resolveGatePath("/tmp/phase-execute-context.json");
+ * // => "/tmp/phase-execute-context.json"
+ * ```
+ */
+export const resolveGatePath = (contextPath: string): string =>
+  isAbsolute(contextPath) ? contextPath : resolve(projectDir(), contextPath);
+
 // ─── Pipeline Position Derivation ────────────────────────────────────────────
 
 /**
  * Canonical pipeline position order for synthesizing completed states.
  *
- * When the computed position is, e.g., "executing" (index 4), all prior
- * positions are considered completed — satisfying predecessor checks.
+ * When the computed position is, e.g., "executing" (index 5), all prior
+ * positions (0..5) are considered completed — satisfying predecessor checks.
+ *
+ * Indices: 0=idle, 1=preflight, 2=routed, 3=configured, 4=scanned,
+ *          5=executing, 6=complete
  */
 export const PIPELINE_ORDER = [
   "idle",

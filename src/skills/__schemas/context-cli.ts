@@ -42,6 +42,8 @@
 
 import { unlinkSync } from "node:fs";
 
+import { sanitizeJsonParse } from "../../shared";
+
 import { createContextHelpers } from "./context-helpers";
 import { LuContextSchema, LU_CONTEXT_PATH } from "./lu-context.schemas";
 import {
@@ -180,7 +182,7 @@ const handleWrite = async (
 
   let patch: Record<string, unknown>;
   try {
-    patch = JSON.parse(patchJson) as Record<string, unknown>;
+    patch = sanitizeJsonParse(patchJson) as Record<string, unknown>;
   } catch {
     return fail(`Invalid JSON patch: ${patchJson}`);
   }

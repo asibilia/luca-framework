@@ -11,12 +11,13 @@
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";
+import { resolveGatePath } from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 const hook = createSubSkillEnforcementHook({
   hookName: "pre-step-lu",
-  contextPath: ".planning/state.json",
+  contextPath: resolveGatePath(".planning/state.json"),
   subSkills: new Set([
     // Singleton agents (exact match)
     "cognition",

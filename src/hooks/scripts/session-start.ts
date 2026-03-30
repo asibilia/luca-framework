@@ -40,6 +40,7 @@ import { buildRestoreMessage } from "../__helpers/session-restore.ts";
 import {
   ORCHESTRATOR_GATES,
   derivePipelineState,
+  resolveGatePath,
 } from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -416,7 +417,8 @@ const main = async (): Promise<void> => {
   // workflow gate doesn't lock out the new session.
   // Uses shared config from orchestrator-gate-config.ts (single source of truth).
   for (const gate of ORCHESTRATOR_GATES) {
-    const ctxFile = Bun.file(gate.context_path);
+    const absCtxPath = resolveGatePath(gate.context_path);
+    const ctxFile = Bun.file(absCtxPath);
     if (await ctxFile.exists()) {
       try {
         const raw = await ctxFile.json();
@@ -437,18 +439,18 @@ const main = async (): Promise<void> => {
             await runBridge(["ensure-init", "--force"]);
           } else {
             raw.current_state = "failed";
-            await Bun.write(gate.context_path, JSON.stringify(raw, null, 2));
+            await Bun.write(absCtxPath, JSON.stringify(raw, null, 2));
           }
         }
       } catch {
         process.stderr.write(
-          `session-start: Corrupted ${gate.name} context at ${gate.context_path} — clearing\n`,
+          `session-start: Corrupted ${gate.name} context at ${absCtxPath} — clearing\n`,
         );
         if (gate.use_computed_position) {
           // For state.json: reinitialize via bridge
           await runBridge(["ensure-init", "--force"]);
         } else {
-          await Bun.write(gate.context_path, "{}");
+          await Bun.write(absCtxPath, "{}");
         }
       }
     }

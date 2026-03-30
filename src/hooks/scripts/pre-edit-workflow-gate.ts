@@ -17,7 +17,7 @@
  * @see .claude/plans/bubbly-finding-lark.md
  */
 
-import { resolve } from "path";
+import { isAbsolute, resolve } from "path";
 
 import { HookContextSchema } from "../../workflow";
 
@@ -31,6 +31,7 @@ import {
 import {
   ORCHESTRATOR_GATES,
   derivePipelineState,
+  resolveGatePath,
   type OrchestratorGateConfig,
 } from "../__helpers/orchestrator-gate-config.ts";
 
@@ -51,9 +52,13 @@ const main = async (): Promise<void> => {
     return exitSuccess();
   }
 
-  // Resolve and check if path targets a source directory
+  // Resolve and check if path targets a source directory.
+  // Anchor relative paths against projectDir() so CWD differences don't
+  // cause the resolved path to escape the project directory.
   const pd = projectDir();
-  const resolved = resolve(filePath);
+  const resolved = isAbsolute(filePath)
+    ? resolve(filePath)
+    : resolve(pd, filePath);
 
   // Only gate files within the project directory
   if (!resolved.startsWith(pd + "/") && resolved !== pd) {
@@ -100,7 +105,8 @@ const main = async (): Promise<void> => {
 const checkOrchestratorGate = async (
   gate: OrchestratorGateConfig,
 ): Promise<string | null> => {
-  const file = Bun.file(gate.context_path);
+  const absContextPath = resolveGatePath(gate.context_path);
+  const file = Bun.file(absContextPath);
 
   // Missing context file — no active workflow for this orchestrator
   if (!(await file.exists())) {
@@ -113,7 +119,7 @@ const checkOrchestratorGate = async (
     raw = await file.json();
   } catch {
     process.stderr.write(
-      `pre-edit-workflow-gate: Failed to read ${gate.context_path} — skipping (fail-open)\n`,
+      `pre-edit-workflow-gate: Failed to read ${absContextPath} — skipping (fail-open)\n`,
     );
     return null;
   }
@@ -122,7 +128,7 @@ const checkOrchestratorGate = async (
   const parseResult = HookContextSchema.safeParse(raw);
   if (!parseResult.success) {
     process.stderr.write(
-      `pre-edit-workflow-gate: Schema parse failed for ${gate.context_path} — skipping (fail-open)\n`,
+      `pre-edit-workflow-gate: Schema parse failed for ${absContextPath} — skipping (fail-open)\n`,
     );
     return null;
   }

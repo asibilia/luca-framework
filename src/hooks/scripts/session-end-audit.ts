@@ -23,6 +23,7 @@ import { guardDedup, emitResult, exitSuccess } from "../__helpers/hook-io.ts";
 import {
   ORCHESTRATOR_GATES,
   derivePipelineState,
+  resolveGatePath,
 } from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ guardDedup("session-end-audit");
  */
 const ORCHESTRATOR_TERMINALS = ORCHESTRATOR_GATES.map((gate) => ({
   name: gate.name,
-  path: gate.context_path,
+  path: resolveGatePath(gate.context_path),
   terminal_states: gate.terminal_states,
   use_computed_position: gate.use_computed_position ?? false,
 }));
