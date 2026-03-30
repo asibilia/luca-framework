@@ -389,6 +389,7 @@ Automated article ingestion, research, and actionable todo generation from exter
 - **v8.4.1** — Audit Gap Closure: 3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC) ([View Archive](milestones/v8.4.1-ROADMAP.md))
 - **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
 - **v8.5.0** — Anti-Skip Enforcement Layer: 3 phases, 10 plans, 79 commits, 113 files changed (+18,033/-6,800 LOC) ([View Archive](milestones/v8.5.0-ROADMAP.md))
+- **v8.5.1** — Audit Gap Closure: 11 phases, 135 commits, 56 files changed (+8,526/-5,498 LOC) ([View Archive](milestones/v8.5.1-ROADMAP.md))
 
 ---
 

@@ -34,6 +34,7 @@
 
 ## Previous Milestones
 
+- v8.5.1 — Audit Gap Closure (2026-03-30)
 - v8.4.1 — Audit Gap Closure (2026-03-28)
 - v6.1.0 — Audit Gap Closure (2026-03-25)
 - v6.0.0 — Runtime Foundation & Adapter Layer (2026-03-25)
@@ -58,4 +59,4 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-30T13:56:54.306Z_
+_State generated from machine snapshot at 2026-03-30T14:17:49.464Z_
