@@ -147,10 +147,13 @@ Automated article ingestion, research, and actionable todo generation from exter
 
 ## Deferred to Future Milestones
 
-| Todo Group                | Target   | Scope                          | Reason                                         |
-| ------------------------- | -------- | ------------------------------ | ---------------------------------------------- |
-| agent-cross-talk-protocol | v10.0.0+ | Inter-agent messaging protocol | Needs design spike, no existing infrastructure |
-| agent-collaboration-ui    | v10.0.0+ | Agent collaboration UI         | Depends on cross-talk + adapters + Studio      |
+Items below are tracked as todo files in `.planning/todos/deferred/` and will only be reviewed when the user explicitly requests it.
+
+| Todo Group                | Target   | Scope                          | Reason                                         | File                                        |
+| ------------------------- | -------- | ------------------------------ | ---------------------------------------------- | ------------------------------------------- |
+| agent-cross-talk-protocol | v10.0.0+ | Inter-agent messaging protocol | Needs design spike, no existing infrastructure | `deferred/agent-cross-talk-protocol.md`     |
+| agent-collaboration-ui    | v10.0.0+ | Agent collaboration UI         | Depends on cross-talk + adapters + Studio      | `deferred/agent-collaboration-ui.md`        |
+| test-suite-fragility      | TBD      | Fix 29-test full-suite failure | Blocked by no-tests rule                       | `deferred/37-p1-test-suite-fragility.md`    |
 
 ## Closed (Reference / Not Actionable)
 
