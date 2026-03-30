@@ -31,6 +31,8 @@
  * @see src/hooks/scripts/pre-step-pr-address.ts
  */
 
+import { z } from "zod";
+
 import {
   readStdinJson,
   exitSuccess,
@@ -39,6 +41,23 @@ import {
 } from "./hook-io.ts";
 
 import { HookContextSchema } from "../../workflow/__helpers/contract-hook-adapter";
+
+// ─── Stdin Payload Schema ────────────────────────────────────────────────
+
+const StdinPayloadSchema = z
+  .object({
+    tool_name: z.string().default("unknown"),
+    tool_input: z
+      .object({
+        skill: z.string().optional(),
+        args: z.string().optional(),
+        subagent_type: z.string().optional(),
+        name: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
 // ─── Config Interface ──────────────────────────────────────────────────────
 
@@ -180,9 +199,13 @@ export const createSubSkillEnforcementHook = (
   } = config;
 
   return async (): Promise<void> => {
-    // Step 1: Read stdin
-    const stdinData = await readStdinJson();
-    const toolName = (stdinData?.tool_name as string) || "unknown";
+    // Step 1: Read stdin and validate via Zod schema
+    const stdinRaw = await readStdinJson();
+    const stdinResult = StdinPayloadSchema.safeParse(stdinRaw ?? {});
+    const stdinData = stdinResult.success
+      ? stdinResult.data
+      : StdinPayloadSchema.parse({});
+    const toolName = stdinData.tool_name;
 
     // Step 2: Only act on Skill or Agent tool calls
     if (toolName !== "Skill" && toolName !== "Agent") {
@@ -193,23 +216,16 @@ export const createSubSkillEnforcementHook = (
     guardPreStep(hookName, toolName);
 
     // Step 4: Extract step name from tool_input
-    const toolInput = stdinData?.tool_input as
-      | Record<string, unknown>
-      | undefined;
+    const toolInput = stdinData.tool_input;
 
     let stepName: string;
     if (toolName === "Skill") {
       // Skill: `tool_input.skill` or first token of `tool_input.args`
       stepName =
-        (toolInput?.skill as string | undefined) ??
-        ((toolInput?.args as string | undefined) ?? "").split(/\s+/)[0] ??
-        "";
+        toolInput?.skill ?? (toolInput?.args ?? "").split(/\s+/)[0] ?? "";
     } else {
       // Agent: `tool_input.subagent_type` or `tool_input.name`
-      stepName =
-        (toolInput?.subagent_type as string | undefined) ??
-        (toolInput?.name as string | undefined) ??
-        "";
+      stepName = toolInput?.subagent_type ?? toolInput?.name ?? "";
     }
 
     // Step 5: Match against subSkills (exact) then agentPrefixes (prefix or exact)

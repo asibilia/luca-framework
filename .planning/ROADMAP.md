@@ -97,12 +97,12 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 **Verification:** Standard
 **Depends on:** Phase 231
 
-- [ ] fix-harness-prompt-injection — Sanitize tsc error output in HARNESS_FIX_PROMPT by escaping XML tags before interpolation (SEC-001)
-- [ ] fix-context-write-validation — Validate merged context against Zod schema before writing in context-helpers.ts (SEC-002)
-- [ ] fix-hookname-sanitization — Apply safeTool regex to hookName in guard file paths in hook-io.ts (SEC-003)
-- [ ] fix-prompt-escaping — Escape single quotes in vault/recallContext in memoryProtocol, add allowlist for reviewer/route params (SEC-004, SEC-005)
-- [ ] fix-contextpath-validation — Validate contextPath prefix in contract-hook-adapter checkContractPreconditions (SEC-006)
-- [ ] fix-enforcement-schema-first — Replace type assertions in enforcement-hook-factory stdin parsing with Zod safeParse, replace JSON.parse in session-end-audit with schema validation (DX-001, DX-002)
+- [x] fix-harness-prompt-injection — Sanitize tsc error output in HARNESS_FIX_PROMPT by escaping XML tags before interpolation (SEC-001)
+- [x] fix-context-write-validation — Validate merged context against Zod schema before writing in context-helpers.ts (SEC-002)
+- [x] fix-hookname-sanitization — Apply safeTool regex to hookName in guard file paths in hook-io.ts (SEC-003)
+- [x] fix-prompt-escaping — Escape single quotes in vault/recallContext in memoryProtocol, add allowlist for reviewer/route params (SEC-004, SEC-005)
+- [x] fix-contextpath-validation — Validate contextPath prefix in contract-hook-adapter checkContractPreconditions (SEC-006)
+- [x] fix-enforcement-schema-first — Replace type assertions in enforcement-hook-factory stdin parsing with Zod safeParse, replace JSON.parse in session-end-audit with schema validation (DX-001, DX-002)
 
 ### Phase 234: Post-Audit DRY & Integration Cleanup
 
@@ -111,11 +111,11 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 **Verification:** Standard
 **Depends on:** Phase 233
 
-- [ ] fix-violation-to-gap-dry — Extract shared violationToGap() helper, resolve optional field divergence between gap-detector and contract-evaluator (DRY-001 CRITICAL)
-- [ ] fix-register-session-end-audit — Register session-end-audit in hook-registry.ts so it actually fires on SessionEnd (INT-001)
-- [ ] fix-consolidate-context-schema — Consolidate duplicated EnforcementContextSchema/HookContextSchema into single shared schema in workflow (ARCH-001)
-- [ ] fix-dead-code — Fix unreachable recoverySucceeded path in contract-evaluator, fix dead hasFails branch in gap-detector, use Bun.file.json() in contract-hook-adapter (ARCH-002, ARCH-003, ARCH-006)
-- [ ] fix-contract-evaluator-schemas — Convert LedgerEntry/MergedAuditResult to Zod schemas with z.infer, constrain status to enum (DX-003, DX-005)
+- [x] fix-violation-to-gap-dry — Extract shared violationToGap() helper, resolve optional field divergence between gap-detector and contract-evaluator (DRY-001 CRITICAL)
+- [x] fix-register-session-end-audit — Register session-end-audit in hook-registry.ts so it actually fires on SessionEnd (INT-001)
+- [x] fix-consolidate-context-schema — Consolidate duplicated EnforcementContextSchema/HookContextSchema into single shared schema in workflow (ARCH-001)
+- [x] fix-dead-code — Fix unreachable recoverySucceeded path in contract-evaluator, fix dead hasFails branch in gap-detector, use Bun.file.json() in contract-hook-adapter (ARCH-002, ARCH-003, ARCH-006)
+- [x] fix-contract-evaluator-schemas — Convert LedgerEntry/MergedAuditResult to Zod schemas with z.infer, constrain status to enum (DX-003, DX-005)
 
 ---
 
