@@ -157,6 +157,17 @@ export const EnforcementHookConfigSchema = z.object({
    * @example "cognition" — valid from missing context because it creates the file
    */
   initialSkill: z.string().optional(),
+
+  /**
+   * When true, derive pipeline position from XState `value` field via
+   * `computePipelinePosition()` instead of reading `current_state` directly.
+   *
+   * Used by the lu gate which reads from `.planning/state.json` (XState
+   * persisted state) rather than a simple `{ current_state }` context file.
+   *
+   * @default false
+   */
+  use_computed_position: z.boolean().optional(),
 });
 
 export type EnforcementHookConfig = z.infer<typeof EnforcementHookConfigSchema>;
@@ -219,6 +230,7 @@ export const createSubSkillEnforcementHook = (
     agentPrefixes,
     validStates,
     initialSkill,
+    use_computed_position,
   } = config;
 
   return async (): Promise<void> => {
@@ -292,7 +304,7 @@ export const createSubSkillEnforcementHook = (
       // The state is tracked by the orchestrator in the context file.
       // If the context file exists but has no state field, we're in the
       // initial state (idle — first step hasn't run yet).
-      if (contextPath.endsWith("state.json")) {
+      if (use_computed_position) {
         // lu gate: derive pipeline position from XState value field
         const stateValue = String(
           (raw as Record<string, unknown>).value ?? "idle",

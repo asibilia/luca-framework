@@ -101,7 +101,8 @@ const readWorkflowState = async (
 
     // Extract complexity and milestone from context
     const complexity = get(raw, "context.complexity", "") as string;
-    const rawMilestone = get(raw, "context.current_milestone", "") as string;
+    const rawMilestone = (get(raw, "context.current_milestone") ??
+      "") as string;
     const milestone = rawMilestone.split(" ")[0] || "";
 
     const assembled = {

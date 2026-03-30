@@ -45,7 +45,7 @@ const hook = createSubSkillEnforcementHook({
   ]),
   validStates: {
     // Singleton agents
-    cognition: new Set(["idle"]),
+    cognition: new Set(["idle", "preflight"]),
     configure: new Set(["routed"]),
     backlog: new Set(["configured"]),
     // Phase-suffixed agents (use prefix as key)
@@ -69,6 +69,7 @@ const hook = createSubSkillEnforcementHook({
     "milestone-finalize": new Set(["executing"]),
   },
   initialSkill: "cognition",
+  use_computed_position: true,
 });
 
 await hook();

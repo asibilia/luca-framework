@@ -14,6 +14,7 @@
  */
 export type PipelinePosition =
   | "idle"
+  | "preflight"
   | "routed"
   | "configured"
   | "scanned"
@@ -50,8 +51,9 @@ export const computePipelinePosition = (
 ): PipelinePosition => {
   switch (xstateValue) {
     case "idle":
-    case "preflight":
       return "idle";
+    case "preflight":
+      return "preflight";
     case "routing":
       return "routed";
     case "discussing":

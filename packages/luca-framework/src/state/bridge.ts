@@ -20,20 +20,20 @@
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
  * Usage:
- *   luca-state read-complexity
- *   luca-state read-phase
- *   luca-state read-status
- *   luca-state read-field --field=session_id
- *   luca-state set-field --field=current_milestone --value="v2.0"
- *   luca-state transition --event=START [--data=json]
- *   luca-state snapshot
- *   luca-state ensure-init [--force]
- *   luca-state gate-check --gate=confirm_plan
- *   luca-state suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
- *   luca-state init-vault
- *   luca-state init-vault --vault=my-project --force
+ *   luca-bridge read-complexity
+ *   luca-bridge read-phase
+ *   luca-bridge read-status
+ *   luca-bridge read-field --field=session_id
+ *   luca-bridge set-field --field=current_milestone --value="v2.0"
+ *   luca-bridge transition --event=START [--data=json]
+ *   luca-bridge snapshot
+ *   luca-bridge ensure-init [--force]
+ *   luca-bridge gate-check --gate=confirm_plan
+ *   luca-bridge suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
+ *   luca-bridge init-vault
+ *   luca-bridge init-vault --vault=my-project --force
  *
- * @module luca-state/bridge
+ * @module luca-bridge
  */
 import get from "lodash/get";
 import set from "lodash/set";
@@ -190,9 +190,9 @@ const VALID_SUBCOMMANDS = [
  * Organized by command category (read, write, lifecycle)
  * with option descriptions for each subcommand.
  */
-const HELP_TEXT = `luca-state — CLI bridge for the Luca workflow state machine
+const HELP_TEXT = `luca-bridge — CLI bridge for the Luca workflow state machine
 
-Usage: luca-state <subcommand> [options]
+Usage: luca-bridge <subcommand> [options]
 
 Read commands:
   read-status            Read comprehensive workflow status
@@ -919,9 +919,9 @@ async function handleSuspend(args: string[]): Promise<void> {
  *
  * @example
  * ```bash
- * luca-state init-vault
- * luca-state init-vault --vault=my-project
- * luca-state init-vault --force
+ * luca-bridge init-vault
+ * luca-bridge init-vault --vault=my-project
+ * luca-bridge init-vault --force
  * ```
  */
 async function handleInitVault(args: string[]): Promise<void> {

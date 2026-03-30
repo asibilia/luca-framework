@@ -24,7 +24,8 @@ import { computePipelinePosition } from "../../../packages/luca-framework/src/st
  * Uses snake_case for consistency with project conventions.
  *
  * @param name - Human-readable orchestrator name for block messages
- * @param context_path - Absolute path to the orchestrator's context JSON file
+ * @param context_path - Path to the orchestrator's context JSON file (absolute
+ *   for /tmp contexts, relative for project-scoped contexts like .planning/state.json)
  * @param edit_permitting_states - States where source file edits are legitimate.
  *   Empty array means the workflow never permits edits (read-only workflows).
  * @param required_predecessor - State that must appear in completed_states
@@ -105,6 +106,7 @@ export const ORCHESTRATOR_GATES: readonly OrchestratorGateConfig[] = [
  */
 export const PIPELINE_ORDER = [
   "idle",
+  "preflight",
   "routed",
   "configured",
   "scanned",
