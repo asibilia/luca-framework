@@ -130,9 +130,9 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 
 ---
 
-## v8.5.2 — Statusline HUD & Edit Gate (COMPLETE)
+## v8.5.2 — Statusline HUD & Edit Gate
 
-Add workflow HUD to the statusline and close the anti-skip enforcement gap with a PreToolUse edit gate.
+Add workflow HUD to the statusline, close the anti-skip enforcement gap with a PreToolUse edit gate, and add a fix-loop for code review findings.
 
 ### Phase 236: Statusline HUD Workflow Display — COMPLETE
 
@@ -155,6 +155,17 @@ Add workflow HUD to the statusline and close the anti-skip enforcement gap with 
 - [x] edit-gate-hook — Create `pre-edit-workflow-gate.ts` with per-orchestrator gate config, source-dir blocklist, env var override, actionable block messages
 - [x] stale-context-cleanup — Add stale context file cleanup to session-start hook for all 5 orchestrators
 - [x] hook-registration — Register pre-edit-workflow-gate in hook-registry.ts
+
+### Phase 238: Code Review Fix Loop
+
+**Goal:** Add a backward transition and fix-loop mechanism for code review findings in the phase-execute pipeline. Currently, when parallel reviewers discover issues, the system continues to learning/commit with no path to fix them — unlike the harness fix loop which correctly loops until passing.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 237
+
+- [ ] review-backward-transition — Add `REVIEW_ISSUES_FOUND` event to phase-execute state machine that transitions from `verified` back to `executed`, update pre-step hook validStates
+- [ ] review-fix-loop — Add hoisted review fix loop to lu.skill.ts Step 7k: `review → plan-fix → execute-fix → review` pattern (mirrors harness fix loop at Step 7i)
+- [ ] bridge-sync-review-state — Add `reviewing` context state to the bridge sync mapping in context-cli.ts so HUD shows review status
 
 ---
 

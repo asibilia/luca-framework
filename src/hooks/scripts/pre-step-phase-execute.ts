@@ -25,6 +25,7 @@ const hook = createSubSkillEnforcementHook({
   ]),
   agentPrefixes: new Set([
     "review-", // matches review-arch, review-dx, review-security, review-simplify
+    "review-fix-", // matches review-fix-1, review-fix-2 (fix loop agents)
   ]),
   validStates: {
     "execute-waves": new Set(["setup"]),
@@ -32,6 +33,7 @@ const hook = createSubSkillEnforcementHook({
     fix: new Set(["executed"]),
     verify: new Set(["executed", "verified"]),
     "review-": new Set(["verified"]),
+    "review-fix-": new Set(["verified"]),
     learn: new Set(["reviewed"]),
     "process-data": new Set(["reviewed", "learned"]),
   },

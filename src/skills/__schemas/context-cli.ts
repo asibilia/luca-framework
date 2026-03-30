@@ -108,6 +108,10 @@ const LU_STATE_TO_BRIDGE_EVENTS: Record<string, string[]> = {
     "LEARN_COMPLETE",
     "COMMIT_COMPLETE",
   ],
+  // NOTE: The phase-execute review fix loop (Step 3) stays entirely in "verified"
+  // state and does NOT require additional bridge events here. REVIEW_COMPLETE and
+  // SKIP_REVIEW remain the only exit events from "verified" — these are emitted by
+  // luca-bridge directly in phase-execute, not via context-cli.
 };
 
 /**
@@ -168,12 +172,22 @@ const syncBridgeState = (contextState: string): void => {
       const data = eventData[event];
       if (data) args.push(`--data=${data}`);
 
-      Bun.spawnSync(args, {
-        stdout: "ignore",
-        stderr: "ignore",
+      const result = Bun.spawnSync(args, {
+        stdout: "pipe",
+        stderr: "pipe",
       });
-    } catch {
+
+      if (result.exitCode !== 0) {
+        const stderr = result.stderr.toString().trim();
+        console.error(
+          `[syncBridgeState] ${event} failed (exit ${result.exitCode}): ${stderr}`,
+        );
+      }
+    } catch (err) {
       // Best-effort: bridge failure must never block the orchestrator
+      console.error(
+        `[syncBridgeState] ${event} error: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 };

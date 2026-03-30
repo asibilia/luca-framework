@@ -106,7 +106,12 @@ export async function loadPersistedActor(
     let snapshot: any;
     try {
       snapshot = sanitizeJsonParse(text);
-      if (!snapshot.status) snapshot.status = "active";
+      // Always force status to "active" so the actor accepts events.
+      // The workflow machine has no type:"final" states, so status:"done"
+      // is always a stale artifact from a previous session. Without this,
+      // XState creates a stopped actor that silently ignores all events,
+      // breaking the bridge → state.json → statusline HUD chain.
+      snapshot.status = "active";
       if (!snapshot.children) snapshot.children = {};
       if (!snapshot.historyValue) snapshot.historyValue = {};
     } catch {

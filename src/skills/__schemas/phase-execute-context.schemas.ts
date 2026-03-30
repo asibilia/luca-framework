@@ -71,7 +71,11 @@ export type PhaseExecuteVerifyOutput = z.infer<
  * Output from phase-execute-review sub-agent (Step 8).
  *
  * Contains code review swarm results: which reviewers were spawned,
- * their findings, and an aggregated summary.
+ * their findings, an aggregated summary, and fix loop tracking fields.
+ *
+ * `review_fix_iterations` counts how many fix iterations were attempted
+ * by the review fix loop. `review_critical_resolved` is true when the
+ * final review pass reports CRITICAL_COUNT == 0.
  */
 export const PhaseExecuteReviewOutputSchema = z.object({
   reviewers_spawned: z.array(z.string()).default([]),
@@ -79,12 +83,14 @@ export const PhaseExecuteReviewOutputSchema = z.object({
     .array(
       z.object({
         reviewer: z.string(),
-        severity: z.string().default("info"),
+        severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("LOW"),
         finding: z.string().default(""),
       }),
     )
     .default([]),
   review_summary: z.string().default(""),
+  review_fix_iterations: z.number().default(0),
+  review_critical_resolved: z.boolean().default(false),
 });
 
 export type PhaseExecuteReviewOutput = z.infer<
