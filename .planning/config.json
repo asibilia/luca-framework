@@ -18,6 +18,7 @@
     "routing": "auto"
   },
   "workflow": {
+    "version": "v1",
     "research": true,
     "plan_check": true,
     "verifier": true,
@@ -26,9 +27,26 @@
     "always_verify": true,
     "capture_learnings": true,
     "opinionated_guidelines": true,
-    "tech_stack_profiles": [
-      "typescript"
-    ]
+    "tech_stack_profiles": ["typescript"]
+  },
+  "research": {
+    "parallelResearchers": 4,
+    "reviewLoop": {
+      "maxIterations": 3,
+      "continueForImportant": true
+    },
+    "planReviewLoop": {
+      "maxIterations": 2
+    },
+    "graduation": {
+      "confidenceThreshold": "MEDIUM",
+      "scoringThreshold": 0.55,
+      "autoCleanupAfterMilestone": false
+    },
+    "perTaskRecall": {
+      "enabled": true,
+      "maxEngramsPerTask": 5
+    }
   },
   "planning": {
     "commit_docs": true,
@@ -178,9 +196,7 @@
   "dogfood": {
     "enabled": true,
     "source": "src/",
-    "outputs": [
-      ".claude/"
-    ],
+    "outputs": [".claude/"],
     "build_command": "bun run build:all",
     "lock_file": ".claude/.session-lock",
     "manifest_file": ".claude/.build-manifest.json"
@@ -199,12 +215,7 @@
     "phase_scan_mode": "quick",
     "milestone_scan_mode": "full",
     "block_milestone_on_critical": true,
-    "allowlist": [
-      "scripts/",
-      ".planning/",
-      "docs/",
-      "packages/"
-    ],
+    "allowlist": ["scripts/", ".planning/", "docs/", "packages/"],
     "denylist_patterns": [
       "test-*.ts",
       "debug-*.ts",

@@ -15,6 +15,8 @@
  */
 import { z } from "zod";
 
+import { WorkflowVersionSchema } from "./workflow-version.schemas";
+
 /**
  * Schema for the `lu` orchestration config section.
  *
@@ -26,8 +28,12 @@ import { z } from "zod";
  * - `skip_uat` (formerly `skip_uat_in_autopilot`) controls whether UAT is
  *   skipped in autonomous mode
  * - `swarm_enabled` and `max_parallel_phases` control parallel phase execution
+ * - `workflow_version` selects the pipeline variant ("v1" linear or "v2" extended)
  */
 export const LuConfigSchema = z.object({
+  /** Workflow pipeline version: "v1" (linear) or "v2" (with parallel research, review loops, graduation) */
+  workflow_version: WorkflowVersionSchema,
+
   /** Oversight level controlling human-in-the-loop gates */
   oversight: z
     .enum(["full-auto", "flagged", "milestone", "phase"])

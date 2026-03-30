@@ -682,3 +682,258 @@ Read any relevant files, implement changes, and return the result.
 
 ${outputContract()}
 `;
+
+// ─── v2 Research Pipeline Templates ─────────────────────────────────────
+
+/**
+ * Prompt for lu-phase-researcher in v2 scope mode.
+ *
+ * Produces a RESEARCH-SCOPE.md that decomposes the phase domain into
+ * 4 specialist areas (architecture, implementation, ecosystem, risks)
+ * with specific research questions and search terms for each.
+ *
+ * @param p - Common agent prompt parameters
+ * @returns Formatted prompt string for research scoping
+ *
+ * @example
+ * ```typescript
+ * const prompt = RESEARCH_SCOPE_PROMPT({ phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'researching' })
+ * ```
+ */
+export const RESEARCH_SCOPE_PROMPT = (p: AgentPromptParams): string => `
+<role>
+You are lu-phase-researcher operating in v2 scope mode. Produce a RESEARCH-SCOPE.md that decomposes the phase domain into 4 specialist areas.
+${AGENT_CONSTRAINT}
+</role>
+
+<v2_mode>true</v2_mode>
+
+${memoryProtocol(p.vault, "warm", `phase ${p.phase} research scoping`)}
+
+<task>
+1. Read the phase goal from .planning/ROADMAP.md (Phase ${p.phase})
+2. Read CONTEXT.md in the phase directory if it exists (locked decisions)
+3. Decompose the research domain into 4 specialist areas:
+   - Architecture: system design, project structure patterns, module boundaries
+   - Implementation: code patterns, API usage, library integration
+   - Ecosystem: library landscape, community patterns, state of the art
+   - Risks: pitfalls, failure modes, edge cases
+4. For each specialist, generate 3-5 specific research questions and suggested search terms
+5. Write RESEARCH-SCOPE.md to the phase directory
+6. Commit: git add && git commit -m "docs(${p.phase}): research scope for v2 pipeline"
+</task>
+
+${outputContract("SCOPE_PATH: {path to RESEARCH-SCOPE.md}\\nSPECIALISTS: 4\\nQUESTIONS_TOTAL: {N}")}
+`;
+
+/**
+ * Prompt for a specialist researcher in the v2 parallel research pipeline.
+ *
+ * Invokes one of 4 specialist researchers (architecture, implementation,
+ * ecosystem, risks) to research their assigned domain and produce a
+ * numbered output file in the phase research/ subdirectory.
+ *
+ * @param specialist - The specialist type to invoke
+ * @param p - Common agent prompt parameters
+ * @returns Formatted prompt string for parallel research
+ *
+ * @example
+ * ```typescript
+ * const prompt = PARALLEL_RESEARCH_PROMPT('architecture', { phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'researching' })
+ * ```
+ */
+export const PARALLEL_RESEARCH_PROMPT = (
+  specialist: "architecture" | "implementation" | "ecosystem" | "risks",
+  p: AgentPromptParams,
+): string => `
+<role>
+You are lu-${specialist}-researcher. Research the ${specialist} domain for phase ${p.phase}.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "cold", `${specialist} research for phase ${p.phase}`)}
+
+<task>
+1. Read the RESEARCH-SCOPE.md in the phase directory for your specialist assignment
+2. Read the "Shared Context" section for project constraints
+3. Research your assigned questions using Context7, WebSearch, WebFetch, and codebase analysis
+4. Write your findings to the research subdirectory:
+   - architecture → research/01-architecture-patterns.md
+   - implementation → research/02-implementation-approaches.md
+   - ecosystem → research/03-existing-solutions.md
+   - risks → research/04-pitfalls-and-risks.md
+5. Include confidence levels (HIGH/MEDIUM/LOW) for each finding
+6. Store significant findings as research:* engrams in MuninnDB:
+   mcp__muninn__muninn_remember(vault: '${p.vault}', concept: 'research:${specialist}-{finding}', content: '...')
+</task>
+
+${outputContract("OUTPUT_FILE: {path}\\nFINDINGS_COUNT: {N}\\nCONFIDENCE: {overall HIGH/MEDIUM/LOW}")}
+`;
+
+/**
+ * Prompt for lu-research-synthesizer to merge 4 specialist research outputs.
+ *
+ * Reads all specialist outputs from the phase research/ directory and
+ * produces a unified RESEARCH.md following the standard format, resolving
+ * conflicts between specialist findings by preferring higher confidence.
+ *
+ * @param p - Common agent prompt parameters
+ * @returns Formatted prompt string for research synthesis
+ *
+ * @example
+ * ```typescript
+ * const prompt = RESEARCH_SYNTHESIS_PROMPT({ phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'researching' })
+ * ```
+ */
+export const RESEARCH_SYNTHESIS_PROMPT = (p: AgentPromptParams): string => `
+<role>
+You are lu-research-synthesizer. Merge 4 specialist research outputs into a unified RESEARCH.md.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "warm", `phase ${p.phase} research synthesis`)}
+
+<task>
+1. Read all 4 specialist outputs from the phase research/ directory:
+   - research/01-architecture-patterns.md
+   - research/02-implementation-approaches.md
+   - research/03-existing-solutions.md
+   - research/04-pitfalls-and-risks.md
+2. Merge into a unified RESEARCH.md following the standard format:
+   - Standard Stack, Architecture Patterns, Don't Hand-Roll, Common Pitfalls, Code Examples
+3. Resolve conflicts between specialist findings (prefer higher confidence)
+4. Write the merged RESEARCH.md to the phase directory
+5. Write SUMMARY.md documenting the synthesis process
+</task>
+
+${outputContract("RESEARCH_PATH: {path to RESEARCH.md}\\nSECTIONS_MERGED: {N}\\nCONFLICTS_RESOLVED: {N}")}
+`;
+
+/**
+ * Prompt for a research reviewer in the v2 review loop.
+ *
+ * Invokes one of 3 reviewers (accuracy, completeness, actionability) to
+ * evaluate the research corpus and rate each finding. Supports iteration
+ * context for convergence detection in the review loop.
+ *
+ * @param reviewer - The review dimension to evaluate
+ * @param p - Common agent prompt parameters
+ * @returns Formatted prompt string for research review
+ *
+ * @example
+ * ```typescript
+ * const prompt = RESEARCH_REVIEW_PROMPT('accuracy', { phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'reviewing' })
+ * ```
+ */
+export const RESEARCH_REVIEW_PROMPT = (
+  reviewer: "accuracy" | "completeness" | "actionability",
+  p: AgentPromptParams,
+): string => `
+<role>
+You are lu-${reviewer}-reviewer. Review the research corpus for ${reviewer} issues.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "cold", `${reviewer} review of phase ${p.phase} research`)}
+
+<task>
+1. Read the RESEARCH.md and specialist outputs in the phase directory
+2. Evaluate ${reviewer}:
+   ${reviewer === "accuracy" ? "- Verify claims against sources\\n   - Flag unverified URLs or hallucinated references\\n   - Check confidence levels match evidence" : ""}
+   ${reviewer === "completeness" ? "- Identify missing facets and coverage gaps\\n   - Check all RESEARCH-SCOPE.md questions were answered\\n   - Flag sections with insufficient depth" : ""}
+   ${reviewer === "actionability" ? "- Can a planner create concrete tasks from each finding?\\n   - Are code examples specific enough to implement?\\n   - Flag vague or non-actionable guidance" : ""}
+3. Rate each finding: PASS, NEEDS_EXPANSION (gap found), CRITICAL_GAP (must address)
+4. Return structured review with gap list
+</task>
+
+${outputContract("PASS_COUNT: {N}\\nNEEDS_EXPANSION: {N}\\nCRITICAL_GAPS: {N}\\nOVERALL: PASS/NEEDS_WORK")}
+`;
+
+/**
+ * Prompt for lu-research-graduator to filter and promote research findings.
+ *
+ * Recalls all research:* engrams, scores them by confidence, actionability,
+ * and uniqueness, then promotes qualifying findings to permanent MuninnDB
+ * storage as patterns, pitfalls, or decisions in the default vault.
+ *
+ * @param p - Common agent prompt parameters
+ * @returns Formatted prompt string for research graduation
+ *
+ * @example
+ * ```typescript
+ * const prompt = RESEARCH_GRADUATION_PROMPT({ phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'graduating' })
+ * ```
+ */
+export const RESEARCH_GRADUATION_PROMPT = (p: AgentPromptParams): string => `
+<role>
+You are lu-research-graduator. Filter research findings by quality and promote the best to permanent MuninnDB storage.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "none", `phase ${p.phase} research graduation`)}
+
+<task>
+1. Recall all research:* engrams from repo vault: mcp__muninn__muninn_recall(vault: '${p.vault}', context: ['research findings'])
+2. Score each engram: score = confidence * 0.40 + actionability * 0.35 + uniqueness * 0.25
+3. Filter by thresholds (default: score >= 0.55, confidence >= MEDIUM)
+4. Promote qualifying findings to permanent storage:
+   - Architecture findings → pattern:{name} in default vault
+   - Risk findings → pitfall:{name} in default vault
+   - Decision findings → decision:{name} in default vault
+5. Link graduated engrams to related existing memories
+6. Store graduation metrics: mcp__muninn__muninn_remember(vault: '${p.vault}', concept: 'metric:research-graduation-phase-${p.phase}', content: '{metrics}')
+</task>
+
+${outputContract("TOTAL_RESEARCH: {N}\\nGRADUATED: {N}\\nFILTERED: {N}\\nPROMOTED_PATTERNS: {N}\\nPROMOTED_PITFALLS: {N}")}
+`;
+
+/**
+ * Prompt for lu-plan-checker in review loop mode with convergence detection.
+ *
+ * Verifies plans against the phase goal, compares findings against previous
+ * iteration issues, and detects convergence (converging, stalled, resolved)
+ * to recommend whether to approve, continue, or escalate.
+ *
+ * @param iteration - The current review loop iteration number
+ * @param previousIssues - Issues from the previous iteration (empty string on first)
+ * @param p - Common agent prompt parameters
+ * @returns Formatted prompt string for plan review
+ *
+ * @example
+ * ```typescript
+ * const prompt = PLAN_REVIEW_PROMPT(1, '', { phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'planning' })
+ * const prompt2 = PLAN_REVIEW_PROMPT(2, 'Missing error handling tasks', { phase: '231', complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'planning' })
+ * ```
+ */
+export const PLAN_REVIEW_PROMPT = (
+  iteration: number,
+  previousIssues: string,
+  p: AgentPromptParams,
+): string => `
+<role>
+You are lu-plan-checker operating in review loop mode. Verify plans against phase goal with convergence awareness.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "warm", `phase ${p.phase} plan review iteration ${iteration}`)}
+
+<iteration_context>
+  <iteration>${iteration}</iteration>
+  <previous_issues>
+${previousIssues || "<!-- First iteration, no previous issues -->"}
+  </previous_issues>
+</iteration_context>
+
+<task>
+1. Run standard plan verification (all 6 dimensions + 10 steps from your agent definition)
+2. Compare findings against previous iteration issues (if any)
+3. Detect convergence:
+   - If blocker count decreased: CONVERGING
+   - If blocker count same or increased after revision: STALLED
+   - If zero blockers: RESOLVED
+4. Recommend: approve (resolved), continue (converging), escalate (stalled)
+5. Return structured verification result with convergence status
+</task>
+
+${outputContract("VERDICT: PASSED/ISSUES\\nITERATION: ${iteration}\\nCONVERGING: {true/false/n/a/resolved}\\nRECOMMEND: {approve/continue/escalate}\\nBLOCKER_COUNT: {N}")}
+`;
