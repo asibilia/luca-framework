@@ -745,7 +745,8 @@ Plans verified. Run `/phase-execute {phase}` to proceed.
 ### Review Loop Status
 
 ITERATION: {N}
-CONVERGING: resolved
+CONVERGING: true
+STATUS: resolved
 RECOMMEND: approve
 ```
 
@@ -894,10 +895,13 @@ When no `<iteration_context>` is provided (first pass):
 
 When operating in review loop mode, append these fields to the structured return:
 
+**CONVERGING** is always a boolean (`true`/`false`) or `n/a` (first iteration). A separate **STATUS** field carries the resolution state.
+
 **For VERIFICATION PASSED:**
 ```
 ITERATION: {N}
-CONVERGING: resolved
+CONVERGING: true
+STATUS: resolved
 RECOMMEND: approve
 ```
 
@@ -905,6 +909,7 @@ RECOMMEND: approve
 ```
 ITERATION: {N}
 CONVERGING: {true/false/n/a}
+STATUS: {improving/stalled/first_pass}
 RECOMMEND: {continue/escalate/approve}
 PREVIOUS_BLOCKERS: {N from previous iteration, or "n/a"}
 CURRENT_BLOCKERS: {N from this iteration}

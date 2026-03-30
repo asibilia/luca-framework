@@ -49,19 +49,19 @@ review_log = []
 For each iteration, spawn all 3 reviewers as parallel Task() calls:
 
 ```
-Task(agent: "<%= branding.commandPrefix %>-completeness-reviewer", prompt: "Review research corpus for completeness.
+Task(subagent_type: "<%= branding.commandPrefix %>-completeness-reviewer", prompt: "Review research corpus for completeness.
 Phase intent: {phase_description}
 Research files: {list of files in research/}
 Iteration: {N} of {MAX}
 {if iteration > 1: Prior review gaps that should be addressed: {prior_gaps}}")
 
-Task(agent: "<%= branding.commandPrefix %>-accuracy-reviewer", prompt: "Review research corpus for accuracy.
+Task(subagent_type: "<%= branding.commandPrefix %>-accuracy-reviewer", prompt: "Review research corpus for accuracy.
 Phase intent: {phase_description}
 Research files: {list of files in research/}
 Iteration: {N} of {MAX}
 {if iteration > 1: Prior review gaps that should be addressed: {prior_gaps}}")
 
-Task(agent: "<%= branding.commandPrefix %>-actionability-reviewer", prompt: "Review research corpus for actionability.
+Task(subagent_type: "<%= branding.commandPrefix %>-actionability-reviewer", prompt: "Review research corpus for actionability.
 Phase intent: {phase_description}
 Research files: {list of files in research/}
 Iteration: {N} of {MAX}
@@ -125,7 +125,7 @@ expansion_targets = [gap.description for gap in gaps if gap.severity in ("CRITIC
 iteration += 1
 ```
 
-**IMPORTANT:** This skill MUST NOT call `Skill(skill: "phase-research-expand")` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return `STATUS: needs_expansion` with the expansion targets, and let the orchestrator handle the expansion call.
+**IMPORTANT:** This skill MUST NOT call `Skill(skill: "phase-research-expand")` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return `NEEDS_EXPANSION` with the expansion targets, and let the orchestrator handle the expansion call.
 
 ### Step 8: Write REVIEW-LOG.md
 

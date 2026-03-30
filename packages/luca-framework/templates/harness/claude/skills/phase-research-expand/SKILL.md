@@ -74,7 +74,7 @@ researchers_needed = determine_researchers(expansion_targets)
 # 3. The REVIEW-LOG.md feedback for that gap
 
 for researcher in researchers_needed:
-    Task(agent: researcher.name, prompt: "Expand research on specific gaps.
+    Task(subagent_type: researcher.name, prompt: "Expand research on specific gaps.
     Phase intent: {phase_description}
     Existing research: {relevant research file}
 
