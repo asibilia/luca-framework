@@ -31,7 +31,7 @@
  * },
  * ```
  *
- * The orchestrator sends ABORT when a required sub-skill fails or when
+ * The orchestrator sends ABORT when a required sub-agent fails or when
  * context validation fails (PREMORTEM Constraint #1).
  *
  * @example

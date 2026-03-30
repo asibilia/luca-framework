@@ -2,7 +2,7 @@
  * State machine definition for the pr-address orchestrator.
  *
  * Defines 12 states (11 workflow + 1 terminal `failed`) and all transition
- * events for the pr-address sub-skill chain. Uses the `createSkillStateMachine`
+ * events for the pr-address sub-agent chain. Uses the `createSkillStateMachine`
  * factory from Phase 222.
  *
  * **PREMORTEM Constraint #2:** SKIP_DEBATE and SKIP_LEARN are explicit events

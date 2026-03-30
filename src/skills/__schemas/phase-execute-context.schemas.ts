@@ -1,17 +1,17 @@
 /**
- * Shared context file schema for the phase-execute sub-skill chain.
+ * Shared context file schema for the phase-execute sub-agent chain.
  *
- * All sub-skills (phase-execute-waves, phase-execute-verify, phase-execute-review)
+ * All sub-agents (phase-execute-waves, phase-execute-verify, phase-execute-review)
  * read/write a single JSON file at `/tmp/phase-execute-context.json`. Each
- * sub-skill reads the full context via `readPhaseExecuteContext()`, extends its
+ * sub-agent reads the full context via `readPhaseExecuteContext()`, extends its
  * section, and writes back via `writePhaseExecuteContext()`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` must be present.
- * Failed `safeParse` = ABORT (sub-skill treats as terminal failure).
+ * Failed `safeParse` = ABORT (sub-agent treats as terminal failure).
  *
  * **Pitfall 6:** phase-execute already uses luca-bridge transition events
  * (VERIFY_PASSED, LEARN_COMPLETE, PROCESS_DATA_COMPLETE, COMMIT_COMPLETE).
- * This context file tracks sub-skill-level granularity while the orchestrator
+ * This context file tracks sub-agent-level granularity while the orchestrator
  * continues to emit bridge events at the phase level.
  *
  * Uses snake_case for all field names per API conventions.
@@ -25,7 +25,7 @@ import { createContextHelpers } from "./context-helpers";
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
 /**
- * Output from phase-execute-waves sub-skill (Steps 1-4).
+ * Output from phase-execute-waves sub-agent (Steps 1-4).
  *
  * Contains wave execution results: plan discovery, wave grouping, and
  * per-wave execution summaries.
@@ -50,7 +50,7 @@ export type PhaseExecuteWavesOutput = z.infer<
 >;
 
 /**
- * Output from phase-execute-verify sub-skill (Steps 5-7).
+ * Output from phase-execute-verify sub-agent (Steps 5-7).
  *
  * Contains verification loop results: harness execution, verify execution,
  * and fix iteration counts for both Loop A (harness) and Loop B (verify).
@@ -68,7 +68,7 @@ export type PhaseExecuteVerifyOutput = z.infer<
 >;
 
 /**
- * Output from phase-execute-review sub-skill (Step 8).
+ * Output from phase-execute-review sub-agent (Step 8).
  *
  * Contains code review swarm results: which reviewers were spawned,
  * their findings, and an aggregated summary.
@@ -96,8 +96,8 @@ export type PhaseExecuteReviewOutput = z.infer<
 /**
  * Top-level schema for the shared phase-execute context file.
  *
- * All sub-skill output sections are optional because they are populated
- * incrementally as each sub-skill completes. The only required field is
+ * All sub-agent output sections are optional because they are populated
+ * incrementally as each sub-agent completes. The only required field is
  * `context_version` which must be literal `1`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` is required.

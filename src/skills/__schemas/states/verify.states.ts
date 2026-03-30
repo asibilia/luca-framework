@@ -2,7 +2,7 @@
  * State machine definition for the verify orchestrator.
  *
  * Defines 7 states (4 workflow + 2 success terminals + 1 failure terminal) and
- * all transition events for the verify sub-skill chain. Uses the
+ * all transition events for the verify sub-agent chain. Uses the
  * `createSkillStateMachine` factory from Phase 222.
  *
  * The verify skill has TWO divergent terminal paths:

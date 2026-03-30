@@ -1,13 +1,13 @@
 /**
- * Shared context file schema for the lu sub-skill chain.
+ * Shared context file schema for the lu sub-agent chain.
  *
- * All sub-skills (lu-route, lu-configure, lu-backlog, lu-phase-loop)
- * read/write a single JSON file at `/tmp/lu-context.json`. Each sub-skill
+ * All sub-agents (lu-route, lu-configure, lu-backlog, lu-phase-loop)
+ * read/write a single JSON file at `/tmp/lu-context.json`. Each sub-agent
  * reads the full context via `readLuContext()`, extends its section, and
  * writes back via `writeLuContext()`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` must be present.
- * Failed `safeParse` = ABORT (sub-skill treats as terminal failure).
+ * Failed `safeParse` = ABORT (sub-agent treats as terminal failure).
  *
  * **Note:** `current_state` is written by the orchestrator to the context file
  * for hook consumption and is tracked in the Zod schema as an optional field.
@@ -23,7 +23,7 @@ import { createContextHelpers } from "./context-helpers";
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
 /**
- * Output from lu-route sub-skill (Steps 0-3).
+ * Output from lu-route sub-agent (Steps 0-3).
  *
  * Contains parsed request info, git context, cognition status,
  * complexity classification, and routing decision.
@@ -39,7 +39,7 @@ export const LuRouteOutputSchema = z.object({
 export type LuRouteOutput = z.infer<typeof LuRouteOutputSchema>;
 
 /**
- * Output from lu-configure sub-skill (Step 0 config).
+ * Output from lu-configure sub-agent (Step 0 config).
  *
  * Contains configuration loading status, override application,
  * and pre-flight validation results.
@@ -53,7 +53,7 @@ export const LuConfigureOutputSchema = z.object({
 export type LuConfigureOutput = z.infer<typeof LuConfigureOutputSchema>;
 
 /**
- * Output from lu-backlog sub-skill (backlog scan + roadmap revision).
+ * Output from lu-backlog sub-agent (backlog scan + roadmap revision).
  *
  * Contains todo scanning results, WSJF scoring status, and
  * roadmap revision outcome.
@@ -68,7 +68,7 @@ export const LuBacklogOutputSchema = z.object({
 export type LuBacklogOutput = z.infer<typeof LuBacklogOutputSchema>;
 
 /**
- * Output from lu-phase-loop sub-skill (phase loop + milestone gate + summary).
+ * Output from lu-phase-loop sub-agent (phase loop + milestone gate + summary).
  *
  * Contains execution results, milestone gate status, and
  * summary generation status.
@@ -86,8 +86,8 @@ export type LuPhaseLoopOutput = z.infer<typeof LuPhaseLoopOutputSchema>;
 /**
  * Top-level schema for the shared lu context file.
  *
- * All sub-skill output sections are optional because they are populated
- * incrementally as each sub-skill completes. The only required field is
+ * All sub-agent output sections are optional because they are populated
+ * incrementally as each sub-agent completes. The only required field is
  * `context_version` which must be literal `1`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` is required.

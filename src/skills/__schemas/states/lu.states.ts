@@ -2,7 +2,7 @@
  * State machine definition for the lu orchestrator.
  *
  * Defines 8 states (5 workflow + 1 executing + 1 success terminal + 1 failure
- * terminal) and all transition events for the lu sub-skill chain. Uses the
+ * terminal) and all transition events for the lu sub-agent chain. Uses the
  * `createSkillStateMachine` factory from Phase 222.
  *
  * States: idle -> routed -> configured -> scanned -> executing -> complete

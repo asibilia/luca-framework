@@ -83,7 +83,7 @@ export interface EnforcementHookConfig {
    * Set of sub-skill/agent names that this hook enforces via exact match.
    * Names not matched by `subSkills` or `agentPrefixes` are silently allowed (exit 0).
    *
-   * @example new Set(["lu-route", "lu-configure", "lu-backlog", "lu-phase-loop"])
+   * @example new Set(["cognition", "configure", "backlog", "milestone-learn"])
    */
   subSkills: ReadonlySet<string>;
 
@@ -111,7 +111,7 @@ export interface EnforcementHookConfig {
    * For prefix-based matching, use the prefix as the key (e.g., `"execute-"`).
    * The lookup tries exact match first, then prefix match.
    *
-   * @example { "lu-route": new Set(["idle"]), "execute-": new Set(["planned"]) }
+   * @example { "cognition": new Set(["idle"]), "execute-": new Set(["planned"]) }
    */
   validStates: Record<string, ReadonlySet<string>>;
 
@@ -128,7 +128,7 @@ export interface EnforcementHookConfig {
    * first step in the chain creates the context file. All other
    * steps remain fail-closed on missing context.
    *
-   * @example "lu-route" — valid from missing context because it creates the file
+   * @example "cognition" — valid from missing context because it creates the file
    */
   initialSkill?: string;
 }
@@ -166,14 +166,16 @@ export interface EnforcementHookConfig {
  * const hook = createSubSkillEnforcementHook({
  *   hookName: "pre-step-lu",
  *   contextPath: "/tmp/lu-context.json",
- *   subSkills: new Set(["lu-route", "lu-configure", "lu-backlog", "lu-phase-loop"]),
+ *   subSkills: new Set(["cognition", "configure", "backlog"]),
+ *   agentPrefixes: new Set(["classify-", "execute-", "verify-", "review-"]),
  *   validStates: {
- *     "lu-route": new Set(["idle"]),
- *     "lu-configure": new Set(["routed"]),
- *     "lu-backlog": new Set(["configured"]),
- *     "lu-phase-loop": new Set(["scanned", "configured"]),
+ *     "cognition": new Set(["idle"]),
+ *     "configure": new Set(["routed"]),
+ *     "backlog": new Set(["configured"]),
+ *     "classify-": new Set(["idle", "executing"]),
+ *     "execute-": new Set(["executing"]),
  *   },
- *   initialSkill: "lu-route",
+ *   initialSkill: "cognition",
  * });
  *
  * await hook();

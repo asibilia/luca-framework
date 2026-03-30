@@ -28,7 +28,7 @@
  * bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'
  * # Output: {"success":true}
  *
- * # Write sub-skill output
+ * # Write sub-agent output
  * bun src/skills/__schemas/context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'
  * # Output: {"success":true}
  *

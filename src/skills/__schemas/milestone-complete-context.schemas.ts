@@ -1,14 +1,14 @@
 /**
- * Shared context file schema for the milestone-complete sub-skill chain.
+ * Shared context file schema for the milestone-complete sub-agent chain.
  *
- * All sub-skills (milestone-learn, milestone-prune, milestone-shadow-gate,
+ * All sub-agents (milestone-learn, milestone-prune, milestone-shadow-gate,
  * milestone-archive, milestone-finalize) read/write a single JSON file at
- * `/tmp/milestone-complete-context.json`. Each sub-skill reads the full
+ * `/tmp/milestone-complete-context.json`. Each sub-agent reads the full
  * context via `readMilestoneCompleteContext()`, extends its section, and
  * writes back via `writeMilestoneCompleteContext()`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` must be present.
- * Failed `safeParse` = ABORT (sub-skill treats as terminal failure).
+ * Failed `safeParse` = ABORT (sub-agent treats as terminal failure).
  *
  * Uses snake_case for all field names per API conventions.
  *
@@ -21,7 +21,7 @@ import { createContextHelpers } from "./context-helpers";
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
 /**
- * Output from milestone-learn sub-skill (Step 0).
+ * Output from milestone-learn sub-agent (Step 0).
  *
  * Contains learning extraction results: whether learnings were extracted
  * and how many engrams were captured in MuninnDB.
@@ -37,7 +37,7 @@ export const MilestoneLearnOutputSchema = z.object({
 export type MilestoneLearnOutput = z.infer<typeof MilestoneLearnOutputSchema>;
 
 /**
- * Output from milestone-prune sub-skill (Step 0.5).
+ * Output from milestone-prune sub-agent (Step 0.5).
  *
  * Contains stale memory detection and pruning results.
  */
@@ -51,9 +51,9 @@ export const MilestonePruneOutputSchema = z.object({
 export type MilestonePruneOutput = z.infer<typeof MilestonePruneOutputSchema>;
 
 /**
- * Output from milestone-shadow-gate sub-skill (Step 0.7).
+ * Output from milestone-shadow-gate sub-agent (Step 0.7).
  *
- * Contains shadow debt scan results. This sub-skill is optional
+ * Contains shadow debt scan results. This sub-agent is optional
  * (orchestrator sends SKIP_SCAN if shadow scanning is disabled).
  */
 export const MilestoneShadowGateOutputSchema = z.object({
@@ -69,10 +69,10 @@ export type MilestoneShadowGateOutput = z.infer<
 >;
 
 /**
- * Output from milestone-archive sub-skill (Steps 1-7.5).
+ * Output from milestone-archive sub-agent (Steps 1-7.5).
  *
  * Contains archive, stats, and retrospective results. This is the largest
- * sub-skill, covering milestone memory archival, session cleanup, stats
+ * sub-agent, covering milestone memory archival, session cleanup, stats
  * gathering, accomplishment extraction, file archival, PROJECT.md update,
  * GitHub milestone creation, and process retrospective.
  */
@@ -93,7 +93,7 @@ export type MilestoneArchiveOutput = z.infer<
 >;
 
 /**
- * Output from milestone-finalize sub-skill (Steps 8-9).
+ * Output from milestone-finalize sub-agent (Steps 8-9).
  *
  * Contains commit, tag, and divergent mode advisory results.
  */
@@ -113,8 +113,8 @@ export type MilestoneFinalizeOutput = z.infer<
 /**
  * Top-level schema for the shared milestone-complete context file.
  *
- * All sub-skill output sections are optional because they are populated
- * incrementally as each sub-skill completes. The only required field is
+ * All sub-agent output sections are optional because they are populated
+ * incrementally as each sub-agent completes. The only required field is
  * `context_version` which must be literal `1`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` is required.

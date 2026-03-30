@@ -79,16 +79,16 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 
 ### Phase 231: v2 Orchestrator Integration
 
-**Goal:** Wire the full v2 pipeline into `lu.skill.ts` with conditional execution based on `workflow.version: "v2"` config. Each v2 step is independently toggleable and gated fail-closed.
+**Goal:** Wire the full v2 pipeline into `lu.skill.ts` with conditional execution based on `workflow.version: "v2"` config. Each v2 step is independently toggleable and gated fail-closed. Post-Phase 232, lu.skill.ts uses a flat Agent() orchestrator with an inline phase loop — v2 steps are inserted as additional Agent() calls inside the Step 7 loop body.
 **Complexity:** COMPLEX
 **Verification:** Full
-**Depends on:** Phase 230
+**Depends on:** Phase 230, Phase 232
 
 - [ ] research-config-schemas — Create `src/shared/__schemas/research-config.schemas.ts` (ResearchConfigSchema) and `src/shared/__schemas/workflow-version.schemas.ts` (WorkflowVersionSchema)
 - [ ] config-extensions — Extend `lu-config.schemas.ts` with `research` section and `workflow.version` field; extend `complexity.schemas.ts` with v2 fields (researchReviewIterations, planReviewIterations)
-- [ ] v2-pipeline-branch — Add v2 pipeline branch to `lu.skill.ts` after complexity classification: phase-research (multi-agent) → phase-research-review → phase-graduate → phase-discuss → phase-plan → phase-plan-review → phase-execute → verify
+- [ ] v2-pipeline-branch — Add v2 pipeline branch to lu.skill.ts Step 7 phase loop: insert Agent() calls for phase-research (multi-agent), phase-research-review, phase-graduate BEFORE the existing discuss/plan/execute steps (7e-7h). Gate each v2 step on `workflow.version: "v2"` config. Add v2 prompt templates to `agent-prompts.ts`. NOTE: phase-research-review must NOT call Skill() internally — it returns NEEDS_EXPANSION status and the orchestrator handles expansion as a separate Agent() call.
 - [ ] config-json-update — Add `workflow.version` and `research` section to `.planning/config.json` with all v2 feature flags
-- [ ] v2-graceful-degradation — Ensure v1 config runs v1 pipeline unchanged, v2 with features disabled skips those steps, `--v2` flag overrides config for single invocation, and failure in any v2 step degrades gracefully to v1
+- [ ] v2-graceful-degradation — Ensure v1 config runs v1 pipeline unchanged (Step 7 loop skips v2 Agent() calls when version != "v2"), v2 with features disabled skips those steps, `--v2` flag overrides config for single invocation, and failure in any v2 step degrades gracefully to v1 by falling through to the existing v1 discuss/plan/execute path
 
 ---
 

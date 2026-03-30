@@ -1,13 +1,13 @@
 /**
- * Shared context file schema for the verify sub-skill chain.
+ * Shared context file schema for the verify sub-agent chain.
  *
- * All sub-skills (verify-extract, verify-test, verify-diagnose, verify-review)
- * read/write a single JSON file at `/tmp/verify-context.json`. Each sub-skill
+ * All sub-agents (verify-extract, verify-test, verify-diagnose, verify-review)
+ * read/write a single JSON file at `/tmp/verify-context.json`. Each sub-agent
  * reads the full context via `readVerifyContext()`, extends its section, and
  * writes back via `writeVerifyContext()`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` must be present.
- * Failed `safeParse` = ABORT (sub-skill treats as terminal failure).
+ * Failed `safeParse` = ABORT (sub-agent treats as terminal failure).
  *
  * Uses snake_case for all field names per API conventions.
  *
@@ -20,7 +20,7 @@ import { createContextHelpers } from "./context-helpers";
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
 /**
- * Output from verify-extract sub-skill (Steps 1-4).
+ * Output from verify-extract sub-agent (Steps 1-4).
  *
  * Contains summary extraction results: how many summaries and deliverables
  * were found, and the path to the generated UAT template.
@@ -34,7 +34,7 @@ export const VerifyExtractOutputSchema = z.object({
 export type VerifyExtractOutput = z.infer<typeof VerifyExtractOutputSchema>;
 
 /**
- * Output from verify-test sub-skill (Steps 5-7).
+ * Output from verify-test sub-agent (Steps 5-7).
  *
  * Contains UAT test results: how many tests were presented, how many
  * passed/failed, and the critical `issues_found` flag that the orchestrator
@@ -50,11 +50,11 @@ export const VerifyTestOutputSchema = z.object({
 export type VerifyTestOutput = z.infer<typeof VerifyTestOutputSchema>;
 
 /**
- * Output from verify-diagnose sub-skill (Step 8).
+ * Output from verify-diagnose sub-agent (Step 8).
  *
  * Contains diagnosis results: how many debuggers were spawned, how many
  * fix plans were created, and whether the plan checker validated them.
- * This sub-skill only runs if UAT issues were found (Path B).
+ * This sub-agent only runs if UAT issues were found (Path B).
  */
 export const VerifyDiagnoseOutputSchema = z.object({
   debuggers_spawned: z.number().default(0),
@@ -65,10 +65,10 @@ export const VerifyDiagnoseOutputSchema = z.object({
 export type VerifyDiagnoseOutput = z.infer<typeof VerifyDiagnoseOutputSchema>;
 
 /**
- * Output from verify-review sub-skill (Steps 9-12).
+ * Output from verify-review sub-agent (Steps 9-12).
  *
  * Contains code review results: how many reviewers were spawned and
- * the aggregated review findings. This sub-skill only runs if UAT passed
+ * the aggregated review findings. This sub-agent only runs if UAT passed
  * (Path A, via SKIP_DIAGNOSE).
  */
 export const VerifyReviewOutputSchema = z.object({
@@ -91,8 +91,8 @@ export type VerifyReviewOutput = z.infer<typeof VerifyReviewOutputSchema>;
 /**
  * Top-level schema for the shared verify context file.
  *
- * All sub-skill output sections are optional because they are populated
- * incrementally as each sub-skill completes. The only required field is
+ * All sub-agent output sections are optional because they are populated
+ * incrementally as each sub-agent completes. The only required field is
  * `context_version` which must be literal `1`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` is required.

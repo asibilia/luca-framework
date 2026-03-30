@@ -1,13 +1,13 @@
 /**
- * Shared context file schema for the pr-address sub-skill chain.
+ * Shared context file schema for the pr-address sub-agent chain.
  *
- * All sub-skills (pr-fetch, pr-validate, pr-debate, pr-fix, pr-learn,
+ * All sub-agents (pr-fetch, pr-validate, pr-debate, pr-fix, pr-learn,
  * pr-respond) read/write a single JSON file at `/tmp/pr-address-context.json`.
- * Each sub-skill reads the full context via `readPrContext()`, extends its
+ * Each sub-agent reads the full context via `readPrContext()`, extends its
  * section, and writes back via `writePrContext()`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` must be present.
- * Failed `safeParse` = ABORT (sub-skill treats as terminal failure).
+ * Failed `safeParse` = ABORT (sub-agent treats as terminal failure).
  *
  * Uses snake_case for all field names per API conventions.
  *
@@ -20,7 +20,7 @@ import { createContextHelpers } from "./context-helpers";
 // ─── Sub-Skill Output Schemas ───────────────────────────────────────────────
 
 /**
- * Output from pr-fetch sub-skill (Steps 0-1).
+ * Output from pr-fetch sub-agent (Steps 0-1).
  *
  * Contains raw PR data fetched from GitHub: comments, reviews, and diff.
  */
@@ -37,7 +37,7 @@ export const PrFetchOutputSchema = z.object({
 export type PrFetchOutput = z.infer<typeof PrFetchOutputSchema>;
 
 /**
- * Output from pr-validate sub-skill (Steps 2-3-4).
+ * Output from pr-validate sub-agent (Steps 2-3-4).
  *
  * Contains categorized and validated concerns from reviewer agents.
  */
@@ -92,9 +92,9 @@ export const PrValidateOutputSchema = z.object({
 export type PrValidateOutput = z.infer<typeof PrValidateOutputSchema>;
 
 /**
- * Output from pr-debate sub-skill (Step 4.5).
+ * Output from pr-debate sub-agent (Step 4.5).
  *
- * Contains debate results for split verdicts. This sub-skill is optional.
+ * Contains debate results for split verdicts. This sub-agent is optional.
  */
 export const PrDebateOutputSchema = z.object({
   debate_results: z
@@ -115,7 +115,7 @@ export const PrDebateOutputSchema = z.object({
 export type PrDebateOutput = z.infer<typeof PrDebateOutputSchema>;
 
 /**
- * Output from pr-fix sub-skill (Steps 5-6-7).
+ * Output from pr-fix sub-agent (Steps 5-6-7).
  *
  * Contains fix tracking: which comments were addressed, commit hashes,
  * files modified, and verification status.
@@ -137,9 +137,9 @@ export const PrFixOutputSchema = z.object({
 export type PrFixOutput = z.infer<typeof PrFixOutputSchema>;
 
 /**
- * Output from pr-learn sub-skill (Step 7.5).
+ * Output from pr-learn sub-agent (Step 7.5).
  *
- * Contains learnings captured in MuninnDB. This sub-skill is optional.
+ * Contains learnings captured in MuninnDB. This sub-agent is optional.
  */
 export const PrLearnOutputSchema = z.object({
   learnings_captured: z
@@ -156,7 +156,7 @@ export const PrLearnOutputSchema = z.object({
 export type PrLearnOutput = z.infer<typeof PrLearnOutputSchema>;
 
 /**
- * Output from pr-respond sub-skill (Steps 8-9).
+ * Output from pr-respond sub-agent (Steps 8-9).
  *
  * Contains response tracking: which comments received replies,
  * whether the summary was posted, and whether changes were pushed.
@@ -182,8 +182,8 @@ export type PrRespondOutput = z.infer<typeof PrRespondOutputSchema>;
 /**
  * Top-level schema for the shared pr-address context file.
  *
- * All sub-skill output sections are optional because they are populated
- * incrementally as each sub-skill completes. The only required field is
+ * All sub-agent output sections are optional because they are populated
+ * incrementally as each sub-agent completes. The only required field is
  * `context_version` which must be literal `1`.
  *
  * **PREMORTEM Constraint #1:** `context_version: z.literal(1)` is required.

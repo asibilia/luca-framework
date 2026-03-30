@@ -2,7 +2,7 @@
  * State machine definition for the phase-execute orchestrator.
  *
  * Defines 8 states (6 workflow + 2 terminal) and all transition events for the
- * phase-execute sub-skill chain. Uses the `createSkillStateMachine` factory
+ * phase-execute sub-agent chain. Uses the `createSkillStateMachine` factory
  * from Phase 222.
  *
  * **CRITICAL (Pitfall 6):** phase-execute already uses `luca-bridge transition`

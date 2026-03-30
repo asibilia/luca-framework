@@ -2,7 +2,7 @@
  * State machine definition for the milestone-complete orchestrator.
  *
  * Defines 7 states (5 workflow + 1 success terminal + 1 failure terminal) and
- * all transition events for the milestone-complete sub-skill chain. Uses the
+ * all transition events for the milestone-complete sub-agent chain. Uses the
  * `createSkillStateMachine` factory from Phase 222.
  *
  * States: idle -> learned -> pruned -> scanned -> archived -> finalized

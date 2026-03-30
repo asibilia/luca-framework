@@ -6,7 +6,7 @@
  * by the gap detector for post-execution coverage auditing.
  *
  * **This DAG is NOT used for runtime execution.** The orchestrator prompt
- * drives execution via Skill() calls. The DAG serves as the formal
+ * drives execution via Agent() calls. The DAG serves as the formal
  * specification of what steps MUST execute, enabling Layer 4 (gap
  * detection) of the anti-skip enforcement architecture.
  *
