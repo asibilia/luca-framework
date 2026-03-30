@@ -22,7 +22,7 @@ Enhance 4 existing agents with v2 capabilities while preserving v1 backward comp
 ### 2. lu-learner — Research Engram Graduation
 
 - Added `graduate_research` step between extract_procedures and update_confidence
-- Scoring formula: confidence _ 0.40 + actionability _ 0.35 + uniqueness \* 0.25
+- Scoring formula: `confidence * 0.40 + actionability * 0.35 + uniqueness * 0.25`
 - Configurable thresholds from ResearchConfigSchema (default: 0.55 score, MEDIUM confidence)
 - Conditional cleanup of research:\* engrams based on autoCleanupAfterMilestone config
 - Updated summary template with Research graduation metrics
