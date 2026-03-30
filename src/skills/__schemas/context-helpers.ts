@@ -28,7 +28,7 @@
  * @see src/skills/__schemas/milestone-complete-context.schemas.ts
  */
 
-import { chmod } from "node:fs/promises";
+import { chmod, rename, unlink } from "node:fs/promises";
 
 import { z } from "zod";
 import merge from "lodash/merge";
@@ -213,15 +213,31 @@ export const createContextHelpers = <TSchema extends z.ZodType>(
       throw new Error(`Schema validation failed: ${validated.error.message}`);
     }
 
-    await Bun.write(path, JSON.stringify(validated.data, null, 2));
-
-    // Restrict context files to owner read/write only.
-    // Context files in /tmp contain workflow state and should not be
-    // world-readable.
+    // Atomic write: write to temp file, chmod, then rename.
+    // If the process crashes between write and rename, only the .tmp file
+    // is affected — the original context file remains intact.
+    const tmpPath = `${path}.tmp`;
     try {
-      await chmod(path, 0o600);
-    } catch {
-      // Non-critical: chmod may fail on certain platforms or file systems
+      await Bun.write(tmpPath, JSON.stringify(validated.data, null, 2));
+
+      // Restrict context files to owner read/write only.
+      // Context files in /tmp contain workflow state and should not be
+      // world-readable. Set permissions on temp file before atomic rename.
+      try {
+        await chmod(tmpPath, 0o600);
+      } catch {
+        // Non-critical: chmod may fail on certain platforms or file systems
+      }
+
+      await rename(tmpPath, path);
+    } catch (err) {
+      // Clean up temp file on failure
+      try {
+        await unlink(tmpPath);
+      } catch {
+        // Best-effort cleanup — temp file may not exist
+      }
+      throw err;
     }
   };
 

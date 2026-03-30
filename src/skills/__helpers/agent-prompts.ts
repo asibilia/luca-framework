@@ -26,6 +26,7 @@ export interface AgentPromptParams {
   complexity: string;
   vault: string;
   currentState: string;
+  recallDepth?: number | null;
 }
 
 // ─── Shared Blocks ────────────────────────────────────────────────────────
@@ -39,34 +40,48 @@ You CANNOT call Agent(), Task(), or Skill(). You are a leaf worker.`;
  * @param vault - The repo vault name (e.g., "luca-framework")
  * @param isolation - "none" (full), "warm" (session + brain), "cold" (brain only)
  * @param recallContext - Domain-specific recall query for step 2/3
+ * @param recallDepth - Optional recall depth cap:
+ *   - 0: skip ALL recall steps, only emit Observe and Handoff phases
+ *   - 1: emit only step 1 (brain tree), skip steps 2-3
+ *   - 3 / null / undefined: current behavior (all steps based on isolation level)
  */
 const memoryProtocol = (
   vault: string,
   isolation: "none" | "warm" | "cold",
   recallContext: string,
+  recallDepth?: number | null,
 ): string => {
   const safeVault = vault.replace(/'/g, "\\'");
   const safeRecallContext = recallContext.replace(/'/g, "\\'");
-  const lines = [
-    "<memory_protocol>",
-    "PHASE 1 — RECALL (do this FIRST):",
-    `1. Load project identity: mcp__muninn__muninn_recall(vault: '${safeVault}', context: ['project identity', 'brain project'])`,
-  ];
 
-  if (isolation !== "cold") {
-    lines.push(
-      `2. Load session context: mcp__muninn__muninn_recall(vault: '${safeVault}', context: ['session context', '${safeRecallContext}'])`,
-    );
-  }
+  // Effective depth: undefined/null/3+ = full (no cap)
+  const effectiveDepth =
+    recallDepth === undefined || recallDepth === null ? Infinity : recallDepth;
 
-  if (isolation === "none") {
+  const lines = ["<memory_protocol>"];
+
+  if (effectiveDepth > 0) {
     lines.push(
-      `3. Load relevant patterns: mcp__muninn__muninn_recall(vault: 'default', context: ['${safeRecallContext}'])`,
+      "PHASE 1 — RECALL (do this FIRST):",
+      `1. Load project identity: mcp__muninn__muninn_recall(vault: '${safeVault}', context: ['project identity', 'brain project'])`,
     );
+
+    if (effectiveDepth > 1 && isolation !== "cold") {
+      lines.push(
+        `2. Load session context: mcp__muninn__muninn_recall(vault: '${safeVault}', context: ['session context', '${safeRecallContext}'])`,
+      );
+    }
+
+    if (effectiveDepth > 1 && isolation === "none") {
+      lines.push(
+        `3. Load relevant patterns: mcp__muninn__muninn_recall(vault: 'default', context: ['${safeRecallContext}'])`,
+      );
+    }
+
+    lines.push("");
   }
 
   lines.push(
-    "",
     "PHASE 2 — OBSERVE (during your work):",
     `Store significant findings: mcp__muninn__muninn_remember(vault: '${safeVault}', concept: 'session:candidate-pattern', content: '...')`,
     "",

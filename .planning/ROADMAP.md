@@ -117,6 +117,17 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 - [x] fix-dead-code — Fix unreachable recoverySucceeded path in contract-evaluator, fix dead hasFails branch in gap-detector, use Bun.file.json() in contract-hook-adapter (ARCH-002, ARCH-003, ARCH-006)
 - [x] fix-contract-evaluator-schemas — Convert LedgerEntry/MergedAuditResult to Zod schemas with z.infer, constrain status to enum (DX-003, DX-005)
 
+### Phase 235: Migration Review Gap Closure
+
+**Goal:** Address the 3 MEDIUM gaps identified by the v8.5.1 migration review panel: build-time prompt safety check, recall depth gating in memory protocol, and atomic context file writes.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 234
+
+- [x] prompt-safety-check — Create `scripts/check-prompt-safety.ts` that greps all compiled Agent() prompt templates for forbidden tool calls (Agent, Task, Skill) and fails with exit code 1 if found. Add to `check:drift` pipeline.
+- [x] recall-depth-gating — Update `memoryProtocol()` in `agent-prompts.ts` to accept an optional `recallDepth` parameter. When provided, limit the number of recall steps (0 = skip all recalls, 1 = brain tree only, 3 = full). Wire complexity matrix `recallDepth` through `AgentPromptParams`.
+- [x] atomic-context-writes — Replace `Bun.write(path, data)` in `context-helpers.ts` with atomic temp-file-rename pattern: write to `${path}.tmp`, then `rename()` to `path`. Prevents corruption from mid-write crashes.
+
 ---
 
 ## Next: v8.6.0 — Scout Article Intelligence
