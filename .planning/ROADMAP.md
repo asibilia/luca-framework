@@ -8,7 +8,7 @@
 
 ## v8.5.1 — Audit Gap Closure (reopened)
 
-Close code quality, security, and enforcement findings. Phases 225-226 shipped DRY + hardening. Phases 227-228 address the orchestrator enforcement gap discovered during PR review. Phase 229 adds behavioral contracts for critical workflow invariant enforcement.
+Close code quality, security, and enforcement findings. Phases 225-226 shipped DRY + hardening. Phases 227-228 address the orchestrator enforcement gap discovered during PR review. Phase 229 adds behavioral contracts for critical workflow invariant enforcement. Phase 232 migrates all 5 orchestrators from Skill() to Agent() sub-agents, fixing the nested skill return bug (#17351).
 
 ### Phase 225: DRY Consolidation — COMPLETE
 
@@ -49,6 +49,47 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 - [x] contract-integration — Integrate contract checking into existing post-execution gap audits and pre-step enforcement hooks so contracts are evaluated at both pre-step and post-execution boundaries
 - [x] drift-metrics — Add contract violation metrics to MuninnDB (violation rate, recovery success rate, drift detection) for process intelligence feedback loop
 
+### Phase 232: Skill-to-Agent Orchestration Migration — COMPLETE
+
+**Goal:** Migrate all 5 orchestrators from nested Skill() calls to flat Agent() sub-agent orchestration, fixing Claude Code bug #17351 where nested skills don't return control to the parent. Delete 22 sub-skills, create shared prompt templates, update enforcement hooks with prefix-based matching.
+**Complexity:** CRITICAL
+**Verification:** Full
+**Depends on:** Phase 229
+
+- [x] hook-infrastructure — Update enforcement-hook-factory.ts for Agent() support with prefix-based matching, update hook-registry.ts tool_filter to "Skill|Agent", update pre-step-enforcement.ts, Phase 0 empirical validation
+- [x] shared-templates — Create agent-prompts.ts (~26 prompt template functions) and agent-output.schemas.ts (output contracts + parseAgentOutput parser)
+- [x] migrate-pr-address — Rewrite pr-address.skill.ts (6 Skill() → 6 Agent()), update pre-step hook + DAG handlers, delete 6 sub-skill files
+- [x] migrate-verify — Rewrite verify.skill.ts (verify-test stays INLINE for user interaction, 3 others → Agent()), update pre-step hook, delete 4 sub-skill files
+- [x] migrate-milestone-complete — Rewrite milestone-complete.skill.ts (5 Skill() → 5 Agent() leaf workers), update pre-step hook, delete 5 sub-skill files
+- [x] migrate-phase-execute — Rewrite phase-execute.skill.ts (hoisted harness fix loop, parallel reviewer Agent() calls, UAT inline), update pre-step hook with agentPrefixes, delete 3 sub-skill files
+- [x] migrate-lu — Rewrite lu.skill.ts (full 11-step pipeline inline, routing branches, phase loop, gap closure, milestone inlining, 228-line compiled SKILL.md), update pre-step hook with full prefix set, delete 4 sub-skill files
+- [x] infrastructure-cleanup — Verify contract-hook-adapter (no changes needed), audit skill registry (22 entries removed), verify template directories cleaned, final type-check + documentation
+
+### Phase 230: v2 Enhanced Existing Agents
+
+**Goal:** Enhance 4 existing agents with v2 capabilities (parallel research spawning, engram graduation, research-informed risk analysis, review loop convergence) while preserving v1 backward compatibility.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 229, v2 Phases 1-5 (shipped in v6.0.0)
+
+- [ ] researcher-orchestrator — Modify lu-phase-researcher to spawn 4 specialist researchers (lu-architecture-researcher, lu-implementation-researcher, lu-ecosystem-researcher, lu-risk-researcher) in parallel when v2 is enabled; preserve v1 single-researcher behavior
+- [ ] learner-graduation — Add `research:*` engram promotion pathway to lu-learner: promote high-value research engrams to permanent `pattern:*`/`pitfall:*`/`decision:*` in default vault, then clean up remaining `research:*` via `muninn_forget`
+- [ ] premortem-research — Modify lu-premortem to accept research files as input alongside the plan, enabling research-informed risk analysis
+- [ ] plan-checker-review-loop — Add review loop support with convergence detection to lu-plan-checker, replacing single-pass checking with multi-reviewer plan review loop
+
+### Phase 231: v2 Orchestrator Integration
+
+**Goal:** Wire the full v2 pipeline into `lu.skill.ts` with conditional execution based on `workflow.version: "v2"` config. Each v2 step is independently toggleable and gated fail-closed.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 230
+
+- [ ] research-config-schemas — Create `src/shared/__schemas/research-config.schemas.ts` (ResearchConfigSchema) and `src/shared/__schemas/workflow-version.schemas.ts` (WorkflowVersionSchema)
+- [ ] config-extensions — Extend `lu-config.schemas.ts` with `research` section and `workflow.version` field; extend `complexity.schemas.ts` with v2 fields (researchReviewIterations, planReviewIterations)
+- [ ] v2-pipeline-branch — Add v2 pipeline branch to `lu.skill.ts` after complexity classification: phase-research (multi-agent) → phase-research-review → phase-graduate → phase-discuss → phase-plan → phase-plan-review → phase-execute → verify
+- [ ] config-json-update — Add `workflow.version` and `research` section to `.planning/config.json` with all v2 feature flags
+- [ ] v2-graceful-degradation — Ensure v1 config runs v1 pipeline unchanged, v2 with features disabled skips those steps, `--v2` flag overrides config for single invocation, and failure in any v2 step degrades gracefully to v1
+
 ---
 
 ## Next: v8.6.0 — Scout Article Intelligence
@@ -68,12 +109,10 @@ Automated article ingestion, research, and actionable todo generation from exter
 
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                  | Reason                                               |
-| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+| Todo Group                | Target   | Scope                          | Reason                                         |
+| ------------------------- | -------- | ------------------------------ | ---------------------------------------------- |
+| agent-cross-talk-protocol | v10.0.0+ | Inter-agent messaging protocol | Needs design spike, no existing infrastructure |
+| agent-collaboration-ui    | v10.0.0+ | Agent collaboration UI         | Depends on cross-talk + adapters + Studio      |
 
 ## Closed (Reference / Not Actionable)
 

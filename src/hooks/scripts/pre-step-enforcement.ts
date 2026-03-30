@@ -1,7 +1,7 @@
 /**
  * pre-step-enforcement — Advisory pre-step validation hook.
  *
- * Fires before Bash and Skill tool invocations to validate workflow step
+ * Fires before Bash, Skill, and Agent tool invocations to validate workflow step
  * ordering and prerequisites. Uses millisecond-precision guardPreStep
  * to prevent re-entrancy during parallel wave execution.
  *
@@ -90,13 +90,14 @@ const main = async (): Promise<void> => {
     currentState === "executing" &&
     completedSteps.length === 0 &&
     skippedSteps.length === 0 &&
-    (toolName === "Skill" || toolName === "Bash")
+    (toolName === "Skill" || toolName === "Agent" || toolName === "Bash")
   ) {
     // Check if command looks like a step invocation
     const isStepInvocation =
       command.includes("phase-") ||
       command.includes("lu-") ||
-      toolName === "Skill";
+      toolName === "Skill" ||
+      toolName === "Agent";
 
     if (isStepInvocation) {
       emitResult({

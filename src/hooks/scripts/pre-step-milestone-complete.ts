@@ -1,18 +1,11 @@
 /**
- * pre-step-milestone-complete — Pre-step enforcement hook for milestone-complete sub-skills.
+ * pre-step-milestone-complete — Pre-step enforcement hook for milestone-complete Agent() sub-agents.
  *
- * Fires before Skill tool invocations during milestone-complete execution to
- * verify that the state machine is in the correct state before each sub-skill
- * runs. If the orchestrator attempts to call a sub-skill out of order, the
- * hook blocks the call.
- *
- * **Layer 3** of the anti-skip enforcement architecture (pre-step enforcement).
- *
- * **Guard:** Uses 200ms TTL via `guardPreStep` per PREMORTEM Constraint #2
- * from Phase 222 to prevent re-entrancy during parallel wave execution.
+ * Fires before Skill and Agent tool invocations during milestone-complete
+ * execution to verify state ordering.
  *
  * @module pre-step-milestone-complete
- * @see .planning/phases/224-anti-skip-rollout/01-PLAN.md Task 8
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";
@@ -25,14 +18,14 @@ const hook = createSubSkillEnforcementHook({
   subSkills: new Set([
     "milestone-learn",
     "milestone-prune",
-    "milestone-shadow-gate",
+    "milestone-shadow",
     "milestone-archive",
     "milestone-finalize",
   ]),
   validStates: {
     "milestone-learn": new Set(["idle"]),
     "milestone-prune": new Set(["learned"]),
-    "milestone-shadow-gate": new Set(["pruned"]),
+    "milestone-shadow": new Set(["pruned"]),
     "milestone-archive": new Set(["scanned"]),
     "milestone-finalize": new Set(["archived"]),
   },

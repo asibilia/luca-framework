@@ -1,21 +1,13 @@
 /**
- * pre-step-lu — Pre-step enforcement hook for lu sub-skills.
+ * pre-step-lu — Pre-step enforcement hook for lu Agent() sub-agents.
  *
- * Fires before Skill tool invocations during lu execution to verify
- * that the state machine is in the correct state before each sub-skill runs.
- * If the orchestrator attempts to call a sub-skill out of order, the hook
- * blocks the call.
- *
- * **Layer 3** of the anti-skip enforcement architecture (pre-step enforcement).
- *
- * **Guard:** Uses 200ms TTL via `guardPreStep` per PREMORTEM Constraint #2
- * from Phase 222 to prevent re-entrancy during parallel wave execution.
- *
- * **Note:** lu-phase-loop is valid from both "scanned" (after SCAN_COMPLETE)
- * and "configured" (after SKIP_BACKLOG). The hook accepts both states.
+ * Fires before Skill and Agent tool invocations during lu execution.
+ * Uses prefix-based matching for phase-suffixed agents (classify-{NN},
+ * execute-{NN}, etc.) and exact matching for singleton agents (cognition,
+ * configure, backlog, milestone-*).
  *
  * @module pre-step-lu
- * @see .planning/phases/224-anti-skip-rollout/04-PLAN.md Task 7
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";
@@ -26,18 +18,57 @@ const hook = createSubSkillEnforcementHook({
   hookName: "pre-step-lu",
   contextPath: "/tmp/lu-context.json",
   subSkills: new Set([
-    "lu-route",
-    "lu-configure",
-    "lu-backlog",
-    "lu-phase-loop",
+    // Singleton agents (exact match)
+    "cognition",
+    "configure",
+    "backlog",
+    "milestone-learn",
+    "milestone-prune",
+    "milestone-shadow",
+    "milestone-archive",
+    "milestone-finalize",
+  ]),
+  agentPrefixes: new Set([
+    // Phase-suffixed agents (prefix match)
+    "classify-",
+    "discuss-",
+    "plan-",
+    "plan-gaps-",
+    "execute-",
+    "execute-gaps-",
+    "harness-",
+    "fix-",
+    "verify-",
+    "review-",
+    "learn-",
+    "process-data-",
   ]),
   validStates: {
-    "lu-route": new Set(["idle"]),
-    "lu-configure": new Set(["routed"]),
-    "lu-backlog": new Set(["configured"]),
-    "lu-phase-loop": new Set(["scanned", "configured"]),
+    // Singleton agents
+    cognition: new Set(["idle"]),
+    configure: new Set(["routed"]),
+    backlog: new Set(["configured"]),
+    // Phase-suffixed agents (use prefix as key)
+    "classify-": new Set(["idle", "scanned", "configured", "executing"]),
+    "discuss-": new Set(["scanned", "configured", "executing"]),
+    "plan-": new Set(["scanned", "configured", "executing"]),
+    "plan-gaps-": new Set(["executing"]),
+    "execute-": new Set(["executing"]),
+    "execute-gaps-": new Set(["executing"]),
+    "harness-": new Set(["executing"]),
+    "fix-": new Set(["executing"]),
+    "verify-": new Set(["executing"]),
+    "review-": new Set(["executing"]),
+    "learn-": new Set(["executing"]),
+    "process-data-": new Set(["executing"]),
+    // Milestone agents
+    "milestone-learn": new Set(["executing"]),
+    "milestone-prune": new Set(["executing"]),
+    "milestone-shadow": new Set(["executing"]),
+    "milestone-archive": new Set(["executing"]),
+    "milestone-finalize": new Set(["executing"]),
   },
-  initialSkill: "lu-route",
+  initialSkill: "cognition",
 });
 
 await hook();

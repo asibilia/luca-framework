@@ -1,30 +1,15 @@
 /**
- * milestone-complete Skill — Thin orchestrator for the milestone completion workflow.
+ * milestone-complete Skill — Flat Agent() orchestrator for milestone completion.
  *
- * Delegates all work to 5 sub-skills via Skill() calls:
- *   milestone-learn, milestone-prune, milestone-shadow-gate,
+ * Delegates work to 5 Agent() sub-agents (leaf workers):
+ *   milestone-learn, milestone-prune, milestone-shadow,
  *   milestone-archive, milestone-finalize
  *
- * Contains ONLY:
- *   - Skill() calls to sub-skills
- *   - Context file reads via readMilestoneCompleteContext()
- *   - State machine transitions (milestoneCompleteStateMachine events)
- *   - Arg parsing and flag handling
- *   - current_state writes after each state transition
+ * Sub-agents that previously spawned Task() (milestone-learn via lu-learner,
+ * milestone-shadow-gate via lu-shadow-scanner) now do their work directly
+ * as leaf agents without sub-agent spawning.
  *
- * Contains NO inline logic:
- *   - No MuninnDB calls (moved to milestone-learn, milestone-prune)
- *   - No Task() spawns (moved to milestone-shadow-gate)
- *   - No gh commands (moved to milestone-archive)
- *   - No git tag/commit (moved to milestone-finalize)
- *   - No data processing or template interpolation
- *
- * **CRITICAL (Pitfall 1):** After each state transition event, the
- * orchestrator MUST write `current_state` to the context file. The
- * pre-step hook reads this field to validate ordering.
- *
- * @see .planning/phases/224-anti-skip-rollout/01-PLAN.md Task 10
- * @see src/skills/__schemas/states/milestone-complete.states.ts
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 
@@ -34,31 +19,22 @@ const milestoneCompleteConfig: SkillConfig = {
   frontmatter: {
     name: "milestone-complete",
     description:
-      "Archive a completed milestone by orchestrating sub-skills: milestone-learn, milestone-prune, milestone-shadow-gate, milestone-archive, milestone-finalize.",
+      "Archive a completed milestone by orchestrating Agent() sub-agents: milestone-learn, milestone-prune, milestone-shadow, milestone-archive, milestone-finalize.",
     "disable-model-invocation": true,
   },
   sections: [
     {
       title: "main",
       content: `<main>
-# milestone-complete — Thin Orchestrator
+# milestone-complete — Flat Agent() Orchestrator
 
-Archive a completed milestone through a coordinated sub-skill chain. This skill is a **thin orchestrator** — it delegates ALL work to sub-skills via Skill() calls, reads context between steps, and transitions state.
+Archive a completed milestone through coordinated Agent() sub-agents. Each agent is a leaf worker that does its work directly (no sub-agent spawning).
 
-## Zero-Inline-Logic Constraint
+## Constraints
 
-This orchestrator MUST contain ONLY:
-- **Skill() calls** to the 5 sub-skills
-- **Context file reads** via \`readMilestoneCompleteContext()\` to check conditions between steps
-- **State writes** via \`writeMilestoneCompleteContext({ current_state: "..." })\` after each transition
-- **Arg parsing** and config reads (shadow_debt.enabled check)
-
-This orchestrator MUST NOT contain:
-- MuninnDB calls (those belong in milestone-learn and milestone-prune)
-- \`Task()\` spawns (those belong in milestone-shadow-gate)
-- \`gh api\` calls (those belong in milestone-archive)
-- \`git tag\` or \`git commit\` (those belong in milestone-finalize)
-- Any business logic beyond reading context and choosing the next Skill() call
+- **ALL Agent() calls originate from this orchestrator**
+- **Sub-agents CANNOT call Agent(), Task(), or Skill()**
+- **Prompt templates** in \`src/skills/__helpers/agent-prompts.ts\`
 
 ## Arguments
 
@@ -66,174 +42,151 @@ This orchestrator MUST NOT contain:
 
 ## State Machine
 
-This orchestrator drives the \`milestoneCompleteStateMachine\` defined in
-\`src/skills/__schemas/states/milestone-complete.states.ts\`. States flow:
-
 \`\`\`
 idle -> learned -> pruned -> scanned -> archived -> finalized
 \`\`\`
 
-Terminal states: \`finalized\` (success) or \`failed\` (error).
+Terminal: \`finalized\` (success) or \`failed\` (error).
+Conditional: \`SKIP_SCAN\` when shadow_debt.enabled == false.
 
-Conditional path uses explicit SKIP event (fail-closed):
-- \`SKIP_SCAN\`: Shadow debt scanning is disabled in config (orchestrator decides)
-
-## CRITICAL: current_state Tracking
-
-After EVERY state transition, the orchestrator MUST write \`current_state\` to the context file:
-
-\`\`\`typescript
-import { writeMilestoneCompleteContext } from "src/skills/__schemas/milestone-complete-context.schemas";
-
-await writeMilestoneCompleteContext({ current_state: "learned" });
+**Write \`current_state\` after EVERY transition:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"learned"}'
 \`\`\`
 
-The pre-step enforcement hook (\`pre-step-milestone-complete\`) reads this field to validate that sub-skills are called in the correct order. If \`current_state\` is not written, the hook defaults to "idle" and blocks all non-initial sub-skills.
+## Process
 
-## Orchestrator Flow
+### Step 0: Parse Args, Crash Recovery, Initialize Context
 
-### Step 0: Parse Args and Initialize Context
+Parse milestone version. Read shadow debt config.
 
-Parse the milestone version from Skill() args.
-
-Initialize the context file at \`/tmp/milestone-complete-context.json\`:
-
-\`\`\`typescript
-import { writeMilestoneCompleteContext } from "src/skills/__schemas/milestone-complete-context.schemas";
-
-await writeMilestoneCompleteContext({});
-// This creates the file with context_version: 1
+**Crash recovery:**
+\`\`\`bash
+EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state milestone-complete 2>/dev/null || echo "")
+if [ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ]; then
+  echo "Resuming from state: $EXISTING_STATE"
+else
+  bun src/skills/__schemas/context-cli.ts init milestone-complete
+fi
 \`\`\`
-
-Read shadow debt config for the SKIP_SCAN decision:
 
 \`\`\`bash
 SHADOW_ENABLED=$(cat .planning/config.json | bun -e "const c=JSON.parse(await Bun.stdin.text()); console.log(c.shadow_debt?.enabled ?? true)" 2>/dev/null || echo "true")
 \`\`\`
 
-State: \`idle\`
+### Step 1: Learning Extraction (idle -> learned)
 
-### Step 1: Learning Extraction
+Read \`src/skills/__helpers/agent-prompts.ts\` for the MILESTONE_LEARN_PROMPT template, then:
 
 \`\`\`
-Skill("milestone-learn")
+Agent(name: "milestone-learn", description: "Extract milestone learnings",
+  prompt: MILESTONE_LEARN_PROMPT with vault=REPO_VAULT)
 \`\`\`
 
-On success: state becomes \`learned\`
-On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
+The learn agent consolidates session learnings, promotes validated patterns, and establishes decisions. It does ALL learning work as a leaf agent (no spawning Task(lu-learner)).
+
+On failure: write state "failed", HALT.
 
 **Write state:**
-\`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "learned" });
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"learned"}'
 \`\`\`
 
-### Step 2: Stale Memory Pruning
+### Step 2: Stale Memory Pruning (learned -> pruned)
 
 \`\`\`
-Skill("milestone-prune")
+Agent(name: "milestone-prune", description: "Prune stale memories",
+  prompt: MILESTONE_PRUNE_PROMPT with vault=REPO_VAULT)
 \`\`\`
 
-On success: state becomes \`pruned\`
-On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
+The prune agent identifies stale engrams and runs consolidation. It returns the list of stale candidates for the orchestrator to present to the user for review (pruning decisions are interactive — the orchestrator handles user input inline after the agent returns).
+
+On failure: write state "failed", HALT.
 
 **Write state:**
-\`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "pruned" });
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"pruned"}'
 \`\`\`
 
-### Step 3: Shadow Debt Gate (Conditional)
+### Step 3: Shadow Debt Gate (pruned -> scanned) — Conditional
 
-Check the config value parsed in Step 0:
-
-**If shadow scanning is ENABLED:**
+**If SHADOW_ENABLED == "true":**
 
 \`\`\`
-Skill("milestone-shadow-gate")
+Agent(name: "milestone-shadow", description: "Scan for shadow debt",
+  prompt: MILESTONE_SHADOW_PROMPT with vault=REPO_VAULT)
 \`\`\`
 
-On success: state becomes \`scanned\` (via SCAN_COMPLETE)
-On failure: state becomes \`scanned\` (via SKIP_SCAN — shadow gate is optional)
+The shadow agent scans the repo for orphaned files, misplaced artifacts, and tech debt. It does ALL scanning as a leaf agent (no spawning Task(lu-shadow-scanner)).
 
-**If shadow scanning is DISABLED:**
+On failure (optional): log warning, continue.
 
-Send \`SKIP_SCAN\` explicitly -> state becomes \`scanned\` (fail-closed: always send a transition event)
+**If SHADOW_ENABLED == "false":** Skip (SKIP_SCAN).
 
-**Write state (in both cases):**
-\`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "scanned" });
+**Write state (both cases):**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"scanned"}'
 \`\`\`
 
-### Step 4: Archive Milestone
+### Step 4: Archive Milestone (scanned -> archived)
 
 \`\`\`
-Skill("milestone-archive")
+Agent(name: "milestone-archive", description: "Archive milestone artifacts",
+  prompt: MILESTONE_ARCHIVE_PROMPT with vault=REPO_VAULT)
 \`\`\`
 
-On success: state becomes \`archived\`
-On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
+The archive agent gathers stats, archives roadmap/requirements, updates PROJECT.md, clears session context, resets state machine, and creates GitHub milestone.
+
+On failure: write state "failed", HALT.
 
 **Write state:**
-\`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "archived" });
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"archived"}'
 \`\`\`
 
-### Step 5: Finalize (Commit + Tag + Divergent Mode)
+### Step 5: Finalize (archived -> finalized)
 
 \`\`\`
-Skill("milestone-finalize")
+Agent(name: "milestone-finalize", description: "Create commit and tag",
+  prompt: MILESTONE_FINALIZE_PROMPT with vault=REPO_VAULT)
 \`\`\`
 
-On success: state becomes \`finalized\`
-On failure: send ABORT -> state becomes \`failed\` (required sub-skill)
+The finalize agent creates the final commit, git tag, and reports the tag name. The orchestrator handles the push decision (ask user inline).
+
+On failure: write state "failed", HALT.
 
 **Write state:**
-\`\`\`typescript
-await writeMilestoneCompleteContext({ current_state: "finalized" });
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"finalized"}'
 \`\`\`
 
 ### Step 6: Gap Detection Audit
 
-After all sub-skills complete (state machine in \`finalized\` or \`failed\`), verify execution coverage:
+Verify execution coverage:
+- \`milestone_learn\`: required
+- \`milestone_prune\`: required
+- \`milestone_shadow\`: optional (may be skipped)
+- \`milestone_archive\`: required
+- \`milestone_finalize\`: required
 
-1. Read the context file at \`/tmp/milestone-complete-context.json\` — each populated section indicates a completed sub-skill
-2. Check that ALL required sections are populated:
-   - \`milestone_learn\`: required (learning extraction must have run)
-   - \`milestone_prune\`: required (stale memory pruning must have run)
-   - \`milestone_shadow_gate\`: optional (may be skipped via SKIP_SCAN when shadow_debt.enabled == false)
-   - \`milestone_archive\`: required (archival must have run)
-   - \`milestone_finalize\`: required (finalization must have run)
-3. If any required section is missing, log: "WARNING: {sub_skill} was not invoked — potential step skip"
-4. This audit is advisory — it documents gaps but does not block completion
+If any required step missing: log warning (advisory).
 
 ## Error Handling
 
-**Required sub-skills** (milestone-learn, milestone-prune, milestone-archive, milestone-finalize):
-- On failure -> send ABORT -> terminal \`failed\` state
-- The workflow halts; no further Skill() calls
-
-**Optional sub-skills** (milestone-shadow-gate):
-- On failure -> log warning, send SKIP_SCAN -> continue to next state
-- Shadow scanning failure does not block milestone completion
+**Required agents** (learn, prune, archive, finalize): failure -> state "failed", halt.
+**Optional agents** (shadow): failure -> log warning, continue.
 
 ## Success Criteria
 
-- [ ] All learnings extracted (milestone-learn)
-- [ ] Stale memories pruned (milestone-prune)
-- [ ] Shadow debt scanned OR explicitly skipped (milestone-shadow-gate or SKIP_SCAN)
-- [ ] Milestone archived with stats and retrospective (milestone-archive)
-- [ ] Git tagged and committed (milestone-finalize)
-- [ ] State machine reaches \`finalized\` (success) or \`failed\` (error) terminal state
-- [ ] \`current_state\` written after every state transition
+- [ ] Learnings extracted (milestone-learn agent)
+- [ ] Stale memories pruned (milestone-prune agent)
+- [ ] Shadow debt scanned OR skipped
+- [ ] Milestone archived with stats (milestone-archive agent)
+- [ ] Git tagged and committed (milestone-finalize agent)
+- [ ] current_state written after every transition
+- [ ] Gap detection audit passes
 
-## Next Steps
-
-| Condition | Action | Command |
-|-----------|--------|---------|
-| Ready for next milestone | Start new milestone | \`/milestone-new\` |
-| Want to review completion | Check progress | \`/progress\` |
-| Need to create PR | Create pull request | Run \`gh pr create\` |
-
-**Primary:** \`/milestone-new\` -- Start the next milestone cycle
+**Next:** \`/milestone-new\` — Start the next milestone cycle
 </main>`,
       order: 1,
     },

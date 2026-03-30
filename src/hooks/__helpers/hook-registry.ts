@@ -140,7 +140,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   }),
   "pre-step-enforcement": () => ({
     event: "pre_tool_use",
-    tool_filter: "Bash|Skill",
+    tool_filter: "Bash|Skill|Agent",
     script: "pre-step-enforcement.ts",
     timeout: 5,
     async: false,
@@ -148,7 +148,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   }),
   "pre-step-pr-address": () => ({
     event: "pre_tool_use",
-    tool_filter: "Skill",
+    tool_filter: "Skill|Agent",
     script: "pre-step-pr-address.ts",
     timeout: 5,
     async: false,
@@ -156,7 +156,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   }),
   "pre-step-milestone-complete": () => ({
     event: "pre_tool_use",
-    tool_filter: "Skill",
+    tool_filter: "Skill|Agent",
     script: "pre-step-milestone-complete.ts",
     timeout: 5,
     async: false,
@@ -164,7 +164,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   }),
   "pre-step-verify": () => ({
     event: "pre_tool_use",
-    tool_filter: "Skill",
+    tool_filter: "Skill|Agent",
     script: "pre-step-verify.ts",
     timeout: 5,
     async: false,
@@ -172,7 +172,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   }),
   "pre-step-phase-execute": () => ({
     event: "pre_tool_use",
-    tool_filter: "Skill",
+    tool_filter: "Skill|Agent",
     script: "pre-step-phase-execute.ts",
     timeout: 5,
     async: false,
@@ -180,7 +180,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
   }),
   "pre-step-lu": () => ({
     event: "pre_tool_use",
-    tool_filter: "Skill",
+    tool_filter: "Skill|Agent",
     script: "pre-step-lu.ts",
     timeout: 5,
     async: false,

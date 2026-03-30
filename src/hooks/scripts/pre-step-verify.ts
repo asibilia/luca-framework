@@ -1,23 +1,19 @@
 /**
- * pre-step-verify — Pre-step enforcement hook for verify sub-skills.
+ * pre-step-verify — Pre-step enforcement hook for verify Agent() sub-agents.
  *
- * Fires before Skill tool invocations during verify execution to
- * verify that the state machine is in the correct state before each
- * sub-skill runs. If the orchestrator attempts to call a sub-skill
- * out of order, the hook blocks the call.
+ * Fires before Skill and Agent tool invocations during verify execution to
+ * verify that the state machine is in the correct state before each agent
+ * runs. If the orchestrator attempts to call an agent out of order, the
+ * hook blocks the call.
  *
- * **Layer 3** of the anti-skip enforcement architecture (pre-step enforcement).
+ * NOTE: verify-test runs INLINE (interactive), not via Agent(), so it is
+ * NOT in the subSkills set. The hook only enforces extract, diagnose, review.
  *
- * **Guard:** Uses 200ms TTL via `guardPreStep` per PREMORTEM Constraint #2
- * from Phase 222 to prevent re-entrancy during parallel wave execution.
- *
- * **Divergent paths:** After `tested`, either verify-diagnose (Path B: issues
- * found) or verify-review (Path A: no issues) may be called. Both are valid
- * from the `tested` state — the orchestrator decides which based on
- * `issues_found` in the context file.
+ * **Divergent paths:** After `tested`, either diagnose (Path B: issues found)
+ * or review (Path A: no issues) may be called. Both are valid from `tested`.
  *
  * @module pre-step-verify
- * @see .planning/phases/224-anti-skip-rollout/02-PLAN.md Task 7
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";
@@ -28,18 +24,17 @@ const hook = createSubSkillEnforcementHook({
   hookName: "pre-step-verify",
   contextPath: "/tmp/verify-context.json",
   subSkills: new Set([
-    "verify-extract",
-    "verify-test",
-    "verify-diagnose",
-    "verify-review",
+    "extract",
+    "diagnose",
+    "review",
+    // NOTE: verify-test runs INLINE (interactive), not via Agent()
   ]),
   validStates: {
-    "verify-extract": new Set(["idle"]),
-    "verify-test": new Set(["extracted"]),
-    "verify-diagnose": new Set(["tested"]),
-    "verify-review": new Set(["tested"]),
+    extract: new Set(["idle"]),
+    diagnose: new Set(["tested"]),
+    review: new Set(["tested"]),
   },
-  initialSkill: "verify-extract",
+  initialSkill: "extract",
 });
 
 await hook();

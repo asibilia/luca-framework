@@ -1,23 +1,11 @@
 /**
- * pre-step-phase-execute — Pre-step enforcement hook for phase-execute sub-skills.
+ * pre-step-phase-execute — Pre-step enforcement hook for phase-execute Agent() sub-agents.
  *
- * Fires before Skill tool invocations during phase-execute execution to verify
- * that the state machine is in the correct state before each sub-skill runs.
- * If the orchestrator attempts to call a sub-skill out of order, the hook
- * blocks the call.
- *
- * **Scope:** Validates ordering of the 3 phase-execute sub-skills:
- * phase-execute-waves, phase-execute-verify, phase-execute-review.
- * Setup and learning/commit steps are handled by the orchestrator directly
- * (not sub-skills), so this hook only enforces the 3 extracted loop sub-skills.
- *
- * **Layer 3** of the anti-skip enforcement architecture (pre-step enforcement).
- *
- * **Guard:** Uses 200ms TTL via `guardPreStep` per PREMORTEM Constraint #2
- * from Phase 222 to prevent re-entrancy during parallel wave execution.
+ * Fires before Skill and Agent tool invocations during phase-execute execution.
+ * Uses prefix-based matching for parallel reviewer agents (review-arch, review-dx, etc.).
  *
  * @module pre-step-phase-execute
- * @see .planning/phases/224-anti-skip-rollout/03-PLAN.md Task 6
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";
@@ -28,16 +16,26 @@ const hook = createSubSkillEnforcementHook({
   hookName: "pre-step-phase-execute",
   contextPath: "/tmp/phase-execute-context.json",
   subSkills: new Set([
-    "phase-execute-waves",
-    "phase-execute-verify",
-    "phase-execute-review",
+    "execute-waves",
+    "harness",
+    "fix",
+    "verify",
+    "learn",
+    "process-data",
+  ]),
+  agentPrefixes: new Set([
+    "review-", // matches review-arch, review-dx, review-security, review-simplify
   ]),
   validStates: {
-    "phase-execute-waves": new Set(["setup"]),
-    "phase-execute-verify": new Set(["executed"]),
-    "phase-execute-review": new Set(["verified"]),
+    "execute-waves": new Set(["setup"]),
+    harness: new Set(["executed"]),
+    fix: new Set(["executed"]),
+    verify: new Set(["executed", "verified"]),
+    "review-": new Set(["verified"]),
+    learn: new Set(["reviewed"]),
+    "process-data": new Set(["reviewed", "learned"]),
   },
-  // NO initialSkill — fail-closed on missing context (PREMORTEM R1)
+  // NO initialSkill — fail-closed on missing context
 });
 
 await hook();

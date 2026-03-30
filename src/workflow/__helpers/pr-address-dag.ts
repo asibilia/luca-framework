@@ -38,20 +38,20 @@ import type { WorkflowDAG } from "../__schemas/workflow.schemas";
  * pr-address workflow DAG — 10 steps covering the full PR comment
  * address lifecycle.
  *
- * Step mapping to sub-skills:
+ * Step mapping to Agent() sub-agents:
  *
- * | Step ID       | Handler     | Sub-Skill   | Optional |
- * |---------------|-------------|-------------|----------|
- * | pr-fetch      | pr-fetch    | pr-fetch    | false    |
- * | pr-categorize | pr-validate | pr-validate | false    |
- * | pr-validate   | pr-validate | pr-validate | false    |
- * | pr-debate     | pr-debate   | pr-debate   | true     |
- * | pr-plan       | pr-fix      | pr-fix      | false    |
- * | pr-fix        | pr-fix      | pr-fix      | false    |
- * | pr-verify     | pr-fix      | pr-fix      | false    |
- * | pr-learn      | pr-learn    | pr-learn    | true     |
- * | pr-respond    | pr-respond  | pr-respond  | false    |
- * | pr-push       | pr-respond  | pr-respond  | false    |
+ * | Step ID       | Handler   | Agent Name | Optional |
+ * |---------------|-----------|------------|----------|
+ * | pr-fetch      | fetch     | fetch      | false    |
+ * | pr-categorize | validate  | validate   | false    |
+ * | pr-validate   | validate  | validate   | false    |
+ * | pr-debate     | debate    | debate     | true     |
+ * | pr-plan       | fix       | fix        | false    |
+ * | pr-fix        | fix       | fix        | false    |
+ * | pr-verify     | fix       | fix        | false    |
+ * | pr-learn      | learn     | learn      | true     |
+ * | pr-respond    | respond   | respond    | false    |
+ * | pr-push       | respond   | respond    | false    |
  */
 export const prAddressDAG: WorkflowDAG = {
   name: "pr-address",
@@ -60,7 +60,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-fetch",
       name: "Fetch PR data",
-      handler: "pr-fetch",
+      handler: "fetch",
       dependsOn: [],
       optional: false,
       metadata: {
@@ -73,7 +73,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-categorize",
       name: "Categorize comments",
-      handler: "pr-validate",
+      handler: "validate",
       dependsOn: ["pr-fetch"],
       optional: false,
       metadata: {
@@ -86,7 +86,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-validate",
       name: "Validate concerns",
-      handler: "pr-validate",
+      handler: "validate",
       dependsOn: ["pr-categorize"],
       optional: false,
       metadata: {
@@ -99,7 +99,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-debate",
       name: "Debate split verdicts",
-      handler: "pr-debate",
+      handler: "debate",
       dependsOn: ["pr-validate"],
       optional: true, // PREMORTEM Constraint #2
       metadata: {
@@ -112,7 +112,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-plan",
       name: "Plan fixes",
-      handler: "pr-fix",
+      handler: "fix",
       dependsOn: ["pr-validate"],
       optional: false,
       metadata: {
@@ -124,7 +124,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-fix",
       name: "Execute fixes",
-      handler: "pr-fix",
+      handler: "fix",
       dependsOn: ["pr-plan"],
       optional: false,
       metadata: {
@@ -136,7 +136,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-verify",
       name: "Verify fixes",
-      handler: "pr-fix",
+      handler: "fix",
       dependsOn: ["pr-fix"],
       optional: false,
       metadata: {
@@ -148,7 +148,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-learn",
       name: "Capture learnings",
-      handler: "pr-learn",
+      handler: "learn",
       dependsOn: ["pr-verify"],
       optional: true, // PREMORTEM Constraint #2
       metadata: {
@@ -160,7 +160,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-respond",
       name: "Post responses",
-      handler: "pr-respond",
+      handler: "respond",
       dependsOn: ["pr-verify"],
       optional: false,
       metadata: {
@@ -172,7 +172,7 @@ export const prAddressDAG: WorkflowDAG = {
     {
       id: "pr-push",
       name: "Push changes",
-      handler: "pr-respond",
+      handler: "respond",
       dependsOn: ["pr-respond"],
       optional: false,
       metadata: {

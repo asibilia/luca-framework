@@ -60,7 +60,7 @@
         ]
       },
       {
-        "matcher": "Bash|Skill",
+        "matcher": "Bash|Skill|Agent",
         "hooks": [
           {
             "type": "command",
@@ -71,7 +71,7 @@
         ]
       },
       {
-        "matcher": "Skill",
+        "matcher": "Skill|Agent",
         "hooks": [
           {
             "type": "command",

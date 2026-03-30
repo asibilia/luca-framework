@@ -63,31 +63,10 @@ import { seedMemorySkill } from "../general/seed-memory.skill";
 import { outcomeSkill } from "../general/outcome.skill";
 import { contextRestoreSkill } from "../general/context-restore.skill";
 import { shadowCleanupSkill } from "../general/shadow-cleanup.skill";
-import { prFetchSkill } from "../general/pr-fetch.skill";
-import { prValidateSkill } from "../general/pr-validate.skill";
-import { prDebateSkill } from "../general/pr-debate.skill";
-import { prFixSkill } from "../general/pr-fix.skill";
-import { prLearnSkill } from "../general/pr-learn.skill";
-import { prRespondSkill } from "../general/pr-respond.skill";
-import { milestoneLearnSkill } from "../general/milestone-learn.skill";
-import { milestonePruneSkill } from "../general/milestone-prune.skill";
-import { milestoneShadowGateSkill } from "../general/milestone-shadow-gate.skill";
-import { milestoneArchiveSkill } from "../general/milestone-archive.skill";
-import { milestoneFinalizeSkill } from "../general/milestone-finalize.skill";
-import { verifyExtractSkill } from "../general/verify-extract.skill";
-import { verifyTestSkill } from "../general/verify-test.skill";
-import { verifyDiagnoseSkill } from "../general/verify-diagnose.skill";
-import { verifyReviewSkill } from "../general/verify-review.skill";
-import { phaseExecuteWavesSkill } from "../general/phase-execute-waves.skill";
-import { phaseExecuteVerifySkill } from "../general/phase-execute-verify.skill";
-import { phaseExecuteReviewSkill } from "../general/phase-execute-review.skill";
+// Sub-skills (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
 
 // Import Luca-specific skills
 import { luSkill } from "../luca/lu.skill";
-import { luRouteSkill } from "../luca/lu-route.skill";
-import { luConfigureSkill } from "../luca/lu-configure.skill";
-import { luBacklogSkill } from "../luca/lu-backlog.skill";
-import { luPhaseLoopSkill } from "../luca/lu-phase-loop.skill";
 
 import type { BaseSkill } from "../__schemas/skill.schemas";
 
@@ -155,27 +134,6 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   outcome: () => outcomeSkill,
   "context-restore": () => contextRestoreSkill,
   "shadow-cleanup": () => shadowCleanupSkill,
-  "pr-fetch": () => prFetchSkill,
-  "pr-validate": () => prValidateSkill,
-  "pr-debate": () => prDebateSkill,
-  "pr-fix": () => prFixSkill,
-  "pr-learn": () => prLearnSkill,
-  "pr-respond": () => prRespondSkill,
-  "milestone-learn": () => milestoneLearnSkill,
-  "milestone-prune": () => milestonePruneSkill,
-  "milestone-shadow-gate": () => milestoneShadowGateSkill,
-  "milestone-archive": () => milestoneArchiveSkill,
-  "milestone-finalize": () => milestoneFinalizeSkill,
-  "verify-extract": () => verifyExtractSkill,
-  "verify-test": () => verifyTestSkill,
-  "verify-diagnose": () => verifyDiagnoseSkill,
-  "verify-review": () => verifyReviewSkill,
-  "phase-execute-waves": () => phaseExecuteWavesSkill,
-  "phase-execute-verify": () => phaseExecuteVerifySkill,
-  "phase-execute-review": () => phaseExecuteReviewSkill,
+  // Sub-skill entries (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
   lu: () => luSkill,
-  "lu-route": () => luRouteSkill,
-  "lu-configure": () => luConfigureSkill,
-  "lu-backlog": () => luBacklogSkill,
-  "lu-phase-loop": () => luPhaseLoopSkill,
 };

@@ -1,28 +1,16 @@
 /**
- * verify Skill — Thin orchestrator for UAT testing and code review.
+ * verify Skill — Flat Agent() orchestrator for UAT testing and code review.
  *
- * Decomposed from the monolithic verify skill into 4 sub-skills:
- * - verify-extract: Find summaries, extract deliverables, create UAT template
- * - verify-test: Present tests interactively, collect pass/fail results
- * - verify-diagnose: Diagnose failures, create fix plans (Path B only)
- * - verify-review: Run code quality review swarm (Path A only)
+ * Delegates work to 3 Agent() sub-agents + 1 inline interactive step:
+ * - Agent("extract"): Find summaries, extract deliverables, create UAT template
+ * - INLINE verify-test: Present tests interactively (requires user input)
+ * - Agent("diagnose"): Diagnose failures, create fix plans (Path B only)
+ * - Agent("review"): Run code quality review (Path A only)
  *
- * This orchestrator contains ONLY:
- * - Arg parsing (phase number, --gaps-only flag)
- * - Skill() calls to sub-skills
- * - Context file reads for path decisions
- * - current_state writes after every transition
- * - Summary reporting
+ * verify-test stays INLINE because Agent() sub-agents cannot interact
+ * with the user — they run in isolated context windows.
  *
- * **Divergent terminal paths:**
- * - Path A (no issues): idle -> extracted -> tested -> reviewed (terminal)
- * - Path B (issues found): idle -> extracted -> tested -> diagnosed (terminal)
- *
- * **CRITICAL:** Write `current_state` to context file after EVERY state
- * transition. The pre-step-verify hook reads this to enforce ordering.
- *
- * @see .planning/phases/224-anti-skip-rollout/02-PLAN.md Task 9
- * @see src/skills/__schemas/states/verify.states.ts
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 
@@ -32,215 +20,172 @@ const verifyConfig: SkillConfig = {
   frontmatter: {
     name: "verify",
     description:
-      "Validate built features through conversational UAT testing against acceptance criteria.",
+      "Validate built features through UAT testing and code review via Agent() sub-agents.",
     "disable-model-invocation": true,
   },
   sections: [
     {
       title: "main",
       content: `<main>
-# Luca Verify Work — Thin Orchestrator
+# Luca Verify — Flat Agent() Orchestrator
 
-Validate built features through conversational testing with persistent state.
+Validate built features through UAT testing and code review.
 
 **Arguments:** \`[phase_number] [--gaps-only]\`
 
-**Output:** \`{phase}-UAT.md\` tracking all test results. If issues found: diagnosed gaps, verified fix plans ready for \`/phase-execute --gaps-only\`.
+## Constraints
 
-## Orchestration Protocol
-
-This skill is a **thin orchestrator**. It contains ONLY:
-- Arg parsing
-- Skill() calls to sub-skills
-- Context file reads for path decisions
-- \`current_state\` writes after every state transition
-- Summary reporting to user
-
-**Zero inline logic constraint:** No \`gh\` commands, no \`Task()\` spawns, no template parsing, no data processing. All business logic lives in the sub-skills.
-
-**NEVER inline sub-skill logic.** If a sub-skill fails, re-invoke it. Do NOT copy its implementation into this orchestrator.
+- **Agent() calls originate from this orchestrator** — sub-agents are leaf workers
+- **Sub-agents CANNOT call Agent(), Task(), or Skill()**
+- **verify-test is INLINE** — it requires interactive user input, so it runs directly in this conversation, NOT as an Agent()
+- **Prompt templates** in \`src/skills/__helpers/agent-prompts.ts\` — read that file for full Agent() prompt content
 
 ## State Machine
 
 \`\`\`
-idle -> EXTRACT_COMPLETE -> extracted -> TEST_COMPLETE -> tested
-  Path A (no issues): tested -> SKIP_DIAGNOSE -> reviewed (terminal)
-  Path B (issues):    tested -> DIAGNOSE_COMPLETE -> diagnosed (terminal)
+idle -> extracted -> tested
+  Path A (no issues): tested -> reviewed (terminal)
+  Path B (issues):    tested -> diagnosed (terminal)
 \`\`\`
 
-**CRITICAL:** Write \`current_state\` to context file after EVERY transition:
-\`\`\`typescript
-import { writeVerifyContext } from "src/skills/__schemas/verify-context.schemas";
-await writeVerifyContext({ current_state: "extracted" });
+**Write \`current_state\` after EVERY transition:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracted"}'
 \`\`\`
 
 ## Process
 
-### Step 0: Parse Arguments and Initialize Context
+### Step 0: Parse Args, Crash Recovery, Initialize Context
 
-Parse the phase number from arguments. Check for \`--gaps-only\` flag.
+Parse phase number and flags.
 
-Initialize the context file:
-
-\`\`\`typescript
-import { VERIFY_CONTEXT_PATH, writeVerifyContext } from "src/skills/__schemas/verify-context.schemas";
-import { unlinkSync } from "fs";
-
-// Clear any previous context (fresh run)
-try { unlinkSync(VERIFY_CONTEXT_PATH); } catch {}
-
-// Initialize with context_version and current_state
-await writeVerifyContext({});
-// Write initial state
-await writeVerifyContext({ current_state: "idle" });
+**Crash recovery:**
+\`\`\`bash
+EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state verify 2>/dev/null || echo "")
+if [ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ]; then
+  echo "Resuming from state: $EXISTING_STATE"
+else
+  bun src/skills/__schemas/context-cli.ts init verify
+fi
 \`\`\`
 
-### Step 1: Extract (idle -> extracted)
+### Step 1: Extract Deliverables (idle -> extracted)
+
+Read \`src/skills/__helpers/agent-prompts.ts\` for the VERIFY_EXTRACT_PROMPT template, then:
 
 \`\`\`
-Skill("verify-extract", "{phase_number}")
+Agent(name: "extract", description: "Extract UAT deliverables",
+  prompt: VERIFY_EXTRACT_PROMPT with phase={phase_number}, vault=REPO_VAULT)
 \`\`\`
 
-On success, write state transition:
-\`\`\`typescript
-await writeVerifyContext({ current_state: "extracted" });
+Parse Agent output for STATUS. On failure: write state "failed", HALT.
+
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracted"}'
 \`\`\`
 
-### Step 2: Test (extracted -> tested)
+### Step 2: Interactive Testing (extracted -> tested) — INLINE
 
-\`\`\`
-Skill("verify-test", "{phase_number}")
-\`\`\`
+**This step runs INLINE in the main conversation. Do NOT delegate to Agent().**
 
-On success, write state transition:
-\`\`\`typescript
-await writeVerifyContext({ current_state: "tested" });
+Present UAT tests to the user one at a time from the UAT.md created in Step 1:
+
+1. Read the UAT.md file (path from extract agent's output)
+2. Parse test items
+3. Present each test one at a time to the user
+4. Collect responses: yes/pass/next = PASS, anything else = ISSUE
+5. Update UAT.md with results after each batch
+6. Finalize UAT.md with summary
+7. Set \`issues_found = true\` if any test failed
+
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"tested"}'
 \`\`\`
 
 ### Step 3: Path Decision (tested -> diagnosed OR reviewed)
 
-Read the context file to check \`issues_found\`:
-
-\`\`\`typescript
-import { readVerifyContext } from "src/skills/__schemas/verify-context.schemas";
-
-const result = await readVerifyContext();
-if (!result.success) { /* ABORT */ }
-const issuesFound = result.data.verify_test?.issues_found ?? false;
-\`\`\`
+Check the test results from Step 2:
 
 #### Path B: Issues Found (tested -> diagnosed)
 
 \`\`\`
-Skill("verify-diagnose", "{phase_number}")
+Agent(name: "diagnose", description: "Diagnose UAT failures",
+  prompt: VERIFY_DIAGNOSE_PROMPT with failed test details)
 \`\`\`
 
-On success, write state transition:
-\`\`\`typescript
-await writeVerifyContext({ current_state: "diagnosed" });
+The diagnose agent does ALL debugging work as a leaf agent (reads code, identifies root causes, proposes fixes). It does NOT spawn sub-agents.
+
+On failure: write state "failed", HALT.
+
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"diagnosed"}'
 \`\`\`
 
-**diagnosed is terminal.** Report to user and suggest \`/phase-execute --gaps-only\`.
+**diagnosed is terminal.** Report to user, suggest \`/phase-execute --gaps-only\`.
 
 #### Path A: No Issues (tested -> reviewed)
 
 \`\`\`
-Skill("verify-review", "{phase_number}")
+Agent(name: "review", description: "Code quality review",
+  prompt: VERIFY_REVIEW_PROMPT with phase context)
 \`\`\`
 
-On success, write state transition:
-\`\`\`typescript
-await writeVerifyContext({ current_state: "reviewed" });
+The review agent checks changed files for architecture, security, DX, and performance concerns. It does ALL review work as a leaf agent.
+
+On failure: write state "failed", HALT.
+
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"reviewed"}'
 \`\`\`
 
-**reviewed is terminal.** Report to user and suggest next phase.
+**reviewed is terminal.** Report to user, suggest next phase.
 
 ### Step 4: Report Summary
 
-Read final context and report to user based on terminal state.
-
-**If diagnosed (Path B — issues found):**
-
+**If diagnosed (Path B):**
 \`\`\`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Luca > PHASE {N} ISSUES FOUND
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{passed}/{total} tests passed
-{failed} issues diagnosed
-Fix plans verified
-
+{passed}/{total} tests passed, {failed} issues diagnosed
 Next: /phase-execute {N} --gaps-only
 \`\`\`
 
-**If reviewed (Path A — all clean):**
-
+**If reviewed (Path A):**
 \`\`\`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Luca > PHASE {N} VERIFIED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{N} UAT tests passed
-Code quality review completed
-
+{N}/{N} UAT tests passed, code review completed
 Next: /phase-discuss {N+1} or /milestone-audit
 \`\`\`
 
-**If reviewed with quality issues:**
+### Step 5: Gap Detection Audit
 
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca > PHASE {N} CODE REVIEW
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Verify execution coverage:
+- \`verify_extract\`: required
+- verify-test (inline): required
+- Path A: \`verify_review\`: required
+- Path B: \`verify_diagnose\`: required
 
-{N}/{N} UAT tests passed
-{X} code quality issues found
-
-Options:
-1. Fix now
-2. Continue
-3. Review details
-\`\`\`
+If any required step missing: log warning (advisory).
 
 ## Error Handling
 
-If any sub-skill fails, send ABORT to the state machine:
-\`\`\`typescript
-await writeVerifyContext({ current_state: "failed" });
-\`\`\`
-
-Report the failure to the user with the failing sub-skill name.
-
-### Step 5: Gap Detection Audit
-
-After all sub-skills complete (state machine in a terminal state), verify execution coverage:
-
-1. Read the context file at \`/tmp/verify-context.json\` — each populated section indicates a completed sub-skill
-2. Check that ALL required sections are populated:
-   - \`verify_extract\`: required (extraction must have run)
-   - \`verify_test\`: required (testing must have run)
-   - Path A (no issues): \`verify_review\`: required (code review must have run)
-   - Path B (issues found): \`verify_diagnose\`: required (diagnosis must have run)
-3. If any required section is missing, log: "WARNING: {sub_skill} was not invoked — potential step skip"
-4. This audit is advisory — it documents gaps but does not block completion
-
-## Anti-Patterns
-
-- **DO NOT** contain any gh commands, Task() spawns, data processing, or file reads beyond context file checks
-- **DO NOT** diagnose, plan, or review code — delegate to sub-skills
-- **DO NOT** skip writing current_state — the pre-step hook depends on it
-- **DO NOT** silently omit a sub-skill call — every transition must be explicit
+On any agent failure: write state "failed", report to user.
 
 ## Success Criteria
 
 - [ ] UAT.md created with tests from SUMMARY.md
-- [ ] Tests presented one at a time with expected behavior
-- [ ] If UAT issues: parallel debug agents diagnose root causes
-- [ ] If UAT issues: lu-planner creates fix plans from diagnosed gaps
-- [ ] If UAT issues: ready for \`/phase-execute --gaps-only\`
-- [ ] If UAT passes: code quality review runs on changed files
+- [ ] Tests presented one at a time (INLINE, interactive)
+- [ ] If issues: diagnose agent identifies root causes and proposes fixes
+- [ ] If clean: review agent checks code quality
 - [ ] current_state written after every transition
-- [ ] Orchestrator contains ONLY Skill() calls + context reads + state writes
+- [ ] Gap detection audit passes
 </main>`,
       order: 1,
     },
