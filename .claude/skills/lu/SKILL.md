@@ -1,4 +1,4 @@
-# /lu
+# lu
 
 Unified entry point and autonomous orchestrator for all Luca workflows with cognitive pre-flight, complexity routing, and configurable oversight.
 
