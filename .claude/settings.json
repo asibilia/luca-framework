@@ -123,6 +123,13 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-monitor.sh",
             "timeout": 5,
             "statusMessage": "Checking context usage..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-end-audit.sh",
+            "timeout": 10,
+            "async": true,
+            "statusMessage": "Auditing session state..."
           }
         ]
       }
