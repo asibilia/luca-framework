@@ -21,6 +21,8 @@ import { resolve } from "path";
 
 import { z } from "zod";
 
+import { computePipelinePosition } from "../../../packages/luca-framework/src/state/__helpers/pipeline-position";
+
 import {
   readStdinJson,
   extractFilePath,
@@ -135,8 +137,34 @@ const checkOrchestratorGate = async (
     return null;
   }
 
-  const { current_state: currentState, completed_states: completedStates } =
-    parseResult.data;
+  let currentState: string | undefined;
+  let completedStates: string[] | undefined;
+
+  if (gate.useComputedPosition) {
+    // For lu: derive pipeline position from XState value field
+    const rawObj = raw as Record<string, unknown>;
+    const xstateValue = String(rawObj.value ?? "idle");
+    currentState = computePipelinePosition(xstateValue);
+    // Synthesize completed_states from pipeline position order.
+    // If the computed position is "executing" (index 4), then all prior
+    // positions are considered completed, satisfying predecessor checks.
+    const pipelineOrder = [
+      "idle",
+      "routed",
+      "configured",
+      "scanned",
+      "executing",
+      "complete",
+    ];
+    const currentIdx = pipelineOrder.indexOf(currentState);
+    if (currentIdx >= 0) {
+      completedStates = pipelineOrder.slice(0, currentIdx + 1);
+    }
+  } else {
+    // For other orchestrators: read current_state directly from context file
+    currentState = parseResult.data.current_state;
+    completedStates = parseResult.data.completed_states;
+  }
 
   // No current_state — treat as inactive
   if (!currentState) {

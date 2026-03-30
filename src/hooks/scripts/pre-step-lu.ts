@@ -16,7 +16,7 @@ import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-fac
 
 const hook = createSubSkillEnforcementHook({
   hookName: "pre-step-lu",
-  contextPath: "/tmp/lu-context.json",
+  contextPath: ".planning/state.json",
   subSkills: new Set([
     // Singleton agents (exact match)
     "cognition",

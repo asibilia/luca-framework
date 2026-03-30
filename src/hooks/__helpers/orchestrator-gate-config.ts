@@ -26,6 +26,9 @@ import { z } from "zod";
  * @param requiredPredecessor - State that must appear in completed_states
  *   before edits are allowed. Null for workflows with no edit-permitting states.
  * @param terminalStates - States where the workflow is done (edits always allowed)
+ * @param useComputedPosition - When true, derive pipeline position from XState
+ *   `value` field via `computePipelinePosition()` instead of reading `current_state`
+ *   directly. Used by the lu gate which reads from `.planning/state.json`.
  */
 export const OrchestratorGateConfigSchema = z.object({
   name: z.string(),
@@ -33,6 +36,7 @@ export const OrchestratorGateConfigSchema = z.object({
   editPermittingStates: z.array(z.string()),
   requiredPredecessor: z.string().nullable(),
   terminalStates: z.array(z.string()),
+  useComputedPosition: z.boolean().optional(),
 });
 
 export type OrchestratorGateConfig = z.infer<
@@ -51,10 +55,11 @@ export type OrchestratorGateConfig = z.infer<
 export const ORCHESTRATOR_GATES: readonly OrchestratorGateConfig[] = [
   {
     name: "lu",
-    contextPath: "/tmp/lu-context.json",
+    contextPath: ".planning/state.json",
     editPermittingStates: ["executing"],
     requiredPredecessor: "configured",
     terminalStates: ["idle", "complete", "failed"],
+    useComputedPosition: true,
   },
   {
     name: "phase-execute",

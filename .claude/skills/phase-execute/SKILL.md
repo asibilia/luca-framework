@@ -110,24 +110,62 @@ luca-bridge transition --event=VERIFY_PASSED 2>/dev/null || true
 bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"verified"}'
 ```
 
-### Step 3: Code Review (verified -> reviewed) — PARALLEL agents
+### Step 3: Code Review Fix Loop (verified -> reviewed) — HOISTED
 
 Skip if: --skip-review, workflow.code_review: false, or harness failed.
 
-**If review runs:** Spawn ALL reviewers in PARALLEL from this orchestrator:
+**If skipped:** Emit bridge skip transition and write state:
+```bash
+luca-bridge transition --event=SKIP_REVIEW 2>/dev/null || true
+bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"reviewed"}'
+```
+Then continue to Step 4.
+
+**REVIEW_FIX_ITERATIONS** — hardcoded defaults (no config key needed; mirrors harness fix budget):
+- TRIVIAL / SIMPLE / MODERATE: 1 iteration
+- COMPLEX / CRITICAL: 2 iterations
+
+**If review runs:** Run the following loop:
 
 ```
-Agent(name: "review-arch", description: "Architecture review",
-  prompt: CODE_REVIEW_PROMPT("architecture", {...}))
-Agent(name: "review-dx", description: "DX review",
-  prompt: CODE_REVIEW_PROMPT("dx-advocate", {...}))
-Agent(name: "review-security", description: "Security review",
-  prompt: CODE_REVIEW_PROMPT("security", {...}))
-Agent(name: "review-simplify", description: "Simplification review",
-  prompt: CODE_REVIEW_PROMPT("simplifier", {...}))
+FOR attempt = 1 to REVIEW_FIX_ITERATIONS:
+
+  Spawn ALL reviewers in PARALLEL from this orchestrator:
+
+  Agent(name: "review-arch-{attempt}", description: "Architecture review",
+    prompt: CODE_REVIEW_PROMPT("architecture", {...}))
+  Agent(name: "review-dx-{attempt}", description: "DX review",
+    prompt: CODE_REVIEW_PROMPT("dx-advocate", {...}))
+  Agent(name: "review-security-{attempt}", description: "Security review",
+    prompt: CODE_REVIEW_PROMPT("security", {...}))
+  Agent(name: "review-simplify-{attempt}", description: "Simplification review",
+    prompt: CODE_REVIEW_PROMPT("simplifier", {...}))
+
+  Parse CRITICAL_COUNT from aggregated reviewer output.
+
+  IF CRITICAL_COUNT == 0: BREAK (no critical findings, proceed)
+
+  IF attempt < REVIEW_FIX_ITERATIONS:
+    Aggregate all CRITICAL findings into a single findings string.
+    Agent(name: "review-fix-{attempt}", description: "Fix critical review findings",
+      prompt: REVIEW_FIX_PROMPT(critical_findings_text, {...}))
+
+  # On last attempt with remaining criticals: log to review_summary but continue (non-blocking).
+
+  # Track no-progress: if CRITICAL_COUNT unchanged from prior attempt, treat as
+  # acknowledged and break (prevents stall on false-positive CRITICAL flags).
 ```
 
-Aggregate findings from all reviewers by severity.
+After the loop completes, emit bridge transition:
+```bash
+luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
+```
+
+Write context with review results:
+```bash
+bun src/skills/__schemas/context-cli.ts write phase-execute \
+  '{"phase_execute_review":{"reviewers_spawned":[...],"review_findings":[...],"review_summary":"...","review_fix_iterations":{N},"review_critical_resolved":{bool}}}'
+```
 
 **Write state:**
 ```bash
@@ -200,9 +238,10 @@ If any required step missing: log warning (advisory).
 - [ ] Harness fix loop ran (hoisted, up to N iterations)
 - [ ] Phase goal verified (verify agent)
 - [ ] VERIFICATION.md created
-- [ ] Code review completed (parallel reviewer agents, unless skipped)
+- [ ] Code review fix loop ran (parallel reviewers + optional fix agent, unless skipped)
+- [ ] Review fix loop resolved CRITICAL findings or exhausted iterations
 - [ ] Learnings captured (learn agent)
-- [ ] Bridge transitions emitted (VERIFY_PASSED, LEARN_COMPLETE, COMMIT_COMPLETE)
+- [ ] Bridge transitions emitted (VERIFY_PASSED, REVIEW_COMPLETE or SKIP_REVIEW, LEARN_COMPLETE, COMMIT_COMPLETE)
 - [ ] current_state written after every transition
 - [ ] STATE.md and ROADMAP.md updated
 </main>

@@ -130,9 +130,9 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 
 ---
 
-## v8.5.2 — Statusline HUD & Edit Gate (COMPLETE)
+## v8.5.2 — Statusline HUD & Edit Gate
 
-Add workflow HUD to the statusline, close the anti-skip enforcement gap with a PreToolUse edit gate, and add a fix-loop for code review findings.
+Add workflow HUD to the statusline, close the anti-skip enforcement gap with a PreToolUse edit gate, add a fix-loop for code review findings, and unify the dual-state architecture.
 
 ### Phase 236: Statusline HUD Workflow Display — COMPLETE
 
@@ -166,6 +166,18 @@ Add workflow HUD to the statusline, close the anti-skip enforcement gap with a P
 - [x] review-backward-transition — Hoisted review fix loop in phase-execute Step 3 (stays in "verified" state, no backward transition needed)
 - [x] review-fix-loop — Review → fix → review loop with REVIEW_FIX_PROMPT, no-progress guard, bridge transitions
 - [x] bridge-sync-review-state — Verified no bridge sync changes needed (loop stays in "verified", exits via REVIEW_COMPLETE/SKIP_REVIEW)
+
+### Phase 239: Unify State Architecture
+
+**Goal:** Eliminate the dual-state architecture (`/tmp/lu-context.json` + `.planning/state.json`) by making `pipeline_position` a computed property derived from XState `value` at read time. Delete `syncBridgeState()` and ~700 lines of dead code. Single source of truth, zero sync bridges.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 238
+**Plan:** `~/.claude/plans/lucky-chasing-quiche.md`
+
+- [x] wave-1-computed-function — Add `computePipelinePosition()` pure function with exhaustive switch, wire into luca-bridge as virtual `read-field`, ensure lu skill fires XState transitions directly at each step boundary, update crash recovery to read from luca-bridge
+- [x] wave-2-hook-migration — Migrate enforcement hooks (pre-step-lu, enforcement-hook-factory, orchestrator-gate-config, pre-edit-workflow-gate, session-end-audit) to read computed pipeline position from state.json instead of lu-context.json
+- [x] wave-3-cleanup — Delete `syncBridgeState()`, `LU_STATE_TO_BRIDGE_EVENTS`, `current_state`/`completed_states` from lu schema, dead CLI file (`cli.ts`), 5 dead bridge commands, dead `reset` command, update session-start stale detection, update `context-cli init lu`
 
 ---
 

@@ -407,25 +407,52 @@ const main = async (): Promise<void> => {
   // Uses shared config from orchestrator-gate-config.ts (single source of truth).
   const { ORCHESTRATOR_GATES } =
     await import("../__helpers/orchestrator-gate-config.ts");
+  const { computePipelinePosition } =
+    await import("../../../packages/luca-framework/src/state/__helpers/pipeline-position");
 
   for (const gate of ORCHESTRATOR_GATES) {
     const ctxFile = Bun.file(gate.contextPath);
     if (await ctxFile.exists()) {
       try {
         const raw = await ctxFile.json();
-        const state = raw?.current_state;
+
+        // For the lu gate, derive pipeline position from XState `value`
+        // instead of reading `current_state` (which no longer exists in the
+        // lu context schema). Other 4 gates continue reading current_state.
+        let state: string | undefined;
+        if (gate.useComputedPosition) {
+          const xstateValue = raw?.value;
+          if (typeof xstateValue === "string") {
+            state = computePipelinePosition(xstateValue);
+          }
+        } else {
+          state = raw?.current_state;
+        }
+
         if (state && !gate.terminalStates.includes(state)) {
           process.stderr.write(
             `session-start: Stale ${gate.name} context detected (state: '${state}') — transitioning to 'failed'\n`,
           );
-          raw.current_state = "failed";
-          await Bun.write(gate.contextPath, JSON.stringify(raw, null, 2));
+
+          if (gate.useComputedPosition) {
+            // For state.json: reset via bridge to properly transition the
+            // XState machine, rather than writing current_state directly.
+            await runBridge(["ensure-init", "--force"]);
+          } else {
+            raw.current_state = "failed";
+            await Bun.write(gate.contextPath, JSON.stringify(raw, null, 2));
+          }
         }
       } catch {
         process.stderr.write(
           `session-start: Corrupted ${gate.name} context at ${gate.contextPath} — clearing\n`,
         );
-        await Bun.write(gate.contextPath, "{}");
+        if (gate.useComputedPosition) {
+          // For state.json: reinitialize via bridge
+          await runBridge(["ensure-init", "--force"]);
+        } else {
+          await Bun.write(gate.contextPath, "{}");
+        }
       }
     }
   }

@@ -8,7 +8,7 @@
  * This hook is advisory only — it always exits 0 and never blocks session end.
  *
  * **Context files checked:**
- * - `/tmp/lu-context.json` (terminal: `complete`)
+ * - `.planning/state.json` (terminal: `complete`, uses computed pipeline position)
  * - `/tmp/phase-execute-context.json` (terminal: `committed`, `failed`)
  * - `/tmp/verify-context.json` (terminal: `reviewed`, `diagnosed`, `failed`)
  * - `/tmp/milestone-complete-context.json` (terminal: `finalized`, `failed`)
@@ -18,6 +18,8 @@
  */
 
 import { z } from "zod";
+
+import { computePipelinePosition } from "../../../packages/luca-framework/src/state/__helpers/pipeline-position";
 
 import { guardDedup, emitResult, exitSuccess } from "../__helpers/hook-io.ts";
 
@@ -36,11 +38,13 @@ const ORCHESTRATOR_TERMINALS: ReadonlyArray<{
   readonly name: string;
   readonly path: string;
   readonly terminalStates: ReadonlyArray<string>;
+  readonly useComputedPosition?: boolean;
 }> = [
   {
     name: "lu",
-    path: "/tmp/lu-context.json",
+    path: ".planning/state.json",
     terminalStates: ["complete"],
+    useComputedPosition: true,
   },
   {
     name: "phase-execute",
@@ -82,10 +86,18 @@ const main = async (): Promise<void> => {
       const raw = await file.text();
       if (!raw.trim()) continue;
 
-      const parseResult = AuditContextSchema.safeParse(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      const parseResult = AuditContextSchema.safeParse(parsed);
       if (!parseResult.success) continue;
 
-      const currentState = parseResult.data.current_state;
+      let currentState: string | undefined;
+      if (orchestrator.useComputedPosition) {
+        // lu gate: derive pipeline position from XState value field
+        const rawObj = parsed as Record<string, unknown>;
+        currentState = computePipelinePosition(String(rawObj.value ?? "idle"));
+      } else {
+        currentState = parseResult.data.current_state;
+      }
 
       if (typeof currentState !== "string") continue;
       if (currentState === "") continue;

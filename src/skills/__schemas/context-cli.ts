@@ -12,7 +12,6 @@
  *   bun src/skills/__schemas/context-cli.ts write <name> '<json-patch>'
  *   bun src/skills/__schemas/context-cli.ts read <name>
  *   bun src/skills/__schemas/context-cli.ts state <name>
- *   bun src/skills/__schemas/context-cli.ts reset <name>
  *
  * Context names: lu, phase-execute, verify, milestone-complete, pr-address
  *
@@ -24,25 +23,17 @@
  * bun src/skills/__schemas/context-cli.ts init lu
  * # Output: {"success":true,"path":"/tmp/lu-context.json"}
  *
- * # Write a state transition
- * bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'
- * # Output: {"success":true}
- *
  * # Write sub-agent output
  * bun src/skills/__schemas/context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'
  * # Output: {"success":true}
  *
  * # Read the full context
  * bun src/skills/__schemas/context-cli.ts read lu
- * # Output: {"success":true,"data":{"context_version":1,"current_state":"routed",...}}
+ * # Output: {"success":true,"data":{"context_version":1,...}}
  *
- * # Read just the current state
+ * # Read just the current state (lu context always returns "unknown")
  * bun src/skills/__schemas/context-cli.ts state lu
- * # Output: routed
- *
- * # Reset (delete) the context file
- * bun src/skills/__schemas/context-cli.ts reset lu
- * # Output: {"success":true}
+ * # Output: unknown
  * ```
  *
  * @module context-cli
@@ -72,125 +63,6 @@ import {
 
 import type { z } from "zod";
 import type { ContextHelpers } from "./context-helpers";
-
-// ─── Bridge Sync ─────────────────────────────────────────────────────────
-
-/**
- * Mapping from lu context `current_state` values to the sequence of
- * bridge events needed to reach that state in the workflow state machine.
- *
- * When the lu orchestrator writes a `current_state` change via context-cli,
- * this mapping fires the corresponding bridge transitions so that
- * `.planning/state.json`'s `value` field stays in sync — which the
- * statusline HUD reads for real-time workflow display.
- *
- * Events are fired in order. XState silently ignores events that are
- * invalid from the current state, so it's safe to fire the full sequence
- * even if the machine has already advanced past some states.
- *
- * @see packages/luca-framework/src/state/machine.ts for the state graph
- * @see src/hooks/scripts/statusline.ts for the HUD that reads state.json
- */
-const LU_STATE_TO_BRIDGE_EVENTS: Record<string, string[]> = {
-  routed: ["START", "PREFLIGHT_COMPLETE"],
-  configured: ["START", "PREFLIGHT_COMPLETE", "ROUTE_COMPLETE"],
-  scanned: ["START", "PREFLIGHT_COMPLETE", "ROUTE_COMPLETE"],
-  executing: [
-    "START",
-    "PREFLIGHT_COMPLETE",
-    "ROUTE_COMPLETE",
-    "DISCUSS_COMPLETE",
-    "PLAN_COMPLETE",
-  ],
-  complete: [
-    "PHASE_COMPLETE",
-    "VERIFY_PASSED",
-    "LEARN_COMPLETE",
-    "COMMIT_COMPLETE",
-  ],
-  // NOTE: The phase-execute review fix loop (Step 3) stays entirely in "verified"
-  // state and does NOT require additional bridge events here. REVIEW_COMPLETE and
-  // SKIP_REVIEW remain the only exit events from "verified" — these are emitted by
-  // luca-bridge directly in phase-execute, not via context-cli.
-};
-
-/**
- * Fire bridge transitions to sync state.json with the lu context state.
- *
- * Best-effort: all errors are swallowed. Bridge sync must never block
- * the orchestrator or cause context-cli to fail.
- *
- * Some events require data payloads (e.g., ROUTE_COMPLETE needs complexity).
- * This function reads the current complexity from state.json to populate
- * required fields. If state.json is unreadable, falls back to "MODERATE".
- *
- * @param contextState - The new `current_state` value from the lu context
- */
-const syncBridgeState = (contextState: string): void => {
-  const events = LU_STATE_TO_BRIDGE_EVENTS[contextState];
-  if (!events) return;
-
-  // Read current complexity from state.json for events that require it
-  let complexity = "MODERATE";
-  try {
-    const result = Bun.spawnSync(["luca-bridge", "read-complexity"], {
-      stdout: "pipe",
-      stderr: "ignore",
-    });
-    if (result.exitCode === 0) {
-      const parsed = JSON.parse(result.stdout.toString());
-      if (parsed.complexity) complexity = parsed.complexity;
-    }
-  } catch {
-    // Fall back to MODERATE
-  }
-
-  // Read current phase from state.json for events that require it
-  let phaseId = 0;
-  try {
-    const phaseResult = Bun.spawnSync(["luca-bridge", "read-phase"], {
-      stdout: "pipe",
-      stderr: "ignore",
-    });
-    if (phaseResult.exitCode === 0) {
-      const parsed = JSON.parse(phaseResult.stdout.toString());
-      if (typeof parsed.phase === "number") phaseId = parsed.phase;
-    }
-  } catch {
-    // Fall back to 0
-  }
-
-  // Event data payloads for events that require them
-  const eventData: Record<string, string> = {
-    ROUTE_COMPLETE: JSON.stringify({ complexity }),
-    PHASE_COMPLETE: JSON.stringify({ phase_id: phaseId }),
-  };
-
-  for (const event of events) {
-    try {
-      const args = ["luca-bridge", "transition", `--event=${event}`];
-      const data = eventData[event];
-      if (data) args.push(`--data=${data}`);
-
-      const result = Bun.spawnSync(args, {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-
-      if (result.exitCode !== 0) {
-        const stderr = result.stderr.toString().trim();
-        console.error(
-          `[syncBridgeState] ${event} failed (exit ${result.exitCode}): ${stderr}`,
-        );
-      }
-    } catch (err) {
-      // Best-effort: bridge failure must never block the orchestrator
-      console.error(
-        `[syncBridgeState] ${event} error: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
-};
 
 // ─── Context Registry ─────────────────────────────────────────────────────
 
@@ -275,7 +147,7 @@ const resolveContext = (name: string | undefined): ContextEntry => {
 // ─── Subcommands ──────────────────────────────────────────────────────────
 
 /**
- * Initialize a context file with `{ context_version: 1, current_state: "idle" }`.
+ * Initialize a context file with `{ context_version: 1 }`.
  * Overwrites any existing file.
  */
 const handleInit = async (name: string | undefined): Promise<void> => {
@@ -288,7 +160,7 @@ const handleInit = async (name: string | undefined): Promise<void> => {
     // File doesn't exist — fine
   }
 
-  await entry.helpers.write({ current_state: "idle" } as never);
+  await entry.helpers.write({} as never);
   succeed({ success: true, path: entry.path });
 };
 
@@ -315,12 +187,6 @@ const handleWrite = async (
 
   await entry.helpers.write(patch as never);
 
-  // Auto-sync bridge state when lu context's current_state changes.
-  // This keeps state.json in sync so the statusline HUD updates in real-time.
-  if (name === "lu" && typeof patch.current_state === "string") {
-    syncBridgeState(patch.current_state);
-  }
-
   succeed({ success: true });
 };
 
@@ -345,6 +211,12 @@ const handleRead = async (name: string | undefined): Promise<void> => {
 /**
  * Read only the `current_state` field. Output as plain text (not JSON)
  * for easy consumption in bash scripts.
+ *
+ * NOTE: The lu context no longer has a `current_state` field (removed in
+ * the unify-state-architecture migration). For the lu context, this will
+ * always return "unknown". Crash recovery reads pipeline position from
+ * `luca-bridge read-field --field=pipeline_position` instead.
+ * The other 4 contexts still have `current_state` and work normally.
  */
 const handleState = async (name: string | undefined): Promise<void> => {
   const entry = resolveContext(name);
@@ -361,21 +233,6 @@ const handleState = async (name: string | undefined): Promise<void> => {
   process.exit(0);
 };
 
-/**
- * Delete the context file (cleanup).
- */
-const handleReset = (name: string | undefined): void => {
-  const entry = resolveContext(name);
-
-  try {
-    unlinkSync(entry.path);
-  } catch {
-    // File doesn't exist — still success
-  }
-
-  succeed({ success: true });
-};
-
 // ─── Main ─────────────────────────────────────────────────────────────────
 
 const main = async (): Promise<void> => {
@@ -385,20 +242,18 @@ const main = async (): Promise<void> => {
     console.log(`Usage: bun context-cli.ts <command> <name> [args]
 
 Commands:
-  init  <name>              Initialize context file (idle state)
+  init  <name>              Initialize context file
   write <name> '<json>'     Deep-merge JSON patch into context
   read  <name>              Read and validate context file (JSON)
   state <name>              Read current_state only (plain text)
-  reset <name>              Delete context file
 
 Context names: ${VALID_NAMES}
 
 Examples:
   bun context-cli.ts init lu
-  bun context-cli.ts write lu '{"current_state":"routed"}'
+  bun context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'
   bun context-cli.ts read lu
-  bun context-cli.ts state lu
-  bun context-cli.ts reset lu`);
+  bun context-cli.ts state lu`);
     process.exit(0);
   }
 
@@ -415,12 +270,9 @@ Examples:
     case "state":
       await handleState(name);
       break;
-    case "reset":
-      handleReset(name);
-      break;
     default:
       fail(
-        `Unknown command: "${command}". Valid commands: init, write, read, state, reset`,
+        `Unknown command: "${command}". Valid commands: init, write, read, state`,
       );
   }
 };

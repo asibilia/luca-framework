@@ -3,7 +3,7 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "ee1c8024-f772-4f1a-9e5d-1d0f4d22d723",
+    "session_id": "95a69fd7-ee2a-4d11-a001-775cb7841e1f",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -91,7 +91,7 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-30T18:02:43.469Z"
+    "started_at": "2026-03-30T20:51:18.608Z"
   },
   "children": {}
 }

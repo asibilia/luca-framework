@@ -40,6 +40,7 @@ import {
   guardPreStep,
 } from "./hook-io.ts";
 
+import { computePipelinePosition } from "../../../packages/luca-framework/src/state/__helpers/pipeline-position";
 import { HookContextSchema } from "../../workflow/__helpers/contract-hook-adapter";
 
 // ─── Stdin Payload Schema ────────────────────────────────────────────────
@@ -269,7 +270,13 @@ export const createSubSkillEnforcementHook = (
       // The state is tracked by the orchestrator in the context file.
       // If the context file exists but has no state field, we're in the
       // initial state (idle — first step hasn't run yet).
-      if (parseResult.data.current_state) {
+      if (contextPath.endsWith("state.json")) {
+        // lu gate: derive pipeline position from XState value field
+        const stateValue = String(
+          (raw as Record<string, unknown>).value ?? "idle",
+        );
+        currentState = computePipelinePosition(stateValue);
+      } else if (parseResult.data.current_state) {
         currentState = parseResult.data.current_state;
       }
     } catch {
