@@ -49,19 +49,19 @@ review_log = []
 For each iteration, spawn all 3 reviewers as parallel Task() calls:
 
 ```
-Task(agent: "lu-completeness-reviewer", prompt: "Review research corpus for completeness.
+Task(subagent_type: "lu-completeness-reviewer", prompt: "Review research corpus for completeness.
 Phase intent: {phase_description}
 Research files: {list of files in research/}
 Iteration: {N} of {MAX}
 {if iteration > 1: Prior review gaps that should be addressed: {prior_gaps}}")
 
-Task(agent: "lu-accuracy-reviewer", prompt: "Review research corpus for accuracy.
+Task(subagent_type: "lu-accuracy-reviewer", prompt: "Review research corpus for accuracy.
 Phase intent: {phase_description}
 Research files: {list of files in research/}
 Iteration: {N} of {MAX}
 {if iteration > 1: Prior review gaps that should be addressed: {prior_gaps}}")
 
-Task(agent: "lu-actionability-reviewer", prompt: "Review research corpus for actionability.
+Task(subagent_type: "lu-actionability-reviewer", prompt: "Review research corpus for actionability.
 Phase intent: {phase_description}
 Research files: {list of files in research/}
 Iteration: {N} of {MAX}
@@ -116,12 +116,16 @@ When convergence check returns NEEDS_EXPANSION:
 # Extract CRITICAL and IMPORTANT gaps as expansion targets
 expansion_targets = [gap.description for gap in gaps if gap.severity in ("CRITICAL", "IMPORTANT")]
 
-# Invoke expansion skill
-Skill(skill: "phase-research-expand", args: "{phase} --from-review")
+# Signal to the orchestrator that expansion is needed.
+# The ORCHESTRATOR (not this skill) should invoke phase-research-expand
+# as a separate Agent() call, since sub-agents cannot call Skill().
+# Return NEEDS_EXPANSION status with the expansion targets.
 
 # Increment iteration, loop back to Step 4
 iteration += 1
 ```
+
+**IMPORTANT:** This skill MUST NOT call `Skill(skill: "phase-research-expand")` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return `NEEDS_EXPANSION` with the expansion targets, and let the orchestrator handle the expansion call.
 
 ### Step 8: Write REVIEW-LOG.md
 

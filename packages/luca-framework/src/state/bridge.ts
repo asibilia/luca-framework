@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (15):
+ * Subcommands (16):
  *   read-complexity        — Read current complexity level
  *   read-oversight         — Read current oversight level
  *   read-phase             — Read current phase info
@@ -20,6 +20,7 @@
  *   resume-phase           — Load checkpoint and resume a suspended phase
  *   emit-event             — Emit event to MuninnDB (fire-and-forget observability)
  *   init-vault             — Guided setup for project MuninnDB vault
+ *   audit-gaps             — Audit DAG execution for step coverage gaps
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -42,6 +43,8 @@
  *   luca-state emit-event --type=agent:spawn --session=abc-123 --data='{"agent_name":"lu-executor"}'
  *   luca-state init-vault
  *   luca-state init-vault --vault=my-project --force
+ *   luca-state audit-gaps --dag=pipeline-name
+ *   luca-state audit-gaps
  *
  * @module luca-state/bridge
  */
@@ -206,6 +209,7 @@ const VALID_SUBCOMMANDS = [
   "resume-phase",
   "emit-event",
   "init-vault",
+  "audit-gaps",
 ] as const;
 
 /**
@@ -242,6 +246,9 @@ Observability commands:
 
 Vault commands:
   init-vault             Guided setup for project MuninnDB vault ([--vault=name] [--force])
+
+Audit commands:
+  audit-gaps             Audit DAG execution for step coverage gaps ([--dag=name])
 
 Options:
   --help, -h             Show this help message`;
@@ -1386,6 +1393,268 @@ async function handleInitVault(args: string[]): Promise<void> {
   );
 }
 
+// ─── Audit Gaps Command ─────────────────────────────────────────────────────
+
+/**
+ * Audit DAG execution for step coverage gaps.
+ *
+ * Implements gap detection **inline** (no import from `~/workflow`) because
+ * the bridge lives in `packages/luca-framework/` which cannot access the `~`
+ * alias. The logic follows the same three-tier tolerance model as the reusable
+ * `detectGaps()` in `src/workflow/__helpers/gap-detector.ts`.
+ *
+ * **Three-Tier Tolerance Model:**
+ * - Required step with no ledger entry: FAIL (gap detected)
+ * - Step skipped via guard or flag: PASS (requires structured entry with reason)
+ * - Optional step absent: WARNING (not failure)
+ * - Guard-exception skip: WARNING (should be investigated)
+ * - Failed step: INFO (attempted but failed, not a coverage gap)
+ *
+ * Reads checkpoint data from state (completedSteps, skippedSteps, failedSteps)
+ * and expected step definitions from the checkpoint context's `dag_steps` field
+ * or falls back to a minimal step list derived from completed + skipped + failed.
+ *
+ * **Output:** Structured JSON with `status`, `gaps[]`, and `summary`.
+ * **Exit code:** 0 for clean, 1 for gaps found, 2 for errors.
+ *
+ * @param args - CLI arguments:
+ *   --dag=name (optional) DAG name to filter (currently informational)
+ *
+ * @example
+ * ```bash
+ * luca-state audit-gaps
+ * # Output: {"status":"clean","gaps":[],"summary":{...}}
+ *
+ * luca-state audit-gaps --dag=phase-pipeline
+ * # Output: {"status":"gaps_found","gaps":[...],"summary":{...}}
+ * ```
+ */
+async function handleAuditGaps(args: string[]): Promise<void> {
+  const dagName = getArg(args, "dag") ?? "phase-pipeline";
+
+  // Read checkpoint data from persisted state
+  const checkpointData = await readFromState({
+    fromSnapshot: (ctx) => {
+      // Look for DAG checkpoint data in the context
+      const dagCheckpoint = get(ctx, "dag_checkpoint") as
+        | Record<string, unknown>
+        | undefined;
+      const dagSteps = get(ctx, "dag_steps") as
+        | Array<Record<string, unknown>>
+        | undefined;
+
+      return {
+        checkpoint: dagCheckpoint ?? null,
+        steps: dagSteps ?? null,
+      };
+    },
+    defaults: {
+      checkpoint: null as Record<string, unknown> | null,
+      steps: null as Array<Record<string, unknown>> | null,
+    },
+  });
+
+  // If no checkpoint data exists, return a clean result (no execution to audit)
+  if (!checkpointData.checkpoint) {
+    console.log(
+      JSON.stringify({
+        status: "clean",
+        gaps: [],
+        summary: {
+          totalSteps: 0,
+          completedSteps: 0,
+          skippedSteps: 0,
+          failedSteps: 0,
+          missingSteps: 0,
+          optionalMissing: 0,
+        },
+        message: "No DAG checkpoint found in state. Nothing to audit.",
+      }),
+    );
+    return;
+  }
+
+  const checkpoint = checkpointData.checkpoint;
+  const completedSteps =
+    (checkpoint.completedSteps as Record<string, unknown>) ?? {};
+  const skippedSteps =
+    (checkpoint.skippedSteps as Array<Record<string, unknown>>) ?? [];
+  const failedSteps = (checkpoint.failedSteps as Record<string, unknown>) ?? {};
+
+  // Build expected step list
+  // Priority: explicit dag_steps from state > derive from checkpoint entries
+  type StepDef = { id: string; name: string; optional: boolean };
+  let expectedSteps: StepDef[] = [];
+
+  if (checkpointData.steps && checkpointData.steps.length > 0) {
+    // Use explicit step definitions from state
+    expectedSteps = checkpointData.steps.map((s) => ({
+      id: String(s.id ?? ""),
+      name: String(s.name ?? s.id ?? "unknown"),
+      optional: Boolean(s.optional ?? false),
+    }));
+  } else {
+    // Derive from checkpoint: union of completed + skipped + failed step IDs
+    const allIds = new Set<string>();
+    for (const id of Object.keys(completedSteps)) allIds.add(id);
+    for (const entry of skippedSteps) {
+      if (entry.id) allIds.add(String(entry.id));
+    }
+    for (const id of Object.keys(failedSteps)) allIds.add(id);
+
+    expectedSteps = Array.from(allIds).map((id) => {
+      // Check if skip entry records optional flag
+      const skipEntry = skippedSteps.find((s) => String(s.id) === id);
+      return {
+        id,
+        name: id,
+        optional: Boolean(skipEntry?.optional ?? false),
+      };
+    });
+  }
+
+  // Build skip lookup map
+  const skippedMap = new Map<string, Record<string, unknown>>();
+  for (const entry of skippedSteps) {
+    if (entry.id) {
+      skippedMap.set(String(entry.id), entry);
+    }
+  }
+
+  // Inline gap detection (three-tier tolerance model)
+  interface GapEntry {
+    stepId: string;
+    stepName: string;
+    optional: boolean;
+    expectedStatus: string;
+    actualStatus: string;
+    severity: "fail" | "warning" | "info";
+    recommendation: string;
+  }
+
+  const gaps: GapEntry[] = [];
+  let completedCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  let missingCount = 0;
+  let optionalMissingCount = 0;
+
+  for (const step of expectedSteps) {
+    // 1. Completed -> no gap
+    if (completedSteps[step.id] !== undefined) {
+      completedCount++;
+      continue;
+    }
+
+    // 2. Skipped (structured entry)
+    const skipEntry = skippedMap.get(step.id);
+    if (skipEntry) {
+      skippedCount++;
+      const reason = String(skipEntry.reason ?? "unknown");
+
+      // Guard-false and flag-skip are legitimate -> PASS
+      if (reason === "guard-false" || reason === "flag-skip") {
+        continue;
+      }
+
+      // Guard-exception -> WARNING
+      if (reason === "guard-exception") {
+        gaps.push({
+          stepId: step.id,
+          stepName: step.name,
+          optional: step.optional,
+          expectedStatus: "completed",
+          actualStatus: "skipped-guard-exception",
+          severity: "warning",
+          recommendation:
+            "Step guard threw an exception. Investigate the guard function for errors.",
+        });
+        continue;
+      }
+
+      // Unknown skip reason -> WARNING
+      gaps.push({
+        stepId: step.id,
+        stepName: step.name,
+        optional: step.optional,
+        expectedStatus: "completed",
+        actualStatus: `skipped-${reason}`,
+        severity: "warning",
+        recommendation: `Step was skipped with unexpected reason: ${reason}`,
+      });
+      continue;
+    }
+
+    // 3. Failed -> INFO (attempted but failed, not a coverage gap)
+    if (failedSteps[step.id] !== undefined) {
+      failedCount++;
+      const failInfo = failedSteps[step.id] as Record<string, unknown>;
+      gaps.push({
+        stepId: step.id,
+        stepName: step.name,
+        optional: step.optional,
+        expectedStatus: "completed",
+        actualStatus: "failed",
+        severity: "info",
+        recommendation: `Step attempted but failed: ${String(failInfo.error ?? "Unknown error")}`,
+      });
+      continue;
+    }
+
+    // 4. Missing -> FAIL (required) or WARNING (optional)
+    if (step.optional) {
+      optionalMissingCount++;
+      gaps.push({
+        stepId: step.id,
+        stepName: step.name,
+        optional: true,
+        expectedStatus: "completed",
+        actualStatus: "missing",
+        severity: "warning",
+        recommendation:
+          "Optional step was not executed. This is advisory only.",
+      });
+    } else {
+      missingCount++;
+      gaps.push({
+        stepId: step.id,
+        stepName: step.name,
+        optional: false,
+        expectedStatus: "completed",
+        actualStatus: "missing",
+        severity: "fail",
+        recommendation:
+          "Required step was never executed. This must be addressed before verification can pass.",
+      });
+    }
+  }
+
+  // Determine overall status
+  const hasFails = gaps.some((g) => g.severity === "fail");
+  const status = gaps.length === 0 ? "clean" : "gaps_found";
+
+  const result = {
+    status,
+    dagName,
+    gaps,
+    summary: {
+      totalSteps: expectedSteps.length,
+      completedSteps: completedCount,
+      skippedSteps: skippedCount,
+      failedSteps: failedCount,
+      missingSteps: missingCount,
+      optionalMissing: optionalMissingCount,
+    },
+  };
+
+  console.log(JSON.stringify(result));
+
+  // Exit with code 1 if gaps with FAIL severity found
+  if (hasFails) {
+    process.exit(1);
+  }
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1457,6 +1726,9 @@ export async function runBridgeCli(): Promise<void> {
     case "init-vault":
       await handleInitVault(args);
       break;
+    case "audit-gaps":
+      await handleAuditGaps(args);
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1491,6 +1763,7 @@ export {
   handleResumePhase,
   handleEmitEvent,
   handleInitVault,
+  handleAuditGaps,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

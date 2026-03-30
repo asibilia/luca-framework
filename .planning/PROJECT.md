@@ -8,11 +8,17 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v8.4.1 — Shipped)
+## Current State (v8.5.0 — Shipped)
+
+**Last Shipped:** v8.5.0 — Anti-Skip Enforcement Layer (2026-03-28)
+
+3 phases, 10 plans, 79 commits, 113 files changed (+18,033/-6,800 LOC). Made step-skipping structurally impossible in critical workflow paths. 5-layer architecture: typed state machines (XState v5), progressive disclosure, pre-step hook enforcement, event-sourced gap detection, and skill decomposition. 5 high-risk skills (pr-address, milestone-complete, verify, phase-execute, lu) decomposed into 23 atomic sub-skills with per-skill enforcement.
+
+## Previous State (v8.4.1 — Shipped)
 
 **Last Shipped:** v8.4.1 — Audit Gap Closure (2026-03-28)
 
-3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC). Resolved 16/17 findings from v8.4.0 audit: eliminated shell injection in git routes (execFileSync migration), fixed detail panel dual-render, extracted 3 reusable Zod schema fragments, shared useEntityConflict hook, CompileStatus components, filterByConceptPrefix helper, barrel type exports, sidecar response validation.
+3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC). Resolved 16/17 findings from v8.4.0 audit.
 
 ## Previous State (v8.4.0 — Shipped)
 

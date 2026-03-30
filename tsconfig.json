@@ -32,6 +32,7 @@
     }
   },
   "exclude": [
+    "dist",
     "packages/luca-framework/templates/harness",
     "packages/luca-studio"
   ]

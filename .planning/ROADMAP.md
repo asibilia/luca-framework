@@ -2,18 +2,155 @@
 
 ## Overview
 
-**Current Milestone:** Planning next
+**Current Milestone:** v8.5.1 — Audit Gap Closure
+
+---
+
+## v8.5.1 — Audit Gap Closure (reopened)
+
+Close code quality, security, and enforcement findings. Phases 225-226 shipped DRY + hardening. Phases 227-228 address the orchestrator enforcement gap discovered during PR review. Phase 229 adds behavioral contracts for critical workflow invariant enforcement. Phase 232 migrates all 5 orchestrators from Skill() to Agent() sub-agents, fixing the nested skill return bug (#17351).
+
+### Phase 225: DRY Consolidation — COMPLETE
+
+### Phase 226: Security Hardening — COMPLETE
+
+### Phase 227: Orchestrator State Tracking
+
+**Goal:** Ensure all 5 decomposed orchestrators (lu, phase-execute, verify, milestone-complete, pr-address) write `current_state` to their context files after every state transition, so pre-step hooks can enforce ordering.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 226
+
+- [x] enforce-state-writes — Audit all 5 orchestrator SKILL.md specs and verify `current_state` write instructions are present and explicit after every Skill() call. Fix any that are missing or ambiguous.
+- [x] enforce-context-init — Ensure context file initialization uses `writePrContext({})` (typed helper) not manual `cat > /tmp/...` in all orchestrators. The typed helpers set `context_version: 1` and permissions.
+- [x] enforce-no-inline — Add explicit "NEVER do work inline that a sub-skill handles" constraint to all 5 orchestrator specs, matching the pattern already in lu-phase-loop
+
+### Phase 228: Post-Execution Gap Detection
+
+**Goal:** Implement post-execution gap detection audits that verify all expected sub-skills were actually invoked, catching cases where the LLM bypasses enforcement by going ad-hoc.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 227
+
+- [x] gap-audit-pr-address — Implement the Step 7 gap detection audit documented in pr-address.skill.ts: build DAGCheckpoint from execution trace, call detectGaps(), report coverage
+- [x] gap-audit-all-orchestrators — Add equivalent post-execution gap audits to lu-phase-loop, phase-execute, verify, and milestone-complete orchestrators
+- [x] gap-audit-hook — Create a SessionEnd or Stop hook that checks if any active orchestrator's context file has a non-terminal `current_state`, indicating the session ended mid-workflow with steps potentially skipped
+
+### Phase 229: Agent Behavioral Contracts
+
+**Goal:** Define and enforce hard/soft invariants for critical workflow paths. Behavioral contracts make illegal workflow state transitions detectable and recoverable at runtime, catching violations that state machines alone cannot express (cross-step temporal properties).
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 228
+
+- [x] contract-schemas — Create `src/workflow/__schemas/contracts/` with Zod schemas for hard invariants (must hold at every step), soft invariants (allow transient violations with bounded recovery), and recovery mechanism definitions
+- [x] contract-definitions — Define behavioral contracts for the 5 critical workflow paths: pr-address (no push without LEARNED), milestone-complete (no archive without shadow scan), lu (no phase-execute without configured), verify (no review without extract), phase-execute (no commit without harness pass)
+- [x] contract-runtime — Implement contract evaluation engine that checks invariants against the session ledger event log, detects violations, and triggers recovery mechanisms for soft invariant breaches
+- [x] contract-integration — Integrate contract checking into existing post-execution gap audits and pre-step enforcement hooks so contracts are evaluated at both pre-step and post-execution boundaries
+- [x] drift-metrics — Add contract violation metrics to MuninnDB (violation rate, recovery success rate, drift detection) for process intelligence feedback loop
+
+### Phase 232: Skill-to-Agent Orchestration Migration — COMPLETE
+
+**Goal:** Migrate all 5 orchestrators from nested Skill() calls to flat Agent() sub-agent orchestration, fixing Claude Code bug #17351 where nested skills don't return control to the parent. Delete 22 sub-skills, create shared prompt templates, update enforcement hooks with prefix-based matching.
+**Complexity:** CRITICAL
+**Verification:** Full
+**Depends on:** Phase 229
+
+- [x] hook-infrastructure — Update enforcement-hook-factory.ts for Agent() support with prefix-based matching, update hook-registry.ts tool_filter to "Skill|Agent", update pre-step-enforcement.ts, Phase 0 empirical validation
+- [x] shared-templates — Create agent-prompts.ts (~26 prompt template functions) and agent-output.schemas.ts (output contracts + parseAgentOutput parser)
+- [x] migrate-pr-address — Rewrite pr-address.skill.ts (6 Skill() → 6 Agent()), update pre-step hook + DAG handlers, delete 6 sub-skill files
+- [x] migrate-verify — Rewrite verify.skill.ts (verify-test stays INLINE for user interaction, 3 others → Agent()), update pre-step hook, delete 4 sub-skill files
+- [x] migrate-milestone-complete — Rewrite milestone-complete.skill.ts (5 Skill() → 5 Agent() leaf workers), update pre-step hook, delete 5 sub-skill files
+- [x] migrate-phase-execute — Rewrite phase-execute.skill.ts (hoisted harness fix loop, parallel reviewer Agent() calls, UAT inline), update pre-step hook with agentPrefixes, delete 3 sub-skill files
+- [x] migrate-lu — Rewrite lu.skill.ts (full 11-step pipeline inline, routing branches, phase loop, gap closure, milestone inlining, 228-line compiled SKILL.md), update pre-step hook with full prefix set, delete 4 sub-skill files
+- [x] infrastructure-cleanup — Verify contract-hook-adapter (no changes needed), audit skill registry (22 entries removed), verify template directories cleaned, final type-check + documentation
+
+### Phase 230: v2 Enhanced Existing Agents
+
+**Goal:** Enhance 4 existing agents with v2 capabilities (parallel research spawning, engram graduation, research-informed risk analysis, review loop convergence) while preserving v1 backward compatibility.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 229, v2 Phases 1-5 (shipped in v6.0.0)
+
+- [x] researcher-orchestrator — Modify lu-phase-researcher to spawn 4 specialist researchers (lu-architecture-researcher, lu-implementation-researcher, lu-ecosystem-researcher, lu-risk-researcher) in parallel when v2 is enabled; preserve v1 single-researcher behavior
+- [x] learner-graduation — Add `research:*` engram promotion pathway to lu-learner: promote high-value research engrams to permanent `pattern:*`/`pitfall:*`/`decision:*` in default vault, then clean up remaining `research:*` via `muninn_forget`
+- [x] premortem-research — Modify lu-premortem to accept research files as input alongside the plan, enabling research-informed risk analysis
+- [x] plan-checker-review-loop — Add review loop support with convergence detection to lu-plan-checker, replacing single-pass checking with multi-reviewer plan review loop
+
+### Phase 231: v2 Orchestrator Integration
+
+**Goal:** Wire the full v2 pipeline into `lu.skill.ts` with conditional execution based on `workflow.version: "v2"` config. Each v2 step is independently toggleable and gated fail-closed. Post-Phase 232, lu.skill.ts uses a flat Agent() orchestrator with an inline phase loop — v2 steps are inserted as additional Agent() calls inside the Step 7 loop body.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 230, Phase 232
+
+- [x] research-config-schemas — Create `src/shared/__schemas/research-config.schemas.ts` (ResearchConfigSchema) and `src/shared/__schemas/workflow-version.schemas.ts` (WorkflowVersionSchema)
+- [x] config-extensions — Extend `lu-config.schemas.ts` with `research` section and `workflow.version` field; extend `complexity.schemas.ts` with v2 fields (researchReviewIterations, planReviewIterations)
+- [x] v2-pipeline-branch — Add v2 pipeline branch to lu.skill.ts Step 7 phase loop: insert Agent() calls for phase-research (multi-agent), phase-research-review, phase-graduate BEFORE the existing discuss/plan/execute steps (7e-7h). Gate each v2 step on `workflow.version: "v2"` config. Add v2 prompt templates to `agent-prompts.ts`. NOTE: phase-research-review must NOT call Skill() internally — it returns NEEDS_EXPANSION status and the orchestrator handles expansion as a separate Agent() call.
+- [x] config-json-update — Add `workflow.version` and `research` section to `.planning/config.json` with all v2 feature flags
+- [x] v2-graceful-degradation — Ensure v1 config runs v1 pipeline unchanged (Step 7 loop skips v2 Agent() calls when version != "v2"), v2 with features disabled skips those steps, `--v2` flag overrides config for single invocation, and failure in any v2 step degrades gracefully to v1 by falling through to the existing v1 discuss/plan/execute path
+
+### Phase 233: Post-Audit Security & Schema Compliance
+
+**Goal:** Fix security findings (prompt injection, input validation, path sanitization) and schema-first violations from the v8.5.1 audit.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 231
+
+- [x] fix-harness-prompt-injection — Sanitize tsc error output in HARNESS_FIX_PROMPT by escaping XML tags before interpolation (SEC-001)
+- [x] fix-context-write-validation — Validate merged context against Zod schema before writing in context-helpers.ts (SEC-002)
+- [x] fix-hookname-sanitization — Apply safeTool regex to hookName in guard file paths in hook-io.ts (SEC-003)
+- [x] fix-prompt-escaping — Escape single quotes in vault/recallContext in memoryProtocol, add allowlist for reviewer/route params (SEC-004, SEC-005)
+- [x] fix-contextpath-validation — Validate contextPath prefix in contract-hook-adapter checkContractPreconditions (SEC-006)
+- [x] fix-enforcement-schema-first — Replace type assertions in enforcement-hook-factory stdin parsing with Zod safeParse, replace JSON.parse in session-end-audit with schema validation (DX-001, DX-002)
+
+### Phase 234: Post-Audit DRY & Integration Cleanup
+
+**Goal:** Fix the CRITICAL DRY violation, dead code, duplicated schemas, and unregistered hook from the v8.5.1 audit.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 233
+
+- [x] fix-violation-to-gap-dry — Extract shared violationToGap() helper, resolve optional field divergence between gap-detector and contract-evaluator (DRY-001 CRITICAL)
+- [x] fix-register-session-end-audit — Register session-end-audit in hook-registry.ts so it actually fires on SessionEnd (INT-001)
+- [x] fix-consolidate-context-schema — Consolidate duplicated EnforcementContextSchema/HookContextSchema into single shared schema in workflow (ARCH-001)
+- [x] fix-dead-code — Fix unreachable recoverySucceeded path in contract-evaluator, fix dead hasFails branch in gap-detector, use Bun.file.json() in contract-hook-adapter (ARCH-002, ARCH-003, ARCH-006)
+- [x] fix-contract-evaluator-schemas — Convert LedgerEntry/MergedAuditResult to Zod schemas with z.infer, constrain status to enum (DX-003, DX-005)
+
+### Phase 235: Migration Review Gap Closure
+
+**Goal:** Address the 3 MEDIUM gaps identified by the v8.5.1 migration review panel: build-time prompt safety check, recall depth gating in memory protocol, and atomic context file writes.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 234
+
+- [x] prompt-safety-check — Create `scripts/check-prompt-safety.ts` that greps all compiled Agent() prompt templates for forbidden tool calls (Agent, Task, Skill) and fails with exit code 1 if found. Add to `check:drift` pipeline.
+- [x] recall-depth-gating — Update `memoryProtocol()` in `agent-prompts.ts` to accept an optional `recallDepth` parameter. When provided, limit the number of recall steps (0 = skip all recalls, 1 = brain tree only, 3 = full). Wire complexity matrix `recallDepth` through `AgentPromptParams`.
+- [x] atomic-context-writes — Replace `Bun.write(path, data)` in `context-helpers.ts` with atomic temp-file-rename pattern: write to `${path}.tmp`, then `rename()` to `path`. Prevents corruption from mid-write crashes.
+
+---
+
+## Next: v8.6.0 — Scout Article Intelligence
+
+Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
+
+**Prerequisite:** v8.5.0 complete (scout-02 borrows createSkillStateMachine; scout-04 requires progressive disclosure)
+
+### Planned Phases
+
+- **Phase 1: Scout Foundation** (6 todos) — Directory structure, state machine, templates, orchestrator, index updater, shared sections
+- **Phase 2: Per-Article Pipeline** (8 todos) — Ingest, relevance, research, analyst, analyze, impl-research agents + skills
+- **Phase 3: Cross-Cutting Batch** (5 todos) — Integrator, integrate, planner, plan, graduate agents + skills
+- **Phase 4: UX + Docs** (3 todos) — Review command, deferred command, workflow documentation
 
 ---
 
 ## Deferred to Future Milestones
 
-| Todo Group                  | Target   | Scope                                  | Reason                                               |
-| --------------------------- | -------- | -------------------------------------- | ---------------------------------------------------- |
-| v2-phase-6                  | v9.0.0   | Orchestrator integration (lu.skill.ts) | HIGH arch risk + VERY HIGH QA risk, needs test infra |
-| v2-enhanced-existing-agents | v9.0.0   | Agent enhancements (4 agents)          | Pairs with v2-phase-6, needs behavioral tests        |
-| agent-cross-talk-protocol   | v10.0.0+ | Inter-agent messaging protocol         | Needs design spike, no existing infrastructure       |
-| agent-collaboration-ui      | v10.0.0+ | Agent collaboration UI                 | Depends on cross-talk + adapters + Studio            |
+| Todo Group                | Target   | Scope                          | Reason                                         |
+| ------------------------- | -------- | ------------------------------ | ---------------------------------------------- |
+| agent-cross-talk-protocol | v10.0.0+ | Inter-agent messaging protocol | Needs design spike, no existing infrastructure |
+| agent-collaboration-ui    | v10.0.0+ | Agent collaboration UI         | Depends on cross-talk + adapters + Studio      |
 
 ## Closed (Reference / Not Actionable)
 
@@ -68,6 +205,12 @@
 | #73  | Observer Workflow Editor: 7 phases, 35 commits, 79 files (+7,963 LOC). React Flow v12, stage-group containers, custom nodes, complexity filter, grouped column layout, Zod safeParse, ARIA accessibility |
 
 ---
+
+## Closed (v8.5.0 Completed)
+
+| Todo                               | Reason                                                                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| anti-skip-layer0-4, pilot, rollout | 3 phases, 10 plans, 79 commits, 113 files (+18,033/-6,800 LOC). 5-layer anti-skip architecture, 5 skills decomposed into 23 sub-skills, state machines + hooks + gap detection |
 
 ## Closed (v8.4.1 Completed)
 
@@ -245,6 +388,8 @@
 - **v8.3.0** — Studio Feature Suite: 6 phases, 4 plans, 35 commits, 99 files changed (+2,969 LOC) ([View Archive](milestones/v8.3.0-ROADMAP.md))
 - **v8.4.1** — Audit Gap Closure: 3 phases, 3 plans, 18 commits, 56 files changed (+3,597 LOC) ([View Archive](milestones/v8.4.1-ROADMAP.md))
 - **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
+- **v8.5.0** — Anti-Skip Enforcement Layer: 3 phases, 10 plans, 79 commits, 113 files changed (+18,033/-6,800 LOC) ([View Archive](milestones/v8.5.0-ROADMAP.md))
+- **v8.5.1** — Audit Gap Closure: 11 phases, 135 commits, 56 files changed (+8,526/-5,498 LOC) ([View Archive](milestones/v8.5.1-ROADMAP.md))
 
 ---
 

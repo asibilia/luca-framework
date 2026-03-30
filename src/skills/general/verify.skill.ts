@@ -1,393 +1,191 @@
 /**
- * verify Skill - Validate built features through conversational UAT testing against acceptance criteria.
+ * verify Skill — Flat Agent() orchestrator for UAT testing and code review.
+ *
+ * Delegates work to 3 Agent() sub-agents + 1 inline interactive step:
+ * - Agent("extract"): Find summaries, extract deliverables, create UAT template
+ * - INLINE verify-test: Present tests interactively (requires user input)
+ * - Agent("diagnose"): Diagnose failures, create fix plans (Path B only)
+ * - Agent("review"): Run code quality review (Path A only)
+ *
+ * verify-test stays INLINE because Agent() sub-agents cannot interact
+ * with the user — they run in isolated context windows.
+ *
+ * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
+
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-// Define the verify skill configuration
 const verifyConfig: SkillConfig = {
   frontmatter: {
     name: "verify",
-    description: `Validate built features through conversational UAT testing against acceptance criteria.`,
+    description:
+      "Validate built features through UAT testing and code review via Agent() sub-agents.",
     "disable-model-invocation": true,
   },
   sections: [
     {
       title: "main",
       content: `<main>
-# Luca Verify Work
+# Luca Verify — Flat Agent() Orchestrator
 
-Validate built features through conversational testing with persistent state.
+Validate built features through UAT testing and code review.
 
-## Sub-agent Delegation Requirements
+**Arguments:** \`[phase_number] [--gaps-only]\`
 
-This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using the Task tool.
+## Constraints
 
-**Required sub-agents for this skill:**
+- **Agent() calls originate from this orchestrator** — sub-agents are leaf workers
+- **Sub-agents CANNOT call Agent(), Task(), or Skill()**
+- **verify-test is INLINE** — it requires interactive user input, so it runs directly in this conversation, NOT as an Agent()
+- **Prompt templates** in \`src/skills/__helpers/agent-prompts.ts\` — read that file for full Agent() prompt content
 
-- \`lu-debugger\` - Diagnoses root causes of UAT failures (parallel)
-- \`lu-planner\` - Creates fix plans in --gaps mode
-- \`lu-plan-checker\` - Verifies fix plans before execution
-- \`dx-advocate\` - Code quality review
-- \`code-simplifier\` - DRY and complexity review
-- \`code-architect\` - Architecture review
-- \`ui\` - Tailwind/styling review
-- \`security-auditor\` - Security review (conditional)
+## State Machine
 
-**DO NOT** attempt to diagnose, plan, or review code yourself. Spawn the appropriate agents.
+\`\`\`
+idle -> extracted -> tested
+  Path A (no issues): tested -> reviewed (terminal)
+  Path B (issues):    tested -> diagnosed (terminal)
+\`\`\`
 
-**Reference:** See \`.claude/luca/references/task-directive.md\` for Task() syntax patterns.
-
-### Model Resolution
-
+**Write \`current_state\` after EVERY transition:**
 \`\`\`bash
-MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracted"}'
 \`\`\`
-
-| Agent              | quality | balanced | budget |
-| ------------------ | ------- | -------- | ------ |
-| lu-debugger     | opus    | sonnet   | sonnet |
-| lu-planner      | opus    | opus     | sonnet |
-| lu-plan-checker | sonnet  | sonnet   | haiku  |
-| reviewers (all)    | opus    | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# All verification agents require reasoning → omit (inherit from parent)
-debugger_model = (omit)
-planner_model = (omit)
-checker_model = (omit)
-reviewer_model = (omit)
-\`\`\`
-
-**Note:** This is now integrated into \`/phase-execute\` by default. Use this standalone command only if:
-
-- You want to re-run UAT on a previously completed phase
-- You skipped UAT during execution (\`--skip-uat\`)
-- You want to resume an interrupted UAT session
-
-**Purpose:** Confirm what AI built actually works from user's perspective. One test at a time, plain text responses, no interrogation. When issues are found, automatically diagnose, plan fixes, and prepare for execution.
-
-**Arguments:** \`[phase number, e.g., '4']\`
-
-**Output:** \`{phase}-UAT.md\` tracking all test results. If issues found: diagnosed gaps, verified fix plans ready for \`/phase-execute\`
-
-## Execution Context
-
-Read these reference files before executing:
-
-- \`.claude/luca/workflows/verify-work.md\`
-- \`.claude/luca/templates/UAT.md\`
 
 ## Process
 
-1. **Check for active UAT sessions** (resume or start new)
-2. **Find SUMMARY.md files** for the phase
-3. **Extract testable deliverables** (user-observable outcomes)
-4. **Create {phase}-UAT.md** with test list
-5. **Present tests one at a time:**
-   - Show expected behavior
-   - Wait for plain text response
-   - "yes/y/next" = pass, anything else = issue (severity inferred)
-6. **Update UAT.md** after each response
-7. **On UAT completion:** commit results
-8. **If UAT issues found:**
+### Step 0: Parse Args, Crash Recovery, Initialize Context
 
-   **MANDATORY**: You MUST spawn sub-agents to diagnose and plan fixes. Do NOT attempt to diagnose or plan yourself.
+Parse phase number and flags.
 
-   First, spawn parallel debuggers to diagnose each issue:
-
-   \`\`\`python
-   # For each UAT issue - spawn in PARALLEL
-   Task(
-     prompt="""
-   <debug_context>
-
-   **UAT Issue:** {issue_description}
-   **Phase:** {phase_number}
-   **Expected:** {expected_behavior}
-   **Actual:** {actual_behavior}
-
-   </debug_context>
-
-   Diagnose the root cause of this UAT failure.
-   Return diagnosis with affected files and suggested fix approach.
-   """,
-     subagent_type="lu-debugger",
-     model="{debugger_model}",
-     description="Diagnose UAT issue: {issue_summary}"
-   )
-   \`\`\`
-
-   After diagnosis, spawn planner in gaps mode:
-
-   \`\`\`python
-   Task(
-     prompt="""
-   <planning_context>
-
-   **Phase:** {phase_number}
-   **Mode:** gap_closure
-   **Phase Directory:** {phase_dir}
-
-   **Diagnosed Issues:**
-   {diagnosed_issues}
-
-   </planning_context>
-
-   Create fix plans for these diagnosed UAT issues.
-   """,
-     subagent_type="lu-planner",
-     model="{planner_model}",
-     description="Plan UAT fixes"
-   )
-   \`\`\`
-
-   Then verify with plan-checker (iterate max 3 times):
-
-   \`\`\`python
-   Task(
-     prompt="""
-   <verification_context>
-
-   **Phase:** {phase_number}
-   **Fix Plans:** {plans_content}
-   **Original Issues:** {diagnosed_issues}
-
-   </verification_context>
-
-   Verify these fix plans will address the UAT issues.
-   """,
-     subagent_type="lu-plan-checker",
-     model="{checker_model}",
-     description="Verify fix plans"
-   )
-   \`\`\`
-
-   - Present ready status with \`/clear\` then \`/phase-execute\`
-
-9. **If UAT passes:** Run code quality review
-
-   **Always runs.** Each reviewer resolves its model tier from the routing table based on complexity.
-
-   **Read complexity from bridge (with STATE.md fallback):**
-
-   \`\`\`bash
-   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
-   \`\`\`
-
-   **Always spawn ALL reviewers with model tier from routing table:**
-
-   | Agent | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-   |-------|---------|--------|----------|---------|----------|
-   | dx-advocate | fast | balanced | capable | capable | capable |
-   | code-simplifier | fast | balanced | capable | capable | capable |
-   | code-architect | fast | balanced | capable | capable | capable |
-   | performance-auditor | fast | balanced | capable | capable | capable |
-   | security-auditor | fast | balanced | capable | capable | capable |
-
-   Each model tier is resolved via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table.
-
-   **MANDATORY**: You MUST spawn reviewer agents in PARALLEL. Do NOT review code yourself.
-
-   Get changed files and spawn reviewers:
-
-   \`\`\`bash
-   CHANGED_FILES=$(git diff --name-only main...HEAD -- '*.ts' '*.tsx' 2>/dev/null | head -50)
-   \`\`\`
-
-   \`\`\`python
-   # Spawn ALL reviewers in PARALLEL (same message)
-   Task(
-     prompt="Review for conventions and standards: {changed_files}",
-     subagent_type="dx-advocate",
-     model="{reviewer_model}",
-     description="DX review"
-   )
-
-   Task(
-     prompt="Review for DRY and complexity: {changed_files}",
-     subagent_type="code-simplifier",
-     model="{reviewer_model}",
-     description="Simplification review"
-   )
-
-   Task(
-     prompt="Review for architecture: {changed_files}",
-     subagent_type="code-architect",
-     model="{reviewer_model}",
-     description="Architecture review"
-   )
-
-   Task(
-     prompt="Review for Tailwind patterns: {changed_files}",
-     subagent_type="ui",
-     model="{reviewer_model}",
-     description="Tailwind review"
-   )
-
-   # Conditional: only if auth/api files changed
-   Task(
-     prompt="Review for security: {changed_files}",
-     subagent_type="security-auditor",
-     model="{reviewer_model}",
-     description="Security review"
-   )
-   \`\`\`
-
-   **Do NOT proceed until ALL Tasks return.**
-
-   - Merge findings by severity (CRITICAL/HIGH/MEDIUM/LOW)
-
-10. **If CRITICAL quality issues:** Plan fixes (same planner → checker loop)
-11. **If HIGH/MEDIUM only:** Report and offer options (fix now / continue / review)
-12. **Present ready status** for next phase
-
-## Anti-Patterns
-
-- Don't use AskQuestion for test responses — plain text conversation
-- Don't ask severity — infer from description
-- Don't present full checklist upfront — one test at a time
-- Don't run automated tests — this is manual user validation
-- Don't fix issues during testing — log as gaps, diagnose after all tests complete
-
-## Routes After Testing
-
-**Route A: All tests pass, more phases remain**
-
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} VERIFIED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{N} UAT tests passed ✓
-Code quality review passed ✓
-
-## ▶ Next Up
-
-- /phase-discuss {Z+1} — gather context and clarify approach
-- /phase-plan {Z+1} — create implementation plan
-- /phase-execute {Z+1} — execute if plan exists
+**Crash recovery:**
+\`\`\`bash
+EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state verify 2>/dev/null || echo "")
+if [ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ]; then
+  echo "Resuming from state: $EXISTING_STATE"
+else
+  bun src/skills/__schemas/context-cli.ts init verify
+fi
 \`\`\`
 
-**Route B: All tests pass, milestone complete**
+### Step 1: Extract Deliverables (idle -> extracted)
+
+Read \`src/skills/__helpers/agent-prompts.ts\` for the VERIFY_EXTRACT_PROMPT template, then:
 
 \`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} VERIFIED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Final phase verified ✓
-All UAT tests passed ✓
-Code quality review passed ✓
-
-## ▶ Next Up
-
-/milestone-audit
+Agent(name: "extract", description: "Extract UAT deliverables",
+  prompt: VERIFY_EXTRACT_PROMPT with phase={phase_number}, vault=REPO_VAULT)
 \`\`\`
 
-**Route C: Issues found, fix plans ready**
+Parse Agent output for STATUS. On failure: write state "failed", HALT.
 
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} ISSUES FOUND ⚠
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{M} tests passed
-{X} issues diagnosed
-Fix plans verified ✓
-
-## ▶ Next Up
-
-/phase-execute {Z} --gaps-only
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracted"}'
 \`\`\`
 
-**Route D: Issues found, planning blocked**
+### Step 2: Interactive Testing (extracted -> tested) — INLINE
 
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} BLOCKED ✗
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**This step runs INLINE in the main conversation. Do NOT delegate to Agent().**
 
-Manual intervention required
-\`\`\`
+Present UAT tests to the user one at a time from the UAT.md created in Step 1:
 
-**Route E: UAT passes, code quality issues found**
+1. Read the UAT.md file (path from extract agent's output)
+2. Parse test items
+3. Present each test one at a time to the user
+4. Collect responses: yes/pass/next = PASS, anything else = ISSUE
+5. Update UAT.md with results after each batch
+6. Finalize UAT.md with summary
+7. Set \`issues_found = true\` if any test failed
 
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► PHASE {Z} CODE REVIEW ⚠
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N}/{N} UAT tests passed ✓
-{X} code quality issues found
-
-| Severity | Count | Examples |
-|----------|-------|----------|
-| HIGH | {N} | Native .map() instead of Lodash |
-| MEDIUM | {N} | Duplicated validation logic |
-
-## Options
-
-1. Fix now — plan and execute quality fixes
-2. Continue — address in future iteration
-3. Review details — see full findings
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"tested"}'
 \`\`\`
 
-**Route F: UAT passes, quality fixes ready**
+### Step 3: Path Decision (tested -> diagnosed OR reviewed)
+
+Check the test results from Step 2:
+
+#### Path B: Issues Found (tested -> diagnosed)
 
 \`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► QUALITY FIXES READY ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{N} quality issues planned for fixing.
-
-## ▶ Next Up
-
-/phase-execute {Z} --quality-fixes
+Agent(name: "diagnose", description: "Diagnose UAT failures",
+  prompt: VERIFY_DIAGNOSE_PROMPT with failed test details)
 \`\`\`
+
+The diagnose agent does ALL debugging work as a leaf agent (reads code, identifies root causes, proposes fixes). It does NOT spawn sub-agents.
+
+On failure: write state "failed", HALT.
+
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"diagnosed"}'
+\`\`\`
+
+**diagnosed is terminal.** Report to user, suggest \`/phase-execute --gaps-only\`.
+
+#### Path A: No Issues (tested -> reviewed)
+
+\`\`\`
+Agent(name: "review", description: "Code quality review",
+  prompt: VERIFY_REVIEW_PROMPT with phase context)
+\`\`\`
+
+The review agent checks changed files for architecture, security, DX, and performance concerns. It does ALL review work as a leaf agent.
+
+On failure: write state "failed", HALT.
+
+**Write state:**
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"reviewed"}'
+\`\`\`
+
+**reviewed is terminal.** Report to user, suggest next phase.
+
+### Step 4: Report Summary
+
+**If diagnosed (Path B):**
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > PHASE {N} ISSUES FOUND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{passed}/{total} tests passed, {failed} issues diagnosed
+Next: /phase-execute {N} --gaps-only
+\`\`\`
+
+**If reviewed (Path A):**
+\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Luca > PHASE {N} VERIFIED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{N}/{N} UAT tests passed, code review completed
+Next: /phase-discuss {N+1} or /milestone-audit
+\`\`\`
+
+### Step 5: Gap Detection Audit
+
+Verify execution coverage:
+- \`verify_extract\`: required
+- verify-test (inline): required
+- Path A: \`verify_review\`: required
+- Path B: \`verify_diagnose\`: required
+
+If any required step missing: log warning (advisory).
+
+## Error Handling
+
+On any agent failure: write state "failed", report to user.
 
 ## Success Criteria
 
 - [ ] UAT.md created with tests from SUMMARY.md
-- [ ] Tests presented one at a time with expected behavior
-- [ ] Plain text responses (no structured forms)
-- [ ] Severity inferred, never asked
-- [ ] Batched writes: on issue, every 5 passes, or completion
-- [ ] Committed on UAT completion
-- [ ] If UAT issues: parallel debug agents diagnose root causes
-- [ ] If UAT issues: lu-planner creates fix plans from diagnosed gaps
-- [ ] If UAT issues: lu-plan-checker verifies fix plans (max 3 iterations)
-- [ ] If UAT issues: ready for \`/phase-execute --gaps-only\`
-- [ ] If UAT passes: code quality review runs on changed files
-- [ ] If UAT passes: dx-advocate checks conventions
-- [ ] If UAT passes: code-simplifier checks DRY/complexity
-- [ ] If UAT passes: code-architect checks structure/patterns
-- [ ] If UAT passes: tailwind-auditor checks Tailwind/dynamic colors
-- [ ] If UAT passes: security-auditor checks (if auth/api files changed)
-- [ ] CRITICAL quality issues block, HIGH/MEDIUM are warnings with options
-- [ ] If quality fixes needed: ready for \`/phase-execute --quality-fixes\`
-- [ ] If all clean: show next-phase commands (\`/phase-discuss\`, \`/phase-plan\`, \`/phase-execute\`)
-- [ ] If final phase: show \`/milestone-audit\`
-
-## Next Steps
-
-| Condition | Action | Command |
-|-----------|--------|---------|
-| All tests passed, more phases | Plan next phase | \`/phase-plan {N+1}\` |
-| All tests passed, milestone done | Complete milestone | \`/milestone-audit\` |
-| Issues found | Plan fixes | \`/phase-plan {N} --gaps\` |
-
-**Primary:** \`/progress\` — Check status and get smart routing
-
-**Also available:**
-
-- \`/phase-plan {N} --gaps\` — Create fix plans for failures
-- \`/milestone-audit\` — Complete the milestone
+- [ ] Tests presented one at a time (INLINE, interactive)
+- [ ] If issues: diagnose agent identifies root causes and proposes fixes
+- [ ] If clean: review agent checks code quality
+- [ ] current_state written after every transition
+- [ ] Gap detection audit passes
 </main>`,
       order: 1,
     },

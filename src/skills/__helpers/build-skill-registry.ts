@@ -63,8 +63,9 @@ import { seedMemorySkill } from "../general/seed-memory.skill";
 import { outcomeSkill } from "../general/outcome.skill";
 import { contextRestoreSkill } from "../general/context-restore.skill";
 import { shadowCleanupSkill } from "../general/shadow-cleanup.skill";
+// Sub-skills (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
 
-// Import Luca-specific skill
+// Import Luca-specific skills
 import { luSkill } from "../luca/lu.skill";
 
 import type { BaseSkill } from "../__schemas/skill.schemas";
@@ -133,5 +134,6 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   outcome: () => outcomeSkill,
   "context-restore": () => contextRestoreSkill,
   "shadow-cleanup": () => shadowCleanupSkill,
+  // Sub-skill entries (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
   lu: () => luSkill,
 };

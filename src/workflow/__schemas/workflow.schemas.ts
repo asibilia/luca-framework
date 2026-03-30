@@ -155,6 +155,15 @@ export const WorkflowStepSchema = z.object({
 
   /** Metadata for visualization and debugging. */
   metadata: StepMetadataSchema.optional(),
+
+  /**
+   * Whether this step is optional in the workflow.
+   *
+   * Optional steps can be skipped without causing the workflow to fail.
+   * Used by the anti-skip enforcement layer to distinguish required vs
+   * optional step skips.
+   */
+  optional: z.boolean().default(false),
 });
 
 export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
@@ -317,6 +326,44 @@ export const FailedStepInfoSchema = z.object({
 
 export type FailedStepInfo = z.infer<typeof FailedStepInfoSchema>;
 
+// ─── Skip Reason ─────────────────────────────────────────────────────────────
+
+/**
+ * Reason a workflow step was skipped.
+ *
+ * - `guard-false`: The step's guard function returned false.
+ * - `guard-exception`: The step's guard function threw an exception.
+ * - `flag-skip`: The step was skipped via an explicit flag (e.g., --skip-review).
+ */
+export const SkipReasonSchema = z.enum([
+  "guard-false",
+  "guard-exception",
+  "flag-skip",
+]);
+
+export type SkipReason = z.infer<typeof SkipReasonSchema>;
+
+// ─── Skipped Step Entry ──────────────────────────────────────────────────────
+
+/**
+ * Structured entry recording why a step was skipped and whether it was optional.
+ *
+ * Replaces bare step-ID strings in skippedSteps to enable anti-skip enforcement
+ * and downstream audit of skip decisions.
+ */
+export const SkippedStepEntrySchema = z.object({
+  /** ID of the step that was skipped. */
+  id: z.string(),
+
+  /** Reason the step was skipped. */
+  reason: SkipReasonSchema,
+
+  /** Whether this step was declared optional in the DAG definition. */
+  optional: z.boolean().default(false),
+});
+
+export type SkippedStepEntry = z.infer<typeof SkippedStepEntrySchema>;
+
 // ─── DAG Checkpoint ──────────────────────────────────────────────────────────
 
 /**
@@ -351,8 +398,13 @@ export const DAGCheckpointSchema = z.object({
   /** Map of completed step IDs to their output data. */
   completedSteps: z.record(z.string(), z.any()),
 
-  /** List of step IDs that were skipped (guard returned false). */
-  skippedSteps: z.array(z.string()),
+  /**
+   * Structured entries for skipped steps with reason and optional flag.
+   *
+   * Each entry records the step ID, why it was skipped, and whether the
+   * step was declared optional in the DAG definition.
+   */
+  skippedSteps: z.array(SkippedStepEntrySchema),
 
   /** Map of failed step IDs to their error info. */
   failedSteps: z.record(z.string(), FailedStepInfoSchema),

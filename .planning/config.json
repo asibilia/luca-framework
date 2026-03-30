@@ -18,6 +18,7 @@
     "routing": "auto"
   },
   "workflow": {
+    "version": "v1",
     "research": true,
     "plan_check": true,
     "verifier": true,
@@ -29,6 +30,25 @@
     "tech_stack_profiles": [
       "typescript"
     ]
+  },
+  "research": {
+    "parallelResearchers": 4,
+    "reviewLoop": {
+      "maxIterations": 3,
+      "continueForImportant": true
+    },
+    "planReviewLoop": {
+      "maxIterations": 2
+    },
+    "graduation": {
+      "confidenceThreshold": "MEDIUM",
+      "scoringThreshold": 0.55,
+      "autoCleanupAfterMilestone": false
+    },
+    "perTaskRecall": {
+      "enabled": true,
+      "maxEngramsPerTask": 5
+    }
   },
   "planning": {
     "commit_docs": true,

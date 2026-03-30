@@ -427,6 +427,71 @@ From MuninnDB session context, identify successful multi-step sequences (3+ step
 Log: How many procedures extracted, updated, or retired.
 </step>
 
+<step name="graduate_research">
+Research Engram Graduation (v2 — conditional)
+
+This step promotes high-value research:* engrams from the repo vault to permanent pattern:*/pitfall:*/decision:* engrams in the default vault. It only runs when research:* engrams exist in the repo vault. If none are found, skip this step silently (v1 backward compatibility).
+
+**Activation check:**
+\`\`\`
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "research findings research approach research pattern", limit: 20)
+\`\`\`
+If zero results: skip this step entirely (log "No research engrams found, skipping graduation").
+
+**Scoring formula:**
+For each research:* engram, compute a graduation score:
+  score = confidence_weight * 0.40 + actionability_weight * 0.35 + uniqueness_weight * 0.25
+
+Where:
+- confidence_weight: HIGH=1.0, MEDIUM=0.7, LOW=0.3 (parse from engram content)
+- actionability_weight: 1.0 if engram contains specific code patterns or file references, 0.5 if general guidance, 0.2 if vague
+- uniqueness_weight: 1.0 if no similar engram exists in default vault, 0.5 if loosely related, 0.1 if near-duplicate
+
+**Graduation threshold:**
+Read graduation config from .planning/config.json research section (if it exists):
+- scoringThreshold: default 0.55
+- confidenceThreshold: default "MEDIUM" (only HIGH and MEDIUM pass)
+
+**For each qualifying engram (score >= threshold AND confidence >= confidenceThreshold):**
+
+1. Determine target concept type based on content:
+   - Architecture/design findings → pattern:{name}
+   - Warnings/failure modes → pitfall:{name}
+   - Technology choices → decision:{name}
+
+2. Promote to permanent storage:
+   \`\`\`
+   mcp__muninn__muninn_remember(
+     vault: DEFAULT_VAULT,
+     concept: "<type>:<descriptive-name>",
+     content: "Graduated from research:{original_concept}. {original_content}. Confidence: {level}. Tags: [relevant, tags]. Source: Phase {N} research."
+   )
+   \`\`\`
+
+3. Link to original research engram (if in same vault) or to related existing memories in DEFAULT_VAULT.
+
+**Cleanup (conditional):**
+If graduation.autoCleanupAfterMilestone is true AND this is a milestone boundary invocation:
+\`\`\`
+# For each research:* engram that was either graduated or scored below threshold:
+mcp__muninn__muninn_forget(vault: REPO_VAULT, id: "<engram_id>")
+\`\`\`
+
+If autoCleanupAfterMilestone is false, leave research:* engrams in place for reference.
+
+**Graduation metrics:**
+Log: "Graduated {N} of {total} research engrams. {promoted} promoted, {filtered} below threshold, {duplicate} deduplicated."
+
+Store metric:
+\`\`\`
+mcp__muninn__muninn_remember(
+  vault: REPO_VAULT,
+  concept: "metric:research-graduation",
+  content: "Phase {N}: {promoted}/{total} graduated. Avg score: {avg}. Threshold: {threshold}."
+)
+\`\`\`
+</step>
+
 <step name="update_confidence">
 For patterns/pitfalls that match existing entries:
 
@@ -582,6 +647,7 @@ Output learning extraction summary:
 | Decisions  | {N}   | {N} | {N}     |
 | Pitfalls   | {N}   | {N} | {N}     |
 | Procedures | {N}   | {N} | {N}     |
+| Research   | {N}   | {N} | {N}     |
 
 ### New Entries
 
@@ -596,6 +662,14 @@ Output learning extraction summary:
 - Extracted: {N} new procedures
 - Updated: {N} existing procedures
 - Retired: {N} procedures
+
+### Graduated Research
+
+- Candidates: {N} research engrams found
+- Graduated: {N} promoted to permanent storage
+- Below threshold: {N} filtered out
+- Deduplicated: {N} near-duplicates skipped
+- Avg score: {score}
 
 ### Working Memory
 

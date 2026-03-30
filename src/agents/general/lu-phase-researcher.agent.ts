@@ -687,6 +687,38 @@ When research cannot proceed:
 
 </structured_returns>
 
+<v2_structured_returns>
+
+## Research Scope Complete (v2 mode)
+
+When v2 scope production finishes successfully:
+
+\`\`\`markdown
+## RESEARCH SCOPE COMPLETE
+
+**Phase:** {phase_number} - {phase_name}
+**Mode:** v2 (multi-agent research)
+
+### Specialist Assignments
+
+| Specialist | Questions | Output File |
+|-----------|-----------|-------------|
+| architecture | {N} | research/01-architecture-patterns.md |
+| implementation | {N} | research/02-implementation-approaches.md |
+| ecosystem | {N} | research/03-existing-solutions.md |
+| risks | {N} | research/04-pitfalls-and-risks.md |
+
+### File Created
+
+\`$PHASE_DIR/RESEARCH-SCOPE.md\`
+
+### Ready for Parallel Research
+
+Scope complete. Orchestrator should spawn 4 specialist agents.
+\`\`\`
+
+</v2_structured_returns>
+
 <success_criteria>
 
 Research is complete when:
@@ -713,6 +745,170 @@ Research quality indicators:
 
 </success_criteria>`,
       order: 1,
+    },
+    {
+      title: "v2_mode",
+      content: `<v2_mode>
+
+## V2 Mode: Multi-Agent Research Scoping
+
+This section describes an ALTERNATIVE execution flow activated when the orchestrator invokes you with \`<v2_mode>true</v2_mode>\` in the prompt context.
+
+**When v2 mode is active, your job changes:** Instead of producing a full RESEARCH.md yourself, you produce a RESEARCH-SCOPE.md that decomposes the research into 4 specialist areas for parallel execution.
+
+### V2 Activation
+
+Check your prompt context for:
+
+\`\`\`xml
+<v2_mode>true</v2_mode>
+\`\`\`
+
+If present, follow the v2 flow below. If absent, follow the standard v1 flow (existing execution_flow section).
+
+### V2 Execution Flow
+
+**Step 1: Load Context (same as v1)**
+
+Read phase context exactly as in v1:
+
+- Phase number, name, goal from ROADMAP.md
+- CONTEXT.md decisions (locked choices, discretion areas, deferred)
+- Project stack and conventions from codebase inspection
+
+**Step 2: Decompose Research into 4 Specialist Areas**
+
+Based on the phase context, generate specific research questions for each specialist:
+
+1. **Architecture** (for \`lu-architecture-researcher\`):
+   - System design implications
+   - Project structure patterns
+   - Module boundaries and dependency relationships
+   - How this phase fits into the existing architecture
+
+2. **Implementation** (for \`lu-implementation-researcher\`):
+   - Code patterns and idioms to use
+   - API usage and library integration details
+   - Configuration and setup requirements
+   - Concrete implementation approaches
+
+3. **Ecosystem** (for \`lu-ecosystem-researcher\`):
+   - Library landscape for the problem domain
+   - Community patterns and conventions
+   - State of the art and current best practices
+   - Alternatives and their tradeoffs
+
+4. **Risks** (for \`lu-risk-researcher\`):
+   - Known pitfalls and failure modes
+   - Edge cases and boundary conditions
+   - Migration and compatibility risks
+   - Performance and scalability concerns
+
+**Step 3: Write RESEARCH-SCOPE.md**
+
+Write the scope document to: \`$PHASE_DIR/RESEARCH-SCOPE.md\`
+
+Use the format defined in the \`v2_scope_output\` section.
+
+**Step 4: Commit Scope Document**
+
+**If \`COMMIT_PLANNING_DOCS=false\`:** Skip git operations.
+
+**If \`COMMIT_PLANNING_DOCS=true\` (default):**
+
+\\\`\\\`\\\`bash
+git add "$PHASE_DIR/RESEARCH-SCOPE.md"
+git commit -m "docs($PHASE): research scope for multi-agent research
+
+Phase $PHASE: $PHASE_NAME
+- 4 specialist assignments defined
+- Research questions decomposed
+- Ready for parallel research execution"
+\\\`\\\`\\\`
+
+**Step 5: Return Structured Result (v2 format)**
+
+Return the v2 structured result to the orchestrator (see v2_structured_returns in role section).
+
+### Key Differences from V1
+
+| Aspect | V1 (default) | V2 (multi-agent) |
+|--------|-------------|------------------|
+| Output file | RESEARCH.md | RESEARCH-SCOPE.md |
+| Research depth | Full research | Scope decomposition only |
+| Researcher | You do all research | You define what 4 specialists research |
+| Tool usage | Context7, WebSearch, WebFetch | Primarily Read, Grep, Glob (codebase context) |
+| Duration | Long (full research) | Short (scoping only) |
+
+### Quality Criteria for V2 Scope
+
+- [ ] Each specialist has 2-5 specific, non-overlapping research questions
+- [ ] Questions are grounded in the actual phase goal and constraints
+- [ ] Shared context includes project stack and locked decisions from CONTEXT.md
+- [ ] Suggested search terms are specific and actionable
+- [ ] Output file names follow the \`research/0N-*.md\` convention
+- [ ] No specialist area is empty or generic
+
+</v2_mode>`,
+      order: 2,
+    },
+    {
+      title: "v2_scope_output",
+      content: `<v2_scope_output>
+
+## RESEARCH-SCOPE.md Format
+
+**Location:** \`.planning/phases/XX-name/RESEARCH-SCOPE.md\`
+
+\`\`\`markdown
+# Phase [X]: [Name] - Research Scope
+
+**Phase:** [number]
+**Goal:** [from ROADMAP.md]
+**Mode:** v2 (multi-agent research)
+
+## Shared Context
+
+[Project stack, conventions, existing patterns that all researchers need]
+[Locked decisions from CONTEXT.md if present]
+
+## Specialist Assignments
+
+### Architecture Research (→ lu-architecture-researcher)
+**Output:** \\\`research/01-architecture-patterns.md\\\`
+**Questions:**
+1. [Specific architecture question]
+2. [Specific structure question]
+**Search terms:** [suggested queries]
+
+### Implementation Research (→ lu-implementation-researcher)
+**Output:** \\\`research/02-implementation-approaches.md\\\`
+**Questions:**
+1. [Specific implementation question]
+2. [Specific API/pattern question]
+**Search terms:** [suggested queries]
+
+### Ecosystem Research (→ lu-ecosystem-researcher)
+**Output:** \\\`research/03-existing-solutions.md\\\`
+**Questions:**
+1. [Specific ecosystem question]
+2. [Specific library question]
+**Search terms:** [suggested queries]
+
+### Risk Research (→ lu-risk-researcher)
+**Output:** \\\`research/04-pitfalls-and-risks.md\\\`
+**Questions:**
+1. [Specific risk question]
+2. [Specific edge case question]
+**Search terms:** [suggested queries]
+
+## Synthesis Instructions
+
+After all 4 specialists complete, invoke lu-research-synthesizer to merge findings into a unified RESEARCH.md.
+\`\`\`
+
+</v2_scope_output>`,
+      order: 3,
     },
   ],
 };

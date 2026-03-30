@@ -25,6 +25,8 @@ export {
   ValidationIssueSchema,
   ValidationResultSchema,
   FailedStepInfoSchema,
+  SkipReasonSchema,
+  SkippedStepEntrySchema,
   DAGCheckpointSchema,
   WorkflowAdapterSchema,
 } from "./__schemas/workflow.schemas";
@@ -44,9 +46,31 @@ export type {
   ValidationIssue,
   ValidationResult,
   FailedStepInfo,
+  SkipReason,
+  SkippedStepEntry,
   DAGCheckpoint,
   WorkflowAdapter,
 } from "./__schemas/workflow.schemas";
+
+// ─── Behavioral Contract Schemas ─────────────────────────────────────────────
+
+export {
+  InvariantKindSchema,
+  ContractInvariantSchema,
+  BehavioralContractSchema,
+  ContractViolationSchema,
+  ContractAuditSummarySchema,
+  ContractAuditResultSchema,
+} from "./__schemas/contracts";
+
+export type {
+  InvariantKind,
+  ContractInvariant,
+  BehavioralContract,
+  ContractViolation,
+  ContractAuditSummary,
+  ContractAuditResult,
+} from "./__schemas/contracts";
 
 // ─── Step Contracts ──────────────────────────────────────────────────────────
 
@@ -96,6 +120,23 @@ export { validateDAG } from "./__helpers/dag-validator";
 export { executeDAG } from "./__helpers/dag-executor";
 export type { ExecuteDAGOptions } from "./__helpers/dag-executor";
 
+// ─── Progressive Executor ────────────────────────────────────────────────────
+
+export {
+  executeProgressively,
+  resolveContextZone,
+  degradeSummary,
+  formatSummariesForContext,
+  StepSummarySchema,
+  ProgressiveExecutorConfigSchema,
+} from "./__helpers/progressive-executor";
+
+export type {
+  StepSummary,
+  ProgressiveExecutorConfig,
+  ContextZone,
+} from "./__helpers/progressive-executor";
+
 // ─── DAG Serializer ──────────────────────────────────────────────────────────
 
 export {
@@ -108,6 +149,71 @@ export {
 
 export { dagToTopology } from "./__helpers/dag-visualizer";
 
+// ─── Skill State Machine ─────────────────────────────────────────────────────
+
+export { createSkillStateMachine } from "./__helpers/skill-state-machine";
+export type {
+  SkillMachineConfig,
+  SkillMachineResult,
+} from "./__helpers/skill-state-machine";
+
+// ─── Gap Detector ───────────────────────────────────────────────────────────
+
+export {
+  detectGaps,
+  GapSeveritySchema,
+  ExecutionGapSchema,
+  GapAuditResultSchema,
+} from "./__helpers/gap-detector";
+
+export type {
+  GapSeverity,
+  ExecutionGap,
+  GapAuditResult,
+} from "./__helpers/gap-detector";
+
 // ─── Phase Pipeline ──────────────────────────────────────────────────────────
 
 export { PHASE_PIPELINE } from "./__helpers/phase-pipeline";
+
+// ─── Contract Evaluator ─────────────────────────────────────────────────────
+
+export {
+  evaluateContract,
+  evaluateContractFromLedger,
+  mergeContractAndGapAudits,
+  violationToGap,
+  LedgerEntrySchema,
+  MergedAuditResultSchema,
+} from "./__helpers/contract-evaluator";
+
+export type {
+  LedgerEntry,
+  MergedAuditResult,
+} from "./__helpers/contract-evaluator";
+
+// ─── Contract Definitions ───────────────────────────────────────────────────
+
+export { CONTRACT_REGISTRY } from "./__helpers/contract-definitions";
+
+// ─── Contract Hook Adapter ──────────────────────────────────────────────────
+
+export {
+  checkContractPreconditions,
+  HookContextSchema,
+} from "./__helpers/contract-hook-adapter";
+
+export type { PreconditionCheckResult } from "./__helpers/contract-hook-adapter";
+
+// ─── Contract Metrics ───────────────────────────────────────────────────────
+
+export {
+  formatContractMetrics,
+  buildContractDriftReport,
+} from "./__helpers/contract-metrics";
+
+export type { ContractMetric } from "./__helpers/contract-metrics";
+
+// ─── pr-address DAG ─────────────────────────────────────────────────────────
+
+export { prAddressDAG } from "./__helpers/pr-address-dag";

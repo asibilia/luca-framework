@@ -42,8 +42,84 @@ You have READ-ONLY access to the codebase. You do not modify files, create branc
 - **Patterns**: Validated approaches from past sessions. Scenarios should test whether these patterns still hold under new conditions.
 
 This is read-only memory access. Do NOT write to MuninnDB session context or attempt learning extraction.
-</cognition_integration>`,
+</cognition_integration>
+
+<research_input>
+**Research Files** (if available) — Phase research outputs from v2 pipeline
+
+| File | How You Use It |
+|------|----------------|
+| \`research/04-pitfalls-and-risks.md\` | Primary risk input — pre-researched failure modes |
+| \`research/01-architecture-patterns.md\` | Architecture boundary risks |
+| \`research/02-implementation-approaches.md\` | Implementation complexity risks |
+| \`research/03-existing-solutions.md\` | Ecosystem gap risks |
+| \`*-RESEARCH.md\` | Unified research (v1 format) |
+
+Research files are OPTIONAL. If they don't exist, use MuninnDB + codebase analysis only.
+</research_input>`,
       order: 1,
+    },
+    {
+      title: "research_integration",
+      content: `## Research Integration (v2 — conditional)
+
+When research files exist in the phase directory, incorporate them as HIGH-PRIORITY inputs for scenario generation.
+
+### Detection
+
+Before generating scenarios, check for research artifacts:
+
+\`\`\`bash
+PHASE_DIR=$(ls -d .planning/phases/$PADDED_PHASE-* 2>/dev/null | head -1)
+
+# Check for v2 specialist research outputs
+ls "$PHASE_DIR"/research/01-architecture-patterns.md 2>/dev/null
+ls "$PHASE_DIR"/research/02-implementation-approaches.md 2>/dev/null
+ls "$PHASE_DIR"/research/03-existing-solutions.md 2>/dev/null
+ls "$PHASE_DIR"/research/04-pitfalls-and-risks.md 2>/dev/null
+
+# Check for v1 unified research
+ls "$PHASE_DIR"/*-RESEARCH.md 2>/dev/null
+\`\`\`
+
+### Input Priority (when research exists)
+
+| Priority | Source | How to Use |
+|----------|--------|-----------|
+| 1 (HIGHEST) | 04-pitfalls-and-risks.md | Direct input to failure scenarios — these are pre-researched risks |
+| 2 | 01-architecture-patterns.md | Integration risk scenarios — where architecture boundaries create failure points |
+| 3 | 02-implementation-approaches.md | Domain risk scenarios — where implementation complexity creates failure modes |
+| 4 | 03-existing-solutions.md | Scope risk scenarios — where ecosystem gaps force custom solutions |
+| 5 | *-RESEARCH.md (v1 unified) | All scenario types — extract relevant sections |
+| 6 | MuninnDB pitfall recall | Supplement with past project experience |
+| 7 | Codebase analysis | Ground scenarios in actual code |
+
+### Research-Informed Scenario Enhancement
+
+When research files are available, each scenario MUST include:
+
+\`\`\`
+### Scenario N: [Descriptive Title]
+
+**What failed:** [...]
+**Root cause:** [...]
+**Detection signal:** [...]
+**Mitigation:** [...]
+**Verification criteria:** [...]
+
+**Research-Backed Evidence:**
+- Source: [which research file, e.g., "04-pitfalls-and-risks.md, Section: Common Pitfalls"]
+- Finding: [specific research finding that supports this scenario]
+- Confidence: [HIGH/MEDIUM/LOW based on research source confidence]
+\`\`\`
+
+### Fallback Behavior
+
+If NO research files exist (v1 mode or research phase was skipped):
+- Skip this section entirely
+- Use existing behavior: MuninnDB recall + codebase analysis only
+- Do NOT report an error — research input is optional, not required`,
+      order: 2,
     },
     {
       title: "scenario_generation",
@@ -87,7 +163,7 @@ Distribute scenarios across these risk categories:
 3. **Domain risk** (at least one) -- Risks specific to the technology, pattern, or domain being implemented. This is where your analysis of the codebase context matters most.
 
 You may combine categories (e.g., a scenario that is both integration AND domain risk), but all three categories must be represented.`,
-      order: 2,
+      order: 3,
     },
     {
       title: "output_tiers",
@@ -154,7 +230,7 @@ Structured JSON for programmatic consumption:
   "memory_warnings": ["string"]
 }
 \`\`\``,
-      order: 3,
+      order: 4,
     },
     {
       title: "quality_standards",
@@ -188,7 +264,7 @@ If MuninnDB recalls pitfalls from related domains:
 - They MUST appear in scenarios or be explicitly addressed in the "Memory-Informed Warnings" section
 - Explain why a recalled pitfall does or does not apply to this phase
 - Never silently ignore recalled pitfalls`,
-      order: 4,
+      order: 5,
     },
   ],
 };

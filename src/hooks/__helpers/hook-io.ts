@@ -9,7 +9,7 @@
  */
 
 import { createHash } from "crypto";
-import { readFileSync, writeFileSync } from "fs";
+import { chmodSync, readFileSync } from "node:fs";
 
 import type { ZodSchema } from "zod";
 
@@ -157,11 +157,12 @@ export const exitSuccess = (): never => {
  * @param ttlSeconds - Window in seconds to deduplicate (default: 5)
  */
 export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
+  const safeHookName = hookName.replace(/[^a-zA-Z0-9_-]/g, "_");
   const projectHash = createHash("sha256")
     .update(projectDir())
     .digest("hex")
     .slice(0, 8);
-  const guardFile = `/tmp/.luca-dedup-${hookName}-${projectHash}`;
+  const guardFile = `/tmp/.luca-dedup-${safeHookName}-${projectHash}`;
 
   try {
     const content = readFileSync(guardFile, "utf-8").trim();
@@ -175,7 +176,69 @@ export const guardDedup = (hookName: string, ttlSeconds = 5): void => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  writeFileSync(guardFile, String(now));
+  // Fire-and-forget: guard write is best-effort (timestamp already in memory)
+  void Bun.write(guardFile, String(now)).then(() => {
+    try {
+      chmodSync(guardFile, 0o600);
+    } catch {
+      // Non-critical: chmod may fail on certain platforms
+    }
+  });
+};
+
+// ─── Pre-Step Dedup Guard ────────────────────────────────────────────────────
+
+/**
+ * Millisecond-precision dedup guard for pre-step enforcement hooks.
+ *
+ * Unlike guardDedup (second precision, 5s TTL), this uses Date.now()
+ * directly for sub-second TTL windows. Designed for pre-step hooks
+ * where parallel wave execution may fire multiple Skill calls in
+ * rapid succession.
+ *
+ * Guard key format: /tmp/.luca-prestep-{hookName}-{projectHash}-{toolName}-ts
+ *
+ * TTL: 200ms -- sufficient to collapse duplicate-within-same-event-loop
+ * bursts while allowing distinct skill invocations in parallel waves
+ * to pass through. (PREMORTEM Constraint #2)
+ *
+ * @param hookName - Unique hook identifier
+ * @param toolName - Tool name from hook stdin (for per-tool scoping)
+ * @param ttlMs - Window in milliseconds to deduplicate (default: 200)
+ */
+export const guardPreStep = (
+  hookName: string,
+  toolName: string,
+  ttlMs = 200, // PREMORTEM Constraint #2: explicitly 200ms, documented here
+): void => {
+  const safeHookName = hookName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const hash = createHash("sha256")
+    .update(projectDir())
+    .digest("hex")
+    .slice(0, 8);
+  const safeTool = toolName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const guardFile = `/tmp/.luca-prestep-${safeHookName}-${hash}-${safeTool}-ts`;
+
+  try {
+    const content = readFileSync(guardFile, "utf-8").trim();
+    const lastRun = parseInt(content, 10);
+    const now = Date.now();
+    if (now - lastRun < ttlMs) {
+      process.exit(0);
+    }
+  } catch {
+    // File doesn't exist or can't be read — continue
+  }
+
+  const now = Date.now();
+  // Fire-and-forget: guard write is best-effort (timestamp already in memory)
+  void Bun.write(guardFile, String(now)).then(() => {
+    try {
+      chmodSync(guardFile, 0o600);
+    } catch {
+      // Non-critical: chmod may fail on certain platforms
+    }
+  });
 };
 
 // ─── Throttle Helpers ────────────────────────────────────────────────────────
@@ -217,11 +280,18 @@ export const checkThrottle = (key: string, ttlSeconds: number): boolean => {
  * @param key - Unique throttle key (e.g. `.luca-snapshot-sync-${hash}-ts`)
  */
 export const recordThrottle = (key: string): void => {
-  try {
-    writeFileSync(key, String(Math.floor(Date.now() / 1000)));
-  } catch {
-    // /tmp not writable — non-critical
-  }
+  // Fire-and-forget: throttle write is best-effort
+  void Bun.write(key, String(Math.floor(Date.now() / 1000)))
+    .then(() => {
+      try {
+        chmodSync(key, 0o600);
+      } catch {
+        // Non-critical: chmod may fail on certain platforms
+      }
+    })
+    .catch(() => {
+      // /tmp not writable — non-critical
+    });
 };
 
 // ─── Utility: Project Hash ──────────────────────────────────────────────────
