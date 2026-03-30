@@ -400,6 +400,50 @@ const main = async (): Promise<void> => {
     }
   }
 
+  // Step 7c: Clean stale orchestrator context files from crashed sessions.
+  // If a context file has a non-terminal current_state, it means the previous
+  // session crashed mid-workflow. Transition to "failed" so the pre-edit gate
+  // doesn't lock out the new session.
+  const STALE_CONTEXT_FILES: Array<{ path: string; terminals: string[] }> = [
+    {
+      path: "/tmp/lu-context.json",
+      terminals: ["idle", "complete", "failed"],
+    },
+    {
+      path: "/tmp/phase-execute-context.json",
+      terminals: ["idle", "committed", "failed"],
+    },
+    {
+      path: "/tmp/verify-context.json",
+      terminals: ["idle", "reviewed", "diagnosed", "failed"],
+    },
+    {
+      path: "/tmp/milestone-complete-context.json",
+      terminals: ["idle", "finalized", "failed"],
+    },
+    {
+      path: "/tmp/pr-address-context.json",
+      terminals: ["idle", "pushed", "failed"],
+    },
+  ];
+
+  for (const { path, terminals } of STALE_CONTEXT_FILES) {
+    const ctxFile = Bun.file(path);
+    if (await ctxFile.exists()) {
+      try {
+        const raw = await ctxFile.json();
+        const state = raw?.current_state;
+        if (state && !terminals.includes(state)) {
+          raw.current_state = "failed";
+          await Bun.write(path, JSON.stringify(raw, null, 2));
+        }
+      } catch {
+        // Corrupted file — write empty object
+        await Bun.write(path, "{}");
+      }
+    }
+  }
+
   // Step 8: Create session lock file (with build manifest snapshot)
   try {
     const manifestPath = join(pd, ".claude", ".build-manifest.json");

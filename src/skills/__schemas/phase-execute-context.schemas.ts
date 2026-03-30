@@ -106,6 +106,7 @@ export type PhaseExecuteReviewOutput = z.infer<
 export const PhaseExecuteContextSchema = z.object({
   context_version: z.literal(1),
   current_state: z.string().optional(),
+  completed_states: z.array(z.string()).default([]),
   phase_execute_waves: PhaseExecuteWavesOutputSchema.optional(),
   phase_execute_verify: PhaseExecuteVerifyOutputSchema.optional(),
   phase_execute_review: PhaseExecuteReviewOutputSchema.optional(),

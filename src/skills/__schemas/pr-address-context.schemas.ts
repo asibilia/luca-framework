@@ -192,6 +192,7 @@ export type PrRespondOutput = z.infer<typeof PrRespondOutputSchema>;
 export const PrAddressContextSchema = z.object({
   context_version: z.literal(1),
   current_state: z.string().optional(),
+  completed_states: z.array(z.string()).default([]),
   pr_fetch: PrFetchOutputSchema.optional(),
   pr_validate: PrValidateOutputSchema.optional(),
   pr_debate: PrDebateOutputSchema.optional(),

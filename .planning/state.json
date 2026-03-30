@@ -1,14 +1,14 @@
 {
-  "status": "active",
-  "value": "routing",
+  "status": "done",
+  "value": "complete",
   "historyValue": {},
   "context": {
     "session_id": "de67dc0b-ef24-4183-a0c5-1d9a65dc0d59",
     "base_branch": "main",
-    "current_milestone": "Planning next",
+    "current_milestone": "v8.5.2 — Statusline HUD",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "COMPLEX",
+    "complexity": "SIMPLE",
     "oversight": "milestone",
     "gates": {
       "confirm_project": true,
@@ -31,9 +31,7 @@
       "always_verify": true,
       "capture_learnings": true,
       "opinionated_guidelines": true,
-      "tech_stack_profiles": [
-        "typescript"
-      ]
+      "tech_stack_profiles": ["typescript"]
     },
     "complexity_matrix": {
       "TRIVIAL": {

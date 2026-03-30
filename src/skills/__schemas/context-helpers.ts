@@ -205,8 +205,33 @@ export const createContextHelpers = <TSchema extends z.ZodType>(
     // Ensure context_version is always 1
     current.context_version = 1;
 
+    // Strip completed_states from patch — this field is auto-managed.
+    // Prevents LLM injection of fake state history via typed API or direct patch.
+    const safePatch = { ...(patch as Record<string, unknown>) };
+    delete safePatch.completed_states;
+
     // Deep merge the patch into current context
-    const merged = merge({}, current, patch);
+    const merged = merge({}, current, safePatch);
+
+    // Auto-track state transitions: append new current_state to completed_states.
+    // This is a generic audit trail feature — not enforcement-specific.
+    // The completed_states array is append-only and managed solely by this code path.
+    try {
+      const patchState = (patch as Record<string, unknown>).current_state;
+      if (
+        typeof patchState === "string" &&
+        patchState !== (current.current_state as string | undefined)
+      ) {
+        const history: string[] = Array.isArray(merged.completed_states)
+          ? merged.completed_states
+          : [];
+        if (!history.includes(patchState)) {
+          merged.completed_states = [...history, patchState];
+        }
+      }
+    } catch {
+      // Non-critical: tracking failure must not block state writes
+    }
 
     const validated = schema.safeParse(merged);
     if (!validated.success) {

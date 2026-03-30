@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Routing
-- **Task Complexity:** COMPLEX
+- **Current Milestone:** v8.5.2 — Statusline HUD
+- **Status:** Complete
+- **Task Complexity:** SIMPLE
 - **Oversight:** milestone
 - **Last Updated:** 2026-03-29
 
@@ -30,7 +30,9 @@
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `SKIP_COOLDOWN`
+- `COOLDOWN_COMPLETE`
+- `RESET`
 
 ## Previous Milestones
 
@@ -50,7 +52,7 @@
 
 ---
 
-_State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next milestone_
+_State updated: 2026-03-30 — v8.5.2 milestone started, Phase 236 executing_
 
 ## Session Continuity
 
@@ -59,4 +61,4 @@ _State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next m
 
 ---
 
-_State generated from machine snapshot at 2026-03-30T14:47:47.771Z_
+_State generated from machine snapshot at 2026-03-30T16:06:05.433Z_

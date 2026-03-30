@@ -96,6 +96,7 @@ export type LuPhaseLoopOutput = z.infer<typeof LuPhaseLoopOutputSchema>;
 export const LuContextSchema = z.object({
   context_version: z.literal(1),
   current_state: z.string().optional(),
+  completed_states: z.array(z.string()).default([]),
   lu_route: LuRouteOutputSchema.optional(),
   lu_configure: LuConfigureOutputSchema.optional(),
   lu_backlog: LuBacklogOutputSchema.optional(),

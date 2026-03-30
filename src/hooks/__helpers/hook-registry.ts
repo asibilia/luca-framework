@@ -25,6 +25,14 @@ import { canonicalToLegacy } from "./platform-adapters";
  * configs from these definitions.
  */
 export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
+  "pre-edit-workflow-gate": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Edit|Write",
+    script: "pre-edit-workflow-gate.ts",
+    timeout: 5,
+    async: false,
+    status_message: "Checking workflow state...",
+  }),
   "post-edit-format": () => ({
     event: "post_tool_use",
     tool_filter: "Edit|Write",
