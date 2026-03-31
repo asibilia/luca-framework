@@ -39,13 +39,9 @@ Capture idea or task as todo from current conversation.
    - Location: \`.planning/todos/pending/{slug}.md\`
    - Include: title, area, source context, timestamp
 
-5. **Update state (bridge primary, STATE.md fallback):**
+5. **Update state:**
 
-   \\\`\\\`\\\`bash
-   # Primary: Regenerate STATE.md from state machine (reflects todo changes)
-   luca-bridge snapshot 2>/dev/null || true
-   # Fallback: Manually increment todo count in STATE.md
-   \\\`\\\`\\\`
+   - Manually increment todo count in STATE.md if needed
 
 6. **Confirm:**
 

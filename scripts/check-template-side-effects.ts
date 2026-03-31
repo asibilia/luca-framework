@@ -2,11 +2,14 @@
 
 /**
  * Build-time lint check: verify no compiled skill templates contain
- * statusline side-effect commands (write-status, clear-status).
+ * statusline side-effect commands (write-status, clear-status) or
+ * redundant state commands (luca-bridge snapshot).
  *
- * These side-effects are now handled by deterministic hooks
- * (skill-status-enter, skill-status-exit) and must not appear in
- * skill templates where LLM compliance would be required.
+ * These side-effects are now handled by deterministic hooks:
+ * - write-status / clear-status: handled by skill-status-enter / skill-status-exit
+ * - luca-bridge snapshot: handled by the snapshot-sync PostToolUse hook (120s throttle)
+ *
+ * None of these must appear in skill templates where LLM compliance would be required.
  *
  * Exit 0: no violations found
  * Exit 1: violations found (prints file paths and line numbers)
@@ -16,7 +19,11 @@ import { glob } from "glob";
 import path from "path";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
-const FORBIDDEN_PATTERNS = ["write-status", "clear-status"] as const;
+const FORBIDDEN_PATTERNS = [
+  "write-status",
+  "clear-status",
+  "luca-bridge snapshot",
+] as const;
 
 interface Violation {
   file: string;
@@ -54,7 +61,7 @@ async function main(): Promise<void> {
   }
 
   if (violations.length === 0) {
-    console.log("No statusline side-effects in skill templates.");
+    console.log("No statusline or snapshot side-effects in skill templates.");
     process.exit(0);
   }
 
@@ -62,10 +69,13 @@ async function main(): Promise<void> {
     `\nStatusline side-effect violations found: ${violations.length}\n`,
   );
   console.error(
-    "Skills must not call write-status or clear-status directly.",
+    "Skills must not call write-status, clear-status, or luca-bridge snapshot directly.",
   );
   console.error(
-    "These are handled by deterministic hooks (skill-status-enter, skill-status-exit).\n",
+    "write-status/clear-status are handled by skill-status-enter/skill-status-exit hooks.",
+  );
+  console.error(
+    "luca-bridge snapshot is handled by the snapshot-sync PostToolUse hook (120s throttle).\n",
   );
 
   for (const v of violations) {
@@ -73,7 +83,7 @@ async function main(): Promise<void> {
   }
 
   console.error(
-    "\nFix: Remove write-status/clear-status calls from skill templates.",
+    "\nFix: Remove write-status/clear-status/snapshot calls from skill templates.",
   );
   process.exit(1);
 }

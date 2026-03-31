@@ -67,7 +67,7 @@ Follow the resume-project workflow which handles:
 
 7. **Session continuity updates**
    - Session continuity is auto-tracked by the state machine (\`last_transition_at\` field)
-   - STATE.md is regenerated via \`luca-bridge snapshot 2>/dev/null || true\`
+   - STATE.md is regenerated automatically by the snapshot-sync hook
 
 ## Success Criteria
 

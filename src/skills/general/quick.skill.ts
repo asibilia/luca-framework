@@ -88,9 +88,7 @@ Check that an active Luca project exists:
 # Auto-initialize minimal .planning/ if needed (quick mode works without full project)
 if [ ! -d .planning ]; then
   mkdir -p .planning/quick
-  # Primary: Initialize state via bridge
-  luca-bridge ensure-init 2>/dev/null || true
-  # Fallback: Create STATE.md directly
+  # Create STATE.md directly
   cat > .planning/STATE.md << 'EOF'
 # Project State
 
@@ -113,9 +111,7 @@ fi
 
 # Ensure STATE.md exists (might have .planning/ but no STATE.md)
 if [ ! -f .planning/STATE.md ]; then
-  # Primary: Initialize state via bridge
-  luca-bridge ensure-init 2>/dev/null || true
-  # Fallback: Create STATE.md directly
+  # Create STATE.md directly
   cat > .planning/STATE.md << 'EOF'
 # Project State
 

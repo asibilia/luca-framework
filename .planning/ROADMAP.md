@@ -319,17 +319,28 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] build-time-lint — Created `scripts/check-template-side-effects.ts` that fails on residual write-status/clear-status in skill templates
 - [x] bridge-schema-fix — Added inline BusDataSchema validation, NaN guards on parseInt, extracted STATUS_BUS_PATH module constant (addresses H1, H2, M4, M5)
 
-### Phase 250: Deterministic Init/Snapshot Migration
+### Phase 250: Redundant Side-Effect Removal — COMPLETE
 
-**Goal:** Migrate parameterless side-effects (ensure-init, snapshot, parameterless transitions) from skill templates to hooks. These are truly deterministic and fit the hook paradigm cleanly.
-**Complexity:** MODERATE
-**Verification:** Standard
+**Goal:** Remove redundant `snapshot` and `ensure-init` calls from skill templates that are already handled by existing hooks (snapshot-sync, session-start). Parameterless transitions cannot move to hooks — they fire at pipeline-specific points, not lifecycle events — and are reclassified to Phase 251.
+**Complexity:** SIMPLE
+**Verification:** Quick
 **Depends on:** Phase 249
 
-- [ ] identify-deterministic — Audit all 41 skill templates with orchestration side-effects; classify each as deterministic (can move to hooks) vs conditional (depends on LLM output)
-- [ ] migrate-init-snapshot — Move `ensure-init` and `snapshot` calls to lifecycle hooks (SessionStart or PreToolUse)
-- [ ] migrate-parameterless-transitions — Move parameterless `luca-bridge transition` calls (e.g., START, PREFLIGHT_COMPLETE) to PreToolUse/PostToolUse hooks where the lifecycle trigger is unambiguous
-- [ ] lint-guard — Extend build-time lint check to flag migrated commands in templates
+- [x] remove-redundant-snapshots — Removed 8 `luca-bridge snapshot` calls from 7 skill templates + 1 prose reference updated (already handled by snapshot-sync hook)
+- [x] remove-redundant-ensure-init — Removed 2 `luca-bridge ensure-init` calls from quick.skill.ts (already handled by session-start hook). Kept milestone-new `--force` and project-new init
+- [x] lint-guard — Extended `check-template-side-effects.ts` to also flag `luca-bridge snapshot` calls in skill templates
+
+### Phase 251: Conditional Side-Effect Evaluation
+
+**Goal:** Design spike for the ~60 conditional orchestration side-effects that depend on LLM reasoning output (parameterized transitions, set-field with dynamic values, context-cli writes with dynamic payloads). These cannot move to hooks without a new side-channel mechanism. Evaluate approaches: post-execution validation hooks (safety net), structured output contracts, or agent-framework integration points.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 250
+
+- [ ] audit-conditional — Catalog all conditional side-effects across 41 skill templates with orchestration commands. Classify by: parameterized transitions (`--event=X --data='{"complexity":"Y"}'`), dynamic field writes (`set-field --field=X --value=Y`), dynamic context writes (`context-cli write ... {payload}`)
+- [ ] design-approaches — Evaluate 3 approaches: (1) post-execution validation hooks that verify expected transitions fired, (2) structured output contracts where agents return side-effect intents that the orchestrator executes deterministically, (3) agent-framework integration via Claude Code's upcoming tool result hooks
+- [ ] prototype-safety-net — Implement the lowest-risk approach (likely post-execution validation) as a proof-of-concept for 1-2 high-value side-effects
+- [ ] decision-doc — Write decision document in `.planning/notes/` with approach recommendation, trade-offs, and migration roadmap for remaining ~60 side-effects
 
 ---
 

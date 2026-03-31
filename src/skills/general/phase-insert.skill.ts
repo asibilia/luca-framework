@@ -68,13 +68,9 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
    - Include "(INSERTED)" marker
    - Add Goal, Depends on, Plans placeholders
 
-8. **Update state (bridge primary, STATE.md fallback):**
+8. **Update state:**
 
-   \\\`\\\`\\\`bash
-   # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
-   luca-bridge snapshot 2>/dev/null || true
-   # Fallback: Manually add entry under "Roadmap Evolution" in STATE.md with (URGENT) marker
-   \\\`\\\`\\\`
+   - Manually add entry under "Roadmap Evolution" in STATE.md with (URGENT) marker
 
 9. **Present completion:**
 
