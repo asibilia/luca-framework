@@ -24,6 +24,7 @@ const phaseResearchReviewConfig: SkillConfig = {
 
 ## Process
 
+
 ### Step 1: Load Research Corpus
 
 \`\`\`
@@ -205,6 +206,7 @@ Write to \`$RESEARCH_DIR/REVIEW-LOG.md\` with all iterations:
 - [ ] Convergence evaluated using gap-severity model (not scored dimensions)
 - [ ] REVIEW-LOG.md written with all iterations
 - [ ] Loop terminates: approval, budget exhaustion, or escalation
+
 </main>`,
       order: 1,
     },

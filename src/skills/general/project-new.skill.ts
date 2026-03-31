@@ -114,6 +114,7 @@ Read these reference files before executing:
 
 ## Process
 
+
 ### Phase 1: Setup
 
 **MANDATORY FIRST STEP — Execute these checks before ANY user interaction:**
@@ -547,7 +548,6 @@ Use AskQuestion tool:
    # Primary: Set fields via bridge (updates state.json + regenerates STATE.md)
    luca-bridge set-field --field=github_issue --value={issue_number} 2>/dev/null || true
    luca-bridge set-field --field=branch --value="{issue_number}--{project-slug}" 2>/dev/null || true
-   luca-bridge snapshot 2>/dev/null || true
    # Fallback: Add to STATE.md Project Reference section manually
    \`\`\`
 
@@ -581,6 +581,7 @@ Present completion with next steps:
 **Also available:**
 - /phase-plan 1 — skip discussion, plan directly
 \`\`\`
+
 
 ## Success Criteria
 

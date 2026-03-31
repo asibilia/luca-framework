@@ -84,13 +84,9 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
     - Renumber all subsequent phases
     - Update dependency references
 
-11. **Update state (bridge primary, STATE.md fallback):**
+11. **Update state:**
 
-    \\\`\\\`\\\`bash
-    # Primary: Regenerate STATE.md from state machine (reflects roadmap changes)
-    luca-bridge snapshot 2>/dev/null || true
-    # Fallback: Manually update total phase count and progress percentage in STATE.md
-    \\\`\\\`\\\`
+    - Manually update total phase count and progress percentage in STATE.md
 
 12. **Commit:**
     - \`chore: remove phase {target} ({original-phase-name})\`

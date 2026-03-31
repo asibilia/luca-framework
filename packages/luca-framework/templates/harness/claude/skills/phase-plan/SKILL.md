@@ -124,6 +124,7 @@ Before planning begins, run cognitive pre-flight:
 
 ## Process
 
+
 ### 1. Validate Environment and Resolve Model Profile
 
 ```bash
@@ -561,4 +562,5 @@ If issues found and iteration_count < planVerificationIterations:
 
 - `/progress` — See plan details before executing
 - `/phase-discuss {phase}` — Gather more context if plans seem off
+
 </main>

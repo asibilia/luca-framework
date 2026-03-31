@@ -43,6 +43,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 ## Process
 
+
 ### 0. Resolve Model Profile
 
 ```bash
@@ -318,6 +319,7 @@ Continue investigating from the checkpoint.
 **Do NOT proceed until the Task returns.**
 
 Loop back to Step 4 to handle the return.
+
 
 ## Success Criteria
 

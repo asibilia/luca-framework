@@ -16,7 +16,7 @@
  *
  * Prerequisites:
  *   - Must be run from the luca-framework monorepo root
- *   - Must run `bun run build:all` first to generate .claude/ artifacts
+ *   - Must run `bun run build:all` first to generate dist/claude/ artifacts
  *   - Must NOT be run inside an active Claude Code session
  *
  * @see docs/global-installation.md for full documentation
@@ -76,19 +76,18 @@ import type { DeploySourceType } from "../packages/luca-framework/src/utils/depl
 const HOME = process.env.HOME ?? Bun.env.HOME ?? "";
 const GLOBAL_DIR = join(HOME, ".claude");
 
-/** Rules that are universal (not framework-specific). */
-const UNIVERSAL_RULES = new Set([
-  "api-snake-case.md",
-  "bun-preference.md",
-  "cursor-rules.md",
-  "file-naming.md",
-  "functional-api-reuse.md",
-  "generated-file-guard.md",
-  "import-standards.md",
-  "lodash-preference.md",
-  "mandatory-documentation.md",
-  "no-classes.md",
-  "schema-first-parsing.md",
+/**
+ * Rules that should be deployed globally (available in every project).
+ *
+ * Excludes repo-local rules that only apply to developing luca-framework itself:
+ * - domain-architecture.md (this repo's src/ domain structure)
+ * - module-boundary.md (this repo's src/ import rules)
+ * - no-tests.md (temporary, this repo only)
+ */
+const REPO_LOCAL_RULES = new Set([
+  "domain-architecture.md",
+  "module-boundary.md",
+  "no-tests.md",
 ]);
 
 /** Hook scripts to skip during global deploy (framework-specific). */
@@ -231,10 +230,10 @@ async function preflight(): Promise<string> {
   }
 
   // Check build artifacts exist
-  const claudeAgentsDir = join(projectRoot, ".claude/agents");
+  const claudeAgentsDir = join(projectRoot, "dist/claude/agents");
   if (!existsSync(claudeAgentsDir)) {
     console.error(
-      "Error: .claude/agents/ not found. Run `bun run build:all` first.",
+      "Error: dist/claude/agents/ not found. Run `bun run build:all` first.",
     );
     process.exit(1);
   }
@@ -346,11 +345,11 @@ async function installBridge(projectRoot: string): Promise<void> {
 async function deployAgents(projectRoot: string): Promise<number> {
   logHeader("Deploying agents...");
 
-  const sourceDir = join(projectRoot, ".claude/agents");
+  const sourceDir = join(projectRoot, "dist/claude/agents");
   const targetDir = join(GLOBAL_DIR, "agents");
 
   if (!existsSync(sourceDir)) {
-    log("No agents to deploy (.claude/agents/ not found)");
+    log("No agents to deploy (dist/claude/agents/ not found)");
     return 0;
   }
 
@@ -370,11 +369,11 @@ async function deployAgents(projectRoot: string): Promise<number> {
 async function deploySkills(projectRoot: string): Promise<number> {
   logHeader("Deploying skills...");
 
-  const sourceDir = join(projectRoot, ".claude/skills");
+  const sourceDir = join(projectRoot, "dist/claude/skills");
   const targetDir = join(GLOBAL_DIR, "skills");
 
   if (!existsSync(sourceDir)) {
-    log("No skills to deploy (.claude/skills/ not found)");
+    log("No skills to deploy (dist/claude/skills/ not found)");
     return 0;
   }
 
@@ -397,11 +396,11 @@ async function deploySkills(projectRoot: string): Promise<number> {
 async function deployHooks(projectRoot: string): Promise<number> {
   logHeader("Deploying hooks (always copy, never symlink)...");
 
-  const sourceDir = join(projectRoot, ".claude/hooks");
+  const sourceDir = join(projectRoot, "dist/claude/hooks");
   const targetDir = join(GLOBAL_DIR, "hooks");
 
   if (!existsSync(sourceDir)) {
-    log("No hooks to deploy (.claude/hooks/ not found)");
+    log("No hooks to deploy (dist/claude/hooks/ not found)");
     return 0;
   }
 
@@ -469,9 +468,9 @@ async function deployHooks(projectRoot: string): Promise<number> {
 async function deployStatusline(projectRoot: string): Promise<void> {
   logHeader("Deploying statusline...");
 
-  const source = join(projectRoot, ".claude/statusline.sh");
+  const source = join(projectRoot, "dist/claude/statusline.sh");
   if (!existsSync(source)) {
-    log("No statusline to deploy (.claude/statusline.sh not found)");
+    log("No statusline to deploy (dist/claude/statusline.sh not found)");
     return;
   }
 
@@ -491,31 +490,33 @@ async function deployStatusline(projectRoot: string): Promise<void> {
 // ─── Phase: Deploy Rules ────────────────────────────────────────────────────
 
 async function deployRules(projectRoot: string): Promise<number> {
-  logHeader("Deploying universal rules...");
+  logHeader("Deploying rules...");
 
-  const sourceDir = join(projectRoot, ".claude/rules");
+  const sourceDir = join(projectRoot, "dist/claude/rules");
   const targetDir = join(GLOBAL_DIR, "rules");
 
   if (!existsSync(sourceDir)) {
-    log("No rules to deploy (.claude/rules/ not found)");
+    log("No rules to deploy (dist/claude/rules/ not found)");
     return 0;
   }
 
   mkdirSync(targetDir, { recursive: true });
 
   const allRules = readdirSync(sourceDir).filter((f) => f.endsWith(".md"));
-  const universalRules = allRules.filter((f) => UNIVERSAL_RULES.has(f));
-  const skippedRules = allRules.filter((f) => !UNIVERSAL_RULES.has(f));
+  const deployableRules = allRules.filter((f) => !REPO_LOCAL_RULES.has(f));
+  const skippedRules = allRules.filter((f) => REPO_LOCAL_RULES.has(f));
 
-  for (const rule of universalRules) {
+  for (const rule of deployableRules) {
     deployFile(join(sourceDir, rule), join(targetDir, rule), true, "rule");
   }
 
-  log(`${universalRules.length} universal rule(s) deployed`);
-  log(
-    `${skippedRules.length} framework-specific rule(s) skipped: ${skippedRules.join(", ")}`,
-  );
-  return universalRules.length;
+  log(`${deployableRules.length} rule(s) deployed`);
+  if (skippedRules.length > 0) {
+    log(
+      `${skippedRules.length} repo-local rule(s) skipped: ${skippedRules.join(", ")}`,
+    );
+  }
+  return deployableRules.length;
 }
 
 // ─── Phase: Backup & Merge Settings ─────────────────────────────────────────
@@ -738,7 +739,7 @@ async function removeGlobalArtifacts(): Promise<void> {
   logHeader("Removing Luca skills...");
   const skillsDir = join(GLOBAL_DIR, "skills");
   if (existsSync(skillsDir)) {
-    const sourceSkillsDir = join(manifest.source_path, ".claude/skills");
+    const sourceSkillsDir = join(manifest.source_path, "dist/claude/skills");
     if (existsSync(sourceSkillsDir)) {
       const lucaSkills = readdirSync(sourceSkillsDir, { withFileTypes: true })
         .filter((d) => d.isDirectory())
@@ -780,11 +781,14 @@ async function removeGlobalArtifacts(): Promise<void> {
     }
   }
 
-  // Remove Luca rules
+  // Remove Luca rules (everything except repo-local rules that were never deployed)
   logHeader("Removing Luca rules...");
   const rulesDir = join(GLOBAL_DIR, "rules");
   if (existsSync(rulesDir)) {
-    for (const rule of UNIVERSAL_RULES) {
+    // Remove all .md files in rules/ that aren't in REPO_LOCAL_RULES
+    // (repo-local rules were never deployed, so they won't be there)
+    const existingRules = readdirSync(rulesDir).filter((f) => f.endsWith(".md"));
+    for (const rule of existingRules) {
       const rulePath = join(rulesDir, rule);
       if (existsSync(rulePath)) {
         unlinkSync(rulePath);

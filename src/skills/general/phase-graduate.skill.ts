@@ -28,6 +28,7 @@ const phaseGraduateConfig: SkillConfig = {
 
 ## Process
 
+
 ### Step 1: Verify Review Status
 
 \`\`\`
@@ -123,6 +124,7 @@ The planner should reference these concepts:
 - [ ] Related engrams linked via muninn_link
 - [ ] Research files archived to research/archive/ (Decision 24)
 - [ ] Process artifacts (REVIEW-LOG.md, GRADUATION-REPORT.md) remain in research/
+
 </main>`,
       order: 1,
     },

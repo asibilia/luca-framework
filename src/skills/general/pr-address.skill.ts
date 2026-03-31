@@ -76,6 +76,7 @@ Terminal states: \`pushed\` (success) or \`failed\` (error).
 
 ### Step 0: Parse Args, Crash Recovery, Initialize Context
 
+
 Parse the PR number/URL from args. Extract any flags.
 
 **Crash recovery:** Before initializing, check if a previous session was interrupted:
@@ -101,11 +102,6 @@ Agent(name: "fetch", description: "Fetch PR data",
 
 Parse Agent output for STATUS and DUPLICATE_COUNT. On failure: write state "failed", HALT.
 
-**Write state (include duplicate map so respond agent can use it):**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"fetched"}'
-\`\`\`
-
 **IMPORTANT:** The fetch agent groups duplicate comments (same body text) and returns
 a duplicate map. Pass this map through context so the respond agent (Step 6) can reply
 to ALL comment IDs, not just the primary ones.
@@ -118,11 +114,6 @@ Agent(name: "validate", description: "Validate PR concerns",
 \`\`\`
 
 On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"validated"}'
-\`\`\`
 
 ### Step 3: Conditional Debate (Split Verdicts)
 
@@ -144,11 +135,6 @@ On failure (optional): log warning, continue.
 
 **If NO split verdicts:** Skip debate (SKIP_DEBATE).
 
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"debated"}'
-\`\`\`
-
 ### Step 4: Plan and Execute Fixes
 
 \`\`\`
@@ -159,11 +145,6 @@ Agent(name: "fix", description: "Fix PR concerns",
 The fix agent reads the validated concerns, implements code fixes with atomic commits, and runs type-check. It does ALL fix work as a leaf agent (no sub-agent spawning).
 
 On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"fixed"}'
-\`\`\`
 
 ### Step 5: Conditional Learning
 
@@ -180,11 +161,6 @@ On failure (optional): log warning, continue.
 
 **If NO valid concerns:** Skip learning (SKIP_LEARN).
 
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"learned"}'
-\`\`\`
-
 ### Step 6: Respond and Push
 
 \`\`\`
@@ -197,11 +173,6 @@ duplicate IDs get short "Duplicate — see reply on primary" responses. After po
 it runs a verification query to confirm zero unreplied comments remain.
 
 On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write pr-address '{"current_state":"pushed"}'
-\`\`\`
 
 ### Step 7: Gap Detection Audit
 
@@ -232,6 +203,7 @@ Every transition is explicit: completion, skip, or abort. No silent omission.
 - [ ] Gap detection audit passes
 - [ ] State machine reaches \`pushed\` or \`failed\`
 - [ ] \`current_state\` written after every transition
+
 </main>`,
       order: 1,
     },

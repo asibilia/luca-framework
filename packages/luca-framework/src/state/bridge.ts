@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (11):
+ * Subcommands (13):
  *   read-complexity        — Read current complexity level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
@@ -16,6 +16,8 @@
  *   gate-check             — Check if a named gate is enabled
  *   suspend                — Create checkpoint and suspend current phase
  *   init-vault             — Guided setup for project MuninnDB vault
+ *   write-status           — Write partial data to statusline bus (.planning/.statusline.json)
+ *   clear-status           — Remove the statusline bus file
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -35,6 +37,8 @@
  *
  * @module luca-bridge
  */
+import { rename, unlink } from "node:fs/promises";
+import { z } from "zod";
 import get from "lodash/get";
 import set from "lodash/set";
 import cloneDeep from "lodash/cloneDeep";
@@ -62,6 +66,32 @@ import { emitStateTransition, emitPhaseComplete } from "../emitter";
 
 /** Default path for the STATE.md file */
 const STATE_MD_PATH = ".planning/STATE.md";
+
+/**
+ * Path for the statusline bus file (relative to project root).
+ * Same cwd-relative convention as STATE_FILE_PATH (".planning/state.json") —
+ * the bridge process is always started from the project root.
+ */
+const STATUS_BUS_PATH = ".planning/.statusline.json";
+
+/**
+ * Inline status bus validation schema.
+ * Mirrors StatusBusSchema in src/shared/__schemas/status-bus.schemas.ts.
+ * Defined here to avoid cross-package boundary imports.
+ */
+const BusDataSchema = z.object({
+  skill: z.string().default(""),
+  stage: z
+    .enum(["EXECUTING", "PLANNING", "VERIFYING", "PAUSED", "FAILED", "idle"])
+    .default("idle"),
+  step: z.string().default(""),
+  phase: z.number().int().optional(),
+  wave_current: z.number().int().nonnegative().default(0),
+  wave_total: z.number().int().nonnegative().default(0),
+  complexity: z.string().default(""),
+  detail: z.string().default(""),
+  updated_at: z.string().default(""),
+});
 
 // ─── Dual-Write Divergence Detection ────────────────────────────────────────
 
@@ -182,6 +212,8 @@ const VALID_SUBCOMMANDS = [
   "gate-check",
   "suspend",
   "init-vault",
+  "write-status",
+  "clear-status",
 ] as const;
 
 /**
@@ -212,6 +244,18 @@ Lifecycle commands:
 
 Vault commands:
   init-vault             Guided setup for project MuninnDB vault ([--vault=name] [--force])
+
+Status bus commands:
+  write-status           Write to statusline bus (.planning/.statusline.json)
+    --skill=NAME         Active skill name (e.g., "lu", "scout", "pr-address")
+    --stage=STAGE        High-level stage (e.g., "EXECUTING", "PLANNING")
+    --step=STEP          Sub-step within stage (e.g., "research", "plan", "execute")
+    --phase=N            Phase number
+    --wave-current=N     Current wave number
+    --wave-total=N       Total wave count
+    --complexity=LEVEL   Complexity level
+    --detail=TEXT        Free-form detail
+  clear-status           Remove the statusline bus file
 
 Options:
   --help, -h             Show this help message`;
@@ -650,6 +694,36 @@ async function handleTransition(args: string[]): Promise<void> {
     },
   });
 
+  // Best-effort status bus update for statusline HUD
+  try {
+    let busData: Record<string, unknown> = {};
+    try {
+      const busFile = Bun.file(STATUS_BUS_PATH);
+      if (await busFile.exists()) busData = await busFile.json();
+    } catch {
+      /* start fresh */
+    }
+
+    const ctx = nextSnapshot.context as Record<string, unknown>;
+    busData.stage = String(nextSnapshot.value).toUpperCase();
+    busData.complexity = ctx.complexity ?? busData.complexity ?? "";
+    if (ctx.current_phase !== undefined && ctx.current_phase !== null) {
+      busData.phase = ctx.current_phase;
+    }
+    // Clear skill/step when transitioning to idle state
+    if (String(nextSnapshot.value) === "idle") {
+      busData.skill = "";
+      busData.step = "";
+    }
+    busData.updated_at = new Date().toISOString();
+
+    const tmpBus = `${STATUS_BUS_PATH}.tmp`;
+    await Bun.write(tmpBus, JSON.stringify(busData, null, 2) + "\n");
+    await rename(tmpBus, STATUS_BUS_PATH);
+  } catch {
+    // Status bus update is best-effort — never fail the transition
+  }
+
   console.log(JSON.stringify(record, null, 2));
 }
 
@@ -1024,6 +1098,95 @@ async function handleInitVault(args: string[]): Promise<void> {
   );
 }
 
+// ─── Status Bus Commands ─────────────────────────────────────────────────────
+
+/**
+ * Handle `write-status` — write partial data to the statusline bus file.
+ *
+ * Merges provided fields with existing bus data, sets updated_at, and
+ * writes atomically via tmp+rename. Self-contained — no external imports.
+ *
+ * @param args - CLI arguments with --skill, --stage, --step, --phase, etc.
+ */
+async function handleWriteStatus(args: string[]): Promise<void> {
+  // Read existing bus data for merge
+  let existing: Record<string, unknown> = {};
+  try {
+    const file = Bun.file(STATUS_BUS_PATH);
+    if (await file.exists()) {
+      existing = await file.json();
+    }
+  } catch {
+    // Start fresh on read error
+  }
+
+  // Parse args and merge
+  const skill = getArg(args, "skill");
+  const stage = getArg(args, "stage");
+  const step = getArg(args, "step");
+  const phase = getArg(args, "phase");
+  const waveCurrent = getArg(args, "wave-current");
+  const waveTotal = getArg(args, "wave-total");
+  const complexity = getArg(args, "complexity");
+  const detail = getArg(args, "detail");
+
+  const update: Record<string, unknown> = {};
+  if (skill !== undefined) update.skill = skill;
+  if (stage !== undefined) update.stage = stage;
+  if (step !== undefined) update.step = step;
+  if (phase !== undefined) {
+    const n = parseInt(phase, 10);
+    if (!isNaN(n)) update.phase = n;
+  }
+  if (waveCurrent !== undefined) {
+    const n = parseInt(waveCurrent, 10);
+    if (!isNaN(n)) update.wave_current = n;
+  }
+  if (waveTotal !== undefined) {
+    const n = parseInt(waveTotal, 10);
+    if (!isNaN(n)) update.wave_total = n;
+  }
+  if (complexity !== undefined) update.complexity = complexity;
+  if (detail !== undefined) update.detail = detail;
+
+  const merged = {
+    ...existing,
+    ...update,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Validate merged data against bus schema before writing
+  const validated = BusDataSchema.safeParse(merged);
+  if (!validated.success) {
+    console.error(
+      JSON.stringify({
+        error: "Invalid bus data",
+        issues: validated.error.issues,
+      }),
+    );
+    process.exit(2);
+  }
+
+  // Atomic write via tmp+rename
+  const tmpPath = `${STATUS_BUS_PATH}.tmp`;
+  await Bun.write(tmpPath, JSON.stringify(validated.data, null, 2) + "\n");
+  await rename(tmpPath, STATUS_BUS_PATH);
+
+  console.log(JSON.stringify(validated.data));
+}
+
+/**
+ * Handle `clear-status` — remove the statusline bus file.
+ */
+async function handleClearStatus(): Promise<void> {
+  try {
+    await unlink(STATUS_BUS_PATH);
+  } catch {
+    // Ignore if file doesn't exist
+  }
+  console.log(JSON.stringify({ cleared: true }));
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1083,6 +1246,12 @@ export async function runBridgeCli(): Promise<void> {
     case "init-vault":
       await handleInitVault(args);
       break;
+    case "write-status":
+      await handleWriteStatus(args);
+      break;
+    case "clear-status":
+      await handleClearStatus();
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1113,6 +1282,8 @@ export {
   handleGateCheck,
   handleSuspend,
   handleInitVault,
+  handleWriteStatus,
+  handleClearStatus,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

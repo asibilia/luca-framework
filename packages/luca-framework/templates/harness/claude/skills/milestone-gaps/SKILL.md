@@ -11,6 +11,7 @@ Create phases to close gaps identified by milestone audit.
 
 ## Process
 
+
 1. **Load audit:**
    - Read `.planning/v{version}-MILESTONE-AUDIT.md`
    - Extract gaps section
@@ -42,6 +43,7 @@ Create phases to close gaps identified by milestone audit.
    
    /phase-plan {N} — plan first gap closure phase
    ```
+
 
 ## Success Criteria
 

@@ -1,9 +1,9 @@
 {
   "status": "active",
-  "value": "preflight",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "95a69fd7-ee2a-4d11-a001-775cb7841e1f",
+    "session_id": "9a5e618e-7ee4-4daf-979f-6b5ad0062eed",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
@@ -91,8 +91,7 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-30T21:01:50.167Z",
-    "last_transition_at": "2026-03-30T21:01:50.167Z"
+    "started_at": "2026-03-31T17:11:59.829Z"
   },
   "children": {}
 }

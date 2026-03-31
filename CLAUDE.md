@@ -35,7 +35,7 @@ test("hello world", () => {
   - Build packages: `bun run build`
   - Build full pipeline (agents/skills/rules/hooks/plugin): `bun run build:all`
   - Drift check (built outputs vs source): `bun run check:drift`
-- **CRITICAL — Generated files**: `.claude/` directory contains generated output. **Never edit files in this directory directly** — always edit the source in `src/` and run `bun run build:all`. Use `bun run check:drift` to verify.
+- **CRITICAL — Generated files**: `bun run build:all` outputs to `dist/claude/` (gitignored staging area). `bun run deploy` installs from there to `~/.claude/`. **Never edit generated output directly** — always edit the source in `src/` and rebuild. The local `.claude/` in this repo contains only `settings.local.json` and `plans/` — not generated artifacts.
 - **High-leverage gotchas**:
   - Some tests in `__tests__/scripts/` expect `bun run build:all` to have been run first because they validate artifacts under `dist/plugin/`.
   - There is **no ESLint configuration**; linting is effectively TypeScript type checking.

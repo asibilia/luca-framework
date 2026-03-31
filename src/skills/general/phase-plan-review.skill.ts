@@ -27,6 +27,7 @@ const phasePlanReviewConfig: SkillConfig = {
 
 ## Process
 
+
 ### Step 1: Load Plan Corpus
 
 \`\`\`
@@ -243,6 +244,7 @@ Write to \`$PHASE_DIR/PLAN-REVIEW-LOG.md\` with all iterations:
 - [ ] Convergence evaluated using BLOCKING count (not scores)
 - [ ] PLAN-REVIEW-LOG.md written with all iterations
 - [ ] Loop terminates: approval, budget exhaustion, or escalation
+
 </main>`,
       order: 1,
     },

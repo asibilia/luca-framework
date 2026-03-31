@@ -27,6 +27,7 @@ Goes beyond "which library" to ecosystem knowledge:
 
 ## Process
 
+
 ### Step 1: Load Phase Context
 
 - Read ROADMAP.md for phase goal
@@ -352,4 +353,5 @@ Research the ecosystem knowledge for this phase's domain. Investigate standard a
 
 - `/phase-assumptions {phase}` -- Review what AI plans to do
 - `/progress` -- Check overall project status
+
 </main>

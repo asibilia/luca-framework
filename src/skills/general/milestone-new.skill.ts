@@ -44,6 +44,7 @@ Read these reference files before executing:
 
 ## Process
 
+
 1. **Load Context** — Read PROJECT.md, MILESTONES.md, STATE.md
 
    \`\`\`bash
@@ -63,7 +64,6 @@ Read these reference files before executing:
    luca-bridge transition --event=RESET 2>/dev/null || true
    luca-bridge ensure-init --force 2>/dev/null || true
    luca-bridge set-field --field=current_milestone --value="v{version}" 2>/dev/null || true
-   luca-bridge snapshot 2>/dev/null || true
    # Fallback: Update STATE.md directly if bridge unavailable
    \`\`\`
 
@@ -100,7 +100,6 @@ How should this milestone be tracked on GitHub?
    \`\`\`bash
    luca-bridge set-field --field=github_issue --value={issue_number} 2>/dev/null || true
    luca-bridge set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   luca-bridge snapshot 2>/dev/null || true
    # Fallback: Update STATE.md directly
    \`\`\`
 
@@ -114,6 +113,7 @@ How should this milestone be tracked on GitHub?
 
 1. Warn user: commits won't reference issues, PR creation will require manual setup
 2. Note: GitHub Issue: None (user opted out) — no bridge update needed
+
 
 ## Success Criteria
 

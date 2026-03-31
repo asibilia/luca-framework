@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.5.2 — Statusline HUD
+**Current Milestone:** v8.6.0 — Scout Article Intelligence
 
 ---
 
@@ -192,18 +192,199 @@ Add workflow HUD to the statusline, close the anti-skip enforcement gap with a P
 
 ---
 
-## Next: v8.6.0 — Scout Article Intelligence
+## v8.6.0 — Scout Article Intelligence
 
 Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
 
-**Prerequisite:** v8.5.0 complete (scout-02 borrows createSkillStateMachine; scout-04 requires progressive disclosure)
+### Phase 241: Scout Foundation — COMPLETE
 
-### Planned Phases
+**Goal:** Create the directory structure, state machine schema, document templates, orchestrator skill, deterministic index updater, and shared agent sections for the scouting pipeline.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** None
 
-- **Phase 1: Scout Foundation** (6 todos) — Directory structure, state machine, templates, orchestrator, index updater, shared sections
-- **Phase 2: Per-Article Pipeline** (8 todos) — Ingest, relevance, research, analyst, analyze, impl-research agents + skills
-- **Phase 3: Cross-Cutting Batch** (5 todos) — Integrator, integrate, planner, plan, graduate agents + skills
-- **Phase 4: UX + Docs** (3 todos) — Review command, deferred command, workflow documentation
+- [x] scout-directory-structure — Create `docs/scouting/` directory structure (inbox.md, digests/, integration/, deferred/, manual-review/, .scout-state/, INDEX.md)
+- [x] scout-state-machine — Create `src/shared/__schemas/scout-state.schemas.ts` with state enum, transition table, state file schema, and transition validator
+- [x] scout-document-templates — Create `src/skills/__helpers/scout-templates.ts` with digest, impact analysis, integration analysis, deferred, and manual review templates
+- [x] scout-orchestrator — Create `src/skills/general/scout.skill.ts` deterministic state machine driver with per-article loop and cross-cutting batch
+- [x] scout-index-updater — Create `src/skills/__helpers/scout-index.ts` deterministic INDEX.md auto-update from state files
+- [x] scout-shared-sections — Create `src/agents/__helpers/scout-shared-sections.ts` extending researcher-shared-sections with scout-specific context
+
+### Phase 242: Per-Article Pipeline — COMPLETE
+
+**Goal:** Build all agents and skills for the per-article pipeline stages (ingest, relevance, research, analysis, implementation research).
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 241
+
+- [x] scout-ingest-agent — Create `lu-scout-ingest.agent.ts` (WebFetch article, extract content, produce structured digest)
+- [x] scout-ingest-skill — Create `scout-ingest.skill.ts` thin wrapper to spawn ingest agent and validate output
+- [x] scout-relevance-agent — Create `lu-scout-relevance.agent.ts` (quick HIGH/MEDIUM/LOW relevance assessment)
+- [x] scout-relevance-skill — Create `scout-relevance.skill.ts` wrapper with LOW-relevance routing to manual-review
+- [x] scout-research-skill — Create `scout-research.skill.ts` spawning two parallel researcher agents for ecosystem + implementation details
+- [x] scout-analyst-agent — Create `lu-scout-analyst.agent.ts` (framework impact analysis, gap identification, codebase scanning)
+- [x] scout-analyze-skill — Create `scout-analyze.skill.ts` wrapper to spawn analyst and validate impact document
+- [x] scout-impl-research-skill — Create `scout-impl-research.skill.ts` for concrete implementation approach research
+
+### Phase 243: Cross-Cutting Batch — COMPLETE
+
+**Goal:** Build agents and skills for the cross-cutting batch pipeline (integration analysis, todo planning, memory graduation).
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 242
+
+- [x] scout-integrator-agent — Create `lu-scout-integrator.agent.ts` (cross-scout cohesion, framework fit, per-scout verdicts)
+- [x] scout-integrate-skill — Create `scout-integrate.skill.ts` wrapper with verdict routing (integrate/defer/conflict)
+- [x] scout-planner-agent — Create `lu-scout-planner.agent.ts` (atomic todo generation with conflict detection)
+- [x] scout-plan-skill — Create `scout-plan.skill.ts` wrapper with conflict routing
+- [x] scout-graduate-skill — Create `scout-graduate.skill.ts` MuninnDB engram capture following research-graduator pattern
+
+### Phase 244: UX + Docs — COMPLETE
+
+**Goal:** Add user-facing commands and comprehensive documentation for the scouting workflow.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 243
+
+- [x] scout-review-command — Add `/scout --review` to list and re-process manual-review items
+- [x] scout-deferred-command — Add `/scout --deferred` to list and re-evaluate deferred items
+- [x] scout-workflow-documentation — Create user-facing README, agent JSDoc, and architecture documentation
+
+### Phase 245: Fix deepFreeze Zod v4 Crash — COMPLETE
+
+**Goal:** Fix `deepFreeze()` crashing on Zod v4 lazy getters, which breaks all 6 PreToolUse:Agent hooks on startup with TypeError.
+**Complexity:** TRIVIAL
+**Verification:** Quick
+**Depends on:** None
+
+- [x] fix-deep-freeze — Skip getter/setter properties in `deepFreeze()` via `Object.getOwnPropertyDescriptor()` so Zod v4's lazy shape getters don't crash on frozen objects
+
+### Phase 246: Statusline Rework — Skill Identity, Step Progression & Status Bus — COMPLETE
+
+**Goal:** Rework the statusline to show which skill/workflow is active, fix the wave/step counter that always shows `1/1`, add frequent persistence after each wave/step, create a lightweight status bus for non-`/lu` skill visibility, and propagate step-level granularity within EXECUTING.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 245
+
+- [x] skill-identity-prefix — Added skill name prefix to statusline output via status bus (e.g., `lu > EXECUTING`)
+- [x] fix-wave-step-counter — Added `SET_WAVE_COUNT` event to XState machine; fixed `|| 1` fallback to explicit `> 0` check
+- [x] status-bus — Created `.planning/.statusline.json` status bus with Zod schema, atomic writer, staleness TTL, and renderer integration
+- [x] step-granularity — Status bus `step` field enables sub-step display within EXECUTING; renderer shows step label when available
+- [x] frequent-persistence — Wave count updates now persist via `SET_WAVE_COUNT` bridge transition; status bus provides out-of-band persistence for non-XState skills
+- [x] bridge-integration — Added `write-status` and `clear-status` subcommands to luca-bridge; auto-update bus on every `transition` command so statusline stays fresh
+
+---
+
+## v8.6.1 — Audit Gap Closure
+
+Fix all audit findings from v8.6.0 plus critical architectural fix: move orchestration side-effects from LLM-executed bash blocks to deterministic hooks.
+
+### Phase 247: Bridge Status Bus Hardening — COMPLETE
+
+**Goal:** Fix remaining bridge.ts audit findings after Phase 249 addressed H1, H2, M4, M5.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 246
+
+- [x] dry-consolidate — (Addressed by Phase 249: STATUS_BUS_PATH + BusDataSchema) (H1, M4)
+- [x] schema-validate — (Addressed by Phase 249: BusDataSchema.safeParse + NaN guards) (H2, M5)
+- [x] bun-native-unlink — Static import of rename/unlink, removed 3 dynamic imports (M2)
+- [x] root-anchor — Documented relative-to-cwd convention consistent with STATE_FILE_PATH (M6)
+- [x] idle-bus-cleanup — Clear skill/step from bus when transition resolves to idle (L3)
+
+### Phase 248: Shared + Renderer Cleanup — COMPLETE
+
+**Goal:** Fix all 6 shared/renderer audit findings.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 247
+
+- [x] bun-native-unlink — Static import of rename/unlink in status-bus.ts (M1)
+- [x] snake-case-hud — Renamed all 7 WorkflowHudStateSchema fields to snake_case (M3)
+- [x] export-bus-path — Exported STATUS_BUS_PATH from status-bus.ts, imported in statusline.ts (L1)
+- [x] barrel-import — statusline.ts now imports from `../../shared` barrel (L2)
+- [x] validate-existing-merge — Existing bus data runs through safeParse before merge (L4)
+- [x] deep-freeze-jsdoc — Added getter/setter skip limitation to JSDoc (L5)
+
+### Phase 249: Deterministic Skill Lifecycle Hooks — COMPLETE
+
+**Goal:** Move orchestration side-effects (statusline writes) from LLM-executed bash blocks to deterministic PreToolUse/PostToolUse hooks that fire automatically on every Skill invocation. Fixes unreliable statusline updates and establishes the pattern for migrating all 140+ orchestration commands to the deterministic TS layer.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 248
+
+- [x] skill-lifecycle-hooks — Created `skill-status-enter.ts` (PreToolUse) and `skill-status-exit.ts` (PostToolUse) hooks with nesting depth counter via `.planning/.skill-depth` file
+- [x] sanitize-and-register — Skill name validated with `/^[a-z0-9-]+$/`, both hooks registered in hook-registry.ts
+- [x] remove-template-writes — Removed all write-status/clear-status from 29 skill templates (~184 lines of LLM-dependent bash blocks)
+- [x] build-time-lint — Created `scripts/check-template-side-effects.ts` that fails on residual write-status/clear-status in skill templates
+- [x] bridge-schema-fix — Added inline BusDataSchema validation, NaN guards on parseInt, extracted STATUS_BUS_PATH module constant (addresses H1, H2, M4, M5)
+
+### Phase 250: Redundant Side-Effect Removal — COMPLETE
+
+**Goal:** Remove redundant `snapshot` and `ensure-init` calls from skill templates that are already handled by existing hooks (snapshot-sync, session-start). Parameterless transitions cannot move to hooks — they fire at pipeline-specific points, not lifecycle events — and are reclassified to Phase 251.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 249
+
+- [x] remove-redundant-snapshots — Removed 8 `luca-bridge snapshot` calls from 7 skill templates + 1 prose reference updated (already handled by snapshot-sync hook)
+- [x] remove-redundant-ensure-init — Removed 2 `luca-bridge ensure-init` calls from quick.skill.ts (already handled by session-start hook). Kept milestone-new `--force` and project-new init
+- [x] lint-guard — Extended `check-template-side-effects.ts` to also flag `luca-bridge snapshot` calls in skill templates
+
+### Phase 251: Deterministic Agent Transition Sync — COMPLETE
+
+**Goal:** Move state transitions and context-cli writes from LLM-executed bash blocks to a deterministic PostToolUse hook on Agent. When an agent completes, the hook identifies which agent finished (from `tool_input.name`), looks up the per-orchestrator mapping, and fires the corresponding transitions + context writes.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 250
+
+- [x] agent-transition-hook — Created `agent-transition-sync.ts` PostToolUse hook with priority-ordered orchestrator detection and prefix matching with exclusions
+- [x] lu-mapping — cognition→START+PREFLIGHT_COMPLETE, discuss→DISCUSS_COMPLETE, plan→PLAN_COMPLETE, verify→VERIFY_PASSED, learn→LEARN_COMPLETE
+- [x] sub-orchestrator-mappings — phase-execute (execute→"executed", verify→VERIFY_PASSED+"verified", learn→LEARN_COMPLETE+"learned"), pr-address (6 state writes), verify (3 state writes), milestone-complete (5 state writes)
+- [x] remove-template-transitions — Removed 6 transitions from lu, 3 transitions + 3 context writes from phase-execute, 6 context writes from pr-address, 4 context writes from verify, 6 context writes from milestone-complete
+- [x] intentional-keeps — 9 transitions + 8 context writes remain in templates: ROUTE_COMPLETE (needs data), SKIP/SKIP_REVIEW (conditional), REVIEW_COMPLETE (parallel agents), COMMIT_COMPLETE (after git), interactive test state, init/crash-recovery, git workflow data
+
+### Phase 252: v8.6.1 Audit Cleanup — COMPLETE
+
+**Goal:** Close all 9 findings from the v8.6.1 audit: wire lint guard into pipeline, add documentation comments, type-narrow effect unions, normalize prefix, remove .passthrough(), and add depth file cleanup.
+**Complexity:** TRIVIAL
+**Verification:** Quick
+**Depends on:** Phase 251
+
+- [x] wire-lint-guard — Added `check:side-effects` script to package.json (L1)
+- [x] type-narrow-effects — Narrowed TransitionEffect.event to 6 literal values, ContextWriteEffect.orchestrator to 4 + state to 15 literal values (SEC-001)
+- [x] normalize-learn-prefix — pr-address "learn" kept as-is (bare agent name, no suffix); added doc comment explaining why (A2)
+- [x] remove-passthrough — Removed `.passthrough()` from BusDataSchema (SEC-006)
+- [x] depth-cleanup — Added `.planning/.skill-depth` cleanup to session-start.ts (A5)
+- [x] doc-comments — Added: verify- prefix invariant (A1), BusDataSchema divergence note (A3), T3→T2 coupling note (A4), /tmp CI risk note (SEC-002)
+
+### Phase 253: Convention Alignment & Validation Hardening — COMPLETE
+
+**Goal:** Fix barrel import bypasses, add missing input validation, align schema conventions, and close Bun-first gaps in hooks and scripts. Addresses 7 audit findings (ARCH-M1, SEC-M2, DX-M1, DX-M3, DX-L7, SEC-L5, DRY-L2).
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 252
+
+- [x] barrel-imports — Replace direct `__helpers/` imports with barrel imports in skill-status-enter.ts, agent-status-sync.ts, agent-prompts.ts (ARCH-M1)
+- [x] agent-name-regex — Add `/^[a-z0-9-]+$/` regex validation for agent names in agent-status-sync.ts, matching SKILL_NAME_RE pattern (SEC-M2)
+- [x] bun-first-check-drift — Replace `require('fs').readFileSync` with Bun.file API in check-drift.ts (DX-M1)
+- [x] realpathsync-doc — Add exception comment documenting why node:fs realpathSync is used in statusline.ts (DX-M3)
+- [x] stage-enum-casing — Normalize StatusBusSchema stage enum to consistent casing (DX-L7)
+- [x] sanitize-stdin-json — Replace JSON.parse with sanitizeJsonParse in hook-io.ts readStdinJson (SEC-L5)
+- [x] extract-tool-input-helper — Extract shared tool_input extraction pattern from 3 hook scripts into hooks/\_\_helpers/ (DRY-L2)
+
+### Phase 254: Build Script DRY Consolidation — COMPLETE
+
+**Goal:** Deduplicate build utilities, remove deprecated exports, and consolidate shared logic. Addresses 6 audit findings (DRY-M1, DRY-M3, DRY-L1, DRY-L3, DRY-L5, DX-L8).
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 253
+
+- [x] shared-branding-context — Extract shared loadBrandingContext() into scripts/branding.ts, used by both check-drift.ts and build-deploy.ts (DRY-M1)
+- [x] vault-guard-import — Import VAULT_GUARD_PROMPT from canonicalHookRegistry instead of maintaining separate constant in build-utils.ts (DRY-M3)
+- [x] reuse-entity-loops — Import generate\*Outputs() from build-shared.ts in targeted-recompile.ts instead of re-implementing (DRY-L1)
+- [x] remove-deprecated-registry — Remove deprecated hookRegistry export, migrate 3 consumers to canonicalHookRegistry (DRY-L3)
+- [x] top-level-imports — Move dynamic `await import('node:fs')` in build-all.ts and build-compile.ts to top-level imports (DX-L8)
+- [x] plugin-count-helper — Use computeOutputCounts() for plugin output counting in build-all.ts (DRY-L5)
 
 ---
 
@@ -455,6 +636,7 @@ Items below are tracked as todo files in `.planning/todos/deferred/` and will on
 - **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
 - **v8.5.0** — Anti-Skip Enforcement Layer: 3 phases, 10 plans, 79 commits, 113 files changed (+18,033/-6,800 LOC) ([View Archive](milestones/v8.5.0-ROADMAP.md))
 - **v8.5.1** — Audit Gap Closure: 11 phases, 135 commits, 56 files changed (+8,526/-5,498 LOC) ([View Archive](milestones/v8.5.1-ROADMAP.md))
+- **v8.5.2** — Statusline HUD & Edit Gate: 5 phases, 13 commits, 60 files changed (+3,082/-1,368 LOC) ([View Archive](milestones/v8.5.2-ROADMAP.md))
 
 ---
 

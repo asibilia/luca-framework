@@ -72,6 +72,7 @@ else
 fi
 \`\`\`
 
+
 ### Step 2: Cognitive Pre-Flight + Classify + Route (idle -> routed)
 
 Read \`agent-prompts.ts\`, spawn:
@@ -83,8 +84,6 @@ Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
 Parse COMPLEXITY and ROUTE from classify agent's output.
 
 \`\`\`bash
-luca-bridge transition --event=START 2>/dev/null || true
-luca-bridge transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
 luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
 \`\`\`
 
@@ -114,6 +113,49 @@ if [ -z "$WORKFLOW_VERSION" ]; then WORKFLOW_VERSION="v1"; fi
 # CLI override: --v2 flag forces v2 regardless of config
 if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 \`\`\`
+
+### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
+
+If --skip-branch flag is present: SKIP this step entirely.
+
+This step MUST run before any code work. It creates the GitHub issue and feature branch that all subsequent commits will land on.
+
+**1. Create GitHub issue for the milestone/task:**
+
+\`\`\`bash
+# Extract milestone title from ROADMAP.md current milestone
+MILESTONE_TITLE=$(grep "^## v" .planning/ROADMAP.md | head -1 | sed 's/^## //')
+# Or use the task description for non-milestone work
+
+ISSUE_URL=$(gh issue create \\
+  --title "$MILESTONE_TITLE" \\
+  --body "## Summary\\n\\n[Auto-generated from /lu orchestrator]\\n\\nPhases and deliverables TBD after planning." \\
+  --label "enhancement" 2>&1)
+ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -o '[0-9]*$')
+\`\`\`
+
+**2. Create feature branch from current base:**
+
+\`\`\`bash
+# Branch naming convention:
+# - Milestones: {version}--{kebab-case-description} (e.g., v8.6.0--scout-article-intelligence)
+# - Single phases: phase-{NN}--{kebab-case-description}
+# - Non-milestone: {ticket-id}--{kebab-case-description}
+# - Fallback: PROJ-0000--{kebab-case-description}
+
+git checkout -b "$BRANCH_NAME"
+git push -u origin "$BRANCH_NAME"
+\`\`\`
+
+**3. Store in context for later PR creation:**
+
+Write ISSUE_NUMBER, ISSUE_URL, and BRANCH_NAME to the lu context file so Step 8 (Milestone Boundary) can create the PR.
+
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write lu "{\\\"git_workflow\\\":{\\\"issue_number\\\":$ISSUE_NUMBER,\\\"issue_url\\\":\\\"$ISSUE_URL\\\",\\\"branch_name\\\":\\\"$BRANCH_NAME\\\"}}"
+\`\`\`
+
+**4. Update STATE.md** with the branch and issue info for visibility.
 
 ### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
 
@@ -152,6 +194,7 @@ PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 \`\`\`
 
 #### 7d-v2. Research Pipeline (v2 ONLY — skip entirely if WORKFLOW_VERSION != "v2")
+
 
 **Gate:** If WORKFLOW_VERSION != "v2": SKIP to 7e. This entire block is fail-closed.
 
@@ -196,12 +239,13 @@ Agent(name: "research-graduate-{NN}", prompt: RESEARCH_GRADUATION_PROMPT({phase:
 \`\`\`
 
 #### 7e. Discussion (conditional: skip if --skip-discuss)
+
+
 \`\`\`
 Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-premortem)
 \`\`\`
 After discussion returns (or if skipped):
 \`\`\`bash
-luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 # If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
 \`\`\`
 
@@ -209,12 +253,10 @@ luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 
 #### 7g. Planning
+
+
 \`\`\`
 Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
-\`\`\`
-After planning returns:
-\`\`\`bash
-luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 \`\`\`
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -234,25 +276,32 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
 \`\`\`
 
 #### 7h. Execution
+
+
 \`\`\`
 Agent(name: "execute-{NN}", prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7i. Harness Fix Loop (INLINE, hoisted)
+
+
 \`\`\`
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   Agent(name: "harness-{NN}", prompt: HARNESS_CHECK_PROMPT({...}))
   IF PASSED: BREAK
   Agent(name: "fix-{NN}", prompt: HARNESS_FIX_PROMPT(errors, {...}))
 \`\`\`
-Then: \`luca-bridge transition --event=VERIFY_PASSED\`
 
 #### 7j. Goal-backward verification
+
+
 \`\`\`
 Agent(name: "verify-{NN}", prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7k. Code review (conditional: complexity >= MODERATE, not --skip-review)
+
+
 Spawn PARALLEL reviewers:
 \`\`\`
 Agent(name: "review-arch-{NN}", prompt: CODE_REVIEW_PROMPT("architecture", {...}))
@@ -262,10 +311,11 @@ Agent(name: "review-simplify-{NN}", prompt: CODE_REVIEW_PROMPT("simplifier", {..
 \`\`\`
 
 #### 7l. Learning capture
+
+
 \`\`\`
 Agent(name: "learn-{NN}", prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 \`\`\`
-\`luca-bridge transition --event=LEARN_COMPLETE\`
 
 #### 7m. Process data (conditional: --run-process-data)
 \`\`\`
@@ -273,8 +323,13 @@ Agent(name: "process-data-{NN}", prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7n. Commit (INLINE)
+
+
+Commits land on the feature branch created in Step 4.5 (or main if --skip-branch).
 \`\`\`bash
-git add . && git commit -m "feat({NN}): complete phase {NN}"
+git add . && git commit -m "feat(#{ISSUE_NUMBER}): Phase {NN} — {phase description}"
+# Push to remote after each phase commit:
+git push
 \`\`\`
 
 #### 7o. Update state (INLINE)
@@ -300,6 +355,28 @@ Agent(name: "milestone-shadow", prompt: MILESTONE_SHADOW_PROMPT({...}))  # condi
 Agent(name: "milestone-archive", prompt: MILESTONE_ARCHIVE_PROMPT({...}))
 Agent(name: "milestone-finalize", prompt: MILESTONE_FINALIZE_PROMPT({...}))
 \`\`\`
+
+#### 8a. Create Pull Request (INLINE, conditional: not --skip-branch)
+
+If a feature branch was created in Step 4.5, create a PR to merge it back to main:
+
+\`\`\`bash
+# Read git workflow context
+ISSUE_NUMBER=$(bun src/skills/__schemas/context-cli.ts read lu 2>/dev/null | bun -e "..." || echo "")
+BRANCH_NAME=$(git branch --show-current)
+
+# Ensure all commits are pushed
+git push
+
+# Build PR body from phase results
+# Include: summary of phases completed, key deliverables, file counts
+
+gh pr create \\
+  --title "feat(#$ISSUE_NUMBER): $MILESTONE_TITLE" \\
+  --body "## Summary\\n\\n[Phase summaries]\\n\\n## Test plan\\n\\n- [ ] \`bunx --bun tsc --noEmit\` passes\\n- [ ] All todos moved to done/\\n\\nCloses #$ISSUE_NUMBER\\n\\nGenerated with [Claude Code](https://claude.com/claude-code)"
+\`\`\`
+
+Report the PR URL to the user.
 
 ### Step 9: Cross-Milestone Continuation (INLINE)
 

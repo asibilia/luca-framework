@@ -11,6 +11,7 @@ Deep expansion on specific research topics identified during review or by user r
 
 ## Process
 
+
 ### Step 1: Load Expansion Context
 
 ```
@@ -123,4 +124,5 @@ for researcher in researchers_needed:
 - [ ] Targeted researchers spawned (not all 4 blindly)
 - [ ] Expansion files numbered from 05+ in flat research/ directory
 - [ ] Structured result returned with files created and remaining gaps
+
 </main>

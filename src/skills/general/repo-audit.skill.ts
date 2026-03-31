@@ -34,6 +34,7 @@ Task(
 
 ### 1. Determine Audit Mode
 
+
 - \`--quick\` or TRIVIAL/SIMPLE complexity: Quick audit (naming, boundaries, drift only)
 - \`--full\` or COMPLEX/CRITICAL complexity: Full audit (all checks including circular imports, dead exports)
 - Default (MODERATE): Standard audit
@@ -88,6 +89,7 @@ If \`--fix\` is passed and issues are auto-fixable (naming, empty dirs):
 - Rename files to kebab-case
 - Remove empty directories
 - Report what was fixed
+
 
 ## Notes
 

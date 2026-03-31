@@ -43,6 +43,7 @@ cross-cutting operations (shadow-debt:kept, pattern, preference).
 
 ## Execution Flow
 
+
 ### Step 1: Load and Validate Config
 
 Read `.planning/config.json` and extract the `shadow_debt` section.
@@ -237,6 +238,7 @@ Display completion:
 Found: {total} | Fixed: {n_fixed} | Kept: {n_kept} | Skipped: {n_skipped}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
 
 ## Success Criteria
 

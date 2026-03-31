@@ -57,6 +57,7 @@ Read these reference files before executing:
 
 ## Process
 
+
 ### Complexity-Aware Discussion
 
 Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
@@ -398,4 +399,5 @@ Actions:
 
 - `/phase-research {phase}` — Deep research for niche/complex domains
 - `/progress` — Check overall project status
+
 </main>

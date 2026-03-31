@@ -67,6 +67,7 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 
 ## Process
 
+
 ### 1. Load Context
 
 - Read all phase VERIFICATION.md files for the milestone
@@ -525,6 +526,7 @@ Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} mo
 /milestone-complete — proceed anyway (tech debt noted)
 
 \`\`\`
+
 
 ## Success Criteria
 

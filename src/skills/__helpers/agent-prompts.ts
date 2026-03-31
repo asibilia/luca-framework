@@ -16,7 +16,7 @@
  * @see docs/skill-to-agent-migration/muninndb-context-pattern.md
  */
 
-import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
+import { sanitizeForTemplate } from "~/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -419,7 +419,7 @@ Read .planning/ROADMAP.md to determine the current milestone version, then:
 4. Extract accomplishments from phase SUMMARY.md files
 5. Update PROJECT.md "Current State" section
 6. Clear session context: recall session entries then forget each by ULID
-7. Reset state machine: luca-bridge transition --event=ARCHIVE_COMPLETE
+7. Reset state machine: luca-bridge transition --event=COMMIT_COMPLETE
 8. Create GitHub milestone: gh api repos/{owner}/{repo}/milestones -f title="v{version}" -f state="closed"
 </task>
 
@@ -442,7 +442,7 @@ Read .planning/ROADMAP.md to determine the current milestone version, then:
 1. Create final commit: git add . && git commit -m "archive v{version}"
 2. Create git tag: git tag -a v{version} -m "v{version}"
 3. Report the tag name and ask the orchestrator whether to push
-4. Write state: luca-bridge transition --event=FINALIZE_COMPLETE
+4. Write state: luca-bridge transition --event=COMMIT_COMPLETE
 </task>
 
 ${outputContract("VERSION: {milestone version}\nTAG_CREATED: true/false")}

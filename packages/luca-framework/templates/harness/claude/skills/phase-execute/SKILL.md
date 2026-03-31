@@ -28,7 +28,7 @@ idle -> setup -> executed -> verified -> reviewed -> learned -> committed
 ```
 
 Terminal: `committed` (success) or `failed` (error).
-Conditional: `SKIP_REVIEW` when --skip-review, code_review: false, or harness failed.
+Conditional: `SKIP` when --skip-review, code_review: false, or harness failed.
 
 ## Vault Resolution
 
@@ -38,6 +38,7 @@ if [ -z "$REPO_VAULT" ]; then REPO_VAULT=${LUCA_MUNINN_VAULT:-default}; fi
 ```
 
 ## Process
+
 
 ### Step 0: Setup (INLINE)
 
@@ -71,11 +72,6 @@ The execute-waves agent reads all PLAN.md files, groups by wave, executes tasks 
 
 On failure: write state "failed", HALT.
 
-**Write state:**
-```bash
-bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"executed"}'
-```
-
 ### Step 2: Harness Fix Loop (executed -> verified) — HOISTED
 
 This loop was previously inside phase-execute-verify. It is now INLINE because sub-agents cannot spawn fix agents.
@@ -100,23 +96,13 @@ Agent(name: "verify", description: "Goal-backward verification",
   prompt: GOAL_VERIFY_PROMPT with phase={phase_number})
 ```
 
-Bridge transition:
-```bash
-luca-bridge transition --event=VERIFY_PASSED 2>/dev/null || true
-```
-
-**Write state:**
-```bash
-bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"verified"}'
-```
-
 ### Step 3: Code Review Fix Loop (verified -> reviewed) — HOISTED
 
 Skip if: --skip-review, workflow.code_review: false, or harness failed.
 
 **If skipped:** Emit bridge skip transition and write state:
 ```bash
-luca-bridge transition --event=SKIP_REVIEW 2>/dev/null || true
+luca-bridge transition --event=SKIP --data='{"reason":"review_skipped"}' 2>/dev/null || true
 bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"reviewed"}'
 ```
 Then continue to Step 4.
@@ -158,7 +144,7 @@ FOR attempt = 1 to REVIEW_FIX_ITERATIONS:
 
 After the loop completes, emit bridge transition:
 ```bash
-luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
 ```
 
 Write context with review results:
@@ -179,11 +165,6 @@ Agent(name: "learn", description: "Capture phase learnings",
   prompt: LEARNING_CAPTURE_PROMPT with phase={phase_number})
 ```
 
-Bridge transition:
-```bash
-luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
-```
-
 ### Step 4.5: Process Data (conditional)
 
 If --run-process-data:
@@ -193,11 +174,6 @@ Agent(name: "process-data", description: "Compute process metrics",
 ```
 
 Bridge: `luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true`
-
-**Write state:**
-```bash
-bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"learned"}'
-```
 
 ### Step 5: UAT (INLINE, interactive)
 
@@ -241,7 +217,8 @@ If any required step missing: log warning (advisory).
 - [ ] Code review fix loop ran (parallel reviewers + optional fix agent, unless skipped)
 - [ ] Review fix loop resolved CRITICAL findings or exhausted iterations
 - [ ] Learnings captured (learn agent)
-- [ ] Bridge transitions emitted (VERIFY_PASSED, REVIEW_COMPLETE or SKIP_REVIEW, LEARN_COMPLETE, COMMIT_COMPLETE)
+- [ ] Bridge transitions emitted (LEARN_COMPLETE or SKIP, PROCESS_DATA_COMPLETE if applicable, COMMIT_COMPLETE)
 - [ ] current_state written after every transition
 - [ ] STATE.md and ROADMAP.md updated
+
 </main>

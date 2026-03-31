@@ -68,6 +68,7 @@ Read this reference file before executing:
 
 ## Process
 
+
 1. Check if `.planning/codebase/` already exists (offer to refresh or skip)
 2. Create `.planning/codebase/` directory structure
 
@@ -248,6 +249,7 @@ Then run `bun run build:all` to load the new profile rules.
 ```
 
 **If all detected profiles match the current config**, skip this step silently.
+
 
 ## Success Criteria
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 
 /**
- * build-deploy.ts — Deploy templates to .claude/ with branding resolution.
+ * build-deploy.ts — Deploy templates to dist/claude/ with branding resolution.
  *
  * Stage 2 of the split build pipeline. Reads EJS templates from
  * `packages/luca-framework/templates/harness/claude/`, resolves
  * branding placeholders using config from `.planning/config.json`,
- * and writes the final resolved files to `.claude/`.
+ * and writes the final resolved files to `dist/claude/`.
  *
  * This stage is the same code path that `luca init` will use,
  * ensuring consistent resolution between dogfood builds and
@@ -17,12 +17,11 @@
  *   bun ./scripts/build-deploy.ts           # direct invocation
  *
  * Output:
- *   .claude/agents/*.md
- *   .claude/skills/<name>/SKILL.md
- *   .claude/rules/*.md
- *   .claude/hooks/*.sh
- *   .claude/settings.json (hooks merged)
- *   .claude/.build-manifest.json
+ *   dist/claude/agents/*.md
+ *   dist/claude/skills/<name>/SKILL.md
+ *   dist/claude/rules/*.md
+ *   dist/claude/hooks/*.sh
+ *   dist/claude/.build-manifest.json
  *
  * @module build-deploy
  */
@@ -44,8 +43,7 @@ import {
   buildErrorHandler,
 } from "./build-utils";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
-import { defaultBranding, validateBranding } from "./branding";
-import { sanitizeJsonParse } from "./sanitize";
+import { loadBrandingContext } from "./branding";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -61,92 +59,18 @@ const TEMPLATE_SOURCE_DIR = path.join(
 );
 
 // ---------------------------------------------------------------------------
-// Config loading
-// ---------------------------------------------------------------------------
-
-/**
- * Read branding config from `.planning/config.json` and compute derived values.
- *
- * Falls back to Luca defaults if the config file is missing or malformed.
- *
- * @returns Complete BrandingContext ready for template resolution
- */
-async function loadBrandingContext(): Promise<BrandingContext> {
-  const configPath = path.join(
-    resolvePackageRoot(),
-    ".planning",
-    "config.json",
-  );
-
-  let frameworkName = defaultBranding.frameworkName;
-  let commandPrefix = defaultBranding.commandPrefix;
-  let ticketPattern = defaultBranding.ticketPattern;
-  let placeholderTicket = defaultBranding.placeholderTicket;
-
-  try {
-    const configFile = Bun.file(configPath);
-    if (await configFile.exists()) {
-      const raw = sanitizeJsonParse(await configFile.text()) as Record<
-        string,
-        unknown
-      >;
-      const branding = (raw as Record<string, unknown>)?.branding as
-        | Record<string, string>
-        | undefined;
-      if (branding) {
-        frameworkName = branding.frameworkName ?? frameworkName;
-        commandPrefix = branding.commandPrefix ?? commandPrefix;
-        ticketPattern = branding.ticketPattern ?? ticketPattern;
-        placeholderTicket = branding.placeholderTicket ?? placeholderTicket;
-      }
-    }
-  } catch {
-    console.warn(
-      "Warning: Could not read .planning/config.json, using default branding",
-    );
-  }
-
-  // Validate resolved branding values (non-blocking: warn + continue on failure)
-  const validationResult = validateBranding({
-    frameworkName,
-    commandPrefix,
-    ticketPattern,
-    placeholderTicket,
-  });
-  if (!validationResult.valid) {
-    console.warn(
-      "Warning: Branding validation failed, continuing with current values:",
-    );
-    for (const [field, message] of Object.entries(validationResult.errors)) {
-      console.warn(`  ${field}: ${message}`);
-    }
-  }
-
-  return {
-    frameworkName,
-    commandPrefix,
-    commandSlash: `/${commandPrefix}`,
-    nameLowercase: frameworkName.toLowerCase(),
-    nameUppercase: frameworkName.toUpperCase(),
-    ticketPattern,
-    placeholderTicket,
-    ticketPatternJson: ticketPattern.replace(/\\/g, "\\\\"),
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Main deploy function
 // ---------------------------------------------------------------------------
 
 /**
- * Run the deploy stage: templates/harness/claude/ -> .claude/.
+ * Run the deploy stage: templates/harness/claude/ -> dist/claude/.
  *
  * 1. Reads branding from .planning/config.json
  * 2. Resolves all templates with branding context
- * 3. Cleans .claude/ subdirectories (agents/, skills/, rules/, hooks/)
- * 4. Writes resolved files to .claude/
+ * 3. Cleans dist/claude/ subdirectories (agents/, skills/, rules/, hooks/)
+ * 4. Writes resolved files to dist/claude/
  * 5. chmod +x on .sh files
- * 6. Handles settings.json (merges hooks from resolved output with existing)
+ * 6. (Skipped) settings.json merge is deferred to deploy-global.ts
  * 7. Writes build manifest
  *
  * @returns Object with deploy counts
@@ -159,12 +83,12 @@ export async function runDeploy(): Promise<{
   total: number;
 }> {
   const packageRoot = resolvePackageRoot();
-  const claudeDir = path.join(packageRoot, ".claude");
+  const claudeDir = path.join(packageRoot, "dist", "claude");
 
   // =========================================================================
   // 1. Load branding context
   // =========================================================================
-  const branding = await loadBrandingContext();
+  const branding = await loadBrandingContext(packageRoot);
 
   // =========================================================================
   // 2. Resolve templates
@@ -172,7 +96,7 @@ export async function runDeploy(): Promise<{
   const resolved = await resolveTemplates(TEMPLATE_SOURCE_DIR, branding);
 
   // =========================================================================
-  // 3. Clean .claude/ subdirectories before writing
+  // 3. Clean dist/claude/ subdirectories before writing
   // =========================================================================
   const claudeAgentsDir = path.join(claudeDir, "agents");
   const claudeSkillsDir = path.join(claudeDir, "skills");
@@ -205,15 +129,13 @@ export async function runDeploy(): Promise<{
   }
 
   // =========================================================================
-  // 4. Write resolved files to .claude/
+  // 4. Write resolved files to dist/claude/
   // =========================================================================
   const hookScriptPaths: string[] = [];
-  let resolvedSettingsJson: string | undefined;
 
   for (const [relPath, content] of resolved) {
-    // Intercept settings.json for special merge handling
+    // Skip settings.json — merge is handled by deploy-global.ts
     if (relPath === "settings.json") {
-      resolvedSettingsJson = content;
       continue;
     }
 
@@ -237,39 +159,12 @@ export async function runDeploy(): Promise<{
   }
 
   // =========================================================================
-  // 6. Merge settings.json
+  // 6. Merge settings.json — SKIPPED for source repo
   // =========================================================================
-  if (resolvedSettingsJson) {
-    const settingsPath = path.join(claudeDir, "settings.json");
-    let existingSettings: Record<string, unknown> = {};
-
-    try {
-      const settingsFile = Bun.file(settingsPath);
-      if (await settingsFile.exists()) {
-        existingSettings = JSON.parse(await settingsFile.text());
-      }
-    } catch {
-      // File doesn't exist or is invalid JSON -- start fresh
-    }
-
-    // Parse the resolved settings (which already has hooks merged from compile stage)
-    const resolvedSettings = JSON.parse(resolvedSettingsJson);
-
-    // Merge: resolved hooks + statusLine override existing
-    if (resolvedSettings.hooks) {
-      existingSettings.hooks = resolvedSettings.hooks;
-    }
-    if (resolvedSettings.statusLine) {
-      existingSettings.statusLine = resolvedSettings.statusLine;
-    }
-    // Remove stale lowercase key if present from prior builds
-    delete (existingSettings as Record<string, unknown>).statusline;
-
-    await Bun.write(
-      settingsPath,
-      JSON.stringify(existingSettings, null, 2) + "\n",
-    );
-  }
+  // Settings.json merge is handled by deploy-global.ts when deploying to
+  // ~/.claude/. The build stage writes to dist/claude/ which is a staging
+  // area, not a live Claude Code config directory.
+  // The resolved settings template is intentionally not written here.
 
   // =========================================================================
   // 7. Write build manifest
@@ -308,8 +203,8 @@ export async function runDeploy(): Promise<{
   console.log(`  Skills:   ${counts.skills}`);
   console.log(`  Rules:    ${counts.rules}`);
   console.log(`  Hooks:    ${counts.hooks}`);
-  console.log(`  Total:    ${counts.total} files -> .claude/`);
-  console.log(`  Manifest: .claude/.build-manifest.json`);
+  console.log(`  Total:    ${counts.total} files -> dist/claude/`);
+  console.log(`  Manifest: dist/claude/.build-manifest.json`);
 
   return counts;
 }

@@ -12,7 +12,7 @@
  *
  * For single-domain mode, the script generates only the specified domain's
  * output files from the registry, applies branding transforms, and writes
- * them to `.claude/`. Other domains' files are left untouched.
+ * them to `dist/claude/`. Other domains' files are left untouched.
  *
  * Usage:
  *   bun run scripts/targeted-recompile.ts --domain=agents
@@ -27,21 +27,12 @@
 import { parseArgs } from "util";
 import path from "path";
 
-import { agentRegistry } from "../src/agents/index";
-import { skillRegistry } from "../src/skills/index";
-import { ruleRegistry } from "../src/rules/index";
-import {
-  compileAgent,
-  compileSkill,
-  compileRule,
-} from "../src/compilers/__helpers/compile";
 import { transformOutputsToTemplates } from "../src/compilers";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 import { runDeploy } from "./build-deploy";
 import { ensureDir } from "./build-utils";
-
-const VALID_DOMAINS = ["agents", "skills", "rules", "hooks"] as const;
-type Domain = (typeof VALID_DOMAINS)[number];
+import { generateDomainOutputs, VALID_DOMAINS } from "./build-shared";
+import type { Domain } from "./build-shared";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
@@ -67,78 +58,6 @@ if (domain !== "all" && !VALID_DOMAINS.includes(domain as Domain)) {
 }
 
 /**
- * Generate outputs for a single domain into a Map.
- *
- * @param d - The domain to generate outputs for
- * @returns Map of relative file paths to content strings
- */
-async function generateDomainOutputs(d: Domain): Promise<Map<string, string>> {
-  const generated = new Map<string, string>();
-
-  switch (d) {
-    case "agents":
-      for (const [name, createAgent] of Object.entries(agentRegistry)) {
-        const instance = createAgent();
-        generated.set(
-          `.claude/agents/${name}.md`,
-          compileAgent(instance, "CLAUDE"),
-        );
-      }
-      break;
-
-    case "skills":
-      for (const [name, createSkill] of Object.entries(skillRegistry)) {
-        const instance = createSkill();
-        generated.set(
-          `.claude/skills/${name}/SKILL.md`,
-          compileSkill(instance, "CLAUDE"),
-        );
-      }
-      break;
-
-    case "rules":
-      for (const [name, createRule] of Object.entries(ruleRegistry)) {
-        const instance = createRule();
-        generated.set(
-          `.claude/rules/${name}.md`,
-          compileRule(instance, "CLAUDE"),
-        );
-      }
-      break;
-
-    case "hooks": {
-      // Hooks use the full compile+deploy pipeline since they involve
-      // shell wrapper generation and settings.json merging.
-      // For hooks, fall through to the deploy stage which handles everything.
-      const { generateAllShellWrappers } =
-        await import("../src/hooks/__helpers/generate-shell-wrappers");
-      const {
-        resolveCanonicalRegistry,
-        generateClaudeHooksConfigFromCanonical,
-      } = await import("../src/hooks/index");
-
-      const canonical = resolveCanonicalRegistry();
-      const wrappers = generateAllShellWrappers();
-      for (const [outputPath, content] of Object.entries(wrappers)) {
-        generated.set(outputPath, content);
-      }
-
-      const hooksConfig = generateClaudeHooksConfigFromCanonical(canonical, {
-        commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
-        scriptExtension: ".sh",
-      });
-      generated.set(
-        ".claude/settings.json__hooks",
-        JSON.stringify(hooksConfig, null, 2),
-      );
-      break;
-    }
-  }
-
-  return generated;
-}
-
-/**
  * Write generated outputs to disk, applying branding transforms for
  * agents and skills (rules and hooks are written as-is).
  *
@@ -153,8 +72,8 @@ async function writeDomainOutputs(
   const transformed = transformOutputsToTemplates(generated);
 
   for (const [relPath, content] of transformed) {
-    // Only write .claude/ entries (skip dist/plugin/)
-    if (!relPath.startsWith(".claude/")) continue;
+    // Only write dist/claude/ entries (skip dist/plugin/)
+    if (!relPath.startsWith("dist/claude/")) continue;
 
     const absPath = path.join(packageRoot, relPath);
     await ensureDir(path.dirname(absPath));

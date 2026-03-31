@@ -15,6 +15,38 @@ import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { HookDefinition } from "../__schemas/hook.schemas";
 import { canonicalToLegacy } from "./platform-adapters";
 
+// ─── Vault guard prompt (co-located with hook definitions) ──────────────────
+
+/**
+ * Canonical vault-guard prompt text injected into PreToolUse hooks.
+ *
+ * This prompt validates MuninnDB writes against the vault routing table
+ * before they proceed, catching misrouted memories at write time.
+ *
+ * NOTE: This prompt text must stay in sync with the prompt in
+ *   packages/luca-framework/templates/hooks/settings-hooks.json
+ *   (the PreToolUse entry with matcher "mcp__muninn__muninn_remember...")
+ */
+export const VAULT_GUARD_PROMPT =
+  "VAULT ROUTING GUARD — Validate this MuninnDB write before it proceeds.\n\n" +
+  "1. Read the `vault` and `concept` parameters from the pending tool call.\n" +
+  "2. Resolve the expected repo vault: read `.planning/config.json` field `muninn.vault`. " +
+  "If the file does not exist or the field is missing, fall back to env var `LUCA_MUNINN_VAULT`. " +
+  'If that is also unset, fall back to `"default"`.\n' +
+  "3. Check the concept prefix against the write routing table:\n" +
+  '   - REPO VAULT targets (MUST use the resolved repo vault, NOT "default" — unless repo vault IS "default"): ' +
+  "`session:*`, `brain:project-*`, `metric:signal-rate-*`, `version:*`, `milestone:*`\n" +
+  '   - DEFAULT VAULT targets (MUST use "default"): ' +
+  "`pattern:*`, `pitfall:*`, `preference:*`, `brain:user-*`, `procedure:*`, `process:*`\n" +
+  "4. DECISION:\n" +
+  "   - If the vault parameter matches the expected target for the concept prefix: " +
+  'ALLOW the call. Respond with exactly: `{"decision":"allow"}`\n' +
+  "   - If misrouted: BLOCK the call. Respond with: " +
+  '`{"decision":"block","reason":"Concept prefix \'<prefix>\' must target vault \'<expected_vault>\' ' +
+  "but was routed to '<actual_vault>'. Fix the vault parameter before retrying.\"}`\n" +
+  "   - If the concept prefix does not match any known row, apply the ambiguity heuristic: " +
+  '"Would this memory be useful in a completely different repo?" Yes -> expect "default". No -> expect repo vault.';
+
 // ─── Canonical hook registry (platform-independent, source of truth) ────────
 
 /**
@@ -33,14 +65,6 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Checking workflow state...",
   }),
-  "post-edit-format": () => ({
-    event: "post_tool_use",
-    tool_filter: "Edit|Write",
-    script: "post-edit-format.ts",
-    timeout: 10,
-    async: false,
-    status_message: "Formatting...",
-  }),
   "post-edit-typecheck": () => ({
     event: "post_tool_use",
     tool_filter: "Edit|Write",
@@ -48,6 +72,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     timeout: 30,
     async: true,
     status_message: "Type-checking...",
+  }),
+  "post-edit-format": () => ({
+    event: "post_tool_use",
+    tool_filter: "Edit|Write",
+    script: "post-edit-format.ts",
+    timeout: 15,
+    async: true,
+    status_message: "Formatting...",
   }),
   "pre-commit-gate": () => ({
     event: "pre_tool_use",
@@ -83,19 +115,19 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: true,
     status_message: "Syncing STATE.md...",
   }),
-  "context-monitor": () => ({
-    event: "stop",
-    script: "context-monitor.ts",
-    timeout: 5,
-    async: false,
-    status_message: "Checking context usage...",
-  }),
   "session-persist": () => ({
     event: "session_end",
     script: "session-persist.ts",
     timeout: 10,
     async: false,
     status_message: "Saving session state...",
+  }),
+  "session-end-audit": () => ({
+    event: "session_end",
+    script: "session-end-audit.ts",
+    timeout: 10,
+    async: true,
+    status_message: "Auditing session state...",
   }),
   "session-start": () => ({
     event: "session_start",
@@ -118,26 +150,19 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Restoring context...",
   }),
-  "user-prompt-submit": () => ({
-    event: "user_prompt_submit",
-    script: "user-prompt-submit.ts",
-    timeout: 5,
-    async: true,
-    status_message: "Saving prompt observation...",
-  }),
-  "subagent-stop": () => ({
-    event: "subagent_stop",
-    script: "subagent-stop.ts",
-    timeout: 5,
-    async: true,
-    status_message: "Capturing subagent summary...",
-  }),
   "post-tool-use-failure": () => ({
     event: "post_tool_use_failure",
     script: "post-tool-use-failure.ts",
     timeout: 5,
     async: true,
     status_message: "Recording failure pattern...",
+  }),
+  "user-prompt-submit": () => ({
+    event: "user_prompt_submit",
+    script: "user-prompt-submit.ts",
+    timeout: 8,
+    async: true,
+    status_message: "Recording observation...",
   }),
   "muninn-context-recall": () => ({
     event: "user_prompt_submit",
@@ -151,7 +176,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Bash|Skill|Agent",
     script: "pre-step-enforcement.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating step prerequisites...",
   }),
   "pre-step-pr-address": () => ({
@@ -159,15 +184,31 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-pr-address.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating pr-address step order...",
+  }),
+  "skill-status-enter": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Skill",
+    script: "skill-status-enter.ts",
+    timeout: 3,
+    async: false,
+    status_message: "Tracking skill...",
+  }),
+  "skill-status-exit": () => ({
+    event: "post_tool_use",
+    tool_filter: "Skill",
+    script: "skill-status-exit.ts",
+    timeout: 3,
+    async: true,
+    status_message: "Clearing skill status...",
   }),
   "pre-step-milestone-complete": () => ({
     event: "pre_tool_use",
     tool_filter: "Skill|Agent",
     script: "pre-step-milestone-complete.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating milestone-complete step order...",
   }),
   "pre-step-verify": () => ({
@@ -175,7 +216,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-verify.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating verify step order...",
   }),
   "pre-step-phase-execute": () => ({
@@ -183,7 +224,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-phase-execute.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating phase-execute step order...",
   }),
   "pre-step-lu": () => ({
@@ -191,15 +232,24 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-lu.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating lu step order...",
   }),
-  "session-end-audit": () => ({
-    event: "stop",
-    script: "session-end-audit.ts",
-    timeout: 10,
+  "agent-status-sync": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Agent",
+    script: "agent-status-sync.ts",
+    timeout: 3,
+    async: false,
+    status_message: "Updating status...",
+  }),
+  "agent-transition-sync": () => ({
+    event: "post_tool_use",
+    tool_filter: "Agent",
+    script: "agent-transition-sync.ts",
+    timeout: 5,
     async: true,
-    status_message: "Auditing session state...",
+    status_message: "Syncing state...",
   }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
