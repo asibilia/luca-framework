@@ -34,6 +34,8 @@ const hook = createSubSkillEnforcementHook({
     "discuss-",
     "plan-",
     "plan-gaps-",
+    "plan-review-",
+    "plan-revise-",
     "execute-",
     "execute-gaps-",
     "harness-",
@@ -42,6 +44,19 @@ const hook = createSubSkillEnforcementHook({
     "review-",
     "learn-",
     "process-data-",
+    // v2 research agents
+    "research-scope-",
+    "research-arch-",
+    "research-impl-",
+    "research-eco-",
+    "research-risk-",
+    "research-synth-",
+    "research-expand-",
+    "research-graduate-",
+    // v2 research reviewers
+    "review-accuracy-",
+    "review-completeness-",
+    "review-actionability-",
   ]),
   validStates: {
     // Singleton agents
@@ -61,6 +76,21 @@ const hook = createSubSkillEnforcementHook({
     "review-": new Set(["executing"]),
     "learn-": new Set(["executing"]),
     "process-data-": new Set(["executing"]),
+    // v2 research agents (valid during executing)
+    "research-scope-": new Set(["executing"]),
+    "research-arch-": new Set(["executing"]),
+    "research-impl-": new Set(["executing"]),
+    "research-eco-": new Set(["executing"]),
+    "research-risk-": new Set(["executing"]),
+    "research-synth-": new Set(["executing"]),
+    "research-expand-": new Set(["executing"]),
+    "research-graduate-": new Set(["executing"]),
+    "review-accuracy-": new Set(["executing"]),
+    "review-completeness-": new Set(["executing"]),
+    "review-actionability-": new Set(["executing"]),
+    // v2 plan review
+    "plan-review-": new Set(["executing"]),
+    "plan-revise-": new Set(["executing"]),
     // Milestone agents
     "milestone-learn": new Set(["executing"]),
     "milestone-prune": new Set(["executing"]),

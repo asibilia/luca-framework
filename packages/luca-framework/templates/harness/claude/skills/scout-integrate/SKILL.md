@@ -21,7 +21,7 @@ Sub-skill for Step 6 of the scout pipeline (cross-cutting batch).
 3. Read the integration analysis document for per-scout verdicts
 4. For each scout verdict:
    - **integrate**: Advance state to INTEGRATION_ANALYZED, continue to todo generation
-   - **defer**: Create deferred document in docs/scouting/deferred/{date}-{slug}.md, advance state to DEFERRED
+   - **defer**: Create deferred document in .planning/scouting/deferred/{date}-{slug}.md, advance state to DEFERRED
    - **conflict**: Create manual-review document with conflict annotation, advance state to CONFLICTING
 
 ## Deferred Document

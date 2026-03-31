@@ -251,6 +251,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: true,
     status_message: "Syncing state...",
   }),
+  "pre-step-lu-allowlist": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Agent",
+    script: "pre-step-lu-allowlist.ts",
+    timeout: 3,
+    async: true,
+    status_message: "Checking agent allowlist...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:

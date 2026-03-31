@@ -324,6 +324,10 @@ const ORCHESTRATOR_MAPPINGS: readonly OrchestratorMapping[] = [
         excludePrefixes: ["learn-route"],
         effects: [{ type: "transition", event: "LEARN_COMPLETE" }],
       },
+      {
+        prefix: "process-data-",
+        effects: [{ type: "transition", event: "LEARN_COMPLETE" }],
+      },
     ],
   },
 ];
@@ -435,7 +439,7 @@ const main = async (): Promise<void> => {
     // Only act on Agent tool invocations
     if (!data || data.tool_name !== "Agent") return exitSuccess();
 
-    // Extract agent name from tool_input.name
+    // Extract agent name: prefer subagent_type (clean identity), fall back to name
     const toolInput = extractToolInput(data);
     const agentName = toolInput?.name;
     if (typeof agentName !== "string" || agentName.length === 0)

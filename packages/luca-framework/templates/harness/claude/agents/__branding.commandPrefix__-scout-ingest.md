@@ -82,7 +82,7 @@ You receive a single article URL as your argument.
    - Truncate to ~50 characters at a word boundary
    - Example: "Building Reliable Agent Systems with LLMs" -> "building-reliable-agent-systems-with-llms"
 
-5. **Write the digest file** to `docs/scouting/digests/{YYYY-MM-DD}-{slug}.md`
+5. **Write the digest file** to `.planning/scouting/digests/{YYYY-MM-DD}-{slug}.md`
    - Use today's date for the filename prefix
    - Use the ingestion date (today) for the frontmatter `ingested` field
 
@@ -175,7 +175,7 @@ This article could not be fetched automatically. It has been routed to manual re
 <!-- To be filled manually after reviewing the article -->
 ```
 
-Write fetch-failed stubs to the same path: `docs/scouting/digests/{YYYY-MM-DD}-{slug}.md`
+Write fetch-failed stubs to the same path: `.planning/scouting/digests/{YYYY-MM-DD}-{slug}.md`
 When the fetch fails, derive the slug from the URL domain and path segments instead of the title.
 
 ### Content Extraction Guidelines

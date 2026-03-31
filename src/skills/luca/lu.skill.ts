@@ -8,6 +8,32 @@
  * The compiled SKILL.md references templates by name — the LLM reads the
  * file at runtime via the Read tool. This keeps the compiled output small.
  *
+ * ## Three-Layer Observability Architecture (Phase 250)
+ *
+ * Layer A — State machine transitions:
+ *   The skill prompt emits luca-bridge transitions (PHASE_START, HARNESS_COMPLETE,
+ *   PHASE_COMPLETE, etc.) and the agent-transition-sync hook auto-fires transitions
+ *   for discuss-*, plan-*, verify-*, learn-* agent completions.
+ *   Files: this file + src/hooks/scripts/agent-transition-sync.ts
+ *
+ * Layer B — Agent type routing:
+ *   Every Agent() call specifies subagent_type (lu-executor, lu-planner, etc.)
+ *   and model (resolved from MODEL_ROUTING_TABLE by complexity level).
+ *   Files: this file + src/complexity/__helpers/model-routing.ts
+ *
+ * Layer C — Pipeline enforcement:
+ *   pre-step-lu.ts validates agent names against state machine state.
+ *   pre-step-lu-allowlist.ts warns on unregistered agent names.
+ *   agent-status-sync.ts updates the statusline HUD.
+ *   Files: src/hooks/scripts/pre-step-lu.ts, pre-step-lu-allowlist.ts, agent-status-sync.ts
+ *
+ * To add a new agent to the pipeline, update all four hook files:
+ *   1. agent-status-sync.ts (LU_STEP_MAP) — status display
+ *   2. agent-transition-sync.ts (lu block) — if it needs a state transition
+ *   3. pre-step-lu.ts (agentPrefixes + validStates) — enforcement
+ *   4. pre-step-lu-allowlist.ts (REGISTERED) — allowlist
+ *   5. model-routing.ts (MODEL_ROUTING_TABLE) — if new subagent_type
+ *
  * @see src/skills/__helpers/agent-prompts.ts
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
@@ -37,6 +63,51 @@ The single entry point for all Luca workflows. This is a **flat Agent() orchestr
 3. **NEVER write code directly** — delegate to Agent() sub-agents for all code work
 4. **Prompt templates** are in \`src/skills/__helpers/agent-prompts.ts\` — read that file with the Read tool when you need a template, then pass its content as the Agent() prompt
 5. **v2 prompt templates** are also in \`agent-prompts.ts\` — RESEARCH_SCOPE_PROMPT, PARALLEL_RESEARCH_PROMPT, RESEARCH_SYNTHESIS_PROMPT, RESEARCH_REVIEW_PROMPT, RESEARCH_GRADUATION_PROMPT, PLAN_REVIEW_PROMPT
+6. **Agent type routing** — every Agent() call MUST include \`subagent_type\` and \`model\`. After Step 2 determines COMPLEXITY, resolve model tiers from the routing table: fast→"haiku", balanced→"sonnet", capable→"opus". See the agent-to-type mapping table below.
+
+## Agent Type Mapping
+
+When spawning Agent() calls, ALWAYS include \`subagent_type\` and \`model\`:
+
+| Agent name pattern | subagent_type | Routing preset |
+|---|---|---|
+| cognition, classify-* | lu-cognition | ALWAYS_FAST (always haiku) |
+| configure | lu-cognition | ALWAYS_FAST |
+| backlog | lu-phase-researcher | ORCHESTRATOR |
+| discuss-* | lu-discuss-researcher | ORCHESTRATOR |
+| plan-*, plan-revise-*, plan-gaps-* | lu-planner | ORCHESTRATOR |
+| plan-review-* | lu-plan-checker | ORCHESTRATOR |
+| execute-*, execute-gaps-*, fix-* | lu-executor | ORCHESTRATOR |
+| harness-* | lu-verifier-fast | FAST_PROMOTED |
+| verify-* | lu-verifier | DEEP_ANALYSIS |
+| review-arch-* | code-architect | DEEP_ANALYSIS |
+| review-dx-* | dx-advocate | DEEP_ANALYSIS |
+| review-security-* | security-auditor | DEEP_ANALYSIS |
+| review-simplify-* | code-simplifier | DEEP_ANALYSIS |
+| learn-*, milestone-learn, milestone-archive, milestone-finalize | lu-learner | FAST_PROMOTED |
+| process-data-* | lu-process-data | FAST_PROMOTED |
+| milestone-prune | lu-shadow-scanner | FAST_PROMOTED |
+| milestone-shadow | lu-shadow-scanner | FAST_PROMOTED |
+| research-scope-* | lu-phase-researcher | ORCHESTRATOR |
+| research-arch-* | lu-architecture-researcher | ROUTER |
+| research-impl-* | lu-implementation-researcher | ROUTER |
+| research-eco-* | lu-ecosystem-researcher | ROUTER |
+| research-risk-* | lu-risk-researcher | ROUTER |
+| research-synth-*, research-expand-* | lu-research-synthesizer | ORCHESTRATOR |
+| research-graduate-* | lu-research-graduator | ORCHESTRATOR |
+| review-accuracy-* | lu-accuracy-reviewer | DEEP_ANALYSIS |
+| review-completeness-* | lu-completeness-reviewer | DEEP_ANALYSIS |
+| review-actionability-* | lu-actionability-reviewer | DEEP_ANALYSIS |
+
+**Routing presets by COMPLEXITY (resolve after Step 2):**
+
+| Preset | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+|---|---|---|---|---|---|
+| ALWAYS_FAST | haiku | haiku | haiku | haiku | haiku |
+| FAST_PROMOTED | haiku | haiku | haiku | haiku | sonnet |
+| ROUTER | haiku | haiku | sonnet | sonnet | sonnet |
+| ORCHESTRATOR | haiku | sonnet | sonnet | opus | opus |
+| DEEP_ANALYSIS | haiku | sonnet | opus | opus | opus |
 
 ## Context File: \`/tmp/lu-context.json\`
 
@@ -59,6 +130,11 @@ if [ -z "$REPO_VAULT" ]; then REPO_VAULT=\${LUCA_MUNINN_VAULT:-default}; fi
 
 Parse user request and all CLI flags.
 
+**Initialize state machine:**
+\`\`\`bash
+luca-bridge ensure-init 2>/dev/null || true
+\`\`\`
+
 **Crash recovery:**
 \`\`\`bash
 EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state lu 2>/dev/null || echo "")
@@ -76,8 +152,8 @@ fi
 
 Read \`agent-prompts.ts\`, spawn:
 \`\`\`
-Agent(name: "cognition", prompt: COGNITION_PROMPT({phase, complexity, vault, currentState}))
-Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
+Agent(name: "cognition", subagent_type: "lu-cognition", model: ALWAYS_FAST, prompt: COGNITION_PROMPT({phase, complexity, vault, currentState}))
+Agent(name: "classify", subagent_type: "lu-cognition", model: ALWAYS_FAST, prompt: CLASSIFY_PROMPT({...}))
 \`\`\`
 
 Parse COMPLEXITY and ROUTE from classify agent's output.
@@ -92,7 +168,7 @@ luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_
 
 **If ROUTE != "phase-execute":** Handle non-phase-execute routes:
 \`\`\`
-Agent(name: "{route}-handler", prompt: ROUTE_HANDLER_PROMPT(route, {...}))
+Agent(name: "{route}-handler", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: ROUTE_HANDLER_PROMPT(route, {...}))
 \`\`\`
 Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write "complete", RETURN.
 
@@ -101,7 +177,7 @@ Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write 
 ### Step 4: Configure Session (routed -> configured)
 
 \`\`\`
-Agent(name: "configure", prompt: CONFIGURE_PROMPT({...}))
+Agent(name: "configure", subagent_type: "lu-cognition", model: ALWAYS_FAST, prompt: CONFIGURE_PROMPT({...}))
 \`\`\`
 
 **v2 config resolution:**
@@ -114,6 +190,10 @@ if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 \`\`\`
 
 ### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
+
+\`\`\`bash
+luca-bridge write-status --step="git-setup" --stage="EXECUTING" --detail="Creating issue and branch" 2>/dev/null || true
+\`\`\`
 
 If --skip-branch flag is present: SKIP this step entirely.
 
@@ -162,10 +242,14 @@ If --skip-backlog or config backlog_scan==false: skip.
 
 Otherwise:
 \`\`\`
-Agent(name: "backlog", prompt: BACKLOG_PROMPT({...}))
+Agent(name: "backlog", subagent_type: "lu-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: BACKLOG_PROMPT({...}))
 \`\`\`
 
 ### Step 6: Build Phase Execution Order (INLINE)
+
+\`\`\`bash
+luca-bridge write-status --step="phase-order" --stage="EXECUTING" --detail="Building execution order" 2>/dev/null || true
+\`\`\`
 
 Read .planning/ROADMAP.md. Parse incomplete phases. Build dependency graph. Topological sort. Apply MAX_PHASES limit. If --dry-run: display plan and RETURN.
 
@@ -175,6 +259,12 @@ Read .planning/ROADMAP.md. Parse incomplete phases. Build dependency graph. Topo
 
 Write loop counter to context file for recovery: \`{"loop_index": N, "remaining_phases": [...]}\`
 
+**Emit PHASE_START:**
+\`\`\`bash
+luca-bridge transition --event=PHASE_START --data='{"phase_id":PHASE_NUMBER}' 2>/dev/null || true
+luca-bridge write-status --step="phase-start" --phase=PHASE_NUMBER --stage="EXECUTING" 2>/dev/null || true
+\`\`\`
+
 #### 7a. Phase dependency check (INLINE)
 Verify all dependencies complete. If not: park phase, continue.
 
@@ -183,7 +273,7 @@ If oversight != "full-auto": prompt user for phase confirmation.
 
 #### 7c. Per-phase complexity re-classify
 \`\`\`
-Agent(name: "classify-{NN}", prompt: CLASSIFY_PROMPT({phase: NN, ...}))
+Agent(name: "classify-{NN}", subagent_type: "lu-cognition", model: ALWAYS_FAST, prompt: CLASSIFY_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7d. Gate resolution (INLINE)
@@ -201,47 +291,47 @@ PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 
 **7d-v2a. Research Scope** (skip if research/ directory already populated)
 \`\`\`
-Agent(name: "research-scope-{NN}", prompt: RESEARCH_SCOPE_PROMPT({phase: NN, ...}))
+Agent(name: "research-scope-{NN}", subagent_type: "lu-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_SCOPE_PROMPT({phase: NN, ...}))
 \`\`\`
 Parse RESEARCH-SCOPE.md to get specialist assignments.
 
 **7d-v2b. Parallel Research** (spawn 4 specialists simultaneously)
 \`\`\`
-Agent(name: "research-arch-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("architecture", {...}))
-Agent(name: "research-impl-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("implementation", {...}))
-Agent(name: "research-eco-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("ecosystem", {...}))
-Agent(name: "research-risk-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("risks", {...}))
+Agent(name: "research-arch-{NN}", subagent_type: "lu-architecture-researcher", model: ROUTER_MODEL, prompt: PARALLEL_RESEARCH_PROMPT("architecture", {...}))
+Agent(name: "research-impl-{NN}", subagent_type: "lu-implementation-researcher", model: ROUTER_MODEL, prompt: PARALLEL_RESEARCH_PROMPT("implementation", {...}))
+Agent(name: "research-eco-{NN}", subagent_type: "lu-ecosystem-researcher", model: ROUTER_MODEL, prompt: PARALLEL_RESEARCH_PROMPT("ecosystem", {...}))
+Agent(name: "research-risk-{NN}", subagent_type: "lu-risk-researcher", model: ROUTER_MODEL, prompt: PARALLEL_RESEARCH_PROMPT("risks", {...}))
 \`\`\`
 
 **7d-v2c. Research Synthesis**
 \`\`\`
-Agent(name: "research-synth-{NN}", prompt: RESEARCH_SYNTHESIS_PROMPT({phase: NN, ...}))
+Agent(name: "research-synth-{NN}", subagent_type: "lu-research-synthesizer", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_SYNTHESIS_PROMPT({phase: NN, ...}))
 \`\`\`
 
 **7d-v2d. Research Review Loop** (iterate up to researchReviewIterations)
 \`\`\`
 FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
   # Spawn 3 reviewers in parallel
-  Agent(name: "review-accuracy-{NN}", prompt: RESEARCH_REVIEW_PROMPT("accuracy", {...}))
-  Agent(name: "review-completeness-{NN}", prompt: RESEARCH_REVIEW_PROMPT("completeness", {...}))
-  Agent(name: "review-actionability-{NN}", prompt: RESEARCH_REVIEW_PROMPT("actionability", {...}))
+  Agent(name: "review-accuracy-{NN}", subagent_type: "lu-accuracy-reviewer", model: DEEP_MODEL, prompt: RESEARCH_REVIEW_PROMPT("accuracy", {...}))
+  Agent(name: "review-completeness-{NN}", subagent_type: "lu-completeness-reviewer", model: DEEP_MODEL, prompt: RESEARCH_REVIEW_PROMPT("completeness", {...}))
+  Agent(name: "review-actionability-{NN}", subagent_type: "lu-actionability-reviewer", model: DEEP_MODEL, prompt: RESEARCH_REVIEW_PROMPT("actionability", {...}))
   # Check results
   IF all reviewers PASS or no CRITICAL_GAPS: BREAK
   # Expand research for gaps
-  Agent(name: "research-expand-{NN}-{iteration}", prompt: expand gaps from reviewer feedback)
-  Agent(name: "research-synth-{NN}-{iteration}", prompt: RESEARCH_SYNTHESIS_PROMPT re-merge)
+  Agent(name: "research-expand-{NN}-{iteration}", subagent_type: "lu-research-synthesizer", model: ORCHESTRATOR_MODEL, prompt: expand gaps from reviewer feedback)
+  Agent(name: "research-synth-{NN}-{iteration}", subagent_type: "lu-research-synthesizer", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_SYNTHESIS_PROMPT re-merge)
 \`\`\`
 
 **7d-v2e. Research Graduation**
 \`\`\`
-Agent(name: "research-graduate-{NN}", prompt: RESEARCH_GRADUATION_PROMPT({phase: NN, ...}))
+Agent(name: "research-graduate-{NN}", subagent_type: "lu-research-graduator", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_GRADUATION_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7e. Discussion (conditional: skip if --skip-discuss)
 
 
 \`\`\`
-Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-premortem)
+Agent(name: "discuss-{NN}", subagent_type: "lu-discuss-researcher", model: ORCHESTRATOR_MODEL, prompt: phase discussion with premortem if --run-premortem)
 \`\`\`
 After discussion returns (or if skipped):
 \`\`\`bash
@@ -255,7 +345,7 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 
 
 \`\`\`
-Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
+Agent(name: "plan-{NN}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping)
 \`\`\`
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -265,37 +355,46 @@ Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
 \`\`\`
 PREVIOUS_ISSUES=""
 FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
-  Agent(name: "plan-review-{NN}-{iteration}", prompt: PLAN_REVIEW_PROMPT(iteration, PREVIOUS_ISSUES, {...}))
+  Agent(name: "plan-review-{NN}-{iteration}", subagent_type: "lu-plan-checker", model: ORCHESTRATOR_MODEL, prompt: PLAN_REVIEW_PROMPT(iteration, PREVIOUS_ISSUES, {...}))
   Parse RECOMMEND from agent output.
   IF RECOMMEND == "approve": BREAK
   IF RECOMMEND == "escalate": prompt user for decision, BREAK
   # Planner revises
   PREVIOUS_ISSUES = agent's issues output
-  Agent(name: "plan-revise-{NN}-{iteration}", prompt: revise PLAN.md based on issues)
+  Agent(name: "plan-revise-{NN}-{iteration}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: revise PLAN.md based on issues)
 \`\`\`
 
 #### 7h. Execution
 
 
 \`\`\`
-Agent(name: "execute-{NN}", prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
+Agent(name: "execute-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7i. Harness Fix Loop (INLINE, hoisted)
 
+\`\`\`bash
+luca-bridge write-status --step="harness" --stage="VERIFYING" --phase=PHASE_NUMBER 2>/dev/null || true
+\`\`\`
 
 \`\`\`
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
-  Agent(name: "harness-{NN}", prompt: HARNESS_CHECK_PROMPT({...}))
+  Agent(name: "harness-{NN}", subagent_type: "lu-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({...}))
   IF PASSED: BREAK
-  Agent(name: "fix-{NN}", prompt: HARNESS_FIX_PROMPT(errors, {...}))
+  Agent(name: "fix-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: HARNESS_FIX_PROMPT(errors, {...}))
+\`\`\`
+
+**After harness loop, emit result:**
+\`\`\`bash
+# Parse PASSED and error count from last harness agent output
+luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_failed","total_errors":ERROR_COUNT}' 2>/dev/null || true
 \`\`\`
 
 #### 7j. Goal-backward verification
 
 
 \`\`\`
-Agent(name: "verify-{NN}", prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
+Agent(name: "verify-{NN}", subagent_type: "lu-verifier", model: DEEP_MODEL, prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7k. Code review (conditional: complexity >= MODERATE, not --skip-review)
@@ -303,22 +402,25 @@ Agent(name: "verify-{NN}", prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 
 Spawn PARALLEL reviewers:
 \`\`\`
-Agent(name: "review-arch-{NN}", prompt: CODE_REVIEW_PROMPT("architecture", {...}))
-Agent(name: "review-dx-{NN}", prompt: CODE_REVIEW_PROMPT("dx-advocate", {...}))
-Agent(name: "review-security-{NN}", prompt: CODE_REVIEW_PROMPT("security", {...}))
-Agent(name: "review-simplify-{NN}", prompt: CODE_REVIEW_PROMPT("simplifier", {...}))
+Agent(name: "review-arch-{NN}", subagent_type: "code-architect", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("architecture", {...}))
+Agent(name: "review-dx-{NN}", subagent_type: "dx-advocate", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("dx-advocate", {...}))
+Agent(name: "review-security-{NN}", subagent_type: "security-auditor", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("security", {...}))
+Agent(name: "review-simplify-{NN}", subagent_type: "code-simplifier", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("simplifier", {...}))
 \`\`\`
 
 #### 7l. Learning capture
 
 
 \`\`\`
-Agent(name: "learn-{NN}", prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
+Agent(name: "learn-{NN}", subagent_type: "lu-learner", model: FAST_PROMOTED_MODEL, prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7m. Process data (conditional: --run-process-data)
 \`\`\`
-Agent(name: "process-data-{NN}", prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
+Agent(name: "process-data-{NN}", subagent_type: "lu-process-data", model: FAST_PROMOTED_MODEL, prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
+\`\`\`
+\`\`\`bash
+luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 \`\`\`
 
 #### 7n. Commit (INLINE)
@@ -334,11 +436,16 @@ git push
 #### 7o. Update state (INLINE)
 Mark phase complete in ROADMAP.md. Write loop counter + remaining phases to context file.
 
+**Emit PHASE_COMPLETE:**
+\`\`\`bash
+luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":PHASE_NUMBER,"summary":"Phase PHASE_NUMBER completed"}' 2>/dev/null || true
+\`\`\`
+
 #### 7p. Gap closure retry (INLINE, if phase had failures)
 \`\`\`
 FOR retry = 1 to GAP_RETRIES:
-  Agent(name: "plan-gaps-{NN}", prompt: plan only for gaps)
-  Agent(name: "execute-gaps-{NN}", prompt: execute gap plan only)
+  Agent(name: "plan-gaps-{NN}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: plan only for gaps)
+  Agent(name: "execute-gaps-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: execute gap plan only)
   Re-run harness (7i pattern)
   IF gaps closed: BREAK
 IF still failing: park phase, cascade to dependents
@@ -346,13 +453,17 @@ IF still failing: park phase, cascade to dependents
 
 ### Step 8: Milestone Boundary Check
 
+\`\`\`bash
+luca-bridge write-status --step="milestone" --stage="EXECUTING" --detail="Checking milestone boundary" 2>/dev/null || true
+\`\`\`
+
 If all phases in current milestone complete:
 \`\`\`
-Agent(name: "milestone-learn", prompt: MILESTONE_LEARN_PROMPT({...}))
-Agent(name: "milestone-prune", prompt: MILESTONE_PRUNE_PROMPT({...}))
-Agent(name: "milestone-shadow", prompt: MILESTONE_SHADOW_PROMPT({...}))  # conditional
-Agent(name: "milestone-archive", prompt: MILESTONE_ARCHIVE_PROMPT({...}))
-Agent(name: "milestone-finalize", prompt: MILESTONE_FINALIZE_PROMPT({...}))
+Agent(name: "milestone-learn", subagent_type: "lu-learner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_LEARN_PROMPT({...}))
+Agent(name: "milestone-prune", subagent_type: "lu-shadow-scanner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_PRUNE_PROMPT({...}))
+Agent(name: "milestone-shadow", subagent_type: "lu-shadow-scanner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_SHADOW_PROMPT({...}))  # conditional
+Agent(name: "milestone-archive", subagent_type: "lu-learner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_ARCHIVE_PROMPT({...}))
+Agent(name: "milestone-finalize", subagent_type: "lu-learner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_FINALIZE_PROMPT({...}))
 \`\`\`
 
 #### 8a. Create Pull Request (INLINE, conditional: not --skip-branch)

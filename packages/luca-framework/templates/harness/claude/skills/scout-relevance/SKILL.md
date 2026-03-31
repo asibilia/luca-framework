@@ -32,7 +32,7 @@ KEY_MATCHES: [comma-separated list of matching <%= branding.frameworkName %> dom
 ## Routing Logic
 
 - **HIGH or MEDIUM**: Return success — orchestrator continues the pipeline
-- **LOW**: Write a manual-review document to `docs/scouting/manual-review/{date}-{slug}.md` explaining why, then return LOW status
+- **LOW**: Write a manual-review document to `.planning/scouting/manual-review/{date}-{slug}.md` explaining why, then return LOW status
 
 ## Conservative Scoring
 
