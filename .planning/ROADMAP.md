@@ -250,14 +250,14 @@ Automated article ingestion, research, and actionable todo generation from exter
 - [x] scout-deferred-command — Add `/scout --deferred` to list and re-evaluate deferred items
 - [x] scout-workflow-documentation — Create user-facing README, agent JSDoc, and architecture documentation
 
-### Phase 245: Fix deepFreeze Zod v4 Crash
+### Phase 245: Fix deepFreeze Zod v4 Crash — COMPLETE
 
 **Goal:** Fix `deepFreeze()` crashing on Zod v4 lazy getters, which breaks all 6 PreToolUse:Agent hooks on startup with TypeError.
 **Complexity:** TRIVIAL
 **Verification:** Quick
 **Depends on:** None
 
-- [ ] fix-deep-freeze — Move `Object.values(obj)` before `Object.freeze(obj)` in `src/shared/__helpers/deep-freeze.ts` so Zod v4's lazy getter-redefine pattern completes while the object is still mutable
+- [x] fix-deep-freeze — Skip getter/setter properties in `deepFreeze()` via `Object.getOwnPropertyDescriptor()` so Zod v4's lazy shape getters don't crash on frozen objects
 
 ### Phase 246: Statusline Rework — Skill Identity, Step Progression & Status Bus — COMPLETE
 
