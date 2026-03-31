@@ -53,6 +53,10 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 ## Process
 
+\`\`\`bash
+luca-bridge write-status --skill=debug --stage=DEBUGGING 2>/dev/null || true
+\`\`\`
+
 ### 0. Resolve Model Profile
 
 \`\`\`bash
@@ -328,6 +332,10 @@ Continue investigating from the checkpoint.
 **Do NOT proceed until the Task returns.**
 
 Loop back to Step 4 to handle the return.
+
+\`\`\`bash
+luca-bridge clear-status 2>/dev/null || true
+\`\`\`
 
 ## Success Criteria
 

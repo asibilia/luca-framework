@@ -33,6 +33,10 @@ Sub-skill for Step 4 of the scout per-article pipeline. Framework impact analysi
 
 ## Process
 
+\\\`\\\`\\\`bash
+luca-bridge write-status --skill=scout-analyze --stage=ANALYZING 2>/dev/null || true
+\\\`\\\`\\\`
+
 1. Read the completed digest document
 2. Scan the Luca codebase for relevant domains:
    - Check existing implementations that relate to the article's techniques
@@ -75,6 +79,10 @@ Reference these key areas:
 - src/iteration/ (budget, convergence)
 - src/context/ (context tier resolution)
 - .claude/rules/ (conventions and rules)
+
+\\\`\\\`\\\`bash
+luca-bridge clear-status 2>/dev/null || true
+\\\`\\\`\\\`
 `,
     },
   ],

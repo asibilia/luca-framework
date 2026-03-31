@@ -21,6 +21,10 @@ Create phases to close gaps identified by milestone audit.
 
 ## Process
 
+\`\`\`bash
+luca-bridge write-status --skill=milestone-gaps --stage=AUDITING 2>/dev/null || true
+\`\`\`
+
 1. **Load audit:**
    - Read \`.planning/v{version}-MILESTONE-AUDIT.md\`
    - Extract gaps section
@@ -52,6 +56,10 @@ Create phases to close gaps identified by milestone audit.
    
    /phase-plan {N} — plan first gap closure phase
    \`\`\`
+
+\`\`\`bash
+luca-bridge clear-status 2>/dev/null || true
+\`\`\`
 
 ## Success Criteria
 
