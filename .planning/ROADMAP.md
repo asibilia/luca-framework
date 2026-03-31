@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.5.2 — Statusline HUD
+**Current Milestone:** v8.6.0 — Scout Article Intelligence
 
 ---
 
@@ -192,18 +192,63 @@ Add workflow HUD to the statusline, close the anti-skip enforcement gap with a P
 
 ---
 
-## Next: v8.6.0 — Scout Article Intelligence
+## v8.6.0 — Scout Article Intelligence
 
 Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
 
-**Prerequisite:** v8.5.0 complete (scout-02 borrows createSkillStateMachine; scout-04 requires progressive disclosure)
+### Phase 241: Scout Foundation
 
-### Planned Phases
+**Goal:** Create the directory structure, state machine schema, document templates, orchestrator skill, deterministic index updater, and shared agent sections for the scouting pipeline.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** None
 
-- **Phase 1: Scout Foundation** (6 todos) — Directory structure, state machine, templates, orchestrator, index updater, shared sections
-- **Phase 2: Per-Article Pipeline** (8 todos) — Ingest, relevance, research, analyst, analyze, impl-research agents + skills
-- **Phase 3: Cross-Cutting Batch** (5 todos) — Integrator, integrate, planner, plan, graduate agents + skills
-- **Phase 4: UX + Docs** (3 todos) — Review command, deferred command, workflow documentation
+- [x] scout-directory-structure — Create `docs/scouting/` directory structure (inbox.md, digests/, integration/, deferred/, manual-review/, .scout-state/, INDEX.md)
+- [x] scout-state-machine — Create `src/shared/__schemas/scout-state.schemas.ts` with state enum, transition table, state file schema, and transition validator
+- [x] scout-document-templates — Create `src/skills/__helpers/scout-templates.ts` with digest, impact analysis, integration analysis, deferred, and manual review templates
+- [x] scout-orchestrator — Create `src/skills/general/scout.skill.ts` deterministic state machine driver with per-article loop and cross-cutting batch
+- [x] scout-index-updater — Create `src/skills/__helpers/scout-index.ts` deterministic INDEX.md auto-update from state files
+- [x] scout-shared-sections — Create `src/agents/__helpers/scout-shared-sections.ts` extending researcher-shared-sections with scout-specific context
+
+### Phase 242: Per-Article Pipeline
+
+**Goal:** Build all agents and skills for the per-article pipeline stages (ingest, relevance, research, analysis, implementation research).
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 241
+
+- [ ] scout-ingest-agent — Create `lu-scout-ingest.agent.ts` (WebFetch article, extract content, produce structured digest)
+- [ ] scout-ingest-skill — Create `scout-ingest.skill.ts` thin wrapper to spawn ingest agent and validate output
+- [ ] scout-relevance-agent — Create `lu-scout-relevance.agent.ts` (quick HIGH/MEDIUM/LOW relevance assessment)
+- [ ] scout-relevance-skill — Create `scout-relevance.skill.ts` wrapper with LOW-relevance routing to manual-review
+- [ ] scout-research-skill — Create `scout-research.skill.ts` spawning two parallel researcher agents for ecosystem + implementation details
+- [ ] scout-analyst-agent — Create `lu-scout-analyst.agent.ts` (framework impact analysis, gap identification, codebase scanning)
+- [ ] scout-analyze-skill — Create `scout-analyze.skill.ts` wrapper to spawn analyst and validate impact document
+- [ ] scout-impl-research-skill — Create `scout-impl-research.skill.ts` for concrete implementation approach research
+
+### Phase 243: Cross-Cutting Batch
+
+**Goal:** Build agents and skills for the cross-cutting batch pipeline (integration analysis, todo planning, memory graduation).
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 242
+
+- [ ] scout-integrator-agent — Create `lu-scout-integrator.agent.ts` (cross-scout cohesion, framework fit, per-scout verdicts)
+- [ ] scout-integrate-skill — Create `scout-integrate.skill.ts` wrapper with verdict routing (integrate/defer/conflict)
+- [ ] scout-planner-agent — Create `lu-scout-planner.agent.ts` (atomic todo generation with conflict detection)
+- [ ] scout-plan-skill — Create `scout-plan.skill.ts` wrapper with conflict routing
+- [ ] scout-graduate-skill — Create `scout-graduate.skill.ts` MuninnDB engram capture following research-graduator pattern
+
+### Phase 244: UX + Docs
+
+**Goal:** Add user-facing commands and comprehensive documentation for the scouting workflow.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 243
+
+- [ ] scout-review-command — Add `/scout --review` to list and re-process manual-review items
+- [ ] scout-deferred-command — Add `/scout --deferred` to list and re-evaluate deferred items
+- [ ] scout-workflow-documentation — Create user-facing README, agent JSDoc, and architecture documentation
 
 ---
 
@@ -455,6 +500,7 @@ Items below are tracked as todo files in `.planning/todos/deferred/` and will on
 - **v8.4.0** — Studio Quality & Bug Fixes: 5 phases, 7 plans, 29 commits, 92 files changed (+2,489 LOC) ([View Archive](milestones/v8.4.0-ROADMAP.md))
 - **v8.5.0** — Anti-Skip Enforcement Layer: 3 phases, 10 plans, 79 commits, 113 files changed (+18,033/-6,800 LOC) ([View Archive](milestones/v8.5.0-ROADMAP.md))
 - **v8.5.1** — Audit Gap Closure: 11 phases, 135 commits, 56 files changed (+8,526/-5,498 LOC) ([View Archive](milestones/v8.5.1-ROADMAP.md))
+- **v8.5.2** — Statusline HUD & Edit Gate: 5 phases, 13 commits, 60 files changed (+3,082/-1,368 LOC) ([View Archive](milestones/v8.5.2-ROADMAP.md))
 
 ---
 
