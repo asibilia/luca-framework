@@ -357,34 +357,34 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] depth-cleanup — Added `.planning/.skill-depth` cleanup to session-start.ts (A5)
 - [x] doc-comments — Added: verify- prefix invariant (A1), BusDataSchema divergence note (A3), T3→T2 coupling note (A4), /tmp CI risk note (SEC-002)
 
-### Phase 253: Convention Alignment & Validation Hardening
+### Phase 253: Convention Alignment & Validation Hardening — COMPLETE
 
 **Goal:** Fix barrel import bypasses, add missing input validation, align schema conventions, and close Bun-first gaps in hooks and scripts. Addresses 7 audit findings (ARCH-M1, SEC-M2, DX-M1, DX-M3, DX-L7, SEC-L5, DRY-L2).
 **Complexity:** SIMPLE
 **Verification:** Quick
 **Depends on:** Phase 252
 
-- [ ] barrel-imports — Replace direct `__helpers/` imports with barrel imports in skill-status-enter.ts, agent-status-sync.ts, agent-prompts.ts (ARCH-M1)
-- [ ] agent-name-regex — Add `/^[a-z0-9-]+$/` regex validation for agent names in agent-status-sync.ts, matching SKILL_NAME_RE pattern (SEC-M2)
-- [ ] bun-first-check-drift — Replace `require('fs').readFileSync` with Bun.file API in check-drift.ts (DX-M1)
-- [ ] realpathsync-doc — Add exception comment documenting why node:fs realpathSync is used in statusline.ts (DX-M3)
-- [ ] stage-enum-casing — Normalize StatusBusSchema stage enum to consistent casing (DX-L7)
-- [ ] sanitize-stdin-json — Replace JSON.parse with sanitizeJsonParse in hook-io.ts readStdinJson (SEC-L5)
-- [ ] extract-tool-input-helper — Extract shared tool_input extraction pattern from 3 hook scripts into hooks/\_\_helpers/ (DRY-L2)
+- [x] barrel-imports — Replace direct `__helpers/` imports with barrel imports in skill-status-enter.ts, agent-status-sync.ts, agent-prompts.ts (ARCH-M1)
+- [x] agent-name-regex — Add `/^[a-z0-9-]+$/` regex validation for agent names in agent-status-sync.ts, matching SKILL_NAME_RE pattern (SEC-M2)
+- [x] bun-first-check-drift — Replace `require('fs').readFileSync` with Bun.file API in check-drift.ts (DX-M1)
+- [x] realpathsync-doc — Add exception comment documenting why node:fs realpathSync is used in statusline.ts (DX-M3)
+- [x] stage-enum-casing — Normalize StatusBusSchema stage enum to consistent casing (DX-L7)
+- [x] sanitize-stdin-json — Replace JSON.parse with sanitizeJsonParse in hook-io.ts readStdinJson (SEC-L5)
+- [x] extract-tool-input-helper — Extract shared tool_input extraction pattern from 3 hook scripts into hooks/\_\_helpers/ (DRY-L2)
 
-### Phase 254: Build Script DRY Consolidation
+### Phase 254: Build Script DRY Consolidation — COMPLETE
 
 **Goal:** Deduplicate build utilities, remove deprecated exports, and consolidate shared logic. Addresses 6 audit findings (DRY-M1, DRY-M3, DRY-L1, DRY-L3, DRY-L5, DX-L8).
 **Complexity:** SIMPLE
 **Verification:** Quick
 **Depends on:** Phase 253
 
-- [ ] shared-branding-context — Extract shared loadBrandingContext() into scripts/branding.ts, used by both check-drift.ts and build-deploy.ts (DRY-M1)
-- [ ] vault-guard-import — Import VAULT_GUARD_PROMPT from canonicalHookRegistry instead of maintaining separate constant in build-utils.ts (DRY-M3)
-- [ ] reuse-entity-loops — Import generate\*Outputs() from build-shared.ts in targeted-recompile.ts instead of re-implementing (DRY-L1)
-- [ ] remove-deprecated-registry — Remove deprecated hookRegistry export, migrate 3 consumers to canonicalHookRegistry (DRY-L3)
-- [ ] top-level-imports — Move dynamic `await import('node:fs')` in build-all.ts and build-compile.ts to top-level imports (DX-L8)
-- [ ] plugin-count-helper — Use computeOutputCounts() for plugin output counting in build-all.ts (DRY-L5)
+- [x] shared-branding-context — Extract shared loadBrandingContext() into scripts/branding.ts, used by both check-drift.ts and build-deploy.ts (DRY-M1)
+- [x] vault-guard-import — Import VAULT_GUARD_PROMPT from canonicalHookRegistry instead of maintaining separate constant in build-utils.ts (DRY-M3)
+- [x] reuse-entity-loops — Import generate\*Outputs() from build-shared.ts in targeted-recompile.ts instead of re-implementing (DRY-L1)
+- [x] remove-deprecated-registry — Remove deprecated hookRegistry export, migrate 3 consumers to canonicalHookRegistry (DRY-L3)
+- [x] top-level-imports — Move dynamic `await import('node:fs')` in build-all.ts and build-compile.ts to top-level imports (DX-L8)
+- [x] plugin-count-helper — Use computeOutputCounts() for plugin output counting in build-all.ts (DRY-L5)
 
 ---
 

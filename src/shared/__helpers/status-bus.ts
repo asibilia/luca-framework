@@ -20,14 +20,20 @@ export const writeStatusBus = async (
   busPath: string = STATUS_BUS_PATH,
 ): Promise<void> => {
   try {
-    // Read existing bus data for merge
+    // Read existing bus data for merge — discard if stale to prevent
+    // old skill names bleeding into new invocations
     let existing: Record<string, unknown> = {};
     try {
       const file = Bun.file(busPath);
       if (await file.exists()) {
         const raw = await file.json();
         const parsed = StatusBusSchema.safeParse(raw);
-        existing = parsed.success ? parsed.data : {};
+        if (parsed.success) {
+          const age = parsed.data.updated_at
+            ? Date.now() - new Date(parsed.data.updated_at).getTime()
+            : Infinity;
+          existing = age <= 300_000 ? parsed.data : {};
+        }
       }
     } catch {
       // Ignore read errors — start fresh
