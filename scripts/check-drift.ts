@@ -28,15 +28,15 @@ import { defaultBranding } from "./branding";
  * Read branding config from .planning/config.json, falling back to defaults.
  * Mirrors the branding resolution logic in build-deploy.ts.
  */
-function readBrandingContext(projectDir: string): Record<string, string> {
+async function readBrandingContext(
+  projectDir: string,
+): Promise<Record<string, string>> {
   let frameworkName = defaultBranding.frameworkName;
   let commandPrefix = defaultBranding.commandPrefix;
 
   try {
     const configPath = path.join(projectDir, ".planning/config.json");
-    const configFile = Bun.file(configPath);
-    // Synchronous check via existsSync not available — use try/catch
-    const text = require("fs").readFileSync(configPath, "utf8");
+    const text = await Bun.file(configPath).text();
     const config = sanitizeJsonParse(text) as Record<string, unknown>;
     const branding = config.branding as
       | { frameworkName?: string; commandPrefix?: string }
@@ -87,7 +87,7 @@ async function main() {
 
   // Apply branding transform to dist/claude/ entries (same as compile+deploy pipeline)
   // This converts `# lu` → `# /lu`, `lu-router` → `{prefix}-router`, etc.
-  const branding = readBrandingContext(projectDir);
+  const branding = await readBrandingContext(projectDir);
   const claudeEntries = new Map<string, string>();
   const nonClaudeEntries = new Map<string, string>();
 

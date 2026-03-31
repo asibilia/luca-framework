@@ -24,6 +24,7 @@ import {
   readStdinJson,
   exitSuccess,
   projectDir,
+  extractToolInput,
 } from "../__helpers/hook-io.ts";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -435,7 +436,7 @@ const main = async (): Promise<void> => {
     if (!data || data.tool_name !== "Agent") return exitSuccess();
 
     // Extract agent name from tool_input.name
-    const toolInput = data.tool_input as Record<string, unknown> | undefined;
+    const toolInput = extractToolInput(data);
     const agentName = toolInput?.name;
     if (typeof agentName !== "string" || agentName.length === 0)
       return exitSuccess();

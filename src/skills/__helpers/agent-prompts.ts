@@ -16,7 +16,7 @@
  * @see docs/skill-to-agent-migration/muninndb-context-pattern.md
  */
 
-import { sanitizeForTemplate } from "~/shared/__helpers/sanitize-template";
+import { sanitizeForTemplate } from "~/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 

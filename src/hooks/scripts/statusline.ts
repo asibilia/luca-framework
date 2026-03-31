@@ -10,6 +10,11 @@
  * @module statusline
  */
 
+/**
+ * node:fs realpathSync used intentionally — Bun does not expose a synchronous
+ * realpath API, and the statusline renderer is a synchronous stdout pipeline
+ * that cannot use async Bun.file() operations.
+ */
 import { realpathSync } from "node:fs";
 import { resolve } from "path";
 import { z } from "zod";

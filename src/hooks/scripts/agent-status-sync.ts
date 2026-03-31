@@ -19,11 +19,11 @@ import {
   readStdinJson,
   exitSuccess,
   projectDir,
+  extractToolInput,
 } from "../__helpers/hook-io.ts";
-import {
-  writeStatusBus,
-  STATUS_BUS_PATH,
-} from "../../shared/__helpers/status-bus.ts";
+import { writeStatusBus, STATUS_BUS_PATH } from "../../shared";
+
+const AGENT_NAME_RE = /^[a-z0-9-]+$/;
 
 // ─── Pipeline Step Mapping ──────────────────────────────────────────────────
 
@@ -116,10 +116,13 @@ const main = async (): Promise<void> => {
     if (!data || data.tool_name !== "Agent") return exitSuccess();
 
     // Extract agent name
-    const toolInput = data.tool_input as Record<string, unknown> | undefined;
+    const toolInput = extractToolInput(data);
     const agentName = toolInput?.name;
     if (typeof agentName !== "string" || agentName.length === 0)
       return exitSuccess();
+
+    // Sanitize: only allow kebab-case alphanumeric agent names
+    if (!AGENT_NAME_RE.test(agentName)) return exitSuccess();
 
     // Only update bus when lu orchestrator is active
     if (!existsSync("/tmp/lu-context.json")) return exitSuccess();

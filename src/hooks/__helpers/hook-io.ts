@@ -13,6 +13,8 @@ import { chmodSync, readFileSync } from "node:fs";
 
 import type { ZodSchema } from "zod";
 
+import { sanitizeJsonParse } from "../../shared";
+
 // ─── Platform Detection ─────────────────────────────────────────────────────
 
 /**
@@ -42,7 +44,7 @@ export const parseHookInput = async <T>(
   try {
     const raw = await Bun.stdin.text();
     if (!raw.trim()) return null;
-    const json = JSON.parse(raw);
+    const json = sanitizeJsonParse(raw);
     const result = schema.safeParse(json);
     return result.success ? result.data : null;
   } catch {
@@ -63,7 +65,7 @@ export const readStdinJson = async (): Promise<Record<
   try {
     const raw = await Bun.stdin.text();
     if (!raw.trim()) return null;
-    return JSON.parse(raw) as Record<string, unknown>;
+    return sanitizeJsonParse(raw) as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -337,4 +339,23 @@ export const extractCommand = (
   const toolInput = data.tool_input as Record<string, unknown> | undefined;
   const cmd = toolInput?.command ?? data.command;
   return typeof cmd === "string" ? cmd : "";
+};
+
+/**
+ * Extracts `tool_input` from hook stdin JSON as a typed record.
+ *
+ * Common pattern across PreToolUse/PostToolUse hooks. Centralizes the
+ * type cast so hook scripts don't repeat the same assertion.
+ *
+ * @param data - Parsed stdin JSON object
+ * @returns The tool_input record, or undefined if not present
+ */
+export const extractToolInput = (
+  data: Record<string, unknown> | null,
+): Record<string, unknown> | undefined => {
+  if (!data) return undefined;
+  const toolInput = data.tool_input;
+  return toolInput && typeof toolInput === "object" && !Array.isArray(toolInput)
+    ? (toolInput as Record<string, unknown>)
+    : undefined;
 };

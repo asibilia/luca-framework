@@ -13,11 +13,9 @@ import {
   readStdinJson,
   exitSuccess,
   projectDir,
+  extractToolInput,
 } from "../__helpers/hook-io.ts";
-import {
-  writeStatusBus,
-  STATUS_BUS_PATH,
-} from "../../shared/__helpers/status-bus.ts";
+import { writeStatusBus, STATUS_BUS_PATH } from "../../shared";
 
 const SKILL_NAME_RE = /^[a-z0-9-]+$/;
 
@@ -31,7 +29,7 @@ const main = async (): Promise<void> => {
     if (!data || data.tool_name !== "Skill") return exitSuccess();
 
     // Extract skill name from tool_input.skill
-    const toolInput = data.tool_input as Record<string, unknown> | undefined;
+    const toolInput = extractToolInput(data);
     const skillName = toolInput?.skill;
     if (typeof skillName !== "string" || skillName.length === 0)
       return exitSuccess();
