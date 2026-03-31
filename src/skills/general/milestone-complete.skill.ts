@@ -9,7 +9,6 @@
  * milestone-shadow-gate via lu-shadow-scanner) now do their work directly
  * as leaf agents without sub-agent spawning.
  *
- * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 

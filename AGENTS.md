@@ -69,7 +69,7 @@ No `.env` is required for core development; Jira-related env vars are optional a
 
 ## Coding Standards
 
-**IMPORTANT**: Read [docs/style-guide/coding-standards.md](docs/style-guide/coding-standards.md) for complete rules.
+**IMPORTANT**: Read [docs/guides/coding-standards.md](docs/guides/coding-standards.md) for complete rules.
 
 Key patterns:
 
@@ -120,7 +120,7 @@ Use Bun's test framework:
 
 ## Related Files
 
-- [docs/coding-standards.md](docs/coding-standards.md) - Complete coding standards
+- [docs/guides/coding-standards.md](docs/guides/coding-standards.md) - Complete coding standards
 - [CLAUDE.md](CLAUDE.md) - Claude Code specific guidance
 - `.github/copilot-instructions.md` - GitHub Copilot instructions
 - `.github/agents/` - Agent persona configs

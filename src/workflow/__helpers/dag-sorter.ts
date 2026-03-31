@@ -11,8 +11,8 @@
  * Separated from the executor for testability (research doc recommendation,
  * addressing the gap where the design doc kept sorting implicit in the executor).
  *
- * @see docs/runtime-architecture/research/dag-engines.md — Section 2.1 (Wave-Grouped Topological Sort)
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Sorter
+ * @see docs/archive/runtime-research/research/dag-engines.md — Section 2.1 (Wave-Grouped Topological Sort)
+ * @see docs/architecture/dag-engine.md — DAG Sorter
  */
 
 import type { WorkflowDAG } from "../__schemas/workflow.schemas.ts";

@@ -8,9 +8,9 @@
  *
  * Uses Bun.write() for the write path per bun-preference rule.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Serializer
- * @see docs/runtime-architecture/research/dag-engines.md — Pattern #8 (JSON state snapshot)
- * @see docs/runtime-architecture/research/risk-analysis.md — checkpointSchemaVersion pitfall
+ * @see docs/architecture/dag-engine.md — DAG Serializer
+ * @see docs/archive/runtime-research/research/dag-engines.md — Pattern #8 (JSON state snapshot)
+ * @see docs/archive/runtime-research/research/risk-analysis.md — checkpointSchemaVersion pitfall
  */
 
 import { DAGCheckpointSchema } from "../__schemas/workflow.schemas.ts";

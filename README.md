@@ -48,9 +48,9 @@ Open a plan file in your IDE and use the `/lu` command to execute it. Luca plans
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
-- [Architecture](docs/agent-framework/luca/architecture-plan.md)
+- [Architecture](docs/architecture/agent-framework.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [Coding Standards](docs/style-guide/coding-standards.md)
+- [Coding Standards](docs/guides/coding-standards.md)
 
 ## Upgrade
 

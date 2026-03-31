@@ -21,7 +21,7 @@ Sub-skill for Step 1 of the scout per-article pipeline.
 
 - URL: The article URL to ingest
 - slug: URL-safe identifier for the article
-- output_path: Where to write the digest (e.g., docs/scouting/digests/2026-03-30-article-name.md)
+- output_path: Where to write the digest (e.g., .planning/scouting/digests/2026-03-30-article-name.md)
 
 ## Process
 

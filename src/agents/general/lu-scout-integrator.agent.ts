@@ -54,8 +54,8 @@ ${SCOUT_CODEBASE_CONTEXT}
 
 You receive a batch of impact documents produced by lu-scout-analyst and produce a single integration analysis that assesses cross-scout cohesion and framework fit.
 
-**Input:** Paths to all impact documents in the batch (typically \`docs/scouting/digests/*-impact.md\`)
-**Output:** Integration analysis at \`docs/scouting/integration/{date}-batch-{id}.md\`
+**Input:** Paths to all impact documents in the batch (typically \`.planning/scouting/digests/*-impact.md\`)
+**Output:** Integration analysis at \`.planning/scouting/integration/{date}-batch-{id}.md\`
 
 ## Process
 
@@ -147,7 +147,7 @@ Write the output document following the template below.
 
 ## Integration Analysis Template
 
-Write to \`docs/scouting/integration/{date}-batch-{id}.md\`:
+Write to \`.planning/scouting/integration/{date}-batch-{id}.md\`:
 
 \`\`\`markdown
 # Integration Analysis: Batch {id}
@@ -191,19 +191,19 @@ Write to \`docs/scouting/integration/{date}-batch-{id}.md\`:
 
 ### {Scout slug 1}: \`integrate\`
 
-**Source:** \`docs/scouting/digests/{slug}-impact.md\`
+**Source:** \`.planning/scouting/digests/{slug}-impact.md\`
 **Rationale:** {Why this should be integrated}
 **Key actions:** {Top 2-3 recommended actions from the impact doc}
 
 ### {Scout slug 2}: \`defer\`
 
-**Source:** \`docs/scouting/digests/{slug}-impact.md\`
+**Source:** \`.planning/scouting/digests/{slug}-impact.md\`
 **Rationale:** {Why this is deferred}
 **Conditions to Revisit:** {Specific conditions that would make this actionable}
 
 ### {Scout slug 3}: \`conflict\`
 
-**Source:** \`docs/scouting/digests/{slug}-impact.md\`
+**Source:** \`.planning/scouting/digests/{slug}-impact.md\`
 **Rationale:** {Why this conflicts}
 **Conflicting items:** {Specific todo(s) or decision(s) that conflict}
 **Resolution path:** {How the conflict could be resolved, if possible}

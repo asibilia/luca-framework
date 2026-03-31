@@ -7,7 +7,7 @@
  *
  * @see packages/luca-studio/lib/workflow-types.ts — target schema
  * @see packages/luca-studio/lib/workflow-topology.ts — reference impl
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG design
+ * @see docs/architecture/dag-engine.md — DAG design
  */
 
 import type {

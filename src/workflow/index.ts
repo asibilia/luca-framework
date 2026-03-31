@@ -5,7 +5,7 @@
  * Provides typed DAG workflow definition, validation, execution,
  * checkpoint/resume, and Mermaid visualization.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md
+ * @see docs/architecture/dag-engine.md
  */
 
 // --- Core Schemas ------------------------------------------------------------

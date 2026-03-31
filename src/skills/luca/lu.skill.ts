@@ -8,7 +8,6 @@
  * The compiled SKILL.md references templates by name — the LLM reads the
  * file at runtime via the Read tool. This keeps the compiled output small.
  *
- * @see docs/skill-to-agent-migration/architecture.md
  * @see src/skills/__helpers/agent-prompts.ts
  */
 import { createSkill } from "~/skills/__helpers/create-skill";

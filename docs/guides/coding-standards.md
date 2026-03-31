@@ -1,7 +1,7 @@
 # Luca Framework Coding Standards
 
 > **Version:** 2.0.0
-> **Last Updated:** 2026-02-10
+> **Last Updated:** 2026-03-31
 > **Status:** Active
 
 This document defines the coding standards and patterns for the Luca Framework codebase. All contributors and AI-generated code must follow these conventions.
@@ -15,7 +15,7 @@ This document defines the coding standards and patterns for the Luca Framework c
 3. [Functions API](#functions-api)
 4. [Types & Validation](#types--validation)
 5. [Collections](#collections)
-6. [Testing](#testing)
+6. [Verification](#verification)
 7. [Commit Conventions](#commit-conventions)
 8. [Quick-Start Checklist](#quick-start-checklist)
 
@@ -34,18 +34,16 @@ Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. The co
 | Database    | File-based (.planning/ artifacts, JSON config) |
 | Validation  | Zod                                            |
 | Collections | Lodash                                         |
-| Testing     | Bun Test                                       |
 | Build       | unbuild                                        |
 
 ### Key Commands
 
 ```bash
 bun install            # Install dependencies
-bun run build:all      # Build all output formats (Cursor + Claude)
-bun run build:cursor   # Build Cursor format only
-bun run build:claude   # Build Claude format only
-bun test               # Run tests
-bun test --coverage    # Run tests with coverage
+bun run build          # Build packages
+bun run build:all      # Build full pipeline (agents/skills/rules/hooks/plugin)
+bun run check:drift    # Verify built outputs match source
+bunx --bun tsc --noEmit  # Type check
 ```
 
 ---
@@ -136,22 +134,22 @@ const DEFAULT_AGENT_COLOR = "blue";
 
 ```
 src/
-  agents/           # Agent definitions
-    base/           # Base agent implementation
-    general/        # General agents
-    luca/           # Luca-specific agents
-    types/          # Agent type definitions and schemas
-  skills/           # Skill definitions
-    base/           # Base skill implementation
-    general/        # General skills
-    luca/           # Luca-specific skills
-    types/          # Skill type definitions and schemas
-  rules/            # Rule definitions
-    base/           # Base rule implementation
-    general/        # General rules
-    types/          # Rule type definitions and schemas
-  compilers/        # Cursor/Claude format compilers
-  shared/           # Shared utilities, types, and formatters
+  adapters/         # Multi-IDE output adapters
+  agents/           # Agent definitions and registry
+  compilers/        # Compilation pipeline
+  complexity/       # Complexity gating and model routing
+  context/          # Context tier management
+  eval/             # Evaluation framework
+  harness/          # Verification harness
+  hooks/            # Hook scripts and generation
+  interop/          # Cross-tool agent scanner
+  iteration/        # Error classification and convergence
+  observability/    # Agent effectiveness scoring
+  planner/          # Sprint planning
+  rules/            # Rule definitions and registry
+  shared/           # Cross-domain utilities
+  skills/           # Skill definitions and registry
+  workflow/         # DAG engine and step contracts
 scripts/            # Build and generation scripts
 packages/           # Publishable packages
   luca-framework/   # Main distributable package
@@ -305,38 +303,9 @@ const agentNames = agents.filter((a) => a.is_active).map((a) => a.name);
 
 ---
 
-## Testing
+## Verification
 
-### Bun Test Framework
-
-Use Bun's built-in test framework with `describe`, `test`, and `expect`.
-
-```typescript
-import { describe, test, expect } from "bun:test";
-import { compileAgent } from "../cursor.compiler";
-
-describe("compileAgent", () => {
-  test("should generate valid cursor format", () => {
-    const result = compileAgent({
-      config: testAgentConfig,
-      output_format: "cursor",
-    });
-
-    expect(result).toContain("---");
-    expect(result).toContain("name: test-agent");
-  });
-});
-```
-
-### Verification-Based Testing
-
-Luca uses a verification-based approach with three levels:
-
-| Level       | Description                               |
-| ----------- | ----------------------------------------- |
-| EXISTS      | File/artifact exists                      |
-| SUBSTANTIVE | Content is meaningful and correct         |
-| WIRED       | Integrations are connected and functional |
+Verification uses `bunx --bun tsc --noEmit` (type checking). Tests are not currently used. They were removed wholesale to prevent memory exhaustion from orphaned processes.
 
 ---
 
@@ -350,14 +319,13 @@ type(scope): description
 
 ### Types
 
-| Type       | Use For                   |
-| ---------- | ------------------------- |
-| `feat`     | New features              |
-| `fix`      | Bug fixes                 |
-| `docs`     | Documentation changes     |
-| `refactor` | Code restructuring        |
-| `test`     | Test additions or changes |
-| `chore`    | Maintenance tasks         |
+| Type       | Use For               |
+| ---------- | --------------------- |
+| `feat`     | New features          |
+| `fix`      | Bug fixes             |
+| `docs`     | Documentation changes |
+| `refactor` | Code restructuring    |
+| `chore`    | Maintenance tasks     |
 
 ### Scopes
 
@@ -384,7 +352,7 @@ When writing new code, verify:
 - [ ] No `as` type casting or `!` assertions
 - [ ] Lodash used for array/object operations
 - [ ] Functional patterns preferred over classes
-- [ ] Tests use Bun's `describe`/`test`/`expect`
+- [ ] Type checking passes (`bunx --bun tsc --noEmit`)
 - [ ] Commits follow conventional commit format
 - [ ] Agent/skill/rule files follow naming convention (`*.agent.ts`, `*.skill.ts`, `*.rule.ts`)
 

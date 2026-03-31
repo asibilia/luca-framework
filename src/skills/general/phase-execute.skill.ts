@@ -13,7 +13,6 @@
  * Fix loops previously inside phase-execute-verify are now HOISTED to this
  * orchestrator level (sub-agents cannot spawn sub-agents).
  *
- * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 

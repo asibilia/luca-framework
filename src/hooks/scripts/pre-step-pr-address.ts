@@ -12,7 +12,6 @@
  * from Phase 222 to prevent re-entrancy during parallel wave execution.
  *
  * @module pre-step-pr-address
- * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";

@@ -12,8 +12,6 @@
  * CANNOT spawn other agents.
  *
  * @module agent-prompts
- * @see docs/skill-to-agent-migration/architecture.md
- * @see docs/skill-to-agent-migration/muninndb-context-pattern.md
  */
 
 import { sanitizeForTemplate } from "~/shared";

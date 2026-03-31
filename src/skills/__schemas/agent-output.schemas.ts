@@ -7,7 +7,6 @@
  * fail-closed semantics (missing STATUS = failure).
  *
  * @module agent-output
- * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { z } from "zod";

@@ -46,7 +46,7 @@ Sub-skill for Step 4 of the scout per-article pipeline. Framework impact analysi
 
 ## Output
 
-Write impact analysis to \`docs/scouting/digests/{slug}-impact.md\` with:
+Write impact analysis to \`.planning/scouting/digests/{slug}-impact.md\` with:
 
 ### Gap Analysis Table
 

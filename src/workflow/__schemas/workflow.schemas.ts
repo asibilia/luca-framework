@@ -10,7 +10,7 @@
  * - ValidationResult: Result of static DAG validation
  * - WorkflowAdapter: Interface for step execution adapters
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Core Schemas section
+ * @see docs/architecture/dag-engine.md — Core Schemas section
  */
 
 import { z } from "zod";
@@ -107,7 +107,7 @@ export type StepMetadata = z.infer<typeof StepMetadataSchema>;
  * its dependencies, optional input/output Zod schemas for validation,
  * an optional guard condition, retry/timeout config, and metadata.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Core Schemas
+ * @see docs/architecture/dag-engine.md — Core Schemas
  */
 export const WorkflowStepSchema = z.object({
   /** Unique step identifier within the DAG. */
@@ -176,7 +176,7 @@ export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
  * Contains all steps, their dependency relationships, optional parallel
  * groups for fan-out/fan-in, and a global timeout.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Core Schemas
+ * @see docs/architecture/dag-engine.md — Core Schemas
  */
 export const WorkflowDAGSchema = z.object({
   /** Workflow name. */
@@ -223,7 +223,7 @@ export type TraceEntry = z.infer<typeof TraceEntrySchema>;
 /**
  * Result of a single step execution.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Core Schemas
+ * @see docs/architecture/dag-engine.md — Core Schemas
  */
 export const StepResultSchema = z.object({
   /** ID of the step that was executed. */
@@ -252,7 +252,7 @@ export type StepResult = z.infer<typeof StepResultSchema>;
 /**
  * Result of a full DAG execution.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Core Schemas
+ * @see docs/architecture/dag-engine.md — Core Schemas
  */
 export const ExecutionResultSchema = z.object({
   /** Name of the DAG that was executed. */
@@ -296,7 +296,7 @@ export type ValidationIssue = z.infer<typeof ValidationIssueSchema>;
 /**
  * Result of static DAG validation.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Validator
+ * @see docs/architecture/dag-engine.md — DAG Validator
  */
 export const ValidationResultSchema = z.object({
   /** Whether the DAG passed all validation checks. */
@@ -372,8 +372,8 @@ export type SkippedStepEntry = z.infer<typeof SkippedStepEntrySchema>;
  * Persisted as JSON to `.planning/checkpoints/{dagName}.json`.
  * Includes a schema version for forward compatibility (risk-analysis.md pitfall).
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Checkpoint/Resume
- * @see docs/runtime-architecture/research/risk-analysis.md — Risk 11
+ * @see docs/architecture/dag-engine.md — Checkpoint/Resume
+ * @see docs/archive/runtime-research/research/risk-analysis.md — Risk 11
  */
 export const DAGCheckpointSchema = z.object({
   /** Name of the DAG this checkpoint belongs to. */
@@ -430,7 +430,7 @@ export type DAGCheckpoint = z.infer<typeof DAGCheckpointSchema>;
  * execution (adapter implementations). The DAG executor orchestrates;
  * adapters execute.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Executor
+ * @see docs/architecture/dag-engine.md — DAG Executor
  */
 export const WorkflowAdapterSchema = z.object({
   /** Unique adapter name (e.g., "claude", "api", "mock"). */

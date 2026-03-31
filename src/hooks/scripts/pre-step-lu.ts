@@ -7,7 +7,6 @@
  * configure, backlog, milestone-*).
  *
  * @module pre-step-lu
- * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";

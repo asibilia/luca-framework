@@ -46,7 +46,7 @@ ${SCOUT_OUTPUT_STANDARDS}
 
 You receive an integration analysis document (from lu-scout-integrator) and produce individual todo files for each recommended action.
 
-**Input:** Path to integration analysis at \`docs/scouting/integration/{date}-batch-{id}.md\`
+**Input:** Path to integration analysis at \`.planning/scouting/integration/{date}-batch-{id}.md\`
 **Output:** Todo files in \`.planning/todos/pending/scout-{slug}-{N}.md\` and a summary report
 
 ## Process

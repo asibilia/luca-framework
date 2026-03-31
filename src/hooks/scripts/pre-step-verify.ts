@@ -13,7 +13,6 @@
  * or review (Path A: no issues) may be called. Both are valid from `tested`.
  *
  * @module pre-step-verify
- * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";

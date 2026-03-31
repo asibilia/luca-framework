@@ -19,8 +19,8 @@
  * The DAG executor should start in "warn" mode (log mismatches, don't fail)
  * and tighten to "strict" mode once schemas stabilize.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Step Contracts
- * @see docs/runtime-architecture/research/risk-analysis.md — Risk 11
+ * @see docs/architecture/dag-engine.md — Step Contracts
+ * @see docs/archive/runtime-research/research/risk-analysis.md — Risk 11
  */
 
 import { z } from "zod";
@@ -33,7 +33,7 @@ import { z } from "zod";
  * Produced by lu-router. Determines task complexity and model tier
  * for all downstream steps.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Step Contracts
+ * @see docs/architecture/dag-engine.md — Step Contracts
  */
 export const ClassifyOutputSchema = z.object({
   /** Assessed complexity level of the task. */
@@ -74,7 +74,7 @@ export type Appetite = z.infer<typeof AppetiteSchema>;
  * Produced by phase-discuss. Assembles context, determines appetite,
  * and optionally runs a premortem.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Step Contracts
+ * @see docs/architecture/dag-engine.md — Step Contracts
  */
 export const DiscussOutputSchema = z.object({
   /** Path to the generated context document. */
@@ -96,7 +96,7 @@ export type DiscussOutput = z.infer<typeof DiscussOutputSchema>;
  *
  * Produced by phase-plan. Discovers and groups tasks into waves.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Step Contracts
+ * @see docs/architecture/dag-engine.md — Step Contracts
  */
 export const PlanOutputSchema = z.object({
   /** Paths to the generated plan files. */
@@ -119,7 +119,7 @@ export type PlanOutput = z.infer<typeof PlanOutputSchema>;
  * Produced by phase-execute. Contains execution summaries,
  * commit hashes, and harness verification status.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Step Contracts
+ * @see docs/architecture/dag-engine.md — Step Contracts
  */
 export const ExecuteOutputSchema = z.object({
   /** Paths to execution summary files. */
@@ -160,7 +160,7 @@ export type VerificationGap = z.infer<typeof VerificationGapSchema>;
  * Produced by lu-verifier. Determines whether execution met the plan
  * requirements and identifies gaps.
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Step Contracts
+ * @see docs/architecture/dag-engine.md — Step Contracts
  */
 export const VerifyOutputSchema = z.object({
   /** Overall verification status. */
