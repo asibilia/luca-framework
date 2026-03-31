@@ -16,6 +16,7 @@ import { z } from "zod";
 import get from "lodash/get";
 
 import { sanitizeJsonParse } from "../../shared";
+import { readStatusBus } from "../../shared/__helpers/status-bus";
 
 import { projectDir } from "../__helpers/hook-io.ts";
 
@@ -39,12 +40,16 @@ const WorkflowHudStateSchema = z.object({
   currentWave: z.number().default(0),
   totalWaves: z.number().default(0),
   hasWaveData: z.boolean().default(false),
+  skillName: z.string().default(""),
+  stepName: z.string().default(""),
 });
 
 type WorkflowHudState = z.infer<typeof WorkflowHudStateSchema>;
 
 /**
  * Read workflow state from .planning/state.json and normalize for HUD display.
+ * Merges status bus data (from .planning/.statusline.json) when fresh — bus
+ * fields take precedence over state.json for skill, stage, step, and wave info.
  *
  * Returns null on any failure (file missing, parse error, etc.) for graceful degradation.
  *
@@ -105,15 +110,22 @@ const readWorkflowState = async (
       "") as string;
     const milestone = rawMilestone.split(" ")[0] || "";
 
+    // Read status bus — prefer fresh bus data over state.json for skill/step/wave
+    const bus = await readStatusBus(`${pd}/.planning/.statusline.json`);
+
     const assembled = {
-      displayState: mapped.displayState,
+      displayState: bus?.stage
+        ? bus.stage.toUpperCase()
+        : mapped.displayState,
       icon: mapped.icon,
-      phaseLabel: phaseId ? `P${phaseId}` : "",
-      complexity,
+      phaseLabel: bus?.phase ? `P${bus.phase}` : phaseId ? `P${phaseId}` : "",
+      complexity: bus?.complexity || complexity,
       milestone,
-      currentWave,
-      totalWaves,
-      hasWaveData: totalWaves > 0,
+      currentWave: bus?.wave_current ?? currentWave,
+      totalWaves: bus?.wave_total ?? totalWaves,
+      hasWaveData: (bus?.wave_total ?? totalWaves) > 0,
+      skillName: bus?.skill ?? "",
+      stepName: bus?.step ?? "",
     };
 
     const parseResult = WorkflowHudStateSchema.safeParse(assembled);
@@ -154,6 +166,9 @@ const renderProgressBar = (
 
 /**
  * Render the workflow HUD line from parsed state.
+ *
+ * Format (with skill): `{skill} > {step || displayState} {phaseLabel} {bar} {wave/total} {complexity} {milestone}`
+ * Format (no skill):   `{icon} {displayState} {phaseLabel} {bar} {wave/total} {complexity} {milestone}`
  *
  * @param state - Parsed workflow HUD state
  * @param colors - ANSI color helper functions
@@ -200,13 +215,21 @@ const renderHudLine = (
   // Icon (colored by state)
   segments.push(stateColor(` ${state.icon}`));
 
+  // Skill prefix with separator: "lu > " or nothing
+  if (state.skillName) {
+    segments.push(
+      colors.cyan(state.skillName) + colors.gray(" >"),
+    );
+  }
+
+  // Step name if available, otherwise display state
+  const stateLabel = state.stepName || state.displayState;
+  segments.push(stateColor(stateLabel));
+
   // Phase label in cyan
   if (state.phaseLabel) {
     segments.push(colors.cyan(state.phaseLabel));
   }
-
-  // Display state name
-  segments.push(stateColor(state.displayState));
 
   // Progress bar + wave fraction
   if (state.hasWaveData) {

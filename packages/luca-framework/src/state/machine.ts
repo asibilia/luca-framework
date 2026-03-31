@@ -294,6 +294,14 @@ export const workflowMachine = setup({
       },
     }),
 
+    /** Set the total wave count for the current phase */
+    setWaveCount: assign({
+      current_wave_count: ({ event }) => {
+        if (event.type === "SET_WAVE_COUNT") return event.wave_count;
+        return 0;
+      },
+    }),
+
     /** Record DAG step start — updates dag_execution context */
     recordDagStepStart: assign({
       dag_execution: ({ context, event }) => {
@@ -437,7 +445,7 @@ export const workflowMachine = setup({
         input: ({ context }: { context: WorkflowContext }) => ({
           phase_id: context.current_phase ?? 0,
           plan_ids: context.current_plan_ids,
-          total_waves: context.current_wave_count || 1,
+          total_waves: context.current_wave_count > 0 ? context.current_wave_count : 1,
           max_fix_iterations: getMaxFixIterations(context),
         }),
         onDone: {
@@ -465,6 +473,11 @@ export const workflowMachine = setup({
         SUSPEND: {
           target: "suspended",
           actions: ["recordSuspend", "recordTransition"],
+        },
+
+        // Wave count update — set by planner, consumed by statusline
+        SET_WAVE_COUNT: {
+          actions: ["setWaveCount", "recordTransition"],
         },
 
         // DAG step events — self-transitions that update context

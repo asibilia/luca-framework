@@ -259,6 +259,19 @@ Automated article ingestion, research, and actionable todo generation from exter
 
 - [ ] fix-deep-freeze — Move `Object.values(obj)` before `Object.freeze(obj)` in `src/shared/__helpers/deep-freeze.ts` so Zod v4's lazy getter-redefine pattern completes while the object is still mutable
 
+### Phase 246: Statusline Rework — Skill Identity, Step Progression & Status Bus — COMPLETE
+
+**Goal:** Rework the statusline to show which skill/workflow is active, fix the wave/step counter that always shows `1/1`, add frequent persistence after each wave/step, create a lightweight status bus for non-`/lu` skill visibility, and propagate step-level granularity within EXECUTING.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 245
+
+- [x] skill-identity-prefix — Added skill name prefix to statusline output via status bus (e.g., `lu > EXECUTING`)
+- [x] fix-wave-step-counter — Added `SET_WAVE_COUNT` event to XState machine; fixed `|| 1` fallback to explicit `> 0` check
+- [x] status-bus — Created `.planning/.statusline.json` status bus with Zod schema, atomic writer, staleness TTL, and renderer integration
+- [x] step-granularity — Status bus `step` field enables sub-step display within EXECUTING; renderer shows step label when available
+- [x] frequent-persistence — Wave count updates now persist via `SET_WAVE_COUNT` bridge transition; status bus provides out-of-band persistence for non-XState skills
+
 ---
 
 ## Deferred to Future Milestones

@@ -270,3 +270,14 @@ export type {
   ShadowScanReport,
   ShadowDebtConfig,
 } from "./__schemas/shadow-scanner.schemas";
+
+// ─── Status Bus ────────────────────────────────────────────────────────────────
+
+export { StatusBusSchema } from "./__schemas/status-bus.schemas";
+export type { StatusBus, StatusBusInput } from "./__schemas/status-bus.schemas";
+
+export {
+  writeStatusBus,
+  readStatusBus,
+  clearStatusBus,
+} from "./__helpers/status-bus";

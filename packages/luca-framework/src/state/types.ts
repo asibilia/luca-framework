@@ -349,6 +349,13 @@ export const workflowEventSchema = z.discriminatedUnion("type", [
     wall_clock_ms: z.number().nonnegative().default(0),
   }),
 
+  // Wave count — set by the planner before execution begins
+  /** Planner reports how many waves the current phase contains */
+  z.object({
+    type: z.literal("SET_WAVE_COUNT"),
+    wave_count: z.number().int().positive(),
+  }),
+
   // DAG executor lifecycle events (informational, logged to ledger)
   /** DAG executor reports a step has started */
   z.object({
