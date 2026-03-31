@@ -16,7 +16,10 @@ import { isAbsolute, resolve } from "path";
 
 import { z } from "zod";
 
-import { computePipelinePosition } from "../../../packages/luca-framework/src/state";
+import {
+  computePipelinePosition,
+  resolveStateValue,
+} from "../../../packages/luca-framework/src/state";
 
 import { projectDir } from "./hook-io.ts";
 
@@ -176,7 +179,7 @@ export function derivePipelineState(
   let currentState: string | undefined;
 
   if (use_computed_position) {
-    const xstateValue = String(raw.value ?? "idle");
+    const xstateValue = resolveStateValue(raw.value ?? "idle");
     currentState = computePipelinePosition(xstateValue);
   } else {
     currentState =

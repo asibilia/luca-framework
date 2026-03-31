@@ -211,7 +211,7 @@ export interface SnapshotInput {
  * const actor = result.data;
  * const snapshot = actor.getSnapshot();
  * const markdown = generateSnapshot({
- *   state: String(snapshot.value),
+ *   state: resolveStateValue(snapshot.value),
  *   context: snapshot.context,
  *   existing_content: await Bun.file(".planning/STATE.md").text(),
  *   allowed_events: getAllowedEvents(snapshot),

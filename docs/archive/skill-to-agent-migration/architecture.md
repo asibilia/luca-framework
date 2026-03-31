@@ -603,7 +603,7 @@ User: /lu "Execute Phase 230 and 231" --full-auto
     10j. [AGENT] Goal-backward verification
          Agent(name: "verify-{NN}", prompt: "Verify phase goal achieved, write VERIFICATION.md...")
 
-    10k. [AGENT] Code review (conditional on complexity >= MODERATE and not --skip-review)
+    10k. [AGENT] Code review (conditional: not --skip-review)
          Orchestrator spawns multiple reviewers IN PARALLEL:
          Agent(name: "review-arch-{NN}", prompt: "Review architecture...")
          Agent(name: "review-dx-{NN}", prompt: "Review developer experience...")

@@ -397,7 +397,7 @@ luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_fai
 Agent(name: "verify-{NN}", subagent_type: "lu-verifier", model: DEEP_MODEL, prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 \`\`\`
 
-#### 7k. Code review (conditional: complexity >= MODERATE, not --skip-review)
+#### 7k. Code review
 
 
 Spawn PARALLEL reviewers:

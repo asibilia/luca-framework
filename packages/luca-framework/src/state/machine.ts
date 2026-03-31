@@ -26,6 +26,7 @@ import type { WorkflowContext, WorkflowEvent } from "./types";
 import { initializeContext } from "./types";
 import { workflowGuards } from "./guards";
 import { phaseActorMachine } from "./actors/phase-actor";
+import { resolveStateValue } from "./__helpers/resolve-state-value";
 
 // ─── Phase Actor Output Type ────────────────────────────────────────────────
 
@@ -445,7 +446,8 @@ export const workflowMachine = setup({
         input: ({ context }: { context: WorkflowContext }) => ({
           phase_id: context.current_phase ?? 0,
           plan_ids: context.current_plan_ids,
-          total_waves: context.current_wave_count > 0 ? context.current_wave_count : 1,
+          total_waves:
+            context.current_wave_count > 0 ? context.current_wave_count : 1,
           max_fix_iterations: getMaxFixIterations(context),
         }),
         onDone: {
@@ -671,7 +673,7 @@ export function getAllowedEvents(
     ReturnType<typeof createActor<typeof workflowMachine>>["getSnapshot"]
   >,
 ): string[] {
-  const state = snapshot.value as string;
+  const state = resolveStateValue(snapshot.value);
   const stateConfig = workflowMachine.config.states?.[state];
   if (!stateConfig || !stateConfig.on) return [];
   return Object.keys(stateConfig.on);

@@ -96,6 +96,13 @@ export type {
 export { computePipelinePosition } from "./__helpers/pipeline-position";
 export type { PipelinePosition } from "./__helpers/pipeline-position";
 
+// ─── State Value Normalization ───────────────────────────────────────────────
+
+export {
+  resolveStateValue,
+  resolveStatePath,
+} from "./__helpers/resolve-state-value";
+
 // ─── Persistence ────────────────────────────────────────────────────────────
 
 export {

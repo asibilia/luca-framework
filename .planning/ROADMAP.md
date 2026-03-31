@@ -396,6 +396,34 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] preserve-skill-field — Update agent-status-sync.ts writeStatusBus call to read existing skill value from bus before writing, so it persists across agent transitions
 - [x] fallback-skill-from-context — If bus has no skill field, infer it from /tmp/lu-skill.txt sidecar as a fallback
 
+### Phase 256: Step Enforcement Phase 1 — XState Value Normalization — COMPLETE
+
+**Goal:** Create `resolveStateValue()` and `resolveStatePath()` utilities and replace all 23 `String(snapshot.value)` call sites across 6 files. This normalizes both flat strings and compound XState objects, making the codebase forward-compatible with compound sub-states (Phase 257). Zero behavior change.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 255
+
+- [x] create-resolve-utils — Create `resolve-state-value.ts` in `packages/luca-framework/src/state/__helpers/` with `resolveStateValue()` and `resolveStatePath()`. Export from barrel.
+- [x] replace-bridge-callsites — Replace 16 `String(snapshot.value)` calls in `bridge.ts` with `resolveStateValue()` (15 planned + 1 caught by security review)
+- [x] replace-machine-callsite — Replace `snapshot.value as string` in `machine.ts` `getAllowedEvents()` with `resolveStateValue()`
+- [x] replace-hook-callsites — Replace `String(raw.value)` in `enforcement-hook-factory.ts`, `orchestrator-gate-config.ts`, and `statusline.ts` with `resolveStateValue()`
+- [x] update-snapshot-docs — Update JSDoc example in `snapshot.ts` to use `resolveStateValue()`
+- [x] extend-pipeline-position — Add `fullStatePath` optional param to `computePipelinePosition()`, extend `PipelinePosition` type with `executing.*` compound positions
+- [x] wire-enforcement-factory — Pass `resolveStatePath(raw.value)` as second arg to `computePipelinePosition()` in enforcement hook factory
+
+### Phase 257: Step Enforcement Phase 2 — XState Compound Sub-States
+
+**Goal:** Add compound sub-states to `executing` in the XState machine (discussing → planning → running → harnessing → verifying → reviewing → learning → committing). The machine structurally enforces step ordering — steps cannot be skipped. Pipeline step IS state, not data.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 256
+
+- [ ] add-compound-substates — Replace flat `executing` state in `machine.ts` with compound state containing 8 sub-states. Existing `phaseActor` invoke stays on parent (XState v5 supports invoke + states on same node).
+- [ ] add-substate-events — Add EXECUTION_COMPLETE, PHASE_VERIFY_PASSED, REVIEW_COMPLETE, PHASE_LEARN_COMPLETE to `workflowEventSchema` in `types.ts`
+- [ ] update-enforcement-validstates — Update `pre-step-lu.ts` validStates to use compound positions (e.g., `"executing.reviewing"` for review agents)
+- [ ] update-transition-sync — Update `agent-transition-sync.ts` lu orchestrator block to fire sub-state events on agent completion
+- [ ] verify-enforcement — End-to-end test: confirm out-of-order agent spawning is blocked by `pre-step-lu`
+
 ---
 
 ## Deferred to Future Milestones

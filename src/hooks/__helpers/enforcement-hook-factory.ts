@@ -40,7 +40,11 @@ import {
   guardPreStep,
 } from "./hook-io.ts";
 
-import { computePipelinePosition } from "../../../packages/luca-framework/src/state";
+import {
+  computePipelinePosition,
+  resolveStateValue,
+  resolveStatePath,
+} from "../../../packages/luca-framework/src/state";
 import { HookContextSchema } from "../../workflow";
 
 // ─── Stdin Payload Schema ────────────────────────────────────────────────
@@ -306,10 +310,12 @@ export const createSubSkillEnforcementHook = (
       // initial state (idle — first step hasn't run yet).
       if (use_computed_position) {
         // lu gate: derive pipeline position from XState value field
-        const stateValue = String(
-          (raw as Record<string, unknown>).value ?? "idle",
+        const rawValue = (raw as Record<string, unknown>).value;
+        const fullStatePath = resolveStatePath(rawValue);
+        currentState = computePipelinePosition(
+          resolveStateValue(rawValue),
+          fullStatePath,
         );
-        currentState = computePipelinePosition(stateValue);
       } else if (parseResult.data.current_state) {
         currentState = parseResult.data.current_state;
       }

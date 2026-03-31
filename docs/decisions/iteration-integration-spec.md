@@ -86,8 +86,8 @@ while (shouldStartIteration(budget)) {
 
 **DAG executor usage:** If `detectStall` returns a stall, the executor should either:
 
-- Invoke `evaluateStallDebate()` (if complexity >= COMPLEX)
-- Halt and send `PHASE_FAILED` event (if complexity < COMPLEX)
+- Invoke `evaluateStallDebate()` (if stall debate is enabled in config)
+- Halt and send `PHASE_FAILED` event (if stall debate is not enabled)
 
 ### 5. Checkpoint management -- persists iteration state across retries
 

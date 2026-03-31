@@ -58,6 +58,7 @@ import { getAllowedEvents, workflowMachine } from "./machine";
 import { generateSnapshot } from "./snapshot";
 import { getArg, hasFlag } from "./utils/cli-utils";
 import { computePipelinePosition } from "./__helpers/pipeline-position";
+import { resolveStateValue } from "./__helpers/resolve-state-value";
 import { createSuspendCheckpoint } from "./suspend-checkpoint";
 import { appendLedgerEntry } from "./ledger";
 import { emitStateTransition, emitPhaseComplete } from "../emitter";
@@ -128,10 +129,10 @@ async function checkDualWriteDivergence(intended: {
 
     if (
       written.value !== undefined &&
-      String(written.value) !== intended.state
+      resolveStateValue(written.value) !== intended.state
     ) {
       divergences.push(
-        `state: json="${String(written.value)}" vs intended="${intended.state}"`,
+        `state: json="${resolveStateValue(written.value)}" vs intended="${intended.state}"`,
       );
     }
     if (
@@ -189,7 +190,7 @@ async function updateStateMd(
   }
 
   const markdown = generateSnapshot({
-    state: String(snapshot.value),
+    state: resolveStateValue(snapshot.value),
     context: snapshot.context,
     existing_content: existingContent,
     allowed_events: allowed,
@@ -296,7 +297,10 @@ async function readFromState<T>(opts: {
       context?: Record<string, unknown>;
     };
     if (!raw.context) return opts.defaults;
-    const result = opts.fromSnapshot(raw.context, String(raw.value ?? "idle"));
+    const result = opts.fromSnapshot(
+      raw.context,
+      resolveStateValue(raw.value ?? "idle"),
+    );
     return result ?? opts.defaults;
   } catch {
     return opts.defaults;
@@ -566,8 +570,8 @@ async function handleSetField(args: string[]): Promise<void> {
 
   // Append field change to session ledger (fire-and-forget, non-blocking)
   const fieldRecord: TransitionRecord = {
-    previous_state: String(snapshotJson!.value),
-    current_state: String(snapshotJson!.value), // State doesn't change on field set
+    previous_state: resolveStateValue(snapshotJson!.value),
+    current_state: resolveStateValue(snapshotJson!.value), // State doesn't change on field set
     event_type: "field_set",
     event_data: { field: fieldPath, value },
     actions_executed: [],
@@ -581,8 +585,8 @@ async function handleSetField(args: string[]): Promise<void> {
 
   // Emit field change to MuninnDB (fire-and-forget)
   void emitStateTransition({
-    previous_state: String(snapshotJson!.value),
-    current_state: String(snapshotJson!.value), // State unchanged on field set
+    previous_state: resolveStateValue(snapshotJson!.value),
+    current_state: resolveStateValue(snapshotJson!.value), // State unchanged on field set
     event_type: "field_set",
     session_id: (updatedContext.session_id as string) ?? "",
     metadata: {
@@ -597,7 +601,7 @@ async function handleSetField(args: string[]): Promise<void> {
       field: fieldPath,
       value,
       previous_value: previousValue ?? null,
-      state: String(snapshotJson!.value),
+      state: resolveStateValue(snapshotJson!.value),
     }),
   );
 }
@@ -668,8 +672,8 @@ async function handleTransition(args: string[]): Promise<void> {
   // Output transition record
   const { type: _type, ...eventData } = validation.data;
   const record = buildTransitionRecord(
-    String(prevState),
-    String(nextSnapshot.value),
+    resolveStateValue(prevState),
+    resolveStateValue(nextSnapshot.value),
     eventType,
     eventData,
     nextSnapshot.context,
@@ -682,8 +686,8 @@ async function handleTransition(args: string[]): Promise<void> {
 
   // Emit state transition to MuninnDB (fire-and-forget, non-blocking)
   void emitStateTransition({
-    previous_state: String(prevState),
-    current_state: String(nextSnapshot.value),
+    previous_state: resolveStateValue(prevState),
+    current_state: resolveStateValue(nextSnapshot.value),
     event_type: eventType,
     session_id: nextSnapshot.context.session_id,
     metadata: {
@@ -716,7 +720,7 @@ async function handleTransition(args: string[]): Promise<void> {
       busData.phase = ctx.current_phase;
     }
     // Clear everything when transitioning to idle state (session end)
-    if (String(nextSnapshot.value) === "idle") {
+    if (resolveStateValue(nextSnapshot.value) === "idle") {
       busData.skill = "";
       busData.step = "";
       busData.stage = "";
@@ -911,7 +915,7 @@ async function handleSuspend(args: string[]): Promise<void> {
   const allowed = getAllowedEvents(snapshot);
   if (!allowed.includes("SUSPEND")) {
     console.error(
-      `Cannot suspend: current state "${String(snapshot.value)}" does not allow SUSPEND. ` +
+      `Cannot suspend: current state "${resolveStateValue(snapshot.value)}" does not allow SUSPEND. ` +
         `Allowed events: ${allowed.join(", ")}`,
     );
     process.exit(2);
@@ -927,9 +931,9 @@ async function handleSuspend(args: string[]): Promise<void> {
   const nextSnapshot = actor.getSnapshot();
 
   // Verify the transition actually occurred
-  if (String(nextSnapshot.value) === String(prevState)) {
+  if (resolveStateValue(nextSnapshot.value) === resolveStateValue(prevState)) {
     console.error(
-      `SUSPEND transition rejected: state remained "${String(prevState)}"`,
+      `SUSPEND transition rejected: state remained "${resolveStateValue(prevState)}"`,
     );
     process.exit(2);
   }
@@ -974,8 +978,8 @@ async function handleSuspend(args: string[]): Promise<void> {
       reason,
       wave_index: waveIndex,
       completed_task_ids: completedTaskIds,
-      previous_state: String(prevState),
-      current_state: String(nextSnapshot.value),
+      previous_state: resolveStateValue(prevState),
+      current_state: resolveStateValue(nextSnapshot.value),
     }),
   );
 }

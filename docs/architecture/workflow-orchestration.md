@@ -48,7 +48,7 @@ Each phase executes serially through these sub-steps:
 | 7h       | Execution             | No      | execute-{NN}                          | Runs wave tasks via lu-executor           |
 | 7i       | Harness Fix Loop      | No      | harness-{NN}, fix-{NN}                | Up to HARNESS_FIX_ITERATIONS attempts     |
 | 7j       | Goal-backward Verify  | No      | verify-{NN}                           | Checks phase goals are met                |
-| 7k       | Code Review           | No      | 4 parallel reviewers                  | Conditional: complexity >= MODERATE       |
+| 7k       | Code Review           | No      | 4 parallel reviewers                  | Always runs (model tier varies by complexity) |
 | 7l       | Learning Capture      | No      | learn-{NN}                            | Stores patterns/pitfalls in MuninnDB      |
 | 7m       | Process Data          | No      | process-data-{NN}                     | Conditional: --run-process-data           |
 | 7n       | Commit                | No      | (inline)                              | `feat(#ISSUE): Phase NN -- description`   |

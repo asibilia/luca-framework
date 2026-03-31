@@ -22,7 +22,7 @@
 3. Option (c) loses the retry granularity benefit. If "plan + execute" is a single step, you cannot retry execute without re-running plan.
 4. The step contract schemas (ClassifyOutput, DiscussOutput, etc.) map cleanly to skill boundaries because that is where data handoff already occurs.
 
-**Impact:** The `phasePipeline` DAG has 7 primary steps: classify -> discuss -> plan -> execute -> verify -> learn -> commit. Conditional edges handle skipping (e.g., skip discuss when complexity < MODERATE). The execute step internally manages wave iteration using `src/iteration/` helpers.
+**Impact:** The `phasePipeline` DAG has 7 primary steps: classify -> discuss -> plan -> execute -> verify -> learn -> commit. All steps run at every complexity level; conditional edges only handle explicit flag-based skipping (e.g., --skip-discuss). Complexity controls model tier, not step activation. The execute step internally manages wave iteration using `src/iteration/` helpers.
 
 ## Question 2: Oversight gate modeling
 
