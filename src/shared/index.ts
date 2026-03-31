@@ -236,6 +236,27 @@ export type {
   SessionDigestResult,
 } from "./__helpers/session-digest";
 
+// ─── Scout State Machine ─────────────────────────────────────────────────────
+
+export {
+  ScoutStateSchema,
+  ScoutStateFileSchema,
+  ScoutStateHistoryEntrySchema,
+  ScoutArtifactsSchema,
+  SCOUT_TRANSITIONS,
+  PER_ARTICLE_STATES,
+  CROSS_CUTTING_STATES,
+  TERMINAL_STATES,
+  validateScoutTransition,
+} from "./__schemas/scout-state.schemas";
+
+export type {
+  ScoutState,
+  ScoutStateFile,
+  ScoutStateHistoryEntry,
+  ScoutArtifacts,
+} from "./__schemas/scout-state.schemas";
+
 // ─── Shadow Scanner Schemas ────────────────────────────────────────────────────
 
 export {
