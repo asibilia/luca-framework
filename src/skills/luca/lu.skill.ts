@@ -115,6 +115,49 @@ if [ -z "$WORKFLOW_VERSION" ]; then WORKFLOW_VERSION="v1"; fi
 if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 \`\`\`
 
+### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
+
+If --skip-branch flag is present: SKIP this step entirely.
+
+This step MUST run before any code work. It creates the GitHub issue and feature branch that all subsequent commits will land on.
+
+**1. Create GitHub issue for the milestone/task:**
+
+\`\`\`bash
+# Extract milestone title from ROADMAP.md current milestone
+MILESTONE_TITLE=$(grep "^## v" .planning/ROADMAP.md | head -1 | sed 's/^## //')
+# Or use the task description for non-milestone work
+
+ISSUE_URL=$(gh issue create \\
+  --title "$MILESTONE_TITLE" \\
+  --body "## Summary\\n\\n[Auto-generated from /lu orchestrator]\\n\\nPhases and deliverables TBD after planning." \\
+  --label "enhancement" 2>&1)
+ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -o '[0-9]*$')
+\`\`\`
+
+**2. Create feature branch from current base:**
+
+\`\`\`bash
+# Branch naming convention:
+# - Milestones: {version}--{kebab-case-description} (e.g., v8.6.0--scout-article-intelligence)
+# - Single phases: phase-{NN}--{kebab-case-description}
+# - Non-milestone: {ticket-id}--{kebab-case-description}
+# - Fallback: PROJ-0000--{kebab-case-description}
+
+git checkout -b "$BRANCH_NAME"
+git push -u origin "$BRANCH_NAME"
+\`\`\`
+
+**3. Store in context for later PR creation:**
+
+Write ISSUE_NUMBER, ISSUE_URL, and BRANCH_NAME to the lu context file so Step 8 (Milestone Boundary) can create the PR.
+
+\`\`\`bash
+bun src/skills/__schemas/context-cli.ts write lu "{\\\"git_workflow\\\":{\\\"issue_number\\\":$ISSUE_NUMBER,\\\"issue_url\\\":\\\"$ISSUE_URL\\\",\\\"branch_name\\\":\\\"$BRANCH_NAME\\\"}}"
+\`\`\`
+
+**4. Update STATE.md** with the branch and issue info for visibility.
+
 ### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
 
 If --skip-backlog or config backlog_scan==false: skip.
@@ -273,8 +316,11 @@ Agent(name: "process-data-{NN}", prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
 \`\`\`
 
 #### 7n. Commit (INLINE)
+Commits land on the feature branch created in Step 4.5 (or main if --skip-branch).
 \`\`\`bash
-git add . && git commit -m "feat({NN}): complete phase {NN}"
+git add . && git commit -m "feat(#{ISSUE_NUMBER}): Phase {NN} — {phase description}"
+# Push to remote after each phase commit:
+git push
 \`\`\`
 
 #### 7o. Update state (INLINE)
@@ -300,6 +346,28 @@ Agent(name: "milestone-shadow", prompt: MILESTONE_SHADOW_PROMPT({...}))  # condi
 Agent(name: "milestone-archive", prompt: MILESTONE_ARCHIVE_PROMPT({...}))
 Agent(name: "milestone-finalize", prompt: MILESTONE_FINALIZE_PROMPT({...}))
 \`\`\`
+
+#### 8a. Create Pull Request (INLINE, conditional: not --skip-branch)
+
+If a feature branch was created in Step 4.5, create a PR to merge it back to main:
+
+\`\`\`bash
+# Read git workflow context
+ISSUE_NUMBER=$(bun src/skills/__schemas/context-cli.ts read lu 2>/dev/null | bun -e "..." || echo "")
+BRANCH_NAME=$(git branch --show-current)
+
+# Ensure all commits are pushed
+git push
+
+# Build PR body from phase results
+# Include: summary of phases completed, key deliverables, file counts
+
+gh pr create \\
+  --title "feat(#$ISSUE_NUMBER): $MILESTONE_TITLE" \\
+  --body "## Summary\\n\\n[Phase summaries]\\n\\n## Test plan\\n\\n- [ ] \`bunx --bun tsc --noEmit\` passes\\n- [ ] All todos moved to done/\\n\\nCloses #$ISSUE_NUMBER\\n\\nGenerated with [Claude Code](https://claude.com/claude-code)"
+\`\`\`
+
+Report the PR URL to the user.
 
 ### Step 9: Cross-Milestone Continuation (INLINE)
 
