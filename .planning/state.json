@@ -1,13 +1,13 @@
 {
   "status": "active",
-  "value": "executing",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "679249a9-ef0f-4d05-bd15-ebefe2db29f5",
+    "session_id": "9a5e618e-7ee4-4daf-979f-6b5ad0062eed",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "SIMPLE",
+    "complexity": "TRIVIAL",
     "oversight": "full-auto",
     "gates": {
       "confirm_project": true,
@@ -91,35 +91,7 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-31T16:44:27.726Z",
-    "last_transition_at": "2026-03-31T16:45:14.911Z"
+    "started_at": "2026-03-31T17:11:59.829Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 2,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-03-31T16:45:14.912Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }

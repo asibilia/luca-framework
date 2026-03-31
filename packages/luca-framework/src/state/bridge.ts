@@ -75,12 +75,9 @@ const STATE_MD_PATH = ".planning/STATE.md";
 const STATUS_BUS_PATH = ".planning/.statusline.json";
 
 /**
- * Inline status bus validation schema — mirrors StatusBusSchema in src/shared.
- *
- * DIVERGENCE NOTE: `phase` is z.number().int().nullable().default(null) here
- * vs z.number().int().optional() in StatusBusSchema. The bridge always writes
- * `null` for absent phase values; the shared schema omits the key entirely.
- * Both are valid JSON — the statusline renderer handles either via safeParse.
+ * Inline status bus validation schema.
+ * Mirrors StatusBusSchema in src/shared/__schemas/status-bus.schemas.ts.
+ * Defined here to avoid cross-package boundary imports.
  */
 const BusDataSchema = z.object({
   skill: z.string().default(""),

@@ -176,7 +176,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Bash|Skill|Agent",
     script: "pre-step-enforcement.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating step prerequisites...",
   }),
   "pre-step-pr-address": () => ({
@@ -184,7 +184,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-pr-address.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating pr-address step order...",
   }),
   "skill-status-enter": () => ({
@@ -208,7 +208,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-milestone-complete.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating milestone-complete step order...",
   }),
   "pre-step-verify": () => ({
@@ -216,7 +216,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-verify.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating verify step order...",
   }),
   "pre-step-phase-execute": () => ({
@@ -224,7 +224,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-phase-execute.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating phase-execute step order...",
   }),
   "pre-step-lu": () => ({
@@ -232,7 +232,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     tool_filter: "Skill|Agent",
     script: "pre-step-lu.ts",
     timeout: 5,
-    async: false,
+    async: true,
     status_message: "Validating lu step order...",
   }),
   "agent-status-sync": () => ({
