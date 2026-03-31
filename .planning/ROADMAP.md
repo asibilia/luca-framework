@@ -386,6 +386,16 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] top-level-imports — Move dynamic `await import('node:fs')` in build-all.ts and build-compile.ts to top-level imports (DX-L8)
 - [x] plugin-count-helper — Use computeOutputCounts() for plugin output counting in build-all.ts (DRY-L5)
 
+### Phase 255: Agent Status Bus — Skill Name Propagation — COMPLETE
+
+**Goal:** Ensure the statusline shows the active skill name (e.g., "lu") throughout Agent() execution, not just at Skill entry. Currently agent-status-sync overwrites the bus without preserving the skill field set by skill-status-enter.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 254
+
+- [x] preserve-skill-field — Update agent-status-sync.ts writeStatusBus call to read existing skill value from bus before writing, so it persists across agent transitions
+- [x] fallback-skill-from-context — If bus has no skill field, infer it from /tmp/lu-skill.txt sidecar as a fallback
+
 ---
 
 ## Deferred to Future Milestones

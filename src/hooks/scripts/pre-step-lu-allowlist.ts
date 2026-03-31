@@ -81,7 +81,15 @@ const REGISTERED: ReadonlyArray<string> = [
   "learn-route",
 ];
 
-/** Check if an agent name matches any registered prefix or exact name. */
+/**
+ * Check if an agent name is in the allowlist.
+ *
+ * Entries ending with "-" are prefix-matched via startsWith.
+ * All other entries are exact-matched.
+ *
+ * @param agentName - The Agent() name to check
+ * @returns true if the name matches any registered entry
+ */
 const isRegistered = (agentName: string): boolean => {
   for (const entry of REGISTERED) {
     if (entry.endsWith("-")) {

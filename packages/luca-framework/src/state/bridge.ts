@@ -694,7 +694,12 @@ async function handleTransition(args: string[]): Promise<void> {
     },
   });
 
-  // Best-effort status bus update for statusline HUD
+  // Best-effort status bus update for statusline HUD.
+  // IMPORTANT: Do NOT write `stage` or `step` here — those fields are owned
+  // by agent-status-sync (the PreToolUse hook on Agent). Writing stage here
+  // would clobber the hook's granular per-agent step data with the coarse
+  // state machine value (e.g., "DISCUSSING" overwrites "EXECUTING").
+  // The bridge only writes: complexity, phase, and idle-state cleanup.
   try {
     let busData: Record<string, unknown> = {};
     try {
@@ -705,15 +710,16 @@ async function handleTransition(args: string[]): Promise<void> {
     }
 
     const ctx = nextSnapshot.context as Record<string, unknown>;
-    busData.stage = String(nextSnapshot.value).toUpperCase();
+    // Only write context fields that hooks don't own
     busData.complexity = ctx.complexity ?? busData.complexity ?? "";
     if (ctx.current_phase !== undefined && ctx.current_phase !== null) {
       busData.phase = ctx.current_phase;
     }
-    // Clear skill/step when transitioning to idle state
+    // Clear everything when transitioning to idle state (session end)
     if (String(nextSnapshot.value) === "idle") {
       busData.skill = "";
       busData.step = "";
+      busData.stage = "";
     }
     busData.updated_at = new Date().toISOString();
 

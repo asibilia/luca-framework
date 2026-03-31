@@ -39,6 +39,9 @@ const main = async (): Promise<void> => {
 
     const busPath = `${projectDir()}/${STATUS_BUS_PATH}`;
     await writeStatusBus({ skill: skillName, stage: "EXECUTING" }, busPath);
+
+    // Persist skill name as durable fallback for agent-status-sync
+    await Bun.write("/tmp/lu-skill.txt", skillName).catch(() => {});
   } catch {
     // Hooks must never fail visibly
   }

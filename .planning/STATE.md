@@ -2,14 +2,14 @@
 
 ## Current Position
 
-- **Status:** Idle
-- **Task Complexity:** TRIVIAL
+- **Status:** Verifying
+- **Task Complexity:** SIMPLE
 - **Oversight:** full-auto
-- **Last Updated:** unknown
+- **Last Updated:** 2026-03-31
 
 ## Session Identity
 
-- **Session ID:** 9a5e618e-7ee4-4daf-979f-6b5ad0062eed
+- **Session ID:** 6b644f24-2ecd-4f78-8604-ca39cae639c2
 
 ## Appetite
 
@@ -20,8 +20,12 @@
 ## Progress
 
 ```
-(no phases completed yet)
+  Phase 255: complete — Phase 255 completed — skill name now persists in statusline across Agent() transitions
 ```
+
+## Verification
+
+- **Attempts:** 0 / 3
 
 ## Git Context
 
@@ -29,7 +33,9 @@
 
 ## Allowed Events
 
-- `START`
+- `VERIFY_PASSED`
+- `VERIFY_FAILED`
+- `VERIFY_HALTED`
 
 ## Previous Milestones
 
@@ -55,8 +61,8 @@ _State updated: 2026-03-30 — v8.5.2 milestone complete (Phase 236 + Phase 237 
 ## Session Continuity
 
 - **Session Started:** 2026-03-31
-- **Last Transition:** unknown
+- **Last Transition:** 2026-03-31
 
 ---
 
-_State generated from machine snapshot at 2026-03-31T19:43:27.351Z_
+_State generated from machine snapshot at 2026-03-31T20:54:13.063Z_

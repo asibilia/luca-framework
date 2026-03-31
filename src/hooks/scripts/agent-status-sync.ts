@@ -21,7 +21,7 @@ import {
   projectDir,
   extractToolInput,
 } from "../__helpers/hook-io.ts";
-import { writeStatusBus, STATUS_BUS_PATH } from "../../shared";
+import { writeStatusBus, readStatusBus, STATUS_BUS_PATH } from "../../shared";
 
 const AGENT_NAME_RE = /^[a-z0-9-]+$/;
 
@@ -133,9 +133,27 @@ const main = async (): Promise<void> => {
 
     const phase = extractPhase(agentName);
 
-    // Write to status bus — merges with existing data (preserves skill name
-    // written by skill-status-enter, overrides step + progress)
+    // Rescue existing skill value before writeStatusBus's stale guard can drop it.
+    // Pass Number.MAX_SAFE_INTEGER to bypass TTL — we only want the skill field,
+    // and agent-status-sync never writes its own skill value, so echoing what's
+    // already on disk is always safe.
     const busPath = `${projectDir()}/${STATUS_BUS_PATH}`;
+    let existingSkill =
+      (await readStatusBus(busPath, Number.MAX_SAFE_INTEGER))?.skill ?? "";
+
+    // Sidecar fallback: if the bus was cleared or never written, try /tmp/lu-skill.txt
+    if (!existingSkill) {
+      try {
+        const sidecar = Bun.file("/tmp/lu-skill.txt");
+        if (await sidecar.exists()) {
+          const txt = (await sidecar.text()).trim();
+          if (txt && /^[a-z0-9-]+$/.test(txt)) existingSkill = txt;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     await writeStatusBus(
       {
         step: matched.step,
@@ -143,6 +161,7 @@ const main = async (): Promise<void> => {
         wave_total: LU_PIPELINE_TOTAL,
         stage: "EXECUTING",
         ...(phase !== undefined && { phase }),
+        ...(existingSkill ? { skill: existingSkill } : {}),
       },
       busPath,
     );
