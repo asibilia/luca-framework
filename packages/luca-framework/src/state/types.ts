@@ -386,6 +386,16 @@ export const workflowEventSchema = z.discriminatedUnion("type", [
     attempt: z.number().int().positive(),
     max_attempts: z.number().int().positive(),
   }),
+
+  // Compound sub-state transition events (executing sub-states)
+  /** Execution agent completed — transitions executing.running -> executing.harnessing */
+  z.object({ type: z.literal("EXECUTION_COMPLETE") }),
+  /** Phase verification passed within executing — transitions executing.verifying -> executing.reviewing */
+  z.object({ type: z.literal("PHASE_VERIFY_PASSED") }),
+  /** All parallel reviewers completed — transitions executing.reviewing -> executing.learning */
+  z.object({ type: z.literal("REVIEW_COMPLETE") }),
+  /** Phase learning completed — transitions executing.learning -> executing.committing */
+  z.object({ type: z.literal("PHASE_LEARN_COMPLETE") }),
 ]);
 
 /**

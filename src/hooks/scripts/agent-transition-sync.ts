@@ -36,6 +36,9 @@ interface TransitionEffect {
     | "PREFLIGHT_COMPLETE"
     | "DISCUSS_COMPLETE"
     | "PLAN_COMPLETE"
+    | "EXECUTION_COMPLETE"
+    | "PHASE_VERIFY_PASSED"
+    | "PHASE_LEARN_COMPLETE"
     | "VERIFY_PASSED"
     | "LEARN_COMPLETE";
 }
@@ -312,21 +315,29 @@ const ORCHESTRATOR_MAPPINGS: readonly OrchestratorMapping[] = [
         excludePrefixes: ["plan-review-", "plan-revise-"],
         effects: [{ type: "transition", event: "PLAN_COMPLETE" }],
       },
+      {
+        prefix: "execute-",
+        excludePrefixes: ["execute-gaps-"],
+        effects: [{ type: "transition", event: "EXECUTION_COMPLETE" }],
+      },
       // NOTE: harness-* is SKIPPED -- can't know if harness passed from
       // PostToolUse alone. Kept in template.
+      // NOTE: review-* agents are SKIPPED -- parallel agents need special
+      // handling. REVIEW_COMPLETE fires only after ALL reviewers finish.
+      // Emitted explicitly in the lu.skill.ts template.
       {
         prefix: "verify-",
         excludePrefixes: ["verify-route"],
-        effects: [{ type: "transition", event: "VERIFY_PASSED" }],
+        effects: [{ type: "transition", event: "PHASE_VERIFY_PASSED" }],
       },
       {
         prefix: "learn-",
         excludePrefixes: ["learn-route"],
-        effects: [{ type: "transition", event: "LEARN_COMPLETE" }],
+        effects: [{ type: "transition", event: "PHASE_LEARN_COMPLETE" }],
       },
       {
         prefix: "process-data-",
-        effects: [{ type: "transition", event: "LEARN_COMPLETE" }],
+        effects: [{ type: "transition", event: "PHASE_LEARN_COMPLETE" }],
       },
     ],
   },

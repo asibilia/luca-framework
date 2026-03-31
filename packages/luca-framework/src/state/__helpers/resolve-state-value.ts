@@ -5,14 +5,11 @@
  * field, which may be either a flat string ("executing") or a compound
  * object ({ executing: "reviewing" }) when compound sub-states are active.
  *
- * **Phase 1 (current):** All states are flat strings, so both functions
- * return identical results. Zero behavior change.
- *
- * **Phase 2 (future):** When compound sub-states are introduced for the
- * `executing` state, `resolveStateValue()` will still return the top-level
- * state name ("executing"), while `resolveStatePath()` will return the full
- * dot-path ("executing.reviewing"). This allows call sites to opt-in to
- * finer-grained enforcement without a breaking change.
+ * The `executing` state uses compound sub-states (discussing, planning,
+ * running, harnessing, verifying, reviewing, learning, committing).
+ * `resolveStateValue()` returns the top-level state name ("executing"),
+ * while `resolveStatePath()` returns the full dot-path ("executing.reviewing").
+ * This allows call sites to opt-in to finer-grained enforcement.
  *
  * @module luca-state/resolve-state-value
  */

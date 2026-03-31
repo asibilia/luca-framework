@@ -440,6 +440,7 @@ export const workflowMachine = setup({
     },
 
     executing: {
+      initial: "discussing",
       invoke: {
         id: "phase",
         src: "phaseActor",
@@ -464,6 +465,7 @@ export const workflowMachine = setup({
         },
       },
       on: {
+        // Parent-level events — can fire from ANY sub-state (bubble up)
         PHASE_COMPLETE: {
           target: "verifying",
           actions: ["recordPhaseResult", "recordTransition"],
@@ -499,6 +501,79 @@ export const workflowMachine = setup({
           actions: ["recordTransition"],
         },
       },
+      // Sub-states model the per-phase pipeline steps. The machine enforces
+      // ordering: each sub-state only transitions to the next on the correct event.
+      //
+      // NOTE: DISCUSS_COMPLETE and PLAN_COMPLETE are intentionally reused from
+      // the top-level states (discussing, planning). This is safe because the
+      // top-level and sub-level states are mutually exclusive — the machine is
+      // either in top-level `discussing` OR in `executing.discussing`, never both.
+      // XState processes events child-first, so the sub-state handler fires first.
+      states: {
+        discussing: {
+          on: {
+            DISCUSS_COMPLETE: {
+              target: "planning",
+              actions: ["recordTransition"],
+            },
+            SKIP: {
+              target: "planning",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        planning: {
+          on: {
+            PLAN_COMPLETE: {
+              target: "running",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        running: {
+          on: {
+            EXECUTION_COMPLETE: {
+              target: "harnessing",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        harnessing: {
+          on: {
+            HARNESS_COMPLETE: {
+              target: "verifying",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        verifying: {
+          on: {
+            PHASE_VERIFY_PASSED: {
+              target: "reviewing",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        reviewing: {
+          on: {
+            REVIEW_COMPLETE: {
+              target: "learning",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        learning: {
+          on: {
+            PHASE_LEARN_COMPLETE: {
+              target: "committing",
+              actions: ["recordTransition"],
+            },
+          },
+        },
+        committing: {
+          // Terminal sub-state — PHASE_COMPLETE bubbles to parent executing.on
+        },
+      },
     },
 
     verifying: {
@@ -516,7 +591,7 @@ export const workflowMachine = setup({
         ],
         VERIFY_FAILED: [
           {
-            target: "executing",
+            target: "#luca-workflow.executing.running",
             guard: "canRetryVerification",
             actions: [
               "incrementVerificationAttempts",
@@ -664,6 +739,8 @@ export const workflowMachine = setup({
  * Get the list of event types that are valid in the current state.
  *
  * Useful for CLI `status` command and LLM prompt construction.
+ * For compound states (e.g., `{ executing: "reviewing" }`), returns
+ * both parent-level events and sub-state-specific events.
  *
  * @param snapshot - The current machine snapshot
  * @returns Array of event type strings that the machine will accept
@@ -673,8 +750,36 @@ export function getAllowedEvents(
     ReturnType<typeof createActor<typeof workflowMachine>>["getSnapshot"]
   >,
 ): string[] {
-  const state = resolveStateValue(snapshot.value);
-  const stateConfig = workflowMachine.config.states?.[state];
-  if (!stateConfig || !stateConfig.on) return [];
-  return Object.keys(stateConfig.on);
+  const topState = resolveStateValue(snapshot.value);
+  const stateConfig = workflowMachine.config.states?.[topState] as
+    | Record<string, unknown>
+    | undefined;
+  if (!stateConfig) return [];
+
+  // Collect parent-level events
+  const parentEvents = stateConfig.on
+    ? Object.keys(stateConfig.on as Record<string, unknown>)
+    : [];
+
+  // If the state value is compound (an object), walk into sub-state events
+  if (
+    snapshot.value !== null &&
+    typeof snapshot.value === "object" &&
+    !Array.isArray(snapshot.value)
+  ) {
+    const valueObj = snapshot.value as Record<string, string>;
+    const subStateName = valueObj[topState];
+    if (typeof subStateName === "string") {
+      const subStates = stateConfig.states as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      const subConfig = subStates?.[subStateName];
+      if (subConfig?.on) {
+        const subEvents = Object.keys(subConfig.on as Record<string, unknown>);
+        return [...parentEvents, ...subEvents];
+      }
+    }
+  }
+
+  return parentEvents;
 }

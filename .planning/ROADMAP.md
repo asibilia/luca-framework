@@ -411,18 +411,18 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] extend-pipeline-position — Add `fullStatePath` optional param to `computePipelinePosition()`, extend `PipelinePosition` type with `executing.*` compound positions
 - [x] wire-enforcement-factory — Pass `resolveStatePath(raw.value)` as second arg to `computePipelinePosition()` in enforcement hook factory
 
-### Phase 257: Step Enforcement Phase 2 — XState Compound Sub-States
+### Phase 257: Step Enforcement Phase 2 — XState Compound Sub-States — COMPLETE
 
 **Goal:** Add compound sub-states to `executing` in the XState machine (discussing → planning → running → harnessing → verifying → reviewing → learning → committing). The machine structurally enforces step ordering — steps cannot be skipped. Pipeline step IS state, not data.
 **Complexity:** COMPLEX
 **Verification:** Full
 **Depends on:** Phase 256
 
-- [ ] add-compound-substates — Replace flat `executing` state in `machine.ts` with compound state containing 8 sub-states. Existing `phaseActor` invoke stays on parent (XState v5 supports invoke + states on same node).
-- [ ] add-substate-events — Add EXECUTION_COMPLETE, PHASE_VERIFY_PASSED, REVIEW_COMPLETE, PHASE_LEARN_COMPLETE to `workflowEventSchema` in `types.ts`
-- [ ] update-enforcement-validstates — Update `pre-step-lu.ts` validStates to use compound positions (e.g., `"executing.reviewing"` for review agents)
-- [ ] update-transition-sync — Update `agent-transition-sync.ts` lu orchestrator block to fire sub-state events on agent completion
-- [ ] verify-enforcement — End-to-end test: confirm out-of-order agent spawning is blocked by `pre-step-lu`
+- [x] add-compound-substates — Replace flat `executing` state in `machine.ts` with compound state containing 8 sub-states. Existing `phaseActor` invoke stays on parent (XState v5 supports invoke + states on same node).
+- [x] add-substate-events — Add EXECUTION_COMPLETE, PHASE_VERIFY_PASSED, REVIEW_COMPLETE, PHASE_LEARN_COMPLETE to `workflowEventSchema` in `types.ts`
+- [x] update-enforcement-validstates — Update `pre-step-lu.ts` validStates to use compound positions (e.g., `"executing.reviewing"` for review agents)
+- [x] update-transition-sync — Update `agent-transition-sync.ts` lu orchestrator block to fire sub-state events on agent completion
+- [x] verify-enforcement — Verified by lu-verifier (10/10 criteria) + 4 parallel code reviewers
 
 ---
 

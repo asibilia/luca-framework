@@ -408,6 +408,11 @@ Agent(name: "review-security-{NN}", subagent_type: "security-auditor", model: DE
 Agent(name: "review-simplify-{NN}", subagent_type: "code-simplifier", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("simplifier", {...}))
 \`\`\`
 
+After ALL reviewers return, emit REVIEW_COMPLETE to advance the executing sub-state:
+\`\`\`bash
+luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
+\`\`\`
+
 #### 7l. Learning capture
 
 

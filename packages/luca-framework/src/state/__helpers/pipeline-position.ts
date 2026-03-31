@@ -12,10 +12,10 @@
  * Pipeline position type — the coarse workflow view used by enforcement hooks,
  * crash recovery, and the session-end audit.
  *
- * The compound `executing.*` sub-positions are forward-compatible placeholders
- * for Phase 2 (XState compound sub-states). In Phase 1, `computePipelinePosition()`
- * only returns them when a `fullStatePath` argument is provided by the caller.
- * All flat-state callers (the majority) continue to receive `"executing"` as before.
+ * The compound `executing.*` sub-positions map to XState compound sub-states
+ * within the `executing` state. `computePipelinePosition()` returns them when
+ * a `fullStatePath` argument is provided (used by the enforcement hook factory).
+ * Callers that pass only the top-level state receive `"executing"` as before.
  */
 export type PipelinePosition =
   | "idle"

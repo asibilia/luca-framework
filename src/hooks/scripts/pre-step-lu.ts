@@ -64,19 +64,36 @@ const hook = createSubSkillEnforcementHook({
     configure: new Set(["routed"]),
     backlog: new Set(["configured"]),
     // Phase-suffixed agents (use prefix as key)
-    "classify-": new Set(["idle", "scanned", "configured", "executing"]),
-    "discuss-": new Set(["scanned", "configured", "executing"]),
-    "plan-": new Set(["scanned", "configured", "executing"]),
-    "plan-gaps-": new Set(["executing"]),
-    "execute-": new Set(["executing"]),
-    "execute-gaps-": new Set(["executing"]),
-    "harness-": new Set(["executing"]),
-    "fix-": new Set(["executing"]),
-    "verify-": new Set(["executing"]),
-    "review-": new Set(["executing"]),
-    "learn-": new Set(["executing"]),
-    "process-data-": new Set(["executing"]),
-    // v2 research agents (valid during executing)
+    // Bare "executing" remains in every set for backward compat with old state.json files
+    "classify-": new Set([
+      "idle",
+      "scanned",
+      "configured",
+      "executing",
+      "executing.discussing",
+    ]),
+    "discuss-": new Set([
+      "scanned",
+      "configured",
+      "executing",
+      "executing.discussing",
+    ]),
+    "plan-": new Set([
+      "scanned",
+      "configured",
+      "executing",
+      "executing.planning",
+    ]),
+    "plan-gaps-": new Set(["executing", "executing.planning"]),
+    "execute-": new Set(["executing", "executing.running"]),
+    "execute-gaps-": new Set(["executing", "executing.running"]),
+    "harness-": new Set(["executing", "executing.harnessing"]),
+    "fix-": new Set(["executing", "executing.harnessing", "executing.running"]),
+    "verify-": new Set(["executing", "executing.verifying"]),
+    "review-": new Set(["executing", "executing.reviewing"]),
+    "learn-": new Set(["executing", "executing.learning"]),
+    "process-data-": new Set(["executing", "executing.learning"]),
+    // v2 research agents (not part of linear pipeline — bare executing only)
     "research-scope-": new Set(["executing"]),
     "research-arch-": new Set(["executing"]),
     "research-impl-": new Set(["executing"]),
@@ -89,9 +106,9 @@ const hook = createSubSkillEnforcementHook({
     "review-completeness-": new Set(["executing"]),
     "review-actionability-": new Set(["executing"]),
     // v2 plan review
-    "plan-review-": new Set(["executing"]),
-    "plan-revise-": new Set(["executing"]),
-    // Milestone agents
+    "plan-review-": new Set(["executing", "executing.planning"]),
+    "plan-revise-": new Set(["executing", "executing.planning"]),
+    // Milestone agents (not part of linear pipeline — bare executing only)
     "milestone-learn": new Set(["executing"]),
     "milestone-prune": new Set(["executing"]),
     "milestone-shadow": new Set(["executing"]),
