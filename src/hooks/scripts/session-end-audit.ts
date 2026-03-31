@@ -7,12 +7,12 @@
  *
  * This hook is advisory only — it always exits 0 and never blocks session end.
  *
- * **Context files checked:**
- * - `.planning/state.json` (terminal: `complete`, uses computed pipeline position)
- * - `/tmp/phase-execute-context.json` (terminal: `committed`, `failed`)
- * - `/tmp/verify-context.json` (terminal: `reviewed`, `diagnosed`, `failed`)
- * - `/tmp/milestone-complete-context.json` (terminal: `finalized`, `failed`)
- * - `/tmp/pr-address-context.json` (terminal: `pushed`, `failed`)
+ * **Context files checked (terminal states derived from ORCHESTRATOR_GATES):**
+ * - `.planning/state.json` (terminal: `idle`, `complete`, `failed`; uses computed pipeline position)
+ * - `/tmp/phase-execute-context.json` (terminal: `idle`, `committed`, `failed`)
+ * - `/tmp/verify-context.json` (terminal: `idle`, `reviewed`, `diagnosed`, `failed`)
+ * - `/tmp/milestone-complete-context.json` (terminal: `idle`, `finalized`, `failed`)
+ * - `/tmp/pr-address-context.json` (terminal: `idle`, `pushed`, `failed`)
  *
  * @module session-end-audit
  */
