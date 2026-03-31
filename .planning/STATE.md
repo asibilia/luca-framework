@@ -2,7 +2,7 @@
 
 ## Current Position
 
-- **Status:** Discussing
+- **Status:** Executing
 - **Task Complexity:** MODERATE
 - **Oversight:** full-auto
 - **Last Updated:** 2026-03-31
@@ -29,9 +29,13 @@
 
 ## Allowed Events
 
-- `DISCUSS_COMPLETE`
-- `PREMORTEM_COMPLETE`
-- `SKIP`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
+- `DAG_STEP_START`
+- `DAG_STEP_COMPLETE`
+- `DAG_STEP_FAILED`
+- `DAG_STEP_RETRY`
 
 ## Previous Milestones
 
@@ -61,4 +65,4 @@ _State updated: 2026-03-30 — v8.5.2 milestone complete (Phase 236 + Phase 237 
 
 ---
 
-_State generated from machine snapshot at 2026-03-31T03:30:50.244Z_
+_State generated from machine snapshot at 2026-03-31T03:36:07.025Z_

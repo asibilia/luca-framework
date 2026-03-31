@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (11):
+ * Subcommands (13):
  *   read-complexity        — Read current complexity level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
@@ -16,6 +16,8 @@
  *   gate-check             — Check if a named gate is enabled
  *   suspend                — Create checkpoint and suspend current phase
  *   init-vault             — Guided setup for project MuninnDB vault
+ *   write-status           — Write partial data to statusline bus (.planning/.statusline.json)
+ *   clear-status           — Remove the statusline bus file
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -182,6 +184,8 @@ const VALID_SUBCOMMANDS = [
   "gate-check",
   "suspend",
   "init-vault",
+  "write-status",
+  "clear-status",
 ] as const;
 
 /**
@@ -212,6 +216,18 @@ Lifecycle commands:
 
 Vault commands:
   init-vault             Guided setup for project MuninnDB vault ([--vault=name] [--force])
+
+Status bus commands:
+  write-status           Write to statusline bus (.planning/.statusline.json)
+    --skill=NAME         Active skill name (e.g., "lu", "scout", "pr-address")
+    --stage=STAGE        High-level stage (e.g., "EXECUTING", "PLANNING")
+    --step=STEP          Sub-step within stage (e.g., "research", "plan", "execute")
+    --phase=N            Phase number
+    --wave-current=N     Current wave number
+    --wave-total=N       Total wave count
+    --complexity=LEVEL   Complexity level
+    --detail=TEXT        Free-form detail
+  clear-status           Remove the statusline bus file
 
 Options:
   --help, -h             Show this help message`;
@@ -650,6 +666,31 @@ async function handleTransition(args: string[]): Promise<void> {
     },
   });
 
+  // Best-effort status bus update for statusline HUD
+  try {
+    const busPath = ".planning/.statusline.json";
+    let busData: Record<string, unknown> = {};
+    try {
+      const busFile = Bun.file(busPath);
+      if (await busFile.exists()) busData = await busFile.json();
+    } catch { /* start fresh */ }
+
+    const ctx = nextSnapshot.context as Record<string, unknown>;
+    busData.stage = String(nextSnapshot.value).toUpperCase();
+    busData.complexity = ctx.complexity ?? busData.complexity ?? "";
+    if (ctx.current_phase !== undefined && ctx.current_phase !== null) {
+      busData.phase = ctx.current_phase;
+    }
+    busData.updated_at = new Date().toISOString();
+
+    const tmpBus = `${busPath}.tmp`;
+    await Bun.write(tmpBus, JSON.stringify(busData, null, 2) + "\n");
+    const { rename } = await import("node:fs/promises");
+    await rename(tmpBus, busPath);
+  } catch {
+    // Status bus update is best-effort — never fail the transition
+  }
+
   console.log(JSON.stringify(record, null, 2));
 }
 
@@ -1024,6 +1065,79 @@ async function handleInitVault(args: string[]): Promise<void> {
   );
 }
 
+// ─── Status Bus Commands ─────────────────────────────────────────────────────
+
+/**
+ * Handle `write-status` — write partial data to the statusline bus file.
+ *
+ * Merges provided fields with existing bus data, sets updated_at, and
+ * writes atomically via tmp+rename. Self-contained — no external imports.
+ *
+ * @param args - CLI arguments with --skill, --stage, --step, --phase, etc.
+ */
+async function handleWriteStatus(args: string[]): Promise<void> {
+  const BUS_PATH = ".planning/.statusline.json";
+
+  // Read existing bus data for merge
+  let existing: Record<string, unknown> = {};
+  try {
+    const file = Bun.file(BUS_PATH);
+    if (await file.exists()) {
+      existing = await file.json();
+    }
+  } catch {
+    // Start fresh on read error
+  }
+
+  // Parse args and merge
+  const skill = getArg(args, "skill");
+  const stage = getArg(args, "stage");
+  const step = getArg(args, "step");
+  const phase = getArg(args, "phase");
+  const waveCurrent = getArg(args, "wave-current");
+  const waveTotal = getArg(args, "wave-total");
+  const complexity = getArg(args, "complexity");
+  const detail = getArg(args, "detail");
+
+  const update: Record<string, unknown> = {};
+  if (skill !== undefined) update.skill = skill;
+  if (stage !== undefined) update.stage = stage;
+  if (step !== undefined) update.step = step;
+  if (phase !== undefined) update.phase = parseInt(phase, 10);
+  if (waveCurrent !== undefined) update.wave_current = parseInt(waveCurrent, 10);
+  if (waveTotal !== undefined) update.wave_total = parseInt(waveTotal, 10);
+  if (complexity !== undefined) update.complexity = complexity;
+  if (detail !== undefined) update.detail = detail;
+
+  const merged = {
+    ...existing,
+    ...update,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Atomic write via tmp+rename
+  const tmpPath = `${BUS_PATH}.tmp`;
+  await Bun.write(tmpPath, JSON.stringify(merged, null, 2) + "\n");
+  const { rename } = await import("node:fs/promises");
+  await rename(tmpPath, BUS_PATH);
+
+  console.log(JSON.stringify(merged));
+}
+
+/**
+ * Handle `clear-status` — remove the statusline bus file.
+ */
+async function handleClearStatus(): Promise<void> {
+  const BUS_PATH = ".planning/.statusline.json";
+  try {
+    const { unlink } = await import("node:fs/promises");
+    await unlink(BUS_PATH);
+  } catch {
+    // Ignore if file doesn't exist
+  }
+  console.log(JSON.stringify({ cleared: true }));
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1083,6 +1197,12 @@ export async function runBridgeCli(): Promise<void> {
     case "init-vault":
       await handleInitVault(args);
       break;
+    case "write-status":
+      await handleWriteStatus(args);
+      break;
+    case "clear-status":
+      await handleClearStatus();
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1113,6 +1233,8 @@ export {
   handleGateCheck,
   handleSuspend,
   handleInitVault,
+  handleWriteStatus,
+  handleClearStatus,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

@@ -271,6 +271,7 @@ Automated article ingestion, research, and actionable todo generation from exter
 - [x] status-bus — Created `.planning/.statusline.json` status bus with Zod schema, atomic writer, staleness TTL, and renderer integration
 - [x] step-granularity — Status bus `step` field enables sub-step display within EXECUTING; renderer shows step label when available
 - [x] frequent-persistence — Wave count updates now persist via `SET_WAVE_COUNT` bridge transition; status bus provides out-of-band persistence for non-XState skills
+- [x] bridge-integration — Added `write-status` and `clear-status` subcommands to luca-bridge; auto-update bus on every `transition` command so statusline stays fresh
 
 ---
 
