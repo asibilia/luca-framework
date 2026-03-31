@@ -15,8 +15,7 @@ import { resolve } from "path";
 import { z } from "zod";
 import get from "lodash/get";
 
-import { sanitizeJsonParse } from "../../shared";
-import { readStatusBus } from "../../shared/__helpers/status-bus";
+import { sanitizeJsonParse, readStatusBus, STATUS_BUS_PATH } from "../../shared";
 
 import { projectDir } from "../__helpers/hook-io.ts";
 
@@ -32,16 +31,16 @@ const DisplayStateEnum = z.enum([
 ]);
 
 const WorkflowHudStateSchema = z.object({
-  displayState: DisplayStateEnum.default("idle"),
+  display_state: DisplayStateEnum.default("idle"),
   icon: z.string().default("\u25c7"),
-  phaseLabel: z.string().default(""),
+  phase_label: z.string().default(""),
   complexity: z.string().default(""),
   milestone: z.string().default(""),
-  currentWave: z.number().default(0),
-  totalWaves: z.number().default(0),
-  hasWaveData: z.boolean().default(false),
-  skillName: z.string().default(""),
-  stepName: z.string().default(""),
+  current_wave: z.number().default(0),
+  total_waves: z.number().default(0),
+  has_wave_data: z.boolean().default(false),
+  skill_name: z.string().default(""),
+  step_name: z.string().default(""),
 });
 
 type WorkflowHudState = z.infer<typeof WorkflowHudStateSchema>;
@@ -111,21 +110,21 @@ const readWorkflowState = async (
     const milestone = rawMilestone.split(" ")[0] || "";
 
     // Read status bus — prefer fresh bus data over state.json for skill/step/wave
-    const bus = await readStatusBus(`${pd}/.planning/.statusline.json`);
+    const bus = await readStatusBus(`${pd}/${STATUS_BUS_PATH}`);
 
     const assembled = {
-      displayState: bus?.stage
+      display_state: bus?.stage
         ? bus.stage.toUpperCase()
         : mapped.displayState,
       icon: mapped.icon,
-      phaseLabel: bus?.phase ? `P${bus.phase}` : phaseId ? `P${phaseId}` : "",
+      phase_label: bus?.phase ? `P${bus.phase}` : phaseId ? `P${phaseId}` : "",
       complexity: bus?.complexity || complexity,
       milestone,
-      currentWave: bus?.wave_current ?? currentWave,
-      totalWaves: bus?.wave_total ?? totalWaves,
-      hasWaveData: (bus?.wave_total ?? totalWaves) > 0,
-      skillName: bus?.skill ?? "",
-      stepName: bus?.step ?? "",
+      current_wave: bus?.wave_current ?? currentWave,
+      total_waves: bus?.wave_total ?? totalWaves,
+      has_wave_data: (bus?.wave_total ?? totalWaves) > 0,
+      skill_name: bus?.skill ?? "",
+      step_name: bus?.step ?? "",
     };
 
     const parseResult = WorkflowHudStateSchema.safeParse(assembled);
@@ -186,7 +185,7 @@ const renderHudLine = (
     boldYellow: (s: string) => string;
   },
 ): string => {
-  if (state.displayState === "idle") {
+  if (state.display_state === "idle") {
     return colors.gray(` ${state.icon} idle`);
   }
 
@@ -199,7 +198,7 @@ const renderHudLine = (
     FAILED: colors.red,
   };
 
-  const stateColor = stateColorMap[state.displayState] || colors.gray;
+  const stateColor = stateColorMap[state.display_state] || colors.gray;
 
   // Complexity color mapping
   const complexityColorMap: Record<string, (s: string) => string> = {
@@ -216,30 +215,30 @@ const renderHudLine = (
   segments.push(stateColor(` ${state.icon}`));
 
   // Skill prefix with separator: "lu > " or nothing
-  if (state.skillName) {
+  if (state.skill_name) {
     segments.push(
-      colors.cyan(state.skillName) + colors.gray(" >"),
+      colors.cyan(state.skill_name) + colors.gray(" >"),
     );
   }
 
   // Step name if available, otherwise display state
-  const stateLabel = state.stepName || state.displayState;
+  const stateLabel = state.step_name || state.display_state;
   segments.push(stateColor(stateLabel));
 
   // Phase label in cyan
-  if (state.phaseLabel) {
-    segments.push(colors.cyan(state.phaseLabel));
+  if (state.phase_label) {
+    segments.push(colors.cyan(state.phase_label));
   }
 
   // Progress bar + wave fraction
-  if (state.hasWaveData) {
+  if (state.has_wave_data) {
     const bar = renderProgressBar(
-      state.currentWave,
-      state.totalWaves,
+      state.current_wave,
+      state.total_waves,
       stateColor,
       colors.gray,
     );
-    segments.push(`${bar}  ${state.currentWave}/${state.totalWaves}`);
+    segments.push(`${bar}  ${state.current_wave}/${state.total_waves}`);
   }
 
   // Complexity

@@ -1,9 +1,11 @@
+import { rename, unlink } from "node:fs/promises";
+
 import { z } from "zod";
 
 import { StatusBusSchema } from "../__schemas/status-bus.schemas";
 import type { StatusBusInput } from "../__schemas/status-bus.schemas";
 
-const BUS_PATH = ".planning/.statusline.json";
+export const STATUS_BUS_PATH = ".planning/.statusline.json";
 
 /**
  * Write status bus data to .planning/.statusline.json.
@@ -15,7 +17,7 @@ const BUS_PATH = ".planning/.statusline.json";
  */
 export const writeStatusBus = async (
   data: Partial<StatusBusInput>,
-  busPath: string = BUS_PATH,
+  busPath: string = STATUS_BUS_PATH,
 ): Promise<void> => {
   try {
     // Read existing bus data for merge
@@ -23,7 +25,9 @@ export const writeStatusBus = async (
     try {
       const file = Bun.file(busPath);
       if (await file.exists()) {
-        existing = await file.json();
+        const raw = await file.json();
+        const parsed = StatusBusSchema.safeParse(raw);
+        existing = parsed.success ? parsed.data : {};
       }
     } catch {
       // Ignore read errors — start fresh
@@ -41,7 +45,6 @@ export const writeStatusBus = async (
     const content = JSON.stringify(parseResult.data, null, 2) + "\n";
     const tmpPath = `${busPath}.tmp`;
     await Bun.write(tmpPath, content);
-    const { rename } = await import("node:fs/promises");
     await rename(tmpPath, busPath);
   } catch {
     // Status bus writes must never fail visibly
@@ -57,7 +60,7 @@ export const writeStatusBus = async (
  * @returns Parsed status bus data or null if unavailable/stale
  */
 export const readStatusBus = async (
-  busPath: string = BUS_PATH,
+  busPath: string = STATUS_BUS_PATH,
   maxAgeMs: number = 60_000,
 ): Promise<z.infer<typeof StatusBusSchema> | null> => {
   try {
@@ -86,10 +89,9 @@ export const readStatusBus = async (
  * @param busPath - Path to the status bus file (default: .planning/.statusline.json)
  */
 export const clearStatusBus = async (
-  busPath: string = BUS_PATH,
+  busPath: string = STATUS_BUS_PATH,
 ): Promise<void> => {
   try {
-    const { unlink } = await import("node:fs/promises");
     await unlink(busPath);
   } catch {
     // Ignore if file doesn't exist

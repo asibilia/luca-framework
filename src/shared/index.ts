@@ -277,6 +277,7 @@ export { StatusBusSchema } from "./__schemas/status-bus.schemas";
 export type { StatusBus, StatusBusInput } from "./__schemas/status-bus.schemas";
 
 export {
+  STATUS_BUS_PATH,
   writeStatusBus,
   readStatusBus,
   clearStatusBus,

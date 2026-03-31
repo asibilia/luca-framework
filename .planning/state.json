@@ -3,11 +3,11 @@
   "value": "executing",
   "historyValue": {},
   "context": {
-    "session_id": "cf36b290-4f58-4001-8928-4c60aa32131f",
+    "session_id": "e5348853-2a86-4298-915f-56d66d9123ff",
     "base_branch": "main",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "COMPLEX",
+    "complexity": "SIMPLE",
     "oversight": "full-auto",
     "gates": {
       "confirm_project": true,
@@ -91,8 +91,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-31T13:30:24.840Z",
-    "last_transition_at": "2026-03-31T13:35:39.259Z"
+    "started_at": "2026-03-31T13:46:43.846Z",
+    "last_transition_at": "2026-03-31T13:46:52.466Z"
   },
   "children": {
     "phase": {
@@ -113,7 +113,7 @@
           "outcome": "pending",
           "outcome_reason": "",
           "timestamps": {
-            "started_at": "2026-03-31T13:35:39.260Z"
+            "started_at": "2026-03-31T13:46:52.467Z"
           }
         },
         "children": {}

@@ -37,6 +37,7 @@
  *
  * @module luca-bridge
  */
+import { rename, unlink } from "node:fs/promises";
 import { z } from "zod";
 import get from "lodash/get";
 import set from "lodash/set";
@@ -66,7 +67,11 @@ import { emitStateTransition, emitPhaseComplete } from "../emitter";
 /** Default path for the STATE.md file */
 const STATE_MD_PATH = ".planning/STATE.md";
 
-/** Path for the statusline bus file */
+/**
+ * Path for the statusline bus file (relative to project root).
+ * Same cwd-relative convention as STATE_FILE_PATH (".planning/state.json") —
+ * the bridge process is always started from the project root.
+ */
 const STATUS_BUS_PATH = ".planning/.statusline.json";
 
 /**
@@ -703,11 +708,15 @@ async function handleTransition(args: string[]): Promise<void> {
     if (ctx.current_phase !== undefined && ctx.current_phase !== null) {
       busData.phase = ctx.current_phase;
     }
+    // Clear skill/step when transitioning to idle state
+    if (String(nextSnapshot.value) === "idle") {
+      busData.skill = "";
+      busData.step = "";
+    }
     busData.updated_at = new Date().toISOString();
 
     const tmpBus = `${STATUS_BUS_PATH}.tmp`;
     await Bun.write(tmpBus, JSON.stringify(busData, null, 2) + "\n");
-    const { rename } = await import("node:fs/promises");
     await rename(tmpBus, STATUS_BUS_PATH);
   } catch {
     // Status bus update is best-effort — never fail the transition
@@ -1156,7 +1165,6 @@ async function handleWriteStatus(args: string[]): Promise<void> {
   // Atomic write via tmp+rename
   const tmpPath = `${STATUS_BUS_PATH}.tmp`;
   await Bun.write(tmpPath, JSON.stringify(validated.data, null, 2) + "\n");
-  const { rename } = await import("node:fs/promises");
   await rename(tmpPath, STATUS_BUS_PATH);
 
   console.log(JSON.stringify(validated.data));
@@ -1167,7 +1175,6 @@ async function handleWriteStatus(args: string[]): Promise<void> {
  */
 async function handleClearStatus(): Promise<void> {
   try {
-    const { unlink } = await import("node:fs/promises");
     await unlink(STATUS_BUS_PATH);
   } catch {
     // Ignore if file doesn't exist

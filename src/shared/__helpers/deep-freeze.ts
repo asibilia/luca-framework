@@ -5,6 +5,11 @@
  * deepFreeze walks the entire object graph so that nested objects
  * (e.g. frontmatter, sections[]) are also immutable.
  *
+ * **Limitation:** Properties defined with getters or setters are skipped
+ * during freezing. Their returned values remain mutable. This is intentional
+ * to support Zod v4's lazy shape getters, which self-mutate on first access
+ * and would throw TypeError if called on a frozen object.
+ *
  * @param obj - The object to deeply freeze
  * @returns The same object, now deeply frozen
  */
