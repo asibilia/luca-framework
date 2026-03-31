@@ -4,7 +4,7 @@
  * build-compile.ts — Compile src/ definitions to EJS templates.
  *
  * Stage 1 of the split build pipeline. Generates all Claude Code outputs
- * in memory via `generateAllOutputs()`, filters for `.claude/` entries,
+ * in memory via `generateAllOutputs()`, filters for `dist/claude/` entries,
  * transforms them into branded EJS templates via `transformOutputsToTemplates()`,
  * and writes the results to `packages/luca-framework/templates/harness/claude/`.
  *
@@ -60,9 +60,9 @@ const TEMPLATE_OUTPUT_DIR = path.join(
  * Run the compile stage: src/ -> templates/harness/claude/.
  *
  * 1. Calls generateAllOutputs() to compile every agent, skill, rule, and hook
- * 2. Filters for `.claude/` entries (excludes dist/plugin/ and settings fragment)
+ * 2. Filters for `dist/claude/` entries (excludes dist/plugin/ and settings fragment)
  * 3. Handles the special `settings.json__hooks` fragment by merging into settings.json
- * 4. Strips the `.claude/` prefix from keys
+ * 4. Strips the `dist/claude/` prefix from keys
  * 5. Applies branding transforms to produce EJS templates
  * 6. Writes all entries to the template output directory
  *
@@ -81,20 +81,20 @@ export async function runCompile(): Promise<{
   const generated = await generateAllOutputs();
 
   // =========================================================================
-  // 2. Filter for .claude/ entries and extract settings fragment
+  // 2. Filter for dist/claude/ entries and extract settings fragment
   // =========================================================================
   const claudeEntries = new Map<string, string>();
   let settingsHooksFragment: string | undefined;
 
   for (const [relPath, content] of generated) {
-    if (relPath === ".claude/settings.json__hooks") {
+    if (relPath === "dist/claude/settings.json__hooks") {
       settingsHooksFragment = content;
       continue;
     }
 
-    if (relPath.startsWith(".claude/")) {
-      // Strip the .claude/ prefix for template storage
-      const templatePath = relPath.slice(".claude/".length);
+    if (relPath.startsWith("dist/claude/")) {
+      // Strip the dist/claude/ prefix for template storage
+      const templatePath = relPath.slice("dist/claude/".length);
       claudeEntries.set(templatePath, content);
     }
   }

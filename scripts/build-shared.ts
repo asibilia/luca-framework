@@ -456,7 +456,7 @@ function generateAgentOutputs(generated: Map<string, string>): void {
   for (const [agentName, createAgent] of Object.entries(agentRegistry)) {
     const instance = createAgent();
     generated.set(
-      `.claude/agents/${agentName}.md`,
+      `dist/claude/agents/${agentName}.md`,
       compileAgent(instance, "CLAUDE"),
     );
     generated.set(
@@ -470,7 +470,7 @@ function generateSkillOutputs(generated: Map<string, string>): void {
   for (const [skillName, createSkill] of Object.entries(skillRegistry)) {
     const instance = createSkill();
     generated.set(
-      `.claude/skills/${skillName}/SKILL.md`,
+      `dist/claude/skills/${skillName}/SKILL.md`,
       compileSkill(instance, "CLAUDE"),
     );
     generated.set(
@@ -484,7 +484,7 @@ function generateRuleOutputs(generated: Map<string, string>): void {
   for (const [ruleName, createRule] of Object.entries(ruleRegistry)) {
     const instance = createRule();
     generated.set(
-      `.claude/rules/${ruleName}.md`,
+      `dist/claude/rules/${ruleName}.md`,
       compileRule(instance, "CLAUDE"),
     );
   }
@@ -507,7 +507,7 @@ async function generateHookOutputs(
     scriptExtension: ".sh",
   });
   generated.set(
-    ".claude/settings.json__hooks",
+    "dist/claude/settings.json__hooks",
     JSON.stringify(hooksConfig, null, 2),
   );
 }
@@ -659,7 +659,7 @@ async function generatePluginOutputs(
  * - check-drift.ts: compares each entry against committed files
  * - check-drift.test.ts: uses entries for freshness assertions
  *
- * The special key `.claude/settings.json__hooks` contains the hooks config
+ * The special key `dist/claude/settings.json__hooks` contains the hooks config
  * fragment (not a standalone file); build-all.ts merges it into settings.json.
  *
  * @returns Map of relative file paths to content strings

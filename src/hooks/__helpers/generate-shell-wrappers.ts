@@ -3,7 +3,7 @@
  *
  * Reads the canonical hook registry and generates `.sh` wrappers that
  * delegate to the TypeScript implementations in `scripts/`. These wrappers
- * are written to `.claude/hooks/` (or `.claude/statusline.sh` for the
+ * are written to `dist/claude/hooks/` (or `dist/claude/statusline.sh` for the
  * statusline hook) by the build pipeline.
  *
  * This is the single source of truth for shell wrapper content — no
@@ -25,13 +25,13 @@ import { resolveCanonicalRegistry } from "./hook-registry";
  * 1. **Global install** (`$LUCA_PACKAGE_ROOT` set): Uses the absolute path
  *    from the env var. This is set by `deploy-global.ts` or session-start.
  * 2. **Monorepo dev** (fallback): Uses a relative path from the wrapper's
- *    location in `.claude/hooks/` (two directories up to reach `src/`).
+ *    location in `dist/claude/hooks/` (three directories up to reach `src/`).
  *
  * This makes `deploy-global.ts`'s `rewriteWrapperPaths()` unnecessary for
  * new installs, though it remains as a transition mechanism.
  *
  * @param hookName - Canonical hook name (e.g. "post-edit-format")
- * @param outputPath - Relative output path (e.g. ".claude/hooks/post-edit-format.sh")
+ * @param outputPath - Relative output path (e.g. "dist/claude/hooks/post-edit-format.sh")
  * @returns Shell script string with context-aware exec bun invocation
  */
 export function generateShellWrapper(
@@ -39,12 +39,12 @@ export function generateShellWrapper(
   outputPath?: string,
 ): string {
   const scriptName = `${hookName}.ts`;
-  // Most wrappers live at .claude/hooks/{hookName}.sh → ../../ to reach src/
-  // Statusline wrapper lives at .claude/statusline.sh → ../ to reach src/
+  // Most wrappers live at dist/claude/hooks/{hookName}.sh → ../../../ to reach src/
+  // Statusline wrapper lives at dist/claude/statusline.sh → ../../ to reach src/
   const isRootLevel =
-    outputPath?.startsWith(".claude/") &&
-    !outputPath.startsWith(".claude/hooks/");
-  const relativePrefix = isRootLevel ? ".." : "../..";
+    outputPath?.startsWith("dist/claude/") &&
+    !outputPath.startsWith("dist/claude/hooks/");
+  const relativePrefix = isRootLevel ? "../.." : "../../..";
 
   // The wrapper checks LUCA_PACKAGE_ROOT first (global install),
   // then falls back to the relative path (monorepo dev).
@@ -63,10 +63,10 @@ exec bun "$SCRIPT" "$@" <&0
  * Generates shell wrappers for all hooks in the canonical registry.
  *
  * Returns a Record mapping output file paths to shell script content.
- * Most hooks map to `.claude/hooks/{name}.sh`. The `statusline` hook
- * is special — it maps to `.claude/statusline.sh` (not inside hooks/).
+ * Most hooks map to `dist/claude/hooks/{name}.sh`. The `statusline` hook
+ * is special — it maps to `dist/claude/statusline.sh` (not inside hooks/).
  *
- * @returns Record mapping output path (e.g. ".claude/hooks/post-edit-format.sh")
+ * @returns Record mapping output path (e.g. "dist/claude/hooks/post-edit-format.sh")
  *          to shell script content
  */
 export function generateAllShellWrappers(): Record<string, string> {
@@ -77,14 +77,14 @@ export function generateAllShellWrappers(): Record<string, string> {
     // Prompt hooks don't need shell wrappers — they're inline LLM evaluations
     if (hook.type === "prompt") continue;
 
-    const outputPath = `.claude/hooks/${hookName}.sh`;
+    const outputPath = `dist/claude/hooks/${hookName}.sh`;
     const content = generateShellWrapper(hookName, outputPath);
     wrappers[outputPath] = content;
   }
 
   // Statusline is not a hook event — it's a Claude Code statusLine setting.
   // But it uses the same TypeScript-in-scripts/ pattern and needs a shell wrapper.
-  const statuslineOutputPath = ".claude/statusline.sh";
+  const statuslineOutputPath = "dist/claude/statusline.sh";
   wrappers[statuslineOutputPath] = generateShellWrapper(
     "statusline",
     statuslineOutputPath,

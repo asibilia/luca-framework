@@ -12,7 +12,7 @@
  *
  * For single-domain mode, the script generates only the specified domain's
  * output files from the registry, applies branding transforms, and writes
- * them to `.claude/`. Other domains' files are left untouched.
+ * them to `dist/claude/`. Other domains' files are left untouched.
  *
  * Usage:
  *   bun run scripts/targeted-recompile.ts --domain=agents
@@ -80,7 +80,7 @@ async function generateDomainOutputs(d: Domain): Promise<Map<string, string>> {
       for (const [name, createAgent] of Object.entries(agentRegistry)) {
         const instance = createAgent();
         generated.set(
-          `.claude/agents/${name}.md`,
+          `dist/claude/agents/${name}.md`,
           compileAgent(instance, "CLAUDE"),
         );
       }
@@ -90,7 +90,7 @@ async function generateDomainOutputs(d: Domain): Promise<Map<string, string>> {
       for (const [name, createSkill] of Object.entries(skillRegistry)) {
         const instance = createSkill();
         generated.set(
-          `.claude/skills/${name}/SKILL.md`,
+          `dist/claude/skills/${name}/SKILL.md`,
           compileSkill(instance, "CLAUDE"),
         );
       }
@@ -100,7 +100,7 @@ async function generateDomainOutputs(d: Domain): Promise<Map<string, string>> {
       for (const [name, createRule] of Object.entries(ruleRegistry)) {
         const instance = createRule();
         generated.set(
-          `.claude/rules/${name}.md`,
+          `dist/claude/rules/${name}.md`,
           compileRule(instance, "CLAUDE"),
         );
       }
@@ -128,7 +128,7 @@ async function generateDomainOutputs(d: Domain): Promise<Map<string, string>> {
         scriptExtension: ".sh",
       });
       generated.set(
-        ".claude/settings.json__hooks",
+        "dist/claude/settings.json__hooks",
         JSON.stringify(hooksConfig, null, 2),
       );
       break;
@@ -153,8 +153,8 @@ async function writeDomainOutputs(
   const transformed = transformOutputsToTemplates(generated);
 
   for (const [relPath, content] of transformed) {
-    // Only write .claude/ entries (skip dist/plugin/)
-    if (!relPath.startsWith(".claude/")) continue;
+    // Only write dist/claude/ entries (skip dist/plugin/)
+    if (!relPath.startsWith("dist/claude/")) continue;
 
     const absPath = path.join(packageRoot, relPath);
     await ensureDir(path.dirname(absPath));

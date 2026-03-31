@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 /**
- * check-drift.ts — Detect drift between src/ source and .claude/dist/plugin/ outputs
+ * check-drift.ts — Detect drift between src/ source and dist/claude/dist/plugin/ outputs
  *
  * Generates all outputs in memory using the same compilation logic as
  * build-all.ts, then compares each generated file against its committed counterpart.
@@ -85,21 +85,21 @@ async function main() {
   // Generate all outputs in memory (pre-branding)
   const rawGenerated = await generateAllOutputs();
 
-  // Apply branding transform to .claude/ entries (same as compile+deploy pipeline)
+  // Apply branding transform to dist/claude/ entries (same as compile+deploy pipeline)
   // This converts `# lu` → `# /lu`, `lu-router` → `{prefix}-router`, etc.
   const branding = readBrandingContext(projectDir);
   const claudeEntries = new Map<string, string>();
   const nonClaudeEntries = new Map<string, string>();
 
   for (const [relPath, content] of rawGenerated) {
-    if (relPath.startsWith(".claude/")) {
+    if (relPath.startsWith("dist/claude/")) {
       claudeEntries.set(relPath, content);
     } else {
       nonClaudeEntries.set(relPath, content);
     }
   }
 
-  // Transform .claude/ entries through branding pipeline
+  // Transform dist/claude/ entries through branding pipeline
   const templates = transformOutputsToTemplates(claudeEntries);
   const generated = new Map<string, string>();
 
@@ -114,7 +114,7 @@ async function main() {
     generated.set(resolvedPath, resolvedContent);
   }
 
-  // Add non-.claude/ entries unchanged (dist/plugin/ etc.)
+  // Add non-dist/claude/ entries unchanged (dist/plugin/ etc.)
   for (const [relPath, content] of nonClaudeEntries) {
     generated.set(relPath, content);
   }
@@ -122,12 +122,12 @@ async function main() {
   // Compare each generated file against committed output
   for (const [relPath, expectedContent] of generated) {
     // Special handling for settings.json hooks key
-    if (relPath === ".claude/settings.json__hooks") {
-      const settingsPath = path.join(projectDir, ".claude/settings.json");
+    if (relPath === "dist/claude/settings.json__hooks") {
+      const settingsPath = path.join(projectDir, "dist/claude/settings.json");
       const settingsFile = Bun.file(settingsPath);
       if (!(await settingsFile.exists())) {
         results.push({
-          file: ".claude/settings.json",
+          file: "dist/claude/settings.json",
           status: "missing",
           detail: "File does not exist",
         });
@@ -138,14 +138,14 @@ async function main() {
         const actualHooks = JSON.stringify(settings.hooks ?? {}, null, 2);
         if (actualHooks !== expectedContent) {
           results.push({
-            file: ".claude/settings.json (hooks section)",
+            file: "dist/claude/settings.json (hooks section)",
             status: "drifted",
             detail: "Hooks config differs from source",
           });
         }
       } catch {
         results.push({
-          file: ".claude/settings.json",
+          file: "dist/claude/settings.json",
           status: "drifted",
           detail: "Invalid JSON",
         });
@@ -193,8 +193,8 @@ async function main() {
   // -------------------------------------------------------------------------
   const staleCheckDirs: Array<{ dir: string; prefix: string; ext: string }> = [
     {
-      dir: path.join(projectDir, ".claude", "rules"),
-      prefix: ".claude/rules/",
+      dir: path.join(projectDir, "dist", "claude", "rules"),
+      prefix: "dist/claude/rules/",
       ext: ".md",
     },
   ];

@@ -33,14 +33,6 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Checking workflow state...",
   }),
-  "post-edit-format": () => ({
-    event: "post_tool_use",
-    tool_filter: "Edit|Write",
-    script: "post-edit-format.ts",
-    timeout: 10,
-    async: false,
-    status_message: "Formatting...",
-  }),
   "post-edit-typecheck": () => ({
     event: "post_tool_use",
     tool_filter: "Edit|Write",
@@ -83,13 +75,6 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: true,
     status_message: "Syncing STATE.md...",
   }),
-  "context-monitor": () => ({
-    event: "stop",
-    script: "context-monitor.ts",
-    timeout: 5,
-    async: false,
-    status_message: "Checking context usage...",
-  }),
   "session-persist": () => ({
     event: "session_end",
     script: "session-persist.ts",
@@ -117,20 +102,6 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     timeout: 10,
     async: false,
     status_message: "Restoring context...",
-  }),
-  "user-prompt-submit": () => ({
-    event: "user_prompt_submit",
-    script: "user-prompt-submit.ts",
-    timeout: 5,
-    async: true,
-    status_message: "Saving prompt observation...",
-  }),
-  "subagent-stop": () => ({
-    event: "subagent_stop",
-    script: "subagent-stop.ts",
-    timeout: 5,
-    async: true,
-    status_message: "Capturing subagent summary...",
   }),
   "post-tool-use-failure": () => ({
     event: "post_tool_use_failure",
@@ -193,13 +164,6 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     timeout: 5,
     async: false,
     status_message: "Validating lu step order...",
-  }),
-  "session-end-audit": () => ({
-    event: "stop",
-    script: "session-end-audit.ts",
-    timeout: 10,
-    async: true,
-    status_message: "Auditing session state...",
   }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",

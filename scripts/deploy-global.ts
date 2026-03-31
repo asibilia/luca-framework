@@ -16,7 +16,7 @@
  *
  * Prerequisites:
  *   - Must be run from the luca-framework monorepo root
- *   - Must run `bun run build:all` first to generate .claude/ artifacts
+ *   - Must run `bun run build:all` first to generate dist/claude/ artifacts
  *   - Must NOT be run inside an active Claude Code session
  *
  * @see docs/global-installation.md for full documentation
@@ -231,10 +231,10 @@ async function preflight(): Promise<string> {
   }
 
   // Check build artifacts exist
-  const claudeAgentsDir = join(projectRoot, ".claude/agents");
+  const claudeAgentsDir = join(projectRoot, "dist/claude/agents");
   if (!existsSync(claudeAgentsDir)) {
     console.error(
-      "Error: .claude/agents/ not found. Run `bun run build:all` first.",
+      "Error: dist/claude/agents/ not found. Run `bun run build:all` first.",
     );
     process.exit(1);
   }
@@ -346,11 +346,11 @@ async function installBridge(projectRoot: string): Promise<void> {
 async function deployAgents(projectRoot: string): Promise<number> {
   logHeader("Deploying agents...");
 
-  const sourceDir = join(projectRoot, ".claude/agents");
+  const sourceDir = join(projectRoot, "dist/claude/agents");
   const targetDir = join(GLOBAL_DIR, "agents");
 
   if (!existsSync(sourceDir)) {
-    log("No agents to deploy (.claude/agents/ not found)");
+    log("No agents to deploy (dist/claude/agents/ not found)");
     return 0;
   }
 
@@ -370,11 +370,11 @@ async function deployAgents(projectRoot: string): Promise<number> {
 async function deploySkills(projectRoot: string): Promise<number> {
   logHeader("Deploying skills...");
 
-  const sourceDir = join(projectRoot, ".claude/skills");
+  const sourceDir = join(projectRoot, "dist/claude/skills");
   const targetDir = join(GLOBAL_DIR, "skills");
 
   if (!existsSync(sourceDir)) {
-    log("No skills to deploy (.claude/skills/ not found)");
+    log("No skills to deploy (dist/claude/skills/ not found)");
     return 0;
   }
 
@@ -397,11 +397,11 @@ async function deploySkills(projectRoot: string): Promise<number> {
 async function deployHooks(projectRoot: string): Promise<number> {
   logHeader("Deploying hooks (always copy, never symlink)...");
 
-  const sourceDir = join(projectRoot, ".claude/hooks");
+  const sourceDir = join(projectRoot, "dist/claude/hooks");
   const targetDir = join(GLOBAL_DIR, "hooks");
 
   if (!existsSync(sourceDir)) {
-    log("No hooks to deploy (.claude/hooks/ not found)");
+    log("No hooks to deploy (dist/claude/hooks/ not found)");
     return 0;
   }
 
@@ -469,9 +469,9 @@ async function deployHooks(projectRoot: string): Promise<number> {
 async function deployStatusline(projectRoot: string): Promise<void> {
   logHeader("Deploying statusline...");
 
-  const source = join(projectRoot, ".claude/statusline.sh");
+  const source = join(projectRoot, "dist/claude/statusline.sh");
   if (!existsSync(source)) {
-    log("No statusline to deploy (.claude/statusline.sh not found)");
+    log("No statusline to deploy (dist/claude/statusline.sh not found)");
     return;
   }
 
@@ -493,11 +493,11 @@ async function deployStatusline(projectRoot: string): Promise<void> {
 async function deployRules(projectRoot: string): Promise<number> {
   logHeader("Deploying universal rules...");
 
-  const sourceDir = join(projectRoot, ".claude/rules");
+  const sourceDir = join(projectRoot, "dist/claude/rules");
   const targetDir = join(GLOBAL_DIR, "rules");
 
   if (!existsSync(sourceDir)) {
-    log("No rules to deploy (.claude/rules/ not found)");
+    log("No rules to deploy (dist/claude/rules/ not found)");
     return 0;
   }
 
@@ -738,7 +738,7 @@ async function removeGlobalArtifacts(): Promise<void> {
   logHeader("Removing Luca skills...");
   const skillsDir = join(GLOBAL_DIR, "skills");
   if (existsSync(skillsDir)) {
-    const sourceSkillsDir = join(manifest.source_path, ".claude/skills");
+    const sourceSkillsDir = join(manifest.source_path, "dist/claude/skills");
     if (existsSync(sourceSkillsDir)) {
       const lucaSkills = readdirSync(sourceSkillsDir, { withFileTypes: true })
         .filter((d) => d.isDirectory())

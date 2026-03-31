@@ -38,7 +38,13 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-# session management
+# generated output (built by build:all, deployed by deploy — source repo uses ~/.claude/ globally)
+.claude/agents/
+.claude/skills/
+.claude/rules/
+.claude/hooks/
+.claude/statusline.sh
+.claude/settings.json
 .claude/.session-lock
 .claude/.build-manifest.json
 

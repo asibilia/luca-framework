@@ -3,9 +3,9 @@
 /**
  * build-all.ts — Unified build script for Claude Code + Plugin output
  *
- * Chains the two-stage build pipeline for .claude/ output:
+ * Chains the two-stage build pipeline for dist/claude/ output:
  *   Stage 1 (compile): src/ -> templates/harness/claude/ (EJS templates)
- *   Stage 2 (deploy):  templates/harness/claude/ -> .claude/ (resolved)
+ *   Stage 2 (deploy):  templates/harness/claude/ -> dist/claude/ (resolved)
  *
  * Plugin output (dist/plugin/) is still generated directly from
  * `generateAllOutputs()` since it doesn't go through the template stage.
@@ -18,9 +18,9 @@
  *
  * Output paths:
  *   packages/luca-framework/templates/harness/claude/ (intermediate templates)
- *   .claude/agents/*.md
- *   .claude/skills/<name>/SKILL.md
- *   .claude/rules/*.md
+ *   dist/claude/agents/*.md
+ *   dist/claude/skills/<name>/SKILL.md
+ *   dist/claude/rules/*.md
  *   dist/plugin/ (complete plugin package)
  */
 import { generateAllOutputs, getActiveProfileNames } from "./build-shared";
@@ -114,9 +114,9 @@ async function main() {
   const compileCounts = await runCompile();
 
   // =========================================================================
-  // 2. Stage 2 — Deploy: templates/harness/claude/ -> .claude/
+  // 2. Stage 2 — Deploy: templates/harness/claude/ -> dist/claude/
   // =========================================================================
-  console.log("\nStage 2: Deploying templates/harness/claude/ -> .claude/ ...");
+  console.log("\nStage 2: Deploying templates/harness/claude/ -> dist/claude/ ...");
   const deployCounts = await runDeploy();
 
   // =========================================================================
@@ -193,7 +193,7 @@ async function main() {
   // 4. Build summary
   // =========================================================================
   const allKeys = [...generated.keys()].filter(
-    (k) => k !== ".claude/settings.json__hooks",
+    (k) => k !== "dist/claude/settings.json__hooks",
   );
 
   const pluginAgentCountVal = allKeys.filter((k) =>
@@ -237,7 +237,7 @@ async function main() {
     allKeys.filter((k) => k.startsWith("dist/plugin/")).length;
   console.log(`Total:  ${totalFiles} files`);
 
-  console.log("\n--- .claude/ ---");
+  console.log("\n--- dist/claude/ ---");
   console.log(`  Agents: ${deployCounts.agents}`);
   console.log(`  Skills: ${deployCounts.skills}`);
   console.log(`  Rules:  ${deployCounts.rules}`);
