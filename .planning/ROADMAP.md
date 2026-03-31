@@ -217,14 +217,14 @@ Automated article ingestion, research, and actionable todo generation from exter
 **Verification:** Full
 **Depends on:** Phase 241
 
-- [ ] scout-ingest-agent — Create `lu-scout-ingest.agent.ts` (WebFetch article, extract content, produce structured digest)
-- [ ] scout-ingest-skill — Create `scout-ingest.skill.ts` thin wrapper to spawn ingest agent and validate output
-- [ ] scout-relevance-agent — Create `lu-scout-relevance.agent.ts` (quick HIGH/MEDIUM/LOW relevance assessment)
-- [ ] scout-relevance-skill — Create `scout-relevance.skill.ts` wrapper with LOW-relevance routing to manual-review
-- [ ] scout-research-skill — Create `scout-research.skill.ts` spawning two parallel researcher agents for ecosystem + implementation details
-- [ ] scout-analyst-agent — Create `lu-scout-analyst.agent.ts` (framework impact analysis, gap identification, codebase scanning)
-- [ ] scout-analyze-skill — Create `scout-analyze.skill.ts` wrapper to spawn analyst and validate impact document
-- [ ] scout-impl-research-skill — Create `scout-impl-research.skill.ts` for concrete implementation approach research
+- [x] scout-ingest-agent — Create `lu-scout-ingest.agent.ts` (WebFetch article, extract content, produce structured digest)
+- [x] scout-ingest-skill — Create `scout-ingest.skill.ts` thin wrapper to spawn ingest agent and validate output
+- [x] scout-relevance-agent — Create `lu-scout-relevance.agent.ts` (quick HIGH/MEDIUM/LOW relevance assessment)
+- [x] scout-relevance-skill — Create `scout-relevance.skill.ts` wrapper with LOW-relevance routing to manual-review
+- [x] scout-research-skill — Create `scout-research.skill.ts` spawning two parallel researcher agents for ecosystem + implementation details
+- [x] scout-analyst-agent — Create `lu-scout-analyst.agent.ts` (framework impact analysis, gap identification, codebase scanning)
+- [x] scout-analyze-skill — Create `scout-analyze.skill.ts` wrapper to spawn analyst and validate impact document
+- [x] scout-impl-research-skill — Create `scout-impl-research.skill.ts` for concrete implementation approach research
 
 ### Phase 243: Cross-Cutting Batch
 

@@ -64,6 +64,11 @@ import { outcomeSkill } from "../general/outcome.skill";
 import { contextRestoreSkill } from "../general/context-restore.skill";
 import { shadowCleanupSkill } from "../general/shadow-cleanup.skill";
 import { scoutSkill } from "../general/scout.skill";
+import { scoutIngestSkill } from "../general/scout-ingest.skill";
+import { scoutRelevanceSkill } from "../general/scout-relevance.skill";
+import { scoutImplResearchSkill } from "../general/scout-impl-research.skill";
+import { scoutResearchSkill } from "../general/scout-research.skill";
+import { scoutAnalyzeSkill } from "../general/scout-analyze.skill";
 // Sub-skills (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
 
 // Import Luca-specific skills
@@ -136,6 +141,11 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "context-restore": () => contextRestoreSkill,
   "shadow-cleanup": () => shadowCleanupSkill,
   scout: () => scoutSkill,
+  "scout-ingest": () => scoutIngestSkill,
+  "scout-relevance": () => scoutRelevanceSkill,
+  "scout-impl-research": () => scoutImplResearchSkill,
+  "scout-research": () => scoutResearchSkill,
+  "scout-analyze": () => scoutAnalyzeSkill,
   // Sub-skill entries (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
   lu: () => luSkill,
 };
