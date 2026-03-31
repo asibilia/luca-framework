@@ -181,6 +181,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Validating lu step order...",
   }),
+  "agent-transition-sync": () => ({
+    event: "post_tool_use",
+    tool_filter: "Agent",
+    script: "agent-transition-sync.ts",
+    timeout: 5,
+    async: true,
+    status_message: "Syncing state...",
+  }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",
     tool_filter:

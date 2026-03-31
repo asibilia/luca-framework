@@ -84,8 +84,6 @@ Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
 Parse COMPLEXITY and ROUTE from classify agent's output.
 
 \`\`\`bash
-luca-bridge transition --event=START 2>/dev/null || true
-luca-bridge transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
 luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
 \`\`\`
 
@@ -248,7 +246,6 @@ Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-pre
 \`\`\`
 After discussion returns (or if skipped):
 \`\`\`bash
-luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 # If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
 \`\`\`
 
@@ -260,10 +257,6 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 
 \`\`\`
 Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
-\`\`\`
-After planning returns:
-\`\`\`bash
-luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 \`\`\`
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -298,7 +291,6 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   IF PASSED: BREAK
   Agent(name: "fix-{NN}", prompt: HARNESS_FIX_PROMPT(errors, {...}))
 \`\`\`
-Then: \`luca-bridge transition --event=VERIFY_PASSED\`
 
 #### 7j. Goal-backward verification
 
@@ -324,7 +316,6 @@ Agent(name: "review-simplify-{NN}", prompt: CODE_REVIEW_PROMPT("simplifier", {..
 \`\`\`
 Agent(name: "learn-{NN}", prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 \`\`\`
-\`luca-bridge transition --event=LEARN_COMPLETE\`
 
 #### 7m. Process data (conditional: --run-process-data)
 \`\`\`

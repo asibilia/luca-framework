@@ -49,11 +49,6 @@ idle -> learned -> pruned -> scanned -> archived -> finalized
 Terminal: \`finalized\` (success) or \`failed\` (error).
 Conditional: \`SKIP_SCAN\` when shadow_debt.enabled == false.
 
-**Write \`current_state\` after EVERY transition:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"learned"}'
-\`\`\`
-
 ## Process
 
 
@@ -88,11 +83,6 @@ The learn agent consolidates session learnings, promotes validated patterns, and
 
 On failure: write state "failed", HALT.
 
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"learned"}'
-\`\`\`
-
 ### Step 2: Stale Memory Pruning (learned -> pruned)
 
 \`\`\`
@@ -103,11 +93,6 @@ Agent(name: "milestone-prune", description: "Prune stale memories",
 The prune agent identifies stale engrams and runs consolidation. It returns the list of stale candidates for the orchestrator to present to the user for review (pruning decisions are interactive — the orchestrator handles user input inline after the agent returns).
 
 On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"pruned"}'
-\`\`\`
 
 ### Step 3: Shadow Debt Gate (pruned -> scanned) — Conditional
 
@@ -124,11 +109,6 @@ On failure (optional): log warning, continue.
 
 **If SHADOW_ENABLED == "false":** Skip (SKIP_SCAN).
 
-**Write state (both cases):**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"scanned"}'
-\`\`\`
-
 ### Step 4: Archive Milestone (scanned -> archived)
 
 \`\`\`
@@ -140,11 +120,6 @@ The archive agent gathers stats, archives roadmap/requirements, updates PROJECT.
 
 On failure: write state "failed", HALT.
 
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"archived"}'
-\`\`\`
-
 ### Step 5: Finalize (archived -> finalized)
 
 \`\`\`
@@ -155,11 +130,6 @@ Agent(name: "milestone-finalize", description: "Create commit and tag",
 The finalize agent creates the final commit, git tag, and reports the tag name. The orchestrator handles the push decision (ask user inline).
 
 On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_state":"finalized"}'
-\`\`\`
 
 ### Step 6: Gap Detection Audit
 

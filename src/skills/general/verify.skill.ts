@@ -48,11 +48,6 @@ idle -> extracted -> tested
   Path B (issues):    tested -> diagnosed (terminal)
 \`\`\`
 
-**Write \`current_state\` after EVERY transition:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracted"}'
-\`\`\`
-
 ## Process
 
 
@@ -80,11 +75,6 @@ Agent(name: "extract", description: "Extract UAT deliverables",
 \`\`\`
 
 Parse Agent output for STATUS. On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracted"}'
-\`\`\`
 
 ### Step 2: Interactive Testing (extracted -> tested) — INLINE
 
@@ -120,11 +110,6 @@ The diagnose agent does ALL debugging work as a leaf agent (reads code, identifi
 
 On failure: write state "failed", HALT.
 
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"diagnosed"}'
-\`\`\`
-
 **diagnosed is terminal.** Report to user, suggest \`/phase-execute --gaps-only\`.
 
 #### Path A: No Issues (tested -> reviewed)
@@ -137,11 +122,6 @@ Agent(name: "review", description: "Code quality review",
 The review agent checks changed files for architecture, security, DX, and performance concerns. It does ALL review work as a leaf agent.
 
 On failure: write state "failed", HALT.
-
-**Write state:**
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"reviewed"}'
-\`\`\`
 
 **reviewed is terminal.** Report to user, suggest next phase.
 

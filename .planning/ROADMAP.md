@@ -330,17 +330,18 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] remove-redundant-ensure-init — Removed 2 `luca-bridge ensure-init` calls from quick.skill.ts (already handled by session-start hook). Kept milestone-new `--force` and project-new init
 - [x] lint-guard — Extended `check-template-side-effects.ts` to also flag `luca-bridge snapshot` calls in skill templates
 
-### Phase 251: Conditional Side-Effect Evaluation
+### Phase 251: Deterministic Agent Transition Sync — COMPLETE
 
-**Goal:** Design spike for the ~60 conditional orchestration side-effects that depend on LLM reasoning output (parameterized transitions, set-field with dynamic values, context-cli writes with dynamic payloads). These cannot move to hooks without a new side-channel mechanism. Evaluate approaches: post-execution validation hooks (safety net), structured output contracts, or agent-framework integration points.
-**Complexity:** MODERATE
-**Verification:** Standard
+**Goal:** Move state transitions and context-cli writes from LLM-executed bash blocks to a deterministic PostToolUse hook on Agent. When an agent completes, the hook identifies which agent finished (from `tool_input.name`), looks up the per-orchestrator mapping, and fires the corresponding transitions + context writes.
+**Complexity:** COMPLEX
+**Verification:** Full
 **Depends on:** Phase 250
 
-- [ ] audit-conditional — Catalog all conditional side-effects across 41 skill templates with orchestration commands. Classify by: parameterized transitions (`--event=X --data='{"complexity":"Y"}'`), dynamic field writes (`set-field --field=X --value=Y`), dynamic context writes (`context-cli write ... {payload}`)
-- [ ] design-approaches — Evaluate 3 approaches: (1) post-execution validation hooks that verify expected transitions fired, (2) structured output contracts where agents return side-effect intents that the orchestrator executes deterministically, (3) agent-framework integration via Claude Code's upcoming tool result hooks
-- [ ] prototype-safety-net — Implement the lowest-risk approach (likely post-execution validation) as a proof-of-concept for 1-2 high-value side-effects
-- [ ] decision-doc — Write decision document in `.planning/notes/` with approach recommendation, trade-offs, and migration roadmap for remaining ~60 side-effects
+- [x] agent-transition-hook — Created `agent-transition-sync.ts` PostToolUse hook with priority-ordered orchestrator detection and prefix matching with exclusions
+- [x] lu-mapping — cognition→START+PREFLIGHT_COMPLETE, discuss→DISCUSS_COMPLETE, plan→PLAN_COMPLETE, verify→VERIFY_PASSED, learn→LEARN_COMPLETE
+- [x] sub-orchestrator-mappings — phase-execute (execute→"executed", verify→VERIFY_PASSED+"verified", learn→LEARN_COMPLETE+"learned"), pr-address (6 state writes), verify (3 state writes), milestone-complete (5 state writes)
+- [x] remove-template-transitions — Removed 6 transitions from lu, 3 transitions + 3 context writes from phase-execute, 6 context writes from pr-address, 4 context writes from verify, 6 context writes from milestone-complete
+- [x] intentional-keeps — 9 transitions + 8 context writes remain in templates: ROUTE_COMPLETE (needs data), SKIP/SKIP_REVIEW (conditional), REVIEW_COMPLETE (parallel agents), COMMIT_COMPLETE (after git), interactive test state, init/crash-recovery, git workflow data
 
 ---
 
