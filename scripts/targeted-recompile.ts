@@ -27,21 +27,12 @@
 import { parseArgs } from "util";
 import path from "path";
 
-import { agentRegistry } from "../src/agents/index";
-import { skillRegistry } from "../src/skills/index";
-import { ruleRegistry } from "../src/rules/index";
-import {
-  compileAgent,
-  compileSkill,
-  compileRule,
-} from "../src/compilers/__helpers/compile";
 import { transformOutputsToTemplates } from "../src/compilers";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 import { runDeploy } from "./build-deploy";
 import { ensureDir } from "./build-utils";
-
-const VALID_DOMAINS = ["agents", "skills", "rules", "hooks"] as const;
-type Domain = (typeof VALID_DOMAINS)[number];
+import { generateDomainOutputs, VALID_DOMAINS } from "./build-shared";
+import type { Domain } from "./build-shared";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
@@ -64,78 +55,6 @@ if (domain !== "all" && !VALID_DOMAINS.includes(domain as Domain)) {
     `Invalid domain: ${domain}. Valid: ${VALID_DOMAINS.join(", ")}, all`,
   );
   process.exit(1);
-}
-
-/**
- * Generate outputs for a single domain into a Map.
- *
- * @param d - The domain to generate outputs for
- * @returns Map of relative file paths to content strings
- */
-async function generateDomainOutputs(d: Domain): Promise<Map<string, string>> {
-  const generated = new Map<string, string>();
-
-  switch (d) {
-    case "agents":
-      for (const [name, createAgent] of Object.entries(agentRegistry)) {
-        const instance = createAgent();
-        generated.set(
-          `dist/claude/agents/${name}.md`,
-          compileAgent(instance, "CLAUDE"),
-        );
-      }
-      break;
-
-    case "skills":
-      for (const [name, createSkill] of Object.entries(skillRegistry)) {
-        const instance = createSkill();
-        generated.set(
-          `dist/claude/skills/${name}/SKILL.md`,
-          compileSkill(instance, "CLAUDE"),
-        );
-      }
-      break;
-
-    case "rules":
-      for (const [name, createRule] of Object.entries(ruleRegistry)) {
-        const instance = createRule();
-        generated.set(
-          `dist/claude/rules/${name}.md`,
-          compileRule(instance, "CLAUDE"),
-        );
-      }
-      break;
-
-    case "hooks": {
-      // Hooks use the full compile+deploy pipeline since they involve
-      // shell wrapper generation and settings.json merging.
-      // For hooks, fall through to the deploy stage which handles everything.
-      const { generateAllShellWrappers } =
-        await import("../src/hooks/__helpers/generate-shell-wrappers");
-      const {
-        resolveCanonicalRegistry,
-        generateClaudeHooksConfigFromCanonical,
-      } = await import("../src/hooks/index");
-
-      const canonical = resolveCanonicalRegistry();
-      const wrappers = generateAllShellWrappers();
-      for (const [outputPath, content] of Object.entries(wrappers)) {
-        generated.set(outputPath, content);
-      }
-
-      const hooksConfig = generateClaudeHooksConfigFromCanonical(canonical, {
-        commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
-        scriptExtension: ".sh",
-      });
-      generated.set(
-        "dist/claude/settings.json__hooks",
-        JSON.stringify(hooksConfig, null, 2),
-      );
-      break;
-    }
-  }
-
-  return generated;
 }
 
 /**

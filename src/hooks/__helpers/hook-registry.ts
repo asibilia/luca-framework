@@ -15,6 +15,38 @@ import type { CanonicalHook } from "../__schemas/hook.schemas";
 import type { HookDefinition } from "../__schemas/hook.schemas";
 import { canonicalToLegacy } from "./platform-adapters";
 
+// ─── Vault guard prompt (co-located with hook definitions) ──────────────────
+
+/**
+ * Canonical vault-guard prompt text injected into PreToolUse hooks.
+ *
+ * This prompt validates MuninnDB writes against the vault routing table
+ * before they proceed, catching misrouted memories at write time.
+ *
+ * NOTE: This prompt text must stay in sync with the prompt in
+ *   packages/luca-framework/templates/hooks/settings-hooks.json
+ *   (the PreToolUse entry with matcher "mcp__muninn__muninn_remember...")
+ */
+export const VAULT_GUARD_PROMPT =
+  "VAULT ROUTING GUARD — Validate this MuninnDB write before it proceeds.\n\n" +
+  "1. Read the `vault` and `concept` parameters from the pending tool call.\n" +
+  "2. Resolve the expected repo vault: read `.planning/config.json` field `muninn.vault`. " +
+  "If the file does not exist or the field is missing, fall back to env var `LUCA_MUNINN_VAULT`. " +
+  'If that is also unset, fall back to `"default"`.\n' +
+  "3. Check the concept prefix against the write routing table:\n" +
+  '   - REPO VAULT targets (MUST use the resolved repo vault, NOT "default" — unless repo vault IS "default"): ' +
+  "`session:*`, `brain:project-*`, `metric:signal-rate-*`, `version:*`, `milestone:*`\n" +
+  '   - DEFAULT VAULT targets (MUST use "default"): ' +
+  "`pattern:*`, `pitfall:*`, `preference:*`, `brain:user-*`, `procedure:*`, `process:*`\n" +
+  "4. DECISION:\n" +
+  "   - If the vault parameter matches the expected target for the concept prefix: " +
+  'ALLOW the call. Respond with exactly: `{"decision":"allow"}`\n' +
+  "   - If misrouted: BLOCK the call. Respond with: " +
+  '`{"decision":"block","reason":"Concept prefix \'<prefix>\' must target vault \'<expected_vault>\' ' +
+  "but was routed to '<actual_vault>'. Fix the vault parameter before retrying.\"}`\n" +
+  "   - If the concept prefix does not match any known row, apply the ambiguity heuristic: " +
+  '"Would this memory be useful in a completely different repo?" Yes -> expect "default". No -> expect repo vault.';
+
 // ─── Canonical hook registry (platform-independent, source of truth) ────────
 
 /**

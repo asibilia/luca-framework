@@ -27,16 +27,16 @@
  */
 
 import path from "path";
-import { rmSync, existsSync } from "node:fs";
+import { rmSync, existsSync, chmodSync } from "node:fs";
 
 import { generateAllOutputs } from "./build-shared";
 import { transformOutputsToTemplates } from "../src/compilers";
 import {
   ensureDir,
-  VAULT_GUARD_PROMPT,
   computeOutputCounts,
   buildErrorHandler,
 } from "./build-utils";
+import { VAULT_GUARD_PROMPT } from "../src/hooks";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 // ---------------------------------------------------------------------------
@@ -189,7 +189,6 @@ export async function runCompile(): Promise<{
   }
 
   // chmod +x on shell scripts (use chmodSync for consistency with build-deploy.ts)
-  const { chmodSync } = await import("node:fs");
   for (const scriptPath of hookScriptPaths) {
     chmodSync(scriptPath, 0o755);
   }

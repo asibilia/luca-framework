@@ -29,11 +29,13 @@ import {
   cleanSkillsDirectory,
   ensureDir,
   buildErrorHandler,
+  computeOutputCounts,
 } from "./build-utils";
 import { generateHooksRegistryJson } from "./generate-hooks-registry-json";
 import { runCompile } from "./build-compile";
 import { runDeploy } from "./build-deploy";
 import path from "path";
+import { chmodSync } from "node:fs";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 async function main() {
@@ -116,7 +118,9 @@ async function main() {
   // =========================================================================
   // 2. Stage 2 — Deploy: templates/harness/claude/ -> dist/claude/
   // =========================================================================
-  console.log("\nStage 2: Deploying templates/harness/claude/ -> dist/claude/ ...");
+  console.log(
+    "\nStage 2: Deploying templates/harness/claude/ -> dist/claude/ ...",
+  );
   const deployCounts = await runDeploy();
 
   // =========================================================================
@@ -184,7 +188,6 @@ async function main() {
   }
 
   // chmod +x on plugin hook scripts (use chmodSync for consistency with build-compile/deploy)
-  const { chmodSync } = await import("node:fs");
   for (const scriptPath of pluginHookScriptPaths) {
     chmodSync(scriptPath, 0o755);
   }
@@ -196,17 +199,20 @@ async function main() {
     (k) => k !== "dist/claude/settings.json__hooks",
   );
 
-  const pluginAgentCountVal = allKeys.filter((k) =>
-    k.startsWith("dist/plugin/agents/"),
+  // Strip dist/plugin/ prefix so computeOutputCounts can match agents/, skills/, etc.
+  const pluginKeys = allKeys
+    .filter((k) => k.startsWith("dist/plugin/"))
+    .map((k) => k.slice("dist/plugin/".length));
+  const pluginCounts = computeOutputCounts(pluginKeys);
+
+  // commands/, scripts/ (plugin hooks), and meta files are not covered by
+  // computeOutputCounts — count separately. Plugin hooks live under scripts/,
+  // not hooks/, so computeOutputCounts won't match them.
+  const pluginCommandCount = pluginKeys.filter((k) =>
+    k.startsWith("commands/"),
   ).length;
-  const pluginSkillCountVal = allKeys.filter((k) =>
-    k.startsWith("dist/plugin/skills/"),
-  ).length;
-  const pluginCommandCountVal = allKeys.filter((k) =>
-    k.startsWith("dist/plugin/commands/"),
-  ).length;
-  const pluginHookCountVal = allKeys.filter((k) =>
-    k.startsWith("dist/plugin/scripts/"),
+  const pluginHookCount = pluginKeys.filter((k) =>
+    k.startsWith("scripts/"),
   ).length;
   const pluginMetaFiles = allKeys.filter(
     (k) =>
@@ -221,15 +227,15 @@ async function main() {
     `Profiles: ${activeProfiles.length > 0 ? activeProfiles.join(", ") : "none (opinionated_guidelines disabled)"}`,
   );
   console.log(
-    `Agents: ${deployCounts.agents} (Claude + plugin = ${deployCounts.agents + pluginAgentCountVal} files)`,
+    `Agents: ${deployCounts.agents} (Claude + plugin = ${deployCounts.agents + pluginCounts.agents} files)`,
   );
   console.log(
-    `Skills: ${deployCounts.skills} (Claude + plugin = ${deployCounts.skills + pluginSkillCountVal} files)`,
+    `Skills: ${deployCounts.skills} (Claude + plugin = ${deployCounts.skills + pluginCounts.skills} files)`,
   );
   console.log(`Rules:  ${deployCounts.rules}`);
   console.log(`Hooks:  ${deployCounts.hooks}`);
   console.log(
-    `Plugin: ${pluginAgentCountVal} agents, ${pluginSkillCountVal} skills, ${pluginCommandCountVal} commands, ${pluginHookCountVal} hooks + ${pluginMetaFiles} meta files`,
+    `Plugin: ${pluginCounts.agents} agents, ${pluginCounts.skills} skills, ${pluginCommandCount} commands, ${pluginHookCount} hooks + ${pluginMetaFiles} meta files`,
   );
 
   const totalFiles =
@@ -244,10 +250,10 @@ async function main() {
   console.log(`  Hooks:  ${deployCounts.hooks}`);
 
   console.log("\n--- dist/plugin/ ---");
-  console.log(`  Agents:   ${pluginAgentCountVal}`);
-  console.log(`  Skills:   ${pluginSkillCountVal}`);
-  console.log(`  Commands: ${pluginCommandCountVal}`);
-  console.log(`  Hooks:    ${pluginHookCountVal}`);
+  console.log(`  Agents:   ${pluginCounts.agents}`);
+  console.log(`  Skills:   ${pluginCounts.skills}`);
+  console.log(`  Commands: ${pluginCommandCount}`);
+  console.log(`  Hooks:    ${pluginHookCount}`);
   console.log(`  Meta:     ${pluginMetaFiles} files`);
 
   // =========================================================================

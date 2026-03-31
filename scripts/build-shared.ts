@@ -21,7 +21,6 @@
  * - generateClaudeHooksConfigFromCanonical(): Claude hooks config builder
  */
 import {
-  hookRegistry,
   resolveCanonicalRegistry,
   generateClaudeHooksConfigFromCanonical,
 } from "../src/hooks/index";
@@ -405,8 +404,102 @@ MIT
 `;
 }
 
+// ─── Domain types for targeted recompilation ─────────────────────────────────
+
+/**
+ * Valid domain names for single-domain compilation.
+ */
+export const VALID_DOMAINS = ["agents", "skills", "rules", "hooks"] as const;
+
+/**
+ * Domain type derived from the valid domains constant.
+ */
+export type Domain = (typeof VALID_DOMAINS)[number];
+
+/**
+ * Generate outputs for a single domain into a Map.
+ *
+ * Used by targeted-recompile.ts for single-domain recompilation
+ * without running the full build:all pipeline.
+ *
+ * @param d - The domain to generate outputs for
+ * @returns Map of relative file paths to content strings
+ *
+ * @example
+ * ```typescript
+ * const outputs = await generateDomainOutputs("agents");
+ * // Map { "dist/claude/agents/lu-router.md" => "...", ... }
+ * ```
+ */
+export async function generateDomainOutputs(
+  d: Domain,
+): Promise<Map<string, string>> {
+  const generated = new Map<string, string>();
+
+  switch (d) {
+    case "agents":
+      for (const [name, createAgent] of Object.entries(agentRegistry)) {
+        const instance = createAgent();
+        generated.set(
+          `dist/claude/agents/${name}.md`,
+          compileAgent(instance, "CLAUDE"),
+        );
+      }
+      break;
+
+    case "skills":
+      for (const [name, createSkill] of Object.entries(skillRegistry)) {
+        const instance = createSkill();
+        generated.set(
+          `dist/claude/skills/${name}/SKILL.md`,
+          compileSkill(instance, "CLAUDE"),
+        );
+      }
+      break;
+
+    case "rules":
+      for (const [name, createRule] of Object.entries(ruleRegistry)) {
+        const instance = createRule();
+        generated.set(
+          `dist/claude/rules/${name}.md`,
+          compileRule(instance, "CLAUDE"),
+        );
+      }
+      break;
+
+    case "hooks": {
+      // Hooks use the full compile+deploy pipeline since they involve
+      // shell wrapper generation and settings.json merging.
+      const { generateAllShellWrappers: genWrappers } =
+        await import("../src/hooks/__helpers/generate-shell-wrappers");
+      const {
+        resolveCanonicalRegistry: resolveCanonical,
+        generateClaudeHooksConfigFromCanonical: genHooksConfig,
+      } = await import("../src/hooks/index");
+
+      const canonical = resolveCanonical();
+      const wrappers = genWrappers();
+      for (const [outputPath, content] of Object.entries(wrappers)) {
+        generated.set(outputPath, content);
+      }
+
+      const hooksConfig = genHooksConfig(canonical, {
+        commandPrefix: '"$CLAUDE_PROJECT_DIR"/.claude/hooks',
+        scriptExtension: ".sh",
+      });
+      generated.set(
+        "dist/claude/settings.json__hooks",
+        JSON.stringify(hooksConfig, null, 2),
+      );
+      break;
+    }
+  }
+
+  return generated;
+}
+
 // Re-export registries for consumers that need them (e.g., orphan detection tests)
-export { agentRegistry, skillRegistry, ruleRegistry, hookRegistry };
+export { agentRegistry, skillRegistry, ruleRegistry };
 export { resolveCanonicalRegistry } from "../src/hooks/index";
 
 // Re-export hook config generators for consumers

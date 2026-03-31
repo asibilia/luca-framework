@@ -25,6 +25,7 @@ export {
   resolveCanonicalRegistry,
   hookRegistry,
   resolveHookRegistry,
+  VAULT_GUARD_PROMPT,
 } from "./__helpers/hook-registry";
 
 // Platform adapters
