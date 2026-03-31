@@ -2,15 +2,14 @@
 
 ## Current Position
 
-- **Current Milestone:** Planning next
-- **Status:** Routing
-- **Task Complexity:** COMPLEX
-- **Oversight:** milestone
-- **Last Updated:** 2026-03-29
+- **Status:** Pre-flight
+- **Task Complexity:** TRIVIAL
+- **Oversight:** full-auto
+- **Last Updated:** 2026-03-30
 
 ## Session Identity
 
-- **Session ID:** de67dc0b-ef24-4183-a0c5-1d9a65dc0d59
+- **Session ID:** 95a69fd7-ee2a-4d11-a001-775cb7841e1f
 
 ## Appetite
 
@@ -30,10 +29,12 @@
 
 ## Allowed Events
 
-- `ROUTE_COMPLETE`
+- `PREFLIGHT_COMPLETE`
+- `SKIP`
 
 ## Previous Milestones
 
+- v8.5.2 — Statusline HUD & Edit Gate (2026-03-30)
 - v8.5.1 — Audit Gap Closure (2026-03-30)
 - v8.4.1 — Audit Gap Closure (2026-03-28)
 - v6.1.0 — Audit Gap Closure (2026-03-25)
@@ -50,13 +51,13 @@
 
 ---
 
-_State updated: 2026-03-28 — v8.4.1 milestone archived, state reset for next milestone_
+_State updated: 2026-03-30 — v8.5.2 milestone complete (Phase 236 + Phase 237 shipped)_
 
 ## Session Continuity
 
-- **Session Started:** 2026-03-28
-- **Last Transition:** 2026-03-29
+- **Session Started:** 2026-03-30
+- **Last Transition:** 2026-03-30
 
 ---
 
-_State generated from machine snapshot at 2026-03-30T14:47:47.771Z_
+_State generated from machine snapshot at 2026-03-31T00:07:19.174Z_

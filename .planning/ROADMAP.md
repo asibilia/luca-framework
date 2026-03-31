@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.5.1 — Audit Gap Closure
+**Current Milestone:** v8.5.2 — Statusline HUD
 
 ---
 
@@ -130,6 +130,68 @@ Close code quality, security, and enforcement findings. Phases 225-226 shipped D
 
 ---
 
+## v8.5.2 — Statusline HUD & Edit Gate
+
+Add workflow HUD to the statusline, close the anti-skip enforcement gap with a PreToolUse edit gate, add a fix-loop for code review findings, and unify the dual-state architecture.
+
+### Phase 236: Statusline HUD Workflow Display — COMPLETE
+
+**Goal:** Add a two-line HUD to the statusline showing workflow state (phase, state, wave progress, complexity, milestone) above the existing system line. Gracefully collapse to idle indicator when no workflow is active.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** None
+
+- [x] statusline-hud — Add workflow HUD line to `src/hooks/scripts/statusline.ts`: Zod schema for display state, read `.planning/state.json`, render progress bar, emit two-line output with graceful fallback
+
+### Phase 237: Pre-Edit Workflow Gate — COMPLETE
+
+**Goal:** Close the anti-skip enforcement gap by adding a PreToolUse hook on Edit/Write that blocks source file edits when any workflow pipeline hasn't completed required prerequisite steps. Adds tamper-resistant `completed_states` tracking and stale context cleanup.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 236
+
+- [x] completed-states-schema — Add `completed_states: z.array(z.string()).default([])` to all 4 `/tmp/*-context.json` orchestrator context schemas (lu uses computed pipeline position from `.planning/state.json` instead of `completed_states`)
+- [x] completed-states-tracking — Auto-populate `completed_states` in context-helpers.ts write(), strip from incoming patches to prevent injection
+- [x] edit-gate-hook — Create `pre-edit-workflow-gate.ts` with per-orchestrator gate config, source-dir blocklist, env var override, actionable block messages
+- [x] stale-context-cleanup — Add stale context file cleanup to session-start hook for all 4 `/tmp/*-context.json` orchestrators
+- [x] hook-registration — Register pre-edit-workflow-gate in hook-registry.ts
+
+### Phase 238: Code Review Fix Loop — COMPLETE
+
+**Goal:** Add a backward transition and fix-loop mechanism for code review findings in the phase-execute pipeline. Currently, when parallel reviewers discover issues, the system continues to learning/commit with no path to fix them — unlike the harness fix loop which correctly loops until passing.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 237
+
+- [x] review-backward-transition — Hoisted review fix loop in phase-execute Step 3 (stays in "verified" state, no backward transition needed)
+- [x] review-fix-loop — Review → fix → review loop with REVIEW_FIX_PROMPT, no-progress guard, bridge transitions
+- [x] bridge-sync-review-state — Verified no bridge sync changes needed (loop stays in "verified", exits via REVIEW_COMPLETE/SKIP_REVIEW)
+
+### Phase 239: Unify State Architecture — COMPLETE
+
+**Goal:** Eliminate the dual-state architecture (`/tmp/lu-context.json` + `.planning/state.json`) by making `pipeline_position` a computed property derived from XState `value` at read time. Delete `syncBridgeState()` and ~700 lines of dead code. Single source of truth, zero sync bridges.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 238
+**Plan:** `~/.claude/plans/lucky-chasing-quiche.md`
+
+- [x] wave-1-computed-function — Add `computePipelinePosition()` pure function with exhaustive switch, wire into luca-bridge as virtual `read-field`, ensure lu skill fires XState transitions directly at each step boundary, update crash recovery to read from luca-bridge
+- [x] wave-2-hook-migration — Migrate enforcement hooks (pre-step-lu, enforcement-hook-factory, orchestrator-gate-config, pre-edit-workflow-gate, session-end-audit) to read computed pipeline position from state.json instead of lu-context.json
+- [x] wave-3-cleanup — Delete `syncBridgeState()`, `LU_STATE_TO_BRIDGE_EVENTS`, `current_state`/`completed_states` from lu schema, dead CLI file (`cli.ts`), 5 dead bridge commands, dead `reset` command, update session-start stale detection, update `context-cli init lu`
+
+### Phase 240: v8.5.2 Audit Gap Closure — COMPLETE
+
+**Goal:** Fix all CRITICAL, HIGH, and MEDIUM findings from the v8.5.2 milestone audit. Addresses terminal state divergence, barrel bypass imports, schema duplication, Bun-first gaps, and sanitizeJsonParse inconsistency.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 239
+
+- [x] wave-1-critical-high — Fix C1 (ORCHESTRATOR_TERMINALS divergence), H1-H5 (barrel bypass imports), H6 (HookContextSchema dedup), H7-H8 (bare fs imports), H9 (interface-to-Zod)
+- [x] wave-2-medium-security — Fix M5 (dynamic imports), M6 (AuditContextSchema dedup), M9-M11 (sanitizeJsonParse), M8 (JSDoc), M1 (pipeline position helper extraction)
+- [x] wave-3-cleanup — Fix M7 (camelCase schema), L1 (deprecated exports), L4 (checkDualWriteDivergence gating), remaining LOW items that are safe mechanical fixes
+
+---
+
 ## Next: v8.6.0 — Scout Article Intelligence
 
 Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
@@ -149,11 +211,11 @@ Automated article ingestion, research, and actionable todo generation from exter
 
 Items below are tracked as todo files in `.planning/todos/deferred/` and will only be reviewed when the user explicitly requests it.
 
-| Todo Group                | Target   | Scope                          | Reason                                         | File                                        |
-| ------------------------- | -------- | ------------------------------ | ---------------------------------------------- | ------------------------------------------- |
-| agent-cross-talk-protocol | v10.0.0+ | Inter-agent messaging protocol | Needs design spike, no existing infrastructure | `deferred/agent-cross-talk-protocol.md`     |
-| agent-collaboration-ui    | v10.0.0+ | Agent collaboration UI         | Depends on cross-talk + adapters + Studio      | `deferred/agent-collaboration-ui.md`        |
-| test-suite-fragility      | TBD      | Fix 29-test full-suite failure | Blocked by no-tests rule                       | `deferred/37-p1-test-suite-fragility.md`    |
+| Todo Group                | Target   | Scope                          | Reason                                         | File                                     |
+| ------------------------- | -------- | ------------------------------ | ---------------------------------------------- | ---------------------------------------- |
+| agent-cross-talk-protocol | v10.0.0+ | Inter-agent messaging protocol | Needs design spike, no existing infrastructure | `deferred/agent-cross-talk-protocol.md`  |
+| agent-collaboration-ui    | v10.0.0+ | Agent collaboration UI         | Depends on cross-talk + adapters + Studio      | `deferred/agent-collaboration-ui.md`     |
+| test-suite-fragility      | TBD      | Fix 29-test full-suite failure | Blocked by no-tests rule                       | `deferred/37-p1-test-suite-fragility.md` |
 
 ## Closed (Reference / Not Actionable)
 

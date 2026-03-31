@@ -15,17 +15,15 @@ The single entry point for all <%= branding.frameworkName %> workflows. This is 
 1. **ALL Agent() calls originate from this orchestrator** — sub-agents are leaf workers that CANNOT call Agent(), Task(), or Skill()
 2. **Every step is binding** — you MUST NOT skip, simplify, or substitute workflow steps
 3. **NEVER write code directly** — delegate to Agent() sub-agents for all code work
-4. **Write `current_state` after EVERY transition** — enforcement hooks depend on it
-5. **Prompt templates** are in `src/skills/__helpers/agent-prompts.ts` — read that file with the Read tool when you need a template, then pass its content as the Agent() prompt
-6. **v2 prompt templates** are also in `agent-prompts.ts` — RESEARCH_SCOPE_PROMPT, PARALLEL_RESEARCH_PROMPT, RESEARCH_SYNTHESIS_PROMPT, RESEARCH_REVIEW_PROMPT, RESEARCH_GRADUATION_PROMPT, PLAN_REVIEW_PROMPT
+4. **Prompt templates** are in `src/skills/__helpers/agent-prompts.ts` — read that file with the Read tool when you need a template, then pass its content as the Agent() prompt
+5. **v2 prompt templates** are also in `agent-prompts.ts` — RESEARCH_SCOPE_PROMPT, PARALLEL_RESEARCH_PROMPT, RESEARCH_SYNTHESIS_PROMPT, RESEARCH_REVIEW_PROMPT, RESEARCH_GRADUATION_PROMPT, PLAN_REVIEW_PROMPT
 
 ## Context File: `/tmp/lu-context.json`
 
 ```bash
 bun src/skills/__schemas/context-cli.ts init lu          # Initialize
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'  # Write state
+bun src/skills/__schemas/context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'  # Write sub-agent output
 bun src/skills/__schemas/context-cli.ts read lu           # Read context
-bun src/skills/__schemas/context-cli.ts state lu          # Read just state
 ```
 
 ## Vault Resolution
@@ -42,11 +40,13 @@ if [ -z "$REPO_VAULT" ]; then REPO_VAULT=${LUCA_MUNINN_VAULT:-default}; fi
 Parse user request and all CLI flags.
 
 **Crash recovery:**
+
 ```bash
 EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state lu 2>/dev/null || echo "")
-if [ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ]; then
-  echo "Resuming from state: $EXISTING_STATE"
-  # Skip completed steps based on current_state
+PIPELINE_POS=$(luca-bridge read-field --field=pipeline_position 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value || 'idle')" 2>/dev/null || echo "idle")
+if [ "$PIPELINE_POS" != "idle" ] || ([ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ] && [ "$EXISTING_STATE" != "unknown" ]); then
+  echo "Resuming from pipeline position: $PIPELINE_POS (context state: $EXISTING_STATE)"
+  # Skip completed steps based on PIPELINE_POS
 else
   bun src/skills/__schemas/context-cli.ts init lu
 fi
@@ -55,6 +55,7 @@ fi
 ### Step 2: Cognitive Pre-Flight + Classify + Route (idle -> routed)
 
 Read `agent-prompts.ts`, spawn:
+
 ```
 Agent(name: "cognition", prompt: COGNITION_PROMPT({phase, complexity, vault, currentState}))
 Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
@@ -63,15 +64,21 @@ Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
 Parse COMPLEXITY and ROUTE from classify agent's output.
 
 ```bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'
+luca-bridge transition --event=START 2>/dev/null || true
+luca-bridge transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
 ```
+
+(Replace COMPLEXITY_LEVEL with the actual classified complexity.)
 
 ### Step 3: Route Branch
 
 **If ROUTE != "phase-execute":** Handle non-phase-execute routes:
+
 ```
 Agent(name: "{route}-handler", prompt: ROUTE_HANDLER_PROMPT(route, {...}))
 ```
+
 Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write "complete", RETURN.
 
 **If ROUTE == "phase-execute":** Continue to Step 4.
@@ -82,13 +89,8 @@ Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write 
 Agent(name: "configure", prompt: CONFIGURE_PROMPT({...}))
 ```
 
-After agent returns: `luca-bridge transition --event=START` and `--event=PREFLIGHT_COMPLETE`.
-
-```bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"configured"}'
-```
-
 **v2 config resolution:**
+
 ```bash
 # Read workflow version from config (default: "v1")
 WORKFLOW_VERSION=$(cat .planning/config.json 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
@@ -99,24 +101,17 @@ if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 
 ### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
 
-If --skip-backlog or config backlog_scan==false: skip, write state "scanned".
+If --skip-backlog or config backlog_scan==false: skip.
 
 Otherwise:
+
 ```
 Agent(name: "backlog", prompt: BACKLOG_PROMPT({...}))
-```
-
-```bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"scanned"}'
 ```
 
 ### Step 6: Build Phase Execution Order (INLINE)
 
 Read .planning/ROADMAP.md. Parse incomplete phases. Build dependency graph. Topological sort. Apply MAX_PHASES limit. If --dry-run: display plan and RETURN.
-
-```bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"executing"}'
-```
 
 ### Step 7: Phase Execution Loop
 
@@ -125,17 +120,21 @@ bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"executing"}'
 Write loop counter to context file for recovery: `{"loop_index": N, "remaining_phases": [...]}`
 
 #### 7a. Phase dependency check (INLINE)
+
 Verify all dependencies complete. If not: park phase, continue.
 
 #### 7b. Oversight gate (INLINE, interactive)
+
 If oversight != "full-auto": prompt user for phase confirmation.
 
 #### 7c. Per-phase complexity re-classify
+
 ```
 Agent(name: "classify-{NN}", prompt: CLASSIFY_PROMPT({phase: NN, ...}))
 ```
 
 #### 7d. Gate resolution (INLINE)
+
 ```bash
 PREMORTEM=$(luca-bridge gate-check --gate=premortem 2>/dev/null | ...)
 PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
@@ -148,12 +147,15 @@ PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 **Graceful degradation:** If ANY v2 step below fails (agent returns failure or error), log the failure and SKIP remaining v2 steps. Continue to 7e (Discussion) with whatever research context is available. v1 pipeline is never blocked by v2 failures.
 
 **7d-v2a. Research Scope** (skip if research/ directory already populated)
+
 ```
 Agent(name: "research-scope-{NN}", prompt: RESEARCH_SCOPE_PROMPT({phase: NN, ...}))
 ```
+
 Parse RESEARCH-SCOPE.md to get specialist assignments.
 
 **7d-v2b. Parallel Research** (spawn 4 specialists simultaneously)
+
 ```
 Agent(name: "research-arch-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("architecture", {...}))
 Agent(name: "research-impl-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("implementation", {...}))
@@ -162,11 +164,13 @@ Agent(name: "research-risk-{NN}", prompt: PARALLEL_RESEARCH_PROMPT("risks", {...
 ```
 
 **7d-v2c. Research Synthesis**
+
 ```
 Agent(name: "research-synth-{NN}", prompt: RESEARCH_SYNTHESIS_PROMPT({phase: NN, ...}))
 ```
 
 **7d-v2d. Research Review Loop** (iterate up to researchReviewIterations)
+
 ```
 FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
   # Spawn 3 reviewers in parallel
@@ -181,21 +185,38 @@ FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
 ```
 
 **7d-v2e. Research Graduation**
+
 ```
 Agent(name: "research-graduate-{NN}", prompt: RESEARCH_GRADUATION_PROMPT({phase: NN, ...}))
 ```
 
 #### 7e. Discussion (conditional: skip if --skip-discuss)
+
 ```
 Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-premortem)
 ```
 
+After discussion returns (or if skipped):
+
+```bash
+luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
+# If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
+```
+
 #### 7f. Plan existence check (INLINE)
-If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
+
+If .planning/phases/{NN}-\*/PLAN.md exists: skip planning.
 
 #### 7g. Planning
+
 ```
 Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
+```
+
+After planning returns:
+
+```bash
+luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 ```
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -215,26 +236,32 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
 ```
 
 #### 7h. Execution
+
 ```
 Agent(name: "execute-{NN}", prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 ```
 
 #### 7i. Harness Fix Loop (INLINE, hoisted)
+
 ```
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   Agent(name: "harness-{NN}", prompt: HARNESS_CHECK_PROMPT({...}))
   IF PASSED: BREAK
   Agent(name: "fix-{NN}", prompt: HARNESS_FIX_PROMPT(errors, {...}))
 ```
+
 Then: `luca-bridge transition --event=VERIFY_PASSED`
 
 #### 7j. Goal-backward verification
+
 ```
 Agent(name: "verify-{NN}", prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 ```
 
 #### 7k. Code review (conditional: complexity >= MODERATE, not --skip-review)
+
 Spawn PARALLEL reviewers:
+
 ```
 Agent(name: "review-arch-{NN}", prompt: CODE_REVIEW_PROMPT("architecture", {...}))
 Agent(name: "review-dx-{NN}", prompt: CODE_REVIEW_PROMPT("dx-advocate", {...}))
@@ -243,25 +270,31 @@ Agent(name: "review-simplify-{NN}", prompt: CODE_REVIEW_PROMPT("simplifier", {..
 ```
 
 #### 7l. Learning capture
+
 ```
 Agent(name: "learn-{NN}", prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 ```
+
 `luca-bridge transition --event=LEARN_COMPLETE`
 
 #### 7m. Process data (conditional: --run-process-data)
+
 ```
 Agent(name: "process-data-{NN}", prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
 ```
 
 #### 7n. Commit (INLINE)
+
 ```bash
 git add . && git commit -m "feat({NN}): complete phase {NN}"
 ```
 
 #### 7o. Update state (INLINE)
+
 Mark phase complete in ROADMAP.md. Write loop counter + remaining phases to context file.
 
 #### 7p. Gap closure retry (INLINE, if phase had failures)
+
 ```
 FOR retry = 1 to GAP_RETRIES:
   Agent(name: "plan-gaps-{NN}", prompt: plan only for gaps)
@@ -274,6 +307,7 @@ IF still failing: park phase, cascade to dependents
 ### Step 8: Milestone Boundary Check
 
 If all phases in current milestone complete:
+
 ```
 Agent(name: "milestone-learn", prompt: MILESTONE_LEARN_PROMPT({...}))
 Agent(name: "milestone-prune", prompt: MILESTONE_PRUNE_PROMPT({...}))
@@ -293,7 +327,3 @@ Verify all required context sections are populated. Advisory warning if gaps fou
 ### Step 11: Session Summary + Cleanup
 
 `luca-bridge transition --event=COMMIT_COMPLETE`
-
-```bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"complete"}'
-```

@@ -106,7 +106,12 @@ export async function loadPersistedActor(
     let snapshot: any;
     try {
       snapshot = sanitizeJsonParse(text);
-      if (!snapshot.status) snapshot.status = "active";
+      // Always force status to "active" so the actor accepts events.
+      // The workflow machine has no type:"final" states, so status:"done"
+      // is always a stale artifact from a previous session. Without this,
+      // XState creates a stopped actor that silently ignores all events,
+      // breaking the bridge → state.json → statusline HUD chain.
+      snapshot.status = "active";
       if (!snapshot.children) snapshot.children = {};
       if (!snapshot.historyValue) snapshot.historyValue = {};
     } catch {
@@ -153,6 +158,26 @@ export async function loadPersistedActor(
   }
 }
 
+/**
+ * Create a brand-new workflow actor from config and optional overrides.
+ *
+ * Reads `.planning/config.json` from disk (or from `configPath`), merges
+ * any caller-supplied overrides into the machine input, and starts the
+ * actor. Use this when no prior state exists (first run or after reset).
+ *
+ * @param configPath - Path to the Luca config file (default: `.planning/config.json`)
+ * @param overrides - Partial machine input fields to merge on top of config-derived defaults
+ * @returns Result with the started actor on success, or error message on failure
+ *
+ * @example
+ * ```typescript
+ * const result = await createFreshActor();
+ * if (result.success) {
+ *   result.data.send({ type: "START", ticket_id: "PROJ-1" });
+ *   await persistActor(result.data);
+ * }
+ * ```
+ */
 export async function createFreshActor(
   configPath: string = ".planning/config.json",
   overrides?: Partial<WorkflowMachineInput>,

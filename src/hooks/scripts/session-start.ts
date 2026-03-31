@@ -19,10 +19,12 @@ import {
   unlinkSync,
   statSync,
   appendFileSync,
-} from "fs";
+} from "node:fs";
 import { join } from "path";
 
 import { z } from "zod";
+
+import { sanitizeJsonParse } from "../../shared";
 
 import {
   guardDedup,
@@ -35,6 +37,11 @@ import {
 import { runBridge } from "../__helpers/bridge.ts";
 import { resolveVault } from "../__helpers/vault.ts";
 import { buildRestoreMessage } from "../__helpers/session-restore.ts";
+import {
+  ORCHESTRATOR_GATES,
+  derivePipelineState,
+  resolveGatePath,
+} from "../__helpers/orchestrator-gate-config.ts";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -161,7 +168,9 @@ const main = async (): Promise<void> => {
   let staleSessionMsg = "";
   if (existsSync(sessionEndMarker)) {
     try {
-      const rawMarker = JSON.parse(await Bun.file(sessionEndMarker).text());
+      const rawMarker = sanitizeJsonParse(
+        await Bun.file(sessionEndMarker).text(),
+      );
       const markerResult = SessionEndMarkerSchema.safeParse(rawMarker);
       const marker = markerResult.success ? markerResult.data : {};
       if (marker.cleanup_pending) {
@@ -358,7 +367,9 @@ const main = async (): Promise<void> => {
   } else {
     // config.json exists — update runtime field only
     try {
-      const cfg = JSON.parse(await Bun.file(configPath).text());
+      const cfg = sanitizeJsonParse(
+        await Bun.file(configPath).text(),
+      ) as Record<string, unknown>;
       cfg.runtime = runtime;
       await Bun.write(configPath, JSON.stringify(cfg, null, 2) + "\n");
     } catch {
@@ -400,14 +411,61 @@ const main = async (): Promise<void> => {
     }
   }
 
+  // Step 7c: Clean stale orchestrator context files from crashed sessions.
+  // If a context file has a non-terminal current_state, it means the previous
+  // session crashed mid-workflow. Transition to "failed" so the pre-edit
+  // workflow gate doesn't lock out the new session.
+  // Uses shared config from orchestrator-gate-config.ts (single source of truth).
+  for (const gate of ORCHESTRATOR_GATES) {
+    const absCtxPath = resolveGatePath(gate.context_path);
+    const ctxFile = Bun.file(absCtxPath);
+    if (await ctxFile.exists()) {
+      try {
+        const raw = await ctxFile.json();
+        const derived = derivePipelineState(
+          raw as Record<string, unknown>,
+          gate.use_computed_position ?? false,
+        );
+        const state = derived?.currentState;
+
+        if (state && !gate.terminal_states.includes(state)) {
+          process.stderr.write(
+            `session-start: Stale ${gate.name} context detected (state: '${state}') — transitioning to 'failed'\n`,
+          );
+
+          if (gate.use_computed_position) {
+            // For state.json: reset via bridge to properly transition the
+            // XState machine, rather than writing current_state directly.
+            await runBridge(["ensure-init", "--force"]);
+          } else {
+            raw.current_state = "failed";
+            await Bun.write(absCtxPath, JSON.stringify(raw, null, 2));
+          }
+        }
+      } catch {
+        process.stderr.write(
+          `session-start: Corrupted ${gate.name} context at ${absCtxPath} — clearing\n`,
+        );
+        if (gate.use_computed_position) {
+          // For state.json: reinitialize via bridge
+          await runBridge(["ensure-init", "--force"]);
+        } else {
+          await Bun.write(absCtxPath, "{}");
+        }
+      }
+    }
+  }
+
   // Step 8: Create session lock file (with build manifest snapshot)
   try {
     const manifestPath = join(pd, ".claude", ".build-manifest.json");
     let buildManifestAt: string | null = null;
     if (existsSync(manifestPath)) {
       try {
-        const manifest = JSON.parse(await Bun.file(manifestPath).text());
-        buildManifestAt = manifest.built_at ?? null;
+        const manifest = sanitizeJsonParse(
+          await Bun.file(manifestPath).text(),
+        ) as Record<string, unknown>;
+        buildManifestAt = (manifest.built_at as string) ?? null;
       } catch {
         // No manifest or parse error
       }

@@ -91,6 +91,11 @@ export type {
   ModelTier,
 } from "./utils/complexity-utils";
 
+// ─── Pipeline Position ────────────────────────────────────────────────────
+
+export { computePipelinePosition } from "./__helpers/pipeline-position";
+export type { PipelinePosition } from "./__helpers/pipeline-position";
+
 // ─── Persistence ────────────────────────────────────────────────────────────
 
 export {
@@ -115,7 +120,6 @@ export type { SnapshotInput } from "./snapshot";
 
 export {
   handleReadComplexity,
-  handleReadOversight,
   handleReadPhase,
   handleReadStatus,
   handleReadField,
@@ -125,7 +129,6 @@ export {
   handleEnsureInit,
   handleGateCheck,
   handleSuspend,
-  handleResumePhase,
   handleInitVault,
   SETTABLE_FIELDS,
 } from "./bridge";

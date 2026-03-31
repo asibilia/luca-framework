@@ -1,15 +1,14 @@
 {
   "status": "active",
-  "value": "routing",
+  "value": "preflight",
   "historyValue": {},
   "context": {
-    "session_id": "de67dc0b-ef24-4183-a0c5-1d9a65dc0d59",
+    "session_id": "95a69fd7-ee2a-4d11-a001-775cb7841e1f",
     "base_branch": "main",
-    "current_milestone": "Planning next",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "COMPLEX",
-    "oversight": "milestone",
+    "complexity": "TRIVIAL",
+    "oversight": "full-auto",
     "gates": {
       "confirm_project": true,
       "confirm_phases": true,
@@ -23,6 +22,7 @@
       "process_data": true
     },
     "workflow_config": {
+      "version": "v1",
       "research": true,
       "plan_check": true,
       "verifier": true,
@@ -72,7 +72,16 @@
         "verificationMode": "full+human"
       }
     },
-    "autopilot_config": {},
+    "lu_config": {
+      "oversight": "full-auto",
+      "max_phases_per_session": 10,
+      "auto_plan_phases": true,
+      "skip_uat": true,
+      "gap_closure_retries": 1,
+      "pause_on_critical_review": true,
+      "cross_milestone": false,
+      "backlog_scan": true
+    },
     "phase_results": [],
     "verification_attempts": 0,
     "max_verification_attempts": 3,
@@ -82,8 +91,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-28T23:33:04.774Z",
-    "last_transition_at": "2026-03-29T17:02:07.557Z"
+    "started_at": "2026-03-30T21:01:50.167Z",
+    "last_transition_at": "2026-03-30T21:01:50.167Z"
   },
   "children": {}
 }

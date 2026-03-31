@@ -4,49 +4,36 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * STATE.md generation is gated by LUCA_EXPORT_MD=true.
  *
- * Subcommands (16):
+ * Subcommands (11):
  *   read-complexity        — Read current complexity level
- *   read-oversight         — Read current oversight level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
  *   read-field             — Read an arbitrary context field (errors on missing state)
- *   read-ledger            — Read session ledger entries with optional filters
  *   set-field              — Set an allowlisted context field + persist + regenerate STATE.md
  *   transition             — Send event + persist + update STATE.md atomically
  *   snapshot               — Generate/update STATE.md from current state
  *   ensure-init            — Initialize state if not already initialized
  *   gate-check             — Check if a named gate is enabled
  *   suspend                — Create checkpoint and suspend current phase
- *   resume-phase           — Load checkpoint and resume a suspended phase
- *   emit-event             — Emit event to MuninnDB (fire-and-forget observability)
  *   init-vault             — Guided setup for project MuninnDB vault
- *   audit-gaps             — Audit DAG execution for step coverage gaps
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
  * Usage:
- *   luca-state read-complexity
- *   luca-state read-oversight
- *   luca-state read-phase
- *   luca-state read-status
- *   luca-state read-field --field=session_id
- *   luca-state read-ledger --tail=5
- *   luca-state read-ledger --session=abc-123 --event=START
- *   luca-state set-field --field=current_milestone --value="v2.0"
- *   luca-state transition --event=START [--data=json]
- *   luca-state snapshot
- *   luca-state ensure-init [--force]
- *   luca-state gate-check --gate=confirm_plan
- *   luca-state suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
- *   luca-state resume-phase --phase=42
- *   luca-state emit-event --type=session:start --session=abc-123
- *   luca-state emit-event --type=agent:spawn --session=abc-123 --data='{"agent_name":"lu-executor"}'
- *   luca-state init-vault
- *   luca-state init-vault --vault=my-project --force
- *   luca-state audit-gaps --dag=pipeline-name
- *   luca-state audit-gaps
+ *   luca-bridge read-complexity
+ *   luca-bridge read-phase
+ *   luca-bridge read-status
+ *   luca-bridge read-field --field=session_id
+ *   luca-bridge set-field --field=current_milestone --value="v2.0"
+ *   luca-bridge transition --event=START [--data=json]
+ *   luca-bridge snapshot
+ *   luca-bridge ensure-init [--force]
+ *   luca-bridge gate-check --gate=confirm_plan
+ *   luca-bridge suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
+ *   luca-bridge init-vault
+ *   luca-bridge init-vault --vault=my-project --force
  *
- * @module luca-state/bridge
+ * @module luca-bridge
  */
 import get from "lodash/get";
 import set from "lodash/set";
@@ -66,26 +53,10 @@ import { buildTransitionRecord } from "./events";
 import { getAllowedEvents, workflowMachine } from "./machine";
 import { generateSnapshot } from "./snapshot";
 import { getArg, hasFlag } from "./utils/cli-utils";
-import {
-  createSuspendCheckpoint,
-  loadSuspendCheckpoint,
-  clearSuspendCheckpoint,
-} from "./suspend-checkpoint";
-import type { SuspendCheckpoint } from "./suspend-checkpoint";
-import { readLedger, appendLedgerEntry } from "./ledger";
-import type { LedgerFilters } from "./ledger";
-import {
-  emitStateTransition,
-  emitPhaseStart,
-  emitPhaseComplete,
-  emitSessionStart,
-  emitSessionEnd,
-  emitDecision,
-  emitAgentSpawn,
-  emitAgentComplete,
-  emitFinding,
-  getEmitter,
-} from "../emitter";
+import { computePipelinePosition } from "./__helpers/pipeline-position";
+import { createSuspendCheckpoint } from "./suspend-checkpoint";
+import { appendLedgerEntry } from "./ledger";
+import { emitStateTransition, emitPhaseComplete } from "../emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -101,6 +72,10 @@ const STATE_MD_PATH = ".planning/STATE.md";
  * phase) against the intended values. Logs a warning if divergence is found.
  * Best-effort only -- never throws.
  *
+ * Gated behind `LUCA_DEBUG` env var to avoid unnecessary I/O on every
+ * transition in production use. The check provides no actionable recovery --
+ * it only logs warnings -- so it only runs when debugging is enabled.
+ *
  * @param intended - The intended field values to verify against
  */
 async function checkDualWriteDivergence(intended: {
@@ -108,6 +83,8 @@ async function checkDualWriteDivergence(intended: {
   complexity: string;
   phase: string | number | null;
 }): Promise<void> {
+  if (!process.env.LUCA_DEBUG) return;
+
   try {
     const file = Bun.file(STATE_FILE_PATH);
     if (!(await file.exists())) return;
@@ -196,20 +173,15 @@ async function updateStateMd(
 const VALID_SUBCOMMANDS = [
   "read-status",
   "read-complexity",
-  "read-oversight",
   "read-phase",
   "read-field",
-  "read-ledger",
   "set-field",
   "transition",
   "ensure-init",
   "snapshot",
   "gate-check",
   "suspend",
-  "resume-phase",
-  "emit-event",
   "init-vault",
-  "audit-gaps",
 ] as const;
 
 /**
@@ -218,17 +190,15 @@ const VALID_SUBCOMMANDS = [
  * Organized by command category (read, write, lifecycle)
  * with option descriptions for each subcommand.
  */
-const HELP_TEXT = `luca-state — CLI bridge for the Luca workflow state machine
+const HELP_TEXT = `luca-bridge — CLI bridge for the Luca workflow state machine
 
-Usage: luca-state <subcommand> [options]
+Usage: luca-bridge <subcommand> [options]
 
 Read commands:
   read-status            Read comprehensive workflow status
   read-complexity        Read current complexity level
-  read-oversight         Read current oversight level
   read-phase             Read current phase info
   read-field             Read an arbitrary context field (--field=path)
-  read-ledger            Read session ledger entries (--tail=N, --session=id)
 
 Write commands:
   set-field              Set a context field (--field=name --value=json)
@@ -239,16 +209,9 @@ Lifecycle commands:
   snapshot               Generate STATE.md from current state
   gate-check             Check if a gate is enabled (--gate=name)
   suspend                Suspend a phase (--phase=N [--reason=str])
-  resume-phase           Resume a suspended phase (--phase=N)
-
-Observability commands:
-  emit-event             Emit event to MuninnDB (--type=eventType [--session=id] [--data=json])
 
 Vault commands:
   init-vault             Guided setup for project MuninnDB vault ([--vault=name] [--force])
-
-Audit commands:
-  audit-gaps             Audit DAG execution for step coverage gaps ([--dag=name])
 
 Options:
   --help, -h             Show this help message`;
@@ -310,22 +273,6 @@ async function handleReadComplexity(): Promise<void> {
       initialized: true,
     }),
     defaults: { complexity: "TRIVIAL", initialized: false },
-  });
-  console.log(JSON.stringify(result));
-}
-
-/**
- * Read the current oversight level.
- *
- * Returns "milestone" as default if state is not initialized.
- */
-async function handleReadOversight(): Promise<void> {
-  const result = await readFromState({
-    fromSnapshot: (ctx) => ({
-      oversight: ctx.oversight as string,
-      initialized: true,
-    }),
-    defaults: { oversight: "milestone", initialized: false },
   });
   console.log(JSON.stringify(result));
 }
@@ -435,10 +382,19 @@ async function handleReadField(args: string[]): Promise<void> {
   }
 
   const result = await readFromState({
-    fromSnapshot: (ctx) => ({
-      field: fieldPath,
-      value: get(ctx, fieldPath),
-    }),
+    fromSnapshot: (ctx, stateValue) => {
+      // Virtual computed field: derive pipeline_position from XState value
+      if (fieldPath === "pipeline_position") {
+        return {
+          field: fieldPath,
+          value: computePipelinePosition(stateValue),
+        };
+      }
+      return {
+        field: fieldPath,
+        value: get(ctx, fieldPath),
+      };
+    },
     defaults: null as { field: string; value: unknown } | null,
   });
 
@@ -944,331 +900,6 @@ async function handleSuspend(args: string[]): Promise<void> {
   );
 }
 
-// ─── Resume Phase Command ────────────────────────────────────────────────────
-
-/**
- * Load a suspend checkpoint and resume the phase in the state machine.
- *
- * Loads checkpoint from the file-based checkpoint module.
- *
- * @param args - CLI arguments:
- *   --phase=N (required) Phase number to resume
- *   --keep-checkpoint (optional) Don't delete checkpoint after loading
- */
-async function handleResumePhase(args: string[]): Promise<void> {
-  const phaseStr = getArg(args, "phase");
-  if (!phaseStr) {
-    console.error("Missing --phase argument");
-    process.exit(2);
-  }
-
-  const phaseId = parseInt(phaseStr, 10);
-  if (!Number.isFinite(phaseId) || phaseId < 0) {
-    console.error(`Invalid phase number: ${phaseStr}`);
-    process.exit(2);
-  }
-
-  const keepCheckpoint = hasFlag(args, "keep-checkpoint");
-
-  let checkpoint;
-  try {
-    checkpoint = await loadSuspendCheckpoint(phaseId);
-  } catch (err) {
-    console.error(
-      err instanceof Error ? err.message : `Failed to load checkpoint: ${err}`,
-    );
-    process.exit(2);
-  }
-
-  // Load actor and send RESUME_PHASE event
-  const loadResult = await loadPersistedActor();
-  if (!loadResult.success) {
-    console.error(loadResult.error);
-    process.exit(2);
-  }
-
-  const actor = loadResult.data;
-  const prevState = actor.getSnapshot().value;
-
-  actor.send({
-    type: "RESUME_PHASE" as const,
-    checkpoint_id: String(phaseId),
-  });
-  const nextSnapshot = actor.getSnapshot();
-
-  // Verify the transition actually occurred before clearing checkpoint
-  const transitioned = String(nextSnapshot.value) !== String(prevState);
-  if (!transitioned) {
-    console.error(
-      `RESUME_PHASE transition rejected: state remained "${String(prevState)}". ` +
-        `Checkpoint preserved at .planning/checkpoints/suspend-${phaseId}.json`,
-    );
-    process.exit(2);
-  }
-
-  const persistResult = await persistActor(actor);
-  if (!persistResult.success) {
-    console.error(persistResult.error);
-    process.exit(2);
-  }
-
-  // Optionally update STATE.md (gated by env var)
-  await updateStateMd(actor);
-
-  // Emit phase resume to MuninnDB (fire-and-forget)
-  void emitPhaseStart({
-    phase_id: phaseId,
-    session_id: nextSnapshot.context.session_id,
-    metadata: {
-      milestone: nextSnapshot.context.current_milestone ?? undefined,
-      phase: phaseId,
-      complexity: nextSnapshot.context.complexity,
-    },
-  });
-
-  // Clear checkpoint only after verified transition
-  if (!keepCheckpoint) {
-    try {
-      await clearSuspendCheckpoint(phaseId);
-    } catch {
-      // Non-fatal: checkpoint removal failed
-    }
-  }
-
-  console.log(
-    JSON.stringify({
-      resumed: true,
-      phase_id: phaseId,
-      checkpoint: {
-        wave_index: checkpoint.wave_index,
-        completed_task_ids: checkpoint.completed_task_ids,
-        suspended_at: checkpoint.suspended_at,
-        reason: checkpoint.reason,
-        session_id: checkpoint.session_id,
-      },
-      previous_state: String(prevState),
-      current_state: String(nextSnapshot.value),
-      checkpoint_cleared: !keepCheckpoint,
-    }),
-  );
-}
-
-// ─── Read Ledger Command ────────────────────────────────────────────────────
-
-/**
- * Read and filter entries from the session ledger.
- *
- * Delegates to `readLedger()` from the ledger module with CLI-parsed filters.
- * If no filters are specified, defaults to `tail=20` for a quick overview.
- *
- * @param args - CLI arguments:
- *   --session=string (optional) Filter by session ID
- *   --event=string   (optional) Filter by event type
- *   --since=string   (optional) Filter entries with timestamp >= since
- *   --limit=N        (optional) Cap result count
- *   --tail=N         (optional) Read last N entries from file before filtering
- */
-async function handleReadLedger(args: string[]): Promise<void> {
-  const filters: LedgerFilters = {};
-  const sessionArg = getArg(args, "session");
-  if (sessionArg) filters.session_id = sessionArg;
-  const eventArg = getArg(args, "event");
-  if (eventArg) filters.event_type = eventArg;
-  const sinceArg = getArg(args, "since");
-  if (sinceArg) filters.since = sinceArg;
-  const limitArg = getArg(args, "limit");
-  if (limitArg) {
-    const n = parseInt(limitArg, 10);
-    if (!Number.isNaN(n) && n > 0) filters.limit = n;
-  }
-  const tailArg = getArg(args, "tail");
-  if (tailArg) {
-    const n = parseInt(tailArg, 10);
-    if (!Number.isNaN(n) && n > 0) filters.tail = n;
-  }
-  // Default to tail=20 if no filters specified
-  if (
-    !filters.session_id &&
-    !filters.event_type &&
-    !filters.since &&
-    filters.limit === undefined &&
-    filters.tail === undefined
-  ) {
-    filters.tail = 20;
-  }
-  const entries = await readLedger(filters);
-  console.log(JSON.stringify(entries, null, 2));
-}
-
-// ─── Emit Event Command ──────────────────────────────────────────────────────
-
-/**
- * Emit an event to MuninnDB via the emitter module.
- *
- * Provides a CLI interface for hook scripts and external tools to emit
- * lifecycle events without importing TypeScript modules directly.
- * Uses the bridge's `run_bridge emit-event` pattern from common.sh.
- *
- * Emission failures are never fatal -- always exits 0.
- *
- * @param args - CLI arguments:
- *   --type=string    (required) Event type (e.g., "session:start", "phase:complete")
- *   --session=string (optional) Session ID (falls back to state file)
- *   --data=json      (optional) Additional event data as JSON
- *   --milestone=str  (optional) Current milestone version
- *   --phase=N        (optional) Current phase number
- *   --complexity=str (optional) Complexity level
- *   --branch=str     (optional) Git branch name
- *
- * @example
- * ```bash
- * luca-state emit-event --type=session:start --session=abc-123
- * luca-state emit-event --type=agent:spawn --session=abc-123 --data='{"agent_name":"lu-executor"}'
- * ```
- */
-async function handleEmitEvent(args: string[]): Promise<void> {
-  try {
-    const eventType = getArg(args, "type");
-    if (!eventType) {
-      console.error("Missing --type argument");
-      console.log(JSON.stringify({ emitted: false, error: "missing --type" }));
-      return;
-    }
-
-    // Resolve session ID: explicit arg > state file > empty string
-    let sessionId = getArg(args, "session") || "";
-    if (!sessionId) {
-      const sessionResult = await readFromState({
-        fromSnapshot: (ctx) => (ctx.session_id as string) ?? "",
-        defaults: "",
-      });
-      sessionId = sessionResult;
-    }
-
-    // Parse optional --data JSON
-    let eventData: Record<string, unknown> = {};
-    const dataRaw = getArg(args, "data");
-    if (dataRaw) {
-      try {
-        eventData = sanitizeJsonParse(dataRaw) as Record<string, unknown>;
-      } catch {
-        console.error("Invalid JSON in --data argument, ignoring");
-      }
-    }
-
-    // Build metadata from optional args
-    const milestoneArg = getArg(args, "milestone") || undefined;
-    const phaseArg = getArg(args, "phase");
-    const phaseNum = phaseArg ? parseInt(phaseArg, 10) : undefined;
-    const complexityArg = getArg(args, "complexity") || undefined;
-    const branchArg = getArg(args, "branch") || undefined;
-
-    const metadata = {
-      milestone: milestoneArg,
-      phase: Number.isFinite(phaseNum) ? phaseNum : undefined,
-      complexity: complexityArg,
-      branch: branchArg,
-    };
-
-    // Dispatch to the appropriate emit function based on event type
-    switch (eventType) {
-      case "session:start":
-        void emitSessionStart({
-          session_id: sessionId,
-          branch: branchArg,
-          complexity: complexityArg,
-          milestone: milestoneArg,
-        });
-        break;
-
-      case "session:end": {
-        const durationMs = eventData.duration_ms as number | undefined;
-        const engramCount = eventData.engram_count as number | undefined;
-        void emitSessionEnd({
-          session_id: sessionId,
-          duration_ms: durationMs,
-          engram_count: engramCount,
-        });
-        // Flush pending engrams on session end
-        void getEmitter().flush();
-        break;
-      }
-
-      case "phase:start":
-        void emitPhaseStart({
-          phase_id: (eventData.phase_id as number) ?? phaseNum ?? 0,
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-
-      case "phase:complete":
-        void emitPhaseComplete({
-          phase_id: (eventData.phase_id as number) ?? phaseNum ?? 0,
-          status: (eventData.status as string) ?? "completed",
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-
-      case "decision:made":
-        void emitDecision({
-          decision: (eventData.decision as string) ?? "",
-          rationale: (eventData.rationale as string) ?? "",
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-
-      case "agent:spawn":
-        void emitAgentSpawn({
-          agent_name: (eventData.agent_name as string) ?? "",
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-
-      case "agent:complete":
-        void emitAgentComplete({
-          agent_name: (eventData.agent_name as string) ?? "",
-          status: (eventData.status as string) ?? "completed",
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-
-      case "finding:captured":
-        void emitFinding({
-          finding_type: (eventData.finding_type as string) ?? "",
-          content: (eventData.content as string) ?? "",
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-
-      default:
-        // Generic/unknown event types use emitStateTransition as catch-all
-        void emitStateTransition({
-          previous_state: (eventData.previous_state as string) ?? "unknown",
-          current_state: (eventData.current_state as string) ?? "unknown",
-          event_type: eventType,
-          session_id: sessionId,
-          metadata,
-        });
-        break;
-    }
-
-    console.log(JSON.stringify({ emitted: true, type: eventType }));
-  } catch (err) {
-    // Emission failures are never fatal
-    console.error(
-      "[bridge] emit-event failed:",
-      err instanceof Error ? err.message : String(err),
-    );
-    console.log(JSON.stringify({ emitted: false, error: "internal_error" }));
-  }
-}
-
 // ─── Init Vault Command ─────────────────────────────────────────────────────
 
 /**
@@ -1288,9 +919,9 @@ async function handleEmitEvent(args: string[]): Promise<void> {
  *
  * @example
  * ```bash
- * luca-state init-vault
- * luca-state init-vault --vault=my-project
- * luca-state init-vault --force
+ * luca-bridge init-vault
+ * luca-bridge init-vault --vault=my-project
+ * luca-bridge init-vault --force
  * ```
  */
 async function handleInitVault(args: string[]): Promise<void> {
@@ -1393,268 +1024,6 @@ async function handleInitVault(args: string[]): Promise<void> {
   );
 }
 
-// ─── Audit Gaps Command ─────────────────────────────────────────────────────
-
-/**
- * Audit DAG execution for step coverage gaps.
- *
- * Implements gap detection **inline** (no import from `~/workflow`) because
- * the bridge lives in `packages/luca-framework/` which cannot access the `~`
- * alias. The logic follows the same three-tier tolerance model as the reusable
- * `detectGaps()` in `src/workflow/__helpers/gap-detector.ts`.
- *
- * **Three-Tier Tolerance Model:**
- * - Required step with no ledger entry: FAIL (gap detected)
- * - Step skipped via guard or flag: PASS (requires structured entry with reason)
- * - Optional step absent: WARNING (not failure)
- * - Guard-exception skip: WARNING (should be investigated)
- * - Failed step: INFO (attempted but failed, not a coverage gap)
- *
- * Reads checkpoint data from state (completedSteps, skippedSteps, failedSteps)
- * and expected step definitions from the checkpoint context's `dag_steps` field
- * or falls back to a minimal step list derived from completed + skipped + failed.
- *
- * **Output:** Structured JSON with `status`, `gaps[]`, and `summary`.
- * **Exit code:** 0 for clean, 1 for gaps found, 2 for errors.
- *
- * @param args - CLI arguments:
- *   --dag=name (optional) DAG name to filter (currently informational)
- *
- * @example
- * ```bash
- * luca-state audit-gaps
- * # Output: {"status":"clean","gaps":[],"summary":{...}}
- *
- * luca-state audit-gaps --dag=phase-pipeline
- * # Output: {"status":"gaps_found","gaps":[...],"summary":{...}}
- * ```
- */
-async function handleAuditGaps(args: string[]): Promise<void> {
-  const dagName = getArg(args, "dag") ?? "phase-pipeline";
-
-  // Read checkpoint data from persisted state
-  const checkpointData = await readFromState({
-    fromSnapshot: (ctx) => {
-      // Look for DAG checkpoint data in the context
-      const dagCheckpoint = get(ctx, "dag_checkpoint") as
-        | Record<string, unknown>
-        | undefined;
-      const dagSteps = get(ctx, "dag_steps") as
-        | Array<Record<string, unknown>>
-        | undefined;
-
-      return {
-        checkpoint: dagCheckpoint ?? null,
-        steps: dagSteps ?? null,
-      };
-    },
-    defaults: {
-      checkpoint: null as Record<string, unknown> | null,
-      steps: null as Array<Record<string, unknown>> | null,
-    },
-  });
-
-  // If no checkpoint data exists, return a clean result (no execution to audit)
-  if (!checkpointData.checkpoint) {
-    console.log(
-      JSON.stringify({
-        status: "clean",
-        gaps: [],
-        summary: {
-          totalSteps: 0,
-          completedSteps: 0,
-          skippedSteps: 0,
-          failedSteps: 0,
-          missingSteps: 0,
-          optionalMissing: 0,
-        },
-        message: "No DAG checkpoint found in state. Nothing to audit.",
-      }),
-    );
-    return;
-  }
-
-  const checkpoint = checkpointData.checkpoint;
-  const completedSteps =
-    (checkpoint.completedSteps as Record<string, unknown>) ?? {};
-  const skippedSteps =
-    (checkpoint.skippedSteps as Array<Record<string, unknown>>) ?? [];
-  const failedSteps = (checkpoint.failedSteps as Record<string, unknown>) ?? {};
-
-  // Build expected step list
-  // Priority: explicit dag_steps from state > derive from checkpoint entries
-  type StepDef = { id: string; name: string; optional: boolean };
-  let expectedSteps: StepDef[] = [];
-
-  if (checkpointData.steps && checkpointData.steps.length > 0) {
-    // Use explicit step definitions from state
-    expectedSteps = checkpointData.steps.map((s) => ({
-      id: String(s.id ?? ""),
-      name: String(s.name ?? s.id ?? "unknown"),
-      optional: Boolean(s.optional ?? false),
-    }));
-  } else {
-    // Derive from checkpoint: union of completed + skipped + failed step IDs
-    const allIds = new Set<string>();
-    for (const id of Object.keys(completedSteps)) allIds.add(id);
-    for (const entry of skippedSteps) {
-      if (entry.id) allIds.add(String(entry.id));
-    }
-    for (const id of Object.keys(failedSteps)) allIds.add(id);
-
-    expectedSteps = Array.from(allIds).map((id) => {
-      // Check if skip entry records optional flag
-      const skipEntry = skippedSteps.find((s) => String(s.id) === id);
-      return {
-        id,
-        name: id,
-        optional: Boolean(skipEntry?.optional ?? false),
-      };
-    });
-  }
-
-  // Build skip lookup map
-  const skippedMap = new Map<string, Record<string, unknown>>();
-  for (const entry of skippedSteps) {
-    if (entry.id) {
-      skippedMap.set(String(entry.id), entry);
-    }
-  }
-
-  // Inline gap detection (three-tier tolerance model)
-  interface GapEntry {
-    stepId: string;
-    stepName: string;
-    optional: boolean;
-    expectedStatus: string;
-    actualStatus: string;
-    severity: "fail" | "warning" | "info";
-    recommendation: string;
-  }
-
-  const gaps: GapEntry[] = [];
-  let completedCount = 0;
-  let skippedCount = 0;
-  let failedCount = 0;
-  let missingCount = 0;
-  let optionalMissingCount = 0;
-
-  for (const step of expectedSteps) {
-    // 1. Completed -> no gap
-    if (completedSteps[step.id] !== undefined) {
-      completedCount++;
-      continue;
-    }
-
-    // 2. Skipped (structured entry)
-    const skipEntry = skippedMap.get(step.id);
-    if (skipEntry) {
-      skippedCount++;
-      const reason = String(skipEntry.reason ?? "unknown");
-
-      // Guard-false and flag-skip are legitimate -> PASS
-      if (reason === "guard-false" || reason === "flag-skip") {
-        continue;
-      }
-
-      // Guard-exception -> WARNING
-      if (reason === "guard-exception") {
-        gaps.push({
-          stepId: step.id,
-          stepName: step.name,
-          optional: step.optional,
-          expectedStatus: "completed",
-          actualStatus: "skipped-guard-exception",
-          severity: "warning",
-          recommendation:
-            "Step guard threw an exception. Investigate the guard function for errors.",
-        });
-        continue;
-      }
-
-      // Unknown skip reason -> WARNING
-      gaps.push({
-        stepId: step.id,
-        stepName: step.name,
-        optional: step.optional,
-        expectedStatus: "completed",
-        actualStatus: `skipped-${reason}`,
-        severity: "warning",
-        recommendation: `Step was skipped with unexpected reason: ${reason}`,
-      });
-      continue;
-    }
-
-    // 3. Failed -> INFO (attempted but failed, not a coverage gap)
-    if (failedSteps[step.id] !== undefined) {
-      failedCount++;
-      const failInfo = failedSteps[step.id] as Record<string, unknown>;
-      gaps.push({
-        stepId: step.id,
-        stepName: step.name,
-        optional: step.optional,
-        expectedStatus: "completed",
-        actualStatus: "failed",
-        severity: "info",
-        recommendation: `Step attempted but failed: ${String(failInfo.error ?? "Unknown error")}`,
-      });
-      continue;
-    }
-
-    // 4. Missing -> FAIL (required) or WARNING (optional)
-    if (step.optional) {
-      optionalMissingCount++;
-      gaps.push({
-        stepId: step.id,
-        stepName: step.name,
-        optional: true,
-        expectedStatus: "completed",
-        actualStatus: "missing",
-        severity: "warning",
-        recommendation:
-          "Optional step was not executed. This is advisory only.",
-      });
-    } else {
-      missingCount++;
-      gaps.push({
-        stepId: step.id,
-        stepName: step.name,
-        optional: false,
-        expectedStatus: "completed",
-        actualStatus: "missing",
-        severity: "fail",
-        recommendation:
-          "Required step was never executed. This must be addressed before verification can pass.",
-      });
-    }
-  }
-
-  // Determine overall status
-  const hasFails = gaps.some((g) => g.severity === "fail");
-  const status = gaps.length === 0 ? "clean" : "gaps_found";
-
-  const result = {
-    status,
-    dagName,
-    gaps,
-    summary: {
-      totalSteps: expectedSteps.length,
-      completedSteps: completedCount,
-      skippedSteps: skippedCount,
-      failedSteps: failedCount,
-      missingSteps: missingCount,
-      optionalMissing: optionalMissingCount,
-    },
-  };
-
-  console.log(JSON.stringify(result));
-
-  // Exit with code 1 if gaps with FAIL severity found
-  if (hasFails) {
-    process.exit(1);
-  }
-}
-
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1684,9 +1053,6 @@ export async function runBridgeCli(): Promise<void> {
     case "read-complexity":
       await handleReadComplexity();
       break;
-    case "read-oversight":
-      await handleReadOversight();
-      break;
     case "read-phase":
       await handleReadPhase();
       break;
@@ -1714,20 +1080,8 @@ export async function runBridgeCli(): Promise<void> {
     case "suspend":
       await handleSuspend(args);
       break;
-    case "resume-phase":
-      await handleResumePhase(args);
-      break;
-    case "read-ledger":
-      await handleReadLedger(args);
-      break;
-    case "emit-event":
-      await handleEmitEvent(args);
-      break;
     case "init-vault":
       await handleInitVault(args);
-      break;
-    case "audit-gaps":
-      await handleAuditGaps(args);
       break;
     default:
       console.error(
@@ -1749,21 +1103,16 @@ if (import.meta.main) {
 
 export {
   handleReadComplexity,
-  handleReadOversight,
   handleReadPhase,
   handleReadStatus,
   handleReadField,
-  handleReadLedger,
   handleSetField,
   handleTransition,
   handleSnapshot,
   handleEnsureInit,
   handleGateCheck,
   handleSuspend,
-  handleResumePhase,
-  handleEmitEvent,
   handleInitVault,
-  handleAuditGaps,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

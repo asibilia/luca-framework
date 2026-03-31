@@ -36,17 +36,15 @@ The single entry point for all Luca workflows. This is a **flat Agent() orchestr
 1. **ALL Agent() calls originate from this orchestrator** — sub-agents are leaf workers that CANNOT call Agent(), Task(), or Skill()
 2. **Every step is binding** — you MUST NOT skip, simplify, or substitute workflow steps
 3. **NEVER write code directly** — delegate to Agent() sub-agents for all code work
-4. **Write \`current_state\` after EVERY transition** — enforcement hooks depend on it
-5. **Prompt templates** are in \`src/skills/__helpers/agent-prompts.ts\` — read that file with the Read tool when you need a template, then pass its content as the Agent() prompt
-6. **v2 prompt templates** are also in \`agent-prompts.ts\` — RESEARCH_SCOPE_PROMPT, PARALLEL_RESEARCH_PROMPT, RESEARCH_SYNTHESIS_PROMPT, RESEARCH_REVIEW_PROMPT, RESEARCH_GRADUATION_PROMPT, PLAN_REVIEW_PROMPT
+4. **Prompt templates** are in \`src/skills/__helpers/agent-prompts.ts\` — read that file with the Read tool when you need a template, then pass its content as the Agent() prompt
+5. **v2 prompt templates** are also in \`agent-prompts.ts\` — RESEARCH_SCOPE_PROMPT, PARALLEL_RESEARCH_PROMPT, RESEARCH_SYNTHESIS_PROMPT, RESEARCH_REVIEW_PROMPT, RESEARCH_GRADUATION_PROMPT, PLAN_REVIEW_PROMPT
 
 ## Context File: \`/tmp/lu-context.json\`
 
 \`\`\`bash
 bun src/skills/__schemas/context-cli.ts init lu          # Initialize
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'  # Write state
+bun src/skills/__schemas/context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'  # Write sub-agent output
 bun src/skills/__schemas/context-cli.ts read lu           # Read context
-bun src/skills/__schemas/context-cli.ts state lu          # Read just state
 \`\`\`
 
 ## Vault Resolution
@@ -65,9 +63,10 @@ Parse user request and all CLI flags.
 **Crash recovery:**
 \`\`\`bash
 EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state lu 2>/dev/null || echo "")
-if [ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ]; then
-  echo "Resuming from state: $EXISTING_STATE"
-  # Skip completed steps based on current_state
+PIPELINE_POS=$(luca-bridge read-field --field=pipeline_position 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value || 'idle')" 2>/dev/null || echo "idle")
+if [ "$PIPELINE_POS" != "idle" ] || ([ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ] && [ "$EXISTING_STATE" != "unknown" ]); then
+  echo "Resuming from pipeline position: $PIPELINE_POS (context state: $EXISTING_STATE)"
+  # Skip completed steps based on PIPELINE_POS
 else
   bun src/skills/__schemas/context-cli.ts init lu
 fi
@@ -84,8 +83,12 @@ Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
 Parse COMPLEXITY and ROUTE from classify agent's output.
 
 \`\`\`bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'
+luca-bridge transition --event=START 2>/dev/null || true
+luca-bridge transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
 \`\`\`
+
+(Replace COMPLEXITY_LEVEL with the actual classified complexity.)
 
 ### Step 3: Route Branch
 
@@ -103,12 +106,6 @@ Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write 
 Agent(name: "configure", prompt: CONFIGURE_PROMPT({...}))
 \`\`\`
 
-After agent returns: \`luca-bridge transition --event=START\` and \`--event=PREFLIGHT_COMPLETE\`.
-
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"configured"}'
-\`\`\`
-
 **v2 config resolution:**
 \`\`\`bash
 # Read workflow version from config (default: "v1")
@@ -120,24 +117,16 @@ if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 
 ### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
 
-If --skip-backlog or config backlog_scan==false: skip, write state "scanned".
+If --skip-backlog or config backlog_scan==false: skip.
 
 Otherwise:
 \`\`\`
 Agent(name: "backlog", prompt: BACKLOG_PROMPT({...}))
 \`\`\`
 
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"scanned"}'
-\`\`\`
-
 ### Step 6: Build Phase Execution Order (INLINE)
 
 Read .planning/ROADMAP.md. Parse incomplete phases. Build dependency graph. Topological sort. Apply MAX_PHASES limit. If --dry-run: display plan and RETURN.
-
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"executing"}'
-\`\`\`
 
 ### Step 7: Phase Execution Loop
 
@@ -210,6 +199,11 @@ Agent(name: "research-graduate-{NN}", prompt: RESEARCH_GRADUATION_PROMPT({phase:
 \`\`\`
 Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-premortem)
 \`\`\`
+After discussion returns (or if skipped):
+\`\`\`bash
+luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
+# If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
+\`\`\`
 
 #### 7f. Plan existence check (INLINE)
 If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
@@ -217,6 +211,10 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 #### 7g. Planning
 \`\`\`
 Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
+\`\`\`
+After planning returns:
+\`\`\`bash
+luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 \`\`\`
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -314,10 +312,6 @@ Verify all required context sections are populated. Advisory warning if gaps fou
 ### Step 11: Session Summary + Cleanup
 
 \`luca-bridge transition --event=COMMIT_COMPLETE\`
-
-\`\`\`bash
-bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"complete"}'
-\`\`\`
 `,
       order: 1,
     },

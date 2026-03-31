@@ -12,7 +12,6 @@
  *   bun src/skills/__schemas/context-cli.ts write <name> '<json-patch>'
  *   bun src/skills/__schemas/context-cli.ts read <name>
  *   bun src/skills/__schemas/context-cli.ts state <name>
- *   bun src/skills/__schemas/context-cli.ts reset <name>
  *
  * Context names: lu, phase-execute, verify, milestone-complete, pr-address
  *
@@ -24,25 +23,17 @@
  * bun src/skills/__schemas/context-cli.ts init lu
  * # Output: {"success":true,"path":"/tmp/lu-context.json"}
  *
- * # Write a state transition
- * bun src/skills/__schemas/context-cli.ts write lu '{"current_state":"routed"}'
- * # Output: {"success":true}
- *
  * # Write sub-agent output
  * bun src/skills/__schemas/context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'
  * # Output: {"success":true}
  *
  * # Read the full context
  * bun src/skills/__schemas/context-cli.ts read lu
- * # Output: {"success":true,"data":{"context_version":1,"current_state":"routed",...}}
+ * # Output: {"success":true,"data":{"context_version":1,...}}
  *
- * # Read just the current state
+ * # Read just the current state (lu context always returns "unknown")
  * bun src/skills/__schemas/context-cli.ts state lu
- * # Output: routed
- *
- * # Reset (delete) the context file
- * bun src/skills/__schemas/context-cli.ts reset lu
- * # Output: {"success":true}
+ * # Output: unknown
  * ```
  *
  * @module context-cli
@@ -50,6 +41,8 @@
  */
 
 import { unlinkSync } from "node:fs";
+
+import { sanitizeJsonParse } from "../../shared";
 
 import { createContextHelpers } from "./context-helpers";
 import { LuContextSchema, LU_CONTEXT_PATH } from "./lu-context.schemas";
@@ -156,7 +149,7 @@ const resolveContext = (name: string | undefined): ContextEntry => {
 // ─── Subcommands ──────────────────────────────────────────────────────────
 
 /**
- * Initialize a context file with `{ context_version: 1, current_state: "idle" }`.
+ * Initialize a context file with `{ context_version: 1 }`.
  * Overwrites any existing file.
  */
 const handleInit = async (name: string | undefined): Promise<void> => {
@@ -169,7 +162,7 @@ const handleInit = async (name: string | undefined): Promise<void> => {
     // File doesn't exist — fine
   }
 
-  await entry.helpers.write({ current_state: "idle" } as never);
+  await entry.helpers.write({} as never);
   succeed({ success: true, path: entry.path });
 };
 
@@ -189,12 +182,13 @@ const handleWrite = async (
 
   let patch: Record<string, unknown>;
   try {
-    patch = JSON.parse(patchJson) as Record<string, unknown>;
+    patch = sanitizeJsonParse(patchJson) as Record<string, unknown>;
   } catch {
     return fail(`Invalid JSON patch: ${patchJson}`);
   }
 
   await entry.helpers.write(patch as never);
+
   succeed({ success: true });
 };
 
@@ -219,6 +213,12 @@ const handleRead = async (name: string | undefined): Promise<void> => {
 /**
  * Read only the `current_state` field. Output as plain text (not JSON)
  * for easy consumption in bash scripts.
+ *
+ * NOTE: The lu context no longer has a `current_state` field (removed in
+ * the unify-state-architecture migration). For the lu context, this will
+ * always return "unknown". Crash recovery reads pipeline position from
+ * `luca-bridge read-field --field=pipeline_position` instead.
+ * The other 4 contexts still have `current_state` and work normally.
  */
 const handleState = async (name: string | undefined): Promise<void> => {
   const entry = resolveContext(name);
@@ -235,21 +235,6 @@ const handleState = async (name: string | undefined): Promise<void> => {
   process.exit(0);
 };
 
-/**
- * Delete the context file (cleanup).
- */
-const handleReset = (name: string | undefined): void => {
-  const entry = resolveContext(name);
-
-  try {
-    unlinkSync(entry.path);
-  } catch {
-    // File doesn't exist — still success
-  }
-
-  succeed({ success: true });
-};
-
 // ─── Main ─────────────────────────────────────────────────────────────────
 
 const main = async (): Promise<void> => {
@@ -259,20 +244,18 @@ const main = async (): Promise<void> => {
     console.log(`Usage: bun context-cli.ts <command> <name> [args]
 
 Commands:
-  init  <name>              Initialize context file (idle state)
+  init  <name>              Initialize context file
   write <name> '<json>'     Deep-merge JSON patch into context
   read  <name>              Read and validate context file (JSON)
   state <name>              Read current_state only (plain text)
-  reset <name>              Delete context file
 
 Context names: ${VALID_NAMES}
 
 Examples:
   bun context-cli.ts init lu
-  bun context-cli.ts write lu '{"current_state":"routed"}'
+  bun context-cli.ts write lu '{"lu_route":{"request_parsed":true}}'
   bun context-cli.ts read lu
-  bun context-cli.ts state lu
-  bun context-cli.ts reset lu`);
+  bun context-cli.ts state lu`);
     process.exit(0);
   }
 
@@ -289,12 +272,9 @@ Examples:
     case "state":
       await handleState(name);
       break;
-    case "reset":
-      handleReset(name);
-      break;
     default:
       fail(
-        `Unknown command: "${command}". Valid commands: init, write, read, state, reset`,
+        `Unknown command: "${command}". Valid commands: init, write, read, state`,
       );
   }
 };

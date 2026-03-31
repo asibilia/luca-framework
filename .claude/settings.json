@@ -3,45 +3,18 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "hooks": {
-    "PostToolUse": [
+    "PreToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-format.sh",
-            "timeout": 10,
-            "statusMessage": "Formatting..."
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-typecheck.sh",
-            "timeout": 30,
-            "async": true,
-            "statusMessage": "Type-checking..."
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-edit-workflow-gate.sh",
+            "timeout": 5,
+            "statusMessage": "Checking workflow state..."
           }
         ]
       },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-check-throttled.sh",
-            "timeout": 10,
-            "async": true,
-            "statusMessage": "Checking context..."
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/snapshot-sync.sh",
-            "timeout": 10,
-            "async": true,
-            "statusMessage": "Syncing STATE.md..."
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
@@ -111,6 +84,44 @@
           {
             "type": "prompt",
             "prompt": "VAULT ROUTING GUARD — Validate this MuninnDB write before it proceeds.\n\n1. Read the `vault` and `concept` parameters from the pending tool call.\n2. Resolve the expected repo vault: read `.planning/config.json` field `muninn.vault`. If the file does not exist or the field is missing, fall back to env var `LUCA_MUNINN_VAULT`. If that is also unset, fall back to `\"default\"`.\n3. Check the concept prefix against the write routing table:\n   - REPO VAULT targets (MUST use the resolved repo vault, NOT \"default\" — unless repo vault IS \"default\"): `session:*`, `brain:project-*`, `metric:signal-rate-*`, `version:*`, `milestone:*`\n   - DEFAULT VAULT targets (MUST use \"default\"): `pattern:*`, `pitfall:*`, `preference:*`, `brain:user-*`, `procedure:*`, `process:*`\n4. DECISION:\n   - If the vault parameter matches the expected target for the concept prefix: ALLOW the call. Respond with exactly: `{\"decision\":\"allow\"}`\n   - If misrouted: BLOCK the call. Respond with: `{\"decision\":\"block\",\"reason\":\"Concept prefix '<prefix>' must target vault '<expected_vault>' but was routed to '<actual_vault>'. Fix the vault parameter before retrying.\"}`\n   - If the concept prefix does not match any known row, apply the ambiguity heuristic: \"Would this memory be useful in a completely different repo?\" Yes -> expect \"default\". No -> expect repo vault."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-format.sh",
+            "timeout": 10,
+            "statusMessage": "Formatting..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-typecheck.sh",
+            "timeout": 30,
+            "async": true,
+            "statusMessage": "Type-checking..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-check-throttled.sh",
+            "timeout": 10,
+            "async": true,
+            "statusMessage": "Checking context..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/snapshot-sync.sh",
+            "timeout": 10,
+            "async": true,
+            "statusMessage": "Syncing STATE.md..."
           }
         ]
       }
