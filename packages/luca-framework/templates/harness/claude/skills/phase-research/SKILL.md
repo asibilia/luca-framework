@@ -27,9 +27,6 @@ Goes beyond "which library" to ecosystem knowledge:
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=phase-research --stage=RESEARCHING 2>/dev/null || true
-\`\`\`
 
 ### Step 1: Load Phase Context
 
@@ -357,7 +354,4 @@ Research the ecosystem knowledge for this phase's domain. Investigate standard a
 - `/phase-assumptions {phase}` -- Review what AI plans to do
 - `/progress` -- Check overall project status
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>

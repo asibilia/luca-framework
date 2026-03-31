@@ -61,7 +61,7 @@ export const writeStatusBus = async (
  */
 export const readStatusBus = async (
   busPath: string = STATUS_BUS_PATH,
-  maxAgeMs: number = 60_000,
+  maxAgeMs: number = 300_000,
 ): Promise<z.infer<typeof StatusBusSchema> | null> => {
   try {
     const file = Bun.file(busPath);

@@ -15,9 +15,6 @@ Sub-skill for Step 6 of the scout pipeline (cross-cutting batch).
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=scout-integrate --stage=INTEGRATING 2>/dev/null || true
-\`\`\`
 
 1. Spawn <%= branding.commandPrefix %>-scout-integrator agent with all impact document paths
 2. Wait for completion
@@ -46,7 +43,3 @@ Must include:
 ## Output
 
 Return summary of verdicts: N integrated, N deferred, N conflicting.
-
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`

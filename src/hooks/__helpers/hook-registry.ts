@@ -41,6 +41,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: true,
     status_message: "Type-checking...",
   }),
+  "post-edit-format": () => ({
+    event: "post_tool_use",
+    tool_filter: "Edit|Write",
+    script: "post-edit-format.ts",
+    timeout: 15,
+    async: true,
+    status_message: "Formatting...",
+  }),
   "pre-commit-gate": () => ({
     event: "pre_tool_use",
     tool_filter: "Bash",
@@ -82,6 +90,13 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Saving session state...",
   }),
+  "session-end-audit": () => ({
+    event: "session_end",
+    script: "session-end-audit.ts",
+    timeout: 10,
+    async: true,
+    status_message: "Auditing session state...",
+  }),
   "session-start": () => ({
     event: "session_start",
     script: "session-start.ts",
@@ -109,6 +124,13 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     timeout: 5,
     async: true,
     status_message: "Recording failure pattern...",
+  }),
+  "user-prompt-submit": () => ({
+    event: "user_prompt_submit",
+    script: "user-prompt-submit.ts",
+    timeout: 8,
+    async: true,
+    status_message: "Recording observation...",
   }),
   "muninn-context-recall": () => ({
     event: "user_prompt_submit",
@@ -180,6 +202,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     timeout: 5,
     async: false,
     status_message: "Validating lu step order...",
+  }),
+  "agent-status-sync": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Agent",
+    script: "agent-status-sync.ts",
+    timeout: 3,
+    async: false,
+    status_message: "Updating status...",
   }),
   "agent-transition-sync": () => ({
     event: "post_tool_use",

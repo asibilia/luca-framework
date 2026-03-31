@@ -15,9 +15,6 @@ Sub-skill for Step 5 of the scout per-article pipeline. Final per-article stage.
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=scout-impl --stage=RESEARCHING 2>/dev/null || true
-\`\`\`
 
 1. Read the impact document's Gap Analysis table and Recommended Actions
 2. For each recommended action (P0 and P1 priority):
@@ -49,7 +46,3 @@ For each recommended action:
 - Reference specific <%= branding.frameworkName %> conventions: functional programming, Zod schemas, Bun-first, kebab-case
 - Implementation approaches must be concrete enough to create todo files from
 - This completes the per-article pipeline — article moves to READY state after this step
-
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`

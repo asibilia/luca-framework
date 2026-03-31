@@ -57,9 +57,6 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 
 ## Process
 
-```bash
-luca-bridge write-status --skill=milestone-audit --stage=AUDITING 2>/dev/null || true
-```
 
 ### 1. Load Context
 
@@ -520,9 +517,6 @@ Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} mo
 
 ```
 
-```bash
-luca-bridge clear-status 2>/dev/null || true
-```
 
 ## Success Criteria
 

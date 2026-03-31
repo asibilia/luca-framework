@@ -124,9 +124,6 @@ Before planning begins, run cognitive pre-flight:
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=phase-plan --stage=PLANNING 2>/dev/null || true
-\`\`\`
 
 ### 1. Validate Environment and Resolve Model Profile
 
@@ -566,7 +563,4 @@ If issues found and iteration_count < planVerificationIterations:
 - `/progress` — See plan details before executing
 - `/phase-discuss {phase}` — Gather more context if plans seem off
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>

@@ -11,9 +11,6 @@ Deep expansion on specific research topics identified during review or by user r
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=phase-research-expand --stage=RESEARCHING 2>/dev/null || true
-\`\`\`
 
 ### Step 1: Load Expansion Context
 
@@ -128,7 +125,4 @@ for researcher in researchers_needed:
 - [ ] Expansion files numbered from 05+ in flat research/ directory
 - [ ] Structured result returned with files created and remaining gaps
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>

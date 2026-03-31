@@ -52,7 +52,7 @@ idle -> setup -> executed -> verified -> reviewed -> learned -> committed
 \`\`\`
 
 Terminal: \`committed\` (success) or \`failed\` (error).
-Conditional: \`SKIP_REVIEW\` when --skip-review, code_review: false, or harness failed.
+Conditional: \`SKIP\` when --skip-review, code_review: false, or harness failed.
 
 ## Vault Resolution
 
@@ -126,7 +126,7 @@ Skip if: --skip-review, workflow.code_review: false, or harness failed.
 
 **If skipped:** Emit bridge skip transition and write state:
 \`\`\`bash
-luca-bridge transition --event=SKIP_REVIEW 2>/dev/null || true
+luca-bridge transition --event=SKIP --data='{"reason":"review_skipped"}' 2>/dev/null || true
 bun src/skills/__schemas/context-cli.ts write phase-execute '{"current_state":"reviewed"}'
 \`\`\`
 Then continue to Step 4.
@@ -168,7 +168,7 @@ FOR attempt = 1 to REVIEW_FIX_ITERATIONS:
 
 After the loop completes, emit bridge transition:
 \`\`\`bash
-luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
+luca-bridge transition --event=LEARN_COMPLETE 2>/dev/null || true
 \`\`\`
 
 Write context with review results:
@@ -241,7 +241,7 @@ If any required step missing: log warning (advisory).
 - [ ] Code review fix loop ran (parallel reviewers + optional fix agent, unless skipped)
 - [ ] Review fix loop resolved CRITICAL findings or exhausted iterations
 - [ ] Learnings captured (learn agent)
-- [ ] Bridge transitions emitted (REVIEW_COMPLETE or SKIP_REVIEW, PROCESS_DATA_COMPLETE if applicable, COMMIT_COMPLETE)
+- [ ] Bridge transitions emitted (LEARN_COMPLETE or SKIP, PROCESS_DATA_COMPLETE if applicable, COMMIT_COMPLETE)
 - [ ] current_state written after every transition
 - [ ] STATE.md and ROADMAP.md updated
 

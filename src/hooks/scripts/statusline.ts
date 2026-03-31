@@ -15,7 +15,11 @@ import { resolve } from "path";
 import { z } from "zod";
 import get from "lodash/get";
 
-import { sanitizeJsonParse, readStatusBus, STATUS_BUS_PATH } from "../../shared";
+import {
+  sanitizeJsonParse,
+  readStatusBus,
+  STATUS_BUS_PATH,
+} from "../../shared";
 
 import { projectDir } from "../__helpers/hook-io.ts";
 
@@ -68,6 +72,7 @@ const readWorkflowState = async (
     const value = (get(raw, "value", "idle") as string).toLowerCase();
 
     const stateMap: Record<string, { displayState: string; icon: string }> = {
+      idle: { displayState: "idle", icon: "\u25c7" },
       executing: { displayState: "EXECUTING", icon: "\u25b8" },
       preflight: { displayState: "PLANNING", icon: "\u25c8" },
       routing: { displayState: "PLANNING", icon: "\u25c8" },
@@ -76,6 +81,8 @@ const readWorkflowState = async (
       verifying: { displayState: "VERIFYING", icon: "\u25c9" },
       learning: { displayState: "VERIFYING", icon: "\u25c9" },
       committing: { displayState: "VERIFYING", icon: "\u25c9" },
+      complete: { displayState: "EXECUTING", icon: "\u25c6" },
+      cooldown: { displayState: "VERIFYING", icon: "\u25c9" },
       paused: { displayState: "PAUSED", icon: "\u25c7" },
       suspended: { displayState: "PAUSED", icon: "\u25c7" },
       failed: { displayState: "FAILED", icon: "\u25c7" },
@@ -113,9 +120,7 @@ const readWorkflowState = async (
     const bus = await readStatusBus(`${pd}/${STATUS_BUS_PATH}`);
 
     const assembled = {
-      display_state: bus?.stage
-        ? bus.stage.toUpperCase()
-        : mapped.displayState,
+      display_state: bus?.stage || mapped.displayState,
       icon: mapped.icon,
       phase_label: bus?.phase ? `P${bus.phase}` : phaseId ? `P${phaseId}` : "",
       complexity: bus?.complexity || complexity,
@@ -128,7 +133,15 @@ const readWorkflowState = async (
     };
 
     const parseResult = WorkflowHudStateSchema.safeParse(assembled);
-    if (!parseResult.success) return null;
+    if (!parseResult.success) {
+      // Fallback: show state.json display state without bus data
+      return WorkflowHudStateSchema.parse({
+        display_state: mapped.displayState,
+        icon: mapped.icon,
+        complexity,
+        milestone,
+      });
+    }
 
     return parseResult.data;
   } catch {
@@ -216,9 +229,7 @@ const renderHudLine = (
 
   // Skill prefix with separator: "lu > " or nothing
   if (state.skill_name) {
-    segments.push(
-      colors.cyan(state.skill_name) + colors.gray(" >"),
-    );
+    segments.push(colors.cyan(state.skill_name) + colors.gray(" >"));
   }
 
   // Step name if available, otherwise display state

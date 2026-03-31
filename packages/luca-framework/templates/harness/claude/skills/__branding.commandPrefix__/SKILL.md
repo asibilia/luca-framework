@@ -51,9 +51,6 @@ else
 fi
 ```
 
-```bash
-luca-bridge write-status --skill=lu --stage=INITIALIZING 2>/dev/null || true
-```
 
 ### Step 2: Cognitive Pre-Flight + Classify + Route (idle -> routed)
 
@@ -66,9 +63,6 @@ Agent(name: "classify", prompt: CLASSIFY_PROMPT({...}))
 Parse COMPLEXITY and ROUTE from classify agent's output.
 
 ```bash
-luca-bridge write-status --step=preflight 2>/dev/null || true
-luca-bridge transition --event=START 2>/dev/null || true
-luca-bridge transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
 luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
 ```
 
@@ -180,7 +174,6 @@ PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 
 #### 7d-v2. Research Pipeline (v2 ONLY — skip entirely if WORKFLOW_VERSION != "v2")
 
-`luca-bridge write-status --step=research --phase={NN} 2>/dev/null || true`
 
 **Gate:** If WORKFLOW_VERSION != "v2": SKIP to 7e. This entire block is fail-closed.
 
@@ -226,14 +219,12 @@ Agent(name: "research-graduate-{NN}", prompt: RESEARCH_GRADUATION_PROMPT({phase:
 
 #### 7e. Discussion (conditional: skip if --skip-discuss)
 
-`luca-bridge write-status --step=discuss --phase={NN} 2>/dev/null || true`
 
 ```
 Agent(name: "discuss-{NN}", prompt: phase discussion with premortem if --run-premortem)
 ```
 After discussion returns (or if skipped):
 ```bash
-luca-bridge transition --event=DISCUSS_COMPLETE 2>/dev/null || true
 # If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
 ```
 
@@ -242,14 +233,9 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 
 #### 7g. Planning
 
-`luca-bridge write-status --step=plan --phase={NN} 2>/dev/null || true`
 
 ```
 Agent(name: "plan-{NN}", prompt: create PLAN.md with tasks and wave grouping)
-```
-After planning returns:
-```bash
-luca-bridge transition --event=PLAN_COMPLETE 2>/dev/null || true
 ```
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -270,7 +256,6 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
 
 #### 7h. Execution
 
-`luca-bridge write-status --step=execute --phase={NN} 2>/dev/null || true`
 
 ```
 Agent(name: "execute-{NN}", prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
@@ -278,7 +263,6 @@ Agent(name: "execute-{NN}", prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 
 #### 7i. Harness Fix Loop (INLINE, hoisted)
 
-`luca-bridge write-status --step=harness --phase={NN} 2>/dev/null || true`
 
 ```
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
@@ -286,11 +270,9 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   IF PASSED: BREAK
   Agent(name: "fix-{NN}", prompt: HARNESS_FIX_PROMPT(errors, {...}))
 ```
-Then: `luca-bridge transition --event=VERIFY_PASSED`
 
 #### 7j. Goal-backward verification
 
-`luca-bridge write-status --step=verify --phase={NN} 2>/dev/null || true`
 
 ```
 Agent(name: "verify-{NN}", prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
@@ -298,7 +280,6 @@ Agent(name: "verify-{NN}", prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 
 #### 7k. Code review (conditional: complexity >= MODERATE, not --skip-review)
 
-`luca-bridge write-status --step=review --phase={NN} 2>/dev/null || true`
 
 Spawn PARALLEL reviewers:
 ```
@@ -310,12 +291,10 @@ Agent(name: "review-simplify-{NN}", prompt: CODE_REVIEW_PROMPT("simplifier", {..
 
 #### 7l. Learning capture
 
-`luca-bridge write-status --step=learn --phase={NN} 2>/dev/null || true`
 
 ```
 Agent(name: "learn-{NN}", prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 ```
-`luca-bridge transition --event=LEARN_COMPLETE`
 
 #### 7m. Process data (conditional: --run-process-data)
 ```
@@ -324,7 +303,6 @@ Agent(name: "process-data-{NN}", prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
 
 #### 7n. Commit (INLINE)
 
-`luca-bridge write-status --step=commit --phase={NN} 2>/dev/null || true`
 
 Commits land on the feature branch created in Step 4.5 (or main if --skip-branch).
 ```bash
@@ -389,7 +367,4 @@ Verify all required context sections are populated. Advisory warning if gaps fou
 
 ### Step 11: Session Summary + Cleanup
 
-```bash
-luca-bridge clear-status 2>/dev/null || true
-```
 `luca-bridge transition --event=COMMIT_COMPLETE`

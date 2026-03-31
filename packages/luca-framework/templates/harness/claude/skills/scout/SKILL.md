@@ -71,9 +71,6 @@ After scout-integrate returns, check per-article verdicts:
 
 ## Step-by-Step Execution
 
-\`\`\`bash
-luca-bridge write-status --skill=scout --stage=SCOUTING 2>/dev/null || true
-\`\`\`
 
 ### Step 1: Parse Arguments
 
@@ -174,7 +171,4 @@ No agent sees the full pipeline. This prevents step-skipping by design.
 
 **Primary:** `/progress` — See project status after scouting run
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>

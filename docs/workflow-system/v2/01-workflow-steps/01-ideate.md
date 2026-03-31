@@ -107,7 +107,7 @@ The orchestrator (or lu-router) transforms the raw idea into a structured intent
 ### 1.5 Persist via state bridge
 
 ```bash
-luca-bridge transition --event=IDEATION_COMPLETE --data='{"intent":"WebSocket reconnection with exponential backoff","complexity":"MODERATE"}' 2>/dev/null || true
+luca-bridge transition --event=DISCUSS_COMPLETE --data='{"intent":"WebSocket reconnection with exponential backoff","complexity":"MODERATE"}' 2>/dev/null || true
 ```
 
 ### 1.6 Present to user and confirm

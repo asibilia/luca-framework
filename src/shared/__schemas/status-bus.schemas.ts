@@ -10,8 +10,10 @@ import { z } from "zod";
 export const StatusBusSchema = z.object({
   /** Active skill/workflow name (e.g., "lu", "pr-address", "scout") */
   skill: z.string().default(""),
-  /** High-level stage (e.g., "EXECUTING", "REVIEWING", "INGESTING") */
-  stage: z.string().default(""),
+  /** High-level stage — must match DisplayStateEnum in statusline renderer */
+  stage: z
+    .enum(["EXECUTING", "PLANNING", "VERIFYING", "PAUSED", "FAILED", "idle"])
+    .default("idle"),
   /** Sub-step within stage (e.g., "research", "discuss", "plan", "execute", "verify") */
   step: z.string().default(""),
   /** Phase number if applicable */
