@@ -55,9 +55,6 @@ bun src/skills/__schemas/context-cli.ts write verify '{"current_state":"extracte
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=verify --stage=VERIFYING 2>/dev/null || true
-\`\`\`
 
 ### Step 0: Parse Args, Crash Recovery, Initialize Context
 
@@ -191,9 +188,6 @@ On any agent failure: write state "failed", report to user.
 - [ ] current_state written after every transition
 - [ ] Gap detection audit passes
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>`,
       order: 1,
     },

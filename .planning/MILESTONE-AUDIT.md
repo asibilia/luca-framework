@@ -1,118 +1,88 @@
-# Milestone v8.5.1 Audit — Audit Gap Closure
+# Milestone Audit — v8.6.0 Scout Article Intelligence + Statusline Rework
 
-**Audited:** 2026-03-29
-**Phases:** 225-232 (8 phases)
-**Files changed:** 52 TypeScript files
-**Reviewers:** Integration checker, DX advocate, Code architect, Security auditor
+**Audited:** 2026-03-31
+**Phases:** 241-246 (6 phases)
+**Files changed:** 50 TypeScript files (212 total including templates)
 
-## Requirements Status
+## Requirements Coverage
 
-| Phase | Goal                         | Todos | Status   |
-| ----- | ---------------------------- | ----- | -------- |
-| 225   | DRY Consolidation            | 3/3   | COMPLETE |
-| 226   | Security Hardening           | 3/3   | COMPLETE |
-| 227   | Orchestrator State Tracking  | 3/3   | COMPLETE |
-| 228   | Post-Execution Gap Detection | 3/3   | COMPLETE |
-| 229   | Agent Behavioral Contracts   | 5/5   | COMPLETE |
-| 230   | v2 Enhanced Existing Agents  | 4/4   | COMPLETE |
-| 231   | v2 Orchestrator Integration  | 5/5   | COMPLETE |
-| 232   | Skill-to-Agent Migration     | 8/8   | COMPLETE |
+| Phase | Goal | Status |
+|---|---|---|
+| 241 | Scout Foundation — directory structure, state machine, templates, orchestrator | COMPLETE |
+| 242 | Per-Article Pipeline — 8 agents/skills for ingest through analysis | COMPLETE |
+| 243 | Cross-Cutting Batch — integration, planning, graduation | COMPLETE |
+| 244 | UX + Docs — review/deferred commands, documentation | COMPLETE |
+| 245 | Fix deepFreeze Zod v4 crash on lazy getters | COMPLETE |
+| 246 | Statusline rework — status bus, skill identity, wave counter fix, 27 skill wirings | COMPLETE |
 
-**Requirements:** 34/34 complete
+**Score: 6/6 phases complete**
 
-## Integration Status
+## Integration Check
 
-**Status:** CONNECTED (2 gaps found)
+**Status: PASSED (7/7)**
 
-| Integration Point                 | Status       | Notes                                                      |
-| --------------------------------- | ------------ | ---------------------------------------------------------- |
-| Hook infra -> Orchestrators       | CONNECTED    | All 5 pre-step hooks import from enforcement-hook-factory  |
-| Contract system -> Hook adapter   | ORPHANED     | checkContractPreconditions exported but no hook imports it |
-| v2 pipeline -> agent-prompts      | CONNECTED    | All 6 v2 templates reference correct agent names           |
-| Config extensions -> lu.skill.ts  | CONNECTED    | workflow.version read correctly, --v2 override works       |
-| Gap detection -> Session end hook | UNREGISTERED | session-end-audit.ts implemented but not in hook registry  |
-| State machines -> Context helpers | CONNECTED    | All 5 context paths aligned across schemas, hooks, audit   |
+All integration points verified:
+1. Scout orchestrator → sub-skill chain
+2. Status bus end-to-end flow (writer → bridge → renderer)
+3. deepFreeze Zod v4 fix
+4. StatusBusSchema barrel exports
+5. Bridge write-status/clear-status registered
+6. SET_WAVE_COUNT wired into XState executing state
+7. All 27 skills have matching write-status/clear-status
 
 ## Code Quality Findings
 
-### CRITICAL (1)
+### HIGH (2)
 
-**DRY-001: Duplicated violation-to-gap conversion with behavioral divergence**
+| # | File | Issue | Suggestion |
+|---|---|---|---|
+| H1 | bridge.ts:671,1078,1130 | Three inline copies of status bus write logic bypass StatusBusSchema.safeParse — divergent validation from shared helper | Extract private `writeBusAtomic()` helper in bridge.ts; add inline schema validation |
+| H2 | bridge.ts:1106-1108 | parseInt on --phase/--wave-current/--wave-total has no NaN guard | Add isNaN checks or rely on schema validation |
 
-- Files: `src/workflow/__helpers/gap-detector.ts` (297-332), `src/workflow/__helpers/contract-evaluator.ts` (293-341)
-- Issue: Nearly identical ContractViolation[] -> ExecutionGap[] conversion in both files, but `optional` field diverges: gap-detector uses `violation.kind !== "hard"`, contract-evaluator hardcodes `false`
-- Fix: Extract shared `violationToGap()` helper, decide on correct `optional` logic
+### MEDIUM (6)
 
-### HIGH (7)
+| # | File | Issue | Suggestion |
+|---|---|---|---|
+| M1 | status-bus.ts:92 | Uses `import("node:fs/promises").unlink` instead of Bun.file().unlink() | Replace with Bun-native API |
+| M2 | bridge.ts:1133 | Same Bun-preference violation for unlink | Replace with Bun.file().unlink() |
+| M3 | statusline.ts:34-45 | WorkflowHudStateSchema uses camelCase while StatusBusSchema uses snake_case | Rename to snake_case for consistency |
+| M4 | bridge.ts | STATUS_BUS_PATH not extracted as module constant (3 local declarations) | Extract to module-level constant |
+| M5 | bridge.ts:1078-1125 | Unvalidated writes allow arbitrary keys to reach disk | Add StatusBusSchema.safeParse before write |
+| M6 | bridge.ts:669 | cwd-relative path without project root anchor | Resolve against anchored project root |
 
-| ID       | File                                                         | Issue                                                                                                                                |
-| -------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| SEC-001  | agent-prompts.ts:462                                         | Prompt injection via tsc error output in HARNESS_FIX_PROMPT — compiler errors containing crafted source comments can break XML fence |
-| INT-001  | session-end-audit.ts                                         | Hook fully implemented but not registered in hook-registry.ts — will never fire                                                      |
-| DX-001   | session-end-audit.ts:79                                      | Manual JSON.parse with type assertion instead of schema safeParse                                                                    |
-| DX-002   | enforcement-hook-factory.ts:199-225                          | Multiple `as string` / `as Record` casts on stdin data instead of schema validation                                                  |
-| DX-003   | contract-evaluator.ts:38-68                                  | LedgerEntry/MergedAuditResult as plain interfaces, not Zod schemas (inconsistent with gap-detector.ts)                               |
-| ARCH-001 | enforcement-hook-factory.ts:51 + contract-hook-adapter.ts:30 | Two near-identical Zod schemas for context file parsing across domains                                                               |
-| ARCH-002 | contract-evaluator.ts:163-170                                | Unreachable `recoverySucceeded = true` path — check ordering makes success case impossible                                           |
+### LOW (5)
 
-### MEDIUM (12)
+| # | File | Issue | Suggestion |
+|---|---|---|---|
+| L1 | status-bus.ts:6 | BUS_PATH not exported; statusline.ts hardcodes same path | Export constant, import in statusline |
+| L2 | statusline.ts:19 | Direct __helpers/ import instead of barrel | Import from `../../shared` barrel |
+| L3 | bridge.ts:669 | Transition to idle doesn't clear skill/step from bus | Clear on idle transition |
+| L4 | status-bus.ts:22-30 | Read-for-merge doesn't validate existing file through schema | safeParse existing before merge |
+| L5 | deep-freeze.ts:17 | Getter skip leaves accessor subtrees unfrozen (documented limitation) | Add JSDoc documenting the trade-off |
 
-| ID       | Category  | File                         | Issue                                                                       |
-| -------- | --------- | ---------------------------- | --------------------------------------------------------------------------- |
-| SEC-002  | Security  | context-helpers.ts:187       | Write merges patch without schema validation — arbitrary fields persist     |
-| SEC-003  | Security  | hook-io.ts:164               | hookName unsanitized in /tmp path — potential path traversal                |
-| SEC-004  | Security  | agent-prompts.ts:43          | vault/recallContext interpolated without quote escaping                     |
-| SEC-005  | Security  | agent-prompts.ts:515         | reviewer/route params interpolated into role blocks without allowlist       |
-| SEC-006  | Security  | contract-hook-adapter.ts:122 | contextPath not validated — exported function could read arbitrary files    |
-| SEC-007  | Security  | context-helpers.ts:211       | Predictable /tmp paths — symlink attack on Linux (macOS uses per-user dirs) |
-| ARCH-003 | DRY       | gap-detector.ts:338          | Dead branch: hasFails and hasGaps both resolve to "gaps_found"              |
-| ARCH-004 | Structure | gap-detector.ts              | Zod schemas defined in **helpers/ instead of **schemas/                     |
-| ARCH-005 | DRY       | agent-prompts.ts             | MCP tool names as scattered string literals (8+ occurrences)                |
-| ARCH-006 | Simplify  | contract-hook-adapter.ts:120 | Double-parse (file.text + JSON.parse) when Bun.file.json() available        |
-| DX-004   | Schema    | agent-prompts.ts:24-29       | AgentPromptParams is plain interface, not Zod schema                        |
-| DX-005   | Schema    | contract-evaluator.ts:68     | status field is bare `string` instead of constrained enum                   |
+## Security Assessment
 
-### LOW (10)
-
-Dead code in contract-evaluator (2 instances), deprecated hook registry exports still present, missing .docs.md for 4 new modules, chmod race windows (acceptable), error message truncation, minor naming/formatting issues.
+- **Path safety**: statusline.ts cwd validation is correct (slash-suffix prevents prefix-collision)
+- **deepFreeze getter skip**: Negligible prototype pollution risk — objects are internally constructed
+- **Atomic writes**: tmp+rename pattern is correct throughout
+- **JSON parsing**: Zod safeParse at read boundaries prevents injection from reaching display
 
 ## Tech Debt
 
-| Item                                 | Source       | Impact                                                        |
-| ------------------------------------ | ------------ | ------------------------------------------------------------- |
-| session-end-audit unregistered       | Integration  | Gap detection on session end is completely disabled           |
-| contract-hook-adapter orphaned       | Integration  | Contract precondition checks never run from hooks             |
-| violation-to-gap DRY + divergence    | Architecture | Same violation produces different gap semantics per code path |
-| Context write without validation     | Security     | Enforcement hooks trust context file contents blindly         |
-| HARNESS_FIX_PROMPT injection surface | Security     | Crafted source files could inject via tsc error output        |
-| Build drift (5 compiled files)       | Build        | .claude/ outputs modified but uncommitted                     |
+1. Bridge/shared bus write divergence (H1) — bridge can't import shared, so logic is duplicated; needs inline validation
+2. Bun-preference gaps (M1, M2) — node:fs/promises unlink used instead of Bun.file().unlink()
+3. HUD schema naming (M3) — camelCase/snake_case inconsistency at bus integration boundary
 
-## Cross-Phase Issues
+## Verdict
 
-| File                                                   | Issue                                                     | Phases Affected |
-| ------------------------------------------------------ | --------------------------------------------------------- | --------------- |
-| gap-detector.ts + contract-evaluator.ts                | Duplicated conversion logic with divergent behavior       | 228, 229        |
-| enforcement-hook-factory.ts + contract-hook-adapter.ts | Duplicated context schema                                 | 225, 229        |
-| session-end-audit.ts + hook-registry.ts                | Hook implemented but unregistered                         | 228             |
-| agent-prompts.ts                                       | Prompt injection surfaces in error/reviewer interpolation | 232, 231        |
+**PASSED** — no CRITICAL findings. 2 HIGH issues are correctness risks in the bridge's CLI arg handling and validation bypass, but the statusline renderer's safeParse on read provides defense-in-depth.
 
-## Audit Summary
+Recommended: close H1+H2 as a quick follow-up before next milestone.
 
-```
-Requirements:  34/34 complete
-Integration:   4/6 connected, 1 orphaned, 1 unregistered
-CRITICAL:      1 (DRY violation with behavioral divergence)
-HIGH:          7 (1 security, 1 integration, 3 schema, 2 architecture)
-MEDIUM:        12 (6 security, 4 architecture, 2 schema)
-LOW:           10
-Typecheck:     PASS (0 errors)
-Tier compliance: PASS (no violations)
-Barrel purity: PASS
-```
+## Gap Closure Status
 
-## Next Steps
-
-| Condition        | Action                              | Command               |
-| ---------------- | ----------------------------------- | --------------------- |
-| Close gaps first | Plan gap closure phases             | `/milestone-gaps`     |
-| Proceed anyway   | Archive milestone (tech debt noted) | `/milestone-complete` |
+All 13 findings planned in v8.6.1, plus critical architectural fix:
+- **Phase 247** — Bridge hardening (H1, H2, M2, M4, M5, M6, L3)
+- **Phase 248** — Shared + renderer cleanup (M1, M3, L1, L2, L4, L5)
+- **Phase 249** — Deterministic skill lifecycle hooks (supersedes template-based statusline writes)
+- **Phase 250** — Deterministic init/snapshot migration (future deterministic side-effect moves)

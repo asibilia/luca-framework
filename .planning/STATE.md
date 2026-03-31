@@ -2,10 +2,10 @@
 
 ## Current Position
 
-- **Status:** Idle
-- **Task Complexity:** TRIVIAL
+- **Status:** Executing
+- **Task Complexity:** COMPLEX
 - **Oversight:** full-auto
-- **Last Updated:** unknown
+- **Last Updated:** 2026-03-31
 
 ## Session Identity
 
@@ -29,7 +29,14 @@
 
 ## Allowed Events
 
-- `START`
+- `PHASE_COMPLETE`
+- `PHASE_FAILED`
+- `SUSPEND`
+- `SET_WAVE_COUNT`
+- `DAG_STEP_START`
+- `DAG_STEP_COMPLETE`
+- `DAG_STEP_FAILED`
+- `DAG_STEP_RETRY`
 
 ## Previous Milestones
 
@@ -55,8 +62,8 @@ _State updated: 2026-03-30 — v8.5.2 milestone complete (Phase 236 + Phase 237 
 ## Session Continuity
 
 - **Session Started:** 2026-03-31
-- **Last Transition:** unknown
+- **Last Transition:** 2026-03-31
 
 ---
 
-_State generated from machine snapshot at 2026-03-31T03:53:03.774Z_
+_State generated from machine snapshot at 2026-03-31T13:43:46.863Z_

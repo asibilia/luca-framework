@@ -44,6 +44,7 @@ Read these reference files before executing:
 
 ## Process
 
+
 1. **Load Context** — Read PROJECT.md, MILESTONES.md, STATE.md
 
    \`\`\`bash
@@ -114,6 +115,7 @@ How should this milestone be tracked on GitHub?
 
 1. Warn user: commits won't reference issues, PR creation will require manual setup
 2. Note: GitHub Issue: None (user opted out) — no bridge update needed
+
 
 ## Success Criteria
 

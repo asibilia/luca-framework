@@ -67,9 +67,6 @@ Read these reference files before executing:
 
 ## Process
 
-\\\`\\\`\\\`bash
-luca-bridge write-status --skill=phase-discuss --stage=DISCUSSING 2>/dev/null || true
-\\\`\\\`\\\`
 
 ### Complexity-Aware Discussion
 
@@ -413,9 +410,6 @@ Actions:
 - \`/phase-research {phase}\` — Deep research for niche/complex domains
 - \`/progress\` — Check overall project status
 
-\\\`\\\`\\\`bash
-luca-bridge clear-status 2>/dev/null || true
-\\\`\\\`\\\`
 </main>`,
       order: 1,
     },

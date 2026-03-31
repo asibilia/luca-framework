@@ -133,6 +133,22 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     async: false,
     status_message: "Validating pr-address step order...",
   }),
+  "skill-status-enter": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Skill",
+    script: "skill-status-enter.ts",
+    timeout: 3,
+    async: false,
+    status_message: "Tracking skill...",
+  }),
+  "skill-status-exit": () => ({
+    event: "post_tool_use",
+    tool_filter: "Skill",
+    script: "skill-status-exit.ts",
+    timeout: 3,
+    async: true,
+    status_message: "Clearing skill status...",
+  }),
   "pre-step-milestone-complete": () => ({
     event: "pre_tool_use",
     tool_filter: "Skill|Agent",

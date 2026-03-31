@@ -275,6 +275,64 @@ Automated article ingestion, research, and actionable todo generation from exter
 
 ---
 
+## v8.6.1 — Audit Gap Closure
+
+Fix all audit findings from v8.6.0 plus critical architectural fix: move orchestration side-effects from LLM-executed bash blocks to deterministic hooks.
+
+### Phase 247: Bridge Status Bus Hardening
+
+**Goal:** Fix all 7 bridge.ts audit findings: DRY consolidation, schema validation, NaN guards, Bun-native unlink, module constant extraction, project root anchoring, and idle-state bus cleanup.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 246
+
+- [ ] dry-consolidate — Extract private `writeBusAtomic(busPath, data)` helper shared by handleTransition, handleWriteStatus, and handleClearStatus. Extract `STATUS_BUS_PATH` module constant. (H1, M4)
+- [ ] schema-validate — Add inline StatusBusSchema-equivalent validation in writeBusAtomic before writing; add isNaN guards on parseInt for --phase/--wave-current/--wave-total. (H2, M5)
+- [ ] bun-native-unlink — Replace `import("node:fs/promises").unlink` with Bun-native file delete in handleClearStatus. (M2)
+- [ ] root-anchor — Resolve STATUS_BUS_PATH against project root from persistence layer instead of relative cwd. (M6)
+- [ ] idle-bus-cleanup — When transition resolves to idle state, clear `skill` and `step` from merged bus data. (L3)
+
+### Phase 248: Shared + Renderer Cleanup
+
+**Goal:** Fix all 6 shared/renderer audit findings: Bun-native unlink, snake_case HUD schema, exported bus path constant, barrel import, schema-validated merge, and deepFreeze JSDoc.
+**Complexity:** SIMPLE
+**Verification:** Quick
+**Depends on:** Phase 247
+
+- [ ] bun-native-unlink — Replace `import("node:fs/promises").unlink` with Bun-native file delete in clearStatusBus. (M1)
+- [ ] snake-case-hud — Rename WorkflowHudStateSchema fields to snake_case (display_state, phase_label, current_wave, total_waves, has_wave_data, skill_name, step_name) and update all usages in readWorkflowState and renderHudLine. (M3)
+- [ ] export-bus-path — Export STATUS_BUS_PATH from status-bus.ts; import in statusline.ts instead of hardcoded string. (L1)
+- [ ] barrel-import — Change statusline.ts import from `../../shared/__helpers/status-bus` to `../../shared` barrel. (L2)
+- [ ] validate-existing-merge — Run existing bus file data through safeParse before merging in writeStatusBus. (L4)
+- [ ] deep-freeze-jsdoc — Add JSDoc to deepFreeze documenting the getter/setter skip limitation. (L5)
+
+### Phase 249: Deterministic Skill Lifecycle Hooks — COMPLETE
+
+**Goal:** Move orchestration side-effects (statusline writes) from LLM-executed bash blocks to deterministic PreToolUse/PostToolUse hooks that fire automatically on every Skill invocation. Fixes unreliable statusline updates and establishes the pattern for migrating all 140+ orchestration commands to the deterministic TS layer.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 248
+
+- [x] skill-lifecycle-hooks — Created `skill-status-enter.ts` (PreToolUse) and `skill-status-exit.ts` (PostToolUse) hooks with nesting depth counter via `.planning/.skill-depth` file
+- [x] sanitize-and-register — Skill name validated with `/^[a-z0-9-]+$/`, both hooks registered in hook-registry.ts
+- [x] remove-template-writes — Removed all write-status/clear-status from 29 skill templates (~184 lines of LLM-dependent bash blocks)
+- [x] build-time-lint — Created `scripts/check-template-side-effects.ts` that fails on residual write-status/clear-status in skill templates
+- [x] bridge-schema-fix — Added inline BusDataSchema validation, NaN guards on parseInt, extracted STATUS_BUS_PATH module constant (addresses H1, H2, M4, M5)
+
+### Phase 250: Deterministic Init/Snapshot Migration
+
+**Goal:** Migrate parameterless side-effects (ensure-init, snapshot, parameterless transitions) from skill templates to hooks. These are truly deterministic and fit the hook paradigm cleanly.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 249
+
+- [ ] identify-deterministic — Audit all 41 skill templates with orchestration side-effects; classify each as deterministic (can move to hooks) vs conditional (depends on LLM output)
+- [ ] migrate-init-snapshot — Move `ensure-init` and `snapshot` calls to lifecycle hooks (SessionStart or PreToolUse)
+- [ ] migrate-parameterless-transitions — Move parameterless `luca-bridge transition` calls (e.g., START, PREFLIGHT_COMPLETE) to PreToolUse/PostToolUse hooks where the lifecycle trigger is unambiguous
+- [ ] lint-guard — Extend build-time lint check to flag migrated commands in templates
+
+---
+
 ## Deferred to Future Milestones
 
 Items below are tracked as todo files in `.planning/todos/deferred/` and will only be reviewed when the user explicitly requests it.

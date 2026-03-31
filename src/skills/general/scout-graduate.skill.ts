@@ -44,9 +44,6 @@ REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]
 
 ## Process
 
-\\\`\\\`\\\`bash
-luca-bridge write-status --skill=scout-graduate --stage=GRADUATING 2>/dev/null || true
-\\\`\\\`\\\`
 
 For each scout (integrated AND deferred):
 
@@ -80,9 +77,6 @@ After graduation:
 1. Advance all graduated scouts to MEMORY_CAPTURED
 2. Report: N engrams created, N below threshold (skipped), N linked
 
-\\\`\\\`\\\`bash
-luca-bridge clear-status 2>/dev/null || true
-\\\`\\\`\\\`
 `,
     },
   ],

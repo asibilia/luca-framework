@@ -63,9 +63,6 @@ if [ -z "$REPO_VAULT" ]; then REPO_VAULT=\${LUCA_MUNINN_VAULT:-default}; fi
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=phase-execute --stage=EXECUTING 2>/dev/null || true
-\`\`\`
 
 ### Step 0: Setup (INLINE)
 
@@ -273,9 +270,6 @@ If any required step missing: log warning (advisory).
 - [ ] current_state written after every transition
 - [ ] STATE.md and ROADMAP.md updated
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>
 `,
       order: 1,

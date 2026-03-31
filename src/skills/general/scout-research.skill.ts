@@ -34,9 +34,6 @@ Sub-skill for Step 3 of the scout per-article pipeline. Deep research into the t
 
 ## Process
 
-\\\`\\\`\\\`bash
-luca-bridge write-status --skill=scout-research --stage=RESEARCHING 2>/dev/null || true
-\\\`\\\`\\\`
 
 1. Read the digest to understand key concepts and techniques
 2. Spawn two researchers in **parallel**:
@@ -65,9 +62,6 @@ Update the digest file in-place by populating the "Related Work" and "Technique 
 - **MEDIUM**: Single authoritative source
 - **LOW**: WebSearch only, flag for validation
 
-\\\`\\\`\\\`bash
-luca-bridge clear-status 2>/dev/null || true
-\\\`\\\`\\\`
 `,
     },
   ],

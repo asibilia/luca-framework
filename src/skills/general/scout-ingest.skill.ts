@@ -25,9 +25,6 @@ Sub-skill for Step 1 of the scout per-article pipeline.
 
 ## Process
 
-\\\`\\\`\\\`bash
-luca-bridge write-status --skill=scout-ingest --stage=INGESTING 2>/dev/null || true
-\\\`\\\`\\\`
 
 1. Use WebFetch to retrieve the article content from the provided URL
 2. Extract: title, author, publication date, main content body
@@ -57,9 +54,6 @@ If WebFetch fails (paywall, 404, timeout):
 - Include the URL and error reason
 - The orchestrator will route this to manual-review
 
-\\\`\\\`\\\`bash
-luca-bridge clear-status 2>/dev/null || true
-\\\`\\\`\\\`
 `,
     },
   ],

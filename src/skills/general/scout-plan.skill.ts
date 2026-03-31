@@ -33,9 +33,6 @@ Sub-skill for Step 7 of the scout pipeline (cross-cutting batch).
 
 ## Process
 
-\\\`\\\`\\\`bash
-luca-bridge write-status --skill=scout-plan --stage=PLANNING 2>/dev/null || true
-\\\`\\\`\\\`
 
 1. Spawn lu-scout-planner agent with integration analysis and impact documents
 2. Wait for completion
@@ -60,9 +57,6 @@ Each created todo must have:
 
 Return summary: N todos created, N duplicates skipped, N conflicts detected.
 
-\\\`\\\`\\\`bash
-luca-bridge clear-status 2>/dev/null || true
-\\\`\\\`\\\`
 `,
     },
   ],

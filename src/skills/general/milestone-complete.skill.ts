@@ -56,9 +56,6 @@ bun src/skills/__schemas/context-cli.ts write milestone-complete '{"current_stat
 
 ## Process
 
-\`\`\`bash
-luca-bridge write-status --skill=milestone --stage=COMPLETING 2>/dev/null || true
-\`\`\`
 
 ### Step 0: Parse Args, Crash Recovery, Initialize Context
 
@@ -192,9 +189,6 @@ If any required step missing: log warning (advisory).
 
 **Next:** \`/milestone-new\` — Start the next milestone cycle
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>`,
       order: 1,
     },

@@ -37,6 +37,7 @@
  *
  * @module luca-bridge
  */
+import { z } from "zod";
 import get from "lodash/get";
 import set from "lodash/set";
 import cloneDeep from "lodash/cloneDeep";
@@ -64,6 +65,28 @@ import { emitStateTransition, emitPhaseComplete } from "../emitter";
 
 /** Default path for the STATE.md file */
 const STATE_MD_PATH = ".planning/STATE.md";
+
+/** Path for the statusline bus file */
+const STATUS_BUS_PATH = ".planning/.statusline.json";
+
+/**
+ * Inline validation schema for status bus data.
+ * Mirrors StatusBusSchema in src/shared/__helpers/status-bus.ts.
+ * Defined here to avoid cross-package boundary imports.
+ */
+const BusDataSchema = z
+  .object({
+    skill: z.string().default(""),
+    stage: z.string().default(""),
+    step: z.string().default(""),
+    phase: z.number().int().nullable().default(null),
+    wave_current: z.number().int().nonnegative().nullable().default(null),
+    wave_total: z.number().int().nonnegative().nullable().default(null),
+    complexity: z.string().default(""),
+    detail: z.string().default(""),
+    updated_at: z.string().default(""),
+  })
+  .passthrough();
 
 // ─── Dual-Write Divergence Detection ────────────────────────────────────────
 
@@ -668,10 +691,9 @@ async function handleTransition(args: string[]): Promise<void> {
 
   // Best-effort status bus update for statusline HUD
   try {
-    const busPath = ".planning/.statusline.json";
     let busData: Record<string, unknown> = {};
     try {
-      const busFile = Bun.file(busPath);
+      const busFile = Bun.file(STATUS_BUS_PATH);
       if (await busFile.exists()) busData = await busFile.json();
     } catch { /* start fresh */ }
 
@@ -683,10 +705,10 @@ async function handleTransition(args: string[]): Promise<void> {
     }
     busData.updated_at = new Date().toISOString();
 
-    const tmpBus = `${busPath}.tmp`;
+    const tmpBus = `${STATUS_BUS_PATH}.tmp`;
     await Bun.write(tmpBus, JSON.stringify(busData, null, 2) + "\n");
     const { rename } = await import("node:fs/promises");
-    await rename(tmpBus, busPath);
+    await rename(tmpBus, STATUS_BUS_PATH);
   } catch {
     // Status bus update is best-effort — never fail the transition
   }
@@ -1076,12 +1098,10 @@ async function handleInitVault(args: string[]): Promise<void> {
  * @param args - CLI arguments with --skill, --stage, --step, --phase, etc.
  */
 async function handleWriteStatus(args: string[]): Promise<void> {
-  const BUS_PATH = ".planning/.statusline.json";
-
   // Read existing bus data for merge
   let existing: Record<string, unknown> = {};
   try {
-    const file = Bun.file(BUS_PATH);
+    const file = Bun.file(STATUS_BUS_PATH);
     if (await file.exists()) {
       existing = await file.json();
     }
@@ -1103,9 +1123,18 @@ async function handleWriteStatus(args: string[]): Promise<void> {
   if (skill !== undefined) update.skill = skill;
   if (stage !== undefined) update.stage = stage;
   if (step !== undefined) update.step = step;
-  if (phase !== undefined) update.phase = parseInt(phase, 10);
-  if (waveCurrent !== undefined) update.wave_current = parseInt(waveCurrent, 10);
-  if (waveTotal !== undefined) update.wave_total = parseInt(waveTotal, 10);
+  if (phase !== undefined) {
+    const n = parseInt(phase, 10);
+    if (!isNaN(n)) update.phase = n;
+  }
+  if (waveCurrent !== undefined) {
+    const n = parseInt(waveCurrent, 10);
+    if (!isNaN(n)) update.wave_current = n;
+  }
+  if (waveTotal !== undefined) {
+    const n = parseInt(waveTotal, 10);
+    if (!isNaN(n)) update.wave_total = n;
+  }
   if (complexity !== undefined) update.complexity = complexity;
   if (detail !== undefined) update.detail = detail;
 
@@ -1115,23 +1144,31 @@ async function handleWriteStatus(args: string[]): Promise<void> {
     updated_at: new Date().toISOString(),
   };
 
-  // Atomic write via tmp+rename
-  const tmpPath = `${BUS_PATH}.tmp`;
-  await Bun.write(tmpPath, JSON.stringify(merged, null, 2) + "\n");
-  const { rename } = await import("node:fs/promises");
-  await rename(tmpPath, BUS_PATH);
+  // Validate merged data against bus schema before writing
+  const validated = BusDataSchema.safeParse(merged);
+  if (!validated.success) {
+    console.error(
+      JSON.stringify({ error: "Invalid bus data", issues: validated.error.issues }),
+    );
+    process.exit(2);
+  }
 
-  console.log(JSON.stringify(merged));
+  // Atomic write via tmp+rename
+  const tmpPath = `${STATUS_BUS_PATH}.tmp`;
+  await Bun.write(tmpPath, JSON.stringify(validated.data, null, 2) + "\n");
+  const { rename } = await import("node:fs/promises");
+  await rename(tmpPath, STATUS_BUS_PATH);
+
+  console.log(JSON.stringify(validated.data));
 }
 
 /**
  * Handle `clear-status` — remove the statusline bus file.
  */
 async function handleClearStatus(): Promise<void> {
-  const BUS_PATH = ".planning/.statusline.json";
   try {
     const { unlink } = await import("node:fs/promises");
-    await unlink(BUS_PATH);
+    await unlink(STATUS_BUS_PATH);
   } catch {
     // Ignore if file doesn't exist
   }

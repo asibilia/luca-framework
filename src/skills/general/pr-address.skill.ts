@@ -76,9 +76,6 @@ Terminal states: \`pushed\` (success) or \`failed\` (error).
 
 ### Step 0: Parse Args, Crash Recovery, Initialize Context
 
-\`\`\`bash
-luca-bridge write-status --skill=pr-address --stage=REVIEWING 2>/dev/null || true
-\`\`\`
 
 Parse the PR number/URL from args. Extract any flags.
 
@@ -237,9 +234,6 @@ Every transition is explicit: completion, skip, or abort. No silent omission.
 - [ ] State machine reaches \`pushed\` or \`failed\`
 - [ ] \`current_state\` written after every transition
 
-\`\`\`bash
-luca-bridge clear-status 2>/dev/null || true
-\`\`\`
 </main>`,
       order: 1,
     },

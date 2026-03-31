@@ -114,6 +114,7 @@ Read these reference files before executing:
 
 ## Process
 
+
 ### Phase 1: Setup
 
 **MANDATORY FIRST STEP — Execute these checks before ANY user interaction:**
@@ -581,6 +582,7 @@ Present completion with next steps:
 **Also available:**
 - /phase-plan 1 — skip discussion, plan directly
 \`\`\`
+
 
 ## Success Criteria
 

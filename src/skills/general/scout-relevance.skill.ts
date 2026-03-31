@@ -24,9 +24,6 @@ Sub-skill for Step 2 of the scout per-article pipeline.
 
 ## Process
 
-\\\`\\\`\\\`bash
-luca-bridge write-status --skill=scout-relevance --stage=ASSESSING 2>/dev/null || true
-\\\`\\\`\\\`
 
 1. Read the digest document at the provided path
 2. Assess relevance to the Luca framework:
@@ -50,9 +47,6 @@ KEY_MATCHES: [comma-separated list of matching Luca domains]
 
 When in doubt, score MEDIUM (not LOW). LOW is a terminal state — the article exits the pipeline. Only score LOW when the article is clearly unrelated to developer tooling, agentic AI, or workflow automation.
 
-\\\`\\\`\\\`bash
-luca-bridge clear-status 2>/dev/null || true
-\\\`\\\`\\\`
 `,
     },
   ],
