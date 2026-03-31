@@ -69,6 +69,9 @@ import { scoutRelevanceSkill } from "../general/scout-relevance.skill";
 import { scoutImplResearchSkill } from "../general/scout-impl-research.skill";
 import { scoutResearchSkill } from "../general/scout-research.skill";
 import { scoutAnalyzeSkill } from "../general/scout-analyze.skill";
+import { scoutIntegrateSkill } from "../general/scout-integrate.skill";
+import { scoutPlanSkill } from "../general/scout-plan.skill";
+import { scoutGraduateSkill } from "../general/scout-graduate.skill";
 // Sub-skills (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
 
 // Import Luca-specific skills
@@ -146,6 +149,9 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "scout-impl-research": () => scoutImplResearchSkill,
   "scout-research": () => scoutResearchSkill,
   "scout-analyze": () => scoutAnalyzeSkill,
+  "scout-integrate": () => scoutIntegrateSkill,
+  "scout-plan": () => scoutPlanSkill,
+  "scout-graduate": () => scoutGraduateSkill,
   // Sub-skill entries (pr-address, milestone, verify, phase-execute, lu) deleted — migrated to Agent() sub-agents (Phase 232)
   lu: () => luSkill,
 };

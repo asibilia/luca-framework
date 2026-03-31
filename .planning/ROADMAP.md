@@ -233,11 +233,11 @@ Automated article ingestion, research, and actionable todo generation from exter
 **Verification:** Standard
 **Depends on:** Phase 242
 
-- [ ] scout-integrator-agent — Create `lu-scout-integrator.agent.ts` (cross-scout cohesion, framework fit, per-scout verdicts)
-- [ ] scout-integrate-skill — Create `scout-integrate.skill.ts` wrapper with verdict routing (integrate/defer/conflict)
-- [ ] scout-planner-agent — Create `lu-scout-planner.agent.ts` (atomic todo generation with conflict detection)
-- [ ] scout-plan-skill — Create `scout-plan.skill.ts` wrapper with conflict routing
-- [ ] scout-graduate-skill — Create `scout-graduate.skill.ts` MuninnDB engram capture following research-graduator pattern
+- [x] scout-integrator-agent — Create `lu-scout-integrator.agent.ts` (cross-scout cohesion, framework fit, per-scout verdicts)
+- [x] scout-integrate-skill — Create `scout-integrate.skill.ts` wrapper with verdict routing (integrate/defer/conflict)
+- [x] scout-planner-agent — Create `lu-scout-planner.agent.ts` (atomic todo generation with conflict detection)
+- [x] scout-plan-skill — Create `scout-plan.skill.ts` wrapper with conflict routing
+- [x] scout-graduate-skill — Create `scout-graduate.skill.ts` MuninnDB engram capture following research-graduator pattern
 
 ### Phase 244: UX + Docs
 
