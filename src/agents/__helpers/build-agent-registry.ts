@@ -39,6 +39,8 @@ import { luRoadmapperAgent } from "../general/lu-roadmapper.agent";
 import { luRouterAgent } from "../general/lu-router.agent";
 import { luScoutAnalystAgent } from "../general/lu-scout-analyst.agent";
 import { luScoutIngestAgent } from "../general/lu-scout-ingest.agent";
+import { luScoutIntegratorAgent } from "../general/lu-scout-integrator.agent";
+import { luScoutPlannerAgent } from "../general/lu-scout-planner.agent";
 import { luScoutRelevanceAgent } from "../general/lu-scout-relevance.agent";
 import { luRouterFastAgent } from "../general/lu-router-fast.agent";
 import { luShadowScannerAgent } from "../general/lu-shadow-scanner.agent";
@@ -102,6 +104,8 @@ export const agentRegistry: Record<string, () => BaseAgent> = {
   "lu-router-fast": () => luRouterFastAgent,
   "lu-scout-analyst": () => luScoutAnalystAgent,
   "lu-scout-ingest": () => luScoutIngestAgent,
+  "lu-scout-integrator": () => luScoutIntegratorAgent,
+  "lu-scout-planner": () => luScoutPlannerAgent,
   "lu-scout-relevance": () => luScoutRelevanceAgent,
   "lu-shadow-scanner": () => luShadowScannerAgent,
   "lu-test-writer": () => luTestWriterAgent,
