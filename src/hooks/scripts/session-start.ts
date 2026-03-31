@@ -411,6 +411,13 @@ const main = async (): Promise<void> => {
     }
   }
 
+  // Step 7b2: Clear stale skill-depth file from crashed sessions.
+  try {
+    unlinkSync(join(planningDir, ".skill-depth"));
+  } catch {
+    /* ok if missing */
+  }
+
   // Step 7c: Clean stale orchestrator context files from crashed sessions.
   // If a context file has a non-terminal current_state, it means the previous
   // session crashed mid-workflow. Transition to "failed" so the pre-edit

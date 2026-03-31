@@ -20,10 +20,18 @@ import path from "path";
 import { resolvePackageRoot } from "../src/shared/__helpers/resolve-package-root";
 
 const FORBIDDEN_PATTERNS = [
+  // Status bus (handled by skill-status-enter / skill-status-exit hooks)
   "write-status",
   "clear-status",
+  // Snapshot (handled by snapshot-sync PostToolUse hook, 120s throttle)
   "luca-bridge snapshot",
 ] as const;
+
+// NOTE: luca-bridge transition, set-field, ensure-init, and context-cli
+// calls are NOT flagged here. The 17 remaining instances in templates are
+// intentionally kept — they carry dynamic data, are conditional on LLM
+// decisions, or fire after inline work (not after agents). See Phase 251
+// "intentional-keeps" in ROADMAP.md for the full list.
 
 interface Violation {
   file: string;
@@ -68,14 +76,9 @@ async function main(): Promise<void> {
   console.error(
     `\nStatusline side-effect violations found: ${violations.length}\n`,
   );
+  console.error("Skills must not contain LLM-dependent side-effect commands.");
   console.error(
-    "Skills must not call write-status, clear-status, or luca-bridge snapshot directly.",
-  );
-  console.error(
-    "write-status/clear-status are handled by skill-status-enter/skill-status-exit hooks.",
-  );
-  console.error(
-    "luca-bridge snapshot is handled by the snapshot-sync PostToolUse hook (120s throttle).\n",
+    "These are handled by deterministic hooks (skill-status-enter/exit, agent-transition-sync, snapshot-sync).\n",
   );
 
   for (const v of violations) {
@@ -83,7 +86,7 @@ async function main(): Promise<void> {
   }
 
   console.error(
-    "\nFix: Remove write-status/clear-status/snapshot calls from skill templates.",
+    "\nFix: Remove side-effect commands from skill templates — hooks handle these deterministically.",
   );
   process.exit(1);
 }

@@ -29,17 +29,17 @@
     "build:deploy": "bun run ./scripts/build-deploy.ts",
     "build:domain": "bun run ./scripts/targeted-recompile.ts",
     "check:drift": "bun run ./scripts/check-drift.ts",
+    "check:side-effects": "bun scripts/check-template-side-effects.ts",
     "check:prompt-safety": "bun ./scripts/check-prompt-safety.ts",
     "commit": "bunx --bun @alecsibilia/commit",
     "css:studio": "bun run --filter @alecsibilia/luca-studio css:build",
     "deploy": "bun run ./scripts/deploy-global.ts",
-    "deploy:copy": "bun run ./scripts/deploy-global.ts --copy",
     "deploy:remove": "bun run ./scripts/deploy-global.ts --remove",
+    "release:local": "bun run build:full && bun run deploy && cd packages/luca-framework && bun link",
     "dev:studio": "bun run --filter @alecsibilia/luca-studio dev",
     "eval:run": "bun scripts/eval.ts",
     "eval:skills": "bun scripts/eval-skills.ts",
-    "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
-    "generate:from-cursor": "bun run ./scripts/generate-agents-from-cursor.ts && bun run ./scripts/generate-skills-from-cursor.ts && bun run ./scripts/generate-rules-from-cursor.ts"
+    "publish:framework": "cd packages/luca-framework && npm publish --access restricted"
   },
   "type": "module",
   "workspaces": [

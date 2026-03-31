@@ -1,88 +1,86 @@
-# Milestone Audit — v8.6.0 Scout Article Intelligence + Statusline Rework
+# Milestone Audit — v8.6.1 Audit Gap Closure + Deterministic Hooks
 
 **Audited:** 2026-03-31
-**Phases:** 241-246 (6 phases)
-**Files changed:** 50 TypeScript files (212 total including templates)
+**Phases:** 247-251 (5 phases)
+**Files changed:** 63 TypeScript files
 
 ## Requirements Coverage
 
-| Phase | Goal | Status |
-|---|---|---|
-| 241 | Scout Foundation — directory structure, state machine, templates, orchestrator | COMPLETE |
-| 242 | Per-Article Pipeline — 8 agents/skills for ingest through analysis | COMPLETE |
-| 243 | Cross-Cutting Batch — integration, planning, graduation | COMPLETE |
-| 244 | UX + Docs — review/deferred commands, documentation | COMPLETE |
-| 245 | Fix deepFreeze Zod v4 crash on lazy getters | COMPLETE |
-| 246 | Statusline rework — status bus, skill identity, wave counter fix, 27 skill wirings | COMPLETE |
+| Phase | Goal                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------ | -------- |
+| 247   | Bridge hardening — static imports, idle cleanup, root-anchor docs                          | COMPLETE |
+| 248   | Shared/renderer cleanup — snake_case HUD, barrel imports, safeParse, JSDoc                 | COMPLETE |
+| 249   | Deterministic skill lifecycle hooks — replace 73 LLM-dependent statusline writes           | COMPLETE |
+| 250   | Redundant side-effect removal — remove 10 snapshot/ensure-init calls handled by hooks      | COMPLETE |
+| 251   | Deterministic agent transition sync — replace ~30 LLM-dependent transitions/context writes | COMPLETE |
 
-**Score: 6/6 phases complete**
+**Score: 5/5 phases complete**
+
+**v8.6.0 audit findings closure:** All 13 findings (2 HIGH, 6 MEDIUM, 5 LOW) closed.
+
+**Deterministic side-effect migration:** 123 of 140 LLM-dependent orchestration commands moved to deterministic hooks. 17 remain (irreducible — require LLM reasoning output).
 
 ## Integration Check
 
-**Status: PASSED (7/7)**
+**Status: PASSED (8/9)**
 
-All integration points verified:
-1. Scout orchestrator → sub-skill chain
-2. Status bus end-to-end flow (writer → bridge → renderer)
-3. deepFreeze Zod v4 fix
-4. StatusBusSchema barrel exports
-5. Bridge write-status/clear-status registered
-6. SET_WAVE_COUNT wired into XState executing state
-7. All 27 skills have matching write-status/clear-status
+All critical integration points verified:
 
-## Code Quality Findings
+1. skill-status-enter imports from shared correctly
+2. skill-status-exit nesting depth works
+3. agent-transition-sync priority order correct (phase-execute > pr-address > verify > milestone > lu)
+4. Bridge STATUS_BUS_PATH used consistently
+5. BusDataSchema validation rejects invalid data
+6. Zero write-status/clear-status/snapshot in skill templates
+7. Remaining 17 template commands match intentionally-kept set
+8. All 3 new hooks registered in hook-registry.ts
 
-### HIGH (2)
+**1 LOW gap:** `check-template-side-effects.ts` lint guard not wired into automated pipeline (manual-only). Fix: add to `check:drift` or package.json scripts.
 
-| # | File | Issue | Suggestion |
-|---|---|---|---|
-| H1 | bridge.ts:671,1078,1130 | Three inline copies of status bus write logic bypass StatusBusSchema.safeParse — divergent validation from shared helper | Extract private `writeBusAtomic()` helper in bridge.ts; add inline schema validation |
-| H2 | bridge.ts:1106-1108 | parseInt on --phase/--wave-current/--wave-total has no NaN guard | Add isNaN checks or rely on schema validation |
+## Architecture Review
 
-### MEDIUM (6)
+**Verdict: PASS WITH FINDINGS**
 
-| # | File | Issue | Suggestion |
-|---|---|---|---|
-| M1 | status-bus.ts:92 | Uses `import("node:fs/promises").unlink` instead of Bun.file().unlink() | Replace with Bun-native API |
-| M2 | bridge.ts:1133 | Same Bun-preference violation for unlink | Replace with Bun.file().unlink() |
-| M3 | statusline.ts:34-45 | WorkflowHudStateSchema uses camelCase while StatusBusSchema uses snake_case | Rename to snake_case for consistency |
-| M4 | bridge.ts | STATUS_BUS_PATH not extracted as module constant (3 local declarations) | Extract to module-level constant |
-| M5 | bridge.ts:1078-1125 | Unvalidated writes allow arbitrary keys to reach disk | Add StatusBusSchema.safeParse before write |
-| M6 | bridge.ts:669 | cwd-relative path without project root anchor | Resolve against anchored project root |
+| Check                                     | Status                                                    |
+| ----------------------------------------- | --------------------------------------------------------- |
+| Hook tier compliance (T3→T0)              | PASS                                                      |
+| Entity isolation in agent-transition-sync | PASS (filesystem-level T3→T2 coupling noted)              |
+| Hook execution order / race conditions    | PASS (no races)                                           |
+| Nesting depth file pattern                | PASS (stale file on crash — add cleanup to session-start) |
 
-### LOW (5)
+### Findings
 
-| # | File | Issue | Suggestion |
-|---|---|---|---|
-| L1 | status-bus.ts:6 | BUS_PATH not exported; statusline.ts hardcodes same path | Export constant, import in statusline |
-| L2 | statusline.ts:19 | Direct __helpers/ import instead of barrel | Import from `../../shared` barrel |
-| L3 | bridge.ts:669 | Transition to idle doesn't clear skill/step from bus | Clear on idle transition |
-| L4 | status-bus.ts:22-30 | Read-for-merge doesn't validate existing file through schema | safeParse existing before merge |
-| L5 | deep-freeze.ts:17 | Getter skip leaves accessor subtrees unfrozen (documented limitation) | Add JSDoc documenting the trade-off |
+| #   | Severity | File                              | Issue                                                                                                                            |
+| --- | -------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | MODERATE | agent-transition-sync.ts          | `verify-` prefix appears in both phase-execute and lu blocks — relies on contextFile mutual exclusivity at runtime, undocumented |
+| A2  | LOW      | agent-transition-sync.ts          | `learn` prefix in pr-address lacks trailing dash (asymmetry with other prefixes)                                                 |
+| A3  | LOW      | bridge.ts / status-bus.schemas.ts | BusDataSchema `phase` field diverges (nullable vs optional) — intentional but undocumented                                       |
+| A4  | LOW      | agent-transition-sync.ts          | fireContextWrite() has filesystem-level T3→T2 coupling to context-cli.ts path                                                    |
+| A5  | LOW      | skill-status-enter/exit           | Stale depth file on crash — add cleanup to session-start                                                                         |
 
-## Security Assessment
+## Security Review
 
-- **Path safety**: statusline.ts cwd validation is correct (slash-suffix prevents prefix-collision)
-- **deepFreeze getter skip**: Negligible prototype pollution risk — objects are internally constructed
-- **Atomic writes**: tmp+rename pattern is correct throughout
-- **JSON parsing**: Zod safeParse at read boundaries prevents injection from reaching display
+**0 CRITICAL, 0 HIGH, 2 MEDIUM, 7 LOW**
+
+| #       | Severity | File                     | Issue                                                                                                                |
+| ------- | -------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| SEC-001 | MEDIUM   | agent-transition-sync.ts | Effect values are compile-time constants today but no type-level guard prevents future derivation from runtime input |
+| SEC-002 | MEDIUM   | agent-transition-sync.ts | /tmp context files world-writable — orchestrator detection spoofable in shared CI environments                       |
+| SEC-006 | LOW      | bridge.ts                | BusDataSchema `.passthrough()` preserves unknown fields — remove to align with StatusBusSchema                       |
+
+**Key positives:** All Bun.spawnSync uses argv arrays (zero shell injection surface), skill name regex correct, ORCHESTRATOR_MAPPINGS is pure compile-time, atomic writes throughout.
 
 ## Tech Debt
 
-1. Bridge/shared bus write divergence (H1) — bridge can't import shared, so logic is duplicated; needs inline validation
-2. Bun-preference gaps (M1, M2) — node:fs/promises unlink used instead of Bun.file().unlink()
-3. HUD schema naming (M3) — camelCase/snake_case inconsistency at bus integration boundary
+1. Lint guard not in automated pipeline (integration gap L1)
+2. Prefix asymmetry in agent mapping (A2)
+3. BusDataSchema `.passthrough()` should be removed (SEC-006)
+4. Stale depth file cleanup on session-start (A5)
 
 ## Verdict
 
-**PASSED** — no CRITICAL findings. 2 HIGH issues are correctness risks in the bridge's CLI arg handling and validation bypass, but the statusline renderer's safeParse on read provides defense-in-depth.
-
-Recommended: close H1+H2 as a quick follow-up before next milestone.
+**PASSED** — no CRITICAL or HIGH findings. The deterministic hook architecture is sound. The 2 MEDIUM security findings are forward-looking design risks (type-level guards, shared CI hardening), not exploitable vulnerabilities. Tech debt items are minor cleanup.
 
 ## Gap Closure Status
 
-All 13 findings planned in v8.6.1, plus critical architectural fix:
-- **Phase 247** — Bridge hardening (H1, H2, M2, M4, M5, M6, L3)
-- **Phase 248** — Shared + renderer cleanup (M1, M3, L1, L2, L4, L5)
-- **Phase 249** — Deterministic skill lifecycle hooks (supersedes template-based statusline writes)
-- **Phase 250** — Deterministic init/snapshot migration (future deterministic side-effect moves)
+All 9 findings planned in **Phase 252** (TRIVIAL — comments, one-line fixes, type narrowing).

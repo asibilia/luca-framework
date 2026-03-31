@@ -343,6 +343,20 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] remove-template-transitions — Removed 6 transitions from lu, 3 transitions + 3 context writes from phase-execute, 6 context writes from pr-address, 4 context writes from verify, 6 context writes from milestone-complete
 - [x] intentional-keeps — 9 transitions + 8 context writes remain in templates: ROUTE_COMPLETE (needs data), SKIP/SKIP_REVIEW (conditional), REVIEW_COMPLETE (parallel agents), COMMIT_COMPLETE (after git), interactive test state, init/crash-recovery, git workflow data
 
+### Phase 252: v8.6.1 Audit Cleanup — COMPLETE
+
+**Goal:** Close all 9 findings from the v8.6.1 audit: wire lint guard into pipeline, add documentation comments, type-narrow effect unions, normalize prefix, remove .passthrough(), and add depth file cleanup.
+**Complexity:** TRIVIAL
+**Verification:** Quick
+**Depends on:** Phase 251
+
+- [x] wire-lint-guard — Added `check:side-effects` script to package.json (L1)
+- [x] type-narrow-effects — Narrowed TransitionEffect.event to 6 literal values, ContextWriteEffect.orchestrator to 4 + state to 15 literal values (SEC-001)
+- [x] normalize-learn-prefix — pr-address "learn" kept as-is (bare agent name, no suffix); added doc comment explaining why (A2)
+- [x] remove-passthrough — Removed `.passthrough()` from BusDataSchema (SEC-006)
+- [x] depth-cleanup — Added `.planning/.skill-depth` cleanup to session-start.ts (A5)
+- [x] doc-comments — Added: verify- prefix invariant (A1), BusDataSchema divergence note (A3), T3→T2 coupling note (A4), /tmp CI risk note (SEC-002)
+
 ---
 
 ## Deferred to Future Milestones

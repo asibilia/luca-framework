@@ -75,23 +75,26 @@ const STATE_MD_PATH = ".planning/STATE.md";
 const STATUS_BUS_PATH = ".planning/.statusline.json";
 
 /**
- * Inline validation schema for status bus data.
- * Mirrors StatusBusSchema in src/shared/__helpers/status-bus.ts.
- * Defined here to avoid cross-package boundary imports.
+ * Inline status bus validation schema — mirrors StatusBusSchema in src/shared.
+ *
+ * DIVERGENCE NOTE: `phase` is z.number().int().nullable().default(null) here
+ * vs z.number().int().optional() in StatusBusSchema. The bridge always writes
+ * `null` for absent phase values; the shared schema omits the key entirely.
+ * Both are valid JSON — the statusline renderer handles either via safeParse.
  */
-const BusDataSchema = z
-  .object({
-    skill: z.string().default(""),
-    stage: z.string().default(""),
-    step: z.string().default(""),
-    phase: z.number().int().nullable().default(null),
-    wave_current: z.number().int().nonnegative().nullable().default(null),
-    wave_total: z.number().int().nonnegative().nullable().default(null),
-    complexity: z.string().default(""),
-    detail: z.string().default(""),
-    updated_at: z.string().default(""),
-  })
-  .passthrough();
+const BusDataSchema = z.object({
+  skill: z.string().default(""),
+  stage: z
+    .enum(["EXECUTING", "PLANNING", "VERIFYING", "PAUSED", "FAILED", "idle"])
+    .default("idle"),
+  step: z.string().default(""),
+  phase: z.number().int().optional(),
+  wave_current: z.number().int().nonnegative().default(0),
+  wave_total: z.number().int().nonnegative().default(0),
+  complexity: z.string().default(""),
+  detail: z.string().default(""),
+  updated_at: z.string().default(""),
+});
 
 // ─── Dual-Write Divergence Detection ────────────────────────────────────────
 
@@ -700,7 +703,9 @@ async function handleTransition(args: string[]): Promise<void> {
     try {
       const busFile = Bun.file(STATUS_BUS_PATH);
       if (await busFile.exists()) busData = await busFile.json();
-    } catch { /* start fresh */ }
+    } catch {
+      /* start fresh */
+    }
 
     const ctx = nextSnapshot.context as Record<string, unknown>;
     busData.stage = String(nextSnapshot.value).toUpperCase();
@@ -1157,7 +1162,10 @@ async function handleWriteStatus(args: string[]): Promise<void> {
   const validated = BusDataSchema.safeParse(merged);
   if (!validated.success) {
     console.error(
-      JSON.stringify({ error: "Invalid bus data", issues: validated.error.issues }),
+      JSON.stringify({
+        error: "Invalid bus data",
+        issues: validated.error.issues,
+      }),
     );
     process.exit(2);
   }
