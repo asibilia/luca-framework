@@ -196,7 +196,7 @@ Add workflow HUD to the statusline, close the anti-skip enforcement gap with a P
 
 Automated article ingestion, research, and actionable todo generation from external agentic development research via `/scout` command.
 
-### Phase 241: Scout Foundation
+### Phase 241: Scout Foundation — COMPLETE
 
 **Goal:** Create the directory structure, state machine schema, document templates, orchestrator skill, deterministic index updater, and shared agent sections for the scouting pipeline.
 **Complexity:** COMPLEX
@@ -210,7 +210,7 @@ Automated article ingestion, research, and actionable todo generation from exter
 - [x] scout-index-updater — Create `src/skills/__helpers/scout-index.ts` deterministic INDEX.md auto-update from state files
 - [x] scout-shared-sections — Create `src/agents/__helpers/scout-shared-sections.ts` extending researcher-shared-sections with scout-specific context
 
-### Phase 242: Per-Article Pipeline
+### Phase 242: Per-Article Pipeline — COMPLETE
 
 **Goal:** Build all agents and skills for the per-article pipeline stages (ingest, relevance, research, analysis, implementation research).
 **Complexity:** COMPLEX
@@ -226,7 +226,7 @@ Automated article ingestion, research, and actionable todo generation from exter
 - [x] scout-analyze-skill — Create `scout-analyze.skill.ts` wrapper to spawn analyst and validate impact document
 - [x] scout-impl-research-skill — Create `scout-impl-research.skill.ts` for concrete implementation approach research
 
-### Phase 243: Cross-Cutting Batch
+### Phase 243: Cross-Cutting Batch — COMPLETE
 
 **Goal:** Build agents and skills for the cross-cutting batch pipeline (integration analysis, todo planning, memory graduation).
 **Complexity:** MODERATE
@@ -239,16 +239,16 @@ Automated article ingestion, research, and actionable todo generation from exter
 - [x] scout-plan-skill — Create `scout-plan.skill.ts` wrapper with conflict routing
 - [x] scout-graduate-skill — Create `scout-graduate.skill.ts` MuninnDB engram capture following research-graduator pattern
 
-### Phase 244: UX + Docs
+### Phase 244: UX + Docs — COMPLETE
 
 **Goal:** Add user-facing commands and comprehensive documentation for the scouting workflow.
 **Complexity:** SIMPLE
 **Verification:** Quick
 **Depends on:** Phase 243
 
-- [ ] scout-review-command — Add `/scout --review` to list and re-process manual-review items
-- [ ] scout-deferred-command — Add `/scout --deferred` to list and re-evaluate deferred items
-- [ ] scout-workflow-documentation — Create user-facing README, agent JSDoc, and architecture documentation
+- [x] scout-review-command — Add `/scout --review` to list and re-process manual-review items
+- [x] scout-deferred-command — Add `/scout --deferred` to list and re-evaluate deferred items
+- [x] scout-workflow-documentation — Create user-facing README, agent JSDoc, and architecture documentation
 
 ---
 
