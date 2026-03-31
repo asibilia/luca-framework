@@ -43,6 +43,10 @@ cross-cutting operations (shadow-debt:kept, pattern, preference).
 
 ## Execution Flow
 
+```bash
+luca-bridge write-status --skill=shadow-cleanup --stage=CLEANING 2>/dev/null || true
+```
+
 ### Step 1: Load and Validate Config
 
 Read `.planning/config.json` and extract the `shadow_debt` section.
@@ -236,6 +240,10 @@ Display completion:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Found: {total} | Fixed: {n_fixed} | Kept: {n_kept} | Skipped: {n_skipped}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```bash
+luca-bridge clear-status 2>/dev/null || true
 ```
 
 ## Success Criteria

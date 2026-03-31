@@ -57,6 +57,10 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 
 ## Process
 
+```bash
+luca-bridge write-status --skill=milestone-audit --stage=AUDITING 2>/dev/null || true
+```
+
 ### 1. Load Context
 
 - Read all phase VERIFICATION.md files for the milestone
@@ -514,6 +518,10 @@ Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} mo
 /milestone-gaps — create phases to close gaps
 /milestone-complete — proceed anyway (tech debt noted)
 
+```
+
+```bash
+luca-bridge clear-status 2>/dev/null || true
 ```
 
 ## Success Criteria

@@ -130,7 +130,8 @@ export function parseExistingHooks(
  * // null
  * ```
  */
-export function extractLucaScriptName(command: string): string | null {
+export function extractLucaScriptName(command: string | undefined | null): string | null {
+  if (!command) return null;
   // Match the last path segment ending in .sh, stripping quotes and arguments
   const match = command.match(/([a-z0-9_-]+\.sh)/i);
   return match ? match[1]! : null;
@@ -155,7 +156,7 @@ export function extractLucaScriptName(command: string): string | null {
  * ```
  */
 export function isLucaHook(
-  command: string,
+  command: string | undefined | null,
   knownScripts: Set<string>,
 ): boolean {
   const scriptName = extractLucaScriptName(command);
@@ -244,6 +245,23 @@ export function computeMergeActions(
   const existingMap = parseExistingHooks(existingSettings);
   const proposedEntries = proposedHooks as Record<string, unknown[]>;
 
+  // Build set of known Luca prompt texts from proposed hooks.
+  // All proposed hooks come from the canonical registry, so any existing prompt
+  // hook whose text matches a proposed prompt is a Luca-deployed hook.
+  const lucaPromptTexts = new Set<string>();
+  for (const proposedSlots of Object.values(proposedEntries)) {
+    if (!Array.isArray(proposedSlots)) continue;
+    for (const rawSlot of proposedSlots) {
+      if (!rawSlot || typeof rawSlot !== "object") continue;
+      const slot = rawSlot as { hooks?: Array<Record<string, unknown>> };
+      for (const hook of slot.hooks ?? []) {
+        if (hook.type === "prompt" && typeof hook.prompt === "string") {
+          lucaPromptTexts.add(hook.prompt);
+        }
+      }
+    }
+  }
+
   for (const [event, proposedSlots] of Object.entries(proposedEntries)) {
     if (!Array.isArray(proposedSlots)) continue;
 
@@ -252,7 +270,7 @@ export function computeMergeActions(
 
       const proposedSlot = rawSlot as {
         matcher?: string;
-        hooks?: Array<{ command?: string }>;
+        hooks?: Array<Record<string, unknown>>;
       };
       const matcher = proposedSlot.matcher;
       const slotKey = buildSlotKey(event, matcher);
@@ -270,28 +288,46 @@ export function computeMergeActions(
         continue;
       }
 
-      // Slot exists -- check each proposed hook command
+      // Slot exists -- check each proposed hook
       for (const proposedHook of proposedHookEntries) {
-        const proposedCmd = proposedHook.command ?? "";
+        const proposedCmd = (proposedHook.command as string) ?? "";
+        const proposedType = (proposedHook.type as string) ?? "command";
 
-        // Check if identical command already exists
-        const hasIdentical = matchingExistingSlot.hooks.some(
-          (h) => h.command === proposedCmd,
-        );
+        // Check if identical hook already exists
+        let hasIdentical = false;
+        if (proposedType === "prompt") {
+          // Prompt hooks: compare by prompt text (they have no command)
+          const proposedPrompt = (proposedHook.prompt as string) ?? "";
+          hasIdentical = matchingExistingSlot.hooks.some((h) => {
+            const raw = h as Record<string, unknown>;
+            return raw.type === "prompt" && raw.prompt === proposedPrompt;
+          });
+        } else {
+          // Command hooks: compare by command string
+          hasIdentical = matchingExistingSlot.hooks.some(
+            (h) => h.command === proposedCmd,
+          );
+        }
 
         if (hasIdentical) {
           actions.push({
             type: "auto-skip",
             slot_key: slotKey,
-            command: proposedCmd,
+            command: proposedCmd || describeHook(proposedHook, proposedType),
           });
           continue;
         }
 
         // Check if existing slot has only Luca hooks (safe to auto-replace)
-        const allExistingAreLuca = matchingExistingSlot.hooks.every((h) =>
-          isLucaHook(h.command, knownLucaScripts),
-        );
+        const allExistingAreLuca = matchingExistingSlot.hooks.every((h) => {
+          if (isLucaHook(h.command, knownLucaScripts)) return true;
+          // Also recognize Luca prompt hooks by matching prompt text
+          const raw = h as Record<string, unknown>;
+          if (raw.type === "prompt" && typeof raw.prompt === "string") {
+            return lucaPromptTexts.has(raw.prompt);
+          }
+          return false;
+        });
 
         if (allExistingAreLuca) {
           // Existing slot contains only Luca hooks -- auto-replace silently
@@ -303,15 +339,24 @@ export function computeMergeActions(
         // Slot has non-Luca hooks with different commands: conflict
         const nonLucaHooks = filter(
           matchingExistingSlot.hooks,
-          (h) => !isLucaHook(h.command, knownLucaScripts),
+          (h) => {
+            if (isLucaHook(h.command, knownLucaScripts)) return false;
+            const raw = h as Record<string, unknown>;
+            if (raw.type === "prompt" && typeof raw.prompt === "string") {
+              return !lucaPromptTexts.has(raw.prompt);
+            }
+            return true;
+          },
         );
 
         if (nonLucaHooks.length > 0) {
+          const existingHook = nonLucaHooks[0]! as Record<string, unknown>;
+          const existingType = (existingHook.type as string) ?? "command";
           actions.push({
             type: "conflict",
             slot_key: slotKey,
-            existing_command: nonLucaHooks[0]!.command,
-            proposed_command: proposedCmd,
+            existing_command: ((existingHook.command as string) ?? "") || describeHook(existingHook, existingType),
+            proposed_command: proposedCmd || describeHook(proposedHook, proposedType),
           });
         } else {
           // All existing hooks are Luca hooks (fallback case)
@@ -322,6 +367,31 @@ export function computeMergeActions(
   }
 
   return actions;
+}
+
+// ─── Hook description helper ────────────────────────────────────────────────
+
+/**
+ * Build a human-readable description for a hook entry.
+ *
+ * Used in conflict actions when the hook has no `command` field (e.g.,
+ * prompt hooks). Provides meaningful text for the conflict prompt UI
+ * instead of "(no command)".
+ *
+ * @param hook - Raw hook entry object
+ * @param hookType - Hook type string ("command", "prompt", etc.)
+ * @returns Human-readable description string
+ */
+function describeHook(hook: Record<string, unknown>, hookType: string): string {
+  if (hookType === "prompt") {
+    const prompt = (hook.prompt as string) ?? "";
+    const firstLine = prompt.split("\n")[0] ?? "";
+    const truncated = firstLine.length > 50
+      ? `${firstLine.slice(0, 47)}...`
+      : firstLine;
+    return `[prompt hook] ${truncated}`;
+  }
+  return `[${hookType} hook]`;
 }
 
 // ─── Merge application ──────────────────────────────────────────────────────

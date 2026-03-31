@@ -11,6 +11,10 @@ Orchestrate convergence-based plan review loop with cold-isolated reviewer agent
 
 ## Process
 
+\`\`\`bash
+luca-bridge write-status --skill=phase-plan-review --stage=REVIEWING 2>/dev/null || true
+\`\`\`
+
 ### Step 1: Load Plan Corpus
 
 ```
@@ -234,4 +238,8 @@ Write to `$PHASE_DIR/PLAN-REVIEW-LOG.md` with all iterations:
 - [ ] Convergence evaluated using BLOCKING count (not scores)
 - [ ] PLAN-REVIEW-LOG.md written with all iterations
 - [ ] Loop terminates: approval, budget exhaustion, or escalation
+
+\`\`\`bash
+luca-bridge clear-status 2>/dev/null || true
+\`\`\`
 </main>

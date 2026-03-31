@@ -166,7 +166,8 @@ export async function promptConflictResolution(
  * @param command - The full command string
  * @returns Truncated command string suitable for display
  */
-function truncateCommand(command: string): string {
+function truncateCommand(command: string | undefined): string {
+  if (!command) return "(no command)";
   const maxLength = 60;
   if (command.length <= maxLength) {
     return command;

@@ -26,12 +26,11 @@ Decision matrix for choosing deterministic hooks vs interactive skills for enfor
 
 | Concern | Hook (automatic) | Skill (interactive) |
 |---------|-----------------|-------------------|
-| Code formatting | post-edit-format (PostToolUse) | -- |
 | Type checking | post-edit-typecheck (PostToolUse, async) | code-typecheck |
 | Pre-commit quality | pre-commit-gate (PreToolUse) | git-commit |
 | Testing | pre-commit-gate (includes tests) | test-run |
-| Linting | post-edit-format (includes lint) | code-lint |
-| Context monitoring | context-monitor (Stop) | -- |
+| Linting | -- | code-lint |
+| Context monitoring | context-check-throttled (PostToolUse, async) | -- |
 | Session persistence | session-persist (SessionEnd) | -- |
 
 ## Hook Types

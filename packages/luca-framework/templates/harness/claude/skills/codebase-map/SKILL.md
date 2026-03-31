@@ -68,6 +68,10 @@ Read this reference file before executing:
 
 ## Process
 
+```bash
+luca-bridge write-status --skill=codebase-map --stage=MAPPING 2>/dev/null || true
+```
+
 1. Check if `.planning/codebase/` already exists (offer to refresh or skip)
 2. Create `.planning/codebase/` directory structure
 
@@ -248,6 +252,10 @@ Then run `bun run build:all` to load the new profile rules.
 ```
 
 **If all detected profiles match the current config**, skip this step silently.
+
+```bash
+luca-bridge clear-status 2>/dev/null || true
+```
 
 ## Success Criteria
 

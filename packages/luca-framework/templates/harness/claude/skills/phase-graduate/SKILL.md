@@ -16,6 +16,10 @@ Graduate verified research findings into MuninnDB engrams for per-task recall du
 
 ## Process
 
+\`\`\`bash
+luca-bridge write-status --skill=phase-graduate --stage=GRADUATING 2>/dev/null || true
+\`\`\`
+
 ### Step 1: Verify Review Status
 
 ```
@@ -111,4 +115,8 @@ The planner should reference these concepts:
 - [ ] Related engrams linked via muninn_link
 - [ ] Research files archived to research/archive/ (Decision 24)
 - [ ] Process artifacts (REVIEW-LOG.md, GRADUATION-REPORT.md) remain in research/
+
+\`\`\`bash
+luca-bridge clear-status 2>/dev/null || true
+\`\`\`
 </main>

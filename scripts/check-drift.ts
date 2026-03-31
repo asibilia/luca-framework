@@ -121,16 +121,14 @@ async function main() {
 
   // Compare each generated file against committed output
   for (const [relPath, expectedContent] of generated) {
-    // Special handling for settings.json hooks key
+    // settings.json__hooks is a virtual fragment — build-deploy intentionally
+    // skips settings.json (merge happens at deploy time in deploy-global.ts).
+    // Only verify hooks if settings.json happens to exist (e.g. in template harness).
     if (relPath === "dist/claude/settings.json__hooks") {
       const settingsPath = path.join(projectDir, "dist/claude/settings.json");
       const settingsFile = Bun.file(settingsPath);
       if (!(await settingsFile.exists())) {
-        results.push({
-          file: "dist/claude/settings.json",
-          status: "missing",
-          detail: "File does not exist",
-        });
+        // Expected: build-deploy skips settings.json; hooks verified at deploy time
         continue;
       }
       try {
