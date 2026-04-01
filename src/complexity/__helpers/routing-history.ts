@@ -51,6 +51,7 @@ const HISTORY_PATH = resolve(process.cwd(), ".planning/routing-history.jsonl");
  * Uses appendFileSync from node:fs for atomic line appends.
  *
  * @param entry - Validated routing history entry to append
+ * @returns Promise that resolves when the entry has been appended
  */
 export async function appendRoutingEntry(
   entry: RoutingHistoryEntry,

@@ -607,7 +607,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 268   | Orchestrator Pipeline Integration               | Complete | ORCH-01..03                |
 | 269   | Audit P0: Security & Integration Wiring         | Complete | SEC-001..002, Integration  |
 | 270   | Audit P1: Structural & Type Safety Fixes        | Complete | ARCH-01..06, DRY-001..003  |
-| 271   | Audit P2-P3: Tech Debt Cleanup                  | Pending  | DRY-004+, DX-04+, ARCH-08+ |
+| 271   | Audit P2-P3: Tech Debt Cleanup                  | Complete | DRY-004+, DX-04+, ARCH-08+ |
 
 ---
 

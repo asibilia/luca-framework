@@ -104,9 +104,7 @@ if (import.meta.main) {
   const contextPath = parseContextPath(Bun.argv);
 
   if (!contextPath) {
-    process.stderr.write(
-      "Usage: bun src/process-data/compute.ts --context=<path>\n",
-    );
+    console.error("Usage: bun src/process-data/compute.ts --context=<path>");
     process.exit(1);
   }
 
@@ -114,7 +112,7 @@ if (import.meta.main) {
     const file = Bun.file(contextPath);
     const exists = await file.exists();
     if (!exists) {
-      process.stderr.write(`Error: File not found: ${contextPath}\n`);
+      console.error(`Error: File not found: ${contextPath}`);
       process.exit(1);
     }
 
@@ -132,15 +130,13 @@ if (import.meta.main) {
         .nothrow();
     } catch {
       // Graceful degradation — bridge may not be available
-      process.stderr.write(
-        "WARN: Could not write metrics to state via bridge\n",
-      );
+      console.error("WARN: Could not write metrics to state via bridge");
     }
 
     process.exit(0);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`Error: ${message}\n`);
+    console.error(`Error: ${message}`);
     process.exit(1);
   }
 }

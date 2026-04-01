@@ -5,6 +5,12 @@
  * Write functions log to stderr for debugging. Read functions
  * return empty results.
  *
+ * TODO (DRY-011): This module is a no-op stub — all functions are
+ * placeholders that return empty results or log to stderr. It defines
+ * the schema contract for a future MuninnDB-backed implementation.
+ * No real consumers exist in src/ yet. Remove or implement when
+ * MuninnDB emission layer work begins.
+ *
  * @module luca-state/audit-findings
  */
 

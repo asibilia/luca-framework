@@ -45,7 +45,12 @@ export type ModelId = "opus" | "sonnet" | "haiku";
  */
 export type ModelTier = "fast" | "balanced" | "capable";
 
-/** Maps each model tier to its default ModelId. */
+/**
+ * Maps each model tier to its default ModelId.
+ *
+ * NOTE (DRY-008): Duplicated from `src/complexity/__schemas/complexity.schemas.ts`.
+ * See DRY-001 note at top of file for rationale.
+ */
 export const MODEL_TIER_TO_MODEL: Record<ModelTier, ModelId> = {
   fast: "haiku",
   balanced: "sonnet",
@@ -65,6 +70,9 @@ export type VerificationMode = "quick" | "standard" | "full" | "full+human";
 
 /**
  * Check if a complexity level meets or exceeds a threshold.
+ *
+ * NOTE (DRY-007): Duplicated from `src/complexity/__schemas/complexity.schemas.ts`.
+ * See DRY-001 note at top of file for rationale.
  *
  * @param level - The current complexity level
  * @param threshold - The minimum required level

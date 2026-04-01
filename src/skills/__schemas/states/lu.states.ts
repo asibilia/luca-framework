@@ -24,7 +24,7 @@
  */
 import { z } from "zod";
 
-import { createSkillStateMachine } from "~/workflow/__helpers/skill-state-machine";
+import { createSkillStateMachine } from "~/workflow";
 
 import { ABORT_TRANSITION } from "./shared-transitions";
 

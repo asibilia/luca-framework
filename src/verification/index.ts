@@ -20,3 +20,7 @@ export type {
   PhaseVerificationResult,
   MilestoneVerdict,
 } from "./__schemas/verification.schemas";
+
+// ─── Milestone Validator ────────────────────────────────────────────────────
+
+export { validateMilestone } from "./__helpers/milestone-validator";

@@ -9,7 +9,7 @@
  *
  * @module luca-recovery/convergence-state
  */
-import { writeFile, rename, unlink } from "node:fs/promises";
+import { rename, unlink } from "node:fs/promises";
 
 import {
   convergenceStateSchema,
@@ -60,7 +60,7 @@ export async function writeConvergenceState(
   }
 
   const json = JSON.stringify(result.data, null, 2);
-  await writeFile(TMP_PATH, json, "utf-8");
+  await Bun.write(TMP_PATH, json);
   await rename(TMP_PATH, CONVERGENCE_STATE_PATH);
 }
 

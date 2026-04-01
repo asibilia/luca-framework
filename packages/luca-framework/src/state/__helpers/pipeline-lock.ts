@@ -11,7 +11,7 @@
  *
  * @module luca-state/pipeline-lock
  */
-import { writeFile, rename, unlink } from "node:fs/promises";
+import { rename, unlink } from "node:fs/promises";
 
 import {
   pipelineLockSchema,
@@ -66,7 +66,7 @@ function isPidAlive(pid: number): boolean {
  */
 async function atomicWriteLock(data: PipelineLock): Promise<void> {
   const json = JSON.stringify(data, null, 2);
-  await writeFile(TMP_PATH, json, "utf-8");
+  await Bun.write(TMP_PATH, json);
   await rename(TMP_PATH, PIPELINE_LOCK_PATH);
 }
 
