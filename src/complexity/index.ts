@@ -129,3 +129,15 @@ export {
 
 // Adaptive adjustment
 export { adjustComplexity } from "./__helpers/adaptive-adjust";
+
+// Token profiles
+export {
+  TOKEN_PROFILES,
+  PROTECTED_AGENTS,
+  demoteTier,
+  promoteTier,
+  resolveModelWithProfile,
+  applyLoopBudgetMultiplier,
+} from "./__helpers/token-profile";
+
+export type { TokenProfile } from "./__helpers/token-profile";

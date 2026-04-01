@@ -54,7 +54,7 @@ const luSkillConfig: SkillConfig = {
 
 The single entry point for all Luca workflows. This is a **flat Agent() orchestrator** — it spawns leaf-worker agents via Agent(), manages state, and controls the pipeline.
 
-**Arguments:** \`<task-description | Jira-URL | [TICKET-ID]> [--complexity=LEVEL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=MODE] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask] [--v2]\`
+**Arguments:** \`<task-description | Jira-URL | [TICKET-ID]> [--complexity=LEVEL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=MODE] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask] [--v2] [--profile=budget|balanced|quality]\`
 
 ## Constraints
 
@@ -98,6 +98,8 @@ When spawning Agent() calls, ALWAYS include \`subagent_type\` and \`model\`:
 | review-completeness-* | lu-completeness-reviewer | DEEP_ANALYSIS |
 | review-actionability-* | lu-actionability-reviewer | DEEP_ANALYSIS |
 
+**NOTE:** Model tiers shown are for the \`balanced\` profile. \`budget\` demotes non-protected agents one tier; \`quality\` promotes all agents one tier. Protected agents (lu-executor, lu-discuss-researcher, code-architect, dx-advocate, security-auditor, code-simplifier, lu-learner) ignore budget demotion.
+
 **Routing presets by COMPLEXITY (resolve after Step 2):**
 
 | Preset | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
@@ -128,6 +130,19 @@ if [ -z "$REPO_VAULT" ]; then REPO_VAULT=\${LUCA_MUNINN_VAULT:-default}; fi
 ### Step 1: Parse Args, Crash Recovery, Initialize
 
 Parse user request and all CLI flags.
+
+**Parse --profile flag:**
+\`\`\`bash
+# Token profile: budget | balanced | quality (default: balanced)
+if echo "$ARGS" | grep -qo -- '--profile=[a-z]*'; then
+  CLI_PROFILE=$(echo "$ARGS" | grep -o -- '--profile=[a-z]*' | head -1 | cut -d= -f2)
+  # Validate: must be one of budget, balanced, quality
+  case "$CLI_PROFILE" in
+    budget|balanced|quality) ;;
+    *) echo "WARNING: Invalid --profile=$CLI_PROFILE, falling back to balanced"; CLI_PROFILE="" ;;
+  esac
+fi
+\`\`\`
 
 **Initialize state machine:**
 \`\`\`bash
@@ -247,6 +262,15 @@ if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 
 TOKEN_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"token_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 if [ -z "$TOKEN_PROFILE" ]; then TOKEN_PROFILE="balanced"; fi
+# CLI --profile override takes precedence over config.json value
+if [ -n "$CLI_PROFILE" ]; then TOKEN_PROFILE="$CLI_PROFILE"; fi
+# Store resolved profile in state
+luca-bridge set-field --field=token_profile --value='"'$TOKEN_PROFILE'"' 2>/dev/null || true
+echo "Token profile: $TOKEN_PROFILE"
+# Warn if budget profile with high complexity (now that both vars are assigned)
+if [ "$TOKEN_PROFILE" = "budget" ] && ([ "$COMPLEXITY" = "COMPLEX" ] || [ "$COMPLEXITY" = "CRITICAL" ]); then
+  echo "WARNING: --profile=budget with $COMPLEXITY complexity — model demotion may reduce quality."
+fi
 luca-bridge lock-update --pipeline-step="configured" --phase-step="" 2>/dev/null || true
 \`\`\`
 
@@ -317,6 +341,23 @@ luca-bridge write-status --step="phase-order" --stage="EXECUTING" --detail="Buil
 
 Read .planning/ROADMAP.md. Parse incomplete phases. Build dependency graph. Topological sort. Apply MAX_PHASES limit. If --dry-run: display plan and RETURN.
 
+### Profile-Aware Model Resolution
+
+All Agent() calls in Steps 7e–7l use profile-aware model resolution:
+\`\`\`
+# Profile-aware model resolution:
+# resolveModelWithProfile(subagent_type, COMPLEXITY, TOKEN_PROFILE)
+# fast→haiku, balanced→sonnet, capable→opus
+# Protected agents (lu-executor, lu-discuss-researcher, code-architect,
+#   dx-advocate, security-auditor, code-simplifier, lu-learner) ignore budget demotion.
+#
+# ORCHESTRATOR_MODEL = resolveModelWithProfile(subagent_type, COMPLEXITY, TOKEN_PROFILE)
+# DEEP_MODEL         = resolveModelWithProfile(subagent_type, COMPLEXITY, TOKEN_PROFILE)
+# FAST_PROMOTED_MODEL = resolveModelWithProfile(subagent_type, COMPLEXITY, TOKEN_PROFILE)
+# ROUTER_MODEL       = resolveModelWithProfile(subagent_type, COMPLEXITY, TOKEN_PROFILE)
+# ALWAYS_FAST        = always haiku (unaffected by profile — already at floor)
+\`\`\`
+
 ### Step 7: Phase Execution Loop
 
 **FOR each phase in execution order (serial):**
@@ -355,6 +396,22 @@ PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 
 
 **Gate:** If WORKFLOW_VERSION != "v2": SKIP to 7e. This entire block is fail-closed.
+
+**Token profile v2 gating:**
+\`\`\`bash
+# Profile controls v2 research pipeline depth:
+# - budget:   Skip v2 research entirely (force WORKFLOW_VERSION="v1" for this phase)
+# - balanced: Use config's researchReviewIterations as-is (default behavior)
+# - quality:  Double researchReviewIterations via applyLoopBudgetMultiplier
+if [ "$TOKEN_PROFILE" = "budget" ]; then
+  echo "INFO: budget profile — skipping v2 research pipeline"
+  # Override to v1 for this phase regardless of config
+  WORKFLOW_VERSION_EFFECTIVE="v1"
+elif [ "$TOKEN_PROFILE" = "quality" ]; then
+  # Double the research review iterations: applyLoopBudgetMultiplier(base, "quality")
+  RESEARCH_REVIEW_ITERATIONS=$((RESEARCH_REVIEW_ITERATIONS * 2))
+fi
+\`\`\`
 
 **Graceful degradation:** If ANY v2 step below fails (agent returns failure or error), log the failure and SKIP remaining v2 steps. Continue to 7e (Discussion) with whatever research context is available. v1 pipeline is never blocked by v2 failures.
 
@@ -453,6 +510,14 @@ luca-bridge write-status --step="harness" --stage="VERIFYING" --phase=PHASE_NUMB
 luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="harness" --phase-id=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
 
+\`\`\`bash
+# Loop budget multiplier: apply token profile to HARNESS_FIX_ITERATIONS
+# budget:   Math.max(1, Math.floor(base * 0.5)) — halve (floor 1)
+# balanced: identity (no change)
+# quality:  base * 2 — double
+# HARNESS_FIX_ITERATIONS = applyLoopBudgetMultiplier(HARNESS_FIX_ITERATIONS, TOKEN_PROFILE)
+\`\`\`
+
 \`\`\`
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   Agent(name: "harness-{NN}", subagent_type: "lu-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({...}))
@@ -467,6 +532,15 @@ luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_fai
 \`\`\`
 
 #### 7j. Goal-backward verification
+
+\`\`\`bash
+# Loop budget multiplier: apply token profile to VERIFY_FIX_ITERATIONS and PLAN_VERIFICATION_ITERATIONS
+# budget:   Math.max(1, Math.floor(base * 0.5)) — halve (floor 1)
+# balanced: identity (no change)
+# quality:  base * 2 — double
+# VERIFY_FIX_ITERATIONS = applyLoopBudgetMultiplier(VERIFY_FIX_ITERATIONS, TOKEN_PROFILE)
+# PLAN_VERIFICATION_ITERATIONS = applyLoopBudgetMultiplier(PLAN_VERIFICATION_ITERATIONS, TOKEN_PROFILE)
+\`\`\`
 
 \`\`\`bash
 luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="verify" --phase-id=PHASE_NUMBER 2>/dev/null || true

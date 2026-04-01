@@ -393,6 +393,7 @@ const SETTABLE_FIELDS = [
   "appetite_token_ceiling",
   "appetite_context_percent",
   "appetite_used_tokens",
+  "token_profile",
 ] as const;
 
 /**

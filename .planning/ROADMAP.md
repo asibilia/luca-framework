@@ -462,7 +462,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. Starting a second `/lu` session while one is running prints a warning with the running PID and exits (unless `--force` is passed)
 3. Starting `/lu` after a crash detects the stale lock (dead PID or 24-hour staleness), reports it, and allows recovery to proceed
 
-### Phase 260: Token Profiles
+### Phase 260: Token Profiles — COMPLETE
 
 **Goal:** Users can control ceremony depth via a single `--profile` flag, with `balanced` matching current behavior exactly and `budget`/`quality` adjusting model tiers and loop budgets without touching protected steps (discussion, code review, learning).
 **Complexity:** MODERATE
@@ -596,7 +596,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | ----- | ----------------------------------------------- | -------- | -------------------------- |
 | 258   | Structured State & Deterministic Classification | Complete | FOUND-01..05, CLASS-01..05 |
 | 259   | Pipeline Lock File                              | Complete | LOCK-01..03                |
-| 260   | Token Profiles                                  | Pending  | PROF-01..06                |
+| 260   | Token Profiles                                  | Complete | PROF-01..06                |
 | 261   | Structured Verification                         | Pending  | VERIF-01..04               |
 | 262   | Convergence-Aware Stuck Detection               | Pending  | STUCK-01..06               |
 | 263   | Ceremony Reduction & Per-Wave Execution         | Pending  | CEREM-01..04               |
