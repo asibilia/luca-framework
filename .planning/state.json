@@ -1,15 +1,15 @@
 {
   "status": "active",
-  "value": "planning",
+  "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "ec905a64-cba3-46be-bee9-7de4b08cb765",
+    "session_id": "c2059d25-2a6e-4d5d-bae9-058880f7c473",
     "base_branch": "main",
     "token_profile": "balanced",
     "schema_version": 1,
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "COMPLEX",
+    "complexity": "TRIVIAL",
     "oversight": "full-auto",
     "gates": {
       "confirm_project": true,
@@ -93,10 +93,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-04-01T14:04:47.664Z",
-    "last_transition_at": "2026-04-01T14:04:54.198Z",
-    "milestone_count": 0,
-    "skip_reason": ""
+    "started_at": "2026-04-01T14:48:51.811Z",
+    "milestone_count": 0
   },
   "children": {}
 }

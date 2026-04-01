@@ -155,7 +155,7 @@ Otherwise, run the deterministic classifier CLI:
 FILE_COUNT=${FILE_COUNT:-0}
 SCOPE=${SCOPE:-""}
 
-CLASSIFY_RESULT=$(bun src/complexity/__helpers/classify.ts --description="$TASK_DESCRIPTION" --file-count=$FILE_COUNT --scope="$SCOPE" 2>/dev/null)
+CLASSIFY_RESULT=$(TASK_DESCRIPTION="$TASK_DESCRIPTION" bun src/complexity/__helpers/classify.ts --file-count=$FILE_COUNT --scope="$SCOPE" 2>/dev/null)
 RAW_COMPLEXITY=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 ROUTE=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.route === 'phased' ? 'phase-execute' : r.route)" 2>/dev/null || echo "phase-execute")
 ```
@@ -169,11 +169,12 @@ fi
 
 HISTORY_JSON=$(bun -e "import { readRoutingHistory } from './src/complexity/__helpers/routing-history'; const h = await readRoutingHistory({ tail: 20 }); console.log(JSON.stringify(h))" 2>/dev/null || echo "[]")
 
+export RAW_COMPLEXITY USER_OVERRIDE HISTORY_JSON
 ADJUST_RESULT=$(bun -e "
 import { adjustComplexity } from './src/complexity/__helpers/adaptive-adjust';
-const raw = '$RAW_COMPLEXITY';
-const override = '$USER_OVERRIDE' || undefined;
-const history = JSON.parse('$HISTORY_JSON');
+const raw = process.env.RAW_COMPLEXITY || 'MODERATE';
+const override = process.env.USER_OVERRIDE || undefined;
+const history = JSON.parse(process.env.HISTORY_JSON || '[]');
 const r = adjustComplexity({ raw_complexity: raw, history, override });
 console.log(JSON.stringify(r));
 " 2>/dev/null || echo '{"adjusted":"'$RAW_COMPLEXITY'","reason":"fallback"}')
@@ -226,6 +227,18 @@ if [ "$TOKEN_PROFILE" = "budget" ] && ([ "$COMPLEXITY" = "COMPLEX" ] || [ "$COMP
   echo "WARNING: --profile=budget with $COMPLEXITY complexity — model demotion may reduce quality."
 fi
 luca-bridge lock-update --pipeline-step="configured" --phase-step="" 2>/dev/null || true
+```
+
+**Resolve budget matrix (loop iteration limits):**
+```bash
+# Resolve loop budgets from the 5x3 budget matrix CLI (complexity x profile)
+BUDGET_RESULT=$(bun packages/luca-framework/src/state/__helpers/budget-matrix.ts --complexity=$COMPLEXITY --profile=$TOKEN_PROFILE 2>/dev/null || echo '{"harness_fix_iterations":2,"max_impl_iterations":2,"review_fix_iterations":1,"max_files_per_task":6,"max_tasks_per_wave":4}')
+HARNESS_FIX_ITERATIONS=$(echo "$BUDGET_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.harness_fix_iterations)" 2>/dev/null || echo "2")
+MAX_IMPL_ITERATIONS=$(echo "$BUDGET_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.max_impl_iterations)" 2>/dev/null || echo "2")
+REVIEW_FIX_ITERATIONS=$(echo "$BUDGET_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.review_fix_iterations)" 2>/dev/null || echo "1")
+MAX_FILES_PER_TASK=$(echo "$BUDGET_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.max_files_per_task)" 2>/dev/null || echo "6")
+MAX_TASKS_PER_WAVE=$(echo "$BUDGET_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.max_tasks_per_wave)" 2>/dev/null || echo "4")
+echo "Budget matrix: harness=$HARNESS_FIX_ITERATIONS impl=$MAX_IMPL_ITERATIONS review=$REVIEW_FIX_ITERATIONS files/task=$MAX_FILES_PER_TASK tasks/wave=$MAX_TASKS_PER_WAVE"
 ```
 
 ### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
@@ -778,8 +791,8 @@ Agent(name: "learn-{NN}", subagent_type: "<%= branding.commandPrefix %>-learner"
 **Deterministic CLI invocation (zero LLM tokens):**
 ```bash
 # Replaced: Agent(name: "process-data-{NN}", subagent_type: "<%= branding.commandPrefix %>-process-data", model: FAST_PROMOTED_MODEL, prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
-# Now uses deterministic CLI module — see src/process-data/compute.ts
-PROCESS_DATA_OUTPUT=$(bun src/process-data/compute.ts --context=.planning/state.json 2>/dev/null || echo '{}')
+# Now uses deterministic CLI module — see src/process-data/__helpers/compute.ts
+PROCESS_DATA_OUTPUT=$(bun src/process-data/__helpers/compute.ts --context=.planning/state.json 2>/dev/null || echo '{}')
 echo "Process data: $PROCESS_DATA_OUTPUT"
 luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 ```
@@ -860,6 +873,10 @@ if [ "$DRIFT_DETECTED" = "true" ]; then
   Agent(name: "reassess-{NN}", subagent_type: "<%= branding.commandPrefix %>-reassessor", model: ROUTER_MODEL, prompt: REASSESS_PROMPT({phase: NN, driftResultJson: DRIFT_RESULT, remainingPhasesJson: REMAINING_PHASES_JSON, ...}))
 
   # Step 5: Apply drift response (DRIFT-03)
+  # Evaluate oversight gate for drift_detected decision point
+  DRIFT_GATE=$(bun packages/luca-framework/src/state/__helpers/oversight-gate.ts --decision=drift_detected --oversight=$OVERSIGHT_MODE --profile=$TOKEN_PROFILE 2>/dev/null || echo '{"action":"pause"}')
+  DRIFT_ACTION=$(echo "$DRIFT_GATE" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
   # Parse reassessment verdicts and apply actions:
   FOR verdict in REASSESSMENT_RESULT.verdicts:
     IF verdict.verdict == "REDUNDANT":
@@ -867,7 +884,7 @@ if [ "$DRIFT_DETECTED" = "true" ]; then
     IF verdict.verdict == "BLOCKED":
       Park phase (remove from queue), log: "Phase {id} blocked by drift"
     IF verdict.verdict == "NEEDS_UPDATE":
-      IF OVERSIGHT_LEVEL == "autonomous":
+      IF DRIFT_ACTION == "auto_apply":
         Queue phase for re-planning (insert before execution)
       ELSE:
         Flag for user review: "Phase {id} needs update: {rationale}"
