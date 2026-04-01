@@ -230,6 +230,36 @@ export const preFlightSnapshotSchema = z.object({
 export type PreFlightSnapshot = z.infer<typeof preFlightSnapshotSchema>;
 
 // ---------------------------------------------------------------------------
+// Serialized context payload
+// ---------------------------------------------------------------------------
+
+/**
+ * Serialized context payload delivered to a sub-agent before dispatch.
+ *
+ * The `payload` field is the fully rendered string that gets injected
+ * into the agent prompt via the `inlinedContext` parameter. The
+ * `estimated_tokens` field is advisory — orchestrators use it to
+ * enforce the <= 2K token cap before dispatch.
+ *
+ * Uses snake_case for API compatibility.
+ */
+export const phaseContextPayloadSchema = z.object({
+  /** The agent this payload was assembled for */
+  agent_name: z.string(),
+  /** Context tier that was resolved */
+  tier: contextTierSchema,
+  /** Serialized context string, ready for prompt injection */
+  payload: z.string(),
+  /** Estimated token count (advisory) */
+  estimated_tokens: z.number().int().nonnegative(),
+  /** Whether the payload was capped at the token ceiling */
+  was_capped: z.boolean().default(false),
+});
+
+/** Serialized context payload type derived from schema */
+export type PhaseContextPayload = z.infer<typeof phaseContextPayloadSchema>;
+
+// ---------------------------------------------------------------------------
 // Utility functions
 // ---------------------------------------------------------------------------
 

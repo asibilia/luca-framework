@@ -35,6 +35,8 @@ export interface AgentPromptParams {
   waveContext?: string;
   /** Task ID to start from (used by OVERFLOW protocol continuation) */
   startFromTask?: string;
+  /** Pre-assembled context payload from assembleAndSerialize() — injected into prompt (CTXT-03) */
+  inlinedContext?: string;
 }
 
 // ─── Shared Blocks ────────────────────────────────────────────────────────
@@ -507,6 +509,11 @@ export const EXECUTE_WAVE_PROMPT = (p: AgentPromptParams): string => {
     ? `\n**Resume from task:** ${p.startFromTask} — skip all tasks before this one (already completed by a previous agent).`
     : "";
 
+  // CTXT-03: Inject assembled context payload when provided
+  const ctxBlock = p.inlinedContext
+    ? `\n<inlined_context>\n${sanitizeForTemplate(p.inlinedContext)}\n</inlined_context>`
+    : "";
+
   return `
 <role>
 You are lu-executor. Execute ONLY wave ${waveNum} of phase ${p.phase}.
@@ -518,7 +525,7 @@ ${memoryProtocol(p.vault, "none", `phase ${p.phase} wave ${waveNum} execution`)}
 <wave_context>
 ${waveCtx || `Read .planning/phases/${p.phase}-*/*-PLAN.md and execute only tasks in wave ${waveNum}.`}
 </wave_context>
-${startFrom}
+${ctxBlock}${startFrom}
 
 <task>
 1. Execute ONLY the tasks belonging to wave ${waveNum} in the plan
@@ -551,7 +558,7 @@ export const HARNESS_CHECK_PROMPT = (p: AgentPromptParams): string => `
 You are the harness checker. Run verification checks and report pass/fail with errors.
 ${AGENT_CONSTRAINT}
 </role>
-
+${p.inlinedContext ? `\n<inlined_context>\n${sanitizeForTemplate(p.inlinedContext)}\n</inlined_context>\n` : ""}
 <task>
 1. Run: bunx --bun tsc --noEmit 2>&1
 2. Parse the output for errors
@@ -1162,7 +1169,7 @@ ${previousIssues || "<!-- First iteration, no previous issues -->"}
 </iteration_context>
 
 <task>
-1. Run standard plan verification (all 6 dimensions + 10 steps from your agent definition)
+1. Run standard plan verification (all 7 dimensions + 10 steps from your agent definition)
 2. Compare findings against previous iteration issues (if any)
 3. Detect convergence:
    - If blocker count decreased: CONVERGING
@@ -1173,4 +1180,32 @@ ${previousIssues || "<!-- First iteration, no previous issues -->"}
 </task>
 
 ${outputContract("VERDICT: PASSED/ISSUES\\nITERATION: ${iteration}\\nCONVERGING: {true/false/n/a/resolved}\\nRECOMMEND: {approve/continue/escalate}\\nBLOCKER_COUNT: {N}")}
+`;
+
+// ─── Plan Sizing Guidance (SIZE-01/02) ───────────────────────────────────
+
+/**
+ * Per-task and per-wave sizing guidance block for lu-planner.
+ *
+ * Injected into planner prompts to require SIZE-01/02 metadata on each task.
+ * Referenced by lu.skill.ts inline planner Agent() dispatches (plan-{NN},
+ * plan-revise-{NN}) and by PLAN_REVIEW_PROMPT for verification.
+ */
+export const PLAN_SIZING_GUIDANCE = `
+<sizing_requirements>
+For EVERY task in the plan, add these metadata fields after the task type line:
+- **File count estimate:** {N} (integer, required)
+- **Scope:** SMALL (1-3 files) | MEDIUM (4-7 files) | LARGE (8-10 files)
+
+For EVERY wave in the plan frontmatter or wave header, add:
+- Total file count across all tasks in the wave (must be < 10)
+- Dependencies list
+
+Example task header:
+### 1. Task Name
+**Type:** auto
+**File count estimate:** 3
+**Scope:** SMALL
+**Depends on:** none
+</sizing_requirements>
 `;

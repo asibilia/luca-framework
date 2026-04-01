@@ -475,7 +475,9 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="plan" --phase-id=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
 \`\`\`
-Agent(name: "plan-{NN}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping)
+# SIZE-01/02: Include PLAN_SIZING_GUIDANCE in planner prompt to require per-task file_count_estimate and scope labels
+# See: src/skills/__helpers/agent-prompts.ts → PLAN_SIZING_GUIDANCE constant
+Agent(name: "plan-{NN}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping + PLAN_SIZING_GUIDANCE)
 \`\`\`
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -491,7 +493,8 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
   IF RECOMMEND == "escalate": prompt user for decision, BREAK
   # Planner revises
   PREVIOUS_ISSUES = agent's issues output
-  Agent(name: "plan-revise-{NN}-{iteration}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: revise PLAN.md based on issues)
+  # SIZE-01/02: Include PLAN_SIZING_GUIDANCE in revision prompt
+  Agent(name: "plan-revise-{NN}-{iteration}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: revise PLAN.md based on issues + PLAN_SIZING_GUIDANCE)
 \`\`\`
 
 #### 7h. Execution (per-wave dispatch loop)
@@ -516,7 +519,22 @@ console.log(JSON.stringify([...waves].sort((a,b) => a-b)));
 \`\`\`
 
 \`\`\`
+# --- Phase 264 Context Assembly & Task Sizing summary ---
+# CTXT-01: PhaseContextPayload schema (context/__schemas/context.schemas.ts)
+# CTXT-02: assembleAndSerialize() produces capped payloads (context/__helpers/context-assembler.ts)
+# CTXT-03: inlinedContext parameter in AgentPromptParams and prompt templates
+# SIZE-01/02: PLAN_SIZING_GUIDANCE constant enforces per-task/wave metadata
+# SIZE-03: Plan-checker Dimension 7 validates file counts (BLOCKER >= 10)
+# SIZE-04: OVERFLOW protocol (Phase 263, verified below)
+
 FOR each WAVE_NUM in $WAVES (serial):
+  # CTXT-01/02: Assemble fresh context payload for this agent tier
+  # Orchestrator calls assembleAndSerialize(agentName, COMPLEXITY, availableDocs, 2000)
+  # Tier mapping: lu-executor=Full(T2/T3), lu-verifier/reviewers=Scoped(warm),
+  #               harness-checker=Minimal(T0/cold), lu-discuss-researcher/lu-learner=unchanged
+  # Cap enforced at <= 2K tokens. Pass payload as inlinedContext in prompt params.
+  INLINED_CONTEXT=$(assembleAndSerialize("lu-executor", COMPLEXITY, AVAILABLE_DOCS, 2000).payload)
+
   # Assemble wave context: read only the wave's task section from PLAN.md (cap ~2K tokens)
   WAVE_SECTION=$(bun -e "
   const glob = new Bun.Glob('.planning/phases/{NN}-*/*-PLAN.md');
@@ -539,6 +557,7 @@ FOR each WAVE_NUM in $WAVES (serial):
   ))
 
   # OVERFLOW protocol: if agent output contains OVERFLOW:{task-id}, spawn fresh agent for remainder
+  # <!-- SIZE-04: verified Phase 263 — detection + fresh spawn + startFromTask threading all present -->
   if echo "$WAVE_RESULT" | grep -q "OVERFLOW:"; then
     OVERFLOW_TASK=$(echo "$WAVE_RESULT" | grep -o "OVERFLOW:[^ ]*" | head -1 | cut -d: -f2)
     echo "INFO: Wave $WAVE_NUM overflow at task $OVERFLOW_TASK — spawning fresh agent for remainder"
@@ -608,7 +627,9 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   PREV_CHECKPOINT_TAG="$CHECKPOINT_TAG"
 
   # --- Harness check ---
-  Agent(name: "harness-{NN}", subagent_type: "lu-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({...}))
+  # CTXT-02: Minimal tier (T0/cold isolation) for harness checker — no memory injection
+  # HARNESS_CONTEXT=$(assembleAndSerialize("lu-verifier-fast", COMPLEXITY, AVAILABLE_DOCS, 2000).payload)
+  Agent(name: "harness-{NN}", subagent_type: "lu-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({..., inlinedContext: HARNESS_CONTEXT}))
   IF PASSED: BREAK
 
   # --- STUCK-01: Classify errors after failed harness check ---

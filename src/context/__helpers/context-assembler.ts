@@ -20,12 +20,14 @@ import type { ComplexityLevel } from "~/complexity/__schemas/complexity.schemas"
 import type {
   ContextConfig,
   ContextDocumentSet,
+  PhaseContextPayload,
 } from "../__schemas/context.schemas";
 import {
   contextTierSchema,
   isolationModeSchema,
   contextDocumentSetSchema,
   budgetAllocationSchema,
+  phaseContextPayloadSchema,
 } from "../__schemas/context.schemas";
 import { resolveContextTierFromMatrix } from "./resolve-context-tier";
 import {
@@ -148,6 +150,76 @@ export function assembleContext(
     isolation_mode: profile.isolation,
     agent_name: agentName,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Serialization
+// ---------------------------------------------------------------------------
+
+/** Default token ceiling for context payloads (~2K tokens) */
+export const CONTEXT_TOKEN_CEILING = 2000;
+
+/**
+ * Assemble, serialize, and cap context for sub-agent dispatch.
+ *
+ * Calls assembleContext() then renders the filtered document set
+ * into a single string. Estimates token count using the 4-chars-per-token
+ * heuristic. Caps the string at `tokenCeiling * 4` characters if needed.
+ *
+ * @param agentName - Target agent name
+ * @param complexityLevel - Current task complexity
+ * @param availableDocuments - Full document set to filter from
+ * @param tokenCeiling - Max tokens for payload (default 2000)
+ * @param overrideProfile - Optional context config override
+ * @returns PhaseContextPayload ready for prompt injection
+ *
+ * @example
+ * ```typescript
+ * const payload = assembleAndSerialize(
+ *   "lu-executor",
+ *   "COMPLEX",
+ *   { plan_content: "...", brain_summary: "..." },
+ *   2000,
+ * );
+ * // payload.estimated_tokens <= 2000
+ * // payload.payload is a string ready for prompt injection
+ * ```
+ */
+export function assembleAndSerialize(
+  agentName: string,
+  complexityLevel: ComplexityLevel,
+  availableDocuments: ContextDocumentSet,
+  tokenCeiling: number = CONTEXT_TOKEN_CEILING,
+  overrideProfile?: ContextConfig,
+): PhaseContextPayload {
+  const assembled = assembleContext(
+    agentName,
+    complexityLevel,
+    availableDocuments,
+    overrideProfile,
+  );
+
+  // Render documents into a single string
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(assembled.documents)) {
+    if (value !== undefined) {
+      parts.push(`<!-- ${key} -->\n${value}`);
+    }
+  }
+  const raw = parts.join("\n\n");
+
+  // Cap at ceiling (4 chars ≈ 1 token)
+  const charCeiling = tokenCeiling * 4;
+  const wasCapped = raw.length > charCeiling;
+  const payload = wasCapped ? raw.slice(0, charCeiling) : raw;
+
+  return phaseContextPayloadSchema.parse({
+    agent_name: agentName,
+    tier: assembled.effective_tier,
+    payload,
+    estimated_tokens: Math.ceil(payload.length / 4),
+    was_capped: wasCapped,
+  });
 }
 
 // ---------------------------------------------------------------------------

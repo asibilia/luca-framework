@@ -20,6 +20,7 @@ export type {
   GitCommitSummary,
   ImportEdge,
   PreFlightSnapshot,
+  PhaseContextPayload,
 } from "./__schemas/context.schemas";
 
 export type {
@@ -46,6 +47,7 @@ export {
   gitCommitSummarySchema,
   importEdgeSchema,
   preFlightSnapshotSchema,
+  phaseContextPayloadSchema,
 } from "./__schemas/context.schemas";
 
 export {
@@ -112,6 +114,8 @@ export {
   assembleContext,
   getRequiredDocumentKeys,
   assembledContextSchema,
+  assembleAndSerialize,
+  CONTEXT_TOKEN_CEILING,
 } from "./__helpers/context-assembler";
 
 // ---------------------------------------------------------------------------

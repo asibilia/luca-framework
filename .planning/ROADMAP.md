@@ -519,7 +519,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. Each wave in PLAN.md gets its own Agent() call with fresh context assembled immediately before dispatch, and the orchestrator reads no more than 2K tokens of context per dispatch preparation
 3. If an executor agent detects context exhaustion mid-wave, it outputs OVERFLOW and the orchestrator spawns a fresh Agent() for the remaining tasks in that wave
 
-### Phase 264: Fresh Context Assembly & Task Sizing
+### Phase 264: Fresh Context Assembly & Task Sizing — COMPLETE
 
 **Goal:** Every agent receives a scoped, fresh context payload appropriate to its tier (Full/Scoped/Minimal), and plans include file count and scope metadata that enables overflow detection and sizing validation.
 **Complexity:** COMPLEX
@@ -600,7 +600,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 261   | Structured Verification                         | Complete | VERIF-01..04               |
 | 262   | Convergence-Aware Stuck Detection               | Complete | STUCK-01..06               |
 | 263   | Ceremony Reduction & Per-Wave Execution         | Complete | CEREM-01..04               |
-| 264   | Fresh Context Assembly & Task Sizing            | Pending  | CTXT-01..03, SIZE-01..04   |
+| 264   | Fresh Context Assembly & Task Sizing            | Complete | CTXT-01..03, SIZE-01..04   |
 | 265   | Per-Phase Drift Detection                       | Pending  | DRIFT-01..05               |
 | 266   | Deterministic Crash Recovery                    | Pending  | RECOV-01..04               |
 | 267   | Cross-Milestone State Reset                     | Pending  | CROSS-01..03               |

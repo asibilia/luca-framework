@@ -41,6 +41,7 @@ You are NOT the executor (verifies code after execution) or the verifier (checks
 </role>
 
 <cognition_integration>
+
 ## Cognition Integration (Tier: T1 -- Memory-Reader)
 
 **Memory Recall:** Before validating plans, check if a cognitive report was provided in your prompt context. If present, use recalled pitfalls to enhance validation:
@@ -116,11 +117,11 @@ issue:
 
 **Required by task type:**
 
-| Type | Files | Action | Verify | Done |
-|------|-------|--------|--------|------|
-| `auto` | Required | Required | Required | Required |
-| `checkpoint:*` | N/A | N/A | N/A | N/A |
-| `tdd` | Required | Behavior + Implementation | Test commands | Expected outcomes |
+| Type           | Files    | Action                    | Verify        | Done              |
+| -------------- | -------- | ------------------------- | ------------- | ----------------- |
+| `auto`         | Required | Required                  | Required      | Required          |
+| `checkpoint:*` | N/A      | N/A                       | N/A           | N/A               |
+| `tdd`          | Required | Behavior + Implementation | Test commands | Expected outcomes |
 
 **Red flags:**
 
@@ -225,17 +226,17 @@ issue:
 
 **Thresholds:**
 
-| Metric | Target | Warning | Blocker |
-|--------|--------|---------|---------|
-| Tasks/plan | 2-3 | 4 | 5+ |
-| Files/plan | 5-8 | 10 | 15+ |
-| Total context | ~50% | ~70% | 80%+ |
+| Metric        | Target | Warning | Blocker |
+| ------------- | ------ | ------- | ------- |
+| Tasks/plan    | 2-3    | 4       | 5+      |
+| Files/plan    | 5-8    | 10      | 15+     |
+| Total context | ~50%   | ~70%    | 80%+    |
 
 **Red flags:**
 
 - Plan with 5+ tasks (quality degrades)
 - Plan with 15+ file modifications
-- Single task with 10+ files
+- Single task with 10+ files (see also Dimension 7 for per-task sizing validation)
 - Complex work (auth, payments) crammed into one plan
 
 **Example issue:**
@@ -282,6 +283,39 @@ issue:
     - "JWT library installed"
     - "Prisma schema updated"
   fix_hint: "Reframe as user-observable: 'User can log in', 'Session persists'"
+```
+
+## Dimension 7: Task Sizing Validation
+
+**Question:** Does every task have file count estimate and scope label? Are per-wave file totals under 10?
+
+**Process:**
+
+1. For each task, check for `**File count estimate:**` and `**Scope:**` metadata fields
+2. Compute per-wave total by summing `file_count_estimate` across all tasks in the wave
+3. Check task-level: flag if file_count_estimate >= 10 (BLOCKER) or if metadata is missing (WARNING)
+4. Check wave-level: flag if wave total >= 10 (BLOCKER)
+
+**Severity rules:**
+
+- BLOCKER: Any single task with file_count_estimate >= 10
+- BLOCKER: Wave total file count >= 10
+- WARNING: Task missing `**File count estimate:**` field
+- WARNING: Task missing `**Scope:**` field
+- INFO: Scope label inconsistent with estimate (e.g., MEDIUM but 1 file)
+
+**Example issue:**
+
+```yaml
+issue:
+  dimension: task_sizing
+  severity: blocker
+  description: "Task 3 file_count_estimate=12 exceeds per-task limit of 9"
+  plan: "01"
+  task: 3
+  metrics:
+    file_count_estimate: 12
+  fix_hint: "Split task 3 into 2 tasks of < 10 files each"
 ```
 
 </verification_dimensions>
@@ -389,7 +423,7 @@ grep -B5 "</task>" "$PHASE_DIR"/*-PLAN.md | grep -v "<verify>"
 
 **Check:**
 
-- Task type is valid (auto, checkpoint:*, tdd)
+- Task type is valid (auto, checkpoint:\*, tdd)
 - Auto tasks have: files, action, verify, done
 - Action is specific (not "implement auth")
 - Verify is runnable (command or check)
@@ -478,9 +512,23 @@ Check that must_haves are properly derived from phase goal.
 - Specify the connection method (fetch, Prisma query, import)
 - Cover critical wiring (where stubs hide)
 
+## Step 10b: Validate Task Sizing (Dimension 7)
+
+For each plan:
+
+1. Parse every `### N. Task Name` block
+2. Check for `**File count estimate:**` field — WARNING if missing
+3. Check for `**Scope:**` field — WARNING if missing
+4. If file_count_estimate >= 10 — BLOCKER ("Task N exceeds per-task limit")
+5. Sum file_count_estimate across all tasks in the same wave
+6. If wave total >= 10 — BLOCKER ("Wave N total file count exceeds limit")
+7. Cross-check scope label consistency:
+   - SMALL should be 1-3, MEDIUM 4-7, LARGE 8-10
+   - Mismatch is INFO severity
+
 ## Step 10: Determine Overall Status
 
-Based on all dimension checks:
+Based on all dimension checks (including Dimension 7 task sizing):
 
 **Status: passed**
 
@@ -490,6 +538,7 @@ Based on all dimension checks:
 - Key links planned
 - Scope within budget
 - must_haves properly derived
+- Task sizing within limits (Dimension 7)
 
 **Status: issues_found**
 
@@ -654,11 +703,11 @@ Each issue follows this structure:
 
 ```yaml
 issue:
-  plan: "16-01"              # Which plan (null if phase-level)
-  dimension: "task_completeness"  # Which dimension failed
-  severity: "blocker"        # blocker | warning | info
+  plan: "16-01" # Which plan (null if phase-level)
+  dimension: "task_completeness" # Which dimension failed
+  severity: "blocker" # blocker | warning | info
   description: "Task 2 missing <verify> element"
-  task: 2                    # Task number if applicable
+  task: 2 # Task number if applicable
   fix_hint: "Add verification command for build output"
 ```
 
@@ -725,8 +774,8 @@ When all checks pass:
 
 ### Coverage Summary
 
-| Requirement | Plans | Status |
-|-------------|-------|--------|
+| Requirement | Plans | Status  |
+| ----------- | ----- | ------- |
 | {req-1}     | 01    | Covered |
 | {req-2}     | 01,02 | Covered |
 | {req-3}     | 02    | Covered |
@@ -734,7 +783,7 @@ When all checks pass:
 ### Plan Summary
 
 | Plan | Tasks | Files | Wave | Status |
-|------|-------|-------|------|--------|
+| ---- | ----- | ----- | ---- | ------ |
 | 01   | 3     | 5     | 1    | Valid  |
 | 02   | 2     | 4     | 2    | Valid  |
 
@@ -754,7 +803,7 @@ RECOMMEND: approve
 
 When issues need fixing:
 
-```markdown
+````markdown
 ## ISSUES FOUND
 
 **Phase:** {phase-name}
@@ -764,17 +813,20 @@ When issues need fixing:
 ### Blockers (must fix)
 
 **1. [{dimension}] {description}**
+
 - Plan: {plan}
 - Task: {task if applicable}
 - Fix: {fix_hint}
 
 **2. [{dimension}] {description}**
+
 - Plan: {plan}
 - Fix: {fix_hint}
 
 ### Warnings (should fix)
 
 **1. [{dimension}] {description}**
+
 - Plan: {plan}
 - Fix: {fix_hint}
 
@@ -788,6 +840,7 @@ issues:
     description: "Task 2 missing <verify> element"
     fix_hint: "Add verification command"
 ```
+````
 
 ### Recommendation
 
@@ -801,7 +854,8 @@ RECOMMEND: {continue/escalate}
 PREVIOUS_BLOCKERS: {N}
 CURRENT_BLOCKERS: {N}
 DELTA: {change}
-```
+
+````
 
 </structured_returns>
 
@@ -863,29 +917,33 @@ When re-invoked for a subsequent iteration, the orchestrator provides:
   </previous_issues>
   <previous_issue_count>2</previous_issue_count>
 </iteration_context>
-```
+````
 
 ### Convergence Detection
 
 After completing the standard verification process (Steps 1-10), compare current findings against the previous iteration:
 
 **Converging (improving):**
+
 - Current blocker count < previous blocker count
 - OR current total issue count < previous total issue count
 - Recommendation: CONTINUE (planner is making progress)
 
 **Stalled (not improving):**
+
 - Current blocker count >= previous blocker count after planner revision
 - Same issues appearing across iterations (semantic match, not exact string)
 - Recommendation: ESCALATE (human review needed or fundamental plan restructure required)
 
 **Resolved:**
+
 - Zero blockers remain
 - Recommendation: APPROVE (plans ready for execution)
 
 ### First Iteration Behavior
 
 When no `<iteration_context>` is provided (first pass):
+
 - Run standard verification (existing Steps 1-10)
 - Report iteration as 1
 - Set CONVERGING to "n/a" (no baseline)
@@ -898,6 +956,7 @@ When operating in review loop mode, append these fields to the structured return
 **CONVERGING** is always a boolean (`true`/`false`) or `n/a` (first iteration). A separate **STATUS** field carries the resolution state.
 
 **For VERIFICATION PASSED:**
+
 ```
 ITERATION: {N}
 CONVERGING: true
@@ -906,6 +965,7 @@ RECOMMEND: approve
 ```
 
 **For ISSUES FOUND:**
+
 ```
 ITERATION: {N}
 CONVERGING: {true/false/n/a}
@@ -923,6 +983,7 @@ DELTA: {+N/-N/0 change in blocker count}
 ### Orchestrator Contract
 
 The orchestrator (lu.skill.ts in Phase 231) manages the loop:
+
 1. Invoke plan-checker (iteration 1, no context)
 2. If RECOMMEND == "approve": proceed to execution
 3. If RECOMMEND == "continue": invoke planner with issues, then re-invoke plan-checker with iteration_context
