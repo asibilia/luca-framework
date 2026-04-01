@@ -1,10 +1,10 @@
 {
-  "skill": "",
+  "skill": "pr-address",
   "stage": "EXECUTING",
-  "step": "fixing",
-  "wave_current": 7,
-  "wave_total": 8,
+  "step": "",
+  "wave_current": 0,
+  "wave_total": 0,
   "complexity": "",
   "detail": "",
-  "updated_at": "2026-04-01T17:04:37.094Z"
+  "updated_at": "2026-04-01T17:52:29.293Z"
 }
