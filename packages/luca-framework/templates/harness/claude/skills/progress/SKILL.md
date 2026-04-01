@@ -18,7 +18,7 @@ Read `.planning/config.json` and extract `muninn.vault` as REPO_VAULT. Set DEFAU
 \`\`\`bash
 REPO_VAULT=$(cat .planning/config.json 2>/dev/null | grep -o '"vault"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 if [ -z "$REPO_VAULT" ]; then
-  REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
+REPO_VAULT=${LUCA_MUNINN_VAULT:-default}
 fi
 DEFAULT_VAULT="default"
 \`\`\`
@@ -314,7 +314,7 @@ Ready to plan the next milestone.
 - [ ] What's next clearly explained
 - [ ] Smart routing: /phase-execute if plans exist, /phase-plan if not
 - [ ] User confirms before any action
-- [ ] Seamless handoff to appropriate vlcn command
+- [ ] Seamless handoff to appropriate luca command
 
 ## Next Steps
 

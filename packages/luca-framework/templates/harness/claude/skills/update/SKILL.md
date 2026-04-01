@@ -9,7 +9,7 @@ Update <%= branding.frameworkName %> to the latest version with changelog previe
 
 Update <%= branding.frameworkName %> to latest version with changelog preview.
 
-Better than raw `npx vulcan-cc` because it shows what's new.
+Better than raw `npx luca-framework` because it shows what's new.
 
 ## Process
 
@@ -32,32 +32,32 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 
    ```
    ## <%= branding.frameworkName %> Update Available
-   
+
    Current: v{current}
    Latest: v{latest}
-   
+
    ### What's New
-   
+
    **v{latest}**
    - {change 1}
    - {change 2}
-   
+
    **v{previous}**
    - {change 3}
-   
+
    ### Breaking Changes
-   
+
    ⚠ {breaking change if any}
-   
+
    ---
-   
+
    Proceed with update? (y/n)
    ```
 
 5. **If confirmed:**
 
    ```bash
-   npx vulcan-cc@latest
+   npx luca-framework@latest
    ```
 
 6. **Verify:**

@@ -9,7 +9,7 @@ Update Luca to the latest version with changelog preview and migration notes.
 
 Update Luca to latest version with changelog preview.
 
-Better than raw `npx vulcan-cc` because it shows what's new.
+Better than raw `npx luca-framework` because it shows what's new.
 
 ## Process
 
@@ -57,7 +57,7 @@ Better than raw `npx vulcan-cc` because it shows what's new.
 5. **If confirmed:**
 
    ```bash
-   npx vulcan-cc@latest
+   npx luca-framework@latest
    ```
 
 6. **Verify:**
