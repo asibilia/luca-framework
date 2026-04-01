@@ -8,7 +8,7 @@ Unified entry point and autonomous orchestrator for all <%= branding.frameworkNa
 
 The single entry point for all <%= branding.frameworkName %> workflows. This is a **flat Agent() orchestrator** — it spawns leaf-worker agents via Agent(), manages state, and controls the pipeline.
 
-**Arguments:** `<task-description | Jira-URL | [TICKET-ID]> [--complexity=LEVEL] [--force-complex] [--skip-memory] [--skip-branch] [--oversight=MODE] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask] [--v2] [--profile=budget|balanced|quality]`
+**Arguments:** `<task-description | Jira-URL | [TICKET-ID]> [--complexity=LEVEL] [--force-complex] [--skip-review] [--skip-uat] [--skip-branch] [--oversight=MODE] [--skip-backlog] [--max-phases=N] [--no-swarm] [--dry-run] [--ask] [--v2] [--profile=budget|balanced|quality]`
 
 ## Constraints
 
@@ -117,8 +117,13 @@ if [ "$LOCK_STATUS" = "live" ]; then
     exit 1
   fi
 elif [ "$LOCK_STATUS" = "stale" ]; then
-  echo "INFO: Stale pipeline lock detected. Clearing for recovery."
+  echo "INFO: Stale pipeline lock detected. Running deterministic recovery..."
+  RECOVERY_ACTION=$(bun packages/luca-framework/src/recovery/__helpers/recover.ts 2>/dev/null || echo '{"action":"fresh_start","briefing":"Recovery module unavailable, starting fresh"}')
+  RECOVERY_TYPE=$(echo "$RECOVERY_ACTION" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "fresh_start")
+  RECOVERY_BRIEFING=$(echo "$RECOVERY_ACTION" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.briefing)" 2>/dev/null || echo "")
+  echo "Recovery: $RECOVERY_TYPE — $RECOVERY_BRIEFING"
   luca-bridge lock-release 2>/dev/null || true
+  # Resume point determined by RECOVERY_TYPE: fresh_start | restart_step | resume_phase | advance_phase
 fi
 SESSION_ID=$(luca-bridge read-field --field=session_id 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value || '')" 2>/dev/null || echo "")
 if [ -z "$SESSION_ID" ]; then SESSION_ID=$(cat /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 12 2>/dev/null || echo "unknown"); fi
@@ -288,14 +293,50 @@ bun src/skills/__schemas/context-cli.ts write lu "{\"git_workflow\":{\"issue_num
 
 **4. Update state** with the branch and issue info for visibility.
 
-### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
+### Step 5: Ensure Active Milestone + Roadmap
 
-If --skip-backlog or config backlog_scan==false: skip.
+```bash
+luca-bridge lock-update --pipeline-step="milestone-ensure" --phase-step="" 2>/dev/null || true
+```
 
-Otherwise:
+#### Branch A (CREATE): No ROADMAP.md
+
+If `.planning/ROADMAP.md` does not exist:
+- Trigger the `/milestone-new` flow (questioning -> research -> requirements -> roadmap)
+- This inherits the existing milestone creation pipeline as-is
+- After completion, falls through to Branch B
+
+```bash
+if [ ! -f .planning/ROADMAP.md ]; then
+  echo "No ROADMAP.md found. Triggering milestone creation..."
+  # The /milestone-new flow handles: project context loading, goal gathering,
+  # version determination, domain research, requirements, roadmap creation,
+  # state reset, and memory seeding
+  Skill(skill: "milestone-new")
+fi
 ```
-Agent(name: "backlog", subagent_type: "<%= branding.commandPrefix %>-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: BACKLOG_PROMPT({...}))
+
+#### Branch B (SYNC): ROADMAP.md exists — backlog delta check
+
+If --skip-backlog or config backlog_scan==false: skip to next step.
+
+**5B-1. Deterministic backlog scan (no Agent() call):**
+```bash
+BACKLOG_JSON=$(bun src/backlog/__helpers/scan-pending.ts --todos=".planning/todos/pending/" 2>/dev/null || echo '[]')
+BACKLOG_COUNT=$(echo "$BACKLOG_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(Array.isArray(r) ? r.length : 0)" 2>/dev/null || echo "0")
+echo "Backlog: $BACKLOG_COUNT pending todos"
 ```
+
+**5B-2. WSJF scoring (if unscored todos exist):**
+```
+IF $BACKLOG_COUNT > 0:
+  Agent(name: "backlog", subagent_type: "<%= branding.commandPrefix %>-pm-planner", model: ORCHESTRATOR_MODEL,
+    prompt: BACKLOG_WSJF_PROMPT({todos: BACKLOG_JSON, roadmap: ROADMAP_CONTENT}))
+```
+
+**5B-3. Roadmap revision if unplanned todos exist:**
+If scored items don't fit existing phases, the backlog agent proposes new phases or phase modifications. Oversight-gated approval per the Oversight Gate Matrix.
+
 ```bash
 luca-bridge lock-update --pipeline-step="scanned" --phase-step="" 2>/dev/null || true
 ```
@@ -420,7 +461,7 @@ FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
 Agent(name: "research-graduate-{NN}", subagent_type: "<%= branding.commandPrefix %>-research-graduator", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_GRADUATION_PROMPT({phase: NN, ...}))
 ```
 
-#### 7e. Discussion (conditional: skip if --skip-discuss)
+#### 7e. Discussion (ALWAYS runs — Decision D2)
 
 ```bash
 luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="discuss" --phase-id=PHASE_NUMBER 2>/dev/null || true
@@ -428,10 +469,7 @@ luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="discuss" --ph
 ```
 Agent(name: "discuss-{NN}", subagent_type: "<%= branding.commandPrefix %>-discuss-researcher", model: ORCHESTRATOR_MODEL, prompt: phase discussion with premortem if --run-premortem)
 ```
-After discussion returns (or if skipped):
-```bash
-# If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
-```
+After discussion returns:
 
 #### 7f. Plan existence check (INLINE)
 If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
@@ -776,6 +814,29 @@ After ALL reviewers return, emit REVIEW_COMPLETE to advance the executing sub-st
 ```bash
 luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
 ```
+
+#### 7k-fix. Review fix loop (conditional: REVIEW_FIX_ITERATIONS > 0 AND CRITICAL findings)
+
+If ANY reviewer returned CRITICAL findings AND $REVIEW_FIX_ITERATIONS > 0:
+
+```bash
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="review-fix" --phase-id=PHASE_NUMBER 2>/dev/null || true
+```
+```
+FOR attempt = 1 to $REVIEW_FIX_ITERATIONS:
+  Agent(name: "review-fix-{NN}-{attempt}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL,
+    prompt: REVIEW_FIX_PROMPT({critical_findings, attempt, max_attempts: REVIEW_FIX_ITERATIONS}))
+
+  # Re-run ONLY the reviewers that flagged CRITICAL findings:
+  Agent(name: "review-recheck-{reviewer}-{NN}-{attempt}", subagent_type: <original reviewer type>, model: DEEP_MODEL,
+    prompt: CODE_REVIEW_PROMPT(<reviewer role>, {...}))
+
+  IF no CRITICAL findings remain: BREAK
+  IF same findings as previous attempt (no progress): BREAK
+END loop
+```
+
+If CRITICAL findings persist after loop exhaustion: PAUSE for user decision (safety gate — see Oversight Gate Matrix).
 
 #### 7l. Learning capture
 
