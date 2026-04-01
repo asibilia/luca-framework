@@ -1010,6 +1010,16 @@ Complete two incomplete migrations: Cursor platform removal (Phase 159 left adap
 - [x] update-planning-structure-rule — Remove BRAIN.md/MEMORY.md/WORKING.md from canonical allowlist in planning-structure rule and shadow-scanner schema. (@src/rules/general/planning-structure.rule.ts, @src/shared/\_\_schemas/shadow-scanner.schemas.ts)
 - [x] update-manifest — Update manifest system to track new user-level install locations. (@packages/luca-framework/src/commands/update.ts)
 
+### Phase 279: Fix Statusline Staleness During Long-Running Agents — COMPLETE
+
+**Goal:** Fix the statusline HUD showing "idle" during long-running executor agents by increasing the read TTL and adding explicit bus clearing on session end.
+**Complexity:** TRIVIAL
+**Verification:** Standard
+
+- [x] increase-read-ttl — In `src/shared/__helpers/status-bus.ts`, change `readStatusBus` default `maxAgeMs` from 300_000 (5 min) to 1_800_000 (30 min). Extract both TTL values as named constants (`WRITE_MERGE_TTL_MS`, `READ_STALENESS_TTL_MS`). Fix stale JSDoc that says `(default: 60000)`. (@src/shared/\_\_helpers/status-bus.ts)
+- [x] clear-bus-on-session-end — In `src/hooks/scripts/session-persist.ts`, import and call `clearStatusBus()` before exit to prevent stale data bleeding into the next session. (@src/hooks/scripts/session-persist.ts)
+- [x] update-comment — In `src/hooks/scripts/skill-status-exit.ts` line 11, change "5-minute" to "30-minute". (@src/hooks/scripts/skill-status-exit.ts)
+
 ---
 
 _Roadmap created: 2026-03-16 — v5.0.0 milestone started_
