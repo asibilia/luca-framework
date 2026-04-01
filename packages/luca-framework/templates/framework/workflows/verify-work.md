@@ -16,7 +16,7 @@ No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. D
 </philosophy>
 
 <template>
-@./.cursor/luca/templates/UAT.md
+@./~/.claude/luca/templates/UAT.md
 </template>
 
 <process>
@@ -372,7 +372,7 @@ Spawning parallel debug agents to investigate each issue.
 ```
 
 - Load diagnose-issues workflow
-- Follow @./.cursor/luca/workflows/diagnose-issues.md
+- Follow @./~/.claude/luca/workflows/diagnose-issues.md
 - Spawn parallel debug agents for each issue
 - Collect root causes
 - Update UAT.md with root causes

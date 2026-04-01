@@ -219,10 +219,10 @@ Execute each wave in sequence. Autonomous plans within a wave run in parallel.
    </objective>
 
    <execution_context>
-   @./.cursor/luca/workflows/execute-plan.md
-   @./.cursor/luca/templates/summary.md
-   @./.cursor/luca/references/checkpoints.md
-   @./.cursor/luca/references/tdd.md
+   @./~/.claude/luca/workflows/execute-plan.md
+   @./~/.claude/luca/templates/summary.md
+   @./~/.claude/luca/references/checkpoints.md
+   @./~/.claude/luca/references/tdd.md
    </execution_context>
 
    <context>

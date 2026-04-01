@@ -219,7 +219,7 @@ luca/
 
 **New Workflow:**
 - Implementation: `luca/workflows/{name}.md`
-- Usage: Reference from command with `@./.cursor/luca/workflows/{name}.md`
+- Usage: Reference from command with `@./~/.claude/luca/workflows/{name}.md`
 
 **New Reference Document:**
 - Implementation: `luca/references/{name}.md`

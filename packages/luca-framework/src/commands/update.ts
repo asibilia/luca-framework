@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import * as p from "@clack/prompts";
 import { chmod, cp, rm, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, dirname } from "pathe";
 import difference from "lodash/difference";
 import { logger } from "../utils/logger";
@@ -78,10 +79,13 @@ async function collectTemplateFiles(
  *
  * @property files - Map of relative path to processed content
  * @property sourceMap - Map of relative path to FileSource for manifest tracking
+ * @property userLevelFiles - Map of absolute path to content for user-level files
+ *   (e.g., ~/.claude/luca/) that are written outside the per-project manifest flow
  */
 interface FrameworkFilesResult {
   files: Map<string, string>;
   sourceMap: Map<string, FileSource>;
+  userLevelFiles: Map<string, string>;
 }
 
 /**
@@ -117,6 +121,10 @@ async function getNewFrameworkFiles(
   const templatesDir = getTemplatesDir();
   const newFiles = new Map<string, string>();
   const sourceMap = new Map<string, FileSource>();
+  // User-level files are keyed by their absolute path. They are written
+  // directly to ~/.claude/luca/ and are NOT tracked in the per-project
+  // manifest (they are identical across all repos on the same machine).
+  const userLevelFiles = new Map<string, string>();
   const context = {
     ...createBrandingContext(config.branding),
     config,
@@ -132,12 +140,36 @@ async function getNewFrameworkFiles(
     );
   }
 
-  await collectTemplateFiles(
-    join(templatesDir, "framework"),
-    newFiles,
-    context,
-    ".planning",
-  );
+  // Framework reference material (references/, workflows/, templates/) is
+  // routed to the user-level ~/.claude/luca/ directory so it does not
+  // pollute the consumer project's .planning/ directory. These files are
+  // identical across all repos and only need to live in one place per machine.
+  const userLucaDir = join(homedir(), ".claude", "luca");
+  const frameworkDir = join(templatesDir, "framework");
+  const frameworkRefSubdirs = ["references", "workflows", "templates"] as const;
+  for (const subdir of frameworkRefSubdirs) {
+    // Collect into a temporary map with relative paths, then rekey as absolute.
+    const tmpMap = new Map<string, string>();
+    await collectTemplateFiles(join(frameworkDir, subdir), tmpMap, context);
+    for (const [relPath, content] of tmpMap) {
+      userLevelFiles.set(join(userLucaDir, subdir, relPath), content);
+    }
+  }
+
+  // Any framework files outside the ref subdirs (e.g., index.json) stay
+  // in .planning as before — collect the framework root, then skip ref subdirs.
+  const frameworkRootFiles = new Map<string, string>();
+  await collectTemplateFiles(frameworkDir, frameworkRootFiles, context);
+  const refSubdirPrefixes = frameworkRefSubdirs.map((s) => s + "/");
+  for (const [relPath, content] of frameworkRootFiles) {
+    const isRefSubdir = refSubdirPrefixes.some((prefix) =>
+      relPath.startsWith(prefix),
+    );
+    if (!isRefSubdir) {
+      // Keep non-ref framework files under .planning
+      newFiles.set(join(".planning", relPath), content);
+    }
+  }
 
   // Collect per-harness templates (agents, rules, skills, hooks, settings)
   const harnesses: HarnessId[] = config.harnesses ?? ["claude"];
@@ -159,7 +191,7 @@ async function getNewFrameworkFiles(
     }
   }
 
-  return { files: newFiles, sourceMap };
+  return { files: newFiles, sourceMap, userLevelFiles };
 }
 
 /**
@@ -650,11 +682,27 @@ export const updateCommand = defineCommand({
       preset: (args.preset as PresetId) ?? undefined,
     };
 
-    const { files: newFiles, sourceMap } = await getNewFrameworkFiles(
-      config,
-      cwd,
-    );
+    const {
+      files: newFiles,
+      sourceMap,
+      userLevelFiles,
+    } = await getNewFrameworkFiles(config, cwd);
     spinner.stop(`Found ${newFiles.size} framework files`);
+
+    // Write user-level files (e.g., ~/.claude/luca/) directly, outside the
+    // per-project manifest/compare flow. These are identical across repos.
+    if (userLevelFiles.size > 0) {
+      spinner.start(
+        `Writing ${userLevelFiles.size} reference files to ~/.claude/luca/...`,
+      );
+      for (const [absolutePath, content] of userLevelFiles) {
+        await mkdir(dirname(absolutePath), { recursive: true });
+        await Bun.write(absolutePath, content);
+      }
+      spinner.stop(
+        `Wrote ${userLevelFiles.size} reference files to ~/.claude/luca/`,
+      );
+    }
 
     // Step 2.5: Detect harness additions and removals
     const oldHarnesses: HarnessId[] = manifest.harnesses ?? ["claude"];

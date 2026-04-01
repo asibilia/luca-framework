@@ -5,11 +5,14 @@
 # Type: Command hook (synchronous)
 # Timeout: 15 seconds
 #
-# Creates .planning/ directory with BRAIN.md, MEMORY.md, WORKING.md,
-# STATE.md, ROADMAP.md, and config.json on first session. Subsequent
-# sessions only create missing files (validate & repair mode).
+# Creates .planning/ directory with STATE.md, ROADMAP.md, and config.json
+# on first session. Subsequent sessions only create missing files
+# (validate & repair mode).
 #
-# BRAIN.md auto-detects project info from package.json and config files.
+# NOTE (v9.2.0): BRAIN.md, MEMORY.md, and WORKING.md creation removed.
+# Project identity and session memory are now stored in MuninnDB.
+# Run /seed-memory to bootstrap project identity into MuninnDB.
+#
 # config.json includes runtime detection (bun vs node).
 #
 # Uses `bun -e` for JSON parsing and file generation (project convention).
@@ -34,66 +37,10 @@ mkdir -p "$PLANNING_DIR"
 
 CREATED=""
 
-# Step 3a: Create MEMORY.md if missing
-if [ ! -f "$PLANNING_DIR/MEMORY.md" ]; then
-  cat > "$PLANNING_DIR/MEMORY.md" << 'MEMORY_EOF'
-# Luca Memory
-
-> Long-term learning storage. Updated after verified work.
-
-## Patterns
-
-<!-- Validated approaches that work -->
-
-## Decisions
-
-<!-- Past choices with rationale -->
-
-## Pitfalls
-
-<!-- Known issues to avoid -->
-
-## Preferences
-
-<!-- User and project preferences -->
-
----
-
-*Luca Memory initialized*
-MEMORY_EOF
-  CREATED="${CREATED}MEMORY.md "
-fi
-
-# Step 3b: Create WORKING.md if missing
-if [ ! -f "$PLANNING_DIR/WORKING.md" ]; then
-  cat > "$PLANNING_DIR/WORKING.md" << 'WORKING_EOF'
-# Luca Working Memory
-
-> Active session memory. Cleared after learning extraction.
-
-## Current Context
-
-- **Task:** None
-- **Started:** N/A
-
-## Findings
-
-<!-- Immediate discoveries -->
-
-## Hypotheses
-
-<!-- For debugging -->
-
-## Candidate Learnings
-
-<!-- To be verified before committing to MEMORY.md -->
-
----
-
-*Luca Working Memory initialized*
-WORKING_EOF
-  CREATED="${CREATED}WORKING.md "
-fi
+# Step 3a: MEMORY.md and WORKING.md creation removed.
+# These files are sunset in favor of MuninnDB (muninn_remember / muninn_recall).
+# Session context is now stored in MuninnDB under the repo vault.
+# See: https://github.com/alecsibilia/luca-framework/discussions
 
 # Step 3c: Create STATE.md if missing
 if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
@@ -292,114 +239,10 @@ else
   "
 fi
 
-# Step 6: Create BRAIN.md if missing (with auto-detection)
-if [ ! -f "$PLANNING_DIR/BRAIN.md" ]; then
-  HOOK_PLANNING_DIR="$PLANNING_DIR" HOOK_PROJECT_DIR="$PROJECT_DIR" bun -e "
-    const path = require('path');
-    const planningDir = process.env.HOOK_PLANNING_DIR;
-    const projectDir = process.env.HOOK_PROJECT_DIR;
-
-    // Defaults
-    let name = 'Project';
-    let description = '[What this project does -- customize this]';
-    let language = '[Primary language]';
-    let framework = '[Framework]';
-    let testing = '[Test framework]';
-    let buildTool = '[Build tool]';
-    let styling = '[Styling approach]';
-
-    try {
-      const pkgFile = Bun.file(path.join(projectDir, 'package.json'));
-      if (await pkgFile.exists()) {
-        const pkg = JSON.parse(await pkgFile.text());
-        if (pkg.name) name = pkg.name;
-        if (pkg.description) description = pkg.description;
-
-        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-
-        // Language detection
-        const hasTsConfig = await Bun.file(path.join(projectDir, 'tsconfig.json')).exists();
-        if (deps.typescript || hasTsConfig) language = 'TypeScript';
-        else language = 'JavaScript';
-
-        // Framework detection
-        if (deps.next) framework = 'Next.js';
-        else if (deps.react) framework = 'React';
-        else if (deps.vue) framework = 'Vue';
-        else if (deps['@angular/core']) framework = 'Angular';
-        else if (deps.svelte) framework = 'Svelte';
-        else if (deps.hono) framework = 'Hono';
-        else if (deps.express) framework = 'Express';
-        else if (deps.fastify) framework = 'Fastify';
-        else framework = 'Node.js';
-
-        // Test framework detection
-        if (deps.vitest) testing = 'Vitest';
-        else if (deps.jest) testing = 'Jest';
-        else if (deps['@testing-library/react'] || deps['@testing-library/vue']) testing = 'Testing Library';
-        else if (deps['bun-types']) testing = 'bun:test';
-        else testing = 'bun:test';
-
-        // Build tool detection
-        if (deps.vite) buildTool = 'Vite';
-        else if (deps.webpack) buildTool = 'Webpack';
-        else if (deps.esbuild) buildTool = 'esbuild';
-        else if (deps.turbo || deps.turbopack) buildTool = 'Turbopack';
-        else {
-          const hasBunfig = await Bun.file(path.join(projectDir, 'bunfig.toml')).exists();
-          buildTool = hasBunfig ? 'Bun' : '[Build tool]';
-        }
-
-        // Styling detection
-        if (deps.tailwindcss) styling = 'Tailwind CSS';
-        else if (deps['styled-components']) styling = 'styled-components';
-        else if (deps['@emotion/react'] || deps['@emotion/styled']) styling = 'Emotion';
-        else if (deps.sass || deps['node-sass']) styling = 'Sass/SCSS';
-        else styling = '[Styling approach]';
-      }
-    } catch {
-      // No package.json or parse error -- use defaults
-    }
-
-    const content = '# Luca Brain\n' +
-      '\n' +
-      '> Project identity and conventions. Loaded at session start.\n' +
-      '\n' +
-      '## Project Identity\n' +
-      '\n' +
-      '- **Name:** ' + name + '\n' +
-      '- **Domain:** ' + description + '\n' +
-      '- **Purpose:** [Why it exists -- customize this]\n' +
-      '\n' +
-      '## Stack\n' +
-      '\n' +
-      '- **Language:** ' + language + '\n' +
-      '- **Framework:** ' + framework + '\n' +
-      '- **Build:** ' + buildTool + '\n' +
-      '- **Testing:** ' + testing + '\n' +
-      '- **Styling:** ' + styling + '\n' +
-      '\n' +
-      '## Architecture Patterns\n' +
-      '\n' +
-      '[Describe key architectural decisions -- customize this]\n' +
-      '\n' +
-      '## Code Conventions\n' +
-      '\n' +
-      '[Add your code style preferences -- customize this]\n' +
-      '\n' +
-      '## Development Preferences\n' +
-      '\n' +
-      '- **Command Prefix:** /lu\n' +
-      '- **Workflow:** Luca spec-driven development\n' +
-      '\n' +
-      '---\n' +
-      '\n' +
-      '*Luca Brain initialized (auto-detected from project files)*\n';
-
-    await Bun.write(path.join(planningDir, 'BRAIN.md'), content);
-  "
-  CREATED="${CREATED}BRAIN.md "
-fi
+# Step 6: BRAIN.md creation removed.
+# Project identity is now stored in MuninnDB under brain:project-identity.
+# Use `muninn_remember_tree` to seed or `muninn_recall_tree` to recall.
+# Run /seed-memory to bootstrap project identity into MuninnDB.
 
 # Step 7: Write environment variables for the session (if supported)
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then

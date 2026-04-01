@@ -307,14 +307,13 @@ export const vaultInitCommand = defineCommand({
     logger.box(`
 Next steps:
 
-1. Review .planning/BRAIN.md and customize for your project
+1. Run /seed-memory to seed your project identity into MuninnDB
 2. Run /${config.branding.commandPrefix} to get started
 3. Use /help for command reference
 ${!vaultConfigured ? "4. Run `luca vault:init` interactively to set up MuninnDB vault" : ""}
 
 Files created:
 - .planning/config.json (workflow configuration)
-- .planning/BRAIN.md (project identity)
 - .planning/manifest.json (installation tracking)
 - ${harnessLine}
 ${vaultStatus}

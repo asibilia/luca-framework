@@ -19,8 +19,8 @@ Then verify each level against the actual codebase.
 </core_principle>
 
 <required_reading>
-@./.cursor/luca/references/verification-patterns.md
-@./.cursor/luca/templates/verification-report.md
+@./~/.claude/luca/references/verification-patterns.md
+@./~/.claude/luca/templates/verification-report.md
 </required_reading>
 
 <process>
@@ -592,7 +592,7 @@ Fill template sections:
 9. **Recommended Fix Plans:** If gaps_found
 10. **Verification Metadata:** Approach, timing, counts
 
-See ./.cursor/luca/templates/verification-report.md for complete template.
+See ./~/.claude/luca/templates/verification-report.md for complete template.
 </step>
 
 <step name="return_to_orchestrator">
