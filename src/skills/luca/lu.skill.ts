@@ -503,7 +503,7 @@ luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="execute" --ph
 Agent(name: "execute-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 \`\`\`
 
-#### 7i. Harness Fix Loop (INLINE, hoisted)
+#### 7i. Harness Fix Loop (INLINE, hoisted) — Convergence-Aware
 
 \`\`\`bash
 luca-bridge write-status --step="harness" --stage="VERIFYING" --phase=PHASE_NUMBER 2>/dev/null || true
@@ -518,11 +518,141 @@ luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="harness" --ph
 # HARNESS_FIX_ITERATIONS = applyLoopBudgetMultiplier(HARNESS_FIX_ITERATIONS, TOKEN_PROFILE)
 \`\`\`
 
+**Initialize convergence tracking state before harness fix loop:**
+\`\`\`bash
+# --- Convergence state init (STUCK-01) ---
+FINGERPRINT_LEDGER='{}'           # Record<string, number>: fingerprint -> iterations_seen
+PREVIOUS_CLASSIFIED='[]'          # ClassifiedError[] from the previous iteration
+HARNESS_ITER_HISTORY='[]'         # Lightweight iteration history for stall-debate
+CONSECUTIVE_STALE=0               # int: consecutive stale count
+CONTEXT_TIER="T1"                 # Current context tier, starts at T1 for harness loop
+PREV_CHECKPOINT_TAG=""            # Git tag of the previous checkpoint (for rollback)
+CURRENT_CLASSIFIED='[]'           # ClassifiedError[] from the current iteration
+\`\`\`
+
 \`\`\`
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
+
+  # --- STUCK-06: Create git checkpoint before each fix iteration ---
+  COMMIT_HASH=$(bun src/iteration/__helpers/checkpoint.ts commit-hash 2>/dev/null | \
+    bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.commit_hash)" 2>/dev/null || echo "unknown")
+  CHECKPOINT_TAG="iter/PHASE_NUMBER/harness/\${attempt}"
+  ITER_RECORD=$(bun -e "console.log(JSON.stringify({
+    tag: process.env.CHECKPOINT_TAG,
+    phase: PHASE_NUMBER,
+    loop: 'harness',
+    iteration: \${attempt},
+    error_count: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification !== 'permanent').length,
+    error_delta: 0,
+    error_fingerprints: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').map(e => e.fingerprint),
+    convergence_status: 'improved',
+    stale_count: parseInt(process.env.CONSECUTIVE_STALE || '0', 10),
+    permanent_errors: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification === 'permanent').map(e => e.fingerprint),
+    correctable_errors: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification === 'correctable').map(e => e.fingerprint),
+    transient_errors: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification === 'transient').map(e => e.fingerprint),
+    artifacts_delta: 0,
+    commit_hash: process.env.COMMIT_HASH || 'unknown',
+    agent_invoked: 'lu-executor',
+    duration_ms: 0,
+    timestamp: new Date().toISOString(),
+  }))" 2>/dev/null || echo '{}')
+  bun src/iteration/__helpers/checkpoint.ts create --record="$ITER_RECORD" 2>/dev/null || true
+  PREV_CHECKPOINT_TAG="$CHECKPOINT_TAG"
+
+  # --- Harness check ---
   Agent(name: "harness-{NN}", subagent_type: "lu-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({...}))
   IF PASSED: BREAK
-  Agent(name: "fix-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: HARNESS_FIX_PROMPT(errors, {...}))
+
+  # --- STUCK-01: Classify errors after failed harness check ---
+  CLASSIFY_RESULT=$(bun src/iteration/__helpers/classifier.ts \
+    --harness-result="$HARNESS_OUTPUT" \
+    --ledger="$FINGERPRINT_LEDGER" \
+    --promotion-threshold=3 2>/dev/null || echo '{"classified":[],"updated_ledger":{}}')
+  FINGERPRINT_LEDGER=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(JSON.stringify(r.updated_ledger))" 2>/dev/null || echo '{}')
+  CURRENT_CLASSIFIED=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(JSON.stringify(r.classified))" 2>/dev/null || echo '[]')
+
+  # --- STUCK-02: Compute convergence signals ---
+  ARTIFACT_DELTA=$(bun src/iteration/__helpers/checkpoint.ts artifact-delta \
+    --from-ref="$PREV_CHECKPOINT_TAG" 2>/dev/null | \
+    bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.artifact_delta ?? 0)" 2>/dev/null || echo "0")
+
+  CONVERGENCE_RESULT=$(bun src/iteration/__helpers/convergence.ts \
+    --current="$CURRENT_CLASSIFIED" \
+    --previous="$PREVIOUS_CLASSIFIED" \
+    --artifact-delta="$ARTIFACT_DELTA" \
+    --previous-stale-count="$CONSECUTIVE_STALE" \
+    --stale-threshold=2 2>/dev/null || echo '{"signals":{},"status":"improved","consecutive_stale":0,"should_halt":false}')
+  CONSECUTIVE_STALE=$(echo "$CONVERGENCE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.consecutive_stale)" 2>/dev/null || echo "0")
+
+  # --- STUCK-03: Stall-debate evaluator when convergence recommends halt ---
+  SHOULD_HALT=$(echo "$CONVERGENCE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.should_halt)" 2>/dev/null || echo "false")
+
+  if [ "$SHOULD_HALT" = "true" ]; then
+    BUDGET_REMAINING=$((HARNESS_FIX_ITERATIONS - attempt))
+
+    STALL_RESULT=$(bun -e "
+    import { evaluateStallDebate } from './src/iteration/__helpers/stall-debate';
+    const input = {
+      convergence_result: JSON.parse(process.env.CONVERGENCE_RESULT),
+      current_errors: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]'),
+      budget_remaining: parseInt(process.env.BUDGET_REMAINING || '0', 10),
+      loop_type: 'harness',
+      iteration_history: JSON.parse(process.env.HARNESS_ITER_HISTORY || '[]'),
+      context_tier: process.env.CONTEXT_TIER || 'T1',
+    };
+    console.log(JSON.stringify(evaluateStallDebate(input)));
+    " 2>/dev/null || echo '{"recommended_strategy":"halt","confidence":1.0,"reasoning":"stall-debate unavailable","strategy_params":{}}')
+
+    STALL_STRATEGY=$(echo "$STALL_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.recommended_strategy)" 2>/dev/null || echo "halt")
+
+    if [ "$STALL_STRATEGY" = "halt" ]; then
+      echo "INFO: Harness fix loop halting — convergence failure (strategy: halt)"
+      break
+    elif [ "$STALL_STRATEGY" = "retry_with_context_promotion" ]; then
+      CONTEXT_TIER=$(echo "$STALL_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.strategy_params?.target_tier ?? 'T2')" 2>/dev/null || echo "T2")
+      echo "INFO: Promoting context tier to $CONTEXT_TIER and retrying"
+    elif [ "$STALL_STRATEGY" = "retry_with_error_focus" ]; then
+      FOCUS_SOURCES=$(echo "$STALL_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(JSON.stringify(r.strategy_params?.focus_sources ?? []))" 2>/dev/null || echo "[]")
+      echo "INFO: Retrying with error focus on sources: $FOCUS_SOURCES"
+    elif [ "$STALL_STRATEGY" = "retry_with_rollback" ] && [ -n "$PREV_CHECKPOINT_TAG" ]; then
+      echo "INFO: Rolling back to checkpoint $PREV_CHECKPOINT_TAG"
+      ROLLBACK_RESULT=$(bun src/iteration/__helpers/checkpoint.ts rollback \
+        --tag="$PREV_CHECKPOINT_TAG" 2>/dev/null || echo '{"success":false}')
+      ROLLBACK_OK=$(echo "$ROLLBACK_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.success)" 2>/dev/null || echo "false")
+      if [ "$ROLLBACK_OK" = "true" ]; then
+        echo "INFO: Rollback succeeded — continuing with next iteration"
+        FINGERPRINT_LEDGER='{}'
+        CONSECUTIVE_STALE=0
+      else
+        echo "WARN: Rollback failed — halting loop"
+        break
+      fi
+    fi
+  fi
+
+  # --- STUCK-04: Pass classified errors and convergence context to fix agent ---
+  Agent(name: "fix-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: HARNESS_FIX_PROMPT(errors, {...}, CURRENT_CLASSIFIED, {consecutive_stale: CONSECUTIVE_STALE, strategy_hint: STALL_STRATEGY}))
+
+  # --- STUCK-01/02: Rotate previous classified and append iteration history ---
+  PREVIOUS_CLASSIFIED="$CURRENT_CLASSIFIED"
+
+  HARNESS_ITER_HISTORY=$(bun -e "
+  const hist = JSON.parse(process.env.HARNESS_ITER_HISTORY || '[]');
+  const convResult = JSON.parse(process.env.CONVERGENCE_RESULT || '{}');
+  hist.push({
+    iteration: \${attempt},
+    error_count: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification !== 'permanent').length,
+    convergence_status: convResult.status ?? 'improved',
+    stale_count: convResult.consecutive_stale ?? 0,
+  });
+  console.log(JSON.stringify(hist));
+  " 2>/dev/null || echo "$HARNESS_ITER_HISTORY")
+\`\`\`
+
+**After harness loop completes successfully (all checks passed), prune checkpoints:**
+\`\`\`bash
+# --- STUCK-06: Prune phase checkpoints after success ---
+bun src/iteration/__helpers/checkpoint.ts prune --phase=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
 
 **After harness loop, emit result:**
@@ -531,7 +661,7 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
 luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_failed","total_errors":ERROR_COUNT}' 2>/dev/null || true
 \`\`\`
 
-#### 7j. Goal-backward verification
+#### 7j. Goal-backward verification — Convergence-Aware
 
 \`\`\`bash
 # Loop budget multiplier: apply token profile to VERIFY_FIX_ITERATIONS and PLAN_VERIFICATION_ITERATIONS
@@ -542,11 +672,61 @@ luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_fai
 # PLAN_VERIFICATION_ITERATIONS = applyLoopBudgetMultiplier(PLAN_VERIFICATION_ITERATIONS, TOKEN_PROFILE)
 \`\`\`
 
+**Initialize outer loop convergence tracking state (STUCK-05):**
+\`\`\`bash
+# --- STUCK-05: Outer verification loop stall detection ---
+VERIFY_PREV_FAILING_IDS='[]'      # string[]: criterion_ids that failed last iteration
+VERIFY_CONSECUTIVE_STALE=0        # int: consecutive stale iterations
+\`\`\`
+
 \`\`\`bash
 luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="verify" --phase-id=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
+
 \`\`\`
-Agent(name: "verify-{NN}", subagent_type: "lu-verifier", model: DEEP_MODEL, prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
+FOR verify_attempt = 1 to VERIFY_FIX_ITERATIONS:
+  Agent(name: "verify-{NN}", subagent_type: "lu-verifier", model: DEEP_MODEL, prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
+  IF VERDICT == PASSED: BREAK
+
+  # --- STUCK-05: Read failing criteria and check for stall ---
+  CURRENT_FAILING=$(bun -e "
+  const glob = new Bun.Glob('.planning/phases/PHASE_NUMBER-*/verification-result.json');
+  let failing = [];
+  for await (const f of glob.scan('.')) {
+    const data = await Bun.file(f).json().catch(() => null);
+    if (data?.criteria) {
+      failing = data.criteria.filter(c => !c.met).map(c => c.criterion_id);
+    }
+  }
+  console.log(JSON.stringify(failing));
+  " 2>/dev/null || echo '[]')
+
+  # Compute Jaccard overlap between current and previous failing sets
+  VERIFY_OVERLAP=$(bun -e "
+  const current = new Set(JSON.parse(process.env.CURRENT_FAILING || '[]'));
+  const previous = new Set(JSON.parse(process.env.VERIFY_PREV_FAILING_IDS || '[]'));
+  if (current.size === 0 && previous.size === 0) { console.log('0'); process.exit(0); }
+  let intersection = 0;
+  for (const id of current) { if (previous.has(id)) intersection++; }
+  const union = new Set([...current, ...previous]).size;
+  console.log((union > 0 ? intersection / union : 0).toFixed(4));
+  " 2>/dev/null || echo "0")
+
+  # Determine if outer loop is stalled (overlap >= 0.80)
+  if bun -e "process.exit(parseFloat(process.env.VERIFY_OVERLAP || '0') >= 0.8 ? 0 : 1)" 2>/dev/null; then
+    VERIFY_CONSECUTIVE_STALE=$((VERIFY_CONSECUTIVE_STALE + 1))
+    if [ "$VERIFY_CONSECUTIVE_STALE" -ge 2 ]; then
+      echo "WARN: Outer verification loop stalled — same criteria failing for 2+ consecutive iterations (overlap: $VERIFY_OVERLAP)"
+      echo "INFO: Halting verify fix loop to avoid budget waste"
+      break
+    fi
+  else
+    VERIFY_CONSECUTIVE_STALE=0
+  fi
+  VERIFY_PREV_FAILING_IDS="$CURRENT_FAILING"
+
+  # Spawn fix agent for verification gaps
+  Agent(name: "fix-verify-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: VERIFY_FIX_PROMPT(gaps, {...}))
 \`\`\`
 
 #### 7k. Code review

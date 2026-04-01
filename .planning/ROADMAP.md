@@ -490,7 +490,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. PLAN.md files contain criterion IDs (SC-1, SC-2, ...) that persist through planning, execution, and verification, enabling the orchestrator to track which specific criteria keep failing across implementation iterations
 3. At milestone boundary, running the deterministic milestone validator aggregates all `verification-result.json` files and produces a milestone-level verdict without any LLM call
 
-### Phase 262: Convergence-Aware Stuck Detection
+### Phase 262: Convergence-Aware Stuck Detection — COMPLETE
 
 **Goal:** The harness fix loop and outer implementation loop detect stall patterns (oscillation, permanent errors, semantic drift) and choose intelligent exit strategies instead of exhausting iteration budgets on unresolvable errors.
 **Complexity:** COMPLEX
@@ -598,7 +598,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 259   | Pipeline Lock File                              | Complete | LOCK-01..03                |
 | 260   | Token Profiles                                  | Complete | PROF-01..06                |
 | 261   | Structured Verification                         | Complete | VERIF-01..04               |
-| 262   | Convergence-Aware Stuck Detection               | Pending  | STUCK-01..06               |
+| 262   | Convergence-Aware Stuck Detection               | Complete | STUCK-01..06               |
 | 263   | Ceremony Reduction & Per-Wave Execution         | Pending  | CEREM-01..04               |
 | 264   | Fresh Context Assembly & Task Sizing            | Pending  | CTXT-01..03, SIZE-01..04   |
 | 265   | Per-Phase Drift Detection                       | Pending  | DRIFT-01..05               |
