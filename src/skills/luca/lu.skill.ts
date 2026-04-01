@@ -604,6 +604,9 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   COMMIT_HASH=$(bun src/iteration/__helpers/checkpoint.ts commit-hash 2>/dev/null | \
     bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.commit_hash)" 2>/dev/null || echo "unknown")
   CHECKPOINT_TAG="iter/PHASE_NUMBER/harness/\${attempt}"
+  STALL_STRATEGY=""  # F3-fix: Initialize before conditional assignment
+  # F2-fix: Export vars so child bun -e processes can read them
+  export CHECKPOINT_TAG CURRENT_CLASSIFIED CONSECUTIVE_STALE COMMIT_HASH CONVERGENCE_RESULT BUDGET_REMAINING HARNESS_ITER_HISTORY CONTEXT_TIER
   ITER_RECORD=$(bun -e "console.log(JSON.stringify({
     tag: process.env.CHECKPOINT_TAG,
     phase: PHASE_NUMBER,
@@ -612,7 +615,7 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
     error_count: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification !== 'permanent').length,
     error_delta: 0,
     error_fingerprints: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').map(e => e.fingerprint),
-    convergence_status: 'improved',
+    convergence_status: 'unknown',  // F4-fix: pre-fix snapshot, actual status computed after classification
     stale_count: parseInt(process.env.CONSECUTIVE_STALE || '0', 10),
     permanent_errors: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification === 'permanent').map(e => e.fingerprint),
     correctable_errors: JSON.parse(process.env.CURRENT_CLASSIFIED || '[]').filter(e => e.classification === 'correctable').map(e => e.fingerprint),
@@ -631,6 +634,9 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
   # HARNESS_CONTEXT=$(assembleAndSerialize("lu-verifier-fast", COMPLEXITY, AVAILABLE_DOCS, 2000).payload)
   Agent(name: "harness-{NN}", subagent_type: "lu-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({..., inlinedContext: HARNESS_CONTEXT}))
   IF PASSED: BREAK
+
+  # F1-fix: Read harness output from the file the agent writes
+  HARNESS_OUTPUT=$(cat .planning/harness-result.json 2>/dev/null || echo '{"checks":[]}')
 
   # --- STUCK-01: Classify errors after failed harness check ---
   CLASSIFY_RESULT=$(bun src/iteration/__helpers/classifier.ts \
@@ -770,6 +776,8 @@ FOR verify_attempt = 1 to VERIFY_FIX_ITERATIONS:
   console.log(JSON.stringify(failing));
   " 2>/dev/null || echo '[]')
 
+  # F2-fix: Export vars for child bun -e processes
+  export CURRENT_FAILING VERIFY_PREV_FAILING_IDS
   # Compute Jaccard overlap between current and previous failing sets
   VERIFY_OVERLAP=$(bun -e "
   const current = new Set(JSON.parse(process.env.CURRENT_FAILING || '[]'));
