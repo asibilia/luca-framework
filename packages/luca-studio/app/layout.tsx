@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { LayoutShell } from "~/components/layout/layout-shell";
 import { Header } from "~/components/layout/header";
 import { NavContent } from "~/components/layout/nav-content";
+import { VaultInitializer } from "~/components/vault-initializer";
 
 import { Providers } from "./providers";
 
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="overflow-hidden">
         <Providers>
+          <VaultInitializer />
           <LayoutShell navChildren={<NavContent />}>
             <Header />
             <div className="flex flex-1 flex-col overflow-auto">
