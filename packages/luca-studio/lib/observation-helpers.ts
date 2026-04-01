@@ -19,7 +19,7 @@ import { parseZoneContent } from "~/lib/muninn-helpers";
  * Used by deriveHitRateFromObservations and derivePrecisionFromObservations
  * to count positive signal observations.
  */
-export const GOOD_ZONES = new Set(["peak", "good"]);
+export const GOOD_ZONES: ReadonlySet<string> = new Set(["peak", "good"]);
 
 // ---------------------------------------------------------------------------
 // Observation-derived metric helpers
@@ -48,22 +48,27 @@ export function deriveHitRateFromObservations(
   if (observations.length === 0) return null;
 
   let hits = 0;
+  let parseable = 0;
   for (const obs of observations) {
     const zone = parseZoneContent(obs.content).zone ?? null;
-    if (zone !== null && GOOD_ZONES.has(zone.toLowerCase())) {
-      hits++;
+    if (zone !== null) {
+      parseable++;
+      if (GOOD_ZONES.has(zone.toLowerCase())) {
+        hits++;
+      }
     }
   }
 
-  return hits / observations.length;
+  if (parseable === 0) return null;
+  return hits / parseable;
 }
 
 /**
  * Derive a recall precision approximation from observation engrams.
  *
- * Calculates how consistently observations land in the same zone tier.
- * If most observations are in peak/good zones, precision is high (0.8+).
- * Mixed zones indicate lower precision.
+ * Computes the ratio of observations in "peak"/"good" zones and scales
+ * it into a 0.4–1.0 range. Higher good-zone ratios produce higher
+ * precision scores. Only considers observations with parseable zone data.
  *
  * Returns null when there are no observations to derive from.
  *

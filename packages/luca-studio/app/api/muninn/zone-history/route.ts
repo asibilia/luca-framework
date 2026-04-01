@@ -50,17 +50,19 @@ export async function GET(request: Request) {
         "asc",
       );
 
+      // Filter out entries without parseable zone data (e.g. session:observation-work
+      // text summaries that produce zone: "unknown") before building the response.
+      const withZones = sorted
+        .map((e) => {
+          const parsed = parseZoneContent(String(e.content ?? ""));
+          return { engram: e, parsed };
+        })
+        .filter(({ parsed }) => parsed.zone != null);
+
       // Transform engram content into zone history entries
-      const entries = sorted.slice(0, limit).map((e) => {
-        // Parse structured zone data from engram content
-        const parsed = parseZoneContent(String(e.content ?? ""));
+      const entries = withZones.slice(0, limit).map(({ engram: e, parsed }) => {
         return {
-          zone:
-            parsed.zone ??
-            (typeof e.concept === "string"
-              ? e.concept.split(":").pop()
-              : undefined) ??
-            "unknown",
+          zone: parsed.zone as string,
           usage_percent: parsed.usage_percent,
           checked_at:
             parsed.checked_at ??

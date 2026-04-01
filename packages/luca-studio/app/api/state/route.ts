@@ -28,13 +28,16 @@ const execAsync = promisify(execFile);
  * Silently no-ops if the bridge is unavailable or returns invalid output.
  *
  * @param parsed - The raw parsed state.json object (mutated in place)
+ * @param root - The project root directory, used as cwd for luca-bridge
  */
 async function enrichWithBridge(
   parsed: Record<string, unknown>,
+  root: string,
 ): Promise<void> {
   try {
     const { stdout } = await execAsync("luca-bridge", ["read-status"], {
       timeout: 5000,
+      cwd: root,
     });
     const bridge = safeJsonParse(stdout.trim(), null) as Record<
       string,
@@ -77,7 +80,7 @@ export async function GET() {
     const parsed = safeJsonParse(raw, {}) as Record<string, unknown>;
 
     // Enrich with bridge-derived fields (current_phase, current_milestone)
-    await enrichWithBridge(parsed);
+    await enrichWithBridge(parsed, root);
 
     return NextResponse.json(parsed);
   } catch {

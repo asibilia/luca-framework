@@ -81,7 +81,7 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
   if (eventType === "HARNESS_COMPLETE") {
     const status = get(eventData, "status", "") as string;
     if (status) {
-      const errorCount = get(eventData, "error_count", null) as number | null;
+      const errorCount = get(eventData, "total_errors", null) as number | null;
       return errorCount != null && errorCount > 0
         ? `Harness ${status} (${errorCount} errors)`
         : `Harness ${status}`;
