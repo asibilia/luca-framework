@@ -476,7 +476,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. Running `/lu --profile=quality` promotes all agent model tiers by one level and doubles loop iteration budgets, and v2 research runs the full 4-researcher pipeline with review loop and graduation
 3. Running `/lu` without `--profile` uses `balanced` which matches current behavior exactly (zero regression), and the active profile is visible at session start and persisted in state.json
 
-### Phase 261: Structured Verification
+### Phase 261: Structured Verification — COMPLETE
 
 **Goal:** Verification produces machine-readable JSON that the orchestrator and milestone validation can consume without prose parsing, and success criteria have stable IDs that enable convergence tracking across iterations.
 **Complexity:** MODERATE
@@ -597,7 +597,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 258   | Structured State & Deterministic Classification | Complete | FOUND-01..05, CLASS-01..05 |
 | 259   | Pipeline Lock File                              | Complete | LOCK-01..03                |
 | 260   | Token Profiles                                  | Complete | PROF-01..06                |
-| 261   | Structured Verification                         | Pending  | VERIF-01..04               |
+| 261   | Structured Verification                         | Complete | VERIF-01..04               |
 | 262   | Convergence-Aware Stuck Detection               | Pending  | STUCK-01..06               |
 | 263   | Ceremony Reduction & Per-Wave Execution         | Pending  | CEREM-01..04               |
 | 264   | Fresh Context Assembly & Task Sizing            | Pending  | CTXT-01..03, SIZE-01..04   |

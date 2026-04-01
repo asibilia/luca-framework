@@ -523,6 +523,10 @@ ${outputContract("FIXED_COUNT: {N}\nREMAINING_ERRORS: {N}")}
 
 /**
  * Prompt for goal-backward verification: verify phase goal was achieved.
+ *
+ * Instructs lu-verifier to write both a machine-readable
+ * `verification-result.json` (for orchestrator/milestone validator)
+ * and a human-readable VERIFICATION.md to the phase directory.
  */
 export const GOAL_VERIFY_PROMPT = (p: AgentPromptParams): string => `
 <role>
@@ -534,14 +538,31 @@ ${memoryProtocol(p.vault, "warm", `phase ${p.phase} verification`)}
 
 <task>
 1. Read the phase goal from .planning/ROADMAP.md (Phase ${p.phase})
-2. Read the PLAN.md success criteria
+2. Read the PLAN.md success criteria (each criterion has a stable ID like SC-1, SC-2, ...)
 3. Read the execution summaries from SUMMARY.md
 4. For each success criterion: verify it was met by checking the actual code/files
-5. Write VERIFICATION.md to the phase directory with findings
-6. Determine overall verdict: PASSED (all criteria met) or ISSUES (gaps found)
+5. For each success criterion, record:
+   - criterion_id: the SC-N identifier from PLAN.md
+   - description: the criterion text
+   - met: true if the criterion is satisfied, false otherwise
+   - evidence: file path or inline observation proving the status
+   - gap: explanation of what is missing (only when met === false)
+   - blocking: true if this unmet criterion blocks milestone completion
+6. Write \`verification-result.json\` to the phase directory using this shape (all fields snake_case):
+   {
+     "phase": "${p.phase}",
+     "verdict": "PASSED" or "ISSUES",
+     "criteria_met": <count of met criteria>,
+     "criteria_total": <total criteria>,
+     "criteria": [{ "criterion_id", "description", "met", "evidence", "gap", "blocking" }, ...],
+     "blocking_gaps": [<criterion_ids where blocking === true and met === false>],
+     "timestamp": "<ISO-8601>"
+   }
+7. Also write VERIFICATION.md to the phase directory (human-readable summary, preserve existing format)
+8. Determine overall verdict: PASSED (all criteria met) or ISSUES (any gap found)
 </task>
 
-${outputContract("VERDICT: PASSED/ISSUES\nCRITERIA_MET: {N}/{total}\nVERIFICATION_PATH: {path to VERIFICATION.md}")}
+${outputContract("VERDICT: PASSED/ISSUES\nCRITERIA_MET: {N}/{total}\nVERIFICATION_PATH: {path to VERIFICATION.md}\nVERIFICATION_JSON_PATH: {path to verification-result.json}")}
 `;
 
 /**
