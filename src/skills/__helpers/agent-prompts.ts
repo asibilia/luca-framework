@@ -29,6 +29,12 @@ export interface AgentPromptParams {
   vault: string;
   currentState: string;
   recallDepth?: number | null;
+  /** Wave number for per-wave execution dispatch (CEREM-04) */
+  wave?: number;
+  /** Pre-assembled wave context: the relevant wave section from PLAN.md */
+  waveContext?: string;
+  /** Task ID to start from (used by OVERFLOW protocol continuation) */
+  startFromTask?: string;
 }
 
 // ─── Shared Blocks ────────────────────────────────────────────────────────
@@ -474,6 +480,70 @@ ${outputContract("TASKS_COMPLETED: {N}\nCOMMIT_HASHES: {comma-separated}\nDEVIAT
 `;
 
 /**
+ * Prompt for single-wave execution dispatch with fresh context assembly.
+ *
+ * Scopes the executor to only the tasks in the specified wave.
+ * Supports OVERFLOW protocol: if context exhaustion is detected mid-wave,
+ * the executor outputs `OVERFLOW:{task-id}` and the orchestrator spawns
+ * a fresh Agent() for remaining tasks.
+ *
+ * @param p - Agent prompt params with `wave`, `waveContext`, and optional `startFromTask`
+ * @returns Formatted prompt string for single-wave execution
+ *
+ * @example
+ * ```typescript
+ * const prompt = EXECUTE_WAVE_PROMPT({
+ *   phase: '263', wave: 1, waveContext: '...plan section...',
+ *   complexity: 'COMPLEX', vault: 'luca-framework', currentState: 'executing'
+ * })
+ * ```
+ */
+export const EXECUTE_WAVE_PROMPT = (p: AgentPromptParams): string => {
+  const waveNum = p.wave ?? 1;
+  const waveCtx = p.waveContext
+    ? sanitizeForTemplate(p.waveContext).slice(0, 6000)
+    : "";
+  const startFrom = p.startFromTask
+    ? `\n**Resume from task:** ${p.startFromTask} — skip all tasks before this one (already completed by a previous agent).`
+    : "";
+
+  return `
+<role>
+You are lu-executor. Execute ONLY wave ${waveNum} of phase ${p.phase}.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "none", `phase ${p.phase} wave ${waveNum} execution`)}
+
+<wave_context>
+${waveCtx || `Read .planning/phases/${p.phase}-*/*-PLAN.md and execute only tasks in wave ${waveNum}.`}
+</wave_context>
+${startFrom}
+
+<task>
+1. Execute ONLY the tasks belonging to wave ${waveNum} in the plan
+2. For each task: read the instructions, implement changes, commit atomically
+3. Track: tasks completed, files modified, commit hashes, any deviations from plan
+4. Run bunx --bun tsc --noEmit after each commit to catch type errors early
+5. If you detect context exhaustion (approaching token budget limit), STOP immediately and output:
+   OVERFLOW:{task-id}
+   where {task-id} is the ID of the first incomplete task. The orchestrator will spawn a fresh agent to continue.
+</task>
+
+<overflow_protocol>
+If at any point during execution you determine that your remaining context budget is insufficient
+to complete the current or next task reliably, you MUST:
+1. Commit any completed work
+2. Output OVERFLOW:{first-incomplete-task-id} as the LAST line of your response
+3. Do NOT attempt to rush through remaining tasks with degraded quality
+The orchestrator will spawn a fresh agent with full context to continue from that task.
+</overflow_protocol>
+
+${outputContract("TASKS_COMPLETED: {N}\nCOMMIT_HASHES: {comma-separated}\nDEVIATIONS: {none or description}\nOVERFLOW: {task-id or none}")}
+`;
+};
+
+/**
  * Prompt for harness check: run type-check and report errors.
  */
 export const HARNESS_CHECK_PROMPT = (p: AgentPromptParams): string => `
@@ -705,6 +775,10 @@ ${outputContract("PATTERNS_PROMOTED: {N}\nPITFALLS_PROMOTED: {N}\nDECISIONS_RECO
 
 /**
  * Prompt for process data collection: compute process metrics.
+ *
+ * @deprecated Replaced by deterministic CLI module at `src/process-data/compute.ts`.
+ * The lu.skill.ts Step 7m now invokes `bun src/process-data/compute.ts --context=.planning/state.json`
+ * instead of spawning an Agent() with this prompt. Kept for backward compatibility.
  */
 export const PROCESS_DATA_PROMPT = (p: AgentPromptParams): string => `
 <role>

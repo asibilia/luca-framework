@@ -494,13 +494,61 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
   Agent(name: "plan-revise-{NN}-{iteration}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: revise PLAN.md based on issues)
 \`\`\`
 
-#### 7h. Execution
+#### 7h. Execution (per-wave dispatch loop)
 
 \`\`\`bash
 luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="execute" --phase-id=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
+
+**Per-wave dispatch loop** — one Agent() per wave, with fresh context per wave:
+\`\`\`bash
+# Parse waves from PLAN.md frontmatter (deterministic, no LLM)
+WAVES=$(bun -e "
+const glob = new Bun.Glob('.planning/phases/{NN}-*/*-PLAN.md');
+const waves = new Set();
+for await (const f of glob.scan('.')) {
+  const text = await Bun.file(f).text();
+  const m = text.match(/^wave:\\s*(\\d+)/m);
+  if (m) waves.add(parseInt(m[1]));
+}
+console.log(JSON.stringify([...waves].sort((a,b) => a-b)));
+" 2>/dev/null || echo '[1]')
 \`\`\`
-Agent(name: "execute-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
+
+\`\`\`
+FOR each WAVE_NUM in $WAVES (serial):
+  # Assemble wave context: read only the wave's task section from PLAN.md (cap ~2K tokens)
+  WAVE_SECTION=$(bun -e "
+  const glob = new Bun.Glob('.planning/phases/{NN}-*/*-PLAN.md');
+  for await (const f of glob.scan('.')) {
+    const text = await Bun.file(f).text();
+    const m = text.match(/^wave:\\s*\${WAVE_NUM}/m);
+    if (m) {
+      // Extract up to 1500 chars (~2K tokens) of the plan content
+      console.log(text.slice(0, 1500));
+      break;
+    }
+  }
+  " 2>/dev/null || echo "")
+
+  WAVE_RESULT=$(Agent(
+    name: "execute-{NN}-w{WAVE_NUM}",
+    subagent_type: "lu-executor",
+    model: ORCHESTRATOR_MODEL,
+    prompt: EXECUTE_WAVE_PROMPT({phase: NN, wave: WAVE_NUM, waveContext: WAVE_SECTION, ...})
+  ))
+
+  # OVERFLOW protocol: if agent output contains OVERFLOW:{task-id}, spawn fresh agent for remainder
+  if echo "$WAVE_RESULT" | grep -q "OVERFLOW:"; then
+    OVERFLOW_TASK=$(echo "$WAVE_RESULT" | grep -o "OVERFLOW:[^ ]*" | head -1 | cut -d: -f2)
+    echo "INFO: Wave $WAVE_NUM overflow at task $OVERFLOW_TASK — spawning fresh agent for remainder"
+    Agent(
+      name: "execute-{NN}-w{WAVE_NUM}-overflow",
+      subagent_type: "lu-executor",
+      model: ORCHESTRATOR_MODEL,
+      prompt: EXECUTE_WAVE_PROMPT({phase: NN, wave: WAVE_NUM, startFromTask: OVERFLOW_TASK, ...})
+    )
+  fi
 \`\`\`
 
 #### 7i. Harness Fix Loop (INLINE, hoisted) — Convergence-Aware
@@ -755,10 +803,13 @@ Agent(name: "learn-{NN}", subagent_type: "lu-learner", model: FAST_PROMOTED_MODE
 \`\`\`
 
 #### 7m. Process data (conditional: --run-process-data)
-\`\`\`
-Agent(name: "process-data-{NN}", subagent_type: "lu-process-data", model: FAST_PROMOTED_MODEL, prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
-\`\`\`
+
+**Deterministic CLI invocation (zero LLM tokens):**
 \`\`\`bash
+# Replaced: Agent(name: "process-data-{NN}", subagent_type: "lu-process-data", model: FAST_PROMOTED_MODEL, prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
+# Now uses deterministic CLI module — see src/process-data/compute.ts
+PROCESS_DATA_OUTPUT=$(bun src/process-data/compute.ts --context=.planning/state.json 2>/dev/null || echo '{}')
+echo "Process data: $PROCESS_DATA_OUTPUT"
 luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 \`\`\`
 

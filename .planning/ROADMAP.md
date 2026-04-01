@@ -505,7 +505,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 3. When the outer implementation loop detects the same verification criteria failing across 2 iterations (80%+ overlap), it invokes stuck detection with verification context and can park the phase with a diagnostic summary
 4. Git checkpoint tags are created before each harness fix iteration, and the rollback strategy restores to the checkpoint when selected
 
-### Phase 263: Ceremony Reduction & Per-Wave Execution
+### Phase 263: Ceremony Reduction & Per-Wave Execution — COMPLETE
 
 **Goal:** Process data and configure run as mechanical TypeScript (zero LLM tokens), and execution shifts from 1 Agent() per plan to 1 Agent() per wave, ensuring each execution unit fits within one agent context window with overflow detection.
 **Complexity:** COMPLEX
@@ -599,7 +599,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 260   | Token Profiles                                  | Complete | PROF-01..06                |
 | 261   | Structured Verification                         | Complete | VERIF-01..04               |
 | 262   | Convergence-Aware Stuck Detection               | Complete | STUCK-01..06               |
-| 263   | Ceremony Reduction & Per-Wave Execution         | Pending  | CEREM-01..04               |
+| 263   | Ceremony Reduction & Per-Wave Execution         | Complete | CEREM-01..04               |
 | 264   | Fresh Context Assembly & Task Sizing            | Pending  | CTXT-01..03, SIZE-01..04   |
 | 265   | Per-Phase Drift Detection                       | Pending  | DRIFT-01..05               |
 | 266   | Deterministic Crash Recovery                    | Pending  | RECOV-01..04               |

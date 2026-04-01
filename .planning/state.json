@@ -1,8 +1,6 @@
 {
   "status": "active",
-  "value": {
-    "executing": "discussing"
-  },
+  "value": "planning",
   "historyValue": {},
   "context": {
     "session_id": "a8080998-593d-40f1-a10a-dd48b9f795f6",
@@ -96,35 +94,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-04-01T06:31:15.523Z",
-    "last_transition_at": "2026-04-01T06:32:55.175Z"
+    "started_at": "2026-04-01T06:46:48.240Z",
+    "last_transition_at": "2026-04-01T06:46:54.516Z"
   },
-  "children": {
-    "phase": {
-      "snapshot": {
-        "status": "active",
-        "value": "wave_executing",
-        "historyValue": {},
-        "context": {
-          "phase_id": 0,
-          "plan_ids": [],
-          "current_wave": 1,
-          "total_waves": 1,
-          "wave_results": [],
-          "fix_iterations": 0,
-          "max_fix_iterations": 2,
-          "harness_passed": false,
-          "last_harness_errors": [],
-          "outcome": "pending",
-          "outcome_reason": "",
-          "timestamps": {
-            "started_at": "2026-04-01T06:32:55.176Z"
-          }
-        },
-        "children": {}
-      },
-      "src": "phaseActor",
-      "syncSnapshot": false
-    }
-  }
+  "children": {}
 }
