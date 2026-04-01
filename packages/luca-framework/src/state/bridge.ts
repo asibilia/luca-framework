@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * state.json is the sole source of truth for workflow state.
  *
- * Subcommands (17):
+ * Subcommands (18):
  *   read-complexity        — Read current complexity level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
@@ -22,6 +22,7 @@
  *   lock-release           — Release pipeline lock (clean exit)
  *   lock-status            — Read lock status (clear | live | stale)
  *   recover                — Deterministic crash recovery (returns RecoveryAction JSON)
+ *   milestone-reset        — Cross-milestone state reset (preserves session_id + git_workflow)
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -53,7 +54,7 @@ import {
   STATE_FILE_PATH,
 } from "./persistence";
 import { workflowContextSchema, workflowEventSchema } from "./types";
-import type { TransitionRecord } from "./types";
+import type { TransitionRecord, PhaseResult } from "./types";
 import { sanitizeJsonParse } from "../utils/sanitize";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents, workflowMachine } from "./machine";
@@ -70,6 +71,11 @@ import { createSuspendCheckpoint } from "./suspend-checkpoint";
 import { appendLedgerEntry } from "./ledger";
 import { emitStateTransition, emitPhaseComplete } from "../emitter";
 import { determineRecoveryAction } from "../recovery/__helpers/recover";
+import {
+  validateMilestoneReadiness,
+  resetForNextMilestone,
+  incrementMilestoneCount,
+} from "./__helpers/milestone-reset";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -120,6 +126,7 @@ const VALID_SUBCOMMANDS = [
   "lock-release",
   "lock-status",
   "recover",
+  "milestone-reset",
 ] as const;
 
 /**
@@ -158,6 +165,9 @@ Lock commands:
 
 Recovery commands:
   recover                Deterministic crash recovery (returns RecoveryAction JSON)
+
+Milestone commands:
+  milestone-reset        Cross-milestone state reset (--session-id=ID [--git-workflow=json])
 
 Status bus commands:
   write-status           Write to statusline bus (.planning/.statusline.json)
@@ -400,6 +410,7 @@ const SETTABLE_FIELDS = [
   "appetite_context_percent",
   "appetite_used_tokens",
   "token_profile",
+  "milestone_count",
 ] as const;
 
 /**
@@ -1182,6 +1193,120 @@ async function handleRecover(): Promise<void> {
   console.log(JSON.stringify(action));
 }
 
+// ─── Milestone Reset Command ────────────────────────────────────────────────
+
+/**
+ * Validate readiness, perform cross-milestone state reset, and increment count.
+ *
+ * Reads phase results from current state, validates that all phases passed,
+ * checks the milestone count safety limit, then performs the full reset:
+ * release lock, clear routing history, re-initialize context (preserving
+ * session_id and git_workflow), and re-acquire lock.
+ *
+ * @param args - CLI arguments:
+ *   --session-id=ID (required) Session ID to preserve
+ *   --git-workflow=json (optional) Git workflow context to preserve
+ */
+async function handleMilestoneReset(args: string[]): Promise<void> {
+  const sessionId = getArg(args, "session-id");
+  if (!sessionId) {
+    console.error("Missing --session-id argument");
+    process.exit(2);
+  }
+
+  // Parse optional git workflow
+  const gitWorkflowRaw = getArg(args, "git-workflow");
+  let gitWorkflow: Record<string, unknown> | undefined;
+  if (gitWorkflowRaw) {
+    try {
+      gitWorkflow = sanitizeJsonParse(gitWorkflowRaw) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      console.error("Invalid JSON for --git-workflow argument");
+      process.exit(2);
+    }
+  }
+
+  // Step 1: Read current state for validation
+  const stateFile = Bun.file(STATE_FILE_PATH);
+  if (!(await stateFile.exists())) {
+    console.error("State file not found. Run ensure-init first.");
+    process.exit(2);
+  }
+
+  let phaseResults: PhaseResult[] = [];
+  let milestoneCount = 0;
+
+  try {
+    const raw = sanitizeJsonParse(await stateFile.text()) as Record<
+      string,
+      unknown
+    >;
+    const ctx = raw.context as Record<string, unknown> | undefined;
+    if (ctx) {
+      phaseResults = (get(ctx, "phase_results") as typeof phaseResults) ?? [];
+      milestoneCount = (get(ctx, "milestone_count") as number) ?? 0;
+    }
+  } catch {
+    console.error("State file contains invalid JSON");
+    process.exit(2);
+  }
+
+  // Step 2: Validate readiness
+  const readinessResult = validateMilestoneReadiness(
+    phaseResults,
+    milestoneCount,
+  );
+  if (!readinessResult.success) {
+    console.error(JSON.stringify({ error: readinessResult.error }));
+    process.exit(2);
+  }
+
+  if (!readinessResult.data.ready) {
+    console.log(
+      JSON.stringify({
+        reset: false,
+        reason: readinessResult.data.reason,
+        milestone_count: readinessResult.data.milestone_count,
+        max_milestones: readinessResult.data.max_milestones,
+      }),
+    );
+    return;
+  }
+
+  // Step 3: Perform the reset
+  const resetResult = await resetForNextMilestone({
+    session_id: sessionId,
+    git_workflow: gitWorkflow,
+  });
+
+  if (!resetResult.success) {
+    console.error(JSON.stringify({ error: resetResult.error }));
+    process.exit(2);
+  }
+
+  // Step 4: Increment milestone count in the freshly reset state
+  const countResult = await incrementMilestoneCount();
+  if (!countResult.success) {
+    // Non-fatal: log but still report success
+    console.error(
+      `[milestone-reset] Warning: failed to increment count: ${countResult.error}`,
+    );
+  }
+
+  console.log(
+    JSON.stringify({
+      reset: true,
+      ...resetResult.data,
+      milestone_count: countResult.success
+        ? countResult.data
+        : milestoneCount + 1,
+    }),
+  );
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1259,6 +1384,9 @@ export async function runBridgeCli(): Promise<void> {
     case "recover":
       await handleRecover();
       break;
+    case "milestone-reset":
+      await handleMilestoneReset(args);
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1295,6 +1423,7 @@ export {
   handleLockRelease,
   handleLockStatus,
   handleRecover,
+  handleMilestoneReset,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

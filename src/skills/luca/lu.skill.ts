@@ -976,7 +976,41 @@ Report the PR URL to the user.
 
 ### Step 9: Cross-Milestone Continuation (INLINE)
 
-If CROSS_MILESTONE config == true and next milestone exists: loop back to Step 6.
+\`\`\`bash
+# Check if cross-milestone continuation is enabled
+CROSS_MILESTONE=$(luca-bridge read-field --field=lu_config.cross_milestone 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value)" 2>/dev/null || echo "false")
+\`\`\`
+
+If CROSS_MILESTONE == "true":
+
+1. **Read milestone count and phase results from state:**
+\`\`\`bash
+MILESTONE_COUNT=$(luca-bridge read-field --field=milestone_count 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value)" 2>/dev/null || echo "0")
+SESSION_ID=$(luca-bridge read-field --field=session_id 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value)" 2>/dev/null || echo "")
+\`\`\`
+
+2. **Safety check: max 3 milestones per session:**
+If MILESTONE_COUNT >= 3, log "Cross-milestone limit reached (3/3). Ending session." and skip to Step 10.
+
+3. **Readiness check: no failed/blocked phases:**
+\`\`\`bash
+RESET_RESULT=$(luca-bridge milestone-reset --session-id=$SESSION_ID 2>/dev/null)
+RESET_SUCCESS=$(echo "$RESET_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.reset)" 2>/dev/null || echo "false")
+\`\`\`
+
+If RESET_SUCCESS != "true":
+- Read reason from RESET_RESULT
+- Log: "Cross-milestone continuation blocked: {reason}"
+- Skip to Step 10
+
+4. **If reset succeeded:** Loop back to Step 6 (Phase Loop) with fresh state.
+The milestone-reset bridge command has already:
+- Released and re-acquired the pipeline lock
+- Cleared routing history
+- Reset all state context except session_id and git_workflow
+- Incremented milestone_count
+
+If CROSS_MILESTONE != "true": Skip to Step 10.
 
 ### Step 10: Gap Detection Audit (INLINE)
 

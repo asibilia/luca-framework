@@ -267,6 +267,10 @@ export const workflowContextSchema = z.object({
     })
     .optional(),
 
+  // Cross-milestone continuation
+  /** Number of milestones completed in this session (safety limit: 3) */
+  milestone_count: z.number().int().nonnegative().default(0),
+
   // Error tracking
   last_error: z.string().optional(),
 });

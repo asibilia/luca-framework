@@ -132,8 +132,28 @@ export {
   handleLockRelease,
   handleLockStatus,
   handleRecover,
+  handleMilestoneReset,
   SETTABLE_FIELDS,
 } from "./bridge";
+
+// ─── Milestone Reset ──────────────────────────────────────────────────────
+
+export {
+  validateMilestoneReadiness,
+  resetForNextMilestone,
+  incrementMilestoneCount,
+} from "./__helpers/milestone-reset";
+
+export {
+  milestoneResetResultSchema,
+  milestoneReadinessSchema,
+  MAX_MILESTONES_PER_SESSION,
+} from "./__schemas/milestone-reset.schemas";
+
+export type {
+  MilestoneResetResult,
+  MilestoneReadiness,
+} from "./__schemas/milestone-reset.schemas";
 
 // ─── Pipeline Lock ─────────────────────────────────────────────────────────
 

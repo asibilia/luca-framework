@@ -561,7 +561,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. `luca-bridge recover` returns the structured RecoveryAction JSON, and `luca-bridge lock-status` returns the current lock file contents or "unlocked"
 3. Convergence state (error ledger, stale count, checkpoint tags) is persisted so recovery can resume a mid-harness-loop crash without losing convergence context
 
-### Phase 267: Cross-Milestone State Reset
+### Phase 267: Cross-Milestone State Reset — COMPLETE
 
 **Goal:** When a milestone completes and cross-milestone continuation is enabled, the pipeline performs a full state reset (lock, routing history, pipeline position, milestone archive) while preserving session identity, then bootstraps the next milestone from scratch.
 **Complexity:** MODERATE
@@ -603,7 +603,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 264   | Fresh Context Assembly & Task Sizing            | Complete | CTXT-01..03, SIZE-01..04   |
 | 265   | Per-Phase Drift Detection                       | Complete | DRIFT-01..05               |
 | 266   | Deterministic Crash Recovery                    | Complete | RECOV-01..04               |
-| 267   | Cross-Milestone State Reset                     | Pending  | CROSS-01..03               |
+| 267   | Cross-Milestone State Reset                     | Complete | CROSS-01..03               |
 | 268   | Orchestrator Pipeline Integration               | Pending  | ORCH-01..03                |
 
 ---
