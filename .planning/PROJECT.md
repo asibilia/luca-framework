@@ -8,7 +8,13 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v9.0.0 — Shipped)
+## Current State (v9.1.0 — Shipped)
+
+**Last Shipped:** v9.1.0 — Studio UI Data Pipeline Fixes (2026-04-01)
+
+5 phases (272-276), 8 files changed (+304/-75 LOC). Fixed 6 studio UI bugs across Home, Sessions, and Memory pages (S-01 through S-07). All bugs resolved data fetch/display mismatches between MuninnDB data structures and React component field paths. Gap closure phases (275-276) consolidated duplicated zone-parsing logic into shared lib (muninn-helpers.ts, observation-helpers.ts) and fixed convention violations (import ordering, shell spawning, fallback branches). Clean re-audit: 7/7 requirements complete, zero gaps identified.
+
+## Previous State (v9.0.0 — Shipped)
 
 **Last Shipped:** v9.0.0 — Workflow Pipeline Redesign (2026-04-01)
 

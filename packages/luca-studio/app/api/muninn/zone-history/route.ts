@@ -4,7 +4,7 @@ import {
   muninnProxyHandler,
   parseQueryParams,
 } from "~/lib/muninn-route-helper";
-import { filterByConceptPrefix } from "~/lib/muninn-helpers";
+import { filterByConceptPrefix, parseZoneContent } from "~/lib/muninn-helpers";
 import {
   ZoneHistoryQuerySchema,
   ZoneHistoryResponseSchema,
@@ -15,9 +15,9 @@ import {
  *
  * Returns historical zone transitions from MuninnDB.
  *
- * Queries MuninnDB for engrams with concept prefix "session:context-zone"
- * or "metric:context-zone", then transforms them into the zone history
- * response format (entries with zone, usage_percent, checked_at).
+ * Queries MuninnDB for engrams with concept prefix "session:observation",
+ * then transforms them into the zone history response format (entries with
+ * zone, usage_percent, checked_at).
  *
  * Previously read a single-snapshot `.planning/.context-metrics.json` file,
  * which only contained the most recent zone check. Now queries MuninnDB
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       const zoneEngrams = await filterByConceptPrefix(
         client,
         vault,
-        ["session:context-zone", "metric:context-zone"],
+        ["session:observation"],
         limit,
       );
 
@@ -50,17 +50,21 @@ export async function GET(request: Request) {
         "asc",
       );
 
+      // Filter out entries without parseable zone data (e.g. session:observation-work
+      // text summaries that produce zone: "unknown") before building the response.
+      const withZones = sorted
+        .map((e) => {
+          const parsed = parseZoneContent(String(e.content ?? ""));
+          return { engram: e, parsed };
+        })
+        .filter(
+          ({ parsed }) => parsed.zone != null && parsed.zone !== "unknown",
+        );
+
       // Transform engram content into zone history entries
-      const entries = sorted.slice(0, limit).map((e) => {
-        // Parse structured zone data from engram content
-        const parsed = parseZoneContent(String(e.content ?? ""));
+      const entries = withZones.slice(0, limit).map(({ engram: e, parsed }) => {
         return {
-          zone:
-            parsed.zone ??
-            (typeof e.concept === "string"
-              ? e.concept.split(":").pop()
-              : undefined) ??
-            "unknown",
+          zone: parsed.zone as string,
           usage_percent: parsed.usage_percent,
           checked_at:
             parsed.checked_at ??
@@ -78,52 +82,4 @@ export async function GET(request: Request) {
     "Failed to fetch MuninnDB zone history",
     ZoneHistoryResponseSchema,
   );
-}
-
-/**
- * Parse zone data from engram content string.
- *
- * Engram content may contain structured data like:
- * - "Zone: PEAK, Usage: 15%, Checked: 2026-03-27T12:00:00Z"
- * - JSON: { "zone": "PEAK", "usage_percent": 15, "checked_at": "..." }
- * - Plain text description of zone transition
- *
- * @param content - Raw engram content string
- * @returns Parsed zone fields (all optional, falls back gracefully)
- */
-function parseZoneContent(content: string): {
-  zone?: string;
-  usage_percent?: number;
-  checked_at?: string;
-} {
-  // Try JSON parse first
-  try {
-    const parsed = JSON.parse(content);
-    if (typeof parsed === "object" && parsed !== null) {
-      return {
-        zone: typeof parsed.zone === "string" ? parsed.zone : undefined,
-        usage_percent:
-          typeof parsed.usage_percent === "number"
-            ? parsed.usage_percent
-            : undefined,
-        checked_at:
-          typeof parsed.checked_at === "string" ? parsed.checked_at : undefined,
-      };
-    }
-  } catch {
-    /* not JSON -- try regex patterns */
-  }
-
-  // Try structured text patterns
-  const zoneMatch = content.match(/zone:\s*(\w+)/i);
-  const usageMatch = content.match(/usage:\s*([\d.]+)%?/i);
-  const checkedMatch = content.match(
-    /checked(?:_at)?:\s*(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)/i,
-  );
-
-  return {
-    zone: zoneMatch?.[1],
-    usage_percent: usageMatch ? parseFloat(usageMatch[1]!) : undefined,
-    checked_at: checkedMatch?.[1],
-  };
 }

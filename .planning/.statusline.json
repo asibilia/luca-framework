@@ -1,10 +1,10 @@
 {
   "skill": "",
-  "stage": "",
-  "step": "",
-  "wave_current": 8,
+  "stage": "EXECUTING",
+  "step": "fixing",
+  "wave_current": 7,
   "wave_total": 8,
-  "complexity": "TRIVIAL",
+  "complexity": "",
   "detail": "",
-  "updated_at": "2026-04-01T15:16:42.324Z"
+  "updated_at": "2026-04-01T17:04:37.094Z"
 }

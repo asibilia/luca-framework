@@ -31,16 +31,25 @@ export const EVENT_TYPES = {
   START: { label: "Start", color: "event-session" },
   RESET: { label: "Reset", color: "event-state" },
   PREFLIGHT_COMPLETE: { label: "Pre-Flight Done", color: "event-state" },
-  PHASE_STARTED: { label: "Phase Started", color: "event-state" },
+  PHASE_START: { label: "Phase Start", color: "event-state" },
   PHASE_COMPLETE: { label: "Phase Complete", color: "event-state" },
   VERIFY_PASSED: { label: "Verify Passed", color: "event-state" },
   VERIFY_FAILED: { label: "Verify Failed", color: "event-harness" },
-  field_set: { label: "Field Set", color: "event-state" },
+  field_set: { label: "Field Set", color: "event-state" }, // Matches luca-bridge event name exactly — do not uppercase
   ROUTE_COMPLETE: { label: "Route Complete", color: "event-state" },
   DISCUSS_COMPLETE: { label: "Discuss Complete", color: "event-state" },
   PLAN_COMPLETE: { label: "Plan Complete", color: "event-state" },
   COMMIT_COMPLETE: { label: "Commit Complete", color: "event-commit" },
   LEARN_COMPLETE: { label: "Learn Complete", color: "event-memory" },
+  HARNESS_COMPLETE: { label: "Harness Complete", color: "event-harness" },
+  REVIEW_COMPLETE: { label: "Review Complete", color: "event-state" },
+  SKIP: { label: "Skip", color: "event-state" },
+  SKIP_COOLDOWN: { label: "Skip Cooldown", color: "event-state" },
+  PREMORTEM_COMPLETE: { label: "Premortem Done", color: "event-state" },
+  PROCESS_DATA_COMPLETE: { label: "Process Data Done", color: "event-state" },
+  EXECUTION_COMPLETE: { label: "Execution Done", color: "event-state" },
+  PHASE_VERIFY_PASSED: { label: "Phase Verified", color: "event-state" },
+  PHASE_LEARN_COMPLETE: { label: "Phase Learn Done", color: "event-memory" },
 } as const;
 
 export type EventTypeName = keyof typeof EVENT_TYPES;
@@ -124,7 +133,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 /**
  * Flat navigation items derived from NAV_GROUPS for backward compatibility.
  *
- * @deprecated Use NAV_GROUPS instead for grouped rendering. Will be removed in v9.0.0.
+ * @deprecated Use NAV_GROUPS instead for grouped rendering. Will be removed in v10.0.0.
  */
 export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap(
   (group) => group.items,

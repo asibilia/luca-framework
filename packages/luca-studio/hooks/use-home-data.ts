@@ -39,10 +39,14 @@ export type HomeData = {
  *
  * Priority:
  * 1. Use existing summary field if present.
- * 2. For `field_set` events: "Set {field} to {value}".
- * 3. For transitions with previous_state/current_state: "{prev} -> {current}".
- * 4. For actions_executed arrays: join action names.
- * 5. Fallback: empty string.
+ * 2. Check event_data.summary — some transitions embed a summary string.
+ * 3. For phase events: extract event_data.phase_id and form a descriptive label.
+ * 4. For HARNESS_COMPLETE: event_data.status (with optional error count).
+ * 5. For ROUTE_COMPLETE: event_data.complexity → "Routed as {complexity}".
+ * 6. For `field_set` events: "Set {field} to {value}".
+ * 7. For transitions with previous_state/current_state: "{prev} -> {current}".
+ * 8. For actions_executed arrays: join action names.
+ * 9. Fallback: empty string.
  *
  * @param entry - Raw ledger entry object
  * @returns Synthesized summary string
@@ -55,7 +59,42 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
   const eventData = get(entry, "event_data", {}) as Record<string, unknown>;
   const eventType = get(entry, "event_type", "") as string;
 
-  // 2. For field_set: "Set {field} to {value}"
+  // 2. Check event_data.summary — some transitions embed a summary string
+  const dataSummary = get(eventData, "summary", "") as string;
+  if (dataSummary) return dataSummary;
+
+  // 3. For phase events: extract phase_id
+  if (eventType.includes("PHASE") && eventType !== "field_set") {
+    const phaseId = get(eventData, "phase_id", null) as number | string | null;
+    if (phaseId != null) {
+      if (eventType === "PHASE_START") return `Phase ${phaseId} started`;
+      if (eventType === "PHASE_COMPLETE") return `Phase ${phaseId} completed`;
+      if (eventType === "PHASE_VERIFY_PASSED")
+        return `Phase ${phaseId} verified`;
+      if (eventType === "PHASE_LEARN_COMPLETE")
+        return `Phase ${phaseId} learned`;
+      return `Phase ${phaseId}`;
+    }
+  }
+
+  // 4. For HARNESS_COMPLETE: status and optional error count
+  if (eventType === "HARNESS_COMPLETE") {
+    const status = get(eventData, "status", "") as string;
+    if (status) {
+      const errorCount = get(eventData, "total_errors", null) as number | null;
+      return errorCount != null && errorCount > 0
+        ? `Harness ${status} (${errorCount} errors)`
+        : `Harness ${status}`;
+    }
+  }
+
+  // 5. For ROUTE_COMPLETE: complexity
+  if (eventType === "ROUTE_COMPLETE") {
+    const complexity = get(eventData, "complexity", "") as string;
+    if (complexity) return `Routed as ${complexity}`;
+  }
+
+  // 6. For field_set: "Set {field} to {value}"
   if (eventType === "field_set") {
     const field = get(eventData, "field", "") as string;
     const value = get(eventData, "value", "") as unknown;
@@ -66,7 +105,7 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
     }
   }
 
-  // 3. For transitions: "{previous_state} -> {current_state}"
+  // 7. For transitions: "{previous_state} -> {current_state}"
   //    These fields live at the entry root, not nested in event_data.
   const prevState = get(entry, "previous_state", "") as string;
   const currState = get(entry, "current_state", "") as string;
@@ -74,14 +113,14 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
     return `${prevState} -> ${currState}`;
   }
 
-  // 4. For actions_executed: join action names
+  // 8. For actions_executed: join action names
   //    This field also lives at the entry root level.
   const actions = get(entry, "actions_executed", null) as string[] | null;
   if (Array.isArray(actions) && actions.length > 0) {
     return actions.join(", ");
   }
 
-  // 5. Fallback
+  // 9. Fallback
   return "";
 }
 

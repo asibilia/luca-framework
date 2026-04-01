@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 
+import { cn } from "~/lib/utils";
 import { LayoutShell } from "~/components/layout/layout-shell";
 import { Header } from "~/components/layout/header";
 import { NavContent } from "~/components/layout/nav-content";
@@ -9,8 +10,6 @@ import { NavContent } from "~/components/layout/nav-content";
 import { Providers } from "./providers";
 
 import "./globals.css";
-import { Inter } from "next/font/google";
-import { cn } from "~/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 

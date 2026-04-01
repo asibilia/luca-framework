@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
-
 import type { MuninnEngram } from "~/lib/muninn-types";
+import {
+  deriveHitRateFromObservations,
+  derivePrecisionFromObservations,
+} from "~/lib/observation-helpers";
 import { vaultAtom } from "~/stores/vault";
 
 // -- Fetch helpers -----------------------------------------------------------
@@ -166,15 +169,20 @@ export function useObservations(): ObservationsData {
     void fetchAll();
   }, [fetchAll]);
 
-  // Derive hit rate and precision from metric engrams
+  // Derive hit rate and precision from metric engrams (original logic)
   const hitRate = extractMetricValue(metrics, "recall-hit-rate");
   const precisionVal = extractMetricValue(metrics, "recall-precision");
+
+  // If formal metrics don't exist, derive from observation data
+  const derivedHitRate = hitRate ?? deriveHitRateFromObservations(observations);
+  const derivedPrecision =
+    precisionVal ?? derivePrecisionFromObservations(observations);
 
   return {
     observations,
     metrics,
-    hit_rate: hitRate,
-    precision: precisionVal,
+    hit_rate: derivedHitRate,
+    precision: derivedPrecision,
     loading,
     error,
     lastUpdated,
