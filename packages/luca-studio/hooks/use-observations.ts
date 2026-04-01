@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
-import get from "lodash/get";
-
 import type { MuninnEngram } from "~/lib/muninn-types";
+import {
+  deriveHitRateFromObservations,
+  derivePrecisionFromObservations,
+} from "~/lib/observation-helpers";
 import { vaultAtom } from "~/stores/vault";
 
 // -- Fetch helpers -----------------------------------------------------------
@@ -75,95 +77,6 @@ function extractMetricValue(
     return val <= 1 ? val : val / 100;
   }
   return null;
-}
-
-// -- Observation-derived metric helpers --------------------------------------
-
-/**
- * Parse zone value from a session:observation-* engram's content string.
- *
- * Supports both JSON content (`{ "zone": "PEAK", ... }`) and structured
- * text content (`Zone: PEAK, ...`). Returns null when the zone cannot be
- * determined from the content.
- */
-function parseObservationZone(content: string): string | null {
-  // Try JSON first
-  try {
-    const parsed = JSON.parse(content) as unknown;
-    const zone = get(parsed, "zone");
-    if (typeof zone === "string" && zone.length > 0) return zone;
-  } catch {
-    /* not JSON — fall through to text matching */
-  }
-
-  // Try text pattern: "Zone: PEAK" (case-insensitive)
-  const match = content.match(/zone:\s*(\w+)/i);
-  return match?.[1] ?? null;
-}
-
-const GOOD_ZONES = new Set(["peak", "good"]);
-
-/**
- * Derive a recall hit-rate approximation from observation engrams.
- *
- * Counts observations whose zone is "peak" or "good" as successful recall
- * activations, and returns the ratio against total observations.
- *
- * Returns null when there are no observations to derive from.
- */
-function deriveHitRateFromObservations(
-  observations: MuninnEngram[],
-): number | null {
-  if (observations.length === 0) return null;
-
-  let hits = 0;
-  for (const obs of observations) {
-    const zone = parseObservationZone(obs.content);
-    if (zone !== null && GOOD_ZONES.has(zone.toLowerCase())) {
-      hits++;
-    }
-  }
-
-  return hits / observations.length;
-}
-
-/**
- * Derive a recall precision approximation from observation engrams.
- *
- * Calculates how consistently observations land in the same zone tier.
- * If most observations are in peak/good zones, precision is high (0.8+).
- * Mixed zones indicate lower precision.
- *
- * Returns null when there are no observations to derive from.
- */
-function derivePrecisionFromObservations(
-  observations: MuninnEngram[],
-): number | null {
-  if (observations.length === 0) return null;
-
-  let goodCount = 0;
-  let totalParseable = 0;
-
-  for (const obs of observations) {
-    const zone = parseObservationZone(obs.content);
-    if (zone !== null) {
-      totalParseable++;
-      if (GOOD_ZONES.has(zone.toLowerCase())) {
-        goodCount++;
-      }
-    }
-  }
-
-  if (totalParseable === 0) return null;
-
-  const goodRatio = goodCount / totalParseable;
-
-  // High precision: ≥70% in good zones → scale 0.8–1.0
-  // Low precision: <70% → scale 0.4–0.8
-  if (goodRatio >= 0.7) {
-    return 0.8 + (goodRatio - 0.7) * (0.2 / 0.3);
-  }
-  return 0.4 + goodRatio * (0.4 / 0.7);
 }
 
 // -- Hook -------------------------------------------------------------------

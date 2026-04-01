@@ -4,7 +4,7 @@ import {
   muninnProxyHandler,
   parseQueryParams,
 } from "~/lib/muninn-route-helper";
-import { filterByConceptPrefix } from "~/lib/muninn-helpers";
+import { filterByConceptPrefix, parseZoneContent } from "~/lib/muninn-helpers";
 import {
   ZoneHistoryQuerySchema,
   ZoneHistoryResponseSchema,
@@ -78,52 +78,4 @@ export async function GET(request: Request) {
     "Failed to fetch MuninnDB zone history",
     ZoneHistoryResponseSchema,
   );
-}
-
-/**
- * Parse zone data from engram content string.
- *
- * Engram content may contain structured data like:
- * - "Zone: PEAK, Usage: 15%, Checked: 2026-03-27T12:00:00Z"
- * - JSON: { "zone": "PEAK", "usage_percent": 15, "checked_at": "..." }
- * - Plain text description of zone transition
- *
- * @param content - Raw engram content string
- * @returns Parsed zone fields (all optional, falls back gracefully)
- */
-function parseZoneContent(content: string): {
-  zone?: string;
-  usage_percent?: number;
-  checked_at?: string;
-} {
-  // Try JSON parse first
-  try {
-    const parsed = JSON.parse(content);
-    if (typeof parsed === "object" && parsed !== null) {
-      return {
-        zone: typeof parsed.zone === "string" ? parsed.zone : undefined,
-        usage_percent:
-          typeof parsed.usage_percent === "number"
-            ? parsed.usage_percent
-            : undefined,
-        checked_at:
-          typeof parsed.checked_at === "string" ? parsed.checked_at : undefined,
-      };
-    }
-  } catch {
-    /* not JSON -- try regex patterns */
-  }
-
-  // Try structured text patterns
-  const zoneMatch = content.match(/zone:\s*(\w+)/i);
-  const usageMatch = content.match(/usage:\s*([\d.]+)%?/i);
-  const checkedMatch = content.match(
-    /checked(?:_at)?:\s*(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)/i,
-  );
-
-  return {
-    zone: zoneMatch?.[1],
-    usage_percent: usageMatch ? parseFloat(usageMatch[1]!) : undefined,
-    checked_at: checkedMatch?.[1],
-  };
 }

@@ -952,6 +952,29 @@ Fix 6 studio UI bugs (S-01 through S-07) discovered during studio review. All bu
 - [x] fix-recall-metrics — S-06: Fix recall metrics data pipeline in `use-observations.ts`. Debug metric extraction — check if metric engrams exist in MuninnDB with expected concept patterns ("recall-hit-rate", "recall-precision"). Fix API route and/or extraction logic. (@packages/luca-studio/hooks/use-observations.ts, @packages/luca-studio/app/api/muninn/metrics/route.ts, @packages/luca-studio/components/memory/recall-effectiveness.tsx)
 - [x] fix-timeline-history — S-07: Fix timeline to show full history instead of just 1 event. Debug `useCheckpoint()` zone history fetch and `/api/muninn/zone-history` route to return complete history. Fix `buildTimeline()` merge logic if needed. (@packages/luca-studio/hooks/use-checkpoint.ts, @packages/luca-studio/app/api/muninn/zone-history/route.ts, @packages/luca-studio/components/memory/memory-timeline.tsx)
 
+### Phase 275: DRY Consolidation — Zone Parser + Helper Extraction
+
+**Goal:** Eliminate cross-phase DRY violation by extracting duplicated zone-parsing logic and pure data helpers from "use client" hook into shared lib.
+**Complexity:** SIMPLE
+**Verification:** Standard
+**Depends on:** Phase 274
+
+- [ ] extract-zone-parser — Consolidate `parseObservationZone()` from `hooks/use-observations.ts` and `parseZoneContent()` from `app/api/muninn/zone-history/route.ts` into a single shared helper in `lib/muninn-helpers.ts`. The route's version is the superset (zone + usage_percent + checked_at). Import from both sites. (@packages/luca-studio/lib/muninn-helpers.ts, @packages/luca-studio/hooks/use-observations.ts, @packages/luca-studio/app/api/muninn/zone-history/route.ts)
+- [ ] extract-observation-helpers — Move `deriveHitRateFromObservations()`, `derivePrecisionFromObservations()`, and the `GOOD_ZONES` constant from `hooks/use-observations.ts` to `lib/observation-helpers.ts`. These are pure data transforms with no React dependency. (@packages/luca-studio/lib/observation-helpers.ts, @packages/luca-studio/hooks/use-observations.ts)
+
+### Phase 276: Convention + Hardening Cleanup
+
+**Goal:** Fix convention violations and low-severity issues found during milestone audit.
+**Complexity:** TRIVIAL
+**Verification:** Standard
+**Depends on:** None
+
+- [ ] fix-event-types-casing — Add inline comment to `field_set` key in EVENT_TYPES explaining it mirrors the bridge event name verbatim. (@packages/luca-studio/lib/constants.ts)
+- [ ] fix-nav-items-deprecation — Check if NAV_ITEMS has consumers. If none, delete the export. If consumers remain, update deprecation target to v10.0.0. (@packages/luca-studio/lib/constants.ts)
+- [ ] fix-layout-imports — Reorder imports in `layout.tsx`: move `Inter` from next/font/google to external block, move `globals.css` to bottom as side-effect. (@packages/luca-studio/app/layout.tsx)
+- [ ] fix-enrich-fallback — Add else branch to `enrichWithBridge()` that creates the `context` sub-object when absent, so bridge fields are always merged. (@packages/luca-studio/app/api/state/route.ts)
+- [ ] fix-exec-to-execfile — Replace `exec("luca-bridge read-status")` with `execFile("luca-bridge", ["read-status"])` to avoid shell spawning. (@packages/luca-studio/app/api/state/route.ts)
+
 ---
 
 _Roadmap created: 2026-03-16 — v5.0.0 milestone started_
