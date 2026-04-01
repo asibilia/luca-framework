@@ -15,9 +15,9 @@ import {
  *
  * Returns historical zone transitions from MuninnDB.
  *
- * Queries MuninnDB for engrams with concept prefix "session:context-zone"
- * or "metric:context-zone", then transforms them into the zone history
- * response format (entries with zone, usage_percent, checked_at).
+ * Queries MuninnDB for engrams with concept prefix "session:observation",
+ * then transforms them into the zone history response format (entries with
+ * zone, usage_percent, checked_at).
  *
  * Previously read a single-snapshot `.planning/.context-metrics.json` file,
  * which only contained the most recent zone check. Now queries MuninnDB
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       const zoneEngrams = await filterByConceptPrefix(
         client,
         vault,
-        ["session:context-zone", "metric:context-zone"],
+        ["session:observation"],
         limit,
       );
 
