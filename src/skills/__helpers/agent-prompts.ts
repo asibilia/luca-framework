@@ -1209,3 +1209,81 @@ Example task header:
 **Depends on:** none
 </sizing_requirements>
 `;
+
+// ─── Drift Reassessment (DRIFT-02) ──────────────────────────────────────────
+
+/**
+ * Parameters specific to the REASSESS_PROMPT template.
+ */
+export interface ReassessPromptParams extends AgentPromptParams {
+  /** JSON-serialized DriftResult from the mechanical drift checker */
+  driftResultJson: string;
+  /** JSON-serialized list of remaining phases with descriptions */
+  remainingPhasesJson: string;
+}
+
+/**
+ * Prompt for lu-reassessor: evaluates drift-affected phases.
+ *
+ * Spawned only when the mechanical drift checker detects file-level drift.
+ * Uses ROUTER model preset (balanced from MODERATE+).
+ *
+ * The reassessor categorizes each affected phase as:
+ * - VALID: No changes needed despite file overlap
+ * - NEEDS_UPDATE: Plan must be revised to account for changes
+ * - REDUNDANT: Work already done by the completed phase
+ * - BLOCKED: Critical dependency deleted or incompatible
+ */
+export const REASSESS_PROMPT = (p: ReassessPromptParams): string => `
+<role>
+You are lu-reassessor. Evaluate drift-affected phases after a phase completes.
+${AGENT_CONSTRAINT}
+</role>
+
+${memoryProtocol(p.vault, "cold", `phase ${p.phase} drift reassessment`)}
+
+<drift_context>
+<drift_result>
+${sanitizeForTemplate(p.driftResultJson)}
+</drift_result>
+
+<remaining_phases>
+${sanitizeForTemplate(p.remainingPhasesJson)}
+</remaining_phases>
+</drift_context>
+
+<task>
+The mechanical drift checker detected that the just-completed phase changed files
+referenced by remaining phases. Your job is to semantically evaluate each affected
+phase and determine if it is still valid.
+
+For EACH affected phase in the drift result:
+1. Read the changed files and understand WHAT changed
+2. Read the affected phase's description and file references
+3. Determine if the change actually invalidates the phase or is benign
+4. Assign a verdict:
+   - **VALID**: The file changed but the phase's goals are unaffected
+   - **NEEDS_UPDATE**: The phase plan must be revised (e.g., API changed, function renamed)
+   - **REDUNDANT**: The completed phase already accomplished this phase's goals
+   - **BLOCKED**: A critical file was deleted or a breaking change prevents execution
+
+For NEEDS_UPDATE verdicts, provide specific suggested updates.
+
+Return your assessment as structured JSON:
+\`\`\`json
+{
+  "verdicts": [
+    {
+      "phaseId": 266,
+      "verdict": "VALID",
+      "rationale": "The changes to src/state/machine.ts add new fields but don't break the recovery logic this phase implements",
+      "suggestedUpdates": []
+    }
+  ],
+  "summary": "1 phase assessed: 1 VALID, 0 NEEDS_UPDATE, 0 REDUNDANT, 0 BLOCKED"
+}
+\`\`\`
+</task>
+
+${outputContract("VERDICTS_JSON: {structured JSON with phase verdicts}")}
+`;

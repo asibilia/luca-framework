@@ -173,6 +173,9 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   // --- Router (balanced from MODERATE+) ---
   "lu-router": ROUTER,
 
+  // --- Drift reassessment (ROUTER preset, DRIFT-02) ---
+  "lu-reassessor": ROUTER,
+
   // --- v2 researcher agents (ROUTER preset, Decision 10) ---
   "lu-architecture-researcher": ROUTER,
   "lu-implementation-researcher": ROUTER,

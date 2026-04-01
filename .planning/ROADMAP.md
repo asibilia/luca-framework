@@ -533,7 +533,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. PLAN.md files contain per-task file count estimates and scope classifications (SMALL/MEDIUM/LARGE), and per-wave total file counts, which the plan reviewer validates against limits (BLOCKER if any task touches 10+ files, wave total must be < 10)
 3. The plan review agent evaluates 7 dimensions (the existing 6 plus task sizing), and flags BLOCKERs that trigger plan revision before execution begins
 
-### Phase 265: Per-Phase Drift Detection
+### Phase 265: Per-Phase Drift Detection — COMPLETE
 
 **Goal:** After every phase completes, the pipeline mechanically checks whether the completed work invalidated, blocked, or made redundant any remaining phases, and spawns a reassessment agent only when actual drift is detected.
 **Complexity:** MODERATE
@@ -601,7 +601,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 262   | Convergence-Aware Stuck Detection               | Complete | STUCK-01..06               |
 | 263   | Ceremony Reduction & Per-Wave Execution         | Complete | CEREM-01..04               |
 | 264   | Fresh Context Assembly & Task Sizing            | Complete | CTXT-01..03, SIZE-01..04   |
-| 265   | Per-Phase Drift Detection                       | Pending  | DRIFT-01..05               |
+| 265   | Per-Phase Drift Detection                       | Complete | DRIFT-01..05               |
 | 266   | Deterministic Crash Recovery                    | Pending  | RECOV-01..04               |
 | 267   | Cross-Milestone State Reset                     | Pending  | CROSS-01..03               |
 | 268   | Orchestrator Pipeline Integration               | Pending  | ORCH-01..03                |

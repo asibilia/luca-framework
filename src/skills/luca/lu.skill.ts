@@ -871,6 +871,62 @@ await appendRoutingEntry({
 " 2>/dev/null || true
 \`\`\`
 
+#### 7o-drift. Per-phase drift detection (DRIFT-01..05)
+
+After each phase completes, mechanically check whether changes invalidated remaining phases.
+This is a zero-LLM check; the reassessment agent is only spawned when drift is found.
+
+\`\`\`bash
+# Step 1: Run mechanical drift checker (zero LLM)
+DRIFT_RESULT=$(bun -e "
+import { checkDrift } from './src/drift';
+// remainingPhases is built from the execution queue (phases not yet executed)
+const remaining = REMAINING_PHASES_JSON;
+const result = checkDrift('.planning/phases/PHASE_DIR/', remaining);
+console.log(JSON.stringify(result));
+" 2>/dev/null || echo '{"drifted":false}')
+
+DRIFT_DETECTED=$(echo "$DRIFT_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.drifted)" 2>/dev/null || echo "false")
+
+if [ "$DRIFT_DETECTED" = "true" ]; then
+  # Step 2: Record drift event in session-ledger.jsonl (DRIFT-04)
+  bun -e "
+  import { appendFile } from 'node:fs/promises';
+  const event = {
+    timestamp: new Date().toISOString(),
+    event: 'DRIFT_DETECTED',
+    completedPhase: PHASE_NUMBER,
+    affectedPhaseCount: $(echo "$DRIFT_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.affectedPhases.length)" 2>/dev/null || echo 0),
+    affectedPhaseIds: $(echo "$DRIFT_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(JSON.stringify(r.affectedPhases.map(p=>p.phaseId)))" 2>/dev/null || echo '[]'),
+    changedFileCount: $(echo "$DRIFT_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.changedFiles.length)" 2>/dev/null || echo 0)
+  };
+  await appendFile('.planning/session-ledger.jsonl', JSON.stringify(event) + '\\n');
+  " 2>/dev/null || true
+
+  # Step 3: Emit DRIFT_DETECTED bridge transition (DRIFT-04)
+  luca-bridge transition --event=DRIFT_DETECTED --data="{\"phase_id\":PHASE_NUMBER,\"affected_phases\":$AFFECTED_IDS}" 2>/dev/null || true
+
+  # Step 4: Spawn reassessment agent (DRIFT-02, ROUTER_MODEL)
+  Agent(name: "reassess-{NN}", subagent_type: "lu-reassessor", model: ROUTER_MODEL, prompt: REASSESS_PROMPT({phase: NN, driftResultJson: DRIFT_RESULT, remainingPhasesJson: REMAINING_PHASES_JSON, ...}))
+
+  # Step 5: Apply drift response (DRIFT-03)
+  # Parse reassessment verdicts and apply actions:
+  FOR verdict in REASSESSMENT_RESULT.verdicts:
+    IF verdict.verdict == "REDUNDANT":
+      Mark phase as complete (skip execution), log: "Phase {id} marked redundant by drift"
+    IF verdict.verdict == "BLOCKED":
+      Park phase (remove from queue), log: "Phase {id} blocked by drift"
+    IF verdict.verdict == "NEEDS_UPDATE":
+      IF OVERSIGHT_LEVEL == "autonomous":
+        Queue phase for re-planning (insert before execution)
+      ELSE:
+        Flag for user review: "Phase {id} needs update: {rationale}"
+    IF verdict.verdict == "VALID":
+      No action (keep in queue as-is)
+  Rebuild execution order from remaining valid phases
+fi
+\`\`\`
+
 #### 7p. Gap closure retry (INLINE, if phase had failures)
 \`\`\`
 FOR retry = 1 to GAP_RETRIES:
