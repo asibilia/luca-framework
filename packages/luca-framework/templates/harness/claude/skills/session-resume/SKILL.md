@@ -23,16 +23,14 @@ Follow the resume-project workflow which handles:
    - Check for `.planning/` directory
    - Error if project not initialized
 
-2. **State loading (bridge primary, STATE.md fallback)**
+2. **State loading (from bridge)**
 
    ```bash
-   # Primary: Read comprehensive state from bridge
+   # Read comprehensive state from bridge
    STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-   # Fallback: Read STATE.md directly (backward compatibility)
-   STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 
    # Read complexity and phase info
-   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
    PHASE_JSON=$(luca-bridge read-phase 2>/dev/null || echo '{"current_phase":null}')
    ```
 
@@ -58,7 +56,7 @@ Follow the resume-project workflow which handles:
 
 7. **Session continuity updates**
    - Session continuity is auto-tracked by the state machine (`last_transition_at` field)
-   - STATE.md is regenerated automatically by the snapshot-sync hook
+   - State is persisted automatically via state.json
 
 ## Success Criteria
 

@@ -60,7 +60,7 @@ roadmapper_model = (omit)
 - `.planning/research/` — domain research (optional)
 - `.planning/REQUIREMENTS.md` — scoped requirements
 - `.planning/ROADMAP.md` — phase structure
-- `.planning/STATE.md` — project memory
+- state.json — project state
 - **GitHub issue** — project tracking (optional)
 - **Feature branch** — linked to issue (optional)
 
@@ -476,12 +476,12 @@ Based on config depth setting:
    - Success criteria for each phase
    - Dependencies between phases
 
-2. Initialize state machine via bridge (with STATE.md fallback):
+2. Initialize state machine via bridge:
 
    \`\`\`bash
-   # Primary: Initialize state via bridge (creates state.json + STATE.md)
+   # Initialize state via bridge (creates state.json)
    luca-bridge ensure-init 2>/dev/null || true
-   # Fallback: Create .planning/STATE.md initialized to Phase 1, ready_for_planning
+
    \`\`\`
 
 3. Update REQUIREMENTS.md with traceability table showing which requirements map to which phases
@@ -535,10 +535,10 @@ Use AskQuestion tool:
 3. **Update state with issue and branch references:**
 
    ```bash
-   # Primary: Set fields via bridge (updates state.json + regenerates STATE.md)
+   # Set fields via bridge (updates state.json)
    luca-bridge set-field --field=github_issue --value={issue_number} 2>/dev/null || true
    luca-bridge set-field --field=branch --value="{issue_number}--{project-slug}" 2>/dev/null || true
-   # Fallback: Add to STATE.md Project Reference section manually
+
    ```
 
 4. **Commit and push:**
@@ -586,10 +586,10 @@ Present completion with next steps:
 - [ ] User scoped each category (v1/v2/out of scope)
 - [ ] REQUIREMENTS.md created with REQ-IDs → committed
 - [ ] ROADMAP.md created with phases, requirement mappings, success criteria
-- [ ] STATE.md initialized
+- [ ] State initialized via bridge
 - [ ] GitHub issue created (if selected) with project summary
 - [ ] Feature branch created and pushed (if issue created)
-- [ ] STATE.md updated with issue/branch references (if issue created)
+- [ ] State updated with issue/branch references (if issue created)
 - [ ] User knows next step is `/phase-discuss 1`
 
 ## Next Steps

@@ -81,7 +81,7 @@ Task(
   prompt: """
 <shadow_scan_context>
 **Scan mode:** {scan_mode}
-**Complexity:** {COMPLEXITY from bridge or STATE.md}
+**Complexity:** {COMPLEXITY from bridge}
 **Config:** {shadow_debt config JSON}
 **Category filter:** {N or "all"}
 </shadow_scan_context>

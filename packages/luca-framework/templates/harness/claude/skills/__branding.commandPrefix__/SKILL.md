@@ -25,8 +25,7 @@ When spawning Agent() calls, ALWAYS include `subagent_type` and `model`:
 
 | Agent name pattern | subagent_type | Routing preset |
 |---|---|---|
-| cognition, classify-* | <%= branding.commandPrefix %>-cognition | ALWAYS_FAST (always haiku) |
-| configure | <%= branding.commandPrefix %>-cognition | ALWAYS_FAST |
+| cognition | <%= branding.commandPrefix %>-cognition | ALWAYS_FAST (always haiku) |
 | backlog | <%= branding.commandPrefix %>-phase-researcher | ORCHESTRATOR |
 | discuss-* | <%= branding.commandPrefix %>-discuss-researcher | ORCHESTRATOR |
 | plan-*, plan-revise-*, plan-gaps-* | <%= branding.commandPrefix %>-planner | ORCHESTRATOR |
@@ -104,13 +103,48 @@ fi
 
 ### Step 2: Cognitive Pre-Flight + Classify + Route (idle -> routed)
 
-Read `agent-prompts.ts`, spawn:
+Read `agent-prompts.ts`, spawn cognition agent:
 ```
 Agent(name: "cognition", subagent_type: "<%= branding.commandPrefix %>-cognition", model: ALWAYS_FAST, prompt: COGNITION_PROMPT({phase, complexity, vault, currentState}))
-Agent(name: "classify", subagent_type: "<%= branding.commandPrefix %>-cognition", model: ALWAYS_FAST, prompt: CLASSIFY_PROMPT({...}))
 ```
 
-Parse COMPLEXITY and ROUTE from classify agent's output.
+**Deterministic classification (no Agent() call):**
+
+If `--complexity` flag was provided, skip the classifier entirely and use the override value.
+
+Otherwise, run the deterministic classifier CLI:
+```bash
+# Extract file count and scope from task description / ROADMAP context
+FILE_COUNT=${FILE_COUNT:-0}
+SCOPE=${SCOPE:-""}
+
+CLASSIFY_RESULT=$(bun src/complexity/__helpers/classify.ts --description="$TASK_DESCRIPTION" --file-count=$FILE_COUNT --scope="$SCOPE" 2>/dev/null)
+RAW_COMPLEXITY=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+ROUTE=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.route === 'phased' ? 'phase-execute' : r.route)" 2>/dev/null || echo "phase-execute")
+```
+
+**Adaptive adjustment** (adjusts based on routing history):
+```bash
+USER_OVERRIDE=""
+if echo "$ARGS" | grep -q -- "--complexity="; then
+  USER_OVERRIDE=$(echo "$ARGS" | grep -o -- '--complexity=[A-Z]*' | head -1 | cut -d= -f2)
+fi
+
+HISTORY_JSON=$(bun -e "import { readRoutingHistory } from './src/complexity/__helpers/routing-history'; const h = await readRoutingHistory({ tail: 20 }); console.log(JSON.stringify(h))" 2>/dev/null || echo "[]")
+
+ADJUST_RESULT=$(bun -e "
+import { adjustComplexity } from './src/complexity/__helpers/adaptive-adjust';
+const raw = '$RAW_COMPLEXITY';
+const override = '$USER_OVERRIDE' || undefined;
+const history = JSON.parse('$HISTORY_JSON');
+const r = adjustComplexity({ raw_complexity: raw, history, override });
+console.log(JSON.stringify(r));
+" 2>/dev/null || echo '{"adjusted":"'$RAW_COMPLEXITY'","reason":"fallback"}')
+
+COMPLEXITY=$(echo "$ADJUST_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.adjusted)" 2>/dev/null || echo "$RAW_COMPLEXITY")
+```
+
+Parse COMPLEXITY and ROUTE from the classifier and adjustment output.
 
 ```bash
 luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
@@ -130,17 +164,16 @@ Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write 
 
 ### Step 4: Configure Session (routed -> configured)
 
-```
-Agent(name: "configure", subagent_type: "<%= branding.commandPrefix %>-cognition", model: ALWAYS_FAST, prompt: CONFIGURE_PROMPT({...}))
-```
-
-**v2 config resolution:**
+**Inline configuration (no Agent() call needed):**
 ```bash
-# Read workflow version from config (default: "v1")
+# Read configuration values directly from config.json
 WORKFLOW_VERSION=$(cat .planning/config.json 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 if [ -z "$WORKFLOW_VERSION" ]; then WORKFLOW_VERSION="v1"; fi
 # CLI override: --v2 flag forces v2 regardless of config
 if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
+
+TOKEN_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"token_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+if [ -z "$TOKEN_PROFILE" ]; then TOKEN_PROFILE="balanced"; fi
 ```
 
 ### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
@@ -188,7 +221,7 @@ Write ISSUE_NUMBER, ISSUE_URL, and BRANCH_NAME to the lu context file so Step 8 
 bun src/skills/__schemas/context-cli.ts write lu "{\"git_workflow\":{\"issue_number\":$ISSUE_NUMBER,\"issue_url\":\"$ISSUE_URL\",\"branch_name\":\"$BRANCH_NAME\"}}"
 ```
 
-**4. Update STATE.md** with the branch and issue info for visibility.
+**4. Update state** with the branch and issue info for visibility.
 
 ### Step 5: Backlog Scan (configured -> scanned) — CONDITIONAL
 
@@ -225,9 +258,13 @@ Verify all dependencies complete. If not: park phase, continue.
 #### 7b. Oversight gate (INLINE, interactive)
 If oversight != "full-auto": prompt user for phase confirmation.
 
-#### 7c. Per-phase complexity re-classify
-```
-Agent(name: "classify-{NN}", subagent_type: "<%= branding.commandPrefix %>-cognition", model: ALWAYS_FAST, prompt: CLASSIFY_PROMPT({phase: NN, ...}))
+#### 7c. Per-phase complexity re-classify (deterministic, no Agent() call)
+```bash
+# Re-classify per-phase using deterministic classifier
+PHASE_GOAL=$(grep "^## " .planning/phases/{NN}-*/PLAN.md 2>/dev/null | head -1 | sed 's/^## //')
+PHASE_FILE_COUNT=$(grep -c "@" .planning/phases/{NN}-*/PLAN.md 2>/dev/null || echo "0")
+PHASE_CLASSIFY=$(bun src/complexity/__helpers/classify.ts --description="$PHASE_GOAL" --file-count=$PHASE_FILE_COUNT 2>/dev/null)
+PHASE_COMPLEXITY=$(echo "$PHASE_CLASSIFY" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "$COMPLEXITY")
 ```
 
 #### 7d. Gate resolution (INLINE)
@@ -398,6 +435,25 @@ Mark phase complete in ROADMAP.md. Write loop counter + remaining phases to cont
 **Emit PHASE_COMPLETE:**
 ```bash
 luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":PHASE_NUMBER,"summary":"Phase PHASE_NUMBER completed"}' 2>/dev/null || true
+```
+
+**Append routing history entry:**
+```bash
+bun -e "
+import { appendRoutingEntry } from './src/complexity/__helpers/routing-history';
+await appendRoutingEntry({
+  timestamp: new Date().toISOString(),
+  phase: PHASE_NUMBER,
+  initial_complexity: '$PHASE_COMPLEXITY',
+  final_complexity: '$FINAL_COMPLEXITY',
+  succeeded: $PHASE_SUCCEEDED,
+  stalled: $PHASE_STALLED,
+  iteration_counts: { harness_fix: $HF_COUNT, verify_fix: $VF_COUNT },
+  task_count: $TASK_COUNT,
+  file_count: $FILE_COUNT,
+  keywords: $MATCHED_KEYWORDS_JSON
+});
+" 2>/dev/null || true
 ```
 
 #### 7p. Gap closure retry (INLINE, if phase had failures)

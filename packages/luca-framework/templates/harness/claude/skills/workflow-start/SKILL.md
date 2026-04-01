@@ -30,7 +30,7 @@ When given a Jira ticket, `<%= branding.commandSlash %>` automatically:
 1. **Fetches Jira details** via Atlassian MCP
 2. **Creates GitHub issue** linked to the ticket
 3. **Creates feature branch** (PROJ-####--description) off current base branch
-4. **Updates state** via bridge (git context persisted to state machine + STATE.md)
+4. **Updates state** via bridge (git context persisted to state.json)
 5. **Runs cognitive pre-flight** with memory recall
 6. **Classifies complexity** and routes appropriately
 7. **Executes work** with verification

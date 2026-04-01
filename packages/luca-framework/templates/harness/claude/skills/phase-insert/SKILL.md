@@ -60,7 +60,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 
 8. **Update state:**
 
-   - Manually add entry under "Roadmap Evolution" in STATE.md with (URGENT) marker
+   - Update state via bridge with new phase info
 
 9. **Present completion:**
 
@@ -87,7 +87,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry (includes "(INSERTED)" marker)
 - [ ] Phase inserted in correct position
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] State updated via bridge
 - [ ] Decimal number calculated correctly
 
 ## Next Steps

@@ -205,7 +205,7 @@ Join the <%= branding.frameworkName %> Discord community
 ├── PROJECT.md            # Project vision
 ├── ROADMAP.md            # Current phase breakdown
 ├── state.json            # State machine (typed, primary source of truth)
-├── STATE.md              # Human-readable state snapshot (auto-generated from state.json)
+├── state.json            # Workflow state (sole source of truth)
 ├── (MuninnDB)            # Project identity, learnings, session memory
 ├── config.json           # Workflow mode & gates
 ├── todos/                # Captured ideas and tasks
@@ -215,7 +215,7 @@ Join the <%= branding.frameworkName %> Discord community
 └── phases/               # Phase-specific plans/summaries
 ```
 
-**State machine** (state.json + STATE.md) tracks git context:
+**State machine** (state.json) tracks git context:
 
 - Ticket: `[TICKET-ID]` or `None`
 - GitHub Issue: `#123`
@@ -290,7 +290,7 @@ This spawns reviewer agents to validate concerns, plans fixes, executes with ato
 ## Getting Help
 
 - Read `.planning/PROJECT.md` for project vision
-- Read `.planning/STATE.md` for current context
+- Read state via `luca-bridge read-status` for current context
 - Check `.planning/ROADMAP.md` for phase status
 - Run `/progress` to check where you're up to
 

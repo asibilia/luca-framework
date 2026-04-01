@@ -72,7 +72,7 @@ Read all pending todo files from `.planning/todos/pending/`:
 ### Step 2: Read Current Architecture
 
 1. Read ROADMAP.md for current phase structure
-2. Read STATE.md for current project state
+2. Read state from bridge for current project state
 3. Explore `src/` directory structure to understand domain layout
 4. Identify the dependency tier map (T0-T3) and domain boundaries
 

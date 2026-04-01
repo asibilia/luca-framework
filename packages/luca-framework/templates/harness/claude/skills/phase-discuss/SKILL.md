@@ -60,10 +60,10 @@ Read these reference files before executing:
 
 ### Complexity-Aware Discussion
 
-Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
+Read complexity from bridge:
 
 ```bash
-COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 ```
 
 **Always runs.** Discussion depth and model tier scale with complexity:
