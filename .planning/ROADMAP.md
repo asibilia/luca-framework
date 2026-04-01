@@ -605,6 +605,64 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 266   | Deterministic Crash Recovery                    | Complete | RECOV-01..04               |
 | 267   | Cross-Milestone State Reset                     | Complete | CROSS-01..03               |
 | 268   | Orchestrator Pipeline Integration               | Complete | ORCH-01..03                |
+| 269   | Audit P0: Security & Integration Wiring         | Complete | SEC-001..002, Integration  |
+| 270   | Audit P1: Structural & Type Safety Fixes        | Pending  | ARCH-01..06, DRY-001..003  |
+| 271   | Audit P2-P3: Tech Debt Cleanup                  | Pending  | DRY-004+, DX-04+, ARCH-08+ |
+
+---
+
+### Phase 269: Audit P0 — Security & Integration Wiring
+
+**Goal:** Fix the 3 P0 blockers identified in the v9.0.0 audit: shell injection vectors in lu.skill.ts, wire budget matrix CLI into orchestrator, and wire oversight gate evaluator into drift response.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 268
+
+**Fixes:**
+
+- SEC-001: Pass $TASK_DESCRIPTION via env var or stdin, not shell interpolation
+- SEC-002: Pass $HISTORY_JSON via env var, not inline bun -e string interpolation
+- Integration: Add `bun .../budget-matrix.ts --complexity=$COMPLEXITY --profile=$TOKEN_PROFILE` CLI call to initialize loop budgets
+- Integration: Replace drift `OVERSIGHT_LEVEL` raw check with `evaluateOversightGate("drift_detected", $OVERSIGHT_MODE, $TOKEN_PROFILE)`
+
+### Phase 270: Audit P1 — Structural & Type Safety Fixes
+
+**Goal:** Fix structural invariant violations, type name collisions, and consolidate duplicate enums identified in the audit.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 269
+
+**Fixes:**
+
+- ARCH-01: Rename drift `ReassessmentResult` → `DriftReassessmentResult`
+- ARCH-02: Move `compute.ts` → `process-data/__helpers/compute.ts`
+- ARCH-06: Move result-envelope schemas from `__helpers/` to `__schemas/`
+- ARCH-05/DRY-003: Consolidate OversightLevel/OversightMode into single type
+- DRY-001/002/006: Consolidate COMPLEXITY_LEVELS, TOKEN_PROFILES exports from package index
+- DX-02/DX-11: Replace `.parse({})` with `.safeParse({})` in hot paths
+- SEC-006/007: Replace bare `JSON.parse` with `sanitizeJsonParse` in ledger + lock
+- ARCH-03: Register 5 new domains in domain-architecture.md tier table
+
+### Phase 271: Audit P2-P3 — Tech Debt Cleanup
+
+**Goal:** Address remaining P2-P3 audit findings: convention normalization, documentation, dead code removal, and DRY extraction.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 270
+
+**Fixes:**
+
+- DX-04: Normalize drift schemas to snake_case
+- DX-07: Create .docs.md for process-data and verification domains
+- DRY-004/009: Extract CLI boilerplate into runCliHelper() factory
+- SEC-003: Lock TOCTOU fix (O_EXCL file creation)
+- ARCH-08: Remove superseded lu-process-data agent from registry
+- ARCH-09: Fix 5 barrel bypasses in skills/\_\_schemas/states/
+- ARCH-11: Export validateMilestone from verification barrel
+- DRY-011: Remove stubbed audit-findings no-ops
+- DX-05/06/10: JSDoc completeness pass
+- DX-01/12: Migrate node:fs to Bun.write where possible
+- DRY-007/008: Consolidate meetsThreshold() and MODEL_TIER_TO_MODEL
 
 ---
 
