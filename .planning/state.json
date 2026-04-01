@@ -1,6 +1,6 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": "discussing",
   "historyValue": {},
   "context": {
     "session_id": "c2059d25-2a6e-4d5d-bae9-058880f7c473",
@@ -9,7 +9,7 @@
     "schema_version": 1,
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "MODERATE",
     "oversight": "full-auto",
     "gates": {
       "confirm_project": true,
@@ -93,7 +93,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-04-01T14:48:51.811Z",
+    "started_at": "2026-04-01T15:51:59.584Z",
+    "last_transition_at": "2026-04-01T15:52:16.420Z",
     "milestone_count": 0
   },
   "children": {}

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v9.0.0 — Workflow Pipeline Redesign
+**Current Milestone:** v9.1.0 — Studio UI Data Pipeline Fixes
 
 ---
 
@@ -915,6 +915,42 @@ Items below are tracked as todo files in `.planning/todos/deferred/` and will on
 - **v8.5.0** — Anti-Skip Enforcement Layer: 3 phases, 10 plans, 79 commits, 113 files changed (+18,033/-6,800 LOC) ([View Archive](milestones/v8.5.0-ROADMAP.md))
 - **v8.5.1** — Audit Gap Closure: 11 phases, 135 commits, 56 files changed (+8,526/-5,498 LOC) ([View Archive](milestones/v8.5.1-ROADMAP.md))
 - **v8.5.2** — Statusline HUD & Edit Gate: 5 phases, 13 commits, 60 files changed (+3,082/-1,368 LOC) ([View Archive](milestones/v8.5.2-ROADMAP.md))
+
+---
+
+## v9.1.0 — Studio UI Data Pipeline Fixes
+
+Fix 6 studio UI bugs (S-01 through S-07) discovered during studio review. All bugs cluster around data fetch/display mismatches between MuninnDB data structures and React component field paths across Home, Sessions, and Memory pages.
+
+### Phase 272: Home Page Fixes (S-01, S-02, S-03)
+
+**Goal:** Fix Home page data display — activity feed event labels, session card summaries, and status card metrics.
+**Complexity:** MODERATE
+**Verification:** Standard
+
+- [ ] fix-activity-event-labels — S-01: Fix field mapping in `use-home-data.ts` and `recent-activity.tsx` so activity items show correct event type labels instead of "Unknown". Verify `EVENT_TYPES` constant in `lib/constants.ts` covers all ledger event types. (@packages/luca-studio/hooks/use-home-data.ts, @packages/luca-studio/components/home/recent-activity.tsx, @packages/luca-studio/lib/constants.ts)
+- [ ] fix-blank-summaries — S-02: Fix `synthesizeSummary()` in `use-home-data.ts` to correctly extract summary text from ledger entries. Check field paths in `event_data` object against actual ledger JSONL structure. (@packages/luca-studio/hooks/use-home-data.ts, @packages/luca-studio/app/api/ledger/route.ts)
+- [ ] fix-status-card-dashes — S-03: Fix field paths in `status-card.tsx` to read from correct state structure. Verify paths like `context.current_phase`, `context.complexity`, `context.current_milestone` match actual `/api/state` response. (@packages/luca-studio/components/home/status-card.tsx, @packages/luca-studio/hooks/use-home-data.ts)
+
+### Phase 273: Sessions Page Fixes (S-04, S-05)
+
+**Goal:** Fix Sessions page — make sessions appear and default to correct vault.
+**Complexity:** SIMPLE
+**Verification:** Standard
+**Depends on:** None
+
+- [ ] fix-sessions-empty — S-04: Fix session query in `use-session-explorer.ts` so sessions page displays data. Debug the filter chain: API `type=session` param + client-side `concept.startsWith("session:")` filter. Check actual MuninnDB engram structure against expected format. (@packages/luca-studio/hooks/use-session-explorer.ts, @packages/luca-studio/app/api/muninn/engrams/route.ts)
+- [ ] fix-default-vault — S-05: Fix vault default in `stores/vault.ts` to read from project config (`.planning/config.json` muninn.vault field) instead of hardcoding "default". Add API route or config endpoint if needed. (@packages/luca-studio/stores/vault.ts, @packages/luca-studio/hooks/use-session-explorer.ts)
+
+### Phase 274: Memory Page Fixes (S-06, S-07)
+
+**Goal:** Fix Memory page — populate recall metrics and show full timeline history.
+**Complexity:** SIMPLE
+**Verification:** Standard
+**Depends on:** None
+
+- [ ] fix-recall-metrics — S-06: Fix recall metrics data pipeline in `use-observations.ts`. Debug metric extraction — check if metric engrams exist in MuninnDB with expected concept patterns ("recall-hit-rate", "recall-precision"). Fix API route and/or extraction logic. (@packages/luca-studio/hooks/use-observations.ts, @packages/luca-studio/app/api/muninn/metrics/route.ts, @packages/luca-studio/components/memory/recall-effectiveness.tsx)
+- [ ] fix-timeline-history — S-07: Fix timeline to show full history instead of just 1 event. Debug `useCheckpoint()` zone history fetch and `/api/muninn/zone-history` route to return complete history. Fix `buildTimeline()` merge logic if needed. (@packages/luca-studio/hooks/use-checkpoint.ts, @packages/luca-studio/app/api/muninn/zone-history/route.ts, @packages/luca-studio/components/memory/memory-timeline.tsx)
 
 ---
 
