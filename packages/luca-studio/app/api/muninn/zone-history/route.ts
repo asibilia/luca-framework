@@ -57,7 +57,9 @@ export async function GET(request: Request) {
           const parsed = parseZoneContent(String(e.content ?? ""));
           return { engram: e, parsed };
         })
-        .filter(({ parsed }) => parsed.zone != null);
+        .filter(
+          ({ parsed }) => parsed.zone != null && parsed.zone !== "unknown",
+        );
 
       // Transform engram content into zone history entries
       const entries = withZones.slice(0, limit).map(({ engram: e, parsed }) => {
