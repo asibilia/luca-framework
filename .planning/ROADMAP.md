@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v9.1.0 — Studio UI Data Pipeline Fixes
+**Current Milestone:** v9.2.0 — Platform Cleanup & Install Hygiene
 
 ---
 
@@ -974,6 +974,41 @@ Fix 6 studio UI bugs (S-01 through S-07) discovered during studio review. All bu
 - [x] fix-layout-imports — Reorder imports in `layout.tsx`: move `Inter` from next/font/google to external block, move `globals.css` to bottom as side-effect. (@packages/luca-studio/app/layout.tsx)
 - [x] fix-enrich-fallback — Add else branch to `enrichWithBridge()` that creates the `context` sub-object when absent, so bridge fields are always merged. (@packages/luca-studio/app/api/state/route.ts)
 - [x] fix-exec-to-execfile — Replace `exec("luca-bridge read-status")` with `execFile("luca-bridge", ["read-status"])` to avoid shell spawning. (@packages/luca-studio/app/api/state/route.ts)
+
+---
+
+## v9.2.0 — Platform Cleanup & Install Hygiene
+
+Complete two incomplete migrations: Cursor platform removal (Phase 159 left adapter source code intact) and MuninnDB migration (legacy BRAIN.md/MEMORY.md/WORKING.md still created on every install). Also reduce repo pollution by moving framework reference docs out of the consuming user's project directory.
+
+### Phase 277: Remove Cursor Adapter Remnants
+
+**Goal:** Delete all remaining Cursor-specific code and references from active source files and templates. Phase 159 removed the `.cursor/` build output but left the adapter source code, registry entries, and hook templates behind.
+**Complexity:** SIMPLE
+**Verification:** Standard
+
+- [ ] delete-cursor-adapter — Remove `src/adapters/cursor/` directory (cursor-adapter.ts, cursor-hook-map.ts, index.ts). (@src/adapters/cursor/)
+- [ ] clean-adapter-registry — Remove `{ path: ".cursor", adapterName: "cursor" }` from adapter-registry.ts and `cursor: ".cursor"` from adapter-report-cli.ts. Remove `createCursorAdapter` import from register-builtins.ts. (@src/adapters/**helpers/adapter-registry.ts, @src/adapters/**helpers/adapter-report-cli.ts, @src/adapters/\_\_helpers/register-builtins.ts)
+- [ ] clean-rule-reference — Remove `cursorAdapter` import/reference from module-boundary.rule.ts. (@src/rules/general/module-boundary.rule.ts)
+- [ ] delete-cursor-hooks-template — Remove `packages/luca-framework/templates/hooks/cursor-hooks.json`. (@packages/luca-framework/templates/hooks/cursor-hooks.json)
+- [ ] audit-compatibility-validator — Check if `validateCursorOutput` in adapter helpers can be removed. (@src/adapters/\_\_helpers/compatibility-validator.ts)
+- [ ] verify-clean — Run `grep -ri '\.cursor' src/ packages/luca-framework/templates/` and confirm zero results (excluding .planning/ history).
+
+### Phase 278: Reduce Repo Pollution & Sunset Legacy Memory Files
+
+**Goal:** Move framework reference docs (references/, templates/, workflows/) from `.planning/` to user-level install path. Sunset BRAIN.md/MEMORY.md/WORKING.md in favor of MuninnDB.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 277
+
+- [ ] route-framework-docs — Update `collectTemplateFiles()` in update.ts to route references/, templates/, workflows/ to `~/.claude/luca/` instead of `.planning/`. Update vault-init.ts and files.ts accordingly. (@packages/luca-framework/src/commands/update.ts, @packages/luca-framework/src/utils/files.ts, @packages/luca-framework/src/commands/vault-init.ts)
+- [ ] update-at-references — Update skill/agent/workflow `@` file references to point to new user-level location instead of `.planning/workflows/` etc. (@packages/luca-framework/templates/framework/)
+- [ ] stop-creating-legacy-memory — Remove BRAIN.md/MEMORY.md/WORKING.md creation from session-start.sh hook. Remove WORKING.md base template. (@packages/luca-framework/templates/hooks/scripts/session-start.sh, @packages/luca-framework/templates/base/.planning/WORKING.md)
+- [ ] update-context-monitor — Update context-monitor.sh to stop using WORKING.md/MEMORY.md file size as context proxy. (@packages/luca-framework/templates/hooks/scripts/context-monitor.sh)
+- [ ] update-session-persist — Update session-persist.sh to stop writing to WORKING.md. (@packages/luca-framework/templates/hooks/scripts/session-persist.sh)
+- [ ] update-cognitive-preflight — Update cognitive-preflight.md workflow to be MuninnDB-first with no file fallbacks. (@packages/luca-framework/templates/framework/workflows/cognitive-preflight.md)
+- [ ] update-planning-structure-rule — Remove BRAIN.md/MEMORY.md/WORKING.md from canonical allowlist in planning-structure rule and shadow-scanner schema. (@src/rules/general/planning-structure.rule.ts, @src/shared/\_\_schemas/shadow-scanner.schemas.ts)
+- [ ] update-manifest — Update manifest system to track new user-level install locations. (@packages/luca-framework/src/commands/update.ts)
 
 ---
 
