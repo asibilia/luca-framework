@@ -28,7 +28,6 @@ export const DETECTION_ORDER: ReadonlyArray<{
   adapterName: string;
 }> = [
   { path: ".claude", adapterName: "claude" },
-  { path: ".cursor", adapterName: "cursor" },
   { path: ".windsurf", adapterName: "windsurf" },
   { path: ".github/agents", adapterName: "vscode" },
 ];

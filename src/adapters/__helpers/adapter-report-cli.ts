@@ -18,7 +18,6 @@ import type {
 import type { EmitResult } from "../__schemas/adapter.schemas";
 import { listRegisteredAdapters } from "./adapter-registry";
 import {
-  validateCursorOutput,
   validateWindsurfOutput,
   validateVscodeOutput,
   aggregateReports,
@@ -38,7 +37,6 @@ const VALIDATOR_MAP: Record<
   string,
   (emitResult: EmitResult) => Promise<CompatibilityReport>
 > = {
-  cursor: validateCursorOutput,
   windsurf: validateWindsurfOutput,
   vscode: validateVscodeOutput,
 };
@@ -51,7 +49,6 @@ const VALIDATOR_MAP: Record<
  */
 const OUTPUT_DIR_MAP: Record<string, string> = {
   claude: ".claude",
-  cursor: ".cursor",
   windsurf: ".windsurf",
   vscode: ".github",
 };

@@ -10,7 +10,6 @@
  * After import, the registry contains:
  * - "claude" -- Claude Code adapter (default)
  * - "api" -- API/headless adapter via Claude Agent SDK
- * - "cursor" -- Cursor IDE adapter
  * - "windsurf" -- Windsurf (Codeium) adapter
  * - "vscode" -- VS Code / GitHub Copilot adapter
  *
@@ -23,12 +22,10 @@
 import { registerAdapter } from "./adapter-registry";
 import { createClaudeAdapter } from "../claude/claude-adapter";
 import { createApiAdapter } from "../api/api-adapter";
-import { createCursorAdapter } from "../cursor/cursor-adapter";
 import { createWindsurfAdapter } from "../windsurf/windsurf-adapter";
 import { createVscodeAdapter } from "../vscode/vscode-adapter";
 
 registerAdapter(createClaudeAdapter());
 registerAdapter(createApiAdapter());
-registerAdapter(createCursorAdapter());
 registerAdapter(createWindsurfAdapter());
 registerAdapter(createVscodeAdapter());
