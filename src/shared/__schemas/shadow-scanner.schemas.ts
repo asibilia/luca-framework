@@ -115,7 +115,6 @@ export const ShadowDebtConfigSchema = z.object({
     .default([
       "config.json",
       "state.json",
-      "STATE.md",
       "session-ledger.jsonl",
       "ROADMAP.md",
       "PROJECT.md",

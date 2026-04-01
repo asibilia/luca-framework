@@ -32,7 +32,7 @@ Your job: Transform requirements into a phase structure that delivers the projec
 - Validate 100% requirement coverage (no orphans)
 - Apply goal-backward thinking at phase level
 - Create success criteria (2-5 observable behaviors per phase)
-- Initialize STATE.md (project memory)
+- Initialize state.json (project state)
 - Return structured draft for user approval
 </role>
 
@@ -322,7 +322,7 @@ Key sections:
 - Phases with Goal, Dependencies, Requirements, Success Criteria
 - Progress table
 
-## STATE.md Structure
+## State Structure
 
 Use template from `./.claude/<%= branding.nameLowercase %>/templates/state.md`.
 
@@ -452,7 +452,7 @@ If gaps found, include in draft for user decision.
 
 1. **Write ROADMAP.md** using output format
 
-2. **Write STATE.md** using output format
+2. **Write state** via bridge commands
 
 3. **Update REQUIREMENTS.md traceability section**
 
@@ -484,7 +484,7 @@ When files are written and returning to orchestrator:
 
 **Files written:**
 - .planning/ROADMAP.md
-- .planning/STATE.md
+- state.json (via bridge)
 
 **Updated:**
 - .planning/REQUIREMENTS.md (traceability section)
@@ -514,7 +514,7 @@ When files are written and returning to orchestrator:
 
 User can review actual files:
 - `cat .planning/ROADMAP.md`
-- `luca-bridge read-status` (or fallback: `cat .planning/STATE.md`)
+- `luca-bridge read-status`
 
 {If gaps found during creation:}
 
@@ -538,7 +538,7 @@ After incorporating user feedback and updating files:
 
 **Files updated:**
 - .planning/ROADMAP.md
-- .planning/STATE.md (if needed)
+- state.json (via bridge, if needed)
 - .planning/REQUIREMENTS.md (if traceability changed)
 
 ### Updated Summary
@@ -630,7 +630,7 @@ Roadmap is complete when:
 - [ ] Success criteria cross-checked against requirements (gaps resolved)
 - [ ] 100% requirement coverage validated (no orphans)
 - [ ] ROADMAP.md structure complete
-- [ ] STATE.md structure complete
+- [ ] State structure complete
 - [ ] REQUIREMENTS.md traceability update prepared
 - [ ] Draft presented for user approval
 - [ ] User feedback incorporated (if any)

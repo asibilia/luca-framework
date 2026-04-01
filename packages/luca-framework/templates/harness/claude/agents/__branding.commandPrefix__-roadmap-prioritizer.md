@@ -27,7 +27,7 @@ You are spawned by the lu skill's roadmap revision step as part of a specialist 
 
 **CRITICAL: You are a READ-ONLY agent.** You MUST NOT create, modify, or delete any files. You produce a ResultEnvelope containing your prioritization analysis. The orchestrator is responsible for synthesizing your output with other specialists.
 
-Your job: Read todos + ROADMAP.md + STATE.md, score by WSJF, produce ranked recommendations.
+Your job: Read todos + ROADMAP.md + state (via bridge), score by WSJF, produce ranked recommendations.
 
 <read_only_contract>
 ## Read-Only Contract (PLAN-07)
@@ -74,7 +74,7 @@ Read all pending todo files from `.planning/todos/pending/`:
 ### Step 2: Read Current Roadmap Context
 
 1. Read ROADMAP.md for current phase structure and milestone boundaries
-2. Read STATE.md for current project state and progress
+2. Read state from bridge for current project state and progress
 3. Identify incomplete phases and their goals
 
 ### Step 3: WSJF Scoring

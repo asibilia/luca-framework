@@ -215,10 +215,10 @@ fi
 | COMPLEX | Run | capable |
 | CRITICAL | Run | capable |
 
-Read complexity from bridge (falls back to STATE.md `Task Complexity:` field):
+Read complexity from bridge:
 
 ```bash
-COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 ```
 
 The researcher model tier is resolved via `resolveModelForAgent("<%= branding.commandPrefix %>-phase-researcher", complexity)`.
@@ -237,8 +237,6 @@ First, read the required context:
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 # Primary: Read state from state machine bridge
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .planning/STATE.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 CONTEXT_CONTENT=$(cat .planning/CONTEXT.md 2>/dev/null || echo "No context file")
 ```
@@ -302,7 +300,7 @@ If exists: Offer to continue planning, view existing, or replan from scratch.
 
 Read and store context file contents for the planner agent:
 
-- STATE.md, ROADMAP.md
+- ROADMAP.md
 - REQUIREMENTS.md, CONTEXT.md, RESEARCH.md (if exist)
 - VERIFICATION.md, UAT.md (if --gaps mode)
 
@@ -325,8 +323,6 @@ First, read all context files (already done in step 7):
 ```bash
 # Primary: Read state from state machine bridge
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .planning/STATE.md)
 ROADMAP_CONTENT=$(cat .planning/ROADMAP.md)
 REQUIREMENTS_CONTENT=$(cat .planning/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
 RESEARCH_CONTENT=$(cat "${PHASE_DIR}/RESEARCH.md" 2>/dev/null || echo "No research file")

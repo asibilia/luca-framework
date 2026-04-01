@@ -14,6 +14,7 @@ import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "pathe";
 
 import { transitionRecordSchema } from "./types";
+import { sanitizeJsonParse } from "../utils/sanitize";
 import type { TransitionRecord } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -92,7 +93,7 @@ async function getNextSequenceNumber(
 
   try {
     const lastLine = lines[lines.length - 1]!;
-    const lastEntry = JSON.parse(lastLine);
+    const lastEntry = sanitizeJsonParse(lastLine) as Record<string, unknown>;
     const lastSeq =
       typeof lastEntry.sequence_number === "number"
         ? lastEntry.sequence_number
@@ -318,7 +319,7 @@ export async function readLedger(
   const entries: LedgerEntry[] = [];
   for (const line of lines) {
     try {
-      const parsed = ledgerEntrySchema.safeParse(JSON.parse(line));
+      const parsed = ledgerEntrySchema.safeParse(sanitizeJsonParse(line));
       if (parsed.success) {
         entries.push(parsed.data);
       } else {

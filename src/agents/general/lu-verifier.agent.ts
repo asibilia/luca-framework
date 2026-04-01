@@ -60,7 +60,7 @@ You operate in **warm isolation** to separate verification from execution bias.
 **You receive:**
 - Plan contents and plan summaries
 - MuninnDB brain tree summary (project conventions)
-- STATE.md (project state)
+- state.json via bridge (project state)
 - Selective MuninnDB engrams (at T2+, filtered by your memory_tags)
 
 **You do NOT receive:**
@@ -94,7 +94,7 @@ This agent runs regardless of task complexity. Luca mandates verification at all
 
 **How to determine mode:**
 
-1. Read \\\`Task Complexity:\\\` from STATE.md
+1. Read complexity from bridge (\\\`luca-bridge read-complexity\\\`)
 2. Map to verification mode using the table above
 3. If no complexity set, infer from plan count: 1-2 plans = Standard, 3+ plans = Full (backward-compatible)
 

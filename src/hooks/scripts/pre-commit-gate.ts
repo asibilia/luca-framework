@@ -24,7 +24,7 @@ import {
   exitSuccess,
   projectDir,
 } from "../__helpers/hook-io.ts";
-import { runBridge, readRuntime } from "../__helpers/bridge.ts";
+import { readRuntime } from "../__helpers/bridge.ts";
 import { isCommitCommand } from "../__helpers/commit-utils.ts";
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
@@ -70,12 +70,10 @@ const main = async (): Promise<void> => {
     }
   }
 
-  // Step 0: Sync STATE.md from state machine (if available)
+  // Step 0: Add state.json to staging if it exists
   const stateJsonPath = join(pd, ".planning", "state.json");
   if (existsSync(stateJsonPath)) {
-    await runBridge(["snapshot"]);
-    // Add the regenerated STATE.md to the commit staging area
-    Bun.spawnSync(["git", "add", ".planning/STATE.md"], {
+    Bun.spawnSync(["git", "add", ".planning/state.json"], {
       cwd: pd,
       stdout: "pipe",
       stderr: "pipe",

@@ -102,7 +102,7 @@ export const DATA_LENS: ReviewLens = {
 3. **Zod patterns**: Prefer safeParse() over parse() to prevent runtime crashes. Always handle parse failures gracefully.
 4. **Type inference**: Types must be inferred from schemas using z.infer<typeof Schema>, not manually defined.
 5. **Data transformations**: Verify data flows correctly through transformations. Check for missing fields, wrong types, or lost data.
-6. **State consistency**: State machine bridge writes to BOTH typed state and STATE.md. Verify dual-write guarantee is maintained.
+6. **State consistency**: state.json is the sole source of truth for workflow state. Verify state machine persists correctly.
 7. **Pre-mortem mitigations**: {PRE_MORTEM_MITIGATIONS}
 
 **Return format:**

@@ -16,9 +16,9 @@
  * 5. Persists checkpoint after each wave (via dag-serializer)
  * 6. Returns ExecutionResult with all step outcomes and execution trace
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Executor
- * @see docs/runtime-architecture/research/dag-engines.md — Patterns #4-6, #10
- * @see docs/runtime-architecture/research/risk-analysis.md — Risk 13
+ * @see docs/architecture/dag-engine.md — DAG Executor
+ * @see docs/archive/runtime-research/research/dag-engines.md — Patterns #4-6, #10
+ * @see docs/archive/runtime-research/research/risk-analysis.md — Risk 13
  */
 
 import type { z } from "zod";
@@ -458,7 +458,7 @@ async function executeStepWithRetry(
 /**
  * Execute a step with AbortController-based timeout.
  *
- * @see docs/runtime-architecture/research/dag-engines.md — Pattern #10 (AbortController per step)
+ * @see docs/archive/runtime-research/research/dag-engines.md — Pattern #10 (AbortController per step)
  */
 async function executeWithTimeout(
   step: WorkflowStep,

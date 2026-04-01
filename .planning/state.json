@@ -3,8 +3,10 @@
   "value": "idle",
   "historyValue": {},
   "context": {
-    "session_id": "9a5e618e-7ee4-4daf-979f-6b5ad0062eed",
+    "session_id": "c2059d25-2a6e-4d5d-bae9-058880f7c473",
     "base_branch": "main",
+    "token_profile": "balanced",
+    "schema_version": 1,
     "current_plan_ids": [],
     "current_wave_count": 0,
     "complexity": "TRIVIAL",
@@ -91,7 +93,8 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-31T17:11:59.829Z"
+    "started_at": "2026-04-01T14:48:51.811Z",
+    "milestone_count": 0
   },
   "children": {}
 }

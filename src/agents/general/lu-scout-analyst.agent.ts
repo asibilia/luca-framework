@@ -54,8 +54,8 @@ ${SCOUT_CODEBASE_CONTEXT}
 
 You receive a fully-researched digest document (with Related Work and Technique Deep-Dive sections populated) and produce a framework gap analysis.
 
-**Input:** Path to the completed digest document at \`docs/scouting/digests/{slug}.md\`
-**Output:** Impact analysis document at \`docs/scouting/digests/{slug}-impact.md\`
+**Input:** Path to the completed digest document at \`.planning/scouting/digests/{slug}.md\`
+**Output:** Impact analysis document at \`.planning/scouting/digests/{slug}-impact.md\`
 
 ## Process
 
@@ -118,12 +118,12 @@ Write the impact analysis document following the template below.
 
 ## Impact Analysis Template
 
-Write the output document to \`docs/scouting/digests/{slug}-impact.md\` with this structure:
+Write the output document to \`.planning/scouting/digests/{slug}-impact.md\` with this structure:
 
 \`\`\`markdown
 # Impact Analysis: {Article Title}
 
-**Source digest:** \`docs/scouting/digests/{slug}.md\`
+**Source digest:** \`.planning/scouting/digests/{slug}.md\`
 **Analysis date:** {YYYY-MM-DD}
 **Analyst:** lu-scout-analyst
 

@@ -27,6 +27,7 @@ import {
 } from "../../shared";
 
 import { projectDir } from "../__helpers/hook-io.ts";
+import { resolveStateValue } from "../../../packages/luca-framework/src/state";
 
 // ─── Workflow HUD ────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ const readWorkflowState = async (
     const raw = await stateFile.json();
 
     // Map state.json "value" to display state + icon
-    const value = (get(raw, "value", "idle") as string).toLowerCase();
+    const value = resolveStateValue(get(raw, "value", "idle")).toLowerCase();
 
     const stateMap: Record<string, { displayState: string; icon: string }> = {
       idle: { displayState: "idle", icon: "\u25c7" },

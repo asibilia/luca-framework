@@ -250,7 +250,7 @@ Every scenario must be specific to the domain being implemented. Measure specifi
 
 Every mitigation must be something the planner or executor can act on:
 - "Add error handling" -- too vague, disqualified
-- "Add try/catch around the bridge.ts read-status call in phase-discuss.skill.ts with fallback to STATE.md grep" -- specific and actionable
+- "Add try/catch around the bridge.ts read-status call in phase-discuss.skill.ts with fallback to default" -- specific and actionable
 
 ### Verification Criteria
 

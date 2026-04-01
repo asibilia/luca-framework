@@ -9,7 +9,7 @@
  *
  * @example
  * ```
- * /scout                  — Process all pending URLs from docs/scouting/inbox.md
+ * /scout                  — Process all pending URLs from .planning/scouting/inbox.md
  * /scout https://url      — Process a single URL directly
  * /scout --review         — Re-process items from manual-review/
  * /scout --deferred       — List deferred items for milestone planning
@@ -35,7 +35,7 @@ Deterministic state machine orchestrator that ingests external articles, researc
 
 ## Arguments
 
-- \`/scout\` — Process all pending URLs from \`docs/scouting/inbox.md\`
+- \`/scout\` — Process all pending URLs from \`.planning/scouting/inbox.md\`
 - \`/scout https://url\` — Process a single URL directly
 - \`/scout --review\` — Re-process items from \`manual-review/\`
 - \`/scout --deferred\` — List deferred items for milestone planning
@@ -55,7 +55,7 @@ This skill is a **flat Agent() orchestrator**. ALL code work is delegated to lea
 
 ### Phase A: Per-Article Pipeline (sequential per article)
 
-For each URL, read or create state file at \`docs/scouting/.scout-state/{slug}.json\`. Resume from current state.
+For each URL, read or create state file at \`.planning/scouting/.scout-state/{slug}.json\`. Resume from current state.
 
 **State Machine Transitions** (strictly enforced — no step skipping):
 
@@ -71,7 +71,7 @@ For each URL, read or create state file at \`docs/scouting/.scout-state/{slug}.j
 After each Agent() returns:
 1. Validate the expected output artifact exists
 2. Update state file: advance current_state, append to history, record artifact path
-3. Update \`docs/scouting/inbox.md\` — mark URL as \`<!-- processed:YYYY-MM-DD -->\`
+3. Update \`.planning/scouting/inbox.md\` — mark URL as \`<!-- processed:YYYY-MM-DD -->\`
 
 If an Agent() fails or artifact is missing: log error, do NOT advance state, continue to next article.
 
@@ -90,8 +90,8 @@ Only runs when ALL pending articles have reached READY (or terminal) state.
 
 After scout-integrate returns, check per-article verdicts:
 - **integrate**: Continue to scout-plan
-- **defer**: Move state to DEFERRED, write deferred template to \`docs/scouting/deferred/\`
-- **conflict**: Move state to CONFLICTING, write manual-review template to \`docs/scouting/manual-review/\`
+- **defer**: Move state to DEFERRED, write deferred template to \`.planning/scouting/deferred/\`
+- **conflict**: Move state to CONFLICTING, write manual-review template to \`.planning/scouting/manual-review/\`
 
 ## Step-by-Step Execution
 
@@ -105,16 +105,16 @@ Parse which mode to run:
 
 ### Step 2: Collect URLs
 
-**If no args:** Read \`docs/scouting/inbox.md\`, extract all URLs not marked \`<!-- processed -->\`
+**If no args:** Read \`.planning/scouting/inbox.md\`, extract all URLs not marked \`<!-- processed -->\`
 **If URL arg:** Use the single provided URL
-**If --review:** Scan \`docs/scouting/.scout-state/*.json\` for LOW_RELEVANCE or CONFLICTING states
+**If --review:** Scan \`.planning/scouting/.scout-state/*.json\` for LOW_RELEVANCE or CONFLICTING states
 **If --deferred:** Scan for DEFERRED states, display list, RETURN (read-only)
 
 ### Step 3: Per-Article Loop
 
 For each URL:
 1. Generate slug: lowercase title/URL, kebab-case, truncate ~50 chars
-2. Check for existing state file at \`docs/scouting/.scout-state/{slug}.json\`
+2. Check for existing state file at \`.planning/scouting/.scout-state/{slug}.json\`
 3. If exists: resume from current_state
 4. If not: create new state file with PENDING state
 5. Step through state machine transitions (Phase A table above)
@@ -142,7 +142,7 @@ Display final summary:
 
 ## State File Schema
 
-Each article state file at \`docs/scouting/.scout-state/{slug}.json\`:
+Each article state file at \`.planning/scouting/.scout-state/{slug}.json\`:
 
 \\\`\\\`\\\`json
 {
@@ -153,9 +153,9 @@ Each article state file at \`docs/scouting/.scout-state/{slug}.json\`:
     { "from": "PENDING", "to": "INGESTED", "timestamp": "ISO-8601", "artifact": "path" }
   ],
   "artifacts": {
-    "digest": "docs/scouting/digests/{slug}.md",
-    "research": "docs/scouting/research/{slug}.md",
-    "impact": "docs/scouting/impact/{slug}.md"
+    "digest": ".planning/scouting/digests/{slug}.md",
+    "research": ".planning/scouting/research/{slug}.md",
+    "impact": ".planning/scouting/impact/{slug}.md"
   },
   "verdict": null,
   "created_at": "ISO-8601",

@@ -29,7 +29,6 @@ Only these files belong directly in \`.planning/\` root:
 |------|---------|
 | \`config.json\` | Luca framework configuration |
 | \`state.json\` | Workflow state machine (source of truth) |
-| \`STATE.md\` | Human-readable state snapshot |
 | \`session-ledger.jsonl\` | Append-only session event log |
 | \`ROADMAP.md\` | Active milestone roadmap |
 | \`PROJECT.md\` | Project identity and history |

@@ -2,7 +2,7 @@
  * Doctor check: project-level context and configuration.
  *
  * Validates broader project context beyond config field validation:
- * MuninnDB vault configuration, .env presence, STATE.md, and ROADMAP.md.
+ * MuninnDB vault configuration, .env presence, state.json, and ROADMAP.md.
  * This is distinct from the `config-validation` check which validates
  * branding/stack/workTracker fields.
  *
@@ -23,7 +23,7 @@ import type { CheckResult, DoctorCheck } from "../types";
  * - `.planning/config.json` exists (prerequisite for vault check)
  * - `muninn.vault` field in config
  * - `.env` file exists
- * - `.planning/STATE.md` exists
+ * - `.planning/state.json` exists
  * - `.planning/ROADMAP.md` exists
  *
  * Returns:
@@ -34,7 +34,7 @@ import type { CheckResult, DoctorCheck } from "../types";
  * @example
  * ```typescript
  * const result = await projectContextCheck.run();
- * // { name: 'Project Context', status: 'pass', message: 'Vault: luca-framework, STATE.md + ROADMAP.md present', ... }
+ * // { name: 'Project Context', status: 'pass', message: 'Vault: luca-framework, state.json + ROADMAP.md present', ... }
  * ```
  */
 export const projectContextCheck: DoctorCheck = {
@@ -45,7 +45,7 @@ export const projectContextCheck: DoctorCheck = {
     const cwd = process.cwd();
     const planningDir = join(cwd, ".planning");
     const configPath = join(planningDir, "config.json");
-    const statePath = join(planningDir, "STATE.md");
+    const statePath = join(planningDir, "state.json");
     const roadmapPath = join(planningDir, "ROADMAP.md");
     const envPath = join(cwd, ".env");
 
@@ -87,7 +87,7 @@ export const projectContextCheck: DoctorCheck = {
       `config.json: ${hasConfig ? "present" : "missing"}`,
       `vault: ${vaultName ?? "not configured"}`,
       `.env: ${hasEnv ? "present" : "missing"}`,
-      `STATE.md: ${hasState ? "present" : "missing"}`,
+      `state.json: ${hasState ? "present" : "missing"}`,
       `ROADMAP.md: ${hasRoadmap ? "present" : "missing"}`,
     ];
 
@@ -95,7 +95,7 @@ export const projectContextCheck: DoctorCheck = {
     const issues: string[] = [];
     if (!hasConfig) issues.push("config.json missing");
     if (!vaultName) issues.push("MuninnDB vault not configured");
-    if (!hasState) issues.push("STATE.md missing");
+    if (!hasState) issues.push("state.json missing");
     if (!hasRoadmap) issues.push("ROADMAP.md missing");
 
     if (!hasConfig) {
@@ -124,7 +124,7 @@ export const projectContextCheck: DoctorCheck = {
     return {
       name: this.name,
       status: "pass",
-      message: `Vault: ${vaultName}, STATE.md + ROADMAP.md present`,
+      message: `Vault: ${vaultName}, state.json + ROADMAP.md present`,
       fixCommand: null,
       details: detailParts.join(", "),
     };

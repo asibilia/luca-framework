@@ -5,7 +5,6 @@
  * Uses prefix-based matching for parallel reviewer agents (review-arch, review-dx, etc.).
  *
  * @module pre-step-phase-execute
- * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";

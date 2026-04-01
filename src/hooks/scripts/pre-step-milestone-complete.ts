@@ -5,7 +5,6 @@
  * execution to verify state ordering.
  *
  * @module pre-step-milestone-complete
- * @see docs/skill-to-agent-migration/architecture.md
  */
 
 import { createSubSkillEnforcementHook } from "../__helpers/enforcement-hook-factory.ts";

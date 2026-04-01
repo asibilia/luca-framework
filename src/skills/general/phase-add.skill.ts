@@ -65,7 +65,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 
 8. **Update state:**
 
-   - Add entry under "Roadmap Evolution" in STATE.md
+   - Update state via bridge with new phase info
 
 9. **Present completion:**
 
@@ -96,7 +96,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] State updated via bridge
 - [ ] New phase appears at end of current milestone
 - [ ] Next phase number calculated correctly
 </main>`,

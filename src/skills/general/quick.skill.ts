@@ -17,7 +17,7 @@ const quickConfig: SkillConfig = {
       content: `<main>
 # Luca Quick
 
-Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
+Execute small, ad-hoc tasks with Luca guarantees (atomic commits, state tracking) while skipping optional agents (research, plan-checker, verifier).
 
 ## Vault Resolution
 
@@ -38,7 +38,7 @@ Quick mode is the same system with a shorter path:
 - Spawns lu-planner (quick mode) + lu-executor(s)
 - Skips lu-phase-researcher, lu-plan-checker, lu-verifier
 - Quick tasks live in \`.planning/quick/\` separate from planned phases
-- Updates STATE.md "Quick Tasks Completed" table (NOT ROADMAP.md)
+- Updates state "Quick Tasks Completed" tracking (NOT ROADMAP.md)
 
 **Use when:** You know exactly what to do and the task is small enough to not need research or verification.
 
@@ -88,49 +88,13 @@ Check that an active Luca project exists:
 # Auto-initialize minimal .planning/ if needed (quick mode works without full project)
 if [ ! -d .planning ]; then
   mkdir -p .planning/quick
-  # Create STATE.md directly
-  cat > .planning/STATE.md << 'EOF'
-# Project State
-
-## Quick Mode
-
-This project uses quick mode only. No roadmap or phases.
-
-## Quick Tasks Completed
-
-| # | Description | Date | Commit | Files |
-|---|-------------|------|--------|-------|
-
-## Session Continuity
-
-Last session: [date]
-Mode: Quick tasks only
-EOF
+  # Initialize state via bridge
+  luca-bridge ensure-init 2>/dev/null || true
   echo "Initialized minimal .planning/ for quick tasks"
 fi
 
-# Ensure STATE.md exists (might have .planning/ but no STATE.md)
-if [ ! -f .planning/STATE.md ]; then
-  # Create STATE.md directly
-  cat > .planning/STATE.md << 'EOF'
-# Project State
-
-## Quick Mode
-
-This project uses quick mode only. No roadmap or phases.
-
-## Quick Tasks Completed
-
-| # | Description | Date | Commit | Files |
-|---|-------------|------|--------|-------|
-
-## Session Continuity
-
-Last session: [date]
-Mode: Quick tasks only
-EOF
-  echo "Created minimal STATE.md for quick tasks"
-fi
+# Ensure state is initialized
+luca-bridge ensure-init 2>/dev/null || true
 \`\`\`
 
 Quick tasks work independently - no ROADMAP.md required. Auto-initializes minimal .planning/ if needed.
@@ -179,8 +143,6 @@ First, read context:
 \`\`\`bash
 # Primary: Read state from state machine bridge
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 # Recall session context from MuninnDB:
 # mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "current session context for quick task")
 WORKING_CONTENT="[recalled from MuninnDB session context]"
@@ -239,8 +201,6 @@ First, read the plan:
 PLAN_CONTENT=$(cat "\${QUICK_DIR}/\${next_num}-PLAN.md")
 # Primary: Read state from state machine bridge
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
 
 Then spawn the executor:
@@ -284,7 +244,7 @@ Execute this quick task plan.
 
 **Do NOT proceed until the Task returns.**
 
-### Step 7: Update STATE.md
+### Step 7: Update State
 
 Add row to "Quick Tasks Completed" table:
 
@@ -317,14 +277,14 @@ Ready for next task: /quick
 ## Success Criteria
 
 - [ ] .planning/ directory exists (auto-created if needed)
-- [ ] STATE.md exists (auto-created if needed)
+- [ ] State initialized (auto-created if needed)
 - [ ] User provides task description
 - [ ] Slug generated (lowercase, hyphens, max 40 chars)
 - [ ] Next number calculated (001, 002, 003...)
 - [ ] Directory created at \`.planning/quick/NNN-slug/\`
 - [ ] \`\${next_num}-PLAN.md\` created by planner
 - [ ] \`\${next_num}-SUMMARY.md\` created by executor
-- [ ] STATE.md updated with quick task row
+- [ ] State updated with quick task entry
 - [ ] Artifacts committed
 
 ## Next Steps

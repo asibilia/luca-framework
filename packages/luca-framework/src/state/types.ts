@@ -56,14 +56,29 @@ export type WorkflowState = (typeof WORKFLOW_STATES)[number];
 
 // ─── Oversight Levels ─────────────────────────────────────────────────────────
 
-/** Oversight levels controlling human-in-the-loop gates */
+/**
+ * Oversight levels controlling human-in-the-loop gates.
+ *
+ * v9.0.0: Added "flagged" mode. "plan" is deprecated (alias for "phase").
+ *
+ * NOTE: The canonical 4-mode OversightMode type lives in
+ * `__schemas/oversight-gate.schemas.ts`. This schema extends it with
+ * the deprecated "plan" value for backward compatibility. The
+ * `OversightLevel` type alias is kept for existing consumers.
+ */
 export const OVERSIGHT_LEVELS = [
   "full-auto",
+  "flagged",
   "milestone",
   "phase",
   "plan",
 ] as const;
 export const oversightLevelSchema = z.enum(OVERSIGHT_LEVELS);
+
+/**
+ * @deprecated Prefer `OversightMode` from `__schemas/oversight-gate.schemas.ts`.
+ * `OversightLevel` includes the deprecated "plan" value for backward compat.
+ */
 export type OversightLevel = z.infer<typeof oversightLevelSchema>;
 
 // ─── Complexity Level (Zod Schema) ───────────────────────────────────────────
@@ -145,10 +160,31 @@ export type BudgetStateRef = z.infer<typeof budgetStateRefSchema>;
 export const workflowContextSchema = z.object({
   // Identity
   session_id: z.string(),
+  /** @deprecated Use git_workflow.ticket_id instead. Kept for backward compat until Phase 260+. */
   ticket_id: z.string().optional(),
+  /** @deprecated Use git_workflow.github_issue instead. Kept for backward compat until Phase 260+. */
   github_issue: z.number().int().optional(),
+  /** @deprecated Use git_workflow.branch instead. Kept for backward compat until Phase 260+. */
   branch: z.string().optional(),
+  /** @deprecated Use git_workflow.base_branch instead. Kept for backward compat until Phase 260+. */
   base_branch: z.string().default("main"),
+
+  // Git workflow (consolidates standalone fields above)
+  git_workflow: z
+    .object({
+      ticket_id: z.string().optional(),
+      github_issue: z.number().int().optional(),
+      branch: z.string().optional(),
+      base_branch: z.string().default("main"),
+      pr_number: z.number().int().optional(),
+    })
+    .optional(),
+
+  // Token profile for ceremony control
+  token_profile: z.enum(["budget", "balanced", "quality"]).default("balanced"),
+
+  // Schema version for forward compatibility
+  schema_version: z.number().int().default(1),
 
   // Workflow position
   current_milestone: z.string().optional(),
@@ -245,6 +281,10 @@ export const workflowContextSchema = z.object({
       active: z.boolean().default(false),
     })
     .optional(),
+
+  // Cross-milestone continuation
+  /** Number of milestones completed in this session (safety limit: 3) */
+  milestone_count: z.number().int().nonnegative().default(0),
 
   // Error tracking
   last_error: z.string().optional(),
@@ -386,6 +426,16 @@ export const workflowEventSchema = z.discriminatedUnion("type", [
     attempt: z.number().int().positive(),
     max_attempts: z.number().int().positive(),
   }),
+
+  // Compound sub-state transition events (executing sub-states)
+  /** Execution agent completed — transitions executing.running -> executing.harnessing */
+  z.object({ type: z.literal("EXECUTION_COMPLETE") }),
+  /** Phase verification passed within executing — transitions executing.verifying -> executing.reviewing */
+  z.object({ type: z.literal("PHASE_VERIFY_PASSED") }),
+  /** All parallel reviewers completed — transitions executing.reviewing -> executing.learning */
+  z.object({ type: z.literal("REVIEW_COMPLETE") }),
+  /** Phase learning completed — transitions executing.learning -> executing.committing */
+  z.object({ type: z.literal("PHASE_LEARN_COMPLETE") }),
 ]);
 
 /**

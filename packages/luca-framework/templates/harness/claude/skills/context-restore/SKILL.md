@@ -19,7 +19,7 @@ Check for checkpoint data in order of preference:
 
 1. **Filesystem**: Read `.planning/.context-checkpoint.json` if it exists
 2. **MuninnDB**: `mcp__muninn__muninn_recall(vault: REPO_VAULT, context: ["session:checkpoint", "context checkpoint"])`
-3. **Fallback**: If no checkpoint found, read `.planning/STATE.md` and `git log --oneline -10`
+3. **Fallback**: If no checkpoint found, read state via bridge (`luca-bridge read-status`) and `git log --oneline -10`
 
 If no checkpoint or state found:
 

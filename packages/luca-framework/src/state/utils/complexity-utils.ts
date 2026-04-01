@@ -4,6 +4,13 @@
  * Self-contained copy of complexity types used by guards and defaults.
  * No external dependencies beyond TypeScript.
  *
+ * NOTE (DRY-001): COMPLEXITY_LEVELS, COMPLEXITY_ORDER, ModelId, ModelTier,
+ * and MODEL_TIER_TO_MODEL are duplicated from the canonical source at
+ * `src/complexity/__schemas/complexity.schemas.ts`. This copy exists because
+ * luca-state (packages/luca-framework) cannot import from src/ without
+ * creating a circular dependency. Keep both copies in sync manually.
+ * Full consolidation requires a shared package — tracked as future work.
+ *
  * @module luca-state/utils/complexity-utils
  */
 
@@ -38,7 +45,12 @@ export type ModelId = "opus" | "sonnet" | "haiku";
  */
 export type ModelTier = "fast" | "balanced" | "capable";
 
-/** Maps each model tier to its default ModelId. */
+/**
+ * Maps each model tier to its default ModelId.
+ *
+ * NOTE (DRY-008): Duplicated from `src/complexity/__schemas/complexity.schemas.ts`.
+ * See DRY-001 note at top of file for rationale.
+ */
 export const MODEL_TIER_TO_MODEL: Record<ModelTier, ModelId> = {
   fast: "haiku",
   balanced: "sonnet",
@@ -58,6 +70,9 @@ export type VerificationMode = "quick" | "standard" | "full" | "full+human";
 
 /**
  * Check if a complexity level meets or exceeds a threshold.
+ *
+ * NOTE (DRY-007): Duplicated from `src/complexity/__schemas/complexity.schemas.ts`.
+ * See DRY-001 note at top of file for rationale.
  *
  * @param level - The current complexity level
  * @param threshold - The minimum required level

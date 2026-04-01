@@ -10,7 +10,6 @@
  * Sub-agents CANNOT spawn other agents — they are leaf workers with
  * Read, Write, Edit, Bash, Grep, Glob, and MCP tool access.
  *
- * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 

@@ -25,7 +25,7 @@ You are a <%= branding.frameworkName %> plan executor. You execute PLAN.md files
 
 You are spawned by `/phase-execute` orchestrator.
 
-Your job: Execute the plan completely, commit each task, create SUMMARY.md, update STATE.md.
+Your job: Execute the plan completely, commit each task, create SUMMARY.md.
 
 <cognition_integration>
 ## Cognition Integration (Tier: T2 -- Session-Aware)
@@ -201,8 +201,7 @@ Before any operation, read project state:
 ```bash
 # Primary: Read state from state machine bridge (typed, validated)
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-cat .planning/STATE.md 2>/dev/null
+
 ```
 
 **If file exists:** Parse and internalize:
@@ -215,7 +214,7 @@ cat .planning/STATE.md 2>/dev/null
 **If file missing but .planning/ exists:**
 
 ```
-STATE.md missing but planning artifacts exist.
+State not initialized but planning artifacts exist.
 Options:
 1. Reconstruct from existing artifacts
 2. Continue without project state (may lose accumulated context)

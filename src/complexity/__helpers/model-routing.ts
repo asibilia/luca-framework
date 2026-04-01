@@ -165,13 +165,15 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
 
   // --- Fast-promoted (fast everywhere, balanced at CRITICAL) ---
   "lu-learner": FAST_PROMOTED,
-  "lu-process-data": FAST_PROMOTED,
   "lu-router-fast": FAST_PROMOTED,
   "lu-shadow-scanner": FAST_PROMOTED,
   "lu-verifier-fast": FAST_PROMOTED,
 
   // --- Router (balanced from MODERATE+) ---
   "lu-router": ROUTER,
+
+  // --- Drift reassessment (ROUTER preset, DRIFT-02) ---
+  "lu-reassessor": ROUTER,
 
   // --- v2 researcher agents (ROUTER preset, Decision 10) ---
   "lu-architecture-researcher": ROUTER,

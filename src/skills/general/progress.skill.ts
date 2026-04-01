@@ -54,23 +54,21 @@ Run /project-new to start a new project.
 
 Exit.
 
-If missing STATE.md: suggest \`/project-new\`.
+If missing state.json: suggest \`/project-new\`.
 
 **If ROADMAP.md missing but PROJECT.md exists:**
 This means a milestone was completed and archived. Go to **Route F** (between milestones).
 
 ### Step 2: Load Full Project Context
 
-- Read state from bridge (with STATE.md fallback):
+- Read state from bridge:
 
 \`\`\`bash
 # Primary: Read state from state machine (typed, validated)
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \`\`\`
 
-- Read \`.planning/STATE.md\` for living memory (position, decisions, issues)
+- Read state via bridge for living memory (position, decisions, issues)
 - Read \`.planning/ROADMAP.md\` for phase structure and objectives
 - Read \`.planning/PROJECT.md\` for current state (What This Is, Core Value, Requirements)
 - Read \`.planning/config.json\` for settings (model_profile, workflow toggles)
@@ -83,7 +81,7 @@ STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 
 ### Step 4: Parse Current Position
 
-- From STATE.md: git context (ticket, issue, branch), current phase, plan number, status, task complexity
+- From state: git context (ticket, issue, branch), current phase, plan number, status, task complexity
 - Calculate: total plans, completed plans, remaining plans
 - Note any blockers or concerns
 - Check for CONTEXT.md: For phases without PLAN.md files, check if \`{phase}-CONTEXT.md\` exists
@@ -144,7 +142,7 @@ Plan [M] of [phase-total]: [status]
 CONTEXT: [✓ if CONTEXT.md exists | - if not]
 
 ## Key Decisions Made
-- [decision 1 from STATE.md]
+- [decision 1 from state]
 - [decision 2]
 
 ## Memory Health
@@ -188,7 +186,7 @@ mcp__muninn__muninn_recall(
 The precision and hit rate values are extracted from the most recent \\\`metric:memory-recall-precision-*\\\` and \\\`metric:memory-hit-rate-*\\\` engrams. Average across all phases in the current milestone.
 
 ## Blockers/Concerns
-- [any blockers or concerns from STATE.md]
+- [any blockers or concerns from state]
 
 ## What's Next
 [Next phase/plan objective from ROADMAP]

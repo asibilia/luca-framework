@@ -35,7 +35,7 @@
  * actor.start();
  * ```
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md
+ * @see docs/architecture/dag-engine.md
  */
 
 import { setup, createActor as xstateCreateActor } from "xstate";

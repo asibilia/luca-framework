@@ -154,11 +154,8 @@ export function useSSE(): void {
         });
       }
 
-      // state.json or STATE.md changed -> re-hydrate stateAtom
-      if (
-        (path.endsWith("state.json") || path.endsWith("STATE.md")) &&
-        path.includes(".planning")
-      ) {
+      // state.json changed -> re-hydrate stateAtom
+      if (path.endsWith("state.json") && path.includes(".planning")) {
         void fetchJsonSafe("/api/state").then(({ data }) => {
           if (data) setState(data);
         });

@@ -8,7 +8,7 @@
  * 4. No orphaned steps — every step is reachable from at least one root (zero-dependency step)
  * 5. Parallel group validation — parallel groups reference only existing step IDs
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Validator
+ * @see docs/architecture/dag-engine.md — DAG Validator
  */
 
 import type { z } from "zod";

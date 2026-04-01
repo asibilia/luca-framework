@@ -20,6 +20,7 @@ export type {
   GitCommitSummary,
   ImportEdge,
   PreFlightSnapshot,
+  PhaseContextPayload,
 } from "./__schemas/context.schemas";
 
 export type {
@@ -29,7 +30,7 @@ export type {
   ResultIssue,
   ResultMetadata,
   ResultEnvelope,
-} from "./__helpers/result-envelope";
+} from "./__schemas/result-envelope.schemas";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -46,6 +47,7 @@ export {
   gitCommitSummarySchema,
   importEdgeSchema,
   preFlightSnapshotSchema,
+  phaseContextPayloadSchema,
 } from "./__schemas/context.schemas";
 
 export {
@@ -56,7 +58,7 @@ export {
   resultIssueSchema,
   resultMetadataSchema,
   resultEnvelopeSchema,
-} from "./__helpers/result-envelope";
+} from "./__schemas/result-envelope.schemas";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,7 +74,7 @@ export {
   RESULT_STATUSES,
   ISSUE_SEVERITIES,
   ARTIFACT_ACTIONS,
-} from "./__helpers/result-envelope";
+} from "./__schemas/result-envelope.schemas";
 
 // ---------------------------------------------------------------------------
 // Utility functions
@@ -112,6 +114,8 @@ export {
   assembleContext,
   getRequiredDocumentKeys,
   assembledContextSchema,
+  assembleAndSerialize,
+  CONTEXT_TOKEN_CEILING,
 } from "./__helpers/context-assembler";
 
 // ---------------------------------------------------------------------------

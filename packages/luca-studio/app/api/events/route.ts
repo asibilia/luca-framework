@@ -6,7 +6,7 @@
  *
  * 1. **File-change events** from the singleton file watcher, classified into
  *    typed SSE event names:
- *    - `state:transition` -- `.planning/state.json` or `.planning/STATE.md`
+ *    - `state:transition` -- `.planning/state.json`
  *    - `ledger:entry`     -- `.planning/session-ledger.jsonl`
  *    - `file:changed`     -- all other file changes
  *
@@ -41,7 +41,7 @@ const HEARTBEAT_MS = 15_000;
 /**
  * Classify a file-change event path into a typed SSE event name.
  *
- * - `state.json` or `STATE.md` inside `.planning/` -> `state:transition`
+ * - `state.json` inside `.planning/` -> `state:transition`
  * - `session-ledger.jsonl` inside `.planning/`      -> `ledger:entry`
  * - Everything else                                  -> `file:changed`
  *
@@ -52,10 +52,7 @@ function classifyFileEvent(path: string): string {
   // Normalize: remove leading ./ or / if present
   const normalized = path.replace(/^\.?\//, "");
 
-  if (
-    normalized === ".planning/state.json" ||
-    normalized === ".planning/STATE.md"
-  ) {
+  if (normalized === ".planning/state.json") {
     return "state:transition";
   }
 

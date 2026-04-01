@@ -198,8 +198,8 @@ Investigate this issue using scientific method. Document all findings.
 **Gate check:** Only run when ALL conditions are met:
 
 ```bash
-# Read complexity from STATE.md
-COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md 2>/dev/null | awk '{print $NF}' || echo "MODERATE")
+# Read complexity from bridge
+COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
 
 # Read tribunal config (default: true)
 TRIBUNAL_ENABLED=$(cat .planning/config.json 2>/dev/null | grep -o '"root_cause_tribunal_enabled"[[:space:]]*:[[:space:]]*[a-z]*' | grep -o '[a-z]*$' || echo "true")

@@ -25,8 +25,8 @@
  *   .build();
  * ```
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — DAG Builder
- * @see docs/runtime-architecture/research/dag-engines.md — Pattern #1 (Fluent builder with .build())
+ * @see docs/architecture/dag-engine.md — DAG Builder
+ * @see docs/archive/runtime-research/research/dag-engines.md — Pattern #1 (Fluent builder with .build())
  */
 
 import type { z } from "zod";

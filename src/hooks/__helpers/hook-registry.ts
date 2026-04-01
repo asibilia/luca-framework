@@ -113,7 +113,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     script: "snapshot-sync.ts",
     timeout: 10,
     async: true,
-    status_message: "Syncing STATE.md...",
+    status_message: "Syncing state...",
   }),
   "session-persist": () => ({
     event: "session_end",
@@ -250,6 +250,14 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     timeout: 5,
     async: true,
     status_message: "Syncing state...",
+  }),
+  "pre-step-lu-allowlist": () => ({
+    event: "pre_tool_use",
+    tool_filter: "Agent",
+    script: "pre-step-lu-allowlist.ts",
+    timeout: 3,
+    async: true,
+    status_message: "Checking agent allowlist...",
   }),
   "vault-routing-guard": () => ({
     event: "pre_tool_use",

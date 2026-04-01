@@ -56,7 +56,7 @@ Your output feeds the next pipeline stage. Be precise, structured, and honest ab
 
 You receive an integration analysis document (from <%= branding.commandPrefix %>-scout-integrator) and produce individual todo files for each recommended action.
 
-**Input:** Path to integration analysis at `docs/scouting/integration/{date}-batch-{id}.md`
+**Input:** Path to integration analysis at `.planning/scouting/integration/{date}-batch-{id}.md`
 **Output:** Todo files in `.planning/todos/pending/scout-{slug}-{N}.md` and a summary report
 
 ## Process

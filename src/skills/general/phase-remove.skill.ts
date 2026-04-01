@@ -37,8 +37,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
    \\\`\\\`\\\`bash
    # Primary: Read state from bridge
    STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-   # Fallback: Read STATE.md directly
-   STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
+
    \\\`\\\`\\\`
 
    - Read ROADMAP.md
@@ -86,7 +85,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
 11. **Update state:**
 
-    - Manually update total phase count and progress percentage in STATE.md
+    - Update total phase count and progress via bridge
 
 12. **Commit:**
     - \`chore: remove phase {target} ({original-phase-name})\`
@@ -96,7 +95,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 - Don't remove completed phases (have SUMMARY.md files)
 - Don't remove current or past phases
 - Don't leave gaps in numbering - always renumber
-- Don't add "removed phase" notes to STATE.md - git commit is the record
+- Don't add "removed phase" notes to state - git commit is the record
 
 ## Edge Cases
 
@@ -112,7 +111,7 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 - [ ] All subsequent phase directories renumbered
 - [ ] Files inside directories renamed
 - [ ] ROADMAP.md updated (section removed, all references renumbered)
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] State updated via bridge
 - [ ] Changes committed with descriptive message
 - [ ] No gaps in phase numbering
 

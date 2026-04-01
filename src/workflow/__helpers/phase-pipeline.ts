@@ -12,8 +12,8 @@
  * - guard: conditional execution (e.g., plan only if no existing plan)
  * - metadata.category: for visualization color-coding
  *
- * @see docs/runtime-architecture/dag-workflow-engine.md — Builder example
- * @see docs/runtime-architecture/dag-workflow-engine.md — How This Replaces lu.skill.ts
+ * @see docs/architecture/dag-engine.md — Builder example
+ * @see docs/architecture/dag-engine.md — How This Replaces lu.skill.ts
  */
 
 import { buildPhaseDAG } from "./dag-builder";

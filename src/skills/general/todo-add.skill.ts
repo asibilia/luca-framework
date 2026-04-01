@@ -41,7 +41,7 @@ Capture idea or task as todo from current conversation.
 
 5. **Update state:**
 
-   - Manually increment todo count in STATE.md if needed
+   - Increment todo count via bridge if needed
 
 6. **Confirm:**
 
@@ -83,7 +83,7 @@ source: conversation
 - [ ] Area inferred from context
 - [ ] Duplicate check performed
 - [ ] Todo file created in \`.planning/todos/pending/\`
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] State updated via bridge
 - [ ] User knows how to review todos
 
 ## Next Steps

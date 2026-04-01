@@ -19,7 +19,7 @@ This is the brownfield equivalent of new-project. The project exists, PROJECT.md
 - `.planning/research/` — domain research (optional, focuses on NEW features)
 - `.planning/REQUIREMENTS.md` — scoped requirements for this milestone
 - `.planning/ROADMAP.md` — phase structure (continues numbering)
-- `.planning/STATE.md` — reset for new milestone
+- state.json — reset for new milestone
 
 **After this command:** Run `/phase-plan [N]` to start execution.
 
@@ -35,14 +35,12 @@ Read these reference files before executing:
 ## Process
 
 
-1. **Load Context** — Read PROJECT.md, MILESTONES.md, STATE.md
+1. **Load Context** — Read PROJECT.md, MILESTONES.md, state (via bridge)
 
    ```bash
    # Primary: Read state from bridge (typed, validated)
    STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-   # Fallback: Read STATE.md directly (backward compatibility)
-   STATE_CONTENT=$(cat .planning/STATE.md 2>/dev/null || echo "")
-   ```
+      ```
 
 2. **Gather Milestone Goals** — Use MILESTONE-CONTEXT.md if exists, or question user
 3. **Determine Milestone Version** — Parse last version, suggest next
@@ -54,7 +52,7 @@ Read these reference files before executing:
    luca-bridge transition --event=RESET 2>/dev/null || true
    luca-bridge ensure-init --force 2>/dev/null || true
    luca-bridge set-field --field=current_milestone --value="v{version}" 2>/dev/null || true
-   # Fallback: Update STATE.md directly if bridge unavailable
+
    ```
 
 6. **Research Decision** — Spawn researchers if selected (milestone-aware context)
@@ -90,7 +88,7 @@ How should this milestone be tracked on GitHub?
    ```bash
    luca-bridge set-field --field=github_issue --value={issue_number} 2>/dev/null || true
    luca-bridge set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   # Fallback: Update STATE.md directly
+
    ```
 
 **If "Continue on existing" selected:**
@@ -108,7 +106,7 @@ How should this milestone be tracked on GitHub?
 ## Success Criteria
 
 - [ ] PROJECT.md updated with Current Milestone section
-- [ ] STATE.md reset for new milestone
+- [ ] State reset for new milestone
 - [ ] MILESTONE-CONTEXT.md consumed and deleted (if existed)
 - [ ] Research completed (if selected) — 4 parallel agents spawned, milestone-aware
 - [ ] Requirements gathered (from research or conversation)

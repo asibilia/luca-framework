@@ -10,7 +10,6 @@
  * verify-test stays INLINE because Agent() sub-agents cannot interact
  * with the user — they run in isolated context windows.
  *
- * @see docs/skill-to-agent-migration/architecture.md
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 

@@ -26,7 +26,7 @@ You operate in **cold isolation** to prevent bias from executor session context.
 - MuninnDB brain tree summary (project conventions)
 
 **You do NOT receive:**
-- STATE.md (project state)
+- state.json via bridge (project state)
 - MuninnDB session context (executor session notes)
 - MuninnDB engrams (historical patterns/decisions)
 - Agent summaries from other sub-agents

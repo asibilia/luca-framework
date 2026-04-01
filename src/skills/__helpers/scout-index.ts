@@ -17,7 +17,7 @@
  * ```typescript
  * import { updateScoutIndex } from "~/skills/__helpers/scout-index";
  *
- * const stats = await updateScoutIndex("docs/scouting");
+ * const stats = await updateScoutIndex(".planning/scouting");
  * // {
  * //   total: 5,
  * //   integrated: 2,
@@ -30,7 +30,7 @@
  * @example
  * ```typescript
  * // Empty state directory produces empty template
- * const stats = await updateScoutIndex("docs/scouting");
+ * const stats = await updateScoutIndex(".planning/scouting");
  * // { total: 0, integrated: 0, deferred: 0, manual_review: 0, in_progress: 0 }
  * ```
  */
@@ -275,7 +275,7 @@ const renderIndexMarkdown = (
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * Regenerate docs/scouting/INDEX.md from .scout-state/ files.
+ * Regenerate .planning/scouting/INDEX.md from .scout-state/ files.
  *
  * Pure deterministic function -- reads state files, generates markdown table,
  * writes INDEX.md. No LLM judgment involved.
@@ -288,7 +288,7 @@ const renderIndexMarkdown = (
  * Files that fail schema validation are silently skipped with a console
  * warning. If no valid state files exist, an empty template is written.
  *
- * @param scoutDir - Path to docs/scouting/ directory (absolute or relative)
+ * @param scoutDir - Path to .planning/scouting/ directory (absolute or relative)
  * @returns Summary stats: total, integrated, deferred, manual_review, in_progress
  *
  * @example
@@ -296,7 +296,7 @@ const renderIndexMarkdown = (
  * import { updateScoutIndex } from "~/skills/__helpers/scout-index";
  *
  * // After a scout pipeline run completes
- * const stats = await updateScoutIndex("docs/scouting");
+ * const stats = await updateScoutIndex(".planning/scouting");
  * console.log(`Indexed ${stats.total} articles`);
  * // Indexed 5 articles
  * ```
@@ -304,7 +304,7 @@ const renderIndexMarkdown = (
  * @example
  * ```typescript
  * // Handles empty state gracefully
- * const stats = await updateScoutIndex("docs/scouting");
+ * const stats = await updateScoutIndex(".planning/scouting");
  * // { total: 0, integrated: 0, deferred: 0, manual_review: 0, in_progress: 0 }
  * // INDEX.md is written with empty tables
  * ```

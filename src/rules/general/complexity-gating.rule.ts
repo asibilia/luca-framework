@@ -84,7 +84,7 @@ The following parameters cap **iteration loop depth** and **verification thoroug
 
 **Before spawning sub-agents**, resolve their model tier from the routing table:
 
-1. Read complexity from STATE.md \\\`Task Complexity:\\\` field
+1. Read complexity from bridge (\\\`luca-bridge read-complexity\\\`)
 2. If not set, read from lu-router's classification output
 3. Call \\\`resolveModelForAgent(agentName, complexity)\\\` to get the model tier
 4. All steps run at every complexity level -- only the model tier and loop budgets vary
@@ -93,7 +93,7 @@ The following parameters cap **iteration loop depth** and **verification thoroug
 **Complexity is set by:**
 - lu-router (automatic inference)
 - \\\`--complexity=<level>\\\` flag (manual override)
-- Persisted in STATE.md for session continuity
+- Persisted in state.json for session continuity
 
 ## Override Mechanisms
 
