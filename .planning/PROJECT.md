@@ -8,11 +8,14 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current Milestone (v9.0.0 — In Progress)
+## Current State (v9.0.0 — Shipped)
 
-**Goal:** Workflow Pipeline Redesign — Redesign the `/lu` end-to-end pipeline to restore lost capabilities from the autopilot era and apply GSD2 learnings. Makes the workflow complete (milestone bootstrapping through cross-milestone), convergence-aware (stuck detection via existing src/iteration/ modules), crash-resilient (deterministic recovery from structured state), and ceremony-efficient (deterministic classification, mechanical process-data, token profiles).
+**Last Shipped:** v9.0.0 — Workflow Pipeline Redesign (2026-04-01)
 
-**Key deliverables:** 11 phases (258-268), covering structured state consolidation, deterministic classification, pipeline lock file, token profiles, structured verification, convergence-aware loops, ceremony reduction, fresh context assembly, drift detection, crash recovery, and cross-milestone reset. Blueprint: `docs/research/workflow-redesign/06-final-workflow.md`
+14 phases (258-271), 28 commits, 426 files changed (+24,815/-2,147 LOC). Complete redesign of the `/lu` end-to-end pipeline. Delivered deterministic classification (sub-millisecond, zero LLM), pipeline lock file with crash recovery, token profiles (budget/balanced/quality), structured verification with machine-readable JSON, convergence-aware stuck detection (oscillation, permanent errors, semantic drift with 4 exit strategies), per-wave execution with fresh context assembly (Full/Scoped/Minimal tiers), per-phase drift detection, deterministic crash recovery from structured state, cross-milestone state reset, and full orchestrator pipeline integration. Audit phases 269-271 closed all P0-P3 findings (security, structural, type safety, tech debt).
+
+Blueprint: `docs/research/workflow-redesign/06-final-workflow.md`
+Decision log: D1-D15 (binding)
 
 ## Previous State (v8.5.2 — Shipped)
 
