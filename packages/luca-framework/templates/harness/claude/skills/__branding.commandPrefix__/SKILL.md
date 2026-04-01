@@ -217,6 +217,12 @@ if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 
 TOKEN_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"token_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 if [ -z "$TOKEN_PROFILE" ]; then TOKEN_PROFILE="balanced"; fi
+
+# Read oversight mode from state.json (set via --oversight flag or config.json lu.oversight)
+OVERSIGHT_MODE=$(luca-bridge read-field --field=oversight 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value)" 2>/dev/null || echo "milestone")
+if echo "$ARGS" | grep -q -- "--oversight="; then
+  OVERSIGHT_MODE=$(echo "$ARGS" | grep -o -- '--oversight=[a-z-]*' | head -1 | cut -d= -f2)
+fi
 ```
 
 ### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
@@ -276,6 +282,28 @@ Otherwise:
 Agent(name: "backlog", subagent_type: "<%= branding.commandPrefix %>-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: BACKLOG_PROMPT({...}))
 ```
 
+**Oversight gate: WSJF / Roadmap revision (spec 2m)**
+
+If backlog agent proposes roadmap revisions (new phases or modifications):
+
+```bash
+# Evaluate oversight gate for WSJF roadmap revision
+GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+  --decision="wsjf_roadmap_revision" \
+  --oversight="$OVERSIGHT_MODE" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
+if [ "$GATE_ACTION" = "pause" ]; then
+  # Prompt user to approve roadmap changes
+  echo "Roadmap revision proposed. Approve? (Continue/Skip/Stop)"
+  # Wait for user decision
+elif [ "$GATE_ACTION" = "auto_approve" ]; then
+  # Auto-approve roadmap changes
+  echo "Auto-approving roadmap revision per oversight mode '$OVERSIGHT_MODE'"
+fi
+```
+
 ### Step 6: Build Phase Execution Order (INLINE)
 
 ```bash
@@ -301,9 +329,26 @@ luca-bridge write-status --step="phase-start" --phase=PHASE_NUMBER --stage="EXEC
 
 Verify all dependencies complete. If not: park phase, continue.
 
-#### 7b. Oversight gate (INLINE, interactive)
+#### 7b. Oversight gate (INLINE, interactive — ORCH-02)
 
-If oversight != "full-auto": prompt user for phase confirmation.
+```bash
+# Evaluate oversight gate for "before each phase" decision point
+GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+  --decision="before_each_phase" \
+  --oversight="$OVERSIGHT_MODE" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
+if [ "$GATE_ACTION" = "pause" ]; then
+  # Prompt user: Continue this phase / Skip / Stop all phases
+  echo "Phase $PHASE_NUMBER: Oversight gate requires confirmation. Continue/Skip/Stop?"
+  # Wait for user decision
+elif [ "$GATE_ACTION" = "continue" ]; then
+  echo "Phase $PHASE_NUMBER: Oversight gate auto-continuing."
+fi
+```
+
+Update lock: `phase_step = "oversight-gate"`
 
 #### 7c. Per-phase complexity re-classify (deterministic, no Agent() call)
 
@@ -314,6 +359,26 @@ PHASE_FILE_COUNT=$(grep -c "@" .planning/phases/{NN}-*/PLAN.md 2>/dev/null || ec
 PHASE_CLASSIFY=$(bun src/complexity/__helpers/classify.ts --description="$PHASE_GOAL" --file-count=$PHASE_FILE_COUNT 2>/dev/null)
 PHASE_COMPLEXITY=$(echo "$PHASE_CLASSIFY" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "$COMPLEXITY")
 ```
+
+#### 7c-budget. Resolve budget matrix for this phase (ORCH-03, deterministic)
+
+Resolve iteration limits once per phase based on per-phase complexity and token profile. These limits are used to cap the harness fix loop (7i), implementation loop (7h-7k), and review fix loop (7k-fix).
+
+```bash
+# Resolve budget matrix: complexity x profile -> iteration limits
+BUDGET_JSON=$(bun src/state/__helpers/budget-matrix.ts \
+  --complexity="$PHASE_COMPLEXITY" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"max_impl_iterations":2,"harness_fix_iterations":2,"review_fix_iterations":1,"max_files_per_task":6,"max_tasks_per_wave":4,"complexity":"MODERATE","profile":"balanced","multiplier":1.0}')
+
+# Extract resolved limits
+HARNESS_FIX_ITERATIONS=$(echo "$BUDGET_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.harness_fix_iterations)" 2>/dev/null || echo "2")
+MAX_IMPL_ITERATIONS=$(echo "$BUDGET_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.max_impl_iterations)" 2>/dev/null || echo "2")
+REVIEW_FIX_ITERATIONS=$(echo "$BUDGET_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.review_fix_iterations)" 2>/dev/null || echo "1")
+MAX_FILES_PER_TASK=$(echo "$BUDGET_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.max_files_per_task)" 2>/dev/null || echo "6")
+MAX_TASKS_PER_WAVE=$(echo "$BUDGET_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.max_tasks_per_wave)" 2>/dev/null || echo "4")
+```
+
+Update lock: `phase_step = "budget-resolve"`
 
 #### 7d. Gate resolution (INLINE)
 
@@ -390,8 +455,10 @@ If .planning/phases/{NN}-\*/PLAN.md exists: skip planning.
 
 #### 7g. Planning
 
+Pass task sizing limits from the budget matrix to the planner for enforcement:
+
 ```
-Agent(name: "plan-{NN}", subagent_type: "<%= branding.commandPrefix %>-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping)
+Agent(name: "plan-{NN}", subagent_type: "<%= branding.commandPrefix %>-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping. Task sizing constraints from budget matrix: max_files_per_task=$MAX_FILES_PER_TASK, max_tasks_per_wave=$MAX_TASKS_PER_WAVE)
 ```
 
 #### 7g-v2. Plan Review Loop (v2 ONLY — skip if WORKFLOW_VERSION != "v2")
@@ -410,13 +477,18 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
   Agent(name: "plan-revise-{NN}-{iteration}", subagent_type: "<%= branding.commandPrefix %>-planner", model: ORCHESTRATOR_MODEL, prompt: revise PLAN.md based on issues)
 ```
 
-#### 7h. Execution
+#### 7h. Execution (outer implementation loop — budget-capped at MAX_IMPL_ITERATIONS)
+
+The outer implementation loop (7h-7k) is capped at MAX_IMPL_ITERATIONS from the budget matrix (resolved at 7c-budget). Each iteration executes a wave, runs harness, verifies, and checks for convergence.
 
 ```
-Agent(name: "execute-{NN}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
+FOR impl_iteration = 1 to MAX_IMPL_ITERATIONS:
+  Agent(name: "execute-{NN}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 ```
 
-#### 7i. Harness Fix Loop (INLINE, hoisted)
+#### 7i. Harness Fix Loop (INLINE, hoisted — budget-capped at HARNESS_FIX_ITERATIONS)
+
+HARNESS_FIX_ITERATIONS comes from the budget matrix (resolved at 7c-budget), NOT from hardcoded config.
 
 ```bash
 luca-bridge write-status --step="harness" --stage="VERIFYING" --phase=PHASE_NUMBER 2>/dev/null || true
@@ -440,6 +512,14 @@ FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
 
   Agent(name: "harness-{NN}", subagent_type: "<%= branding.commandPrefix %>-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({...}))
   IF PASSED: BREAK
+
+  # Convergence override check (ORCH-03): before starting fix iteration,
+  # check if convergence signals should override the budget decision.
+  # Priority: convergence signals > iteration count > soft stop.
+  # - If making progress at soft stop: allow one extension
+  # - If stalled under budget: exit early
+  # (See resolveConvergenceOverride in budget-matrix.ts)
+
   Agent(name: "fix-{NN}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: HARNESS_FIX_PROMPT(errors, {...}))
 ```
 
@@ -469,7 +549,40 @@ Agent(name: "review-security-{NN}", subagent_type: "security-auditor", model: DE
 Agent(name: "review-simplify-{NN}", subagent_type: "code-simplifier", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("simplifier", {...}))
 ```
 
-After ALL reviewers return, emit REVIEW_COMPLETE to advance the executing sub-state:
+After ALL reviewers return:
+
+**Oversight gate: CRITICAL review findings (spec 5l — ORCH-02 safety gate)**
+
+CRITICAL review findings ALWAYS pause regardless of oversight mode or token profile. This is a safety gate.
+
+```bash
+# Check if any reviewer returned CRITICAL findings
+if [ "$HAS_CRITICAL_FINDINGS" = "true" ]; then
+  GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+    --decision="critical_review_findings" \
+    --oversight="$OVERSIGHT_MODE" \
+    --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+  GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+  # GATE_ACTION will ALWAYS be "pause" for critical_review_findings (safety gate)
+  echo "CRITICAL review findings detected. Pausing for user review."
+  # Present findings to user, wait for decision
+fi
+```
+
+#### 7k-fix. Review Fix Loop (ORCH-03 — budget-capped at REVIEW_FIX_ITERATIONS)
+
+If any reviewer returned CRITICAL findings and user approves fix attempt:
+
+```
+FOR review_fix = 1 to REVIEW_FIX_ITERATIONS:
+  Agent(name: "review-fix-{NN}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: REVIEW_FIX_PROMPT({critical_findings, ...}))
+  # Re-run only affected reviewers to validate fix
+  IF no CRITICAL findings remain: BREAK
+```
+
+Update lock: `phase_step = "review-fix"`
+
+Emit REVIEW_COMPLETE to advance the executing sub-state:
 
 ```bash
 luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
@@ -531,7 +644,49 @@ await appendRoutingEntry({
 " 2>/dev/null || true
 ```
 
+#### 7o-drift. Drift detection (spec 5q+ — runs after every phase, ORCH-02)
+
+Mechanical drift check runs always (0 LLM tokens): git diff, file overlap with remaining phases, deleted modules, dependency changes. If drift detected, evaluate oversight gate:
+
+```bash
+# IF drift detected and phases need updates:
+GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+  --decision="drift_detected" \
+  --oversight="$OVERSIGHT_MODE" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
+if [ "$GATE_ACTION" = "auto_apply" ]; then
+  # Auto-apply roadmap updates for affected phases
+  echo "Drift detected: auto-applying updates per oversight mode '$OVERSIGHT_MODE', profile '$TOKEN_PROFILE'"
+elif [ "$GATE_ACTION" = "pause" ]; then
+  # Show user proposed changes, ask for confirmation
+  echo "Drift detected: pausing for user review of proposed roadmap changes."
+fi
+```
+
+Update lock: `phase_step = "drift-check"`
+
 #### 7p. Gap closure retry (INLINE, if phase had failures)
+
+**Oversight gate: Phase gaps (spec 5k — ORCH-02)**
+
+```bash
+# Evaluate oversight gate for phase gaps decision
+GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+  --decision="phase_gaps" \
+  --oversight="$OVERSIGHT_MODE" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
+if [ "$GATE_ACTION" = "park_continue" ]; then
+  # Auto-park and continue to next phase
+  echo "Phase gaps: parking phase $PHASE_NUMBER and continuing."
+elif [ "$GATE_ACTION" = "pause" ]; then
+  # Prompt user: Retry / Skip / Stop
+  echo "Phase $PHASE_NUMBER has gaps. Retry/Skip/Stop?"
+fi
+```
 
 ```
 FOR retry = 1 to GAP_RETRIES:
@@ -542,10 +697,27 @@ FOR retry = 1 to GAP_RETRIES:
 IF still failing: park phase, cascade to dependents
 ```
 
-### Step 8: Milestone Boundary Check
+### Step 8: Milestone Boundary Check (ORCH-02 oversight gate)
 
 ```bash
 luca-bridge write-status --step="milestone" --stage="EXECUTING" --detail="Checking milestone boundary" 2>/dev/null || true
+```
+
+**Oversight gate: Milestone boundary (spec Step 6)**
+
+```bash
+GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+  --decision="milestone_boundary" \
+  --oversight="$OVERSIGHT_MODE" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
+if [ "$GATE_ACTION" = "auto_complete" ]; then
+  echo "Milestone boundary: auto-completing per oversight mode '$OVERSIGHT_MODE'"
+elif [ "$GATE_ACTION" = "pause" ]; then
+  echo "Milestone boundary reached. Confirm milestone completion?"
+  # Present milestone summary, wait for user decision
+fi
 ```
 
 If all phases in current milestone complete:
@@ -580,9 +752,28 @@ gh pr create \
 
 Report the PR URL to the user.
 
-### Step 9: Cross-Milestone Continuation (INLINE)
+### Step 9: Cross-Milestone Continuation (INLINE — ORCH-02 oversight gate)
 
-If CROSS_MILESTONE config == true and next milestone exists: loop back to Step 6.
+If CROSS_MILESTONE config == true and next milestone exists:
+
+**Oversight gate: Cross-milestone (spec Step 7)**
+
+```bash
+GATE_RESULT=$(bun src/state/__helpers/oversight-gate.ts \
+  --decision="cross_milestone" \
+  --oversight="$OVERSIGHT_MODE" \
+  --profile="$TOKEN_PROFILE" 2>/dev/null || echo '{"action":"pause","reason":"gate error","profile_override":false}')
+GATE_ACTION=$(echo "$GATE_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "pause")
+
+if [ "$GATE_ACTION" = "auto_continue" ]; then
+  echo "Cross-milestone: auto-continuing to next milestone per oversight mode '$OVERSIGHT_MODE'"
+elif [ "$GATE_ACTION" = "pause" ]; then
+  echo "Cross-milestone boundary. Continue to next milestone?"
+  # Wait for user decision
+fi
+```
+
+If approved: full state reset (routing history, pipeline position), loop back to Step 6.
 
 ### Step 10: Gap Detection Audit (INLINE)
 

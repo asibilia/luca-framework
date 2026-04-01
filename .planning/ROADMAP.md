@@ -574,7 +574,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 1. After a milestone completes with cross-milestone enabled, the pipeline releases and re-acquires the lock, clears routing history, resets pipeline position to init, and archives milestone data to `milestones/` -- while preserving session_id and git_workflow in state.json
 2. The safety limit of 3 milestones per session is enforced, and the pipeline refuses to start a new milestone if the previous one did not complete cleanly (has parked or failed phases)
 
-### Phase 268: Orchestrator Pipeline Integration
+### Phase 268: Orchestrator Pipeline Integration — COMPLETE
 
 **Goal:** The `lu.skill.ts` orchestrator is fully rewritten to incorporate all changes from this milestone into a single coherent pipeline, with the oversight gate matrix and budget matrix wired end-to-end.
 **Complexity:** CRITICAL
@@ -604,7 +604,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 265   | Per-Phase Drift Detection                       | Complete | DRIFT-01..05               |
 | 266   | Deterministic Crash Recovery                    | Complete | RECOV-01..04               |
 | 267   | Cross-Milestone State Reset                     | Complete | CROSS-01..03               |
-| 268   | Orchestrator Pipeline Integration               | Pending  | ORCH-01..03                |
+| 268   | Orchestrator Pipeline Integration               | Complete | ORCH-01..03                |
 
 ---
 

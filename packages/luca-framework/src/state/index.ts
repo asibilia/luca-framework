@@ -219,3 +219,65 @@ export type {
   FindingFilters,
   FindingsSummary,
 } from "./__schemas/audit-findings.schemas";
+
+// ─── Oversight Gate Matrix ────────────────────────────────────────────────
+
+export {
+  evaluateOversightGate,
+  OVERSIGHT_GATE_MATRIX,
+} from "./__helpers/oversight-gate";
+
+export {
+  OVERSIGHT_MODES,
+  oversightModeSchema,
+  DECISION_POINTS,
+  decisionPointSchema,
+  TOKEN_PROFILES,
+  tokenProfileSchema,
+  GATE_ACTIONS,
+  gateActionSchema,
+  oversightGateResultSchema,
+  oversightGateInputSchema,
+} from "./__schemas/oversight-gate.schemas";
+
+export type {
+  OversightMode,
+  DecisionPoint,
+  TokenProfile,
+  GateAction,
+  OversightGateResult,
+  OversightGateInput,
+} from "./__schemas/oversight-gate.schemas";
+
+// ─── Budget Matrix ────────────────────────────────────────────────────────
+
+export {
+  resolveBudgetMatrix,
+  resolveConvergenceOverride,
+  BASE_BUDGET_MATRIX,
+  PROFILE_MULTIPLIERS,
+} from "./__helpers/budget-matrix";
+
+export {
+  BUDGET_COMPLEXITY_LEVELS,
+  budgetComplexitySchema,
+  BUDGET_PROFILES,
+  budgetProfileSchema,
+  baseBudgetLimitsSchema,
+  resolvedBudgetSchema,
+  BUDGET_STATUS_VALUES,
+  budgetStatusValueSchema,
+  CONVERGENCE_SIGNALS,
+  convergenceSignalSchema,
+  convergenceOverrideResultSchema,
+  budgetMatrixInputSchema,
+} from "./__schemas/budget-matrix.schemas";
+
+export type {
+  BudgetComplexity,
+  BudgetProfile,
+  BaseBudgetLimits,
+  ResolvedBudget,
+  ConvergenceOverrideResult,
+  BudgetMatrixInput,
+} from "./__schemas/budget-matrix.schemas";
