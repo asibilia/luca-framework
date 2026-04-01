@@ -125,7 +125,8 @@ export type OversightGateResult = z.infer<typeof oversightGateResultSchema>;
  */
 export const oversightGateInputSchema = z.object({
   decision: decisionPointSchema,
-  oversight: oversightModeSchema,
+  /** Accepts v9.0.0 modes + deprecated "plan" (mapped to "phase" at runtime) */
+  oversight: z.enum([...OVERSIGHT_MODES, "plan"]),
   profile: tokenProfileSchema.default("balanced"),
 });
 export type OversightGateInput = z.infer<typeof oversightGateInputSchema>;

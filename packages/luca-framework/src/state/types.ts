@@ -56,9 +56,11 @@ export type WorkflowState = (typeof WORKFLOW_STATES)[number];
 
 // ─── Oversight Levels ─────────────────────────────────────────────────────────
 
-/** Oversight levels controlling human-in-the-loop gates */
+/** Oversight levels controlling human-in-the-loop gates.
+ * v9.0.0: Added "flagged" mode. "plan" is deprecated (alias for "phase"). */
 export const OVERSIGHT_LEVELS = [
   "full-auto",
+  "flagged",
   "milestone",
   "phase",
   "plan",

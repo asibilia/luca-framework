@@ -150,31 +150,35 @@ function getProfileOverride(
  */
 export function evaluateOversightGate(
   decisionPoint: DecisionPoint,
-  oversightMode: OversightMode,
+  oversightMode: OversightMode | "plan",
   tokenProfile: TokenProfile = "balanced",
 ): OversightGateResult {
+  // Normalize deprecated "plan" mode to "phase" (v9.0.0 migration)
+  const normalizedMode: OversightMode =
+    oversightMode === "plan" ? "phase" : oversightMode;
+
   // Check for profile override first
   const profileOverride = getProfileOverride(decisionPoint, tokenProfile);
 
   if (profileOverride !== null) {
     // Get the base matrix value for comparison
-    const baseAction = OVERSIGHT_GATE_MATRIX[decisionPoint][oversightMode];
+    const baseAction = OVERSIGHT_GATE_MATRIX[decisionPoint][normalizedMode];
     const wasOverridden = profileOverride !== baseAction;
 
     return {
       action: profileOverride,
       reason: wasOverridden
         ? `Profile '${tokenProfile}' overrides base action '${baseAction}' to '${profileOverride}' at '${decisionPoint}'`
-        : `Gate '${decisionPoint}' returns '${profileOverride}' for oversight='${oversightMode}' (profile '${tokenProfile}' matches base)`,
+        : `Gate '${decisionPoint}' returns '${profileOverride}' for oversight='${normalizedMode}' (profile '${tokenProfile}' matches base)`,
       profile_override: wasOverridden,
     };
   }
 
   // No profile override: use base matrix
-  const action = OVERSIGHT_GATE_MATRIX[decisionPoint][oversightMode];
+  const action = OVERSIGHT_GATE_MATRIX[decisionPoint][normalizedMode];
   return {
     action,
-    reason: `Gate '${decisionPoint}' returns '${action}' for oversight='${oversightMode}', profile='${tokenProfile}'`,
+    reason: `Gate '${decisionPoint}' returns '${action}' for oversight='${normalizedMode}', profile='${tokenProfile}'`,
     profile_override: false,
   };
 }
