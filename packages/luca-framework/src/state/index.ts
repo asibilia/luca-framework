@@ -127,8 +127,29 @@ export {
   handleGateCheck,
   handleSuspend,
   handleInitVault,
+  handleLockAcquire,
+  handleLockUpdate,
+  handleLockRelease,
+  handleLockStatus,
   SETTABLE_FIELDS,
 } from "./bridge";
+
+// ─── Pipeline Lock ─────────────────────────────────────────────────────────
+
+export {
+  acquireLock,
+  updateLock,
+  releaseLock,
+  readLock,
+  checkLockStatus,
+} from "./__helpers/pipeline-lock";
+
+export {
+  pipelineLockSchema,
+  PIPELINE_LOCK_PATH,
+} from "./__schemas/pipeline-lock.schemas";
+
+export type { PipelineLock } from "./__schemas/pipeline-lock.schemas";
 
 // ─── Suspend Checkpoint ─────────────────────────────────────────────────────
 

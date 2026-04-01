@@ -134,6 +134,28 @@ Parse user request and all CLI flags.
 luca-bridge ensure-init 2>/dev/null || true
 \`\`\`
 
+**Pipeline lock — prevent concurrent sessions and enable crash recovery:**
+\`\`\`bash
+# Step 0c: Pipeline lock
+LOCK_STATUS=$(luca-bridge lock-status 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.status)" 2>/dev/null || echo "clear")
+if [ "$LOCK_STATUS" = "live" ]; then
+  LOCK_PID=$(luca-bridge lock-status 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.lock?.pid || 'unknown')" 2>/dev/null || echo "unknown")
+  if echo "$ARGS" | grep -q -- "--force"; then
+    echo "WARNING: Overriding live lock (PID $LOCK_PID) due to --force flag"
+    luca-bridge lock-release 2>/dev/null || true
+  else
+    echo "ERROR: Another /lu session is already running (PID $LOCK_PID). Use --force to override."
+    exit 1
+  fi
+elif [ "$LOCK_STATUS" = "stale" ]; then
+  echo "INFO: Stale pipeline lock detected. Clearing for recovery."
+  luca-bridge lock-release 2>/dev/null || true
+fi
+SESSION_ID=$(luca-bridge read-field --field=session_id 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value || '')" 2>/dev/null || echo "")
+if [ -z "$SESSION_ID" ]; then SESSION_ID=$(cat /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 12 2>/dev/null || echo "unknown"); fi
+luca-bridge lock-acquire --session-id="$SESSION_ID" --pipeline-step="init" --phase-step="" 2>/dev/null || true
+\`\`\`
+
 **Crash recovery:**
 \`\`\`bash
 EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state lu 2>/dev/null || echo "")
@@ -194,6 +216,7 @@ Parse COMPLEXITY and ROUTE from the classifier and adjustment output.
 
 \`\`\`bash
 luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_LEVEL"}' 2>/dev/null || true
+luca-bridge lock-update --pipeline-step="routed" --phase-step="" 2>/dev/null || true
 \`\`\`
 
 (Replace COMPLEXITY_LEVEL with the actual classified complexity.)
@@ -204,7 +227,11 @@ luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_
 \`\`\`
 Agent(name: "{route}-handler", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: ROUTE_HANDLER_PROMPT(route, {...}))
 \`\`\`
-Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write "complete", RETURN.
+Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write "complete".
+\`\`\`bash
+luca-bridge lock-release 2>/dev/null || true
+\`\`\`
+RETURN.
 
 **If ROUTE == "phase-execute":** Continue to Step 4.
 
@@ -220,6 +247,7 @@ if echo "$ARGS" | grep -q -- "--v2"; then WORKFLOW_VERSION="v2"; fi
 
 TOKEN_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"token_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 if [ -z "$TOKEN_PROFILE" ]; then TOKEN_PROFILE="balanced"; fi
+luca-bridge lock-update --pipeline-step="configured" --phase-step="" 2>/dev/null || true
 \`\`\`
 
 ### Step 4.5: Git Workflow Setup (INLINE, conditional: not --skip-branch)
@@ -277,6 +305,9 @@ Otherwise:
 \`\`\`
 Agent(name: "backlog", subagent_type: "lu-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: BACKLOG_PROMPT({...}))
 \`\`\`
+\`\`\`bash
+luca-bridge lock-update --pipeline-step="scanned" --phase-step="" 2>/dev/null || true
+\`\`\`
 
 ### Step 6: Build Phase Execution Order (INLINE)
 
@@ -296,6 +327,7 @@ Write loop counter to context file for recovery: \`{"loop_index": N, "remaining_
 \`\`\`bash
 luca-bridge transition --event=PHASE_START --data='{"phase_id":PHASE_NUMBER}' 2>/dev/null || true
 luca-bridge write-status --step="phase-start" --phase=PHASE_NUMBER --stage="EXECUTING" 2>/dev/null || true
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="start" --phase-id=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
 
 #### 7a. Phase dependency check (INLINE)
@@ -366,7 +398,9 @@ Agent(name: "research-graduate-{NN}", subagent_type: "lu-research-graduator", mo
 
 #### 7e. Discussion (conditional: skip if --skip-discuss)
 
-
+\`\`\`bash
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="discuss" --phase-id=PHASE_NUMBER 2>/dev/null || true
+\`\`\`
 \`\`\`
 Agent(name: "discuss-{NN}", subagent_type: "lu-discuss-researcher", model: ORCHESTRATOR_MODEL, prompt: phase discussion with premortem if --run-premortem)
 \`\`\`
@@ -380,7 +414,9 @@ If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
 
 #### 7g. Planning
 
-
+\`\`\`bash
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="plan" --phase-id=PHASE_NUMBER 2>/dev/null || true
+\`\`\`
 \`\`\`
 Agent(name: "plan-{NN}", subagent_type: "lu-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping)
 \`\`\`
@@ -403,7 +439,9 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
 
 #### 7h. Execution
 
-
+\`\`\`bash
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="execute" --phase-id=PHASE_NUMBER 2>/dev/null || true
+\`\`\`
 \`\`\`
 Agent(name: "execute-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 \`\`\`
@@ -412,6 +450,7 @@ Agent(name: "execute-{NN}", subagent_type: "lu-executor", model: ORCHESTRATOR_MO
 
 \`\`\`bash
 luca-bridge write-status --step="harness" --stage="VERIFYING" --phase=PHASE_NUMBER 2>/dev/null || true
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="harness" --phase-id=PHASE_NUMBER 2>/dev/null || true
 \`\`\`
 
 \`\`\`
@@ -429,7 +468,9 @@ luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_fai
 
 #### 7j. Goal-backward verification
 
-
+\`\`\`bash
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="verify" --phase-id=PHASE_NUMBER 2>/dev/null || true
+\`\`\`
 \`\`\`
 Agent(name: "verify-{NN}", subagent_type: "lu-verifier", model: DEEP_MODEL, prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
 \`\`\`
@@ -452,7 +493,9 @@ luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
 
 #### 7l. Learning capture
 
-
+\`\`\`bash
+luca-bridge lock-update --pipeline-step="phase-loop" --phase-step="learn" --phase-id=PHASE_NUMBER 2>/dev/null || true
+\`\`\`
 \`\`\`
 Agent(name: "learn-{NN}", subagent_type: "lu-learner", model: FAST_PROMOTED_MODEL, prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 \`\`\`
@@ -559,6 +602,9 @@ Verify all required context sections are populated. Advisory warning if gaps fou
 
 ### Step 11: Session Summary + Cleanup
 
+\`\`\`bash
+luca-bridge lock-release 2>/dev/null || true
+\`\`\`
 \`luca-bridge transition --event=COMMIT_COMPLETE\`
 `,
       order: 1,

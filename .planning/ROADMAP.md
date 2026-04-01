@@ -433,7 +433,7 @@ Redesign the `/lu` end-to-end pipeline to restore lost capabilities and apply GS
 Spec: `docs/research/workflow-redesign/06-final-workflow.md`
 Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 
-### Phase 258: Structured State & Deterministic Classification
+### Phase 258: Structured State & Deterministic Classification — COMPLETE
 
 **Goal:** The pipeline tracks its own position in structured JSON and classifies task complexity without any LLM call, so every downstream phase can read machine-parseable state and every classification is deterministic and sub-millisecond.
 **Complexity:** COMPLEX
@@ -448,7 +448,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 3. The routing history file `.planning/routing-history.jsonl` accumulates one entry per completed phase and the adaptive adjuster shifts complexity by at most 1 level based on the last 20 entries
 4. All skills and agents that previously read STATE.md now read from `luca-bridge` commands, verified by `grep -r "STATE.md" src/` returning zero matches outside of deletion/migration code
 
-### Phase 259: Pipeline Lock File
+### Phase 259: Pipeline Lock File — COMPLETE
 
 **Goal:** The pipeline prevents concurrent sessions and tracks its exact position at sub-step granularity, so crash recovery has a deterministic resume point instead of requiring LLM interpretation.
 **Complexity:** MODERATE
@@ -592,19 +592,19 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 
 ## Progress
 
-| Phase | Name                                            | Status  | Requirements               |
-| ----- | ----------------------------------------------- | ------- | -------------------------- |
-| 258   | Structured State & Deterministic Classification | Pending | FOUND-01..05, CLASS-01..05 |
-| 259   | Pipeline Lock File                              | Pending | LOCK-01..03                |
-| 260   | Token Profiles                                  | Pending | PROF-01..06                |
-| 261   | Structured Verification                         | Pending | VERIF-01..04               |
-| 262   | Convergence-Aware Stuck Detection               | Pending | STUCK-01..06               |
-| 263   | Ceremony Reduction & Per-Wave Execution         | Pending | CEREM-01..04               |
-| 264   | Fresh Context Assembly & Task Sizing            | Pending | CTXT-01..03, SIZE-01..04   |
-| 265   | Per-Phase Drift Detection                       | Pending | DRIFT-01..05               |
-| 266   | Deterministic Crash Recovery                    | Pending | RECOV-01..04               |
-| 267   | Cross-Milestone State Reset                     | Pending | CROSS-01..03               |
-| 268   | Orchestrator Pipeline Integration               | Pending | ORCH-01..03                |
+| Phase | Name                                            | Status   | Requirements               |
+| ----- | ----------------------------------------------- | -------- | -------------------------- |
+| 258   | Structured State & Deterministic Classification | Complete | FOUND-01..05, CLASS-01..05 |
+| 259   | Pipeline Lock File                              | Complete | LOCK-01..03                |
+| 260   | Token Profiles                                  | Pending  | PROF-01..06                |
+| 261   | Structured Verification                         | Pending  | VERIF-01..04               |
+| 262   | Convergence-Aware Stuck Detection               | Pending  | STUCK-01..06               |
+| 263   | Ceremony Reduction & Per-Wave Execution         | Pending  | CEREM-01..04               |
+| 264   | Fresh Context Assembly & Task Sizing            | Pending  | CTXT-01..03, SIZE-01..04   |
+| 265   | Per-Phase Drift Detection                       | Pending  | DRIFT-01..05               |
+| 266   | Deterministic Crash Recovery                    | Pending  | RECOV-01..04               |
+| 267   | Cross-Milestone State Reset                     | Pending  | CROSS-01..03               |
+| 268   | Orchestrator Pipeline Integration               | Pending  | ORCH-01..03                |
 
 ---
 

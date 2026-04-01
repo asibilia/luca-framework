@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * state.json is the sole source of truth for workflow state.
  *
- * Subcommands (12):
+ * Subcommands (16):
  *   read-complexity        — Read current complexity level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
@@ -17,6 +17,10 @@
  *   init-vault             — Guided setup for project MuninnDB vault
  *   write-status           — Write partial data to statusline bus (.planning/.statusline.json)
  *   clear-status           — Remove the statusline bus file
+ *   lock-acquire           — Acquire pipeline lock (concurrent session prevention)
+ *   lock-update            — Update lock step fields
+ *   lock-release           — Release pipeline lock (clean exit)
+ *   lock-status            — Read lock status (clear | live | stale)
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -55,6 +59,12 @@ import { getAllowedEvents, workflowMachine } from "./machine";
 import { getArg, hasFlag } from "./utils/cli-utils";
 import { computePipelinePosition } from "./__helpers/pipeline-position";
 import { resolveStateValue } from "./__helpers/resolve-state-value";
+import {
+  acquireLock,
+  updateLock,
+  releaseLock,
+  checkLockStatus,
+} from "./__helpers/pipeline-lock";
 import { createSuspendCheckpoint } from "./suspend-checkpoint";
 import { appendLedgerEntry } from "./ledger";
 import { emitStateTransition, emitPhaseComplete } from "../emitter";
@@ -103,6 +113,10 @@ const VALID_SUBCOMMANDS = [
   "init-vault",
   "write-status",
   "clear-status",
+  "lock-acquire",
+  "lock-update",
+  "lock-release",
+  "lock-status",
 ] as const;
 
 /**
@@ -132,6 +146,12 @@ Lifecycle commands:
 
 Vault commands:
   init-vault             Guided setup for project MuninnDB vault ([--vault=name] [--force])
+
+Lock commands:
+  lock-acquire           Acquire pipeline lock (--session-id=ID --pipeline-step=STEP --phase-step=STEP [--phase-id=N])
+  lock-update            Update lock step fields (--pipeline-step=STEP [--phase-step=STEP] [--phase-id=N])
+  lock-release           Release pipeline lock (clean exit)
+  lock-status            Read lock status (clear | live | stale)
 
 Status bus commands:
   write-status           Write to statusline bus (.planning/.statusline.json)
@@ -1043,6 +1063,102 @@ async function handleClearStatus(): Promise<void> {
   console.log(JSON.stringify({ cleared: true }));
 }
 
+// ─── Lock Commands ──────────────────────────────────────────────────────────
+
+/**
+ * Acquire the pipeline lock for the current session.
+ *
+ * Reads --session-id, --pipeline-step, --phase-step, --phase-id args.
+ * Prints the lock JSON on success. Exits with code 2 on live conflict.
+ *
+ * @param args - CLI arguments
+ */
+async function handleLockAcquire(args: string[]): Promise<void> {
+  const sessionId = getArg(args, "session-id");
+  const pipelineStep = getArg(args, "pipeline-step") || "init";
+  const phaseStep = getArg(args, "phase-step") || "";
+  const phaseIdStr = getArg(args, "phase-id");
+
+  if (!sessionId) {
+    console.error("Missing --session-id argument");
+    process.exit(2);
+  }
+
+  const phaseId = phaseIdStr ? parseInt(phaseIdStr, 10) : undefined;
+
+  const result = await acquireLock(sessionId, pipelineStep, phaseStep, phaseId);
+
+  if (!result.success) {
+    console.error(JSON.stringify({ error: result.error }));
+    process.exit(2);
+  }
+
+  console.log(JSON.stringify(result.data));
+}
+
+/**
+ * Update the pipeline lock with new step fields.
+ *
+ * Reads --pipeline-step, --phase-step, --phase-id args.
+ * Prints the updated lock JSON on success.
+ *
+ * @param args - CLI arguments
+ */
+async function handleLockUpdate(args: string[]): Promise<void> {
+  const pipelineStep = getArg(args, "pipeline-step");
+  const phaseStep = getArg(args, "phase-step");
+  const phaseIdStr = getArg(args, "phase-id");
+
+  const patch: Partial<{
+    pipeline_step: string;
+    phase_step: string;
+    phase_id: number;
+  }> = {};
+
+  if (pipelineStep) patch.pipeline_step = pipelineStep;
+  if (phaseStep !== undefined && phaseStep !== "") patch.phase_step = phaseStep;
+  if (phaseIdStr) {
+    const n = parseInt(phaseIdStr, 10);
+    if (Number.isFinite(n)) patch.phase_id = n;
+  }
+
+  const result = await updateLock(patch);
+
+  if (!result.success) {
+    console.error(JSON.stringify({ error: result.error }));
+    process.exit(2);
+  }
+
+  console.log(JSON.stringify(result.data));
+}
+
+/**
+ * Release the pipeline lock (clean exit).
+ *
+ * Prints `{"released":true}` on success.
+ */
+async function handleLockRelease(): Promise<void> {
+  const result = await releaseLock();
+
+  if (!result.success) {
+    console.error(JSON.stringify({ error: result.error }));
+    process.exit(2);
+  }
+
+  console.log(JSON.stringify({ released: true }));
+}
+
+/**
+ * Read the current lock status.
+ *
+ * Prints JSON with `status` ("clear" | "live" | "stale"), `lock`, and
+ * optional `reason` fields.
+ */
+async function handleLockStatus(): Promise<void> {
+  const result = await checkLockStatus();
+  console.log(JSON.stringify(result));
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1105,6 +1221,18 @@ export async function runBridgeCli(): Promise<void> {
     case "clear-status":
       await handleClearStatus();
       break;
+    case "lock-acquire":
+      await handleLockAcquire(args);
+      break;
+    case "lock-update":
+      await handleLockUpdate(args);
+      break;
+    case "lock-release":
+      await handleLockRelease();
+      break;
+    case "lock-status":
+      await handleLockStatus();
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1136,6 +1264,10 @@ export {
   handleInitVault,
   handleWriteStatus,
   handleClearStatus,
+  handleLockAcquire,
+  handleLockUpdate,
+  handleLockRelease,
+  handleLockStatus,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };
