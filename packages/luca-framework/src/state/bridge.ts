@@ -4,7 +4,7 @@
  * All state is persisted to a local JSON file (.planning/state.json).
  * state.json is the sole source of truth for workflow state.
  *
- * Subcommands (16):
+ * Subcommands (17):
  *   read-complexity        — Read current complexity level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
@@ -21,6 +21,7 @@
  *   lock-update            — Update lock step fields
  *   lock-release           — Release pipeline lock (clean exit)
  *   lock-status            — Read lock status (clear | live | stale)
+ *   recover                — Deterministic crash recovery (returns RecoveryAction JSON)
  *
  * All output is JSON to stdout. Errors go to stderr with exit code 2.
  *
@@ -68,6 +69,7 @@ import {
 import { createSuspendCheckpoint } from "./suspend-checkpoint";
 import { appendLedgerEntry } from "./ledger";
 import { emitStateTransition, emitPhaseComplete } from "../emitter";
+import { determineRecoveryAction } from "../recovery/__helpers/recover";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -117,6 +119,7 @@ const VALID_SUBCOMMANDS = [
   "lock-update",
   "lock-release",
   "lock-status",
+  "recover",
 ] as const;
 
 /**
@@ -152,6 +155,9 @@ Lock commands:
   lock-update            Update lock step fields (--pipeline-step=STEP [--phase-step=STEP] [--phase-id=N])
   lock-release           Release pipeline lock (clean exit)
   lock-status            Read lock status (clear | live | stale)
+
+Recovery commands:
+  recover                Deterministic crash recovery (returns RecoveryAction JSON)
 
 Status bus commands:
   write-status           Write to statusline bus (.planning/.statusline.json)
@@ -1160,6 +1166,22 @@ async function handleLockStatus(): Promise<void> {
   console.log(JSON.stringify(result));
 }
 
+// ─── Recovery ─────────────────────────────────────────────────────────────────
+
+/**
+ * Run deterministic crash recovery.
+ *
+ * Reads lock file, state.json, and convergence state to produce a
+ * RecoveryAction JSON that tells the orchestrator where to resume.
+ * Zero LLM involvement — pure data-driven logic.
+ *
+ * Prints RecoveryAction JSON to stdout.
+ */
+async function handleRecover(): Promise<void> {
+  const action = await determineRecoveryAction();
+  console.log(JSON.stringify(action));
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -1234,6 +1256,9 @@ export async function runBridgeCli(): Promise<void> {
     case "lock-status":
       await handleLockStatus();
       break;
+    case "recover":
+      await handleRecover();
+      break;
     default:
       console.error(
         `Unknown subcommand: "${subcommand}"\n\nValid subcommands: ${VALID_SUBCOMMANDS.join(", ")}\n\nRun with --help for full usage information.`,
@@ -1269,6 +1294,7 @@ export {
   handleLockUpdate,
   handleLockRelease,
   handleLockStatus,
+  handleRecover,
   SETTABLE_FIELDS,
   VALID_SUBCOMMANDS,
 };

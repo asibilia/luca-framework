@@ -23,44 +23,44 @@ The single entry point for all <%= branding.frameworkName %> workflows. This is 
 
 When spawning Agent() calls, ALWAYS include `subagent_type` and `model`:
 
-| Agent name pattern | subagent_type | Routing preset |
-|---|---|---|
-| cognition | <%= branding.commandPrefix %>-cognition | ALWAYS_FAST (always haiku) |
-| backlog | <%= branding.commandPrefix %>-phase-researcher | ORCHESTRATOR |
-| discuss-* | <%= branding.commandPrefix %>-discuss-researcher | ORCHESTRATOR |
-| plan-*, plan-revise-*, plan-gaps-* | <%= branding.commandPrefix %>-planner | ORCHESTRATOR |
-| plan-review-* | <%= branding.commandPrefix %>-plan-checker | ORCHESTRATOR |
-| execute-*, execute-gaps-*, fix-* | <%= branding.commandPrefix %>-executor | ORCHESTRATOR |
-| harness-* | <%= branding.commandPrefix %>-verifier-fast | FAST_PROMOTED |
-| verify-* | <%= branding.commandPrefix %>-verifier | DEEP_ANALYSIS |
-| review-arch-* | code-architect | DEEP_ANALYSIS |
-| review-dx-* | dx-advocate | DEEP_ANALYSIS |
-| review-security-* | security-auditor | DEEP_ANALYSIS |
-| review-simplify-* | code-simplifier | DEEP_ANALYSIS |
-| learn-*, milestone-learn, milestone-archive, milestone-finalize | <%= branding.commandPrefix %>-learner | FAST_PROMOTED |
-| process-data-* | <%= branding.commandPrefix %>-process-data | FAST_PROMOTED |
-| milestone-prune | <%= branding.commandPrefix %>-shadow-scanner | FAST_PROMOTED |
-| milestone-shadow | <%= branding.commandPrefix %>-shadow-scanner | FAST_PROMOTED |
-| research-scope-* | <%= branding.commandPrefix %>-phase-researcher | ORCHESTRATOR |
-| research-arch-* | <%= branding.commandPrefix %>-architecture-researcher | ROUTER |
-| research-impl-* | <%= branding.commandPrefix %>-implementation-researcher | ROUTER |
-| research-eco-* | <%= branding.commandPrefix %>-ecosystem-researcher | ROUTER |
-| research-risk-* | <%= branding.commandPrefix %>-risk-researcher | ROUTER |
-| research-synth-*, research-expand-* | <%= branding.commandPrefix %>-research-synthesizer | ORCHESTRATOR |
-| research-graduate-* | <%= branding.commandPrefix %>-research-graduator | ORCHESTRATOR |
-| review-accuracy-* | <%= branding.commandPrefix %>-accuracy-reviewer | DEEP_ANALYSIS |
-| review-completeness-* | <%= branding.commandPrefix %>-completeness-reviewer | DEEP_ANALYSIS |
-| review-actionability-* | <%= branding.commandPrefix %>-actionability-reviewer | DEEP_ANALYSIS |
+| Agent name pattern                                               | subagent_type                                           | Routing preset             |
+| ---------------------------------------------------------------- | ------------------------------------------------------- | -------------------------- |
+| cognition                                                        | <%= branding.commandPrefix %>-cognition                 | ALWAYS_FAST (always haiku) |
+| backlog                                                          | <%= branding.commandPrefix %>-phase-researcher          | ORCHESTRATOR               |
+| discuss-\*                                                       | <%= branding.commandPrefix %>-discuss-researcher        | ORCHESTRATOR               |
+| plan-_, plan-revise-_, plan-gaps-\*                              | <%= branding.commandPrefix %>-planner                   | ORCHESTRATOR               |
+| plan-review-\*                                                   | <%= branding.commandPrefix %>-plan-checker              | ORCHESTRATOR               |
+| execute-_, execute-gaps-_, fix-\*                                | <%= branding.commandPrefix %>-executor                  | ORCHESTRATOR               |
+| harness-\*                                                       | <%= branding.commandPrefix %>-verifier-fast             | FAST_PROMOTED              |
+| verify-\*                                                        | <%= branding.commandPrefix %>-verifier                  | DEEP_ANALYSIS              |
+| review-arch-\*                                                   | code-architect                                          | DEEP_ANALYSIS              |
+| review-dx-\*                                                     | dx-advocate                                             | DEEP_ANALYSIS              |
+| review-security-\*                                               | security-auditor                                        | DEEP_ANALYSIS              |
+| review-simplify-\*                                               | code-simplifier                                         | DEEP_ANALYSIS              |
+| learn-\*, milestone-learn, milestone-archive, milestone-finalize | <%= branding.commandPrefix %>-learner                   | FAST_PROMOTED              |
+| process-data-\*                                                  | <%= branding.commandPrefix %>-process-data              | FAST_PROMOTED              |
+| milestone-prune                                                  | <%= branding.commandPrefix %>-shadow-scanner            | FAST_PROMOTED              |
+| milestone-shadow                                                 | <%= branding.commandPrefix %>-shadow-scanner            | FAST_PROMOTED              |
+| research-scope-\*                                                | <%= branding.commandPrefix %>-phase-researcher          | ORCHESTRATOR               |
+| research-arch-\*                                                 | <%= branding.commandPrefix %>-architecture-researcher   | ROUTER                     |
+| research-impl-\*                                                 | <%= branding.commandPrefix %>-implementation-researcher | ROUTER                     |
+| research-eco-\*                                                  | <%= branding.commandPrefix %>-ecosystem-researcher      | ROUTER                     |
+| research-risk-\*                                                 | <%= branding.commandPrefix %>-risk-researcher           | ROUTER                     |
+| research-synth-_, research-expand-_                              | <%= branding.commandPrefix %>-research-synthesizer      | ORCHESTRATOR               |
+| research-graduate-\*                                             | <%= branding.commandPrefix %>-research-graduator        | ORCHESTRATOR               |
+| review-accuracy-\*                                               | <%= branding.commandPrefix %>-accuracy-reviewer         | DEEP_ANALYSIS              |
+| review-completeness-\*                                           | <%= branding.commandPrefix %>-completeness-reviewer     | DEEP_ANALYSIS              |
+| review-actionability-\*                                          | <%= branding.commandPrefix %>-actionability-reviewer    | DEEP_ANALYSIS              |
 
 **Routing presets by COMPLEXITY (resolve after Step 2):**
 
-| Preset | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
-|---|---|---|---|---|---|
-| ALWAYS_FAST | haiku | haiku | haiku | haiku | haiku |
-| FAST_PROMOTED | haiku | haiku | haiku | haiku | sonnet |
-| ROUTER | haiku | haiku | sonnet | sonnet | sonnet |
-| ORCHESTRATOR | haiku | sonnet | sonnet | opus | opus |
-| DEEP_ANALYSIS | haiku | sonnet | opus | opus | opus |
+| Preset        | TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL |
+| ------------- | ------- | ------ | -------- | ------- | -------- |
+| ALWAYS_FAST   | haiku   | haiku  | haiku    | haiku   | haiku    |
+| FAST_PROMOTED | haiku   | haiku  | haiku    | haiku   | sonnet   |
+| ROUTER        | haiku   | haiku  | sonnet   | sonnet  | sonnet   |
+| ORCHESTRATOR  | haiku   | sonnet | sonnet   | opus    | opus     |
+| DEEP_ANALYSIS | haiku   | sonnet | opus     | opus    | opus     |
 
 ## Context File: `/tmp/lu-context.json`
 
@@ -84,26 +84,64 @@ if [ -z "$REPO_VAULT" ]; then REPO_VAULT=${LUCA_MUNINN_VAULT:-default}; fi
 Parse user request and all CLI flags.
 
 **Initialize state machine:**
+
 ```bash
 luca-bridge ensure-init 2>/dev/null || true
 ```
 
-**Crash recovery:**
+**Crash recovery (deterministic, RECOV-01..04):**
+
 ```bash
-EXISTING_STATE=$(bun src/skills/__schemas/context-cli.ts state lu 2>/dev/null || echo "")
-PIPELINE_POS=$(luca-bridge read-field --field=pipeline_position 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.value || 'idle')" 2>/dev/null || echo "idle")
-if [ "$PIPELINE_POS" != "idle" ] || ([ -n "$EXISTING_STATE" ] && [ "$EXISTING_STATE" != "idle" ] && [ "$EXISTING_STATE" != "unknown" ]); then
-  echo "Resuming from pipeline position: $PIPELINE_POS (context state: $EXISTING_STATE)"
-  # Skip completed steps based on PIPELINE_POS
+# Check lock status first
+LOCK_STATUS=$(luca-bridge lock-status 2>/dev/null || echo '{"status":"clear"}')
+LOCK_STATE=$(echo "$LOCK_STATUS" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.status)" 2>/dev/null || echo "clear")
+
+if [ "$LOCK_STATE" = "stale" ]; then
+  # Stale lock detected — run deterministic recovery
+  RECOVERY_JSON=$(luca-bridge recover 2>/dev/null || echo '{"action":"fresh_start","briefing":"Recovery failed, starting fresh.","convergence_state":null}')
+  RECOVERY_ACTION=$(echo "$RECOVERY_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.action)" 2>/dev/null || echo "fresh_start")
+  RECOVERY_STEP=$(echo "$RECOVERY_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.step || '')" 2>/dev/null || echo "")
+  RECOVERY_PHASE=$(echo "$RECOVERY_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.phase_id || '')" 2>/dev/null || echo "")
+  RECOVERY_BRIEFING=$(echo "$RECOVERY_JSON" | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.briefing)" 2>/dev/null || echo "")
+  echo "Recovery: $RECOVERY_ACTION — $RECOVERY_BRIEFING"
+
+  # Release stale lock before proceeding
+  luca-bridge lock-release 2>/dev/null || true
+
+  case "$RECOVERY_ACTION" in
+    fresh_start)
+      # Normal initialization
+      bun src/skills/__schemas/context-cli.ts init lu
+      ;;
+    restart_step)
+      # Jump to the indicated step (skip completed earlier steps)
+      echo "Restarting at step: $RECOVERY_STEP"
+      # JUMP_TO_STEP=$RECOVERY_STEP — orchestrator uses this to skip earlier steps
+      ;;
+    resume_phase)
+      # Resume phase execution at the indicated phase
+      echo "Resuming phase $RECOVERY_PHASE at step: $RECOVERY_STEP"
+      # JUMP_TO_STEP=$RECOVERY_STEP, RESUME_PHASE=$RECOVERY_PHASE
+      ;;
+    advance_phase)
+      # Phase was complete — advance to next
+      echo "Phase $RECOVERY_PHASE was complete. Advancing."
+      # ADVANCE_PAST_PHASE=$RECOVERY_PHASE
+      ;;
+  esac
+elif [ "$LOCK_STATE" = "live" ]; then
+  echo "Another session is active. Exiting."
+  exit 1
 else
+  # No lock — clean start
   bun src/skills/__schemas/context-cli.ts init lu
 fi
 ```
 
-
 ### Step 2: Cognitive Pre-Flight + Classify + Route (idle -> routed)
 
 Read `agent-prompts.ts`, spawn cognition agent:
+
 ```
 Agent(name: "cognition", subagent_type: "<%= branding.commandPrefix %>-cognition", model: ALWAYS_FAST, prompt: COGNITION_PROMPT({phase, complexity, vault, currentState}))
 ```
@@ -113,6 +151,7 @@ Agent(name: "cognition", subagent_type: "<%= branding.commandPrefix %>-cognition
 If `--complexity` flag was provided, skip the classifier entirely and use the override value.
 
 Otherwise, run the deterministic classifier CLI:
+
 ```bash
 # Extract file count and scope from task description / ROADMAP context
 FILE_COUNT=${FILE_COUNT:-0}
@@ -124,6 +163,7 @@ ROUTE=$(echo "$CLASSIFY_RESULT" | bun -e "const r=JSON.parse(await Bun.stdin.tex
 ```
 
 **Adaptive adjustment** (adjusts based on routing history):
+
 ```bash
 USER_OVERRIDE=""
 if echo "$ARGS" | grep -q -- "--complexity="; then
@@ -155,9 +195,11 @@ luca-bridge transition --event=ROUTE_COMPLETE --data='{"complexity":"COMPLEXITY_
 ### Step 3: Route Branch
 
 **If ROUTE != "phase-execute":** Handle non-phase-execute routes:
+
 ```
 Agent(name: "{route}-handler", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: ROUTE_HANDLER_PROMPT(route, {...}))
 ```
+
 Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write "complete", RETURN.
 
 **If ROUTE == "phase-execute":** Continue to Step 4.
@@ -165,6 +207,7 @@ Then: Agent("verify-route") + Agent("learn-route") (conditional), commit, write 
 ### Step 4: Configure Session (routed -> configured)
 
 **Inline configuration (no Agent() call needed):**
+
 ```bash
 # Read configuration values directly from config.json
 WORKFLOW_VERSION=$(cat .planning/config.json 2>/dev/null | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
@@ -228,6 +271,7 @@ bun src/skills/__schemas/context-cli.ts write lu "{\"git_workflow\":{\"issue_num
 If --skip-backlog or config backlog_scan==false: skip.
 
 Otherwise:
+
 ```
 Agent(name: "backlog", subagent_type: "<%= branding.commandPrefix %>-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: BACKLOG_PROMPT({...}))
 ```
@@ -247,18 +291,22 @@ Read .planning/ROADMAP.md. Parse incomplete phases. Build dependency graph. Topo
 Write loop counter to context file for recovery: `{"loop_index": N, "remaining_phases": [...]}`
 
 **Emit PHASE_START:**
+
 ```bash
 luca-bridge transition --event=PHASE_START --data='{"phase_id":PHASE_NUMBER}' 2>/dev/null || true
 luca-bridge write-status --step="phase-start" --phase=PHASE_NUMBER --stage="EXECUTING" 2>/dev/null || true
 ```
 
 #### 7a. Phase dependency check (INLINE)
+
 Verify all dependencies complete. If not: park phase, continue.
 
 #### 7b. Oversight gate (INLINE, interactive)
+
 If oversight != "full-auto": prompt user for phase confirmation.
 
 #### 7c. Per-phase complexity re-classify (deterministic, no Agent() call)
+
 ```bash
 # Re-classify per-phase using deterministic classifier
 PHASE_GOAL=$(grep "^## " .planning/phases/{NN}-*/PLAN.md 2>/dev/null | head -1 | sed 's/^## //')
@@ -268,6 +316,7 @@ PHASE_COMPLEXITY=$(echo "$PHASE_CLASSIFY" | bun -e "const r=JSON.parse(await Bun
 ```
 
 #### 7d. Gate resolution (INLINE)
+
 ```bash
 PREMORTEM=$(luca-bridge gate-check --gate=premortem 2>/dev/null | ...)
 PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
@@ -275,18 +324,20 @@ PROCESS_DATA=$(luca-bridge gate-check --gate=process_data 2>/dev/null | ...)
 
 #### 7d-v2. Research Pipeline (v2 ONLY — skip entirely if WORKFLOW_VERSION != "v2")
 
-
 **Gate:** If WORKFLOW_VERSION != "v2": SKIP to 7e. This entire block is fail-closed.
 
 **Graceful degradation:** If ANY v2 step below fails (agent returns failure or error), log the failure and SKIP remaining v2 steps. Continue to 7e (Discussion) with whatever research context is available. v1 pipeline is never blocked by v2 failures.
 
 **7d-v2a. Research Scope** (skip if research/ directory already populated)
+
 ```
 Agent(name: "research-scope-{NN}", subagent_type: "<%= branding.commandPrefix %>-phase-researcher", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_SCOPE_PROMPT({phase: NN, ...}))
 ```
+
 Parse RESEARCH-SCOPE.md to get specialist assignments.
 
 **7d-v2b. Parallel Research** (spawn 4 specialists simultaneously)
+
 ```
 Agent(name: "research-arch-{NN}", subagent_type: "<%= branding.commandPrefix %>-architecture-researcher", model: ROUTER_MODEL, prompt: PARALLEL_RESEARCH_PROMPT("architecture", {...}))
 Agent(name: "research-impl-{NN}", subagent_type: "<%= branding.commandPrefix %>-implementation-researcher", model: ROUTER_MODEL, prompt: PARALLEL_RESEARCH_PROMPT("implementation", {...}))
@@ -295,11 +346,13 @@ Agent(name: "research-risk-{NN}", subagent_type: "<%= branding.commandPrefix %>-
 ```
 
 **7d-v2c. Research Synthesis**
+
 ```
 Agent(name: "research-synth-{NN}", subagent_type: "<%= branding.commandPrefix %>-research-synthesizer", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_SYNTHESIS_PROMPT({phase: NN, ...}))
 ```
 
 **7d-v2d. Research Review Loop** (iterate up to researchReviewIterations)
+
 ```
 FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
   # Spawn 3 reviewers in parallel
@@ -314,26 +367,28 @@ FOR iteration = 1 to RESEARCH_REVIEW_ITERATIONS:
 ```
 
 **7d-v2e. Research Graduation**
+
 ```
 Agent(name: "research-graduate-{NN}", subagent_type: "<%= branding.commandPrefix %>-research-graduator", model: ORCHESTRATOR_MODEL, prompt: RESEARCH_GRADUATION_PROMPT({phase: NN, ...}))
 ```
 
 #### 7e. Discussion (conditional: skip if --skip-discuss)
 
-
 ```
 Agent(name: "discuss-{NN}", subagent_type: "<%= branding.commandPrefix %>-discuss-researcher", model: ORCHESTRATOR_MODEL, prompt: phase discussion with premortem if --run-premortem)
 ```
+
 After discussion returns (or if skipped):
+
 ```bash
 # If discussion was skipped: luca-bridge transition --event=SKIP 2>/dev/null || true
 ```
 
 #### 7f. Plan existence check (INLINE)
-If .planning/phases/{NN}-*/PLAN.md exists: skip planning.
+
+If .planning/phases/{NN}-\*/PLAN.md exists: skip planning.
 
 #### 7g. Planning
-
 
 ```
 Agent(name: "plan-{NN}", subagent_type: "<%= branding.commandPrefix %>-planner", model: ORCHESTRATOR_MODEL, prompt: create PLAN.md with tasks and wave grouping)
@@ -357,7 +412,6 @@ FOR iteration = 1 to PLAN_REVIEW_ITERATIONS:
 
 #### 7h. Execution
 
-
 ```
 Agent(name: "execute-{NN}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: EXECUTE_WAVES_PROMPT({phase: NN, ...}))
 ```
@@ -370,19 +424,35 @@ luca-bridge write-status --step="harness" --stage="VERIFYING" --phase=PHASE_NUMB
 
 ```
 FOR attempt = 1 to HARNESS_FIX_ITERATIONS:
+  # Persist convergence state for crash recovery (RECOV-04)
+  bun -e "
+    const cs = {
+      phase_id: PHASE_NUMBER,
+      loop_index: ATTEMPT,
+      max_iterations: HARNESS_FIX_ITERATIONS,
+      error_ledger: ACCUMULATED_ERRORS,
+      stale_count: STALE_COUNT,
+      checkpoint_tags: ['harness-fix-' + ATTEMPT],
+      updated_at: new Date().toISOString()
+    };
+    await Bun.write('.planning/.convergence-state.json', JSON.stringify(cs, null, 2));
+  " 2>/dev/null || true
+
   Agent(name: "harness-{NN}", subagent_type: "<%= branding.commandPrefix %>-verifier-fast", model: FAST_PROMOTED_MODEL, prompt: HARNESS_CHECK_PROMPT({...}))
   IF PASSED: BREAK
   Agent(name: "fix-{NN}", subagent_type: "<%= branding.commandPrefix %>-executor", model: ORCHESTRATOR_MODEL, prompt: HARNESS_FIX_PROMPT(errors, {...}))
 ```
 
 **After harness loop, emit result:**
+
 ```bash
 # Parse PASSED and error count from last harness agent output
 luca-bridge transition --event=HARNESS_COMPLETE --data='{"status":"passed_or_failed","total_errors":ERROR_COUNT}' 2>/dev/null || true
+# Clear convergence state on successful harness completion
+rm -f .planning/.convergence-state.json 2>/dev/null || true
 ```
 
 #### 7j. Goal-backward verification
-
 
 ```
 Agent(name: "verify-{NN}", subagent_type: "<%= branding.commandPrefix %>-verifier", model: DEEP_MODEL, prompt: GOAL_VERIFY_PROMPT({phase: NN, ...}))
@@ -390,8 +460,8 @@ Agent(name: "verify-{NN}", subagent_type: "<%= branding.commandPrefix %>-verifie
 
 #### 7k. Code review
 
-
 Spawn PARALLEL reviewers:
+
 ```
 Agent(name: "review-arch-{NN}", subagent_type: "code-architect", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("architecture", {...}))
 Agent(name: "review-dx-{NN}", subagent_type: "dx-advocate", model: DEEP_MODEL, prompt: CODE_REVIEW_PROMPT("dx-advocate", {...}))
@@ -400,29 +470,31 @@ Agent(name: "review-simplify-{NN}", subagent_type: "code-simplifier", model: DEE
 ```
 
 After ALL reviewers return, emit REVIEW_COMPLETE to advance the executing sub-state:
+
 ```bash
 luca-bridge transition --event=REVIEW_COMPLETE 2>/dev/null || true
 ```
 
 #### 7l. Learning capture
 
-
 ```
 Agent(name: "learn-{NN}", subagent_type: "<%= branding.commandPrefix %>-learner", model: FAST_PROMOTED_MODEL, prompt: LEARNING_CAPTURE_PROMPT({phase: NN, ...}))
 ```
 
 #### 7m. Process data (conditional: --run-process-data)
+
 ```
 Agent(name: "process-data-{NN}", subagent_type: "<%= branding.commandPrefix %>-process-data", model: FAST_PROMOTED_MODEL, prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
 ```
+
 ```bash
 luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 ```
 
 #### 7n. Commit (INLINE)
 
-
 Commits land on the feature branch created in Step 4.5 (or main if --skip-branch).
+
 ```bash
 git add . && git commit -m "feat(#{ISSUE_NUMBER}): Phase {NN} — {phase description}"
 # Push to remote after each phase commit:
@@ -430,14 +502,17 @@ git push
 ```
 
 #### 7o. Update state (INLINE)
+
 Mark phase complete in ROADMAP.md. Write loop counter + remaining phases to context file.
 
 **Emit PHASE_COMPLETE:**
+
 ```bash
 luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":PHASE_NUMBER,"summary":"Phase PHASE_NUMBER completed"}' 2>/dev/null || true
 ```
 
 **Append routing history entry:**
+
 ```bash
 bun -e "
 import { appendRoutingEntry } from './src/complexity/__helpers/routing-history';
@@ -457,6 +532,7 @@ await appendRoutingEntry({
 ```
 
 #### 7p. Gap closure retry (INLINE, if phase had failures)
+
 ```
 FOR retry = 1 to GAP_RETRIES:
   Agent(name: "plan-gaps-{NN}", subagent_type: "<%= branding.commandPrefix %>-planner", model: ORCHESTRATOR_MODEL, prompt: plan only for gaps)
@@ -473,6 +549,7 @@ luca-bridge write-status --step="milestone" --stage="EXECUTING" --detail="Checki
 ```
 
 If all phases in current milestone complete:
+
 ```
 Agent(name: "milestone-learn", subagent_type: "<%= branding.commandPrefix %>-learner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_LEARN_PROMPT({...}))
 Agent(name: "milestone-prune", subagent_type: "<%= branding.commandPrefix %>-shadow-scanner", model: FAST_PROMOTED_MODEL, prompt: MILESTONE_PRUNE_PROMPT({...}))

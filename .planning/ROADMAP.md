@@ -547,7 +547,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 2. When drift is detected, the reassessment agent categorizes each remaining phase as VALID, NEEDS_UPDATE, REDUNDANT, or BLOCKED, and the orchestrator applies the appropriate action (skip redundant, update per oversight mode, park blocked) with the execution order rebuilt if needed
 3. Drift events are recorded in `session-ledger.jsonl` with affected phase metadata, and a DRIFT_DETECTED bridge transition is emitted
 
-### Phase 266: Deterministic Crash Recovery
+### Phase 266: Deterministic Crash Recovery — COMPLETE
 
 **Goal:** When `/lu` starts after a crash, the recovery module deterministically determines the correct resume point from structured state (lock file, state.json, git status, filesystem) without any LLM interpretation, and the user receives a clear briefing about what happened and where execution resumes.
 **Complexity:** COMPLEX
@@ -602,7 +602,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 263   | Ceremony Reduction & Per-Wave Execution         | Complete | CEREM-01..04               |
 | 264   | Fresh Context Assembly & Task Sizing            | Complete | CTXT-01..03, SIZE-01..04   |
 | 265   | Per-Phase Drift Detection                       | Complete | DRIFT-01..05               |
-| 266   | Deterministic Crash Recovery                    | Pending  | RECOV-01..04               |
+| 266   | Deterministic Crash Recovery                    | Complete | RECOV-01..04               |
 | 267   | Cross-Milestone State Reset                     | Pending  | CROSS-01..03               |
 | 268   | Orchestrator Pipeline Integration               | Pending  | ORCH-01..03                |
 

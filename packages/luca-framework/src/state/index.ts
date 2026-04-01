@@ -131,6 +131,7 @@ export {
   handleLockUpdate,
   handleLockRelease,
   handleLockStatus,
+  handleRecover,
   SETTABLE_FIELDS,
 } from "./bridge";
 
