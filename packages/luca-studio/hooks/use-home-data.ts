@@ -120,7 +120,7 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
     return actions.join(", ");
   }
 
-  // 5. Fallback
+  // 9. Fallback
   return "";
 }
 
