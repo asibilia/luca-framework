@@ -219,7 +219,7 @@ luca/
 
 **New Workflow:**
 - Implementation: `luca/workflows/{name}.md`
-- Usage: Reference from command with `@./~/.claude/luca/workflows/{name}.md`
+- Usage: Reference from command with `@~/.claude/luca/workflows/{name}.md`
 
 **New Reference Document:**
 - Implementation: `luca/references/{name}.md`
@@ -232,13 +232,13 @@ luca/
 ## Special Directories
 
 **luca/**
-- Purpose: Resources installed to ./.cursor/
-- Source: Copied by bin/install.js during installation
+- Purpose: Resources installed to ~/.claude/luca/
+- Source: Copied by the update command during installation
 - Committed: Yes (source of truth)
 
 **commands/**
-- Purpose: Slash commands installed to ./.cursor/commands/
-- Source: Copied by bin/install.js during installation
+- Purpose: Slash commands installed to ./.claude/commands/
+- Source: Copied by the update command during installation
 - Committed: Yes (source of truth)
 
 ---

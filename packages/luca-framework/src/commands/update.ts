@@ -691,7 +691,7 @@ export const updateCommand = defineCommand({
 
     // Write user-level files (e.g., ~/.claude/luca/) directly, outside the
     // per-project manifest/compare flow. These are identical across repos.
-    if (userLevelFiles.size > 0) {
+    if (!args["dry-run"] && userLevelFiles.size > 0) {
       spinner.start(
         `Writing ${userLevelFiles.size} reference files to ~/.claude/luca/...`,
       );
