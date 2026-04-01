@@ -242,7 +242,7 @@ If any required step missing: log warning (advisory).
 - [ ] Learnings captured (learn agent)
 - [ ] Bridge transitions emitted (LEARN_COMPLETE or SKIP, PROCESS_DATA_COMPLETE if applicable, COMMIT_COMPLETE)
 - [ ] current_state written after every transition
-- [ ] STATE.md and ROADMAP.md updated
+- [ ] State and ROADMAP.md updated
 
 </main>
 `,

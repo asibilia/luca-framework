@@ -35,7 +35,7 @@ RESEARCH_DIR="$PHASE_DIR/research"
 # Read all numbered research files
 Read all files matching: $RESEARCH_DIR/[0-9]*.md
 
-# Read phase intent from STATE.md or CONTEXT.md
+# Read phase intent from state (via bridge) or CONTEXT.md
 Read $PHASE_DIR/*-CONTEXT.md for phase description
 \`\`\`
 

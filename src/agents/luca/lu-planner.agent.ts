@@ -223,7 +223,7 @@ When creating plans, integrate context from multiple sources:
 - Read PROJECT.md for vision and scope
 - Recall project identity from MuninnDB for conventions and preferences
 - Recall relevant patterns and pitfalls from MuninnDB
-- Read STATE.md for current position and constraints
+- Read state from bridge for current position and constraints
 
 ### Technical Context
 - Identify relevant files using @-references

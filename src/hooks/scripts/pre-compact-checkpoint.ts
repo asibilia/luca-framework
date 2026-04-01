@@ -1,7 +1,7 @@
 /**
  * pre-compact-checkpoint — Save context checkpoint before compaction.
  *
- * Reads state from bridge + STATE.md + git, builds checkpoint JSON,
+ * Reads state from bridge + git, builds checkpoint JSON,
  * writes filesystem fallback, fires MuninnDB REST call.
  *
  * Always exits 0 — async hook, non-blocking.
@@ -66,29 +66,30 @@ const main = async (): Promise<void> => {
     // Bridge unavailable
   }
 
-  // Read milestone, branch, issue, status from STATE.md
+  // Read milestone, branch, issue, status from state.json
   let milestone = "";
   let branch = "";
   let githubIssue = "";
   let status = "";
-  const stateMdPath = `${pd}/.planning/STATE.md`;
-  if (existsSync(stateMdPath)) {
+  const stateJsonPath = `${pd}/.planning/state.json`;
+  if (existsSync(stateJsonPath)) {
     try {
-      const content = readFileSync(stateMdPath, "utf-8");
-      const lines = content.split("\n");
-      for (const line of lines) {
-        if (line.includes("Current Milestone:")) {
-          milestone = line.replace(/.*Milestone:/, "").trim();
-        } else if (line.includes("Branch:")) {
-          branch = line.replace(/.*Branch:/, "").trim();
-        } else if (line.includes("GitHub Issue:")) {
-          githubIssue = line.replace(/.*Issue:/, "").trim();
-        } else if (line.includes("Status:")) {
-          status = line.replace(/.*Status:/, "").trim();
-        }
+      const content = readFileSync(stateJsonPath, "utf-8");
+      const stateData = JSON.parse(content);
+      const ctx = stateData?.context ?? {};
+      milestone = ctx.current_milestone ?? "";
+      branch = ctx.branch ?? "";
+      githubIssue = ctx.github_issue != null ? `#${ctx.github_issue}` : "";
+      if (stateData?.value) {
+        status =
+          typeof stateData.value === "string"
+            ? stateData.value
+            : typeof stateData.value === "object"
+              ? (Object.keys(stateData.value)[0] ?? "")
+              : "";
       }
     } catch {
-      // STATE.md unreadable
+      // state.json unreadable
     }
   }
 

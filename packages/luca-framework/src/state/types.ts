@@ -145,10 +145,31 @@ export type BudgetStateRef = z.infer<typeof budgetStateRefSchema>;
 export const workflowContextSchema = z.object({
   // Identity
   session_id: z.string(),
+  /** @deprecated Use git_workflow.ticket_id instead. Kept for backward compat until Phase 260+. */
   ticket_id: z.string().optional(),
+  /** @deprecated Use git_workflow.github_issue instead. Kept for backward compat until Phase 260+. */
   github_issue: z.number().int().optional(),
+  /** @deprecated Use git_workflow.branch instead. Kept for backward compat until Phase 260+. */
   branch: z.string().optional(),
+  /** @deprecated Use git_workflow.base_branch instead. Kept for backward compat until Phase 260+. */
   base_branch: z.string().default("main"),
+
+  // Git workflow (consolidates standalone fields above)
+  git_workflow: z
+    .object({
+      ticket_id: z.string().optional(),
+      github_issue: z.number().int().optional(),
+      branch: z.string().optional(),
+      base_branch: z.string().default("main"),
+      pr_number: z.number().int().optional(),
+    })
+    .optional(),
+
+  // Token profile for ceremony control
+  token_profile: z.enum(["budget", "balanced", "quality"]).default("balanced"),
+
+  // Schema version for forward compatibility
+  schema_version: z.number().int().default(1),
 
   // Workflow position
   current_milestone: z.string().optional(),

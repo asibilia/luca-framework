@@ -470,7 +470,7 @@ function buildProposedHooksFromDeployed(
       event: "PostToolUse",
       timeout: 10,
       async: true,
-      statusMessage: "Syncing STATE.md...",
+      statusMessage: "Syncing state...",
     },
     "muninn-context-recall.sh": {
       event: "UserPromptSubmit",

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v8.6.0 — Scout Article Intelligence
+**Current Milestone:** v9.0.0 — Workflow Pipeline Redesign
 
 ---
 
@@ -423,6 +423,188 @@ Fix all audit findings from v8.6.0 plus critical architectural fix: move orchest
 - [x] update-enforcement-validstates — Update `pre-step-lu.ts` validStates to use compound positions (e.g., `"executing.reviewing"` for review agents)
 - [x] update-transition-sync — Update `agent-transition-sync.ts` lu orchestrator block to fire sub-state events on agent completion
 - [x] verify-enforcement — Verified by lu-verifier (10/10 criteria) + 4 parallel code reviewers
+
+---
+
+## v9.0.0 — Workflow Pipeline Redesign
+
+Redesign the `/lu` end-to-end pipeline to restore lost capabilities and apply GSD2 learnings. Makes the workflow complete, convergence-aware, and crash-resilient. Eliminates STATE.md, makes classification deterministic, adds lock file crash recovery, introduces token profiles, wires stuck detection into execution loops, adds per-phase drift detection, and implements cross-milestone state reset.
+
+Spec: `docs/research/workflow-redesign/06-final-workflow.md`
+Decision log: D1-D15 (binding, see REQUIREMENTS.md)
+
+### Phase 258: Structured State & Deterministic Classification
+
+**Goal:** The pipeline tracks its own position in structured JSON and classifies task complexity without any LLM call, so every downstream phase can read machine-parseable state and every classification is deterministic and sub-millisecond.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** None
+**Requirements:** FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-05, CLASS-01, CLASS-02, CLASS-03, CLASS-04, CLASS-05
+
+**Success Criteria:**
+
+1. Running `luca-bridge read-status` returns a complete JSON summary of pipeline state including current step, phase, complexity, profile, and git workflow -- with no STATE.md file anywhere in the repository
+2. Running `bun src/complexity/__helpers/classify.ts --description="refactor auth module"` returns a structured `{ complexity, route, score, signals }` JSON in under 100ms with no Agent() calls
+3. The routing history file `.planning/routing-history.jsonl` accumulates one entry per completed phase and the adaptive adjuster shifts complexity by at most 1 level based on the last 20 entries
+4. All skills and agents that previously read STATE.md now read from `luca-bridge` commands, verified by `grep -r "STATE.md" src/` returning zero matches outside of deletion/migration code
+
+### Phase 259: Pipeline Lock File
+
+**Goal:** The pipeline prevents concurrent sessions and tracks its exact position at sub-step granularity, so crash recovery has a deterministic resume point instead of requiring LLM interpretation.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 258
+**Requirements:** LOCK-01, LOCK-02, LOCK-03
+
+**Success Criteria:**
+
+1. Starting `/lu` creates `.planning/.pipeline-lock.json` containing PID, session ID, and current pipeline/phase step, and this file is updated at every step transition throughout the session
+2. Starting a second `/lu` session while one is running prints a warning with the running PID and exits (unless `--force` is passed)
+3. Starting `/lu` after a crash detects the stale lock (dead PID or 24-hour staleness), reports it, and allows recovery to proceed
+
+### Phase 260: Token Profiles
+
+**Goal:** Users can control ceremony depth via a single `--profile` flag, with `balanced` matching current behavior exactly and `budget`/`quality` adjusting model tiers and loop budgets without touching protected steps (discussion, code review, learning).
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 258
+**Requirements:** PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, PROF-06
+
+**Success Criteria:**
+
+1. Running `/lu --profile=budget` demotes all non-protected agent model tiers by one level and halves loop iteration budgets (floor 1), while discussion, all 4 code reviewers, and learning capture continue to run at their standard tiers
+2. Running `/lu --profile=quality` promotes all agent model tiers by one level and doubles loop iteration budgets, and v2 research runs the full 4-researcher pipeline with review loop and graduation
+3. Running `/lu` without `--profile` uses `balanced` which matches current behavior exactly (zero regression), and the active profile is visible at session start and persisted in state.json
+
+### Phase 261: Structured Verification
+
+**Goal:** Verification produces machine-readable JSON that the orchestrator and milestone validation can consume without prose parsing, and success criteria have stable IDs that enable convergence tracking across iterations.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 258
+**Requirements:** VERIF-01, VERIF-02, VERIF-03, VERIF-04
+
+**Success Criteria:**
+
+1. After phase verification, a `verification-result.json` file exists with structured per-criterion results (criterion_id, met, evidence, gap, blocking) that the orchestrator reads mechanically for pass/fail verdict
+2. PLAN.md files contain criterion IDs (SC-1, SC-2, ...) that persist through planning, execution, and verification, enabling the orchestrator to track which specific criteria keep failing across implementation iterations
+3. At milestone boundary, running the deterministic milestone validator aggregates all `verification-result.json` files and produces a milestone-level verdict without any LLM call
+
+### Phase 262: Convergence-Aware Stuck Detection
+
+**Goal:** The harness fix loop and outer implementation loop detect stall patterns (oscillation, permanent errors, semantic drift) and choose intelligent exit strategies instead of exhausting iteration budgets on unresolvable errors.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 261
+**Requirements:** STUCK-01, STUCK-02, STUCK-03, STUCK-04, STUCK-05, STUCK-06
+
+**Success Criteria:**
+
+1. When the harness fix loop encounters the same error fingerprints for 2 consecutive iterations, it invokes the stall evaluator which returns one of 4 strategies (halt, context promotion, error focus, rollback) instead of blindly retrying
+2. The fix prompt receives only correctable errors (permanent errors are excluded), and includes convergence context from previous iterations so the executor has diagnostic information about what was already tried
+3. When the outer implementation loop detects the same verification criteria failing across 2 iterations (80%+ overlap), it invokes stuck detection with verification context and can park the phase with a diagnostic summary
+4. Git checkpoint tags are created before each harness fix iteration, and the rollback strategy restores to the checkpoint when selected
+
+### Phase 263: Ceremony Reduction & Per-Wave Execution
+
+**Goal:** Process data and configure run as mechanical TypeScript (zero LLM tokens), and execution shifts from 1 Agent() per plan to 1 Agent() per wave, ensuring each execution unit fits within one agent context window with overflow detection.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 261
+**Requirements:** CEREM-01, CEREM-02, CEREM-03, CEREM-04
+
+**Success Criteria:**
+
+1. After a phase completes, `bun src/process-data/compute.ts` produces aggregated metrics (duration, error rates, convergence stats) in state.json without any Agent() call, and the configure step reads config.json inline with no Agent() call
+2. Each wave in PLAN.md gets its own Agent() call with fresh context assembled immediately before dispatch, and the orchestrator reads no more than 2K tokens of context per dispatch preparation
+3. If an executor agent detects context exhaustion mid-wave, it outputs OVERFLOW and the orchestrator spawns a fresh Agent() for the remaining tasks in that wave
+
+### Phase 264: Fresh Context Assembly & Task Sizing
+
+**Goal:** Every agent receives a scoped, fresh context payload appropriate to its tier (Full/Scoped/Minimal), and plans include file count and scope metadata that enables overflow detection and sizing validation.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 263
+**Requirements:** CTXT-01, CTXT-02, CTXT-03, SIZE-01, SIZE-02, SIZE-03, SIZE-04
+
+**Success Criteria:**
+
+1. Before each Agent() dispatch, the orchestrator assembles a `PhaseContextPayload` appropriate to the agent's context tier (Full for executor/planner, Scoped for verifier/reviewers, Minimal for harness checker) without exceeding 2K tokens of orchestrator-side reading
+2. PLAN.md files contain per-task file count estimates and scope classifications (SMALL/MEDIUM/LARGE), and per-wave total file counts, which the plan reviewer validates against limits (BLOCKER if any task touches 10+ files, wave total must be < 10)
+3. The plan review agent evaluates 7 dimensions (the existing 6 plus task sizing), and flags BLOCKERs that trigger plan revision before execution begins
+
+### Phase 265: Per-Phase Drift Detection
+
+**Goal:** After every phase completes, the pipeline mechanically checks whether the completed work invalidated, blocked, or made redundant any remaining phases, and spawns a reassessment agent only when actual drift is detected.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 264
+**Requirements:** DRIFT-01, DRIFT-02, DRIFT-03, DRIFT-04, DRIFT-05
+
+**Success Criteria:**
+
+1. After each phase completes, a mechanical drift check (zero LLM tokens) compares git diff output against file references in remaining phases, detects deleted/renamed modules, and checks dependency graph changes -- with infrastructure files (tsconfig.json, package.json) ignored unless structural changes occurred
+2. When drift is detected, the reassessment agent categorizes each remaining phase as VALID, NEEDS_UPDATE, REDUNDANT, or BLOCKED, and the orchestrator applies the appropriate action (skip redundant, update per oversight mode, park blocked) with the execution order rebuilt if needed
+3. Drift events are recorded in `session-ledger.jsonl` with affected phase metadata, and a DRIFT_DETECTED bridge transition is emitted
+
+### Phase 266: Deterministic Crash Recovery
+
+**Goal:** When `/lu` starts after a crash, the recovery module deterministically determines the correct resume point from structured state (lock file, state.json, git status, filesystem) without any LLM interpretation, and the user receives a clear briefing about what happened and where execution resumes.
+**Complexity:** COMPLEX
+**Verification:** Full
+**Depends on:** Phase 259, Phase 262
+**Requirements:** RECOV-01, RECOV-02, RECOV-03, RECOV-04
+
+**Success Criteria:**
+
+1. After a simulated crash mid-phase, running `/lu` detects the stale lock, runs `src/recovery/recover.ts`, and produces a RecoveryAction JSON specifying the exact resume point (fresh-start, restart-step, resume-phase, or advance-phase) with a human-readable briefing -- all without any LLM call
+2. `luca-bridge recover` returns the structured RecoveryAction JSON, and `luca-bridge lock-status` returns the current lock file contents or "unlocked"
+3. Convergence state (error ledger, stale count, checkpoint tags) is persisted so recovery can resume a mid-harness-loop crash without losing convergence context
+
+### Phase 267: Cross-Milestone State Reset
+
+**Goal:** When a milestone completes and cross-milestone continuation is enabled, the pipeline performs a full state reset (lock, routing history, pipeline position, milestone archive) while preserving session identity, then bootstraps the next milestone from scratch.
+**Complexity:** MODERATE
+**Verification:** Standard
+**Depends on:** Phase 266
+**Requirements:** CROSS-01, CROSS-02, CROSS-03
+
+**Success Criteria:**
+
+1. After a milestone completes with cross-milestone enabled, the pipeline releases and re-acquires the lock, clears routing history, resets pipeline position to init, and archives milestone data to `milestones/` -- while preserving session_id and git_workflow in state.json
+2. The safety limit of 3 milestones per session is enforced, and the pipeline refuses to start a new milestone if the previous one did not complete cleanly (has parked or failed phases)
+
+### Phase 268: Orchestrator Pipeline Integration
+
+**Goal:** The `lu.skill.ts` orchestrator is fully rewritten to incorporate all changes from this milestone into a single coherent pipeline, with the oversight gate matrix and budget matrix wired end-to-end.
+**Complexity:** CRITICAL
+**Verification:** Full
+**Depends on:** Phase 260, Phase 263, Phase 264, Phase 265, Phase 266, Phase 267
+**Requirements:** ORCH-01, ORCH-02, ORCH-03
+
+**Success Criteria:**
+
+1. Running `/lu` executes the complete redesigned pipeline: deterministic classification, lock file management, profile-aware model selection, per-wave execution with fresh context, structured verification reads, convergence-aware stuck detection, mechanical process data, per-phase drift detection, and deterministic crash recovery -- all matching the spec at `docs/research/workflow-redesign/06-final-workflow.md`
+2. The oversight gate matrix correctly varies behavior by oversight mode (full-auto, flagged, milestone, phase) and token profile at each of the 8 decision points (milestone creation, WSJF revision, phase entry, phase gaps, critical review findings, drift detection, milestone boundary, cross-milestone)
+3. The budget matrix applies base iteration limits by complexity and profile multipliers correctly, with convergence overrides able to extend loops making progress and shorten loops that are stalled, and task sizing limits enforced independent of profile
+
+---
+
+## Progress
+
+| Phase | Name                                            | Status  | Requirements               |
+| ----- | ----------------------------------------------- | ------- | -------------------------- |
+| 258   | Structured State & Deterministic Classification | Pending | FOUND-01..05, CLASS-01..05 |
+| 259   | Pipeline Lock File                              | Pending | LOCK-01..03                |
+| 260   | Token Profiles                                  | Pending | PROF-01..06                |
+| 261   | Structured Verification                         | Pending | VERIF-01..04               |
+| 262   | Convergence-Aware Stuck Detection               | Pending | STUCK-01..06               |
+| 263   | Ceremony Reduction & Per-Wave Execution         | Pending | CEREM-01..04               |
+| 264   | Fresh Context Assembly & Task Sizing            | Pending | CTXT-01..03, SIZE-01..04   |
+| 265   | Per-Phase Drift Detection                       | Pending | DRIFT-01..05               |
+| 266   | Deterministic Crash Recovery                    | Pending | RECOV-01..04               |
+| 267   | Cross-Milestone State Reset                     | Pending | CROSS-01..03               |
+| 268   | Orchestrator Pipeline Integration               | Pending | ORCH-01..03                |
 
 ---
 

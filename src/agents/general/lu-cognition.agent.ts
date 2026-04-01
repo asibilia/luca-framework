@@ -115,7 +115,7 @@ Store both vault names for use in all subsequent MuninnDB calls:
 <step name="check_complexity_mode">
 Determine cognitive pre-flight depth based on complexity:
 
-**If complexity override is provided (from --complexity flag or STATE.md):**
+**If complexity override is provided (from --complexity flag or state.json):**
 - TRIVIAL or SIMPLE → **Lite mode**
 - MODERATE, COMPLEX, or CRITICAL → **Full mode** (current behavior)
 
@@ -208,14 +208,10 @@ Before recalling memory, resolve the target agent's cognition tier.
    - If no frontmatter or no \`cognition\` field: treat as T0 (default — stateless agent)
    - Extract: \`default_tier\`, \`promotable_to\`, \`memory_tags\`
 
-3. **Read current complexity from bridge (falls back to STATE.md):**
+3. **Read current complexity from bridge:**
    \`\`\`bash
-   # Primary: Read complexity from state machine bridge
-   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "")
-   # Fallback: grep STATE.md directly
-   if [ -z "$COMPLEXITY" ] || [ "$COMPLEXITY" = "undefined" ]; then
-     COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
-   fi
+   # Read complexity from state machine bridge
+   COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
    \`\`\`
    - If not set, default to MODERATE
 

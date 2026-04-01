@@ -8,7 +8,13 @@ A distributable, CLI-installable agent development framework for Cursor IDE. Tak
 
 **Zero-friction adoption of structured AI workflows.** Teams can adopt Luca in under 5 minutes with sensible defaults, then customize as their needs evolve.
 
-## Current State (v8.5.2 — Shipped)
+## Current Milestone (v9.0.0 — In Progress)
+
+**Goal:** Workflow Pipeline Redesign — Redesign the `/lu` end-to-end pipeline to restore lost capabilities from the autopilot era and apply GSD2 learnings. Makes the workflow complete (milestone bootstrapping through cross-milestone), convergence-aware (stuck detection via existing src/iteration/ modules), crash-resilient (deterministic recovery from structured state), and ceremony-efficient (deterministic classification, mechanical process-data, token profiles).
+
+**Key deliverables:** 11 phases (258-268), covering structured state consolidation, deterministic classification, pipeline lock file, token profiles, structured verification, convergence-aware loops, ceremony reduction, fresh context assembly, drift detection, crash recovery, and cross-milestone reset. Blueprint: `docs/research/workflow-redesign/06-final-workflow.md`
+
+## Previous State (v8.5.2 — Shipped)
 
 **Last Shipped:** v8.5.2 — Statusline HUD & Edit Gate (2026-03-30)
 

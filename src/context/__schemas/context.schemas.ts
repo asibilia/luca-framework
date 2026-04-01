@@ -107,7 +107,7 @@ export const contextDocumentSetSchema = z.object({
   plan_content: z.string().optional(),
   /** Condensed brain identity from MuninnDB */
   brain_summary: z.string().optional(),
-  /** STATE.md content */
+  /** Workflow state content (from state.json via bridge) */
   state_content: z.string().optional(),
   /** Selectively recalled engrams from MuninnDB */
   memory_entries: z.string().optional(),

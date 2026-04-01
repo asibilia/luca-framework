@@ -22,7 +22,7 @@ const stateMachineBridgeConfig: RuleConfig = {
 
 ## Overview
 
-Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the primary source of truth for workflow state. The bridge CLI (\`luca-bridge\`) provides a shell-friendly interface that all skills and agents should use, with automatic fallback to STATE.md for backward compatibility.
+Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the primary source of truth for workflow state. The bridge CLI (\`luca-bridge\`) provides a shell-friendly interface that all skills and agents should use, as the sole interface for reading and writing workflow state.
 
 ## Bridge CLI Commands
 
@@ -49,7 +49,6 @@ Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the 
 | Command | Description |
 |---------|-------------|
 | \\\`ensure-init [--force]\\\` | Initialize state if not present |
-| \\\`snapshot\\\` | Generate STATE.md from current state |
 | \\\`gate-check --gate=name\\\` | Check if a named gate is enabled |
 | \\\`suspend --phase=N [--reason=str]\\\` | Create checkpoint and suspend phase |
 | \\\`resume-phase --phase=N\\\` | Load checkpoint and resume phase |
@@ -60,13 +59,11 @@ Luca uses a typed state machine (\`packages/luca-framework/src/state/\`) as the 
 
 ### Reading State (Skills/Agents)
 
-Always use the bridge as primary, with STATE.md fallback:
+Always use the bridge for state reads:
 
 \\\`\\\`\\\`bash
 # Primary: Read state from state machine (typed, validated)
 STATE_JSON=$(luca-bridge read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \\\`\\\`\\\`
 
 ### Reading Complexity
@@ -74,19 +71,15 @@ STATE_MD=$(cat .planning/STATE.md 2>/dev/null || echo "")
 \\\`\\\`\\\`bash
 # Primary: Read complexity from bridge
 COMPLEXITY=$(luca-bridge read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
-# Fallback: grep STATE.md directly
-if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
-  COMPLEXITY=$(grep "Task Complexity:" .planning/STATE.md | awk '{print $NF}' || echo "MODERATE")
-fi
+
 \\\`\\\`\\\`
 
 ### Writing State (Transitions)
 
 \\\`\\\`\\\`bash
-# Primary: Transition via bridge (updates state machine + STATE.md)
+# Transition via bridge (updates state.json)
 # NOTE: Replace <PHASE_ID> with the current phase number before running
 luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":<PHASE_ID>,"summary":"Phase completed"}' 2>/dev/null || true
-# STATE.md is also updated directly for backward compatibility
 \\\`\\\`\\\`
 
 ### Initializing State
@@ -94,24 +87,15 @@ luca-bridge transition --event=PHASE_COMPLETE --data='{"phase_id":<PHASE_ID>,"su
 \\\`\\\`\\\`bash
 # Primary: Initialize via bridge
 luca-bridge ensure-init 2>/dev/null || true
-# Fallback: Create STATE.md directly
-cat > .planning/STATE.md << 'EOF'
-...
-EOF
 \\\`\\\`\\\`
 
 ## Dual-Write Guarantee
 
-The bridge always writes to BOTH the typed state machine AND STATE.md. This means:
-
-- Skills/agents that only read STATE.md will still work
-- Skills/agents that read the bridge get typed, validated data
-- No data loss during migration
-- Backward compatibility preserved
+The bridge writes to state.json as the sole source of truth. All skills and agents read state via bridge commands.
 
 ## Migration Status
 
-The bridge is being incrementally adopted across all skills and agents. Each file that reads or writes STATE.md should be updated to use the bridge as primary with STATE.md as fallback.
+All skills and agents use bridge commands for state access. state.json is the sole state file.
 
 ## Error Handling
 

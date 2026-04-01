@@ -113,7 +113,7 @@ export const canonicalHookRegistry: Record<string, () => CanonicalHook> = {
     script: "snapshot-sync.ts",
     timeout: 10,
     async: true,
-    status_message: "Syncing STATE.md...",
+    status_message: "Syncing state...",
   }),
   "session-persist": () => ({
     event: "session_end",

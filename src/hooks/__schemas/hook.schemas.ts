@@ -149,7 +149,7 @@ export const SessionObservationSchema = z.object({
   git_branch: z.string().default(""),
   /** Short summary of files changed since last observation (empty if unavailable) */
   git_diff_summary: z.string().default(""),
-  /** Current phase/plan/status from STATE.md (empty if unavailable) */
+  /** Current phase/plan/status from state (empty if unavailable) */
   phase_context: z.string().default(""),
   /** What triggered this observation */
   source: observationSourceSchema,

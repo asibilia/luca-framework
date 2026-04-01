@@ -1,13 +1,18 @@
 {
   "status": "active",
-  "value": "idle",
+  "value": {
+    "executing": "discussing"
+  },
   "historyValue": {},
   "context": {
-    "session_id": "9354b14a-d60c-47a0-9f12-7e992da6c66b",
+    "session_id": "94ed787c-0a78-4215-a2c9-6c5ec7ad3ee1",
+    "github_issue": 124,
+    "branch": "124--v9.0.0-workflow-pipeline-redesign",
     "base_branch": "main",
+    "current_milestone": "v9.0.0",
     "current_plan_ids": [],
     "current_wave_count": 0,
-    "complexity": "TRIVIAL",
+    "complexity": "COMPLEX",
     "oversight": "full-auto",
     "gates": {
       "confirm_project": true,
@@ -91,7 +96,35 @@
     "appetite_token_ceiling": 100000,
     "appetite_context_percent": 50,
     "appetite_used_tokens": 0,
-    "started_at": "2026-03-31T21:16:44.789Z"
+    "started_at": "2026-04-01T04:27:04.992Z",
+    "last_transition_at": "2026-04-01T04:33:49.813Z"
   },
-  "children": {}
+  "children": {
+    "phase": {
+      "snapshot": {
+        "status": "active",
+        "value": "wave_executing",
+        "historyValue": {},
+        "context": {
+          "phase_id": 0,
+          "plan_ids": [],
+          "current_wave": 1,
+          "total_waves": 1,
+          "wave_results": [],
+          "fix_iterations": 0,
+          "max_fix_iterations": 2,
+          "harness_passed": false,
+          "last_harness_errors": [],
+          "outcome": "pending",
+          "outcome_reason": "",
+          "timestamps": {
+            "started_at": "2026-04-01T04:33:49.814Z"
+          }
+        },
+        "children": {}
+      },
+      "src": "phaseActor",
+      "syncSnapshot": false
+    }
+  }
 }

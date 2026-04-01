@@ -114,15 +114,6 @@ export {
   STATE_FILE_PATH,
 } from "./persistence";
 
-// ─── Snapshot ───────────────────────────────────────────────────────────────
-
-export {
-  extractSection,
-  extractPreservableSections,
-  generateSnapshot,
-} from "./snapshot";
-export type { SnapshotInput } from "./snapshot";
-
 // ─── Bridge ─────────────────────────────────────────────────────────────────
 
 export {
@@ -132,7 +123,6 @@ export {
   handleReadField,
   handleSetField,
   handleTransition,
-  handleSnapshot,
   handleEnsureInit,
   handleGateCheck,
   handleSuspend,

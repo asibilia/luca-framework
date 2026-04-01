@@ -108,7 +108,7 @@ This task benefits from structured planning and phased execution.
 | Planning | GitHub issues | \`.planning/\` |
 | Commits | \`type(scope): #issue desc\` | \`type(phase-plan): #issue desc\` |
 | Branch | \`{issue}--{description}\` | \`{issue}--{description}\` |
-| State | Git history | State machine + STATE.md + Git |
+| State | Git history | State machine (state.json) + Git |
 | Verification | Manual testing | Automated phase verification |
 
 ## Success Criteria

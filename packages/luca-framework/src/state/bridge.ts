@@ -2,16 +2,15 @@
  * High-level CLI bridge for the Luca workflow state machine.
  *
  * All state is persisted to a local JSON file (.planning/state.json).
- * STATE.md generation is gated by LUCA_EXPORT_MD=true.
+ * state.json is the sole source of truth for workflow state.
  *
- * Subcommands (13):
+ * Subcommands (12):
  *   read-complexity        — Read current complexity level
  *   read-phase             — Read current phase info
  *   read-status            — Read comprehensive workflow status
  *   read-field             — Read an arbitrary context field (errors on missing state)
- *   set-field              — Set an allowlisted context field + persist + regenerate STATE.md
- *   transition             — Send event + persist + update STATE.md atomically
- *   snapshot               — Generate/update STATE.md from current state
+ *   set-field              — Set an allowlisted context field + persist
+ *   transition             — Send event + persist atomically
  *   ensure-init            — Initialize state if not already initialized
  *   gate-check             — Check if a named gate is enabled
  *   suspend                — Create checkpoint and suspend current phase
@@ -28,7 +27,6 @@
  *   luca-bridge read-field --field=session_id
  *   luca-bridge set-field --field=current_milestone --value="v2.0"
  *   luca-bridge transition --event=START [--data=json]
- *   luca-bridge snapshot
  *   luca-bridge ensure-init [--force]
  *   luca-bridge gate-check --gate=confirm_plan
  *   luca-bridge suspend --phase=42 [--reason=context_exhaustion] [--wave=1] [--tasks=id1,id2]
@@ -42,7 +40,6 @@ import { z } from "zod";
 import get from "lodash/get";
 import set from "lodash/set";
 import cloneDeep from "lodash/cloneDeep";
-import type { Actor } from "xstate";
 import {
   persistActor,
   loadPersistedActor,
@@ -55,7 +52,6 @@ import type { TransitionRecord } from "./types";
 import { sanitizeJsonParse } from "../utils/sanitize";
 import { buildTransitionRecord } from "./events";
 import { getAllowedEvents, workflowMachine } from "./machine";
-import { generateSnapshot } from "./snapshot";
 import { getArg, hasFlag } from "./utils/cli-utils";
 import { computePipelinePosition } from "./__helpers/pipeline-position";
 import { resolveStateValue } from "./__helpers/resolve-state-value";
@@ -64,9 +60,6 @@ import { appendLedgerEntry } from "./ledger";
 import { emitStateTransition, emitPhaseComplete } from "../emitter";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-
-/** Default path for the STATE.md file */
-const STATE_MD_PATH = ".planning/STATE.md";
 
 /**
  * Path for the statusline bus file (relative to project root).
@@ -94,110 +87,6 @@ const BusDataSchema = z.object({
   updated_at: z.string().default(""),
 });
 
-// ─── Dual-Write Divergence Detection ────────────────────────────────────────
-
-/**
- * Verify that the local JSON file matches the intended state after a dual-write.
- *
- * Reads the persisted JSON file and compares key fields (state, complexity,
- * phase) against the intended values. Logs a warning if divergence is found.
- * Best-effort only -- never throws.
- *
- * Gated behind `LUCA_DEBUG` env var to avoid unnecessary I/O on every
- * transition in production use. The check provides no actionable recovery --
- * it only logs warnings -- so it only runs when debugging is enabled.
- *
- * @param intended - The intended field values to verify against
- */
-async function checkDualWriteDivergence(intended: {
-  state: string;
-  complexity: string;
-  phase: string | number | null;
-}): Promise<void> {
-  if (!process.env.LUCA_DEBUG) return;
-
-  try {
-    const file = Bun.file(STATE_FILE_PATH);
-    if (!(await file.exists())) return;
-
-    const written = sanitizeJsonParse(await file.text()) as {
-      value?: unknown;
-      context?: Record<string, unknown>;
-    };
-    const ctx = written.context ?? {};
-    const divergences: string[] = [];
-
-    if (
-      written.value !== undefined &&
-      resolveStateValue(written.value) !== intended.state
-    ) {
-      divergences.push(
-        `state: json="${resolveStateValue(written.value)}" vs intended="${intended.state}"`,
-      );
-    }
-    if (
-      ctx.complexity !== undefined &&
-      String(ctx.complexity) !== intended.complexity
-    ) {
-      divergences.push(
-        `complexity: json="${ctx.complexity}" vs intended="${intended.complexity}"`,
-      );
-    }
-    if (
-      ctx.current_phase !== undefined &&
-      String(ctx.current_phase ?? "") !== String(intended.phase ?? "")
-    ) {
-      divergences.push(
-        `phase: json="${ctx.current_phase}" vs intended="${intended.phase}"`,
-      );
-    }
-
-    if (divergences.length > 0) {
-      console.warn(
-        `[dual-write] Divergence detected: ${divergences.join(", ")}`,
-      );
-    }
-  } catch {
-    // Divergence check is best-effort
-  }
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Read existing STATE.md, generate a fresh snapshot, and write it back.
- *
- * Gated by LUCA_EXPORT_MD env var. If not set to "true", this is a no-op.
- *
- * @param actor - The actor whose snapshot provides state and context
- */
-async function updateStateMd(
-  actor: Actor<typeof workflowMachine>,
-): Promise<void> {
-  if (process.env.LUCA_EXPORT_MD !== "true") return;
-
-  const snapshot = actor.getSnapshot();
-  const allowed = getAllowedEvents(snapshot);
-
-  let existingContent: string | undefined;
-  try {
-    const mdFile = Bun.file(STATE_MD_PATH);
-    if (await mdFile.exists()) {
-      existingContent = await mdFile.text();
-    }
-  } catch {
-    // No existing STATE.md
-  }
-
-  const markdown = generateSnapshot({
-    state: resolveStateValue(snapshot.value),
-    context: snapshot.context,
-    existing_content: existingContent,
-    allowed_events: allowed,
-  });
-  await Bun.write(STATE_MD_PATH, markdown);
-}
-
 /**
  * All valid subcommand names for the bridge CLI.
  */
@@ -209,7 +98,6 @@ const VALID_SUBCOMMANDS = [
   "set-field",
   "transition",
   "ensure-init",
-  "snapshot",
   "gate-check",
   "suspend",
   "init-vault",
@@ -239,7 +127,6 @@ Write commands:
 
 Lifecycle commands:
   ensure-init            Initialize state if not present ([--force])
-  snapshot               Generate STATE.md from current state
   gate-check             Check if a gate is enabled (--gate=name)
   suspend                Suspend a phase (--phase=N [--reason=str])
 
@@ -380,6 +267,10 @@ async function handleReadStatus(): Promise<void> {
     appetite_context_percent: 50,
     appetite_used_tokens: 0,
     dag_execution: null as unknown,
+    pipeline_position: "idle" as string,
+    token_profile: "balanced" as string,
+    schema_version: 1,
+    git_workflow: null as Record<string, unknown> | null,
   };
 
   const result = await readFromState({
@@ -409,6 +300,11 @@ async function handleReadStatus(): Promise<void> {
       appetite_context_percent: (ctx.appetite_context_percent as number) ?? 50,
       appetite_used_tokens: (ctx.appetite_used_tokens as number) ?? 0,
       dag_execution: ctx.dag_execution ?? null,
+      pipeline_position: computePipelinePosition(stateValue),
+      token_profile: (ctx.token_profile as string) ?? "balanced",
+      schema_version: (ctx.schema_version as number) ?? 1,
+      git_workflow:
+        (ctx.git_workflow as Record<string, unknown> | null) ?? null,
     }),
     defaults: statusDefaults,
   });
@@ -480,7 +376,7 @@ const SETTABLE_FIELDS = [
 ] as const;
 
 /**
- * Set an allowlisted context field, persist state, and regenerate STATE.md.
+ * Set an allowlisted context field and persist state.
  *
  * Reads current context from the JSON state file, modifies the requested
  * field, validates the updated context, and persists back to disk.
@@ -560,14 +456,6 @@ async function handleSetField(args: string[]): Promise<void> {
   const updatedJson = { ...snapshotJson!, context: updatedContext };
   await Bun.write(STATE_FILE_PATH, JSON.stringify(updatedJson, null, 2));
 
-  // Optional: update STATE.md gated by env var
-  if (process.env.LUCA_EXPORT_MD === "true") {
-    const loadResult = await loadPersistedActor();
-    if (loadResult.success) {
-      await updateStateMd(loadResult.data);
-    }
-  }
-
   // Append field change to session ledger (fire-and-forget, non-blocking)
   const fieldRecord: TransitionRecord = {
     previous_state: resolveStateValue(snapshotJson!.value),
@@ -609,10 +497,7 @@ async function handleSetField(args: string[]): Promise<void> {
 // ─── Transition Command ─────────────────────────────────────────────────────
 
 /**
- * Send an event, persist state, and atomically update STATE.md.
- *
- * After the event is sent and state is persisted,
- * optionally generates STATE.md (gated by LUCA_EXPORT_MD).
+ * Send an event and persist state atomically.
  *
  * @param args - CLI arguments (--event=TYPE required, --data=json optional)
  */
@@ -665,9 +550,6 @@ async function handleTransition(args: string[]): Promise<void> {
     console.error(persistResult.error);
     process.exit(2);
   }
-
-  // Optionally update STATE.md (gated by env var)
-  await updateStateMd(actor);
 
   // Output transition record
   const { type: _type, ...eventData } = validation.data;
@@ -735,39 +617,6 @@ async function handleTransition(args: string[]): Promise<void> {
   }
 
   console.log(JSON.stringify(record, null, 2));
-}
-
-// ─── Snapshot Command ───────────────────────────────────────────────────────
-
-/**
- * Generate STATE.md from the current machine state.
- *
- * Reads the current persisted state and writes a fresh STATE.md,
- * preserving existing human-authored sections.
- */
-async function handleSnapshot(): Promise<void> {
-  const result = await loadPersistedActor();
-  if (!result.success) {
-    console.error(result.error);
-    process.exit(2);
-  }
-
-  const actor = result.data;
-
-  // Force STATE.md generation for explicit snapshot command
-  const origEnv = process.env.LUCA_EXPORT_MD;
-  process.env.LUCA_EXPORT_MD = "true";
-  await updateStateMd(actor);
-  process.env.LUCA_EXPORT_MD = origEnv;
-
-  const snapshot = actor.getSnapshot();
-  console.log(
-    JSON.stringify({
-      snapshot_written: true,
-      path: STATE_MD_PATH,
-      state: snapshot.value,
-    }),
-  );
 }
 
 // ─── Ensure Init Command ────────────────────────────────────────────────────
@@ -954,9 +803,6 @@ async function handleSuspend(args: string[]): Promise<void> {
     reason,
     session_id: sessionId,
   });
-
-  // Optionally update STATE.md (gated by env var)
-  await updateStateMd(actor);
 
   // Emit phase suspend to MuninnDB (fire-and-forget)
   void emitPhaseComplete({
@@ -1241,9 +1087,6 @@ export async function runBridgeCli(): Promise<void> {
     case "transition":
       await handleTransition(args);
       break;
-    case "snapshot":
-      await handleSnapshot();
-      break;
     case "ensure-init":
       await handleEnsureInit(args);
       break;
@@ -1287,7 +1130,6 @@ export {
   handleReadField,
   handleSetField,
   handleTransition,
-  handleSnapshot,
   handleEnsureInit,
   handleGateCheck,
   handleSuspend,

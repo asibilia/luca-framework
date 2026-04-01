@@ -88,7 +88,7 @@ const memoryProtocol = (
     "PHASE 3 — HANDOFF: Return results in the output contract format below.",
     "",
     "If MuninnDB is unavailable (MCP tool error), fall back to:",
-    "- .planning/STATE.md for state",
+    "- state.json (via bridge) for state",
     "- .planning/config.json for configuration",
     "- Proceed with available context rather than failing.",
     "</memory_protocol>",
@@ -715,7 +715,7 @@ ${AGENT_CONSTRAINT}
 
 <task>
 1. Read .planning/config.json for settings (oversight, max_phases, skip_uat, gap_retries, etc.)
-2. Read .planning/STATE.md for current workflow state
+2. Read state via bridge (luca-bridge read-status) for current workflow state
 3. Apply any CLI flag overrides from the orchestrator's context
 4. Validate the environment (check .planning/ exists, ROADMAP.md exists)
 5. Return the resolved configuration

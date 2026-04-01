@@ -90,7 +90,7 @@ export const EventResponseSchema = z.object({
 export type EventResponse = z.infer<typeof EventResponseSchema>;
 
 /**
- * Workflow state snapshot (read from .planning/STATE.md or bridge).
+ * Workflow state snapshot (read from .planning/state.json via bridge).
  */
 export const WorkflowSnapshotSchema = z.object({
   workflow_state: z.string().default("idle"),

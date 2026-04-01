@@ -124,7 +124,7 @@ Read from these locations to build memories. Use the state bridge as primary, fa
 # Primary
 luca-bridge read-status
 # Fallback
-cat .planning/STATE.md
+luca-bridge read-status 2>/dev/null
 \`\`\`
 
 ### Execution artifacts

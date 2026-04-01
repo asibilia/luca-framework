@@ -1,7 +1,7 @@
 /**
  * session-start — Initialize .planning/ directory for Luca.
  *
- * Creates .planning/ directory with STATE.md, ROADMAP.md, and config.json
+ * Creates .planning/ directory with state.json, ROADMAP.md, and config.json
  * on first session. Subsequent sessions only create missing files
  * (validate & repair mode). Also handles session lock, state machine init,
  * stale session detection, and environment variable export.
@@ -55,30 +55,6 @@ guardDedup("session-start");
 
 // ─── Default Templates ───────────────────────────────────────────────────────
 
-const DEFAULT_STATE_MD = `# Project State
-
-## Current Position
-
-Phase: None
-Plan: None
-Status: Not started
-Last activity: N/A
-
-## Accumulated Context
-
-### Decisions
-
-None yet.
-
-### Blockers/Concerns
-
-None yet.
-
-## Session Continuity
-
-Last session: N/A
-Stopped at: N/A`;
-
 const DEFAULT_ROADMAP_MD = `# Roadmap
 
 ## Overview
@@ -122,11 +98,7 @@ const main = async (): Promise<void> => {
 
   let created = "";
 
-  // Step 3: Create STATE.md if missing
-  if (!existsSync(join(planningDir, "STATE.md"))) {
-    writeFileSync(join(planningDir, "STATE.md"), DEFAULT_STATE_MD + "\n");
-    created += "STATE.md ";
-  }
+  // Step 3: state.json is created by luca-bridge ensure-init (no file creation needed here)
 
   // Step 3d: Create ROADMAP.md if missing
   if (!existsSync(join(planningDir, "ROADMAP.md"))) {

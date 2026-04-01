@@ -97,3 +97,35 @@ export type {
   ModelRoutingRow,
   ModelRoutingTable,
 } from "./__helpers/model-routing";
+
+// Classifier schemas
+export {
+  classifierComplexitySchema,
+  classifierInputSchema,
+  classifierOutputSchema,
+  keywordDictionarySchema,
+  classifierWeightsSchema,
+  classifierThresholdsSchema,
+  routingHistoryEntrySchema,
+} from "./__schemas/classify.schemas";
+
+export type {
+  ClassifierInput,
+  ClassifierOutput,
+  KeywordDictionary,
+  ClassifierWeights,
+  ClassifierThresholds,
+  RoutingHistoryEntry,
+} from "./__schemas/classify.schemas";
+
+// Deterministic classifier
+export { classifyComplexity } from "./__helpers/classify";
+
+// Routing history
+export {
+  appendRoutingEntry,
+  readRoutingHistory,
+} from "./__helpers/routing-history";
+
+// Adaptive adjustment
+export { adjustComplexity } from "./__helpers/adaptive-adjust";

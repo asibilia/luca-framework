@@ -67,7 +67,7 @@ When no flag is provided, the message becomes a new phase in the current milesto
 
 8. **Update state:**
 
-   - Add entry under "Roadmap Evolution" in STATE.md
+   - Update state via bridge with evolution note
 
 9. **Confirm:**
 

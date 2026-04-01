@@ -77,7 +77,7 @@ These parameters still scale with complexity:
 **Before spawning sub-agents**, resolve their model tier from the routing table:
 
 1. Read complexity from bridge: \\\`luca-bridge read-complexity 2>/dev/null\\\`
-2. Fallback: Read from STATE.md \\\`Task Complexity:\\\` field
+2. Fallback: echo MODERATE
 3. If not set, read from lu-router's classification output
 4. Call \\\`resolveModelForAgent(agentName, complexity)\\\` to get the model tier
 5. All steps run at every complexity level -- only the model tier varies
@@ -86,7 +86,7 @@ These parameters still scale with complexity:
 **Complexity is set by:**
 - lu-router (automatic inference)
 - \\\`--complexity=<level>\\\` flag (manual override)
-- Persisted in state machine (state.json + STATE.md) for session continuity
+- Persisted in state machine (state.json) for session continuity
 
 ## Override Mechanisms
 

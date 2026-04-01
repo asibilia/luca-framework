@@ -2,7 +2,7 @@
  * State persistence layer for the Luca workflow state machine.
  *
  * Reads and writes workflow state to `.planning/state.json`.
- * STATE.md generation is gated by `LUCA_EXPORT_MD=true`.
+ * state.json is the sole source of truth for workflow state.
  *
  * Uses snake_case for all persisted JSON properties per API conventions.
  *
