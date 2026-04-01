@@ -35,7 +35,7 @@ export const EVENT_TYPES = {
   PHASE_COMPLETE: { label: "Phase Complete", color: "event-state" },
   VERIFY_PASSED: { label: "Verify Passed", color: "event-state" },
   VERIFY_FAILED: { label: "Verify Failed", color: "event-harness" },
-  field_set: { label: "Field Set", color: "event-state" },
+  field_set: { label: "Field Set", color: "event-state" }, // Matches luca-bridge event name exactly — do not uppercase
   ROUTE_COMPLETE: { label: "Route Complete", color: "event-state" },
   DISCUSS_COMPLETE: { label: "Discuss Complete", color: "event-state" },
   PLAN_COMPLETE: { label: "Plan Complete", color: "event-state" },
@@ -133,7 +133,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 /**
  * Flat navigation items derived from NAV_GROUPS for backward compatibility.
  *
- * @deprecated Use NAV_GROUPS instead for grouped rendering. Will be removed in v9.0.0.
+ * @deprecated Use NAV_GROUPS instead for grouped rendering. Will be removed in v10.0.0.
  */
 export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap(
   (group) => group.items,

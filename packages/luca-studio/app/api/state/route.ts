@@ -9,7 +9,7 @@
  * - `current_phase` — active phase number (null if none)
  * - `current_milestone` — active milestone label (null if none)
  */
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -19,7 +19,7 @@ import { NextResponse } from "next/server";
 import { resolveProjectRoot } from "~/lib/project-root";
 import { safeJsonParse } from "~/lib/safe-json-parse";
 
-const execAsync = promisify(exec);
+const execAsync = promisify(execFile);
 
 /**
  * Attempt to enrich parsed state with derived fields from `luca-bridge read-status`.
@@ -33,7 +33,7 @@ async function enrichWithBridge(
   parsed: Record<string, unknown>,
 ): Promise<void> {
   try {
-    const { stdout } = await execAsync("luca-bridge read-status", {
+    const { stdout } = await execAsync("luca-bridge", ["read-status"], {
       timeout: 5000,
     });
     const bridge = safeJsonParse(stdout.trim(), null) as Record<
@@ -46,6 +46,14 @@ async function enrichWithBridge(
       const ctx = parsed.context as Record<string, unknown>;
       ctx.current_phase = bridge.current_phase ?? null;
       ctx.current_milestone = bridge.current_milestone ?? null;
+    } else if (
+      bridge.current_phase != null ||
+      bridge.current_milestone != null
+    ) {
+      parsed.context = {
+        current_phase: bridge.current_phase ?? null,
+        current_milestone: bridge.current_milestone ?? null,
+      };
     }
   } catch {
     // Bridge unavailable — graceful degradation, use raw state.json as-is
