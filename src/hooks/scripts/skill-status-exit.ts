@@ -8,7 +8,7 @@
  * would erase the skill name before the LLM even starts working.
  *
  * Cleanup is handled by:
- * - The 5-minute staleness timeout in readStatusBus() (stale data ignored)
+ * - The 30-minute staleness timeout in readStatusBus() (stale data ignored)
  * - The next skill's entry hook overwriting with fresh data
  *
  * @module skill-status-exit

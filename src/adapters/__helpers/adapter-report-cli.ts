@@ -18,7 +18,6 @@ import type {
 import type { EmitResult } from "../__schemas/adapter.schemas";
 import { listRegisteredAdapters } from "./adapter-registry";
 import {
-  validateCursorOutput,
   validateWindsurfOutput,
   validateVscodeOutput,
   aggregateReports,
@@ -38,7 +37,6 @@ const VALIDATOR_MAP: Record<
   string,
   (emitResult: EmitResult) => Promise<CompatibilityReport>
 > = {
-  cursor: validateCursorOutput,
   windsurf: validateWindsurfOutput,
   vscode: validateVscodeOutput,
 };
@@ -47,11 +45,10 @@ const VALIDATOR_MAP: Record<
  * Maps adapter names to their output subdirectory relative to project root.
  *
  * Each IDE adapter writes compiled artifacts to a specific directory
- * (e.g., cursor writes to .cursor/, vscode writes to .github/).
+ * (e.g., claude writes to .claude/, vscode writes to .github/).
  */
 const OUTPUT_DIR_MAP: Record<string, string> = {
   claude: ".claude",
-  cursor: ".cursor",
   windsurf: ".windsurf",
   vscode: ".github",
 };
@@ -98,7 +95,7 @@ export async function generateCompatibilityReport(
     const adapterName = adapter.config.name;
 
     // --- Emit phase ---
-    // Each adapter writes to its own output subdirectory (e.g., .cursor/, .windsurf/, .github/)
+    // Each adapter writes to its own output subdirectory (e.g., .claude/, .windsurf/, .github/)
     const outputSubdir = OUTPUT_DIR_MAP[adapterName] ?? `.${adapterName}`;
     const adapterOutputDir = join(projectRoot, outputSubdir);
     let emitResult: EmitResult;

@@ -314,7 +314,7 @@ Ready to plan the next milestone.
 - [ ] What's next clearly explained
 - [ ] Smart routing: /phase-execute if plans exist, /phase-plan if not
 - [ ] User confirms before any action
-- [ ] Seamless handoff to appropriate vlcn command
+- [ ] Seamless handoff to appropriate luca command
 
 ## Next Steps
 

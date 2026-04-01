@@ -4,10 +4,15 @@ This workflow is executed by `<%= branding.commandPrefix %>-cognition` agent bef
 
 ## Purpose
 
-- Load project identity from BRAIN.md
-- Selectively recall relevant memories from MEMORY.md
-- Initialize session working memory in WORKING.md
+- Load project identity from MuninnDB (`brain:project-identity`)
+- Selectively recall relevant memories from MuninnDB (`muninn_recall`)
+- Initialize session working memory in MuninnDB (`session:*` engrams)
 - Generate intuition flags to guide execution
+
+> **Note (v9.2.0):** File-based memory (BRAIN.md, MEMORY.md, WORKING.md) is sunset.
+> All cognitive pre-flight now uses MuninnDB exclusively.
+> Use `muninn_recall_tree` for project identity and `muninn_recall` for patterns,
+> decisions, and pitfalls.
 
 ## When This Runs
 
@@ -20,23 +25,21 @@ This workflow is executed by `<%= branding.commandPrefix %>-cognition` agent bef
 
 ### Step 1: Load Project Identity
 
-```bash
-# Check for BRAIN.md
-if [ -f .planning/BRAIN.md ]; then
-  echo "Loading project identity..."
-  cat .planning/BRAIN.md
-else
-  echo "No BRAIN.md configured - operating without project identity"
-fi
+Recall the project brain tree from MuninnDB:
+
+```
+mcp__muninn__muninn_recall_tree(vault: REPO_VAULT, root: "brain:project-identity")
 ```
 
-**Extract from BRAIN.md:**
+**Extract from recalled tree:**
 
 - Project name, domain, purpose
 - Stack: languages, frameworks, databases
 - Architecture patterns
 - Code conventions
 - Development preferences
+
+If no tree exists yet, note "Project identity not seeded — run /seed-memory to bootstrap."
 
 ### Step 2: Extract Task Keywords
 
@@ -52,30 +55,37 @@ Task Analysis:
 
 These keywords drive selective memory recall.
 
-### Step 3: Selective Memory Recall
+### Step 3: Selective Memory Recall via MuninnDB
 
 #### 3a. Milestone-Scoped Recall (Preferred)
 
-When a current milestone is known (from STATE.md or bridge), use the scored
+When a current milestone is known (from state.json or bridge), use the scored
 recall engine. This ranks entries by a composite score combining milestone
 proximity, tag overlap, confidence, and recency:
 
 ```bash
 # Read current milestone from state
-# Resolve bridge: try installed package, then monorepo path
 BRIDGE_PATH=$(node -e "console.log(require.resolve('@alecsibilia/luca-framework/state/bridge'))" 2>/dev/null || echo "packages/luca-framework/src/state/bridge.ts")
 CURRENT_MILESTONE=$(bun run "$BRIDGE_PATH" read-status 2>/dev/null \
   | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.current_milestone || '')" 2>/dev/null)
+```
 
-if [ -n "$CURRENT_MILESTONE" ] && [ -f .planning/MEMORY.md ]; then
-  # Milestone-scoped recall via MuninnDB MCP
-  # Use mcp__muninn__muninn_recall with milestone + task tags as context
-  # Example MCP call (executed by the agent, not shell):
-  #   mcp__muninn__muninn_recall(vault="default", context="milestone:${CURRENT_MILESTONE} tags:${TASK_TAGS}")
-  # Fallback: grep MEMORY.md for milestone-tagged entries
-  RECALL_JSON=$(grep -A5 "milestone.*${CURRENT_MILESTONE}" .planning/MEMORY.md 2>/dev/null || echo "")
-  echo "$RECALL_JSON"
-fi
+Then call MuninnDB with milestone context:
+
+```
+mcp__muninn__muninn_recall(
+  vault: REPO_VAULT,
+  context: "milestone:{CURRENT_MILESTONE} {TASK_TAGS}"
+)
+```
+
+Also recall from the default vault for cross-project patterns:
+
+```
+mcp__muninn__muninn_recall(
+  vault: "default",
+  context: "{TASK_TAGS}"
+)
 ```
 
 **Scoring formula:**
@@ -92,35 +102,23 @@ milestone tag receive a neutral proximity score of 0.5.
 
 #### 3b. Keyword-Based Recall (Fallback)
 
-When no milestone is set, or MEMORY.md has no milestone-tagged entries, fall
-back to tag-based filtering:
+When no milestone is set, fall back to tag-based filtering via MuninnDB:
 
-```bash
-# Fallback: tag-based filtering via MuninnDB MCP
-# Use mcp__muninn__muninn_recall with task tags as context
-# Example MCP call (executed by the agent, not shell):
-#   mcp__muninn__muninn_recall(vault="default", context="tags:${TASK_TAGS}")
-# Fallback: grep MEMORY.md for tag-matched entries
-if [ -f .planning/MEMORY.md ]; then
-  RECALL_JSON=$(grep -B1 -A5 "${TASK_TAGS}" .planning/MEMORY.md 2>/dev/null || echo "")
-  echo "$RECALL_JSON"
-fi
-
-# Final fallback: read MEMORY.md directly
-if [ -z "$RECALL_JSON" ] && [ -f .planning/MEMORY.md ]; then
-  echo "Searching memory for relevant entries..."
-  cat .planning/MEMORY.md
-fi
+```
+mcp__muninn__muninn_recall(vault: REPO_VAULT, context: "{TASK_TAGS}")
+mcp__muninn__muninn_recall(vault: "default", context: "{TASK_TAGS}")
 ```
 
-**Search MEMORY.md sections:**
+Merge results from both vaults by score, dedup by concept prefix.
 
-| Section     | Search For       | Purpose                 |
-| ----------- | ---------------- | ----------------------- |
-| Patterns    | Keyword matches  | Apply proven approaches |
-| Decisions   | Related choices  | Respect prior decisions |
-| Pitfalls    | Matching areas   | Avoid known issues      |
-| Preferences | Applicable prefs | Honor user preferences  |
+**Search for:**
+
+| Type        | MuninnDB Concept Prefix | Purpose                 |
+| ----------- | ----------------------- | ----------------------- |
+| Patterns    | `pattern:*`             | Apply proven approaches |
+| Decisions   | `decision:*`            | Respect prior decisions |
+| Pitfalls    | `pitfall:*`             | Avoid known issues      |
+| Preferences | `preference:*`          | Honor user preferences  |
 
 **Selection criteria:**
 
@@ -129,109 +127,20 @@ fi
 - Direct keyword matches over partial
 - **Limit to 3-5 items** to avoid context bloat
 
-### Step 4: Initialize Working Memory
+### Step 4: Initialize Working Memory in MuninnDB
 
-Create or reset `.planning/WORKING.md`:
+Create a session engram to track this workflow run:
 
-```bash
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+```
+mcp__muninn__muninn_remember(
+  vault: REPO_VAULT,
+  concept: "session:start",
+  content: "Session started at {TIMESTAMP}. Workflow: {workflow}. Phase: {phase}."
+)
 ```
 
-```markdown
-# Working Memory
-
-## Session Info
-
-- **Started**: $TIMESTAMP
-- **Workflow**: [workflow name]
-- **Phase**: [phase if applicable]
-- **Plan**: [plan if applicable]
-
----
-
-## Current Context
-
-### Task
-
-- **Goal**: [extracted from input]
-- **Complexity**: [to be classified]
-- **Scope**: [files/areas if known]
-
-### Memory Recall
-
-- **Patterns loaded**: [from Step 3]
-- **Decisions recalled**: [from Step 3]
-- **Pitfalls flagged**: [from Step 3]
-
----
-
-## Immediate Findings
-
-### Discovery
-
-<!-- Log findings as work progresses -->
-
-### Code Observations
-
-<!-- Note interesting patterns found -->
-
-### Dependencies Identified
-
-<!-- Track dependencies discovered -->
-
----
-
-## Hypotheses
-
-<!-- For debugging workflows -->
-
----
-
-## In-Progress Notes
-
-### Current Task
-
-<!-- Detailed notes -->
-
-### Blockers
-
-<!-- Things blocking progress -->
-
-### Questions
-
-<!-- Questions to resolve -->
-
----
-
-## Session Log
-
-| Time | Action | Result |
-| ---- | ------ | ------ |
-
----
-
-## Pre-Learning Extraction
-
-### Candidate Patterns
-
-<!-- Patterns that worked -->
-
-### Candidate Decisions
-
-<!-- Decisions made -->
-
-### Candidate Pitfalls
-
-<!-- Issues encountered -->
-
----
-
-_Session Status_
-
-- [x] Active
-- [ ] Learnings extracted
-- [ ] Ready to clear
-```
+Use subsequent `muninn_remember` calls with `session:findings` throughout execution
+to log discoveries, candidate patterns, and pitfalls in real time.
 
 ### Step 5: Generate Intuition Flags
 
@@ -278,7 +187,7 @@ IF no patterns, decisions, or pitfalls match:
 
 ### Project Identity
 
-{Summary from BRAIN.md or "Not configured"}
+{Summary from brain:project-identity MuninnDB tree, or "Not seeded — run /seed-memory"}
 
 ### Memory Recall
 
@@ -296,22 +205,21 @@ IF no patterns, decisions, or pitfalls match:
 | ------ | -------------------------------- | ------ |
 | {flag} | RISK/CAUTION/OPPORTUNITY/UNKNOWN | {why}  |
 
-### Working Memory
+### Session Memory
 
-Initialized at `.planning/WORKING.md`
+Initialized in MuninnDB at session:start
 
 ### Ready For
 
 {Next agent: router, planner, executor, debugger}
 ```
 
-### Step 7: Persist Complexity to STATE.md
+### Step 7: Persist Complexity to state.json
 
-After complexity is classified (by <%= branding.commandPrefix %>-router), update STATE.md:
+After complexity is classified (by <%= branding.commandPrefix %>-router), update via bridge:
 
 ```bash
-TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M")
-sed -i '' "s/Task Complexity:.*/Task Complexity: ${COMPLEXITY} (classified ${TIMESTAMP})/" .planning/STATE.md
+luca-bridge set-field --field=complexity --value='"${COMPLEXITY}"' 2>/dev/null || true
 ```
 
 This ensures complexity persists across sessions for:
@@ -322,15 +230,15 @@ This ensures complexity persists across sessions for:
 
 ## Success Criteria
 
-- [ ] BRAIN.md checked (loaded or noted as missing)
+- [ ] brain:project-identity recalled from MuninnDB (or noted as missing)
 - [ ] Keywords extracted from task
-- [ ] Milestone-scoped recall attempted (if current_milestone is set in STATE)
-- [ ] MEMORY.md searched for relevant entries (milestone-scored or tag-filtered)
+- [ ] Milestone-scoped recall attempted (if current_milestone is set)
+- [ ] MuninnDB queried for relevant patterns, decisions, pitfalls
 - [ ] Relevant items identified (3-5 max)
-- [ ] WORKING.md initialized with session context
+- [ ] Session engram initialized in MuninnDB (session:start)
 - [ ] Intuition flags generated
 - [ ] Cognitive report output
-- [ ] Complexity classification persisted to STATE.md
+- [ ] Complexity classification persisted via bridge
 
 ## Notes
 
@@ -340,3 +248,4 @@ This ensures complexity persists across sessions for:
 - Memory recall is selective - not everything is loaded
 - Milestone recall uses scored ranking (proximity + tags + confidence + recency)
 - Entries without milestone tags receive neutral 0.5 proximity score
+- File-based memory (BRAIN.md, MEMORY.md, WORKING.md) is sunset as of v9.2.0

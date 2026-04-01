@@ -34,9 +34,6 @@ Only these files belong directly in \`.planning/\` root:
 | \`PROJECT.md\` | Project identity and history |
 | \`CANONICAL-DECISIONS.md\` | Architecture decision log |
 | \`MILESTONE-AUDIT.md\` | Current milestone audit |
-| \`BRAIN.md\` / \`brain.json\` | Project brain tree |
-| \`MEMORY.md\` / \`memory.json\` | Session memory |
-| \`WORKING.md\` / \`working.json\` | Ephemeral working memory |
 | \`.context-metrics.json\` | Ephemeral context metrics |
 | \`harness-result.json\` | Ephemeral harness output |
 

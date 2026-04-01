@@ -16,13 +16,14 @@ Template for `.planning/codebase/STRUCTURE.md` - captures physical file organiza
 ## Directory Layout
 
 [ASCII tree of top-level directories with purpose]
-
 ```
+
 [project-root]/
-├── [dir]/          # [Purpose]
-├── [dir]/          # [Purpose]
-├── [dir]/          # [Purpose]
-└── [file]          # [Purpose]
+├── [dir]/ # [Purpose]
+├── [dir]/ # [Purpose]
+├── [dir]/ # [Purpose]
+└── [file] # [Purpose]
+
 ```
 
 ## Directory Purposes
@@ -115,26 +116,28 @@ Template for `.planning/codebase/STRUCTURE.md` - captures physical file organiza
 ```
 
 <good_examples>
+
 ```markdown
 # Codebase Structure
 
 **Analysis Date:** 2025-01-20
 
 ## Directory Layout
-
 ```
-vulcan/
-├── bin/                # Executable entry points
-├── commands/           # Slash command definitions
-│   └── vlcn/           # <%= branding.frameworkName %>-specific commands
-├── vulcan/     # Skill resources
-│   ├── references/    # Principle documents
-│   ├── templates/     # File templates
-│   └── workflows/     # Multi-step procedures
-├── src/               # Source code (if applicable)
-├── tests/             # Test files
-├── package.json       # Project manifest
-└── README.md          # User documentation
+
+luca/
+├── bin/ # Executable entry points
+├── commands/ # Slash command definitions
+│ └── luca/ # <%= branding.frameworkName %>-specific commands
+├── luca/ # Skill resources
+│ ├── references/ # Principle documents
+│ ├── templates/ # File templates
+│ └── workflows/ # Multi-step procedures
+├── src/ # Source code (if applicable)
+├── tests/ # Test files
+├── package.json # Project manifest
+└── README.md # User documentation
+
 ```
 
 ## Directory Purposes
@@ -145,25 +148,25 @@ vulcan/
 - Key files: install.js - handles npx installation
 - Subdirectories: None
 
-**commands/vlcn/**
+**commands/luca/**
 - Purpose: Slash command definitions for Claude Code
 - Contains: *.md files (one per command)
 - Key files: new-project.md, plan-phase.md, execute-plan.md
 - Subdirectories: None (flat structure)
 
-**vulcan/references/**
+**luca/references/**
 - Purpose: Core philosophy and guidance documents
 - Contains: principles.md, questioning.md, plan-format.md
 - Key files: principles.md - system philosophy
 - Subdirectories: None
 
-**vulcan/templates/**
+**luca/templates/**
 - Purpose: Document templates for .planning/ files
 - Contains: Template definitions with frontmatter
 - Key files: project.md, roadmap.md, plan.md, summary.md
 - Subdirectories: codebase/ (new - for stack/architecture/structure templates)
 
-**vulcan/workflows/**
+**luca/workflows/**
 - Purpose: Reusable multi-step procedures
 - Contains: Workflow definitions called by commands
 - Key files: execute-plan.md, research-phase.md
@@ -206,20 +209,20 @@ vulcan/
 ## Where to Add New Code
 
 **New Slash Command:**
-- Primary code: `commands/vlcn/{command-name}.md`
+- Primary code: `commands/luca/{command-name}.md`
 - Tests: `tests/commands/{command-name}.test.js` (if testing implemented)
 - Documentation: Update `README.md` with new command
 
 **New Template:**
-- Implementation: `vulcan/templates/{name}.md`
+- Implementation: `luca/templates/{name}.md`
 - Documentation: Template is self-documenting (includes guidelines)
 
 **New Workflow:**
-- Implementation: `vulcan/workflows/{name}.md`
-- Usage: Reference from command with `@./.cursor/vulcan/workflows/{name}.md`
+- Implementation: `luca/workflows/{name}.md`
+- Usage: Reference from command with `@~/.claude/luca/workflows/{name}.md`
 
 **New Reference Document:**
-- Implementation: `vulcan/references/{name}.md`
+- Implementation: `luca/references/{name}.md`
 - Usage: Reference from commands/workflows as needed
 
 **Utilities:**
@@ -228,14 +231,14 @@ vulcan/
 
 ## Special Directories
 
-**vulcan/**
-- Purpose: Resources installed to ./.cursor/
-- Source: Copied by bin/install.js during installation
+**luca/**
+- Purpose: Resources installed to ~/.claude/luca/
+- Source: Copied by the update command during installation
 - Committed: Yes (source of truth)
 
 **commands/**
-- Purpose: Slash commands installed to ./.cursor/commands/
-- Source: Copied by bin/install.js during installation
+- Purpose: Slash commands installed to ./.claude/commands/
+- Source: Copied by the update command during installation
 - Committed: Yes (source of truth)
 
 ---
@@ -243,6 +246,7 @@ vulcan/
 *Structure analysis: 2025-01-20*
 *Update when directory structure changes*
 ```
+
 </good_examples>
 
 <guidelines>
@@ -255,12 +259,14 @@ vulcan/
 - Special/generated directories
 
 **What does NOT belong here:**
+
 - Conceptual architecture (that's ARCHITECTURE.md)
 - Technology stack (that's STACK.md)
 - Code implementation details (defer to code reading)
 - Every single file (focus on directories and key files)
 
 **When filling this template:**
+
 - Use `tree -L 2` or similar to visualize structure
 - Identify top-level directories and their purposes
 - Note naming patterns by observing existing files
@@ -268,6 +274,7 @@ vulcan/
 - Keep directory tree concise (max 2-3 levels)
 
 **ASCII tree format:**
+
 ```
 root/
 ├── dir1/           # Purpose
@@ -278,8 +285,9 @@ root/
 ```
 
 **Useful for phase planning when:**
+
 - Adding new features (where should files go?)
 - Understanding project organization
 - Finding where specific logic lives
 - Following existing conventions
-</guidelines>
+  </guidelines>

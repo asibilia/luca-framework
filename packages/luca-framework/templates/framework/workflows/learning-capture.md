@@ -47,7 +47,7 @@ cat .planning/MEMORY.md 2>/dev/null
 If MEMORY.md doesn't exist, create from template:
 
 ```bash
-cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
+cp ~/.claude/luca/templates/MEMORY.md .planning/MEMORY.md
 ```
 
 ### Step 3: Extract Pattern Candidates
@@ -257,7 +257,7 @@ _Learnings extracted: [N] patterns, [N] decisions, [N] pitfalls_
 Create from template before writing:
 
 ```bash
-cp .cursor/luca/templates/MEMORY.md .planning/MEMORY.md
+cp ~/.claude/luca/templates/MEMORY.md .planning/MEMORY.md
 ```
 
 ### Empty WORKING.md

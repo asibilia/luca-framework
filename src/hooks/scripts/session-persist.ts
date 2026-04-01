@@ -19,6 +19,7 @@ import {
   projectDir,
 } from "../__helpers/hook-io.ts";
 import { readSessionId } from "../__helpers/bridge.ts";
+import { clearStatusBus } from "../../shared/__helpers/status-bus.ts";
 
 // ─── Dedup guard ─────────────────────────────────────────────────────────────
 guardDedup("session-persist");
@@ -61,6 +62,9 @@ const main = async (): Promise<void> => {
       // Best-effort — don't block termination
     }
   }
+
+  // Clear status bus so stale data does not bleed into the next session
+  await clearStatusBus();
 
   return exitSuccess();
 };

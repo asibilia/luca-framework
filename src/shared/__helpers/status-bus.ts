@@ -7,6 +7,12 @@ import type { StatusBusInput } from "../__schemas/status-bus.schemas";
 
 export const STATUS_BUS_PATH = ".planning/.statusline.json";
 
+/** Merge guard: discard existing bus data older than this when writing. */
+export const WRITE_MERGE_TTL_MS = 300_000; // 5 minutes
+
+/** Staleness threshold: ignore bus data older than this when reading. */
+export const READ_STALENESS_TTL_MS = 1_800_000; // 30 minutes
+
 /**
  * Write status bus data to .planning/.statusline.json.
  * Merges partial data with existing bus state.
@@ -32,7 +38,7 @@ export const writeStatusBus = async (
           const age = parsed.data.updated_at
             ? Date.now() - new Date(parsed.data.updated_at).getTime()
             : Infinity;
-          existing = age <= 300_000 ? parsed.data : {};
+          existing = age <= WRITE_MERGE_TTL_MS ? parsed.data : {};
         }
       }
     } catch {
@@ -62,12 +68,12 @@ export const writeStatusBus = async (
  * Returns null on any failure (missing, corrupt, stale).
  *
  * @param busPath - Path to the status bus file (default: .planning/.statusline.json)
- * @param maxAgeMs - Maximum age in milliseconds before data is considered stale (default: 60000)
+ * @param maxAgeMs - Maximum age in milliseconds before data is considered stale (default: 1_800_000)
  * @returns Parsed status bus data or null if unavailable/stale
  */
 export const readStatusBus = async (
   busPath: string = STATUS_BUS_PATH,
-  maxAgeMs: number = 300_000,
+  maxAgeMs: number = READ_STALENESS_TTL_MS,
 ): Promise<z.infer<typeof StatusBusSchema> | null> => {
   try {
     const file = Bun.file(busPath);

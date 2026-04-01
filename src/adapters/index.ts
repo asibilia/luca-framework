@@ -70,7 +70,6 @@ export type {
 
 // ─── Compatibility Validators ─────────────────────────────────────────────
 export {
-  validateCursorOutput,
   validateWindsurfOutput,
   validateVscodeOutput,
   aggregateReports,
@@ -93,10 +92,6 @@ export {
   executeViaSDK,
 } from "./api";
 export type { ApiExecutorConfig, AdapterTokenUsage } from "./api";
-
-// ─── Cursor Adapter ──────────────────────────────────────────────────────
-export { createCursorAdapter } from "./cursor";
-export { CURSOR_EVENT_MAP, translateCursorEvent } from "./cursor";
 
 // ─── Windsurf Adapter ─────────────────────────────────────────────────────
 export {

@@ -60,7 +60,7 @@ import type { AgentConfig } from "~/agents";
 import type { WorkflowAdapter } from "~/workflow";
 
 // ❌ T1 (eval) importing T3 (adapters) — upward dependency
-import { cursorAdapter } from "~/adapters";
+import { createClaudeAdapter } from "~/adapters";
 // FIX: eval imports WorkflowAdapter interface from workflow (T1), not adapter impl (T3)
 \`\`\`
 
