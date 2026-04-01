@@ -61,6 +61,11 @@ export type DecisionPoint = z.infer<typeof decisionPointSchema>;
  * - budget: Minimize token usage, auto-apply where safe
  * - balanced: Default behavior per oversight mode
  * - quality: Maximize thoroughness, pause more often
+ *
+ * NOTE (DRY-006): TOKEN_PROFILES is also declared in
+ * `src/complexity/__helpers/token-profile.ts` as the canonical source
+ * for the complexity domain. This copy is used by the oversight gate
+ * evaluation within luca-state. Keep both in sync manually.
  */
 export const TOKEN_PROFILES = ["budget", "balanced", "quality"] as const;
 export const tokenProfileSchema = z.enum(TOKEN_PROFILES);

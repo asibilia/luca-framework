@@ -56,8 +56,16 @@ export type WorkflowState = (typeof WORKFLOW_STATES)[number];
 
 // ─── Oversight Levels ─────────────────────────────────────────────────────────
 
-/** Oversight levels controlling human-in-the-loop gates.
- * v9.0.0: Added "flagged" mode. "plan" is deprecated (alias for "phase"). */
+/**
+ * Oversight levels controlling human-in-the-loop gates.
+ *
+ * v9.0.0: Added "flagged" mode. "plan" is deprecated (alias for "phase").
+ *
+ * NOTE: The canonical 4-mode OversightMode type lives in
+ * `__schemas/oversight-gate.schemas.ts`. This schema extends it with
+ * the deprecated "plan" value for backward compatibility. The
+ * `OversightLevel` type alias is kept for existing consumers.
+ */
 export const OVERSIGHT_LEVELS = [
   "full-auto",
   "flagged",
@@ -66,6 +74,11 @@ export const OVERSIGHT_LEVELS = [
   "plan",
 ] as const;
 export const oversightLevelSchema = z.enum(OVERSIGHT_LEVELS);
+
+/**
+ * @deprecated Prefer `OversightMode` from `__schemas/oversight-gate.schemas.ts`.
+ * `OversightLevel` includes the deprecated "plan" value for backward compat.
+ */
 export type OversightLevel = z.infer<typeof oversightLevelSchema>;
 
 // ─── Complexity Level (Zod Schema) ───────────────────────────────────────────

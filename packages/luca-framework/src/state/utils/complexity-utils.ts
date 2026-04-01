@@ -4,6 +4,13 @@
  * Self-contained copy of complexity types used by guards and defaults.
  * No external dependencies beyond TypeScript.
  *
+ * NOTE (DRY-001): COMPLEXITY_LEVELS, COMPLEXITY_ORDER, ModelId, ModelTier,
+ * and MODEL_TIER_TO_MODEL are duplicated from the canonical source at
+ * `src/complexity/__schemas/complexity.schemas.ts`. This copy exists because
+ * luca-state (packages/luca-framework) cannot import from src/ without
+ * creating a circular dependency. Keep both copies in sync manually.
+ * Full consolidation requires a shared package — tracked as future work.
+ *
  * @module luca-state/utils/complexity-utils
  */
 

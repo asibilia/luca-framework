@@ -606,7 +606,7 @@ Decision log: D1-D15 (binding, see REQUIREMENTS.md)
 | 267   | Cross-Milestone State Reset                     | Complete | CROSS-01..03               |
 | 268   | Orchestrator Pipeline Integration               | Complete | ORCH-01..03                |
 | 269   | Audit P0: Security & Integration Wiring         | Complete | SEC-001..002, Integration  |
-| 270   | Audit P1: Structural & Type Safety Fixes        | Pending  | ARCH-01..06, DRY-001..003  |
+| 270   | Audit P1: Structural & Type Safety Fixes        | Complete | ARCH-01..06, DRY-001..003  |
 | 271   | Audit P2-P3: Tech Debt Cleanup                  | Pending  | DRY-004+, DX-04+, ARCH-08+ |
 
 ---

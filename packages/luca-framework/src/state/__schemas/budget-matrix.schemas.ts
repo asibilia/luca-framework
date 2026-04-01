@@ -14,6 +14,13 @@ import { z } from "zod";
 
 // ─── Complexity Levels (local re-declaration for self-containment) ──────────
 
+/**
+ * NOTE (DRY-002): BUDGET_COMPLEXITY_LEVELS and BUDGET_PROFILES are local
+ * re-declarations for JSON-serializable self-containment. The canonical
+ * complexity levels live in `src/complexity/__schemas/complexity.schemas.ts`
+ * and token profiles in `src/complexity/__helpers/token-profile.ts`.
+ * Keep in sync manually. Full consolidation requires a shared package.
+ */
 export const BUDGET_COMPLEXITY_LEVELS = [
   "TRIVIAL",
   "SIMPLE",

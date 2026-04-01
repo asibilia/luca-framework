@@ -256,9 +256,22 @@ function scoreNovelty(input: ClassifierInput): number {
  * ```
  */
 export function classifyComplexity(input: ClassifierInput): ClassifierOutput {
-  // Apply default weights
-  const weights: ClassifierWeights = classifierWeightsSchema.parse({});
-  const thresholds: ClassifierThresholds = classifierThresholdsSchema.parse({});
+  // Apply default weights via safeParse with fallback
+  const weightsResult = classifierWeightsSchema.safeParse({});
+  const weights: ClassifierWeights = weightsResult.success
+    ? weightsResult.data
+    : {
+        keyword: 0.2,
+        file_scope: 0.3,
+        cross_cutting: 0.2,
+        risk: 0.15,
+        novelty: 0.15,
+      };
+
+  const thresholdsResult = classifierThresholdsSchema.safeParse({});
+  const thresholds: ClassifierThresholds = thresholdsResult.success
+    ? thresholdsResult.data
+    : { TRIVIAL: 0.2, SIMPLE: 0.4, MODERATE: 0.6, COMPLEX: 0.8, CRITICAL: 1.0 };
 
   // Compute per-signal scores
   const { score: keywordScore } = scoreKeywords(input.description);

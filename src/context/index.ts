@@ -30,7 +30,7 @@ export type {
   ResultIssue,
   ResultMetadata,
   ResultEnvelope,
-} from "./__helpers/result-envelope";
+} from "./__schemas/result-envelope.schemas";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -58,7 +58,7 @@ export {
   resultIssueSchema,
   resultMetadataSchema,
   resultEnvelopeSchema,
-} from "./__helpers/result-envelope";
+} from "./__schemas/result-envelope.schemas";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -74,7 +74,7 @@ export {
   RESULT_STATUSES,
   ISSUE_SEVERITIES,
   ARTIFACT_ACTIONS,
-} from "./__helpers/result-envelope";
+} from "./__schemas/result-envelope.schemas";
 
 // ---------------------------------------------------------------------------
 // Utility functions

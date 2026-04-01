@@ -25,4 +25,4 @@ export type {
 } from "./__schemas/process-data.schemas";
 
 // Core compute function
-export { computeMetrics } from "./compute";
+export { computeMetrics } from "./__helpers/compute";

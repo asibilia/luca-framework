@@ -15,9 +15,9 @@
 import {
   processDataInputSchema,
   processDataMetricsSchema,
-} from "./__schemas/process-data.schemas";
+} from "../__schemas/process-data.schemas";
 
-import type { ProcessDataMetrics } from "./__schemas/process-data.schemas";
+import type { ProcessDataMetrics } from "../__schemas/process-data.schemas";
 
 // ─── Core Compute ────────────────────────────────────────────────────────
 

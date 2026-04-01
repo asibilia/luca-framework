@@ -849,8 +849,8 @@ Agent(name: "learn-{NN}", subagent_type: "lu-learner", model: FAST_PROMOTED_MODE
 **Deterministic CLI invocation (zero LLM tokens):**
 \`\`\`bash
 # Replaced: Agent(name: "process-data-{NN}", subagent_type: "lu-process-data", model: FAST_PROMOTED_MODEL, prompt: PROCESS_DATA_PROMPT({phase: NN, ...}))
-# Now uses deterministic CLI module — see src/process-data/compute.ts
-PROCESS_DATA_OUTPUT=$(bun src/process-data/compute.ts --context=.planning/state.json 2>/dev/null || echo '{}')
+# Now uses deterministic CLI module — see src/process-data/__helpers/compute.ts
+PROCESS_DATA_OUTPUT=$(bun src/process-data/__helpers/compute.ts --context=.planning/state.json 2>/dev/null || echo '{}')
 echo "Process data: $PROCESS_DATA_OUTPUT"
 luca-bridge transition --event=PROCESS_DATA_COMPLETE 2>/dev/null || true
 \`\`\`

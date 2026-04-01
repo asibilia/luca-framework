@@ -85,50 +85,61 @@ export function validateMilestoneReadiness(
   phaseResults: PhaseResult[],
   milestoneCount: number,
 ): Result<MilestoneReadiness> {
-  try {
-    // Check milestone count limit
-    if (milestoneCount >= MAX_MILESTONES_PER_SESSION) {
-      const readiness = milestoneReadinessSchema.parse({
-        ready: false,
-        reason: `Milestone count (${milestoneCount}) has reached the session limit of ${MAX_MILESTONES_PER_SESSION}`,
-        milestone_count: milestoneCount,
-        max_milestones: MAX_MILESTONES_PER_SESSION,
-      });
-      return { success: true, data: readiness };
-    }
-
-    // Check for failed or blocked phases
-    const failedPhases = filter(
-      phaseResults,
-      (pr) => pr.status === "failed" || pr.status === "blocked",
-    );
-
-    if (failedPhases.length > 0) {
-      const failedIds = failedPhases
-        .map((pr) => `Phase ${pr.phase_id} (${pr.status})`)
-        .join(", ");
-      const readiness = milestoneReadinessSchema.parse({
-        ready: false,
-        reason: `Cannot continue: ${failedIds}`,
-        milestone_count: milestoneCount,
-        max_milestones: MAX_MILESTONES_PER_SESSION,
-      });
-      return { success: true, data: readiness };
-    }
-
-    // All checks passed
-    const readiness = milestoneReadinessSchema.parse({
-      ready: true,
+  // Check milestone count limit
+  if (milestoneCount >= MAX_MILESTONES_PER_SESSION) {
+    const parsed = milestoneReadinessSchema.safeParse({
+      ready: false,
+      reason: `Milestone count (${milestoneCount}) has reached the session limit of ${MAX_MILESTONES_PER_SESSION}`,
       milestone_count: milestoneCount,
       max_milestones: MAX_MILESTONES_PER_SESSION,
     });
-    return { success: true, data: readiness };
-  } catch (err) {
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: `Readiness validation failed: ${parsed.error.message}`,
+      };
+    }
+    return { success: true, data: parsed.data };
+  }
+
+  // Check for failed or blocked phases
+  const failedPhases = filter(
+    phaseResults,
+    (pr) => pr.status === "failed" || pr.status === "blocked",
+  );
+
+  if (failedPhases.length > 0) {
+    const failedIds = failedPhases
+      .map((pr) => `Phase ${pr.phase_id} (${pr.status})`)
+      .join(", ");
+    const parsed = milestoneReadinessSchema.safeParse({
+      ready: false,
+      reason: `Cannot continue: ${failedIds}`,
+      milestone_count: milestoneCount,
+      max_milestones: MAX_MILESTONES_PER_SESSION,
+    });
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: `Readiness validation failed: ${parsed.error.message}`,
+      };
+    }
+    return { success: true, data: parsed.data };
+  }
+
+  // All checks passed
+  const parsed = milestoneReadinessSchema.safeParse({
+    ready: true,
+    milestone_count: milestoneCount,
+    max_milestones: MAX_MILESTONES_PER_SESSION,
+  });
+  if (!parsed.success) {
     return {
       success: false,
-      error: `Readiness validation failed: ${err instanceof Error ? err.message : String(err)}`,
+      error: `Readiness validation failed: ${parsed.error.message}`,
     };
   }
+  return { success: true, data: parsed.data };
 }
 
 /**
@@ -234,7 +245,7 @@ export async function resetForNextMilestone(opts: {
     // Non-fatal: if lock acquisition fails, the session can still continue
     // (the orchestrator will re-acquire on next step)
 
-    const result = milestoneResetResultSchema.parse({
+    const resetParsed = milestoneResetResultSchema.safeParse({
       session_id: opts.session_id,
       git_workflow_preserved: opts.git_workflow !== undefined,
       routing_history_cleared: routingHistoryCleared,
@@ -243,7 +254,14 @@ export async function resetForNextMilestone(opts: {
       reset_at: new Date().toISOString(),
     });
 
-    return { success: true, data: result };
+    if (!resetParsed.success) {
+      return {
+        success: false,
+        error: `Milestone reset validation failed: ${resetParsed.error.message}`,
+      };
+    }
+
+    return { success: true, data: resetParsed.data };
   } catch (err) {
     return {
       success: false,

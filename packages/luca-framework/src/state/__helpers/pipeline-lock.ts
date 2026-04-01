@@ -17,6 +17,7 @@ import {
   pipelineLockSchema,
   PIPELINE_LOCK_PATH,
 } from "../__schemas/pipeline-lock.schemas";
+import { sanitizeJsonParse } from "../../utils/sanitize";
 
 import type { PipelineLock } from "../__schemas/pipeline-lock.schemas";
 import type { Result } from "../types";
@@ -240,7 +241,7 @@ export async function readLock(): Promise<PipelineLock | null> {
     const text = await file.text();
     if (!text.trim()) return null;
 
-    const raw = JSON.parse(text);
+    const raw = sanitizeJsonParse(text);
     const result = pipelineLockSchema.safeParse(raw);
     if (!result.success) return null;
 

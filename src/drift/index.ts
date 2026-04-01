@@ -23,6 +23,8 @@ export type {
   DriftEvent,
   PhaseVerdict,
   PhaseVerdictKind,
+  DriftReassessmentResult,
+  /** @deprecated Use DriftReassessmentResult instead. */
   ReassessmentResult,
 } from "./__schemas/drift.schemas";
 
@@ -35,6 +37,8 @@ export {
   DriftEventSchema,
   PhaseVerdictSchema,
   PhaseVerdictKindSchema,
+  DriftReassessmentResultSchema,
+  /** @deprecated Use DriftReassessmentResultSchema instead. */
   ReassessmentResultSchema,
   INFRASTRUCTURE_IGNORE_LIST,
   STRUCTURAL_CHANGE_PATTERNS,

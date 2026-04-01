@@ -157,15 +157,26 @@ export type PhaseVerdict = z.infer<typeof PhaseVerdictSchema>;
 
 /**
  * Complete reassessment result from the lu-reassessor agent.
+ *
+ * Renamed to DriftReassessmentResult to avoid name collision with
+ * ReassessmentResult in src/complexity/__schemas/complexity.schemas.ts
+ * (which tracks complexity-level promotions, not drift verdicts).
  */
-export const ReassessmentResultSchema = z.object({
+export const DriftReassessmentResultSchema = z.object({
   /** Verdicts for each affected phase */
   verdicts: z.array(PhaseVerdictSchema),
   /** Summary of reassessment */
   summary: z.string(),
 });
 
-export type ReassessmentResult = z.infer<typeof ReassessmentResultSchema>;
+export type DriftReassessmentResult = z.infer<
+  typeof DriftReassessmentResultSchema
+>;
+
+/** @deprecated Use DriftReassessmentResultSchema instead. */
+export const ReassessmentResultSchema = DriftReassessmentResultSchema;
+/** @deprecated Use DriftReassessmentResult instead. */
+export type ReassessmentResult = DriftReassessmentResult;
 
 // ─── Drift Result ───────────────────────────────────────────────────────────
 
