@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v9.3.0 — Skill Naming Reorganization
+**Current Milestone:** v9.3.0 — Skill Naming Reorganization (COMPLETE)
 
 ---
 
