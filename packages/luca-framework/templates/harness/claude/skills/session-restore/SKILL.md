@@ -1,4 +1,4 @@
-# context-restore
+# session-restore
 
 On-demand deep context recovery after compaction or /clear. Reads checkpoint from MuninnDB + filesystem, performs semantic recall, and presents structured context with source attribution.
 

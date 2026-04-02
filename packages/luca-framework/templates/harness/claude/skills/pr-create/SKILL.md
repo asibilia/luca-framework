@@ -1,4 +1,4 @@
-# git-pr
+# pr-create
 
 Create a pull request with conventional formatting and submit for review.
 

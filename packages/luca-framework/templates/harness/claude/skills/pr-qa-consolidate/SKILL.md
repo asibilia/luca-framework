@@ -1,4 +1,4 @@
-# qa-consolidate
+# pr-qa-consolidate
 
 Consolidate QA testing plans from merged feature PRs onto a parent release PR.
 

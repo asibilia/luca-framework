@@ -164,7 +164,7 @@ Valid agent types for the `Agent` field:
 | `project-researcher`   | <%= branding.commandPrefix %>-project-researcher   | Ecosystem research           |
 | `research-synthesizer` | <%= branding.commandPrefix %>-research-synthesizer | Research consolidation       |
 | `roadmapper`           | <%= branding.commandPrefix %>-roadmapper           | Roadmap creation             |
-| `codebase-mapper`      | <%= branding.commandPrefix %>-codebase-mapper      | Codebase analysis            |
+| `codebase-mapper`      | <%= branding.commandPrefix %>-repo-mapper          | Codebase analysis            |
 | `plan-checker`         | <%= branding.commandPrefix %>-plan-checker         | Plan validation              |
 | `integration-checker`  | <%= branding.commandPrefix %>-integration-checker  | Integration validation       |
 | `pr-reviewer`          | <%= branding.commandPrefix %>-pr-reviewer          | PR review coordination       |

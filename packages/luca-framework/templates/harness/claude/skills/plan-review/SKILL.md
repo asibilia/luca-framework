@@ -1,4 +1,4 @@
-# phase-plan-review
+# plan-review
 
 Orchestrate convergence-based plan review loop with cold-isolated reviewer agents.
 

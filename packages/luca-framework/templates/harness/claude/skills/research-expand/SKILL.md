@@ -1,4 +1,4 @@
-# phase-research-expand
+# research-expand
 
 Deep expansion on specific research topics identified during review or by user request.
 

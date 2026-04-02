@@ -1,4 +1,4 @@
-# phase-research-review
+# research-review
 
 Orchestrate convergence-based research review loop with cold-isolated reviewer agents.
 
@@ -118,7 +118,7 @@ When convergence check returns NEEDS_EXPANSION:
 expansion_targets = [gap.description for gap in gaps if gap.severity in ("CRITICAL", "IMPORTANT")]
 
 # Signal to the orchestrator that expansion is needed.
-# The ORCHESTRATOR (not this skill) should invoke phase-research-expand
+# The ORCHESTRATOR (not this skill) should invoke research-expand
 # as a separate Agent() call, since sub-agents cannot call Skill().
 # Return NEEDS_EXPANSION status with the expansion targets.
 
@@ -126,7 +126,7 @@ expansion_targets = [gap.description for gap in gaps if gap.severity in ("CRITIC
 iteration += 1
 ```
 
-**IMPORTANT:** This skill MUST NOT call `Skill(skill: "phase-research-expand")` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return `NEEDS_EXPANSION` with the expansion targets, and let the orchestrator handle the expansion call.
+**IMPORTANT:** This skill MUST NOT call `Skill(skill: "research-expand")` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return `NEEDS_EXPANSION` with the expansion targets, and let the orchestrator handle the expansion call.
 
 ### Step 8: Write REVIEW-LOG.md
 

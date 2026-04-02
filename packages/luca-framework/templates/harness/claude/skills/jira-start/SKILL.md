@@ -1,4 +1,4 @@
-# workflow-start
+# jira-start
 
 Start work on a Jira ticket. Redirects to <%= branding.commandSlash %> for the full development workflow.
 
@@ -11,7 +11,7 @@ Start work on a Jira ticket. Redirects to <%= branding.commandSlash %> for the f
 
 ## Usage
 
-Instead of `/workflow-start PROJ-1234`, use:
+Instead of `/jira-start PROJ-1234`, use:
 
 ```
 <%= branding.commandSlash %> PROJ-1234

@@ -1,4 +1,4 @@
-# phase-graduate
+# research-graduate
 
 Graduate verified research findings into MuninnDB engrams for per-task recall during execution.
 
@@ -29,7 +29,7 @@ Read $RESEARCH_DIR/REVIEW-LOG.md
 
 # Check final status is APPROVED
 # If status is not APPROVED:
-#   Return error: "Research review not approved. Run /phase-research-review {phase} first."
+#   Return error: "Research review not approved. Run /research-review {phase} first."
 ```
 
 ### Step 2: Resolve Vault Name

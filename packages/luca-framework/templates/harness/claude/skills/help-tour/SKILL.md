@@ -1,4 +1,4 @@
-# post-init-tour
+# help-tour
 
 Guide new users through <%= branding.frameworkName %>'s core concepts after project initialization.
 

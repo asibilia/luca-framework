@@ -1,4 +1,4 @@
-# shadow-cleanup
+# repo-cleanup
 
 Detect and interactively clean up AI-session debris: orphaned scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, and orphaned/misplaced markdown.
 
