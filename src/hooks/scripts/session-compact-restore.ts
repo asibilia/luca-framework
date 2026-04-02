@@ -80,13 +80,13 @@ const main = async (): Promise<void> => {
     lines.push(`MuninnDB vault: ${cp.vault || "luca-framework"}`);
     lines.push("");
     lines.push(
-      "Run /context-restore for deeper context recovery with semantic recall.",
+      "Run /session-restore for deeper context recovery with semantic recall.",
     );
 
     restoreMsg = lines.join("\n");
   } catch {
     restoreMsg =
-      "[Context Restored] Checkpoint found but could not be parsed. Run /context-restore for manual recovery.";
+      "[Context Restored] Checkpoint found but could not be parsed. Run /session-restore for manual recovery.";
   }
 
   // Output systemMessage

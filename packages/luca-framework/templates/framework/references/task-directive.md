@@ -78,8 +78,8 @@ Task(
 
 ### <%= branding.frameworkName %> Framework Agents
 
-| Agent Type                   | Purpose                               | Use When                  |
-| ---------------------------- | ------------------------------------- | ------------------------- |
+| Agent Type                                           | Purpose                               | Use When                  |
+| ---------------------------------------------------- | ------------------------------------- | ------------------------- |
 | `<%= branding.commandPrefix %>-cognition`            | Cognitive pre-flight analysis         | Before routing decisions  |
 | `<%= branding.commandPrefix %>-router`               | Complexity classification and routing | Determining workflow path |
 | `<%= branding.commandPrefix %>-planner`              | Create PLAN.md files with tasks       | Planning a phase          |
@@ -90,7 +90,7 @@ Task(
 | `<%= branding.commandPrefix %>-phase-researcher`     | Research before planning              | Complex phases            |
 | `<%= branding.commandPrefix %>-plan-checker`         | Validate plans before execution       | After planning            |
 | `<%= branding.commandPrefix %>-roadmapper`           | Create project roadmaps               | New projects              |
-| `<%= branding.commandPrefix %>-codebase-mapper`      | Analyze existing codebase             | Brownfield projects       |
+| `<%= branding.commandPrefix %>-repo-mapper`          | Analyze existing codebase             | Brownfield projects       |
 | `<%= branding.commandPrefix %>-integration-checker`  | Verify cross-phase integration        | Multi-phase work          |
 | `<%= branding.commandPrefix %>-pr-reviewer`          | Coordinate PR review                  | PR feedback               |
 | `<%= branding.commandPrefix %>-project-researcher`   | Research project domain               | New projects              |
@@ -120,14 +120,14 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 Standard lookup table format:
 
-| Agent          | quality | balanced | budget |
-| -------------- | ------- | -------- | ------ |
+| Agent                                  | quality | balanced | budget |
+| -------------------------------------- | ------- | -------- | ------ |
 | <%= branding.commandPrefix %>-planner  | opus    | opus     | sonnet |
 | <%= branding.commandPrefix %>-executor | opus    | sonnet   | sonnet |
 | <%= branding.commandPrefix %>-verifier | sonnet  | sonnet   | haiku  |
 | <%= branding.commandPrefix %>-debugger | opus    | sonnet   | sonnet |
 | <%= branding.commandPrefix %>-learner  | sonnet  | haiku    | haiku  |
-| reviewers      | opus    | sonnet   | haiku  |
+| reviewers                              | opus    | sonnet   | haiku  |
 
 ## Context Passing
 

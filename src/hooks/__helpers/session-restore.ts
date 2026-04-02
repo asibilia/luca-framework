@@ -142,5 +142,5 @@ ${workSummary}
 
 ${patternsSection}
 
-MuninnDB vault: ${vault} | Run /context-restore for deeper semantic recall.`;
+MuninnDB vault: ${vault} | Run /session-restore for deeper semantic recall.`;
 };

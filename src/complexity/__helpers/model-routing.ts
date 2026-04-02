@@ -190,7 +190,7 @@ export const MODEL_ROUTING_TABLE: ModelRoutingTable = {
   "lu-pr-reviewer": ORCHESTRATOR,
   "lu-discuss-researcher": ORCHESTRATOR,
   "lu-research-synthesizer": ORCHESTRATOR,
-  "lu-codebase-mapper": ORCHESTRATOR,
+  "lu-repo-mapper": ORCHESTRATOR,
   "lu-phase-researcher": ORCHESTRATOR,
   "lu-project-researcher": ORCHESTRATOR,
   "lu-repo-architect": ORCHESTRATOR,

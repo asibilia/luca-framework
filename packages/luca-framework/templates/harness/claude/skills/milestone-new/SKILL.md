@@ -122,7 +122,7 @@ How should this milestone be tracked on GitHub?
 |-----------|--------|---------|
 | Milestone created | Discuss first phase | `/phase-discuss {N}` |
 | Want to skip discussion | Plan directly | `/phase-plan {N}` |
-| Need codebase context | Map the codebase | `/codebase-map` |
+| Need codebase context | Map the codebase | `/repo-map` |
 
 **Primary:** `/phase-discuss {N}` — Gather context for first phase of milestone
 

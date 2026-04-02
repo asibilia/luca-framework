@@ -65,11 +65,11 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   verify: "Workflow",
   quick: "Workflow",
   choose: "Workflow",
-  "workflow-start": "Workflow",
+  "jira-start": "Workflow",
   // Git
   "git-commit": "Git",
   "git-feature": "Git",
-  "git-pr": "Git",
+  "pr-create": "Git",
   // Project Management
   "project-new": "Project Management",
   "milestone-new": "Project Management",
@@ -88,7 +88,7 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   "code-lint": "Code Quality",
   "code-typecheck": "Code Quality",
   "test-run": "Code Quality",
-  "qa-consolidate": "Code Quality",
+  "pr-qa-consolidate": "Code Quality",
   // Collaboration
   "jira-issue": "Collaboration",
   "pr-address": "Collaboration",
@@ -97,7 +97,7 @@ export const SKILL_CATEGORIES: Record<string, string> = {
   "config-profile": "Configuration",
   help: "Configuration",
   update: "Configuration",
-  "codebase-map": "Configuration",
+  "repo-map": "Configuration",
   // Session Management
   "session-pause": "Session",
   "session-resume": "Session",
@@ -145,7 +145,7 @@ export const AGENT_CATEGORIES: Record<string, string> = {
   "lu-phase-researcher": "Research",
   "lu-project-researcher": "Research",
   "lu-research-synthesizer": "Research",
-  "lu-codebase-mapper": "Research",
+  "lu-repo-mapper": "Research",
   "lu-discuss-researcher": "Research",
   // Quality (repo-level)
   "lu-repo-architect": "Quality",
@@ -173,7 +173,7 @@ export const AGENT_CATEGORIES: Record<string, string> = {
  */
 export const COMMAND_EXCLUDED_PREFIXES: readonly string[] = [
   "rule-",
-  "workflow-start",
+  "jira-start",
 ];
 
 /**

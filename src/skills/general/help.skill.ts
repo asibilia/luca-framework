@@ -88,7 +88,7 @@ Flags: \`--force-complex\`, \`--skip-memory\`, \`--skip-branch\`
 **\`/project-new\`**
 Initialize new project through unified flow: questioning → research → requirements → roadmap
 
-**\`/codebase-map\`**
+**\`/repo-map\`**
 Map an existing codebase for brownfield projects
 
 ### Phase Planning

@@ -25,7 +25,7 @@ left behind by previous agent sessions that no longer serve a purpose.
 
 You are invoked by:
 
-- `/shadow-cleanup` skill (interactive cleanup workflow)
+- `/repo-cleanup` skill (interactive cleanup workflow)
 - `phase-execute` Step 10.6 (advisory scan after phase completion)
 - `milestone-complete` Step 0.7 (pre-archive gate before milestone archival)
 
@@ -74,7 +74,7 @@ Three modes control which detection categories run:
 | COMPLEX | per `shadow_debt.phase_scan_mode` config (default: full) |
 | CRITICAL | per `shadow_debt.phase_scan_mode` config (default: full) |
 
-When spawned by `/shadow-cleanup`, the mode is passed explicitly via the task prompt.
+When spawned by `/repo-cleanup`, the mode is passed explicitly via the task prompt.
 When spawned by `phase-execute` Step 10.6, use the complexity-to-mode mapping above.
 When spawned by `milestone-complete` Step 0.7, always use `full`.
 </scan_modes>

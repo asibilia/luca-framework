@@ -172,7 +172,7 @@ Valid agent types for the \`Agent\` field:
 | \`project-researcher\`   | lu-project-researcher   | Ecosystem research           |
 | \`research-synthesizer\` | lu-research-synthesizer | Research consolidation       |
 | \`roadmapper\`           | lu-roadmapper           | Roadmap creation             |
-| \`codebase-mapper\`      | lu-codebase-mapper      | Codebase analysis            |
+| \`repo-mapper\`          | lu-repo-mapper          | Codebase analysis            |
 | \`plan-checker\`         | lu-plan-checker         | Plan validation              |
 | \`integration-checker\`  | lu-integration-checker  | Integration validation       |
 | \`pr-reviewer\`          | lu-pr-reviewer          | PR review coordination       |
