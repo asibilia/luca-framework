@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v9.2.1 — Statusline Bundle Fix
+**Current Milestone:** v9.2.1 — Statusline Bundle Fix (COMPLETE)
 
 ---
 
